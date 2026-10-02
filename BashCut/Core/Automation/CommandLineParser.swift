@@ -107,6 +107,12 @@ public enum CommandLineParser {
                 return .string(URL(fileURLWithPath: (text as NSString).expandingTildeInPath).standardizedFileURL.path)
             }
             if parameter.kind == .boolean { return .bool(try boolean(text, name: parameter.name)) }
+            if parameter.kind == .number {
+                guard let number = Double(text), number.isFinite else {
+                    throw Failure(message: "\(parameter.name) must be a number")
+                }
+                return .number(number)
+            }
             guard parameter.kind == .integer else { return .string(text) }
             guard let number = Int(text) else { throw Failure(message: "\(parameter.name) must be an integer") }
             return .integer(number)

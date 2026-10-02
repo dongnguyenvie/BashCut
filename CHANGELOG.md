@@ -8,11 +8,21 @@
   like adjustment layers in CapCut or Premiere; captions above them stay ungraded and hiding the layer bypasses it.
   Filters › Add adjustment and `adjustment add` add one over the selected clip or 3 seconds at the playhead; a
   look or LUT with nothing selected does the same. New look: Vivid.
-- **Style kits** (Filters › Style kits, `style apply food-review|cinematic`): one undoable edit adds a full-length
-  adjustment with the kit's look (replacing an earlier kit's) and sets the kit's preset on every caption; titles,
-  place cards and other presets keep theirs.
-- Project schema `bashcut.project/3`: adds the `adjustment` track kind and drops the unused `style` field; v2
-  projects migrate on open. `project create --style` is removed.
+- **Style kits** (Filters › Style kits, `style apply`): one undoable edit adds a full-length adjustment with the
+  kit's look (replacing an earlier kit's) and sets the kit's preset on every caption; titles, place cards and
+  other presets keep theirs.
+- **Custom looks and kits** live in the project (`looks`, `styleKits`) and show in the Filters library:
+  `looks save` (from an item's grade and/or values), `looks delete`, `style save`, `style delete`. `adjustment add`
+  takes `--exposure`, `--contrast`, `--saturation`, `--lut-strength` and `--lut`; commands gained a `number`
+  parameter type with ranges published to MCP. `timeline get` lists `luts`, `looks` and `styleKits`.
+- **Generated JSON Schema**: `docs/reference/project.schema.json` and `schema get` come from `ProjectSchema`,
+  built from the same declarations validation uses (`TrackKind`, `ItemProperty`, `ColorGrade`, `TextPreset`).
+  `scripts/update-schema.sh` regenerates it; a test fails when it is stale. `ProjectMigration` is the registry for
+  future upgrade steps.
+- **Project format reset to `bashcut.project/1`** (nothing is released yet): no migrations; text items use
+  `textPreset` instead of `style`; tracks always store `name`; the project-wide `style` field and
+  `project create --style` are gone. Agent instructions list color keys and ranges and warn that `setProperties`
+  replaces the whole `color` object.
 
 - Agent dock tabs: each tab shows its provider icon, the close button sits inside the tab (shown on hover or
   selection), the selected tab is outlined in cyan, API is a tab like the others, header buttons highlight on

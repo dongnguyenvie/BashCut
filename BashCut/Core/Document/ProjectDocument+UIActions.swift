@@ -92,7 +92,7 @@ extension ProjectDocument {
         case .refreshWaveforms:
             if let root = fileURL?.deletingLastPathComponent() { waveforms.refresh(media: project.media, root: root) }
         case .addVideoLayer: selectedTrackID = try addLayer(kind: "video", author: author).trackID
-        case .addAdjustmentLayer: selectedTrackID = try addLayer(kind: Track.adjustmentKind, author: author).trackID
+        case .addAdjustmentLayer: selectedTrackID = try addLayer(kind: TrackKind.adjustment, author: author).trackID
         case .addTextLayer: selectedTrackID = try addLayer(kind: "text", author: author).trackID
         case .addAudioLayer: selectedTrackID = try addLayer(kind: "audio", author: author).trackID
         case .layerUp: try moveSelectedTrack(by: 1, author: author)

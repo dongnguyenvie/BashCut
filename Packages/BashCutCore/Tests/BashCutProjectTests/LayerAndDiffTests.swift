@@ -4,7 +4,7 @@ import Testing
 @testable import BashCutProject
 
 struct LayerAndDiffTests {
-    @Test("Dynamic layers can repeat roles, reorder and preserve schema-1 projects")
+    @Test("Dynamic layers can repeat roles and reorder")
     func dynamicLayers() throws {
         var project = Project(name: "Layers")
         var layer = Track(id: "v3", kind: "video", role: "overlay")
@@ -21,13 +21,6 @@ struct LayerAndDiffTests {
         #expect(project.tracks[0].name == "Hero")
         project = try project.applying(.deleteTrack(track: "v3")).project
         #expect(!project.tracks.contains { $0.id == "v3" })
-
-        var legacy = Project(name: "Legacy")
-        legacy["schema"] = .string("bashcut.project/1")
-        for index in legacy.tracks.indices { legacy.tracks[index]["name"] = nil }
-        let migrated = try Project.decode(try JSONEncoder().encode(legacy))
-        #expect(migrated["schema"] == .string("bashcut.project/3"))
-        #expect(migrated.tracks.allSatisfy { !$0.name.isEmpty })
     }
 
     @Test("A nonempty layer cannot be removed")

@@ -256,7 +256,7 @@ struct EngineControlsTests {
             "bold-outline", "cinematic-serif", "keyword-sticker", "place-card", "hook-title",
             "chapter-card",
         ] {
-            item["style"] = .string(style)
+            item["textPreset"] = .string(style)
             let image = try #require(TextRenderer.image(item, size: size))
             let data = try pixels(image)
             #expect(data.contains { $0 != 0 })

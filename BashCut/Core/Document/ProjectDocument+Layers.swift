@@ -11,7 +11,7 @@ extension ProjectDocument {
         kind: String, role: String? = nil, name: String? = nil, author: Author = .user, baseRevision: Int? = nil
     ) throws -> (revision: Int, trackID: String) {
         let defaultRoles = [
-            "video": TrackRole.overlay, Track.adjustmentKind: TrackRole.adjustment, "text": TrackRole.captions,
+            "video": TrackRole.overlay, TrackKind.adjustment: TrackRole.adjustment, "text": TrackRole.captions,
             "audio": TrackRole.sfx,
         ]
         guard let defaultRole = defaultRoles[kind] else { throw ProjectError.invalid("Unknown layer kind \(kind)") }

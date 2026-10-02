@@ -414,3 +414,5 @@
 "With nothing selected, a look adds an adjustment that grades every layer below it." = "With nothing selected, a look adds an adjustment that grades every layer below it.";
 "A look grades the selected clip or adjustment." = "A look grades the selected clip or adjustment.";
 "An adjustment grades every layer below it. Set its look in the Color tab or Filters." = "An adjustment grades every layer below it. Set its look in the Color tab or Filters.";
+"Delete look" = "Delete look";
+"Delete style kit" = "Delete style kit";

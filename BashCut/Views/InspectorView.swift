@@ -208,9 +208,9 @@ struct InspectorView: View {
             Picker(
                 "Style",
                 selection: Binding(
-                    get: { document.selected?["style"]?.string ?? "bold-outline" },
+                    get: { document.selected?.textPreset ?? "bold-outline" },
                     set: {
-                        document.patchSelected(["style": .string($0)], label: "Caption style")
+                        document.patchSelected(["textPreset": .string($0)], label: "Caption style")
                     })
             ) {
                 Text("Bold Outline").tag("bold-outline")

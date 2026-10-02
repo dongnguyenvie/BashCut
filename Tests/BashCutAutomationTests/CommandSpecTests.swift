@@ -76,6 +76,24 @@ struct CommandSpecTests {
         }
     }
 
+    @Test("Number parameters parse from the CLI, check their range and publish it to MCP")
+    func numbers() throws {
+        let add = try CommandLineParser.parse([
+            "adjustment", "add", "--look", "vivid", "--exposure", "0.5", "--lut-strength", "1", "--base-rev", "3",
+        ])
+        #expect(add.params["exposure"] == .number(0.5))
+        #expect(add.params["lutStrength"] == .number(1))
+        #expect(throws: (any Error).self) {
+            try CommandLineParser.parse(["adjustment", "add", "--saturation", "lots", "--base-rev", "3"])
+        }
+        let spec = try #require(CommandCatalog.spec(named: "adjustment.add"))
+        #expect(throws: RPCFailure.self) { try spec.validate(["saturation": .number(9), "baseRev": .integer(1)]) }
+        #expect(try spec.validate(["saturation": .integer(2), "baseRev": .integer(1)])["saturation"] == .integer(2))
+        let saturation = spec.inputSchema.object["properties"]?.object["saturation"]?.object ?? [:]
+        #expect(saturation["type"] == .string("number"))
+        #expect(saturation["maximum"] == .number(4))
+    }
+
     @Test("The CLI parses positionals, options, flags, files and the global format from specs")
     func commandLine() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("bashcut-cli-" + UUID().uuidString)

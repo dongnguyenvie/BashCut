@@ -56,10 +56,12 @@ extension Project {
         try validateAudioSettings()
         try validateMarkers()
         try validateColorLUTs()
+        try validateStyleCatalog()
+        let lutIDs = Set(colorLUTs.map(\.id))
         var ids = Set<String>()
         for track in tracks {
             try require(
-                !track.id.isEmpty && ["video", Track.adjustmentKind, "text", "audio"].contains(track.kind),
+                !track.id.isEmpty && TrackKind.all.contains(track.kind),
                 "track.\(track.id): invalid kind")
             try require(!track.role.isEmpty, "track.\(track.id): role required")
             try require(!track.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
@@ -81,11 +83,9 @@ extension Project {
                         && item.speed > 0,
                     "item.\(item.id): invalid source/speed")
                 try item.validateRenderProperties()
-                if let lut = item.fields["color"]?.object["lut"], lut != .null {
+                if let color = item.fields["color"]?.object {
                     // A LUT is referenced by catalog ID; anything else would be silently ignored by the engine.
-                    try require(
-                        lut.string.map { id in colorLUTs.contains { $0.id == id } } == true,
-                        "item.\(item.id): unknown LUT")
+                    try ColorGrade.validate(color, path: "item.\(item.id).color", lutIDs: lutIDs)
                 }
                 try validateContent(item, on: track)
             }
@@ -185,6 +185,8 @@ extension Project {
             try validateSourceRange(item, on: track, media: asset)
         } else if item.fields["text"]?.string == nil {
             throw ProjectError.invalid("item.\(item.id): text required")
+        } else if let preset = item.fields["textPreset"], preset.string.map(TextPreset.all.contains) != true {
+            throw ProjectError.invalid("item.\(item.id).textPreset: expected one of \(TextPreset.all.joined(separator: ", "))")
         }
     }
 
@@ -306,54 +308,9 @@ extension Project {
 
 extension Item {
     fileprivate func validateRenderProperties() throws {
-        func number(
-            _ key: String, in values: [String: JSONValue], range: ClosedRange<Double>, prefix: String = ""
-        ) throws {
-            guard let value = values[key] else { return }
-            guard let number = value.double, number.isFinite, range.contains(number) else {
-                throw ProjectError.invalid("item.\(id).\(prefix)\(key): expected a number in \(range)")
-            }
-        }
-        func group(_ key: String) throws -> [String: JSONValue] {
-            guard let value = fields[key] else { return [:] }
-            guard case .object(let values) = value else {
-                throw ProjectError.invalid("item.\(id).\(key): expected an object")
-            }
-            return values
-        }
         if let value = fields["in"], value.int == nil {
             throw ProjectError.invalid("item.\(id).in: expected integer source frame")
         }
-        try number("speed", in: fields, range: 0.01...100)
-        try number("opacity", in: fields, range: 0...1)
-        try number("volumeDb", in: fields, range: -120...24)
-        if let value = fields["muted"], case .bool = value {
-        } else if fields["muted"] != nil {
-            throw ProjectError.invalid("item.\(id).muted: expected a boolean")
-        }
-        if let value = fields["preservePitch"], case .bool = value {
-        } else if fields["preservePitch"] != nil {
-            throw ProjectError.invalid("item.\(id).preservePitch: expected a boolean")
-        }
-        for key in ["fadeIn", "fadeOut"] {
-            if let value = fields[key], !(value.int.map { (0...2_000_000_000).contains($0) } ?? false) {
-                throw ProjectError.invalid("item.\(id).\(key): expected nonnegative integer frames")
-            }
-        }
-        let transform = try group("transform")
-        try number("zoom", in: transform, range: 0.01...100, prefix: "transform.")
-        for key in ["pan", "tilt"] {
-            try number(key, in: transform, range: -65536...65536, prefix: "transform.")
-        }
-        let color = try group("color")
-        try number("exposure", in: color, range: -10...10, prefix: "color.")
-        for key in ["contrast", "saturation"] {
-            try number(key, in: color, range: 0...4, prefix: "color.")
-        }
-        try number("lutStrength", in: color, range: 0...1, prefix: "color.")
-        let style = try group("textStyle")
-        try number("size", in: style, range: 0.005...1, prefix: "textStyle.")
-        try number("positionY", in: style, range: 0...1, prefix: "textStyle.")
-        try number("strokeWidth", in: style, range: 0...50, prefix: "textStyle.")
+        try validateDeclaredProperties()
     }
 }

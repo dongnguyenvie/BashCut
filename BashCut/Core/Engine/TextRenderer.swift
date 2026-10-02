@@ -86,7 +86,7 @@ enum TextRenderer {
                 bitsPerComponent: 8, bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(),
                 bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
         else { return nil }
-        let preset = CaptionPreset(item["style"]?.string)
+        let preset = CaptionPreset(item.textPreset)
         let style = item["textStyle"]?.object ?? [:]
         let relativeSize = style["size"]?.double ?? preset.size
         let fontName = style["font"]?.string ?? preset.font

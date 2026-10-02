@@ -64,9 +64,12 @@ extension ProjectDocument {
         handle("project.get") { document, _, _ in .object(document.project.fields) }
         handle("timeline.get") { document, arguments, _ in
             if arguments.optionalString("format") == "text" { return .string(document.timelineText()) }
+            let project = document.project
             return .object([
-                "rev": .integer(document.project.revision), "format": document.project["format"] ?? .null,
-                "tracks": document.project["tracks"] ?? .array([]),
+                "rev": .integer(project.revision), "format": project["format"] ?? .null,
+                "tracks": project["tracks"] ?? .array([]),
+                "luts": .array(project.colorLUTs.map { .object($0.fields) }),
+                "looks": .array(project.looks.map(\.json)), "styleKits": .array(project.styleKits.map(\.json)),
             ])
         }
         handle("media.list") { document, _, _ in

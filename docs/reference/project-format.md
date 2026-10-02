@@ -8,7 +8,7 @@ full field sketch are in [02 — Project format](../specs/02-project-format.md);
 
 | Path | Contents |
 |---|---|
-| `project.bashcut.json` | The project: indented JSON, sorted keys, schema `bashcut.project/3` (v1 and v2 files migrate on open) |
+| `project.bashcut.json` | The project: indented JSON, sorted keys, schema `bashcut.project/1`; the full field list is [project.schema.json](project.schema.json) |
 | `.bashcut/history.jsonl` | Undo/redo checkpoint written on every save |
 | `.bashcut/autosave/latest.json` | Unsaved history plus the disk bytes it was based on |
 | `.bashcut/proxies/<media id>.mov` | Preview proxies (see [Media paths](#media-paths)) |
@@ -16,7 +16,7 @@ full field sketch are in [02 — Project format](../specs/02-project-format.md);
 
 A project file with another name (for example a test fixture) gets its own cache folder, `.bashcut-<file name>/`.
 
-- **Validated on load and on save.** `Project.decode` upgrades schema v1 in memory, repairs layers (see
+- **Validated on load and on save.** `Project.decode` runs any `ProjectMigration` steps (none yet), repairs layers (see
   [Tracks and layers](#tracks-and-layers)) and then validates; `Project.data()` validates before encoding. An
   invalid project is never written.
 - **Unknown fields round-trip** at every nesting level, so agents and future versions can add data.
@@ -85,9 +85,15 @@ on the first adjustment track, adding one when needed, and spills overlaps onto 
 
 A style kit (`style apply`) is not stored as a setting. Applying one is a single undoable edit: it deletes
 adjustment items an earlier kit added (marked `styleKit: "<kit id>"`), adds a full-length adjustment item with
-the kit's look, and sets the kit's `style` on every caption on a `captions` text track that has no style or another kit's caption
-preset (titles, place cards and other presets keep theirs). Schema v3 dropped the
-project-wide `style` field that v2 wrote but never read; migration removes it.
+the kit's look, and sets the kit's `captionPreset` as the `textPreset` of every caption on a `captions` text track
+that has no preset or another kit's caption preset (titles, place cards and other presets keep theirs).
+
+**Looks and style kits** come built in (looks `original`, `vivid`, `muted-film`, `black-white`; kits
+`food-review`, `cinematic`) or from the project. Custom ones are stored in the top-level `looks`
+(`{id, title, color}`) and `styleKits` (`{id, title, look, captionPreset}`) arrays, managed with `looks save`,
+`looks delete`, `style save` and `style delete`. IDs are lowercase letters, digits and hyphens, unique across
+built-in and custom entries. A kit's look must exist, and a look cannot be deleted while a custom kit uses it.
+Deleting a LUT removes it from clips, adjustments and custom looks alike.
 
 ```json
 {"id": "fx1", "kind": "adjustment", "role": "adjustment", "name": "Adjustment 1", "items": [
@@ -95,6 +101,22 @@ project-wide `style` field that v2 wrote but never read; migration removes it.
    "color": {"saturation": 0.8, "contrast": 0.9}}
 ]}
 ```
+
+## Schema and versioning
+
+[project.schema.json](project.schema.json) is a JSON Schema (draft 2020-12) of the whole file. It is generated,
+never edited by hand: `ProjectSchema` builds it from the same declarations validation uses (`TrackKind`,
+`ItemProperty`, `ColorGrade`, `TextPreset`, the look and kit catalogs). Agents read it with `schema get`. Fields
+it does not declare are still allowed, because unknown fields round-trip; rules that span several fields (layer
+bands, overlaps, links, transitions) are enforced by `Project.validate()` and described in the schema text.
+
+To change the format:
+
+1. Declare the field in `ItemProperty.all` (item properties) or `ProjectSchema` (anything else). Validation
+   picks up `ItemProperty` entries automatically.
+2. Run `scripts/update-schema.sh`; `ProjectSchemaTests` fails while the published file is out of date.
+3. For a breaking change, bump `Project.schema` and append a `ProjectMigration.Step` from the previous version,
+   with a test. Additive optional fields need neither.
 
 ## Linked audio and video
 

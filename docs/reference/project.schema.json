@@ -1,0 +1,850 @@
+{
+  "$defs" : {
+    "audio" : {
+      "description" : "Mix settings and the last loudness measurement",
+      "properties" : {
+        "loudnessRangeLU" : {
+          "description" : "Measured loudness range",
+          "maximum" : 100,
+          "minimum" : 0,
+          "type" : "number"
+        },
+        "measuredLUFS" : {
+          "description" : "Measured integrated loudness",
+          "maximum" : 10,
+          "minimum" : -100,
+          "type" : "number"
+        },
+        "measurementVerified" : {
+          "description" : "The final file was re-measured",
+          "type" : "boolean"
+        },
+        "mixGainDb" : {
+          "description" : "Master gain",
+          "maximum" : 24,
+          "minimum" : -60,
+          "type" : "number"
+        },
+        "normalizeEnabled" : {
+          "description" : "Two-pass normalization on export",
+          "type" : "boolean"
+        },
+        "targetLUFS" : {
+          "description" : "Normalization target",
+          "maximum" : -5,
+          "minimum" : -30,
+          "type" : "number"
+        },
+        "truePeakDbTP" : {
+          "description" : "Measured true peak",
+          "maximum" : 20,
+          "minimum" : -100,
+          "type" : "number"
+        }
+      },
+      "type" : "object"
+    },
+    "color" : {
+      "description" : "Color grade; on an adjustment item it applies to every layer below",
+      "properties" : {
+        "contrast" : {
+          "description" : "Contrast multiplier (1 = unchanged)",
+          "maximum" : 4,
+          "minimum" : 0,
+          "type" : "number"
+        },
+        "exposure" : {
+          "description" : "Exposure in stops (0 = unchanged)",
+          "maximum" : 10,
+          "minimum" : -10,
+          "type" : "number"
+        },
+        "lut" : {
+          "description" : "LUT ID from luts[]",
+          "type" : [
+            "string",
+            "null"
+          ]
+        },
+        "lutStrength" : {
+          "description" : "LUT mix (0 = off, 1 = full)",
+          "maximum" : 1,
+          "minimum" : 0,
+          "type" : "number"
+        },
+        "saturation" : {
+          "description" : "Saturation multiplier (0 = black and white, 1 = unchanged)",
+          "maximum" : 4,
+          "minimum" : 0,
+          "type" : "number"
+        }
+      },
+      "type" : "object"
+    },
+    "item" : {
+      "description" : "A timeline item; see the layer rules for which fields it needs",
+      "properties" : {
+        "at" : {
+          "description" : "Start, in timeline frames",
+          "minimum" : 0,
+          "type" : "integer"
+        },
+        "color" : {
+          "$ref" : "#/$defs/color"
+        },
+        "dur" : {
+          "description" : "Length, in timeline frames",
+          "minimum" : 1,
+          "type" : "integer"
+        },
+        "fadeIn" : {
+          "description" : "Audio fade-in in timeline frames",
+          "maximum" : 2000000000,
+          "minimum" : 0,
+          "type" : "integer"
+        },
+        "fadeOut" : {
+          "description" : "Audio fade-out in timeline frames",
+          "maximum" : 2000000000,
+          "minimum" : 0,
+          "type" : "integer"
+        },
+        "freezeFrame" : {
+          "description" : "Video: source frame held for the whole item",
+          "minimum" : 0,
+          "type" : "integer"
+        },
+        "id" : {
+          "description" : "Stable item ID, unique in the project",
+          "minLength" : 1,
+          "type" : "string"
+        },
+        "in" : {
+          "description" : "Source in-point, in media frames",
+          "minimum" : 0,
+          "type" : "integer"
+        },
+        "linkedAudio" : {
+          "description" : "Video: ID of its linked sound item",
+          "type" : "string"
+        },
+        "linkedVideo" : {
+          "description" : "Audio: ID of its linked picture item",
+          "type" : "string"
+        },
+        "media" : {
+          "description" : "Media ID (video and audio layers)",
+          "type" : "string"
+        },
+        "muted" : {
+          "description" : "Silences the clip",
+          "type" : "boolean"
+        },
+        "opacity" : {
+          "description" : "Picture opacity",
+          "maximum" : 1,
+          "minimum" : 0,
+          "type" : "number"
+        },
+        "preservePitch" : {
+          "description" : "Keeps pitch when speed changes (default true)",
+          "type" : "boolean"
+        },
+        "reframePreset" : {
+          "description" : "Framing preset ID, or custom",
+          "type" : "string"
+        },
+        "speed" : {
+          "description" : "Source frames per timeline frame; the timeline duration is kept",
+          "maximum" : 100,
+          "minimum" : 0.01,
+          "type" : "number"
+        },
+        "styleKit" : {
+          "description" : "Adjustment: the style kit that added it; the next kit replaces it",
+          "type" : "string"
+        },
+        "tag" : {
+          "description" : "Editorial tags",
+          "properties" : {
+            "role" : {
+              "description" : "Speech coverage role",
+              "enum" : [
+                "speech",
+                "broll",
+                "underVO"
+              ],
+              "type" : "string"
+            },
+            "section" : {
+              "description" : "Section name",
+              "type" : "string"
+            }
+          },
+          "type" : "object"
+        },
+        "text" : {
+          "description" : "Caption or title text (text layers)",
+          "type" : "string"
+        },
+        "textPreset" : {
+          "description" : "Text preset (text layers); default bold-outline",
+          "enum" : [
+            "bold-outline",
+            "cinematic-serif",
+            "keyword-sticker",
+            "place-card",
+            "hook-title",
+            "chapter-card"
+          ],
+          "type" : "string"
+        },
+        "textStyle" : {
+          "description" : "Text style overrides",
+          "properties" : {
+            "positionY" : {
+              "description" : "Baseline position from the bottom, as a fraction",
+              "maximum" : 1,
+              "minimum" : 0,
+              "type" : "number"
+            },
+            "size" : {
+              "description" : "Font size as a fraction of the frame height",
+              "maximum" : 1,
+              "minimum" : 0.005,
+              "type" : "number"
+            },
+            "strokeWidth" : {
+              "description" : "Outline width in points",
+              "maximum" : 50,
+              "minimum" : 0,
+              "type" : "number"
+            }
+          },
+          "type" : "object"
+        },
+        "transform" : {
+          "description" : "Framing",
+          "properties" : {
+            "pan" : {
+              "description" : "Horizontal offset in output pixels",
+              "maximum" : 65536,
+              "minimum" : -65536,
+              "type" : "number"
+            },
+            "tilt" : {
+              "description" : "Vertical offset in output pixels",
+              "maximum" : 65536,
+              "minimum" : -65536,
+              "type" : "number"
+            },
+            "zoom" : {
+              "description" : "Scale over the fill-the-frame size",
+              "maximum" : 100,
+              "minimum" : 0.01,
+              "type" : "number"
+            }
+          },
+          "type" : "object"
+        },
+        "volumeDb" : {
+          "description" : "Clip gain in dB",
+          "maximum" : 24,
+          "minimum" : -120,
+          "type" : "number"
+        }
+      },
+      "required" : [
+        "id",
+        "at",
+        "dur"
+      ],
+      "type" : "object"
+    },
+    "look" : {
+      "description" : "A reusable color grade",
+      "properties" : {
+        "color" : {
+          "$ref" : "#/$defs/color"
+        },
+        "id" : {
+          "description" : "Unique among built-in and custom looks",
+          "pattern" : "^[a-z0-9][a-z0-9-]{0,63}$",
+          "type" : "string"
+        },
+        "title" : {
+          "description" : "Display name",
+          "maxLength" : 120,
+          "minLength" : 1,
+          "type" : "string"
+        }
+      },
+      "required" : [
+        "id",
+        "title",
+        "color"
+      ],
+      "type" : "object"
+    },
+    "lut" : {
+      "description" : "A .cube file in the project luts folder",
+      "properties" : {
+        "id" : {
+          "description" : "Stable ID",
+          "minLength" : 1,
+          "type" : "string"
+        },
+        "name" : {
+          "description" : "Display name",
+          "maxLength" : 120,
+          "minLength" : 1,
+          "type" : "string"
+        },
+        "path" : {
+          "description" : "luts/<file>.cube",
+          "pattern" : "^luts/.+\\.cube$",
+          "type" : "string"
+        },
+        "size" : {
+          "description" : "Cube dimension",
+          "maximum" : 64,
+          "minimum" : 2,
+          "type" : "integer"
+        }
+      },
+      "required" : [
+        "id",
+        "name",
+        "path",
+        "size"
+      ],
+      "type" : "object"
+    },
+    "marker" : {
+      "description" : "A marker; kind section starts a named section",
+      "properties" : {
+        "at" : {
+          "description" : "Timeline frame",
+          "minimum" : 0,
+          "type" : "integer"
+        },
+        "id" : {
+          "description" : "Stable ID",
+          "type" : "string"
+        },
+        "kind" : {
+          "description" : "Marker kind",
+          "minLength" : 1,
+          "type" : "string"
+        },
+        "label" : {
+          "description" : "Label",
+          "maxLength" : 120,
+          "minLength" : 1,
+          "type" : "string"
+        }
+      },
+      "required" : [
+        "at",
+        "kind",
+        "label"
+      ],
+      "type" : "object"
+    },
+    "media" : {
+      "description" : "A source file, referenced by path, never copied",
+      "properties" : {
+        "fps" : {
+          "$ref" : "#/$defs/rational"
+        },
+        "frames" : {
+          "description" : "Length in source frames",
+          "minimum" : 1,
+          "type" : "integer"
+        },
+        "hasAudio" : {
+          "description" : "Whether the file has sound",
+          "type" : "boolean"
+        },
+        "height" : {
+          "description" : "Pixels",
+          "maximum" : 16384,
+          "minimum" : 1,
+          "type" : "integer"
+        },
+        "id" : {
+          "description" : "Stable media ID",
+          "minLength" : 1,
+          "type" : "string"
+        },
+        "kind" : {
+          "description" : "Media kind",
+          "enum" : [
+            "video",
+            "audio"
+          ],
+          "type" : "string"
+        },
+        "path" : {
+          "description" : "Relative to the project folder, or @assets/… in the workspace",
+          "minLength" : 1,
+          "pattern" : "^[^/]",
+          "type" : "string"
+        },
+        "width" : {
+          "description" : "Pixels",
+          "maximum" : 16384,
+          "minimum" : 1,
+          "type" : "integer"
+        }
+      },
+      "required" : [
+        "id",
+        "path",
+        "fps",
+        "frames"
+      ],
+      "type" : "object"
+    },
+    "rational" : {
+      "description" : "[numerator, denominator]",
+      "maxItems" : 2,
+      "minItems" : 2,
+      "prefixItems" : [
+        {
+          "description" : "Numerator",
+          "minimum" : 1,
+          "type" : "integer"
+        },
+        {
+          "description" : "Denominator",
+          "minimum" : 1,
+          "type" : "integer"
+        }
+      ],
+      "type" : "array"
+    },
+    "styleKit" : {
+      "description" : "A one-shot recipe: a full-length adjustment with a look plus a caption preset",
+      "properties" : {
+        "captionPreset" : {
+          "description" : "Text preset given to captions",
+          "enum" : [
+            "bold-outline",
+            "cinematic-serif",
+            "keyword-sticker",
+            "place-card",
+            "hook-title",
+            "chapter-card"
+          ],
+          "type" : "string"
+        },
+        "id" : {
+          "description" : "Unique among built-in and custom kits",
+          "pattern" : "^[a-z0-9][a-z0-9-]{0,63}$",
+          "type" : "string"
+        },
+        "look" : {
+          "description" : "Built-in or custom look ID",
+          "type" : "string"
+        },
+        "title" : {
+          "description" : "Display name",
+          "maxLength" : 120,
+          "minLength" : 1,
+          "type" : "string"
+        }
+      },
+      "required" : [
+        "id",
+        "title",
+        "look",
+        "captionPreset"
+      ],
+      "type" : "object"
+    },
+    "track" : {
+      "allOf" : [
+        {
+          "if" : {
+            "properties" : {
+              "kind" : {
+                "enum" : [
+                  "video",
+                  "audio"
+                ]
+              }
+            }
+          },
+          "then" : {
+            "properties" : {
+              "items" : {
+                "items" : {
+                  "required" : [
+                    "media"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "if" : {
+            "properties" : {
+              "kind" : {
+                "enum" : [
+                  "text"
+                ]
+              }
+            }
+          },
+          "then" : {
+            "properties" : {
+              "items" : {
+                "items" : {
+                  "required" : [
+                    "text"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "if" : {
+            "properties" : {
+              "kind" : {
+                "enum" : [
+                  "adjustment"
+                ]
+              }
+            }
+          },
+          "then" : {
+            "properties" : {
+              "items" : {
+                "items" : {
+                  "not" : {
+                    "anyOf" : [
+                      {
+                        "required" : [
+                          "media"
+                        ]
+                      },
+                      {
+                        "required" : [
+                          "text"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      ],
+      "description" : "A layer. Items never overlap on one layer.",
+      "properties" : {
+        "duckAttackFrames" : {
+          "description" : "Music layers: ramp in",
+          "maximum" : 10000,
+          "minimum" : 0,
+          "type" : "integer"
+        },
+        "duckReleaseFrames" : {
+          "description" : "Music layers: ramp out",
+          "maximum" : 10000,
+          "minimum" : 0,
+          "type" : "integer"
+        },
+        "duckUnderSpeechDb" : {
+          "description" : "Music layers: level under speech",
+          "maximum" : 0,
+          "minimum" : -60,
+          "type" : "number"
+        },
+        "duckingEnabled" : {
+          "description" : "Music layers: suspend ducking without losing the level",
+          "type" : "boolean"
+        },
+        "hidden" : {
+          "description" : "Visual layers only: left out of preview and export",
+          "type" : "boolean"
+        },
+        "id" : {
+          "description" : "Stable layer ID",
+          "minLength" : 1,
+          "type" : "string"
+        },
+        "items" : {
+          "description" : "Items, in any order",
+          "items" : {
+            "$ref" : "#/$defs/item"
+          },
+          "type" : "array"
+        },
+        "kind" : {
+          "description" : "Layer kind",
+          "enum" : [
+            "video",
+            "adjustment",
+            "text",
+            "audio"
+          ],
+          "type" : "string"
+        },
+        "locked" : {
+          "description" : "Items cannot change until unlocked",
+          "type" : "boolean"
+        },
+        "magnetic" : {
+          "description" : "Inserts append after the last item; drags reorder and compact",
+          "type" : "boolean"
+        },
+        "muted" : {
+          "description" : "Audio layers only: silent, and its speech stops ducking music",
+          "type" : "boolean"
+        },
+        "name" : {
+          "description" : "Display name",
+          "minLength" : 1,
+          "type" : "string"
+        },
+        "role" : {
+          "description" : "Semantic role; any nonempty value, these are assigned by BashCut",
+          "examples" : [
+            "main",
+            "overlay",
+            "adjustment",
+            "captions",
+            "dialogue",
+            "voiceover",
+            "music",
+            "sfx"
+          ],
+          "minLength" : 1,
+          "type" : "string"
+        }
+      },
+      "required" : [
+        "id",
+        "kind",
+        "role",
+        "name",
+        "items"
+      ],
+      "type" : "object"
+    },
+    "transition" : {
+      "description" : "A transition between two adjacent clips on a video layer",
+      "properties" : {
+        "duration" : {
+          "description" : "Timeline frames",
+          "minimum" : 1,
+          "type" : "integer"
+        },
+        "from" : {
+          "description" : "Outgoing item ID",
+          "type" : "string"
+        },
+        "id" : {
+          "description" : "Stable ID",
+          "minLength" : 1,
+          "type" : "string"
+        },
+        "kind" : {
+          "description" : "Transition kind",
+          "enum" : [
+            "dissolve",
+            "whip",
+            "blink",
+            "zoom",
+            "spin",
+            "shutter",
+            "wipe"
+          ],
+          "type" : "string"
+        },
+        "to" : {
+          "description" : "Incoming item ID",
+          "type" : "string"
+        }
+      },
+      "required" : [
+        "id",
+        "kind",
+        "from",
+        "to",
+        "duration"
+      ],
+      "type" : "object"
+    }
+  },
+  "$id" : "https://bashcut.app/schema/bashcut.project/1.json",
+  "$schema" : "https://json-schema.org/draft/2020-12/schema",
+  "description" : "A BashCut project (project.bashcut.json).",
+  "properties" : {
+    "audio" : {
+      "$ref" : "#/$defs/audio"
+    },
+    "beatGrid" : {
+      "description" : "Beat grid of one audio media",
+      "properties" : {
+        "bpm" : {
+          "description" : "Beats per minute",
+          "maximum" : 400,
+          "minimum" : 20,
+          "type" : "number"
+        },
+        "frames" : {
+          "description" : "Sorted unique timeline frames",
+          "items" : {
+            "description" : "Frame",
+            "minimum" : 0,
+            "type" : "integer"
+          },
+          "maxItems" : 100000,
+          "type" : "array"
+        },
+        "media" : {
+          "description" : "Media ID",
+          "type" : "string"
+        }
+      },
+      "required" : [
+        "media",
+        "bpm",
+        "frames"
+      ],
+      "type" : "object"
+    },
+    "contentLanguage" : {
+      "description" : "BCP 47 language of speech and captions",
+      "pattern" : "^[A-Za-z]{2,8}(-[A-Za-z0-9]{1,8})*$",
+      "type" : "string"
+    },
+    "format" : {
+      "description" : "Output format",
+      "properties" : {
+        "fps" : {
+          "$ref" : "#/$defs/rational"
+        },
+        "height" : {
+          "description" : "Pixels",
+          "maximum" : 16384,
+          "minimum" : 1,
+          "type" : "integer"
+        },
+        "sampleRate" : {
+          "description" : "Hz",
+          "minimum" : 1,
+          "type" : "integer"
+        },
+        "width" : {
+          "description" : "Pixels",
+          "maximum" : 16384,
+          "minimum" : 1,
+          "type" : "integer"
+        }
+      },
+      "required" : [
+        "width",
+        "height",
+        "fps"
+      ],
+      "type" : "object"
+    },
+    "id" : {
+      "description" : "Stable project ID",
+      "minLength" : 1,
+      "type" : "string"
+    },
+    "looks" : {
+      "description" : "Custom looks (built-in looks are not stored)",
+      "items" : {
+        "$ref" : "#/$defs/look"
+      },
+      "maxItems" : 1000,
+      "type" : "array"
+    },
+    "luts" : {
+      "description" : "Project .cube LUT catalog",
+      "items" : {
+        "$ref" : "#/$defs/lut"
+      },
+      "maxItems" : 1000,
+      "type" : "array"
+    },
+    "markers" : {
+      "description" : "Timeline markers",
+      "items" : {
+        "$ref" : "#/$defs/marker"
+      },
+      "maxItems" : 10000,
+      "type" : "array"
+    },
+    "media" : {
+      "description" : "Source files",
+      "items" : {
+        "$ref" : "#/$defs/media"
+      },
+      "type" : "array"
+    },
+    "name" : {
+      "description" : "Display name",
+      "minLength" : 1,
+      "type" : "string"
+    },
+    "providers" : {
+      "additionalProperties" : {
+        "type" : "string"
+      },
+      "description" : "Preferred provider ID per capability",
+      "type" : "object"
+    },
+    "rev" : {
+      "description" : "Revision, +1 on every applied edit",
+      "minimum" : 0,
+      "type" : "integer"
+    },
+    "schema" : {
+      "const" : "bashcut.project/1"
+    },
+    "styleKits" : {
+      "description" : "Custom style kits (built-in kits are not stored)",
+      "items" : {
+        "$ref" : "#/$defs/styleKit"
+      },
+      "maxItems" : 1000,
+      "type" : "array"
+    },
+    "tracks" : {
+      "description" : "Layers: visual kinds back to front, then audio",
+      "items" : {
+        "$ref" : "#/$defs/track"
+      },
+      "maxItems" : 256,
+      "minItems" : 1,
+      "type" : "array"
+    },
+    "transitions" : {
+      "description" : "Transitions on adjacent video cuts",
+      "items" : {
+        "$ref" : "#/$defs/transition"
+      },
+      "maxItems" : 10000,
+      "type" : "array"
+    }
+  },
+  "required" : [
+    "schema",
+    "id",
+    "name",
+    "rev",
+    "format",
+    "tracks"
+  ],
+  "title" : "BashCut project",
+  "type" : "object"
+}

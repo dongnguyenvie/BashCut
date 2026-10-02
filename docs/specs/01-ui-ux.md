@@ -228,9 +228,9 @@ on the join is **Planned**.
 
 | Control | Content | Status |
 |---|---|---|
-| **Style kits** | **Food review** (Vivid + Bold Outline) and **Cinematic** (Muted film + Cinematic Serif): one undoable edit adds a full-length adjustment and restyles every caption; applying another kit replaces the first kit's grade | Implemented |
+| **Style kits** | **Food review** (Vivid + Bold Outline) and **Cinematic** (Muted film + Cinematic Serif): one undoable edit adds a full-length adjustment and restyles every caption; applying another kit replaces the first kit's grade. Custom kits saved by an agent or `style save` appear here (right-click to delete) | Implemented |
 | **Add adjustment** | An adjustment item over the selected clip's range, or 3 seconds at the playhead | Implemented |
-| **Looks** | Original, Vivid, Muted film, Black & white: grade the selected clip or adjustment; with nothing selected, add an adjustment | Implemented |
+| **Looks** | Original, Vivid, Muted film, Black & white, plus custom looks saved with `looks save` (right-click to delete): grade the selected clip or adjustment; with nothing selected, add an adjustment | Implemented |
 | **3D LUTs** | Import a `.cube` into the project, apply it to a clip or adjustment with adjustable strength (nothing selected adds an adjustment) | Implemented |
 | **Bundled looks** | `quinn-matte`, `quinn-am`, `quinn-ky-uc` from `looks.json` | Planned |
 | **Basic adjustments** | Exposure, contrast, saturation (Inspector › Color) | Implemented |

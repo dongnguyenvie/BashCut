@@ -41,7 +41,7 @@ only.
 
 ```jsonc
 {
-  "schema": "bashcut.project/3",
+  "schema": "bashcut.project/1",
   "id": "8f0c…",
   "name": "Lau bo noi dat",
   "rev": 142,                       // +1 on every applied edit; optimistic concurrency
@@ -71,7 +71,7 @@ only.
     ]},
     {"id": "t1", "kind": "text", "role": "captions", "name": "Captions", "items": [
       {"id": "s-01", "at": 0, "dur": 61, "text": "Top 10 món nên ăn\nở Buôn Ma Thuột",
-       "style": "bold-outline", "textStyle": {"size": 0.062, "positionY": 0.8}}
+       "textPreset": "bold-outline", "textStyle": {"size": 0.062, "positionY": 0.8}}
     ]},
     {"id": "a1", "kind": "audio", "role": "dialogue", "name": "Dialogue", "items": [
       {"id": "a1-01", "media": "m-0449", "in": 0, "dur": 61, "at": 0, "linkedVideo": "c-01"}
@@ -126,8 +126,8 @@ round-trip unchanged.
 
 **Tracks are ordered, dynamic layers.** Array order is the visual stacking order, back to front. A project may
 have as many video, adjustment, text and audio tracks as it needs; `role` is a repeatable semantic hint, not a
-fixed slot. Track IDs stay stable, and schema-v1 and v2 projects are upgraded in memory when opened (v3 added
-adjustment tracks and dropped the unused project-wide `style` field).
+fixed slot. Track IDs stay stable. The full field list is the generated
+[project.schema.json](../reference/project.schema.json).
 
 **Adjustment tracks replace a project style setting.** An `adjustment` item has no media or text, only a `color`
 grade, and applies it to everything below it while on screen, like an adjustment layer in CapCut or Premiere.
