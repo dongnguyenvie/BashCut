@@ -65,10 +65,35 @@ extension Project {
         return track
     }
 
-    /// The index where a new layer of `kind` goes by default: the front of the visual stack, or the
-    /// bottom of the audio stack.
+    /// The index where a new layer of `kind` goes by default: text at the front of the visual stack,
+    /// video in front of the other video layers but behind text, audio at the bottom of the audio stack.
     public func defaultTrackIndex(kind: String) -> Int {
-        kind == "audio" ? tracks.count : tracks.firstIndex(where: { !$0.isVisual }) ?? tracks.count
+        let visualEnd = tracks.firstIndex(where: { !$0.isVisual }) ?? tracks.count
+        switch kind {
+        case "audio": return tracks.count
+        case "video": return (tracks[..<visualEnd].lastIndex(where: { $0.kind == "video" }) ?? -1) + 1
+        default: return visualEnd
+        }
+    }
+
+    /// Where an overflow layer for `source` goes: after the last layer of the same kind and role at or after
+    /// `source`, so overflow layers keep their creation order.
+    func overflowIndex(for source: Track, role: String) -> Int {
+        guard let index = tracks.firstIndex(where: { $0.id == source.id }) else { return tracks.count }
+        let last = tracks.indices.last { $0 >= index && tracks[$0].kind == source.kind && tracks[$0].role == role }
+        return (last ?? index) + 1
+    }
+
+    /// Rejects a layer index outside the visual or audio band, naming the layer.
+    func requireBand(_ track: Track, at index: Int, inserting: Bool) throws {
+        let visual = tracks.filter(\.isVisual).count + (inserting && track.isVisual ? 1 : 0)
+        let allowed = track.isVisual ? 0..<visual : visual..<(tracks.count + (inserting ? 1 : 0))
+        guard allowed.contains(index) else {
+            throw ProjectError.invalid(
+                track.isVisual
+                    ? "Layer \(track.id) is \(track.kind); visual layers stay above audio layers"
+                    : "Layer \(track.id) is audio; audio layers stay below visual layers")
+        }
     }
 
     /// The index range a layer of `kind` may move within.
@@ -148,7 +173,7 @@ public struct LayerPlanner {
             return free.id
         }
         let overflow = project.overflowTrack(from: source)
-        try add([.addTrack(track: overflow, atIndex: index + 1)])
+        try add([.addTrack(track: overflow, atIndex: project.overflowIndex(for: source, role: role))])
         return overflow.id
     }
 

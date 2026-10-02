@@ -34,6 +34,12 @@ struct LayerRulesTests {
         #expect(try project.applying(.moveTrack(track: "t1", toIndex: 1)).project.tracks[1].id == "t1")
         #expect(project.trackBand(kind: "audio") == 3..<7)
         #expect(project.defaultTrackIndex(kind: "text") == 3)
+        // New video layers stay behind text layers; audio layers go to the bottom.
+        #expect(project.defaultTrackIndex(kind: "video") == 2)
+        #expect(project.defaultTrackIndex(kind: "audio") == 7)
+        #expect(throws: ProjectError.invalid("Layer a1 is audio; audio layers stay below visual layers")) {
+            try project.applying(.moveTrack(track: "a1", toIndex: 0))
+        }
     }
 
     @Test("Items never overlap on one layer and media must suit the layer kind")
@@ -64,8 +70,10 @@ struct LayerRulesTests {
         #expect(planner.project.tracks[2].role == "overlay")
         #expect(planner.project.tracks[2].name == "Overlay 2")
         #expect(!planner.project.tracks[2].magnetic)
-        // A third overlapping clip reuses no occupied layer and adds another one.
+        // A third overlapping clip reuses no occupied layer and adds another one after the earlier overflow.
         #expect(try planner.place(Item(id: "c", media: "clip", at: 40, duration: 10), on: "v2") == "v4")
+        #expect(planner.project.tracks.map(\.id) == ["v1", "v2", "v3", "v4", "t1", "a1", "a2", "a3", "a4"])
+        #expect(planner.project.tracks[3].name == "Overlay 3")
         // A free range on the first layer stays there.
         #expect(try planner.place(Item(id: "d", media: "clip", at: 100, duration: 10), on: "v2") == "v2")
         let result = try planner.project.applying(.group(label: "x", author: .user, ops: [])).project
@@ -87,6 +95,7 @@ struct LayerRulesTests {
         let audio = try #require(moved.tracks.first { $0.items.contains { $0.id == "a-audio" } })
         #expect(video.id == "v3")
         #expect(audio.kind == "audio" && audio.role == "dialogue" && audio.id != "a1")
+        #expect(moved.tracks.filter { $0.role == "dialogue" }.map(\.name) == ["Dialogue", "Dialogue 2"])
         #expect(moved.tracks.flatMap(\.items).first { $0.id == "a-audio" }?.at == 70)
         #expect(moved.tracks.flatMap(\.items).first { $0.id == "a" }?.linkedItemID == "a-audio")
         try moved.validate()

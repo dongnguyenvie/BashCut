@@ -298,6 +298,7 @@ extension Project {
         guard !track.id.isEmpty, !tracks.contains(where: { $0.id == track.id }),
             (0...tracks.count).contains(index)
         else { throw ProjectError.invalid("Invalid track insertion") }
+        try requireBand(track, at: index, inserting: true)
         tracks.insert(track, at: index)
     }
 
@@ -318,6 +319,7 @@ extension Project {
         guard let source = tracks.firstIndex(where: { $0.id == id }),
             tracks.indices.contains(index)
         else { throw ProjectError.invalid("Invalid track reorder") }
+        try requireBand(tracks[source], at: index, inserting: false)
         let track = tracks.remove(at: source)
         tracks.insert(track, at: index)
     }
