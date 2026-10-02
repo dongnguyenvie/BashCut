@@ -495,3 +495,8 @@
 "Set up %@?" = "Set up %@?";
 "Set Up" = "Set Up";
 "Downloads and disk: about %@ (%@ free)" = "Downloads and disk: about %@ (%@ free)";
+"This plugin cannot run on this Mac: %@ is missing and the plugin does not install it" = "This plugin cannot run on this Mac: %@ is missing and the plugin does not install it";
+"Available on this Mac" = "Available on this Mac";
+"Installed during setup" = "Installed during setup";
+"Not available on this Mac" = "Not available on this Mac";
+"The plugin needs it but cannot install it; ask the plugin's author." = "The plugin needs it but cannot install it; ask the plugin's author.";

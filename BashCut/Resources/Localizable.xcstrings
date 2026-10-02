@@ -4496,6 +4496,36 @@
         "en": { "stringUnit": { "state": "translated", "value": "Downloads and disk: about %@ (%@ free)" } },
         "vi": { "stringUnit": { "state": "translated", "value": "Tải về và dung lượng: khoảng %@ (còn trống %@)" } }
       }
+    },
+    "This plugin cannot run on this Mac: %@ is missing and the plugin does not install it": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "This plugin cannot run on this Mac: %@ is missing and the plugin does not install it" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Plugin này không chạy được trên máy này: thiếu %@ và plugin không tự cài được" } }
+      }
+    },
+    "Available on this Mac": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Available on this Mac" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Có sẵn trên máy này" } }
+      }
+    },
+    "Installed during setup": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Installed during setup" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Sẽ được cài trong lúc cài đặt" } }
+      }
+    },
+    "Not available on this Mac": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Not available on this Mac" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Không có trên máy này" } }
+      }
+    },
+    "The plugin needs it but cannot install it; ask the plugin's author.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "The plugin needs it but cannot install it; ask the plugin's author." } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Plugin cần nó nhưng không tự cài được; hãy báo tác giả plugin." } }
+      }
     }
   },
   "version": "1.0"

@@ -14,6 +14,9 @@ struct PendingPluginInstall: Identifiable {
     var archive: StagedPluginArchive?
     /// Re-runs the dependency recipes of an installed plugin (Install dependencies…) instead of installing it.
     var repair = false
+    /// Dependency probes run on the unpacked plugin before the approval, so the sheet can say what this Mac has,
+    /// what setup will install, and what cannot work at all.
+    var preflight: PluginHealth?
     /// Replaces an installed copy (an update).
     var replacing = false
 }
@@ -133,9 +136,18 @@ enum PluginText {
     var downloading: Set<String> = []
     /// Narrows Browse to providers of one capability (a panel's "Find a plugin…").
     var browseCapability: String?
-    @ObservationIgnored lazy var registryClient = PluginRegistryClient(
-        url: Self.registryURL, cacheDirectory: service.roots.user.deletingLastPathComponent()
-            .appendingPathComponent("Registry", isDirectory: true))
+    @ObservationIgnored private var cachedRegistryClient: PluginRegistryClient?
+    /// The client for the current `pluginRegistryURL`; a changed URL takes effect without restarting.
+    var registryClient: PluginRegistryClient {
+        let url = Self.registryURL
+        if let client = cachedRegistryClient, client.url == url { return client }
+        let client = PluginRegistryClient(
+            url: url, cacheDirectory: service.roots.user.deletingLastPathComponent()
+                .appendingPathComponent("Registry", isDirectory: true))
+        cachedRegistryClient = client
+        registry = nil
+        return client
+    }
     @ObservationIgnored let trust: PluginTrustStore
     @ObservationIgnored var service: CapabilityService
     private var projectRoot: URL?
@@ -291,16 +303,42 @@ enum PluginText {
             return
         }
         pendingInstall = PendingPluginInstall(plugin: plugin)
+        runPreflight()
     }
 
     /// Bytes the pending install needs: the archive plus the downloads its recipes declare.
     func requiredBytes(_ pending: PendingPluginInstall) -> Int64 {
-        let recipes = pending.plugin.manifest.dependencies.filter { $0.install != nil }.compactMap(\.estimatedBytes)
+        // Dependencies the preflight found already available download nothing.
+        let available = Set((pending.preflight?.dependencies ?? []).filter { $0.state == .available }.map(\.id))
+        let recipes = pending.plugin.manifest.dependencies
+            .filter { $0.install != nil && !available.contains($0.id) }.compactMap(\.estimatedBytes)
         return recipes.reduce(0, +) + Int64(pending.archive?.version.size ?? 0)
     }
 
-    /// Why the pending install cannot start (not enough free space), or nil.
+    /// Probes the pending plugin's dependencies and attaches the result to the approval.
+    func runPreflight() {
+        guard let pending = pendingInstall, pending.preflight == nil, !pending.plugin.manifest.dependencies.isEmpty else { return }
+        let id = pending.id
+        let service = service
+        Task {
+            let health = await service.health(pending.plugin)
+            if pendingInstall?.id == id { pendingInstall?.preflight = health }
+        }
+    }
+
+    /// Dependencies that are missing and that no recipe installs: the plugin cannot run on this Mac.
+    func unavailableDependencies(_ pending: PendingPluginInstall) -> [String] {
+        (pending.preflight?.dependencies ?? []).filter { $0.state == .failed }.map(\.name)
+    }
+
+    /// Why the pending install cannot start (a dependency this Mac lacks, or not enough free space), or nil.
     func installBlocker(_ pending: PendingPluginInstall) -> String? {
+        let unavailable = unavailableDependencies(pending)
+        if !unavailable.isEmpty {
+            return String(
+                format: String(localized: "This plugin cannot run on this Mac: %@ is missing and the plugin does not install it"),
+                unavailable.joined(separator: ", "))
+        }
         let needed = requiredBytes(pending)
         guard needed > 0, let free = PluginFolders.availableBytes(), Double(needed) * 1.2 > Double(free) else { return nil }
         let format = ByteCountFormatter()

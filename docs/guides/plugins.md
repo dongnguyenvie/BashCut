@@ -614,7 +614,10 @@ Agents can open that panel but can never approve an install or run a recipe.
   A cancelled or failed install leaves the installed copy, if any, untouched.
 - **Progress:** a recipe line `::progress <0…1> [message]` sets the bar and the step; other lines are shown as
   output, and the last 4,000 characters become the error when the recipe fails.
-- **Space:** the approval shows the archive plus the dependencies' `estimatedBytes` and the free space, and refuses
+- **Preflight:** before the approval, BashCut runs the probes on the unpacked plugin and labels each dependency
+  *Available on this Mac*, *Installed during setup* (missing, with a recipe) or *Not available on this Mac* (missing,
+  no recipe). A plugin with an unavailable dependency cannot be installed: the sheet says so in plain words.
+- **Space:** the approval shows the archive plus the `estimatedBytes` of dependencies that are still missing and the free space, and refuses
   to start when less than 1.2 × that is free.
 - **Repair:** when a probe reports a dependency with a recipe as missing (for example after a cancelled setup),
   Installed shows **Install Dependencies…**, which asks for approval and runs the recipes again

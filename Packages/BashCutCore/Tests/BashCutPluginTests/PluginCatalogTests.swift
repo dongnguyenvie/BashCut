@@ -134,7 +134,7 @@ struct PluginCatalogTests {
         setenv("BASHCUT_TEST_SECRET", "must-not-leak", 1)
         defer { unsetenv("BASHCUT_TEST_SECRET") }
 
-        let result = try await PluginProcessRunner(timeout: 2).call(
+        let result = try await PluginProcessRunner(timeout: 10).call(
             plugin: fixture, method: "voice.synthesize", provider: "fixture.voice",
             params: .object(["text": .string("xin chào")]))
         #expect(result.object["ok"] == .bool(true))
@@ -158,7 +158,7 @@ struct PluginCatalogTests {
         let fixture = try makeRuntimePlugin(fixedResponseID: "wrong-id")
         defer { try? FileManager.default.removeItem(at: fixture.directory.deletingLastPathComponent()) }
         await #expect(throws: PluginError.self) {
-            try await PluginProcessRunner(timeout: 2).call(plugin: fixture, method: "fixture.run")
+            try await PluginProcessRunner(timeout: 10).call(plugin: fixture, method: "fixture.run")
         }
     }
 

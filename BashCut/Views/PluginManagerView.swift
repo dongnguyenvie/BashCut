@@ -130,9 +130,13 @@ private struct PluginRow: View {
             }
             if let health = model.health[plugin.id], !health.dependencies.isEmpty {
                 ForEach(health.dependencies) { dependency in
-                    Text("\(dependency.name): \(dependency.detail)")
-                        .font(.caption2)
-                        .foregroundStyle(dependency.state == .available ? Color.secondary : Color.orange)
+                    HStack(spacing: 6) {
+                        Text(dependency.name).font(.caption2)
+                        PluginDependencyBadge(
+                            state: dependency.state,
+                            installable: plugin.manifest.dependencies.first { $0.id == dependency.id }?.install != nil,
+                            checking: false)
+                    }.help(dependency.detail)
                 }
             }
             if availability != .ready {
@@ -265,11 +269,17 @@ private struct PluginInstallApprovalView: View {
             } else {
                 Text("Dependency plan").font(.headline)
                 ForEach(plugin.manifest.dependencies) { dependency in
+                    let state = pending.preflight?.dependencies.first { $0.id == dependency.id }?.state
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(dependency.name).bold()
-                        Text(dependency.install?.summary ?? "Manual installation required")
-                        if let command = dependency.install?.command {
-                            Text(([command.executable] + command.arguments).joined(separator: " "))
+                        HStack {
+                            Text(dependency.name).bold()
+                            Spacer()
+                            PluginDependencyBadge(state: state, installable: dependency.install != nil,
+                                                  checking: pending.preflight == nil)
+                        }
+                        if state != .available, let install = dependency.install {
+                            Text(install.summary)
+                            Text(([install.command.executable] + install.command.arguments).joined(separator: " "))
                                 .font(.caption.monospaced()).textSelection(.enabled)
                         }
                     }.padding(8).background(.white.opacity(0.04)).cornerRadius(6)
@@ -337,5 +347,28 @@ private struct PluginInstallProgressView: View {
                 }.font(.caption)
             }
         }.padding(8).background(.white.opacity(0.04)).cornerRadius(6)
+    }
+}
+
+/// A dependency's state in words people understand: available, installed by setup, or not possible on this Mac.
+private struct PluginDependencyBadge: View {
+    let state: PluginDependencyStatus.State?
+    let installable: Bool
+    let checking: Bool
+
+    var body: some View {
+        if checking {
+            Label("Checking…", systemImage: "hourglass").font(.caption2).foregroundStyle(.secondary)
+        } else {
+            switch state {
+            case .available?:
+                Label("Available on this Mac", systemImage: "checkmark.circle.fill").font(.caption2).foregroundStyle(.green)
+            case .missing?, nil where installable:
+                Label("Installed during setup", systemImage: "arrow.down.circle").font(.caption2).foregroundStyle(.secondary)
+            default:
+                Label("Not available on this Mac", systemImage: "xmark.octagon.fill").font(.caption2).foregroundStyle(.orange)
+                    .help("The plugin needs it but cannot install it; ask the plugin's author.")
+            }
+        }
     }
 }
