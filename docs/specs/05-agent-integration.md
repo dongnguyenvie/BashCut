@@ -60,8 +60,12 @@ One `CommandRegistry` serves both front ends:
 | `review run` | read | [Review] |
 | `export status` | read | export queue |
 | `ui select [item] [--track <layer>]` / `ui seek` / `ui show <file>` / `ui notify` | ui | pointing something out to the user |
+| `project recents` | read | Welcome screen, Recent projects |
+| `doctor run` | read | Doctor sheet |
+| `plugins health [plugin]` | read | Plugins sheet, Check Health |
+| `knowledge get` | read | Skills and project memory sheet |
 | `ui actions` | read | every toolbar button, menu item and keyboard shortcut, with its enabled state |
-| `ui view [--zoom 10…140] [--snap on\|off] [--safe-area on\|off] [--compare on\|off] [--agent-dock on\|off] [--reveal <frame>]` | ui | timeline zoom slider/⌘=/⌘−, Snap, Safe area, Compare, Agent button, scrolling the timeline |
+| `ui view [--zoom 10…140] [--snap on\|off] [--safe-area on\|off] [--compare on\|off] [--agent-dock on\|off] [--inspector <tab>] [--reveal <frame>]` | ui | timeline zoom slider/⌘=/⌘−, Snap, Safe area, Compare, Agent button, Inspector tabs, scrolling the timeline |
 | `ui source <media> [--in N] [--out N]` | ui | clicking a Library thumbnail (source viewer) |
 | `ui dialog` / `ui respond <option> [--path]` / `ui open <dialog>` | ui | every alert, file panel, sheet and popover |
 
@@ -76,6 +80,10 @@ One `CommandRegistry` serves both front ends:
 | `voice speak "<text>" --voice … --insert-at 12.3` | edit | Voice tab, Generate + Insert |
 | `beats detect <media>` | edit | [Detect Beats] |
 | `audio separate <item>` | edit | Inspector › Audio › Separate Voice |
+| `luts import <file.cube> [--name]` | edit | Filters panel, Import .cube… |
+| `edl import <edl.json>` | edit | Welcome screen, Import from edl.json… |
+| `voice speak … --keep-takes` | edit | Voice panel take list: keep every take, then place the chosen one with `media import` |
+| `knowledge memo <file>` / `knowledge skill <name> <file>` | edit | Skills and project memory sheet, Save |
 | `ui action <id\|shortcut>` | edit | any editor button or shortcut, run by the same code: `timeline.split` / `cmd+b`, `timeline.zoom-in` / `cmd+=`, `playback.toggle` / `space`, `source.mark-in` / `i` (list: `ui actions`) |
 
 ### Privileged commands

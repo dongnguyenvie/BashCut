@@ -5,7 +5,7 @@ import BashCutProject
 
 extension ProjectDocument {
     func importColorLUT() {
-        guard let root = fileURL?.deletingLastPathComponent() else {
+        guard fileURL != nil else {
             message = String(localized: "Save the project before importing a LUT")
             return
         }
@@ -13,26 +13,37 @@ extension ProjectDocument {
         panel.allowedContentTypes = [.init(filenameExtension: "cube")].compactMap { $0 }
         guard let source = ModalCenter.shared.open(panel, name: "import-lut")?.first else { return }
         do {
-            let parsed = try CubeLUT.load(source)
-            let id = UUID().uuidString
-            let relative = "luts/\(id).cube"
-            let destination = root.appendingPathComponent(relative)
-            try FileManager.default.createDirectory(
-                at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
-            try Data(contentsOf: source).write(to: destination, options: [.atomic, .withoutOverwriting])
-            do {
-                try applyThrowing(
-                    .addColorLUT(
-                        ColorLUT(
-                            id: id, name: source.deletingPathExtension().lastPathComponent,
-                            path: relative, size: parsed.dimension)),
-                    label: "Import LUT")
-                message = String(localized: "LUT imported")
-            } catch {
-                try? FileManager.default.removeItem(at: destination)
-                throw error
-            }
+            try importColorLUT(from: source)
+            message = String(localized: "LUT imported")
         } catch { message = error.localizedDescription }
+    }
+
+    /// Checks a .cube file, copies it into the project's `luts` folder and adds it; returns the LUT.
+    @discardableResult
+    func importColorLUT(
+        from source: URL, name: String? = nil, author: Author = .user, baseRevision: Int? = nil
+    ) throws -> (revision: Int, lut: ColorLUT) {
+        guard let root = fileURL?.deletingLastPathComponent() else {
+            throw ProjectError.invalid("Save the project before importing a LUT")
+        }
+        let parsed = try CubeLUT.load(source)
+        let id = UUID().uuidString
+        let relative = "luts/\(id).cube"
+        let destination = root.appendingPathComponent(relative)
+        try FileManager.default.createDirectory(
+            at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
+        // `.atomic` and `.withoutOverwriting` cannot be combined (Foundation traps); the name is new anyway.
+        try Data(contentsOf: source).write(to: destination, options: .withoutOverwriting)
+        let lut = ColorLUT(
+            id: id, name: name ?? source.deletingPathExtension().lastPathComponent, path: relative,
+            size: parsed.dimension)
+        do {
+            let revision = try commit(.addColorLUT(lut), label: "Import LUT", author: author, baseRevision: baseRevision)
+            return (revision, lut)
+        } catch {
+            try? FileManager.default.removeItem(at: destination)
+            throw error
+        }
     }
 
     func applyColorLUT(_ id: String?) {

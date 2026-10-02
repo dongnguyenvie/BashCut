@@ -8,7 +8,6 @@ import SwiftUI
 // swiftlint:disable:next type_body_length
 struct EditorView: View {
     @Bindable var document: ProjectDocument
-    @State private var doctor = DoctorModel()
     @State private var ask = ""
     @State private var attachAskFrame = false
     @State private var sendingAsk = false
@@ -86,15 +85,15 @@ struct EditorView: View {
             if let change = document.agentChange {
                 AgentChangeToast(
                     change: change, canUndo: document.canUndoAgentChange,
-                    show: { document.showAgentChanges = true },
-                    undo: document.undoAgentChange,
-                    dismiss: document.clearAgentChange)
+                    show: { document.run(.showAgentChanges) },
+                    undo: { document.run(.undoAgentChange) },
+                    dismiss: { document.run(.dismissAgentChange) })
             }
         }
         .sheet(isPresented: $document.showNewProject) { NewProjectView(document: document) }
         .sheet(isPresented: $document.showExport) { ExportView(document: document) }
         .sheet(isPresented: $document.showExportReport) {
-            if let report = document.exportReport { ExportReportView(report: report) }
+            if let report = document.exportReport { ExportReportView(report: report, document: document) }
         }
         .sheet(item: $document.privilegedApproval) { prompt in
             PrivilegedApprovalView(prompt: prompt, resolve: document.resolvePrivilegedApproval)
@@ -138,7 +137,7 @@ struct EditorView: View {
         }
         .sheet(isPresented: $document.showDoctor) {
             DoctorView(
-                model: doctor, refresh: runDoctor,
+                model: document.doctor, refresh: runDoctor,
                 done: { document.showDoctor = false })
         }
         .onChange(of: document.showDoctor) { if document.showDoctor { runDoctor() } }
@@ -207,14 +206,7 @@ struct EditorView: View {
             }.action(.toggleAgentDock, in: document)
         }.controlSize(.small).padding(10).disabled(document.busy)
     }
-    private func runDoctor() {
-        document.plugins.refresh(projectRoot: document.fileURL?.deletingLastPathComponent())
-        doctor.run(
-            workspace: document.agents.directory,
-            projectRoot: document.fileURL?.deletingLastPathComponent(),
-            toolsDirectory: document.agents.toolsDirectory,
-            plugins: document.plugins.plugins, pluginDiagnostics: document.plugins.diagnostics)
-    }
+    private func runDoctor() { Task { await document.runDoctor() } }
     private var rail: some View {
         VStack(spacing: 4) {
             ForEach(LibraryTab.allCases) { tab in

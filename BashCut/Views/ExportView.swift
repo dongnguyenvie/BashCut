@@ -1,4 +1,5 @@
 import AppKit
+import BashCutAutomation
 import BashCutDocument
 import BashCutEngine
 import BashCutProject
@@ -159,6 +160,7 @@ struct ExportView: View {
 
 struct ExportReportView: View {
     let report: ExportReport
+    let document: ProjectDocument
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -199,10 +201,9 @@ struct ExportReportView: View {
             Text(report.receipt.url.path).font(.caption.monospaced()).foregroundStyle(.secondary)
                 .textSelection(.enabled).lineLimit(2)
             HStack {
-                Button("Open") { NSWorkspace.shared.open(report.receipt.url) }
-                    .disabled(!FileManager.default.fileExists(atPath: report.receipt.url.path))
-                Button("Reveal in Finder") { NSWorkspace.shared.activateFileViewerSelecting([report.receipt.url]) }
-                    .disabled(!FileManager.default.fileExists(atPath: report.receipt.url.path))
+                Button("Open") { document.run(.openExportOutput) }.action(.openExportOutput, in: document)
+                Button("Reveal in Finder") { document.run(.revealExportOutput) }
+                    .action(.revealExportOutput, in: document)
                 Spacer()
             }
         }.padding(24).frame(width: 540)

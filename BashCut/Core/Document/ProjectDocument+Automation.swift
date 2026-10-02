@@ -21,6 +21,7 @@ extension ProjectDocument {
         registerPrivilegedCommands()
         registerUICommands()
         registerUIActionCommands()
+        registerToolCommands()
         assert(registry.unhandledCommands.isEmpty, "Unhandled commands: \(registry.unhandledCommands)")
         assert(CommandCatalog.libraryPanels == LibraryTab.allCases.map { $0.rawValue.lowercased() })
         Task {

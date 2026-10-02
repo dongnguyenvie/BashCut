@@ -43,11 +43,17 @@ struct PluginProviderChoice: Identifiable, Equatable {
 
     func checkHealth(_ plugin: InstalledPlugin) {
         guard !checking.contains(plugin.id) else { return }
+        Task { await checkHealthNow(plugin) }
+    }
+
+    /// Runs the plugin's health command and records the result.
+    @discardableResult
+    func checkHealthNow(_ plugin: InstalledPlugin) async -> PluginHealth {
         checking.insert(plugin.id)
-        Task {
-            health[plugin.id] = await service.health(plugin)
-            checking.remove(plugin.id)
-        }
+        defer { checking.remove(plugin.id) }
+        let result = await service.health(plugin)
+        health[plugin.id] = result
+        return result
     }
 
     func providers(for capability: String) -> [PluginProviderChoice] {

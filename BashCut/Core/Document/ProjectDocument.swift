@@ -53,6 +53,9 @@ final class ProjectDocument {
     var libraryTab: LibraryTab = .media
     var timelineScale = 50.0
     var timelineReveal: TimelineReveal?
+    /// Inspector tab, one of `UIAction.inspectorTabs`.
+    var inspectorTab = "video"
+    let doctor = DoctorModel()
     var snapping = true
     var timelineGestureActive = false
     var showSafeArea = false

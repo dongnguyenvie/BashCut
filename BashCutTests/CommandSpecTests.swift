@@ -62,7 +62,7 @@ struct CommandSpecTests {
     func validation() throws {
         let speak = try #require(CommandCatalog.spec(named: "voice.speak"))
         let values = try speak.validate(["text": .string("Xin chào"), "provider": .null])
-        #expect(values == ["text": .string("Xin chào"), "takes": .integer(3)])
+        #expect(values == ["text": .string("Xin chào"), "takes": .integer(3), "keepTakes": .bool(false)])
         for params: [String: JSONValue] in [
             [:], ["text": .string("  ")], ["text": .string("a"), "takes": .integer(9)],
             ["text": .string("a"), "atFrame": .integer(-1)], ["text": .string("a"), "voice": .string("x")],
@@ -92,7 +92,7 @@ struct CommandSpecTests {
         #expect(apply.format == "json")
 
         let speak = try CommandLineParser.parse(["voice", "speak", "--takes=2", "--", "--hello"])
-        #expect(speak.params == ["text": .string("--hello"), "takes": .integer(2)])
+        #expect(speak.params == ["text": .string("--hello"), "takes": .integer(2), "keepTakes": .bool(false)])
 
         let export = try CommandLineParser.parse([
             "export", "start", "--preset", "quick-draft", "--name", "draft", "--normalize-audio", "--output-dir", "out",
@@ -118,6 +118,15 @@ struct CommandSpecTests {
         }
         let action = try CommandLineParser.parse(["ui", "action", "cmd+b"])
         #expect(action.params == ["action": .string("cmd+b")])
+        let skillFile = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".md")
+        try "# Hook\n".write(to: skillFile, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: skillFile) }
+        let skill = try CommandLineParser.parse(["knowledge", "skill", "hook-first", skillFile.path])
+        #expect(skill.params == ["name": .string("hook-first"), "text": .string("# Hook\n")])
+        let speakKept = try CommandLineParser.parse(["voice", "speak", "Xin chào", "--keep-takes"])
+        #expect(speakKept.params["keepTakes"] == .bool(true))
+        let inspector = try CommandLineParser.parse(["ui", "view", "--inspector", "color"])
+        #expect(inspector.params == ["inspector": .string("color")])
 
         // Path parameters become absolute against the CLI's working directory.
         let cwd = FileManager.default.currentDirectoryPath

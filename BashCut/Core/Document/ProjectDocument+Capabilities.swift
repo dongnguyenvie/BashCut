@@ -180,8 +180,10 @@ extension ProjectDocument {
             let count = try arguments.int("takes")
             let frame = arguments.optionalInt("atFrame")
             let provider = arguments.optionalString("provider")
+            let keepTakes = arguments.bool("keepTakes")
             return try document.startCapabilityJob("voice.speak", author: author) { document in
-                try await document.speak(text: text, count: count, frame: frame, provider: provider, author: author)
+                if keepTakes { return try await document.generateKeptTakes(text: text, count: count, provider: provider) }
+                return try await document.speak(text: text, count: count, frame: frame, provider: provider, author: author)
             }
         }
     }
@@ -204,6 +206,24 @@ extension ProjectDocument {
             "rev": .integer(project.revision), "item": .string(itemID),
             "score": .number(best.score), "scoreSource": .string(best.scoreSource),
             "takes": .array(takes.map { .object(["score": .number($0.score), "seconds": .number($0.durationSeconds)]) }),
+        ])
+    }
+
+    /// Generates takes and keeps every file (like the Voice panel's take list) without inserting one.
+    private func generateKeptTakes(text: String, count: Int, provider: String?) async throws -> JSONValue {
+        let takes = try await generateVoiceTakes(text: text, count: count, provider: provider)
+        let root = fileURL?.deletingLastPathComponent()
+        return .object([
+            "best": takes.best.map { .string($0.asset.url.path) } ?? .null,
+            "takes": .array(takes.map { take in
+                .object([
+                    "path": .string(take.asset.url.path),
+                    "projectPath": root.map { .string(MediaPathResolver.projectPath(for: take.asset.url, projectRoot: $0)) }
+                        ?? .null,
+                    "score": .number(take.score), "scoreSource": .string(take.scoreSource),
+                    "seconds": .number(take.durationSeconds),
+                ])
+            }),
         ])
     }
 

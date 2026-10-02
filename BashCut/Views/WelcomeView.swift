@@ -32,7 +32,7 @@ struct WelcomeView: View {
                     Text("Recent projects").font(.headline)
                     Spacer()
                     if !document.recentProjectURLs.isEmpty {
-                        Button("Clear", action: document.clearRecentProjects).buttonStyle(.plain)
+                        Button("Clear") { document.run(.clearRecentProjects) }.buttonStyle(.plain)
                     }
                 }
                 if document.recentProjectURLs.isEmpty {

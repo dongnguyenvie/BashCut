@@ -87,8 +87,17 @@ public enum UIAction: String, CaseIterable, Sendable {
     case sourceInsert = "source.insert"
     case sourceOverwrite = "source.overwrite"
     case sourceClose = "source.close"
+    case showAgentChanges = "agent.show-changes"
+    case undoAgentChange = "agent.undo-changes"
+    case dismissAgentChange = "agent.dismiss-changes"
+    case openExportOutput = "export.open-output"
+    case revealExportOutput = "export.reveal-output"
+    case clearRecentProjects = "project.clear-recents"
 
     public var id: String { rawValue }
+
+    /// Inspector tabs, for `ui.view --inspector`.
+    public static let inspectorTabs = ["video", "audio", "text", "color", "speed"]
 
     public var title: String {
         switch self {
@@ -133,6 +142,12 @@ public enum UIAction: String, CaseIterable, Sendable {
         case .sourceInsert: "Insert source range at the playhead"
         case .sourceOverwrite: "Overwrite with source range at the playhead"
         case .sourceClose: "Close the source viewer (back to the timeline viewer)"
+        case .showAgentChanges: "Show the latest agent changes"
+        case .undoAgentChange: "Undo the latest agent change"
+        case .dismissAgentChange: "Dismiss the agent change notice"
+        case .openExportOutput: "Open the last exported video"
+        case .revealExportOutput: "Reveal the last exported video in Finder"
+        case .clearRecentProjects: "Clear recent projects"
         }
     }
 

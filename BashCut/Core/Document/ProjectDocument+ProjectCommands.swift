@@ -18,7 +18,7 @@ extension ProjectDocument {
     }
 
     /// Automation never shows the discard dialog: unsaved changes need an explicit save or discard.
-    private func leaveCurrentProject(_ arguments: CommandArguments) async throws {
+    func leaveCurrentProject(_ arguments: CommandArguments) async throws {
         guard !busy, !saving else { throw AutomationBusy() }
         guard dirty else { return }
         if arguments.bool("saveCurrent") {
@@ -31,7 +31,7 @@ extension ProjectDocument {
         }
     }
 
-    private func projectResult() -> JSONValue {
+    func projectResult() -> JSONValue {
         .object(["project": fileURL.map { .string($0.path) } ?? .null, "rev": .integer(project.revision)])
     }
 

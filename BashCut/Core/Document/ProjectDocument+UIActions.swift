@@ -1,3 +1,4 @@
+import AppKit
 import BashCutAutomation
 import BashCutDocument
 import BashCutProject
@@ -29,6 +30,11 @@ extension ProjectDocument {
         case .sourceTogglePlayback, .sourcePreviousFrame, .sourceNextFrame, .markIn, .markOut, .sourceInsert,
             .sourceOverwrite, .sourceClose:
             return source
+        case .showAgentChanges, .dismissAgentChange: return agentChange != nil
+        case .undoAgentChange: return canUndoAgentChange
+        case .openExportOutput, .revealExportOutput:
+            return exportReport.map { FileManager.default.fileExists(atPath: $0.receipt.url.path) } ?? false
+        case .clearRecentProjects: return !recentProjectURLs.isEmpty
         case .showHistory, .showReview, .showPlugins, .showDoctor, .showSettings, .showSections, .toggleAgentDock,
             .askAgent, .toggleSafeArea, .toggleSnap, .addVideoLayer, .addTextLayer, .addAudioLayer:
             return true
@@ -90,6 +96,19 @@ extension ProjectDocument {
         case .sourceInsert: try placeSource(.insert, author: author)
         case .sourceOverwrite: try placeSource(.overwrite, author: author)
         case .sourceClose: sourceViewer.close()
+        default: try performOtherAction(action)
+        }
+    }
+
+    private func performOtherAction(_ action: UIAction) throws {
+        switch action {
+        case .showAgentChanges: try openDialog("agent-changes")
+        case .undoAgentChange: undoAgentChange()
+        case .dismissAgentChange: clearAgentChange()
+        case .openExportOutput: if let url = exportReport?.receipt.url { NSWorkspace.shared.open(url) }
+        case .revealExportOutput:
+            if let url = exportReport?.receipt.url { NSWorkspace.shared.activateFileViewerSelecting([url]) }
+        case .clearRecentProjects: clearRecentProjects()
         default: assertionFailure("Unhandled UI action \(action.id)")
         }
     }
@@ -180,6 +199,7 @@ extension ProjectDocument {
             setColorComparison(compare)
         }
         if let frame = arguments.optionalInt("reveal") { revealInTimeline(frame) }
+        if let tab = arguments.optionalString("inspector") { inspectorTab = tab }
     }
 
     func viewStateJSON() -> JSONValue {
@@ -200,7 +220,8 @@ extension ProjectDocument {
             "playing": .bool(player.rate != 0), "playhead": .integer(playhead),
             "selection": selectedID.map(JSONValue.string) ?? .null,
             "selectedTrack": selectedTrackID.map(JSONValue.string) ?? .null,
-            "libraryPanel": .string(libraryTab.rawValue.lowercased()), "source": source,
+            "libraryPanel": .string(libraryTab.rawValue.lowercased()), "inspector": .string(inspectorTab),
+            "source": source,
         ])
     }
 }

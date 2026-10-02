@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- Close the remaining UI-only gaps: `luts import` (Filters, Import .cube…), `edl import` (Welcome, Import from edl.json…), `project recents`, `doctor run`, `plugins health`, `knowledge get` / `knowledge memo` / `knowledge skill`, and `voice speak --keep-takes` to keep every take and place the chosen one. New actions: show/undo/dismiss the agent change notice, open or reveal the last export, clear recent projects; `ui view --inspector` switches Inspector tabs (45 tools).
+- Fix a crash when importing a .cube LUT: the copy combined `.atomic` with `.withoutOverwriting`, which Foundation rejects with a trap.
+- Fix the app no longer answering automation requests while an agent-started open panel or alert was showing (`ui action cmd+o`).
 - Let agents do everything the editor's buttons and shortcuts do: every toolbar button, menu item and keyboard shortcut is a `UIAction` (ID, title, shortcuts) that the views bind to and `ui action <id|shortcut>` runs through the same code (`ui action cmd+b` splits, `ui action timeline.zoom-in` zooms). `ui actions` lists them with their shortcuts and enabled state. `ui view` reads and sets timeline zoom, snapping, safe area, color compare and the agent dock, and scrolls the timeline to a frame (`--reveal`). `ui source <media>` opens the source viewer with in/out marks, and `ui select --track` selects a layer (37 tools).
 - Add ⌘= / ⌘− and zoom buttons to the timeline; Delete, Shift-Delete and `s` in the timeline are listed actions too.
 - `context get` reports `dirty`, `conflict`, `busy`, `saving` and the selected layer; `ui open external-changes` shows the disk-conflict sheet. Boolean CLI options accept `on`/`off`.

@@ -21,39 +21,36 @@ struct DoctorCheck: Identifiable, Sendable {
         checks.map(\.state).max(by: { $0.rawValue < $1.rawValue }) ?? .warning
     }
 
+    /// Runs every check; returns when plugin health checks finish (a newer run supersedes this one).
     func run(
         workspace: URL, projectRoot: URL?, toolsDirectory: String,
         plugins: [InstalledPlugin], pluginDiagnostics: [String]
-    ) {
+    ) async {
         let id = UUID()
         runID = id
         running = true
         checks = Self.localChecks(
             workspace: workspace, projectRoot: projectRoot, toolsDirectory: toolsDirectory,
             pluginCount: plugins.count, pluginDiagnostics: pluginDiagnostics)
-        Task {
-            let runner = pluginRunner
-            let results = await withTaskGroup(
-                of: PluginHealth.self, returning: [PluginHealth].self
-            ) { group in
-                for plugin in plugins { group.addTask { await runner.health(plugin: plugin) } }
-                var values: [PluginHealth] = []
-                for await value in group { values.append(value) }
-                return values
-            }
-            guard runID == id else { return }
-            for result in results.sorted(by: { $0.pluginID < $1.pluginID }) {
-                let missing = result.dependencies.filter { $0.state != .available }
-                checks.append(
-                    DoctorCheck(
-                        id: "plugin." + result.pluginID, title: "Plugin " + result.pluginID,
-                        detail: missing.isEmpty
-                            ? "Ready"
-                            : missing.map { "\($0.name): \($0.detail)" }.joined(separator: "\n"),
-                        state: missing.isEmpty ? .pass : .warning))
-            }
-            running = false
+        let runner = pluginRunner
+        let results = await withTaskGroup(of: PluginHealth.self, returning: [PluginHealth].self) { group in
+            for plugin in plugins { group.addTask { await runner.health(plugin: plugin) } }
+            var values: [PluginHealth] = []
+            for await value in group { values.append(value) }
+            return values
         }
+        guard runID == id else { return }
+        for result in results.sorted(by: { $0.pluginID < $1.pluginID }) {
+            let missing = result.dependencies.filter { $0.state != .available }
+            checks.append(
+                DoctorCheck(
+                    id: "plugin." + result.pluginID, title: "Plugin " + result.pluginID,
+                    detail: missing.isEmpty
+                        ? "Ready"
+                        : missing.map { "\($0.name): \($0.detail)" }.joined(separator: "\n"),
+                    state: missing.isEmpty ? .pass : .warning))
+        }
+        running = false
     }
 
     private static func localChecks(

@@ -58,14 +58,18 @@ struct ProjectSkill: Identifiable, Hashable {
     }
 
     func saveMemo() {
-        guard let root else { return }
         do {
-            let url = root.appendingPathComponent(".bashcut/agent-memory.md")
-            try FileManager.default.createDirectory(
-                at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-            try memo.write(to: url, atomically: true, encoding: .utf8)
+            try writeMemo(memo)
             message = "Project memo saved"
         } catch { message = error.localizedDescription }
+    }
+
+    func writeMemo(_ text: String) throws {
+        guard let root else { throw KnowledgeError("Open the agent workspace first") }
+        let url = root.appendingPathComponent(".bashcut/agent-memory.md")
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try text.write(to: url, atomically: true, encoding: .utf8)
+        memo = text
     }
 
     func select(_ name: String) {
@@ -75,27 +79,38 @@ struct ProjectSkill: Identifiable, Hashable {
     }
 
     func createSkill() {
-        guard let root else { return }
-        let slug = newSkillName.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
-        let valid = slug.range(of: "^[a-z0-9]+(?:-[a-z0-9]+)*$", options: .regularExpression) != nil
-        guard valid else { return message = "Use a lowercase hyphenated skill name" }
-        let directory = root.appendingPathComponent(".bashcut/skills/\(slug)", isDirectory: true)
-        guard !FileManager.default.fileExists(atPath: directory.path) else {
-            return message = "Skill already exists"
-        }
         do {
-            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-            let title = slug.split(separator: "-").map { $0.capitalized }.joined(separator: " ")
-            let source = "# \(title)\n\nDescribe when and how the agent should use this project skill.\n"
-            try source.write(
-                to: directory.appendingPathComponent("SKILL.md"), atomically: true, encoding: .utf8)
-            try link(directory: directory, into: root.appendingPathComponent(".claude/skills"))
-            try link(directory: directory, into: root.appendingPathComponent(".agents/skills"))
+            try createSkill(named: newSkillName)
             newSkillName = ""
-            load(from: root)
-            select(slug)
             message = "Skill shared with Claude and Codex"
         } catch { message = error.localizedDescription }
+    }
+
+    /// Creates `.bashcut/skills/<name>/SKILL.md` (with a starter text unless `text` is given) and links
+    /// it for Claude and Codex.
+    func createSkill(named name: String, text: String? = nil) throws {
+        guard let root else { throw KnowledgeError("Open the agent workspace first") }
+        let slug = name.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        guard slug.range(of: "^[a-z0-9]+(?:-[a-z0-9]+)*$", options: .regularExpression) != nil else {
+            throw KnowledgeError("Use a lowercase hyphenated skill name")
+        }
+        let directory = root.appendingPathComponent(".bashcut/skills/\(slug)", isDirectory: true)
+        guard !FileManager.default.fileExists(atPath: directory.path) else { throw KnowledgeError("Skill already exists") }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let title = slug.split(separator: "-").map { $0.capitalized }.joined(separator: " ")
+        let source = text ?? "# \(title)\n\nDescribe when and how the agent should use this project skill.\n"
+        try source.write(to: directory.appendingPathComponent("SKILL.md"), atomically: true, encoding: .utf8)
+        try link(directory: directory, into: root.appendingPathComponent(".claude/skills"))
+        try link(directory: directory, into: root.appendingPathComponent(".agents/skills"))
+        load(from: root)
+        select(slug)
+    }
+
+    /// Replaces an existing skill's SKILL.md, or creates the skill.
+    func writeSkill(named name: String, text: String) throws {
+        guard let skill = skills.first(where: { $0.name == name }) else { return try createSkill(named: name, text: text) }
+        try text.write(to: skill.url.appendingPathComponent("SKILL.md"), atomically: true, encoding: .utf8)
+        if selectedSkill == name { skillText = text }
     }
 
     func saveSkill() {
@@ -132,4 +147,9 @@ struct ProjectSkill: Identifiable, Hashable {
             atPath: link.path,
             withDestinationPath: "../../.bashcut/skills/\(directory.lastPathComponent)")
     }
+}
+
+struct KnowledgeError: LocalizedError {
+    let errorDescription: String?
+    init(_ message: String) { errorDescription = message }
 }

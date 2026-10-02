@@ -13,6 +13,7 @@ public enum CommandCatalog {
     public static let exportPresets = ["tiktok", "youtube-1080", "youtube-4k", "quick-draft", "prores"]
 
     public static let specs: [CommandSpec] = readSpecs + projectSpecs + editSpecs + layerSpecs + capabilitySpecs + privilegedSpecs + uiSpecs
+        + toolSpecs
 
     public static let modes: [String: CommandMode] = Dictionary(uniqueKeysWithValues: specs.map { ($0.name, $0.mode) })
 
@@ -187,7 +188,9 @@ public enum CommandCatalog {
             ],
             execution: .job),
         CommandSpec(
-            "voice.speak", .edit, "Synthesize voice takes and insert the best take on the Voiceover track.",
+            "voice.speak", .edit,
+            "Synthesize voice takes and insert the best take on the Voiceover track; with keepTakes, insert nothing "
+                + "and keep every take file so one can be chosen and placed with media.import.",
             parameters: [
                 CommandParameter("text", .string, "Voiceover text in the project content language", required: true,
                                  cli: .positional),
@@ -196,6 +199,8 @@ public enum CommandCatalog {
                 CommandParameter("atFrame", .integer, "Timeline frame; defaults to the playhead", minimum: 0,
                                  cli: .option("at-frame")),
                 provider,
+                CommandParameter("keepTakes", .boolean, "Keep all takes in voiceover/generated and insert none",
+                                 default: .bool(false), cli: .flag("keep-takes")),
             ],
             execution: .job),
     ]
@@ -256,7 +261,7 @@ public enum CommandCatalog {
         CommandSpec(
             "ui.view", .ui,
             "Read the editor view state, or change it: timeline zoom (pixels per second), snapping, safe area, "
-                + "color compare, agent dock, and scroll the timeline to a frame.",
+                + "color compare, agent dock, inspector tab, and scroll the timeline to a frame.",
             parameters: [
                 CommandParameter("zoom", .integer, "Timeline zoom in pixels per second", minimum: 10, maximum: 140,
                                  cli: .option("zoom")),
@@ -266,6 +271,8 @@ public enum CommandCatalog {
                 CommandParameter("agentDock", .boolean, "Agent dock shown or hidden", cli: .option("agent-dock")),
                 CommandParameter("reveal", .integer, "Scroll the timeline so this frame is visible", minimum: 0,
                                  cli: .option("reveal")),
+                CommandParameter("inspector", .string, "Inspector tab", choices: UIAction.inspectorTabs,
+                                 cli: .option("inspector")),
             ]),
         CommandSpec(
             "ui.source", .ui, "Open project media in the source viewer, optionally with in/out frames marked.",
@@ -285,5 +292,40 @@ public enum CommandCatalog {
         CommandSpec(
             "ui.notify", .ui, "Show a short status message in BashCut.",
             parameters: [CommandParameter("message", .string, "Message", required: true, cli: .positional)]),
+    ]
+
+    /// Library tools, health checks and agent knowledge (each matches a panel or sheet in the app).
+    private static let toolSpecs: [CommandSpec] = [
+        CommandSpec(
+            "luts.import", .edit, "Check a .cube LUT, copy it into the project's luts folder and add it (Filters panel).",
+            parameters: [
+                CommandParameter("path", .string, ".cube file", required: true, isPath: true, cli: .positional),
+                CommandParameter("name", .string, "Display name; defaults to the file name", cli: .option("name")),
+                baseRevision,
+            ]),
+        CommandSpec(
+            "edl.import", .edit,
+            "Convert a legacy edl.json into project.bashcut.json beside it and open it (Welcome screen). Fails if the "
+                + "open project has unsaved changes unless saveCurrent or discardCurrent is set.",
+            parameters: [CommandParameter("path", .string, "edl.json file", required: true, isPath: true, cli: .positional)]
+                + leaveCurrent),
+        CommandSpec("project.recents", .read, "List recently opened projects (Welcome screen)."),
+        CommandSpec("doctor.run", .read, "Run the Doctor checks (workspace, tools, plugins) and return the results."),
+        CommandSpec(
+            "plugins.health", .read, "Run plugin health checks (Plugins sheet, Check Health); all plugins by default.",
+            parameters: [CommandParameter("plugin", .string, "Plugin ID", cli: .positional)]),
+        CommandSpec("knowledge.get", .read, "Read the project memo and project skills shared with the agents."),
+        CommandSpec(
+            "knowledge.memo", .edit, "Replace the project memo (.bashcut/agent-memory.md).",
+            parameters: [CommandParameter("text", .string, "Memo text (CLI: path to a text file)", required: true,
+                                          cli: .positionalTextFile(maximumBytes: 256 * 1024))]),
+        CommandSpec(
+            "knowledge.skill", .edit,
+            "Write a project skill's SKILL.md, creating the skill and sharing it with Claude and Codex if needed.",
+            parameters: [
+                CommandParameter("name", .string, "Lowercase hyphenated skill name", required: true, cli: .positional),
+                CommandParameter("text", .string, "SKILL.md text (CLI: path to a text file)", required: true,
+                                 cli: .positionalTextFile(maximumBytes: 256 * 1024)),
+            ]),
     ]
 }
