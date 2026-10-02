@@ -559,12 +559,6 @@
         "vi": { "stringUnit": { "state": "translated", "value": "Chuyển tiếp sang %@" } }
       }
     },
-    "Resume": {
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Resume" } },
-        "vi": { "stringUnit": { "state": "translated", "value": "Tiếp tục phiên" } }
-      }
-    },
     "Freeze at playhead": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Freeze at playhead" } },
@@ -2579,6 +2573,42 @@
         }
       }
     },
+    "Continue %@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Continue %@" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Tiếp tục %@" } }
+      }
+    },
+    "New conversation": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "New conversation" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Cuộc trò chuyện mới" } }
+      }
+    },
+    "Pick up your last conversation in this project": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Pick up your last conversation in this project" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Tiếp tục cuộc trò chuyện trước đó trong dự án này" } }
+      }
+    },
+    "Start without the earlier conversation": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Start without the earlier conversation" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Bắt đầu mà không dùng cuộc trò chuyện trước đó" } }
+      }
+    },
+    "You can continue your last %@ conversation": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "You can continue your last %@ conversation" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Có thể tiếp tục cuộc trò chuyện %@ trước đó" } }
+      }
+    },
+    "%@ will continue this conversation next time": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "%@ will continue this conversation next time" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Lần sau %@ sẽ tiếp tục cuộc trò chuyện này" } }
+      }
+    },
     "Connect model API": {
       "localizations": {
         "en": {
@@ -2591,22 +2621,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kết nối API mô hình"
-          }
-        }
-      }
-    },
-    "Resume session ID (optional)": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Resume session ID (optional)"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ID phiên để tiếp tục (tùy chọn)"
           }
         }
       }
@@ -3643,22 +3657,6 @@
         "vi": { "stringUnit": { "state": "translated", "value": "Bỏ" } }
       }
     },
-    "Found a resumable %@ session": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Found a resumable %@ session"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Đã tìm thấy phiên %@ có thể tiếp tục"
-          }
-        }
-      }
-    },
     "Microphone access is required to record voiceover.": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Microphone access is required to record voiceover." } },
@@ -3685,22 +3683,6 @@
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Record voiceover" } },
         "vi": { "stringUnit": { "state": "translated", "value": "Ghi lời dẫn" } }
-      }
-    },
-    "Saved %@ session for this project": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Saved %@ session for this project"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Đã lưu phiên %@ cho dự án này"
-          }
-        }
       }
     },
     "Stop recording": {

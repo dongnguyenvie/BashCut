@@ -56,7 +56,6 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
     var contextImageURL: URL?
     var mode = "script"
     var scriptLanguage = "python"
-    var resumeProviderRaw = AgentProviderID.codex.rawValue
     var sessionBookmarks = AgentSessionBookmarks()
     var sessionDiscoveryMessage = ""
     var workspace: URL?
@@ -113,9 +112,14 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
             ?? FileManager.default.homeDirectoryForCurrentUser
     }
     var toolsDirectory: String { Bundle.main.executableURL?.deletingLastPathComponent().path ?? "" }
-    var resumeID: String {
-        get { sessionBookmarks[AgentProviderID(rawValue: resumeProviderRaw)] }
-        set { sessionBookmarks[AgentProviderID(rawValue: resumeProviderRaw)] = newValue }
+    /// Whether starting this agent continues its last conversation for the project.
+    func canContinue(_ provider: AgentProviderID) -> Bool { !sessionBookmarks[provider].isEmpty }
+
+    /// Starts a new conversation: forgets the saved one so this and later launches do not resume it.
+    func startNewConversation(_ provider: AgentProviderID) {
+        sessionBookmarks[provider] = ""
+        saveSessionBookmarks()
+        open(provider)
     }
 
     func chooseWorkspace() {
@@ -181,7 +185,7 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
                         provider: provider, workspace: URL(fileURLWithPath: launch.directory),
                         session: session.id, launchedAt: launchedAt)
                 } else {
-                    saveResumeID()
+                    saveSessionBookmarks()
                 }
             }
         } catch {
@@ -201,7 +205,7 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
             discoverExistingSessions()
         } catch { self.error = error.localizedDescription }
     }
-    func saveResumeID() {
+    func saveSessionBookmarks() {
         guard let project = document.fileURL else { return }
         do {
             try sessionStore.save(sessionBookmarks, project: project)
@@ -284,9 +288,9 @@ extension AgentDockModel {
                 names.append(match.provider.title)
             }
             guard !names.isEmpty else { return }
-            saveResumeID()
+            saveSessionBookmarks()
             sessionDiscoveryMessage = String(
-                format: String(localized: "Found a resumable %@ session"),
+                format: String(localized: "You can continue your last %@ conversation"),
                 names.joined(separator: " / "))
         }
     }
@@ -311,9 +315,9 @@ extension AgentDockModel {
                 guard let identifier else { continue }
                 guard sessionBookmarks[provider.id].isEmpty else { return }
                 sessionBookmarks[provider.id] = identifier
-                saveResumeID()
+                saveSessionBookmarks()
                 sessionDiscoveryMessage = String(
-                    format: String(localized: "Saved %@ session for this project"), provider.title)
+                    format: String(localized: "%@ will continue this conversation next time"), provider.title)
                 return
             }
         }

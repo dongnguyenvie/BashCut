@@ -70,17 +70,18 @@ struct AgentDockView: View {
                     Button("Start default agent") { model.openDefault() }
                         .buttonStyle(.borderedProminent)
                     ForEach(AgentProviders.agents, id: \.id) { provider in
-                        Button("Start \(provider.title)") { model.open(provider.id) }
+                        if model.canContinue(provider.id) {
+                            HStack {
+                                Button("Continue \(provider.title)") { model.open(provider.id) }
+                                    .help("Pick up your last conversation in this project")
+                                Button("New conversation") { model.startNewConversation(provider.id) }
+                                    .help("Start without the earlier conversation")
+                            }
+                        } else {
+                            Button("Start \(provider.title)") { model.open(provider.id) }
+                        }
                     }
                     Button("Connect model API") { model.apiVisible = true }
-                    Picker("Resume", selection: $model.resumeProviderRaw) {
-                        ForEach(AgentProviders.agents, id: \.id) { Text($0.title).tag($0.id.rawValue) }
-                    }.pickerStyle(.segmented)
-                    HStack {
-                        TextField("Resume session ID (optional)", text: $model.resumeID)
-                            .textFieldStyle(.roundedBorder).onSubmit(model.saveResumeID)
-                        Button("Save", action: model.saveResumeID)
-                    }
                     if !model.sessionDiscoveryMessage.isEmpty {
                         Label(model.sessionDiscoveryMessage, systemImage: "clock.arrow.circlepath")
                             .font(.caption).foregroundStyle(.secondary)

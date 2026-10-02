@@ -175,8 +175,13 @@
 "Choose an agent" = "Choose an agent";
 "Use your CLI login or connect a model API." = "Use your CLI login or connect a model API.";
 "Start %@" = "Start %@";
+"Continue %@" = "Continue %@";
+"New conversation" = "New conversation";
+"Pick up your last conversation in this project" = "Pick up your last conversation in this project";
+"Start without the earlier conversation" = "Start without the earlier conversation";
+"You can continue your last %@ conversation" = "You can continue your last %@ conversation";
+"%@ will continue this conversation next time" = "%@ will continue this conversation next time";
 "Connect model API" = "Connect model API";
-"Resume session ID (optional)" = "Resume session ID (optional)";
 "Workspace…" = "Workspace…";
 "Project context" = "Project context";
 "Survey" = "Survey";
@@ -313,7 +318,6 @@
 "Remove freeze frame" = "Remove freeze frame";
 "Move the playhead inside the selected video clip." = "Move the playhead inside the selected video clip.";
 "Handoff to %@" = "Handoff to %@";
-"Resume" = "Resume";
 "Shared media requires a configured workspace." = "Shared media requires a configured workspace.";
 "Show differences" = "Show differences";
 "External project differences" = "External project differences";
@@ -366,8 +370,6 @@
 "Delete LUT" = "Delete LUT";
 "Remove LUT" = "Remove LUT";
 "Preserve audio pitch" = "Preserve audio pitch";
-"Found a resumable %@ session" = "Found a resumable %@ session";
-"Saved %@ session for this project" = "Saved %@ session for this project";
 "Microphone access is required to record voiceover." = "Microphone access is required to record voiceover.";
 "Voiceover recording could not be completed." = "Voiceover recording could not be completed.";
 "Record voiceover" = "Record voiceover";

@@ -16,7 +16,8 @@ agent as context (§3), not through `cwd`.
 - PATH rebuilt to include the directory that holds `bashcut`
 - `ANTHROPIC_API_KEY` removed for `claude`, so the user's subscription is used
 
-**Sessions can be resumed.** The app stores the session ID per project:
+**Sessions can be resumed.** The app finds and stores the session ID per project by itself; the UI never
+shows it. The dock offers **Continue <agent>** (resume) or **New conversation** (forget the saved session):
 
 - Claude: `claude --resume <id>`.
 - Codex: the resume command **(to verify)**.

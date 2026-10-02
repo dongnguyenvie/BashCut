@@ -175,8 +175,13 @@
 "Choose an agent" = "Chọn trợ lý";
 "Use your CLI login or connect a model API." = "Dùng đăng nhập CLI hoặc kết nối API mô hình.";
 "Start %@" = "Mở %@";
+"Continue %@" = "Tiếp tục %@";
+"New conversation" = "Cuộc trò chuyện mới";
+"Pick up your last conversation in this project" = "Tiếp tục cuộc trò chuyện trước đó trong dự án này";
+"Start without the earlier conversation" = "Bắt đầu mà không dùng cuộc trò chuyện trước đó";
+"You can continue your last %@ conversation" = "Có thể tiếp tục cuộc trò chuyện %@ trước đó";
+"%@ will continue this conversation next time" = "Lần sau %@ sẽ tiếp tục cuộc trò chuyện này";
 "Connect model API" = "Kết nối API mô hình";
-"Resume session ID (optional)" = "ID phiên để tiếp tục (tùy chọn)";
 "Workspace…" = "Thư mục làm việc…";
 "Project context" = "Ngữ cảnh dự án";
 "Survey" = "Khảo sát";
@@ -312,7 +317,6 @@
 "Remove freeze frame" = "Bỏ khung hình đóng băng";
 "Move the playhead inside the selected video clip." = "Hãy đặt đầu phát bên trong clip video đã chọn.";
 "Handoff to %@" = "Chuyển tiếp sang %@";
-"Resume" = "Tiếp tục phiên";
 "Shared media requires a configured workspace." = "Media dùng chung cần cấu hình workspace.";
 "Show differences" = "Xem khác biệt";
 "External project differences" = "Khác biệt với dự án trên ổ đĩa";
@@ -366,8 +370,6 @@
 "Delete LUT" = "Xóa LUT";
 "Remove LUT" = "Bỏ LUT";
 "Preserve audio pitch" = "Giữ cao độ âm thanh";
-"Found a resumable %@ session" = "Đã tìm thấy phiên %@ có thể tiếp tục";
-"Saved %@ session for this project" = "Đã lưu phiên %@ cho dự án này";
 "Microphone access is required to record voiceover." = "Cần quyền truy cập micrô để ghi lời dẫn.";
 "Voiceover recording could not be completed." = "Không thể hoàn tất bản ghi lời dẫn.";
 "Record voiceover" = "Ghi lời dẫn";
