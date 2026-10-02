@@ -1,0 +1,85 @@
+# Automation and model connections
+
+The app starts a local JSON-RPC server. The bundled `bashcut` executable controls the open document through the same validated EditOperation/history path as the UI.
+
+## Terminal dock
+
+Use **Agent → + → Claude terminal / Codex terminal / Shell terminal**. Each tab is a real SwiftTerm terminal. Claude and Codex use their installed CLI and existing login. Choose a workspace before opening a tab; a resume session ID can be entered before launching. Opening a different project closes existing sessions and revokes their edit tokens. Context and quick actions paste text for review before Enter. Codex starts idle on GPT-5.6-Luna with low reasoning effort. Its process uses `~/Library/Application Support/BashCut/agent-workspace` as a stable working directory; the selected project path and project knowledge still arrive through the session context.
+
+The ⌘K popover can attach the current viewer frame. BashCut renders a bounded PNG into `.bashcut/agent-context`, keeps the ten newest frames and passes its absolute path to local terminals. Model API mode sends the same pixels through the provider-native image payload for OpenAI Responses, compatible Chat Completions or Anthropic Messages; images are limited to 5 MB.
+
+The app also embeds `bashcut-mcp`, built with the official MCP Swift SDK. Each Claude/Codex launch receives a temporary stdio server definition that inherits only the live session environment; no MCP config or token is written into the project. Sixteen `bashcut_*` tools cover context, project, timeline, media, review, captions, UI, undo/redo and app-approved exports. They forward to the same Unix socket handlers as the CLI, so permissions, revision checks, audit and undo behavior are identical. The CLI remains available when a client changes its MCP configuration format.
+
+The app adds its bundled CLI to PATH and supplies BASHCUT_SOCKET, BASHCUT_PROJECT and an in-memory BASHCUT_SESSION_TOKEN to each child process. Codex receives a named permission profile that allows its stable workspace plus the exact BashCut Unix socket; it does not receive a broad socket allowlist. Keep tokens out of scripts, logs and project files. Closing a tab revokes its token. Shell sessions are attributed to the user; Claude/Codex sessions have their own authors.
+
+## Available commands
+
+```sh
+bashcut context get
+bashcut project get
+bashcut media list
+bashcut timeline get --format text
+bashcut review run
+bashcut export status
+bashcut export start --preset quick-draft --name draft-v1 --include-srt --normalize-audio
+bashcut export otio --name timeline-v1
+bashcut ui select ITEM_ID
+bashcut ui seek 30
+bashcut ui notify 'Finished checking the timeline'
+bashcut timeline apply /absolute/path/ops.json --base-rev 12 --label 'Trim opening'
+bashcut timeline undo --base-rev 13
+bashcut timeline redo --base-rev 14
+```
+
+Read/UI commands are available to local processes under the same OS account. Edit commands require a live session token and base revision. The server rejects stale edits, file conflicts, busy operations and active timeline gestures. Retry after re-reading the timeline. Each apply is atomic and creates one undo step. Review currently checks timeline structure and tagged speech coverage; it does not measure audio loudness or silence.
+
+`export start` requires a live Claude/Codex/Shell session token. It returns an approval request ID immediately and shows a sheet in the app with the author, preset, output path, caption behavior and normalization choice. Denying writes nothing. Approving starts the same background pipeline used by the Export sheet. Presets are `tiktok`, `youtube-1080`, `youtube-4k`, `quick-draft` and `prores`; output defaults to the project's `render/` folder and can be changed with `--output-dir`. `--normalize-audio` requires an installed healthy `audio.loudness` plugin and runs the two-pass target/true-peak workflow.
+
+`export status` reports idle/running/completed state, progress and the most recent receipt (path, preset, duration, bytes, cuts, captions and companion-SRT state). Agents should poll it after an approved request. A normalized receipt also includes `lufs`, `truePeakDbTP`, `normalizationGainDb` and whether the final measurement was verified; non-normalized exports return `lufs: null`.
+
+`export otio --name timeline-v1` writes OpenTimelineIO JSON to the project `render/` directory after the same in-app approval used for privileged video exports. Use `--output-dir` to choose another folder. The exporter preserves integer-frame timing, source ranges and rates, layered overlaps, text generators, section markers, speed effects and BashCut metadata.
+
+`ops.json` is an array (up to 1,000 operations):
+
+```json
+[
+  {"op":"split","item":"clip-1","atFrame":30,"newID":"clip-right"},
+  {"op":"setProperties","item":"clip-right","patch":{"transform":{"zoom":1.2}}}
+]
+```
+
+Supported operations include insert, delete, split, trim, roll, slip, move, setProperties, layer operations, provider preferences, beat grids, `upsertSection`, `deleteSection`, `addColorLUT` and `deleteColorLUT`. Frames are integers. `atFrame` and `toFrame` are absolute timeline frames; an item's `in` is a source frame at that media's FPS. Section and LUT IDs remain stable. LUT catalog entries use a project-relative `luts/*.cube` path and a 3D size from 2 through 64. Apply a catalog LUT through `setProperties` using `color.lut` and optional `color.lutStrength` from 0 through 1. Property patches replace the supplied top-level keys, so preserve existing nested fields when changing color, transform or tags. Invalid render values, unsafe LUT paths, duplicate section boundaries, missing media, source overruns and Main overlaps are rejected. Source-viewer insert/overwrite plans a group of these same operations.
+
+Transitions use `upsertTransition` with stable `from`/`to` clip IDs, a rendered kind (`dissolve`, `whip`, `blink`, `zoom`, `spin`, `shutter`, or `wipe`) and integer-frame `duration`. The clips must be adjacent on one video track. Use `deleteTransition` to restore a hard cut; moving or deleting either clip automatically removes a transition that no longer describes a valid cut.
+
+The socket defaults to `~/Library/Application Support/BashCut/automation.sock` (override with BASHCUT_SOCKET). Directory permissions are 0700 and the socket is 0600. Newline-delimited JSON-RPC 2.0 requests carry `id`, `method`, `params` and optional `token`. One request per connection, 8 MiB messages, 10-second I/O timeout. Metadata-only audit records are written to `~/Library/Application Support/BashCut/audit.jsonl`; request contents and credentials are excluded. This is a local automation service, not a security boundary against other software already running as the same user.
+
+## Model API / script generation
+
+The **API** tab supports OpenAI Responses, OpenAI-compatible Chat Completions, and Anthropic Messages. Enter a base URL and the provider's model ID. HTTPS is required except for local HTTP endpoints; redirects are refused. API keys are stored in macOS Keychain when **Save connection** is used. Nonsecret settings are in UserDefaults. No model or key is hardcoded.
+
+Choose **Script** (Python/Shell) or **Timeline edit**, write a request, and choose whether project context is included. Generate sends text context and the request to the configured endpoint; it does not upload original video. Output is editable before use. Scripts can be saved or explicitly run in a new local Shell tab after reviewing the confirmation. Timeline proposals apply as one `model` undo step against the revision used to generate them. New generations clear old output; cancelling or switching projects invalidates in-flight results.
+
+## Verification and remaining work
+
+Automated tests use fake model transports and temporary sockets, without paid API calls. Native Shell smoke tests verified CLI reads, authenticated caption edits, visible updates and one-step undo. A real authenticated Codex smoke test on GPT-5.6-Luna/low verified idle startup, context/timeline reads, an atomic caption edit through the allowlisted Unix socket, revision advancement, Show Changes and undo. Claude and remote model API end-to-end tasks remain unverified.
+
+The dock stores Claude and Codex resume IDs per project and can hand current context between providers. It discovers matching local session metadata in a bounded background scan and records newly launched terminal sessions automatically; manual IDs remain editable. Voice-enrollment approval flow and the remaining command catalog are still outstanding. Run one BashCut instance per socket.
+
+Protocol references: [OpenAI text generation](https://developers.openai.com/api/docs/guides/text), [Claude CLI reference](https://code.claude.com/docs/en/cli-reference), [Codex CLI reference](https://developers.openai.com/codex/cli/reference), [Anthropic Messages](https://platform.claude.com/docs/en/api/messages/create).
+
+### Advanced trims
+
+`{"op":"roll","item":"ID","edge":"end","toFrame":75}` moves the shared cut with exactly one adjacent clip. Both clips must remain nonempty and within source bounds; the rest of the track and total duration stay fixed. `edge:"start"` uses the preceding clip.
+
+`{"op":"slip","item":"ID","sourceIn":100}` sets an absolute source-frame start without changing timeline position or duration. It rejects text items and source overruns. Both edits use normal revision checks and one-step undo.
+
+In the timeline, Option-drag an edge for Roll, Command-drag a media clip body for Slip, and Shift-Delete for Lift. Inspector has explicit Roll buttons and a source-frame input. Escape cancels the active drag. A revision change during a gesture rejects that gesture instead of applying it to newer state.
+
+### SubRip captions
+
+`bashcut captions import /path/captions.srt --base-rev N` appends cues. Add `--replace` to replace the caption track atomically. Import needs a live edit token; stale revisions and malformed files leave existing captions untouched.
+
+`bashcut captions export --format text` writes SRT to stdout; redirect it to a file when wanted. This read command does not change the project. The Text library exposes the same import/add/replace and export workflows.
+
+Input is UTF-8, at most 4 MiB and 10,000 cues. BOM, CRLF, multiline text and comma/decimal milliseconds are supported. Timing rounds to the nearest project frame; reversed, out-of-bounds or subframe cues are rejected. Export sorts cues and retains Unicode text; paragraph gaps collapse to single line breaks because blank lines delimit SRT cues. Inline markup remains literal text; rich caption styling stays in the project format. The Text panel can request SRT from an installed `captions.transcribe` plugin; no transcription engine is bundled.
