@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+- **Plugin preflight**: before the install approval, BashCut probes the plugin's dependencies and labels each one
+  *Available on this Mac*, *Installed during setup* or *Not available on this Mac*; a plugin that needs something
+  this Mac lacks and cannot install is refused with a plain explanation, and the space estimate counts only what
+  is missing. Installed plugins use the same labels instead of raw probe errors. Changing `pluginRegistryURL` no
+  longer needs a restart.
 - **Plugin install UX** (plugin API 3): dependency recipes run as a job with a progress bar (`::progress` lines),
   output and Cancel, in the plugin's filtered environment and process group; the approval shows the space needed
   and refuses when the disk is too full; **Install Dependencies…** (`plugins setup`) repairs a failed or cancelled

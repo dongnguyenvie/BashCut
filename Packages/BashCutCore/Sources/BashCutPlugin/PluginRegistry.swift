@@ -174,9 +174,9 @@ public actor PluginRegistryClient {
     public static let defaultURL = URL(
         string: "https://raw.githubusercontent.com/dongnguyenvie/bashcut-plugins/main/registry.json")!
 
-    public let url: URL
-    public let cacheDirectory: URL
-    public let maximumAge: TimeInterval
+    public nonisolated let url: URL
+    public nonisolated let cacheDirectory: URL
+    public nonisolated let maximumAge: TimeInterval
     private let session: URLSession
 
     public init(url: URL = defaultURL, cacheDirectory: URL, maximumAge: TimeInterval = 300, session: URLSession = .shared) {

@@ -495,3 +495,8 @@
 "Set up %@?" = "Cài đặt %@?";
 "Set Up" = "Cài đặt";
 "Downloads and disk: about %@ (%@ free)" = "Tải về và dung lượng: khoảng %@ (còn trống %@)";
+"This plugin cannot run on this Mac: %@ is missing and the plugin does not install it" = "Plugin này không chạy được trên máy này: thiếu %@ và plugin không tự cài được";
+"Available on this Mac" = "Có sẵn trên máy này";
+"Installed during setup" = "Sẽ được cài trong lúc cài đặt";
+"Not available on this Mac" = "Không có trên máy này";
+"The plugin needs it but cannot install it; ask the plugin's author." = "Plugin cần nó nhưng không tự cài được; hãy báo tác giả plugin.";

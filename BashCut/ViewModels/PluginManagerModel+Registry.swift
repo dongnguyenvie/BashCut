@@ -129,7 +129,9 @@ extension PluginManagerModel {
         let staged = try await installer.stage(entry, version: version)
         cancelPendingInstall()
         let installed = plugins.first { $0.id == id && isUserInstalled($0) }
-        pendingInstall = PendingPluginInstall(plugin: staged.plugin, archive: staged, replacing: installed != nil)
+        var pending = PendingPluginInstall(plugin: staged.plugin, archive: staged, replacing: installed != nil)
+        if !staged.plugin.manifest.dependencies.isEmpty { pending.preflight = await service.health(staged.plugin) }
+        pendingInstall = pending
         tab = .browse
     }
 
@@ -144,6 +146,7 @@ extension PluginManagerModel {
         cancelPendingInstall()
         pendingInstall = PendingPluginInstall(plugin: plugin, repair: true)
         tab = .installed
+        runPreflight()
     }
 
     /// Uninstalls a plugin from the user or project plugin folder, with its trust grant and user options, and with
