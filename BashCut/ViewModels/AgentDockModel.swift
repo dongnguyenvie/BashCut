@@ -15,11 +15,11 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
 
 @MainActor @Observable final class TerminalSession: Identifiable {
     let id = UUID()
-    let provider: TerminalProvider
+    let provider: any AgentProvider
     let token: String
     let view = LocalProcessTerminalView(frame: .zero)
     var title: String
-    init(provider: TerminalProvider, token: String, launch: AgentLaunch) {
+    init(provider: any AgentProvider, token: String, launch: AgentLaunch) {
         self.provider = provider
         self.token = token
         title = provider.title
@@ -55,11 +55,11 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
     var contextImageURL: URL?
     var mode = "script"
     var scriptLanguage = "python"
-    var resumeProviderRaw = TerminalProvider.codex.rawValue
+    var resumeProviderRaw = AgentProviderID.codex.rawValue
     var sessionBookmarks = AgentSessionBookmarks()
     var sessionDiscoveryMessage = ""
     var workspace: URL?
-    var defaultProviderRaw = TerminalProvider.codex.rawValue
+    var defaultProviderRaw = AgentProviderID.codex.rawValue
     var allowAgentEdits = true
     /// Agents outside the app (CLI/MCP from any terminal) edit through the 0600 automation token file.
     var allowExternalAgents = true
@@ -97,8 +97,9 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
         interfaceLanguage = UserDefaults.standard.string(forKey: "interfaceLanguage") ?? "system"
     }
     var current: TerminalSession? { sessions.first { $0.id == selectedSession } }
-    var defaultProvider: TerminalProvider {
-        TerminalProvider(rawValue: defaultProviderRaw) ?? .codex
+    var defaultProvider: AgentProviderID {
+        let id = AgentProviderID(rawValue: defaultProviderRaw)
+        return AgentProviders.provider(id) == nil ? .codex : id
     }
     var isDetached: Bool { detachedWindow != nil }
     var directory: URL {
@@ -106,18 +107,9 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
             ?? FileManager.default.homeDirectoryForCurrentUser
     }
     var toolsDirectory: String { Bundle.main.executableURL?.deletingLastPathComponent().path ?? "" }
-    var resumeProvider: TerminalProvider {
-        TerminalProvider(rawValue: resumeProviderRaw) ?? .codex
-    }
     var resumeID: String {
-        get { resumeProvider == .claude ? sessionBookmarks.claude : sessionBookmarks.codex }
-        set {
-            if resumeProvider == .claude {
-                sessionBookmarks.claude = newValue
-            } else {
-                sessionBookmarks.codex = newValue
-            }
-        }
+        get { sessionBookmarks[AgentProviderID(rawValue: resumeProviderRaw)] }
+        set { sessionBookmarks[AgentProviderID(rawValue: resumeProviderRaw)] = newValue }
     }
 
     func chooseWorkspace() {
@@ -148,18 +140,18 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
     }
     func applyAgentEditPreference() {
         if !allowAgentEdits {
-            for session in sessions where session.provider != .shell {
+            for session in sessions where session.provider.isAgent {
                 document.registry.revoke(session.token)
             }
         }
         savePreferences()
     }
     func openDefault() { open(defaultProvider) }
-    func open(_ provider: TerminalProvider) {
+    func open(_ id: AgentProviderID) {
+        guard let provider = AgentProviders.provider(id) else { return }
         knowledge.load(from: directory)
-        let author: Author = provider == .claude ? .claude : provider == .codex ? .codex : .user
-        let canEdit = provider == .shell || allowAgentEdits
-        let token = canEdit ? document.registry.issueToken(author: author) : ""
+        let canEdit = !provider.isAgent || allowAgentEdits
+        let token = canEdit ? document.registry.issueToken(author: provider.author) : ""
         do {
             let launchedAt = Date()
             let context = AgentSessionContext(
@@ -176,7 +168,7 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
             selectedSession = session.id
             apiVisible = false
             error = ""
-            if provider != .shell {
+            if provider.isAgent {
                 if resumeID(for: provider).isEmpty {
                     discoverLaunchedSession(
                         provider: provider, workspace: URL(fileURLWithPath: launch.directory),
@@ -209,12 +201,12 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
             error = ""
         } catch { self.error = error.localizedDescription }
     }
-    func handoff(to provider: TerminalProvider) {
-        guard provider != .shell else { return }
+    func handoff(to provider: AgentProviderID) {
+        guard AgentProviders.provider(provider)?.isAgent == true else { return }
         let source = current?.provider.title ?? "BashCut"
-        let launchesTarget = !sessions.contains(where: { $0.provider == provider })
+        let launchesTarget = !sessions.contains(where: { $0.provider.id == provider })
         if launchesTarget { open(provider) }
-        guard let target = sessions.last(where: { $0.provider == provider }) else { return }
+        guard let target = sessions.last(where: { $0.provider.id == provider }) else { return }
         selectedSession = target.id
         apiVisible = false
         knowledge.load(from: directory)
@@ -251,12 +243,8 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
         sessions.removeAll()
         selectedSession = nil
     }
-    private func resumeID(for provider: TerminalProvider) -> String {
-        switch provider {
-        case .claude: return sessionBookmarks.claude.trimmingCharacters(in: .whitespacesAndNewlines)
-        case .codex: return sessionBookmarks.codex.trimmingCharacters(in: .whitespacesAndNewlines)
-        case .shell: return ""
-        }
+    private func resumeID(for provider: any AgentProvider) -> String {
+        provider.isAgent ? sessionBookmarks[provider.id].trimmingCharacters(in: .whitespacesAndNewlines) : ""
     }
     func sendContext(_ request: String = "", imageURL: URL? = nil) {
         knowledge.load(from: directory)
@@ -277,20 +265,16 @@ extension AgentDockModel {
         let discovery = sessionDiscovery
         sessionDiscoveryTask = Task {
             let found = await Task.detached(priority: .utility) {
-                (
-                    discovery.latest(provider: .claude, project: project, workspace: workspace),
-                    discovery.latest(provider: .codex, project: project, workspace: workspace)
-                )
+                AgentProviders.agents.compactMap { provider in
+                    discovery.latest(provider: provider, project: project, workspace: workspace)
+                        .map { (provider: provider, id: $0) }
+                }
             }.value
             guard !Task.isCancelled, document.sessionID == documentSession else { return }
             var names: [String] = []
-            if sessionBookmarks.claude.isEmpty, let identifier = found.0 {
-                sessionBookmarks.claude = identifier
-                names.append("Claude")
-            }
-            if sessionBookmarks.codex.isEmpty, let identifier = found.1 {
-                sessionBookmarks.codex = identifier
-                names.append("Codex")
+            for match in found where sessionBookmarks[match.provider.id].isEmpty {
+                sessionBookmarks[match.provider.id] = match.id
+                names.append(match.provider.title)
             }
             guard !names.isEmpty else { return }
             saveResumeID()
@@ -301,7 +285,7 @@ extension AgentDockModel {
     }
 
     fileprivate func discoverLaunchedSession(
-        provider: TerminalProvider, workspace: URL, session: UUID, launchedAt: Date
+        provider: any AgentProvider, workspace: URL, session: UUID, launchedAt: Date
     ) {
         guard let project = document.fileURL else { return }
         let documentSession = document.sessionID
@@ -318,13 +302,8 @@ extension AgentDockModel {
                     sessions.contains(where: { $0.id == session })
                 else { return }
                 guard let identifier else { continue }
-                if provider == .claude {
-                    guard sessionBookmarks.claude.isEmpty else { return }
-                    sessionBookmarks.claude = identifier
-                } else {
-                    guard sessionBookmarks.codex.isEmpty else { return }
-                    sessionBookmarks.codex = identifier
-                }
+                guard sessionBookmarks[provider.id].isEmpty else { return }
+                sessionBookmarks[provider.id] = identifier
                 saveResumeID()
                 sessionDiscoveryMessage = String(
                     format: String(localized: "Saved %@ session for this project"), provider.title)

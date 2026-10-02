@@ -1,11 +1,24 @@
 import Foundation
 
+/// Resume session IDs for one project, keyed by provider ID. Encoded as a flat
+/// `{"claude": "…", "codex": "…"}` object, the format earlier builds wrote.
 public struct AgentSessionBookmarks: Codable, Sendable, Equatable {
-    public var claude: String
-    public var codex: String
-    public init(claude: String = "", codex: String = "") {
-        self.claude = claude
-        self.codex = codex
+    public private(set) var ids: [AgentProviderID: String]
+    public init(_ ids: [AgentProviderID: String] = [:]) { self.ids = ids.filter { !$0.value.isEmpty } }
+
+    public subscript(provider: AgentProviderID) -> String {
+        get { ids[provider] ?? "" }
+        set { ids[provider] = newValue.isEmpty ? nil : newValue }
+    }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.singleValueContainer().decode([String: String].self)
+        self.init(Dictionary(uniqueKeysWithValues: values.map { (AgentProviderID(rawValue: $0.key), $0.value) }))
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(Dictionary(uniqueKeysWithValues: ids.map { ($0.key.rawValue, $0.value) }))
     }
 }
 
@@ -43,20 +56,22 @@ public struct AgentSessionStore: Sendable {
 }
 
 public struct AgentSessionDiscovery: Sendable {
-    private let claudeRoot: URL
-    private let codexRoot: URL
+    private let roots: [AgentProviderID: URL]
 
-    public init(claudeRoot: URL? = nil, codexRoot: URL? = nil) {
-        let home = FileManager.default.homeDirectoryForCurrentUser
-        self.claudeRoot = claudeRoot ?? home.appendingPathComponent(".claude/projects")
-        self.codexRoot = codexRoot ?? home.appendingPathComponent(".codex/sessions")
+    /// `roots` overrides a provider's session folder (tests); others resolve under the home folder.
+    public init(roots: [AgentProviderID: URL] = [:]) {
+        self.roots = roots
     }
 
     public func latest(
-        provider: TerminalProvider, project: URL, workspace: URL, notBefore: Date? = nil
+        provider: any AgentProvider, project: URL, workspace: URL, notBefore: Date? = nil
     ) -> String? {
-        guard provider != .shell else { return nil }
-        let root = provider == .claude ? claudeRoot : codexRoot
+        guard provider.isAgent,
+            let root = roots[provider.id]
+                ?? provider.sessionFolder.map({
+                    FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent($0)
+                })
+        else { return nil }
         let candidates = sessionFiles(in: root, notBefore: notBefore)
         let projectPath = canonical(project)
         let projectRoot = canonical(project.deletingLastPathComponent())
@@ -67,9 +82,7 @@ public struct AgentSessionDiscovery: Sendable {
                 value.contains(projectPath) || value.contains(projectRoot)
             }
             let hasWorkspace = record.strings.contains { canonicalPath($0) == workspacePath }
-            if hasProject || (provider == .claude && hasWorkspace)
-                || (notBefore != nil && hasWorkspace)
-            {
+            if hasProject || (hasWorkspace && (provider.matchesWorkspaceSessions || notBefore != nil)) {
                 return record.id
             }
         }

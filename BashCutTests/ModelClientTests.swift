@@ -13,7 +13,7 @@ struct ModelClientTests {
     @Test(
         "Responses, compatible chat and Anthropic requests have the correct authentication and bodies")
     func requestShapes() throws {
-        for kind in APIKind.allCases {
+        for kind in ModelAdapters.all.map(\.kind) {
             var config = ModelConfiguration()
             config.kind = kind
             config.model = "test-model"
@@ -38,7 +38,7 @@ struct ModelClientTests {
     @Test("All model adapters attach the current frame using their native image shape")
     func imageRequestShapes() throws {
         let image = try ModelImage(data: Data([1, 2, 3]))
-        for kind in APIKind.allCases {
+        for kind in ModelAdapters.all.map(\.kind) {
             var config = ModelConfiguration()
             config.kind = kind
             config.model = "vision-model"
@@ -60,12 +60,14 @@ struct ModelClientTests {
                 let content = body["messages"]?.array.first?.object["content"]?.array ?? []
                 #expect(content.map { $0.object["type"]?.string } == ["text", "image"])
                 #expect(content.last?.object["source"]?.object["media_type"] == .string("image/png"))
+            default:
+                Issue.record("No image shape check for \(kind.rawValue)")
             }
         }
     }
     @Test("Each provider extracts only the generated text blocks")
     func responses() async throws {
-        let fixtures: [(APIKind, String)] = [
+        let fixtures: [(ModelAPIKind, String)] = [
             (
                 .responses,
                 #"{"output":[{"type":"message","content":[{"type":"output_text","text":"script"}]}]}"#
@@ -85,6 +87,16 @@ struct ModelClientTests {
                 try await client.generate(configuration: config, key: "", system: "", prompt: "")
                     == "script")
         }
+    }
+    @Test("Saved configurations keep their API and an unknown API is rejected")
+    func adapterRegistry() throws {
+        let saved = #"{"kind":"anthropic","baseURL":"https://api.anthropic.com/v1","model":"m","maxOutputTokens":10}"#
+        var config = try JSONDecoder().decode(ModelConfiguration.self, from: Data(saved.utf8))
+        #expect(config.kind == .anthropic)
+        #expect(try config.endpoint().absoluteString == "https://api.anthropic.com/v1/messages")
+        #expect(Set(ModelAdapters.all.map(\.kind)).count == ModelAdapters.all.count)
+        config.kind = "unknown"
+        #expect(throws: ModelError.self) { try config.endpoint() }
     }
     @Test("Credentials are tied to endpoint and unsafe remote plaintext is rejected")
     func endpointValidation() throws {

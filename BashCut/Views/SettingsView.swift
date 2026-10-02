@@ -21,8 +21,7 @@ struct SettingsView: View {
                     }
                 }
                 Picker("Default agent", selection: $model.defaultProviderRaw) {
-                    Text("Claude").tag(TerminalProvider.claude.rawValue)
-                    Text("Codex").tag(TerminalProvider.codex.rawValue)
+                    ForEach(AgentProviders.agents, id: \.id) { Text($0.title).tag($0.id.rawValue) }
                 }
                 Toggle("Allow agent timeline edits", isOn: $model.allowAgentEdits)
                 LabeledContent("Agents outside BashCut") {

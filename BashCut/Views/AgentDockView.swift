@@ -26,13 +26,14 @@ struct AgentDockView: View {
                     Image(systemName: "books.vertical")
                 }.buttonStyle(.plain).help("Skills and project memory")
                 Menu {
-                    Button("Claude terminal") { model.open(.claude) }
-                    Button("Codex terminal") { model.open(.codex) }
-                    Button("Shell terminal") { model.open(.shell) }
+                    ForEach(AgentProviders.all, id: \.id) { provider in
+                        Button("\(provider.title) terminal") { model.open(provider.id) }
+                    }
                     Button("Model API") { model.apiVisible = true }
                     Divider()
-                    Button("Handoff to Claude") { model.handoff(to: .claude) }
-                    Button("Handoff to Codex") { model.handoff(to: .codex) }
+                    ForEach(AgentProviders.agents, id: \.id) { provider in
+                        Button("Handoff to \(provider.title)") { model.handoff(to: provider.id) }
+                    }
                 } label: {
                     Image(systemName: "plus")
                 }.menuStyle(.borderlessButton).frame(width: 24)
@@ -69,12 +70,12 @@ struct AgentDockView: View {
                     Text("Use your CLI login or connect a model API.").foregroundStyle(.secondary)
                     Button("Start default agent") { model.openDefault() }
                         .buttonStyle(.borderedProminent)
-                    Button("Start Claude") { model.open(.claude) }
-                    Button("Start Codex") { model.open(.codex) }
+                    ForEach(AgentProviders.agents, id: \.id) { provider in
+                        Button("Start \(provider.title)") { model.open(provider.id) }
+                    }
                     Button("Connect model API") { model.apiVisible = true }
                     Picker("Resume", selection: $model.resumeProviderRaw) {
-                        Text("Claude").tag(TerminalProvider.claude.rawValue)
-                        Text("Codex").tag(TerminalProvider.codex.rawValue)
+                        ForEach(AgentProviders.agents, id: \.id) { Text($0.title).tag($0.id.rawValue) }
                     }.pickerStyle(.segmented)
                     HStack {
                         TextField("Resume session ID (optional)", text: $model.resumeID)
@@ -126,7 +127,7 @@ struct AgentDockView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
                 Picker("Provider", selection: $model.configuration.kind) {
-                    ForEach(APIKind.allCases, id: \.self) { Text($0.title).tag($0) }
+                    ForEach(ModelAdapters.all, id: \.kind) { Text($0.title).tag($0.kind) }
                 }
                 TextField("API base URL", text: $model.configuration.baseURL)
                 TextField("Model ID", text: $model.configuration.model)

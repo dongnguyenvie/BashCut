@@ -168,14 +168,11 @@
 "Jump" = "Đến vị trí";
 "Ask agent to fix" = "Nhờ trợ lý sửa";
 "No timeline issues found" = "Không tìm thấy vấn đề trên dòng thời gian";
-"Claude terminal" = "Terminal Claude";
-"Codex terminal" = "Terminal Codex";
-"Shell terminal" = "Terminal Shell";
+"%@ terminal" = "Terminal %@";
 "Model API" = "API mô hình";
 "Choose an agent" = "Chọn trợ lý";
 "Use your CLI login or connect a model API." = "Dùng đăng nhập CLI hoặc kết nối API mô hình.";
-"Start Claude" = "Mở Claude";
-"Start Codex" = "Mở Codex";
+"Start %@" = "Mở %@";
 "Connect model API" = "Kết nối API mô hình";
 "Resume session ID (optional)" = "ID phiên để tiếp tục (tùy chọn)";
 "Workspace…" = "Thư mục làm việc…";
@@ -307,8 +304,7 @@
 "Freeze at playhead" = "Đóng băng tại đầu phát";
 "Remove freeze frame" = "Bỏ khung hình đóng băng";
 "Move the playhead inside the selected video clip." = "Hãy đặt đầu phát bên trong clip video đã chọn.";
-"Handoff to Claude" = "Chuyển tiếp sang Claude";
-"Handoff to Codex" = "Chuyển tiếp sang Codex";
+"Handoff to %@" = "Chuyển tiếp sang %@";
 "Resume" = "Tiếp tục phiên";
 "Shared media requires a configured workspace." = "Media dùng chung cần cấu hình workspace.";
 "Show differences" = "Xem khác biệt";

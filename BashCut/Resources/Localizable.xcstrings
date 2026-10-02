@@ -511,16 +511,10 @@
         "vi": { "stringUnit": { "state": "translated", "value": "Media dùng chung cần cấu hình workspace." } }
       }
     },
-    "Handoff to Claude": {
+    "Handoff to %@": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Handoff to Claude" } },
-        "vi": { "stringUnit": { "state": "translated", "value": "Chuyển tiếp sang Claude" } }
-      }
-    },
-    "Handoff to Codex": {
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Handoff to Codex" } },
-        "vi": { "stringUnit": { "state": "translated", "value": "Chuyển tiếp sang Codex" } }
+        "en": { "stringUnit": { "state": "translated", "value": "Handoff to %@" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Chuyển tiếp sang %@" } }
       }
     },
     "Resume": {
@@ -2463,50 +2457,18 @@
         }
       }
     },
-    "Claude terminal": {
+    "%@ terminal": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Claude terminal"
+            "value": "%@ terminal"
           }
         },
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Terminal Claude"
-          }
-        }
-      }
-    },
-    "Codex terminal": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Codex terminal"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Terminal Codex"
-          }
-        }
-      }
-    },
-    "Shell terminal": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Shell terminal"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Terminal Shell"
+            "value": "Terminal %@"
           }
         }
       }
@@ -2559,34 +2521,18 @@
         }
       }
     },
-    "Start Claude": {
+    "Start %@": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Start Claude"
+            "value": "Start %@"
           }
         },
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mở Claude"
-          }
-        }
-      }
-    },
-    "Start Codex": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Start Codex"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Mở Codex"
+            "value": "Mở %@"
           }
         }
       }

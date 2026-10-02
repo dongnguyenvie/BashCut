@@ -67,7 +67,8 @@ bash-cut/
 │   │   │   ├── CLI/                  # AgentCLIDiscovery, CLIEnvironment (PATH)
 │   │   │   ├── Terminal/             # PTYSession (SwiftTerm), ContextPaster, QuickActions
 │   │   │   ├── Session/              # AgentSessionStore, Handoff
-│   │   │   └── Providers/            # ClaudeLaunch, CodexLaunch (all CLI flags live here)
+│   │   │   └── Providers/            # AgentProvider impls (Claude, Codex, Shell; all CLI flags live here),
+│   │   │                             # ModelAdapter impls (Responses, Chat Completions, Anthropic)
 │   │   ├── Automation/
 │   │   │   ├── Server/               # AutomationServer (actor, Unix socket), TokenStore
 │   │   │   ├── Commands/             # CommandRegistry, Context/Timeline/Media/Voice/Export/UI commands

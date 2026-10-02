@@ -168,14 +168,11 @@
 "Jump" = "Jump";
 "Ask agent to fix" = "Ask agent to fix";
 "No timeline issues found" = "No timeline issues found";
-"Claude terminal" = "Claude terminal";
-"Codex terminal" = "Codex terminal";
-"Shell terminal" = "Shell terminal";
+"%@ terminal" = "%@ terminal";
 "Model API" = "Model API";
 "Choose an agent" = "Choose an agent";
 "Use your CLI login or connect a model API." = "Use your CLI login or connect a model API.";
-"Start Claude" = "Start Claude";
-"Start Codex" = "Start Codex";
+"Start %@" = "Start %@";
 "Connect model API" = "Connect model API";
 "Resume session ID (optional)" = "Resume session ID (optional)";
 "Workspace…" = "Workspace…";
@@ -308,8 +305,7 @@
 "Freeze at playhead" = "Freeze at playhead";
 "Remove freeze frame" = "Remove freeze frame";
 "Move the playhead inside the selected video clip." = "Move the playhead inside the selected video clip.";
-"Handoff to Claude" = "Handoff to Claude";
-"Handoff to Codex" = "Handoff to Codex";
+"Handoff to %@" = "Handoff to %@";
 "Resume" = "Resume";
 "Shared media requires a configured workspace." = "Shared media requires a configured workspace.";
 "Show differences" = "Show differences";

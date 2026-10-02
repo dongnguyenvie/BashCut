@@ -2,19 +2,8 @@ import BashCutProject
 import CryptoKit
 import Foundation
 
-public enum APIKind: String, Codable, CaseIterable, Sendable {
-    case responses, chatCompletions, anthropic
-    public var title: String {
-        switch self {
-        case .responses: return "OpenAI Responses"
-        case .chatCompletions: return "OpenAI-compatible"
-        case .anthropic: return "Anthropic Messages"
-        }
-    }
-}
-
 public struct ModelConfiguration: Codable, Sendable, Equatable {
-    public var kind: APIKind = .responses
+    public var kind: ModelAPIKind = .responses
     public var baseURL = "https://api.openai.com/v1"
     public var model = ""
     public var maxOutputTokens = 4096
@@ -32,13 +21,7 @@ public struct ModelConfiguration: Codable, Sendable, Equatable {
         else {
             throw ModelError.invalid("Use an HTTPS API base URL, or HTTP for a localhost model")
         }
-        let suffix: String
-        switch kind {
-        case .responses: suffix = "responses"
-        case .chatCompletions: suffix = "chat/completions"
-        case .anthropic: suffix = "messages"
-        }
-        return base.appendingPathComponent(suffix)
+        return base.appendingPathComponent(try ModelAdapters.adapter(kind).endpointPath)
     }
 }
 
@@ -65,7 +48,7 @@ public struct ModelImage: Sendable, Equatable {
         self.mediaType = mediaType
     }
 
-    fileprivate var dataURL: String {
+    var dataURL: String {
         "data:\(mediaType);base64," + data.base64EncodedString()
     }
 }
@@ -117,18 +100,7 @@ public struct ModelClient: Sendable {
             throw ModelError.invalid("API response is too large")
         }
         let json = try JSONDecoder().decode(JSONValue.self, from: data).object
-        let text: String
-        switch configuration.kind {
-        case .responses:
-            text = (json["output"]?.array ?? []).flatMap { $0.object["content"]?.array ?? [] }
-                .filter { $0.object["type"]?.string == "output_text" }
-                .compactMap { $0.object["text"]?.string }.joined(separator: "\n")
-        case .chatCompletions:
-            text = json["choices"]?.array.first?.object["message"]?.object["content"]?.string ?? ""
-        case .anthropic:
-            text = (json["content"]?.array ?? []).filter { $0.object["type"]?.string == "text" }
-                .compactMap { $0.object["text"]?.string }.joined(separator: "\n")
-        }
+        let text = try ModelAdapters.adapter(configuration.kind).text(from: json)
         guard !text.isEmpty else {
             throw ModelError.invalid(
                 "Model returned no text; inspect model compatibility or output limits")
@@ -145,64 +117,15 @@ public struct ModelClient: Sendable {
         else {
             throw ModelError.invalid("Enter a model ID and a valid output token limit")
         }
+        let adapter = try ModelAdapters.adapter(configuration.kind)
         var request = URLRequest(url: try configuration.endpoint())
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        var body: [String: JSONValue] = ["model": .string(configuration.model)]
-        switch configuration.kind {
-        case .responses:
-            body["instructions"] = .string(system)
-            if let image {
-                body["input"] = .array([.object([
-                    "role": .string("user"),
-                    "content": .array([
-                        .object(["type": .string("input_text"), "text": .string(prompt)]),
-                        .object(["type": .string("input_image"), "image_url": .string(image.dataURL)]),
-                    ]),
-                ])])
-            } else {
-                body["input"] = .string(prompt)
-            }
-            body["store"] = .bool(false)
-            body["max_output_tokens"] = .integer(configuration.maxOutputTokens)
-        case .chatCompletions:
-            let userContent: JSONValue = image.map {
-                .array([
-                    .object(["type": .string("text"), "text": .string(prompt)]),
-                    .object([
-                        "type": .string("image_url"),
-                        "image_url": .object(["url": .string($0.dataURL)]),
-                    ]),
-                ])
-            } ?? .string(prompt)
-            body["messages"] = .array([
-                .object(["role": .string("system"), "content": .string(system)]),
-                .object(["role": .string("user"), "content": userContent]),
-            ])
-            body["max_tokens"] = .integer(configuration.maxOutputTokens)
-        case .anthropic:
-            body["system"] = .string(system)
-            let userContent: JSONValue = image.map {
-                .array([
-                    .object(["type": .string("text"), "text": .string(prompt)]),
-                    .object([
-                        "type": .string("image"),
-                        "source": .object([
-                            "type": .string("base64"), "media_type": .string($0.mediaType),
-                            "data": .string($0.data.base64EncodedString()),
-                        ]),
-                    ]),
-                ])
-            } ?? .string(prompt)
-            body["messages"] = .array([.object(["role": .string("user"), "content": userContent])])
-            body["max_tokens"] = .integer(configuration.maxOutputTokens)
-            request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
-        }
-        if !key.isEmpty {
-            request.setValue(
-                configuration.kind == .anthropic ? key : "Bearer " + key,
-                forHTTPHeaderField: configuration.kind == .anthropic ? "x-api-key" : "Authorization")
-        }
+        for (name, value) in adapter.headers { request.setValue(value, forHTTPHeaderField: name) }
+        if !key.isEmpty { adapter.authorize(&request, key: key) }
+        let body = adapter.body(ModelRequest(
+            model: configuration.model, system: system, prompt: prompt, image: image,
+            maxOutputTokens: configuration.maxOutputTokens))
         request.httpBody = try JSONEncoder().encode(JSONValue.object(body))
         return request
     }

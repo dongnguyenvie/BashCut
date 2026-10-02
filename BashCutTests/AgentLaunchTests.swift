@@ -18,13 +18,15 @@ struct AgentLaunchTests {
             socket: root.appendingPathComponent("automation.sock").path,
             toolsDirectory: root.path, prompt: "Use BashCut.")
         let launch = try AgentLaunch.make(
-            provider: .claude, workspace: root, context: context, resumeID: "claude-session",
-            environment: ["PATH": "", "ANTHROPIC_API_KEY": "must-not-leak"])
+            provider: ClaudeAgentProvider(), workspace: root, context: context, resumeID: "claude-session",
+            environment: ["PATH": "", "ANTHROPIC_API_KEY": "must-not-leak", "HOME": "/Users/test"])
         #expect(launch.arguments.prefix(2) == ["--resume", "claude-session"])
         #expect(launch.arguments.contains("--append-system-prompt"))
         let mcpIndex = try #require(launch.arguments.firstIndex(of: "--mcp-config"))
         #expect(launch.arguments[mcpIndex + 1].contains("bashcut-mcp"))
         #expect(launch.environment["ANTHROPIC_API_KEY"] == nil)
+        #expect(launch.environment["HOME"] == "/Users/test")
+        #expect(launch.environment["BASHCUT_SESSION_TOKEN"] == "token")
         #expect(launch.directory == root.path)
     }
 
@@ -37,10 +39,11 @@ struct AgentLaunchTests {
         let store = AgentSessionStore(url: root.appendingPathComponent("sessions.json"))
         let first = root.appendingPathComponent("one/project.bashcut.json")
         let second = root.appendingPathComponent("two/project.bashcut.json")
-        try store.save(AgentSessionBookmarks(claude: "claude-one", codex: "codex-one"), project: first)
-        try store.save(AgentSessionBookmarks(claude: "claude-two", codex: ""), project: second)
-        #expect(try store.load(project: first) == AgentSessionBookmarks(claude: "claude-one", codex: "codex-one"))
-        #expect(try store.load(project: second) == AgentSessionBookmarks(claude: "claude-two", codex: ""))
+        try store.save(AgentSessionBookmarks([.claude: "claude-one", .codex: "codex-one"]), project: first)
+        try store.save(AgentSessionBookmarks([.claude: "claude-two", .codex: ""]), project: second)
+        #expect(try store.load(project: first) == AgentSessionBookmarks([.claude: "claude-one", .codex: "codex-one"]))
+        #expect(try store.load(project: second) == AgentSessionBookmarks([.claude: "claude-two"]))
+        #expect(try store.load(project: second)[.codex] == "")
         let permissions = try #require(
             FileManager.default.attributesOfItem(atPath: store.url.path)[.posixPermissions] as? Int)
         #expect(permissions & 0o777 == 0o600)
@@ -68,11 +71,12 @@ struct AgentLaunchTests {
             ]],
             ["type": "response_item", "payload": ["text": "Edit " + project.path]],
         ]).write(to: codexRoot.appendingPathComponent("rollout-" + codexID + ".jsonl"))
-        let discovery = AgentSessionDiscovery(claudeRoot: claudeRoot, codexRoot: root.appendingPathComponent("codex"))
+        let discovery = AgentSessionDiscovery(
+            roots: [.claude: claudeRoot, .codex: root.appendingPathComponent("codex"), .shell: root])
 
-        #expect(discovery.latest(provider: .claude, project: project, workspace: workspace) == claudeID)
-        #expect(discovery.latest(provider: .codex, project: project, workspace: workspace) == codexID)
-        #expect(discovery.latest(provider: .shell, project: project, workspace: workspace) == nil)
+        #expect(discovery.latest(provider: ClaudeAgentProvider(), project: project, workspace: workspace) == claudeID)
+        #expect(discovery.latest(provider: CodexAgentProvider(), project: project, workspace: workspace) == codexID)
+        #expect(discovery.latest(provider: ShellAgentProvider(), project: project, workspace: workspace) == nil)
     }
 
     @Test("Codex uses the low-cost model and a socket-scoped permission profile")
@@ -91,8 +95,8 @@ struct AgentLaunchTests {
             socket: socket, toolsDirectory: root.path, prompt: "Use BashCut.\nDo not edit JSON.")
 
         let launch = try AgentLaunch.make(
-            provider: .codex, workspace: root, context: context, resumeID: "codex-session",
-            environment: ["PATH": ""])
+            provider: CodexAgentProvider(), workspace: root, context: context, resumeID: "codex-session",
+            environment: ["PATH": "", "OPENAI_API_KEY": "codex-key", "AWS_SECRET_ACCESS_KEY": "app-secret"])
 
         #expect(launch.arguments.starts(with: ["-m", "gpt-5.6-luna"]))
         #expect(launch.arguments.contains("model_reasoning_effort=\"low\""))
@@ -112,6 +116,34 @@ struct AgentLaunchTests {
         #expect(!launch.arguments.contains(context.prompt))
         #expect(launch.directory.hasSuffix("/Agent Socket/agent-workspace"))
         #expect(FileManager.default.fileExists(atPath: launch.directory))
+        #expect(launch.environment["OPENAI_API_KEY"] == "codex-key")
+        #expect(launch.environment["AWS_SECRET_ACCESS_KEY"] == nil)
+    }
+
+    @Test("Bookmarks written by earlier builds load by provider ID")
+    func legacyBookmarks() throws {
+        let legacy = #"{"claude":"claude-id","codex":""}"#
+        let bookmarks = try JSONDecoder().decode(AgentSessionBookmarks.self, from: Data(legacy.utf8))
+        #expect(bookmarks[.claude] == "claude-id")
+        #expect(bookmarks[.codex] == "")
+        let encoded = try JSONDecoder().decode(
+            [String: String].self, from: JSONEncoder().encode(bookmarks))
+        #expect(encoded == ["claude": "claude-id"])
+    }
+
+    @Test("Terminals inherit only allowlisted variables and providers have unique IDs")
+    func environmentAllowlist() {
+        let environment = [
+            "HOME": "/h", "LC_ALL": "vi_VN.UTF-8", "HTTPS_PROXY": "http://proxy", "GITHUB_TOKEN": "secret",
+            "ANTHROPIC_API_KEY": "secret", "CLAUDE_CONFIG_DIR": "/c", "BASHCUT_SESSION_TOKEN": "parent",
+        ]
+        let shell = AgentEnvironment.filtered(environment, allowing: ShellAgentProvider().environmentAllowlist)
+        #expect(shell == ["HOME": "/h", "LC_ALL": "vi_VN.UTF-8", "HTTPS_PROXY": "http://proxy"])
+        let claude = AgentEnvironment.filtered(environment, allowing: ClaudeAgentProvider().environmentAllowlist)
+        #expect(claude["CLAUDE_CONFIG_DIR"] == "/c")
+        #expect(claude["ANTHROPIC_API_KEY"] == nil)
+        #expect(Set(AgentProviders.all.map(\.id)).count == AgentProviders.all.count)
+        #expect(AgentProviders.agents.map(\.id) == [.claude, .codex])
     }
 
     private func jsonLines(_ values: [[String: Any]]) throws -> Data {
