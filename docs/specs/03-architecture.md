@@ -81,13 +81,14 @@ Code is organized by layer first, then by domain.
 | Layer | Contains | Rules |
 |---|---|---|
 | `Packages/BashCutCore` | `BashCutProject` (model, `EditOperation`, validation, history and review), `BashCutPlugin` (manifest, discovery, provider resolution and process RPC), `BashCutImport` and `BashCutInterchange` | Pure logic. No AppKit or AVFoundation. Tested with `swift test` |
-| `BashCut/Core/` | Document, Engine, Storage, Agent and Automation | MainActor integration stays in Document; replaceable engines and transports sit behind protocols |
+| `BashCut/Core/` | Document, Services, Engine, Storage, Agent and Automation | `Core/Services` is the testable `BashCutDocument` library: `EditorUIState`, `PreviewController`, `ExportController` (with `ExportQueue` and `JobCenter`), `FileSyncController`, `SettingsModel`, `AutomationController` and `AppServices`. `ProjectDocument` (app target) owns history and the single `commit` and wires these together; replaceable engines and transports sit behind protocols |
 | `BashCut/Models/` | App-only types: UI state, selection, playhead | `Sendable` |
 | `BashCut/ViewModels/` | `@MainActor @Observable final class` | Split large ones into `Name+Feature.swift` |
 | `BashCut/Views/` | SwiftUI + AppKit (timeline, viewer) | Never call services directly |
 
-Dependency injection goes through one composition root: `AppServices.live` bundles the services and view models
-receive them.
+Dependency injection goes through one composition root: `AppServices.live()` bundles the app-wide services (render
+engine, settings, automation endpoint) and `ProjectDocument(services:)` builds its per-project controllers
+from them; tests pass their own engine, `UserDefaults` suite and socket paths.
 
 BashCut targets **macOS 14+** in order to use `@Observable` instead of
 `ObservableObject`.

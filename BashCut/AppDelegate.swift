@@ -1,9 +1,10 @@
 import AppKit
 import BashCutAutomation
+import BashCutDocument
 import SwiftUI
 
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
-    private let document = ProjectDocument()
+    private let document = ProjectDocument(services: .live())
     private var window: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {

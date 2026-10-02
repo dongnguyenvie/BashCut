@@ -27,7 +27,7 @@ final class ProjectDocument {
     var legacyImportReport: LegacyEDLImportReport?
     var sessionID = UUID()
     /// Socket server, command registry and the external-agent token file.
-    let automation = AutomationController()
+    let automation: AutomationController
     var agentChangedIDs = Set<String>()
     var agentChange: AgentChangeRecord?
     let doctor = DoctorModel()
@@ -48,10 +48,12 @@ final class ProjectDocument {
         ExportPipeline(engine: engine, loudness: plugins.service)
     }
 
-    init(engine: any RenderEngine = AVFoundationRenderEngine()) {
-        self.engine = engine
-        preview = PreviewController(engine: engine)
-        settings = SettingsModel()
+    /// App-wide services come from `services`; per-project controllers are created here.
+    init(services: AppServices) {
+        engine = services.engine
+        settings = services.settings
+        automation = services.automation
+        preview = PreviewController(engine: services.engine)
         preview.onMessage = { [weak self] in self?.message = $0 }
     }
 
