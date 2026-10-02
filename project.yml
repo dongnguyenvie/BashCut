@@ -75,6 +75,12 @@ targets:
         LSMinimumSystemVersion: "14.0"
         NSHighResolutionCapable: true
         NSMicrophoneUsageDescription: BashCut records voiceover directly into the current project.
+        # Finder "Open With" and Dock drops for project.bashcut.json or a project folder; never the default for JSON.
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: BashCut Project
+            CFBundleTypeRole: Editor
+            LSHandlerRank: Alternate
+            LSItemContentTypes: [public.json, public.folder]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.bashcut

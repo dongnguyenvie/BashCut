@@ -37,13 +37,9 @@ extension ProjectDocument {
 
     func registerProjectCommands() {
         handleAuthored("project.open") { document, arguments, _ in
-            var url = URL(fileURLWithPath: try arguments.string("path")).standardizedFileURL
-            var isDirectory: ObjCBool = false
-            if FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory), isDirectory.boolValue {
-                url = url.appendingPathComponent("project.bashcut.json")
-            }
-            guard url.path.hasPrefix("/"), FileManager.default.fileExists(atPath: url.path) else {
-                throw RPCFailure(-32602, "No project at \(url.path)")
+            let path = try arguments.string("path")
+            guard path.hasPrefix("/"), let url = ProjectStorage.projectFile(for: URL(fileURLWithPath: path)) else {
+                throw RPCFailure(-32602, "No project at \(path)")
             }
             try await document.leaveCurrentProject(arguments)
             document.busy = true

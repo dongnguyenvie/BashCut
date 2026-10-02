@@ -22,7 +22,20 @@ private struct Recovery: Codable {
 
 /// Serializes atomic writes and checks the caller's disk version before replacing the project.
 public actor ProjectStorage {
+    public static let projectFileName = "project.bashcut.json"
+
     public init() {}
+
+    /// The project file a path names: the path itself, or `project.bashcut.json` inside a folder.
+    /// Nil when nothing usable is there (a folder without a project, or a missing file).
+    public nonisolated static func projectFile(for url: URL) -> URL? {
+        var isDirectory: ObjCBool = false
+        let url = url.standardizedFileURL
+        guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory) else { return nil }
+        guard isDirectory.boolValue else { return url }
+        let file = url.appendingPathComponent(projectFileName)
+        return FileManager.default.fileExists(atPath: file.path) ? file : nil
+    }
 
     public func readData(_ url: URL) throws -> Data { try Data(contentsOf: url) }
 

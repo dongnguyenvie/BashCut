@@ -1,11 +1,14 @@
 import AppKit
 import BashCutAutomation
 import BashCutDocument
+import BashCutStorage
 import SwiftUI
 
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private let document = ProjectDocument(services: .live())
     private var window: NSWindow?
+    /// A project Finder asked to open before the window existed.
+    private var pendingOpen: URL?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let executable = Bundle.main.executableURL
@@ -35,6 +38,29 @@ import SwiftUI
         menu.addItem(EditMenus.mainMenuItem())
         NSApp.mainMenu = menu
         NSApp.activate(ignoringOtherApps: true)
+        if let pendingOpen {
+            self.pendingOpen = nil
+            open(pendingOpen)
+        }
+    }
+
+    /// Finder: double-click or "Open With" on a project file, or a project file or folder dropped on the Dock icon.
+    func application(_ application: NSApplication, open urls: [URL]) {
+        guard let url = urls.first else { return }
+        DebugLog.write("app", "open from Finder \(url.path)")
+        if window == nil { pendingOpen = url } else { open(url) }
+    }
+
+    private func open(_ url: URL) {
+        window?.makeKeyAndOrderFront(nil)
+        guard let file = ProjectStorage.projectFile(for: url) else {
+            document.message = String(localized: "No BashCut project in that folder")
+            return
+        }
+        // A file panel or alert may be up; open once the current modal session ends.
+        RunLoop.main.perform(inModes: [.default]) { [document] in
+            MainActor.assumeIsolated { document.openProject(at: file) }
+        }
     }
     func applicationDidResignActive(_ notification: Notification) { document.autosave() }
     func applicationDidBecomeActive(_ notification: Notification) {

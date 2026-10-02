@@ -1591,6 +1591,22 @@
         }
       }
     },
+    "No BashCut project in that folder": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No BashCut project in that folder"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thư mục này không có project BashCut"
+          }
+        }
+      }
+    },
     "Import footage to start editing.": {
       "localizations": {
         "en": {

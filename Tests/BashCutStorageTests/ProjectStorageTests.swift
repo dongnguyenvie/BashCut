@@ -16,6 +16,18 @@ struct ProjectStorageTests {
         try history.apply(.insert(track: "t1", item: caption), label: "Caption")
     }
 
+    @Test("A project path may name the file or its folder; anything else has no project")
+    func projectFileForPath() throws {
+        let folder = try directory()
+        defer { try? FileManager.default.removeItem(at: folder) }
+        #expect(ProjectStorage.projectFile(for: folder) == nil)
+        let file = folder.appendingPathComponent(ProjectStorage.projectFileName)
+        try Data("{}".utf8).write(to: file)
+        #expect(ProjectStorage.projectFile(for: folder)?.lastPathComponent == ProjectStorage.projectFileName)
+        #expect(ProjectStorage.projectFile(for: file)?.path == file.standardizedFileURL.path)
+        #expect(ProjectStorage.projectFile(for: folder.appendingPathComponent("missing.json")) == nil)
+    }
+
     @Test("Project file monitor receives directory write events")
     func fileMonitor() async throws {
         let directory = try directory()

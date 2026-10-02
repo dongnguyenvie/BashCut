@@ -391,3 +391,4 @@
 "Proxy" = "Proxy";
 "Making proxy…" = "Đang tạo proxy…";
 "Previews use a smaller copy of this clip; export uses the original." = "Xem trước dùng bản nhỏ hơn của clip này; khi xuất vẫn dùng file gốc.";
+"No BashCut project in that folder" = "Thư mục này không có project BashCut";
