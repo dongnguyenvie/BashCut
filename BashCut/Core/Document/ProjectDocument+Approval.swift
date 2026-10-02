@@ -3,11 +3,31 @@ import BashCutAutomation
 import BashCutProject
 import Foundation
 
+/// A privileged automation request: shown for approval, or run at once when the user lets agents
+/// act without confirmation.
+struct PrivilegedRequest {
+    let id: UUID
+    let autoApproved: Bool
+
+    func json(output: URL) -> JSONValue {
+        .object([
+            "approval": .string(autoApproved ? "approved" : "pending"), "requestId": .string(id.uuidString),
+            "output": .string(output.path),
+        ])
+    }
+}
+
 extension ProjectDocument {
     func queuePrivilegedApproval(
         method: String, author: Author, arguments: [String: String],
         action: @escaping @MainActor () throws -> Void
-    ) throws -> UUID {
+    ) throws -> PrivilegedRequest {
+        if agents.autoApprovePrivileged {
+            registry.recordApproval(method: method, author: author, approved: true, automatic: true)
+            DebugLog.write("approval", "auto-approved \(method) from \(author) \(arguments)")
+            try action()
+            return PrivilegedRequest(id: UUID(), autoApproved: true)
+        }
         guard privilegedApproval == nil else {
             throw RPCFailure(-32003, "Another privileged action is awaiting approval")
         }
@@ -19,7 +39,7 @@ extension ProjectDocument {
                 ApprovalArgument(name: $0.key, value: String($0.value.prefix(1_000)))
             })
         NSApp.activate(ignoringOtherApps: true)
-        return id
+        return PrivilegedRequest(id: id, autoApproved: false)
     }
 
     func resolvePrivilegedApproval(_ approved: Bool) {

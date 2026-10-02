@@ -523,6 +523,18 @@
         "vi": { "stringUnit": { "state": "translated", "value": "Đã xếp hàng xuất video" } }
       }
     },
+    "Run agent exports without confirmation": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Run agent exports without confirmation" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Chạy export của agent không cần xác nhận" } }
+      }
+    },
+    "With confirmation off, agents can export and write files without asking. Every request is still logged.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "With confirmation off, agents can export and write files without asking. Every request is still logged." } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Khi tắt xác nhận, agent có thể export và ghi file mà không hỏi. Mọi yêu cầu vẫn được ghi log." } }
+      }
+    },
     "Handoff to %@": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Handoff to %@" } },

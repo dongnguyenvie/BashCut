@@ -31,6 +31,7 @@ struct SettingsView: View {
                             .disabled(!model.allowExternalAgents)
                     }
                 }
+                Toggle("Run agent exports without confirmation", isOn: $model.autoApprovePrivileged)
                 Picker("Default export preset", selection: $model.defaultExportPresetRaw) {
                     ForEach(ExportPreset.allCases) { preset in
                         Text(LocalizedStringKey(preset.title)).tag(preset.rawValue)
@@ -46,6 +47,8 @@ struct SettingsView: View {
                 .font(.caption).foregroundStyle(.secondary)
             Text("Re-enable agent edits by starting a new Claude or Codex session.")
                 .font(.caption).foregroundStyle(.secondary)
+            Text("With confirmation off, agents can export and write files without asking. Every request is still logged.")
+                .font(.caption).foregroundStyle(.secondary)
             Text("Agents outside BashCut use the bashcut CLI or MCP with a token file only your user account can read.")
                 .font(.caption).foregroundStyle(.secondary)
         }
@@ -53,6 +56,7 @@ struct SettingsView: View {
         .onChange(of: model.defaultProviderRaw) { model.savePreferences() }
         .onChange(of: model.allowAgentEdits) { model.applyAgentEditPreference() }
         .onChange(of: model.allowExternalAgents) { model.applyExternalAgentPreference() }
+        .onChange(of: model.autoApprovePrivileged) { model.savePreferences() }
         .onChange(of: model.defaultExportPresetRaw) { model.savePreferences() }
         .onChange(of: model.interfaceLanguage) { model.savePreferences() }
     }

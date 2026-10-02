@@ -92,6 +92,8 @@
 "Doctor" = "Chẩn đoán";
 "Default agent" = "Agent mặc định";
 "Allow agent timeline edits" = "Cho phép agent chỉnh timeline";
+"Run agent exports without confirmation" = "Chạy export của agent không cần xác nhận";
+"With confirmation off, agents can export and write files without asking. Every request is still logged." = "Khi tắt xác nhận, agent có thể export và ghi file mà không hỏi. Mọi yêu cầu vẫn được ghi log.";
 "Default export preset" = "Cấu hình xuất mặc định";
 "Interface language" = "Ngôn ngữ giao diện";
 "System" = "Theo hệ thống";

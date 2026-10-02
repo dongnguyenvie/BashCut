@@ -169,11 +169,10 @@ extension ProjectDocument {
                     name: name, preset: preset, directory: directory, includeSubRip: includeSubRip,
                     normalizeAudio: normalizeAudio, author: author)
             }
-            document.message = String(localized: "Waiting for approval: export.start")
-            return .object([
-                "approval": .string("pending"), "requestId": .string(approval.uuidString),
-                "output": .string(output.path),
-            ])
+            if !approval.autoApproved {
+                document.message = String(localized: "Waiting for approval: export.start")
+            }
+            return approval.json(output: output)
         }
         handleAuthored("export.otio") { document, arguments, author in
             let (name, directory) = try document.exportDestination(arguments)
@@ -189,11 +188,10 @@ extension ProjectDocument {
                 try document.writeOTIO(to: output)
                 document.message = String(localized: "OTIO exported")
             }
-            document.message = String(localized: "Waiting for approval: export.otio")
-            return .object([
-                "approval": .string("pending"), "requestId": .string(approval.uuidString),
-                "output": .string(output.path),
-            ])
+            if !approval.autoApproved {
+                document.message = String(localized: "Waiting for approval: export.otio")
+            }
+            return approval.json(output: output)
         }
     }
 

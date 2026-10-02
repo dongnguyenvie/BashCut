@@ -92,6 +92,8 @@
 "Doctor" = "Doctor";
 "Default agent" = "Default agent";
 "Allow agent timeline edits" = "Allow agent timeline edits";
+"Run agent exports without confirmation" = "Run agent exports without confirmation";
+"With confirmation off, agents can export and write files without asking. Every request is still logged." = "With confirmation off, agents can export and write files without asking. Every request is still logged.";
 "Default export preset" = "Default export preset";
 "Interface language" = "Interface language";
 "System" = "System";

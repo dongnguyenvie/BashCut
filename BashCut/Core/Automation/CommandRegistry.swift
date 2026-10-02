@@ -31,10 +31,11 @@ public struct AuditEvent: Codable, Sendable {
     }
     public func revoke(_ token: String) { tokens.removeValue(forKey: token) }
     public func revokeAll() { tokens.removeAll() }
-    public func recordApproval(method: String, author: Author, approved: Bool) {
+    /// `automatic` marks requests run without a prompt because the user turned confirmation off.
+    public func recordApproval(method: String, author: Author, approved: Bool, automatic: Bool = false) {
         audit(
             AuditEvent(
-                date: Date(), method: method + (approved ? ".approved" : ".denied"),
+                date: Date(), method: method + (automatic ? ".auto-approved" : approved ? ".approved" : ".denied"),
                 author: author, succeeded: approved))
     }
     public func handle(_ request: RPCRequest) async -> RPCResponse {

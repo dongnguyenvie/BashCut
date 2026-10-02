@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Add a Settings switch, "Run agent exports without confirmation" (off by default), that runs privileged agent commands (`export start`, `export otio`) at once instead of showing the approval sheet; they answer `approval: "approved"` and are audited as auto-approved. Only the user can change it in Settings.
 - Queue exports in the background (E-1): starting an export while one renders queues it instead of refusing, in the app and through `export start`. Exports render one at a time from the project as it was when requested; the status bar shows the current step, progress and queued count, `export status` lists the queue with job IDs, and `jobs status`/`jobs cancel` now cover exports as well as plugin jobs.
 - Add the `BashCutDocument` library with `JobCenter` (one job list for capability calls and exports), `ExportRequest`, `ExportPipeline` and `ExportQueue`, covered by tests with a fake render engine.
 - Make agent terminals and model APIs pluggable: each terminal program is an `AgentProvider` (Claude, Codex, Shell) and each model API a `ModelAdapter` (Responses, Chat Completions, Anthropic), registered once; the dock menus, Settings picker, resume bookmarks (now keyed by provider ID, same file format) and session discovery come from the registries.

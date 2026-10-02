@@ -94,7 +94,7 @@ One `CommandRegistry` serves both front ends:
 |---|---|
 | **read**, **ui** | Always allowed. |
 | **edit** | Allowed, because every change is undoable and visible. Settings has "Ask before the agent edits the timeline" for a stricter setup. |
-| **privileged** | Always shows a confirmation sheet in the app with the command and its arguments. Export is slow and writes large files; voice enrollment changes the shared `voices.json`; file deletion is destructive. |
+| **privileged** | Shows a confirmation sheet in the app with the command and its arguments, unless the user turns on Settings → "Run agent exports without confirmation" (off by default; no automation command can change it); auto-approved requests return `approval: "approved"` and are audited as `<method>.auto-approved`. Export is slow and writes large files; voice enrollment changes the shared `voices.json`; file deletion is destructive. |
 
 Every command is written to the session's audit log. The rule is read-only by default, with
 explicit confirmation for destructive actions.
