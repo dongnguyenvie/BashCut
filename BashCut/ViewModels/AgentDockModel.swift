@@ -23,6 +23,7 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
         self.provider = provider
         self.token = token
         title = provider.title
+        view.menu = EditMenus.terminalContextMenu(for: view)
         view.startProcess(
             executable: launch.executable, args: launch.arguments,
             environment: launch.environment.map { "\($0.key)=\($0.value)" },

@@ -373,3 +373,8 @@
 "Attach current frame" = "Đính kèm khung hình hiện tại";
 "Preparing frame…" = "Đang chuẩn bị khung hình…";
 "Remove" = "Bỏ";
+"Edit" = "Sửa";
+"Cut" = "Cắt";
+"Copy" = "Sao chép";
+"Paste" = "Dán";
+"Select All" = "Chọn tất cả";

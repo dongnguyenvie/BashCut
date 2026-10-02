@@ -31,6 +31,7 @@ import SwiftUI
             keyEquivalent: "q")
         item.submenu = appMenu
         menu.addItem(item)
+        menu.addItem(EditMenus.mainMenuItem())
         NSApp.mainMenu = menu
         NSApp.activate(ignoringOtherApps: true)
     }

@@ -19,6 +19,12 @@
         "vi": { "stringUnit": { "state": "translated", "value": "Chuẩn hóa âm thanh" } }
       }
     },
+    "Paste": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Paste" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Dán" } }
+      }
+    },
     "Place Card": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Place Card" } },
@@ -329,6 +335,12 @@
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "EDL" } },
         "vi": { "stringUnit": { "state": "translated", "value": "EDL" } }
+      }
+    },
+    "Cut": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Cut" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Cắt" } }
       }
     },
     "Cuts": {
@@ -1181,6 +1193,12 @@
             "value": "Nhãn dán"
           }
         }
+      }
+    },
+    "Edit": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Edit" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Sửa" } }
       }
     },
     "Effects": {
@@ -2045,6 +2063,12 @@
             "value": "Độ bão hòa"
           }
         }
+      }
+    },
+    "Select All": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Select All" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Chọn tất cả" } }
       }
     },
     "Select a caption to edit text.": {
@@ -3533,6 +3557,12 @@
             "value": "Chọn…"
           }
         }
+      }
+    },
+    "Copy": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Copy" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Sao chép" } }
       }
     },
     "Create project": {
