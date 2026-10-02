@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Fix fixed-size sheets (Plugins, Doctor, History, agent changes, external changes, skills and memory) floating their content in the middle when it is short; content now starts at the top and the empty Plugins state fills the sheet.
 - Fix the Media panel's source picker label wrapping one word per line in the narrow library panel.
 - Close the remaining UI-only gaps: `luts import` (Filters, Import .cube…), `edl import` (Welcome, Import from edl.json…), `project recents`, `doctor run`, `plugins health`, `knowledge get` / `knowledge memo` / `knowledge skill`, and `voice speak --keep-takes` to keep every take and place the chosen one. New actions: show/undo/dismiss the agent change notice, open or reveal the last export, clear recent projects; `ui view --inspector` switches Inspector tabs (45 tools).
 - Fix a crash when importing a .cube LUT: the copy combined `.atomic` with `.withoutOverwriting`, which Foundation rejects with a trap.

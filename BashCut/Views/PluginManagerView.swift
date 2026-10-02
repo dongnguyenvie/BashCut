@@ -17,6 +17,7 @@ struct PluginManagerView: View {
                 .font(.caption).foregroundStyle(.secondary)
             if model.plugins.isEmpty {
                 ContentUnavailableView("No plugins installed", systemImage: "puzzlepiece.extension")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 List(model.plugins) { plugin in
                     VStack(alignment: .leading, spacing: 5) {
@@ -65,7 +66,7 @@ struct PluginManagerView: View {
             if model.installing { ProgressView("Installing plugin dependencies…") }
             Text(model.message).font(.caption).foregroundStyle(.secondary)
         }
-        .padding(20).frame(width: 680, height: 500).preferredColorScheme(.dark)
+        .padding(20).frame(width: 680, height: 500, alignment: .top).preferredColorScheme(.dark)
         .sheet(item: $model.pendingInstall) { pending in
             PluginInstallApprovalView(
                 plugin: pending.plugin, approve: model.installPendingPlugin,

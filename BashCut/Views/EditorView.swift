@@ -455,7 +455,7 @@ struct EditorView: View {
                 Button("Undo", action: document.undo)
                 Button("Redo", action: document.redo)
             }
-        }.padding(20).frame(width: 520, height: 360).preferredColorScheme(.dark)
+        }.padding(20).frame(width: 520, height: 360, alignment: .top).preferredColorScheme(.dark)
     }
 }
 

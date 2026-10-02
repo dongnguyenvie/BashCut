@@ -71,7 +71,7 @@ struct AgentChangesView: View {
                     }.padding(.vertical, 5)
                 }
             }
-        }.padding(20).frame(width: 680, height: 520).preferredColorScheme(.dark)
+        }.padding(20).frame(width: 680, height: 520, alignment: .top).preferredColorScheme(.dark)
     }
 
     private func snapshot(_ title: String, _ item: Item?) -> some View {

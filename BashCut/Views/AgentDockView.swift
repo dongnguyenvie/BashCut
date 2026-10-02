@@ -225,7 +225,7 @@ private struct AgentKnowledgeView: View {
                 }
             }
             Text(model.message).font(.caption).foregroundStyle(.secondary)
-        }.padding(20).frame(width: 820, height: 620).preferredColorScheme(.dark)
+        }.padding(20).frame(width: 820, height: 620, alignment: .top).preferredColorScheme(.dark)
     }
 }
 

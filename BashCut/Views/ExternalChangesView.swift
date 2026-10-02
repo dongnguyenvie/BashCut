@@ -49,7 +49,7 @@ struct ExternalChangesView: View {
                 Button("Keep app version", action: keepApp)
                 Button("Load disk version", action: loadDisk).buttonStyle(.borderedProminent)
             }
-        }.padding(20).frame(width: 720, height: 560).preferredColorScheme(.dark)
+        }.padding(20).frame(width: 720, height: 560, alignment: .top).preferredColorScheme(.dark)
     }
 
     private var summary: some View {

@@ -27,7 +27,7 @@ struct DoctorView: View {
                 }.padding(.vertical, 3)
             }
             if model.running { ProgressView("Checking plugin dependencies…") }
-        }.padding(20).frame(width: 720, height: 580).preferredColorScheme(.dark)
+        }.padding(20).frame(width: 720, height: 580, alignment: .top).preferredColorScheme(.dark)
     }
 
     private var summaryIcon: String { icon(model.summary) }
