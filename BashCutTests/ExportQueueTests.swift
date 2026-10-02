@@ -181,4 +181,43 @@ struct ExportQueueTests {
         try await Task.sleep(for: .milliseconds(50))
         #expect(callbacks == 2)
     }
+
+    @Test("The controller keeps the last report in the project history and describes it in export.status")
+    func controllerReports() async throws {
+        let root = try folder()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let log = ExportLog()
+        let exports = ExportController(jobs: JobCenter()) { ExportPipeline(engine: FakeEngine(log: log), loudness: nil) }
+        #expect(exports.statusJSON.object["state"] == .string("idle"))
+        var finished = 0
+        try exports.enqueue(try request("one", in: root), author: .user) { _ in finished += 1 }
+        #expect(exports.statusJSON.object["state"] == .string("running"))
+        try await waitUntil { finished == 1 }
+        #expect(exports.report?.receipt.url.lastPathComponent == "one.mp4")
+        #expect(exports.report?.captionCount == 1)
+        #expect(exports.report?.comparison == nil)
+        try exports.enqueue(try request("two", in: root), author: .agent) { _ in finished += 1 }
+        try await waitUntil { finished == 2 }
+        #expect(exports.report?.comparison != nil)
+        let status = exports.statusJSON.object
+        #expect(status["state"] == .string("completed"))
+        #expect(status["path"] == .string(root.appendingPathComponent("render/two.mp4").path))
+
+        let reopened = ExportController(jobs: JobCenter()) { ExportPipeline(engine: FakeEngine(log: log), loudness: nil) }
+        reopened.restoreReport(projectRoot: root)
+        #expect(reopened.report?.receipt.url.lastPathComponent == "two.mp4")
+        reopened.reset()
+        #expect(reopened.report == nil)
+    }
+
+    @Test("OTIO exports refuse to replace a file unless asked")
+    func otioReplace() throws {
+        let root = try folder()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let url = root.appendingPathComponent("render/cut.otio")
+        try ExportController.writeOTIO(try project(), to: url)
+        #expect(FileManager.default.fileExists(atPath: url.path))
+        #expect(throws: ProjectError.self) { try ExportController.writeOTIO(try project(), to: url) }
+        try ExportController.writeOTIO(try project(), to: url, allowReplace: true)
+    }
 }

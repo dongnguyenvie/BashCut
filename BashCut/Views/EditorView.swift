@@ -61,17 +61,17 @@ struct EditorView: View {
             HStack {
                 Text(document.message).lineLimit(2).textSelection(.enabled)
                 Spacer()
-                if document.exporting {
-                    if let detail = document.exports.detail {
+                if document.exports.isRunning {
+                    if let detail = document.exports.queue.detail {
                         Text(detail).lineLimit(1).foregroundStyle(.secondary)
                     }
-                    ProgressView(value: document.exportProgress).frame(width: 120)
-                    Text(document.exportProgress, format: .percent.precision(.fractionLength(0)))
-                    if document.exports.queuedCount > 0 {
-                        Text("\(document.exports.queuedCount) queued").foregroundStyle(.secondary)
+                    ProgressView(value: document.exports.progress).frame(width: 120)
+                    Text(document.exports.progress, format: .percent.precision(.fractionLength(0)))
+                    if document.exports.queue.queuedCount > 0 {
+                        Text("\(document.exports.queue.queuedCount) queued").foregroundStyle(.secondary)
                     }
-                    Button("Cancel export", action: document.cancelExport)
-                } else if document.exportReport != nil {
+                    Button("Cancel export", action: document.exports.cancelActive)
+                } else if document.exports.report != nil {
                     Button("Export report") { document.ui.showExportReport = true }
                 }
                 if document.busy {
@@ -94,7 +94,7 @@ struct EditorView: View {
         .sheet(isPresented: Bindable(document.ui).showNewProject) { NewProjectView(document: document) }
         .sheet(isPresented: Bindable(document.ui).showExport) { ExportView(document: document) }
         .sheet(isPresented: Bindable(document.ui).showExportReport) {
-            if let report = document.exportReport { ExportReportView(report: report, document: document) }
+            if let report = document.exports.report { ExportReportView(report: report, document: document) }
         }
         .sheet(item: $document.privilegedApproval) { prompt in
             PrivilegedApprovalView(prompt: prompt, resolve: document.resolvePrivilegedApproval)

@@ -95,12 +95,15 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
     dependencies:
       - target: BashCutEngine
+      - target: BashCutStorage
       - target: BashCutPlugins
       - target: BashCutAutomation
       - package: BashCutCore
         product: BashCutProject
       - package: BashCutCore
         product: BashCutPlugin
+      - package: BashCutCore
+        product: BashCutInterchange
   # The target name must differ from "BashCut" beyond case: on a case-insensitive disk both targets
   # would share one intermediates folder and leak compiler flags into each other.
   BashCutCLI:

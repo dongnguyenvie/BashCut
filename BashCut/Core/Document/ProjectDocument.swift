@@ -20,7 +20,6 @@ final class ProjectDocument {
     var busy = false
     var dirty = false
     var creatingProject = false
-    var exportReport: ExportReport?
     var privilegedApproval: PrivilegedApprovalPrompt?
     var fileURL: URL?
     let sourceViewer = SourceViewerModel()
@@ -53,7 +52,7 @@ final class ProjectDocument {
     let preview: PreviewController
     /// Capability calls and exports, listed by `jobs.status` and cancelled by `jobs.cancel`.
     let jobs = JobCenter()
-    @ObservationIgnored lazy var exports = ExportQueue(jobs: jobs) { [unowned self] in
+    @ObservationIgnored lazy var exports = ExportController(jobs: jobs) { [unowned self] in
         ExportPipeline(engine: engine, loudness: plugins.service)
     }
     /// Token of the external-agent file; it outlives project switches, unlike in-app terminal tokens.
@@ -79,8 +78,6 @@ final class ProjectDocument {
 
     var project: Project { history.project }
     var playhead: Int { preview.playhead }
-    var exporting: Bool { exports.isRunning }
-    var exportProgress: Double { exports.progress }
     var selected: Item? { project.tracks.flatMap(\.items).first { $0.id == selectedID } }
     var selectedItemTrack: Track? {
         guard let selectedID else { return nil }
@@ -191,16 +188,15 @@ final class ProjectDocument {
         conflict = false
         legacyImportReport = nil
         lastAutosaveRevision = -1
-        exports.cancelAll()
+        exports.reset()
         jobs.cancelAll()
-        exportReport = nil
         ui.closeProjectSheets()
         privilegedApproval = nil
         privilegedAction = nil
         replaceHistory(ProjectHistory(project: project))
         preview.reset(project)
         fileURL = url
-        restoreExportReport()
+        exports.restoreReport(projectRoot: url.deletingLastPathComponent())
         rememberRecentProject(url)
         selectedID = nil
         selectedTrackID = nil

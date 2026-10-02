@@ -113,7 +113,7 @@ extension ProjectDocument {
     {
         [
             "export": ({ $0.project.duration > 0 }, "The timeline is empty", \.showExport),
-            "export-report": ({ $0.exportReport != nil }, "No export report yet", \.showExportReport),
+            "export-report": ({ $0.exports.report != nil }, "No export report yet", \.showExportReport),
             "agent-changes": ({ $0.agentChange != nil }, "No agent change to show", \.showAgentChanges),
             "external-changes": ({ $0.conflict }, "The project file has no conflicting change", \.showExternalChanges),
         ]

@@ -78,64 +78,7 @@ extension ProjectDocument {
                     ])
                 })
         }
-        handle("export.status") { document, _, _ in document.exportStatusJSON() }
-    }
-
-    /// While an export runs, the top-level fields describe it and the last receipt moves to `lastExport`.
-    private func exportStatusJSON() -> JSONValue {
-        var result: [String: JSONValue] = ["queue": .array(exports.active.map(\.json))]
-        let last = exportReport.map(Self.reportJSON)
-        if let job = exports.activeJob, let request = exports.request(for: job) {
-            result["state"] = .string("running")
-            result["progress"] = .number(exportProgress)
-            result["job"] = .string(job)
-            result["step"] = exports.detail.map(JSONValue.string) ?? .null
-            result["preset"] = .string(request.preset.rawValue)
-            result["path"] = .string(request.output.path)
-            result["includedSRT"] = .bool(request.includesSubRip)
-            result["normalizeAudio"] = .bool(request.normalizeAudio)
-            result["lastExport"] = last.map(JSONValue.object) ?? .null
-            return .object(result)
-        }
-        result["state"] = .string(exportReport == nil ? "idle" : "completed")
-        result["progress"] = .number(exportReport == nil ? 0 : 1)
-        return .object(result.merging(last ?? [:]) { current, _ in current })
-    }
-
-    private static func reportJSON(_ report: ExportReport) -> [String: JSONValue] {
-        var result: [String: JSONValue] = [
-            "preset": .string(report.preset.rawValue),
-            "path": .string(report.receipt.url.path),
-            "duration": .number(report.receipt.duration),
-            "bytes": .integer(Int(report.receipt.bytes)),
-            "cuts": .integer(report.cutCount),
-            "captions": .integer(report.captionCount),
-            "includedSRT": .bool(report.includedSubRip),
-            "speechCoverage": .number(report.speechCoverage),
-            "completedAt": .string(ISO8601DateFormatter().string(from: report.completedAt)),
-        ]
-        if let comparison = report.comparison {
-            var values: [String: JSONValue] = [
-                "duration": .number(comparison.duration),
-                "bytes": .integer(Int(comparison.bytes)),
-                "cuts": .integer(comparison.cutCount),
-                "captions": .integer(comparison.captionCount),
-                "speechCoverage": .number(comparison.speechCoverage),
-            ]
-            values["lufs"] = comparison.integratedLUFS.map(JSONValue.number) ?? .null
-            result["comparison"] = .object(values)
-        } else {
-            result["comparison"] = .null
-        }
-        if let loudness = report.loudness {
-            result["lufs"] = .number(loudness.integratedLUFS)
-            result["truePeakDbTP"] = .number(loudness.truePeakDbTP)
-            result["loudnessVerified"] = .bool(report.loudnessVerified)
-            if let gain = report.appliedGainDb { result["normalizationGainDb"] = .number(gain) }
-        } else {
-            result["lufs"] = .null
-        }
-        return result
+        handle("export.status") { document, _, _ in document.exports.statusJSON }
     }
 
     private func registerEditCommands() {
@@ -208,7 +151,7 @@ extension ProjectDocument {
                 arguments: ["output": output.path, "format": "OpenTimelineIO"]
             ) { [weak document] in
                 guard let document else { throw RPCFailure(-32000, "Editor closed") }
-                try document.writeOTIO(to: output)
+                try ExportController.writeOTIO(document.project, to: output)
                 document.message = String(localized: "OTIO exported")
             }
             if !approval.autoApproved {

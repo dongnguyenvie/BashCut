@@ -30,7 +30,7 @@ extension ProjectDocument {
         case .showAgentChanges, .dismissAgentChange: return agentChange != nil
         case .undoAgentChange: return canUndoAgentChange
         case .openExportOutput, .revealExportOutput:
-            return exportReport.map { FileManager.default.fileExists(atPath: $0.receipt.url.path) } ?? false
+            return exports.report.map { FileManager.default.fileExists(atPath: $0.receipt.url.path) } ?? false
         case .clearRecentProjects: return !recentProjectURLs.isEmpty
         case .showHistory, .showReview, .showPlugins, .showDoctor, .showSettings, .showSections, .toggleAgentDock,
             .askAgent, .toggleSafeArea, .toggleSnap, .addVideoLayer, .addTextLayer, .addAudioLayer:
@@ -102,9 +102,9 @@ extension ProjectDocument {
         case .showAgentChanges: try openDialog("agent-changes")
         case .undoAgentChange: undoAgentChange()
         case .dismissAgentChange: clearAgentChange()
-        case .openExportOutput: if let url = exportReport?.receipt.url { NSWorkspace.shared.open(url) }
+        case .openExportOutput: if let url = exports.report?.receipt.url { NSWorkspace.shared.open(url) }
         case .revealExportOutput:
-            if let url = exportReport?.receipt.url { NSWorkspace.shared.activateFileViewerSelecting([url]) }
+            if let url = exports.report?.receipt.url { NSWorkspace.shared.activateFileViewerSelecting([url]) }
         case .clearRecentProjects: clearRecentProjects()
         default: assertionFailure("Unhandled UI action \(action.id)")
         }

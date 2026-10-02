@@ -2,11 +2,7 @@ import AppKit
 import BashCutAutomation
 import BashCutDocument
 import BashCutEngine
-import BashCutInterchange
-import BashCutPlugin
-import BashCutPlugins
 import BashCutProject
-import BashCutStorage
 import Foundation
 
 extension ProjectDocument {
@@ -21,18 +17,9 @@ extension ProjectDocument {
         panel.directoryURL = fileURL?.deletingLastPathComponent().appendingPathComponent("render")
         guard let url = ModalCenter.shared.save(panel, name: "export-otio") else { return }
         do {
-            try writeOTIO(to: url, allowReplace: true)
+            try ExportController.writeOTIO(project, to: url, allowReplace: true)
             message = String(localized: "OTIO exported")
         } catch { message = error.localizedDescription }
-    }
-
-    func writeOTIO(to url: URL, allowReplace: Bool = false) throws {
-        guard allowReplace || !FileManager.default.fileExists(atPath: url.path) else {
-            throw ProjectError.invalid("Choose a new export name; an output already exists")
-        }
-        try FileManager.default.createDirectory(
-            at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try OpenTimelineIOExporter.data(for: project).write(to: url, options: .atomic)
     }
 
     func startExport(
@@ -66,7 +53,7 @@ extension ProjectDocument {
         let request = try ExportRequest(
             project: project, root: root, workspace: agents.workspace, name: name, preset: preset,
             directory: directory, includeSubRip: includeSubRip, normalizeAudio: normalizeAudio,
-            reserved: exports.reservedOutputs)
+            reserved: exports.queue.reservedOutputs)
         let queued = exports.isRunning
         let session = sessionID
         let job = try exports.enqueue(request, author: author) { [weak self] result in
@@ -84,48 +71,15 @@ extension ProjectDocument {
         return job
     }
 
-    /// Cancels the running export; queued exports start next.
-    func cancelExport() { exports.cancelActive() }
-
     private func finishExport(_ request: ExportRequest, outcome: ExportOutcome) {
-        let loudness = outcome.finalMeasurement
-        if let generated = outcome.generated, let mixGain = outcome.mixGainDb,
-            project.revision == request.source.revision
+        if project.revision == request.source.revision,
+            let audio = ExportController.normalizedAudio(outcome, current: project["audio"])
         {
-            var audio = project["audio"]?.object ?? [:]
-            audio["mixGainDb"] = .number(mixGain)
-            if let loudness {
-                audio["measuredLUFS"] = .number(loudness.integratedLUFS)
-                audio["truePeakDbTP"] = .number(loudness.truePeakDbTP)
-            }
-            audio["measurementVerified"] = .bool(outcome.verified)
-            if let range = loudness?.loudnessRangeLU { audio["loudnessRangeLU"] = .number(range) }
-            audio["measuredBy"] = .object(generated.provenance.json)
-            apply(.setProjectProperties(patch: ["audio": .object(audio)]), label: "Normalize audio")
-        }
-        let report = ExportReport(
-            receipt: outcome.receipt, preset: request.preset,
-            cutCount: request.source.tracks.first(where: { $0.role == "main" })?.items.count ?? 0,
-            captionCount: request.source.tracks.first(where: { $0.role == "captions" })?.items.count ?? 0,
-            includedSubRip: request.includesSubRip, loudness: loudness,
-            loudnessVerified: outcome.verified, appliedGainDb: outcome.appliedGainDb,
-            speechCoverage: TimelineReview.speechCoverage(request.source), completedAt: Date(),
-            comparison: nil)
-        if let snapshot = try? ExportHistoryStore().record(report.storedMetrics, projectRoot: request.root) {
-            exportReport = ExportReport(snapshot: snapshot) ?? report
-        } else {
-            exportReport = report
+            apply(.setProjectProperties(patch: ["audio": audio]), label: "Normalize audio")
         }
         DebugLog.write("export", "done \(outcome.receipt.url.path)")
         message = String(localized: "Export complete")
         // Keep the report for later when more exports are waiting.
         if !exports.isRunning { ui.showExportReport = true }
-    }
-
-    func restoreExportReport() {
-        guard let root = fileURL?.deletingLastPathComponent(),
-            let snapshot = try? ExportHistoryStore().latest(projectRoot: root)
-        else { return }
-        exportReport = ExportReport(snapshot: snapshot)
     }
 }
