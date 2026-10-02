@@ -77,36 +77,7 @@ extension ProjectDocument {
 
     /// Issues a fresh external-agent token and writes it to the 0600 token file, or removes both when the
     /// Settings switch is off. Called at launch and from Settings; the token survives project switches.
-    func applyExternalAgentAccess(enabled: Bool) {
-        if let token = externalAgentToken { registry.revoke(token) }
-        externalAgentToken = nil
-        let file = AutomationPaths.tokenFile
-        try? FileManager.default.removeItem(at: file)
-        guard enabled else {
-            DebugLog.write("access", "external agent access off; token file removed")
-            return
-        }
-        let token = registry.issueToken(author: .agent)
-        do {
-            let manager = FileManager.default
-            try manager.createDirectory(
-                at: file.deletingLastPathComponent(), withIntermediateDirectories: true,
-                attributes: [.posixPermissions: 0o700])
-            let staging = file.deletingLastPathComponent().appendingPathComponent(".automation-token-" + UUID().uuidString)
-            guard manager.createFile(atPath: staging.path, contents: Data(token.utf8), attributes: [.posixPermissions: 0o600])
-            else { throw CocoaError(.fileWriteUnknown) }
-            _ = try manager.replaceItemAt(file, withItemAt: staging)
-            externalAgentToken = token
-            DebugLog.write("access", "external agent token written to \(file.path)")
-        } catch {
-            registry.revoke(token)
-            DebugLog.write("access", "external agent token FAILED: \(error.localizedDescription)")
-        }
-    }
+    func applyExternalAgentAccess(enabled: Bool) { automation.setExternalAgentAccess(enabled) }
 
-    func removeExternalAgentToken() {
-        if let token = externalAgentToken { registry.revoke(token) }
-        externalAgentToken = nil
-        try? FileManager.default.removeItem(at: AutomationPaths.tokenFile)
-    }
+    func removeExternalAgentToken() { automation.removeExternalAgentToken() }
 }

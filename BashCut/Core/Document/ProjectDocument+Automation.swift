@@ -25,9 +25,7 @@ extension ProjectDocument {
         assert(registry.unhandledCommands.isEmpty, "Unhandled commands: \(registry.unhandledCommands)")
         Task {
             do {
-                try await automationServer.start(path: AutomationPaths.socket) { [registry] in
-                    await registry.handle($0)
-                }
+                try await automation.start()
                 applyExternalAgentAccess(enabled: settings.allowExternalAgents)
             } catch { message = error.localizedDescription }
         }

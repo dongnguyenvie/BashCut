@@ -30,6 +30,8 @@ public struct AuditEvent: Codable, Sendable {
         return token
     }
     public func revoke(_ token: String) { tokens.removeValue(forKey: token) }
+    /// The author a live token edits as, or nil for an unknown or revoked token.
+    public func author(for token: String) -> Author? { tokens[token] }
     public func revokeAll() { tokens.removeAll() }
     /// `automatic` marks requests run without a prompt because the user turned confirmation off.
     public func recordApproval(method: String, author: Author, approved: Bool, automatic: Bool = false) {

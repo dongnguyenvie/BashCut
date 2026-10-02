@@ -1,4 +1,3 @@
-import AVFoundation
 import AppKit
 import BashCutAutomation
 import BashCutDocument
@@ -6,7 +5,6 @@ import BashCutEngine
 import BashCutImport
 import BashCutProject
 import BashCutStorage
-import OSLog
 import Observation
 import UniformTypeIdentifiers
 
@@ -28,8 +26,8 @@ final class ProjectDocument {
     let fileSync = FileSyncController()
     var legacyImportReport: LegacyEDLImportReport?
     var sessionID = UUID()
-    let automationServer = UnixRPCServer()
-    let registry: CommandRegistry
+    /// Socket server, command registry and the external-agent token file.
+    let automation = AutomationController()
     var agentChangedIDs = Set<String>()
     var agentChange: AgentChangeRecord?
     let doctor = DoctorModel()
@@ -49,27 +47,16 @@ final class ProjectDocument {
     @ObservationIgnored lazy var exports = ExportController(jobs: jobs) { [unowned self] in
         ExportPipeline(engine: engine, loudness: plugins.service)
     }
-    /// Token of the external-agent file; it outlives project switches, unlike in-app terminal tokens.
-    @ObservationIgnored var externalAgentToken: String?
 
     init(engine: any RenderEngine = AVFoundationRenderEngine()) {
         self.engine = engine
         preview = PreviewController(engine: engine)
         settings = SettingsModel()
-        let url = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(
-            "Library/Application Support/BashCut/audit.jsonl")
-        let audit = AuditStore(url: url)
-        registry = CommandRegistry { event in
-            Task {
-                do { try await audit.append(event) } catch {
-                    Logger(subsystem: "app.bashcut", category: "automation").error("Audit write failed")
-                }
-            }
-        }
         preview.onMessage = { [weak self] in self?.message = $0 }
     }
 
     var project: Project { history.project }
+    var registry: CommandRegistry { automation.registry }
     var playhead: Int { preview.playhead }
     var selected: Item? { project.tracks.flatMap(\.items).first { $0.id == selectedID } }
     var selectedItemTrack: Track? {

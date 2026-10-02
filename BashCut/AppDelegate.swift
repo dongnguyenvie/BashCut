@@ -52,7 +52,7 @@ import SwiftUI
                 if document.dirty, let url = document.fileURL {
                     try await document.storage.discardRecovery(at: url)
                 }
-                await document.automationServer.stop()
+                await document.automation.stop()
                 sender.reply(toApplicationShouldTerminate: true)
             } catch {
                 document.message = error.localizedDescription
