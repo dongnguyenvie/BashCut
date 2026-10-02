@@ -191,6 +191,10 @@ when another project opens; agents outside BashCut keep access.
 | `plugins options <plugin>` | read | A plugin's options: schema, scope and current values |
 | `plugins option <plugin> --option <option> [--value <value>]` | edit | Set one option (project scope: undoable edit; user scope: this Mac); no value resets it |
 | `plugins set <plugin> [--enabled <bool>] [--hooks <bool>]` | edit | Turn a plugin or its hooks off; turning them on and trusting stay with the user |
+| `plugins search [query] [--capability <id>] [--refresh]` | read | Search the plugin registry with install status |
+| `plugins updates` | read | Installed plugins with a newer compatible registry version |
+| `plugins install <plugin> [--version <v>]` | edit | Download and verify a registry plugin, then show the install approval (job; only the user approves) |
+| `plugins remove <plugin>` | edit | Uninstall a plugin from the user or project plugin folder |
 
 Plugin actions also appear in `ui actions` and run with `ui action <id>`. See [Writing plugins](plugins.md#commands).
 

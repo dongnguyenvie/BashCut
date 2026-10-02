@@ -177,3 +177,20 @@ struct PluginProposalSheet: View {
         }
     }
 }
+
+/// Shown under a provider picker when no installed plugin provides `capability`: opens Plugins › Browse filtered
+/// to providers of it.
+struct FindPluginButton: View {
+    @Bindable var document: ProjectDocument
+    let capability: String
+
+    var body: some View {
+        if document.plugins.providers(for: capability).isEmpty {
+            Button {
+                document.showPluginBrowser(capability: capability)
+            } label: {
+                Label("Find a plugin…", systemImage: "puzzlepiece.extension")
+            }.help(String(format: String(localized: "Browse plugins that provide %@"), capability))
+        }
+    }
+}

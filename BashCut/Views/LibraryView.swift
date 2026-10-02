@@ -157,6 +157,7 @@ struct LibraryView: View {
                         capability: "audio.beats", provider: value.isEmpty ? nil : value),
                     label: "Choose beat provider")
             }
+            FindPluginButton(document: document, capability: "audio.beats")
             Button(pluginManager.calling.contains("audio.beats") ? "Detecting beats…" : "Detect beats") {
                 detectBeats()
             }
@@ -209,6 +210,7 @@ struct LibraryView: View {
                         capability: "captions.transcribe", provider: value.isEmpty ? nil : value),
                     label: "Choose transcription provider")
             }
+            FindPluginButton(document: document, capability: "captions.transcribe")
             Toggle("Replace existing captions", isOn: $replaceGeneratedCaptions)
             Button(
                 pluginManager.calling.contains("captions.transcribe") ? "Transcribing…" : "Generate captions"

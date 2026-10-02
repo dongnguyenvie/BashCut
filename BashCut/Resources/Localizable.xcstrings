@@ -4238,6 +4238,174 @@
         "en": { "stringUnit": { "state": "translated", "value": "Installing trusts these exact files. The plugin and listed dependency commands run with your user permissions; plugin edits are validated and undoable." } },
         "vi": { "stringUnit": { "state": "translated", "value": "Cài đặt nghĩa là tin cậy đúng các file này. Plugin và các lệnh dependency chạy với quyền người dùng của bạn; chỉnh sửa của plugin được kiểm tra và có thể hoàn tác." } }
       }
+    },
+    "Installed": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Installed" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đã cài" } }
+      }
+    },
+    "Browse": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Browse" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Duyệt" } }
+      }
+    },
+    "Updates": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Updates" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Cập nhật" } }
+      }
+    },
+    "Plugin updated": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Plugin updated" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đã cập nhật plugin" } }
+      }
+    },
+    "Plugin installed": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Plugin installed" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đã cài plugin" } }
+      }
+    },
+    "Removed %@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Removed %@" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đã gỡ %@" } }
+      }
+    },
+    "Remove %@?": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Remove %@?" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Gỡ %@?" } }
+      }
+    },
+    "Its files, trust and settings on this Mac are removed. Projects keep their plugin data.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Its files, trust and settings on this Mac are removed. Projects keep their plugin data." } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Các file, quyền tin cậy và cài đặt của plugin trên máy này sẽ bị xóa. Dự án vẫn giữ dữ liệu plugin." } }
+      }
+    },
+    "Install %@?": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Install %@?" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Cài %@?" } }
+      }
+    },
+    "Update %@?": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Update %@?" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Cập nhật %@?" } }
+      }
+    },
+    "Update": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Update" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Cập nhật" } }
+      }
+    },
+    "From the plugin registry": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "From the plugin registry" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Từ kho plugin" } }
+      }
+    },
+    "Checksum verified. Archive signatures are not checked yet.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Checksum verified. Archive signatures are not checked yet." } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đã kiểm checksum. Chưa kiểm chữ ký của gói." } }
+      }
+    },
+    "Search plugins…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Search plugins…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Tìm plugin…" } }
+      }
+    },
+    "Show every plugin": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Show every plugin" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Hiện mọi plugin" } }
+      }
+    },
+    "Updated %@ ago": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Updated %@ ago" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Cập nhật %@ trước" } }
+      }
+    },
+    "Fetch the plugin registry again": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Fetch the plugin registry again" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Tải lại kho plugin" } }
+      }
+    },
+    "Showing the saved catalog: %@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Showing the saved catalog: %@" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đang hiện danh mục đã lưu: %@" } }
+      }
+    },
+    "Everything is up to date": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Everything is up to date" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Mọi plugin đã mới nhất" } }
+      }
+    },
+    "Loading plugins…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Loading plugins…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đang tải plugin…" } }
+      }
+    },
+    "No plugins found": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "No plugins found" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Không tìm thấy plugin" } }
+      }
+    },
+    "Installed in this project or the app": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Installed in this project or the app" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đã cài trong dự án hoặc trong app" } }
+      }
+    },
+    "Installed: v%@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Installed: v%@" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đã cài: v%@" } }
+      }
+    },
+    "Browse Plugins": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Browse Plugins" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Duyệt plugin" } }
+      }
+    },
+    "Install a plugin folder from this Mac": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Install a plugin folder from this Mac" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Cài thư mục plugin có trên máy này" } }
+      }
+    },
+    "Find a plugin…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Find a plugin…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Tìm plugin…" } }
+      }
+    },
+    "Browse plugins that provide %@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Browse plugins that provide %@" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Duyệt plugin cung cấp %@" } }
+      }
+    },
+    "View": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "View" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Xem" } }
+      }
     }
   },
   "version": "1.0"

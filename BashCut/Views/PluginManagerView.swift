@@ -1,3 +1,4 @@
+import BashCutDocument
 import BashCutPlugin
 import SwiftUI
 
@@ -5,29 +6,30 @@ struct PluginManagerView: View {
     @Bindable var model: PluginManagerModel
     let document: ProjectDocument
     let done: () -> Void
-    @State private var showLog = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("Plugins").font(.title2)
                 Spacer()
-                Button(showLog ? "Plugins" : "Hook Activity") { showLog.toggle() }
+                Picker("View", selection: $model.tab) {
+                    ForEach(PluginSheetTab.allCases) { tab in
+                        Text(tab == .updates && !model.updates.isEmpty ? "\(tab.title) (\(model.updates.count))" : tab.title)
+                            .tag(tab)
+                    }
+                }.pickerStyle(.segmented).labelsHidden().frame(width: 360)
                 Button("Install Plugin…", action: model.choosePlugin).disabled(model.installing)
+                    .help("Install a plugin folder from this Mac")
                 Button("Done", action: done)
             }
             Text("Optional tools run outside the editor. A plugin runs only after you trust its exact files; "
                 + "dependencies are installed only after you approve the exact plan.")
                 .font(.caption).foregroundStyle(.secondary)
-            if showLog {
-                hookLog
-            } else if model.plugins.isEmpty {
-                ContentUnavailableView("No plugins installed", systemImage: "puzzlepiece.extension")
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                List(model.plugins) { plugin in
-                    PluginRow(model: model, document: document, plugin: plugin)
-                }
+            switch model.tab {
+            case .activity: hookLog
+            case .browse: PluginBrowseView(model: model, updatesOnly: false)
+            case .updates: PluginBrowseView(model: model, updatesOnly: true)
+            case .installed: installed
             }
             if !model.diagnostics.isEmpty {
                 DisclosureGroup("Diagnostics (\(model.diagnostics.count))") {
@@ -41,8 +43,25 @@ struct PluginManagerView: View {
         .padding(20).frame(width: 760, height: 620, alignment: .top).preferredColorScheme(.dark)
         .sheet(item: $model.pendingInstall) { pending in
             PluginInstallApprovalView(
-                plugin: pending.plugin, approve: model.installPendingPlugin,
-                cancel: { model.pendingInstall = nil })
+                pending: pending, registry: model.registry, approve: model.installPendingPlugin,
+                cancel: model.cancelPendingInstall)
+        }
+        .task(id: model.tab) {
+            if model.tab == .browse || model.tab == .updates { await model.refreshRegistry() }
+        }
+    }
+
+    @ViewBuilder private var installed: some View {
+        if model.plugins.isEmpty {
+            ContentUnavailableView {
+                Label("No plugins installed", systemImage: "puzzlepiece.extension")
+            } actions: {
+                Button("Browse Plugins") { model.tab = .browse }
+            }.frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            List(model.plugins) { plugin in
+                PluginRow(model: model, document: document, plugin: plugin)
+            }
         }
     }
 
@@ -135,12 +154,24 @@ private struct PluginRow: View {
                     Button(showOptions ? "Hide Options" : "Options…") { showOptions.toggle() }
                 }
                 Spacer()
+                if model.isRemovable(plugin) {
+                    Button("Remove", role: .destructive, action: remove)
+                }
                 Button(model.checking.contains(plugin.id) ? "Checking…" : "Check Health") {
                     model.checkHealth(plugin)
                 }.disabled(model.checking.contains(plugin.id))
             }.font(.caption)
             if showOptions { options }
         }.padding(.vertical, 4)
+    }
+
+    private func remove() {
+        let choice = ModalCenter.shared.alert(
+            "plugin-remove", title: String(format: String(localized: "Remove %@?"), plugin.manifest.displayName),
+            message: String(localized: "Its files, trust and settings on this Mac are removed. Projects keep their plugin data."),
+            buttons: [ModalOption("cancel", String(localized: "Cancel")), ModalOption("remove", String(localized: "Remove"))])
+        guard choice == "remove" else { return }
+        do { try model.removePlugin(plugin) } catch { model.message = error.localizedDescription }
     }
 
     private var stateBadge: some View {
@@ -173,17 +204,24 @@ private struct PluginRow: View {
 }
 
 private struct PluginInstallApprovalView: View {
-    let plugin: InstalledPlugin
+    let pending: PendingPluginInstall
+    let registry: PluginRegistryDocument?
     let approve: () -> Void
     let cancel: () -> Void
+    private var plugin: InstalledPlugin { pending.plugin }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Label("Install \(plugin.manifest.displayName)?", systemImage: "puzzlepiece.extension")
-                .font(.title2)
-            Text("Capabilities: " + plugin.manifest.capabilities.joined(separator: ", "))
+            Label(
+                String(format: String(localized: pending.replacing ? "Update %@?" : "Install %@?"), plugin.manifest.displayName),
+                systemImage: "puzzlepiece.extension"
+            ).font(.title2)
+            if let archive = pending.archive { download(archive) }
+            if !plugin.manifest.capabilities.isEmpty {
+                Text("Capabilities: " + plugin.manifest.capabilities.joined(separator: ", "))
+            }
             if !plugin.manifest.actions.isEmpty {
-                Text("Adds: " + plugin.manifest.actions.map { $0.title.text }
-                    .joined(separator: ", "))
+                Text("Adds: " + plugin.manifest.actions.map { $0.title.text }.joined(separator: ", "))
             }
             if !plugin.manifest.hooks.isEmpty {
                 Text("Listens to: " + plugin.manifest.hooks.map(\.event).joined(separator: ", "))
@@ -208,9 +246,22 @@ private struct PluginInstallApprovalView: View {
                 .font(.caption).foregroundStyle(.secondary)
             HStack {
                 Spacer()
-                Button("Cancel", action: cancel)
-                Button("Install", action: approve).buttonStyle(.borderedProminent)
+                Button("Cancel", action: cancel).keyboardShortcut(.cancelAction)
+                Button(pending.replacing ? "Update" : "Install", action: approve).buttonStyle(.borderedProminent)
             }
         }.padding(20).frame(width: 560).preferredColorScheme(.dark)
+    }
+
+    private func download(_ archive: StagedPluginArchive) -> some View {
+        let publisher = archive.entry.publisher.flatMap { registry?.publishers[$0] }
+        return VStack(alignment: .leading, spacing: 3) {
+            Text("From the plugin registry").font(.headline)
+            Text("Version \(archive.version.version)" + (publisher.map { " · " + $0.name.text } ?? "")
+                + (publisher?.verified == true ? " ✓" : ""))
+            Text(archive.version.url).font(.caption.monospaced()).lineLimit(1).truncationMode(.middle).textSelection(.enabled)
+            Text("SHA-256 " + archive.version.sha256).font(.caption2.monospaced()).foregroundStyle(.secondary)
+                .textSelection(.enabled)
+            Text("Checksum verified. Archive signatures are not checked yet.").font(.caption2).foregroundStyle(.secondary)
+        }.padding(8).frame(maxWidth: .infinity, alignment: .leading).background(.white.opacity(0.04)).cornerRadius(6)
     }
 }

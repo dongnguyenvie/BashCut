@@ -110,6 +110,37 @@ user's on/off switches. Each plugin is in one state:
 - Only `ready` plugins provide capabilities, show actions or receive hooks. Turning a plugin off also stops its
   session process.
 
+## Plugin registry
+
+BashCut can install plugins from a remote catalog. There is no server: the catalog is a static
+[`registry.json`](https://github.com/dongnguyenvie/bashcut-plugins/blob/main/registry.json) in the
+[`bashcut-plugins`](https://github.com/dongnguyenvie/bashcut-plugins) repo, and archives are that repo's GitHub
+Release assets. Publishing, the archive layout and the registry format are described in that repo's README.
+
+- **Browse** in the Plugins sheet lists registry plugins with their summary, publisher, size and status
+  (Install, Update, Installed, or why this Mac or BashCut cannot use it). **Updates** lists installed plugins with
+  a newer compatible version. Panels without a provider (Text, Audio, Voice, Export loudness) show
+  **Find a plugin…**, which opens Browse filtered to that capability.
+- **Fetching:** `registry.json` is cached in `~/Library/Application Support/BashCut/Registry/` for 5 minutes and
+  revalidated with its ETag. When the network fails, Browse shows the saved copy with the error. An unknown
+  `schemaVersion` asks to update BashCut. `defaults write app.bashcut pluginRegistryURL <url>` points BashCut at
+  another registry.
+- **Choosing a version:** the newest version whose `platforms` include this Mac (`macos-arm64`, `macos-x86_64` or
+  `macos-universal`), whose API window includes this BashCut and whose `minAppVersion` is not newer than the app.
+  Development builds without a version accept any `minAppVersion`.
+- **Installing:** BashCut downloads the archive over HTTPS from GitHub hosts, checks its size and the registry
+  SHA-256, unpacks it with `ditto` into a staging folder, and requires exactly one plugin folder, no links leaving
+  it, a valid manifest and the registry's id and version. Then it shows the install approval with the source URL,
+  checksum and dependency plan. Only after the user approves does it run dependency recipes, move the plugin into
+  `~/Library/Application Support/BashCut/Plugins/<id>/` and pin it. Nothing from the archive runs before that.
+- **Updating** uses the same steps and replaces the installed copy; the previous copy is kept in `.previous/` until
+  the move succeeds. A running session is stopped first. Option values and the on/off switches carry over.
+- **Removing** (Installed › Remove, `plugins remove`) deletes a plugin from the user or project plugin folder with
+  its trust pin and user-scope options; projects keep their `pluginOptions` and `pluginData`. Plugins inside the app
+  can only be turned off.
+- Archive signatures (`signature`, ed25519) are reserved and not checked yet; the checksum and the user's approval
+  are the gate.
+
 ## Discovery and precedence
 
 BashCut looks for plugin folders (each containing `plugin.json`) in three places, in this order:
@@ -511,6 +542,10 @@ Everything above is available to agents through the CLI and MCP (`bashcut_plugin
 | `plugins options <plugin>` | read | Options… |
 | `plugins option <plugin> --option <id> [--value <text>]` | edit | Editing an option; no value resets it |
 | `plugins set <plugin> [--enabled off] [--hooks off]` | edit | The Enabled and Hooks switches (agents can only turn them off) |
+| `plugins search [query] [--capability <id>] [--refresh]` | read | Browse |
+| `plugins updates` | read | Updates |
+| `plugins install <plugin> [--version <v>]` | edit, job | Install or Update in Browse: downloads and verifies, then shows the approval (only the user can approve) |
+| `plugins remove <plugin>` | edit | Installed › Remove |
 
 `ui actions` lists plugin actions next to built-in ones and `ui action <id or shortcut>` runs them. An action with
 parameters or `confirm` opens its sheet (dialog `plugin-action`); answer it with `ui respond run|cancel`, or use
@@ -570,5 +605,5 @@ are two more adapters, `PluginActionCapability` and `PluginHookCapability`, run 
 - Voice, Text, Audio and Export use `voice.synthesize`, `captions.transcribe`, `audio.beats` and
   `audio.loudness`. Other analysis and interchange panels are not connected yet.
 - Plugins cannot own panels or windows; contributions use the fixed placements above.
-- Bundled native providers, signed remote catalogs, a credential contract and detailed capability permissions
-  are future work.
+- The plugin registry (browse, install, update, remove) is implemented; archive signatures are not checked yet.
+- Bundled native providers, a credential contract and detailed capability permissions are future work.

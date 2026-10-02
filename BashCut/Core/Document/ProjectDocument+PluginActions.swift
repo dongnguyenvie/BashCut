@@ -349,6 +349,7 @@ extension ProjectDocument {
             try document.setPluginOption(plugin, option: id, value: value, author: author)
             return .object(["value": document.pluginOptionValues(plugin)[id] ?? .null, "rev": .integer(document.project.revision)])
         }
+        registerPluginRegistryCommands()
         handleAuthored("plugins.set") { document, arguments, _ in
             let plugin = try document.requirePlugin(arguments.string("plugin"))
             let enabled = arguments.optionalBool("enabled")

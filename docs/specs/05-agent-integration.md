@@ -69,6 +69,7 @@ arguments.
 | `captions export` | read | Text panel, Export SRT |
 | `export status` / `jobs status` | read | Export queue, job progress |
 | `plugins list` / `plugins health` | read | Plugins sheet, Check Health |
+| `plugins search` / `plugins updates` | read | Plugins › Browse and Updates |
 | `plugins actions` / `plugins hooks` / `plugins options <plugin>` | read | Plugin actions wherever they appear, Hook Activity, Options… |
 | `doctor run` | read | Doctor sheet |
 | `knowledge get` | read | Skills and project memory sheet |
@@ -98,6 +99,7 @@ arguments.
 | `plugins run <action> [--params '{…}']` | edit, job | A plugin action in the Plugins menu, toolbar, a context menu, a panel or the inspector, with its parameter sheet |
 | `plugins proposal <id> --decision apply\|discard` | edit | Reviewing an edit a plugin hook proposed |
 | `plugins option <plugin> --option <id> [--value]` / `plugins set <plugin> [--enabled off] [--hooks off]` | edit | Plugins sheet: Options…, Enabled and Hooks switches (agents can only turn them off) |
+| `plugins install <plugin> [--version]` / `plugins remove <plugin>` | edit | Browse › Install/Update (the approval stays with the user) and Installed › Remove |
 | `luts import <file.cube> [--name]` | edit | Filters panel, Import .cube… |
 | `knowledge memo <file>` / `knowledge skill <name> <file>` | edit | Skills and project memory sheet, Save |
 | `ui action <id\|shortcut>` | edit | Any editor button or shortcut, run by the same code: `timeline.split` / `cmd+b`, `timeline.zoom-in` / `cmd+=`, `playback.toggle` / `space`, `source.mark-in` / `i`; plugin action IDs and shortcuts too |

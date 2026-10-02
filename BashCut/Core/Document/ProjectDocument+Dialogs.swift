@@ -65,7 +65,7 @@ extension ProjectDocument {
                 name: "plugin-install", title: "Install \(pending.plugin.manifest.displayName)?",
                 message: "Only the user can approve a plugin install.",
                 options: [ModalOption("cancel", String(localized: "Cancel"))]
-            ) { [weak self] _ in self?.plugins.pendingInstall = nil })
+            ) { [weak self] _ in self?.plugins.cancelPendingInstall() })
         }
         sheets += pluginSheets()
         if let prompt = privilegedApproval {
