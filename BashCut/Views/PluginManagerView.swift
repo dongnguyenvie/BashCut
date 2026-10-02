@@ -77,7 +77,7 @@ private struct PluginRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
             HStack {
-                Text(plugin.manifest.name).font(.headline)
+                Text(plugin.manifest.displayName).font(.headline)
                 Text("v" + plugin.manifest.version).foregroundStyle(.secondary)
                 if plugin.manifest.transportKind == .session {
                     Text("session").font(.caption2.monospaced()).padding(.horizontal, 4)
@@ -91,7 +91,7 @@ private struct PluginRow: View {
                 Text(plugin.manifest.capabilities.joined(separator: " · ")).font(.caption.monospaced())
             }
             if !plugin.manifest.actions.isEmpty {
-                Text("Actions: " + plugin.manifest.actions.map { $0.title(language: PluginText.language) }
+                Text("Actions: " + plugin.manifest.actions.map { $0.title.text }
                     .joined(separator: ", ")).font(.caption)
             }
             if !plugin.manifest.hooks.isEmpty {
@@ -178,11 +178,11 @@ private struct PluginInstallApprovalView: View {
     let cancel: () -> Void
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Label("Install \(plugin.manifest.name)?", systemImage: "puzzlepiece.extension")
+            Label("Install \(plugin.manifest.displayName)?", systemImage: "puzzlepiece.extension")
                 .font(.title2)
             Text("Capabilities: " + plugin.manifest.capabilities.joined(separator: ", "))
             if !plugin.manifest.actions.isEmpty {
-                Text("Adds: " + plugin.manifest.actions.map { $0.title(language: PluginText.language) }
+                Text("Adds: " + plugin.manifest.actions.map { $0.title.text }
                     .joined(separator: ", "))
             }
             if !plugin.manifest.hooks.isEmpty {

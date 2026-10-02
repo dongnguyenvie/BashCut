@@ -22,9 +22,8 @@ public struct PluginOption: Codable, Sendable, Equatable, Identifiable {
     public enum Scope: String, Codable, Sendable { case project, user }
 
     public let id: String
-    public let title: String
-    public let titleVi: String?
-    public let help: String?
+    public let title: LocalizedText
+    public let help: LocalizedText?
     public let type: Kind
     public let defaultValue: JSONValue?
     public let choices: [String]?
@@ -34,18 +33,17 @@ public struct PluginOption: Codable, Sendable, Equatable, Identifiable {
     public let scope: Scope?
 
     enum CodingKeys: String, CodingKey {
-        case id, title, titleVi, help, type, choices, minimum, maximum, maxLength, scope
+        case id, title, help, type, choices, minimum, maximum, maxLength, scope
         case defaultValue = "default"
     }
 
     public init(
-        id: String, title: String, titleVi: String? = nil, help: String? = nil, type: Kind,
+        id: String, title: LocalizedText, help: LocalizedText? = nil, type: Kind,
         default defaultValue: JSONValue? = nil, choices: [String]? = nil, minimum: Double? = nil,
         maximum: Double? = nil, maxLength: Int? = nil, scope: Scope? = nil
     ) {
         self.id = id
         self.title = title
-        self.titleVi = titleVi
         self.help = help
         self.type = type
         self.defaultValue = defaultValue
@@ -57,9 +55,6 @@ public struct PluginOption: Codable, Sendable, Equatable, Identifiable {
     }
 
     public var effectiveScope: Scope { scope ?? .user }
-
-    /// The localized title for a language code (`vi` uses `titleVi` when given).
-    public func title(language: String) -> String { language.hasPrefix("vi") ? titleVi ?? title : title }
 
     /// The value the app uses when nothing is stored: the declared default or a type-appropriate empty value.
     public var fallback: JSONValue {
@@ -75,8 +70,8 @@ public struct PluginOption: Codable, Sendable, Equatable, Identifiable {
 
     func validate() throws {
         guard PluginIdentifier.isKey(id) else { throw PluginError.invalid("Option id \(id) must be a lowercase key") }
-        guard !title.trimmingCharacters(in: .whitespaces).isEmpty else {
-            throw PluginError.invalid("Option \(id) needs a title")
+        guard title.isValid(limit: 80), help?.isValid(limit: 500) ?? true else {
+            throw PluginError.invalid("Option \(id) needs a title (and help) per language, English included")
         }
         if type == .enumeration {
             guard let choices, !choices.isEmpty, Set(choices).count == choices.count, choices.count <= 100 else {
@@ -149,7 +144,7 @@ public struct PluginOption: Codable, Sendable, Equatable, Identifiable {
 
     /// JSON Schema for one option, published to MCP clients.
     public var jsonSchema: JSONValue {
-        var schema: [String: JSONValue] = ["description": .string(help ?? title)]
+        var schema: [String: JSONValue] = ["description": .string((help ?? title).text(for: "en"))]
         switch type {
         case .string: schema["type"] = .string("string")
         case .enumeration:
@@ -206,8 +201,7 @@ public struct PluginActionContribution: Codable, Sendable, Equatable, Identifiab
     public enum ContextPart: String, Codable, Sendable, CaseIterable { case timeline, media, project }
 
     public let id: String
-    public let title: String
-    public let titleVi: String?
+    public let title: LocalizedText
     /// SF Symbol name for buttons.
     public let icon: String?
     public let placements: [String]
@@ -217,16 +211,15 @@ public struct PluginActionContribution: Codable, Sendable, Equatable, Identifiab
     public let shortcut: String?
     public let context: [ContextPart]?
     /// Asks the user before the action runs (destructive or slow actions).
-    public let confirm: String?
+    public let confirm: LocalizedText?
 
     public init(
-        id: String, title: String, titleVi: String? = nil, icon: String? = nil, placements: [String],
+        id: String, title: LocalizedText, icon: String? = nil, placements: [String],
         when: String? = nil, params: [PluginOption]? = nil, shortcut: String? = nil,
-        context: [ContextPart]? = nil, confirm: String? = nil
+        context: [ContextPart]? = nil, confirm: LocalizedText? = nil
     ) {
         self.id = id
         self.title = title
-        self.titleVi = titleVi
         self.icon = icon
         self.placements = placements
         self.when = when
@@ -235,8 +228,6 @@ public struct PluginActionContribution: Codable, Sendable, Equatable, Identifiab
         self.context = context
         self.confirm = confirm
     }
-
-    public func title(language: String) -> String { language.hasPrefix("vi") ? titleVi ?? title : title }
 
     /// Placements the app owns. `panel.<library panel>` and `inspector.<tab>` name a panel or inspector tab.
     public static let placementPattern =
@@ -247,8 +238,8 @@ public struct PluginActionContribution: Codable, Sendable, Equatable, Identifiab
         guard id.hasPrefix(pluginID + "."), PluginIdentifier.isStable(id) else {
             throw PluginError.invalid("Action id \(id) must start with the plugin id \(pluginID).")
         }
-        guard !title.trimmingCharacters(in: .whitespaces).isEmpty, title.count <= 80 else {
-            throw PluginError.invalid("Action \(id) needs a title of at most 80 characters")
+        guard title.isValid(limit: 80), confirm?.isValid(limit: 500) ?? true else {
+            throw PluginError.invalid("Action \(id) needs a title of at most 80 characters per language, English included")
         }
         guard !placements.isEmpty, Set(placements).count == placements.count,
             placements.allSatisfy({ $0.range(of: Self.placementPattern, options: .regularExpression) != nil })

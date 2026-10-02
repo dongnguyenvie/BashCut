@@ -51,7 +51,7 @@ from its standard output. Put the folder in one of the [plugin folders](#discove
 |---|---|---|
 | `schema` | Yes | Exactly `bashcut.plugin/1` |
 | `id` | Yes | Reverse-domain style: lowercase letters and digits in at least two parts separated by `.` or `-` (`example.voice`) |
-| `name` | Yes | Nonempty display name |
+| `name` | Yes | Display name, up to 80 characters; [localized text](#localized-text) |
 | `version` | Yes | Semantic version, such as `1.2.0` or `1.2.0-beta.1` |
 | `apiVersion` | Yes | `1` or `2`; see [API versions](#api-versions) |
 | `minApiVersion` / `maxApiVersion` | No | The host API window the plugin works with; `minApiVersion` defaults to `apiVersion` |
@@ -65,6 +65,19 @@ from its standard output. Put the folder in one of the [plugin folders](#discove
 
 BashCut resolves features by capability and provider ID, never by vendor SDK. A plugin is only chosen for a
 capability when it declares a provider for it.
+
+### Localized text
+
+Text people see (`name`, option `title` and `help`, action `title` and `confirm`) is either a string, which is
+English, or a map from language code to text:
+
+```json
+"title": {"en": "Set clip opacity…", "vi": "Đặt độ mờ clip…"}
+```
+
+Keys are language codes such as `en`, `vi` or `pt-BR`; a map with more than one language must include `en`. BashCut
+shows the interface language, then the base language (`pt-BR` → `pt`), then English. Values are nonempty. Provider
+and dependency names stay plain strings.
 
 ## API versions
 
@@ -259,7 +272,7 @@ values with every action and hook request as `options`.
 
 ```json
 "options": [
-  {"id": "sectionPrefix", "title": "Section prefix", "titleVi": "Tiền tố mốc", "type": "string",
+  {"id": "sectionPrefix", "title": {"en": "Section prefix", "vi": "Tiền tố mốc"}, "type": "string",
    "default": "Mark", "scope": "project"},
   {"id": "strength", "title": "Strength", "type": "number", "minimum": 0, "maximum": 1, "default": 0.5}
 ]
@@ -268,8 +281,8 @@ values with every action and hook request as `options`.
 | Field | Rules |
 |---|---|
 | `id` | A key: a letter, then up to 63 letters, digits, `_` or `-`; unique in the plugin |
-| `title`, `titleVi` | Display name; `titleVi` is used when the interface language is Vietnamese |
-| `help` | Optional caption under the field |
+| `title` | Label; [localized text](#localized-text) such as `{"en": "Opacity", "vi": "Độ mờ"}` |
+| `help` | Optional caption under the field; localized text |
 | `type` | `string`, `enum`, `number`, `integer` or `bool` |
 | `default` | Must fit the type; without it: empty string, the first choice, `minimum` (or 0) or `false` |
 | `choices` | Required for `enum`: 1–100 unique strings |
@@ -291,8 +304,7 @@ code.
   "actions": [
     {
       "id": "example.toolkit.set-opacity",
-      "title": "Set clip opacity…",
-      "titleVi": "Đặt độ mờ clip…",
+      "title": {"en": "Set clip opacity…", "vi": "Đặt độ mờ clip…"},
       "icon": "circle.lefthalf.filled",
       "placements": ["menu.plugins", "clip.context", "inspector.video"],
       "when": "selection.kind == video",
@@ -305,14 +317,14 @@ code.
 | Field | Rules |
 |---|---|
 | `id` | Starts with the plugin ID and a dot (`example.toolkit.grade`); unique; at most 64 actions |
-| `title`, `titleVi` | Up to 80 characters |
+| `title` | Up to 80 characters; a string (English) or a language map like `{"en": …, "vi": …}` |
 | `icon` | Optional SF Symbol name |
 | `placements` | One or more of the placements below |
 | `when` | Optional [condition](#when-conditions); without it the action is available whenever a saved project is open |
 | `params` | Up to 32 [options](#options) (their `scope` is ignored); shown in a native sheet before the action runs |
 | `shortcut` | Optional, written like `cmd+shift+g`; ignored (and reported in diagnostics) when a built-in or earlier plugin action uses it |
 | `context` | Extra read-only data: `timeline` (all tracks), `media` (all media with absolute paths), `project` (the whole document) |
-| `confirm` | A question shown before the action runs from the UI |
+| `confirm` | A question shown before the action runs from the UI; localized text |
 
 ### Placements
 

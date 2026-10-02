@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+- **Localized plugin text**: plugin `name`, option `title`/`help` and action `title`/`confirm` take a string (English)
+  or a language map such as `{"en": "Opacity", "vi": "Độ mờ"}`, replacing the `titleVi` fields. BashCut shows the
+  interface language, then the base language, then English.
 - **Plugin API 2: actions, hooks, options, sessions and trust.** Plugins can add actions to the Plugins menu,
   toolbar, clip/track/timeline/media context menus, library panels and inspector tabs (`contributes.actions`, with
   `when` conditions, native parameter sheets and shortcuts) and subscribe to 19 editor events

@@ -23,7 +23,7 @@ struct PluginContributionsTests {
             "options": [{"id": "strength", "title": "Strength", "type": "number", "minimum": 0, "maximum": 1,
                          "default": 0.5, "scope": "project"}],
             "contributes": {
-              "actions": [{"id": "example.toolkit.grade", "title": "Auto Grade", "titleVi": "Tự chỉnh màu",
+              "actions": [{"id": "example.toolkit.grade", "title": {"en": "Auto Grade", "vi": "Tự chỉnh màu"},
                            "placements": ["menu.plugins", "clip.context", "panel.filters", "inspector.color"],
                            "when": "selection.kind == video && !playing",
                            "params": [{"id": "mode", "title": "Mode", "type": "enum", "choices": ["natural", "vivid"]}],
@@ -33,7 +33,9 @@ struct PluginContributionsTests {
             """))
         try plugin.validate()
         #expect(plugin.transportKind == .session)
-        #expect(plugin.actions.first?.title(language: "vi") == "Tự chỉnh màu")
+        #expect(plugin.actions.first?.title.text(for: "vi") == "Tự chỉnh màu")
+        #expect(plugin.actions.first?.title.text(for: "fr") == "Auto Grade")
+        #expect(plugin.options?.first?.title.text(for: "vi") == "Strength")
         #expect(plugin.hooks.map(\.event) == ["media.imported", "edit.committed"])
         #expect(plugin.hooks.last?.proposesEdits == true)
         #expect(plugin.hooks.first?.proposesEdits == false)
@@ -93,6 +95,25 @@ struct PluginContributionsTests {
         let legacy = try manifest(base(
             #", "minApiVersion": 1, "maxApiVersion": 1"#, apiVersion: 1, capabilities: #"["audio.beats"]"#))
         #expect(legacy.incompatibility == nil)
+    }
+
+    @Test("Localized text takes a string or a language map")
+    func localizedText() throws {
+        let decode = { (json: String) in try JSONDecoder().decode(LocalizedText.self, from: Data(json.utf8)) }
+        let plain = try decode(#""Grade""#)
+        #expect(plain.values == ["en": "Grade"])
+        let map = try decode(#"{"en": "Color", "pt": "Cor", "vi": "Màu"}"#)
+        #expect(map.text(for: "vi") == "Màu")
+        #expect(map.text(for: "pt-BR") == "Cor")
+        #expect(map.text(for: "ja") == "Color")
+        #expect(String(data: try JSONEncoder().encode(plain), encoding: .utf8) == #""Grade""#)
+        // Several languages need English; empty values are rejected.
+        for bad in [#"{"vi": "Màu", "pt": "Cor"}"#, #"{"en": " "}"#] {
+            let plugin = try manifest(base(
+                #", "contributes": {"actions": [{"id": "example.toolkit.a", "placements": ["toolbar"], "title": "#
+                    + bad + "}]}"))
+            #expect(throws: PluginError.self) { try plugin.validate() }
+        }
     }
 
     @Test("When expressions test app facts")

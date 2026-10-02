@@ -27,7 +27,7 @@ struct ContributedAction: Identifiable {
     /// nil when the plugin gave none or it collides with a built-in or earlier plugin shortcut.
     let shortcut: UIShortcut?
     var id: String { spec.id }
-    var title: String { spec.title(language: PluginText.language) }
+    var title: String { spec.title.text }
     var params: [PluginOption] { spec.params ?? [] }
 }
 
@@ -56,7 +56,7 @@ struct PluginProposal: Identifiable {
     let event: String
     let proposal: PluginEditProposal
     let createdAt: Date
-    var title: String { proposal.label ?? "\(plugin.manifest.name): \(event)" }
+    var title: String { proposal.label ?? "\(plugin.manifest.displayName): \(event)" }
 
     var json: JSONValue {
         .object([
@@ -71,7 +71,7 @@ struct PluginProposal: Identifiable {
 
 enum PluginText {
     /// The language plugin titles are shown in: the app's interface language.
-    static var language: String { Bundle.main.preferredLocalizations.first ?? "en" }
+    static var language: String { LocalizedText.preferredLanguage }
 }
 
 /// UI state for the plugin catalog. Capability calls go through `CapabilityService`, which the
@@ -163,7 +163,7 @@ enum PluginText {
     func trustPlugin(_ plugin: InstalledPlugin) {
         do {
             try trust.trust(plugin)
-            message = String(format: String(localized: "Trusted %@"), plugin.manifest.name)
+            message = String(format: String(localized: "Trusted %@"), plugin.manifest.displayName)
         } catch { message = error.localizedDescription }
         refresh(projectRoot: projectRoot)
     }
@@ -214,7 +214,7 @@ enum PluginText {
             (plugin.manifest.providers ?? []).compactMap { provider in
                 guard provider.capability == capability else { return nil }
                 return PluginProviderChoice(
-                    pluginID: plugin.id, pluginName: plugin.manifest.name, provider: provider)
+                    pluginID: plugin.id, pluginName: plugin.manifest.displayName, provider: provider)
             }
         }.sorted {
             ($0.provider.priority, $0.provider.name) > ($1.provider.priority, $1.provider.name)

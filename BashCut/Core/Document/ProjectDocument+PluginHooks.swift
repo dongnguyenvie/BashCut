@@ -126,7 +126,7 @@ extension ProjectDocument {
         registry.record(method: "plugin.hook." + event, author: .plugin, succeeded: true)
         guard proposal.hasEdits else {
             plugins.log(plugin.id, event, .delivered, proposal.message ?? "")
-            if let text = proposal.message, session == sessionID { message = "\(plugin.manifest.name): \(text)" }
+            if let text = proposal.message, session == sessionID { message = "\(plugin.manifest.displayName): \(text)" }
             return
         }
         guard hook.proposesEdits else {
@@ -137,7 +137,7 @@ extension ProjectDocument {
             plugins.log(plugin.id, event, .ignored, "the project changed before the hook answered")
             return
         }
-        let label = proposal.label ?? "\(plugin.manifest.name): \(event)"
+        let label = proposal.label ?? "\(plugin.manifest.displayName): \(event)"
         if settings.autoApplyPluginHookEdits {
             do {
                 try applyPluginProposal(proposal, plugin: plugin, label: label, applyUI: false)
@@ -150,7 +150,7 @@ extension ProjectDocument {
                 id: UUID().uuidString, plugin: plugin, event: event, proposal: proposal, createdAt: Date()))
             if plugins.proposals.count > 20 { plugins.proposals.removeFirst(plugins.proposals.count - 20) }
             plugins.log(plugin.id, event, .proposed, "\(proposal.operations.count) operations")
-            message = String(format: String(localized: "%@ proposes an edit: %@"), plugin.manifest.name, label)
+            message = String(format: String(localized: "%@ proposes an edit: %@"), plugin.manifest.displayName, label)
         }
     }
 

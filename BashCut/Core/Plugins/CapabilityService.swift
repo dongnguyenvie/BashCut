@@ -145,7 +145,7 @@ public struct CapabilityService: Sendable {
         }
         let candidates = declaring.filter { availability($0) == .ready }
         guard !candidates.isEmpty else {
-            let reasons = declaring.map { "\($0.manifest.name): \(availability($0).detail)" }
+            let reasons = declaring.map { "\($0.manifest.displayName): \(availability($0).detail)" }
             throw PluginError.invalid("No enabled provider for \(capability). " + reasons.joined(separator: "; "))
         }
         let transport = healthTransport

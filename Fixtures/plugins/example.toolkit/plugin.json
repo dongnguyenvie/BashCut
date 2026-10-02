@@ -11,15 +11,14 @@
     {"id": "python", "name": "Python 3", "kind": "executable", "probe": {"executable": "python3", "arguments": ["--version"]}}
   ],
   "options": [
-    {"id": "sectionPrefix", "title": "Section prefix", "titleVi": "Tiền tố mốc", "type": "string", "default": "Mark", "scope": "project"},
-    {"id": "announce", "title": "Announce imports", "titleVi": "Báo khi nhập media", "type": "bool", "default": true}
+    {"id": "sectionPrefix", "title": {"en": "Section prefix", "vi": "Tiền tố mốc"}, "type": "string", "default": "Mark", "scope": "project"},
+    {"id": "announce", "title": {"en": "Announce imports", "vi": "Báo khi nhập media"}, "type": "bool", "default": true}
   ],
   "contributes": {
     "actions": [
       {
         "id": "example.toolkit.mark-playhead",
-        "title": "Mark section at playhead",
-        "titleVi": "Đặt mốc tại playhead",
+        "title": {"en": "Mark section at playhead", "vi": "Đặt mốc tại playhead"},
         "icon": "flag",
         "placements": ["menu.plugins", "toolbar", "timeline.context"],
         "when": "project && timeline",
@@ -27,19 +26,17 @@
       },
       {
         "id": "example.toolkit.set-opacity",
-        "title": "Set clip opacity…",
-        "titleVi": "Đặt độ mờ clip…",
+        "title": {"en": "Set clip opacity…", "vi": "Đặt độ mờ clip…"},
         "icon": "circle.lefthalf.filled",
         "placements": ["menu.plugins", "clip.context", "inspector.video"],
         "when": "selection.kind == video",
         "params": [
-          {"id": "opacity", "title": "Opacity", "titleVi": "Độ mờ", "type": "number", "minimum": 0, "maximum": 1, "default": 0.5}
+          {"id": "opacity", "title": {"en": "Opacity", "vi": "Độ mờ"}, "type": "number", "minimum": 0, "maximum": 1, "default": 0.5}
         ]
       },
       {
         "id": "example.toolkit.describe-media",
-        "title": "Describe media",
-        "titleVi": "Mô tả media",
+        "title": {"en": "Describe media", "vi": "Mô tả media"},
         "placements": ["media.context", "panel.media"],
         "when": "media",
         "context": ["media"]

@@ -103,7 +103,7 @@ struct PluginCatalogTests {
         func plugin(_ id: String, provider: String, priority: Int) -> InstalledPlugin {
             InstalledPlugin(
                 manifest: PluginManifest(
-                    id: id, name: id, version: "1.0.0", entrypoint: "bin/provider",
+                    id: id, name: LocalizedText(["en": id]), version: "1.0.0", entrypoint: "bin/provider",
                     capabilities: ["voice.synthesize"],
                     providers: [
                         PluginProvider(
