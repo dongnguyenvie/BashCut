@@ -26,8 +26,9 @@ scripts/verify.sh build
 scripts/verify.sh test
 scripts/verify.sh perf       # 20 synthetic clips, ~30 seconds, 1080×1920
 scripts/verify.sh lint       # requires SwiftLint
+scripts/verify.sh xcode test # regenerates and tests the Xcode project (requires XcodeGen)
 ```
 
 Pure model tests also run independently with `cd Packages/BashCutCore && swift test`. Tests never use the real video workspace or agent CLIs. Package downloads happen at dependency resolution, not in tests.
 
-See [implementation status](docs/implementation-status.md) for acceptance results and remaining work. See [extension boundaries](docs/extension-boundaries.md) for the modular design.
+See [implementation status](docs/implementation-status.md) for acceptance results and remaining work. See [extension boundaries](docs/extension-boundaries.md) for the modular design and [CONTRIBUTING.md](CONTRIBUTING.md) for the build layout and one-file templates (agent providers, model adapters, commands, capabilities, timeline formats).
