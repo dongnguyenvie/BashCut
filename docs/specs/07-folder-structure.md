@@ -115,9 +115,10 @@ bash-cut/
 │       │   ├── BashCutImport/        # edl.json → Project
 │       │   ├── BashCutInterchange/   # OTIO JSON writer, Resolve plan builder (pure, testable)
 │       │   └── BashCutPlugin/        # bashcut.plugin/1 manifest, discovery, process RPC, health
-│       └── Tests/<Target>Tests/
+│       └── Tests/<Target>Tests/      # one test target per module; BashCutProjectFixtures = shared projects
 │
-├── BashCutTests/                     # mirrors BashCut/ (Core/Engine/…, ViewModels/…), Helpers/ (fakes)
+├── Tests/                            # one test target per app module (BashCutEngineTests, …DocumentTests, …)
+│   └── BashCutTestSupport/           # shared fixtures: generated media, scratch folders, synthetic audio
 ├── BashCutUITests/                   # XCTest; UITestCase launches the app on a temp fixture workspace
 ├── BashCutPerfTests/                 # XCTest measure: composition build, 10 s playback, 30 s export
 │
@@ -139,14 +140,19 @@ bash-cut/
     └── THIRD_PARTY.md                # dependencies and licenses
 ```
 
-## Targets (`project.yml`)
+## Targets
+
+`Package.swift` is the single source of targets. `project.yml` only declares what Xcode must own (the app
+bundle, the embedded CLI/MCP tools and one test bundle over `Tests/`) and links the package's library
+products (`BashCutEngine`, `BashCutStorage`, `BashCutAgent`, `BashCutAutomation`, `BashCutPlugins`,
+`BashCutDocument`). `scripts/verify.sh xcode [build|test]` regenerates the project and builds or tests it.
 
 | Target | Type | Notes |
 |---|---|---|
 | `BashCut` | application | macOS 14.0+; depends on `BashCutCore` products and SwiftTerm; provider-specific ML/audio libraries are not linked |
 | `bashcut` | tool | CLI (swift-argument-parser + `BashCutWire`); copied to `Contents/MacOS` (`copy: destination: executables`) |
 | `bashcut-mcp` | tool | stdio MCP server (MCP Swift SDK + `BashCutWire`) |
-| `BashCutTests` | unit test | Swift Testing + swift-snapshot-testing |
+| `BashCutTests` | unit test | Xcode bundle over every `Tests/*Tests` folder; SwiftPM runs them as per-module targets |
 | `BashCutUITests` | UI test | XCTest |
 | `BashCutPerfTests` | unit test | run separately; not part of the default CI run |
 

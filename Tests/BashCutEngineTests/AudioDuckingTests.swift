@@ -1,5 +1,6 @@
 import AVFoundation
 import BashCutProject
+import BashCutTestSupport
 import Testing
 
 @testable import BashCutEngine
@@ -37,8 +38,7 @@ struct AudioDuckingTests {
 
     @Test("Composition applies track ducking to music parameters")
     func composition() async throws {
-        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
-            .appendingPathComponent("Fixtures/media")
+        let root = TestFixtures.mediaRoot
         let media = Media(fields: [
             "id": .string("m"), "path": .string("test.mp4"),
             "fps": FrameRate().json, "frames": .integer(59),

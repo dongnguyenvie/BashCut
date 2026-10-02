@@ -1,6 +1,7 @@
 import AVFoundation
 import AppKit
 import BashCutProject
+import BashCutTestSupport
 import CoreImage
 import SnapshotTesting
 import Testing
@@ -10,13 +11,8 @@ import Testing
 struct EngineTests {
     @Test("Generated footage renders through the shared compositor with captions and audio")
     func render() async throws {
-        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
-            .deletingLastPathComponent()
-        let mediaRoot = root.appendingPathComponent("Fixtures/media")
-        guard FileManager.default.fileExists(atPath: mediaRoot.appendingPathComponent("test.mp4").path)
-        else {
-            throw ProjectError.invalid("Run Fixtures/make-media.sh before engine integration tests")
-        }
+        _ = try TestFixtures.requireVideo()
+        let mediaRoot = TestFixtures.mediaRoot
         let performance = ProcessInfo.processInfo.environment["BASHCUT_PERF"] == "1"
         let count = performance ? 20 : 2
         var project = Project(name: "Synthetic engine fixture")
@@ -59,7 +55,7 @@ struct EngineTests {
             as: .image(precision: 0.98), named: "vietnamese-caption",
             record: ProcessInfo.processInfo.environment["BASHCUT_RECORD_SNAPSHOTS"] == "1" ? .all : .never
         )
-        let fixturePreview = root.appendingPathComponent("build/engine-preview.png")
+        let fixturePreview = TestFixtures.repositoryRoot.appendingPathComponent("build/engine-preview.png")
         try FileManager.default.createDirectory(
             at: fixturePreview.deletingLastPathComponent(), withIntermediateDirectories: true)
         let context = CIContext()

@@ -4,9 +4,18 @@ import PackageDescription
 let package = Package(
     name: "BashCut",
     platforms: [.macOS(.v14)],
+    // Single source of truth for targets: the Xcode project (project.yml) links these library products
+    // instead of declaring its own copies of the core modules.
     products: [.executable(name: "BashCutApp", targets: ["BashCut"]),
                .executable(name: "bashcut", targets: ["BashCutCLI"]),
-               .executable(name: "bashcut-mcp", targets: ["BashCutMCP"])],
+               .executable(name: "bashcut-mcp", targets: ["BashCutMCP"]),
+               .library(name: "BashCutEngine", targets: ["BashCutEngine"]),
+               .library(name: "BashCutStorage", targets: ["BashCutStorage"]),
+               .library(name: "BashCutAutomation", targets: ["BashCutAutomation"]),
+               .library(name: "BashCutAgent", targets: ["BashCutAgent"]),
+               .library(name: "BashCutPlugins", targets: ["BashCutPlugins"]),
+               .library(name: "BashCutDocument", targets: ["BashCutDocument"]),
+               .library(name: "BashCutTestSupport", targets: ["BashCutTestSupport"])],
     dependencies: [.package(path: "Packages/BashCutCore"),
                    .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.17.0"),
                    .package(url: "https://github.com/migueldeicaza/SwiftTerm", from: "1.20.0"),
@@ -41,9 +50,23 @@ let package = Package(
             .product(name: "BashCutPlugin", package: "BashCutCore"),
             .product(name: "SwiftTerm", package: "SwiftTerm")], path: "BashCut",
             exclude: ["Core/Engine", "Core/Storage", "Core/Agent", "Core/Automation", "Core/Plugins", "Core/Services", "Info.plist", "BashCut.entitlements", "Resources"]),
-        .testTarget(name: "BashCutEngineTests", dependencies: ["BashCutEngine", "BashCutStorage", "BashCutAgent", "BashCutAutomation", "BashCutDocument",
-            "BashCutPlugins", .product(name: "BashCutPlugin", package: "BashCutCore"),
-            .product(name: "SnapshotTesting", package: "swift-snapshot-testing")], path: "BashCutTests",
-            exclude: ["__Snapshots__"])
+        // Tests: one target per module plus shared fixtures (generated media, scratch folders, synthetic audio).
+        .target(name: "BashCutTestSupport", path: "Tests/BashCutTestSupport"),
+        .testTarget(name: "BashCutEngineTests", dependencies: ["BashCutEngine", "BashCutTestSupport",
+            .product(name: "BashCutProject", package: "BashCutCore"),
+            .product(name: "SnapshotTesting", package: "swift-snapshot-testing")], exclude: ["__Snapshots__"]),
+        .testTarget(name: "BashCutStorageTests", dependencies: ["BashCutStorage", "BashCutTestSupport",
+            .product(name: "BashCutProject", package: "BashCutCore")]),
+        .testTarget(name: "BashCutAutomationTests", dependencies: ["BashCutAutomation", "BashCutEngine", "BashCutTestSupport",
+            .product(name: "BashCutProject", package: "BashCutCore")]),
+        .testTarget(name: "BashCutAgentTests", dependencies: ["BashCutAgent", "BashCutTestSupport",
+            .product(name: "BashCutProject", package: "BashCutCore")]),
+        .testTarget(name: "BashCutPluginsTests", dependencies: ["BashCutPlugins", "BashCutAutomation", "BashCutTestSupport",
+            .product(name: "BashCutProject", package: "BashCutCore"),
+            .product(name: "BashCutPlugin", package: "BashCutCore")]),
+        .testTarget(name: "BashCutDocumentTests", dependencies: ["BashCutDocument", "BashCutEngine", "BashCutStorage",
+            "BashCutAutomation", "BashCutTestSupport",
+            .product(name: "BashCutProject", package: "BashCutCore"),
+            .product(name: "BashCutInterchange", package: "BashCutCore")]),
     ]
 )

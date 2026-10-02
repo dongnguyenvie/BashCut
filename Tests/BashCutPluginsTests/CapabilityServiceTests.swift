@@ -1,6 +1,7 @@
 import AVFoundation
 import BashCutPlugin
 import BashCutProject
+import BashCutTestSupport
 import Foundation
 import Testing
 
@@ -55,20 +56,9 @@ private struct PluginSandbox {
 
     func media(_ name: String = "source.wav") throws -> URL {
         let url = project.appendingPathComponent(name)
-        try writeTone(to: url, seconds: 0.5)
+        try TestFixtures.writeTone(to: url, seconds: 0.5)
         return url
     }
-}
-
-private func writeTone(to url: URL, seconds: Double) throws {
-    let format = try #require(AVAudioFormat(standardFormatWithSampleRate: 48_000, channels: 1))
-    let frames = AVAudioFrameCount(seconds * 48_000)
-    let buffer = try #require(AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frames))
-    buffer.frameLength = frames
-    let samples = try #require(buffer.floatChannelData?[0])
-    for index in 0..<Int(frames) { samples[index] = Float(sin(Double(index) * 0.05) * 0.2) }
-    let file = try AVAudioFile(forWriting: url, settings: format.settings)
-    try file.write(from: buffer)
 }
 
 @Suite("Capability service")
@@ -161,7 +151,7 @@ struct CapabilityServiceTests {
         let sandbox = try PluginSandbox()
         defer { sandbox.cleanup() }
         let tone = sandbox.root.appendingPathComponent("tone.wav")
-        try writeTone(to: tone, seconds: 1)
+        try TestFixtures.writeTone(to: tone, seconds: 1)
         try sandbox.addPlugin(
             "test.voice", providers: [PluginProvider(id: "test.tts", capability: "voice.synthesize", name: "T")],
             body: """

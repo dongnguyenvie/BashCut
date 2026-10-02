@@ -1,3 +1,4 @@
+import BashCutProjectFixtures
 import Foundation
 import Testing
 
@@ -5,19 +6,7 @@ import Testing
 
 struct AdvancedTrimTests {
     private func fixture() throws -> Project {
-        let asset = Media(fields: [
-            "id": .string("m"), "path": .string("clip.mov"),
-            "fps": FrameRate(60, 1).json, "frames": .integer(600),
-        ])
-        return try Project(name: "Trim", fps: FrameRate(30, 1)).applying(
-            .group(
-                label: "Import", author: .user,
-                ops: [
-                    .addMedia(asset),
-                    .insert(track: "v1", item: Item(id: "left", media: "m", at: 0, duration: 60, sourceIn: 20)),
-                    .insert(track: "v1", item: Item(id: "right", media: "m", at: 60, duration: 60, sourceIn: 140)),
-                ])
-        ).project
+        try ProjectFixtures.twoClips("left", "right", sourceIn: (20, 140), name: "Trim")
     }
     @Test("Rolling either side preserves runtime and maps source FPS")
     func roll() throws {

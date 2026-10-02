@@ -105,8 +105,10 @@ for every helper function.
 
 **Layout:**
 
-- Test folders mirror the app.
-- Fakes implement protocols directly and live in `BashCutTests/Helpers/`.
+- One test target per module (`Tests/<Module>Tests`, `Packages/BashCutCore/Tests/<Module>Tests`).
+- Shared fixtures live in `Tests/BashCutTestSupport` (media, scratch folders, audio) and
+  `Packages/BashCutCore/Tests/BashCutProjectFixtures` (projects, apply→undo→redo helper).
+- Fakes implement protocols directly and live next to the tests that use them.
 
 **Required test coverage:**
 

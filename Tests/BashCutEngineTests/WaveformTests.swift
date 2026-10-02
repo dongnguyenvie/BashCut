@@ -1,4 +1,5 @@
 import AVFoundation
+import BashCutTestSupport
 import Foundation
 import Testing
 
@@ -7,8 +8,7 @@ import Testing
 struct WaveformTests {
     @Test("Stereo peaks retain opposite-phase channels and detect silent regions")
     func audio() async throws {
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let directory = try TestFixtures.temporaryDirectory("waveform")
         defer { try? FileManager.default.removeItem(at: directory) }
         let url = directory.appendingPathComponent("test.wav")
         try makeAudio(url)
@@ -24,8 +24,7 @@ struct WaveformTests {
 
     @Test("Disk caches round-trip, reject corrupt data and invalidate on source changes")
     func cache() async throws {
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let directory = try TestFixtures.temporaryDirectory("waveform")
         defer { try? FileManager.default.removeItem(at: directory) }
         let url = directory.appendingPathComponent("test.wav")
         let cache = directory.appendingPathComponent("cache")
@@ -56,17 +55,10 @@ struct WaveformTests {
         #expect(waveform.peak(from: 2, to: 1) == 0)
     }
 
+    /// One second of 8 kHz stereo: a 400 Hz tone with opposite-phase channels, silent after 0.5 s.
     private func makeAudio(_ url: URL, amplitude: Float = 0.8) throws {
-        let format = try #require(AVAudioFormat(standardFormatWithSampleRate: 8000, channels: 2))
-        let buffer = try #require(AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 8000))
-        buffer.frameLength = 8000
-        let channels = try #require(buffer.floatChannelData)
-        for index in 0..<8000 {
-            let value: Float = index < 4000 ? amplitude * sin(Float(index) * 2 * .pi * 400 / 8000) : 0
-            channels[0][index] = value
-            channels[1][index] = -value
-        }
-        let file = try AVAudioFile(forWriting: url, settings: format.settings)
-        try file.write(from: buffer)
+        try TestFixtures.writeTone(
+            to: url, seconds: 1, sampleRate: 8000, channels: 2,
+            tone: TestFixtures.Tone(frequency: 400, amplitude: amplitude, silentAfter: 0.5))
     }
 }

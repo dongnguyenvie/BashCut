@@ -1,5 +1,6 @@
 import AVFoundation
 import BashCutProject
+import BashCutTestSupport
 import CoreGraphics
 import Testing
 
@@ -8,8 +9,7 @@ import Testing
 struct EngineControlsTests {
     @Test("Composition resolves shared workspace media")
     func sharedWorkspaceMedia() async throws {
-        let fixture = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
-            .appendingPathComponent("Fixtures/media/test.mp4")
+        let fixture = TestFixtures.videoURL
         let workspace = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
         let assets = workspace.appendingPathComponent("assets", isDirectory: true)
@@ -35,8 +35,7 @@ struct EngineControlsTests {
 
     @Test("Freeze frame holds one source image across the clip")
     func freezeFrame() async throws {
-        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
-            .appendingPathComponent("Fixtures/media")
+        let root = TestFixtures.mediaRoot
         let media = Media(fields: [
             "id": .string("m"), "path": .string("test.mp4"),
             "fps": FrameRate().json, "frames": .integer(59),
@@ -59,8 +58,7 @@ struct EngineControlsTests {
 
     @Test("Color, opacity and audio controls reach the shared composition")
     func controls() async throws {
-        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
-            .appendingPathComponent("Fixtures/media")
+        let root = TestFixtures.mediaRoot
         let media = Media(fields: [
             "id": .string("m"), "path": .string("test.mp4"),
             "fps": FrameRate().json, "frames": .integer(59),
@@ -107,8 +105,7 @@ struct EngineControlsTests {
 
     @Test("Transitions add a tweened outgoing hold and incoming layer")
     func transitions() async throws {
-        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
-            .appendingPathComponent("Fixtures/media")
+        let root = TestFixtures.mediaRoot
         let media = Media(fields: [
             "id": .string("m"), "path": .string("test.mp4"),
             "fps": FrameRate().json, "frames": .integer(59),
@@ -158,8 +155,7 @@ struct EngineControlsTests {
         #expect(parsed.dimension == 2)
         #expect(parsed.cubeData.count == 2 * 2 * 2 * 4 * MemoryLayout<Float>.size)
 
-        let fixture = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
-            .appendingPathComponent("Fixtures/media/test.mp4")
+        let fixture = TestFixtures.videoURL
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: root.appendingPathComponent("luts"), withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }

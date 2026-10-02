@@ -25,87 +25,10 @@ packages:
     exactVersion: 0.12.1
   BashCutCore:
     path: Packages/BashCutCore
+  # The root Package.swift is the single source of targets; Xcode links its library products.
+  BashCut:
+    path: .
 targets:
-  BashCutEngine:
-    type: framework
-    platform: macOS
-    sources: [BashCut/Core/Engine]
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: app.bashcut.engine
-        GENERATE_INFOPLIST_FILE: YES
-    dependencies:
-      - package: BashCutCore
-        product: BashCutProject
-      - package: BashCutCore
-        product: BashCutPlugin
-  BashCutStorage:
-    type: framework
-    platform: macOS
-    sources: [BashCut/Core/Storage]
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: app.bashcut.storage
-        GENERATE_INFOPLIST_FILE: YES
-    dependencies:
-      - package: BashCutCore
-        product: BashCutProject
-  BashCutAgent:
-    type: framework
-    platform: macOS
-    sources: [BashCut/Core/Agent]
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: app.bashcut.agent
-        GENERATE_INFOPLIST_FILE: YES
-    dependencies:
-      - package: BashCutCore
-        product: BashCutProject
-  BashCutAutomation:
-    type: framework
-    platform: macOS
-    sources: [BashCut/Core/Automation]
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: app.bashcut.automation
-        GENERATE_INFOPLIST_FILE: YES
-    dependencies:
-      - package: BashCutCore
-        product: BashCutProject
-  BashCutPlugins:
-    type: framework
-    platform: macOS
-    sources: [BashCut/Core/Plugins]
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: app.bashcut.plugins
-        GENERATE_INFOPLIST_FILE: YES
-    dependencies:
-      - package: BashCutCore
-        product: BashCutProject
-      - package: BashCutCore
-        product: BashCutPlugin
-  BashCutDocument:
-    type: framework
-    platform: macOS
-    sources: [BashCut/Core/Services]
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: app.bashcut.document
-        GENERATE_INFOPLIST_FILE: YES
-    dependencies:
-      - target: BashCutEngine
-      - target: BashCutStorage
-      - target: BashCutPlugins
-      - target: BashCutAutomation
-      - package: BashCutCore
-        product: BashCutProject
-      - package: BashCutCore
-        product: BashCutPlugin
-      - package: BashCutCore
-        product: BashCutInterchange
-      - package: BashCutCore
-        product: BashCutImport
   # The target name must differ from "BashCut" beyond case: on a case-insensitive disk both targets
   # would share one intermediates folder and leak compiler flags into each other.
   BashCutCLI:
@@ -116,7 +39,8 @@ targets:
       base:
         PRODUCT_NAME: bashcut
     dependencies:
-      - target: BashCutAutomation
+      - package: BashCut
+        product: BashCutAutomation
       - package: BashCutCore
         product: BashCutProject
       - package: ArgumentParser
@@ -129,7 +53,8 @@ targets:
       base:
         PRODUCT_NAME: bashcut-mcp
     dependencies:
-      - target: BashCutAutomation
+      - package: BashCut
+        product: BashCutAutomation
       - package: MCPSwiftSDK
         product: MCP
   BashCut:
@@ -168,12 +93,18 @@ targets:
         codeSign: false
         copy:
           destination: executables
-      - target: BashCutEngine
-      - target: BashCutStorage
-      - target: BashCutAgent
-      - target: BashCutAutomation
-      - target: BashCutPlugins
-      - target: BashCutDocument
+      - package: BashCut
+        product: BashCutEngine
+      - package: BashCut
+        product: BashCutStorage
+      - package: BashCut
+        product: BashCutAgent
+      - package: BashCut
+        product: BashCutAutomation
+      - package: BashCut
+        product: BashCutPlugins
+      - package: BashCut
+        product: BashCutDocument
       - package: BashCutCore
         product: BashCutProject
       - package: BashCutCore
@@ -186,26 +117,37 @@ targets:
       # BashCutProject's public history API exposes Deque, so the app links it directly in Xcode.
       - package: Collections
         product: DequeModule
+  # Runs every per-module test folder from Package.swift in one Xcode bundle.
   BashCutTests:
     type: bundle.unit-test
     platform: macOS
     sources:
-      - path: BashCutTests
-        excludes: [__Snapshots__]
+      - path: Tests
+        excludes: [BashCutTestSupport, "**/__Snapshots__"]
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
     dependencies:
-      - target: BashCutEngine
-      - target: BashCutStorage
-      - target: BashCutAgent
-      - target: BashCutAutomation
-      - target: BashCutPlugins
-      - target: BashCutDocument
+      - package: BashCut
+        product: BashCutEngine
+      - package: BashCut
+        product: BashCutStorage
+      - package: BashCut
+        product: BashCutAgent
+      - package: BashCut
+        product: BashCutAutomation
+      - package: BashCut
+        product: BashCutPlugins
+      - package: BashCut
+        product: BashCutDocument
+      - package: BashCut
+        product: BashCutTestSupport
       - package: BashCutCore
         product: BashCutProject
       - package: BashCutCore
         product: BashCutPlugin
+      - package: BashCutCore
+        product: BashCutInterchange
       - package: Collections
         product: DequeModule
       - package: SnapshotTesting

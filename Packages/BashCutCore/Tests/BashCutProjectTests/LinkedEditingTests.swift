@@ -1,23 +1,11 @@
+import BashCutProjectFixtures
 import Testing
 
 @testable import BashCutProject
 
 struct LinkedEditingTests {
     private func fixture() throws -> Project {
-        let media = Media(fields: [
-            "id": .string("m"), "path": .string("source.mov"), "kind": .string("video"),
-            "frames": .integer(600), "fps": FrameRate(30, 1).json, "hasAudio": .bool(true),
-        ])
-        var video = Item(id: "v", media: "m", at: 0, duration: 60)
-        video.fields["linkedAudio"] = .string("a")
-        var audio = Item(id: "a", media: "m", at: 0, duration: 60)
-        audio.fields["linkedVideo"] = .string("v")
-        return try Project(name: "Linked", fps: FrameRate(30, 1)).applying(
-            .group(
-                label: "Setup", author: .user,
-                ops: [.addMedia(media), .insert(track: "a1", item: audio), .insert(track: "v1", item: video)]
-            )
-        ).project
+        try ProjectFixtures.linkedPair()
     }
 
     @Test("Move, trim and slip keep linked picture and sound aligned")

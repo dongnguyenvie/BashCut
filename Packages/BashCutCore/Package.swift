@@ -11,8 +11,7 @@ let package = Package(
         .library(name: "BashCutInterchange", targets: ["BashCutInterchange"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-collections", from: "1.1.4"),
-        .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.17.0")
+        .package(url: "https://github.com/apple/swift-collections", from: "1.1.4")
     ],
     targets: [
         .target(name: "BashCutProject", dependencies: [
@@ -21,10 +20,11 @@ let package = Package(
         .target(name: "BashCutPlugin", dependencies: ["BashCutProject"]),
         .target(name: "BashCutImport", dependencies: ["BashCutProject"]),
         .target(name: "BashCutInterchange", dependencies: ["BashCutProject"]),
-        .testTarget(name: "BashCutProjectTests", dependencies: ["BashCutProject", "BashCutImport",
-            "BashCutInterchange",
-            "BashCutPlugin",
-            .product(name: "SnapshotTesting", package: "swift-snapshot-testing")
-        ])
+        // Tests: one target per module; shared project fixtures live in BashCutProjectFixtures.
+        .target(name: "BashCutProjectFixtures", dependencies: ["BashCutProject"], path: "Tests/BashCutProjectFixtures"),
+        .testTarget(name: "BashCutProjectTests", dependencies: ["BashCutProject", "BashCutProjectFixtures"]),
+        .testTarget(name: "BashCutPluginTests", dependencies: ["BashCutPlugin", "BashCutProject"]),
+        .testTarget(name: "BashCutImportTests", dependencies: ["BashCutImport", "BashCutProject"]),
+        .testTarget(name: "BashCutInterchangeTests", dependencies: ["BashCutInterchange", "BashCutImport", "BashCutProject"]),
     ]
 )

@@ -1,4 +1,5 @@
 import BashCutProject
+import BashCutTestSupport
 import Foundation
 import Testing
 
@@ -6,8 +7,7 @@ import Testing
 
 /// Engine media tests on a copy of the fixture clip, so files can be replaced and proxies added.
 struct MediaSourceTests {
-    private let fixture = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
-        .appendingPathComponent("Fixtures/media/test.mp4")
+    private let fixture = TestFixtures.videoURL
 
     private func projectFolder() throws -> URL {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)

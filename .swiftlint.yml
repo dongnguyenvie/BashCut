@@ -1,6 +1,6 @@
 included:
   - BashCut
-  - BashCutTests
+  - Tests
   - CLI
   - Packages/BashCutCore/Sources
   - Packages/BashCutCore/Tests

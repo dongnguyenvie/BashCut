@@ -1,3 +1,4 @@
+import BashCutProjectFixtures
 import Foundation
 import Testing
 
@@ -5,20 +6,7 @@ import Testing
 
 struct SourceEditingTests {
     private func fixture() throws -> Project {
-        let media = Media(fields: [
-            "id": .string("m"), "path": .string("source.mov"),
-            "frames": .integer(600), "fps": FrameRate(60, 1).json,
-        ])
-        return try Project(name: "Source edits", fps: FrameRate(30, 1)).applying(
-            .group(
-                label: "Setup", author: .user,
-                ops: [
-                    .addMedia(media),
-                    .insert(track: "v1", item: Item(id: "first", media: "m", at: 0, duration: 60)),
-                    .insert(
-                        track: "v1", item: Item(id: "second", media: "m", at: 60, duration: 60, sourceIn: 120)),
-                ])
-        ).project
+        try ProjectFixtures.twoClips("first", "second", sourceIn: (0, 120), name: "Source edits")
     }
     @Test("Insert at playhead splits a clip, shifts later clips and maps source FPS")
     func insert() throws {
