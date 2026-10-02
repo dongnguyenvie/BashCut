@@ -17,6 +17,12 @@ public struct PluginHealth: Sendable, Equatable {
     public let pluginID: String
     public let state: State
     public let dependencies: [PluginDependencyStatus]
+
+    public init(pluginID: String, state: State, dependencies: [PluginDependencyStatus]) {
+        self.pluginID = pluginID
+        self.state = state
+        self.dependencies = dependencies
+    }
 }
 
 public struct PluginProcessRunner: Sendable {

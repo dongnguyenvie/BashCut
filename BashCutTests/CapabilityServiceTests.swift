@@ -14,7 +14,7 @@ private struct PluginSandbox {
     var service: CapabilityService {
         CapabilityService(
             roots: PluginRoots(user: root.appendingPathComponent("user"), bundled: nil),
-            runner: PluginProcessRunner(timeout: 10), healthRunner: PluginProcessRunner(timeout: 5))
+            transport: PluginProcessRunner(timeout: 10), healthTransport: PluginProcessRunner(timeout: 5))
     }
 
     init() throws {
@@ -202,5 +202,89 @@ struct CapabilityServiceTests {
             #expect(CommandCatalog.modes[method] == .edit)
         }
         #expect(CommandCatalog.instructions.contains("bashcut voice speak"))
+    }
+}
+
+/// Answers every call with `result` and records what it was asked; every plugin reports ready.
+private actor RecordingTransport: PluginTransport {
+    let result: JSONValue
+    private(set) var calls: [(method: String, provider: String?, params: JSONValue)] = []
+
+    init(result: JSONValue) { self.result = result }
+
+    func call(plugin: InstalledPlugin, method: String, provider: String?, params: JSONValue) async throws -> JSONValue {
+        calls.append((method, provider, params))
+        return result
+    }
+
+    nonisolated func health(plugin: InstalledPlugin) async -> PluginHealth {
+        PluginHealth(pluginID: plugin.id, state: .ready, dependencies: [])
+    }
+}
+
+/// A capability defined only in this test: the service needs nothing else to run it.
+private struct EchoCapability: CapabilityAdapter {
+    static let capability = "text.echo"
+    let text: String
+    var outputRoot: URL?
+
+    func validate() throws {
+        guard !text.isEmpty else { throw PluginError.invalid("Text is required") }
+    }
+
+    func params(outputDirectory: URL?) -> JSONValue {
+        .object(["text": .string(text), "outputDirectory": .string(outputDirectory?.path ?? "")])
+    }
+
+    func output(from result: JSONValue, context: CapabilityContext) async throws -> String {
+        guard let echoed = result.object["text"]?.string else { throw PluginError.invalid("No text") }
+        return echoed + " via " + context.provenance.providerID
+    }
+}
+
+@Suite("Capability adapters")
+struct CapabilityAdapterTests {
+    @Test("A new capability is one adapter: the service resolves a provider and calls the transport")
+    func customAdapter() async throws {
+        let sandbox = try PluginSandbox()
+        defer { sandbox.cleanup() }
+        try sandbox.addPlugin(
+            "test.echo", providers: [PluginProvider(id: "test.echo.provider", capability: "text.echo", name: "Echo")],
+            body: "exit 1")
+        let transport = RecordingTransport(result: .object(["text": .string("xin chào")]))
+        let service = CapabilityService(
+            roots: PluginRoots(user: sandbox.root.appendingPathComponent("user"), bundled: nil),
+            transport: transport, healthTransport: transport)
+        let output = try await service.run(EchoCapability(text: "hello"), preferredProvider: nil, projectRoot: sandbox.project)
+        #expect(output == "xin chào via test.echo.provider")
+        let calls = await transport.calls
+        #expect(calls.count == 1)
+        #expect(calls.first?.method == "text.echo")
+        #expect(calls.first?.provider == "test.echo.provider")
+        await #expect(throws: PluginError.self) {
+            try await service.run(EchoCapability(text: ""), preferredProvider: nil, projectRoot: sandbox.project)
+        }
+        #expect(await transport.calls.count == 1)
+    }
+
+    @Test("A rejected result removes the request folder")
+    func requestFolderCleanup() async throws {
+        let sandbox = try PluginSandbox()
+        defer { sandbox.cleanup() }
+        try sandbox.addPlugin(
+            "test.echo", providers: [PluginProvider(id: "test.echo.provider", capability: "text.echo", name: "Echo")],
+            body: "exit 1")
+        let transport = RecordingTransport(result: .object([:]))
+        let service = CapabilityService(
+            roots: PluginRoots(user: sandbox.root.appendingPathComponent("user"), bundled: nil),
+            transport: transport, healthTransport: transport)
+        let outputRoot = sandbox.project.appendingPathComponent("generated")
+        await #expect(throws: PluginError.self) {
+            try await service.run(
+                EchoCapability(text: "hello", outputRoot: outputRoot), preferredProvider: nil, projectRoot: sandbox.project)
+        }
+        let requested = await transport.calls.first?.params.object["outputDirectory"]?.string
+        #expect(requested?.hasPrefix(outputRoot.path) == true)
+        #expect(try FileManager.default.contentsOfDirectory(atPath: outputRoot.path).isEmpty)
     }
 }
