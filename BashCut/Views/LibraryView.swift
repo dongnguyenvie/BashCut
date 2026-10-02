@@ -48,6 +48,8 @@ struct LibraryView: View {
                 }
             }
             .pickerStyle(.segmented)
+            // The panel is too narrow for an inline label; it stays the accessibility label.
+            .labelsHidden()
             TextField("Search media…", text: $search).textFieldStyle(.roundedBorder)
             Button("Import footage…") { document.importMedia() }.disabled(document.fileURL == nil)
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
