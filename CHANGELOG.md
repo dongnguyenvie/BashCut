@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+- **Adjustment layers** replace the New Project "Style preset" setting, which was stored but never used. An
+  adjustment layer (Add Layer › Adjustment Layer, `layers add --kind adjustment`) holds items with only a color
+  grade (look, exposure, contrast, saturation, LUT) that applies to every layer below them while they are on screen,
+  like adjustment layers in CapCut or Premiere; captions above them stay ungraded and hiding the layer bypasses it.
+  Filters › Add adjustment and `adjustment add` add one over the selected clip or 3 seconds at the playhead; a
+  look or LUT with nothing selected does the same. New look: Vivid.
+- **Style kits** (Filters › Style kits, `style apply food-review|cinematic`): one undoable edit adds a full-length
+  adjustment with the kit's look (replacing an earlier kit's) and sets the kit's preset on every caption; titles,
+  place cards and other presets keep theirs.
+- Project schema `bashcut.project/3`: adds the `adjustment` track kind and drops the unused `style` field; v2
+  projects migrate on open. `project create --style` is removed.
+
 - Agent dock tabs: each tab shows its provider icon, the close button sits inside the tab (shown on hover or
   selection), the selected tab is outlined in cyan, API is a tab like the others, header buttons highlight on
   hover, and the terminal has a small inset instead of touching the dock edge.

@@ -18,6 +18,7 @@ extension ProjectDocument {
         registerDialogs()
         registerEditCommands()
         registerLayerCommands()
+        registerAdjustmentCommands()
         registerImportCommands()
         registerProxyCommands()
         registerPrivilegedCommands()
@@ -217,8 +218,9 @@ extension ProjectDocument {
         ]
         for track in project.tracks {
             for item in track.items.sorted(by: { $0.at < $1.at }) {
+                let media = item.mediaID ?? (track.isAdjustment ? "adjustment" : "text")
                 lines.append(
-                    "\(track.role.uppercased()) \(item.id) \(item.at)-\(item.end) media=\(item.mediaID ?? "text") in=\(item.sourceIn) \(item.text)"
+                    "\(track.role.uppercased()) \(item.id) \(item.at)-\(item.end) media=\(media) in=\(item.sourceIn) \(item.text)"
                 )
             }
         }

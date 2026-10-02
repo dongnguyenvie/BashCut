@@ -122,6 +122,55 @@ struct EngineControlsTests {
         #expect(layers.allSatisfy { if case .text = $0 { true } else { false } })
     }
 
+    @Test("An adjustment grades the layers below it while on screen, and captions above it stay ungraded")
+    func adjustmentLayer() async throws {
+        let media = Media(fields: [
+            "id": .string("m"), "path": .string("test.mp4"), "fps": FrameRate().json, "frames": .integer(59),
+        ])
+        var caption = Item(id: "t", at: 0, duration: 45)
+        caption["text"] = .string("Xin chào")
+        var planner = LayerPlanner(try Project(name: "Adjustment").applying(
+            .group(label: "Fixture", author: .user, ops: [
+                .addMedia(media), .insert(track: "v1", item: Item(id: "c", media: "m", at: 0, duration: 45)),
+                .insert(track: "t1", item: caption),
+            ])
+        ).project)
+        try planner.placeAdjustment(.adjustment(id: "g", at: 0, duration: 20, color: ["saturation": .integer(0)]))
+        let project = planner.project
+        let snapshot = try await CompositionBuilder().build(project, root: TestFixtures.mediaRoot)
+        let first = try #require(snapshot.videoComposition.instructions.first as? FrameInstruction)
+        #expect(first.layers.map(Self.kind) == ["video", "adjustment", "text"])
+        let generator = AVAssetImageGenerator(asset: snapshot.composition)
+        generator.videoComposition = snapshot.videoComposition
+        func isGrayscale(_ frame: Int) async throws -> Bool {
+            let colors = try pixels(try await generator.image(at: project.fps.time(frame)).image)
+            return stride(from: 0, to: colors.count, by: 4).allSatisfy { offset -> Bool in
+                let red = Int(colors[offset])
+                let green = Int(colors[offset + 1])
+                let blue = Int(colors[offset + 2])
+                return abs(red - green) < 3 && abs(green - blue) < 3
+            }
+        }
+        let uncaptioned = try project.applying(.delete(item: "t", ripple: false)).project
+        let plain = try await CompositionBuilder().build(uncaptioned, root: TestFixtures.mediaRoot)
+        generator.videoComposition = plain.videoComposition
+        #expect(try await isGrayscale(10))
+        #expect(try await !isGrayscale(30))
+        let bypassed = try await CompositionBuilder().build(
+            uncaptioned.applying(.setTrackProperties(track: "fx1", patch: ["hidden": .bool(true)])).project,
+            root: TestFixtures.mediaRoot)
+        generator.videoComposition = bypassed.videoComposition
+        #expect(try await !isGrayscale(10))
+    }
+
+    private static func kind(_ layer: VisualLayer) -> String {
+        switch layer {
+        case .video: "video"
+        case .adjustment: "adjustment"
+        case .text: "text"
+        }
+    }
+
     @Test("Transitions add a tweened outgoing hold and incoming layer")
     func transitions() async throws {
         let root = TestFixtures.mediaRoot

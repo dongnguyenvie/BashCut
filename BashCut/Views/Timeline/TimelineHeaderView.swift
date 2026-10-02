@@ -123,7 +123,9 @@ final class TimelineHeaderView: NSView {
         case TrackRole.voiceover: "mic"
         case TrackRole.music: "music.note"
         case TrackRole.sfx: "speaker.wave.2"
-        default: track.kind == "text" ? "textformat" : track.kind == "audio" ? "waveform" : "rectangle.stack"
+        default:
+            track.isAdjustment ? "camera.filters"
+                : track.kind == "text" ? "textformat" : track.kind == "audio" ? "waveform" : "rectangle.stack"
         }
     }
 

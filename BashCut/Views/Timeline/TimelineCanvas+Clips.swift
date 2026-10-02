@@ -13,6 +13,7 @@ import BashCutProject
         case TrackRole.music: return NSColor(srgbRed: 0.55, green: 0.30, blue: 0.70, alpha: 1)
         case TrackRole.sfx: return NSColor(srgbRed: 0.75, green: 0.30, blue: 0.50, alpha: 1)
         default:
+            if track.isAdjustment { return NSColor(srgbRed: 0.62, green: 0.45, blue: 0.20, alpha: 1) }
             if track.kind == "text" { return NSColor(srgbRed: 0.85, green: 0.50, blue: 0.15, alpha: 1) }
             return track.kind == "audio" ? NSColor(srgbRed: 0.20, green: 0.58, blue: 0.32, alpha: 1) : .systemTeal
         }
@@ -114,6 +115,7 @@ extension TimelineCanvas {
         if item.linkedItemID != nil { icons.append("link") }
         if item.fields["freezeFrame"] != nil { icons.append("snowflake") }
         if item["muted"] == .bool(true) { icons.append("speaker.slash.fill") }
+        if track.isAdjustment { icons.append("camera.filters") }
         for name in icons {
             ClipStyle.icon(name)?.drawFlipped(in: CGRect(x: x, y: y + 1, width: 10, height: 10))
             x += 12
@@ -125,8 +127,11 @@ extension TimelineCanvas {
         let durationWidth = (duration as NSString).size(withAttributes: ClipStyle.durationText).width
         let showsDuration = rect.width > durationWidth + 60
         let titleWidth = rect.maxX - x - 4 - (showsDuration && compact ? durationWidth + 6 : 0)
+        let title = track.isAdjustment
+            ? String(localized: String.LocalizationValue(item.adjustmentTitle(luts: project.colorLUTs)))
+            : item.text.isEmpty ? filename : item.text
         if titleWidth > 8 {
-            ((item.text.isEmpty ? filename : item.text) as NSString).draw(
+            (title as NSString).draw(
                 with: CGRect(x: x, y: y, width: titleWidth, height: 13),
                 options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], attributes: ClipStyle.titleText)
         }

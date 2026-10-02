@@ -347,7 +347,7 @@ extension Project {
 
     private mutating func slipItem(id: String, sourceIn: Int) throws {
         let (track, index) = try location(id)
-        guard tracks[track].kind != "text", sourceIn >= 0, sourceIn <= 2_000_000_000 else {
+        guard tracks[track].items[index].mediaID != nil, sourceIn >= 0, sourceIn <= 2_000_000_000 else {
             throw ProjectError.invalid("Slip requires a media item and a valid source frame")
         }
         tracks[track].items[index].sourceIn = sourceIn

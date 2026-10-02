@@ -12,14 +12,14 @@ public enum CommandCatalog {
     public static let libraryPanels = ["media", "audio", "text", "stickers", "effects", "transitions", "filters", "voice"]
     public static let exportPresets = ["tiktok", "youtube-1080", "youtube-4k", "quick-draft", "prores"]
 
-    public static let specs: [CommandSpec] = readSpecs + projectSpecs + editSpecs + layerSpecs + capabilitySpecs + privilegedSpecs + uiSpecs
-        + toolSpecs
+    public static let specs: [CommandSpec] = readSpecs + projectSpecs + editSpecs + layerSpecs + styleSpecs
+        + capabilitySpecs + privilegedSpecs + uiSpecs + toolSpecs
 
     public static let modes: [String: CommandMode] = Dictionary(uniqueKeysWithValues: specs.map { ($0.name, $0.mode) })
 
     public static func spec(named name: String) -> CommandSpec? { specs.first { $0.name == name } }
 
-    private static let baseRevision = CommandParameter(
+    static let baseRevision = CommandParameter(
         "baseRev", .integer, "Current project revision from timeline.get", required: true, minimum: 0,
         cli: .option("base-rev"))
     private static let provider = CommandParameter(
@@ -86,8 +86,6 @@ public enum CommandCatalog {
                                  choices: ["29.97", "30", "24", "60"], cli: .option("fps")),
                 CommandParameter("language", .string, "Content language tag", default: .string("vi"),
                                  cli: .option("language")),
-                CommandParameter("style", .string, "Style preset", default: .string("food-review"),
-                                 choices: ["food-review", "cinematic", "custom"], cli: .option("style")),
             ] + leaveCurrent),
         CommandSpec("project.save", .edit, "Save the open project to disk."),
     ]
@@ -118,10 +116,11 @@ public enum CommandCatalog {
     private static let layerSpecs: [CommandSpec] = [
         CommandSpec(
             "layers.add", .edit,
-            "Add an empty layer: visual layers go to the front of the picture stack, audio layers below the others.",
+            "Add an empty layer: text goes to the front of the picture stack, video and adjustment layers behind text, "
+                + "audio layers below the others.",
             parameters: [
-                CommandParameter("kind", .string, "Layer kind", required: true, choices: ["video", "text", "audio"],
-                                 cli: .option("kind")),
+                CommandParameter("kind", .string, "Layer kind", required: true,
+                                 choices: ["video", "adjustment", "text", "audio"], cli: .option("kind")),
                 CommandParameter("role", .string, "Role such as overlay, captions, music or sfx; never main",
                                  cli: .option("role")),
                 CommandParameter("name", .string, "Display name", cli: .option("name")),

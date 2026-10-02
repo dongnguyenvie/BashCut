@@ -304,6 +304,7 @@ struct EditorView: View {
             Button("Delete") { document.run(.delete) }.action(.delete, in: document)
             Menu {
                 Button("Video Layer") { document.run(.addVideoLayer) }
+                Button("Adjustment Layer") { document.run(.addAdjustmentLayer) }
                 Button("Text Layer") { document.run(.addTextLayer) }
                 Button("Audio Layer") { document.run(.addAudioLayer) }
             } label: {

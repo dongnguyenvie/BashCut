@@ -234,7 +234,6 @@
 "4K · 2160" = "4K · 2160";
 "Frame rate" = "Tốc độ khung hình";
 "Content language" = "Ngôn ngữ nội dung";
-"Style preset" = "Phong cách";
 "Food review" = "Đánh giá món ăn";
 "Cinematic" = "Điện ảnh";
 "Custom" = "Tùy chỉnh";
@@ -404,3 +403,14 @@
 "Zoom timeline to fit" = "Thu phóng vừa timeline";
 "Zoom timeline to fit (⇧Z)" = "Thu phóng vừa timeline (⇧Z)";
 "Timeline zoom; pinch or ⌘-scroll on the timeline" = "Thu phóng timeline; chụm hai ngón hoặc ⌘ + cuộn trên timeline";
+"Adjustment Layer" = "Layer điều chỉnh";
+"Add adjustment layer" = "Thêm layer điều chỉnh";
+"Style kits" = "Bộ phong cách";
+"Looks" = "Tông màu";
+"Add adjustment" = "Thêm điều chỉnh";
+"Vivid" = "Rực rỡ";
+"Adjustment" = "Điều chỉnh";
+"Grades the whole video and restyles every caption in one undoable step." = "Chỉnh màu cả video và đổi kiểu mọi phụ đề trong một bước có thể hoàn tác.";
+"With nothing selected, a look adds an adjustment that grades every layer below it." = "Khi chưa chọn gì, một tông màu sẽ thêm một điều chỉnh áp lên mọi layer bên dưới.";
+"A look grades the selected clip or adjustment." = "Tông màu áp lên clip hoặc điều chỉnh đang chọn.";
+"An adjustment grades every layer below it. Set its look in the Color tab or Filters." = "Điều chỉnh áp màu lên mọi layer bên dưới. Đặt tông màu trong tab Màu sắc hoặc Bộ lọc.";

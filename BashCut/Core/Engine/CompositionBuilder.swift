@@ -44,9 +44,25 @@ public actor CompositionBuilder {
         var audioParameters: [AVAudioMixInputParameters] = []
         let speechRanges = AudioGainPlanner.speechRanges(in: project)
         var lutCache: [String: CubeLUT] = [:]
+        /// The LUT an item's `color.lut` names, loaded once per build from the project `luts` folder.
+        func loadLUT(for item: Item) throws -> CubeLUT? {
+            guard let lutID = item["color"]?.object["lut"]?.string,
+                let catalog = project.colorLUTs.first(where: { $0.id == lutID })
+            else { return nil }
+            if let cached = lutCache[lutID] { return cached }
+            let directory = root.appendingPathComponent("luts").resolvingSymlinksInPath()
+            let lutURL = root.appendingPathComponent(catalog.path).resolvingSymlinksInPath()
+            guard lutURL.path.hasPrefix(directory.path + "/") else {
+                throw ProjectError.invalid("LUT escapes the project luts folder")
+            }
+            let loaded = try CubeLUT.load(lutURL)
+            guard loaded.dimension == catalog.size else { throw ProjectError.invalid("LUT size changed on disk") }
+            lutCache[lutID] = loaded
+            return loaded
+        }
         let transitionFrom = Dictionary(uniqueKeysWithValues: project.transitions.map { ($0.fromItemID, $0) })
         let transitionTo = Dictionary(uniqueKeysWithValues: project.transitions.map { ($0.toItemID, $0) })
-        for track in project.tracks where track.kind != "text" {
+        for track in project.tracks where track.kind == "video" || track.kind == "audio" {
             for item in track.items.sorted(by: { ($0.at, $0.id) < ($1.at, $1.id) }) {
                 try Task.checkCancellation()
                 guard let media = project.media.first(where: { $0.id == item.mediaID }) else { continue }
@@ -105,28 +121,7 @@ public actor CompositionBuilder {
                             kind: $0.kind, startFrame: item.at, duration: $0.duration,
                             incoming: true, fps: project.fps.value)
                     }
-                    let lut: CubeLUT?
-                    if let lutID = item["color"]?.object["lut"]?.string,
-                        let catalog = project.colorLUTs.first(where: { $0.id == lutID })
-                    {
-                        if let cached = lutCache[lutID] {
-                            lut = cached
-                        } else {
-                            let directory = root.appendingPathComponent("luts").resolvingSymlinksInPath()
-                            let lutURL = root.appendingPathComponent(catalog.path).resolvingSymlinksInPath()
-                            guard lutURL.path.hasPrefix(directory.path + "/") else {
-                                throw ProjectError.invalid("LUT escapes the project luts folder")
-                            }
-                            let loaded = try CubeLUT.load(lutURL)
-                            guard loaded.dimension == catalog.size else {
-                                throw ProjectError.invalid("LUT size changed on disk")
-                            }
-                            lutCache[lutID] = loaded
-                            lut = loaded
-                        }
-                    } else {
-                        lut = nil
-                    }
+                    let lut = try loadLUT(for: item)
                     visualByTrack[track.id, default: []].append(
                         PlacedVisual(
                             start: item.at, end: item.end,
@@ -203,6 +198,10 @@ public actor CompositionBuilder {
                         contentsOf: (visualByTrack[track.id] ?? [])
                             .filter { $0.start <= start && $0.end > start }
                             .map { .video($0.layer) })
+                } else if track.isAdjustment {
+                    for item in track.items where item.at <= start && item.end > start {
+                        layers.append(.adjustment(AdjustmentLayer(properties: item.fields, lut: try loadLUT(for: item))))
+                    }
                 } else if track.kind == "text" {
                     layers.append(
                         contentsOf: track.items.filter { $0.at <= start && $0.end > start }.map {

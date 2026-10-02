@@ -356,7 +356,7 @@ def main():
 
     print(f"Creating {project_dir}")
     bashcut("project", "create", "--name", NAME, "--dir", parent, "--canvas", "portrait", "--fps", "30",
-            "--style", "custom", "--discard-current")
+            "--discard-current")
     if Path(bashcut("context", "get")["project"]).parent != project_dir:
         sys.exit(f"project create did not make {project_dir}")
     print("Generating media")

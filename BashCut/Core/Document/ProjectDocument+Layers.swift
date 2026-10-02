@@ -5,13 +5,17 @@ import Foundation
 /// Layer editing shared by the timeline UI and automation. Core `LayerPlanner` applies the layer rules:
 /// visual layers above audio, one main layer, and occupied ranges spilling onto free or new layers.
 extension ProjectDocument {
-    /// Adds an empty layer at the front of the visual stack or the bottom of the audio stack.
+    /// Adds an empty layer where `Project.defaultTrackIndex(kind:)` puts it.
     @discardableResult
     func addLayer(
         kind: String, role: String? = nil, name: String? = nil, author: Author = .user, baseRevision: Int? = nil
     ) throws -> (revision: Int, trackID: String) {
-        guard ["video", "text", "audio"].contains(kind) else { throw ProjectError.invalid("Unknown layer kind \(kind)") }
-        let role = role ?? ["video": TrackRole.overlay, "text": TrackRole.captions, "audio": TrackRole.sfx][kind] ?? kind
+        let defaultRoles = [
+            "video": TrackRole.overlay, Track.adjustmentKind: TrackRole.adjustment, "text": TrackRole.captions,
+            "audio": TrackRole.sfx,
+        ]
+        guard let defaultRole = defaultRoles[kind] else { throw ProjectError.invalid("Unknown layer kind \(kind)") }
+        let role = role ?? defaultRole
         guard role != TrackRole.main else { throw ProjectError.invalid("A project has exactly one main layer") }
         var track = Track(id: project.newTrackID(kind: kind), kind: kind, role: role)
         track.name = name ?? "\(role.capitalized) \(project.tracks.filter { $0.role == role }.count + 1)"

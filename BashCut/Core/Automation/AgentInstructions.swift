@@ -22,6 +22,9 @@ extension CommandCatalog {
         always take them from `bashcut timeline get`, never assume IDs such as v1 or t1.
         Layers: tracks list visual layers back to front, then audio layers, which are mixed. There is exactly one
         main video layer. Items never overlap on one layer, audio media never goes on a visual layer.
+        Adjustment layers (kind adjustment) hold items with only a `color` grade and no media or text; each grades
+        every layer below it while on screen. Use `adjustment add` for a look on a range and `style apply` for a
+        whole-video style kit; there is no project-wide style setting.
         Prefer `media place` and `timeline move`, which put content on a free or new layer when the range is taken;
         raw insert/move operations that overlap are rejected.
         Edits need --base-rev N from the latest read. One request is one atomic apply call.
@@ -56,6 +59,7 @@ extension CommandCatalog {
         {"op":"deleteSection","id":"section-hook"}.
         {"op":"upsertTransition","id":"cut-a-b","kind":"dissolve","from":"CLIP_A","to":"CLIP_B","duration":12},
         {"op":"deleteTransition","id":"cut-a-b"}.
+        {"op":"insert","track":"ADJUSTMENT_TRACK_ID","item":{"id":"grade-1","at":0,"dur":90,"color":{"saturation":0.8,"lut":"LUT_ID"}}},
         {"op":"addColorLUT","lut":{"id":"look","name":"Look","path":"luts/look.cube","size":33}},
         {"op":"deleteColorLUT","id":"look"}.
         {"op":"roll","item":"ID","edge":"end","toFrame":120},

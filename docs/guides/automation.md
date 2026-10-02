@@ -135,7 +135,7 @@ All 48 commands, grouped by purpose. Prefix each with `bashcut`. Arguments in br
 
 | Command | Mode | Summary |
 |---|---|---|
-| `project create --name <name> --dir <directory> [--footage <footage>] [--canvas <canvas>] [--resolution <resolution>] [--fps <fps>] [--language <language>] [--style <style>] [--save-current] [--discard-current]` | edit | Create a project folder like the New Project wizard and open it |
+| `project create --name <name> --dir <directory> [--footage <footage>] [--canvas <canvas>] [--resolution <resolution>] [--fps <fps>] [--language <language>] [--save-current] [--discard-current]` | edit | Create a project folder like the New Project wizard and open it |
 | `project open <path> [--save-current] [--discard-current]` | edit | Open a `project.bashcut.json` or its folder |
 | `project save` | edit | Save the open project to disk |
 | `edl import <path> [--save-current] [--discard-current]` | edit | Convert a legacy `edl.json` into `project.bashcut.json` beside it and open it |
@@ -154,7 +154,9 @@ when another project opens; agents outside BashCut keep access.
 | `timeline move <item> --track <track> --at-frame <atFrame> --base-rev <baseRev>` | edit | Move an item and its linked partner; an occupied range spills onto a free or new layer |
 | `timeline close-gap --at-frame <atFrame> [--track <track>] --base-rev <baseRev>` | edit | Delete the empty gap containing a frame (main layer by default): later clips on that layer move left with their linked sound |
 | `layers set <track> [--hidden on\|off] [--muted on\|off] [--locked on\|off] --base-rev <baseRev>` | edit | The layer header switches: hide a visual layer, mute an audio layer, lock any layer (a locked layer refuses edits) |
-| `layers add --kind <kind> [--role <role>] [--name <name>] --base-rev <baseRev>` | edit | Add an empty `video`, `text` or `audio` layer; the role can be `overlay`, `captions`, `music`, `sfx` and so on, never `main` |
+| `layers add --kind <kind> [--role <role>] [--name <name>] --base-rev <baseRev>` | edit | Add an empty `video`, `adjustment`, `text` or `audio` layer; the role can be `overlay`, `captions`, `music`, `sfx` and so on, never `main` |
+| `adjustment add [--look <look>] [--lut <lut>] [--at-frame <atFrame>] [--duration <duration>] [--track <track>] --base-rev <baseRev>` | edit | Add an adjustment item: a color grade on every layer below it for its range (the selected clip's range, else 3 seconds at the playhead); adds an adjustment layer when needed |
+| `style apply <kit> --base-rev <baseRev>` | edit | Apply a style kit as one undo step: a full-length adjustment with the kit's look (replacing an earlier kit's) and the kit's preset on every caption |
 | `media import <path> [--kind <kind>] [--place] [--track <track>] [--at-frame <atFrame>] --base-rev <baseRev>` | edit | Add a media file; with `--place`, also put it on a layer like the Import button |
 | `media place --media <media> [--track <track>] [--at-frame <atFrame>] --base-rev <baseRev>` | edit | Place project media on a layer (main by default), with linked sound on a dialogue layer |
 | `media proxy [<media>] [--force]` | edit | Queue preview proxies for heavy video, or for one media item |
@@ -204,7 +206,10 @@ when another project opens; agents outside BashCut keep access.
 | `project create --canvas` | `portrait` (default), `landscape`, `square` |
 | `project create --resolution` | `720`, `1080` (default), `2160` (short side) |
 | `project create --fps` | `29.97` (default), `30`, `24`, `60` |
-| `project create --style` | `food-review` (default), `cinematic`, `custom`; `--language` defaults to `vi` |
+| `project create --language` | A language tag; defaults to `vi` |
+| `layers add --kind` | `video`, `adjustment`, `text`, `audio` |
+| `adjustment add --look` | `original` (default), `vivid`, `muted-film`, `black-white` |
+| `style apply <kit>` | `food-review` (vivid look, Bold Outline captions), `cinematic` (muted film, Cinematic Serif) |
 | `media import --kind` | `video` (default), `audio` |
 | `export start --preset` | `tiktok`, `youtube-1080`, `youtube-4k`, `quick-draft`, `prores` |
 | `ui open <dialog>` | `new-project`, `export`, `export-report`, `agent-changes`, `review`, `history`, `plugins`, `settings`, `doctor`, `knowledge`, `ask`, `sections`, `external-changes` |

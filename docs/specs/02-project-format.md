@@ -41,12 +41,11 @@ only.
 
 ```jsonc
 {
-  "schema": "bashcut.project/2",
+  "schema": "bashcut.project/3",
   "id": "8f0c…",
   "name": "Lau bo noi dat",
   "rev": 142,                       // +1 on every applied edit; optimistic concurrency
   "format": {"width": 1080, "height": 1920, "fps": [30000, 1001], "sampleRate": 48000},
-  "style": "food-review",           // food-review | cinematic | custom
   "contentLanguage": "vi",          // language of speech and captions (BCP 47); independent of the UI language
   "media": [
     {"id": "m-0449", "path": "footage/DJI_20260830194937_0449_D.MP4",
@@ -66,6 +65,10 @@ only.
        "interop": {}}               // reserved for external IDs (Resolve, OTIO); preserved
     ]},
     {"id": "v2", "kind": "video", "role": "overlay", "name": "Overlay", "items": []},
+    {"id": "fx1", "kind": "adjustment", "role": "adjustment", "name": "Adjustment 1", "items": [
+      {"id": "grade-1", "at": 0, "dur": 900, "in": 0, "styleKit": "food-review",
+       "color": {"saturation": 1.2, "contrast": 1.05}}   // grades every layer below it; no media or text
+    ]},
     {"id": "t1", "kind": "text", "role": "captions", "name": "Captions", "items": [
       {"id": "s-01", "at": 0, "dur": 61, "text": "Top 10 món nên ăn\nở Buôn Ma Thuột",
        "style": "bold-outline", "textStyle": {"size": 0.062, "positionY": 0.8}}
@@ -122,12 +125,19 @@ items and measurements stay usable when the plugin is removed or replaced, and u
 round-trip unchanged.
 
 **Tracks are ordered, dynamic layers.** Array order is the visual stacking order, back to front. A project may
-have as many video, text and audio tracks as it needs; `role` is a repeatable semantic hint, not a fixed slot.
-Track IDs stay stable, and schema-v1 projects are upgraded in memory when opened.
+have as many video, adjustment, text and audio tracks as it needs; `role` is a repeatable semantic hint, not a
+fixed slot. Track IDs stay stable, and schema-v1 and v2 projects are upgraded in memory when opened (v3 added
+adjustment tracks and dropped the unused project-wide `style` field).
+
+**Adjustment tracks replace a project style setting.** An `adjustment` item has no media or text, only a `color`
+grade, and applies it to everything below it while on screen, like an adjustment layer in CapCut or Premiere.
+Style kits (food review, cinematic "Quinn") are one-shot recipes that add such an item and restyle captions in
+one undoable edit; nothing about the kit is remembered afterwards. For Resolve, an adjustment item maps to an
+adjustment clip with the same grade parameters.
 
 **Layer rules** are enforced by `Project.validate()`, so UI, CLI, MCP and model APIs share them:
 
-- Visual tracks (`video`, `text`) come first, back to front; audio tracks follow and are mixed, so their order is
+- Visual tracks (`video`, `adjustment`, `text`) come first, back to front; audio tracks follow and are mixed, so their order is
   only for display. A track cannot move across that boundary.
 - There is exactly one `main` video track, and it cannot be deleted.
 - Items never overlap on one track; overlapping content lives on separate tracks.

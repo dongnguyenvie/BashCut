@@ -8,7 +8,7 @@ full field sketch are in [02 — Project format](../specs/02-project-format.md);
 
 | Path | Contents |
 |---|---|
-| `project.bashcut.json` | The project: indented JSON, sorted keys, schema `bashcut.project/2` |
+| `project.bashcut.json` | The project: indented JSON, sorted keys, schema `bashcut.project/3` (v1 and v2 files migrate on open) |
 | `.bashcut/history.jsonl` | Undo/redo checkpoint written on every save |
 | `.bashcut/autosave/latest.json` | Unsaved history plus the disk bytes it was based on |
 | `.bashcut/proxies/<media id>.mov` | Preview proxies (see [Media paths](#media-paths)) |
@@ -47,8 +47,8 @@ All times are integers. Seconds appear only in the UI, in the agent text form an
 
 ## Tracks and layers
 
-`tracks` is an ordered list of layers. Kinds are `video`, `text` and `audio`; `role` is a repeatable semantic
-hint (`main`, `overlay`, `captions`, `dialogue`, `voiceover`, `music`, `sfx`). Features look tracks up by role,
+`tracks` is an ordered list of layers. Kinds are `video`, `adjustment`, `text` and `audio`; `role` is a repeatable
+semantic hint (`main`, `overlay`, `adjustment`, `captions`, `dialogue`, `voiceover`, `music`, `sfx`). Features look tracks up by role,
 never by fixed IDs such as `v1`. New projects start with seven tracks: Main, Overlay, Captions, Dialogue,
 Voiceover, Music and SFX.
 
@@ -56,7 +56,7 @@ Voiceover, Music and SFX.
 
 | Rule | Detail |
 |---|---|
-| Two bands | Visual tracks (`video`, `text`) come first, back to front; audio tracks follow and are mixed. A track cannot move across the boundary |
+| Two bands | Visual tracks (`video`, `adjustment`, `text`) come first, back to front; audio tracks follow and are mixed. A track cannot move across the boundary |
 | One main track | Exactly one `main` video track, which cannot be deleted |
 | No overlaps | Items never overlap on one track; gaps are allowed, including on the main track |
 | Media fits the track | Audio media never sits on a visual track; audio tracks take audio media or video media with sound |
@@ -72,6 +72,29 @@ their original track. Valid projects are unchanged.
 
 A magnetic track (`magnetic: true`, the main track by default) appends inserts after its last item, and dragging
 within it reorders and compacts the track.
+
+## Adjustment layers
+
+An `adjustment` track works like an adjustment layer in CapCut or Premiere. Its items have `id`, `at` and `dur`
+but no `media` or `text`, and carry a `color` object with the same keys as a clip (`exposure`, `contrast`,
+`saturation`, `lut`, `lutStrength`). While an item is on screen, its grade applies to everything composited below
+it, in preview and export alike; layers above it, such as captions, are not graded. Hiding the track bypasses it.
+
+New adjustment tracks (ID prefix `fx`) go above the video tracks and below text. `adjustment add` places an item
+on the first adjustment track, adding one when needed, and spills overlaps onto another adjustment track.
+
+A style kit (`style apply`) is not stored as a setting. Applying one is a single undoable edit: it deletes
+adjustment items an earlier kit added (marked `styleKit: "<kit id>"`), adds a full-length adjustment item with
+the kit's look, and sets the kit's `style` on every caption on a `captions` text track that has no style or another kit's caption
+preset (titles, place cards and other presets keep theirs). Schema v3 dropped the
+project-wide `style` field that v2 wrote but never read; migration removes it.
+
+```json
+{"id": "fx1", "kind": "adjustment", "role": "adjustment", "name": "Adjustment 1", "items": [
+  {"id": "grade-1", "at": 0, "dur": 900, "in": 0, "styleKit": "cinematic",
+   "color": {"saturation": 0.8, "contrast": 0.9}}
+]}
+```
 
 ## Linked audio and video
 

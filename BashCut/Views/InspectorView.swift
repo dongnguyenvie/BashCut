@@ -37,139 +37,13 @@ struct InspectorView: View {
                                 document.unlinkSelectedAudio()
                             }
                         }
-                        Picker(
-                            "Role",
-                            selection: Binding(
-                                get: { document.selected?["tag"]?.object["role"]?.string ?? "broll" },
-                                set: {
-                                    patchNested("tag", "role", .string($0))
-                                })
-                        ) {
-                            Text("Speech").tag("speech")
-                            Text("B-roll").tag("broll")
-                            Text("Under VO").tag("underVO")
-                        }
-                        TextField(
-                            "Section",
-                            text: Binding(
-                                get: { document.selected?["tag"]?.object["section"]?.string ?? "" },
-                                set: {
-                                    patchNested("tag", "section", .string($0), coalescing: true)
-                                })
-                        ).textFieldStyle(.roundedBorder)
-                        Divider()
-                        switch tab {
-                        case "Video":
-                            HStack {
-                                Button("Change framing") {
-                                    let preset = ReframePreset.next(after: item)
-                                    document.patchSelected(preset.patch, label: "Change framing")
-                                }
-                                Spacer()
-                                Text(
-                                    LocalizedStringKey(
-                                        ReframePreset.current(for: item)?.title ?? "Custom"))
-                                    .font(.caption).foregroundStyle(.secondary)
-                            }
-                            number("Zoom", group: "transform", key: "zoom", defaultValue: 1, range: 0.25...3)
-                            number("Pan", group: "transform", key: "pan", defaultValue: 0, range: -600...600)
-                            number("Tilt", group: "transform", key: "tilt", defaultValue: 0, range: -600...600)
-                            number("Opacity", key: "opacity", defaultValue: 1, range: 0...1)
-                        case "Audio":
-                            number("Volume (dB)", key: "volumeDb", defaultValue: 0, range: -60...12)
-                            Toggle(
-                                "Mute",
-                                isOn: Binding(
-                                    get: { document.selected?["muted"] == .bool(true) },
-                                    set: {
-                                        document.patchSelected(["muted": .bool($0)], label: "Mute")
-                                    }))
-                            number(
-                                "Fade in (frames)", key: "fadeIn", defaultValue: 0,
-                                range: 0...Double(item.duration / 2), integer: true)
-                            number(
-                                "Fade out (frames)", key: "fadeOut", defaultValue: 0,
-                                range: 0...Double(item.duration / 2), integer: true)
-                            if document.selectedItemTrack?.role == "music" {
-                                Divider()
-                                Toggle(
-                                    "Duck under speech",
-                                    isOn: Binding(
-                                        get: {
-                                            let track = document.selectedItemTrack
-                                            return track?["duckingEnabled"] != .bool(false)
-                                                && track?["duckUnderSpeechDb"]?.double != nil
-                                        },
-                                        set: {
-                                            document.patchSelectedTrack(
-                                                [
-                                                    "duckingEnabled": .bool($0),
-                                                    "duckUnderSpeechDb": document.selectedItemTrack?[
-                                                        "duckUnderSpeechDb"] ?? .integer(-14),
-                                                ], label: "Music ducking")
-                                        }))
-                                if document.selectedItemTrack?["duckingEnabled"] != .bool(false),
-                                    document.selectedItemTrack?["duckUnderSpeechDb"]?.double != nil
-                                {
-                                    trackNumber(
-                                        "Duck level (dB)", key: "duckUnderSpeechDb",
-                                        defaultValue: -14, range: -60...0)
-                                    trackNumber(
-                                        "Attack (frames)", key: "duckAttackFrames",
-                                        defaultValue: 3, range: 0...120, integer: true)
-                                    trackNumber(
-                                        "Release (frames)", key: "duckReleaseFrames",
-                                        defaultValue: 8, range: 0...240, integer: true)
-                                }
-                            }
-                        case "Text":
-                            if item["text"] != nil {
-                                TextEditor(
-                                    text: Binding(
-                                        get: { document.selected?.text ?? "" },
-                                        set: {
-                                            document.patchSelected(
-                                                ["text": .string($0)], label: "Edit caption", coalescing: true)
-                                        })
-                                ).frame(height: 100)
-                                Picker(
-                                    "Style",
-                                    selection: Binding(
-                                        get: { document.selected?["style"]?.string ?? "bold-outline" },
-                                        set: {
-                                            document.patchSelected(["style": .string($0)], label: "Caption style")
-                                        })
-                                ) {
-                                    Text("Bold Outline").tag("bold-outline")
-                                    Text("Cinematic Serif").tag("cinematic-serif")
-                                    Text("Keyword Sticker").tag("keyword-sticker")
-                                    Text("Place Card").tag("place-card")
-                                    Text("Hook Title").tag("hook-title")
-                                    Text("Chapter Card").tag("chapter-card")
-                                }
-                                number(
-                                    "Font size", group: "textStyle", key: "size", defaultValue: 0.055,
-                                    range: 0.02...0.15)
-                                number(
-                                    "Vertical position", group: "textStyle", key: "positionY", defaultValue: 0.18,
-                                    range: 0.05...0.9)
-                            } else {
-                                Text("Select a caption to edit text.").foregroundStyle(.secondary)
-                            }
-                        case "Color":
-                            number("Exposure", group: "color", key: "exposure", defaultValue: 0, range: -2...2)
-                            number("Contrast", group: "color", key: "contrast", defaultValue: 1, range: 0.5...1.5)
-                            number("Saturation", group: "color", key: "saturation", defaultValue: 1, range: 0...2)
-                        default:
-                            number("Speed", key: "speed", defaultValue: 1, range: 0.25...4)
-                            Toggle(
-                                "Preserve audio pitch",
-                                isOn: Binding(
-                                    get: { document.selected?["preservePitch"] != .bool(false) },
-                                    set: { preservePitch($0, item: item) }))
-                            Text("Changing speed keeps timeline duration; source bounds must still fit.").font(
-                                .caption
-                            ).foregroundStyle(.secondary)
+                        if document.selectedItemTrack?.isAdjustment == true {
+                            Text("An adjustment grades every layer below it. Set its look in the Color tab or Filters.")
+                                .foregroundStyle(.secondary)
+                            Divider()
+                            if tab == "Color" { colorControls }
+                        } else {
+                            details(item)
                         }
                         Divider()
                         Button("Trim start to playhead") {
@@ -211,6 +85,156 @@ struct InspectorView: View {
                 }.font(.caption).padding(10)
             }
         }.background(Color.white.opacity(0.025))
+    }
+
+    /// Tags and the current tab's controls for a clip or caption.
+    @ViewBuilder private func details(_ item: Item) -> some View {
+        Picker(
+            "Role",
+            selection: Binding(
+                get: { document.selected?["tag"]?.object["role"]?.string ?? "broll" },
+                set: {
+                    patchNested("tag", "role", .string($0))
+                })
+        ) {
+            Text("Speech").tag("speech")
+            Text("B-roll").tag("broll")
+            Text("Under VO").tag("underVO")
+        }
+        TextField(
+            "Section",
+            text: Binding(
+                get: { document.selected?["tag"]?.object["section"]?.string ?? "" },
+                set: {
+                    patchNested("tag", "section", .string($0), coalescing: true)
+                })
+        ).textFieldStyle(.roundedBorder)
+        Divider()
+        switch tab {
+        case "Video":
+            HStack {
+                Button("Change framing") {
+                    let preset = ReframePreset.next(after: item)
+                    document.patchSelected(preset.patch, label: "Change framing")
+                }
+                Spacer()
+                Text(
+                    LocalizedStringKey(
+                        ReframePreset.current(for: item)?.title ?? "Custom"))
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            number("Zoom", group: "transform", key: "zoom", defaultValue: 1, range: 0.25...3)
+            number("Pan", group: "transform", key: "pan", defaultValue: 0, range: -600...600)
+            number("Tilt", group: "transform", key: "tilt", defaultValue: 0, range: -600...600)
+            number("Opacity", key: "opacity", defaultValue: 1, range: 0...1)
+        case "Audio":
+            audioControls(item)
+        case "Text":
+            textControls(item)
+        case "Color":
+            colorControls
+        default:
+            number("Speed", key: "speed", defaultValue: 1, range: 0.25...4)
+            Toggle(
+                "Preserve audio pitch",
+                isOn: Binding(
+                    get: { document.selected?["preservePitch"] != .bool(false) },
+                    set: { preservePitch($0, item: item) }))
+            Text("Changing speed keeps timeline duration; source bounds must still fit.").font(
+                .caption
+            ).foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder private func audioControls(_ item: Item) -> some View {
+        number("Volume (dB)", key: "volumeDb", defaultValue: 0, range: -60...12)
+        Toggle(
+            "Mute",
+            isOn: Binding(
+                get: { document.selected?["muted"] == .bool(true) },
+                set: {
+                    document.patchSelected(["muted": .bool($0)], label: "Mute")
+                }))
+        number(
+            "Fade in (frames)", key: "fadeIn", defaultValue: 0,
+            range: 0...Double(item.duration / 2), integer: true)
+        number(
+            "Fade out (frames)", key: "fadeOut", defaultValue: 0,
+            range: 0...Double(item.duration / 2), integer: true)
+        if document.selectedItemTrack?.role == "music" {
+            Divider()
+            Toggle(
+                "Duck under speech",
+                isOn: Binding(
+                    get: {
+                        let track = document.selectedItemTrack
+                        return track?["duckingEnabled"] != .bool(false)
+                            && track?["duckUnderSpeechDb"]?.double != nil
+                    },
+                    set: {
+                        document.patchSelectedTrack(
+                            [
+                                "duckingEnabled": .bool($0),
+                                "duckUnderSpeechDb": document.selectedItemTrack?[
+                                    "duckUnderSpeechDb"] ?? .integer(-14),
+                            ], label: "Music ducking")
+                    }))
+            if document.selectedItemTrack?["duckingEnabled"] != .bool(false),
+                document.selectedItemTrack?["duckUnderSpeechDb"]?.double != nil
+            {
+                trackNumber(
+                    "Duck level (dB)", key: "duckUnderSpeechDb",
+                    defaultValue: -14, range: -60...0)
+                trackNumber(
+                    "Attack (frames)", key: "duckAttackFrames",
+                    defaultValue: 3, range: 0...120, integer: true)
+                trackNumber(
+                    "Release (frames)", key: "duckReleaseFrames",
+                    defaultValue: 8, range: 0...240, integer: true)
+            }
+        }
+    }
+
+    @ViewBuilder private func textControls(_ item: Item) -> some View {
+        if item["text"] != nil {
+            TextEditor(
+                text: Binding(
+                    get: { document.selected?.text ?? "" },
+                    set: {
+                        document.patchSelected(
+                            ["text": .string($0)], label: "Edit caption", coalescing: true)
+                    })
+            ).frame(height: 100)
+            Picker(
+                "Style",
+                selection: Binding(
+                    get: { document.selected?["style"]?.string ?? "bold-outline" },
+                    set: {
+                        document.patchSelected(["style": .string($0)], label: "Caption style")
+                    })
+            ) {
+                Text("Bold Outline").tag("bold-outline")
+                Text("Cinematic Serif").tag("cinematic-serif")
+                Text("Keyword Sticker").tag("keyword-sticker")
+                Text("Place Card").tag("place-card")
+                Text("Hook Title").tag("hook-title")
+                Text("Chapter Card").tag("chapter-card")
+            }
+            number(
+                "Font size", group: "textStyle", key: "size", defaultValue: 0.055,
+                range: 0.02...0.15)
+            number(
+                "Vertical position", group: "textStyle", key: "positionY", defaultValue: 0.18,
+                range: 0.05...0.9)
+        } else {
+            Text("Select a caption to edit text.").foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder private var colorControls: some View {
+        number("Exposure", group: "color", key: "exposure", defaultValue: 0, range: -2...2)
+        number("Contrast", group: "color", key: "contrast", defaultValue: 1, range: 0.5...1.5)
+        number("Saturation", group: "color", key: "saturation", defaultValue: 1, range: 0...2)
     }
 
     private func preservePitch(_ enabled: Bool, item: Item) {
