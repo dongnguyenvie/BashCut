@@ -1,7 +1,10 @@
+import AppKit
 import BashCutAutomation
+import BashCutDocument
 import BashCutPlugin
 import BashCutProject
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Buttons for the plugin actions placed at `placement` (`toolbar`, `panel.media`, `inspector.color`…).
 /// Draws nothing when no plugin contributes there.
@@ -93,7 +96,7 @@ struct PluginActionParamsSheet: View {
     }
 }
 
-/// One option rendered natively: text field, picker, number field or toggle.
+/// One option rendered natively: text field, picker, number field, toggle or file chooser.
 struct PluginOptionField: View {
     let option: PluginOption
     @Binding var value: JSONValue
@@ -108,7 +111,20 @@ struct PluginOptionField: View {
                 Toggle(title, isOn: Binding(get: { value == .bool(true) }, set: { value = .bool($0) }))
             case .enumeration:
                 Picker(title, selection: Binding(get: { value.string ?? "" }, set: { value = .string($0) })) {
-                    ForEach(option.choices ?? [], id: \.self) { Text($0).tag($0) }
+                    ForEach(option.choices ?? [], id: \.self) { Text(option.label(for: $0)).tag($0) }
+                }
+            case .file:
+                LabeledContent(title) {
+                    HStack(spacing: 6) {
+                        Text(value.string.flatMap { $0.isEmpty ? nil : URL(fileURLWithPath: $0).lastPathComponent }
+                            ?? String(localized: "None"))
+                            .lineLimit(1).truncationMode(.middle).foregroundStyle(.secondary)
+                            .help(value.string ?? "")
+                        Button("Choose…") { if let path = Self.chooseFile(option) { value = .string(path) } }
+                        if value.string?.isEmpty == false {
+                            Button("Clear") { value = .string("") }
+                        }
+                    }
                 }
             case .string, .number, .integer:
                 TextField(title, text: $text)
@@ -125,6 +141,19 @@ struct PluginOptionField: View {
             }
             if let help = option.help { Text(help.text).font(.caption2).foregroundStyle(.secondary) }
         }
+    }
+
+    /// Opens a file panel through `ModalCenter`, so agents can answer it with `ui respond --path`.
+    static func chooseFile(_ option: PluginOption) -> String? {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.message = option.help?.text ?? option.title.text
+        if let types = option.fileTypes, !types.isEmpty {
+            panel.allowedContentTypes = types.compactMap { UTType(filenameExtension: $0) }
+        }
+        return ModalCenter.shared.open(panel, name: "plugin-option-file")?.first?.path
     }
 
     static func text(_ value: JSONValue) -> String {
@@ -191,6 +220,37 @@ struct FindPluginButton: View {
             } label: {
                 Label("Find a plugin…", systemImage: "puzzlepiece.extension")
             }.help(String(format: String(localized: "Browse plugins that provide %@"), capability))
+        }
+    }
+}
+
+/// The options of the plugin behind a provider picker (`providerID` empty means Automatic: the provider BashCut
+/// would choose first), shown in the panel that uses it, such as the voice in the Voice panel.
+struct ProviderOptionsView: View {
+    @Bindable var document: ProjectDocument
+    let capability: String
+    let providerID: String
+
+    private var plugin: InstalledPlugin? {
+        let choices = document.plugins.providers(for: capability)
+        let choice = providerID.isEmpty ? choices.first : choices.first { $0.provider.id == providerID }
+        return choice.flatMap { document.plugins.plugin($0.pluginID) }
+    }
+
+    var body: some View {
+        if let plugin, let options = plugin.manifest.options, !options.isEmpty {
+            let values = document.pluginOptionValues(plugin)
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(options) { option in
+                    PluginOptionField(option: option, value: Binding(
+                        get: { values[option.id] ?? option.fallback },
+                        set: { value in
+                            do {
+                                try document.setPluginOption(plugin, option: option.id, value: value, author: .user)
+                            } catch { document.message = error.localizedDescription }
+                        }))
+                }
+            }.id(plugin.id)
         }
     }
 }

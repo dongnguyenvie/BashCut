@@ -116,6 +116,10 @@ public struct PluginManifest: Codable, Sendable, Equatable {
             throw PluginError.invalid("options, contributes and the session transport need apiVersion 2")
         }
         let options = options ?? []
+        let usesAPI3 = (options + actions.flatMap { $0.params ?? [] }).contains { $0.type == .file || $0.choiceLabels != nil }
+        guard !usesAPI3 || apiVersion >= 3 else {
+            throw PluginError.invalid("file options and choiceLabels need apiVersion 3")
+        }
         guard Set(options.map(\.id)).count == options.count, options.count <= 64 else {
             throw PluginError.invalid("Option ids must be unique (at most 64)")
         }
@@ -124,6 +128,10 @@ public struct PluginManifest: Codable, Sendable, Equatable {
             throw PluginError.invalid("Action ids must be unique (at most 64)")
         }
         for action in actions { try action.validate(pluginID: id) }
+        try validateHooks()
+    }
+
+    private func validateHooks() throws {
         guard Set(hooks.map(\.event)).count == hooks.count else {
             throw PluginError.invalid("Each hook event may appear once")
         }
@@ -199,6 +207,13 @@ public struct PluginCommand: Codable, Sendable, Equatable {
     public init(executable: String, arguments: [String] = []) {
         self.executable = executable
         self.arguments = arguments
+    }
+
+    /// `arguments` may be left out of a manifest; it defaults to none.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        executable = try container.decode(String.self, forKey: .executable)
+        arguments = try container.decodeIfPresent([String].self, forKey: .arguments) ?? []
     }
 
     fileprivate func validate() throws {

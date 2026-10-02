@@ -12,6 +12,8 @@ struct PendingPluginInstall: Identifiable {
     let plugin: InstalledPlugin
     /// Set when the plugin came from the registry: the verified download, removed after install or cancel.
     var archive: StagedPluginArchive?
+    /// Re-runs the dependency recipes of an installed plugin (Install dependencies…) instead of installing it.
+    var repair = false
     /// Replaces an installed copy (an update).
     var replacing = false
 }
@@ -114,6 +116,13 @@ enum PluginText {
     /// The action whose parameter sheet is open.
     var pendingAction: PendingPluginAction?
     var tab: PluginSheetTab = .installed
+    /// Install or setup in progress: fraction from `::progress` lines, the current step and recent output.
+    var installProgress: Double?
+    var installStep = ""
+    var installLog: [String] = []
+    var installJob: String?
+    /// The document's job center, so installs show in `jobs status` and can be cancelled.
+    @ObservationIgnored weak var jobs: JobCenter?
     /// The remote catalog, once fetched (or the cached copy).
     var registry: PluginRegistryDocument?
     var registryFetchedAt: Date?
@@ -128,7 +137,7 @@ enum PluginText {
         url: Self.registryURL, cacheDirectory: service.roots.user.deletingLastPathComponent()
             .appendingPathComponent("Registry", isDirectory: true))
     @ObservationIgnored let trust: PluginTrustStore
-    @ObservationIgnored let service: CapabilityService
+    @ObservationIgnored var service: CapabilityService
     private var projectRoot: URL?
     var currentProjectRoot: URL? { projectRoot }
     static let hookLogLimit = 200
@@ -136,6 +145,11 @@ enum PluginText {
     init(trust: PluginTrustStore = .standard) {
         self.trust = trust
         service = CapabilityService(trust: trust)
+        service.preparesPluginFolders = true
+        #if DEBUG
+            // scripts/dev-link.sh plugins can change while they are written; release builds pin every file.
+            trust.relaxesLinkedPlugins = true
+        #endif
     }
 
     private var userRoot: URL { service.roots.user }
@@ -279,49 +293,129 @@ enum PluginText {
         pendingInstall = PendingPluginInstall(plugin: plugin)
     }
 
+    /// Bytes the pending install needs: the archive plus the downloads its recipes declare.
+    func requiredBytes(_ pending: PendingPluginInstall) -> Int64 {
+        let recipes = pending.plugin.manifest.dependencies.filter { $0.install != nil }.compactMap(\.estimatedBytes)
+        return recipes.reduce(0, +) + Int64(pending.archive?.version.size ?? 0)
+    }
+
+    /// Why the pending install cannot start (not enough free space), or nil.
+    func installBlocker(_ pending: PendingPluginInstall) -> String? {
+        let needed = requiredBytes(pending)
+        guard needed > 0, let free = PluginFolders.availableBytes(), Double(needed) * 1.2 > Double(free) else { return nil }
+        let format = ByteCountFormatter()
+        return String(
+            format: String(localized: "Needs about %@ but only %@ is free"),
+            format.string(fromByteCount: needed), format.string(fromByteCount: free))
+    }
+
+    /// Installs (or, with `repair`, re-runs the dependency recipes of) the plugin the user approved, as a job with
+    /// progress and Cancel. Recipes run in the plugin's filtered environment and process group.
     func installPendingPlugin() {
-        guard let pendingInstall else { return }
-        let source = pendingInstall.plugin.directory
-        let manifest = pendingInstall.plugin.manifest
+        guard let pending = pendingInstall, !installing else { return }
+        if let blocker = installBlocker(pending) {
+            message = blocker
+            return
+        }
+        let name = pending.plugin.manifest.displayName
+        installing = true
+        installProgress = nil
+        installLog = []
+        installStep = pending.repair ? String(localized: "Setting up…") : String(localized: "Installing…")
+        self.pendingInstall = nil
+        let work: @MainActor (JobReporter?) async throws -> JSONValue = { [weak self] reporter in
+            guard let self else { throw CancellationError() }
+            try await performInstall(pending, reporter: reporter)
+            return .object(["plugin": .string(pending.plugin.id)])
+        }
+        let finished: @MainActor (Result<JSONValue, any Error>) -> Void = { [weak self] outcome in
+            guard let self else { return }
+            installing = false
+            installJob = nil
+            pending.archive?.discard()
+            switch outcome {
+            case .success:
+                message = pending.repair ? String(format: String(localized: "%@ is set up"), name)
+                    : pending.replacing ? String(localized: "Plugin updated") : String(localized: "Plugin installed")
+            case .failure(let error) where JobCenter.isCancellation(error):
+                message = String(localized: "Plugin installation cancelled")
+            case .failure(let error):
+                message = error.localizedDescription
+            }
+            refresh(projectRoot: projectRoot)
+        }
+        if let jobs {
+            installJob = jobs.start(
+                pending.repair ? "plugins.setup" : "plugins.install", author: .user, detail: name,
+                work: { reporter in try await work(reporter) }, finished: finished)
+        } else {
+            Task { do { finished(.success(try await work(nil))) } catch { finished(.failure(error)) } }
+        }
+    }
+
+    func cancelInstall() {
+        if let installJob { jobs?.cancel(installJob) }
+    }
+
+    private func performInstall(_ pending: PendingPluginInstall, reporter: JobReporter?) async throws {
+        let plugin = pending.plugin
+        let recipes = plugin.manifest.dependencies.compactMap { dependency in dependency.install.map { (dependency, $0) } }
+        PluginFolders.prepare(plugin.id)
+        let report: @Sendable (PluginRecipeOutput) -> Void = { [weak self] output in
+            Task { @MainActor in self?.recipeOutput(output, reporter: reporter) }
+        }
+        if pending.repair {
+            for (index, (dependency, recipe)) in recipes.enumerated() {
+                installStep = String(format: String(localized: "Setting up %@ (%d of %d)…"), dependency.name, index + 1, recipes.count)
+                try await PluginRecipeRunner.run(recipe.command, plugin: plugin, directory: plugin.directory, output: report)
+            }
+            await checkHealthNow(plugin)
+            return
+        }
+        let source = plugin.directory
+        let manifest = plugin.manifest
         let installRoot = userRoot
         let destination = installRoot.appendingPathComponent(manifest.id, isDirectory: true)
-        let archive = pendingInstall.archive
-        let replacing = pendingInstall.replacing
-        installing = true
-        self.pendingInstall = nil
-        if replacing { stopSession(manifest.id) }
-        Task {
-            defer {
-                installing = false
-                archive?.discard()
+        let replacing = pending.replacing
+        let stagingRoot = installRoot.appendingPathComponent(".staging-\(UUID().uuidString)")
+        let staged = stagingRoot.appendingPathComponent(manifest.id, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: stagingRoot) }
+        try await Task.detached {
+            let manager = FileManager.default
+            try manager.createDirectory(at: installRoot, withIntermediateDirectories: true)
+            guard replacing || !manager.fileExists(atPath: destination.path) else {
+                throw PluginError.invalid("Plugin \(manifest.id) is already installed")
             }
-            do {
-                try await Task.detached {
-                    let manager = FileManager.default
-                    try manager.createDirectory(at: installRoot, withIntermediateDirectories: true)
-                    guard replacing || !manager.fileExists(atPath: destination.path) else {
-                        throw PluginError.invalid("Plugin \(manifest.id) is already installed")
-                    }
-                    let stagingRoot = installRoot.appendingPathComponent(".staging-\(UUID().uuidString)")
-                    let staged = stagingRoot.appendingPathComponent(manifest.id, isDirectory: true)
-                    try manager.createDirectory(at: stagingRoot, withIntermediateDirectories: true)
-                    defer { try? manager.removeItem(at: stagingRoot) }
-                    try manager.copyItem(at: source, to: staged)
-                    let stagedPlugin = InstalledPlugin(manifest: manifest, directory: staged)
-                    _ = try stagedPlugin.entrypointURL()
-                    for dependency in manifest.dependencies {
-                        guard let recipe = dependency.install else { continue }
-                        try Self.run(recipe.command, directory: staged)
-                    }
-                    try Self.place(staged, at: destination, root: installRoot)
-                }.value
-                // The user approved these exact files: pin them so later changes need approval again.
-                if let installed = PluginCatalog.discover(in: [installRoot]).plugins.first(where: { $0.id == manifest.id }) {
-                    try trust.trust(installed)
-                }
-                message = replacing ? String(localized: "Plugin updated") : String(localized: "Plugin installed")
-                refresh(projectRoot: projectRoot)
-            } catch { message = error.localizedDescription }
+            try manager.createDirectory(at: stagingRoot, withIntermediateDirectories: true)
+            try manager.copyItem(at: source, to: staged)
+            _ = try InstalledPlugin(manifest: manifest, directory: staged).entrypointURL()
+        }.value
+        let stagedPlugin = InstalledPlugin(manifest: manifest, directory: staged)
+        for (index, (dependency, recipe)) in recipes.enumerated() {
+            installStep = String(format: String(localized: "Setting up %@ (%d of %d)…"), dependency.name, index + 1, recipes.count)
+            try await PluginRecipeRunner.run(recipe.command, plugin: stagedPlugin, directory: staged, output: report)
+        }
+        try Task.checkCancellation()
+        if replacing { stopSession(manifest.id) }
+        try await Task.detached { try Self.place(staged, at: destination, root: installRoot) }.value
+        // The user approved these exact files: pin them so later changes need approval again.
+        if let installed = PluginCatalog.discover(in: [installRoot]).plugins.first(where: { $0.id == manifest.id }) {
+            try trust.trust(installed)
+            await checkHealthNow(installed)
+        }
+    }
+
+    private func recipeOutput(_ output: PluginRecipeOutput, reporter: JobReporter?) {
+        switch output {
+        case .progress(let value, let text):
+            installProgress = value
+            if let text { installStep = text }
+            reporter?.progress(value, detail: text)
+        case .line(let text):
+            guard !text.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+            installLog.append(text)
+            if installLog.count > 500 { installLog.removeFirst(installLog.count - 500) }
+            reporter?.detail(text)
         }
     }
 
@@ -340,33 +434,6 @@ enum PluginText {
         } catch {
             try? manager.moveItem(at: previous, to: destination)
             throw error
-        }
-    }
-
-    private nonisolated static func run(_ command: PluginCommand, directory: URL) throws {
-        let process = Process()
-        let executable = command.executable.contains("/")
-            ? directory.appendingPathComponent(command.executable).path : "/usr/bin/env"
-        process.executableURL = URL(fileURLWithPath: executable)
-        process.arguments = command.executable.contains("/")
-            ? command.arguments : [command.executable] + command.arguments
-        process.currentDirectoryURL = directory
-        let logURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        FileManager.default.createFile(atPath: logURL.path, contents: nil)
-        let output = try FileHandle(forWritingTo: logURL)
-        defer {
-            try? output.close()
-            try? FileManager.default.removeItem(at: logURL)
-        }
-        process.standardOutput = output
-        process.standardError = output
-        try process.run()
-        process.waitUntilExit()
-        guard process.terminationStatus == 0 else {
-            try output.synchronize()
-            let data = (try? Data(contentsOf: logURL)) ?? Data()
-            let detail = String(bytes: data.suffix(4_000), encoding: .utf8) ?? ""
-            throw PluginError.invalid("Dependency install failed: \(detail)")
         }
     }
 }

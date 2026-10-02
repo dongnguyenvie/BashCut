@@ -257,6 +257,25 @@ struct CapabilityAdapterTests {
         #expect(await transport.calls.count == 1)
     }
 
+    @Test("Capability requests carry the plugin's option values")
+    func providerOptions() async throws {
+        let sandbox = try PluginSandbox()
+        defer { sandbox.cleanup() }
+        try sandbox.addPlugin(
+            "test.echo", providers: [PluginProvider(id: "test.echo.provider", capability: "text.echo", name: "Echo")],
+            body: "exit 1")
+        let transport = RecordingTransport(result: .object(["text": .string("ok")]))
+        var service = CapabilityService(
+            roots: PluginRoots(user: sandbox.root.appendingPathComponent("user"), bundled: nil),
+            transport: transport, healthTransport: transport)
+        _ = try await service.run(EchoCapability(text: "a"), preferredProvider: nil, projectRoot: sandbox.project)
+        #expect(await transport.calls.last?.params.object["options"] == nil)
+        service.optionValues = { plugin in ["voice": .string("Mai Anh"), "plugin": .string(plugin.id)] }
+        _ = try await service.run(EchoCapability(text: "b"), preferredProvider: nil, projectRoot: sandbox.project)
+        let options = await transport.calls.last?.params.object["options"]
+        #expect(options == .object(["voice": .string("Mai Anh"), "plugin": .string("test.echo")]))
+    }
+
     @Test("A rejected result removes the request folder")
     func requestFolderCleanup() async throws {
         let sandbox = try PluginSandbox()

@@ -116,6 +116,15 @@ struct PluginContributionsTests {
         }
     }
 
+    @Test("Dependency commands may leave out arguments")
+    func commandArguments() throws {
+        let plugin = try manifest(base(
+            #", "dependencies": [{"id": "m", "name": "Model", "kind": "python", "probe": {"executable": "bin/check"}}]"#,
+            capabilities: #"["audio.beats"]"#))
+        try plugin.validate()
+        #expect(plugin.dependencies.first?.probe.arguments == [])
+    }
+
     @Test("When expressions test app facts")
     func when() throws {
         let condition = try PluginWhen(parsing: "selection && selection.kind == video|audio && !playing")

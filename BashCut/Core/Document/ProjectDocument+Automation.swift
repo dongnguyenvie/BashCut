@@ -26,6 +26,10 @@ extension ProjectDocument {
         registerUIActionCommands()
         registerToolCommands()
         registerPluginCommands()
+        plugins.jobs = jobs
+        plugins.service.optionValues = { [weak self] plugin in
+            await MainActor.run { self?.pluginOptionValues(plugin) ?? [:] }
+        }
         plugins.refresh(projectRoot: nil)
         emitPluginEvent(.appLaunched)
         assert(registry.unhandledCommands.isEmpty, "Unhandled commands: \(registry.unhandledCommands)")

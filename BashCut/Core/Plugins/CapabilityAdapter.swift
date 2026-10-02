@@ -58,12 +58,20 @@ extension CapabilityService {
         _ adapter: Adapter, using resolved: ResolvedPluginProvider
     ) async throws -> Adapter.Output {
         try adapter.validate()
+        if preparesPluginFolders { PluginFolders.prepare(resolved.plugin.id) }
         let directory = try adapter.outputRoot.map(Self.makeRequestDirectory)
         var succeeded = false
         defer { if !succeeded, let directory { try? FileManager.default.removeItem(at: directory) } }
+        var params = adapter.params(outputDirectory: directory)
+        if case .object(var fields) = params, fields["options"] == nil, let optionValues {
+            let values = await optionValues(resolved.plugin)
+            if !values.isEmpty {
+                fields["options"] = .object(values)
+                params = .object(fields)
+            }
+        }
         let result = try await transport.call(
-            plugin: resolved.plugin, method: Adapter.capability, provider: resolved.provider.id,
-            params: adapter.params(outputDirectory: directory))
+            plugin: resolved.plugin, method: Adapter.capability, provider: resolved.provider.id, params: params)
         let output = try await adapter.output(
             from: result, context: CapabilityContext(provenance: PluginProvenance(resolved), outputDirectory: directory))
         succeeded = true

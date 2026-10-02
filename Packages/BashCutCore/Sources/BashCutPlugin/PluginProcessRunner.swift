@@ -193,15 +193,25 @@ public struct PluginProcessRunner: Sendable {
         ((try? FileManager.default.attributesOfItem(atPath: url.path)[.size]) as? NSNumber)?.intValue ?? 0
     }
 
-    static func environment(for plugin: InstalledPlugin) -> [String: String] {
+    /// The app creates the data and cache folders (`PluginFolders.prepare`) before it starts the plugin.
+    /// The only environment plugin processes, probes and install recipes get: no app secrets, tokens or sockets.
+    /// `PATH` gains the usual tool folders, since an app opened from Finder starts with only `/usr/bin:/bin:…`.
+    public static func environment(for plugin: InstalledPlugin) -> [String: String] {
         let source = ProcessInfo.processInfo.environment
         var environment: [String: String] = [:]
         for key in ["HOME", "PATH", "TMPDIR", "LANG", "LC_ALL"] {
             if let value = source[key] { environment[key] = value }
         }
+        var path = (environment["PATH"] ?? "/usr/bin:/bin:/usr/sbin:/sbin").split(separator: ":").map(String.init)
+        for extra in ["/opt/homebrew/bin", "/usr/local/bin"] where !path.contains(extra) { path.append(extra) }
+        environment["PATH"] = path.joined(separator: ":")
+        let data = PluginFolders.data(plugin.id)
+        let cache = PluginFolders.cache(plugin.id)
         environment["BASHCUT_PLUGIN_ID"] = plugin.id
         environment["BASHCUT_PLUGIN_DIR"] = plugin.directory.path
-        environment["BASHCUT_PLUGIN_API_VERSION"] = String(plugin.manifest.apiVersion)
+        environment["BASHCUT_PLUGIN_API_VERSION"] = String(min(plugin.manifest.apiVersion, PluginAPI.current))
+        environment["BASHCUT_PLUGIN_DATA"] = data.path
+        environment["BASHCUT_PLUGIN_CACHE"] = cache.path
         return environment
     }
 }

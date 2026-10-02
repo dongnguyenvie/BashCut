@@ -62,7 +62,9 @@ extension ProjectDocument {
         if ui.showPlugins, let pending = plugins.pendingInstall {
             // Installing runs the plugin's dependency recipes; only the user can approve it.
             sheets.append(ModalSheet(
-                name: "plugin-install", title: "Install \(pending.plugin.manifest.displayName)?",
+                name: "plugin-install",
+                title: (pending.repair ? "Set up " : pending.replacing ? "Update " : "Install ")
+                    + pending.plugin.manifest.displayName + "?",
                 message: "Only the user can approve a plugin install.",
                 options: [ModalOption("cancel", String(localized: "Cancel"))]
             ) { [weak self] _ in self?.plugins.cancelPendingInstall() })

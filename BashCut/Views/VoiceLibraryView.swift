@@ -21,6 +21,7 @@ struct VoiceLibraryView: View {
                 .padding(5).background(.black.opacity(0.25)).clipShape(RoundedRectangle(cornerRadius: 6))
             providerPicker
             FindPluginButton(document: document, capability: "voice.synthesize")
+            ProviderOptionsView(document: document, capability: "voice.synthesize", providerID: provider)
             Button(pluginManager.calling.contains("voice.synthesize") ? "Generating…" : "Generate → 3 takes") {
                 generate()
             }

@@ -119,7 +119,13 @@ extension PluginManagerModel {
         }
         guard downloading.insert(id).inserted else { throw PluginError.invalid("\(id) is already downloading") }
         defer { downloading.remove(id) }
-        let installer = PluginArchiveInstaller(stagingParent: service.roots.user)
+        #if DEBUG
+            // Development builds can test a local registry (`pluginRegistryURL` = file://…) end to end.
+            let allowFiles = Self.registryURL.isFileURL
+        #else
+            let allowFiles = false
+        #endif
+        let installer = PluginArchiveInstaller(stagingParent: service.roots.user, allowFileURLs: allowFiles)
         let staged = try await installer.stage(entry, version: version)
         cancelPendingInstall()
         let installed = plugins.first { $0.id == id && isUserInstalled($0) }
@@ -133,8 +139,16 @@ extension PluginManagerModel {
         pendingInstall = nil
     }
 
-    /// Uninstalls a plugin from the user or project plugin folder, with its trust grant and user options.
-    func removePlugin(_ plugin: InstalledPlugin) throws {
+    /// Shows the approval to run an installed plugin's dependency recipes again.
+    func requestSetup(_ plugin: InstalledPlugin) {
+        cancelPendingInstall()
+        pendingInstall = PendingPluginInstall(plugin: plugin, repair: true)
+        tab = .installed
+    }
+
+    /// Uninstalls a plugin from the user or project plugin folder, with its trust grant and user options, and with
+    /// `deleteData` also its data and cache folders (environments, models).
+    func removePlugin(_ plugin: InstalledPlugin, deleteData: Bool = false) throws {
         guard isRemovable(plugin) else {
             throw PluginError.invalid("Plugins that come with BashCut cannot be removed; turn them off instead")
         }
@@ -142,6 +156,7 @@ extension PluginManagerModel {
         try FileManager.default.removeItem(at: plugin.directory)
         try? trust.revoke(plugin.id)
         for key in trust.userOptions(plugin.id).keys { try? trust.setUserOption(plugin.id, key: key, value: nil) }
+        if deleteData { try PluginFolders.remove(plugin.id) }
         health[plugin.id] = nil
         message = String(format: String(localized: "Removed %@"), plugin.manifest.displayName)
         refresh(projectRoot: currentProjectRoot)
