@@ -38,6 +38,8 @@ targets:
     settings:
       base:
         PRODUCT_NAME: bashcut
+        SKIP_INSTALL: YES
+        CODE_SIGN_ENTITLEMENTS: BashCut/Helper.entitlements
     dependencies:
       - package: BashCut
         product: BashCutAutomation
@@ -52,6 +54,8 @@ targets:
     settings:
       base:
         PRODUCT_NAME: bashcut-mcp
+        SKIP_INSTALL: YES
+        CODE_SIGN_ENTITLEMENTS: BashCut/Helper.entitlements
     dependencies:
       - package: BashCut
         product: BashCutAutomation
@@ -72,6 +76,10 @@ targets:
       properties:
         CFBundleExecutable: BashCutApp
         CFBundleDevelopmentRegion: en
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleIconName: AppIcon
+        LSApplicationCategoryType: public.app-category.video
         LSMinimumSystemVersion: "14.0"
         NSHighResolutionCapable: true
         NSMicrophoneUsageDescription: BashCut records voiceover directly into the current project.
@@ -86,17 +94,18 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: app.bashcut
         EXECUTABLE_NAME: BashCutApp
         CODE_SIGN_ENTITLEMENTS: BashCut/BashCut.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     dependencies:
       - package: SwiftTerm
         product: SwiftTerm
       - target: BashCutCLI
         embed: true
-        codeSign: false
+        codeSign: true
         copy:
           destination: executables
       - target: BashCutMCP
         embed: true
-        codeSign: false
+        codeSign: true
         copy:
           destination: executables
       - package: BashCut

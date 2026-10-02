@@ -1,5 +1,8 @@
 # Changelog
 
+- Set the first TestFlight candidate version to 0.0.1 (build 1).
+- Add the Mac App Store category, sandbox entitlements, and BashCut app icon required for TestFlight validation.
+
 ## [Unreleased]
 
 - **Adjustment layers** replace the New Project "Style preset" setting, which was stored but never used. An
