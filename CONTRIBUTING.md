@@ -19,7 +19,13 @@ scripts/verify.sh lint           # SwiftLint --strict (the lint authority)
 scripts/verify.sh xcode build    # regenerate BashCut.xcodeproj and build it (also: xcode test)
 scripts/run.sh                   # build, sign and open build/BashCut.app
 Fixtures/make-media.sh           # once: generates Fixtures/media/test.mp4 (ffmpeg) for engine tests
+scripts/sample-project.py        # sample project with every timeline case, built and checked through the CLI
 ```
+
+To try a change by hand, open the [sample project](docs/guides/sample-project.md): it has linked clips, a LUT,
+freeze frame, speed, a gap, a transition, picture in picture, captions, locked/hidden/muted layers, voiceover,
+music with a beat grid and ducking, SFX and sections. `scripts/sample-project.py` also runs as an end-to-end
+check; when you add something the timeline shows, add it there too.
 
 Each run writes its full log to `build/logs/` and prints one PASS/FAIL line.
 

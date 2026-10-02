@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+- Sample project for contributors: `scripts/sample-project.py` generates synthetic media with ffmpeg and builds
+  `build/sample-project/bashcut-sample` through the `bashcut` CLI, with every timeline case (linked clips, LUT,
+  reframing, dissolve, freeze frame, 2× speed, gap, 4K HEVC proxy, picture in picture, captions, locked, hidden
+  and muted layers, voiceover warning, music with beat grid and ducking, SFX, sections, an agent-changed clip),
+  then checks it end to end (`check` re-runs the checks). See `docs/guides/sample-project.md`.
+- Validation now rejects a clip's `color.lut` that is not a catalog ID (an object was accepted and then silently
+  ignored by the engine).
 - Faster playback and timeline drawing: the play controls and time under the viewer are their own view, so the
   editor no longer re-renders every playback frame; the timeline's current time is its own small label instead of
   redrawing the layer header; new filmstrip thumbnails redraw only the visible filmstrip rows; clips look up
