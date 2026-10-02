@@ -6,7 +6,8 @@
   editor no longer re-renders every playback frame; the timeline's current time is its own small label instead of
   redrawing the layer header; new filmstrip thumbnails redraw only the visible filmstrip rows; clips look up
   their media by ID; the beat grid is one path. The playhead is only written when it moves, and state used only
-  for reference (`timelineGestureActive`, the zoom anchor) is no longer observed by views.
+  for reference (`timelineGestureActive`, the zoom anchor) is no longer observed by views. The viewer no longer
+  publishes itself to Control Center's Now Playing, which polled the player on the main thread during playback.
 - The timeline arrow keys are editor actions: `left`/`right` run `playhead.previous-frame`/`playhead.next-frame`,
   and ⇧← / ⇧→ run the new `playhead.back-second`/`playhead.forward-second`, so `ui action shift+right` works.
 - A CapCut-style timeline:

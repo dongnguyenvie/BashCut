@@ -451,8 +451,13 @@ struct PlayerView: NSViewRepresentable {
         let view = AVPlayerView()
         view.controlsStyle = .none
         view.videoGravity = .resizeAspect
+        // An editor preview is not media for Control Center; publishing it made AVKit poll the player item's
+        // time on the main thread, which blocked on the decoder during playback.
+        view.updatesNowPlayingInfoCenter = false
         view.player = player
         return view
     }
-    func updateNSView(_ view: AVPlayerView, context: Context) { view.player = player }
+    func updateNSView(_ view: AVPlayerView, context: Context) {
+        if view.player !== player { view.player = player }
+    }
 }
