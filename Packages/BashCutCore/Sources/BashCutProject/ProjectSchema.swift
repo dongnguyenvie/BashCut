@@ -1,0 +1,364 @@
+import Foundation
+
+// One declaration of the project format's typed fields. `Project.validate()` checks item properties from
+// `ItemProperty.all`, and `ProjectSchema.document` turns the same tables into a JSON Schema (published as
+// docs/reference/project.schema.json and by `schema get`). Adding a property is one entry here; rules that
+// span several fields (overlaps, links, layer bands) stay in Swift validation and are described in the schema.
+
+/// A typed, optional item property, at the top level of an item or inside one of its groups.
+public struct ItemProperty: Sendable {
+    public enum Rule: Sendable {
+        case number(ClosedRange<Double>)
+        case integer(ClosedRange<Int>)
+        case boolean
+    }
+
+    /// `nil` for a top-level item field, else the object it lives in (`transform`, `color`, `textStyle`).
+    public let group: String?
+    public let key: String
+    public let rule: Rule
+    public let summary: String
+
+    init(_ group: String?, _ key: String, _ rule: Rule, _ summary: String) {
+        self.group = group
+        self.key = key
+        self.rule = rule
+        self.summary = summary
+    }
+
+    public static let groups = ["transform", "color", "textStyle"]
+
+    public static let all: [ItemProperty] = [
+        .init(nil, "speed", .number(0.01...100), "Source frames per timeline frame; the timeline duration is kept"),
+        .init(nil, "opacity", .number(0...1), "Picture opacity"),
+        .init(nil, "volumeDb", .number(-120...24), "Clip gain in dB"),
+        .init(nil, "muted", .boolean, "Silences the clip"),
+        .init(nil, "preservePitch", .boolean, "Keeps pitch when speed changes (default true)"),
+        .init(nil, "fadeIn", .integer(0...2_000_000_000), "Audio fade-in in timeline frames"),
+        .init(nil, "fadeOut", .integer(0...2_000_000_000), "Audio fade-out in timeline frames"),
+        .init("transform", "zoom", .number(0.01...100), "Scale over the fill-the-frame size"),
+        .init("transform", "pan", .number(-65536...65536), "Horizontal offset in output pixels"),
+        .init("transform", "tilt", .number(-65536...65536), "Vertical offset in output pixels"),
+        .init("textStyle", "size", .number(0.005...1), "Font size as a fraction of the frame height"),
+        .init("textStyle", "positionY", .number(0...1), "Baseline position from the bottom, as a fraction"),
+        .init("textStyle", "strokeWidth", .number(0...50), "Outline width in points"),
+    ] + ColorGrade.ranges.map { .init("color", $0.key, .number($0.range), ColorGrade.summaries[$0.key] ?? "") }
+}
+
+extension ColorGrade {
+    public static let summaries = [
+        "exposure": "Exposure in stops (0 = unchanged)",
+        "contrast": "Contrast multiplier (1 = unchanged)",
+        "saturation": "Saturation multiplier (0 = black and white, 1 = unchanged)",
+        "lutStrength": "LUT mix (0 = off, 1 = full)",
+    ]
+}
+
+extension Item {
+    /// Checks every `ItemProperty`: groups are objects, values have the declared type and range.
+    func validateDeclaredProperties() throws {
+        for group in ItemProperty.groups {
+            guard let value = fields[group] else { continue }
+            guard case .object = value else { throw ProjectError.invalid("item.\(id).\(group): expected an object") }
+        }
+        for property in ItemProperty.all {
+            let container = property.group.map { fields[$0]?.object ?? [:] } ?? fields
+            guard let value = container[property.key] else { continue }
+            guard let expected = property.rule.mismatch(value) else { continue }
+            let path = "item.\(id)." + (property.group.map { $0 + "." } ?? "") + property.key
+            throw ProjectError.invalid("\(path): expected \(expected)")
+        }
+    }
+}
+
+extension ItemProperty.Rule {
+    /// What the value should have been, or nil when it fits.
+    func mismatch(_ value: JSONValue) -> String? {
+        switch self {
+        case .number(let range):
+            value.double.map { $0.isFinite && range.contains($0) } == true ? nil : "a number in \(range)"
+        case .integer(let range):
+            value.int.map(range.contains) == true ? nil : "an integer in \(range)"
+        case .boolean:
+            if case .bool = value { nil } else { "a boolean" }
+        }
+    }
+}
+
+/// The project format as JSON Schema (draft 2020-12). Unknown fields are allowed everywhere, because they
+/// round-trip; only the declared fields are typed.
+public enum ProjectSchema {
+    public static var document: JSONValue {
+        var root = fields(
+            "A BashCut project (project.bashcut.json).",
+            required: ["schema", "id", "name", "rev", "format", "tracks"],
+            properties: [
+                "schema": .object(["const": .string(Project.schema)]),
+                "id": string("Stable project ID", minLength: 1),
+                "name": string("Display name", minLength: 1),
+                "rev": integer("Revision, +1 on every applied edit", minimum: 0),
+                "contentLanguage": string("BCP 47 language of speech and captions", pattern: "^[A-Za-z]{2,8}(-[A-Za-z0-9]{1,8})*$"),
+                "format": object(
+                    "Output format", required: ["width", "height", "fps"],
+                    properties: [
+                        "width": integer("Pixels", minimum: 1, maximum: 16384),
+                        "height": integer("Pixels", minimum: 1, maximum: 16384),
+                        "fps": ref("rational"), "sampleRate": integer("Hz", minimum: 1),
+                    ]),
+                "media": array("Source files", of: ref("media")),
+                "tracks": array("Layers: visual kinds back to front, then audio", of: ref("track"), minItems: 1, maxItems: 256),
+                "markers": array("Timeline markers", of: ref("marker"), maxItems: 10_000),
+                "transitions": array("Transitions on adjacent video cuts", of: ref("transition"), maxItems: 10_000),
+                "luts": array("Project .cube LUT catalog", of: ref("lut"), maxItems: 1_000),
+                "looks": array("Custom looks (built-in looks are not stored)", of: ref("look"), maxItems: 1_000),
+                "styleKits": array("Custom style kits (built-in kits are not stored)", of: ref("styleKit"), maxItems: 1_000),
+                "audio": ref("audio"),
+                "beatGrid": object(
+                    "Beat grid of one audio media", required: ["media", "bpm", "frames"],
+                    properties: [
+                        "media": string("Media ID"), "bpm": number("Beats per minute", 20...400),
+                        "frames": array("Sorted unique timeline frames", of: integer("Frame", minimum: 0), maxItems: 100_000),
+                    ]),
+                "providers": .object([
+                    "type": .string("object"), "description": .string("Preferred provider ID per capability"),
+                    "additionalProperties": .object(["type": .string("string")]),
+                ]),
+            ])
+        root["$schema"] = .string("https://json-schema.org/draft/2020-12/schema")
+        root["$id"] = .string("https://bashcut.app/schema/\(Project.schema).json")
+        root["title"] = .string("BashCut project")
+        root["$defs"] = .object(definitions)
+        return .object(root)
+    }
+
+    /// The published file's bytes: indented, sorted keys, trailing newline.
+    public static func data() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+        return try encoder.encode(document) + Data("\n".utf8)
+    }
+
+    private static var definitions: [String: JSONValue] {
+        [
+            "rational": .object([
+                "description": .string("[numerator, denominator]"), "type": .string("array"),
+                "prefixItems": .array([integer("Numerator", minimum: 1), integer("Denominator", minimum: 1)]),
+                "minItems": .integer(2), "maxItems": .integer(2),
+            ]),
+            "media": .object(fields(
+                "A source file, referenced by path, never copied", required: ["id", "path", "fps", "frames"],
+                properties: [
+                    "id": string("Stable media ID", minLength: 1),
+                    "path": string("Relative to the project folder, or @assets/… in the workspace", minLength: 1, pattern: "^[^/]"),
+                    "kind": enumeration("Media kind", ["video", "audio"]),
+                    "fps": ref("rational"), "frames": integer("Length in source frames", minimum: 1),
+                    "width": integer("Pixels", minimum: 1, maximum: 16384),
+                    "height": integer("Pixels", minimum: 1, maximum: 16384),
+                    "hasAudio": boolean("Whether the file has sound"),
+                ])),
+            "track": track,
+            "item": .object(item),
+            "color": .object(group("color", "Color grade; on an adjustment item it applies to every layer below", extra: [
+                "lut": .object(["description": .string("LUT ID from luts[]"), "type": .array([.string("string"), .string("null")])]),
+            ])),
+            "marker": .object(fields(
+                "A marker; kind section starts a named section", required: ["at", "kind", "label"],
+                properties: [
+                    "id": string("Stable ID"), "at": integer("Timeline frame", minimum: 0), "kind": string("Marker kind", minLength: 1),
+                    "label": string("Label", minLength: 1, maxLength: 120),
+                ])),
+            "transition": .object(fields(
+                "A transition between two adjacent clips on a video layer",
+                required: ["id", "kind", "from", "to", "duration"],
+                properties: [
+                    "id": string("Stable ID", minLength: 1),
+                    "kind": enumeration("Transition kind", TimelineTransition.renderedKinds),
+                    "from": string("Outgoing item ID"), "to": string("Incoming item ID"),
+                    "duration": integer("Timeline frames", minimum: 1),
+                ])),
+            "lut": .object(fields(
+                "A .cube file in the project luts folder", required: ["id", "name", "path", "size"],
+                properties: [
+                    "id": string("Stable ID", minLength: 1), "name": string("Display name", minLength: 1, maxLength: 120),
+                    "path": string("luts/<file>.cube", pattern: "^luts/.+\\.cube$"),
+                    "size": integer("Cube dimension", minimum: 2, maximum: 64),
+                ])),
+            "look": .object(fields(
+                "A reusable color grade", required: ["id", "title", "color"],
+                properties: [
+                    "id": string("Unique among built-in and custom looks", pattern: StyleCatalog.idPattern),
+                    "title": string("Display name", minLength: 1, maxLength: 120), "color": ref("color"),
+                ])),
+            "styleKit": .object(fields(
+                "A one-shot recipe: a full-length adjustment with a look plus a caption preset",
+                required: ["id", "title", "look", "captionPreset"],
+                properties: [
+                    "id": string("Unique among built-in and custom kits", pattern: StyleCatalog.idPattern),
+                    "title": string("Display name", minLength: 1, maxLength: 120),
+                    "look": string("Built-in or custom look ID"),
+                    "captionPreset": enumeration("Text preset given to captions", TextPreset.all),
+                ])),
+            "audio": .object(fields(
+                "Mix settings and the last loudness measurement", required: [],
+                properties: [
+                    "targetLUFS": number("Normalization target", -30 ... -5),
+                    "normalizeEnabled": boolean("Two-pass normalization on export"),
+                    "mixGainDb": number("Master gain", -60...24),
+                    "measuredLUFS": number("Measured integrated loudness", -100...10),
+                    "truePeakDbTP": number("Measured true peak", -100...20),
+                    "loudnessRangeLU": number("Measured loudness range", 0...100),
+                    "measurementVerified": boolean("The final file was re-measured"),
+                ])),
+        ]
+    }
+
+    private static var track: JSONValue {
+        var value = fields(
+            "A layer. Items never overlap on one layer.", required: ["id", "kind", "role", "name", "items"],
+            properties: [
+                "id": string("Stable layer ID", minLength: 1), "kind": enumeration("Layer kind", TrackKind.all),
+                "role": .object([
+                    "type": .string("string"), "minLength": .integer(1),
+                    "description": .string("Semantic role; any nonempty value, these are assigned by BashCut"),
+                    "examples": .array(TrackRole.known.map(JSONValue.string)),
+                ]),
+                "name": string("Display name", minLength: 1),
+                "magnetic": boolean("Inserts append after the last item; drags reorder and compact"),
+                "hidden": boolean("Visual layers only: left out of preview and export"),
+                "muted": boolean("Audio layers only: silent, and its speech stops ducking music"),
+                "locked": boolean("Items cannot change until unlocked"),
+                "duckingEnabled": boolean("Music layers: suspend ducking without losing the level"),
+                "duckUnderSpeechDb": number("Music layers: level under speech", -60...0),
+                "duckAttackFrames": integer("Music layers: ramp in", minimum: 0, maximum: 10_000),
+                "duckReleaseFrames": integer("Music layers: ramp out", minimum: 0, maximum: 10_000),
+                "items": array("Items, in any order", of: ref("item")),
+            ])
+        // What an item carries depends on its layer's kind.
+        func items(_ rule: JSONValue) -> JSONValue {
+            .object(["properties": .object(["items": .object(["items": rule])])])
+        }
+        func when(_ kinds: [String], _ rule: JSONValue) -> JSONValue {
+            .object([
+                "if": .object(["properties": .object(["kind": .object(["enum": .array(kinds.map(JSONValue.string))])])]),
+                "then": items(rule),
+            ])
+        }
+        let requires = { (key: String) in JSONValue.object(["required": .array([.string(key)])]) }
+        value["allOf"] = .array([
+            when([TrackKind.video, TrackKind.audio], requires("media")),
+            when([TrackKind.text], requires("text")),
+            when([TrackKind.adjustment], .object(["not": .object(["anyOf": .array([requires("media"), requires("text")])])])),
+        ])
+        return .object(value)
+    }
+
+    private static var item: [String: JSONValue] {
+        var properties: [String: JSONValue] = [
+            "id": string("Stable item ID, unique in the project", minLength: 1),
+            "at": integer("Start, in timeline frames", minimum: 0),
+            "dur": integer("Length, in timeline frames", minimum: 1),
+            "in": integer("Source in-point, in media frames", minimum: 0),
+            "media": string("Media ID (video and audio layers)"),
+            "text": string("Caption or title text (text layers)"),
+            "textPreset": enumeration("Text preset (text layers); default bold-outline", TextPreset.all),
+            "freezeFrame": integer("Video: source frame held for the whole item", minimum: 0),
+            "reframePreset": string("Framing preset ID, or custom"),
+            "linkedAudio": string("Video: ID of its linked sound item"),
+            "linkedVideo": string("Audio: ID of its linked picture item"),
+            "styleKit": string("Adjustment: the style kit that added it; the next kit replaces it"),
+            "tag": .object([
+                "type": .string("object"), "description": .string("Editorial tags"),
+                "properties": .object([
+                    "role": enumeration("Speech coverage role", ["speech", "broll", "underVO"]),
+                    "section": string("Section name"),
+                ]),
+            ]),
+            "color": ref("color"),
+        ]
+        for name in ItemProperty.groups where name != "color" {
+            properties[name] = .object(group(name, name == "transform" ? "Framing" : "Text style overrides"))
+        }
+        for property in ItemProperty.all where property.group == nil {
+            properties[property.key] = schema(for: property)
+        }
+        return fields("A timeline item; see the layer rules for which fields it needs", required: ["id", "at", "dur"],
+                      properties: properties)
+    }
+
+    private static func group(_ name: String, _ summary: String, extra: [String: JSONValue] = [:]) -> [String: JSONValue] {
+        var properties = extra
+        for property in ItemProperty.all where property.group == name { properties[property.key] = schema(for: property) }
+        return fields(summary, required: [], properties: properties)
+    }
+
+    private static func schema(for property: ItemProperty) -> JSONValue {
+        switch property.rule {
+        case .number(let range): number(property.summary, range)
+        case .integer(let range): integer(property.summary, minimum: range.lowerBound, maximum: range.upperBound)
+        case .boolean: boolean(property.summary)
+        }
+    }
+
+    // MARK: Builders
+
+    private static func fields(
+        _ summary: String, required: [String], properties: [String: JSONValue]
+    ) -> [String: JSONValue] {
+        var value: [String: JSONValue] = [
+            "type": .string("object"), "description": .string(summary), "properties": .object(properties),
+        ]
+        if !required.isEmpty { value["required"] = .array(required.map(JSONValue.string)) }
+        return value
+    }
+
+    private static func object(_ summary: String, required: [String], properties: [String: JSONValue]) -> JSONValue {
+        .object(fields(summary, required: required, properties: properties))
+    }
+
+    private static func ref(_ name: String) -> JSONValue { .object(["$ref": .string("#/$defs/\(name)")]) }
+
+    private static func array(_ summary: String, of items: JSONValue, minItems: Int? = nil, maxItems: Int? = nil) -> JSONValue {
+        var value: [String: JSONValue] = ["type": .string("array"), "description": .string(summary), "items": items]
+        if let minItems { value["minItems"] = .integer(minItems) }
+        if let maxItems { value["maxItems"] = .integer(maxItems) }
+        return .object(value)
+    }
+
+    private static func string(
+        _ summary: String, minLength: Int? = nil, maxLength: Int? = nil, pattern: String? = nil
+    ) -> JSONValue {
+        var value: [String: JSONValue] = ["type": .string("string"), "description": .string(summary)]
+        if let minLength { value["minLength"] = .integer(minLength) }
+        if let maxLength { value["maxLength"] = .integer(maxLength) }
+        if let pattern { value["pattern"] = .string(pattern) }
+        return .object(value)
+    }
+
+    private static func enumeration(_ summary: String, _ values: [String]) -> JSONValue {
+        .object([
+            "type": .string("string"), "description": .string(summary), "enum": .array(values.map(JSONValue.string)),
+        ])
+    }
+
+    private static func integer(_ summary: String, minimum: Int? = nil, maximum: Int? = nil) -> JSONValue {
+        var value: [String: JSONValue] = ["type": .string("integer"), "description": .string(summary)]
+        if let minimum { value["minimum"] = .integer(minimum) }
+        if let maximum { value["maximum"] = .integer(maximum) }
+        return .object(value)
+    }
+
+    private static func number(_ summary: String, _ range: ClosedRange<Double>) -> JSONValue {
+        .object([
+            "type": .string("number"), "description": .string(summary),
+            "minimum": bound(range.lowerBound), "maximum": bound(range.upperBound),
+        ])
+    }
+
+    private static func bound(_ value: Double) -> JSONValue {
+        value.rounded() == value && abs(value) < 1e15 ? .integer(Int(value)) : .number(value)
+    }
+
+    private static func boolean(_ summary: String) -> JSONValue {
+        .object(["type": .string("boolean"), "description": .string(summary)])
+    }
+}

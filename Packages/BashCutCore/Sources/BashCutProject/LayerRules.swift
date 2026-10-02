@@ -47,7 +47,7 @@ extension Project {
 
     /// A unique ID for a new layer of `kind`, such as `v3`, `fx1`, `t2` or `a5`.
     public func newTrackID(kind: String) -> String {
-        let prefix = ["video": "v", Track.adjustmentKind: "fx", "text": "t", "audio": "a"][kind] ?? "track"
+        let prefix = ["video": "v", TrackKind.adjustment: "fx", "text": "t", "audio": "a"][kind] ?? "track"
         var number = tracks.filter { $0.kind == kind }.count + 1
         while tracks.contains(where: { $0.id == "\(prefix)\(number)" }) { number += 1 }
         return "\(prefix)\(number)"
@@ -73,7 +73,7 @@ extension Project {
         switch kind {
         case "audio": return tracks.count
         case "video": return (tracks[..<visualEnd].lastIndex(where: { $0.kind == "video" }) ?? -1) + 1
-        case Track.adjustmentKind:
+        case TrackKind.adjustment:
             return (tracks[..<visualEnd].lastIndex(where: { $0.kind == "video" || $0.isAdjustment }) ?? -1) + 1
         default: return visualEnd
         }

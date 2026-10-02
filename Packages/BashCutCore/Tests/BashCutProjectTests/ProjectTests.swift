@@ -269,7 +269,7 @@ struct ProjectTests {
         }
         #expect(throws: ProjectError.self) { try Project.decode(Data("{}".utf8)) }
         var future = project
-        future["schema"] = .string("bashcut.project/4")
+        future["schema"] = .string("bashcut.project/2")
         #expect(throws: ProjectError.self) { try future.validate() }
     }
 }

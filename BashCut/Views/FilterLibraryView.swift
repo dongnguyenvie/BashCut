@@ -7,9 +7,14 @@ struct FilterLibraryView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Style kits").font(.headline)
-            ForEach(StyleKit.all) { kit in
-                Button(LocalizedStringKey(kit.title)) { document.runStyleKit(kit) }
+            ForEach(document.project.styleKits) { kit in
+                Button { document.runStyleKit(kit) } label: { title(kit.title, builtIn: kit.isBuiltIn) }
                     .help("Grades the whole video and restyles every caption in one undoable step.")
+                    .contextMenu {
+                        if !kit.isBuiltIn {
+                            Button("Delete style kit", role: .destructive) { document.deleteCustomStyleKit(kit) }
+                        }
+                    }
             }.disabled(document.project.contentDuration == 0)
             Divider()
             HStack {
@@ -24,8 +29,13 @@ struct FilterLibraryView: View {
                     ? "With nothing selected, a look adds an adjustment that grades every layer below it."
                     : "A look grades the selected clip or adjustment."
             ).font(.caption).foregroundStyle(.secondary)
-            ForEach(ColorLook.all) { look in
-                Button(LocalizedStringKey(look.title)) { document.applyLook(look) }
+            ForEach(document.project.looks) { look in
+                Button { document.applyLook(look) } label: { title(look.title, builtIn: look.isBuiltIn) }
+                    .contextMenu {
+                        if !look.isBuiltIn {
+                            Button("Delete look", role: .destructive) { document.deleteCustomLook(look) }
+                        }
+                    }
             }.disabled(document.fileURL == nil)
             Divider()
             HStack {
@@ -56,5 +66,10 @@ struct FilterLibraryView: View {
                 Button("Remove LUT") { document.applyColorLUT(nil) }
             }
         }
+    }
+
+    /// Built-in titles are UI strings; custom ones are user content and stay as typed.
+    private func title(_ text: String, builtIn: Bool) -> Text {
+        builtIn ? Text(LocalizedStringKey(text)) : Text(verbatim: text)
     }
 }

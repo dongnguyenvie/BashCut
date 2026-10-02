@@ -1,3 +1,4 @@
+import BashCutProject
 import Foundation
 
 extension CommandCatalog {
@@ -12,8 +13,8 @@ extension CommandCatalog {
             }
             return "- `\(spec.usage)`: \(spec.summary)\(note)"
         }
-        return ([preamble, "Commands (MCP tool `bashcut_<group>_<command>` takes the same parameters):"] + commands
-            + [operations]).joined(separator: "\n")
+        return ([preamble, color, "Commands (MCP tool `bashcut_<group>_<command>` takes the same parameters):"]
+            + commands + [operations]).joined(separator: "\n")
     }()
 
     private static let preamble = """
@@ -23,8 +24,10 @@ extension CommandCatalog {
         Layers: tracks list visual layers back to front, then audio layers, which are mixed. There is exactly one
         main video layer. Items never overlap on one layer, audio media never goes on a visual layer.
         Adjustment layers (kind adjustment) hold items with only a `color` grade and no media or text; each grades
-        every layer below it while on screen. Use `adjustment add` for a look on a range and `style apply` for a
-        whole-video style kit; there is no project-wide style setting.
+        every layer below it while on screen. Use `adjustment add` for a grade on a range and `style apply` for a
+        whole-video style kit; there is no project-wide style setting. Save reusable grades with `looks save` and
+        recipes with `style save`; `timeline get` lists luts, looks and styleKits (built-in and custom).
+        `schema get` returns the JSON Schema of project.bashcut.json with every field, type and range.
         Prefer `media place` and `timeline move`, which put content on a free or new layer when the range is taken;
         raw insert/move operations that overlap are rejected.
         Edits need --base-rev N from the latest read. One request is one atomic apply call.
@@ -35,6 +38,14 @@ extension CommandCatalog {
         you pass --save-current or --discard-current. Outside BashCut's terminals the CLI and MCP read the
         automation token file automatically; edits are attributed to "agent". Exports still need the user's approval.
         """
+
+    /// Color keys and ranges, from the same table validation uses.
+    private static let color: String = {
+        let keys = ColorGrade.ranges.map { "\($0.key) \($0.range.lowerBound)…\($0.range.upperBound)" }
+        return "Color grades (item, adjustment or look `color`): " + keys.joined(separator: ", ")
+            + ", lut (a LUT ID). setProperties replaces the whole `color` object: send every key you want to keep."
+            + " Text items take `textPreset` (" + TextPreset.all.joined(separator: ", ") + ")."
+    }()
 
     private static let operations = """
         `bashcut timeline apply /absolute/path/ops.json --base-rev N --label "Describe the edit"` reads an array of objects.

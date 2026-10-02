@@ -50,7 +50,7 @@ extension ProjectDocument {
     func applyColorLUT(_ id: String?) {
         guard selected != nil else {
             guard let id else { return }
-            do { try addAdjustment(lutID: id) } catch { message = error.localizedDescription }
+            do { try addAdjustment(color: ["lut": .string(id)]) } catch { message = error.localizedDescription }
             return
         }
         var color = selected?["color"]?.object ?? [:]

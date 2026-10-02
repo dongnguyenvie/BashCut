@@ -29,5 +29,16 @@ extension Project {
             trackValues[trackIndex].items = items
         }
         tracks = trackValues
+        // Custom looks lose the LUT too, like clips, so the catalog stays valid.
+        if case .array(let looks) = fields["looks"] {
+            fields["looks"] = .array(looks.map { entry in
+                var look = entry.object
+                guard var color = look["color"]?.object, color["lut"]?.string == id else { return entry }
+                color.removeValue(forKey: "lut")
+                color.removeValue(forKey: "lutStrength")
+                look["color"] = .object(color)
+                return .object(look)
+            })
+        }
     }
 }

@@ -121,7 +121,8 @@ All 48 commands, grouped by purpose. Prefix each with `bashcut`. Arguments in br
 | `context get` | read | Project path, revision, playhead and selection |
 | `project get` | read | The whole open project document |
 | `project recents` | read | Recently opened projects (Welcome screen) |
-| `timeline get [--format <format>]` | read | Revision, format and tracks, including track IDs and roles; `json` (default) or compact `text` |
+| `timeline get [--format <format>]` | read | Revision, format, tracks (IDs and roles), `luts`, and the built-in and custom `looks` and `styleKits`; `json` (default) or compact `text` |
+| `schema get` | read | The JSON Schema of `project.bashcut.json`: every field, type and range ([project.schema.json](../reference/project.schema.json)) |
 | `media list` | read | Project media, each with its `proxy` state |
 | `review run` | read | Structural timeline review: timeline structure and tagged speech coverage, not measured loudness or silence |
 | `captions export` | read | Captions as SubRip text on stdout |
@@ -155,8 +156,12 @@ when another project opens; agents outside BashCut keep access.
 | `timeline close-gap --at-frame <atFrame> [--track <track>] --base-rev <baseRev>` | edit | Delete the empty gap containing a frame (main layer by default): later clips on that layer move left with their linked sound |
 | `layers set <track> [--hidden on\|off] [--muted on\|off] [--locked on\|off] --base-rev <baseRev>` | edit | The layer header switches: hide a visual layer, mute an audio layer, lock any layer (a locked layer refuses edits) |
 | `layers add --kind <kind> [--role <role>] [--name <name>] --base-rev <baseRev>` | edit | Add an empty `video`, `adjustment`, `text` or `audio` layer; the role can be `overlay`, `captions`, `music`, `sfx` and so on, never `main` |
-| `adjustment add [--look <look>] [--lut <lut>] [--at-frame <atFrame>] [--duration <duration>] [--track <track>] --base-rev <baseRev>` | edit | Add an adjustment item: a color grade on every layer below it for its range (the selected clip's range, else 3 seconds at the playhead); adds an adjustment layer when needed |
-| `style apply <kit> --base-rev <baseRev>` | edit | Apply a style kit as one undo step: a full-length adjustment with the kit's look (replacing an earlier kit's) and the kit's preset on every caption |
+| `adjustment add [--look <look>] [--exposure <n>] [--contrast <n>] [--saturation <n>] [--lut-strength <n>] [--lut <lut>] [--at-frame <atFrame>] [--duration <duration>] [--track <track>] --base-rev <baseRev>` | edit | Add an adjustment item: a color grade on every layer below it for its range (the selected clip's range, else 3 seconds at the playhead). Starts from the look; the grade options override it. Adds an adjustment layer when needed |
+| `style apply <kit> --base-rev <baseRev>` | edit | Apply a built-in or custom style kit as one undo step: a full-length adjustment with the kit's look (replacing an earlier kit's) and the kit's preset on captions |
+| `looks save <id> --title <title> [--item <item>] [grade options] --base-rev <baseRev>` | edit | Save a custom look in the project, starting from an item's grade when given; saving an existing custom ID replaces it |
+| `looks delete <id> --base-rev <baseRev>` | edit | Delete a custom look (refused while a custom kit uses it) |
+| `style save <id> --title <title> --look <look> [--caption-preset <preset>] --base-rev <baseRev>` | edit | Save a custom style kit in the project |
+| `style delete <id> --base-rev <baseRev>` | edit | Delete a custom style kit |
 | `media import <path> [--kind <kind>] [--place] [--track <track>] [--at-frame <atFrame>] --base-rev <baseRev>` | edit | Add a media file; with `--place`, also put it on a layer like the Import button |
 | `media place --media <media> [--track <track>] [--at-frame <atFrame>] --base-rev <baseRev>` | edit | Place project media on a layer (main by default), with linked sound on a dialogue layer |
 | `media proxy [<media>] [--force]` | edit | Queue preview proxies for heavy video, or for one media item |
@@ -208,8 +213,10 @@ when another project opens; agents outside BashCut keep access.
 | `project create --fps` | `29.97` (default), `30`, `24`, `60` |
 | `project create --language` | A language tag; defaults to `vi` |
 | `layers add --kind` | `video`, `adjustment`, `text`, `audio` |
-| `adjustment add --look` | `original` (default), `vivid`, `muted-film`, `black-white` |
-| `style apply <kit>` | `food-review` (vivid look, Bold Outline captions), `cinematic` (muted film, Cinematic Serif) |
+| `adjustment add --look`, `style save --look` | Built-in `original` (default), `vivid`, `muted-film`, `black-white`, or a custom look ID from `timeline get` |
+| `style apply <kit>` | Built-in `food-review` (vivid, Bold Outline), `cinematic` (muted film, Cinematic Serif), or a custom kit ID |
+| Grade options | `--exposure` −10…10, `--contrast` 0…4, `--saturation` 0…4, `--lut-strength` 0…1 (decimals allowed), `--lut` a LUT ID |
+| `style save --caption-preset` | `bold-outline` (default), `cinematic-serif`, `keyword-sticker`, `place-card`, `hook-title`, `chapter-card` |
 | `media import --kind` | `video` (default), `audio` |
 | `export start --preset` | `tiktok`, `youtube-1080`, `youtube-4k`, `quick-draft`, `prores` |
 | `ui open <dialog>` | `new-project`, `export`, `export-report`, `agent-changes`, `review`, `history`, `plugins`, `settings`, `doctor`, `knowledge`, `ask`, `sections`, `external-changes` |

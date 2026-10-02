@@ -414,3 +414,5 @@
 "With nothing selected, a look adds an adjustment that grades every layer below it." = "Khi chưa chọn gì, một tông màu sẽ thêm một điều chỉnh áp lên mọi layer bên dưới.";
 "A look grades the selected clip or adjustment." = "Tông màu áp lên clip hoặc điều chỉnh đang chọn.";
 "An adjustment grades every layer below it. Set its look in the Color tab or Filters." = "Điều chỉnh áp màu lên mọi layer bên dưới. Đặt tông màu trong tab Màu sắc hoặc Bộ lọc.";
+"Delete look" = "Xóa tông màu";
+"Delete style kit" = "Xóa bộ phong cách";

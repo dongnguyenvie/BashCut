@@ -42,11 +42,11 @@ and import all use this path, and the document commits through one `commit` chok
 A new `EditOperation` case also gets a codec sample in `EditOperationCodecTests.samples` and an
 apply→undo→redo round trip in `UndoRedoRoundTripTests`; a test fails until it has both.
 
-**Changing the `project.bashcut.json` schema** (currently `bashcut.project/3`) requires:
-
-1. A schema version bump.
-2. A migration from the previous version, with a test.
-3. Updates to [project-format.md](../reference/project-format.md) and the agent instructions.
+**Changing the `project.bashcut.json` schema** (currently `bashcut.project/1`): declare the field in
+`ItemProperty` or `ProjectSchema`, run `scripts/update-schema.sh` and update
+[project-format.md](../reference/project-format.md) and the agent instructions. A breaking change also bumps
+`Project.schema` and adds a `ProjectMigration` step from the previous version, with a test; additive optional
+fields do not. Nothing is released yet, so the format stays at version 1 until the first release.
 
 **Keep the Resolve-ready rules** from [02-project-format.md](02-project-format.md) §5:
 

@@ -19,7 +19,7 @@ public enum CLIBinding: Sendable, Equatable {
 }
 
 public struct CommandParameter: Sendable {
-    public enum Kind: String, Sendable { case string, integer, boolean, array, object }
+    public enum Kind: String, Sendable { case string, integer, number, boolean, array, object }
 
     public let name: String
     public let kind: Kind
@@ -29,13 +29,16 @@ public struct CommandParameter: Sendable {
     public let minimum: Int?
     public let maximum: Int?
     public let choices: [String]?
+    /// Bounds for a `number` parameter.
+    public let range: ClosedRange<Double>?
     /// A file system path: the CLI makes relative values absolute against its working directory.
     public let isPath: Bool
     public let cli: CLIBinding
 
     public init(
         _ name: String, _ kind: Kind, _ summary: String, required: Bool = false, default defaultValue: JSONValue? = nil,
-        minimum: Int? = nil, maximum: Int? = nil, choices: [String]? = nil, isPath: Bool = false, cli: CLIBinding
+        minimum: Int? = nil, maximum: Int? = nil, choices: [String]? = nil, range: ClosedRange<Double>? = nil,
+        isPath: Bool = false, cli: CLIBinding
     ) {
         self.name = name
         self.kind = kind
@@ -45,6 +48,7 @@ public struct CommandParameter: Sendable {
         self.minimum = minimum
         self.maximum = maximum
         self.choices = choices
+        self.range = range
         self.isPath = isPath
         self.cli = cli
     }
@@ -84,6 +88,10 @@ public struct CommandSpec: Sendable {
             ]
             if let minimum = parameter.minimum { property["minimum"] = .integer(minimum) }
             if let maximum = parameter.maximum { property["maximum"] = .integer(maximum) }
+            if let range = parameter.range {
+                property["minimum"] = .number(range.lowerBound)
+                property["maximum"] = .number(range.upperBound)
+            }
             if let choices = parameter.choices { property["enum"] = .array(choices.map(JSONValue.string)) }
             if let value = parameter.defaultValue { property["default"] = value }
             if parameter.kind == .array { property["items"] = .object(["type": .string("object")]) }
@@ -147,6 +155,9 @@ extension CommandParameter {
                 && (choices?.contains(text) ?? true)
         case (.integer, .integer(let number)):
             valid = number >= (minimum ?? .min) && number <= (maximum ?? .max)
+        case (.number, .integer), (.number, .number):
+            let number = normalized.double ?? .nan
+            valid = number.isFinite && (range?.contains(number) ?? true)
         default: valid = false
         }
         guard valid else { throw RPCFailure(-32602, "\(name) must be \(expectation)") }
@@ -155,6 +166,7 @@ extension CommandParameter {
 
     var expectation: String {
         if let choices { return "one of " + choices.joined(separator: ", ") }
+        if kind == .number { return range.map { "a number in \($0)" } ?? "a number" }
         switch (kind, minimum, maximum) {
         case (.integer, let low?, let high?): return "an integer in \(low)...\(high)"
         case (.integer, let low?, nil): return "an integer ≥ \(low)"
@@ -179,6 +191,7 @@ public struct CommandArguments: Sendable {
         return value
     }
     public func optionalInt(_ name: String) -> Int? { values[name]?.int }
+    public func optionalDouble(_ name: String) -> Double? { values[name]?.double }
     public func bool(_ name: String) -> Bool { values[name] == .bool(true) }
     /// nil when the parameter was not given.
     public func optionalBool(_ name: String) -> Bool? {

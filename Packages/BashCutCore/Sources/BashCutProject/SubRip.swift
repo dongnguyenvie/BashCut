@@ -45,7 +45,7 @@ public enum SubRip {
         }
         var item = Item(at: Int(at), duration: Int(finish - at))
         item["text"] = .string(lines.joined(separator: "\n"))
-        item["style"] = .string("bold-outline")
+        item["textPreset"] = .string("bold-outline")
         return item
     }
 

@@ -128,7 +128,7 @@ extension TimelineCanvas {
         let showsDuration = rect.width > durationWidth + 60
         let titleWidth = rect.maxX - x - 4 - (showsDuration && compact ? durationWidth + 6 : 0)
         let title = track.isAdjustment
-            ? String(localized: String.LocalizationValue(item.adjustmentTitle(luts: project.colorLUTs)))
+            ? String(localized: String.LocalizationValue(item.adjustmentTitle(in: project)))
             : item.text.isEmpty ? filename : item.text
         if titleWidth > 8 {
             (title as NSString).draw(

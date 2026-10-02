@@ -205,7 +205,7 @@ def build(project_dir: Path, heavy: bool):
             "o1-pip", "pip.mp4", 120, 120, 0, opacity=0.9,
             transform={"zoom": 0.4, "pan": 260, "tilt": -520}, reframePreset="custom")},
         {"op": "insert", "track": "t1", "item": {
-            "id": "title", "at": 0, "dur": 55, "in": 0, "text": "BASHCUT SAMPLE", "style": "hook-title"}},
+            "id": "title", "at": 0, "dur": 55, "in": 0, "text": "BASHCUT SAMPLE", "textPreset": "hook-title"}},
         {"op": "insert", "track": "a2", "item": clip("vo1-overlap", "voiceover.m4a", 60, 120)},
         {"op": "insert", "track": "a2", "item": clip("vo2", "voiceover.m4a", 450, 120, 10)},
         {"op": "insert", "track": "a3", "item": clip(

@@ -4004,6 +4004,18 @@
         "en": { "stringUnit": { "state": "translated", "value": "An adjustment grades every layer below it. Set its look in the Color tab or Filters." } },
         "vi": { "stringUnit": { "state": "translated", "value": "Điều chỉnh áp màu lên mọi layer bên dưới. Đặt tông màu trong tab Màu sắc hoặc Bộ lọc." } }
       }
+    },
+    "Delete look": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Delete look" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Xóa tông màu" } }
+      }
+    },
+    "Delete style kit": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Delete style kit" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Xóa bộ phong cách" } }
+      }
     }
   },
   "version": "1.0"

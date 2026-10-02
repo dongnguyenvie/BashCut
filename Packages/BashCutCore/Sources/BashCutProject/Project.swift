@@ -99,6 +99,8 @@ public struct Item: JSONObject, Identifiable {
     public var end: Int { at + duration }
     public var speed: Double { fields["speed"]?.double ?? 1 }
     public var text: String { fields["text"]?.string ?? "" }
+    /// A text item's preset from `TextPreset.all`; nil draws Bold Outline.
+    public var textPreset: String? { fields["textPreset"]?.string }
     public var linkedItemID: String? {
         fields["linkedAudio"]?.string ?? fields["linkedVideo"]?.string
     }
@@ -126,7 +128,7 @@ public struct Track: JSONObject, Identifiable {
     public init(fields: [String: JSONValue]) { self.fields = fields }
     public init(id: String, kind: String, role: String, magnetic: Bool = false) {
         fields = [
-            "id": .string(id), "kind": .string(kind), "role": .string(role),
+            "id": .string(id), "kind": .string(kind), "role": .string(role), "name": .string(role.capitalized),
             "magnetic": .bool(magnetic), "items": .array([]),
         ]
     }
@@ -138,7 +140,7 @@ public struct Track: JSONObject, Identifiable {
         return value
     }
     public var name: String {
-        get { fields["name"]?.string ?? role.capitalized }
+        get { fields["name"]?.string ?? "" }
         set { fields["name"] = .string(newValue) }
     }
     public var items: [Item] {
@@ -198,8 +200,8 @@ public struct ColorLUT: JSONObject, Identifiable {
 }
 
 public struct Project: JSONObject {
-    /// v3 added adjustment layers and retired the project-wide `style` setting.
-    public static let schema = "bashcut.project/3"
+    /// The only schema so far. A breaking change bumps it and adds a migration in `decode`.
+    public static let schema = "bashcut.project/1"
     public var fields: [String: JSONValue]
     public init(fields: [String: JSONValue]) { self.fields = fields }
     public init(name: String, fps: FrameRate = FrameRate(), contentLanguage: String = "vi") {
@@ -280,23 +282,20 @@ public struct Project: JSONObject {
     }
     public static func decode(_ data: Data) throws -> Project {
         var project = try JSONDecoder().decode(Project.self, from: data)
-        if project.fields["schema"] == .string("bashcut.project/1") {
-            project.fields["schema"] = .string("bashcut.project/2")
-            var tracks = project.tracks
-            for index in tracks.indices where tracks[index].fields["name"] == nil {
-                tracks[index].name = tracks[index].role.capitalized
-            }
-            project.tracks = tracks
-        }
-        if project.fields["schema"] == .string("bashcut.project/2") {
-            // The v2 `style` setting was never read; style kits and adjustment layers replace it.
-            project.fields["schema"] = .string(Self.schema)
-            project.fields["style"] = nil
-        }
+        try ProjectMigration.upgrade(&project)
         project = project.normalizingLayers()
         try project.validate()
         return project
     }
+}
+
+/// Track kinds. Visual kinds stack back to front above the audio kinds; adding a kind starts here.
+public enum TrackKind {
+    public static let video = "video"
+    public static let adjustment = "adjustment"
+    public static let text = "text"
+    public static let audio = "audio"
+    public static let all = [video, adjustment, text, audio]
 }
 
 /// Semantic track roles. Roles are repeatable hints; features look tracks up by role instead of by
@@ -310,6 +309,8 @@ public enum TrackRole {
     public static let music = "music"
     public static let sfx = "sfx"
     public static let adjustment = "adjustment"
+    /// The roles BashCut assigns; any other nonempty role is allowed.
+    public static let known = [main, overlay, adjustment, captions, dialogue, voiceover, music, sfx]
 }
 
 extension Project {

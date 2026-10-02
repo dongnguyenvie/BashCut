@@ -27,7 +27,7 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
 
 - Separate Git repository with SwiftPM (single target source) and XcodeGen configuration, committed lockfiles and
   verification scripts.
-- Lossless project JSON (`bashcut.project/3`, older v1 and v2 files migrate on open) with rational FPS, role-based dynamic
+- Lossless project JSON (`bashcut.project/1`, described by the generated `docs/reference/project.schema.json`) with rational FPS, role-based dynamic
   tracks, atomic `EditOperation` batches, source/overlap/render validation, revisions and persisted undo/redo.
   Unknown fields round-trip.
 - New Project wizard: name, aspect ratio, resolution, rational FPS, content language, destination and an

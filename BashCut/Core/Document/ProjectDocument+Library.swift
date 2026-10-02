@@ -45,7 +45,7 @@ extension ProjectDocument {
     func addText(style: String, text: String = "Your caption") {
         var item = Item(at: playhead, duration: max(1, min(90, project.duration - playhead)))
         item["text"] = .string(text)
-        item["style"] = .string(style)
+        item["textPreset"] = .string(style)
         do {
             try commit(.insert(track: project.requireTrack(role: TrackRole.captions).id, item: item), label: "Add text")
             selectedID = item.id

@@ -195,7 +195,7 @@ final class ProjectDocument {
     func addCaption() {
         var item = Item(at: playhead, duration: max(1, min(90, project.duration - playhead)))
         item["text"] = .string("Món ngon ở Buôn Ma Thuột")
-        item["style"] = .string("bold-outline")
+        item["textPreset"] = .string("bold-outline")
         do {
             try commit(.insert(track: project.requireTrack(role: TrackRole.captions).id, item: item), label: "Add caption")
         } catch { message = error.localizedDescription }
