@@ -154,6 +154,7 @@ when another project opens; agents outside BashCut keep access.
 | `timeline redo --base-rev <baseRev>` | edit | Redo one timeline action |
 | `timeline move <item> --track <track> --at-frame <atFrame> --base-rev <baseRev>` | edit | Move an item and its linked partner; an occupied range spills onto a free or new layer |
 | `timeline close-gap --at-frame <atFrame> [--track <track>] --base-rev <baseRev>` | edit | Delete the empty gap containing a frame (main layer by default): later clips on that layer move left with their linked sound |
+| `clip speed [item] --speed <x> [--keep-duration] [--preserve-pitch on\|off] --base-rev N` | edit | Constant speed like Inspector › Speed; by default the length follows the speed and later clips move |
 | `layers set <track> [--hidden on\|off] [--muted on\|off] [--locked on\|off] --base-rev <baseRev>` | edit | The layer header switches: hide a visual layer, mute an audio layer, lock any layer (a locked layer refuses edits) |
 | `layers add --kind <kind> [--role <role>] [--name <name>] --base-rev <baseRev>` | edit | Add an empty `video`, `adjustment`, `text` or `audio` layer; the role can be `overlay`, `captions`, `music`, `sfx` and so on, never `main` |
 | `adjustment add [--look <look>] [--exposure <n>] [--contrast <n>] [--saturation <n>] [--lut-strength <n>] [--lut <lut>] [--at-frame <atFrame>] [--duration <duration>] [--track <track>] --base-rev <baseRev>` | edit | Add an adjustment item: a color grade on every layer below it for its range (the selected clip's range, else 3 seconds at the playhead). Starts from the look; the grade options override it. Adds an adjustment layer when needed |
@@ -277,7 +278,7 @@ bashcut timeline redo --base-rev 14
 ]
 ```
 
-- **Operations.** `insert`, `delete`, `split`, `trim`, `roll`, `slip`, `move`, `reorder`, `setProperties`,
+- **Operations.** `insert`, `delete`, `split`, `trim`, `roll`, `slip`, `move`, `reorder`, `setSpeed`, `setProperties`,
   `setLinkedAudio`, track operations (`addTrack`, `moveTrack`, `setTrackProperties`, `deleteTrack`),
   `setProjectProperties`, `setProviderPreference`, `setBeatGrid`, `upsertSection`, `deleteSection`,
   `upsertTransition`, `deleteTransition`, `addColorLUT` and `deleteColorLUT`. The agent instructions

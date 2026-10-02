@@ -78,6 +78,9 @@ public enum UIAction: String, CaseIterable, Sendable {
     case freezeFrame = "clip.freeze"
     case changeFraming = "clip.change-framing"
     case unlinkAudio = "clip.unlink-audio"
+    case speedUp = "clip.speed-up"
+    case slowDown = "clip.slow-down"
+    case resetSpeed = "clip.speed-reset"
     case refreshWaveforms = "timeline.refresh-waveforms"
     case addVideoLayer = "layer.add-video"
     case addAdjustmentLayer = "layer.add-adjustment"
@@ -102,6 +105,15 @@ public enum UIAction: String, CaseIterable, Sendable {
     case clearRecentProjects = "project.clear-recents"
 
     public var id: String { rawValue }
+
+    /// Speeds the Speed tab, the clip menu and Speed up / Slow down step through.
+    public static let speedPresets: [Double] = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 3, 4]
+
+    /// `2×`, `1.5×`, `0.75×`.
+    public static func speedLabel(_ speed: Double) -> String {
+        let text = speed == speed.rounded() ? String(Int(speed)) : String(format: "%g", (speed * 100).rounded() / 100)
+        return text + "×"
+    }
 
     /// Inspector tabs, for `ui.view --inspector`.
     public static let inspectorTabs = ["video", "audio", "text", "color", "speed"]
@@ -140,6 +152,9 @@ public enum UIAction: String, CaseIterable, Sendable {
         case .freezeFrame: "Freeze frame"
         case .changeFraming: "Change framing"
         case .unlinkAudio: "Unlink audio"
+        case .speedUp: "Speed up selected clip"
+        case .slowDown: "Slow down selected clip"
+        case .resetSpeed: "Reset selected clip to normal speed"
         case .refreshWaveforms: "Refresh waveforms"
         case .addVideoLayer: "Add video layer"
         case .addAdjustmentLayer: "Add adjustment layer"

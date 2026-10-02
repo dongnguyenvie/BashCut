@@ -33,6 +33,9 @@ extension EditOperation {
         case "roll":
             self = .roll(item: try read.string("item"), edge: try read.edge(), toFrame: try read.frame("toFrame"))
         case "setProperties": self = .setProperties(item: try read.string("item"), patch: try read.object("patch"))
+        case "setSpeed":
+            guard let speed = fields["speed"]?.double else { throw ProjectError.invalid("setSpeed: speed is required") }
+            self = .setSpeed(item: try read.string("item"), speed: speed, keepDuration: fields["keepDuration"] == .bool(true))
         case "setLinkedAudio": self = .setLinkedAudio(video: try read.string("video"), audio: fields["audio"]?.string)
         case "addMedia": self = .addMedia(Media(fields: try read.object("media")))
         case "addTrack":
@@ -99,6 +102,8 @@ extension EditOperation {
             return op("roll", ["item": .string(item), "edge": .string(edge.rawValue), "toFrame": .integer(frame)])
         case .setProperties(let item, let patch):
             return op("setProperties", ["item": .string(item), "patch": .object(patch)])
+        case .setSpeed(let item, let speed, let keepDuration):
+            return op("setSpeed", ["item": .string(item), "speed": .number(speed), "keepDuration": .bool(keepDuration)])
         case .setLinkedAudio(let video, let audio):
             return op("setLinkedAudio", ["video": .string(video), "audio": audio.map(JSONValue.string) ?? .null])
         case .addMedia(let media): return op("addMedia", ["media": .object(media.fields)])

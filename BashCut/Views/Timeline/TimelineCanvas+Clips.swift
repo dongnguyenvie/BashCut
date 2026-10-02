@@ -1,4 +1,5 @@
 import AppKit
+import BashCutAutomation
 import BashCutEngine
 import BashCutProject
 
@@ -127,9 +128,13 @@ extension TimelineCanvas {
         let durationWidth = (duration as NSString).size(withAttributes: ClipStyle.durationText).width
         let showsDuration = rect.width > durationWidth + 60
         let titleWidth = rect.maxX - x - 4 - (showsDuration && compact ? durationWidth + 6 : 0)
-        let title = track.isAdjustment
+        var title = track.isAdjustment
             ? String(localized: String.LocalizationValue(item.adjustmentTitle(in: project)))
             : item.text.isEmpty ? filename : item.text
+        // A changed speed reads first, like CapCut's badge: "2× clip.mp4".
+        if item.mediaID != nil, abs(item.speed - 1) > 0.0001, item.fields["freezeFrame"] == nil {
+            title = UIAction.speedLabel(item.speed) + " " + title
+        }
         if titleWidth > 8 {
             (title as NSString).draw(
                 with: CGRect(x: x, y: y, width: titleWidth, height: 13),

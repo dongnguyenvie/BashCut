@@ -500,3 +500,13 @@
 "Installed during setup" = "Installed during setup";
 "Not available on this Mac" = "Not available on this Mac";
 "The plugin needs it but cannot install it; ask the plugin's author." = "The plugin needs it but cannot install it; ask the plugin's author.";
+"Speed applies to video and audio clips." = "Speed applies to video and audio clips.";
+"A freeze frame has no speed. Remove the freeze to change it." = "A freeze frame has no speed. Remove the freeze to change it.";
+"Change clip length" = "Change clip length";
+"Faster clips get shorter and later clips on the layer move up." = "Faster clips get shorter and later clips on the layer move up.";
+"The clip keeps its length and uses more or less of the source." = "The clip keeps its length and uses more or less of the source.";
+"Linked sound changes too" = "Linked sound changes too";
+"Speed (%@)" = "Speed (%@)";
+"Speed up selected clip" = "Speed up selected clip";
+"Slow down selected clip" = "Slow down selected clip";
+"Reset selected clip to normal speed" = "Reset selected clip to normal speed";
