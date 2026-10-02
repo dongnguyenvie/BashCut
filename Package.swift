@@ -1,0 +1,41 @@
+// swift-tools-version: 6.0
+import PackageDescription
+
+let package = Package(
+    name: "BashCut",
+    platforms: [.macOS(.v14)],
+    products: [.executable(name: "BashCutApp", targets: ["BashCut"]),
+               .executable(name: "bashcut", targets: ["BashCutCLI"]),
+               .executable(name: "bashcut-mcp", targets: ["BashCutMCP"])],
+    dependencies: [.package(path: "Packages/BashCutCore"),
+                   .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.17.0"),
+                   .package(url: "https://github.com/migueldeicaza/SwiftTerm", from: "1.20.0"),
+                   .package(url: "https://github.com/apple/swift-argument-parser", from: "1.5.0"),
+                   .package(url: "https://github.com/modelcontextprotocol/swift-sdk.git", exact: "0.12.1")],
+    targets: [
+        .target(name: "BashCutEngine", dependencies: [.product(name: "BashCutProject", package: "BashCutCore")],
+                path: "BashCut/Core/Engine"),
+        .target(name: "BashCutStorage", dependencies: [.product(name: "BashCutProject", package: "BashCutCore")],
+                path: "BashCut/Core/Storage"),
+        .target(name: "BashCutAutomation", dependencies: [.product(name: "BashCutProject", package: "BashCutCore")],
+                path: "BashCut/Core/Automation"),
+        .target(name: "BashCutAgent", dependencies: [.product(name: "BashCutProject", package: "BashCutCore")],
+                path: "BashCut/Core/Agent"),
+        .executableTarget(name: "bashcut-bench", dependencies: ["BashCutEngine",
+            .product(name: "BashCutProject", package: "BashCutCore")], path: "Tools/Bench"),
+        .executableTarget(name: "BashCutCLI", dependencies: ["BashCutAutomation",
+            .product(name: "ArgumentParser", package: "swift-argument-parser")], path: "CLI"),
+        .executableTarget(name: "BashCutMCP", dependencies: ["BashCutAutomation",
+            .product(name: "MCP", package: "swift-sdk")], path: "MCPBridge"),
+        .executableTarget(name: "BashCut", dependencies: ["BashCutEngine", "BashCutStorage", "BashCutAgent", "BashCutAutomation",
+            .product(name: "BashCutProject", package: "BashCutCore"),
+            .product(name: "BashCutImport", package: "BashCutCore"),
+            .product(name: "BashCutInterchange", package: "BashCutCore"),
+            .product(name: "BashCutPlugin", package: "BashCutCore"),
+            .product(name: "SwiftTerm", package: "SwiftTerm")], path: "BashCut",
+            exclude: ["Core/Engine", "Core/Storage", "Core/Agent", "Core/Automation", "Info.plist", "BashCut.entitlements", "Resources"]),
+        .testTarget(name: "BashCutEngineTests", dependencies: ["BashCutEngine", "BashCutStorage", "BashCutAgent", "BashCutAutomation",
+            .product(name: "SnapshotTesting", package: "swift-snapshot-testing")], path: "BashCutTests",
+            exclude: ["__Snapshots__"])
+    ]
+)

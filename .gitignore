@@ -1,0 +1,10 @@
+.DS_Store
+.build/
+.swiftpm/
+build/
+BashCut.xcodeproj/
+Configs/Secrets.xcconfig
+.env
+.env.*
+!.env.example
+Fixtures/media/

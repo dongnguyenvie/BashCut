@@ -1,0 +1,19 @@
+included:
+  - BashCut
+  - BashCutTests
+  - CLI
+  - Packages/BashCutCore/Sources
+  - Packages/BashCutCore/Tests
+excluded:
+  - .build
+  - Packages/BashCutCore/.build
+disabled_rules:
+  - identifier_name
+  - trailing_comma
+  - opening_brace
+  - statement_position
+  - large_tuple
+line_length: 150
+function_body_length: 100
+type_body_length: 350
+file_length: 500

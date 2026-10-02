@@ -1,0 +1,176 @@
+name: BashCut
+options:
+  minimumXcodeGenVersion: "2.46.0"
+  developmentLanguage: en
+  deploymentTarget:
+    macOS: "14.0"
+configFiles:
+  Debug: Configs/Debug.xcconfig
+  Release: Configs/Release.xcconfig
+packages:
+  SwiftTerm:
+    url: https://github.com/migueldeicaza/SwiftTerm
+    from: 1.20.0
+  ArgumentParser:
+    url: https://github.com/apple/swift-argument-parser
+    from: 1.5.0
+  SnapshotTesting:
+    url: https://github.com/pointfreeco/swift-snapshot-testing
+    from: 1.17.0
+  Collections:
+    url: https://github.com/apple/swift-collections
+    from: 1.1.4
+  MCPSwiftSDK:
+    url: https://github.com/modelcontextprotocol/swift-sdk.git
+    exactVersion: 0.12.1
+  BashCutCore:
+    path: Packages/BashCutCore
+targets:
+  BashCutEngine:
+    type: framework
+    platform: macOS
+    sources: [BashCut/Core/Engine]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.bashcut.engine
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - package: BashCutCore
+        product: BashCutProject
+      - package: BashCutCore
+        product: BashCutPlugin
+  BashCutStorage:
+    type: framework
+    platform: macOS
+    sources: [BashCut/Core/Storage]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.bashcut.storage
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - package: BashCutCore
+        product: BashCutProject
+  BashCutAgent:
+    type: framework
+    platform: macOS
+    sources: [BashCut/Core/Agent]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.bashcut.agent
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - package: BashCutCore
+        product: BashCutProject
+  BashCutAutomation:
+    type: framework
+    platform: macOS
+    sources: [BashCut/Core/Automation]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.bashcut.automation
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - package: BashCutCore
+        product: BashCutProject
+  # The target name must differ from "BashCut" beyond case: on a case-insensitive disk both targets
+  # would share one intermediates folder and leak compiler flags into each other.
+  BashCutCLI:
+    type: tool
+    platform: macOS
+    sources: [CLI]
+    settings:
+      base:
+        PRODUCT_NAME: bashcut
+    dependencies:
+      - target: BashCutAutomation
+      - package: BashCutCore
+        product: BashCutProject
+      - package: ArgumentParser
+        product: ArgumentParser
+  BashCutMCP:
+    type: tool
+    platform: macOS
+    sources: [MCPBridge]
+    settings:
+      base:
+        PRODUCT_NAME: bashcut-mcp
+    dependencies:
+      - target: BashCutAutomation
+      - package: MCPSwiftSDK
+        product: MCP
+  BashCut:
+    type: application
+    platform: macOS
+    sources:
+      - path: BashCut
+        excludes: [Core/Engine, Core/Storage, Core/Agent, Core/Automation, Info.plist, BashCut.entitlements, Resources/en.lproj, Resources/vi.lproj]
+      - path: BashCut/Resources/en.lproj/InfoPlist.strings
+        buildPhase: resources
+      - path: BashCut/Resources/vi.lproj/InfoPlist.strings
+        buildPhase: resources
+    info:
+      path: BashCut/Info.plist
+      properties:
+        CFBundleExecutable: BashCutApp
+        CFBundleDevelopmentRegion: en
+        LSMinimumSystemVersion: "14.0"
+        NSHighResolutionCapable: true
+        NSMicrophoneUsageDescription: BashCut records voiceover directly into the current project.
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.bashcut
+        EXECUTABLE_NAME: BashCutApp
+        CODE_SIGN_ENTITLEMENTS: BashCut/BashCut.entitlements
+    dependencies:
+      - package: SwiftTerm
+        product: SwiftTerm
+      - target: BashCutCLI
+        embed: true
+        codeSign: false
+        copy:
+          destination: executables
+      - target: BashCutMCP
+        embed: true
+        codeSign: false
+        copy:
+          destination: executables
+      - target: BashCutEngine
+      - target: BashCutStorage
+      - target: BashCutAgent
+      - target: BashCutAutomation
+      - package: BashCutCore
+        product: BashCutProject
+      - package: BashCutCore
+        product: BashCutImport
+      - package: BashCutCore
+        product: BashCutInterchange
+      # BashCutProject's public history API exposes Deque, so the app links it directly in Xcode.
+      - package: Collections
+        product: DequeModule
+  BashCutTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: BashCutTests
+        excludes: [__Snapshots__]
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - target: BashCutEngine
+      - target: BashCutStorage
+      - target: BashCutAgent
+      - target: BashCutAutomation
+      - package: BashCutCore
+        product: BashCutProject
+      - package: Collections
+        product: DequeModule
+      - package: SnapshotTesting
+        product: SnapshotTesting
+schemes:
+  BashCut:
+    build:
+      targets:
+        BashCut: all
+    test:
+      targets: [BashCutTests]

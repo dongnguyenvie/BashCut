@@ -1,0 +1,2 @@
+#include "Base.xcconfig"
+SWIFT_OPTIMIZATION_LEVEL = -O
