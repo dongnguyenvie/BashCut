@@ -1,0 +1,620 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BashCut UI mockup</title>
+<style>
+:root{
+  --bg:#111215; --panel:#18191d; --panel2:#1e2025; --line:#2a2c33; --line2:#33363e;
+  --text:#e6e7ea; --muted:#9a9ca6; --dim:#6b6e78;
+  --accent:#22d3ee; --accent2:#0e7490;
+  --speech:#3b82f6; --broll:#64748b; --undervo:#a855f7;
+  --a1:#22c55e; --a2:#c084fc; --a3:#f59e0b; --a4:#f472b6; --txt:#eab308; --ovl:#14b8a6;
+  --warn:#f59e0b; --bad:#ef4444; --ok:#22c55e;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+body{min-width:1280px;overflow:hidden}
+button{font:inherit;color:inherit;background:var(--panel2);border:1px solid var(--line2);border-radius:6px;padding:4px 10px;cursor:pointer}
+button:hover{border-color:#4a4e58}
+button.primary{background:var(--accent);color:#06222a;border-color:var(--accent);font-weight:600}
+button.ghost{background:transparent;border-color:transparent}
+button.ghost:hover{background:var(--panel2)}
+button.warn{border-color:#5a4313;background:#2a2112}
+button.warn b{color:var(--warn)}
+kbd{font:11px var(--mono);color:var(--muted);border:1px solid var(--line2);border-radius:4px;padding:0 4px;margin-left:4px}
+input,textarea,select{font:inherit;color:var(--text);background:#0f1013;border:1px solid var(--line2);border-radius:6px;padding:5px 8px}
+textarea{resize:none;width:100%}
+
+/* top bar */
+.top{height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 10px;background:var(--panel);border-bottom:1px solid var(--line)}
+.top .grp{display:flex;align-items:center;gap:6px}
+.pname{font-weight:600;margin:0 8px}
+.fmt{color:var(--muted);font:12px var(--mono)}
+.brand{font-weight:700;letter-spacing:.3px;margin-right:6px}
+.brand i{color:var(--accent);font-style:normal}
+
+/* main grid */
+main{display:grid;height:calc(100vh - 44px);grid-template-columns:52px 290px minmax(380px,1fr) 270px 390px;grid-template-rows:minmax(280px,1fr) 330px}
+main.dock-closed{grid-template-columns:52px 290px minmax(380px,1fr) 270px 0}
+main.dock-closed .dock{display:none}
+.rail{grid-column:1;grid-row:1;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;padding-top:8px;gap:4px}
+.rail button{width:40px;height:44px;border:none;background:transparent;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:16px;color:var(--muted);padding:0}
+.rail button span{font-size:9px;margin-top:2px}
+.rail button.on{background:#0d2b31;color:var(--accent)}
+.library{grid-column:2;grid-row:1;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.viewer{grid-column:3;grid-row:1;display:flex;flex-direction:column;min-width:0;min-height:0;background:#0c0d10}
+.inspector{grid-column:4;grid-row:1;background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.dock{grid-column:5;grid-row:1/3;background:#0b0c0e;border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.timeline{grid-column:1/5;grid-row:2;background:var(--panel);border-top:1px solid var(--line);display:flex;flex-direction:column;min-width:0;position:relative}
+
+.phead{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-bottom:1px solid var(--line);font-weight:600}
+.phead small{color:var(--muted);font-weight:400}
+.pbody{flex:1;overflow:auto;padding:10px;min-height:0}
+.seg{display:flex;gap:2px;background:#0f1013;border:1px solid var(--line2);border-radius:7px;padding:2px}
+.seg button{border:none;background:transparent;padding:2px 8px;font-size:12px;color:var(--muted)}
+.seg button.on{background:var(--panel2);color:var(--text)}
+
+/* library items */
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.thumb{position:relative;border-radius:6px;aspect-ratio:9/16;overflow:hidden;border:1px solid var(--line2);cursor:grab}
+.thumb .code{position:absolute;left:4px;bottom:3px;font:10px var(--mono);text-shadow:0 1px 2px #000}
+.thumb .dur{position:absolute;right:4px;bottom:3px;font:10px var(--mono);text-shadow:0 1px 2px #000;color:#ddd}
+.thumb .badges{position:absolute;left:4px;top:3px;display:flex;gap:2px;font-size:10px}
+.badge{font-size:10px;border-radius:4px;padding:0 4px;background:#000a;border:1px solid #fff2}
+.searchrow{display:flex;gap:6px;margin-bottom:8px}
+.searchrow input{flex:1}
+.list .row{display:flex;align-items:center;gap:8px;padding:7px 6px;border-bottom:1px solid var(--line)}
+.list .row .t{flex:1;min-width:0}
+.list .row .t div:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.list .row .t div+div{color:var(--muted);font-size:11px}
+.pill{font-size:10px;border-radius:10px;padding:1px 7px;border:1px solid}
+.pill.ok{color:#86efac;border-color:#14532d;background:#0b1f13}
+.pill.warn{color:#fcd34d;border-color:#5a4313;background:#211a0c}
+.pill.info{color:#a5f3fc;border-color:#155e75;background:#0a1d22}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.card{border:1px solid var(--line2);border-radius:8px;padding:8px;background:var(--panel2);cursor:grab}
+.card .prev{height:64px;border-radius:5px;display:flex;align-items:center;justify-content:center;margin-bottom:6px;background:linear-gradient(135deg,#334155,#0f172a);text-align:center;padding:4px}
+.card .nm{font-size:12px}
+.card .note{font-size:10.5px;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}
+.chips button{font-size:11px;padding:2px 8px;border-radius:12px}
+.chips button.on{border-color:var(--accent);color:var(--accent)}
+.sect{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin:12px 0 6px}
+.take{display:flex;align-items:center;gap:8px;padding:6px;border:1px solid var(--line2);border-radius:6px;margin-bottom:5px}
+.take.best{border-color:#155e75;background:#0a1d22}
+.take .sc{margin-left:auto;font:11px var(--mono);color:var(--muted)}
+
+/* viewer */
+.stagewrap{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;padding:14px}
+.stage{height:100%;max-height:100%;aspect-ratio:9/16;position:relative;overflow:hidden;border-radius:4px;background:#000;box-shadow:0 0 0 1px #222}
+.frame{position:absolute;inset:0;transition:transform .15s}
+.frame .lbl{position:absolute;left:8px;top:30px;font:10px var(--mono);color:#fff9;text-shadow:0 1px 2px #000}
+.sub{position:absolute;left:6%;right:6%;bottom:24%;text-align:center;font-weight:800;font-size:clamp(12px,2.2vh,22px);color:#fff;
+  text-shadow:-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000,2px 2px 0 #000,0 3px 6px #000;white-space:pre-line}
+.safe{position:absolute;inset:0;display:none;pointer-events:none}
+.safe.on{display:block}
+.safe .r{position:absolute;right:0;top:38%;bottom:16%;width:14%;background:repeating-linear-gradient(45deg,#ef444433 0 6px,transparent 6px 12px);border-left:1px dashed #ef4444aa}
+.safe .b{position:absolute;left:0;right:0;bottom:0;height:16%;background:repeating-linear-gradient(45deg,#ef444433 0 6px,transparent 6px 12px);border-top:1px dashed #ef4444aa}
+.safe .tag{position:absolute;right:16%;bottom:17%;font-size:9px;color:#fca5a5}
+.badge-draft{position:absolute;right:8px;top:8px;font-size:10px;background:#0009;border:1px solid #fff3;border-radius:4px;padding:1px 5px;color:#ddd}
+.transport{height:46px;display:flex;align-items:center;justify-content:center;gap:10px;border-top:1px solid var(--line);background:var(--panel)}
+.tc{font:12px var(--mono);color:var(--muted)}
+.tc b{color:var(--text)}
+
+/* inspector */
+.tabs{display:flex;gap:2px;padding:6px 8px;border-bottom:1px solid var(--line)}
+.tabs button{border:none;background:transparent;color:var(--muted);padding:4px 8px;border-radius:5px}
+.tabs button.on{background:var(--panel2);color:var(--text)}
+.field{display:grid;grid-template-columns:86px 1fr 52px;align-items:center;gap:8px;margin-bottom:9px}
+.field label{color:var(--muted);font-size:12px}
+.field input[type=range]{width:100%;accent-color:var(--accent)}
+.field .v{font:11px var(--mono);text-align:right}
+.kv{display:grid;grid-template-columns:86px 1fr;gap:4px 8px;font-size:12px;margin-bottom:10px}
+.kv div:nth-child(odd){color:var(--muted)}
+.kindsel{display:flex;gap:4px}
+.kindsel button{font-size:11px;padding:2px 8px}
+.kindsel button.on.speech{border-color:var(--speech);color:#93c5fd}
+.kindsel button.on.broll{border-color:#94a3b8;color:#cbd5e1}
+.kindsel button.on.underVO{border-color:var(--undervo);color:#d8b4fe}
+
+/* timeline */
+.tl-toolbar{height:36px;display:flex;align-items:center;gap:6px;padding:0 10px;border-bottom:1px solid var(--line)}
+.tl-toolbar .sep{width:1px;height:18px;background:var(--line2);margin:0 4px}
+.tl-toolbar .tg.on{border-color:var(--accent);color:var(--accent)}
+.tl-body{flex:1;display:flex;min-height:0}
+.tl-heads{width:112px;flex:none;border-right:1px solid var(--line);background:var(--panel)}
+.tl-heads div{display:flex;align-items:center;padding-left:10px;font-size:11px;color:var(--muted);border-bottom:1px solid #1d1f24}
+.tl-scroll{flex:1;overflow:auto;position:relative;background:#141519}
+.tl-canvas{position:relative}
+.lane{position:relative;border-bottom:1px solid #1d1f24}
+.h-ruler{height:22px}.h-sec{height:20px}.h-beat{height:14px}.h-t{height:26px}.h-v2{height:26px}.h-v1{height:48px}.h-a1{height:30px}.h-a2{height:30px}.h-a3{height:30px}.h-a4{height:24px}
+.ruler{background:var(--panel);cursor:pointer}
+.tick{position:absolute;top:0;height:100%;border-left:1px solid #2f323a;font:10px var(--mono);color:var(--dim);padding-left:3px;padding-top:4px}
+.secb{position:absolute;top:2px;bottom:2px;border-radius:3px;background:#262a33;border:1px solid #343944;font-size:10.5px;padding:1px 6px;color:#cbd5e1;overflow:hidden;white-space:nowrap}
+.beat{position:absolute;inset:0}
+.it{position:absolute;top:3px;bottom:3px;border-radius:4px;overflow:hidden;white-space:nowrap;font-size:10.5px;padding:2px 5px;cursor:pointer;border:1px solid #0004}
+.it.sel{outline:2px solid #fff;outline-offset:-1px;z-index:2}
+.v1it{display:flex;flex-direction:column;justify-content:space-between}
+.v1it .c{font:10px var(--mono);color:#fffd}
+.v1it .s{font-size:9.5px;color:#fffb;overflow:hidden;text-overflow:ellipsis}
+.v1it.speech{background:linear-gradient(#3b82f6dd,#1d4ed8dd)}
+.v1it.broll{background:linear-gradient(#64748bdd,#475569dd)}
+.v1it.underVO{background:linear-gradient(#a855f7dd,#7e22cedd)}
+.agentmark{position:absolute;right:3px;top:1px;color:#fde047;font-size:10px;text-shadow:0 0 4px #000}
+.tit{background:#3f3510;border-color:#854d0e;color:#fde68a}
+.ovit{background:#0f3a36;border-color:#115e59;color:#99f6e4}
+.a1it{background:repeating-linear-gradient(90deg,#14532d 0 2px,#166534 2px 3px,#14532d 3px 5px);border-color:#166534}
+.a1it.quiet{opacity:.45}
+.a2it{background:repeating-linear-gradient(90deg,#4c1d95 0 2px,#6b21a8 2px 4px);border-color:#7e22ce;color:#e9d5ff}
+.a3it{background:repeating-linear-gradient(90deg,#78350f 0 2px,#92400e 2px 4px);border-color:#b45309;color:#fde68a}
+.duck{position:absolute;top:0;bottom:0;background:#0007}
+.sfx{position:absolute;top:4px;width:14px;height:14px;transform:translateX(-7px) rotate(45deg);background:var(--a4);border-radius:2px;cursor:pointer}
+.sfx:hover::after{content:attr(data-n);position:absolute;transform:rotate(-45deg);left:14px;top:-14px;font-size:10px;white-space:nowrap;color:#fbcfe8}
+.playhead{position:absolute;top:0;bottom:0;width:0;border-left:2px solid var(--accent);z-index:5;pointer-events:none}
+.playhead::before{content:"";position:absolute;top:0;left:-7px;border:6px solid transparent;border-top:8px solid var(--accent)}
+.agentbar{position:absolute;left:112px;right:0;top:36px;height:3px;background:linear-gradient(90deg,transparent,var(--accent),transparent);background-size:200% 100%;animation:slide 1s linear infinite;display:none;z-index:6}
+.agentbar.on{display:block}
+@keyframes slide{from{background-position:100% 0}to{background-position:-100% 0}}
+
+/* dock */
+.dock-tabs{display:flex;align-items:center;gap:4px;padding:6px 8px;border-bottom:1px solid var(--line);background:var(--panel)}
+.dock-tabs .t{border:1px solid var(--line2);background:var(--panel2);border-radius:6px;padding:3px 10px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px}
+.dock-tabs .t.on{border-color:var(--accent);color:var(--accent)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--ok)}
+.dot.idle{background:var(--dim)}
+.term{flex:1;overflow:auto;padding:10px 12px;font:12px/1.55 var(--mono);color:#d4d4d8;white-space:pre-wrap;min-height:0}
+.term .u{color:#fafafa}
+.term .u::before{content:"› ";color:var(--accent)}
+.term .tool{color:#a5b4fc}
+.term .tool::before{content:"● ";color:var(--ok)}
+.term .res{color:var(--muted);padding-left:16px}
+.term .res::before{content:"⎿ "}
+.term .ctx{color:#67e8f9;opacity:.85}
+.term .hdr{color:var(--dim)}
+.term .say{color:#e4e4e7}
+.term .caret{display:inline-block;width:7px;height:14px;background:#d4d4d8;vertical-align:-2px;animation:blink 1s step-end infinite}
+@keyframes blink{50%{opacity:0}}
+.dock-foot{border-top:1px solid var(--line);padding:8px;background:var(--panel)}
+.ctxchip{display:inline-flex;align-items:center;gap:6px;border:1px solid #155e75;background:#0a1d22;color:#a5f3fc;border-radius:12px;padding:2px 4px 2px 10px;font-size:11.5px;margin-bottom:8px}
+.ctxchip button{border:none;background:transparent;padding:0 6px;color:#67e8f9}
+.qa{display:flex;flex-wrap:wrap;gap:5px}
+.qa button{font-size:11.5px;padding:3px 9px}
+
+/* popover / modal / toast */
+.pop{position:fixed;width:360px;background:var(--panel2);border:1px solid #155e75;border-radius:10px;box-shadow:0 12px 40px #000a;padding:10px;z-index:50;display:none}
+.pop.on{display:block}
+.pop h4{margin:0 0 6px;font-size:12px;color:var(--accent)}
+.pop .meta{font-size:11.5px;color:var(--muted);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center}
+.pop .acts{display:flex;justify-content:flex-end;gap:6px;margin-top:8px}
+.modal{position:fixed;inset:0;background:#0009;display:none;align-items:center;justify-content:center;z-index:60}
+.modal.on{display:flex}
+.modal .box{width:520px;background:var(--panel);border:1px solid var(--line2);border-radius:12px;box-shadow:0 20px 60px #000c}
+.modal .box .bd{padding:14px}
+.issue{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--line)}
+.issue .ic{font-size:14px}
+.issue .tx{flex:1}
+.issue .tx div+div{color:var(--muted);font-size:11.5px}
+.frow{display:grid;grid-template-columns:90px 1fr;gap:8px;align-items:center;margin-bottom:9px}
+.frow label{color:var(--muted)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:345px;background:#0b2a30;border:1px solid #155e75;border-radius:8px;padding:8px 12px;display:none;gap:10px;align-items:center;z-index:40;box-shadow:0 8px 30px #000a}
+.toast.on{display:flex}
+.toast b{color:var(--accent)}
+.note-mock{position:fixed;left:8px;bottom:6px;font-size:10px;color:var(--dim);z-index:70}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="grp">
+    <span class="brand">code<i>cut</i></span>
+    <button class="ghost" title="Back to Welcome">◀</button>
+    <span class="pname">Lau bo noi dat ▾</span>
+    <button class="ghost" id="btnUndo" title="Undo ⌘Z">↶</button>
+    <button class="ghost" title="Redo ⇧⌘Z">↷</button>
+  </div>
+  <div class="grp"><span class="fmt">projects/lau-bo-noi-dat · 9:16 1080×1920 · 29.97 fps</span></div>
+  <div class="grp">
+    <button class="warn" id="btnReview">Review <b>⚠ 3</b></button>
+    <button class="primary" id="btnExport">Export ⤓</button>
+    <button class="ghost" id="btnDock">Agent ◧<kbd>⌘J</kbd></button>
+  </div>
+</header>
+
+<main id="app">
+  <nav class="rail" id="rail"></nav>
+
+  <section class="library">
+    <div class="phead"><span id="libTitle">Media</span><small id="libSub"></small></div>
+    <div class="pbody" id="libBody"></div>
+  </section>
+
+  <section class="viewer">
+    <div class="stagewrap">
+      <div class="stage" id="stage">
+        <div class="frame" id="frame"><span class="lbl" id="frameLbl"></span></div>
+        <div class="sub" id="subtitle"></div>
+        <div class="safe" id="safe"><div class="r"></div><div class="b"></div><span class="tag">covered by TikTok UI</span></div>
+        <span class="badge-draft">Preview · same engine as Export</span>
+      </div>
+    </div>
+    <div class="transport">
+      <button class="ghost" id="btnPrev">⏮</button>
+      <button id="btnPlay">▶</button>
+      <button class="ghost" id="btnNext">⏭</button>
+      <span class="tc"><b id="tcNow">0:00.00</b> / <span id="tcTotal"></span></span>
+      <select style="font-size:11px"><option>Full</option><option>½</option><option>Proxy</option></select>
+      <button class="ghost" id="btnSafe" title="TikTok safe area">▣ Safe area</button>
+      <button class="ghost" title="Compare before/after">◧ Compare</button>
+    </div>
+  </section>
+
+  <section class="inspector">
+    <div class="tabs" id="inspTabs"></div>
+    <div class="pbody" id="inspBody"></div>
+  </section>
+
+  <aside class="dock">
+    <div class="dock-tabs">
+      <span class="t on" data-agent="claude"><span class="dot"></span>Claude</span>
+      <span class="t" data-agent="codex"><span class="dot idle"></span>Codex</span>
+      <span class="t" title="New tab: Claude / Codex / Shell">＋</span>
+      <span style="flex:1"></span>
+      <button class="ghost" title="Detach to window">⤢</button>
+      <button class="ghost" id="btnDockClose" title="Hide ⌘J">✕</button>
+    </div>
+    <div class="term" id="term"></div>
+    <div class="dock-foot">
+      <div id="chipWrap"></div>
+      <div class="qa">
+        <button data-qa="Run nolan-footage-survey on this project's footage, look at the contact sheets, say plainly if coverage is missing">Survey</button>
+        <button data-qa="Extract the spoken lines of Speech clips and draft continuous narration so speech covers ≥ 90 %">Write VO</button>
+        <button data-qa="Suggest effects for the selection from memos/hieu-ung-tra-cuu.md, at most 1–2 special effects">Suggest FX</button>
+        <button data-qa="Run bashcut review, explain each issue and propose a fix">Review</button>
+        <button data-qa="Run nolan-self-learn for this session">Lessons</button>
+      </div>
+    </div>
+  </aside>
+
+  <section class="timeline">
+    <div class="tl-toolbar">
+      <button class="ghost" title="Split S">✂ Split</button>
+      <button class="ghost" title="Ripple delete ⌫">⌫ Delete</button>
+      <button class="ghost" title="Freeze">❄</button>
+      <button class="ghost" title="Speed">⏩</button>
+      <span class="sep"></span>
+      <button class="tg on" id="tgSnap">🧲 Snap</button>
+      <button class="tg on" id="tgBeat">♩ Beat snap</button>
+      <span class="sep"></span>
+      <button id="btnAsk">✦ Ask agent <kbd>⌘K</kbd></button>
+      <span style="flex:1"></span>
+      <span class="tc" id="tlInfo"></span>
+      <span class="sep"></span>
+      <span class="tc">zoom</span><input type="range" id="zoom" min="6" max="40" value="14" style="width:120px;accent-color:var(--accent)">
+    </div>
+    <div class="agentbar" id="agentbar"></div>
+    <div class="tl-body">
+      <div class="tl-heads">
+        <div class="h-ruler"></div>
+        <div class="h-sec">Sections</div>
+        <div class="h-beat">Beat</div>
+        <div class="h-t">Captions</div>
+        <div class="h-v2">Overlay</div>
+        <div class="h-v1">Main</div>
+        <div class="h-a1">Dialogue</div>
+        <div class="h-a2">Voiceover</div>
+        <div class="h-a3">Music</div>
+        <div class="h-a4">SFX</div>
+      </div>
+      <div class="tl-scroll" id="tlScroll"><div class="tl-canvas" id="tl"></div></div>
+    </div>
+  </section>
+</main>
+
+<div class="pop" id="pop">
+  <h4>✦ Ask the agent…</h4>
+  <div class="meta"><span id="popMeta"></span><label><input type="checkbox" checked> 📷 attach frame</label></div>
+  <textarea id="popText" rows="3">trim to 4 s, keep the "so much topping" line</textarea>
+  <div class="acts"><button id="popCancel" class="ghost">Cancel</button><button id="popCodex">Codex ⌥⏎</button><button class="primary" id="popClaude">Send to Claude ⏎</button></div>
+</div>
+
+<div class="toast" id="toast"><span id="toastText"></span><button id="toastUndo">Undo</button><button class="ghost" id="toastSee">Show Changes</button></div>
+
+<div class="modal" id="mReview"><div class="box">
+  <div class="phead">Review <small>rules from memos/vlog-style-playbook.md</small></div>
+  <div class="bd" id="reviewBody"></div>
+  <div class="phead" style="border-top:1px solid var(--line);border-bottom:none;justify-content:flex-end;gap:6px"><button class="ghost" data-close>Close</button><button class="primary" id="reviewAgent">Ask Claude to fix all</button></div>
+</div></div>
+
+<div class="modal" id="mExport"><div class="box">
+  <div class="phead">Export</div>
+  <div class="bd">
+    <div class="frow"><label>Name</label><input value="lau-bo-noi-dat-v8"></div>
+    <div class="frow"><label>Preset</label><select><option>TikTok / Reels 9:16 — 1080×1920 · 29.97 · H.264 16 Mbps</option><option>YouTube 16:9 1080p</option><option>Quick Draft 720p</option><option>ProRes 422 HQ</option></select></div>
+    <div class="frow"><label>Audio</label><span>AAC 320 kbps · <span class="pill ok">normalize −14 LUFS</span></span></div>
+    <div class="frow"><label>Save to</label><span class="tc">projects/lau-bo-noi-dat/render/</span></div>
+    <div class="frow"><label></label><span><label><input type="checkbox"> Include .srt captions</label> &nbsp; <label style="opacity:.45" title="Reserved: not in v1"><input type="checkbox" disabled> Apply to DaVinci Resolve (later)</label></span></div>
+    <div class="frow"><label></label><span class="pill warn">⚠ 3 review issues still open</span></div>
+  </div>
+  <div class="phead" style="border-top:1px solid var(--line);border-bottom:none;justify-content:flex-end;gap:6px"><button class="ghost" data-close>Cancel</button><button class="primary" data-close>Export ⏎</button></div>
+</div></div>
+
+<div class="note-mock">Local mockup · sample data based on projects/lau-bo-noi-dat · not the real app</div>
+
+<script>
+// ---------- data (from lau-bo-noi-dat timeline/edl.py; durations scaled to a 109.81 s total) ----------
+// Captions and voiceover lines are user content, so they stay in Vietnamese.
+const RAW = [
+ ["hook",[["0449",1.95,"speech","Top 10 món nên ăn\nở Buôn Ma Thuột"],["0450",2.15,"speech","Một quán các bạn\nKHÔNG nên ăn…"],["0451",1.4,"speech","Tại vì nó quá là ngon!"],["0474",0.8,"broll"],["0469",0.8,"broll"],["0506",1.0,"broll"]]],
+ ["street",[["0462",5.4,"speech","Buôn Ma Thuột chill lắm các bạn,\nkiểu mưa rơi rơi á."],["0513",1.5,"broll"],["0452",3.4,"speech","Chọn một món thì mình nói luôn:\nmón lẩu bò"],["0452",1.2,"speech","Cực kỳ ngon luôn!"],["0467",3.45,"speech","Ta nói là ngon khỏi bàn nữa"],["0467",1.5,"speech","View cũng chill nữa"]]],
+ ["grill",[["0448",2.0,"underVO"],["0472",1.8,"underVO"],["0480",1.6,"underVO"],["0498",1.6,"underVO"],["0497",1.6,"underVO"],["0469",1.75,"speech","Bánh mì bơ này mà ăn với…"],["0469",2.7,"speech","thịt nướng này nè."],["0508",1.8,"broll"],["0506",1.8,"broll"]]],
+ ["hotpot",[["0499",2.25,"underVO"],["0475",2.55,"underVO"],["0476",1.6,"underVO"],["0474",6.5,"speech","Các bạn thấy chưa?\nQuá trời là topping luôn"],["0453",3.55,"speech","Các bạn nhìn thấy không?"],["0485",2.25,"speech","Hết rau thì xin thêm thoải mái nha"],["0492",1.95,"speech","Một nồi lẩu 5 người ăn không hết"],["0457",1.8,"broll"]]],
+ ["eat",[["0490",1.25,"speech","Quá là ngon!"],["0482",1.2,"underVO"],["0484",1.1,"underVO"],["0479",1.1,"underVO"],["0470",1.2,"underVO"],["0506",1.2,"underVO"],["0495",1.65,"speech",""],["0505",1.6,"broll"]]],
+ ["sidewalk",[["0489",2.4,"underVO"],["0513",2.4,"underVO"],["0454",1.9,"speech","View ở đây hơi bị chill luôn"],["0488",3.0,"speech","Ăn trên đường phố\nrất là chill luôn các bạn"],["0488",2.85,"speech","Vừa ăn vừa chill,\nnhìn ra đối diện nữa"]]],
+ ["outro",[["0502",1.5,"speech","Đã no, đã no!"],["0501",3.1,"speech","Đã ăn xong, nhưng ngon…\nmình phải quay lại"],["0514",2.4,"underVO"],["0515",4.0,"underVO"],["0516",4.6,"underVO"],["0517",3.4,"underVO"]]],
+];
+const VO = {"grill":["vo1.wav","Trong lúc chờ lẩu sôi, tụi mình gọi thêm\nmột mâm đồ nướng",3.4],"hotpot":["vo2.wav","Lẩu bò nấu trong nồi đất\nnên giữ nóng rất lâu",3.0],"eat":["vo5.wav","Tới đoạn này là cứ gắp rồi ăn thôi,\nkhông kịp nói câu nào luôn",3.6],"sidewalk":["vo3.wav","Ngồi ngay vỉa hè, mưa vừa tạnh,\nđèn đường lấp lánh",3.3],"outro":["vo4.wav","Ai ghé Buôn Ma Thuột mà gặp trời mưa\nthì nhớ ghé đây làm một nồi nha",4.2]};
+const PUNCH=[[1.00,0,0],[1.22,40,-30],[1.12,-40,20],[1.28,0,40],[1.00,0,0],[1.18,60,10],[1.26,-60,-20],[1.10,30,30]];
+const SFX=[[4.97,"ding",-24],[5.98,"riser",-30],[20.32,"ding",-24],[25.71,"whoosh",-20],[43.06,"whoosh",-20],[66.05,"whoosh",-20],[67.30,"ding",-24],[75.76,"whoosh",-20]];
+const BEAT=0.5108;
+const ROLE_LABEL={speech:"Speech",broll:"B-roll",underVO:"Under VO"};
+
+let clips=[]; let n=0;
+RAW.forEach(([sec,arr])=>arr.forEach(([c,d,k,s])=>{const p=PUNCH[n%8];clips.push({id:"c-"+String(++n).padStart(2,"0"),clip:c,dur:d,kind:k,sub:s||"",sec,zoom:p[0],pan:p[1],tilt:p[2],agent:false})}));
+const rawSum=clips.reduce((a,c)=>a+c.dur,0);
+clips.forEach(c=>c.dur=Math.round(c.dur*109.81/rawSum*100)/100);
+
+const S={pps:14,t:0,playing:false,sel:null,lib:"media",insp:"video",agent:"claude",undo:null,rev:142};
+
+// ---------- helpers ----------
+const $=id=>document.getElementById(id);
+const fmt=t=>{t=Math.max(0,t);const m=Math.floor(t/60),s=t-m*60;return m+":"+(s<10?"0":"")+s.toFixed(2)};
+const hue=c=>(parseInt(c,10)*47)%360;
+function layout(){let t=0;clips.forEach(c=>{c.t0=t;t=Math.round((t+c.dur)*1000)/1000;c.t1=t});return t}
+function total(){return clips.length?clips[clips.length-1].t1:0}
+function sections(){const out=[];clips.forEach(c=>{const l=out[out.length-1];if(!l||l.sec!==c.sec)out.push({sec:c.sec,t0:c.t0,t1:c.t1});else l.t1=c.t1});return out}
+function vos(){const out=[];sections().forEach(s=>{const v=VO[s.sec];if(!v)return;const first=clips.find(c=>c.sec===s.sec&&c.kind==="underVO");if(!first)return;out.push({file:v[0],sub:v[1],t0:first.t0+0.4,t1:first.t0+0.4+v[2]})});return out}
+function clipAt(t){return clips.find(c=>t>=c.t0&&t<c.t1)||clips[clips.length-1]}
+
+// ---------- timeline ----------
+function renderTL(){
+  layout();const T=total(),p=S.pps,W=Math.ceil(T*p)+240;
+  let h=`<div class="lane h-ruler ruler" id="ruler" style="width:${W}px">`;
+  for(let s=0;s<=T+10;s+=5)h+=`<div class="tick" style="left:${s*p}px">${fmt(s).replace(/\.00$/,"")}</div>`;
+  h+=`</div><div class="lane h-sec" style="width:${W}px">`;
+  sections().forEach(s=>h+=`<div class="secb" style="left:${s.t0*p}px;width:${(s.t1-s.t0)*p-2}px">${s.sec}</div>`);
+  h+=`</div><div class="lane h-beat" style="width:${W}px"><div class="beat" style="width:${T*p}px;background:repeating-linear-gradient(90deg,#3a3f4a 0 1px,transparent 1px ${BEAT*p}px)"></div></div>`;
+  h+=`<div class="lane h-t" style="width:${W}px">`;
+  clips.filter(c=>c.kind==="speech"&&c.sub).forEach(c=>h+=`<div class="it tit" style="left:${c.t0*p}px;width:${c.dur*p-1}px" title="${c.sub.replace(/\n/g," / ")}">${c.sub.split("\n")[0]}</div>`);
+  vos().forEach(v=>h+=`<div class="it tit" style="left:${v.t0*p}px;width:${(v.t1-v.t0)*p-1}px;opacity:.8">${v.sub.split("\n")[0]}</div>`);
+  h+=`</div><div class="lane h-v2" style="width:${W}px">`;
+  const sec=sections();const d=sec.find(s=>s.sec==="street"),k=sec.find(s=>s.sec==="outro");
+  if(d)h+=`<div class="it ovit" style="left:${d.t0*p}px;width:${2.5*p}px">🏷 Place card</div>`;
+  if(k)h+=`<div class="it ovit" style="left:${(k.t0+0.15)*p}px;width:${1.6*p}px">★ 9/10</div>`;
+  h+=`</div><div class="lane h-v1" style="width:${W}px">`;
+  clips.forEach(c=>h+=`<div class="it v1it ${c.kind}${S.sel===c.id?" sel":""}" data-id="${c.id}" style="left:${c.t0*p}px;width:${Math.max(3,c.dur*p-1)}px" title="${c.id} · ${c.clip} · ${ROLE_LABEL[c.kind]} · ${fmt(c.t0)}–${fmt(c.t1)}"><span class="c">${c.clip}</span><span class="s">${c.sub.split("\n")[0]}</span>${c.agent?'<span class="agentmark">◆</span>':""}</div>`);
+  h+=`</div><div class="lane h-a1" style="width:${W}px">`;
+  clips.filter(c=>c.kind!=="underVO").forEach(c=>h+=`<div class="it a1it${c.kind==="broll"?" quiet":""}" style="left:${c.t0*p}px;width:${Math.max(2,c.dur*p-1)}px"></div>`);
+  h+=`</div><div class="lane h-a2" style="width:${W}px">`;
+  vos().forEach(v=>h+=`<div class="it a2it" style="left:${v.t0*p}px;width:${(v.t1-v.t0)*p-1}px">🎙 ${v.file}</div>`);
+  h+=`</div><div class="lane h-a3" style="width:${W}px"><div class="it a3it" style="left:0;width:${T*p}px">♪ Inspired — Kevin MacLeod · CC-BY · ducked −14 dB`;
+  clips.filter(c=>c.kind==="speech").forEach(c=>h+=`<div class="duck" style="left:${c.t0*p}px;width:${c.dur*p}px"></div>`);
+  vos().forEach(v=>h+=`<div class="duck" style="left:${v.t0*p}px;width:${(v.t1-v.t0)*p}px"></div>`);
+  h+=`</div></div><div class="lane h-a4" style="width:${W}px">`;
+  SFX.forEach(([t,nm,db])=>h+=`<div class="sfx" style="left:${t*p}px" data-n="${nm} ${db} dB"></div>`);
+  h+=`</div><div class="playhead" id="ph"></div>`;
+  $("tl").innerHTML=h;$("tl").style.width=W+"px";
+  $("tcTotal").textContent=fmt(T);
+  $("tlInfo").textContent=`${clips.length} cuts · ${fmt(T)} · rev ${S.rev}`;
+  movePH();
+}
+function movePH(){const ph=$("ph");if(ph)ph.style.left=(S.t*S.pps)+"px";$("tcNow").textContent=fmt(S.t);renderViewer()}
+
+// ---------- viewer ----------
+function renderViewer(){
+  const c=clipAt(S.t);if(!c)return;const h=hue(c.clip);
+  const f=$("frame");f.style.background=`radial-gradient(circle at 30% 30%,hsl(${h},55%,48%),hsl(${(h+40)%360},45%,22%) 60%,hsl(${(h+80)%360},40%,10%))`;
+  f.style.transform=`scale(${c.zoom}) translate(${c.pan/20}%,${-c.tilt/20}%)`;
+  $("frameLbl").textContent=`DJI_…_${c.clip}_D.MP4 · ${ROLE_LABEL[c.kind]}`;
+  const v=vos().find(v=>S.t>=v.t0&&S.t<v.t1);
+  $("subtitle").textContent=c.kind==="speech"&&c.sub?c.sub:(v?v.sub:"");
+}
+
+// ---------- library ----------
+const TABS=[["media","🎞","Media"],["audio","♪","Audio"],["text","T","Text"],["sticker","★","Stickers"],["fx","✦","Effects"],["trans","⇄","Transitions"],["filter","◐","Filters"],["voice","🎙","Voice"]];
+const RAIL_SHORT={media:"Media",audio:"Audio",text:"Text",sticker:"Sticker",fx:"Effects",trans:"Trans.",filter:"Filters",voice:"Voice"};
+function renderRail(){$("rail").innerHTML=TABS.map(([k,i,l])=>`<button data-lib="${k}" class="${S.lib===k?"on":""}" title="${l}">${i}<span>${RAIL_SHORT[k]}</span></button>`).join("")}
+function renderLib(){
+  const t=TABS.find(x=>x[0]===S.lib);$("libTitle").textContent=t[2];let h="",sub="";
+  if(S.lib==="media"){
+    const uniq=[...new Map(clips.map(c=>[c.clip,c])).values()];sub=`${uniq.length} clips · 2026-08-30`;
+    const speech=new Set(clips.filter(c=>c.kind==="speech").map(c=>c.clip));const stat=new Set(["0467","0488","0513"]);
+    h=`<div class="searchrow"><input placeholder="Search by speech… (e.g. lẩu bò)" id="mSearch"></div>
+       <div style="display:flex;justify-content:space-between;margin-bottom:8px"><div class="seg"><button class="on">Footage</button><button>Project</button><button>Shared</button></div><button style="font-size:11px">Survey Footage</button></div>
+       <div class="grid3" id="mGrid">`+uniq.map(c=>{const hh=hue(c.clip);return `<div class="thumb" data-clip="${c.clip}" data-sub="${clips.filter(x=>x.clip===c.clip).map(x=>x.sub).join(" ").toLowerCase()}" style="background:radial-gradient(circle at 35% 30%,hsl(${hh},55%,45%),hsl(${(hh+60)%360},40%,12%))"><div class="badges">${speech.has(c.clip)?'<span class="badge" title="speech detected">🗣</span>':""}${stat.has(c.clip)?'<span class="badge" title="static: camera locked off, one shot size">▣</span>':""}</div><span class="code">${c.clip}</span><span class="dur">${(4+parseInt(c.clip)%9).toFixed(1)}s</span></div>`}).join("")+`</div>`;
+  } else if(S.lib==="audio"){
+    sub="assets/nhac · assets/sfx";
+    h=`<div class="sect">Music</div><div class="list">
+      <div class="row"><button class="ghost">▶</button><div class="t"><div>Inspired — Kevin MacLeod</div><div>CC-BY · BPM from beat detection</div></div><span class="pill ok">CC-BY · credit</span></div>
+      <div class="row"><button class="ghost">▶</button><div class="t"><div>Water Lily — Kevin MacLeod</div><div>CC-BY</div></div><span class="pill ok">CC-BY</span></div>
+      <div class="row"><button class="ghost">▶</button><div class="t"><div>trend-tiktok-2026-09.mp3</div><div>downloaded with nolan-tiktok-music</div></div><span class="pill warn">TikTok rip · Content ID</span></div>
+    </div><div style="margin-top:8px;display:flex;gap:6px"><button>♩ Detect Beats</button><button class="ghost" title="Done by the agent (skill nolan-tiktok-music)">＋ From TikTok link (agent)</button></div>
+    <div class="sect">SFX</div><div class="list">`+["whoosh","riser metallic","ding (Family Feud YES)","pop","hit","meme: bruh"].map(n=>`<div class="row"><button class="ghost">▶</button><div class="t"><div>${n}</div><div>assets/sfx</div></div></div>`).join("")+`</div>`;
+  } else if(S.lib==="text"){
+    sub="presets by style";
+    h=`<button class="primary" style="width:100%;margin-bottom:10px">Auto Captions (WhisperKit)</button><div class="cards">
+      <div class="card"><div class="prev" style="font-weight:900;color:#fff;text-shadow:-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000,2px 2px 0 #000">Quá là ngon!</div><div class="nm">Bold Outline</div><div class="note">food review</div></div>
+      <div class="card"><div class="prev" style="font-family:Georgia,serif;color:#e0b43a;font-size:13px">ngồi ngay vỉa hè</div><div class="nm">Cinematic Serif</div><div class="note">mustard serif · Quinn</div></div>
+      <div class="card"><div class="prev"><span style="background:#facc15;color:#111;font-weight:800;padding:2px 6px;border-radius:4px;transform:rotate(-4deg);display:inline-block">BÁ CHÁY</span></div><div class="nm">Keyword Sticker</div><div class="note">colored sticker</div></div>
+      <div class="card"><div class="prev" style="flex-direction:column;font-size:11px"><b>LẨU BÒ NỒI ĐẤT</b><span style="color:#cbd5e1">Buôn Ma Thuột · 5pm–11pm</span></div><div class="nm">Place Card</div><div class="note">name / address / hours</div></div>
+      <div class="card"><div class="prev" style="font-weight:900;font-size:15px;color:#fde047">TOP 10 MÓN</div><div class="nm">Hook Title</div><div class="note">first 3–7 s</div></div>
+      <div class="card"><div class="prev" style="font-family:Georgia,serif;color:#e0b43a;border:1px solid #b91c1c">Chương 2</div><div class="nm">Chapter Card</div><div class="note">use sparingly</div></div>
+    </div>`;
+  } else if(S.lib==="sticker"){
+    sub="drag onto Overlay";
+    h=`<div class="grid3">`+["🫃","🔥","😋","👍","💯","🤤","⭐","📍","🍲","🥖","🌧️","😂"].map(e=>`<div class="card" style="text-align:center;font-size:28px;padding:10px 0">${e}</div>`).join("")+`</div>`;
+  } else if(S.lib==="fx"){
+    sub="recipes.json · 164 techniques";
+    h=`<div class="chips">`+["Hook","Transition","Emphasis","Reveal","Humor","Mood","Rhythm","Orientation"].map((x,i)=>`<button class="${i===3?"on":""}">${x}</button>`).join("")+`</div><div class="cards">
+      <div class="card"><div class="prev">🔍 zoom 1.0→1.3</div><div class="nm">Zoom punch <span class="pill info">clip</span></div><div class="note">dish reveal: "so good!"</div></div>
+      <div class="card"><div class="prev">⏩→🐢</div><div class="nm">Speed ramp <span class="pill info">clip</span></div><div class="note">b-roll, grill</div></div>
+      <div class="card"><div class="prev">★ 9/10</div><div class="nm">Score banner <span class="pill info">overlay</span></div><div class="note">⚠ 1–2 times per video</div></div>
+      <div class="card"><div class="prev">word · by · word</div><div class="nm">Word-by-word <span class="pill info">overlay</span></div><div class="note">talking head</div></div>
+      <div class="card"><div class="prev">💥 riser → hit</div><div class="nm">Riser → hit <span class="pill info">audio</span></div><div class="note">right before a reveal</div></div>
+      <div class="card"><div class="prev">📸 flash</div><div class="nm">White flash <span class="pill info">clip</span></div><div class="note">time jump</div></div>
+    </div>`;
+  } else if(S.lib==="trans"){
+    sub="drop onto a join";
+    h=`<div class="cards">`+[["Hard cut","default, ~100% of reference videos"],["Whip","change of place"],["Blink","time jump"],["Zoom","into a detail"],["Spin","high energy"],["Shutter","fast rhythm"],["Wipe","comparison"],["Dissolve","emotional, slow"]].map(([a,b])=>`<div class="card"><div class="prev">⇄</div><div class="nm">${a}</div><div class="note">${b}</div></div>`).join("")+`</div>`;
+  } else if(S.lib==="filter"){
+    sub="looks.json · .cube";
+    h=`<div class="cards">
+      <div class="card"><div class="prev" style="background:linear-gradient(135deg,#6b7280,#1f2937)">Original</div><div class="nm">No LUT</div></div>
+      <div class="card" style="border-color:var(--accent)"><div class="prev" style="background:linear-gradient(135deg,#8a8f7a,#2b2f2a);filter:contrast(.85)">quinn-matte</div><div class="nm">quinn-matte</div><div class="note">cinematic matte</div></div>
+      <div class="card"><div class="prev" style="background:linear-gradient(135deg,#c08a4a,#3a2414)">quinn-am</div><div class="nm">quinn-am</div><div class="note">warm film</div></div>
+      <div class="card"><div class="prev" style="background:linear-gradient(135deg,#9ca3af,#111827);filter:grayscale(.85)">quinn-ky-uc</div><div class="nm">quinn-ky-uc</div><div class="note">near B&amp;W, memory</div></div>
+    </div><div style="margin-top:8px;display:flex;gap:6px"><button>Apply to clip</button><button>Apply to video</button><button class="ghost">Import .cube…</button></div>`;
+  } else if(S.lib==="voice"){
+    sub="VieNeu-TTS · offline";
+    h=`<div class="frow" style="grid-template-columns:50px 1fr"><label>Voice</label><select><option>nolan_podcast_ip1 (default)</option><option>nolan_doithuong_ip1</option></select></div>
+      <div style="margin:-2px 0 8px 58px;display:flex;gap:4px;flex-wrap:wrap"><span class="pill info">podcast</span><span class="pill info">slow</span><span class="pill info">warm</span><span class="pill info">clean</span></div>
+      <textarea rows="3">Trong lúc chờ lẩu sôi, tụi mình gọi thêm một mâm đồ nướng.</textarea>
+      <div style="display:flex;gap:8px;align-items:center;margin:8px 0"><span class="tc">speed 1.12×</span><label style="font-size:12px"><input type="checkbox" checked> Normalize text</label><span style="flex:1"></span><button class="primary">Generate → 3 takes</button></div>
+      <div class="take"><button class="ghost">▶</button>take 1<span class="sc">match 98% · 2.9s</span></div>
+      <div class="take best"><button class="ghost">▶</button>take 2 ★<span class="sc">match 100% · 3.1s</span></div>
+      <div class="take"><button class="ghost">▶</button>take 3<span class="sc">match 91% · 3.0s</span></div>
+      <button style="width:100%;margin-top:4px">Insert take 2 into Voiceover at playhead</button>
+      <div class="pill warn" style="display:block;margin-top:8px;border-radius:6px;padding:5px 8px">⚠ Voiceover must stay ≥ 0.3 s away from real speech. The timeline warns if it doesn't</div>
+      <div class="sect">New voice</div><button style="width:100%">＋ Clone New Voice… (pick ~8 s of audio)</button>`;
+  }
+  $("libSub").textContent=sub;$("libBody").innerHTML=h;
+  const ms=$("mSearch");if(ms)ms.oninput=()=>{const q=ms.value.trim().toLowerCase();document.querySelectorAll("#mGrid .thumb").forEach(el=>el.style.display=!q||el.dataset.sub.includes(q)?"":"none")};
+}
+
+// ---------- inspector ----------
+const ITABS=[["video","Video"],["audio","Audio"],["text","Text"],["color","Color"],["speed","Speed"]];
+function renderInsp(){
+  $("inspTabs").innerHTML=ITABS.map(([k,l])=>`<button data-insp="${k}" class="${S.insp===k?"on":""}">${l}</button>`).join("");
+  const c=clips.find(x=>x.id===S.sel);
+  if(!c){$("inspBody").innerHTML=`<div style="color:var(--muted)">Select a clip on the timeline.</div>`;return}
+  let h=`<div class="kv"><div>Item</div><div>${c.id} ${c.agent?'<span style="color:#fde047">◆ Claude</span>':""}</div><div>Source</div><div class="tc">DJI_…_${c.clip}_D.MP4</div><div>Position</div><div class="tc">${fmt(c.t0)} – ${fmt(c.t1)}</div><div>Section</div><div>${c.sec}</div></div>
+    <div class="kindsel" style="margin-bottom:12px">`+["speech","broll","underVO"].map(k=>`<button class="${c.kind===k?"on "+k:""}" data-kind="${k}">${ROLE_LABEL[k]}</button>`).join("")+`</div>`;
+  const f=(l,v,mn,mx,st,u)=>`<div class="field"><label>${l}</label><input type="range" min="${mn}" max="${mx}" step="${st}" value="${v}"><span class="v">${v}${u||""}</span></div>`;
+  if(S.insp==="video")h+=f("Zoom",c.zoom,1,2,.01)+f("Pan",c.pan,-200,200,1)+f("Tilt",c.tilt,-200,200,1)+f("Opacity",100,0,100,1,"%")+`<button style="width:100%">Change framing (next reframe)</button>`;
+  if(S.insp==="audio")h+=f("Volume",c.kind==="broll"?-18:-6,-60,6,1," dB")+f("Fade in",0,0,2,.05,"s")+f("Fade out",0,0,2,.05,"s")+`<button style="width:100%">Separate voice (Demucs)</button>`;
+  if(S.insp==="text")h+=c.sub?`<textarea rows="3">${c.sub}</textarea><div class="frow" style="margin-top:8px"><label>Style</label><select><option>Bold Outline</option><option>Cinematic Serif</option></select></div>`:`<div style="color:var(--muted)">This clip has no caption.</div>`;
+  if(S.insp==="color")h+=`<div class="frow"><label>LUT</label><select><option>quinn-matte</option><option>quinn-am</option><option>quinn-ky-uc</option><option>None</option></select></div>`+f("Exposure",0,-2,2,.05)+f("Contrast",0,-50,50,1)+f("Saturation",-8,-50,50,1)+f("Temperature",4,-50,50,1);
+  if(S.insp==="speed")h+=f("Speed",1,.25,4,.05,"×")+`<label style="font-size:12px"><input type="checkbox"> Preserve pitch</label><div style="margin-top:8px"><button>❄ Freeze frame</button></div>`;
+  $("inspBody").innerHTML=h;
+}
+
+// ---------- dock ----------
+const TERM={
+ claude:[["hdr","╭─ Claude Code · ~/Desktop/nolan-video-workspace\n│  BashCut: projects/lau-bo-noi-dat · mcp bashcut ✓ · davinci-resolve ✓\n╰─"],
+  ["u","review the cut for me"],["tool","bashcut review run"],["res","3 issues: 1.2 s silence @1:02.4 · 2 adjacent cuts share framing (0488) · last 5 s are music only"],
+  ["say","Three things to fix:\n1. 1:02.4 has 1.2 s of silence between \"Quá là ngon!\" and the voiceover. I suggest moving vo5 0.8 s earlier.\n2. The two 0488 cuts share the same framing. Change the second one to z1.18.\n3. The last 5 s are music only. Add a call to action in the cloned voice.\nWant me to fix all three?"]],
+ codex:[["hdr","OpenAI Codex · ~/Desktop/nolan-video-workspace\nAGENTS.md ✓ · skills (.agents/skills) 13 · mcp bashcut ✓"],["say","Handoff from Claude: project lau-bo-noi-dat, rev 142, 3 open review issues."]],
+};
+function renderTerm(){
+  const L=TERM[S.agent];$("term").innerHTML=L.map(([k,t])=>`<div class="${k}">${t.replace(/&/g,"&amp;").replace(/</g,"&lt;")}</div>`).join("")+`<div class="u"><span class="caret"></span></div>`;
+  $("term").scrollTop=1e9;
+  document.querySelectorAll(".dock-tabs .t[data-agent]").forEach(e=>e.classList.toggle("on",e.dataset.agent===S.agent));
+}
+function renderChip(){
+  const c=clips.find(x=>x.id===S.sel);
+  $("chipWrap").innerHTML=c?`<span class="ctxchip">@ ${c.id} · ${c.clip} · ${c.sec} · ${fmt(c.t0)}–${fmt(c.t1)} <button id="chipX">✕</button></span>`:`<span class="ctxchip" style="opacity:.5">@ no selection attached</span>`;
+  const x=$("chipX");if(x)x.onclick=()=>{S.sel=null;renderAll()};
+}
+
+// ---------- agent simulation ----------
+function push(agent,k,t){TERM[agent].push([k,t]);if(S.agent===agent)renderTerm()}
+function askAgent(agent,text){
+  const c=clips.find(x=>x.id===S.sel);if(!c)return;
+  S.agent=agent;$("app").classList.remove("dock-closed");renderTerm();
+  push(agent,"ctx",`[BashCut context] ${c.id} · ${c.clip} · ${ROLE_LABEL[c.kind]} · section=${c.sec} · ${fmt(c.t0)}–${fmt(c.t1)}`);
+  push(agent,"u",text);
+  const steps=[
+    ["tool",`bashcut timeline get --range ${fmt(c.t0-2)}-${fmt(c.t1+3)}`],["res","6 items · rev "+S.rev],
+    ["tool",'bashcut media search "quá trời topping"'],["res",`m-${c.clip} @ 2.8s ("Quá trời là topping luôn")`],
+    ["tool",`bashcut timeline apply --base-rev ${S.rev} --label "Trim ${c.id} to 4 s"`],["APPLY",""],
+    ["tool","bashcut review run --range "+fmt(c.t0)+"-"+fmt(c.t0+8)],["res","ok · no new silence · voiceover 0.6 s from real speech"],
+    ["say",`Done: ${c.id} is now 4.0 s and still contains the whole "Quá trời là topping luôn" line. Later clips rippled left. Use Undo on the toast to revert.`]];
+  $("agentbar").classList.add("on");
+  let i=0;const tick=()=>{if(i>=steps.length){$("agentbar").classList.remove("on");return}
+    const [k,t]=steps[i++];
+    if(k==="APPLY"){S.undo=JSON.stringify({clips,rev:S.rev});c.dur=4.0;c.agent=true;S.rev++;renderAll();push(agent,"res","ok · rev "+S.rev);showToast(`<b>${agent==="claude"?"Claude":"Codex"}</b>: Trim ${c.id} to 4 s`)}
+    else push(agent,k,t);
+    setTimeout(tick,k==="say"?200:550)};
+  setTimeout(tick,400);
+}
+function showToast(html){$("toastText").innerHTML=html;$("toast").classList.add("on");clearTimeout(showToast.t);showToast.t=setTimeout(()=>$("toast").classList.remove("on"),9000)}
+function undo(){if(!S.undo)return;const u=JSON.parse(S.undo);clips=u.clips;S.rev=u.rev+1;S.undo=null;$("toast").classList.remove("on");renderAll();push(S.agent,"hdr","(the user undid the agent's step)")}
+
+// ---------- popover ----------
+function openPop(){
+  const c=clips.find(x=>x.id===S.sel);if(!c)return;
+  $("popMeta").textContent=`${c.id} · ${c.clip} · ${c.sec} · ${fmt(c.t0)}–${fmt(c.t1)}`;
+  const el=document.querySelector(`.v1it[data-id="${c.id}"]`);const r=el?el.getBoundingClientRect():{left:400,top:500};
+  const pop=$("pop");pop.style.left=Math.min(window.innerWidth-380,Math.max(10,r.left))+"px";pop.style.top=Math.max(60,r.top-170)+"px";pop.classList.add("on");$("popText").focus();
+}
+
+// ---------- review ----------
+function renderReview(){
+  const items=[["⚠","1.2 s silence at 1:02.4","threshold 0.8 s · playbook §5",62.4],["⚠","2 adjacent cuts share framing (0488)","change the reframe · nolan-beat-cut",80.1],["⚠","Last 5 s are music only","the outro needs a call to action · playbook §2",105],["✓","Hook 6.0 s with title","≤ 7 s",0],["✓","Speech coverage 91 %","≥ 90 %",0],["✓","Loudness −14.2 LUFS","−14 ± 1",0]];
+  $("reviewBody").innerHTML=items.map(([i,a,b,t])=>`<div class="issue"><span class="ic" style="color:${i==="✓"?"var(--ok)":"var(--warn)"}">${i}</span><div class="tx"><div>${a}</div><div>${b}</div></div>${i==="✓"?"":`<button class="ghost" data-jump="${t}">Go to</button><button data-fix="${a}">Ask Agent to Fix</button>`}</div>`).join("");
+}
+
+// ---------- wiring ----------
+function renderAll(){renderTL();renderInsp();renderChip()}
+document.addEventListener("click",e=>{
+  const lib=e.target.closest("[data-lib]");if(lib){S.lib=lib.dataset.lib;renderRail();renderLib();return}
+  const ins=e.target.closest("[data-insp]");if(ins){S.insp=ins.dataset.insp;renderInsp();return}
+  const it=e.target.closest(".v1it");if(it){S.sel=it.dataset.id;const c=clips.find(x=>x.id===S.sel);S.t=c.t0+0.01;renderAll();return}
+  const kd=e.target.closest("[data-kind]");if(kd){const c=clips.find(x=>x.id===S.sel);c.kind=kd.dataset.kind;renderAll();return}
+  const ag=e.target.closest(".dock-tabs .t[data-agent]");if(ag){S.agent=ag.dataset.agent;renderTerm();return}
+  const qa=e.target.closest("[data-qa]");if(qa){push(S.agent,"u",qa.dataset.qa);return}
+  const cl=e.target.closest("[data-close]");if(cl){cl.closest(".modal").classList.remove("on");return}
+  const jp=e.target.closest("[data-jump]");if(jp){S.t=+jp.dataset.jump;$("mReview").classList.remove("on");movePH();$("tlScroll").scrollLeft=S.t*S.pps-200;return}
+  const fx=e.target.closest("[data-fix]");if(fx){$("mReview").classList.remove("on");$("app").classList.remove("dock-closed");push(S.agent,"u","Fix review issue: "+fx.dataset.fix);return}
+  if(e.target.closest("#ruler")){const r=$("tl").getBoundingClientRect();S.t=Math.max(0,Math.min(total(),(e.clientX-r.left)/S.pps));movePH();return}
+});
+$("btnDock").onclick=$("btnDockClose").onclick=()=>$("app").classList.toggle("dock-closed");
+$("btnAsk").onclick=openPop;
+$("popCancel").onclick=()=>$("pop").classList.remove("on");
+$("popClaude").onclick=()=>{$("pop").classList.remove("on");askAgent("claude",$("popText").value)};
+$("popCodex").onclick=()=>{$("pop").classList.remove("on");askAgent("codex",$("popText").value)};
+$("toastUndo").onclick=undo;$("btnUndo").onclick=undo;
+$("toastSee").onclick=()=>{const c=clips.find(x=>x.agent);if(c){S.sel=c.id;renderAll();$("tlScroll").scrollLeft=c.t0*S.pps-200}};
+$("btnReview").onclick=()=>{renderReview();$("mReview").classList.add("on")};
+$("reviewAgent").onclick=()=>{$("mReview").classList.remove("on");$("app").classList.remove("dock-closed");push("claude","u","fix all three review issues");S.agent="claude";renderTerm()};
+$("btnExport").onclick=()=>$("mExport").classList.add("on");
+$("btnSafe").onclick=()=>$("safe").classList.toggle("on");
+$("zoom").oninput=e=>{S.pps=+e.target.value;renderTL()};
+document.querySelectorAll(".tg").forEach(b=>b.onclick=()=>b.classList.toggle("on"));
+$("btnPrev").onclick=()=>{const c=clipAt(S.t);const i=clips.indexOf(c);S.t=(S.t-c.t0>0.2?c.t0:(clips[Math.max(0,i-1)].t0))+0.001;movePH()};
+$("btnNext").onclick=()=>{const c=clipAt(S.t);const i=clips.indexOf(c);S.t=clips[Math.min(clips.length-1,i+1)].t0+0.001;movePH()};
+let last=0;function loop(ts){if(!S.playing)return;if(last)S.t+=(ts-last)/1000;last=ts;if(S.t>=total()){S.t=total();S.playing=false;$("btnPlay").textContent="▶"}movePH();
+  const sc=$("tlScroll"),x=S.t*S.pps;if(x>sc.scrollLeft+sc.clientWidth-80)sc.scrollLeft=x-120;requestAnimationFrame(loop)}
+function togglePlay(){S.playing=!S.playing;$("btnPlay").textContent=S.playing?"❚❚":"▶";last=0;if(S.playing)requestAnimationFrame(loop)}
+$("btnPlay").onclick=togglePlay;
+document.addEventListener("keydown",e=>{
+  const typing=["INPUT","TEXTAREA","SELECT"].includes(document.activeElement.tagName);
+  if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==="k"){e.preventDefault();openPop();return}
+  if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==="j"){e.preventDefault();$("app").classList.toggle("dock-closed");return}
+  if(e.key==="Escape"){$("pop").classList.remove("on");document.querySelectorAll(".modal").forEach(m=>m.classList.remove("on"));return}
+  if(typing){if(e.key==="Enter"&&!e.shiftKey&&document.activeElement.id==="popText"){e.preventDefault();(e.altKey?$("popCodex"):$("popClaude")).click()}return}
+  if(e.code==="Space"){e.preventDefault();togglePlay()}
+  if(e.key==="ArrowRight"){S.t=Math.min(total(),S.t+(e.shiftKey?1:1/29.97));movePH()}
+  if(e.key==="ArrowLeft"){S.t=Math.max(0,S.t-(e.shiftKey?1:1/29.97));movePH()}
+});
+
+// ---------- init ----------
+layout();
+const start=clips.find(c=>c.clip==="0474"&&c.kind==="speech");S.sel=start.id;S.t=start.t0+0.5;
+renderRail();renderLib();renderAll();renderTerm();
+setTimeout(()=>{$("tlScroll").scrollLeft=start.t0*S.pps-260},0);
+</script>
+</body>
+</html>
