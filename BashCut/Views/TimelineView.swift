@@ -1,4 +1,5 @@
 import AppKit
+import BashCutAutomation
 import BashCutEngine
 import BashCutProject
 import SwiftUI
@@ -283,7 +284,12 @@ struct TimelineView: NSViewRepresentable {
             return
         }
         guard let dragState, let frame = dragFrame else { return }
+        let gesture = slipping ? "slip" : rolling ? "roll" : dragState.edge.map { "trim-\($0)" } ?? "move"
+        DebugLog.write(
+            "timeline", "\(gesture) \(dragState.item.id) from \(dragState.track.id)@\(dragState.item.at) to frame \(frame) "
+                + "row=\(Int((convert(event.locationInWindow, from: nil).y - 52) / 35))")
         guard document.project.revision == dragRevision else {
+            DebugLog.write("timeline", "gesture dropped: revision changed \(dragRevision)→\(document.project.revision)")
             document.message = String(localized: "Timeline changed during the gesture; try again.")
             return
         }

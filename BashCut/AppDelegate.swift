@@ -1,4 +1,5 @@
 import AppKit
+import BashCutAutomation
 import SwiftUI
 
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
@@ -6,6 +7,11 @@ import SwiftUI
     private var window: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        let executable = Bundle.main.executableURL
+        let built = executable.flatMap { try? FileManager.default.attributesOfItem(atPath: $0.path)[.modificationDate] as? Date }
+        DebugLog.write(
+            "app", "launch pid=\(ProcessInfo.processInfo.processIdentifier) executable=\(executable?.path ?? "?") "
+                + "built=\(built.map { "\($0)" } ?? "?") log=\(DebugLog.url.path)")
         document.startAutomation()
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 1600, height: 900),

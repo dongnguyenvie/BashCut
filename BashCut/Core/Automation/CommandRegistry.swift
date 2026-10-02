@@ -39,6 +39,8 @@ public struct AuditEvent: Codable, Sendable {
     }
     public func handle(_ request: RPCRequest) async -> RPCResponse {
         let author = request.token.flatMap { tokens[$0] }
+        let started = Date()
+        let who = author.map { "\($0)" } ?? "anonymous"
         do {
             guard request.jsonrpc == "2.0" else { throw RPCFailure(-32600, "JSON-RPC 2.0 required") }
             guard let spec = CommandCatalog.spec(named: request.method), let handler = handlers[request.method]
@@ -53,6 +55,9 @@ public struct AuditEvent: Codable, Sendable {
             let arguments = CommandArguments(try spec.validate(request.params))
             let result = try await handler(arguments, author)
             audit(AuditEvent(date: Date(), method: request.method, author: author, succeeded: true))
+            DebugLog.write(
+                "rpc", "\(request.method) by \(who) ok in \(Self.milliseconds(since: started)) ms "
+                    + "params=\(Self.summary(arguments.values)) result=\(Self.summary(result))")
             return RPCResponse(id: request.id, result: result)
         } catch {
             audit(AuditEvent(date: Date(), method: request.method, author: author, succeeded: false))
@@ -64,8 +69,21 @@ public struct AuditEvent: Codable, Sendable {
             } else {
                 failure = RPCFailure(-32602, error.localizedDescription)
             }
+            DebugLog.write(
+                "rpc", "\(request.method) by \(who) FAILED \(failure.code) in \(Self.milliseconds(since: started)) ms: "
+                    + "\(failure.message) params=\(Self.summary(request.params))")
             return RPCResponse(id: request.id, error: failure)
         }
+    }
+
+    private static func milliseconds(since date: Date) -> Int { Int(Date().timeIntervalSince(date) * 1000) }
+
+    /// Compact JSON, truncated so large results (project.get, captions) do not flood the log.
+    static func summary(_ value: some Encodable) -> String {
+        guard let data = try? JSONEncoder().encode(value), let text = String(data: data, encoding: .utf8) else {
+            return "?"
+        }
+        return text.count > 400 ? text.prefix(400) + "…(\(text.count) chars)" : text
     }
 }
 

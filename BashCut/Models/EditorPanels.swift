@@ -1,6 +1,6 @@
 import Foundation
 
-enum LibraryTab: String, CaseIterable, Identifiable {
+enum LibraryTab: String, CaseIterable, Identifiable, Sendable {
     case media = "Media"
     case audio = "Audio"
     case text = "Text"

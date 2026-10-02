@@ -37,6 +37,11 @@ extension ProjectDocument {
             duration: duration, itemID: itemID)
         let revision = try commitPlan(planner, label: "Insert media", author: author, baseRevision: baseRevision)
         let used = project.tracks.first { $0.items.contains { $0.id == itemID } }?.id ?? trackID
+        let audio = project.tracks.first { $0.items.contains { $0.id == itemID + "-audio" } }?.id
+        DebugLog.write(
+            "layers", "place \(mediaSummary(media)) requested=\(trackID) used=\(used)"
+                + (used == trackID ? "" : " (SPILLED)")
+                + " linkedAudio=\(audio ?? "none (needs video layer, hasAudio=true and a dialogue layer)")")
         return (revision, used)
     }
 
@@ -48,7 +53,10 @@ extension ProjectDocument {
         var planner = LayerPlanner(project)
         try planner.move(itemID, to: trackID, at: frame)
         let revision = try commitPlan(planner, label: "Move clip", author: author, baseRevision: baseRevision)
-        return (revision, project.tracks.first { $0.items.contains { $0.id == itemID } }?.id ?? trackID)
+        let used = project.tracks.first { $0.items.contains { $0.id == itemID } }?.id ?? trackID
+        DebugLog.write(
+            "layers", "move \(itemID) requested=\(trackID)@\(frame) used=\(used)" + (used == trackID ? "" : " (SPILLED)"))
+        return (revision, used)
     }
 
     @discardableResult
@@ -77,6 +85,8 @@ extension ProjectDocument {
         // Visual layers are stored back to front and shown reversed; audio layers are shown in order.
         let band = project.trackBand(kind: track.kind)
         let destination = min(band.upperBound - 1, max(band.lowerBound, index + (track.isVisual ? offset : -offset)))
+        DebugLog.write(
+            "layers", "reorder \(id) offset=\(offset) index \(index)→\(destination) band=\(band.lowerBound)..<\(band.upperBound)")
         guard destination != index else { return }
         apply(.moveTrack(track: id, toIndex: destination), label: "Reorder layer")
     }

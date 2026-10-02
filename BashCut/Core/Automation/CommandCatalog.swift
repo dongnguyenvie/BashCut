@@ -3,6 +3,8 @@ import Foundation
 
 /// Every automation command, declared once. Modes, CLI parsing, MCP tools and agent instructions derive from it.
 public enum CommandCatalog {
+    /// Left-rail library panels, matching the app's `LibraryTab` cases (asserted at startup).
+    public static let libraryPanels = ["media", "audio", "text", "stickers", "effects", "transitions", "filters", "voice"]
     public static let exportPresets = ["tiktok", "youtube-1080", "youtube-4k", "quick-draft", "prores"]
 
     public static let specs: [CommandSpec] = readSpecs + editSpecs + layerSpecs + capabilitySpecs + privilegedSpecs + uiSpecs
@@ -163,6 +165,10 @@ public enum CommandCatalog {
         CommandSpec(
             "ui.seek", .ui, "Move the viewer to a timeline frame.",
             parameters: [CommandParameter("frame", .integer, "Timeline frame", required: true, minimum: 0,
+                                          cli: .positional)]),
+        CommandSpec(
+            "ui.panel", .ui, "Open a library panel in the left rail.",
+            parameters: [CommandParameter("panel", .string, "Panel", required: true, choices: libraryPanels,
                                           cli: .positional)]),
         CommandSpec(
             "ui.notify", .ui, "Show a short status message in BashCut.",

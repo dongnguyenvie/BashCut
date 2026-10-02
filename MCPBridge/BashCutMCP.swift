@@ -17,7 +17,9 @@ private let tools: [Tool] = CommandCatalog.specs.map { spec in
             .init(tools: tools)
         }
         await server.withMethodHandler(CallTool.self) { request in
+            DebugLog.write("mcp", "call \(request.name)")
             guard let spec = CommandCatalog.specs.first(where: { $0.mcpToolName == request.name }) else {
+                DebugLog.write("mcp", "unknown tool \(request.name)")
                 return .init(content: [.text(text: "Unknown BashCut tool", annotations: nil, _meta: nil)], isError: true)
             }
             do {
@@ -30,6 +32,7 @@ private let tools: [Tool] = CommandCatalog.specs.map { spec in
                     content: [.text(text: response.text, annotations: nil, _meta: nil)],
                     structuredContent: Optional.some(structured), isError: false)
             } catch {
+                DebugLog.write("mcp", "\(request.name) FAILED: \(error.localizedDescription)")
                 return .init(
                     content: [.text(text: error.localizedDescription, annotations: nil, _meta: nil)],
                     isError: true)

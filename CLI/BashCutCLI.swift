@@ -13,15 +13,24 @@ import Foundation
 
     func run() throws {
         if words.isEmpty || ["help", "-h", "--help"].contains(words[0]) { throw CleanExit.helpRequest(self) }
+        defer { DebugLog.flush() }
+        DebugLog.write("cli", "bashcut \(words.joined(separator: " "))")
         let invocation: CommandLineParser.Invocation
         do { invocation = try CommandLineParser.parse(words) } catch {
+            DebugLog.write("cli", "parse FAILED: \(error.localizedDescription)")
             FileHandle.standardError.write(Data("Error: \(error.localizedDescription)\n".utf8))
             throw ExitCode.validationFailure
         }
-        let response = try UnixRPCClient.call(
-            RPCRequest(
-                method: invocation.spec.name, params: invocation.params,
-                token: ProcessInfo.processInfo.environment["BASHCUT_SESSION_TOKEN"]))
+        let response: RPCResponse
+        do {
+            response = try UnixRPCClient.call(
+                RPCRequest(
+                    method: invocation.spec.name, params: invocation.params,
+                    token: ProcessInfo.processInfo.environment["BASHCUT_SESSION_TOKEN"]))
+        } catch {
+            DebugLog.write("cli", "\(invocation.spec.name) FAILED: \(error.localizedDescription)")
+            throw error
+        }
         try write(response, format: invocation.format)
     }
 

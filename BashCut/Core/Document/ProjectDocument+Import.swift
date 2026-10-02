@@ -1,5 +1,6 @@
 import AVFoundation
 import AppKit
+import BashCutAutomation
 import BashCutProject
 import UniformTypeIdentifiers
 
@@ -26,12 +27,20 @@ extension ProjectDocument {
                 for url in urls {
                     let imported = try await Self.importedMedia(
                         url: url, kind: kind, projectFPS: project.fps, root: root)
+                    DebugLog.write(
+                        "import", "\(url.lastPathComponent) → \(mediaSummary(imported.media)) timelineFrames=\(imported.frames) "
+                            + "target=\(trackID) at=\(at)")
                     try planner.add([.addMedia(imported.media)])
                     try planner.placeMedia(imported.media, on: trackID, at: at, duration: imported.frames)
                     at += imported.frames
                 }
                 try commitPlan(planner, label: "Import footage", author: .user, baseRevision: nil)
-            } catch { message = error.localizedDescription }
+                let linked = project.tracks.flatMap(\.items).filter { $0.fields["linkedAudio"] != nil }.count
+                DebugLog.write("import", "done; items with linked audio=\(linked) layers: \(layoutSummary())")
+            } catch {
+                DebugLog.write("import", "FAILED: \(error.localizedDescription)")
+                message = error.localizedDescription
+            }
         }
     }
 

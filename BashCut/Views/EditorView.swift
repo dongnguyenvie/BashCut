@@ -228,7 +228,7 @@ struct EditorView: View {
         VStack(spacing: 4) {
             ForEach(LibraryTab.allCases) { tab in
                 Button {
-                    document.libraryTab = tab
+                    document.showLibraryTab(tab)
                 } label: {
                     VStack(spacing: 3) {
                         Image(systemName: tab.icon).font(.system(size: 16))
@@ -237,7 +237,10 @@ struct EditorView: View {
                     .frame(width: 48, height: 42)
                     .background(document.libraryTab == tab ? Color.cyan.opacity(0.12) : .clear)
                     .clipShape(RoundedRectangle(cornerRadius: 6))
+                    // Plain buttons only hit-test drawn pixels; make the whole tile clickable.
+                    .contentShape(RoundedRectangle(cornerRadius: 6))
                 }.buttonStyle(.plain).foregroundStyle(document.libraryTab == tab ? .cyan : .secondary)
+                    .help(LocalizedStringKey(tab.rawValue))
             }
             Spacer()
         }.padding(.top, 8)

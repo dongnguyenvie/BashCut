@@ -138,7 +138,9 @@ final class ProjectDocument {
                 reset(loaded.history.project, url: url)
                 replaceHistory(loaded.history)
                 diskData = loaded.diskData
+                logOpened(url, data: loaded.diskData)
                 message = loaded.warning ?? ""
+                if let warning = loaded.warning { DebugLog.write("project", "warning: \(warning)") }
                 if let recovery = loaded.recovery {
                     let alert = NSAlert()
                     alert.messageText = String(localized: "Recover unsaved edits?")
@@ -153,7 +155,10 @@ final class ProjectDocument {
                 }
                 restoreLatestAgentChangeFromHistory()
                 rebuild()
-            } catch { message = error.localizedDescription }
+            } catch {
+                DebugLog.write("project", "open FAILED \(url.path): \(error.localizedDescription)")
+                message = error.localizedDescription
+            }
         }
     }
 
@@ -302,11 +307,21 @@ extension ProjectDocument {
         _ operation: EditOperation, label: String, author: Author = .user, baseRevision: Int? = nil,
         coalescingKey: String? = nil
     ) throws -> Int {
-        try ensureEditable(author: author)
         let before = project
-        try history.apply(
-            operation, label: label, author: author, baseRevision: baseRevision, coalescingKey: coalescingKey)
+        do {
+            try ensureEditable(author: author)
+            try history.apply(
+                operation, label: label, author: author, baseRevision: baseRevision, coalescingKey: coalescingKey)
+        } catch {
+            DebugLog.write(
+                "edit", "REJECTED \"\(label)\" by \(author) base=\(baseRevision.map(String.init) ?? "-") "
+                    + "rev=\(before.revision): \(error.localizedDescription) op=\(Self.describe(operation))")
+            throw error
+        }
         didCommit(from: before, author: author, label: label)
+        DebugLog.write(
+            "edit", "\"\(label)\" by \(author) rev \(before.revision)→\(project.revision) op=\(Self.describe(operation))"
+                + (before.tracks.map(\.id) == project.tracks.map(\.id) ? "" : " layers: \(layoutSummary())"))
         return project.revision
     }
 
@@ -328,6 +343,7 @@ extension ProjectDocument {
 
     /// UI convenience: reports failures in the status bar instead of throwing.
     func apply(_ operation: EditOperation, label: String) {
+        // Failures are logged by `commit`.
         do { try commit(operation, label: label) } catch { message = error.localizedDescription }
     }
 
@@ -347,6 +363,7 @@ extension ProjectDocument {
         let before = project
         if undo { try history.undo() } else { try history.redo() }
         didCommit(from: before, author: author, label: undo ? "Undo" : "Redo")
+        DebugLog.write("edit", "\(undo ? "undo" : "redo") by \(author) rev \(before.revision)→\(project.revision)")
         return project.revision
     }
 

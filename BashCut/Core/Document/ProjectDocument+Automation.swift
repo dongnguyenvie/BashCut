@@ -16,6 +16,7 @@ extension ProjectDocument {
         registerPrivilegedCommands()
         registerUICommands()
         assert(registry.unhandledCommands.isEmpty, "Unhandled commands: \(registry.unhandledCommands)")
+        assert(CommandCatalog.libraryPanels == LibraryTab.allCases.map { $0.rawValue.lowercased() })
         Task {
             do {
                 try await automationServer.start(path: AutomationPaths.socket) { [registry] in
@@ -209,10 +210,23 @@ extension ProjectDocument {
             document.seek(frame)
             return .bool(true)
         }
+        handle("ui.panel") { document, arguments, _ in
+            let name = try arguments.string("panel")
+            guard let tab = LibraryTab.allCases.first(where: { $0.rawValue.lowercased() == name }) else {
+                throw RPCFailure(-32602, "Unknown panel \(name)")
+            }
+            document.showLibraryTab(tab)
+            return .bool(true)
+        }
         handle("ui.notify") { document, arguments, _ in
             document.message = String(try arguments.string("message").prefix(2000))
             return .bool(true)
         }
+    }
+
+    func showLibraryTab(_ tab: LibraryTab) {
+        DebugLog.write("ui", "library panel \(libraryTab.rawValue) → \(tab.rawValue)")
+        libraryTab = tab
     }
 
     func timelineText() -> String {

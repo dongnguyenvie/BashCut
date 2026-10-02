@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- Add a shared debug log (`~/Library/Logs/BashCut/debug.log`) written by the app, CLI and MCP bridge: launches, project opens and layer repairs, committed and rejected edits, layer placement decisions, media imports, timeline gestures and automation requests.
+- Make each left-rail library tile clickable across its whole area, not only on the icon and label, and add a `ui panel` CLI/MCP command to open a panel (26 tools).
+
 - Enforce layer rules in core validation: visual layers stay above audio layers, exactly one undeletable main layer, no overlapping items on one layer, and no audio media on visual layers. Older projects are repaired when opened.
 - Place and move clips CapCut-style through a shared `LayerPlanner`: an occupied range spills onto the next free layer of the same role or a new layer next to it, with linked sound following. Imports, the library, timeline drags and overlapping SRT cues all use it.
 - Add `layers add`, `media place` and `timeline move` CLI/MCP commands (25 tools) backed by the same code as the UI.
