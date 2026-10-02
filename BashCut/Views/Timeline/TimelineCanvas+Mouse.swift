@@ -298,8 +298,8 @@ extension TimelineCanvas {
                 document.run(modifiers.contains(.shift) ? .lift : .delete)
             }
         case (123, _), (124, _):
-            let step = modifiers.contains(.shift) ? Int(project.fps.value.rounded()) : 1
-            document.preview.seek(playhead + (event.keyCode == 123 ? -step : step))
+            let back = event.keyCode == 123
+            document.run(modifiers.contains(.shift) ? (back ? .backSecond : .forwardSecond) : (back ? .previousFrame : .nextFrame))
         case (_, "s") where modifiers.isEmpty:
             document.run(.split)
         case (_, "z") where modifiers == .shift:

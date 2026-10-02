@@ -24,6 +24,8 @@ struct UIActionTests {
         #expect(UIAction.matching("cmd+=") == [.zoomIn])
         #expect(UIAction.matching("shift+z") == [.zoomFit])
         #expect(UIAction.matching("shift+delete") == [.lift])
+        #expect(UIAction.matching("left") == [.previousFrame])
+        #expect(UIAction.matching("shift+right") == [.forwardSecond])
         // `space` plays whichever viewer is shown; the document picks the available one.
         #expect(Set(UIAction.matching("space")) == [.togglePlayback, .sourceTogglePlayback])
         #expect(UIAction.matching("nope").isEmpty)

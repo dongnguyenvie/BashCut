@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+- Faster playback and timeline drawing: the play controls and time under the viewer are their own view, so the
+  editor no longer re-renders every playback frame; the timeline's current time is its own small label instead of
+  redrawing the layer header; new filmstrip thumbnails redraw only the visible filmstrip rows; clips look up
+  their media by ID; the beat grid is one path. The playhead is only written when it moves, and state used only
+  for reference (`timelineGestureActive`, the zoom anchor) is no longer observed by views.
+- The timeline arrow keys are editor actions: `left`/`right` run `playhead.previous-frame`/`playhead.next-frame`,
+  and ⇧← / ⇧→ run the new `playhead.back-second`/`playhead.forward-second`, so `ui action shift+right` works.
 - A CapCut-style timeline:
   - **Playhead:** a red playhead with a grip that you drag (on the grip, the line or anywhere on the ruler) with a timecode label, snapping and edge autoscroll. ← / → step frames, and playback turns the page.
   - **Hover and dragging:** hovered clips light up with trim brackets and move/trim cursors. Dragging a clip shows a see-through copy where it would land with a closed-hand cursor, a cyan target line, a yellow snap line, and a label with the new start, duration or change.

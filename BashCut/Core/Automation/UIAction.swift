@@ -64,6 +64,8 @@ public enum UIAction: String, CaseIterable, Sendable {
     case togglePlayback = "playback.toggle"
     case previousFrame = "playhead.previous-frame"
     case nextFrame = "playhead.next-frame"
+    case backSecond = "playhead.back-second"
+    case forwardSecond = "playhead.forward-second"
     case toggleCompare = "view.compare"
     case toggleSafeArea = "view.safe-area"
     case toggleSnap = "timeline.snap"
@@ -123,6 +125,8 @@ public enum UIAction: String, CaseIterable, Sendable {
         case .togglePlayback: "Play or pause"
         case .previousFrame: "Previous frame"
         case .nextFrame: "Next frame"
+        case .backSecond: "Back one second"
+        case .forwardSecond: "Forward one second"
         case .toggleCompare: "Compare color before/after"
         case .toggleSafeArea: "Safe area"
         case .toggleSnap: "Snap"
@@ -170,6 +174,11 @@ public enum UIAction: String, CaseIterable, Sendable {
         case .lift: [UIShortcut("delete", [.shift])]
         // Timeline-only, like `s`: a global ⇧Z would swallow capital Z typed in text fields.
         case .zoomFit: [UIShortcut("z", [.shift])]
+        // Arrow keys step the playhead while the timeline has keyboard focus.
+        case .previousFrame: [UIShortcut("left")]
+        case .nextFrame: [UIShortcut("right")]
+        case .backSecond: [UIShortcut("left", [.shift])]
+        case .forwardSecond: [UIShortcut("right", [.shift])]
         default: primaryShortcut.map { [$0] } ?? []
         }
     }

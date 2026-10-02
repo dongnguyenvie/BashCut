@@ -328,6 +328,7 @@ bashcut ui view --zoom 60 --snap on --inspector color --reveal 300
 bashcut ui view --zoom 480 --zoom-anchor 1200   # zoom in on frame 1200, keeping it where it is on screen
 bashcut ui action timeline.zoom-fit            # or shift+z: show the whole timeline
 bashcut ui action clip.freeze                  # the clip context menu: clip.freeze, clip.change-framing, clip.unlink-audio
+bashcut ui action shift+right                  # timeline arrows: left/right step a frame, shift+left/right a second
 ```
 
 Shortcuts are written as `cmd+shift+z`; modifiers can also be spelled `command`, `option`/`alt`/`opt` and

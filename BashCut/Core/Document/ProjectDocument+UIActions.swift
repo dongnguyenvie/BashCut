@@ -19,7 +19,7 @@ extension ProjectDocument {
         case .saveProject: return hasProject && !saving && !conflict
         case .importMedia, .refreshWaveforms: return hasProject && !(action == .refreshWaveforms && waveforms.loading)
         case .showExport, .toggleCompare: return project.duration > 0
-        case .togglePlayback, .previousFrame, .nextFrame: return project.duration > 0 && !sourceViewer.visible
+        case .togglePlayback, .previousFrame, .nextFrame, .backSecond, .forwardSecond: return project.duration > 0 && !sourceViewer.visible
         case .zoomIn: return ui.canZoomIn
         case .zoomOut: return ui.canZoomOut
         case .zoomFit: return project.duration > 0
@@ -65,6 +65,8 @@ extension ProjectDocument {
         case .togglePlayback: preview.togglePlayback()
         case .previousFrame: preview.seek(playhead - 1)
         case .nextFrame: preview.seek(playhead + 1)
+        case .backSecond: preview.seek(playhead - Int(project.fps.value.rounded()))
+        case .forwardSecond: preview.seek(playhead + Int(project.fps.value.rounded()))
         case .toggleCompare: preview.setColorComparison(!preview.showColorComparison)
         case .toggleSafeArea: ui.showSafeArea.toggle()
         case .toggleSnap: ui.snapping.toggle()
