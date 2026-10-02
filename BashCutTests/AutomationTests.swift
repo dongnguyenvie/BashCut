@@ -1,4 +1,5 @@
 import BashCutProject
+import Darwin
 import Foundation
 import Testing
 
@@ -150,6 +151,38 @@ import Testing
         }
         await server.stop()
         #expect(!FileManager.default.fileExists(atPath: path))
+    }
+
+    @Test("An idle client does not delay other automation clients")
+    func idleClientDoesNotBlock() async throws {
+        let directory = URL(fileURLWithPath: "/tmp/bashcut-idle-" + UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let path = directory.appendingPathComponent("a.sock").path
+        let server = UnixRPCServer()
+        try await server.start(path: path) { request in
+            RPCResponse(id: request.id, result: .string(request.method))
+        }
+        let idle = Darwin.socket(AF_UNIX, SOCK_STREAM, 0)
+        defer { Darwin.close(idle) }
+        var address = sockaddr_un()
+        address.sun_family = sa_family_t(AF_UNIX)
+        address.sun_len = UInt8(MemoryLayout<sockaddr_un>.size)
+        let bytes = Array(path.utf8) + [0]
+        withUnsafeMutableBytes(of: &address.sun_path) { $0.copyBytes(from: bytes) }
+        let connected = withUnsafePointer(to: &address) { pointer in
+            pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                Darwin.connect(idle, $0, socklen_t(MemoryLayout<sockaddr_un>.size))
+            }
+        }
+        #expect(connected == 0)
+        try await Task.sleep(for: .milliseconds(200))
+        let started = Date()
+        let response = try await Task.detached {
+            try UnixRPCClient.call(RPCRequest(method: "context.get"), path: path)
+        }.value
+        #expect(response.result == .string("context.get"))
+        #expect(Date().timeIntervalSince(started) < 2)
+        await server.stop()
     }
 
     @Test("MCP bridge forwards structured arguments and the live session token")

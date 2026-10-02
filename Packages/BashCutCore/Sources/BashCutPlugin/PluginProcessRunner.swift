@@ -20,7 +20,7 @@ public struct PluginHealth: Sendable, Equatable {
 }
 
 public struct PluginProcessRunner: Sendable {
-    private struct Execution: Sendable {
+    struct Execution: Sendable {
         let executable: URL
         let arguments: [String]
         let directory: URL
@@ -128,85 +128,61 @@ public struct PluginProcessRunner: Sendable {
                 environment: Self.environment(for: plugin), input: input, outputLimit: outputLimit))
     }
 
+    /// Runs the child in its own process group and waits without blocking a cooperative thread.
+    /// Cancellation, timeout and oversized output terminate the whole group, including grandchildren.
     private func execute(_ execution: Execution) async throws -> Data {
-        let timeout = timeout
-        return try await Task.detached { try Self.executeBlocking(execution, timeout: timeout) }.value
-    }
-
-    private static func executeBlocking(_ execution: Execution, timeout: TimeInterval) throws -> Data {
         let manager = FileManager.default
         let runDirectory = manager.temporaryDirectory.appendingPathComponent(
             "BashCutPluginRuns/" + UUID().uuidString, isDirectory: true)
         try manager.createDirectory(
-            at: runDirectory, withIntermediateDirectories: true,
-            attributes: [.posixPermissions: 0o700])
+            at: runDirectory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
         defer { try? manager.removeItem(at: runDirectory) }
-
         let inputURL = runDirectory.appendingPathComponent("input.json")
         let outputURL = runDirectory.appendingPathComponent("output.json")
         let errorURL = runDirectory.appendingPathComponent("stderr.log")
         try execution.input.write(to: inputURL, options: .atomic)
-        manager.createFile(atPath: outputURL.path, contents: nil)
-        manager.createFile(atPath: errorURL.path, contents: nil)
-        let inputHandle = try FileHandle(forReadingFrom: inputURL)
-        let outputHandle = try FileHandle(forWritingTo: outputURL)
-        let errorHandle = try FileHandle(forWritingTo: errorURL)
-        defer {
-            try? inputHandle.close()
-            try? outputHandle.close()
-            try? errorHandle.close()
-        }
 
-        let process = Process()
-        process.executableURL = execution.executable
-        process.arguments = execution.arguments
-        process.currentDirectoryURL = execution.directory
-        process.environment = execution.environment
-        process.standardInput = inputHandle
-        process.standardOutput = outputHandle
-        process.standardError = errorHandle
-        try process.run()
-
+        let child = try ChildProcess.spawn(
+            execution, input: inputURL.path, output: outputURL.path, error: errorURL.path)
         let deadline = Date().addingTimeInterval(timeout)
         var failure: PluginError?
-        while process.isRunning {
+        var status: Int32?
+        while status == nil {
+            if let exited = child.reap() {
+                status = exited
+                break
+            }
             if Task.isCancelled {
                 failure = .invalid("Plugin request was cancelled")
-                break
-            }
-            if Date() >= deadline {
+            } else if Date() >= deadline {
                 failure = .invalid("Plugin request timed out")
-                break
-            }
-            let size = ((try? manager.attributesOfItem(atPath: outputURL.path)[.size]) as? NSNumber)?
-                .intValue ?? 0
-            if size > execution.outputLimit {
+            } else if Self.fileSize(outputURL) > execution.outputLimit {
                 failure = .invalid("Plugin response is too large")
-                break
             }
-            Thread.sleep(forTimeInterval: 0.02)
+            if failure != nil { break }
+            try? await Task.sleep(for: .milliseconds(20))
         }
-        if failure != nil, process.isRunning {
-            process.terminate()
-            Thread.sleep(forTimeInterval: 0.05)
-            if process.isRunning { Darwin.kill(process.processIdentifier, SIGKILL) }
+        // The leader may be gone while helpers it started still run; one request owns the whole group.
+        if let failure {
+            await child.terminateGroup()
+            throw failure
         }
-        process.waitUntilExit()
-        if let failure { throw failure }
-        guard process.terminationStatus == 0 else {
+        child.signalGroup(SIGKILL)
+        guard status == 0 else {
             let data = (try? Data(contentsOf: errorURL)) ?? Data()
             let detail = (String(bytes: data.suffix(4_000), encoding: .utf8) ?? "")
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             throw PluginError.invalid(
-                detail.isEmpty ? "Plugin exited with status \(process.terminationStatus)"
-                    : "Plugin failed: \(detail)")
+                detail.isEmpty ? "Plugin exited with status \(status ?? -1)" : "Plugin failed: \(detail)")
         }
-        try outputHandle.synchronize()
-        let data = try Data(contentsOf: outputURL)
-        guard data.count <= execution.outputLimit else {
+        guard Self.fileSize(outputURL) <= execution.outputLimit else {
             throw PluginError.invalid("Plugin response is too large")
         }
-        return data
+        return (try? Data(contentsOf: outputURL)) ?? Data()
+    }
+
+    private static func fileSize(_ url: URL) -> Int {
+        ((try? FileManager.default.attributesOfItem(atPath: url.path)[.size]) as? NSNumber)?.intValue ?? 0
     }
 
     private static func environment(for plugin: InstalledPlugin) -> [String: String] {
@@ -220,4 +196,73 @@ public struct PluginProcessRunner: Sendable {
         environment["BASHCUT_PLUGIN_API_VERSION"] = String(plugin.manifest.apiVersion)
         return environment
     }
+}
+
+/// A spawned plugin process that leads its own process group.
+private struct ChildProcess: Sendable {
+    let pid: pid_t
+
+    static func spawn(
+        _ execution: PluginProcessRunner.Execution, input: String, output: String, error: String
+    ) throws -> ChildProcess {
+        var actions: posix_spawn_file_actions_t?
+        posix_spawn_file_actions_init(&actions)
+        defer { posix_spawn_file_actions_destroy(&actions) }
+        posix_spawn_file_actions_addopen(&actions, 0, input, O_RDONLY, 0)
+        posix_spawn_file_actions_addopen(&actions, 1, output, O_WRONLY | O_CREAT | O_TRUNC, 0o600)
+        posix_spawn_file_actions_addopen(&actions, 2, error, O_WRONLY | O_CREAT | O_TRUNC, 0o600)
+        posix_spawn_file_actions_addchdir_np(&actions, execution.directory.path)
+        var attributes: posix_spawnattr_t?
+        posix_spawnattr_init(&attributes)
+        defer { posix_spawnattr_destroy(&attributes) }
+        posix_spawnattr_setflags(
+            &attributes, Int16(POSIX_SPAWN_SETPGROUP | POSIX_SPAWN_CLOEXEC_DEFAULT | POSIX_SPAWN_SETSIGDEF))
+        posix_spawnattr_setpgroup(&attributes, 0)
+        var defaults = sigset_t()
+        sigemptyset(&defaults)
+        sigaddset(&defaults, SIGPIPE)
+        posix_spawnattr_setsigdefault(&attributes, &defaults)
+
+        let arguments = [execution.executable.path] + execution.arguments
+        let environment = execution.environment.map { "\($0.key)=\($0.value)" }
+        var pid: pid_t = 0
+        let result = withCStrings(arguments) { argv in
+            withCStrings(environment) { envp in
+                posix_spawn(&pid, execution.executable.path, &actions, &attributes, argv, envp)
+            }
+        }
+        guard result == 0 else {
+            throw PluginError.invalid("Cannot start plugin: \(String(cString: strerror(result)))")
+        }
+        return ChildProcess(pid: pid)
+    }
+
+    /// Returns the exit status once the leader has exited, or nil while it is still running.
+    func reap() -> Int32? {
+        var status: Int32 = 0
+        let result = waitpid(pid, &status, WNOHANG)
+        guard result == pid else { return result < 0 ? -1 : nil }
+        let signal = status & 0x7f
+        return signal == 0 ? (status >> 8) & 0xff : 128 + signal
+    }
+
+    func signalGroup(_ signal: Int32) { _ = Darwin.kill(-pid, signal) }
+
+    /// SIGTERM to the group, a short grace period, then SIGKILL and reap the leader.
+    func terminateGroup() async {
+        signalGroup(SIGTERM)
+        for _ in 0..<25 where reap() == nil {
+            try? await Task.sleep(nanoseconds: 20_000_000)
+        }
+        signalGroup(SIGKILL)
+        var status: Int32 = 0
+        _ = waitpid(pid, &status, 0)
+    }
+}
+
+private func withCStrings<R>(_ strings: [String], _ body: (UnsafePointer<UnsafeMutablePointer<CChar>?>) -> R) -> R {
+    var pointers = strings.map { strdup($0) }
+    pointers.append(nil)
+    defer { pointers.forEach { free($0) } }
+    return pointers.withUnsafeBufferPointer { body($0.baseAddress!) }
 }

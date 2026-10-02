@@ -52,7 +52,7 @@ struct InspectorView: View {
                             text: Binding(
                                 get: { document.selected?["tag"]?.object["section"]?.string ?? "" },
                                 set: {
-                                    patchNested("tag", "section", .string($0))
+                                    patchNested("tag", "section", .string($0), coalescing: true)
                                 })
                         ).textFieldStyle(.roundedBorder)
                         Divider()
@@ -126,7 +126,8 @@ struct InspectorView: View {
                                     text: Binding(
                                         get: { document.selected?.text ?? "" },
                                         set: {
-                                            document.patchSelected(["text": .string($0)], label: "Edit caption")
+                                            document.patchSelected(
+                                                ["text": .string($0)], label: "Edit caption", coalescing: true)
                                         })
                                 ).frame(height: 100)
                                 Picker(
@@ -236,9 +237,9 @@ struct InspectorView: View {
                 let bounded = min(range.upperBound, max(range.lowerBound, $0))
                 let value: JSONValue = integer ? .integer(Int(bounded.rounded())) : .number(bounded)
                 if let group {
-                    patchNested(group, key, value)
+                    patchNested(group, key, value, coalescing: true)
                 } else {
-                    document.patchSelected([key: value], label: title)
+                    document.patchSelected([key: value], label: title, coalescing: true)
                 }
             })
         return VStack(alignment: .leading, spacing: 4) {
@@ -253,12 +254,12 @@ struct InspectorView: View {
             Slider(value: binding, in: range)
         }
     }
-    private func patchNested(_ group: String, _ key: String, _ value: JSONValue) {
+    private func patchNested(_ group: String, _ key: String, _ value: JSONValue, coalescing: Bool = false) {
         var fields = document.selected?[group]?.object ?? [:]
         fields[key] = value
         var patch: [String: JSONValue] = [group: .object(fields)]
         if group == "transform" { patch["reframePreset"] = .string("custom") }
-        document.patchSelected(patch, label: "Change " + key)
+        document.patchSelected(patch, label: "Change " + key, coalescing: coalescing)
     }
     private func trackNumber(
         _ title: String, key: String, defaultValue: Double,
@@ -270,7 +271,7 @@ struct InspectorView: View {
                 guard $0.isFinite else { return }
                 let bounded = min(range.upperBound, max(range.lowerBound, $0))
                 let value: JSONValue = integer ? .integer(Int(bounded.rounded())) : .number(bounded)
-                document.patchSelectedTrack([key: value], label: title)
+                document.patchSelectedTrack([key: value], label: title, coalescing: true)
             })
         return VStack(alignment: .leading, spacing: 4) {
             HStack {

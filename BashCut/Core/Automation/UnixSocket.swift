@@ -91,8 +91,87 @@ public enum UnixRPCClient {
     }
 }
 
+/// Accepts connections on a dedicated thread and serves each client on a concurrent queue, so blocking
+/// socket I/O never occupies the Swift cooperative pool and one slow client cannot stall the others.
+private final class AcceptLoop: @unchecked Sendable {
+    private let lock = NSLock()
+    private var cancelled = false
+    private let finished = DispatchSemaphore(value: 0)
+    private let slots = DispatchSemaphore(value: 16)
+    private let clients = DispatchQueue(label: "app.bashcut.automation.clients", attributes: .concurrent)
+
+    private var isCancelled: Bool { lock.withLock { cancelled } }
+
+    func start(descriptor: Int32, handler: @escaping @Sendable (RPCRequest) async -> RPCResponse) {
+        let thread = Thread { [self] in
+            while !isCancelled {
+                var pollFD = pollfd(fd: descriptor, events: Int16(POLLIN), revents: 0)
+                guard Darwin.poll(&pollFD, 1, 100) > 0 else { continue }
+                let client = Darwin.accept(descriptor, nil, nil)
+                guard client >= 0 else { continue }
+                SocketIO.configure(client)
+                guard slots.wait(timeout: .now()) == .success else {
+                    Self.reply(RPCResponse(id: .null, error: RPCFailure(-32003, "Too many automation clients")), client)
+                    Darwin.close(client)
+                    continue
+                }
+                clients.async { [self] in
+                    defer {
+                        Darwin.close(client)
+                        slots.signal()
+                    }
+                    Self.serve(client, handler: handler)
+                }
+            }
+            finished.signal()
+        }
+        thread.name = "BashCut automation accept"
+        thread.start()
+    }
+
+    /// Stops accepting and waits for the accept thread to exit; in-flight clients finish on their own.
+    func stop() async {
+        lock.withLock { cancelled = true }
+        await withCheckedContinuation { continuation in
+            DispatchQueue.global().async { [finished] in
+                finished.wait()
+                continuation.resume()
+            }
+        }
+    }
+
+    // Bounded, one request per connection; callers reconnect for each command.
+    private static func serve(_ client: Int32, handler: @escaping @Sendable (RPCRequest) async -> RPCResponse) {
+        let request: RPCRequest
+        do {
+            request = try JSONDecoder().decode(RPCRequest.self, from: SocketIO.readLine(client))
+        } catch {
+            reply(RPCResponse(id: .null, error: RPCFailure(-32600, "Invalid JSON-RPC request")), client)
+            return
+        }
+        let box = ResponseBox()
+        let done = DispatchSemaphore(value: 0)
+        Task {
+            box.response = await handler(request)
+            done.signal()
+        }
+        done.wait()
+        if let response = box.response { reply(response, client) }
+    }
+
+    private static func reply(_ response: RPCResponse, _ client: Int32) {
+        guard let encoded = try? JSONEncoder().encode(response) else { return }
+        try? SocketIO.writeLine(encoded, client)
+    }
+}
+
+/// Written once by the handler task before `done` is signalled, then read by the client thread.
+private final class ResponseBox: @unchecked Sendable {
+    var response: RPCResponse?
+}
+
 public actor UnixRPCServer {
-    private var task: Task<Void, Never>?
+    private var loop: AcceptLoop?
     private var descriptor: Int32 = -1
     private var path: String?
     public init() {}
@@ -100,7 +179,7 @@ public actor UnixRPCServer {
     public func start(path: String, handler: @escaping @Sendable (RPCRequest) async -> RPCResponse)
         throws
     {
-        guard task == nil else { return }
+        guard loop == nil else { return }
         let directory = URL(fileURLWithPath: path).deletingLastPathComponent()
         try FileManager.default.createDirectory(
             at: directory, withIntermediateDirectories: true,
@@ -126,28 +205,9 @@ public actor UnixRPCServer {
         }
         self.descriptor = descriptor
         self.path = path
-        task = Task.detached {
-            while !Task.isCancelled {
-                var pollFD = pollfd(fd: descriptor, events: Int16(POLLIN), revents: 0)
-                guard Darwin.poll(&pollFD, 1, 100) > 0 else { continue }
-                let client = Darwin.accept(descriptor, nil, nil)
-                guard client >= 0 else { continue }
-                SocketIO.configure(client)
-                // Bounded, one request per connection; callers reconnect for each command.
-                do {
-                    let request = try JSONDecoder().decode(RPCRequest.self, from: SocketIO.readLine(client))
-                    let response = await handler(request)
-                    try SocketIO.writeLine(JSONEncoder().encode(response), client)
-                } catch {
-                    let response = RPCResponse(
-                        id: .null, error: RPCFailure(-32600, "Invalid JSON-RPC request"))
-                    if let encoded = try? JSONEncoder().encode(response) {
-                        try? SocketIO.writeLine(encoded, client)
-                    }
-                }
-                Darwin.close(client)
-            }
-        }
+        let loop = AcceptLoop()
+        loop.start(descriptor: descriptor, handler: handler)
+        self.loop = loop
     }
     private func clearStaleSocket(_ path: String) throws {
         // A stale socket is only removed after an unsuccessful probe; never evict a live instance.
@@ -170,13 +230,12 @@ public actor UnixRPCServer {
     }
 
     public func stop() async {
-        task?.cancel()
         if descriptor >= 0 { Darwin.shutdown(descriptor, SHUT_RDWR) }
-        await task?.value
+        await loop?.stop()
         if descriptor >= 0 { Darwin.close(descriptor) }
         if let path { unlink(path) }
         descriptor = -1
-        task = nil
+        loop = nil
         path = nil
     }
 }

@@ -26,13 +26,31 @@ extension ProjectDocument {
             sourceViewer.close()
         } catch { message = error.localizedDescription }
     }
-    func patchSelected(_ patch: [String: JSONValue], label: String) {
+    /// `coalescing` merges continuous input (slider drags, typing) on the same keys into one undo step.
+    func patchSelected(_ patch: [String: JSONValue], label: String, coalescing: Bool = false) {
         guard let selectedID else { return }
-        apply(.setProperties(item: selectedID, patch: patch), label: label)
+        applyCoalescing(
+            .setProperties(item: selectedID, patch: patch), label: label,
+            key: coalescing ? "item:\(selectedID):" + patch.keys.sorted().joined(separator: ",") : nil)
     }
-    func patchSelectedTrack(_ patch: [String: JSONValue], label: String) {
+    func patchSelectedTrack(_ patch: [String: JSONValue], label: String, coalescing: Bool = false) {
         guard let track = selectedItemTrack else { return }
-        apply(.setTrackProperties(track: track.id, patch: patch), label: label)
+        applyCoalescing(
+            .setTrackProperties(track: track.id, patch: patch), label: label,
+            key: coalescing ? "track:\(track.id):" + patch.keys.sorted().joined(separator: ",") : nil)
+    }
+
+    private func applyCoalescing(_ operation: EditOperation, label: String, key: String?) {
+        guard !conflict else {
+            message = String(localized: "Resolve the file conflict before editing.")
+            return
+        }
+        do {
+            try history.apply(operation, label: label, coalescingKey: key)
+            clearAgentChange()
+            dirty = true
+            rebuild()
+        } catch { message = error.localizedDescription }
     }
     func addText(style: String, text: String = "Your caption") {
         var item = Item(at: playhead, duration: max(1, min(90, project.duration - playhead)))
