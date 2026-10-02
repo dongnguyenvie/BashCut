@@ -54,7 +54,7 @@ extension ProjectDocument {
                 outputRoot: root.appendingPathComponent("subtitles/generated", isDirectory: true))
         }
         try ensureSession(session)
-        try applyGenerated(
+        try commit(
             project.importingSubRip(generated.text, replace: replace, provenance: generated.provenance.json),
             label: "Generate captions", author: author)
     }
@@ -84,7 +84,7 @@ extension ProjectDocument {
         guard !frames.isEmpty else {
             throw ProjectError.invalid("Insert the selected audio into the timeline before detecting beats")
         }
-        try applyGenerated(
+        try commit(
             .setBeatGrid(
                 media: media.id, bpm: generated.bpm, frames: frames.sorted(),
                 provenance: generated.provenance.json),
@@ -135,13 +135,14 @@ extension ProjectDocument {
             "generatedBy": .object(asset.provenance.json),
         ])
         let item = Item(media: mediaID, at: start, duration: frames)
-        try applyGenerated(
+        let track = try project.requireTrack(role: TrackRole.voiceover, kind: "audio")
+        try commit(
             .group(
                 label: "Generate voiceover", author: author,
-                ops: [.addMedia(media), .insert(track: "a2", item: item)]),
+                ops: [.addMedia(media), .insert(track: track.id, item: item)]),
             label: "Generate voiceover", author: author)
         selectedID = item.id
-        selectedTrackID = "a2"
+        selectedTrackID = track.id
         return item.id
     }
 
@@ -158,24 +159,6 @@ extension ProjectDocument {
 
     private func ensureSession(_ session: UUID) throws {
         guard session == sessionID else { throw CancellationError() }
-    }
-
-    /// Generated results enter the project only as validated, undoable edits attributed to their author.
-    private func applyGenerated(_ operation: EditOperation, label: String, author: Author) throws {
-        guard !conflict else { throw ProjectError.invalid("Resolve the file conflict before editing") }
-        if author != .user, busy || timelineGestureActive {
-            throw ProjectError.invalid("The editor is busy; retry the request")
-        }
-        let before = project
-        try history.apply(operation, label: label, author: author)
-        if author == .user {
-            clearAgentChange()
-        } else {
-            markAgentChanges(from: before, author: author, label: label)
-            message = author.rawValue.capitalized + ": " + label
-        }
-        dirty = true
-        rebuild()
     }
 
     // MARK: Automation

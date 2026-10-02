@@ -87,21 +87,13 @@ extension AgentDockModel {
             guard !generating, outputMode == "edit" else {
                 throw ModelError.invalid("Generate a timeline proposal first")
             }
-            guard !document.busy, !document.conflict, !document.timelineGestureActive else {
-                throw ModelError.invalid("Editor is busy or has a file conflict")
-            }
             guard let revision = requestRevision else {
                 throw ModelError.invalid("Generate a proposal first")
             }
             let ops = try JSONDecoder().decode(JSONValue.self, from: Data(output.utf8))
-            let before = document.project
-            try document.history.apply(
+            try document.commit(
                 .group(label: "Model API edit", author: .model, ops: WireOperations.decode(ops)),
                 label: "Model API edit", author: .model, baseRevision: revision)
-            document.markAgentChanges(from: before, author: .model, label: "Model API edit")
-            document.dirty = true
-            document.rebuild()
-            document.message = "Model API edit · Undo available"
             requestRevision = nil
             error = ""
         } catch { self.error = error.localizedDescription }

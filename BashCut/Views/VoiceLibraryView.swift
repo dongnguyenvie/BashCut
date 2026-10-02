@@ -1,5 +1,6 @@
 import AVFoundation
 import BashCutPlugins
+import BashCutProject
 import SwiftUI
 
 struct VoiceLibraryView: View {
@@ -28,7 +29,9 @@ struct VoiceLibraryView: View {
                     || pluginManager.calling.contains("voice.synthesize"))
             takeList
             recordingControls
-            Button("Import a voiceover take…") { document.importMedia(kind: "audio", trackID: "a2") }
+            Button("Import a voiceover take…") {
+                if let track = voiceoverTrackID { document.importMedia(kind: "audio", trackID: track) }
+            }.disabled(voiceoverTrackID == nil)
             Text(message).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
         }
         .task(id: document.fileURL) {
@@ -39,6 +42,10 @@ struct VoiceLibraryView: View {
             discardPending()
             recorder.cancel()
         }
+    }
+
+    private var voiceoverTrackID: String? {
+        document.project.track(role: TrackRole.voiceover, kind: "audio")?.id
     }
 
     private var providerPicker: some View {

@@ -4,8 +4,13 @@ import BashCutProject
 import UniformTypeIdentifiers
 
 extension ProjectDocument {
-    func importMedia(kind: String = "video", trackID: String = "v1") {
+    /// Imports files onto `trackID`, or onto the main video track when nil.
+    func importMedia(kind: String = "video", trackID: String? = nil) {
         guard let root = fileURL?.deletingLastPathComponent() else { return }
+        guard let trackID = trackID ?? project.track(role: TrackRole.main, kind: "video")?.id else {
+            message = String(localized: "Add a main video track first")
+            return
+        }
         let panel = NSOpenPanel()
         panel.allowedContentTypes = kind == "audio" ? [.audio] : [.movie]
         panel.allowsMultipleSelection = true
@@ -17,26 +22,13 @@ extension ProjectDocument {
             defer { busy = false }
             do {
                 var operations: [EditOperation] = []
-                var at = insertionFrame(trackID: trackID)
-                let destination = project.tracks.first(where: { $0.id == trackID })
-                let dialogue = project.tracks.first(where: { $0.kind == "audio" && $0.role == "dialogue" })
+                var at = project.insertionFrame(trackID: trackID, playhead: playhead)
                 for url in urls {
                     let imported = try await Self.importedMedia(
                         url: url, kind: kind, projectFPS: project.fps, root: root)
                     operations.append(.addMedia(imported.media))
-                    let videoID = UUID().uuidString
-                    var item = Item(
-                        id: videoID, media: imported.media.id, at: at, duration: imported.frames)
-                    if destination?.kind == "video", imported.media.hasAudio == true, let dialogue {
-                        let audioID = videoID + "-audio"
-                        item.fields["linkedAudio"] = .string(audioID)
-                        var audio = Item(
-                            id: audioID, media: imported.media.id, at: at, duration: imported.frames)
-                        audio.fields["linkedVideo"] = .string(videoID)
-                        operations.append(.insert(track: dialogue.id, item: audio))
-                    }
-                    operations.append(
-                        .insert(track: trackID, item: item))
+                    operations += project.placementOperations(
+                        media: imported.media, trackID: trackID, at: at, duration: imported.frames)
                     at += imported.frames
                 }
                 apply(
@@ -44,12 +36,6 @@ extension ProjectDocument {
                     label: "Import footage")
             } catch { message = error.localizedDescription }
         }
-    }
-
-    private func insertionFrame(trackID: String) -> Int {
-        trackID == "v1"
-            ? project.tracks.first(where: { $0.id == trackID })?.items.map(\.end).max() ?? 0
-            : playhead
     }
 
     private static func importedMedia(

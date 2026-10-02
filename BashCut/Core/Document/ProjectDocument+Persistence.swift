@@ -74,11 +74,9 @@ extension ProjectDocument {
                 conflict = true
                 message = String(localized: "The project changed on disk")
             } else {
-                try history.apply(.restore(project), label: "External change (file)", author: .external)
+                try commit(.restore(project), label: "External change (file)", author: .external)
                 self.diskData = data
                 externalProject = nil
-                dirty = true
-                rebuild()
             }
         } catch { message = error.localizedDescription }
     }
@@ -91,10 +89,8 @@ extension ProjectDocument {
                 let current = try await storage.readData(fileURL)
                 guard session == sessionID else { return }
                 if loadDisk {
-                    try history.apply(
+                    try commit(
                         .restore(Project.decode(current)), label: "External change (file)", author: .external)
-                    dirty = true
-                    rebuild()
                 }
                 diskData = current
                 externalData = nil

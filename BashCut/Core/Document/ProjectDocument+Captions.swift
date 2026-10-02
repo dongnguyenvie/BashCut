@@ -39,15 +39,10 @@ extension ProjectDocument {
             guard let self, let author, let base = params["baseRev"]?.int, let text = params["text"]?.string else {
                 throw RPCFailure(-32602, "text and baseRev are required")
             }
-            guard !busy, !conflict, !timelineGestureActive else { throw RPCFailure(-32003, "Editor busy") }
-            let before = project
-            try history.apply(
+            let revision = try commit(
                 project.importingSubRip(text, replace: params["replace"] == .bool(true)),
                 label: "Import SRT", author: author, baseRevision: base)
-            markAgentChanges(from: before, author: author, label: "Import SRT")
-            dirty = true
-            rebuild()
-            return .object(["rev": .integer(project.revision)])
+            return .object(["rev": .integer(revision)])
         }
     }
 }

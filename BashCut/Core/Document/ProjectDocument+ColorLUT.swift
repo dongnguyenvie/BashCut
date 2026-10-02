@@ -56,10 +56,6 @@ extension ProjectDocument {
     }
 
     private func applyThrowing(_ operation: EditOperation, label: String) throws {
-        guard !conflict else { throw ProjectError.invalid("Resolve the file conflict before editing.") }
-        try history.apply(operation, label: label)
-        clearAgentChange()
-        dirty = true
-        rebuild()
+        try commit(operation, label: label)
     }
 }

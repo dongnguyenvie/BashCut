@@ -7,7 +7,7 @@ struct LibraryView: View {
     @Bindable var pluginManager: PluginManagerModel
     @State private var search = ""
     @State private var mediaSource = MediaLibrarySource.footage
-    @State private var audioTrack = "a3"
+    @State private var audioTrack = ""
     @State private var captionSource = ""
     @State private var captionProvider = ""
     @State private var replaceGeneratedCaptions = true
@@ -84,18 +84,24 @@ struct LibraryView: View {
     private var audio: some View {
         VStack(alignment: .leading, spacing: 10) {
             Picker("Track", selection: $audioTrack) {
-                Text("Music").tag("a3")
-                Text("SFX").tag("a4")
-                Text("Voiceover").tag("a2")
+                ForEach(document.project.tracks.filter { $0.kind == "audio" }, id: \.id) { track in
+                    Text(track.name).tag(track.id)
+                }
+            }
+            .task(id: document.project.tracks.map(\.id).joined(separator: ":")) {
+                let audio = document.project.tracks.filter { $0.kind == "audio" }
+                if !audio.contains(where: { $0.id == audioTrack }) {
+                    audioTrack = (audio.first { $0.role == TrackRole.music } ?? audio.first)?.id ?? ""
+                }
             }
             Button("Import audio…") { document.importMedia(kind: "audio", trackID: audioTrack) }.disabled(
-                document.fileURL == nil)
+                document.fileURL == nil || audioTrack.isEmpty)
             ForEach(document.project.media.filter { $0["kind"] == .string("audio") }) { media in
                 HStack {
                     Image(systemName: "waveform")
                     Text(URL(fileURLWithPath: media.path).lastPathComponent).lineLimit(1)
                     Spacer()
-                    Button("Insert") { document.appendMedia(media, track: audioTrack) }
+                    Button("Insert") { document.appendMedia(media, track: audioTrack) }.disabled(audioTrack.isEmpty)
                 }.font(.caption)
             }
             Divider()

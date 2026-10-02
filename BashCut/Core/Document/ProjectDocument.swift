@@ -11,7 +11,8 @@ import UniformTypeIdentifiers
 
 @MainActor @Observable
 final class ProjectDocument {
-    var history = ProjectHistory(project: Project(name: "Untitled"))
+    /// Mutated only through `commit`, `commitUndo`/`commitRedo` and `replaceHistory` below.
+    private(set) var history = ProjectHistory(project: Project(name: "Untitled"))
     var selectedID: String?
     var selectedTrackID: String?
     var playhead = 0
@@ -92,36 +93,6 @@ final class ProjectDocument {
         return project.tracks.first { $0.items.contains(where: { $0.id == selectedID }) }
     }
 
-    func apply(_ operation: EditOperation, label: String) {
-        guard !conflict else {
-            message = String(localized: "Resolve the file conflict before editing.")
-            return
-        }
-        do {
-            try history.apply(operation, label: label)
-            clearAgentChange()
-            dirty = true
-            rebuild()
-        } catch { message = error.localizedDescription }
-    }
-
-    func undo() {
-        do {
-            try history.undo()
-            clearAgentChange()
-            dirty = true
-            rebuild()
-        } catch { message = error.localizedDescription }
-    }
-    func redo() {
-        do {
-            try history.redo()
-            clearAgentChange()
-            dirty = true
-            rebuild()
-        } catch { message = error.localizedDescription }
-    }
-
     func confirmDiscard(removeRecovery: Bool = true) -> Bool {
         guard dirty else { return true }
         let alert = NSAlert()
@@ -165,7 +136,7 @@ final class ProjectDocument {
             do {
                 let loaded = try await storage.load(url)
                 reset(loaded.history.project, url: url)
-                history = loaded.history
+                replaceHistory(loaded.history)
                 diskData = loaded.diskData
                 message = loaded.warning ?? ""
                 if let recovery = loaded.recovery {
@@ -174,7 +145,7 @@ final class ProjectDocument {
                     alert.addButton(withTitle: String(localized: "Recover"))
                     alert.addButton(withTitle: String(localized: "Use saved project"))
                     if alert.runModal() == .alertFirstButtonReturn {
-                        history = recovery
+                        replaceHistory(recovery)
                         dirty = true
                     } else {
                         try await storage.discardRecovery(at: url)
@@ -221,7 +192,7 @@ final class ProjectDocument {
         comparisonSnapshot = nil
         showColorComparison = false
         comparisonSnapshot = nil
-        history = ProjectHistory(project: project)
+        replaceHistory(ProjectHistory(project: project))
         fileURL = url
         restoreExportReport()
         rememberRecentProject(url)
@@ -288,7 +259,9 @@ final class ProjectDocument {
         var item = Item(at: playhead, duration: max(1, min(90, project.duration - playhead)))
         item["text"] = .string("Món ngon ở Buôn Ma Thuột")
         item["style"] = .string("bold-outline")
-        apply(.insert(track: "t1", item: item), label: "Add caption")
+        do {
+            try commit(.insert(track: project.requireTrack(role: TrackRole.captions).id, item: item), label: "Add caption")
+        } catch { message = error.localizedDescription }
         selectedID = item.id
     }
     func split() {
@@ -347,4 +320,94 @@ final class ProjectDocument {
         }
     }
 
+}
+
+// MARK: - Edit choke point
+
+extension ProjectDocument {
+    /// The only way an edit enters history. It enforces conflict, busy and revision rules, records or
+    /// clears the agent diff, marks the document dirty and rebuilds the preview.
+    @discardableResult
+    func commit(
+        _ operation: EditOperation, label: String, author: Author = .user, baseRevision: Int? = nil,
+        coalescingKey: String? = nil
+    ) throws -> Int {
+        try ensureEditable(author: author)
+        let before = project
+        try history.apply(
+            operation, label: label, author: author, baseRevision: baseRevision, coalescingKey: coalescingKey)
+        didCommit(from: before, author: author, label: label)
+        return project.revision
+    }
+
+    @discardableResult
+    func commitUndo(author: Author = .user, baseRevision: Int? = nil) throws -> Int {
+        try commitHistoryStep(undo: true, author: author, baseRevision: baseRevision)
+    }
+
+    @discardableResult
+    func commitRedo(author: Author = .user, baseRevision: Int? = nil) throws -> Int {
+        try commitHistoryStep(undo: false, author: author, baseRevision: baseRevision)
+    }
+
+    /// Replaces history wholesale when a project is opened, recovered or imported.
+    func replaceHistory(_ replacement: ProjectHistory) {
+        history = replacement
+        clearAgentChange()
+    }
+
+    /// UI convenience: reports failures in the status bar instead of throwing.
+    func apply(_ operation: EditOperation, label: String) {
+        do { try commit(operation, label: label) } catch { message = error.localizedDescription }
+    }
+
+    func undo() {
+        do { try commitUndo() } catch { message = error.localizedDescription }
+    }
+
+    func redo() {
+        do { try commitRedo() } catch { message = error.localizedDescription }
+    }
+
+    private func commitHistoryStep(undo: Bool, author: Author, baseRevision: Int?) throws -> Int {
+        try ensureEditable(author: author)
+        if let baseRevision, baseRevision != project.revision {
+            throw ProjectError.staleRevision(expected: baseRevision, actual: project.revision)
+        }
+        let before = project
+        if undo { try history.undo() } else { try history.redo() }
+        didCommit(from: before, author: author, label: undo ? "Undo" : "Redo")
+        return project.revision
+    }
+
+    private func ensureEditable(author: Author) throws {
+        // External reloads resolve conflicts themselves; everything else waits for the user.
+        guard author == .external || !conflict else {
+            throw ProjectError.invalid(String(localized: "Resolve the file conflict before editing."))
+        }
+        if author.isAgent, busy || timelineGestureActive {
+            throw AutomationBusy()
+        }
+    }
+
+    private func didCommit(from before: Project, author: Author, label: String) {
+        if author.isAgent {
+            markAgentChanges(from: before, author: author, label: label)
+            message = author.rawValue.capitalized + ": " + label
+        } else {
+            clearAgentChange()
+        }
+        dirty = true
+        rebuild()
+    }
+}
+
+/// Thrown when an agent edit arrives while the user is mid-gesture or a long operation runs.
+struct AutomationBusy: LocalizedError {
+    var errorDescription: String? { "The editor is busy or has a file conflict; retry later" }
+}
+
+extension Author {
+    /// Agent-authored edits get the ◆ diff markers and the Undo toast.
+    var isAgent: Bool { [.claude, .codex, .model].contains(self) }
 }

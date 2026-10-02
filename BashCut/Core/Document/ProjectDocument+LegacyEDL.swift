@@ -27,7 +27,7 @@ extension ProjectDocument {
                 let importedHistory = ProjectHistory(project: report.project)
                 let written = try await storage.save(importedHistory, to: destination, expectedDisk: nil)
                 reset(report.project, url: destination)
-                history = importedHistory
+                replaceHistory(importedHistory)
                 diskData = written
                 legacyImportReport = report
                 showLegacyImportReport = true

@@ -21,7 +21,7 @@ extension ProjectDocument {
         do {
             let operation = try project.sourceEdit(
                 mediaID: media.id, sourceRange: sourceViewer.inFrame..<sourceViewer.outFrame, at: playhead,
-                trackID: "v1", mode: mode)
+                trackID: project.requireTrack(role: TrackRole.main, kind: "video").id, mode: mode)
             apply(operation, label: mode == .insert ? "Insert source range" : "Overwrite source range")
             sourceViewer.close()
         } catch { message = error.localizedDescription }
@@ -41,44 +41,33 @@ extension ProjectDocument {
     }
 
     private func applyCoalescing(_ operation: EditOperation, label: String, key: String?) {
-        guard !conflict else {
-            message = String(localized: "Resolve the file conflict before editing.")
-            return
-        }
-        do {
-            try history.apply(operation, label: label, coalescingKey: key)
-            clearAgentChange()
-            dirty = true
-            rebuild()
-        } catch { message = error.localizedDescription }
+        do { try commit(operation, label: label, coalescingKey: key) } catch { message = error.localizedDescription }
     }
     func addText(style: String, text: String = "Your caption") {
         var item = Item(at: playhead, duration: max(1, min(90, project.duration - playhead)))
         item["text"] = .string(text)
         item["style"] = .string(style)
-        apply(.insert(track: "t1", item: item), label: "Add text")
-        selectedID = item.id
+        do {
+            try commit(.insert(track: project.requireTrack(role: TrackRole.captions).id, item: item), label: "Add text")
+            selectedID = item.id
+        } catch { message = error.localizedDescription }
     }
-    func appendMedia(_ media: Media, track: String = "v1") {
-        let duration = Int((Double(media.frames) / media.fps.value * project.fps.value).rounded(.down))
-        let at =
-            track == "v1"
-            ? project.tracks.first { $0.id == track }?.items.map(\.end).max() ?? 0 : playhead
-        let itemID = UUID().uuidString
-        var item = Item(id: itemID, media: media.id, at: at, duration: duration)
-        var operations: [EditOperation] = []
-        if project.tracks.first(where: { $0.id == track })?.kind == "video", media.hasAudio == true,
-            let dialogue = project.tracks.first(where: { $0.kind == "audio" && $0.role == "dialogue" })
-        {
-            let audioID = itemID + "-audio"
-            item.fields["linkedAudio"] = .string(audioID)
-            var audio = Item(id: audioID, media: media.id, at: at, duration: duration)
-            audio.fields["linkedVideo"] = .string(itemID)
-            operations.append(.insert(track: dialogue.id, item: audio))
+    /// Places media on `track`, or on the main video track when nil.
+    func appendMedia(_ media: Media, track: String? = nil) {
+        guard let trackID = track ?? project.track(role: TrackRole.main, kind: "video")?.id else {
+            message = String(localized: "Add a main video track first")
+            return
         }
-        operations.append(.insert(track: track, item: item))
-        apply(.group(label: "Insert media", author: .user, ops: operations), label: "Insert media")
-        selectedID = item.id
+        let duration = Int((Double(media.frames) / media.fps.value * project.fps.value).rounded(.down))
+        let itemID = UUID().uuidString
+        apply(
+            .group(
+                label: "Insert media", author: .user,
+                ops: project.placementOperations(
+                    media: media, trackID: trackID, at: project.insertionFrame(trackID: trackID, playhead: playhead),
+                    duration: duration, itemID: itemID)),
+            label: "Insert media")
+        selectedID = itemID
     }
 
     func unlinkSelectedAudio() {
@@ -132,12 +121,13 @@ extension ProjectDocument {
             ]),
         ])
         let item = Item(media: mediaID, at: playhead, duration: frames)
-        apply(
+        let track = try project.requireTrack(role: TrackRole.voiceover, kind: "audio")
+        try commit(
             .group(
                 label: "Record voiceover", author: .user,
-                ops: [.addMedia(media), .insert(track: "a2", item: item)]),
+                ops: [.addMedia(media), .insert(track: track.id, item: item)]),
             label: "Record voiceover")
         selectedID = item.id
-        selectedTrackID = "a2"
+        selectedTrackID = track.id
     }
 }

@@ -102,38 +102,20 @@ extension ProjectDocument {
             else {
                 throw RPCFailure(-32602, "baseRev, ops and a nonempty label are required")
             }
-            guard !busy, !conflict, !timelineGestureActive else {
-                throw RPCFailure(-32003, "The editor is busy or has a file conflict; retry later")
-            }
-            let before = project
-            try history.apply(
+            let revision = try commit(
                 .group(label: label, author: author, ops: WireOperations.decode(ops)),
                 label: label, author: author, baseRevision: base)
-            markAgentChanges(from: before, author: author, label: label)
-            dirty = true
-            rebuild()
-            message = author.rawValue.capitalized + ": " + label
-            return .object(["rev": .integer(project.revision)])
+            return .object(["rev": .integer(revision)])
         }
         for name in ["timeline.undo", "timeline.redo"] {
             registry.register(name) { [weak self] params, author in
                 guard let self, let author, let base = params["baseRev"]?.int else {
                     throw RPCFailure(-32602, "baseRev is required")
                 }
-                guard !busy, !conflict, !timelineGestureActive else {
-                    throw RPCFailure(-32003, "Editor busy")
-                }
-                guard base == project.revision else {
-                    throw ProjectError.staleRevision(expected: base, actual: project.revision)
-                }
-                let before = project
-                if name == "timeline.undo" { try history.undo() } else { try history.redo() }
-                markAgentChanges(
-                    from: before, author: author,
-                    label: name == "timeline.undo" ? "Undo" : "Redo")
-                dirty = true
-                rebuild()
-                return .object(["rev": .integer(project.revision)])
+                let revision = name == "timeline.undo"
+                    ? try commitUndo(author: author, baseRevision: base)
+                    : try commitRedo(author: author, baseRevision: base)
+                return .object(["rev": .integer(revision)])
             }
         }
     }
@@ -272,27 +254,20 @@ extension ProjectDocument {
     }
 
     func restoreLatestAgentChangeFromHistory() {
-        guard let entry = history.undoEntries.last,
-            [.claude, .codex, .model].contains(entry.author),
-            case .restore(let before) = entry.operation
+        guard let entry = history.lastUndo, entry.author.isAgent, let before = entry.before
         else { return clearAgentChange() }
         markAgentChanges(from: before, author: entry.author, label: entry.label)
     }
 
     var canUndoAgentChange: Bool {
         guard let change = agentChange, change.afterRevision == project.revision,
-            let entry = history.undoEntries.last
+            let entry = history.lastUndo
         else { return false }
         return entry.author == change.author && entry.label == change.label
     }
 
     func undoAgentChange() {
         guard canUndoAgentChange else { return }
-        do {
-            try history.undo()
-            dirty = true
-            clearAgentChange()
-            rebuild()
-        } catch { message = error.localizedDescription }
+        undo()
     }
 }

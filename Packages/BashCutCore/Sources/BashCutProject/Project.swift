@@ -290,3 +290,57 @@ public struct Project: JSONObject {
         return project
     }
 }
+
+/// Semantic track roles. Roles are repeatable hints; features look tracks up by role instead of by
+/// fixed IDs so renamed, reordered or added layers keep working.
+public enum TrackRole {
+    public static let main = "main"
+    public static let overlay = "overlay"
+    public static let captions = "captions"
+    public static let dialogue = "dialogue"
+    public static let voiceover = "voiceover"
+    public static let music = "music"
+    public static let sfx = "sfx"
+}
+
+extension Project {
+    public func track(id: String) -> Track? { tracks.first { $0.id == id } }
+
+    /// The first track with `role` (and `kind`, when given) in stacking order, back to front.
+    public func track(role: String, kind: String? = nil) -> Track? {
+        tracks.first { $0.role == role && (kind == nil || $0.kind == kind) }
+    }
+
+    public func requireTrack(role: String, kind: String? = nil) throws -> Track {
+        guard let track = track(role: role, kind: kind) else {
+            throw ProjectError.invalid("Add a \(role) track first")
+        }
+        return track
+    }
+
+    /// Magnetic tracks append after their last item; other tracks place at the playhead.
+    public func insertionFrame(trackID: String, playhead: Int) -> Int {
+        guard let track = track(id: trackID), track.magnetic else { return playhead }
+        return track.items.map(\.end).max() ?? 0
+    }
+
+    /// Operations that place `media` on a track. Video with sound on a video track also gets a
+    /// reciprocal linked item on the first dialogue track, so picture and sound edit together.
+    public func placementOperations(
+        media: Media, trackID: String, at frame: Int, duration: Int, itemID: String = UUID().uuidString
+    ) -> [EditOperation] {
+        var item = Item(id: itemID, media: media.id, at: frame, duration: duration)
+        var operations: [EditOperation] = []
+        if track(id: trackID)?.kind == "video", media.hasAudio == true,
+            let dialogue = track(role: TrackRole.dialogue, kind: "audio")
+        {
+            let audioID = itemID + "-audio"
+            item.fields["linkedAudio"] = .string(audioID)
+            var audio = Item(id: audioID, media: media.id, at: frame, duration: duration)
+            audio.fields["linkedVideo"] = .string(itemID)
+            operations.append(.insert(track: dialogue.id, item: audio))
+        }
+        operations.append(.insert(track: trackID, item: item))
+        return operations
+    }
+}

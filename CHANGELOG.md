@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+- Route every history mutation (UI, automation, model API, captions, LUTs, generated results, external reloads) through one `ProjectDocument.commit` that enforces conflict/busy/revision rules and records agent diffs consistently; `history` is now read-only outside that choke point.
+- Look tracks up by role (`Project.track(role:)`, `TrackRole`, `placementOperations`) instead of fixed `v1`/`t1`/`a2`/`a3`/`a4` IDs, so renamed, reordered or added layers keep working; the audio library lists the project's real audio tracks.
+- Serialize `EditOperation` in one `"op"`-keyed codec in core, shared by agents, model APIs and the history journal. Journals written by earlier builds are discarded with the existing "History could not be restored" warning; project files are unchanged.
+- Cap undo history at 200 steps, hide the `Deque` storage behind `canUndo`/`undoEntries`/`lastUndo`, and expose snapshot inverses through `HistoryEntry.before`.
+
 - Make plugin calls cancellable without blocking Swift's cooperative pool: providers start in their own process group, cancellation and timeouts terminate the whole group, including helpers they spawned.
 - Serve automation clients concurrently on a dedicated accept thread and client queue, so an idle or slow client no longer stalls other agents.
 - Merge continuous Inspector input (slider drags, typing) on the same field into one undo step through history coalescing in core.
