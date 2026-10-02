@@ -11,7 +11,7 @@ extension ProjectDocument {
         let created = try await storage.create(setup, in: parent, footage: footage)
         if let previousURL { try? await storage.discardRecovery(at: previousURL) }
         reset(created.project, url: created.url)
-        diskData = created.diskData
+        fileSync.accept(created.diskData)
         message = String(localized: "Project created")
         DebugLog.write("project", "created \(created.url.path) layers: \(layoutSummary())")
         return created.url

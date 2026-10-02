@@ -37,7 +37,7 @@ extension ProjectDocument {
         let written = try await storage.save(importedHistory, to: destination, expectedDisk: nil)
         reset(report.project, url: destination)
         replaceHistory(importedHistory)
-        diskData = written
+        fileSync.accept(written)
         legacyImportReport = report
         message = String(localized: "Legacy EDL imported")
         rebuild()

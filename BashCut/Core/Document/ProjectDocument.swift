@@ -24,16 +24,9 @@ final class ProjectDocument {
     var fileURL: URL?
     let sourceViewer = SourceViewerModel()
     let waveforms = WaveformModel()
-    let storage = ProjectStorage()
-    var diskData: Data?
-    var externalData: Data?
-    var externalProject: Project?
-    var conflict = false
+    /// Saves, autosaves and the disk watch for the open file.
+    let fileSync = FileSyncController()
     var legacyImportReport: LegacyEDLImportReport?
-    var saving = false
-    var fileCheckInProgress = false
-    @ObservationIgnored var fileMonitor: ProjectFileMonitor?
-    var lastAutosaveRevision = -1
     var sessionID = UUID()
     let automationServer = UnixRPCServer()
     let registry: CommandRegistry
@@ -138,7 +131,7 @@ final class ProjectDocument {
         let loaded = try await storage.load(url)
         reset(loaded.history.project, url: url)
         replaceHistory(loaded.history)
-        diskData = loaded.diskData
+        fileSync.accept(loaded.diskData)
         logOpened(url, data: loaded.diskData)
         message = loaded.warning ?? ""
         if let warning = loaded.warning { DebugLog.write("project", "warning: \(warning)") }
@@ -173,8 +166,6 @@ final class ProjectDocument {
     }
 
     func reset(_ project: Project, url: URL) {
-        fileMonitor?.cancel()
-        fileMonitor = nil
         if privilegedApproval != nil { resolvePrivilegedApproval(false) }
         agents.closeAll()
         sourceViewer.reset()
@@ -182,12 +173,8 @@ final class ProjectDocument {
         agentChangedIDs.removeAll()
         agentChange = nil
         sessionID = UUID()
-        diskData = nil
-        externalData = nil
-        externalProject = nil
-        conflict = false
+        fileSync.reset()
         legacyImportReport = nil
-        lastAutosaveRevision = -1
         exports.reset()
         jobs.cancelAll()
         ui.closeProjectSheets()
