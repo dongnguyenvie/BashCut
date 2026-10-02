@@ -4406,6 +4406,96 @@
         "en": { "stringUnit": { "state": "translated", "value": "View" } },
         "vi": { "stringUnit": { "state": "translated", "value": "Xem" } }
       }
+    },
+    "None": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "None" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Không có" } }
+      }
+    },
+    "Clear": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Clear" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Xóa" } }
+      }
+    },
+    "Needs about %@ but only %@ is free": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Needs about %@ but only %@ is free" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Cần khoảng %@ nhưng chỉ còn trống %@" } }
+      }
+    },
+    "Setting up…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Setting up…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đang cài đặt…" } }
+      }
+    },
+    "Installing…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Installing…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đang cài…" } }
+      }
+    },
+    "%@ is set up": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "%@ is set up" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "%@ đã cài xong" } }
+      }
+    },
+    "Plugin installation cancelled": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Plugin installation cancelled" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đã hủy cài plugin" } }
+      }
+    },
+    "Setting up %@ (%d of %d)…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Setting up %@ (%d of %d)…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đang cài %@ (%d/%d)…" } }
+      }
+    },
+    "Install Dependencies…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Install Dependencies…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Cài dependency…" } }
+      }
+    },
+    "Run this plugin's install recipes again (after a failed or cancelled setup)": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Run this plugin's install recipes again (after a failed or cancelled setup)" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Chạy lại bước cài của plugin (sau khi cài lỗi hoặc bị hủy)" } }
+      }
+    },
+    "Remove with Data (%@)": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Remove with Data (%@)" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Gỡ kèm dữ liệu (%@)" } }
+      }
+    },
+    "Its downloaded data (environments, models) can be kept for a later reinstall or removed too.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Its downloaded data (environments, models) can be kept for a later reinstall or removed too." } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Dữ liệu đã tải (môi trường, model) có thể giữ lại để cài lại sau, hoặc gỡ luôn." } }
+      }
+    },
+    "Set up %@?": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Set up %@?" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Cài đặt %@?" } }
+      }
+    },
+    "Set Up": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Set Up" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Cài đặt" } }
+      }
+    },
+    "Downloads and disk: about %@ (%@ free)": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Downloads and disk: about %@ (%@ free)" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Tải về và dung lượng: khoảng %@ (còn trống %@)" } }
+      }
     }
   },
   "version": "1.0"

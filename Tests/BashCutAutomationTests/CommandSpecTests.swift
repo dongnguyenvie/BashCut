@@ -114,7 +114,9 @@ struct CommandSpecTests {
         let install = try CommandLineParser.parse(["plugins", "install", "bashcut.silence-markers", "--version", "0.2.0"])
         #expect(install.spec.execution == .job && install.spec.mode == .edit)
         #expect(install.params == ["plugin": .string("bashcut.silence-markers"), "version": .string("0.2.0")])
-        #expect(try CommandLineParser.parse(["plugins", "remove", "bashcut.silence-markers"]).spec.mode == .edit)
+        let remove = try CommandLineParser.parse(["plugins", "remove", "bashcut.vieneu-tts", "--data"])
+        #expect(remove.spec.mode == .edit && remove.params["data"] == .bool(true))
+        #expect(try CommandLineParser.parse(["plugins", "setup", "bashcut.vieneu-tts"]).params == ["plugin": .string("bashcut.vieneu-tts")])
     }
 
     @Test("The CLI parses positionals, options, flags, files and the global format from specs")

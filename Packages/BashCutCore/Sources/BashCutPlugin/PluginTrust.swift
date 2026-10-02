@@ -2,20 +2,59 @@ import BashCutProject
 import CryptoKit
 import Foundation
 
-/// SHA-256 of a plugin's manifest and entrypoint, pinned when the user approves the plugin.
+/// SHA-256 of a plugin's manifest, entrypoint and every other file in its folder, pinned when the user approves
+/// the plugin. Any change (a script the entrypoint runs, a bundled helper) needs approval again.
 public struct PluginFingerprint: Codable, Sendable, Equatable {
     public let manifestSHA256: String
     public let entrypointSHA256: String
+    /// Digest of every file's relative path, mode and contents; nil in grants made before it existed.
+    public var treeSHA256: String?
 
-    public init(manifestSHA256: String, entrypointSHA256: String) {
+    public init(manifestSHA256: String, entrypointSHA256: String, treeSHA256: String? = nil) {
         self.manifestSHA256 = manifestSHA256
         self.entrypointSHA256 = entrypointSHA256
+        self.treeSHA256 = treeSHA256
     }
 
     public init(plugin: InstalledPlugin) throws {
         let manifest = try Data(contentsOf: plugin.directory.appendingPathComponent("plugin.json"))
         let entrypoint = try Data(contentsOf: plugin.entrypointURL())
-        self.init(manifestSHA256: Self.hex(manifest), entrypointSHA256: Self.hex(entrypoint))
+        self.init(
+            manifestSHA256: Self.hex(manifest), entrypointSHA256: Self.hex(entrypoint),
+            treeSHA256: try Self.tree(plugin.directory))
+    }
+
+    /// Same files as `other`, treating a grant without a tree digest as matching on manifest and entrypoint.
+    func matches(_ other: PluginFingerprint) -> Bool {
+        manifestSHA256 == other.manifestSHA256 && entrypointSHA256 == other.entrypointSHA256
+            && (other.treeSHA256 == nil || treeSHA256 == other.treeSHA256)
+    }
+
+    /// Files under the folder, sorted: `path`, executable bit and SHA-256 (or a link's target). Hidden files,
+    /// `__pycache__` and `.pyc` files are skipped; they change on their own.
+    static func tree(_ folder: URL) throws -> String {
+        let root = folder.resolvingSymlinksInPath().standardizedFileURL
+        let keys: [URLResourceKey] = [.isRegularFileKey, .isSymbolicLinkKey, .isDirectoryKey]
+        guard let enumerator = FileManager.default.enumerator(
+            at: root, includingPropertiesForKeys: keys, options: [.skipsHiddenFiles])
+        else { throw PluginError.invalid("Cannot read the plugin folder") }
+        var lines: [String] = []
+        for case let url as URL in enumerator {
+            let values = try url.resourceValues(forKeys: Set(keys))
+            if values.isDirectory == true, url.lastPathComponent == "__pycache__" {
+                enumerator.skipDescendants()
+                continue
+            }
+            let relative = String(url.standardizedFileURL.path.dropFirst(root.path.count + 1))
+            if values.isSymbolicLink == true {
+                let target = (try? FileManager.default.destinationOfSymbolicLink(atPath: url.path)) ?? ""
+                lines.append("\(relative)\0link\0\(target)")
+            } else if values.isRegularFile == true, url.pathExtension != "pyc" {
+                let executable = FileManager.default.isExecutableFile(atPath: url.path) ? "x" : "-"
+                lines.append("\(relative)\0\(executable)\0\(hex(try Data(contentsOf: url)))")
+            }
+        }
+        return hex(Data(lines.sorted().joined(separator: "\n").utf8))
     }
 
     static func hex(_ data: Data) -> String {
@@ -85,10 +124,13 @@ public final class PluginTrustStore: @unchecked Sendable {
     public let url: URL
     /// Plugins under these folders (the app bundle) are trusted without approval.
     public let trustedRoots: [URL]
+    /// Development builds: a plugin folder that is a symbolic link (`dev-link.sh`) is checked on its manifest and
+    /// entrypoint only, so its other files can change while it is being written.
+    public var relaxesLinkedPlugins = false
     private let lock = NSLock()
     private var contents: Contents
     /// Fingerprints by plugin folder, reused while both files keep their size and modification date.
-    private var fingerprints: [String: (stamp: [Date?], sizes: [Int], value: PluginFingerprint)] = [:]
+    private var fingerprints: [String: (stamp: [String], value: PluginFingerprint)] = [:]
 
     public init(url: URL, trustedRoots: [URL] = []) {
         self.url = url
@@ -118,23 +160,42 @@ public final class PluginTrustStore: @unchecked Sendable {
         if let grant, !grant.enabled { return .disabled }
         if isBundled(plugin) { return .ready }
         guard let grant, !grant.fingerprint.manifestSHA256.isEmpty else { return .untrusted }
-        guard let current = try? fingerprint(plugin), current == grant.fingerprint else { return .changed }
+        guard let current = try? fingerprint(plugin) else { return .changed }
+        let linked = relaxesLinkedPlugins
+            && (try? plugin.directory.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink) == true
+        if linked {
+            return current.manifestSHA256 == grant.fingerprint.manifestSHA256
+                && current.entrypointSHA256 == grant.fingerprint.entrypointSHA256 ? .ready : .changed
+        }
+        guard current.matches(grant.fingerprint) else { return .changed }
+        if grant.fingerprint.treeSHA256 == nil {
+            // An older grant: pin the folder as it is now, since manifest and entrypoint still match.
+            try? update { $0.grants[plugin.id]?.fingerprint = current }
+        }
         return .ready
     }
 
-    /// The plugin's fingerprint, hashed again only when one of its files changed size or date.
+    /// The plugin's fingerprint, hashed again only when a file in its folder was added, removed or changed size or
+    /// date.
     func fingerprint(_ plugin: InstalledPlugin) throws -> PluginFingerprint {
-        let files = [plugin.directory.appendingPathComponent("plugin.json"), try plugin.entrypointURL()]
-        let attributes = files.map { try? FileManager.default.attributesOfItem(atPath: $0.path) }
-        let stamp = attributes.map { $0?[.modificationDate] as? Date }
-        let sizes = attributes.map { ($0?[.size] as? NSNumber)?.intValue ?? -1 }
+        let stamp = Self.stamp(plugin.directory)
         let key = plugin.directory.standardizedFileURL.path
-        if let cached = locked({ fingerprints[key] }), cached.stamp == stamp, cached.sizes == sizes {
-            return cached.value
-        }
+        if let cached = locked({ fingerprints[key] }), cached.stamp == stamp { return cached.value }
         let value = try PluginFingerprint(plugin: plugin)
-        locked { fingerprints[key] = (stamp, sizes, value) }
+        locked { fingerprints[key] = (stamp, value) }
         return value
+    }
+
+    private static func stamp(_ folder: URL) -> [String] {
+        let root = folder.resolvingSymlinksInPath()
+        let keys: [URLResourceKey] = [.fileSizeKey, .contentModificationDateKey]
+        let enumerator = FileManager.default.enumerator(at: root, includingPropertiesForKeys: keys, options: [.skipsHiddenFiles])
+        var entries: [String] = []
+        while let url = enumerator?.nextObject() as? URL {
+            let values = try? url.resourceValues(forKeys: Set(keys))
+            entries.append("\(url.path)|\(values?.fileSize ?? -1)|\(values?.contentModificationDate?.timeIntervalSince1970 ?? 0)")
+        }
+        return entries.sorted()
     }
 
     /// Pins the plugin's current files. Only the user may call this (Plugins sheet, install approval).

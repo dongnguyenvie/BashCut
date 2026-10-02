@@ -2,10 +2,12 @@ import BashCutProject
 import Foundation
 
 /// Host plugin API versions. Changes are additive: a host serves every version from `minimum` to `current`.
-/// Version 2 adds `options`, `contributes` (actions and hooks) and the `session` transport.
+/// Version 2 adds `options`, `contributes` (actions and hooks) and the `session` transport. Version 3 adds option
+/// `choiceLabels` and the `file` option type, the `BASHCUT_PLUGIN_DATA`/`BASHCUT_PLUGIN_CACHE` folders and
+/// `::progress` lines from install recipes.
 public enum PluginAPI {
     public static let minimum = 1
-    public static let current = 2
+    public static let current = 3
 }
 
 /// How the app reaches a plugin. `oneshot` starts one process per request; `session` keeps one process
@@ -17,7 +19,7 @@ public enum PluginTransportKind: String, Codable, Sendable { case oneshot, sessi
 /// One setting a plugin declares. The app renders it natively (plugins never ship UI code) and sends the
 /// value with each request. Action parameters use the same type.
 public struct PluginOption: Codable, Sendable, Equatable, Identifiable {
-    public enum Kind: String, Codable, Sendable { case string, enumeration = "enum", number, integer, bool }
+    public enum Kind: String, Codable, Sendable { case string, enumeration = "enum", number, integer, bool, file }
     /// Where a value is stored: per project (undoable project data) or per user (app support).
     public enum Scope: String, Codable, Sendable { case project, user }
 
@@ -31,16 +33,21 @@ public struct PluginOption: Codable, Sendable, Equatable, Identifiable {
     public let maximum: Double?
     public let maxLength: Int?
     public let scope: Scope?
+    /// Display text for `enum` choices, keyed by choice (`"Mai Anh": {"en": "Mai Anh — female, North"}`).
+    public let choiceLabels: [String: LocalizedText]?
+    /// File extensions a `file` option accepts (`["wav", "m4a"]`); any file when empty.
+    public let fileTypes: [String]?
 
     enum CodingKeys: String, CodingKey {
-        case id, title, help, type, choices, minimum, maximum, maxLength, scope
+        case id, title, help, type, choices, minimum, maximum, maxLength, scope, choiceLabels, fileTypes
         case defaultValue = "default"
     }
 
     public init(
         id: String, title: LocalizedText, help: LocalizedText? = nil, type: Kind,
         default defaultValue: JSONValue? = nil, choices: [String]? = nil, minimum: Double? = nil,
-        maximum: Double? = nil, maxLength: Int? = nil, scope: Scope? = nil
+        maximum: Double? = nil, maxLength: Int? = nil, scope: Scope? = nil,
+        choiceLabels: [String: LocalizedText]? = nil, fileTypes: [String]? = nil
     ) {
         self.id = id
         self.title = title
@@ -51,16 +58,21 @@ public struct PluginOption: Codable, Sendable, Equatable, Identifiable {
         self.minimum = minimum
         self.maximum = maximum
         self.maxLength = maxLength
+        self.choiceLabels = choiceLabels
+        self.fileTypes = fileTypes
         self.scope = scope
     }
 
     public var effectiveScope: Scope { scope ?? .user }
 
+    /// The text shown for an `enum` choice.
+    public func label(for choice: String) -> String { choiceLabels?[choice]?.text ?? choice }
+
     /// The value the app uses when nothing is stored: the declared default or a type-appropriate empty value.
     public var fallback: JSONValue {
         if let defaultValue { return defaultValue }
         switch type {
-        case .string: return .string("")
+        case .string, .file: return .string("")
         case .enumeration: return .string(choices?.first ?? "")
         case .number: return .number(minimum ?? 0)
         case .integer: return .integer(Int(minimum ?? 0))
@@ -72,6 +84,15 @@ public struct PluginOption: Codable, Sendable, Equatable, Identifiable {
         guard PluginIdentifier.isKey(id) else { throw PluginError.invalid("Option id \(id) must be a lowercase key") }
         guard title.isValid(limit: 80), help?.isValid(limit: 500) ?? true else {
             throw PluginError.invalid("Option \(id) needs a title (and help) per language, English included")
+        }
+        if let choiceLabels {
+            guard type == .enumeration, Set(choiceLabels.keys).isSubset(of: choices ?? []),
+                choiceLabels.values.allSatisfy({ $0.isValid(limit: 120) })
+            else { throw PluginError.invalid("Option \(id) choiceLabels must label its enum choices") }
+        }
+        if let fileTypes {
+            guard type == .file, fileTypes.allSatisfy({ $0.range(of: "^[a-z0-9]{1,10}$", options: .regularExpression) != nil })
+            else { throw PluginError.invalid("Option \(id) fileTypes must be lowercase extensions of a file option") }
         }
         if type == .enumeration {
             guard let choices, !choices.isEmpty, Set(choices).count == choices.count, choices.count <= 100 else {
@@ -95,6 +116,13 @@ public struct PluginOption: Codable, Sendable, Equatable, Identifiable {
     public func check(_ value: JSONValue) throws -> JSONValue {
         switch (type, value) {
         case (.bool, .bool): return value
+        case (.file, .string(let text)):
+            guard text.count <= 4_096, !text.contains("\0") else { throw PluginError.invalid("\(id) is not a file path") }
+            let ext = (text as NSString).pathExtension.lowercased()
+            guard text.isEmpty || (fileTypes ?? []).isEmpty || (fileTypes ?? []).contains(ext) else {
+                throw PluginError.invalid("\(id) must be a \((fileTypes ?? []).joined(separator: ", ")) file")
+            }
+            return value
         case (.string, .string(let text)):
             guard text.count <= (maxLength ?? 10_000) else { throw PluginError.invalid("\(id) is too long") }
             return value
@@ -113,7 +141,7 @@ public struct PluginOption: Codable, Sendable, Equatable, Identifiable {
     /// Reads a command-line or text-field value as the option's type.
     public func parse(_ text: String) throws -> JSONValue {
         switch type {
-        case .string, .enumeration: return try check(.string(text))
+        case .string, .enumeration, .file: return try check(.string(text))
         case .bool:
             switch text.lowercased() {
             case "true", "on", "yes", "1": return .bool(true)
@@ -147,6 +175,9 @@ public struct PluginOption: Codable, Sendable, Equatable, Identifiable {
         var schema: [String: JSONValue] = ["description": .string((help ?? title).text(for: "en"))]
         switch type {
         case .string: schema["type"] = .string("string")
+        case .file:
+            schema["type"] = .string("string")
+            schema["format"] = .string("path")
         case .enumeration:
             schema["type"] = .string("string")
             schema["enum"] = .array((choices ?? []).map(JSONValue.string))

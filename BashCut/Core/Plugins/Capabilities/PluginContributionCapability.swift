@@ -173,6 +173,7 @@ extension CapabilityService {
             throw PluginError.invalid("\(plugin.manifest.displayName): \(availability(plugin).detail)")
         }
         try adapter.validate()
+        if preparesPluginFolders { PluginFolders.prepare(plugin.id) }
         let directory = try adapter.outputRoot.map(Self.makeRequestDirectory)
         var succeeded = false
         defer { if !succeeded, let directory { try? FileManager.default.removeItem(at: directory) } }

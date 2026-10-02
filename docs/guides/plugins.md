@@ -81,9 +81,11 @@ and dependency names stay plain strings.
 
 ## API versions
 
-The host serves every plugin API version from `PluginAPI.minimum` (1) to `PluginAPI.current` (2); changes are
-additive, so version 1 manifests keep working. Version 2 adds `options`, `contributes` and the `session` transport;
-a manifest that uses them with `apiVersion` 1 is invalid.
+The host serves every plugin API version from `PluginAPI.minimum` (1) to `PluginAPI.current` (3); changes are
+additive, so older manifests keep working. Version 2 adds `options`, `contributes` and the `session` transport.
+Version 3 adds option `choiceLabels` and the `file` option type, the `BASHCUT_PLUGIN_DATA`/`BASHCUT_PLUGIN_CACHE`
+folders and `::progress` lines from install recipes. A manifest that uses a feature with an older `apiVersion` is
+invalid; set `minApiVersion` so older BashCut builds list the plugin as outdated instead of failing.
 
 A plugin is **outdated** (listed, never run) when `minApiVersion` (or `apiVersion`) is newer than the host
 ("Update BashCut") or `maxApiVersion` is older than `PluginAPI.minimum` ("Update the plugin"). Requests carry
@@ -91,9 +93,13 @@ the lower of the plugin's `apiVersion` and the host's current version.
 
 ## Trust and availability
 
-A plugin runs only after the user trusts its exact files. Trusting pins the SHA-256 of `plugin.json` and of
-the entrypoint in `~/Library/Application Support/BashCut/plugin-trust.json` (mode `0600`), together with the
-user's on/off switches. Each plugin is in one state:
+A plugin runs only after the user trusts its exact files. Trusting pins the SHA-256 of `plugin.json`, of the
+entrypoint and of every other file in the plugin folder (path, executable bit and contents; hidden files,
+`__pycache__` and `.pyc` are skipped) in `~/Library/Application Support/BashCut/plugin-trust.json` (mode `0600`),
+together with the user's on/off switches. Changing any file, such as a script the entrypoint runs, asks for Trust
+again. Grants made before folder digests existed are upgraded once while the manifest and entrypoint still match.
+In development builds a plugin folder that is a symbolic link (`scripts/dev-link.sh` in `bashcut-plugins`) is
+checked on its manifest and entrypoint only, so it can change while it is written. Each plugin is in one state:
 
 | State | Meaning |
 |---|---|
@@ -236,8 +242,14 @@ Plugin processes receive only `HOME`, `PATH`, `TMPDIR`, `LANG` and `LC_ALL` (whe
 - `BASHCUT_PLUGIN_ID`
 - `BASHCUT_PLUGIN_DIR`
 - `BASHCUT_PLUGIN_API_VERSION`
+- `BASHCUT_PLUGIN_DATA`: `~/Library/Application Support/BashCut/PluginData/<id>/`, for state that is costly to
+  rebuild (environments, settings); kept across updates.
+- `BASHCUT_PLUGIN_CACHE`: `~/Library/Caches/BashCut/PluginData/<id>/`, for downloads that can be fetched again
+  (models).
 
-They never receive other app environment variables, credentials, the automation socket or a session token.
+BashCut creates both folders, shows their size when the plugin is removed and offers to delete them. `PATH`
+gains `/opt/homebrew/bin` and `/usr/local/bin`, since an app opened from Finder starts with only
+`/usr/bin:/bin:/usr/sbin:/sbin`. Probes and install recipes get the same environment. They never receive other app environment variables, credentials, the automation socket or a session token.
 Provider credentials will need an explicit permission and credential contract rather than ambient
 environment access.
 
@@ -299,15 +311,26 @@ this as provenance (for example on beat grids and loudness measurements), never 
 ## Options
 
 `options` declares settings. The app draws them natively in the Plugins sheet (**Options…**) and sends the current
-values with every action and hook request as `options`.
+values with every action and hook request, and with every capability request to the plugin's providers (for
+example the voice a `voice.synthesize` provider should use), as `options`.
 
 ```json
 "options": [
   {"id": "sectionPrefix", "title": {"en": "Section prefix", "vi": "Tiền tố mốc"}, "type": "string",
    "default": "Mark", "scope": "project"},
-  {"id": "strength", "title": "Strength", "type": "number", "minimum": 0, "maximum": 1, "default": 0.5}
+  {"id": "strength", "title": "Strength", "type": "number", "minimum": 0, "maximum": 1, "default": 0.5},
+  {"id": "voice", "title": "Voice", "type": "enum", "choices": ["Mai Anh", "Hải Đăng"], "default": "Mai Anh",
+   "choiceLabels": {"Mai Anh": {"en": "Mai Anh — female · North", "vi": "Mai Anh — Nữ · Bắc"}}},
+  {"id": "reference", "title": "Clone voice from", "type": "file", "fileTypes": ["wav", "m4a"], "scope": "project"}
 ]
 ```
+
+- `choiceLabels` (API 3) gives `enum` choices display text; the value stays the choice.
+- `file` (API 3) shows **Choose…** with a file panel (through `ModalCenter`, so agents answer it with
+  `ui respond --path`); `fileTypes` limits the extensions. Project-scope files inside the project are stored
+  relative to it, and plugins always receive absolute paths.
+- Panels that use a capability (Voice, Text, Audio) show the options of the selected provider's plugin under the
+  provider picker, so the voice is chosen where the voiceover is made.
 
 | Field | Rules |
 |---|---|
@@ -545,7 +568,8 @@ Everything above is available to agents through the CLI and MCP (`bashcut_plugin
 | `plugins search [query] [--capability <id>] [--refresh]` | read | Browse |
 | `plugins updates` | read | Updates |
 | `plugins install <plugin> [--version <v>]` | edit, job | Install or Update in Browse: downloads and verifies, then shows the approval (only the user can approve) |
-| `plugins remove <plugin>` | edit | Installed › Remove |
+| `plugins remove <plugin> [--data]` | edit | Installed › Remove; `--data` also deletes the plugin's data and cache folders |
+| `plugins setup <plugin>` | edit | Install Dependencies… (opens the approval; only the user approves) |
 
 `ui actions` lists plugin actions next to built-in ones and `ui action <id or shortcut>` runs them. An action with
 parameters or `confirm` opens its sheet (dialog `plugin-action`); answer it with `ui respond run|cancel`, or use
@@ -570,7 +594,7 @@ Each dependency declares an `id`, a `name`, a `kind` (`executable`, `python`, `m
 }
 ```
 
-Commands are an executable plus an argument array, never shell strings:
+Commands are an executable plus an argument array (`arguments` may be left out), never shell strings:
 
 - A path containing `/` must be relative and stay inside the plugin folder.
 - A bare name (`python3`) is resolved through `/usr/bin/env` with the filtered `PATH`.
@@ -583,6 +607,20 @@ available, otherwise `degraded`.
 
 Install recipes are reviewable argv arrays that only run after the user approves them in the Plugins panel.
 Agents can open that panel but can never approve an install or run a recipe.
+
+- **Running:** recipes run as a job (`plugins.install` or `plugins.setup` in `jobs status`) in the plugin's own
+  process group and filtered environment, with the working directory set to the plugin folder. The Plugins sheet
+  shows the current step, a progress bar and the output, and **Cancel** (or `jobs cancel`) stops the whole group.
+  A cancelled or failed install leaves the installed copy, if any, untouched.
+- **Progress:** a recipe line `::progress <0…1> [message]` sets the bar and the step; other lines are shown as
+  output, and the last 4,000 characters become the error when the recipe fails.
+- **Space:** the approval shows the archive plus the dependencies' `estimatedBytes` and the free space, and refuses
+  to start when less than 1.2 × that is free.
+- **Repair:** when a probe reports a dependency with a recipe as missing (for example after a cancelled setup),
+  Installed shows **Install Dependencies…**, which asks for approval and runs the recipes again
+  (`plugins setup <plugin>` opens the same approval).
+- Recipes should not depend on the Mac's own tools beyond `/usr/bin`: macOS ships Python 3.9 and no Homebrew.
+  `bashcut.vieneu-tts` downloads `uv` and a private Python into `BASHCUT_PLUGIN_DATA`, for example.
 
 ## Adding a capability to the app
 

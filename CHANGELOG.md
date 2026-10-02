@@ -5,6 +5,16 @@
 
 ## [Unreleased]
 
+- **Plugin install UX** (plugin API 3): dependency recipes run as a job with a progress bar (`::progress` lines),
+  output and Cancel, in the plugin's filtered environment and process group; the approval shows the space needed
+  and refuses when the disk is too full; **Install Dependencies…** (`plugins setup`) repairs a failed or cancelled
+  setup; **Remove with Data** (`plugins remove --data`) also deletes the plugin's `BASHCUT_PLUGIN_DATA` and
+  `BASHCUT_PLUGIN_CACHE` folders. Options gain `choiceLabels` and a `file` type with a file panel, and the Voice,
+  Text and Audio panels show the selected provider's options. Trust now pins every file in the plugin folder.
+  Development builds accept a `file://` registry and relax trust for symlinked dev plugins.
+- Plugin providers now receive their plugin's option values as `options` with capability requests (such as the
+  voice for `voice.synthesize`), and dependency commands may leave out `arguments`. First provider using this:
+  `bashcut.vieneu-tts` (VieNeu-TTS v3 Turbo) in `bashcut-plugins`.
 - **Plugin registry**: Plugins › Browse and Updates install and update plugins from the static `registry.json` in
   `dongnguyenvie/bashcut-plugins` (no server). Downloads are checked against the registry SHA-256, unpacked into a
   staging folder, validated and shown for approval before anything runs; updates keep the previous copy until the

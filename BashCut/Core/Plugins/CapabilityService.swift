@@ -37,6 +37,11 @@ public struct CapabilityService: Sendable {
     private let healthTransport: any PluginTransport
     /// The user's approvals and on/off switches. Without one (tests), every discovered plugin may run.
     public let trust: PluginTrustStore?
+    /// The plugin's option values (project over user over defaults), sent as `options` with every capability
+    /// request so providers honour settings such as the chosen voice.
+    public var optionValues: (@Sendable (InstalledPlugin) async -> [String: JSONValue])?
+    /// Creates each plugin's data and cache folders (`PluginFolders`) before calling it. Off in tests.
+    public var preparesPluginFolders = false
 
     public init(
         roots: PluginRoots = .standard, transport: any PluginTransport = PluginRouter(),

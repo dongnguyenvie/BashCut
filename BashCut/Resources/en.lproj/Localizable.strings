@@ -481,3 +481,17 @@
 "Find a plugin…" = "Find a plugin…";
 "Browse plugins that provide %@" = "Browse plugins that provide %@";
 "View" = "View";
+"None" = "None";
+"Needs about %@ but only %@ is free" = "Needs about %@ but only %@ is free";
+"Setting up…" = "Setting up…";
+"Installing…" = "Installing…";
+"%@ is set up" = "%@ is set up";
+"Plugin installation cancelled" = "Plugin installation cancelled";
+"Setting up %@ (%d of %d)…" = "Setting up %@ (%d of %d)…";
+"Install Dependencies…" = "Install Dependencies…";
+"Run this plugin's install recipes again (after a failed or cancelled setup)" = "Run this plugin's install recipes again (after a failed or cancelled setup)";
+"Remove with Data (%@)" = "Remove with Data (%@)";
+"Its downloaded data (environments, models) can be kept for a later reinstall or removed too." = "Its downloaded data (environments, models) can be kept for a later reinstall or removed too.";
+"Set up %@?" = "Set up %@?";
+"Set Up" = "Set Up";
+"Downloads and disk: about %@ (%@ free)" = "Downloads and disk: about %@ (%@ free)";

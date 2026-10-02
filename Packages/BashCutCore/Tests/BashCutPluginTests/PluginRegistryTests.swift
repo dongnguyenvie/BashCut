@@ -35,13 +35,13 @@ struct PluginRegistryTests {
     @Test("The newest compatible version wins; reasons explain when none fits")
     func resolution() throws {
         let entry = PluginRegistryEntry(id: "a.b", name: "A", versions: [
-            version("0.9.0"), version("1.0.0", minApp: "0.2.0"), version("1.1.0", api: 3), version("0.10.0"),
+            version("0.9.0"), version("1.0.0", minApp: "0.2.0"), version("1.1.0", api: PluginAPI.current + 1), version("0.10.0"),
         ])
         #expect(try entry.resolve(appVersion: "0.2.0").get().version == "1.0.0")
         #expect(try entry.resolve(appVersion: "0.1.0").get().version == "0.10.0")
         // Development builds have no version and accept any minAppVersion.
         #expect(try entry.resolve(appVersion: "$(MARKETING_VERSION)").get().version == "1.0.0")
-        let futureOnly = PluginRegistryEntry(id: "a.b", name: "A", versions: [version("1.0.0", api: 3)])
+        let futureOnly = PluginRegistryEntry(id: "a.b", name: "A", versions: [version("1.0.0", api: PluginAPI.current + 1)])
         #expect(throws: PluginError.self) { try futureOnly.resolve(appVersion: "1.0.0").get() }
         let intelOnly = PluginRegistryEntry(id: "a.b", name: "A", versions: [version("1.0.0", platforms: ["macos-x86_64"])])
         #expect(throws: PluginError.self) { try intelOnly.resolve(appVersion: "1.0.0", platform: "macos-arm64").get() }

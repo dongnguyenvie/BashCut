@@ -194,7 +194,8 @@ when another project opens; agents outside BashCut keep access.
 | `plugins search [query] [--capability <id>] [--refresh]` | read | Search the plugin registry with install status |
 | `plugins updates` | read | Installed plugins with a newer compatible registry version |
 | `plugins install <plugin> [--version <v>]` | edit | Download and verify a registry plugin, then show the install approval (job; only the user approves) |
-| `plugins remove <plugin>` | edit | Uninstall a plugin from the user or project plugin folder |
+| `plugins remove <plugin> [--data]` | edit | Uninstall a plugin from the user or project plugin folder; `--data` also deletes its environments and models |
+| `plugins setup <plugin>` | edit | Ask to run a plugin's install recipes again (approval stays with the user; then `jobs status`) |
 
 Plugin actions also appear in `ui actions` and run with `ui action <id>`. See [Writing plugins](plugins.md#commands).
 

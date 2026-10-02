@@ -50,8 +50,19 @@ extension ProjectDocument {
         }
         handleAuthored("plugins.remove") { document, arguments, _ in
             let plugin = try document.requirePlugin(arguments.string("plugin"))
-            do { try document.plugins.removePlugin(plugin) } catch { throw RPCFailure(-32602, error.localizedDescription) }
-            return .object(["removed": .string(plugin.id)])
+            do {
+                try document.plugins.removePlugin(plugin, deleteData: arguments.bool("data"))
+            } catch { throw RPCFailure(-32602, error.localizedDescription) }
+            return .object(["removed": .string(plugin.id), "data": .bool(arguments.bool("data"))])
+        }
+        handleAuthored("plugins.setup") { document, arguments, _ in
+            let plugin = try document.requirePlugin(arguments.string("plugin"))
+            guard plugin.manifest.dependencies.contains(where: { $0.install != nil }) else {
+                throw RPCFailure(-32602, "\(plugin.id) has no install recipes")
+            }
+            document.plugins.requestSetup(plugin)
+            document.ui.showPlugins = true
+            return .object(["plugin": .string(plugin.id), "approval": .string("pending")])
         }
     }
 }

@@ -66,7 +66,16 @@ extension CommandCatalog {
             execution: .job),
         CommandSpec(
             "plugins.remove", .edit, "Uninstall a plugin from the user or project plugin folder, with its trust and options (plugins that come with "
-                + "BashCut can only be turned off).",
+                + "BashCut can only be turned off). With data, also delete its downloaded environments and models.",
+            parameters: [
+                pluginID,
+                CommandParameter("data", .boolean, "Also delete the plugin's data and cache folders", default: .bool(false),
+                                 cli: .flag("data")),
+            ]),
+        CommandSpec(
+            "plugins.setup", .edit,
+            "Show the approval to run an installed plugin's dependency install recipes again (Install Dependencies…). "
+                + "Only the user can approve; follow it with jobs status.",
             parameters: [pluginID]),
         CommandSpec(
             "plugins.set", .edit,

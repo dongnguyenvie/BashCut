@@ -110,9 +110,15 @@ extension ProjectDocument {
         let user = plugins.trust.userOptions(plugin.id)
         let projectValues = project.fields["pluginOptions"]?.object[plugin.id]?.object ?? [:]
         var values: [String: JSONValue] = [:]
+        let root = fileURL?.deletingLastPathComponent()
         for option in options {
             let stored = option.effectiveScope == .project ? projectValues[option.id] : user[option.id]
-            values[option.id] = stored.flatMap { try? option.check($0) } ?? option.fallback
+            var value = stored.flatMap { try? option.check($0) } ?? option.fallback
+            // File options in a project are stored relative to it; plugins always get absolute paths.
+            if option.type == .file, let path = value.string, !path.isEmpty, !path.hasPrefix("/"), let root {
+                value = .string(root.appendingPathComponent(path).standardizedFileURL.path)
+            }
+            values[option.id] = value
         }
         return values
     }
@@ -121,7 +127,12 @@ extension ProjectDocument {
         guard let option = plugin.manifest.options?.first(where: { $0.id == id }) else {
             throw ProjectError.invalid("Unknown option \(id) for \(plugin.id)")
         }
-        let checked = try value.map(option.check)
+        var checked = try value.map(option.check)
+        if option.type == .file, option.effectiveScope == .project, let path = checked?.string, path.hasPrefix("/"),
+            let root = fileURL?.deletingLastPathComponent()
+        {
+            checked = .string(MediaPathResolver.projectPath(for: URL(fileURLWithPath: path), projectRoot: root))
+        }
         switch option.effectiveScope {
         case .user:
             try plugins.trust.setUserOption(plugin.id, key: id, value: checked)

@@ -481,3 +481,17 @@
 "Find a plugin…" = "Tìm plugin…";
 "Browse plugins that provide %@" = "Duyệt plugin cung cấp %@";
 "View" = "Xem";
+"None" = "Không có";
+"Needs about %@ but only %@ is free" = "Cần khoảng %@ nhưng chỉ còn trống %@";
+"Setting up…" = "Đang cài đặt…";
+"Installing…" = "Đang cài…";
+"%@ is set up" = "%@ đã cài xong";
+"Plugin installation cancelled" = "Đã hủy cài plugin";
+"Setting up %@ (%d of %d)…" = "Đang cài %@ (%d/%d)…";
+"Install Dependencies…" = "Cài dependency…";
+"Run this plugin's install recipes again (after a failed or cancelled setup)" = "Chạy lại bước cài của plugin (sau khi cài lỗi hoặc bị hủy)";
+"Remove with Data (%@)" = "Gỡ kèm dữ liệu (%@)";
+"Its downloaded data (environments, models) can be kept for a later reinstall or removed too." = "Dữ liệu đã tải (môi trường, model) có thể giữ lại để cài lại sau, hoặc gỡ luôn.";
+"Set up %@?" = "Cài đặt %@?";
+"Set Up" = "Cài đặt";
+"Downloads and disk: about %@ (%@ free)" = "Tải về và dung lượng: khoảng %@ (còn trống %@)";
