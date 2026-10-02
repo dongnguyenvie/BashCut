@@ -1,6 +1,6 @@
 # Implementation status
 
-M0 foundations and partial M1/M2 features are implemented. This is not completion of M0 acceptance or M1–M6. The roadmap remains the full requested scope, including Claude/Codex terminals and model API script generation.
+M0 is accepted on real DJI footage (see below), with partial M1/M2 features. This is not completion of M1–M6. The roadmap remains the full requested scope, including Claude/Codex terminals and model API script generation.
 
 ## Implemented
 
@@ -62,14 +62,39 @@ M0 foundations and partial M1/M2 features are implemented. This is not completio
 - Earlier native smoke: open synthetic footage, seek, split, save and reload external changes. Generated 1080×1920 exports have audio, expected duration and Vietnamese-caption golden-image coverage.
 - Rational frame/time mapping is tested through one million frames. The 20-clip synthetic export (~30 seconds) was re-run successfully, faster than real time; this is not real DJI-footage acceptance.
 
+## M0 engine acceptance on real DJI footage (2026-10-02)
+
+`bashcut-bench` (`Tools/Bench`) on 20 vertical DJI clips (HEVC Main10 `hvc1`, 1080×1920, 29.97 fps, about 30 Mbit/s;
+30.03 s timeline with reframes and a Vietnamese caption per clip), MacBookPro18,4 (M1 Max), release build:
+
+| Metric | Originals | With proxies (`--proxies`) | Budget |
+|---|---|---|---|
+| Composition build | 37 ms | 14 ms | — |
+| Decode through the compositor | 324 fps | 355 fps | — |
+| AVPlayer playback, 10 s | 300/299 frames, 0 dropped | 300/299, 0 dropped | ≤ 1 % dropped |
+| Scrub p95, AVPlayer exact seek to a decoded frame | 19.6 ms (p50 12.5, max 19.9) | 8.9 ms (p50 7.2, max 9.5) | < 100 ms |
+| Scrub p95, AVAssetImageGenerator (reference) | 34.8 ms | 18.6 ms | — |
+| Export 30 s H.264 (always originals) | 3.33 s (9.0× real time) | 3.33 s | > 1× |
+| Proxy generation, 20 clips | — | 4.3 s | — |
+
+All budgets pass with and without proxies. The earlier failing figure (p95 138 ms) measured AVAssetImageGenerator on the
+engine before the compositor rewrite and asset cache; the viewer seeks through AVPlayer, which the bench now measures.
+Dragging the playhead uses chase-time seeking (one exact seek in flight, newest target next), so scrubbing never queues
+stale frames. Reproduce with:
+
+```sh
+swift build -c release --product bashcut-bench
+.build/release/bashcut-bench <footage-dir> --clips 20 [--proxies]
+```
+
 See [mockup-parity.md](mockup-parity.md) for the control-by-control UI gap audit.
 
 ## Remaining acceptance / limitations
 
 - The regenerated Xcode project builds with signing disabled and package-plugin validation skipped for the locked SwiftTerm build plugin. Full UI automation coverage and real authenticated Claude/API tasks are not verified.
-- Real DJI playback/scrub/export performance acceptance remains separate from synthetic tests. Do not infer it from the synthetic fixture.
+- Real DJI performance is measured by `bashcut-bench` (above), not by the synthetic test fixture; re-run it after engine changes.
 - M1: broader accessibility QA.
-- M2: full command/UI parity beyond the current 30 MCP/CLI commands and voice-enrollment approval. Analysis and interchange plugin providers still need wiring to their feature panels. Provider-backed automation jobs are not yet smoke-tested natively with a real agent and installed provider.
+- M2: full command/UI parity beyond the current 46 MCP/CLI commands and voice-enrollment approval. Analysis and interchange plugin providers still need wiring to their feature panels. Provider-backed automation jobs are not yet smoke-tested natively with a real agent and installed provider.
 - Plugin platform: bundled native loudness/beat providers, API version window and availability states, long-lived session mode, hash-pinned trust and declared provider options are planned (spec `03-architecture.md` §5).
 - M3–M6: bundled transcription/beat/loudness providers and real-engine acceptance, multi-job export queue, expanded legacy effect/overlay/SFX import, voice cloning, richer effects/speed ramps and additional interchange validation. Resolve remains reserved by the spec.
 - Review and export coverage use explicit speech tags plus voiceover timing; they do not measure actual silence or transcribe untagged audio. Export loudness is measured only when an installed provider is selected for normalization. Transitions/Voice tabs identify their unimplemented portions.

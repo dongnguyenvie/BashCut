@@ -2,6 +2,7 @@ import AVFoundation
 import BashCutDocument
 import BashCutEngine
 import BashCutProject
+import BashCutTestSupport
 import Foundation
 import Testing
 
@@ -88,5 +89,27 @@ struct PreviewControllerTests {
         preview.reset(value)
         #expect(!preview.showColorComparison)
         #expect(preview.snapshot == nil)
+    }
+
+    @Test("Scrubbing keeps one exact seek in flight and lands on the newest frame")
+    func scrubChases() async throws {
+        let video = try TestFixtures.requireVideo()
+        let media = Media(fields: [
+            "id": .string("clip"), "path": .string(video.lastPathComponent), "fps": FrameRate().json, "frames": .integer(59),
+        ])
+        let base = Project(name: "Scrub")
+        let value = try base.applying(.group(label: "Setup", author: .user, ops: [
+            .addMedia(media), .insert(track: "v1", item: Item(id: "c", media: "clip", at: 0, duration: 59)),
+        ])).project
+        let preview = PreviewController(engine: AVFoundationRenderEngine(source: OriginalMediaSource()))
+        preview.rebuild(value, root: video.deletingLastPathComponent(), workspace: nil)
+        try await waitUntil { preview.snapshot != nil && preview.player.currentItem?.status == .readyToPlay }
+        try await Task.sleep(for: .milliseconds(100))
+        let before = preview.seekCount
+        for frame in stride(from: 2, through: 40, by: 2) { preview.seek(frame) }
+        #expect(preview.playhead == 40)
+        #expect(preview.seekCount - before <= 2)
+        try await waitUntil { value.fps.frame(preview.player.currentTime()) == 40 }
+        #expect(preview.seekCount - before <= 3)
     }
 }

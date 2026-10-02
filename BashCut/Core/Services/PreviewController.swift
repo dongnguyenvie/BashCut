@@ -28,6 +28,13 @@ public final class PreviewController {
     @ObservationIgnored private var rebuildTask: Task<Void, Never>?
     /// Number of compositions built; tests use it to see that a rebuild ran.
     @ObservationIgnored public private(set) var buildCount = 0
+    /// Exact seeks sent to the program player; tests use it to see that scrubbing coalesces.
+    @ObservationIgnored public private(set) var seekCount = 0
+    /// Chase-time scrubbing (Apple QA1820): one exact seek in flight, the newest target waits for it.
+    @ObservationIgnored private var seekInFlight = false
+    @ObservationIgnored private var chaseTarget: CMTime?
+    /// Bumped when the player item changes, so a stale seek completion is ignored.
+    @ObservationIgnored private var seekGeneration = 0
 
     public init(engine: any RenderEngine) {
         self.engine = engine
@@ -75,13 +82,32 @@ public final class PreviewController {
         }
     }
 
+    /// Moves the playhead and shows that exact frame. While a seek is still decoding, further calls only
+    /// update the target, so dragging the playhead never queues up stale frames.
     public func seek(_ frame: Int) {
         playhead = min(max(0, frame), project.duration)
-        let time = project.fps.time(playhead)
-        player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero)
+        chase(project.fps.time(playhead))
+    }
+
+    private func chase(_ time: CMTime) {
+        chaseTarget = time
+        guard !seekInFlight, player.currentItem != nil else { return }
+        chaseTarget = nil
+        seekInFlight = true
+        seekCount += 1
+        let generation = seekGeneration
+        player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] _ in
+            Task { @MainActor in self?.seekFinished(generation) }
+        }
         if showColorComparison {
             comparisonPlayer.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero)
         }
+    }
+
+    private func seekFinished(_ generation: Int) {
+        guard generation == seekGeneration else { return }
+        seekInFlight = false
+        if let next = chaseTarget { chase(next) }
     }
 
     public func togglePlayback() {
@@ -117,6 +143,9 @@ public final class PreviewController {
     }
 
     private func clearPlayers() {
+        seekGeneration += 1
+        seekInFlight = false
+        chaseTarget = nil
         snapshot = nil
         comparisonSnapshot = nil
         pause()

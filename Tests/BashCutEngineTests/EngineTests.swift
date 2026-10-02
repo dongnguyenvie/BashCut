@@ -48,11 +48,16 @@ struct EngineTests {
         let track = try #require(tracks.first)
         #expect(try await track.load(.naturalSize) == CGSize(width: 1080, height: 1920))
         let generator = AVAssetImageGenerator(asset: rendered)
+        // Exact frame: with the default tolerance a busy machine may return a neighbour and fail the snapshot.
+        generator.requestedTimeToleranceBefore = .zero
+        generator.requestedTimeToleranceAfter = .zero
         let image = try await generator.image(at: project.fps.time(20)).image
         #expect(image.width == 1080 && image.height == 1920)
         assertSnapshot(
             of: NSImage(cgImage: image, size: CGSize(width: 1080, height: 1920)),
-            as: .image(precision: 0.98), named: "vietnamese-caption",
+            // H.264 from the hardware encoder is not bit-exact between runs; perceptual precision ignores
+            // compression noise while a missing or moved caption still fails.
+            as: .image(precision: 0.999, perceptualPrecision: 0.98), named: "vietnamese-caption",
             record: ProcessInfo.processInfo.environment["BASHCUT_RECORD_SNAPSHOTS"] == "1" ? .all : .never
         )
         let fixturePreview = TestFixtures.repositoryRoot.appendingPathComponent("build/engine-preview.png")
