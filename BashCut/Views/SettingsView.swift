@@ -34,6 +34,9 @@ struct SettingsView: View {
                     }
                 }
                 Toggle("Run agent exports without confirmation", isOn: $settings.autoApprovePrivileged)
+                Toggle("Run plugin hooks", isOn: $settings.runPluginHooks)
+                Toggle("Apply plugin hook edits without review", isOn: $settings.autoApplyPluginHookEdits)
+                    .disabled(!settings.runPluginHooks)
                 Picker("Default export preset", selection: $settings.defaultExportPresetRaw) {
                     ForEach(ExportPreset.allCases) { preset in
                         Text(LocalizedStringKey(preset.title)).tag(preset.rawValue)

@@ -19,9 +19,12 @@ extension TimelineCanvas {
             selectedGap = gap
             let menu = NSMenu()
             menu.addItem(ClosureMenuItem(String(localized: "Delete gap")) { [weak self] in self?.deleteGap(gap) })
+            PluginMenus.append(to: menu, document, placement: "timeline.context")
             return menu
         }
-        return nil
+        let menu = NSMenu()
+        PluginMenus.append(to: menu, document, placement: "timeline.context")
+        return menu.items.isEmpty ? nil : menu
     }
 
     private func clipMenu(item: Item, track: Track) -> NSMenu {
@@ -49,6 +52,8 @@ extension TimelineCanvas {
                 self?.document.message = error.localizedDescription
             }
         })
+        PluginMenus.append(to: menu, document, placement: "clip.context", mediaID: item.mediaID)
+        PluginMenus.append(to: menu, document, placement: "track.context")
         return menu
     }
 

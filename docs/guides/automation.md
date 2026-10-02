@@ -112,7 +112,7 @@ directory.
 
 ### Command reference
 
-All 48 commands, grouped by purpose. Prefix each with `bashcut`. Arguments in brackets are optional.
+All 62 commands, grouped by purpose. Prefix each with `bashcut`. Arguments in brackets are optional.
 
 #### Read
 
@@ -180,6 +180,20 @@ when another project opens; agents outside BashCut keep access.
 | `jobs status [<job>]` | read | One job (plugin call or export), or all recent jobs |
 | `jobs cancel <job>` | edit | Cancel a queued or running job |
 
+#### Plugins
+
+| Command | Mode | Summary |
+|---|---|---|
+| `plugins actions` | read | Actions plugins add (menus, toolbar, context menus, panels) with placements, parameter schema and enabled state |
+| `plugins run <action> [--params <json>]` | edit, job | Run a plugin action like clicking it; its proposed operations become one undoable edit by `plugin` |
+| `plugins hooks` | read | Hook subscriptions, recent hook runs and hook edits waiting for review |
+| `plugins proposal <id> --decision <apply\|discard>` | edit | Apply or discard an edit a hook proposed |
+| `plugins options <plugin>` | read | A plugin's options: schema, scope and current values |
+| `plugins option <plugin> --option <option> [--value <value>]` | edit | Set one option (project scope: undoable edit; user scope: this Mac); no value resets it |
+| `plugins set <plugin> [--enabled <bool>] [--hooks <bool>]` | edit | Turn a plugin or its hooks off; turning them on and trusting stay with the user |
+
+Plugin actions also appear in `ui actions` and run with `ui action <id>`. See [Writing plugins](plugins.md#commands).
+
 #### Privileged
 
 | Command | Mode | Summary |
@@ -219,7 +233,7 @@ when another project opens; agents outside BashCut keep access.
 | `style save --caption-preset` | `bold-outline` (default), `cinematic-serif`, `keyword-sticker`, `place-card`, `hook-title`, `chapter-card` |
 | `media import --kind` | `video` (default), `audio` |
 | `export start --preset` | `tiktok`, `youtube-1080`, `youtube-4k`, `quick-draft`, `prores` |
-| `ui open <dialog>` | `new-project`, `export`, `export-report`, `agent-changes`, `review`, `history`, `plugins`, `settings`, `doctor`, `knowledge`, `ask`, `sections`, `external-changes` |
+| `ui open <dialog>` | `new-project`, `export`, `export-report`, `agent-changes`, `review`, `history`, `plugins`, `settings`, `doctor`, `knowledge`, `ask`, `sections`, `external-changes`, `plugin-proposals` |
 | `ui panel <panel>` | `media`, `audio`, `text`, `stickers`, `effects`, `transitions`, `filters`, `voice` |
 | `ui view --zoom` | 1–600 pixels per second; `--zoom-anchor` is the frame kept in place (the playhead by default) |
 | `ui view --snap`, `--safe-area`, `--compare`, `--agent-dock` | `on` / `off` (also `true`/`false`, `yes`/`no`, `1`/`0`) |
@@ -386,8 +400,8 @@ bashcut jobs cancel JOB_ID
 - `--provider ID` overrides the project preference for one request.
 - A capability that is already running (from the UI or another job) is rejected with a retry error.
 - Opening another project cancels and clears all jobs.
-- Installing plugins or running their dependency recipes is never available through automation. See
-  [Writing plugins](plugins.md).
+- Installing plugins, running their dependency recipes, trusting a plugin or turning one on is never available
+  through automation. See [Writing plugins](plugins.md).
 
 Jobs move through `queued`, `running`, `completed`, `failed` and `cancelled`. Exports and proxy builds use the
 same job center.

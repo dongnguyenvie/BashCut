@@ -7,13 +7,13 @@ public enum CommandCatalog {
     /// Sheets and popovers `ui.open` can show.
     public static let dialogs = [
         "new-project", "export", "export-report", "agent-changes", "review", "history", "plugins", "settings",
-        "doctor", "knowledge", "ask", "sections", "external-changes",
+        "doctor", "knowledge", "ask", "sections", "external-changes", "plugin-proposals",
     ]
     public static let libraryPanels = ["media", "audio", "text", "stickers", "effects", "transitions", "filters", "voice"]
     public static let exportPresets = ["tiktok", "youtube-1080", "youtube-4k", "quick-draft", "prores"]
 
     public static let specs: [CommandSpec] = readSpecs + projectSpecs + editSpecs + layerSpecs + styleSpecs
-        + capabilitySpecs + privilegedSpecs + uiSpecs + toolSpecs
+        + capabilitySpecs + pluginSpecs + privilegedSpecs + uiSpecs + toolSpecs
 
     public static let modes: [String: CommandMode] = Dictionary(uniqueKeysWithValues: specs.map { ($0.name, $0.mode) })
 

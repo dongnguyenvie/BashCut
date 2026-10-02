@@ -67,6 +67,7 @@ extension ProjectDocument {
                 options: [ModalOption("cancel", String(localized: "Cancel"))]
             ) { [weak self] _ in self?.plugins.pendingInstall = nil })
         }
+        sheets += pluginSheets()
         if let prompt = privilegedApproval {
             // Approving stays with the user; agents can only decline.
             sheets.append(ModalSheet(
@@ -75,6 +76,37 @@ extension ProjectDocument {
                     + "to let agents export without asking.",
                 options: [ModalOption("deny", String(localized: "Deny"))]
             ) { [weak self] _ in self?.resolvePrivilegedApproval(false) })
+        }
+        return sheets
+    }
+
+    /// The plugin parameter sheet and the hook-edit review sheet.
+    private func pluginSheets() -> [ModalSheet] {
+        var sheets: [ModalSheet] = []
+        if let pending = plugins.pendingAction {
+            sheets.append(ModalSheet(
+                name: "plugin-action", title: pending.action.title,
+                message: "Runs with the shown parameters; use plugins run --params to set them.",
+                options: [ModalOption("run", String(localized: "Run")), ModalOption("cancel", String(localized: "Cancel"))]
+            ) { [weak self] option in
+                guard let self else { return }
+                if option == "run" { runPendingPluginAction() } else { plugins.pendingAction = nil }
+            })
+        }
+        if ui.showPluginProposals, let proposal = plugins.proposals.first {
+            sheets.append(ModalSheet(
+                name: "plugin-proposals", title: "\(proposal.plugin.manifest.name) proposes: \(proposal.title)",
+                message: "\(proposal.proposal.operations.count) operations after \(proposal.event)",
+                options: [
+                    ModalOption("apply", String(localized: "Apply")), ModalOption("discard", String(localized: "Discard")),
+                    Self.close,
+                ]
+            ) { [weak self] option in
+                guard let self else { return }
+                if option == "close" { ui.showPluginProposals = false; return }
+                try resolvePluginProposal(proposal.id, apply: option == "apply")
+                if plugins.proposals.isEmpty { ui.showPluginProposals = false }
+            })
         }
         return sheets
     }
@@ -116,6 +148,7 @@ extension ProjectDocument {
             "export-report": ({ $0.exports.report != nil }, "No export report yet", \.showExportReport),
             "agent-changes": ({ $0.agentChange != nil }, "No agent change to show", \.showAgentChanges),
             "external-changes": ({ $0.conflict }, "The project file has no conflicting change", \.showExternalChanges),
+            "plugin-proposals": ({ !$0.plugins.proposals.isEmpty }, "No plugin edits to review", \.showPluginProposals),
         ]
     }
 

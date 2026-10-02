@@ -32,6 +32,7 @@ extension ProjectDocument {
             if project == value.project { dirty = false }
             message = String(localized: "Project saved")
             DebugLog.write("project", "saved \(fileURL.path) rev=\(value.project.revision)")
+            emitPluginEvent(.projectSaved, ["path": .string(fileURL.path), "rev": .integer(value.project.revision)])
         } catch let error as StorageError {
             message = String(localized: "The project changed on disk")
             DebugLog.write("project", "save CONFLICT \(fileURL.path): file changed on disk")

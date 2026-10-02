@@ -12,8 +12,12 @@ import UniformTypeIdentifiers
 final class ProjectDocument {
     /// Mutated only through `commit`, `commitUndo`/`commitRedo` and `replaceHistory` below.
     private(set) var history = ProjectHistory(project: Project(name: "Untitled"))
-    var selectedID: String?
-    var selectedTrackID: String?
+    var selectedID: String? {
+        didSet { if selectedID != oldValue { selectionDidChange() } }
+    }
+    var selectedTrackID: String? {
+        didSet { if selectedTrackID != oldValue { selectionDidChange() } }
+    }
     var message = ""
     var busy = false
     var dirty = false
@@ -40,6 +44,9 @@ final class ProjectDocument {
     let ui = EditorUIState()
     @ObservationIgnored lazy var agents = AgentDockModel(document: self)
     @ObservationIgnored lazy var plugins = PluginManagerModel()
+    @ObservationIgnored lazy var pluginHooks = PluginHookDispatcher(document: self)
+    /// The plugin whose proposal is being committed, so its own hooks do not hear about it.
+    @ObservationIgnored var pluginEditSource: String?
     @ObservationIgnored var privilegedAction: (@MainActor () throws -> Void)?
     let engine: any RenderEngine
     /// Program and comparison players, the playhead and the composition they play.
@@ -63,6 +70,13 @@ final class ProjectDocument {
         automation = services.automation
         preview = PreviewController(engine: services.engine)
         preview.onMessage = { [weak self] in self?.message = $0 }
+        preview.onPlaybackStopped = { [weak self] frame in
+            self?.emitPluginEvent(.playbackStopped, ["playhead": .integer(frame)])
+        }
+        jobs.onFinished = { [weak self] job in
+            guard job.method != "plugins.run" || job.state != .completed else { return }
+            self?.emitPluginEvent(.jobFinished, job.json.object)
+        }
     }
 
     var project: Project { history.project }
@@ -147,6 +161,9 @@ final class ProjectDocument {
         restoreLatestAgentChangeFromHistory()
         relinkOlderMediaPaths(projectRoot: url.deletingLastPathComponent())
         rebuild()
+        emitPluginEvent(.projectOpened, [
+            "path": .string(url.path), "name": .string(project.name), "rev": .integer(project.revision),
+        ])
     }
 
     /// Projects saved before footage paths went through the `footage` link store `../../…` paths;
@@ -163,6 +180,13 @@ final class ProjectDocument {
     }
 
     func reset(_ project: Project, url: URL) {
+        // Drop deliveries still waiting for the old project, then tell plugins it closed.
+        pluginHooks.reset()
+        if let previous = fileURL {
+            emitPluginEvent(.projectClosed, ["path": .string(previous.path), "name": .string(self.project.name)])
+        }
+        plugins.proposals.removeAll()
+        plugins.pendingAction = nil
         if privilegedApproval != nil { resolvePrivilegedApproval(false) }
         agents.closeAll()
         sourceViewer.reset()
@@ -190,6 +214,7 @@ final class ProjectDocument {
         message = ""
         startExternalFileMonitor()
         agents.projectChanged()
+        plugins.refresh(projectRoot: url.deletingLastPathComponent())
     }
 
     func addCaption() {
@@ -239,6 +264,7 @@ extension ProjectDocument {
             throw error
         }
         didCommit(from: before, author: author, label: label)
+        emitPluginEvent(.editCommitted, editEventPayload(label: label, author: author, before: before))
         DebugLog.write(
             "edit", "\"\(label)\" by \(author) rev \(before.revision)→\(project.revision) op=\(Self.describe(operation))"
                 + (before.tracks.map(\.id) == project.tracks.map(\.id) ? "" : " layers: \(layoutSummary())"))
@@ -279,6 +305,8 @@ extension ProjectDocument {
         let before = project
         if undo { try history.undo() } else { try history.redo() }
         didCommit(from: before, author: author, label: undo ? "Undo" : "Redo")
+        emitPluginEvent(
+            undo ? .editUndone : .editRedone, editEventPayload(label: undo ? "Undo" : "Redo", author: author, before: before))
         DebugLog.write("edit", "\(undo ? "undo" : "redo") by \(author) rev \(before.revision)→\(project.revision)")
         return project.revision
     }
@@ -312,5 +340,5 @@ struct AutomationBusy: LocalizedError {
 
 extension Author {
     /// Agent-authored edits get the ◆ diff markers and the Undo toast.
-    var isAgent: Bool { [.claude, .codex, .model, .agent].contains(self) }
+    var isAgent: Bool { [.claude, .codex, .model, .agent, .plugin].contains(self) }
 }

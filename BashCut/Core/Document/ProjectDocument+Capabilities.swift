@@ -32,6 +32,9 @@ extension ProjectDocument {
         try commit(
             project.importingSubRip(generated.text, replace: replace, provenance: generated.provenance.json),
             label: "Generate captions", author: author)
+        emitPluginEvent(.captionsGenerated, [
+            "media": .string(mediaID), "provider": .object(generated.provenance.json), "rev": .integer(project.revision),
+        ])
     }
 
     /// Detects beats in an audio media item and maps them through its timeline items to integer frames.
@@ -64,6 +67,9 @@ extension ProjectDocument {
                 media: media.id, bpm: generated.bpm, frames: frames.sorted(),
                 provenance: generated.provenance.json),
             label: "Detect beats", author: author)
+        emitPluginEvent(.beatsDetected, [
+            "media": .string(media.id), "bpm": .number(generated.bpm), "beats": .integer(frames.count),
+        ])
     }
 
     func generateVoiceTakes(
@@ -118,6 +124,9 @@ extension ProjectDocument {
             label: "Generate voiceover", author: author)
         selectedID = item.id
         selectedTrackID = track.id
+        emitPluginEvent(.voiceGenerated, [
+            "item": .string(item.id), "media": .string(mediaID), "path": .string(asset.url.path),
+        ])
         return item.id
     }
 
@@ -233,7 +242,14 @@ extension ProjectDocument {
             "plugins": .array(result.plugins.map { plugin in
                 .object([
                     "id": .string(plugin.id), "name": .string(plugin.manifest.name),
-                    "version": .string(plugin.manifest.version),
+                    "version": .string(plugin.manifest.version), "apiVersion": .integer(plugin.manifest.apiVersion),
+                    "availability": .string(plugins.service.availability(plugin).name),
+                    "detail": .string(plugins.service.availability(plugin).detail),
+                    "transport": .string(plugin.manifest.transportKind.rawValue),
+                    "hooksEnabled": .bool(plugins.trust.hooksEnabled(plugin.id)),
+                    "actions": .array(plugin.manifest.actions.map { .string($0.id) }),
+                    "hooks": .array(plugin.manifest.hooks.map { .string($0.event) }),
+                    "options": .array((plugin.manifest.options ?? []).map { .string($0.id) }),
                     "providers": .array((plugin.manifest.providers ?? []).map { provider in
                         .object([
                             "id": .string(provider.id), "capability": .string(provider.capability),
@@ -245,6 +261,7 @@ extension ProjectDocument {
             "preferences": project["providers"] ?? .object([:]),
             "diagnostics": .array(result.diagnostics.map(JSONValue.string)),
             "running": .array(plugins.calling.sorted().map(JSONValue.string)),
+            "hostApiVersion": .integer(PluginAPI.current),
         ])
     }
 

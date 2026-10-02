@@ -82,6 +82,7 @@ struct InspectorView: View {
                     } else {
                         Text("Select a timeline item").foregroundStyle(.secondary)
                     }
+                    PluginActionStrip(document: document, placement: "inspector." + document.ui.inspectorTab)
                 }.font(.caption).padding(10)
             }
         }.background(Color.white.opacity(0.025))

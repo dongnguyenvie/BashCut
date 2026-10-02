@@ -165,8 +165,17 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   capability is one `CapabilityAdapter`; calls go through a `PluginTransport`, with `PluginProcessRunner` as the
   one-shot process transport (one bounded child per request, filtered environment, process-group cancellation).
 - `captions.generate`, `beats.detect` and `voice.speak` run as background jobs with `jobs.status`/`jobs.cancel`
-  and apply one undoable agent-attributed edit; `plugins.list` and `plugins health` report providers and
-  diagnostics. See [plugins.md](../guides/plugins.md).
+  and apply one undoable agent-attributed edit; `plugins.list` and `plugins health` report providers,
+  availability and diagnostics. See [plugins.md](../guides/plugins.md).
+- Plugin API 2: an API window (`minApiVersion`/`maxApiVersion`), SHA-256 trust pins with user-only Trust and
+  enable switches (states ready, disabled, untrusted, changed, outdated), native `options` per user or project,
+  `contributes.actions` in fixed placements (Plugins menu, toolbar, clip/track/timeline/media context menus,
+  library panels, inspector tabs) with `when` conditions and parameter sheets, and `contributes.hooks` for 19
+  editor events (debounced, rate-limited, notify-only; hook edits wait for review unless Settings applies them).
+  Results propose operations and a per-plugin `pluginData` entry committed as one undoable `plugin` edit.
+  `PluginSessionTransport` (handshake, NDJSON, progress, cancel, idle shutdown, crash restart) runs plugins that
+  ask for it. Commands: `plugins actions|run|hooks|proposal|options|option|set`; plugin actions also go through
+  `ui actions`/`ui action`. Worked example: `Fixtures/plugins/example.toolkit`.
 
 ### Settings & diagnostics
 
@@ -258,9 +267,8 @@ bench above.
 - **Xcode:** the generated project builds with signing disabled and package-plugin validation skipped for the
   locked SwiftTerm build plugin.
 - **Automation:** voice-enrollment approval; analysis and interchange providers still need wiring to their panels.
-- **Plugin platform:** bundled native loudness and beat providers, an API version window and availability states,
-  a long-lived session transport, hash-pinned trust and declared provider options
-  ([03-architecture.md](../specs/03-architecture.md) §5).
+- **Plugin platform:** bundled native loudness and beat providers, a registry of known providers that panels can
+  offer to install, plugin-owned panels and a signed catalog ([03-architecture.md](../specs/03-architecture.md) §5).
 - **M3–M6:** bundled transcription provider and real-engine acceptance, music/SFX library with BPM and license
   badges, voice cloning, expanded legacy effect/overlay/SFX import, effect recipes, speed ramps and keyframes,
   Demucs, and more interchange validation. Resolve remains reserved.

@@ -51,7 +51,9 @@ public struct PluginProcessRunner: Sendable {
     ) async throws -> JSONValue {
         guard method.range(of: "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$", options: .regularExpression) != nil
         else { throw PluginError.invalid("Invalid plugin method") }
-        let request = PluginRPCRequest(method: method, provider: provider, params: params)
+        let request = PluginRPCRequest(
+            apiVersion: min(plugin.manifest.apiVersion, PluginAPI.current), method: method, provider: provider,
+            params: params)
         let data = try JSONEncoder().encode(request)
         guard data.count <= 1024 * 1024 else {
             throw PluginError.invalid("Plugin request is too large")
@@ -191,7 +193,7 @@ public struct PluginProcessRunner: Sendable {
         ((try? FileManager.default.attributesOfItem(atPath: url.path)[.size]) as? NSNumber)?.intValue ?? 0
     }
 
-    private static func environment(for plugin: InstalledPlugin) -> [String: String] {
+    static func environment(for plugin: InstalledPlugin) -> [String: String] {
         let source = ProcessInfo.processInfo.environment
         var environment: [String: String] = [:]
         for key in ["HOME", "PATH", "TMPDIR", "LANG", "LC_ALL"] {
@@ -266,7 +268,7 @@ private struct ChildProcess: Sendable {
     }
 }
 
-private func withCStrings<R>(_ strings: [String], _ body: (UnsafePointer<UnsafeMutablePointer<CChar>?>) -> R) -> R {
+func withCStrings<R>(_ strings: [String], _ body: (UnsafePointer<UnsafeMutablePointer<CChar>?>) -> R) -> R {
     var pointers = strings.map { strdup($0) }
     pointers.append(nil)
     defer { pointers.forEach { free($0) } }

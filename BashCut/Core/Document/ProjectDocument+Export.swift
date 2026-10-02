@@ -63,12 +63,21 @@ extension ProjectDocument {
             case .success(let outcome): finishExport(request, outcome: outcome)
             case .failure(let error) where JobCenter.isCancellation(error):
                 message = String(localized: "Export cancelled")
-            case .failure(let error): message = error.localizedDescription
+            case .failure(let error):
+                message = error.localizedDescription
+                emitPluginEvent(.exportFailed, [
+                    "output": .string(request.output.path), "preset": .string(preset.rawValue),
+                    "error": .string(error.localizedDescription),
+                ])
             }
         }
         ui.showExport = false
         message = queued ? String(localized: "Export queued") : String(localized: "Preparing export…")
         DebugLog.write("export", "queued \(job) \(preset.rawValue) → \(request.output.path)")
+        emitPluginEvent(.exportStarted, [
+            "job": .string(job), "output": .string(request.output.path), "preset": .string(preset.rawValue),
+            "author": .string(author.rawValue),
+        ])
         return job
     }
 
@@ -79,6 +88,10 @@ extension ProjectDocument {
             apply(.setProjectProperties(patch: ["audio": audio]), label: "Normalize audio")
         }
         DebugLog.write("export", "done \(outcome.receipt.url.path)")
+        emitPluginEvent(.exportFinished, [
+            "output": .string(outcome.receipt.url.path), "preset": .string(request.preset.rawValue),
+            "rev": .integer(request.source.revision),
+        ])
         message = String(localized: "Export complete")
         // Keep the report for later when more exports are waiting.
         if !exports.isRunning { ui.showExportReport = true }

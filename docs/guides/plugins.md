@@ -1,7 +1,9 @@
 # Writing plugins
 
 Plugins give BashCut optional, replaceable implementations of capabilities such as voice synthesis,
-transcription, beat detection and loudness analysis. A plugin is a separate executable that BashCut starts for
+transcription, beat detection and loudness analysis. Since plugin API 2 they can also add actions to the editor
+(menus, toolbar, context menus, panel buttons), listen to editor events through hooks and declare options the
+app renders natively. A plugin is a separate executable that BashCut starts for
 each request; no third-party code is loaded into the app process. Project data, timeline validation, undo
 history and rendering stay in the app, so a missing plugin never prevents a project from opening. The design
 behind this boundary is in [03 — Architecture](../specs/03-architecture.md#optional-plugin-boundary).
@@ -51,14 +53,49 @@ from its standard output. Put the folder in one of the [plugin folders](#discove
 | `id` | Yes | Reverse-domain style: lowercase letters and digits in at least two parts separated by `.` or `-` (`example.voice`) |
 | `name` | Yes | Nonempty display name |
 | `version` | Yes | Semantic version, such as `1.2.0` or `1.2.0-beta.1` |
-| `apiVersion` | Yes | `1` |
+| `apiVersion` | Yes | `1` or `2`; see [API versions](#api-versions) |
+| `minApiVersion` / `maxApiVersion` | No | The host API window the plugin works with; `minApiVersion` defaults to `apiVersion` |
 | `entrypoint` | Yes | Relative path inside the bundle to an executable file; no leading `/` and no `..` |
-| `capabilities` | Yes | Nonempty list of unique capability IDs (lowercase, segments separated by `.` or `-`) |
+| `capabilities` | Yes | List of unique capability IDs (lowercase, segments separated by `.` or `-`); may be empty only when `contributes` is not |
 | `providers` | No | Implementations the app can choose; each needs a unique `id`, a `capability` from `capabilities`, a `name` and an optional `priority` (default 0) |
 | `dependencies` | No | External tools or models the plugin needs; see [Dependencies and health](#dependencies-and-health) |
+| `transport` | No | `oneshot` (default) or `session`; see [Session transport](#session-transport). API 2 |
+| `options` | No | Up to 64 settings; see [Options](#options). API 2 |
+| `contributes` | No | `actions` and `hooks`; see [Actions](#actions) and [Hooks](#hooks). API 2 |
 
 BashCut resolves features by capability and provider ID, never by vendor SDK. A plugin is only chosen for a
 capability when it declares a provider for it.
+
+## API versions
+
+The host serves every plugin API version from `PluginAPI.minimum` (1) to `PluginAPI.current` (2); changes are
+additive, so version 1 manifests keep working. Version 2 adds `options`, `contributes` and the `session` transport;
+a manifest that uses them with `apiVersion` 1 is invalid.
+
+A plugin is **outdated** (listed, never run) when `minApiVersion` (or `apiVersion`) is newer than the host
+("Update BashCut") or `maxApiVersion` is older than `PluginAPI.minimum` ("Update the plugin"). Requests carry
+the lower of the plugin's `apiVersion` and the host's current version.
+
+## Trust and availability
+
+A plugin runs only after the user trusts its exact files. Trusting pins the SHA-256 of `plugin.json` and of
+the entrypoint in `~/Library/Application Support/BashCut/plugin-trust.json` (mode `0600`), together with the
+user's on/off switches. Each plugin is in one state:
+
+| State | Meaning |
+|---|---|
+| `ready` | Trusted (or bundled), unchanged, turned on and API-compatible |
+| `disabled` | Turned off in the Plugins sheet or with `plugins set --enabled off` |
+| `untrusted` | Never approved, such as a plugin that came with a project |
+| `changed` | Its manifest or entrypoint changed since approval; choose **Trust** again |
+| `outdated` | Its API window does not include this BashCut |
+
+- Plugins in the app bundle are trusted without a pin; they can still be turned off.
+- Installing a plugin from the Plugins sheet pins the installed files.
+- **Trust**, **Revoke Trust** and turning a plugin or its hooks **on** are user-only (Plugins sheet). Agents can
+  only turn them off with `plugins set`.
+- Only `ready` plugins provide capabilities, show actions or receive hooks. Turning a plugin off also stops its
+  session process.
 
 ## Discovery and precedence
 
@@ -74,15 +111,17 @@ skipped and reported as catalog diagnostics in the Plugins panel and in `bashcut
 
 ### Provider resolution
 
-For each request, BashCut finds every plugin that declares a provider for the capability and probes their
-dependencies. Only providers of plugins whose health is `ready` are candidates. BashCut then picks:
+For each request, BashCut finds every plugin that declares a provider for the capability, keeps the ones whose
+[availability](#trust-and-availability) is `ready` and probes their dependencies. Only providers of plugins whose
+health is `ready` are candidates. BashCut then picks:
 
 1. the provider named for this request (`--provider` on automation commands), or else the project's
    preference (set with the `setProviderPreference` operation), if it is a candidate;
 2. otherwise the candidate with the highest `priority`, with ties broken by provider ID.
 
-If no plugin declares the capability, the request fails with "Install a plugin that provides …"; if none is
-healthy, it fails with "No healthy provider is available for …".
+If no plugin declares the capability, the request fails with "Install a plugin that provides …"; if none may run,
+it fails with "No enabled provider for …" and each plugin's reason; if none is healthy, it fails with
+"No healthy provider is available for …".
 
 ## Request lifecycle
 
@@ -213,6 +252,258 @@ Providers can wrap libebur128, FFmpeg filters or anything else without linking t
 Every result is tagged with the plugin ID, plugin version and provider ID that produced it. BashCut stores
 this as provenance (for example on beat grids and loudness measurements), never as a live dependency.
 
+## Options
+
+`options` declares settings. The app draws them natively in the Plugins sheet (**Options…**) and sends the current
+values with every action and hook request as `options`.
+
+```json
+"options": [
+  {"id": "sectionPrefix", "title": "Section prefix", "titleVi": "Tiền tố mốc", "type": "string",
+   "default": "Mark", "scope": "project"},
+  {"id": "strength", "title": "Strength", "type": "number", "minimum": 0, "maximum": 1, "default": 0.5}
+]
+```
+
+| Field | Rules |
+|---|---|
+| `id` | A key: a letter, then up to 63 letters, digits, `_` or `-`; unique in the plugin |
+| `title`, `titleVi` | Display name; `titleVi` is used when the interface language is Vietnamese |
+| `help` | Optional caption under the field |
+| `type` | `string`, `enum`, `number`, `integer` or `bool` |
+| `default` | Must fit the type; without it: empty string, the first choice, `minimum` (or 0) or `false` |
+| `choices` | Required for `enum`: 1–100 unique strings |
+| `minimum`, `maximum` | Bounds for `number` and `integer` |
+| `maxLength` | For `string`: 1–100,000 (default limit 10,000) |
+| `scope` | `user` (default): saved for this Mac in `plugin-trust.json`. `project`: stored in the project under `pluginOptions.<plugin id>` as an undoable edit |
+
+A stored value that no longer fits the option falls back to its default. Agents read options with
+`plugins options` and set them with `plugins option`.
+
+## Actions
+
+`contributes.actions` adds commands to the editor. The app draws each one where the plugin asks, decides when it
+is available, collects its parameters and turns the result into a validated, undoable edit. Plugins never ship UI
+code.
+
+```json
+"contributes": {
+  "actions": [
+    {
+      "id": "example.toolkit.set-opacity",
+      "title": "Set clip opacity…",
+      "titleVi": "Đặt độ mờ clip…",
+      "icon": "circle.lefthalf.filled",
+      "placements": ["menu.plugins", "clip.context", "inspector.video"],
+      "when": "selection.kind == video",
+      "params": [{"id": "opacity", "title": "Opacity", "type": "number", "minimum": 0, "maximum": 1, "default": 0.5}]
+    }
+  ]
+}
+```
+
+| Field | Rules |
+|---|---|
+| `id` | Starts with the plugin ID and a dot (`example.toolkit.grade`); unique; at most 64 actions |
+| `title`, `titleVi` | Up to 80 characters |
+| `icon` | Optional SF Symbol name |
+| `placements` | One or more of the placements below |
+| `when` | Optional [condition](#when-conditions); without it the action is available whenever a saved project is open |
+| `params` | Up to 32 [options](#options) (their `scope` is ignored); shown in a native sheet before the action runs |
+| `shortcut` | Optional, written like `cmd+shift+g`; ignored (and reported in diagnostics) when a built-in or earlier plugin action uses it |
+| `context` | Extra read-only data: `timeline` (all tracks), `media` (all media with absolute paths), `project` (the whole document) |
+| `confirm` | A question shown before the action runs from the UI |
+
+### Placements
+
+| Placement | Where it appears |
+|---|---|
+| `menu.plugins` | The main-menu **Plugins** menu, grouped by plugin |
+| `toolbar` | Buttons in the editor toolbar |
+| `clip.context` | The timeline clip context menu |
+| `track.context` | The layer header context menu and the clip context menu |
+| `timeline.context` | The timeline gap and empty-area context menu |
+| `media.context` | The Media panel item context menu; the clicked media is the action's `media` |
+| `panel.<panel>` | A **Plugins** section in a library panel: `panel.media`, `panel.audio`, `panel.text`, `panel.stickers`, `panel.effects`, `panel.transitions`, `panel.filters`, `panel.voice` |
+| `inspector.<tab>` | The bottom of an inspector tab: `inspector.video`, `audio`, `text`, `color`, `speed` |
+
+### When conditions
+
+Clauses joined by `&&`. Each clause is `key`, `!key`, `key == value` or `key != value`; a value may list
+alternatives with `|`. A missing key is false. The app evaluates the condition; no plugin code runs for it.
+
+| Key | True or set when |
+|---|---|
+| `project` | A saved project is open |
+| `timeline` | The timeline is not empty |
+| `playing` | The viewer is playing |
+| `source` | The source viewer shows media |
+| `selection`, `selection.kind`, `selection.role` | An item is selected; its layer kind (`video`, `audio`, `text`, `adjustment`) and role |
+| `track`, `track.kind`, `track.role` | A layer is selected; its kind and role |
+| `media`, `media.kind` | The selected item (or the context-menu media) has media; its kind |
+
+Example: `selection && selection.kind == video|audio && !playing`. Actions are also unavailable while the editor
+is busy, the project has a file conflict or the same action is already running.
+
+### Running an action
+
+An action runs as a background job (`jobs status`, `jobs cancel`) and calls the plugin with method
+`plugin.action`:
+
+```json
+{
+  "action": "example.toolkit.set-opacity",
+  "params": {"opacity": 0.3},
+  "options": {"sectionPrefix": "Mark", "announce": true},
+  "context": { "...": "see Context" },
+  "outputDirectory": "/path/to/project/generated/plugins/example.toolkit/<uuid>"
+}
+```
+
+`provider` is absent: an action belongs to its plugin. `outputDirectory` is a fresh `0700` folder; it is removed
+when the call fails or the plugin wrote nothing.
+
+### Results
+
+Actions and hooks return the same object; every field is optional.
+
+| Field | Meaning |
+|---|---|
+| `message` | Status text (up to 2,000 characters), shown as `<plugin name>: <message>` |
+| `label` | Undo label (up to 120 characters); defaults to `<plugin name>: <action title>` or `<plugin name>: <event>` |
+| `operations` | Up to 1,000 **proposed** operations in the `timeline apply` codec (`{"op": "split", …}`); internal operations (`group`, `restore`) are rejected |
+| `baseRev` | The revision the operations were computed against (`context.project.rev`); a newer project rejects them as stale |
+| `pluginData` | New value for this plugin's own entry in the project's `pluginData` object (`null` removes it), applied in the same edit; other plugins' entries are never touched (at most 256 KiB) |
+| `files` | Up to 100 paths the plugin wrote; each must resolve inside `outputDirectory` |
+| `ui` | Action results only: `select` (item ID), `selectTrack`, `seek` (frame), `reveal` (frame), `panel` (library panel name), `inspector` (tab) |
+| `data` | Any JSON returned to `plugins run` callers as `data` |
+
+BashCut validates the operations like an agent edit (revision check, layer rules, locked layers) and commits them
+with `pluginData` as **one undoable edit by author `plugin`**: it gets the agent change markers and Undo notice,
+and is audited as `plugin.action.<action id>` or `plugin.hook.<event>`. An `addMedia` path that is absolute and
+inside the project folder is stored relative to the project, so files written to `outputDirectory` can be added
+directly.
+
+## Hooks
+
+`contributes.hooks` subscribes to editor events. An entry is an event name or an object:
+
+```json
+"hooks": [
+  "media.imported",
+  {"event": "export.finished", "edits": true},
+  {"event": "edit.committed", "debounceMs": 1000, "context": ["timeline"]}
+]
+```
+
+| Field | Rules |
+|---|---|
+| `event` | One of the events below; each at most once |
+| `debounceMs` | 0–60,000; waits this long after the last event and delivers only the latest payload. Default 400 for frequent events, 0 otherwise |
+| `edits` | `true` lets the hook return `operations` or `pluginData`; without it they are ignored and logged |
+| `context` | Extra context parts, as for actions |
+
+Hooks call the plugin with method `plugin.hook` and params `event`, `payload`, `options`, `context` and
+`outputDirectory`. Every payload also has `event` and `at` (ISO 8601).
+
+| Event | Payload | Frequent |
+|---|---|---|
+| `app.launched` | — | |
+| `project.created` | `path`, `name` | |
+| `project.opened` | `path`, `name`, `rev` | |
+| `project.saved` | `path`, `rev` | |
+| `project.closed` | `path`, `name` (sent when another project replaces it) | |
+| `edit.committed` | `label`, `author`, `rev`, `previousRev`, `changedItems` (up to 200 IDs), `changedCount` | Yes |
+| `edit.undone`, `edit.redone` | Same as `edit.committed` | Yes |
+| `selection.changed` | `item`, `track` | Yes |
+| `playback.stopped` | `playhead` | Yes |
+| `media.imported` | `author`, `media` (the new media objects) | |
+| `captions.generated` | `media`, `provider` (provenance), `rev` | |
+| `beats.detected` | `media`, `bpm`, `beats` | |
+| `voice.generated` | `item`, `media`, `path` | |
+| `export.started` | `job`, `output`, `preset`, `author` | |
+| `export.finished` | `output`, `preset`, `rev` | |
+| `export.failed` | `output`, `preset`, `error` | |
+| `job.finished` | The job as in `jobs status` (completed `plugins.run` jobs are not sent) | |
+| `plugin.action.finished` | `action`, `plugin`, `rev` | |
+
+Frequent events need `"transport": "session"`; the manifest is invalid otherwise.
+
+Delivery rules:
+
+- Hooks are **notify-only**: the event has already happened and the plugin cannot block or change it.
+- Each (plugin, event) pair is debounced and coalesced; a plugin handles one hook at a time and later events wait
+  in its queue.
+- At most 60 deliveries per plugin per minute; extra events are dropped and logged.
+- An edit a plugin made never triggers that plugin's own hooks.
+- Failures go to the hook log (Plugins › **Hook Activity**, `plugins hooks`) and the debug log, never to the
+  editor's status bar. A plain `message` is shown in the status bar.
+- Edits proposed after the project changed are ignored.
+- Settings › **Run plugin hooks** (on by default) stops all hooks; each plugin also has a **Hooks** switch.
+- Settings › **Apply plugin hook edits without review** (off by default, user-only) applies hook edits at once.
+  Otherwise they wait: the toolbar shows **N plugin edits**, the review sheet (dialog `plugin-proposals`) offers
+  Apply or Discard, and agents use `plugins proposal <id> --decision apply|discard`. Up to 20 proposals are kept.
+
+## Context
+
+Actions and hooks receive a read-only snapshot:
+
+| Field | Content |
+|---|---|
+| `app` | `apiVersion`, `language` (interface language), `version` |
+| `author` | Who triggered it (`user`, an agent, or `plugin` for hooks) |
+| `project` | `path`, `root`, `name`, `rev`, `fps`, `width`, `height`, `duration`, `contentLanguage` |
+| `playhead` | Timeline frame |
+| `selection` | The selected item's fields plus `track`, when an item is selected |
+| `selectedTrack` | `id`, `kind`, `role`, `name`, when a layer is selected |
+| `media` | The context-menu media, or the selected item's media, with `absolutePath` |
+| `pluginData` | This plugin's own `pluginData` entry, or `null` |
+| `tracks`, `allMedia`, `document` | Only with the `timeline`, `media` or `project` context part |
+
+## Session transport
+
+With `"transport": "session"` BashCut starts `entrypoint session` once per plugin and exchanges
+newline-delimited JSON over stdin/stdout. Requests may overlap; replies are matched by `id`.
+
+| Direction | Message |
+|---|---|
+| App → plugin | `{"type":"hello","apiVersion":2,"host":"BashCut","pluginId":…}` |
+| Plugin → app | `{"type":"hello","apiVersion":2}` within 10 seconds |
+| App → plugin | `{"type":"request","id","apiVersion","method","provider"?,"params"}` |
+| Plugin → app | Any number of `{"type":"progress","id","progress"?,"message"?}` (`progress` 0–1; shown on the job) |
+| Plugin → app | `{"id","result"}` or `{"id","error":{"code","message"}}` |
+| App → plugin | `{"type":"cancel","id"}` when the caller cancels or the request times out (120 s) |
+| App → plugin | `{"type":"shutdown"}` after 90 s idle, then `SIGTERM` and `SIGKILL` to the process group |
+
+- Lines are at most 8 MiB and requests at most 1 MiB; invalid JSON or an oversized line ends the session.
+- When the process exits, pending requests fail with the last 4,000 bytes of its stderr; the next request starts a
+  new process. After 3 crashes in a minute the plugin is refused for a minute.
+- Health probes still use one-shot processes. The environment is the same filtered one as for `rpc`.
+- `PluginRouter` picks the one-shot or session transport from the manifest, so capabilities work over either.
+
+A worked example covering options, three actions, three hooks and both transports is
+`Fixtures/plugins/example.toolkit` (Python standard library only).
+
+## Commands
+
+Everything above is available to agents through the CLI and MCP (`bashcut_plugins_*` tools):
+
+| Command | Mode | UI equivalent |
+|---|---|---|
+| `plugins list` | read | Plugins sheet: availability, transport, actions, hooks, options |
+| `plugins health [plugin]` | read | Check Health |
+| `plugins actions` | read | Every contributed action with placements, `when`, shortcut, a JSON Schema for its params and whether it is enabled now |
+| `plugins run <action> [--params '{…}']` | edit, job | Clicking the action and filling its sheet |
+| `plugins hooks` | read | Hook Activity: subscriptions, recent runs, waiting proposals |
+| `plugins proposal <id> --decision apply\|discard` | edit | The review sheet |
+| `plugins options <plugin>` | read | Options… |
+| `plugins option <plugin> --option <id> [--value <text>]` | edit | Editing an option; no value resets it |
+| `plugins set <plugin> [--enabled off] [--hooks off]` | edit | The Enabled and Hooks switches (agents can only turn them off) |
+
+`ui actions` lists plugin actions next to built-in ones and `ui action <id or shortcut>` runs them. An action with
+parameters or `confirm` opens its sheet (dialog `plugin-action`); answer it with `ui respond run|cancel`, or use
+`plugins run --params` instead. `ui open plugin-proposals` opens the review sheet.
+
 ## Dependencies and health
 
 Each dependency declares an `id`, a `name`, a `kind` (`executable`, `python`, `model` or `systemLibrary`), a
@@ -254,13 +545,18 @@ the result into a typed output. `CapabilityService.run` handles the rest: provid
 folder, the transport call and provenance. Native panels, automation commands and export all go through
 `CapabilityService`; none of them talk to plugin processes directly.
 
-The transport is the `PluginTransport` protocol. Today's implementation, `PluginProcessRunner`, starts one
-process per request. A session transport (one long-lived process answering many requests) can conform to the
-same protocol without changing `CapabilityService` or the adapters.
+The transport is the `PluginTransport` protocol. `PluginProcessRunner` starts one process per request,
+`PluginSessionTransport` keeps one process per plugin, and `PluginRouter` (the service's default) picks between
+them from the manifest, so `CapabilityService` and the adapters do not depend on the transport. Actions and hooks
+are two more adapters, `PluginActionCapability` and `PluginHookCapability`, run on a named plugin with
+`CapabilityService.runContribution`.
 
 ## Current boundary
 
-- The runtime, discovery, provider resolution and health checks are implemented.
+- The runtime, discovery, provider resolution, health checks, trust pins, the API window, options, actions,
+  hooks and the session transport are implemented.
 - Voice, Text, Audio and Export use `voice.synthesize`, `captions.transcribe`, `audio.beats` and
   `audio.loudness`. Other analysis and interchange panels are not connected yet.
-- Signed remote catalogs, a credential contract and detailed capability permissions are future work.
+- Plugins cannot own panels or windows; contributions use the fixed placements above.
+- Bundled native providers, signed remote catalogs, a credential contract and detailed capability permissions
+  are future work.

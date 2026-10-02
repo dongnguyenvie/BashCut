@@ -1,6 +1,7 @@
 import AppKit
 import BashCutAutomation
 import BashCutDocument
+import BashCutPlugin
 import BashCutStorage
 import SwiftUI
 
@@ -36,6 +37,7 @@ import SwiftUI
         item.submenu = appMenu
         menu.addItem(item)
         menu.addItem(EditMenus.mainMenuItem())
+        menu.addItem(PluginMenus.mainMenuItem(document))
         NSApp.mainMenu = menu
         NSApp.activate(ignoringOtherApps: true)
         if let pendingOpen {
@@ -80,6 +82,7 @@ import SwiftUI
                     try await document.storage.discardRecovery(at: url)
                 }
                 await document.automation.stop()
+                await PluginSessionTransport.shared.stopAll()
                 sender.reply(toApplicationShouldTerminate: true)
             } catch {
                 document.message = error.localizedDescription

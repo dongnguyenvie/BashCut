@@ -131,7 +131,16 @@ struct EditorView: View {
         .sheet(isPresented: Bindable(document.ui).showReview) { review }
         .sheet(isPresented: Bindable(document.ui).showHistory) { history }
         .sheet(isPresented: Bindable(document.ui).showPlugins) {
-            PluginManagerView(model: document.plugins, done: { document.ui.showPlugins = false })
+            PluginManagerView(model: document.plugins, document: document, done: { document.ui.showPlugins = false })
+        }
+        .sheet(item: Bindable(document.plugins).pendingAction) { _ in
+            PluginActionParamsSheet(document: document, model: document.plugins)
+        }
+        .sheet(isPresented: Bindable(document.ui).showPluginProposals) {
+            PluginProposalSheet(document: document, model: document.plugins)
+        }
+        .onChange(of: document.plugins.proposals.isEmpty) {
+            if document.plugins.proposals.isEmpty { document.ui.showPluginProposals = false }
         }
         .sheet(isPresented: Bindable(document.ui).showSettings) {
             SettingsView(model: document.agents, settings: document.settings, done: { document.ui.showSettings = false })
@@ -183,6 +192,15 @@ struct EditorView: View {
             Button("Save") { document.run(.saveProject) }.action(.saveProject, in: document)
             Button("History") { document.run(.showHistory) }
             Button("Review") { document.run(.showReview) }.action(.showReview, in: document)
+            PluginActionStrip(document: document, placement: "toolbar", compact: true)
+            PluginShortcutButtons(document: document)
+            if !document.plugins.proposals.isEmpty {
+                Button {
+                    document.ui.showPluginProposals = true
+                } label: {
+                    Label("\(document.plugins.proposals.count) plugin edits", systemImage: "puzzlepiece.extension.fill")
+                }.foregroundStyle(.orange).help("Review edits plugin hooks proposed")
+            }
             Button {
                 document.run(.showPlugins)
             } label: {

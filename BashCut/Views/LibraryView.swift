@@ -37,6 +37,7 @@ struct LibraryView: View {
                     case .voice:
                         VoiceLibraryView(document: document, pluginManager: pluginManager)
                     }
+                    PluginActionStrip(document: document, placement: "panel." + document.ui.libraryTab.panelName)
                 }.padding(10)
             }
         }.background(Color.white.opacity(0.025))
@@ -78,6 +79,12 @@ struct LibraryView: View {
                         Button("Create Preview Proxy") {
                             Task { try? await document.requestProxies(mediaIDs: [media.id], force: true) }
                         }.disabled(document.fileURL == nil || document.proxyState(media) == .queued)
+                        let pluginActions = pluginManager.actions(at: "media.context")
+                        if !pluginActions.isEmpty { Divider() }
+                        ForEach(pluginActions) { action in
+                            Button(action.title) { document.triggerPluginAction(action, mediaID: media.id) }
+                                .disabled(!document.canRunPluginAction(action, mediaID: media.id))
+                        }
                     }
                 }
             }

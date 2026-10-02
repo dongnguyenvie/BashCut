@@ -53,7 +53,7 @@ against the specs and serves every front end:
 - CLI: `bashcut <group> <command>`.
 - Model APIs and agent instructions: rendered from the same specs.
 
-The catalog has 48 commands. The tables below show the design intent: which mode each area uses and which UI
+The catalog has 62 commands. The tables below show the design intent: which mode each area uses and which UI
 it mirrors. The [automation guide](../guides/automation.md#command-reference) lists every command with its
 arguments.
 
@@ -69,6 +69,7 @@ arguments.
 | `captions export` | read | Text panel, Export SRT |
 | `export status` / `jobs status` | read | Export queue, job progress |
 | `plugins list` / `plugins health` | read | Plugins sheet, Check Health |
+| `plugins actions` / `plugins hooks` / `plugins options <plugin>` | read | Plugin actions wherever they appear, Hook Activity, Options… |
 | `doctor run` | read | Doctor sheet |
 | `knowledge get` | read | Skills and project memory sheet |
 | `ui actions` | read | Every toolbar button, menu item and shortcut, with its enabled state |
@@ -94,9 +95,12 @@ arguments.
 | `beats detect --media <id>` | edit, job | Detect Beats |
 | `voice speak "<text>" [--takes N] [--keep-takes]` | edit, job | Voice panel, Generate + Insert; `--keep-takes` keeps every take for the take list |
 | `jobs cancel <job>` | edit | Cancelling a job or queued export |
+| `plugins run <action> [--params '{…}']` | edit, job | A plugin action in the Plugins menu, toolbar, a context menu, a panel or the inspector, with its parameter sheet |
+| `plugins proposal <id> --decision apply\|discard` | edit | Reviewing an edit a plugin hook proposed |
+| `plugins option <plugin> --option <id> [--value]` / `plugins set <plugin> [--enabled off] [--hooks off]` | edit | Plugins sheet: Options…, Enabled and Hooks switches (agents can only turn them off) |
 | `luts import <file.cube> [--name]` | edit | Filters panel, Import .cube… |
 | `knowledge memo <file>` / `knowledge skill <name> <file>` | edit | Skills and project memory sheet, Save |
-| `ui action <id\|shortcut>` | edit | Any editor button or shortcut, run by the same code: `timeline.split` / `cmd+b`, `timeline.zoom-in` / `cmd+=`, `playback.toggle` / `space`, `source.mark-in` / `i` |
+| `ui action <id\|shortcut>` | edit | Any editor button or shortcut, run by the same code: `timeline.split` / `cmd+b`, `timeline.zoom-in` / `cmd+=`, `playback.toggle` / `space`, `source.mark-in` / `i`; plugin action IDs and shortcuts too |
 
 ### Privileged commands
 
@@ -143,6 +147,11 @@ A new UI feature is not finished until it has a `UIAction`, a `ui view` field, a
 | **read**, **ui** | Always allowed to local processes under the same OS account; no token needed. |
 | **edit** | Allowed with a live session token, because every change is undoable and visible. Settings → **Allow agent timeline edits** (on by default) withholds tokens from Claude and Codex tabs when turned off. |
 | **privileged** | Shows a confirmation sheet in the app with the author and arguments. Settings → **Run agent exports without confirmation** (off by default; no automation command can change it) skips the sheet: such requests return `approval: "approved"` and are audited as `<method>.auto-approved`. Export is slow and writes large files; planned privileged commands include voice enrollment, which changes the shared `voices.json`, and file deletion, which is destructive. |
+
+Plugin trust, turning a plugin or its hooks on, and Settings → **Apply plugin hook edits without review** are
+user-only; agents may turn plugins or hooks off (`plugins set`) and apply or discard hook proposals. Plugins never
+receive a token: their results come back through the app, are validated like agent edits and are committed by
+author `plugin`, audited as `plugin.action.<action id>` or `plugin.hook.<event>`.
 
 Every command is written to the audit log with its author and outcome. The rule is: read-only by default,
 undoable edits with a token, explicit confirmation for anything slow or destructive.

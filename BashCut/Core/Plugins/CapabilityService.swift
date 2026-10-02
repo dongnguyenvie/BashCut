@@ -35,18 +35,33 @@ public struct CapabilityService: Sendable {
     public let roots: PluginRoots
     let transport: any PluginTransport
     private let healthTransport: any PluginTransport
+    /// The user's approvals and on/off switches. Without one (tests), every discovered plugin may run.
+    public let trust: PluginTrustStore?
 
     public init(
-        roots: PluginRoots = .standard, transport: any PluginTransport = PluginProcessRunner(),
-        healthTransport: any PluginTransport = PluginProcessRunner(timeout: 15, maximumOutputBytes: 256 * 1024)
+        roots: PluginRoots = .standard, transport: any PluginTransport = PluginRouter(),
+        healthTransport: any PluginTransport = PluginProcessRunner(timeout: 15, maximumOutputBytes: 256 * 1024),
+        trust: PluginTrustStore? = nil
     ) {
         self.roots = roots
         self.transport = transport
         self.healthTransport = healthTransport
+        self.trust = trust
     }
 
     public func catalog(projectRoot: URL?) -> PluginCatalogResult {
         PluginCatalog.discover(in: roots.ordered(projectRoot: projectRoot))
+    }
+
+    /// Whether the plugin may run now: approved, unchanged, turned on and API-compatible.
+    public func availability(_ plugin: InstalledPlugin) -> PluginAvailability {
+        if let trust { return trust.availability(of: plugin) }
+        return plugin.manifest.incompatibility.map(PluginAvailability.outdated) ?? .ready
+    }
+
+    /// Plugins in the catalog that may run now.
+    public func runnablePlugins(projectRoot: URL?) -> [InstalledPlugin] {
+        catalog(projectRoot: projectRoot).plugins.filter { availability($0) == .ready }
     }
 
     public func health(_ plugin: InstalledPlugin) async -> PluginHealth {
@@ -122,11 +137,16 @@ public struct CapabilityService: Sendable {
     public func resolve(
         _ capability: String, preferredProvider: String?, projectRoot: URL?
     ) async throws -> ResolvedPluginProvider {
-        let candidates = catalog(projectRoot: projectRoot).plugins.filter { plugin in
+        let declaring = catalog(projectRoot: projectRoot).plugins.filter { plugin in
             (plugin.manifest.providers ?? []).contains { $0.capability == capability }
         }
-        guard !candidates.isEmpty else {
+        guard !declaring.isEmpty else {
             throw PluginError.invalid("Install a plugin that provides \(capability)")
+        }
+        let candidates = declaring.filter { availability($0) == .ready }
+        guard !candidates.isEmpty else {
+            let reasons = declaring.map { "\($0.manifest.name): \(availability($0).detail)" }
+            throw PluginError.invalid("No enabled provider for \(capability). " + reasons.joined(separator: "; "))
         }
         let transport = healthTransport
         let ready = await withTaskGroup(of: InstalledPlugin?.self, returning: [InstalledPlugin].self) { group in

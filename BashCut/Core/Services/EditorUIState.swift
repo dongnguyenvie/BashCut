@@ -42,6 +42,8 @@ public final class EditorUIState {
     public var showDoctor = false
     public var showAsk = false
     public var showSections = false
+    /// Edits plugin hooks proposed, waiting for review.
+    public var showPluginProposals = false
 
     public init() {}
 
@@ -100,6 +102,7 @@ public final class EditorUIState {
         showAgentChanges = false
         showExternalChanges = false
         showLegacyImportReport = false
+        showPluginProposals = false
     }
 
     /// Sheets that open unconditionally by name (`ui.open`).

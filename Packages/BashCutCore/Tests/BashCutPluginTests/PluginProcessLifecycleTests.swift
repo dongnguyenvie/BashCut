@@ -17,7 +17,7 @@ struct PluginProcessLifecycleTests {
         let started = Date()
         let call = Task { try await PluginProcessRunner(timeout: 60).call(plugin: plugin, method: "fixture.run") }
         let pidFile = root.appendingPathComponent("helper.pid")
-        for _ in 0..<100 where !FileManager.default.fileExists(atPath: pidFile.path) {
+        for _ in 0..<250 where !FileManager.default.fileExists(atPath: pidFile.path) {
             try await Task.sleep(for: .milliseconds(20))
         }
         call.cancel()
