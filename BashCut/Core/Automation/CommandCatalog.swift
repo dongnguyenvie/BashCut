@@ -173,6 +173,27 @@ public enum CommandCatalog {
                                  cli: .option("at-frame")),
                 baseRevision,
             ]),
+        CommandSpec(
+            "timeline.close-gap", .edit,
+            "Delete an empty gap on a layer (the main layer by default): later clips on that layer move left by the "
+                + "gap's length, with their linked sound.",
+            parameters: [
+                CommandParameter("atFrame", .integer, "A frame inside the gap", required: true, minimum: 0,
+                                 cli: .option("at-frame")),
+                CommandParameter("track", .string, "Layer ID; defaults to the main layer", cli: .option("track")),
+                baseRevision,
+            ]),
+        CommandSpec(
+            "layers.set", .edit,
+            "Change a layer's header switches like the timeline header: hide a visual layer, mute an audio layer, "
+                + "lock any layer (a locked layer refuses edits until unlocked).",
+            parameters: [
+                CommandParameter("track", .string, "Layer ID", required: true, cli: .positional),
+                CommandParameter("hidden", .boolean, "Hidden (visual layers)", cli: .option("hidden")),
+                CommandParameter("muted", .boolean, "Muted (audio layers)", cli: .option("muted")),
+                CommandParameter("locked", .boolean, "Locked", cli: .option("locked")),
+                baseRevision,
+            ]),
     ]
 
     private static let capabilitySpecs: [CommandSpec] = [

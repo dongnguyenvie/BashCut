@@ -13,7 +13,7 @@ enum AudioGainPlanner {
                 track.items.map { ($0.id, $0) }
             })
         let ranges = project.tracks.flatMap { track -> [Range<Int>] in
-            guard track.role == "voiceover" || track.role == "dialogue" else { return [] }
+            guard track.role == "voiceover" || track.role == "dialogue", !track.isMuted else { return [] }
             return track.items.compactMap { item in
                 let isSpeech: Bool
                 if track.role == "voiceover" {
@@ -35,7 +35,7 @@ enum AudioGainPlanner {
         for item: Item, on track: Track, speech: [Range<Int>], mixGainDb: Double = 0
     ) -> [AudioGainPoint] {
         let baseDb = (item["volumeDb"]?.double ?? 0) + mixGainDb
-        let base: Double = item["muted"] == .bool(true) ? 0 : pow(10, baseDb / 20)
+        let base: Double = item["muted"] == .bool(true) || track.isMuted ? 0 : pow(10, baseDb / 20)
         let fadeIn = min(item.duration / 2, max(0, item["fadeIn"]?.int ?? 0))
         let fadeOut = min(item.duration / 2, max(0, item["fadeOut"]?.int ?? 0))
         let duckDb = track.role == "music" && track["duckingEnabled"] != .bool(false)

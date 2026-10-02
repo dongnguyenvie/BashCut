@@ -197,7 +197,7 @@ public actor CompositionBuilder {
         var instructions: [FrameInstruction] = []
         for (start, end) in zip(boundaries, boundaries.dropFirst()) {
             var layers: [VisualLayer] = []
-            for track in project.tracks {
+            for track in project.tracks where !track.isHidden {
                 if track.kind == "video" {
                     layers.append(
                         contentsOf: (visualByTrack[track.id] ?? [])

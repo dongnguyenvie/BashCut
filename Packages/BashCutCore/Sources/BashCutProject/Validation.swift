@@ -69,6 +69,7 @@ extension Project {
                 throw ProjectError.invalid("track.\(track.id): magnetic must be boolean")
             }
             try track.validateDuckingProperties()
+            try track.validateStates()
             for item in track.items.sorted(by: { $0.at < $1.at }) {
                 try require(
                     !item.id.isEmpty && ids.insert(item.id).inserted, "items: empty or duplicate ID")

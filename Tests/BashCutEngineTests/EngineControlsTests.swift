@@ -103,6 +103,25 @@ struct EngineControlsTests {
             })
     }
 
+    @Test("A hidden layer is left out of every frame")
+    func hiddenLayer() async throws {
+        let media = Media(fields: [
+            "id": .string("m"), "path": .string("test.mp4"), "fps": FrameRate().json, "frames": .integer(59),
+        ])
+        var caption = Item(id: "t", at: 0, duration: 45)
+        caption["text"] = .string("Xin chào")
+        let project = try Project(name: "Hidden").applying(
+            .group(label: "Fixture", author: .user, ops: [
+                .addMedia(media), .insert(track: "v1", item: Item(id: "c", media: "m", at: 0, duration: 45)),
+                .insert(track: "t1", item: caption), .setTrackProperties(track: "v1", patch: ["hidden": .bool(true)]),
+            ])
+        ).project
+        let snapshot = try await CompositionBuilder().build(project, root: TestFixtures.mediaRoot)
+        let layers = snapshot.videoComposition.instructions.compactMap { $0 as? FrameInstruction }.flatMap(\.layers)
+        #expect(!layers.isEmpty)
+        #expect(layers.allSatisfy { if case .text = $0 { true } else { false } })
+    }
+
     @Test("Transitions add a tweened outgoing hold and incoming layer")
     func transitions() async throws {
         let root = TestFixtures.mediaRoot

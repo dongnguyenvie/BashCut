@@ -36,6 +36,20 @@ struct AudioDuckingTests {
         #expect(abs((adjusted.first?.volume ?? 0) - 0.501_187) < 0.0001)
     }
 
+    @Test("A muted layer is silent and its speech no longer ducks music")
+    func mutedLayer() {
+        var project = Project(name: "Mute", fps: FrameRate(30, 1))
+        var tracks = project.tracks
+        tracks[4].items = [Item(id: "voice", media: "media", at: 10, duration: 20)]
+        project.tracks = tracks
+        #expect(AudioGainPlanner.speechRanges(in: project) == [10..<30])
+        tracks[4]["muted"] = .bool(true)
+        project.tracks = tracks
+        #expect(AudioGainPlanner.speechRanges(in: project).isEmpty)
+        let voice = tracks[4].items[0]
+        #expect(AudioGainPlanner.points(for: voice, on: tracks[4], speech: []).allSatisfy { $0.volume == 0 })
+    }
+
     @Test("Composition applies track ducking to music parameters")
     func composition() async throws {
         let root = TestFixtures.mediaRoot

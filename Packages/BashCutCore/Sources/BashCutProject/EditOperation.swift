@@ -48,6 +48,7 @@ extension Project {
         }
         var next = self
         try next.perform(operation)
+        try enforceLocks(after: next, operation: operation)
         next.removeInvalidTransitions()
         try next.validate()
         guard max(revision, next.revision) < Int.max - 1 else {

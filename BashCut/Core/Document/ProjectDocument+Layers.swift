@@ -87,9 +87,53 @@ extension ProjectDocument {
         try commit(.moveTrack(track: id, toIndex: destination), label: "Reorder layer", author: author)
     }
 
+    /// Deletes the gap containing `frame` on `trackID` (the main layer by default).
+    @discardableResult
+    func closeGap(
+        at frame: Int, trackID: String? = nil, author: Author = .user, baseRevision: Int? = nil
+    ) throws -> Int {
+        let trackID = try trackID ?? project.requireTrack(role: TrackRole.main, kind: "video").id
+        let operation = try project.closingGap(on: trackID, containing: frame)
+        return try commit(operation, label: "Delete gap", author: author, baseRevision: baseRevision)
+    }
+
+    /// Sets a layer's hidden, muted or locked switch (nil leaves it as is) as one undoable edit.
+    @discardableResult
+    func setLayerSwitches(
+        _ trackID: String, hidden: Bool? = nil, muted: Bool? = nil, locked: Bool? = nil, author: Author = .user,
+        baseRevision: Int? = nil
+    ) throws -> Int {
+        guard let track = project.tracks.first(where: { $0.id == trackID }) else {
+            throw ProjectError.invalid("Unknown layer \(trackID)")
+        }
+        var patch: [String: JSONValue] = [:]
+        if let hidden { patch["hidden"] = .bool(hidden) }
+        if let muted { patch["muted"] = .bool(muted) }
+        if let locked { patch["locked"] = .bool(locked) }
+        guard !patch.isEmpty else { throw ProjectError.invalid("Pass --hidden, --muted or --locked") }
+        let label = locked.map { $0 ? "Lock \(track.name)" : "Unlock \(track.name)" }
+            ?? hidden.map { $0 ? "Hide \(track.name)" : "Show \(track.name)" }
+            ?? (muted == true ? "Mute \(track.name)" : "Unmute \(track.name)")
+        return try commit(
+            .setTrackProperties(track: trackID, patch: patch), label: label, author: author, baseRevision: baseRevision)
+    }
+
     // MARK: Automation
 
     func registerLayerCommands() {
+        handleAuthored("timeline.close-gap") { document, arguments, author in
+            let revision = try document.closeGap(
+                at: arguments.int("atFrame"), trackID: arguments.optionalString("track"), author: author,
+                baseRevision: arguments.int("baseRev"))
+            return .object(["rev": .integer(revision)])
+        }
+        handleAuthored("layers.set") { document, arguments, author in
+            let revision = try document.setLayerSwitches(
+                arguments.string("track"), hidden: arguments.optionalBool("hidden"),
+                muted: arguments.optionalBool("muted"), locked: arguments.optionalBool("locked"), author: author,
+                baseRevision: arguments.int("baseRev"))
+            return .object(["rev": .integer(revision)])
+        }
         handleAuthored("layers.add") { document, arguments, author in
             let result = try document.addLayer(
                 kind: arguments.string("kind"), role: arguments.optionalString("role"),
