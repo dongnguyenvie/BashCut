@@ -37,6 +37,7 @@ Codex terminal.
 | [07-folder-structure.md](07-folder-structure.md) | `bash-cut/` repository layout |
 | [08-conventions.md](08-conventions.md) | Language, Swift style, project-model rules, tests, verify, git |
 | [09-roadmap.md](09-roadmap.md) | M0 → M6, reserved Resolve work, risks, open questions |
+| [10-refactor-plan.md](10-refactor-plan.md) | Structural audit findings and refactor rounds R0–R6 (interfaces for every extension point) |
 
 ## Mockup
 
