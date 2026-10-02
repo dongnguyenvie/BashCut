@@ -1,6 +1,7 @@
-import AVFoundation
 import AppKit
+import AVFoundation
 import BashCutAutomation
+import BashCutDocument
 import BashCutProject
 import UniformTypeIdentifiers
 
@@ -16,8 +17,7 @@ extension ProjectDocument {
         panel.allowedContentTypes = kind == "audio" ? [.audio] : [.movie]
         panel.allowsMultipleSelection = true
         panel.directoryURL = root.appendingPathComponent("footage")
-        guard panel.runModal() == .OK else { return }
-        let urls = panel.urls
+        guard let urls = ModalCenter.shared.open(panel, name: "import-media"), !urls.isEmpty else { return }
         busy = true
         Task {
             defer { busy = false }

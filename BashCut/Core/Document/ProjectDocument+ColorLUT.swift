@@ -1,4 +1,5 @@
 import AppKit
+import BashCutDocument
 import BashCutEngine
 import BashCutProject
 
@@ -10,7 +11,7 @@ extension ProjectDocument {
         }
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.init(filenameExtension: "cube")].compactMap { $0 }
-        guard panel.runModal() == .OK, let source = panel.url else { return }
+        guard let source = ModalCenter.shared.open(panel, name: "import-lut")?.first else { return }
         do {
             let parsed = try CubeLUT.load(source)
             let id = UUID().uuidString

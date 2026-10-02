@@ -535,6 +535,18 @@
         "vi": { "stringUnit": { "state": "translated", "value": "Khi tắt xác nhận, agent có thể export và ghi file mà không hỏi. Mọi yêu cầu vẫn được ghi log." } }
       }
     },
+    "Install": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Install" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Cài đặt" } }
+      }
+    },
+    "OK": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "OK" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "OK" } }
+      }
+    },
     "Handoff to %@": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Handoff to %@" } },

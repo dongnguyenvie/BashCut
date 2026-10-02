@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Let agents drive every dialog like the user: all alerts and open/save panels go through `ModalCenter`, and every sheet and popover is reported too. `ui dialog` lists open dialogs with stable option IDs, `ui respond <option> [--path <file>]` answers the topmost one (a path fills a file panel), and `ui open <dialog>` shows a sheet such as Settings, Export or Doctor. The export approval sheet can only be declined by agents; approving stays with the user unless confirmation is turned off in Settings (33 tools).
 - Add a Settings switch, "Run agent exports without confirmation" (off by default), that runs privileged agent commands (`export start`, `export otio`) at once instead of showing the approval sheet; they answer `approval: "approved"` and are audited as auto-approved. Only the user can change it in Settings.
 - Queue exports in the background (E-1): starting an export while one renders queues it instead of refusing, in the app and through `export start`. Exports render one at a time from the project as it was when requested; the status bar shows the current step, progress and queued count, `export status` lists the queue with job IDs, and `jobs status`/`jobs cancel` now cover exports as well as plugin jobs.
 - Add the `BashCutDocument` library with `JobCenter` (one job list for capability calls and exports), `ExportRequest`, `ExportPipeline` and `ExportQueue`, covered by tests with a fake render engine.

@@ -1,6 +1,7 @@
 import AppKit
 import BashCutAgent
 import BashCutAutomation
+import BashCutDocument
 import BashCutProject
 import Foundation
 
@@ -102,7 +103,7 @@ extension AgentDockModel {
     func saveScript() {
         let panel = NSSavePanel()
         panel.nameFieldStringValue = outputLanguage == "python" ? "bashcut-script.py" : "bashcut-script.sh"
-        guard panel.runModal() == .OK, let url = panel.url else { return }
+        guard let url = ModalCenter.shared.save(panel, name: "save-script") else { return }
         do { try Data(output.utf8).write(to: url, options: .atomic) } catch {
             self.error = error.localizedDescription
         }
@@ -110,15 +111,14 @@ extension AgentDockModel {
 
     func runScript() {
         guard !generating, outputMode == "script", !output.isEmpty else { return }
-        let alert = NSAlert()
-        alert.messageText = String(localized: "Run the reviewed script?")
-        alert.informativeText = String(
-            localized:
-                "This runs local code with your user permissions in the selected workspace. Review the source above first."
-        )
-        alert.addButton(withTitle: String(localized: "Cancel"))
-        alert.addButton(withTitle: String(localized: "Run script"))
-        guard alert.runModal() == .alertSecondButtonReturn else { return }
+        let choice = ModalCenter.shared.alert(
+            "run-script", title: String(localized: "Run the reviewed script?"),
+            message: String(
+                localized:
+                    "This runs local code with your user permissions in the selected workspace. Review the source above first."
+            ),
+            buttons: [ModalOption("cancel", String(localized: "Cancel")), ModalOption("run", String(localized: "Run script"))])
+        guard choice == "run" else { return }
         do {
             let folder = FileManager.default.temporaryDirectory.appendingPathComponent(
                 "BashCutScripts/" + UUID().uuidString)

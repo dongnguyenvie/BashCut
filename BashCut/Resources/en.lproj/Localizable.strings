@@ -288,6 +288,8 @@
 "%1$@ requested %2$@." = "%1$@ requested %2$@.";
 "Approving starts a background export and writes the listed output files." = "Approving starts a background export and writes the listed output files.";
 "Deny" = "Deny";
+"Install" = "Install";
+"OK" = "OK";
 "Approve and export" = "Approve and export";
 "Waiting for approval: export.start" = "Waiting for approval: export.start";
 "Denied %1$@ from %2$@" = "Denied %1$@ from %2$@";

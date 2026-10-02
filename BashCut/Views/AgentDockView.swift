@@ -6,7 +6,6 @@ import SwiftUI
 struct AgentDockView: View {
     @Bindable var model: AgentDockModel
     var detached = false
-    @State private var showKnowledge = false
     var body: some View {
         VStack(spacing: 0) {
             HStack {
@@ -21,7 +20,7 @@ struct AgentDockView: View {
                 .help(detached ? "Attach agent dock" : "Detach agent dock")
                 Button {
                     model.knowledge.load(from: model.directory)
-                    showKnowledge = true
+                    model.showKnowledge = true
                 } label: {
                     Image(systemName: "books.vertical")
                 }.buttonStyle(.plain).help("Skills and project memory")
@@ -119,8 +118,8 @@ struct AgentDockView: View {
                 }.font(.caption).disabled(!model.apiVisible && model.current == nil)
             }.padding(10)
         }.background(Color(red: 0.045, green: 0.05, blue: 0.06))
-            .sheet(isPresented: $showKnowledge) {
-                AgentKnowledgeView(model: model.knowledge, done: { showKnowledge = false })
+            .sheet(isPresented: $model.showKnowledge) {
+                AgentKnowledgeView(model: model.knowledge, done: { model.showKnowledge = false })
             }
     }
     private var apiPanel: some View {

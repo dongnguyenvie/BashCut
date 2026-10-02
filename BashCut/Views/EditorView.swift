@@ -7,13 +7,6 @@ import SwiftUI
 // swiftlint:disable:next type_body_length
 struct EditorView: View {
     @Bindable var document: ProjectDocument
-    @State private var showReview = false
-    @State private var showHistory = false
-    @State private var showAsk = false
-    @State private var showPlugins = false
-    @State private var showSettings = false
-    @State private var showDoctor = false
-    @State private var showSections = false
     @State private var doctor = DoctorModel()
     @State private var ask = ""
     @State private var attachAskFrame = false
@@ -134,19 +127,20 @@ struct EditorView: View {
                     report: report, done: { document.showLegacyImportReport = false })
             }
         }
-        .sheet(isPresented: $showReview) { review }
-        .sheet(isPresented: $showHistory) { history }
-        .sheet(isPresented: $showPlugins) {
-            PluginManagerView(model: document.plugins, done: { showPlugins = false })
+        .sheet(isPresented: $document.showReview) { review }
+        .sheet(isPresented: $document.showHistory) { history }
+        .sheet(isPresented: $document.showPlugins) {
+            PluginManagerView(model: document.plugins, done: { document.showPlugins = false })
         }
-        .sheet(isPresented: $showSettings) {
-            SettingsView(model: document.agents, done: { showSettings = false })
+        .sheet(isPresented: $document.showSettings) {
+            SettingsView(model: document.agents, done: { document.showSettings = false })
         }
-        .sheet(isPresented: $showDoctor) {
+        .sheet(isPresented: $document.showDoctor) {
             DoctorView(
                 model: doctor, refresh: runDoctor,
-                done: { showDoctor = false })
+                done: { document.showDoctor = false })
         }
+        .onChange(of: document.showDoctor) { if document.showDoctor { runDoctor() } }
         .task {
             while !Task.isCancelled {
                 do { try await Task.sleep(for: .seconds(30)) } catch { return }
@@ -188,22 +182,21 @@ struct EditorView: View {
             Button("Open…", action: document.openProject).keyboardShortcut("o")
             Button("Save", action: document.save).keyboardShortcut("s").disabled(
                 document.fileURL == nil || document.saving || document.conflict)
-            Button("History") { showHistory = true }
-            Button("Review") { showReview = true }.keyboardShortcut("r", modifiers: [.command, .shift])
+            Button("History") { document.showHistory = true }
+            Button("Review") { document.showReview = true }.keyboardShortcut("r", modifiers: [.command, .shift])
             Button {
                 document.plugins.refresh(projectRoot: document.fileURL?.deletingLastPathComponent())
-                showPlugins = true
+                document.showPlugins = true
             } label: {
                 Label("Plugins", systemImage: "puzzlepiece.extension")
             }
             Button {
-                runDoctor()
-                showDoctor = true
+                document.showDoctor = true
             } label: {
                 Label("Doctor", systemImage: "stethoscope")
             }
             Button {
-                showSettings = true
+                document.showSettings = true
             } label: {
                 Label("Settings", systemImage: "gearshape")
             }
@@ -372,11 +365,11 @@ struct EditorView: View {
             .help("Delete selected empty layer")
             .disabled(document.selectedTrackID == nil)
             Toggle("Snap", isOn: $document.snapping).toggleStyle(.button)
-            Button("Sections") { showSections = true }
-                .popover(isPresented: $showSections) {
+            Button("Sections") { document.showSections = true }
+                .popover(isPresented: $document.showSections) {
                     SectionManagerView(
                         document: document, newLabel: $newSectionLabel,
-                        done: { showSections = false })
+                        done: { document.showSections = false })
                 }
             Button {
                 if let root = document.fileURL?.deletingLastPathComponent() {
@@ -392,8 +385,8 @@ struct EditorView: View {
                 Image(systemName: "exclamationmark.triangle").foregroundStyle(.orange)
                     .help(document.waveforms.errors.values.sorted().joined(separator: "\n"))
             }
-            Button("Ask agent") { showAsk = true }.keyboardShortcut("k")
-                .popover(isPresented: $showAsk) {
+            Button("Ask agent") { document.showAsk = true }.keyboardShortcut("k")
+                .popover(isPresented: $document.showAsk) {
                     VStack(alignment: .leading) {
                         Text(document.selectedID ?? "Project").font(.caption)
                         TextField("What should the agent do?", text: $ask).frame(width: 300)
@@ -418,7 +411,7 @@ struct EditorView: View {
                 let image = attachAskFrame ? try await document.captureAgentFrame() : nil
                 document.showAgentDock = true
                 document.agents.sendContext(ask, imageURL: image)
-                showAsk = false
+                document.showAsk = false
             } catch { document.message = error.localizedDescription }
         }
     }
@@ -427,7 +420,7 @@ struct EditorView: View {
             HStack {
                 Text("Review").font(.title2)
                 Spacer()
-                Button("Done") { showReview = false }
+                Button("Done") { document.showReview = false }
             }
             Text("Review checks the timeline. Loudness is measured during normalized export; silence analysis is not available yet.").font(
                 .caption
@@ -441,12 +434,12 @@ struct EditorView: View {
                     HStack {
                         Button("Jump") {
                             document.seek(issue.frame)
-                            showReview = false
+                            document.showReview = false
                         }
                         Button("Ask agent to fix") {
                             document.showAgentDock = true
                             document.agents.sendContext("Fix this review issue: " + issue.detail)
-                            showReview = false
+                            document.showReview = false
                         }.disabled(document.agents.current == nil && !document.agents.apiVisible)
                     }
                 }.padding(8).frame(maxWidth: .infinity, alignment: .leading).background(
@@ -460,7 +453,7 @@ struct EditorView: View {
             HStack {
                 Text("History").font(.title2)
                 Spacer()
-                Button("Done") { showHistory = false }
+                Button("Done") { document.showHistory = false }
             }
             List(Array(document.history.undoEntries.enumerated()), id: \.offset) { _, entry in
                 HStack {

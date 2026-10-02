@@ -56,6 +56,14 @@ final class ProjectDocument {
     var timelineGestureActive = false
     var showSafeArea = false
     var showColorComparison = false
+    // Editor sheets and popovers; `ModalCenter` reports them to automation.
+    var showReview = false
+    var showHistory = false
+    var showPlugins = false
+    var showSettings = false
+    var showDoctor = false
+    var showAsk = false
+    var showSections = false
     var recentProjectURLs: [URL]
     @ObservationIgnored lazy var agents = AgentDockModel(document: self)
     @ObservationIgnored lazy var plugins = PluginManagerModel()
@@ -100,11 +108,10 @@ final class ProjectDocument {
 
     func confirmDiscard(removeRecovery: Bool = true) -> Bool {
         guard dirty else { return true }
-        let alert = NSAlert()
-        alert.messageText = String(localized: "Discard unsaved changes?")
-        alert.addButton(withTitle: String(localized: "Cancel"))
-        alert.addButton(withTitle: String(localized: "Discard"))
-        guard alert.runModal() == .alertSecondButtonReturn else { return false }
+        let choice = ModalCenter.shared.alert(
+            "discard-changes", title: String(localized: "Discard unsaved changes?"),
+            buttons: [ModalOption("cancel", String(localized: "Cancel")), ModalOption("discard", String(localized: "Discard"))])
+        guard choice == "discard" else { return false }
         if removeRecovery, let fileURL {
             Task {
                 do { try await storage.discardRecovery(at: fileURL) } catch {
@@ -124,7 +131,7 @@ final class ProjectDocument {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.json]
         panel.directoryURL = recentProjectURLs.first?.deletingLastPathComponent()
-        guard panel.runModal() == .OK, let url = panel.url else { return }
+        guard let url = ModalCenter.shared.open(panel, name: "open-project")?.first else { return }
         openProject(at: url)
     }
 
@@ -158,11 +165,11 @@ final class ProjectDocument {
         message = loaded.warning ?? ""
         if let warning = loaded.warning { DebugLog.write("project", "warning: \(warning)") }
         if offerRecovery, let recovery = loaded.recovery {
-            let alert = NSAlert()
-            alert.messageText = String(localized: "Recover unsaved edits?")
-            alert.addButton(withTitle: String(localized: "Recover"))
-            alert.addButton(withTitle: String(localized: "Use saved project"))
-            if alert.runModal() == .alertFirstButtonReturn {
+            let choice = ModalCenter.shared.alert(
+                "recover-edits", title: String(localized: "Recover unsaved edits?"),
+                buttons: [ModalOption("recover", String(localized: "Recover")),
+                          ModalOption("use-saved", String(localized: "Use saved project"))])
+            if choice == "recover" {
                 replaceHistory(recovery)
                 dirty = true
             } else {

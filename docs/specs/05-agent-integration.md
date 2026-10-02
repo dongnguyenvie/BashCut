@@ -77,7 +77,8 @@ One `CommandRegistry` serves both front ends:
 
 | Command | Mode | UI equivalent |
 |---|---|---|
-| `voice enroll <media> --start --dur --name` | **privileged** | [Clone New Voice] |
+| `voice enroll <media> --start --dur --name` | **dialogs** | Every alert, file panel, sheet and popover is visible to `ui dialog` and answerable with `ui respond` (option ID/title, or `--path` for file panels); `ui open` shows a named sheet. The privileged approval sheet only offers `deny` to agents. |
+| **privileged** | [Clone New Voice] |
 | `export start --preset … --name …` | **privileged** | [Export] |
 
 ### Reserved for later (not in v1)

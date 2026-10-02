@@ -4,6 +4,11 @@ import Foundation
 /// Every automation command, declared once. Modes, CLI parsing, MCP tools and agent instructions derive from it.
 public enum CommandCatalog {
     /// Left-rail library panels, matching the app's `LibraryTab` cases (asserted at startup).
+    /// Sheets and popovers `ui.open` can show.
+    public static let dialogs = [
+        "new-project", "export", "export-report", "agent-changes", "review", "history", "plugins", "settings",
+        "doctor", "knowledge", "ask", "sections",
+    ]
     public static let libraryPanels = ["media", "audio", "text", "stickers", "effects", "transitions", "filters", "voice"]
     public static let exportPresets = ["tiktok", "youtube-1080", "youtube-4k", "quick-draft", "prores"]
 
@@ -216,6 +221,22 @@ public enum CommandCatalog {
     ]
 
     private static let uiSpecs: [CommandSpec] = [
+        CommandSpec(
+            "ui.dialog", .read,
+            "Read the open dialogs (alerts, file panels, sheets), topmost last, with their option IDs."),
+        CommandSpec(
+            "ui.respond", .ui,
+            "Answer the topmost dialog like the user: choose an option ID or title, or give a path to a file panel.",
+            parameters: [
+                CommandParameter("option", .string, "Option ID or title", cli: .positional),
+                CommandParameter("path", .string, "File or folder for an open/save panel", isPath: true,
+                                 cli: .option("path")),
+                CommandParameter("dialog", .string, "Only answer if this dialog ID is topmost", cli: .option("dialog")),
+            ]),
+        CommandSpec(
+            "ui.open", .ui, "Open a sheet or popover in the app.",
+            parameters: [CommandParameter("dialog", .string, "Dialog", required: true, choices: dialogs,
+                                          cli: .positional)]),
         CommandSpec(
             "ui.select", .ui, "Select a timeline item in the app; omit item to clear the selection.",
             parameters: [CommandParameter("item", .string, "Stable item ID", cli: .positional)]),

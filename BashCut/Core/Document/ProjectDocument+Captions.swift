@@ -1,5 +1,6 @@
 import AppKit
 import BashCutAutomation
+import BashCutDocument
 import BashCutProject
 import UniformTypeIdentifiers
 
@@ -8,7 +9,7 @@ extension ProjectDocument {
         guard fileURL != nil else { return }
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [UTType(filenameExtension: "srt") ?? .plainText]
-        guard panel.runModal() == .OK, let url = panel.url else { return }
+        guard let url = ModalCenter.shared.open(panel, name: "import-captions")?.first else { return }
         do {
             let file = try FileHandle(forReadingFrom: url)
             defer { try? file.close() }
@@ -24,7 +25,7 @@ extension ProjectDocument {
         let panel = NSSavePanel()
         panel.nameFieldStringValue = "captions.srt"
         panel.allowedContentTypes = [UTType(filenameExtension: "srt") ?? .plainText]
-        guard panel.runModal() == .OK, let url = panel.url else { return }
+        guard let url = ModalCenter.shared.save(panel, name: "export-captions") else { return }
         do { try SubRip.encode(project).write(to: url, atomically: true, encoding: .utf8) } catch {
             message = error.localizedDescription
         }

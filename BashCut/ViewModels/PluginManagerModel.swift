@@ -1,4 +1,5 @@
 import AppKit
+import BashCutDocument
 import BashCutPlugin
 import BashCutPlugins
 import Foundation
@@ -76,7 +77,7 @@ struct PluginProviderChoice: Identifiable, Equatable {
         panel.canChooseFiles = false
         panel.allowsMultipleSelection = false
         panel.message = String(localized: "Choose a BashCut plugin folder containing plugin.json")
-        guard panel.runModal() == .OK, let directory = panel.url else { return }
+        guard let directory = ModalCenter.shared.open(panel, name: "choose-plugin")?.first else { return }
         let result = PluginCatalog.discover(in: [directory.deletingLastPathComponent()])
         guard let plugin = result.plugins.first(where: { $0.directory.standardizedFileURL == directory.standardizedFileURL })
         else {

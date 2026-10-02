@@ -21,7 +21,7 @@ extension ProjectDocument {
         panel.allowedContentTypes = [.init(filenameExtension: "otio")].compactMap { $0 }
         panel.nameFieldStringValue = project.name + ".otio"
         panel.directoryURL = fileURL?.deletingLastPathComponent().appendingPathComponent("render")
-        guard panel.runModal() == .OK, let url = panel.url else { return }
+        guard let url = ModalCenter.shared.save(panel, name: "export-otio") else { return }
         do {
             try writeOTIO(to: url, allowReplace: true)
             message = String(localized: "OTIO exported")

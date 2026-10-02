@@ -1,4 +1,5 @@
 import AppKit
+import BashCutDocument
 import BashCutImport
 import BashCutProject
 
@@ -8,7 +9,7 @@ extension ProjectDocument {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.json]
         panel.message = String(localized: "Choose an edl.json file")
-        guard panel.runModal() == .OK, let source = panel.url else { return }
+        guard let source = ModalCenter.shared.open(panel, name: "import-edl")?.first else { return }
         let directory = source.deletingLastPathComponent()
         let destination = directory.appendingPathComponent("project.bashcut.json")
         guard !FileManager.default.fileExists(atPath: destination.path) else {

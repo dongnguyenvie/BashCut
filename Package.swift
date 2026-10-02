@@ -23,7 +23,7 @@ let package = Package(
                 path: "BashCut/Core/Agent"),
         .target(name: "BashCutPlugins", dependencies: [.product(name: "BashCutProject", package: "BashCutCore"),
             .product(name: "BashCutPlugin", package: "BashCutCore")], path: "BashCut/Core/Plugins"),
-        .target(name: "BashCutDocument", dependencies: ["BashCutEngine", "BashCutPlugins",
+        .target(name: "BashCutDocument", dependencies: ["BashCutEngine", "BashCutPlugins", "BashCutAutomation",
             .product(name: "BashCutProject", package: "BashCutCore"),
             .product(name: "BashCutPlugin", package: "BashCutCore")], path: "BashCut/Core/Services"),
         .executableTarget(name: "bashcut-bench", dependencies: ["BashCutEngine",

@@ -1,6 +1,7 @@
 import AppKit
 import BashCutAgent
 import BashCutAutomation
+import BashCutDocument
 import BashCutProject
 import Foundation
 import Observation
@@ -66,6 +67,7 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
     /// Run privileged agent commands (exports) without the in-app confirmation sheet. Off by default;
     /// only the user can change it here — no automation command exists for it.
     var autoApprovePrivileged = false
+    var showKnowledge = false
     var defaultExportPresetRaw = "tiktok"
     var interfaceLanguage = "system"
     var error = ""
@@ -120,7 +122,7 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
-        guard panel.runModal() == .OK, let url = panel.url else { return }
+        guard let url = ModalCenter.shared.open(panel, name: "choose-workspace")?.first else { return }
         workspace = url
         UserDefaults.standard.set(url.path, forKey: "agentWorkspace")
         document.rebuild()

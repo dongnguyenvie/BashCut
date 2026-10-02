@@ -287,6 +287,8 @@
 "%1$@ requested %2$@." = "%1$@ yêu cầu %2$@.";
 "Approving starts a background export and writes the listed output files." = "Phê duyệt sẽ bắt đầu xuất nền và ghi các tệp đầu ra được liệt kê.";
 "Deny" = "Từ chối";
+"Install" = "Cài đặt";
+"OK" = "OK";
 "Approve and export" = "Phê duyệt và xuất";
 "Waiting for approval: export.start" = "Đang chờ phê duyệt: export.start";
 "Denied %1$@ from %2$@" = "Đã từ chối %1$@ từ %2$@";

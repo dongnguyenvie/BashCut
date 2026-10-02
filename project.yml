@@ -96,6 +96,7 @@ targets:
     dependencies:
       - target: BashCutEngine
       - target: BashCutPlugins
+      - target: BashCutAutomation
       - package: BashCutCore
         product: BashCutProject
       - package: BashCutCore

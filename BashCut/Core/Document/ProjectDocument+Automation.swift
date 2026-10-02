@@ -13,6 +13,8 @@ extension ProjectDocument {
         registerProjectCommands()
         registerCaptionCommands()
         registerCapabilityCommands()
+        registerDialogCommands()
+        registerDialogs()
         registerEditCommands()
         registerLayerCommands()
         registerImportCommands()

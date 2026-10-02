@@ -1,4 +1,5 @@
 import AppKit
+import BashCutDocument
 import BashCutEngine
 import BashCutProject
 import SwiftUI
@@ -127,7 +128,7 @@ struct ExportView: View {
         panel.canChooseFiles = false
         panel.canCreateDirectories = true
         panel.directoryURL = directory
-        if panel.runModal() == .OK { directory = panel.url }
+        if let url = ModalCenter.shared.open(panel, name: "export-directory")?.first { directory = url }
     }
 
     private func start() {

@@ -1,4 +1,5 @@
 import AppKit
+import BashCutDocument
 import BashCutProject
 import SwiftUI
 
@@ -91,7 +92,7 @@ struct NewProjectView: View {
         panel.canChooseFiles = false
         panel.canCreateDirectories = true
         panel.directoryURL = parent
-        return panel.runModal() == .OK ? panel.url : nil
+        return ModalCenter.shared.open(panel, name: "choose-folder")?.first
     }
 
     private func create() {
