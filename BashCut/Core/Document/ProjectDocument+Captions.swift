@@ -31,17 +31,11 @@ extension ProjectDocument {
     }
 
     func registerCaptionCommands() {
-        registry.register("captions.export") { [weak self] _, _ in
-            guard let self else { throw RPCFailure(-32000, "Editor closed") }
-            return .string(try SubRip.encode(project))
-        }
-        registry.register("captions.import") { [weak self] params, author in
-            guard let self, let author, let base = params["baseRev"]?.int, let text = params["text"]?.string else {
-                throw RPCFailure(-32602, "text and baseRev are required")
-            }
-            let revision = try commit(
-                project.importingSubRip(text, replace: params["replace"] == .bool(true)),
-                label: "Import SRT", author: author, baseRevision: base)
+        handle("captions.export") { document, _, _ in .string(try SubRip.encode(document.project)) }
+        handleAuthored("captions.import") { document, arguments, author in
+            let revision = try document.commit(
+                document.project.importingSubRip(try arguments.string("text"), replace: arguments.bool("replace")),
+                label: "Import SRT", author: author, baseRevision: arguments.int("baseRev"))
             return .object(["rev": .integer(revision)])
         }
     }

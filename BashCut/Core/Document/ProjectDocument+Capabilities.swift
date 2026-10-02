@@ -164,45 +164,37 @@ extension ProjectDocument {
     // MARK: Automation
 
     func registerCapabilityCommands() {
-        registry.register("plugins.list") { [weak self] _, _ in
-            guard let self else { throw RPCFailure(-32000, "Editor closed") }
-            return pluginCatalogJSON()
-        }
-        registry.register("jobs.status") { [weak self] params, _ in
-            guard let self else { throw RPCFailure(-32000, "Editor closed") }
-            if let id = params["job"]?.string {
-                guard let job = capabilityJobs.first(where: { $0.id == id }) else {
+        handle("plugins.list") { document, _, _ in document.pluginCatalogJSON() }
+        handle("jobs.status") { document, arguments, _ in
+            if let id = arguments.optionalString("job") {
+                guard let job = document.capabilityJobs.first(where: { $0.id == id }) else {
                     throw RPCFailure(-32602, "Unknown job")
                 }
                 return job.json
             }
-            return .array(capabilityJobs.map(\.json))
+            return .array(document.capabilityJobs.map(\.json))
         }
-        registry.register("jobs.cancel") { [weak self] params, _ in
-            guard let self, let id = params["job"]?.string, let task = capabilityTasks[id] else {
+        handleAuthored("jobs.cancel") { document, arguments, _ in
+            guard let task = document.capabilityTasks[try arguments.string("job")] else {
                 throw RPCFailure(-32602, "job must name a running job")
             }
             task.cancel()
             return .bool(true)
         }
-        registry.register("captions.generate") { [weak self] params, author in
-            guard let self, let author, let media = params["media"]?.string else {
-                throw RPCFailure(-32602, "media is required")
-            }
-            let replace = params["replace"] == .bool(true)
-            let provider = params["provider"]?.string
-            return try startCapabilityJob("captions.generate", author: author) { document in
+        handleAuthored("captions.generate") { document, arguments, author in
+            let media = try arguments.string("media")
+            let replace = arguments.bool("replace")
+            let provider = arguments.optionalString("provider")
+            return try document.startCapabilityJob("captions.generate", author: author) { document in
                 try await document.generateCaptions(
                     mediaID: media, replace: replace, provider: provider, author: author)
                 return .object(["rev": .integer(document.project.revision)])
             }
         }
-        registry.register("beats.detect") { [weak self] params, author in
-            guard let self, let author, let media = params["media"]?.string else {
-                throw RPCFailure(-32602, "media is required")
-            }
-            let provider = params["provider"]?.string
-            return try startCapabilityJob("beats.detect", author: author) { document in
+        handleAuthored("beats.detect") { document, arguments, author in
+            let media = try arguments.string("media")
+            let provider = arguments.optionalString("provider")
+            return try document.startCapabilityJob("beats.detect", author: author) { document in
                 try await document.detectBeats(mediaID: media, provider: provider, author: author)
                 return .object([
                     "rev": .integer(document.project.revision),
@@ -211,16 +203,12 @@ extension ProjectDocument {
                 ])
             }
         }
-        registry.register("voice.speak") { [weak self] params, author in
-            guard let self, let author, let text = params["text"]?.string,
-                !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            else { throw RPCFailure(-32602, "nonempty text is required") }
-            let count = params["takes"]?.int ?? 3
-            guard (1...8).contains(count) else { throw RPCFailure(-32602, "takes must be 1...8") }
-            let frame = params["atFrame"]?.int
-            if let frame, frame < 0 { throw RPCFailure(-32602, "atFrame must not be negative") }
-            let provider = params["provider"]?.string
-            return try startCapabilityJob("voice.speak", author: author) { document in
+        handleAuthored("voice.speak") { document, arguments, author in
+            let text = try arguments.string("text")
+            let count = try arguments.int("takes")
+            let frame = arguments.optionalInt("atFrame")
+            let provider = arguments.optionalString("provider")
+            return try document.startCapabilityJob("voice.speak", author: author) { document in
                 try await document.speak(text: text, count: count, frame: frame, provider: provider, author: author)
             }
         }

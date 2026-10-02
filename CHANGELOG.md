@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+- Declare every automation command once in `CommandCatalog.specs` (name, mode, parameters, CLI binding, sync/job/approval). The registry validates requests against the spec before handlers run (types, ranges, choices, defaults, unknown parameters); handlers are `async`. The `bashcut` CLI parser, the 22 MCP tools and the agent instructions are generated from the same specs, and a consistency test guards them.
+- Fix `bashcut_timeline_apply` rejecting calls without `label`: the schema now advertises the `"Agent edit"` default and the server applies it.
+- Agent instructions no longer name fixed track IDs (`v1`, `t1`); they tell agents to read track IDs and roles from `bashcut timeline get`. `bashcut help` lists every command's usage, and CLI argument errors print that command's usage.
+
 - Route every history mutation (UI, automation, model API, captions, LUTs, generated results, external reloads) through one `ProjectDocument.commit` that enforces conflict/busy/revision rules and records agent diffs consistently; `history` is now read-only outside that choke point.
 - Look tracks up by role (`Project.track(role:)`, `TrackRole`, `placementOperations`) instead of fixed `v1`/`t1`/`a2`/`a3`/`a4` IDs, so renamed, reordered or added layers keep working; the audio library lists the project's real audio tracks.
 - Serialize `EditOperation` in one `"op"`-keyed codec in core, shared by agents, model APIs and the history journal. Journals written by earlier builds are discarded with the existing "History could not be restored" warning; project files are unchanged.

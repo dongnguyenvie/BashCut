@@ -43,8 +43,8 @@ Xcode build and `git diff --check` before the next round starts.
 | Round | Scope | Size | Status |
 |---|---|---|---|
 | **R0** | Live bugs: cancellable, non-blocking plugin runner that kills the whole process group; concurrent socket clients off the cooperative pool; coalesced Inspector edits | S | Done |
-| **R1** | Single `commit` choke point; `Project.track(role:)` helpers replacing fixed track IDs; capped history with explicit `before`; `"op"`-keyed `EditOperation` codec in core shared by the wire and the journal; hide `Deque` | M | Done (agent-instruction examples still name `v1`/`t1`; generated from live tracks in R2) |
-| **R2** | `CommandSpec` registry: each command declared once (name, mode, parameters, sync or job); async handlers; CLI, MCP tools and agent instructions generated from specs; consistency test | M | Planned |
+| **R1** | Single `commit` choke point; `Project.track(role:)` helpers replacing fixed track IDs; capped history with explicit `before`; `"op"`-keyed `EditOperation` codec in core shared by the wire and the journal; hide `Deque` | M | Done (fixed-ID examples in agent instructions removed in R2) |
+| **R2** | `CommandSpec` registry: each command declared once (name, mode, parameters, sync or job); async handlers; CLI, MCP tools and agent instructions generated from specs; consistency test | M | Done |
 | **R3** | `AgentProvider` protocol (launch, MCP config, session discovery, environment allowlist) and `ModelAdapter` protocol with registries; bookmarks keyed by provider ID | M | Planned |
 | **R4** | Split `ProjectDocument` into `PreviewController`, `ExportController`, `AutomationController`, `FileSyncController`, `EditorUIState` and `SettingsModel` behind an `AppServices` composition root; move them into a testable `BashCutDocument` library; `ExportRequest` + `ExportPipeline` + `ExportQueue` actor sharing one job center with capability jobs; then build E-1 on it | L | Planned |
 | **R5** | `CapabilityAdapter` and `PluginTransport` (one-shot, session) protocols; `MediaSource` (original/proxy) and a persistent asset cache for the engine; `TimelineExporter`/`TimelineImporter` protocols | M–L | Planned |

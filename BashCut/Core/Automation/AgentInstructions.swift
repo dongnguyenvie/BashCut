@@ -1,0 +1,61 @@
+import Foundation
+
+extension CommandCatalog {
+    /// Instructions given to terminal agents and model APIs, rendered from the command specs.
+    public static let instructions: String = {
+        let commands = specs.map { spec in
+            let note: String
+            switch spec.execution {
+            case .immediate: note = ""
+            case .job: note = " Runs as a background job and returns a job ID."
+            case .approval: note = " The app asks the user before running it."
+            }
+            return "- `\(spec.usage)`: \(spec.summary)\(note)"
+        }
+        return ([preamble, "Commands (MCP tool `bashcut_<group>_<command>` takes the same parameters):"] + commands
+            + [operations]).joined(separator: "\n")
+    }()
+
+    private static let preamble = """
+        You are inside BashCut, a native video editor. Prefer the bashcut_* MCP tools; the bashcut CLI on PATH is the fallback.
+        Read `bashcut context get` and `bashcut timeline get` before editing. Track IDs and roles are dynamic:
+        always take them from `bashcut timeline get`, never assume IDs such as v1 or t1.
+        Edits need --base-rev N from the latest read. One request is one atomic apply call.
+        On staleRevision, re-read and retry. Changes appear in the UI and can be undone.
+        Job commands return a job ID; poll `bashcut jobs status JOB_ID`. Their result is one undoable edit.
+        Installing plugins is user-only. Add `--format text` to print text results without JSON quoting.
+        """
+
+    private static let operations = """
+        `bashcut timeline apply /absolute/path/ops.json --base-rev N --label "Describe the edit"` reads an array of objects.
+        Supported operations:
+        {"op":"split","item":"ID","atFrame":30}, {"op":"delete","item":"ID","ripple":true},
+        {"op":"trim","item":"ID","edge":"end","toFrame":120,"ripple":true},
+        {"op":"move","item":"ID","toTrack":"TRACK_ID","atFrame":0},
+        {"op":"reorder","item":"ID","before":"OTHER_ID"}; omit before to move to the end of the main track,
+        {"op":"setProperties","item":"ID","patch":{"transform":{"zoom":1.2}}},
+        Cycle or choose framing with setProperties patches such as
+        {"op":"setProperties","item":"ID","patch":{"reframePreset":"close","transform":{"zoom":1.3,"pan":0,"tilt":0}}},
+        {"op":"setLinkedAudio","video":"VIDEO_ID","audio":"AUDIO_ID"}; omit audio to unlink,
+        {"op":"insert","track":"TEXT_TRACK_ID","item":{"id":"new-id","at":0,"dur":90,"text":"Caption"}},
+        {"op":"addTrack","track":{"id":"NEW_TRACK_ID","kind":"video","role":"overlay","name":"B-roll 2","items":[]},"atIndex":2},
+        {"op":"moveTrack","track":"TRACK_ID","toIndex":3},
+        {"op":"setTrackProperties","track":"TRACK_ID","patch":{"name":"Product shots"}},
+        {"op":"setProjectProperties","patch":{"audio":{"targetLUFS":-14,"normalizeEnabled":true}}},
+        {"op":"deleteTrack","track":"TRACK_ID"},
+        {"op":"setProviderPreference","capability":"voice.synthesize","provider":"acme.voice.fast"}.
+        {"op":"setBeatGrid","media":"MEDIA_ID","bpm":120,"frames":[0,15,30]}.
+        {"op":"upsertSection","id":"section-hook","label":"Hook","atFrame":0},
+        {"op":"deleteSection","id":"section-hook"}.
+        {"op":"upsertTransition","id":"cut-a-b","kind":"dissolve","from":"CLIP_A","to":"CLIP_B","duration":12},
+        {"op":"deleteTransition","id":"cut-a-b"}.
+        {"op":"addColorLUT","lut":{"id":"look","name":"Look","path":"luts/look.cube","size":33}},
+        {"op":"deleteColorLUT","id":"look"}.
+        {"op":"roll","item":"ID","edge":"end","toFrame":120},
+        {"op":"slip","item":"ID","sourceIn":60}.
+        Roll moves a shared cut without changing total duration. Slip changes only the source start.
+        atFrame/toFrame are absolute integer timeline frames. in is an integer source frame at the media fps.
+        Never hand-edit project.bashcut.json while the app is open, never overwrite original footage, and never render with ffmpeg.
+        Ask the user before downloading media or installing tools. Reply in the user's language.
+        """
+}

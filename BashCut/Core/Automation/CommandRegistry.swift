@@ -9,12 +9,21 @@ public struct AuditEvent: Codable, Sendable {
 }
 
 @MainActor public final class CommandRegistry {
-    public typealias Handler = @MainActor @Sendable ([String: JSONValue], Author?) throws -> JSONValue
+    public typealias Handler = @MainActor (CommandArguments, Author?) async throws -> JSONValue
     private var handlers: [String: Handler] = [:]
     private var tokens: [String: Author] = [:]
     private let audit: @Sendable (AuditEvent) -> Void
     public init(audit: @escaping @Sendable (AuditEvent) -> Void = { _ in }) { self.audit = audit }
-    public func register(_ method: String, handler: @escaping Handler) { handlers[method] = handler }
+
+    /// Registers the handler for a catalogued command. Requests reach it only after spec validation.
+    public func register(_ method: String, handler: @escaping Handler) {
+        assert(CommandCatalog.spec(named: method) != nil, "\(method) is not in CommandCatalog.specs")
+        handlers[method] = handler
+    }
+
+    /// Catalogued commands that have no handler yet.
+    public var unhandledCommands: [String] { CommandCatalog.specs.map(\.name).filter { handlers[$0] == nil } }
+
     public func issueToken(author: Author) -> String {
         let token = UUID().uuidString + UUID().uuidString
         tokens[token] = author
@@ -28,20 +37,21 @@ public struct AuditEvent: Codable, Sendable {
                 date: Date(), method: method + (approved ? ".approved" : ".denied"),
                 author: author, succeeded: approved))
     }
-    public func handle(_ request: RPCRequest) -> RPCResponse {
+    public func handle(_ request: RPCRequest) async -> RPCResponse {
         let author = request.token.flatMap { tokens[$0] }
         do {
             guard request.jsonrpc == "2.0" else { throw RPCFailure(-32600, "JSON-RPC 2.0 required") }
-            guard let mode = CommandCatalog.modes[request.method], let handler = handlers[request.method]
+            guard let spec = CommandCatalog.spec(named: request.method), let handler = handlers[request.method]
             else {
                 throw RPCFailure(-32601, "Unknown command: \(request.method)")
             }
-            if mode == .edit || mode == .privileged {
+            if spec.mode == .edit || spec.mode == .privileged {
                 guard author != nil else {
                     throw RPCFailure(-32001, "A live agent session token is required")
                 }
             }
-            let result = try handler(request.params, author)
+            let arguments = CommandArguments(try spec.validate(request.params))
+            let result = try await handler(arguments, author)
             audit(AuditEvent(date: Date(), method: request.method, author: author, succeeded: true))
             return RPCResponse(id: request.id, result: result)
         } catch {

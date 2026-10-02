@@ -15,24 +15,42 @@ import Testing
     }
 
     @Test("Edit tokens are required, attribute authors, and stop working after revocation")
-    func authorization() throws {
+    func authorization() async throws {
         let registry = CommandRegistry()
         var calls = 0
-        registry.register("timeline.apply") { _, author in
+        registry.register("timeline.apply") { arguments, author in
             #expect(author == .codex)
+            #expect(arguments.optionalString("label") == "Agent edit")
             calls += 1
             return .integer(1)
         }
-        #expect(registry.handle(RPCRequest(method: "timeline.apply")).error?.code == -32001)
+        let params: [String: JSONValue] = ["baseRev": .integer(0), "ops": .array([])]
+        #expect(await registry.handle(RPCRequest(method: "timeline.apply", params: params)).error?.code == -32001)
         #expect(calls == 0)
         let token = registry.issueToken(author: .codex)
         #expect(
-            registry.handle(RPCRequest(method: "timeline.apply", token: token)).result == .integer(1))
+            await registry.handle(RPCRequest(method: "timeline.apply", params: params, token: token)).result
+                == .integer(1))
         registry.revoke(token)
         #expect(
-            registry.handle(RPCRequest(method: "timeline.apply", token: token)).error?.code == -32001)
+            await registry.handle(RPCRequest(method: "timeline.apply", params: params, token: token)).error?.code
+                == -32001)
         #expect(calls == 1)
     }
+
+    @Test("Requests are validated against the spec before the handler runs")
+    func specValidation() async throws {
+        let registry = CommandRegistry()
+        registry.register("ui.seek") { arguments, _ in .integer(try arguments.int("frame")) }
+        #expect(await registry.handle(RPCRequest(method: "ui.seek", params: ["frame": .integer(12)])).result == .integer(12))
+        #expect(await registry.handle(RPCRequest(method: "ui.seek", params: ["frame": .number(12)])).result == .integer(12))
+        for params: [String: JSONValue] in [
+            [:], ["frame": .integer(-1)], ["frame": .string("12")], ["frame": .integer(1), "extra": .bool(true)],
+        ] {
+            #expect(await registry.handle(RPCRequest(method: "ui.seek", params: params)).error?.code == -32602)
+        }
+    }
+
     @Test("Privileged approval decisions are recorded without command arguments")
     func approvalAudit() {
         let events = EventBox()
@@ -108,24 +126,24 @@ import Testing
             ])
     }
     @Test("Registered read and UI commands need no token; unknown commands fail")
-    func modes() {
+    func modes() async {
         let registry = CommandRegistry()
+        for spec in CommandCatalog.specs { registry.register(spec.name) { _, _ in .bool(true) } }
+        #expect(registry.unhandledCommands.isEmpty)
         for method in [
-            "context.get", "project.get", "timeline.get", "media.list", "review.run", "captions.export", "export.status", "ui.select",
-            "ui.seek", "ui.notify",
+            "context.get", "project.get", "timeline.get", "media.list", "review.run", "captions.export", "export.status",
+            "ui.select",
         ] {
-            registry.register(method) { _, _ in .bool(true) }
-            #expect(registry.handle(RPCRequest(method: method)).result == .bool(true))
+            #expect(await registry.handle(RPCRequest(method: method)).result == .bool(true))
         }
-        for method in ["timeline.undo", "timeline.redo", "captions.import"] {
-            registry.register(method) { _, _ in .bool(true) }
-            #expect(registry.handle(RPCRequest(method: method)).error?.code == -32001)
+        for method in ["timeline.undo", "timeline.redo", "captions.import", "export.start"] {
+            #expect(await registry.handle(RPCRequest(method: method)).error?.code == -32001)
         }
-        registry.register("export.start") { _, _ in .bool(true) }
-        #expect(registry.handle(RPCRequest(method: "export.start")).error?.code == -32001)
         let token = registry.issueToken(author: .claude)
-        #expect(registry.handle(RPCRequest(method: "export.start", token: token)).result == .bool(true))
-        #expect(registry.handle(RPCRequest(method: "missing")).error?.code == -32601)
+        let export = RPCRequest(
+            method: "export.start", params: ["preset": .string("tiktok"), "name": .string("draft")], token: token)
+        #expect(await registry.handle(export).result == .bool(true))
+        #expect(await registry.handle(RPCRequest(method: "missing")).error?.code == -32601)
     }
     @Test("Unix socket roundtrip uses mode 0600 and removes the socket at shutdown")
     func socketRoundtrip() async throws {
