@@ -78,7 +78,7 @@ extension ProjectDocument {
             case .failure(let error): message = error.localizedDescription
             }
         }
-        showExport = false
+        ui.showExport = false
         message = queued ? String(localized: "Export queued") : String(localized: "Preparing export…")
         DebugLog.write("export", "queued \(job) \(preset.rawValue) → \(request.output.path)")
         return job
@@ -119,7 +119,7 @@ extension ProjectDocument {
         DebugLog.write("export", "done \(outcome.receipt.url.path)")
         message = String(localized: "Export complete")
         // Keep the report for later when more exports are waiting.
-        if !exports.isRunning { showExportReport = true }
+        if !exports.isRunning { ui.showExportReport = true }
     }
 
     func restoreExportReport() {

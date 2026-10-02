@@ -108,7 +108,7 @@ extension ProjectDocument {
                 externalData = nil
                 externalProject = nil
                 conflict = false
-                showExternalChanges = false
+                ui.showExternalChanges = false
                 if !loadDisk { save() }
             } catch { message = error.localizedDescription }
         }

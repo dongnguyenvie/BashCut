@@ -23,7 +23,6 @@ extension ProjectDocument {
         registerUIActionCommands()
         registerToolCommands()
         assert(registry.unhandledCommands.isEmpty, "Unhandled commands: \(registry.unhandledCommands)")
-        assert(CommandCatalog.libraryPanels == LibraryTab.allCases.map { $0.rawValue.lowercased() })
         Task {
             do {
                 try await automationServer.start(path: AutomationPaths.socket) { [registry] in
@@ -246,7 +245,7 @@ extension ProjectDocument {
         }
         handle("ui.panel") { document, arguments, _ in
             let name = try arguments.string("panel")
-            guard let tab = LibraryTab.allCases.first(where: { $0.rawValue.lowercased() == name }) else {
+            guard let tab = LibraryTab(panelName: name) else {
                 throw RPCFailure(-32602, "Unknown panel \(name)")
             }
             document.showLibraryTab(tab)
@@ -259,8 +258,8 @@ extension ProjectDocument {
     }
 
     func showLibraryTab(_ tab: LibraryTab) {
-        DebugLog.write("ui", "library panel \(libraryTab.rawValue) → \(tab.rawValue)")
-        libraryTab = tab
+        DebugLog.write("ui", "library panel \(ui.libraryTab.rawValue) → \(tab.rawValue)")
+        ui.libraryTab = tab
     }
 
     func timelineText() -> String {
@@ -298,7 +297,7 @@ extension ProjectDocument {
     func clearAgentChange() {
         agentChange = nil
         agentChangedIDs.removeAll()
-        showAgentChanges = false
+        ui.showAgentChanges = false
     }
 
     func restoreLatestAgentChangeFromHistory() {

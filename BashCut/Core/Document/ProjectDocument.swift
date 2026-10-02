@@ -20,11 +20,8 @@ final class ProjectDocument {
     var message = ""
     var busy = false
     var dirty = false
-    var showNewProject = false
     var creatingProject = false
-    var showExport = false
     var exportReport: ExportReport?
-    var showExportReport = false
     var privilegedApproval: PrivilegedApprovalPrompt?
     var fileURL: URL?
     let player = AVPlayer()
@@ -36,9 +33,7 @@ final class ProjectDocument {
     var externalData: Data?
     var externalProject: Project?
     var conflict = false
-    var showExternalChanges = false
     var legacyImportReport: LegacyEDLImportReport?
-    var showLegacyImportReport = false
     var saving = false
     var fileCheckInProgress = false
     @ObservationIgnored var fileMonitor: ProjectFileMonitor?
@@ -48,27 +43,12 @@ final class ProjectDocument {
     let registry: CommandRegistry
     var agentChangedIDs = Set<String>()
     var agentChange: AgentChangeRecord?
-    var showAgentChanges = false
-    var showAgentDock = true
-    var libraryTab: LibraryTab = .media
-    var timelineScale = 50.0
-    var timelineReveal: TimelineReveal?
-    /// Inspector tab, one of `UIAction.inspectorTabs`.
-    var inspectorTab = "video"
     let doctor = DoctorModel()
-    var snapping = true
     var timelineGestureActive = false
-    var showSafeArea = false
     var showColorComparison = false
-    // Editor sheets and popovers; `ModalCenter` reports them to automation.
-    var showReview = false
-    var showHistory = false
-    var showPlugins = false
-    var showSettings = false
-    var showDoctor = false
-    var showAsk = false
-    var showSections = false
     var recentProjectURLs: [URL]
+    /// Zoom, toggles, panels and open sheets.
+    let ui = EditorUIState()
     @ObservationIgnored lazy var agents = AgentDockModel(document: self)
     @ObservationIgnored lazy var plugins = PluginManagerModel()
     @ObservationIgnored var privilegedAction: (@MainActor () throws -> Void)?
@@ -128,7 +108,7 @@ final class ProjectDocument {
 
     func newProject() {
         guard !busy, !saving else { return }
-        showNewProject = true
+        ui.showNewProject = true
     }
 
     func openProject() {
@@ -207,21 +187,18 @@ final class ProjectDocument {
         waveforms.reset()
         agentChangedIDs.removeAll()
         agentChange = nil
-        showAgentChanges = false
         sessionID = UUID()
         diskData = nil
         externalData = nil
         externalProject = nil
         conflict = false
-        showExternalChanges = false
         legacyImportReport = nil
-        showLegacyImportReport = false
         lastAutosaveRevision = -1
         rebuildTask?.cancel()
         exports.cancelAll()
         jobs.cancelAll()
         exportReport = nil
-        showExportReport = false
+        ui.closeProjectSheets()
         privilegedApproval = nil
         privilegedAction = nil
         player.pause()
@@ -230,7 +207,6 @@ final class ProjectDocument {
         comparisonPlayer.replaceCurrentItem(with: nil)
         comparisonSnapshot = nil
         showColorComparison = false
-        comparisonSnapshot = nil
         replaceHistory(ProjectHistory(project: project))
         fileURL = url
         restoreExportReport()

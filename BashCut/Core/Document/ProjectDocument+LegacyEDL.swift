@@ -15,7 +15,7 @@ extension ProjectDocument {
             defer { busy = false }
             do {
                 try await importLegacyEDL(from: source)
-                showLegacyImportReport = true
+                ui.showLegacyImportReport = true
             } catch { message = error.localizedDescription }
         }
     }

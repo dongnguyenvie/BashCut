@@ -1,4 +1,5 @@
 import AVFoundation
+import BashCutDocument
 import BashCutProject
 import SwiftUI
 
@@ -18,13 +19,13 @@ struct LibraryView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text(LocalizedStringKey(document.libraryTab.rawValue)).font(.headline)
+                Text(LocalizedStringKey(document.ui.libraryTab.rawValue)).font(.headline)
                 Spacer()
             }.padding(10)
             Divider()
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    switch document.libraryTab {
+                    switch document.ui.libraryTab {
                     case .media: media
                     case .audio: audio
                     case .text: text

@@ -7,9 +7,6 @@ import Foundation
 /// Editor buttons, menu items and shortcuts run through `run(_:)`; `ui.action` runs the same code
 /// for agents, and `ui.view` reads or sets the view state (zoom, toggles, timeline scroll).
 extension ProjectDocument {
-    static let timelineZoomRange: ClosedRange<Double> = 10...140
-    private static let zoomStep = 1.25
-
     /// Whether the action's button is enabled right now.
     func canPerform(_ action: UIAction) -> Bool { // swiftlint:disable:this cyclomatic_complexity
         guard !busy else { return false }
@@ -23,8 +20,8 @@ extension ProjectDocument {
         case .importMedia, .refreshWaveforms: return hasProject && !(action == .refreshWaveforms && waveforms.loading)
         case .showExport, .toggleCompare: return project.duration > 0
         case .togglePlayback, .previousFrame, .nextFrame: return project.duration > 0 && !sourceViewer.visible
-        case .zoomIn: return timelineScale < Self.timelineZoomRange.upperBound
-        case .zoomOut: return timelineScale > Self.timelineZoomRange.lowerBound
+        case .zoomIn: return ui.canZoomIn
+        case .zoomOut: return ui.canZoomOut
         case .split, .delete, .lift: return selected != nil
         case .layerUp, .layerDown, .deleteLayer: return selectedTrackID != nil
         case .sourceTogglePlayback, .sourcePreviousFrame, .sourceNextFrame, .markIn, .markOut, .sourceInsert,
@@ -60,16 +57,16 @@ extension ProjectDocument {
         case .showHistory, .showReview, .showPlugins, .showDoctor, .showSettings, .showExport, .showSections:
             try openDialog(String(action.id.dropFirst("show.".count)))
         case .toggleAgentDock:
-            if agents.isDetached { agents.attach() } else { showAgentDock.toggle() }
-        case .askAgent: showAsk = true
+            if agents.isDetached { agents.attach() } else { ui.showAgentDock.toggle() }
+        case .askAgent: ui.showAsk = true
         case .togglePlayback: togglePlayback()
         case .previousFrame: seek(playhead - 1)
         case .nextFrame: seek(playhead + 1)
         case .toggleCompare: setColorComparison(!showColorComparison)
-        case .toggleSafeArea: showSafeArea.toggle()
-        case .toggleSnap: snapping.toggle()
-        case .zoomIn: setTimelineZoom(timelineScale * Self.zoomStep)
-        case .zoomOut: setTimelineZoom(timelineScale / Self.zoomStep)
+        case .toggleSafeArea: ui.showSafeArea.toggle()
+        case .toggleSnap: ui.snapping.toggle()
+        case .zoomIn: ui.zoomIn()
+        case .zoomOut: ui.zoomOut()
         default: try performTimelineAction(action, author: author)
         }
     }
@@ -113,14 +110,8 @@ extension ProjectDocument {
         }
     }
 
-    func setTimelineZoom(_ value: Double) {
-        timelineScale = min(max(value, Self.timelineZoomRange.lowerBound), Self.timelineZoomRange.upperBound)
-    }
-
     /// Scrolls the timeline so `frame` is visible.
-    func revealInTimeline(_ frame: Int) {
-        timelineReveal = TimelineReveal(frame: min(max(0, frame), project.duration))
-    }
+    func revealInTimeline(_ frame: Int) { ui.revealInTimeline(frame, duration: project.duration) }
 
     // MARK: Automation
 
@@ -187,19 +178,19 @@ extension ProjectDocument {
     }
 
     private func updateView(_ arguments: CommandArguments) throws {
-        if let zoom = arguments.optionalInt("zoom") { setTimelineZoom(Double(zoom)) }
-        if let snap = arguments.optionalBool("snap") { snapping = snap }
-        if let safeArea = arguments.optionalBool("safeArea") { showSafeArea = safeArea }
+        if let zoom = arguments.optionalInt("zoom") { ui.setTimelineZoom(Double(zoom)) }
+        if let snap = arguments.optionalBool("snap") { ui.snapping = snap }
+        if let safeArea = arguments.optionalBool("safeArea") { ui.showSafeArea = safeArea }
         if let dock = arguments.optionalBool("agentDock") {
             if dock, agents.isDetached { agents.attach() }
-            showAgentDock = dock
+            ui.showAgentDock = dock
         }
         if let compare = arguments.optionalBool("compare") {
             guard !compare || project.duration > 0 else { throw RPCFailure(-32602, "The timeline is empty") }
             setColorComparison(compare)
         }
         if let frame = arguments.optionalInt("reveal") { revealInTimeline(frame) }
-        if let tab = arguments.optionalString("inspector") { inspectorTab = tab }
+        if let tab = arguments.optionalString("inspector") { ui.inspectorTab = tab }
     }
 
     func viewStateJSON() -> JSONValue {
@@ -212,22 +203,16 @@ extension ProjectDocument {
             ])
         }
         return .object([
-            "zoom": .number(timelineScale), "zoomRange": .array([
-                .number(Self.timelineZoomRange.lowerBound), .number(Self.timelineZoomRange.upperBound),
+            "zoom": .number(ui.timelineScale), "zoomRange": .array([
+                .number(EditorUIState.timelineZoomRange.lowerBound), .number(EditorUIState.timelineZoomRange.upperBound),
             ]),
-            "snap": .bool(snapping), "safeArea": .bool(showSafeArea), "compare": .bool(showColorComparison),
-            "agentDock": .bool(showAgentDock && !agents.isDetached), "agentDockDetached": .bool(agents.isDetached),
+            "snap": .bool(ui.snapping), "safeArea": .bool(ui.showSafeArea), "compare": .bool(showColorComparison),
+            "agentDock": .bool(ui.showAgentDock && !agents.isDetached), "agentDockDetached": .bool(agents.isDetached),
             "playing": .bool(player.rate != 0), "playhead": .integer(playhead),
             "selection": selectedID.map(JSONValue.string) ?? .null,
             "selectedTrack": selectedTrackID.map(JSONValue.string) ?? .null,
-            "libraryPanel": .string(libraryTab.rawValue.lowercased()), "inspector": .string(inspectorTab),
+            "libraryPanel": .string(ui.libraryTab.panelName), "inspector": .string(ui.inspectorTab),
             "source": source,
         ])
     }
-}
-
-/// A one-off request for the timeline to scroll a frame into view.
-struct TimelineReveal: Equatable {
-    let frame: Int
-    let id = UUID()
 }

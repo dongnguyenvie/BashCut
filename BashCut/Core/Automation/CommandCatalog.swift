@@ -3,7 +3,7 @@ import Foundation
 
 /// Every automation command, declared once. Modes, CLI parsing, MCP tools and agent instructions derive from it.
 public enum CommandCatalog {
-    /// Left-rail library panels, matching the app's `LibraryTab` cases (asserted at startup).
+    /// Left-rail library panels, matching `LibraryTab` (checked by `EditorUIStateTests`).
     /// Sheets and popovers `ui.open` can show.
     public static let dialogs = [
         "new-project", "export", "export-report", "agent-changes", "review", "history", "plugins", "settings",

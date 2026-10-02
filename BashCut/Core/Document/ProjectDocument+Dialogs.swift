@@ -19,35 +19,35 @@ extension ProjectDocument {
             guard open else { return }
             sheets.append(ModalSheet(name: name, title: title, options: [Self.close]) { _ in close() })
         }
-        closing("ask", "Ask agent", when: showAsk) { [weak self] in self?.showAsk = false }
-        closing("sections", "Sections", when: showSections) { [weak self] in self?.showSections = false }
-        closing("new-project", "New project", when: showNewProject) { [weak self] in self?.showNewProject = false }
-        closing("export", "Export", when: showExport) { [weak self] in self?.showExport = false }
-        closing("export-report", "Export report", when: showExportReport) { [weak self] in
-            self?.showExportReport = false
+        closing("ask", "Ask agent", when: ui.showAsk) { [weak self] in self?.ui.showAsk = false }
+        closing("sections", "Sections", when: ui.showSections) { [weak self] in self?.ui.showSections = false }
+        closing("new-project", "New project", when: ui.showNewProject) { [weak self] in self?.ui.showNewProject = false }
+        closing("export", "Export", when: ui.showExport) { [weak self] in self?.ui.showExport = false }
+        closing("export-report", "Export report", when: ui.showExportReport) { [weak self] in
+            self?.ui.showExportReport = false
         }
-        closing("legacy-import-report", "Legacy EDL import", when: showLegacyImportReport) { [weak self] in
-            self?.showLegacyImportReport = false
+        closing("legacy-import-report", "Legacy EDL import", when: ui.showLegacyImportReport) { [weak self] in
+            self?.ui.showLegacyImportReport = false
         }
-        closing("review", "Review", when: showReview) { [weak self] in self?.showReview = false }
-        closing("history", "History", when: showHistory) { [weak self] in self?.showHistory = false }
-        closing("plugins", "Plugins", when: showPlugins) { [weak self] in self?.showPlugins = false }
-        closing("settings", "Settings", when: showSettings) { [weak self] in self?.showSettings = false }
-        closing("doctor", "Doctor", when: showDoctor) { [weak self] in self?.showDoctor = false }
+        closing("review", "Review", when: ui.showReview) { [weak self] in self?.ui.showReview = false }
+        closing("history", "History", when: ui.showHistory) { [weak self] in self?.ui.showHistory = false }
+        closing("plugins", "Plugins", when: ui.showPlugins) { [weak self] in self?.ui.showPlugins = false }
+        closing("settings", "Settings", when: ui.showSettings) { [weak self] in self?.ui.showSettings = false }
+        closing("doctor", "Doctor", when: ui.showDoctor) { [weak self] in self?.ui.showDoctor = false }
         closing("knowledge", "Skills and project memory", when: agents.showKnowledge) { [weak self] in
             self?.agents.showKnowledge = false
         }
-        if showAgentChanges {
+        if ui.showAgentChanges {
             sheets.append(ModalSheet(
                 name: "agent-changes", title: "Agent changes",
                 options: [ModalOption("undo", String(localized: "Undo")), Self.close]
             ) { [weak self] option in
                 guard let self else { return }
                 if option == "undo" { undoAgentChange() }
-                showAgentChanges = false
+                ui.showAgentChanges = false
             })
         }
-        if showExternalChanges {
+        if ui.showExternalChanges {
             sheets.append(ModalSheet(
                 name: "external-changes", title: "The project file changed on disk",
                 options: [
@@ -56,10 +56,10 @@ extension ProjectDocument {
                 ]
             ) { [weak self] option in
                 guard let self else { return }
-                if option == "close" { showExternalChanges = false } else { resolveConflict(loadDisk: option == "load-disk") }
+                if option == "close" { ui.showExternalChanges = false } else { resolveConflict(loadDisk: option == "load-disk") }
             })
         }
-        if showPlugins, let pending = plugins.pendingInstall {
+        if ui.showPlugins, let pending = plugins.pendingInstall {
             // Installing runs the plugin's dependency recipes; only the user can approve it.
             sheets.append(ModalSheet(
                 name: "plugin-install", title: "Install \(pending.plugin.manifest.name)?",
@@ -107,16 +107,9 @@ extension ProjectDocument {
         }
     }
 
-    private static var toggledDialogs: [String: ReferenceWritableKeyPath<ProjectDocument, Bool>] {
-        [
-            "review": \.showReview, "history": \.showHistory, "plugins": \.showPlugins, "settings": \.showSettings,
-            "doctor": \.showDoctor, "ask": \.showAsk, "sections": \.showSections,
-        ]
-    }
-
     /// Sheets that only make sense in some states: (available, reason when not, flag).
     private static var conditionalDialogs:
-        [String: (available: (ProjectDocument) -> Bool, reason: String, flag: ReferenceWritableKeyPath<ProjectDocument, Bool>)]
+        [String: (available: (ProjectDocument) -> Bool, reason: String, flag: ReferenceWritableKeyPath<EditorUIState, Bool>)]
     {
         [
             "export": ({ $0.project.duration > 0 }, "The timeline is empty", \.showExport),
@@ -128,11 +121,11 @@ extension ProjectDocument {
 
     func openDialog(_ name: String) throws {
         if name == "plugins" { plugins.refresh(projectRoot: fileURL?.deletingLastPathComponent()) }
-        if let flag = Self.toggledDialogs[name] {
-            self[keyPath: flag] = true
+        if let flag = EditorUIState.toggledDialogs[name] {
+            ui[keyPath: flag] = true
         } else if let dialog = Self.conditionalDialogs[name] {
             guard dialog.available(self) else { throw RPCFailure(-32602, dialog.reason) }
-            self[keyPath: dialog.flag] = true
+            ui[keyPath: dialog.flag] = true
         } else if name == "new-project" {
             newProject()
         } else if name == "knowledge" {

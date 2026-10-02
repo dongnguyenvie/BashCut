@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- R4b, step 1: move editor view state (timeline zoom and reveal, snapping, safe area, agent dock, library panel, Inspector tab and every editor sheet flag) out of `ProjectDocument` into a tested `EditorUIState` in `BashCutDocument`; `LibraryTab` moves there too, and its match with the `ui.panel` choices is now a test instead of a startup assert. No behavior change.
 - Replace the agent dock's "Resume session ID" field with **Continue Claude/Codex** and **New conversation** buttons; BashCut keeps finding and saving the last conversation per project on its own, and users never see session IDs.
 - Fix fixed-size sheets (Plugins, Doctor, History, agent changes, external changes, skills and memory) floating their content in the middle when it is short; content now starts at the top and the empty Plugins state fills the sheet.
 - Fix the Media panel's source picker label wrapping one word per line in the narrow library panel.

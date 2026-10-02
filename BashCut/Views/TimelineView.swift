@@ -1,5 +1,6 @@
 import AppKit
 import BashCutAutomation
+import BashCutDocument
 import BashCutEngine
 import BashCutProject
 import SwiftUI
@@ -20,14 +21,14 @@ struct TimelineView: NSViewRepresentable {
         canvas.waveforms = document.waveforms.values
         canvas.selectedID = document.selectedID
         canvas.playhead = document.playhead
-        canvas.scale = document.timelineScale / document.project.fps.value
+        canvas.scale = document.ui.timelineScale / document.project.fps.value
         canvas.setFrameSize(
             CGSize(
                 width: max(
                     view.contentSize.width, 105 + Double(document.project.duration) * canvas.scale + 100),
                 height: max(view.contentSize.height, Double(canvas.orderedTracks.count) * 35 + 58)))
         canvas.needsDisplay = true
-        if let reveal = document.timelineReveal, reveal != canvas.lastReveal {
+        if let reveal = document.ui.timelineReveal, reveal != canvas.lastReveal {
             canvas.lastReveal = reveal
             let x = 105 + Double(reveal.frame) * canvas.scale
             canvas.scrollToVisible(CGRect(x: max(0, x - 120), y: view.documentVisibleRect.minY, width: 240, height: 1))
@@ -74,9 +75,9 @@ struct TimelineView: NSViewRepresentable {
             .foregroundColor: NSColor.gray,
         ]
         let seconds = max(1, Int(Double(project.duration) / project.fps.value) + 2)
-        let step = max(1, Int(50 / document.timelineScale))
+        let step = max(1, Int(50 / document.ui.timelineScale))
         for second in stride(from: 0, through: seconds, by: step) {
-            let x = 105 + Double(second) * document.timelineScale
+            let x = 105 + Double(second) * document.ui.timelineScale
             if x < dirtyRect.minX || x > dirtyRect.maxX { continue }
             ("\(second)s" as NSString).draw(at: CGPoint(x: x + 3, y: 5), withAttributes: attrs)
             NSColor.darkGray.setStroke()
@@ -256,7 +257,7 @@ struct TimelineView: NSViewRepresentable {
             return
         }
         var frame = max(0, (dragState.edge == .end ? dragState.item.end : dragState.item.at) + delta)
-        if document.snapping && !event.modifierFlags.contains(.command) {
+        if document.ui.snapping && !event.modifierFlags.contains(.command) {
             let candidates =
                 project.tracks.flatMap(\.items).filter { $0.id != dragState.item.id }.flatMap {
                     [$0.at, $0.end]

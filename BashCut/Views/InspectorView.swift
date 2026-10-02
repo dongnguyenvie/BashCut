@@ -4,7 +4,7 @@ import SwiftUI
 struct InspectorView: View {
     @Bindable var document: ProjectDocument
     /// Tab title ("Video"); the document stores it lowercased so agents can set it with `ui view --inspector`.
-    private var tab: String { document.inspectorTab.capitalized }
+    private var tab: String { document.ui.inspectorTab.capitalized }
     var body: some View {
         VStack(spacing: 0) {
             HStack {
@@ -14,7 +14,7 @@ struct InspectorView: View {
             ScrollView(.horizontal) {
                 HStack(spacing: 4) {
                     ForEach(["Video", "Audio", "Text", "Color", "Speed"], id: \.self) { name in
-                        Button(LocalizedStringKey(name)) { document.inspectorTab = name.lowercased() }
+                        Button(LocalizedStringKey(name)) { document.ui.inspectorTab = name.lowercased() }
                             .buttonStyle(.borderless)
                             .foregroundStyle(tab == name ? .cyan : .secondary)
                     }

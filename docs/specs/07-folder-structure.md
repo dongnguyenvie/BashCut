@@ -80,7 +80,7 @@ bash-cut/
 │   │   ├── Storage/                  # AppSupportPaths, SettingsStore, RecentProjects
 │   │   ├── Services/AppServices.swift
 │   │   └── Diagnostics/              # Logger categories, signposts
-│   ├── Models/                       # Selection, Playhead, PanelState, LibraryTab, ExportJob…
+│   ├── Models/                       # Selection, Playhead, PanelState, ExportJob…
 │   ├── ViewModels/
 │   │   ├── EditorViewModel.swift     # (+Selection, +Playback, +Commands)
 │   │   ├── TimelineViewModel.swift   # (+Editing, +Snapping, +Zoom)

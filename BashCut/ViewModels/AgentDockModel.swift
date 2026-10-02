@@ -328,7 +328,7 @@ extension AgentDockModel {
             detachedWindow.makeKeyAndOrderFront(nil)
             return
         }
-        document.showAgentDock = false
+        document.ui.showAgentDock = false
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 480, height: 760),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
@@ -340,7 +340,7 @@ extension AgentDockModel {
         let delegate = AgentDockWindowDelegate { [weak self] in
             self?.detachedWindow = nil
             self?.detachedDelegate = nil
-            self?.document.showAgentDock = true
+            self?.document.ui.showAgentDock = true
         }
         detachedDelegate = delegate
         window.delegate = delegate
@@ -351,13 +351,13 @@ extension AgentDockModel {
 
     func attach() {
         guard let window = detachedWindow else {
-            document.showAgentDock = true
+            document.ui.showAgentDock = true
             return
         }
         detachedWindow = nil
         detachedDelegate = nil
         window.delegate = nil
         window.close()
-        document.showAgentDock = true
+        document.ui.showAgentDock = true
     }
 }

@@ -1,6 +1,7 @@
 import AVKit
 import AppKit
 import BashCutAutomation
+import BashCutDocument
 import BashCutProject
 import SwiftUI
 
@@ -20,7 +21,7 @@ struct EditorView: View {
                 HStack {
                     Text("The project changed on disk")
                     Spacer()
-                    Button("Show differences") { document.showExternalChanges = true }
+                    Button("Show differences") { document.ui.showExternalChanges = true }
                         .disabled(document.externalChanges == nil)
                     Button("Keep app version") { document.resolveConflict(loadDisk: false) }
                     Button("Load disk version") { document.resolveConflict(loadDisk: true) }
@@ -52,7 +53,7 @@ struct EditorView: View {
                         .help("Option-drag an edge to roll; Command-drag a clip to slip; Shift-Delete to lift.")
                         .frame(height: 300).disabled(document.busy)
                 }.frame(minWidth: 850)
-                if document.showAgentDock {
+                if document.ui.showAgentDock {
                     AgentDockView(model: document.agents).frame(minWidth: 330, idealWidth: 370, maxWidth: 500)
                 }
             }
@@ -71,7 +72,7 @@ struct EditorView: View {
                     }
                     Button("Cancel export", action: document.cancelExport)
                 } else if document.exportReport != nil {
-                    Button("Export report") { document.showExportReport = true }
+                    Button("Export report") { document.ui.showExportReport = true }
                 }
                 if document.busy {
                     ProgressView().controlSize(.small)
@@ -90,15 +91,15 @@ struct EditorView: View {
                     dismiss: { document.run(.dismissAgentChange) })
             }
         }
-        .sheet(isPresented: $document.showNewProject) { NewProjectView(document: document) }
-        .sheet(isPresented: $document.showExport) { ExportView(document: document) }
-        .sheet(isPresented: $document.showExportReport) {
+        .sheet(isPresented: Bindable(document.ui).showNewProject) { NewProjectView(document: document) }
+        .sheet(isPresented: Bindable(document.ui).showExport) { ExportView(document: document) }
+        .sheet(isPresented: Bindable(document.ui).showExportReport) {
             if let report = document.exportReport { ExportReportView(report: report, document: document) }
         }
         .sheet(item: $document.privilegedApproval) { prompt in
             PrivilegedApprovalView(prompt: prompt, resolve: document.resolvePrivilegedApproval)
         }
-        .sheet(isPresented: $document.showAgentChanges) {
+        .sheet(isPresented: Bindable(document.ui).showAgentChanges) {
             if let change = document.agentChange {
                 AgentChangesView(
                     change: change, canUndo: document.canUndoAgentChange,
@@ -107,40 +108,40 @@ struct EditorView: View {
                         document.selectedID = current.id
                         document.selectedTrackID = item.afterTrackID
                         document.seek(current.at)
-                        document.showAgentChanges = false
+                        document.ui.showAgentChanges = false
                     }, undo: document.undoAgentChange,
-                    done: { document.showAgentChanges = false })
+                    done: { document.ui.showAgentChanges = false })
             }
         }
-        .sheet(isPresented: $document.showExternalChanges) {
+        .sheet(isPresented: Bindable(document.ui).showExternalChanges) {
             if let changes = document.externalChanges {
                 ExternalChangesView(
                     changes: changes,
                     keepApp: { document.resolveConflict(loadDisk: false) },
                     loadDisk: { document.resolveConflict(loadDisk: true) },
-                    done: { document.showExternalChanges = false })
+                    done: { document.ui.showExternalChanges = false })
             }
         }
-        .sheet(isPresented: $document.showLegacyImportReport) {
+        .sheet(isPresented: Bindable(document.ui).showLegacyImportReport) {
             if let report = document.legacyImportReport {
                 LegacyEDLImportReportView(
-                    report: report, done: { document.showLegacyImportReport = false })
+                    report: report, done: { document.ui.showLegacyImportReport = false })
             }
         }
-        .sheet(isPresented: $document.showReview) { review }
-        .sheet(isPresented: $document.showHistory) { history }
-        .sheet(isPresented: $document.showPlugins) {
-            PluginManagerView(model: document.plugins, done: { document.showPlugins = false })
+        .sheet(isPresented: Bindable(document.ui).showReview) { review }
+        .sheet(isPresented: Bindable(document.ui).showHistory) { history }
+        .sheet(isPresented: Bindable(document.ui).showPlugins) {
+            PluginManagerView(model: document.plugins, done: { document.ui.showPlugins = false })
         }
-        .sheet(isPresented: $document.showSettings) {
-            SettingsView(model: document.agents, done: { document.showSettings = false })
+        .sheet(isPresented: Bindable(document.ui).showSettings) {
+            SettingsView(model: document.agents, done: { document.ui.showSettings = false })
         }
-        .sheet(isPresented: $document.showDoctor) {
+        .sheet(isPresented: Bindable(document.ui).showDoctor) {
             DoctorView(
                 model: document.doctor, refresh: runDoctor,
-                done: { document.showDoctor = false })
+                done: { document.ui.showDoctor = false })
         }
-        .onChange(of: document.showDoctor) { if document.showDoctor { runDoctor() } }
+        .onChange(of: document.ui.showDoctor) { if document.ui.showDoctor { runDoctor() } }
         .task {
             while !Task.isCancelled {
                 do { try await Task.sleep(for: .seconds(30)) } catch { return }
@@ -218,11 +219,11 @@ struct EditorView: View {
                         Text(LocalizedStringKey(tab.rawValue)).font(.system(size: 8))
                     }
                     .frame(width: 48, height: 42)
-                    .background(document.libraryTab == tab ? Color.cyan.opacity(0.12) : .clear)
+                    .background(document.ui.libraryTab == tab ? Color.cyan.opacity(0.12) : .clear)
                     .clipShape(RoundedRectangle(cornerRadius: 6))
                     // Plain buttons only hit-test drawn pixels; make the whole tile clickable.
                     .contentShape(RoundedRectangle(cornerRadius: 6))
-                }.buttonStyle(.plain).foregroundStyle(document.libraryTab == tab ? .cyan : .secondary)
+                }.buttonStyle(.plain).foregroundStyle(document.ui.libraryTab == tab ? .cyan : .secondary)
                     .help(LocalizedStringKey(tab.rawValue))
             }
             Spacer()
@@ -239,7 +240,7 @@ struct EditorView: View {
                         get: { document.showColorComparison },
                         set: { document.setColorComparison($0) })
                 ).toggleStyle(.button).font(.caption).disabled(document.project.duration == 0)
-                Toggle("Safe area", isOn: $document.showSafeArea).toggleStyle(.button).font(.caption)
+                Toggle("Safe area", isOn: Bindable(document.ui).showSafeArea).toggleStyle(.button).font(.caption)
             }.padding(8)
             ZStack {
                 Color.black
@@ -276,7 +277,7 @@ struct EditorView: View {
                             .foregroundStyle(.white).shadow(radius: 2)
                         }.allowsHitTesting(false)
                     }
-                    if document.showSafeArea {
+                    if document.ui.showSafeArea {
                         GeometryReader { geo in
                             let aspect = Double(document.project.width) / Double(document.project.height)
                             let height = min(geo.size.height, geo.size.width / aspect)
@@ -349,12 +350,12 @@ struct EditorView: View {
             }
             .help("Delete selected empty layer")
             .action(.deleteLayer, in: document)
-            Toggle("Snap", isOn: $document.snapping).toggleStyle(.button)
+            Toggle("Snap", isOn: Bindable(document.ui).snapping).toggleStyle(.button)
             Button("Sections") { document.run(.showSections) }
-                .popover(isPresented: $document.showSections) {
+                .popover(isPresented: Bindable(document.ui).showSections) {
                     SectionManagerView(
                         document: document, newLabel: $newSectionLabel,
-                        done: { document.showSections = false })
+                        done: { document.ui.showSections = false })
                 }
             Button {
                 document.run(.refreshWaveforms)
@@ -369,7 +370,7 @@ struct EditorView: View {
                     .help(document.waveforms.errors.values.sorted().joined(separator: "\n"))
             }
             Button("Ask agent") { document.run(.askAgent) }.shortcut(.askAgent)
-                .popover(isPresented: $document.showAsk) {
+                .popover(isPresented: Bindable(document.ui).showAsk) {
                     VStack(alignment: .leading) {
                         Text(document.selectedID ?? "Project").font(.caption)
                         TextField("What should the agent do?", text: $ask).frame(width: 300)
@@ -385,7 +386,7 @@ struct EditorView: View {
                 document.run(.zoomOut)
             } label: { Image(systemName: "minus.magnifyingglass") }
                 .buttonStyle(.borderless).help("Zoom timeline out (⌘-)").action(.zoomOut, in: document)
-            Slider(value: $document.timelineScale, in: ProjectDocument.timelineZoomRange).frame(width: 120)
+            Slider(value: Bindable(document.ui).timelineScale, in: EditorUIState.timelineZoomRange).frame(width: 120)
             Button {
                 document.run(.zoomIn)
             } label: { Image(systemName: "plus.magnifyingglass") }
@@ -398,9 +399,9 @@ struct EditorView: View {
             defer { sendingAsk = false }
             do {
                 let image = attachAskFrame ? try await document.captureAgentFrame() : nil
-                document.showAgentDock = true
+                document.ui.showAgentDock = true
                 document.agents.sendContext(ask, imageURL: image)
-                document.showAsk = false
+                document.ui.showAsk = false
             } catch { document.message = error.localizedDescription }
         }
     }
@@ -409,7 +410,7 @@ struct EditorView: View {
             HStack {
                 Text("Review").font(.title2)
                 Spacer()
-                Button("Done") { document.showReview = false }
+                Button("Done") { document.ui.showReview = false }
             }
             Text("Review checks the timeline. Loudness is measured during normalized export; silence analysis is not available yet.").font(
                 .caption
@@ -423,12 +424,12 @@ struct EditorView: View {
                     HStack {
                         Button("Jump") {
                             document.seek(issue.frame)
-                            document.showReview = false
+                            document.ui.showReview = false
                         }
                         Button("Ask agent to fix") {
-                            document.showAgentDock = true
+                            document.ui.showAgentDock = true
                             document.agents.sendContext("Fix this review issue: " + issue.detail)
-                            document.showReview = false
+                            document.ui.showReview = false
                         }.disabled(document.agents.current == nil && !document.agents.apiVisible)
                     }
                 }.padding(8).frame(maxWidth: .infinity, alignment: .leading).background(
@@ -442,7 +443,7 @@ struct EditorView: View {
             HStack {
                 Text("History").font(.title2)
                 Spacer()
-                Button("Done") { document.showHistory = false }
+                Button("Done") { document.ui.showHistory = false }
             }
             List(Array(document.history.undoEntries.enumerated()), id: \.offset) { _, entry in
                 HStack {
