@@ -1,6 +1,6 @@
 import AppKit
-import AVFoundation
 import BashCutPlugin
+import BashCutPlugins
 import Foundation
 import Observation
 
@@ -16,51 +16,8 @@ struct PluginProviderChoice: Identifiable, Equatable {
     var id: String { provider.id }
 }
 
-struct GeneratedPluginAsset: Sendable {
-    let url: URL
-    let pluginID: String
-    let pluginVersion: String
-    let providerID: String
-}
-
-struct GeneratedVoiceTake: Identifiable, Sendable {
-    let asset: GeneratedPluginAsset
-    let durationSeconds: Double
-    let score: Double
-    let scoreSource: String
-    var id: String { asset.url.path }
-}
-
-private struct VoiceSynthesisRequest {
-    let text: String
-    let language: String
-    let requested: Int
-    let takeOffset: Int
-    let outputRoot: URL
-}
-
-struct GeneratedPluginCaptions: Sendable {
-    let text: String
-    let pluginID: String
-    let pluginVersion: String
-    let providerID: String
-}
-
-struct GeneratedBeatGrid: Sendable {
-    let bpm: Double
-    let beatSeconds: [Double]
-    let pluginID: String
-    let pluginVersion: String
-    let providerID: String
-}
-
-struct GeneratedLoudnessMeasurement: Sendable {
-    let measurement: LoudnessMeasurement
-    let pluginID: String
-    let pluginVersion: String
-    let providerID: String
-}
-
+/// UI state for the plugin catalog. Capability calls go through `CapabilityService`, which the
+/// document and automation commands share; this model only tracks which capabilities are running.
 @MainActor @Observable final class PluginManagerModel {
     var plugins: [InstalledPlugin] = []
     var diagnostics: [String] = []
@@ -70,22 +27,14 @@ struct GeneratedLoudnessMeasurement: Sendable {
     var health: [String: PluginHealth] = [:]
     var checking: Set<String> = []
     var calling: Set<String> = []
+    @ObservationIgnored let service = CapabilityService()
     private var projectRoot: URL?
-    private let runner = PluginProcessRunner()
-    private let healthRunner = PluginProcessRunner(timeout: 15, maximumOutputBytes: 256 * 1024)
 
-    private var userRoot: URL {
-        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("BashCut/Plugins", isDirectory: true)
-    }
+    private var userRoot: URL { service.roots.user }
 
     func refresh(projectRoot: URL?) {
         self.projectRoot = projectRoot
-        var roots: [URL] = []
-        if let projectRoot { roots.append(projectRoot.appendingPathComponent(".bashcut/plugins")) }
-        roots.append(userRoot)
-        if let builtIn = Bundle.main.builtInPlugInsURL { roots.append(builtIn) }
-        let result = PluginCatalog.discover(in: roots)
+        let result = service.catalog(projectRoot: projectRoot)
         plugins = result.plugins
         diagnostics = result.diagnostics
         health = health.filter { id, _ in plugins.contains(where: { $0.id == id }) }
@@ -95,8 +44,7 @@ struct GeneratedLoudnessMeasurement: Sendable {
         guard !checking.contains(plugin.id) else { return }
         checking.insert(plugin.id)
         Task {
-            let result = await healthRunner.health(plugin: plugin)
-            health[plugin.id] = result
+            health[plugin.id] = await service.health(plugin)
             checking.remove(plugin.id)
         }
     }
@@ -113,229 +61,13 @@ struct GeneratedLoudnessMeasurement: Sendable {
         }
     }
 
-    func synthesizeVoice(
-        text: String, language: String, preferredProvider: String?, outputRoot: URL
-    ) async throws -> GeneratedPluginAsset {
-        try await synthesizeVoiceTakes(
-            text: text, language: language, count: 1,
-            preferredProvider: preferredProvider, outputRoot: outputRoot
-        )[0].asset
-    }
-
-    func synthesizeVoiceTakes(
-        text: String, language: String, count: Int = 3,
-        preferredProvider: String?, outputRoot: URL
-    ) async throws -> [GeneratedVoiceTake] {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { throw PluginError.invalid("Voiceover text is required") }
-        guard (1...8).contains(count) else { throw PluginError.invalid("Voice take count must be 1...8") }
-        let resolved = try await resolveProvider(
-            capability: "voice.synthesize", preferredProvider: preferredProvider)
-        calling.insert("voice.synthesize")
-        defer { calling.remove("voice.synthesize") }
-        var generated: [GeneratedVoiceTake] = []
-        do {
-            while generated.count < count {
-                let requested = count - generated.count
-                let takes = try await requestVoiceTakes(
-                    VoiceSynthesisRequest(
-                        text: trimmed, language: language, requested: requested,
-                        takeOffset: generated.count, outputRoot: outputRoot),
-                    resolved: resolved)
-                generated.append(contentsOf: takes.prefix(requested))
-            }
-            return generated
-        } catch {
-            discardVoiceTakes(generated)
-            throw error
+    /// Marks a capability busy for the UI while `body` runs. A capability runs one request at a time.
+    func running<T>(_ capability: String, _ body: () async throws -> T) async throws -> T {
+        guard calling.insert(capability).inserted else {
+            throw PluginError.invalid("\(capability) is already running")
         }
-    }
-
-    func discardVoiceTakes(_ takes: [GeneratedVoiceTake], keeping keptURL: URL? = nil) {
-        let kept = keptURL?.standardizedFileURL
-        let keptDirectory = kept?.deletingLastPathComponent()
-        for take in takes {
-            let url = take.asset.url.standardizedFileURL
-            if url != kept, url.deletingLastPathComponent() == keptDirectory {
-                try? FileManager.default.removeItem(at: url)
-            }
-        }
-        let directories = Set(takes.map { $0.asset.url.deletingLastPathComponent().standardizedFileURL })
-        for directory in directories where directory != keptDirectory {
-            try? FileManager.default.removeItem(at: directory)
-        }
-    }
-
-    func transcribe(
-        mediaURL: URL, language: String, preferredProvider: String?, outputRoot: URL
-    ) async throws -> GeneratedPluginCaptions {
-        guard FileManager.default.fileExists(atPath: mediaURL.path) else {
-            throw PluginError.invalid("Transcription source is unavailable")
-        }
-        let resolved = try await resolveProvider(
-            capability: "captions.transcribe", preferredProvider: preferredProvider)
-        let requestDirectory = try makeRequestDirectory(in: outputRoot)
-        var succeeded = false
-        defer { if !succeeded { try? FileManager.default.removeItem(at: requestDirectory) } }
-        calling.insert("captions.transcribe")
-        defer { calling.remove("captions.transcribe") }
-        let result = try await runner.call(
-            plugin: resolved.plugin, method: "captions.transcribe", provider: resolved.provider.id,
-            params: .object([
-                "language": .string(language), "mediaPath": .string(mediaURL.path),
-                "outputDirectory": .string(requestDirectory.path),
-            ]))
-        guard let path = result.object["srtPath"]?.string, !path.isEmpty else {
-            throw PluginError.invalid("Transcription plugin did not return srtPath")
-        }
-        let srt = try confinedOutput(path, in: requestDirectory, label: "Transcription plugin")
-        let handle = try FileHandle(forReadingFrom: srt)
-        defer { try? handle.close() }
-        let data = try handle.read(upToCount: 4 * 1024 * 1024 + 1) ?? Data()
-        guard data.count <= 4 * 1024 * 1024, let text = String(data: data, encoding: .utf8) else {
-            throw PluginError.invalid("Transcription output must be UTF-8 SRT no larger than 4 MiB")
-        }
-        succeeded = true
-        return GeneratedPluginCaptions(
-            text: text, pluginID: resolved.plugin.id,
-            pluginVersion: resolved.plugin.manifest.version, providerID: resolved.provider.id)
-    }
-
-    func detectBeats(
-        mediaURL: URL, preferredProvider: String?
-    ) async throws -> GeneratedBeatGrid {
-        guard FileManager.default.fileExists(atPath: mediaURL.path) else {
-            throw PluginError.invalid("Beat detection source is unavailable")
-        }
-        let resolved = try await resolveProvider(
-            capability: "audio.beats", preferredProvider: preferredProvider)
-        calling.insert("audio.beats")
-        defer { calling.remove("audio.beats") }
-        let result = try await runner.call(
-            plugin: resolved.plugin, method: "audio.beats", provider: resolved.provider.id,
-            params: .object(["mediaPath": .string(mediaURL.path)]))
-        let values = result.object["beatsSeconds"]?.array ?? []
-        let beats = values.compactMap(\.double)
-        guard let bpm = result.object["bpm"]?.double, bpm.isFinite, (20...400).contains(bpm),
-            !beats.isEmpty, beats.count == values.count, beats.count <= 100_000,
-            beats.allSatisfy({ $0.isFinite && $0 >= 0 }),
-            zip(beats, beats.dropFirst()).allSatisfy({ $0 < $1 })
-        else { throw PluginError.invalid("Beat plugin returned invalid bpm or beatsSeconds") }
-        return GeneratedBeatGrid(
-            bpm: bpm, beatSeconds: beats, pluginID: resolved.plugin.id,
-            pluginVersion: resolved.plugin.manifest.version, providerID: resolved.provider.id)
-    }
-
-    func analyzeLoudness(
-        mediaURL: URL, preferredProvider: String?
-    ) async throws -> GeneratedLoudnessMeasurement {
-        guard FileManager.default.fileExists(atPath: mediaURL.path) else {
-            throw PluginError.invalid("Loudness analysis source is unavailable")
-        }
-        let resolved = try await resolveProvider(
-            capability: "audio.loudness", preferredProvider: preferredProvider)
-        calling.insert("audio.loudness")
-        defer { calling.remove("audio.loudness") }
-        let result = try await runner.call(
-            plugin: resolved.plugin, method: "audio.loudness", provider: resolved.provider.id,
-            params: .object(["mediaPath": .string(mediaURL.path)]))
-        return GeneratedLoudnessMeasurement(
-            measurement: try LoudnessMeasurement(result: result), pluginID: resolved.plugin.id,
-            pluginVersion: resolved.plugin.manifest.version, providerID: resolved.provider.id)
-    }
-
-    private func resolveProvider(
-        capability: String, preferredProvider: String?
-    ) async throws -> ResolvedPluginProvider {
-        let candidates = plugins.filter { plugin in
-            (plugin.manifest.providers ?? []).contains { $0.capability == capability }
-        }
-        guard !candidates.isEmpty else {
-            throw PluginError.invalid("Install a plugin that provides \(capability)")
-        }
-        let runner = healthRunner
-        let checks = await withTaskGroup(
-            of: (String, PluginHealth).self, returning: [(String, PluginHealth)].self
-        ) { group in
-            for plugin in candidates {
-                group.addTask { (plugin.id, await runner.health(plugin: plugin)) }
-            }
-            var values: [(String, PluginHealth)] = []
-            for await value in group { values.append(value) }
-            return values
-        }
-        for (id, value) in checks { health[id] = value }
-        let available = Set(
-            candidates.filter { health[$0.id]?.state == .ready }
-                .flatMap { $0.manifest.providers ?? [] }.map(\.id))
-        guard let resolved = PluginProviderResolver.resolve(
-            capability: capability, projectPreference: preferredProvider,
-            userPreference: nil, plugins: candidates, availableProviderIDs: available)
-        else { throw PluginError.invalid("No healthy provider is available for \(capability)") }
-        return resolved
-    }
-
-    private func makeRequestDirectory(in outputRoot: URL) throws -> URL {
-        let directory = outputRoot.appendingPathComponent(UUID().uuidString, isDirectory: true)
-        try FileManager.default.createDirectory(
-            at: directory, withIntermediateDirectories: true,
-            attributes: [.posixPermissions: 0o700])
-        return directory
-    }
-
-    private func requestVoiceTakes(
-        _ request: VoiceSynthesisRequest, resolved: ResolvedPluginProvider
-    ) async throws -> [GeneratedVoiceTake] {
-        let requestDirectory = try makeRequestDirectory(in: request.outputRoot)
-        var succeeded = false
-        defer { if !succeeded { try? FileManager.default.removeItem(at: requestDirectory) } }
-        let result = try await runner.call(
-            plugin: resolved.plugin, method: "voice.synthesize", provider: resolved.provider.id,
-            params: .object([
-                "language": .string(request.language), "outputDirectory": .string(requestDirectory.path),
-                "takeCount": .integer(request.requested), "takeOffset": .integer(request.takeOffset),
-                "text": .string(request.text),
-            ]))
-        let specifications = try VoiceSynthesisResultParser.parse(result)
-        var takes: [GeneratedVoiceTake] = []
-        for specification in specifications {
-            let audio = try confinedOutput(
-                specification.audioPath, in: requestDirectory, label: "Voice plugin")
-            let asset = AVURLAsset(url: audio)
-            let duration = try await asset.load(.duration).seconds
-            guard duration.isFinite, duration > 0,
-                try await !asset.loadTracks(withMediaType: .audio).isEmpty
-            else { throw PluginError.invalid("Voice plugin output is not a valid audio file") }
-            let providedScore = specification.score
-            takes.append(
-                GeneratedVoiceTake(
-                    asset: GeneratedPluginAsset(
-                        url: audio, pluginID: resolved.plugin.id,
-                        pluginVersion: resolved.plugin.manifest.version,
-                        providerID: resolved.provider.id),
-                    durationSeconds: duration,
-                    score: providedScore ?? Self.paceScore(text: request.text, duration: duration),
-                    scoreSource: providedScore == nil ? "pace" : "provider"))
-        }
-        succeeded = true
-        return takes
-    }
-
-    private static func paceScore(text: String, duration: Double) -> Double {
-        let words = text.split(whereSeparator: { $0.isWhitespace }).count
-        let expected = max(1, Double(words) / 2.5)
-        return max(0, min(1, 1 - abs(duration - expected) / expected))
-    }
-
-    private func confinedOutput(_ path: String, in directory: URL, label: String) throws -> URL {
-        let candidate = path.hasPrefix("/")
-            ? URL(fileURLWithPath: path) : directory.appendingPathComponent(path)
-        let resolvedDirectory = directory.resolvingSymlinksInPath().standardizedFileURL
-        let resolved = candidate.resolvingSymlinksInPath().standardizedFileURL
-        guard resolved.path.hasPrefix(resolvedDirectory.path + "/"),
-            FileManager.default.fileExists(atPath: resolved.path)
-        else { throw PluginError.invalid("\(label) returned output outside its request directory") }
-        return resolved
+        defer { calling.remove(capability) }
+        return try await body()
     }
 
     func choosePlugin() {

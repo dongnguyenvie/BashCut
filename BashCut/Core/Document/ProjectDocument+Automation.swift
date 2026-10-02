@@ -7,6 +7,7 @@ extension ProjectDocument {
     func startAutomation() {
         registerReadCommands()
         registerCaptionCommands()
+        registerCapabilityCommands()
         registerEditCommands()
         registerPrivilegedCommands()
         registerUICommands()

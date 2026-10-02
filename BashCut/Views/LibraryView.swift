@@ -141,17 +141,10 @@ struct LibraryView: View {
     }
 
     private func detectBeats() {
-        guard let root = document.fileURL?.deletingLastPathComponent(),
-            let media = document.project.media.first(where: { $0.id == beatSource })
-        else { return }
         beatMessage = ""
         Task {
             do {
-                let generated = try await pluginManager.detectBeats(
-                    mediaURL: try MediaPathResolver.resolve(
-                        media.path, projectRoot: root, workspaceRoot: document.agents.workspace),
-                    preferredProvider: beatProvider.isEmpty ? nil : beatProvider)
-                try document.applyBeatGrid(generated, media: media)
+                try await document.detectBeats(mediaID: beatSource)
                 beatMessage = String(localized: "Beat grid updated")
             } catch { beatMessage = error.localizedDescription }
         }
@@ -230,19 +223,10 @@ struct LibraryView: View {
     }
 
     private func generateCaptions() {
-        guard let root = document.fileURL?.deletingLastPathComponent(),
-            let media = document.project.media.first(where: { $0.id == captionSource })
-        else { return }
         captionMessage = ""
         Task {
             do {
-                let generated = try await pluginManager.transcribe(
-                    mediaURL: try MediaPathResolver.resolve(
-                        media.path, projectRoot: root, workspaceRoot: document.agents.workspace),
-                    language: document.project.fields["contentLanguage"]?.string ?? "vi",
-                    preferredProvider: captionProvider.isEmpty ? nil : captionProvider,
-                    outputRoot: root.appendingPathComponent("subtitles/generated", isDirectory: true))
-                try document.importGeneratedCaptions(generated, replace: replaceGeneratedCaptions)
+                try await document.generateCaptions(mediaID: captionSource, replace: replaceGeneratedCaptions)
                 captionMessage = String(localized: "Captions generated")
             } catch { captionMessage = error.localizedDescription }
         }

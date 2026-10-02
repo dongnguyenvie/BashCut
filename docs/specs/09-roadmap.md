@@ -129,6 +129,17 @@ This milestone produces **the first vlog made entirely in the app**.
 - Structured chat mode.
 - Signing, notarization, DMG, Sparkle. Only needed if BashCut gets distributed.
 
+## Plugin platform (after the export queue)
+
+Follows `03-architecture.md` §5 "Plugin platform roadmap".
+
+- Done: `CapabilityService` shared by panels, CLI/MCP and export; `captions.generate`,
+  `beats.detect`, `voice.speak`, `plugins.list` and `jobs.status/cancel`.
+- Next: bundled native `audio.loudness` and `audio.beats` providers.
+- Then: API version window, provider availability states, enable/disable and Install/Enable prompts.
+- Then: optional long-lived `session` mode with progress and cancel, needed by Whisper/VieNeu wrappers.
+- Then: hash-pinned plugin trust and manifest-declared provider options.
+
 ## Reserved: Apply to DaVinci Resolve (no date)
 
 Built only when there is a real need, for example finishing a video in Resolve or handing it to

@@ -72,6 +72,19 @@ targets:
     dependencies:
       - package: BashCutCore
         product: BashCutProject
+  BashCutPlugins:
+    type: framework
+    platform: macOS
+    sources: [BashCut/Core/Plugins]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.bashcut.plugins
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - package: BashCutCore
+        product: BashCutProject
+      - package: BashCutCore
+        product: BashCutPlugin
   # The target name must differ from "BashCut" beyond case: on a case-insensitive disk both targets
   # would share one intermediates folder and leak compiler flags into each other.
   BashCutCLI:
@@ -103,7 +116,7 @@ targets:
     platform: macOS
     sources:
       - path: BashCut
-        excludes: [Core/Engine, Core/Storage, Core/Agent, Core/Automation, Info.plist, BashCut.entitlements, Resources/en.lproj, Resources/vi.lproj]
+        excludes: [Core/Engine, Core/Storage, Core/Agent, Core/Automation, Core/Plugins, Info.plist, BashCut.entitlements, Resources/en.lproj, Resources/vi.lproj]
       - path: BashCut/Resources/en.lproj/InfoPlist.strings
         buildPhase: resources
       - path: BashCut/Resources/vi.lproj/InfoPlist.strings
@@ -138,12 +151,16 @@ targets:
       - target: BashCutStorage
       - target: BashCutAgent
       - target: BashCutAutomation
+      - target: BashCutPlugins
       - package: BashCutCore
         product: BashCutProject
       - package: BashCutCore
         product: BashCutImport
       - package: BashCutCore
         product: BashCutInterchange
+      # Plugin types appear in app code directly; static products are not re-exported by frameworks.
+      - package: BashCutCore
+        product: BashCutPlugin
       # BashCutProject's public history API exposes Deque, so the app links it directly in Xcode.
       - package: Collections
         product: DequeModule
@@ -161,8 +178,11 @@ targets:
       - target: BashCutStorage
       - target: BashCutAgent
       - target: BashCutAutomation
+      - target: BashCutPlugins
       - package: BashCutCore
         product: BashCutProject
+      - package: BashCutCore
+        product: BashCutPlugin
       - package: Collections
         product: DequeModule
       - package: SnapshotTesting

@@ -3,6 +3,7 @@ import BashCutAutomation
 import BashCutEngine
 import BashCutInterchange
 import BashCutPlugin
+import BashCutPlugins
 import BashCutProject
 import BashCutStorage
 import Foundation
@@ -167,8 +168,8 @@ extension ProjectDocument {
             snapshot, to: temporary, preset: prepared.preset, progress: 0...0.42, session: session)
         if session == sessionID { message = String(localized: "Measuring loudness…") }
         let preferred = prepared.source.preferredProvider(for: "audio.loudness")
-        let measured = try await plugins.analyzeLoudness(
-            mediaURL: temporary, preferredProvider: preferred)
+        let measured = try await plugins.service.analyzeLoudness(
+            mediaURL: temporary, preferredProvider: preferred, projectRoot: prepared.root)
         let requestedCorrection = try LoudnessNormalizer.correction(
             measurement: measured.measurement, targetLUFS: prepared.source.targetLUFS)
         let currentMixGain = prepared.project.mixGainDb
@@ -187,8 +188,8 @@ extension ProjectDocument {
         let final: LoudnessMeasurement
         let verified: Bool
         do {
-            final = try await plugins.analyzeLoudness(
-                mediaURL: prepared.output, preferredProvider: preferred
+            final = try await plugins.service.analyzeLoudness(
+                mediaURL: prepared.output, preferredProvider: preferred, projectRoot: prepared.root
             ).measurement
             verified = true
         } catch {
@@ -229,11 +230,7 @@ extension ProjectDocument {
             }
             audio["measurementVerified"] = .bool(completed.verified)
             if let range = loudness?.loudnessRangeLU { audio["loudnessRangeLU"] = .number(range) }
-            audio["measuredBy"] = .object([
-                "plugin": .string(generated.pluginID),
-                "provider": .string(generated.providerID),
-                "version": .string(generated.pluginVersion),
-            ])
+            audio["measuredBy"] = .object(generated.provenance.json)
             apply(.setProjectProperties(patch: ["audio": .object(audio)]), label: "Normalize audio")
         }
         exportProgress = 1

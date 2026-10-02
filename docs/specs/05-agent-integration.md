@@ -110,6 +110,15 @@ app to resolve the same capability/provider used by the native panel. The app va
 and converts it to normal `EditOperation` values, so revision checks, audit, provenance, UI diffs
 and undo behavior remain identical.
 
+Implemented commands are `captions.generate` (media ID, optional replace), `beats.detect` (audio
+media ID already on the timeline) and `voice.speak` (text, 1–8 takes, optional start frame; the best
+take is inserted on the Voiceover track and the rest are deleted). Each accepts an optional
+`provider` that overrides the project preference for that request only. Because provider calls can
+take minutes, these edit-mode commands return a job ID at once; `jobs.status` reports `running`,
+`completed` (with the new revision), `failed` or `cancelled`, and `jobs.cancel` stops a running job.
+`plugins.list` exposes installed plugins, providers, project preferences and catalog diagnostics.
+Opening another project cancels and clears all jobs.
+
 Installing a plugin or running its dependency recipes stays an explicit native Plugins workflow;
 an agent may open or point to that workflow but cannot silently approve it. Provider credentials
 are not placed in the terminal environment or automation request. A future credential contract may

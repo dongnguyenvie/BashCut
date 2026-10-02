@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+- Route every plugin call through a shared `CapabilityService` module used by the Voice, Text and Audio panels, normalized export and automation, so provider resolution, health checks, output confinement and provenance are identical for users and agents.
+- Add authenticated `captions generate`, `beats detect` and `voice speak` CLI/MCP commands that run as cancellable background jobs and apply one undoable agent-attributed edit, plus `plugins list` and `jobs status/cancel` (22 MCP tools).
+- Use `grep` instead of ripgrep for `scripts/verify.sh` failure summaries, since ripgrep is not a required tool.
+
 - Persist the latest 20 export metric reports per project, restore the latest report after reopen and compare duration, size, cuts, captions, tagged speech coverage and LUFS with the previous export in UI and automation status.
 - Discover matching local Claude and Codex sessions without loading full histories, persist their IDs per canonical project and automatically bookmark newly launched terminal sessions.
 - Record voiceover directly from the macOS microphone as a project-local 48 kHz mono WAV, show elapsed time and input level, validate it and insert it undoably at the playhead.

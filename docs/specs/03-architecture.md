@@ -148,8 +148,14 @@ malformed manifests are isolated and reported without preventing the editor from
 The Plugins UI shows capabilities, dependency names, estimated downloads and exact commands before
 installation. Copying a plugin and running its dependency recipes requires explicit approval. No
 third-party Swift bundle is loaded into the app process. A crash therefore takes down only the
-provider process. Native feature panels use this resolver now; matching CLI/MCP commands must reuse
-the same capability contract as they are added.
+provider process.
+
+**One capability path.** `CapabilityService` (`BashCut/Core/Plugins`, the `BashCutPlugins` module)
+discovers the catalog, probes health, resolves the provider, runs the request and validates the
+result. Native panels, the automation commands (`captions.generate`, `beats.detect`,
+`voice.speak`) and normalized export all call it; no view model or command talks to a plugin process
+directly. The document then turns the validated result into one undoable `EditOperation` attributed
+to its author (user, Claude, Codex or model), so UI and agent requests produce identical edits.
 
 Feature code resolves a capability such as `voice.synthesize`; it never imports or names a vendor
 SDK. A plugin can declare several provider IDs for a capability. Resolution uses the project
@@ -169,9 +175,9 @@ confined to the per-request output directory and validated before insertion. See
 
 | Capability | Implemented consumer and validated result | Provider examples |
 |---|---|---|
-| `voice.synthesize` | Voice panel requests 1–8 takes, validates audio, scores missing provider scores by pacing and inserts one take with provenance | VieNeu-TTS wrapper, local native voice model, remote voice API |
-| `captions.transcribe` | Text panel accepts confined UTF-8 SRT up to 4 MiB and imports it as one undoable edit | WhisperKit wrapper, workspace whisper venv, remote transcription API |
-| `audio.beats` | Audio panel validates BPM and increasing source seconds, then maps them through trim/speed to integer timeline frames | workspace beat script, future vDSP detector |
+| `voice.synthesize` | Voice panel and `voice.speak` request 1–8 takes, validates audio, scores missing provider scores by pacing and inserts one take with provenance | VieNeu-TTS wrapper, local native voice model, remote voice API |
+| `captions.transcribe` | Text panel and `captions.generate` accept confined UTF-8 SRT up to 4 MiB and imports it as one undoable edit | WhisperKit wrapper, workspace whisper venv, remote transcription API |
+| `audio.beats` | Audio panel and `beats.detect` validate BPM and increasing source seconds, then maps them through trim/speed to integer timeline frames | workspace beat script, future vDSP detector |
 | `audio.loudness` | Export validates LUFS/true peak/LRA, performs target-LUFS gain with a −1 dBTP ceiling and verifies the final file | libebur128 wrapper, compatible analyzer |
 
 Direct voice recording, thumbnails, media metadata, waveforms, project editing, composition and
@@ -190,6 +196,27 @@ prevent the project from opening. Dependency probes and install recipes are stru
 plus argument arrays. The installer stages and validates a selected folder, displays every recipe,
 runs it only after approval, then publishes the plugin atomically into the user catalog. Signed
 remote catalogs and detailed per-capability permissions are not implemented yet.
+
+### Plugin platform roadmap
+
+The design keeps out-of-process plugins. BashCut providers (Python venvs, ML runtimes, remote SDKs)
+can crash or hang, and a crash in process would take down the editor, so every provider stays a child
+process. The platform grows in these steps:
+
+| Step | Pattern | BashCut design | Status |
+|---|---|---|---|
+| 1 | Factory + adapter between feature and plugin | `CapabilityService` shared by panels, CLI/MCP and export; provider-backed automation runs as background jobs | Implemented |
+| 2 | Common providers bundled with the app | Native Swift helper executables in `Contents/PlugIns/` for `audio.loudness` (EBU R128 with vDSP) and `audio.beats` (vDSP onset/tempo); VieNeu and Whisper wrappers stay user/project plugins | Planned |
+| 3 | Long-lived helper with handshake, request IDs and cancel | Optional `session` mode: version handshake, NDJSON requests with IDs, `progress` events, `cancel`, idle shutdown. One request per process stays the default | Planned |
+| 4 | API version window and availability reasons | `minApiVersion`/`maxApiVersion` with additive-only changes; provider state `notInstalled`, `disabled`, `outdated`, `failedToLoad`, `unhealthy`; registry of known providers so panels can offer Install/Enable; user enable/disable list | Planned |
+| 5 | Code-signature trust gate | Until the app is signed, pin SHA-256 hashes of `plugin.json` and the entrypoint at install approval and require re-approval when they change; add signature checks when distributed | Planned |
+| 6 | Plugin-supplied settings | Plugins cannot supply SwiftUI out of process, so manifests declare an `options` schema (string, enum, number, bool) that the app renders natively and stores per project or user | Planned |
+
+Candidate capabilities after these steps are `media.analyze` (measured silence and speech
+coverage), `audio.separate` (Demucs), `voice.enroll`, `media.transcode` (optional ffmpeg) and
+`interchange.export` (FCPXML, Resolve plans). Model API adapters, SRT and OTIO stay native: they are
+small, dependency free and part of the core contract. A signed remote catalog (PL-6) waits until
+BashCut is distributed.
 
 ## 6. Automation server
 

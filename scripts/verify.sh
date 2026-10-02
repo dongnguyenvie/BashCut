@@ -20,6 +20,6 @@ if run "$@" >"$log" 2>&1; then
     echo "PASS $mode — $log"
 else
     echo "FAIL $mode — $log"
-    rg -m 10 'error:|failed|Issue recorded' "$log" || tail -10 "$log"
+    grep -m 10 -E 'error:|failed|Issue recorded' "$log" || tail -10 "$log"
     exit 1
 fi

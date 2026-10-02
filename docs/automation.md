@@ -8,7 +8,7 @@ Use **Agent → + → Claude terminal / Codex terminal / Shell terminal**. Each 
 
 The ⌘K popover can attach the current viewer frame. BashCut renders a bounded PNG into `.bashcut/agent-context`, keeps the ten newest frames and passes its absolute path to local terminals. Model API mode sends the same pixels through the provider-native image payload for OpenAI Responses, compatible Chat Completions or Anthropic Messages; images are limited to 5 MB.
 
-The app also embeds `bashcut-mcp`, built with the official MCP Swift SDK. Each Claude/Codex launch receives a temporary stdio server definition that inherits only the live session environment; no MCP config or token is written into the project. Sixteen `bashcut_*` tools cover context, project, timeline, media, review, captions, UI, undo/redo and app-approved exports. They forward to the same Unix socket handlers as the CLI, so permissions, revision checks, audit and undo behavior are identical. The CLI remains available when a client changes its MCP configuration format.
+The app also embeds `bashcut-mcp`, built with the official MCP Swift SDK. Each Claude/Codex launch receives a temporary stdio server definition that inherits only the live session environment; no MCP config or token is written into the project. Twenty-two `bashcut_*` tools cover context, project, timeline, media, review, captions, UI, undo/redo, app-approved exports, plugin listing and provider-backed caption, beat and voice jobs. They forward to the same Unix socket handlers as the CLI, so permissions, revision checks, audit and undo behavior are identical. The CLI remains available when a client changes its MCP configuration format.
 
 The app adds its bundled CLI to PATH and supplies BASHCUT_SOCKET, BASHCUT_PROJECT and an in-memory BASHCUT_SESSION_TOKEN to each child process. Codex receives a named permission profile that allows its stable workspace plus the exact BashCut Unix socket; it does not receive a broad socket allowlist. Keep tokens out of scripts, logs and project files. Closing a tab revokes its token. Shell sessions are attributed to the user; Claude/Codex sessions have their own authors.
 
@@ -29,6 +29,12 @@ bashcut ui notify 'Finished checking the timeline'
 bashcut timeline apply /absolute/path/ops.json --base-rev 12 --label 'Trim opening'
 bashcut timeline undo --base-rev 13
 bashcut timeline redo --base-rev 14
+bashcut plugins list
+bashcut captions generate --media MEDIA_ID --replace
+bashcut beats detect --media AUDIO_MEDIA_ID
+bashcut voice speak 'Xin chào các bạn' --takes 3 --at-frame 120
+bashcut jobs status JOB_ID
+bashcut jobs cancel JOB_ID
 ```
 
 Read/UI commands are available to local processes under the same OS account. Edit commands require a live session token and base revision. The server rejects stale edits, file conflicts, busy operations and active timeline gestures. Retry after re-reading the timeline. Each apply is atomic and creates one undo step. Review currently checks timeline structure and tagged speech coverage; it does not measure audio loudness or silence.
@@ -38,6 +44,8 @@ Read/UI commands are available to local processes under the same OS account. Edi
 `export status` reports idle/running/completed state, progress and the most recent receipt (path, preset, duration, bytes, cuts, captions and companion-SRT state). Agents should poll it after an approved request. A normalized receipt also includes `lufs`, `truePeakDbTP`, `normalizationGainDb` and whether the final measurement was verified; non-normalized exports return `lufs: null`.
 
 `export otio --name timeline-v1` writes OpenTimelineIO JSON to the project `render/` directory after the same in-app approval used for privileged video exports. Use `--output-dir` to choose another folder. The exporter preserves integer-frame timing, source ranges and rates, layered overlaps, text generators, section markers, speed effects and BashCut metadata.
+
+`captions generate`, `beats detect` and `voice speak` need a live session token. They call the same `CapabilityService` as the Text, Audio and Voice panels, so provider resolution, health checks, output confinement and validation are identical. Each returns `{"job": ID, "state": "running"}` immediately; poll `jobs status ID` until it reports `completed` (with `rev`, plus `bpm`/`beats` or the inserted voice `item`, its score and all take scores), `failed` or `cancelled`. The result is one undoable edit attributed to the agent, with ◆ markers and the Undo toast. `--provider ID` overrides the project preference for one request. A capability that is already running (from the UI or another job) is rejected with a retry error. Opening another project cancels and clears all jobs. Installing plugins or running their dependency recipes is never available through automation.
 
 `ops.json` is an array (up to 1,000 operations):
 
@@ -64,7 +72,7 @@ Choose **Script** (Python/Shell) or **Timeline edit**, write a request, and choo
 
 Automated tests use fake model transports and temporary sockets, without paid API calls. Native Shell smoke tests verified CLI reads, authenticated caption edits, visible updates and one-step undo. A real authenticated Codex smoke test on GPT-5.6-Luna/low verified idle startup, context/timeline reads, an atomic caption edit through the allowlisted Unix socket, revision advancement, Show Changes and undo. Claude and remote model API end-to-end tasks remain unverified.
 
-The dock stores Claude and Codex resume IDs per project and can hand current context between providers. It discovers matching local session metadata in a bounded background scan and records newly launched terminal sessions automatically; manual IDs remain editable. Voice-enrollment approval flow and the remaining command catalog are still outstanding. Run one BashCut instance per socket.
+The dock stores Claude and Codex resume IDs per project and can hand current context between providers. It discovers matching local session metadata in a bounded background scan and records newly launched terminal sessions automatically; manual IDs remain editable. Voice-enrollment approval flow and the remaining command catalog are still outstanding. Provider-backed jobs are covered by service tests with fake plugins; an end-to-end agent run against a real provider is not yet verified. Run one BashCut instance per socket.
 
 Protocol references: [OpenAI text generation](https://developers.openai.com/api/docs/guides/text), [Claude CLI reference](https://code.claude.com/docs/en/cli-reference), [Codex CLI reference](https://developers.openai.com/codex/cli/reference), [Anthropic Messages](https://platform.claude.com/docs/en/api/messages/create).
 

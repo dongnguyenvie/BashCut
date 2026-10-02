@@ -46,6 +46,8 @@ public enum CommandCatalog {
         "export.start": .privileged, "export.otio": .privileged,
         "timeline.apply": .edit, "timeline.undo": .edit, "timeline.redo": .edit,
         "ui.select": .ui, "ui.seek": .ui, "ui.notify": .ui,
+        "plugins.list": .read, "jobs.status": .read, "jobs.cancel": .edit,
+        "captions.generate": .edit, "beats.detect": .edit, "voice.speak": .edit,
     ]
     public static let instructions = """
         You are inside BashCut, a native video editor. Prefer the bashcut_* MCP tools; the bashcut CLI on PATH is the fallback.
@@ -54,6 +56,11 @@ public enum CommandCatalog {
         Run `bashcut export status` to inspect the active or most recently completed export.
         Export with `bashcut export start --preset quick-draft --name draft --normalize-audio`; the app always asks the user first.
         Export interchange with `bashcut export otio --name timeline`; the app asks before writing.
+        Provider-backed commands run as background jobs through the same plugins as the app panels and return a job ID:
+        `bashcut captions generate --media MEDIA_ID [--replace]`, `bashcut beats detect --media AUDIO_MEDIA_ID`,
+        `bashcut voice speak "text" [--takes 3] [--at-frame N]` (inserts the best take on the Voiceover track).
+        Poll `bashcut jobs status JOB_ID`; the result is one undoable edit. `bashcut plugins list` shows providers;
+        add `--provider ID` to override the project preference for one request. Installing plugins is user-only.
         Use `bashcut timeline apply /absolute/path/ops.json --base-rev N --label "Describe the edit"`.
         One request is one atomic apply call. On staleRevision, re-read and retry. Changes appear in the UI and can be undone.
         ops.json is an array of objects. Supported operations:

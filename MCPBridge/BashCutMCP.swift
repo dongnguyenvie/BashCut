@@ -48,6 +48,23 @@ private let routes: [ToolRoute] = [
             "description": .string("Run optional two-pass LUFS normalization"),
         ]),
     ], required: ["preset", "name"])),
+    .init(name: "bashcut_plugins_list", method: "plugins.list", description: "List installed plugins, providers and project provider preferences.", schema: emptySchema),
+    .init(name: "bashcut_jobs_status", method: "jobs.status", description: "Read one provider-backed job, or all recent jobs when job is omitted.", schema: objectSchema(["job": stringProperty("Job ID")])),
+    .init(name: "bashcut_jobs_cancel", method: "jobs.cancel", description: "Cancel a running provider-backed job.", schema: objectSchema(["job": stringProperty("Job ID")], required: ["job"])),
+    .init(name: "bashcut_captions_generate", method: "captions.generate", description: "Start a background job that transcribes project media with the captions.transcribe provider and imports captions as one undoable edit.", schema: objectSchema([
+        "media": stringProperty("Project media ID"), "replace": .object(["type": .string("boolean")]),
+        "provider": stringProperty("Optional provider ID overriding the project preference"),
+    ], required: ["media"])),
+    .init(name: "bashcut_beats_detect", method: "beats.detect", description: "Start a background job that detects beats in audio media and sets the beat grid as one undoable edit.", schema: objectSchema([
+        "media": stringProperty("Audio media ID already placed on the timeline"),
+        "provider": stringProperty("Optional provider ID overriding the project preference"),
+    ], required: ["media"])),
+    .init(name: "bashcut_voice_speak", method: "voice.speak", description: "Start a background job that synthesizes voice takes and inserts the best take on the Voiceover track.", schema: objectSchema([
+        "text": stringProperty("Voiceover text in the project content language"),
+        "takes": .object(["type": .string("integer"), "minimum": .int(1), "maximum": .int(8)]),
+        "atFrame": integerProperty("Timeline frame; defaults to the playhead"),
+        "provider": stringProperty("Optional provider ID overriding the project preference"),
+    ], required: ["text"])),
     .init(name: "bashcut_export_otio", method: "export.otio", description: "Request an app-approved OpenTimelineIO export.", schema: objectSchema([
         "name": stringProperty("Output base name"), "directory": stringProperty("Optional output directory"),
     ], required: ["name"])),

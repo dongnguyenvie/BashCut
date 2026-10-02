@@ -4,17 +4,6 @@ import BashCutProject
 import UniformTypeIdentifiers
 
 extension ProjectDocument {
-    func importGeneratedCaptions(_ generated: GeneratedPluginCaptions, replace: Bool) throws {
-        let provenance: [String: JSONValue] = [
-            "plugin": .string(generated.pluginID), "provider": .string(generated.providerID),
-            "version": .string(generated.pluginVersion),
-        ]
-        apply(
-            try project.importingSubRip(
-                generated.text, replace: replace, provenance: provenance),
-            label: "Generate captions")
-    }
-
     func importCaptions(replace: Bool = false) {
         guard fileURL != nil else { return }
         let panel = NSOpenPanel()

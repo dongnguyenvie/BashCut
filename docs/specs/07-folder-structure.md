@@ -12,10 +12,10 @@ BashCut adds `Engine/`, `Tools/` and `Interchange`, and drops the parts that onl
 database drivers.
 
 The tree below is the **target** layout. The current code is flatter: `BashCut/Core/` contains
-only `Agent/`, `Automation/`, `Document/`, `Engine/` and `Storage/`, and plugin catalog
-roots, provider resolution and install approval live in
-`BashCut/ViewModels/PluginManagerModel.swift`. Split files into the target folders as each area
-grows. Do not create empty folders just to match this tree.
+`Agent/`, `Automation/`, `Document/`, `Engine/`, `Plugins/` and `Storage/`. `Core/Plugins`
+(`CapabilityService`, catalog roots and validated result types) is implemented; the plugin install
+flow and UI state remain in `BashCut/ViewModels/PluginManagerModel.swift`. Split files into the
+target folders as each area grows. Do not create empty folders just to match this tree.
 
 ```
 bash-cut/

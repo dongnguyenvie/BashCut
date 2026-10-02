@@ -88,35 +88,6 @@ extension ProjectDocument {
             label: "Freeze frame")
     }
 
-    func addGeneratedVoice(_ asset: GeneratedPluginAsset) async throws {
-        guard let root = fileURL?.deletingLastPathComponent() else {
-            throw ProjectError.invalid("Open a project before generating voiceover")
-        }
-        let mediaAsset = AVURLAsset(url: asset.url)
-        let duration = try await mediaAsset.load(.duration)
-        let frames = Int((duration.seconds * project.fps.value).rounded(.down))
-        guard frames > 0, try await !mediaAsset.loadTracks(withMediaType: .audio).isEmpty else {
-            throw ProjectError.invalid("Voice plugin output is not a valid audio file")
-        }
-        let id = UUID().uuidString
-        let media = Media(fields: [
-            "id": .string(id), "path": .string(Self.relativePath(asset.url, root: root)),
-            "kind": .string("audio"), "fps": project.fps.json, "frames": .integer(frames),
-            "generatedBy": .object([
-                "plugin": .string(asset.pluginID), "provider": .string(asset.providerID),
-                "version": .string(asset.pluginVersion),
-            ]),
-        ])
-        let item = Item(media: id, at: playhead, duration: frames)
-        apply(
-            .group(
-                label: "Generate voiceover", author: .user,
-                ops: [.addMedia(media), .insert(track: "a2", item: item)]),
-            label: "Generate voiceover")
-        selectedID = item.id
-        selectedTrackID = "a2"
-    }
-
     func addRecordedVoice(_ url: URL) async throws {
         guard let root = fileURL?.deletingLastPathComponent() else {
             throw ProjectError.invalid("Open a project before recording voiceover")
@@ -150,30 +121,5 @@ extension ProjectDocument {
             label: "Record voiceover")
         selectedID = item.id
         selectedTrackID = "a2"
-    }
-
-    func applyBeatGrid(_ generated: GeneratedBeatGrid, media: Media) throws {
-        var frames = Set<Int>()
-        for item in project.tracks.flatMap(\.items) where item.mediaID == media.id {
-            let sourceStart = Double(item.sourceIn) / media.fps.value
-            let sourceDuration = Double(item.duration) / project.fps.value * item.speed
-            let sourceEnd = sourceStart + sourceDuration
-            for second in generated.beatSeconds where second >= sourceStart && second <= sourceEnd {
-                let offset = (second - sourceStart) / item.speed * project.fps.value
-                let frame = item.at + Int(offset.rounded())
-                if frame >= item.at && frame <= item.end { frames.insert(frame) }
-            }
-        }
-        guard !frames.isEmpty else {
-            throw ProjectError.invalid("Insert the selected audio into the timeline before detecting beats")
-        }
-        apply(
-            .setBeatGrid(
-                media: media.id, bpm: generated.bpm, frames: frames.sorted(),
-                provenance: [
-                    "plugin": .string(generated.pluginID), "provider": .string(generated.providerID),
-                    "version": .string(generated.pluginVersion),
-                ]),
-            label: "Detect beats")
     }
 }

@@ -1,4 +1,5 @@
 import AVFoundation
+import BashCutPlugins
 import SwiftUI
 
 struct VoiceLibraryView: View {
@@ -86,9 +87,7 @@ struct VoiceLibraryView: View {
         }
     }
 
-    private var bestTakeID: String? {
-        takes.max { lhs, rhs in lhs.score == rhs.score ? lhs.id > rhs.id : lhs.score < rhs.score }?.id
-    }
+    private var bestTakeID: String? { takes.best?.id }
 
     private var recordingControls: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -121,14 +120,10 @@ struct VoiceLibraryView: View {
     }
 
     private func generate() {
-        guard let root = document.fileURL?.deletingLastPathComponent() else { return }
         discardPending()
         Task {
             do {
-                takes = try await pluginManager.synthesizeVoiceTakes(
-                    text: text, language: document.project.fields["contentLanguage"]?.string ?? "vi",
-                    count: 3, preferredProvider: provider.isEmpty ? nil : provider,
-                    outputRoot: root.appendingPathComponent("voiceover/generated", isDirectory: true))
+                takes = try await document.generateVoiceTakes(text: text)
                 selectedTake = bestTakeID ?? takes.first?.id ?? ""
                 message = String(localized: "Choose a take to insert")
             } catch { message = error.localizedDescription }
@@ -145,8 +140,8 @@ struct VoiceLibraryView: View {
         preview.pause()
         Task {
             do {
-                try await document.addGeneratedVoice(take.asset)
-                pluginManager.discardVoiceTakes(takes, keeping: take.asset.url)
+                try await document.insertVoiceTake(take.asset)
+                CapabilityService.discardVoiceTakes(takes, keeping: take.asset.url)
                 takes = []
                 selectedTake = ""
                 message = String(localized: "Voiceover inserted")
@@ -175,7 +170,7 @@ struct VoiceLibraryView: View {
 
     private func discardPending() {
         preview.pause()
-        pluginManager.discardVoiceTakes(takes)
+        CapabilityService.discardVoiceTakes(takes)
         takes = []
         selectedTake = ""
         message = ""

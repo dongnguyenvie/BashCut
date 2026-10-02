@@ -65,6 +65,8 @@ final class ProjectDocument {
     private var comparisonSnapshot: CompositionSnapshot?
     private var rebuildTask: Task<Void, Never>?
     var exportTask: Task<Void, Never>?
+    var capabilityJobs: [CapabilityJob] = []
+    @ObservationIgnored var capabilityTasks: [String: Task<Void, Never>] = [:]
 
     init(engine: any RenderEngine = AVFoundationRenderEngine()) {
         self.engine = engine
@@ -205,6 +207,7 @@ final class ProjectDocument {
         lastAutosaveRevision = -1
         rebuildTask?.cancel()
         exportTask?.cancel()
+        cancelCapabilityJobs()
         exporting = false
         exportProgress = 0
         exportReport = nil
