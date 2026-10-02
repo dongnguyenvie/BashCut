@@ -102,6 +102,19 @@ explicit confirmation for destructive actions.
 The CLI's own tools (Bash, file edits) keep asking for permission inside the terminal, as usual.
 BashCut does not intercept them.
 
+### Provider-backed feature commands
+
+Agents never launch plugin entrypoints or dependency installers directly through BashCut's
+automation surface. A feature command such as captions, voice, beats or normalized export asks the
+app to resolve the same capability/provider used by the native panel. The app validates the result
+and converts it to normal `EditOperation` values, so revision checks, audit, provenance, UI diffs
+and undo behavior remain identical.
+
+Installing a plugin or running its dependency recipes stays an explicit native Plugins workflow;
+an agent may open or point to that workflow but cannot silently approve it. Provider credentials
+are not placed in the terminal environment or automation request. A future credential contract may
+use Keychain references, never secret values in project JSON.
+
 ## 3. Context
 
 ### Timeline text form

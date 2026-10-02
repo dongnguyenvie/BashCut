@@ -77,8 +77,9 @@ An app with its own engine removes those limits.
 - **Not a professional NLE replacement.** No multicam, no color nodes, no Fusion-style
   compositing, no complex keyframe graph editor.
 - **No cloud, accounts or sync.**
-- **No ML models bundled.** Voice cloning and stem separation call the workspace's existing
-  Python venvs (`tools/.venvs/*`).
+- **No ML models bundled.** Optional plugins may wrap workspace Python venvs, native model
+  runtimes or remote providers. Their models and libraries are installed only after the user
+  chooses that plugin and approves its dependency plan.
 - **No downloads without asking.** Music, SFX and stock images are never fetched without
   confirmation, which keeps the skills' "ask first" rule.
 - **Nothing under `tools/vendor/`.** The workspace's vendor folder is never read or modified.
@@ -94,6 +95,7 @@ An app with its own engine removes those limits.
 | Data | `project.bashcut.json` inside the workspace's `projects/<video-name>/` | `02-project-format.md` |
 | Agent | Embedded terminal running `claude` / `codex` in the workspace. The app exposes the same commands through MCP and a `bashcut` CLI | `05-agent-integration.md` |
 | Dependencies | Apple frameworks first, plus a short list of MIT/Apache packages | `04-dependencies.md` |
+| Optional features | Versioned out-of-process plugins selected by capability/provider; the project remains editable when a plugin is missing | `03-architecture.md` §5 |
 | DaVinci Resolve | **Not needed now.** The data model is designed so "Apply to Resolve" (through the workspace bridge) and OTIO export can be added later | `02-project-format.md` §5, `03-architecture.md` §7 |
 
 ## Principles
@@ -106,3 +108,4 @@ An app with its own engine removes those limits.
 | Verify with numbers | After export, show duration, cut count, LUFS, speech coverage and silences. This follows the workspace's "verify with numbers" rule. |
 | Edits are data, not pixels | Effects, captions and transitions are stored as parameters, never baked. This keeps undo, agent edits and future exporters (Resolve, OTIO) possible. |
 | Native | No web views. AVFoundation, Core Image, Metal, Core Text. |
+| Replaceable providers | Voice, captions and analysis store stable capability/provider IDs and provenance instead of vendor-specific timeline data. |

@@ -8,3 +8,4 @@ Configs/Secrets.xcconfig
 .env.*
 !.env.example
 Fixtures/media/
+memos/

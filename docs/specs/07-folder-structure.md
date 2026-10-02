@@ -11,6 +11,12 @@ The layout uses:
 BashCut adds `Engine/`, `Tools/` and `Interchange`, and drops the parts that only exist for
 database drivers.
 
+The tree below is the **target** layout. The current code is flatter: `BashCut/Core/` contains
+only `Agent/`, `Automation/`, `Document/`, `Engine/` and `Storage/`, and plugin catalog
+roots, provider resolution and install approval live in
+`BashCut/ViewModels/PluginManagerModel.swift`. Split files into the target folders as each area
+grows. Do not create empty folders just to match this tree.
+
 ```
 bash-cut/
 ├── AGENTS.md                         # instructions for Claude + Codex when DEVELOPING the app
@@ -55,8 +61,8 @@ bash-cut/
 │   │   │                             # ResolveExporter (reserved: plan → render artifacts → bridge_run.py)
 │   │   ├── Media/                    # MediaLibrary, Probe (AVAsset → ffprobe fallback),
 │   │   │                             # ThumbnailService, WaveformService, FrameGrabber, StaticClipDetector
-│   │   ├── Tools/                    # TranscribeTool (WhisperKit), LoudnessTool (libebur128),
-│   │   │                             # VoiceSpeakTool, VoiceEnrollTool, SeparateTool, BeatDetectTool, SurveyTool, FFmpeg
+│   │   ├── Plugins/                  # catalog roots, provider resolver, install approval, feature adapters
+│   │   ├── Tools/                    # native helpers only; optional engines stay behind Plugins/
 │   │   ├── Agent/
 │   │   │   ├── CLI/                  # AgentCLIDiscovery, CLIEnvironment (PATH)
 │   │   │   ├── Terminal/             # PTYSession (SwiftTerm), ContextPaster, QuickActions
@@ -107,9 +113,7 @@ bash-cut/
 │       │   ├── BashCutReview/        # review rules (hook, coverage, silence, VO overlap, framing…)
 │       │   ├── BashCutImport/        # edl.json → Project
 │       │   ├── BashCutInterchange/   # OTIO JSON writer, Resolve plan builder (pure, testable)
-│       │   ├── BashCutWire/          # automation JSON-RPC types, AgentEvent
-│       │   ├── BashCutProcess/       # supervised processes, PATH augmentation
-│       │   └── CEBUR128/             # vendored libebur128 (MIT) + module map
+│       │   └── BashCutPlugin/        # bashcut.plugin/1 manifest, discovery, process RPC, health
 │       └── Tests/<Target>Tests/
 │
 ├── BashCutTests/                     # mirrors BashCut/ (Core/Engine/…, ViewModels/…), Helpers/ (fakes)
@@ -138,10 +142,23 @@ bash-cut/
 
 | Target | Type | Notes |
 |---|---|---|
-| `BashCut` | application | macOS 14.0+; depends on `BashCutCore` products, SwiftTerm, WhisperKit, swift-async-algorithms |
+| `BashCut` | application | macOS 14.0+; depends on `BashCutCore` products and SwiftTerm; provider-specific ML/audio libraries are not linked |
 | `bashcut` | tool | CLI (swift-argument-parser + `BashCutWire`); copied to `Contents/MacOS` (`copy: destination: executables`) |
 | `bashcut-mcp` | tool | stdio MCP server (MCP Swift SDK + `BashCutWire`) |
 | `BashCutTests` | unit test | Swift Testing + swift-snapshot-testing |
 | `BashCutUITests` | UI test | XCTest |
 | `BashCutPerfTests` | unit test | run separately; not part of the default CI run |
 
+## Plugin bundle and catalog layout
+
+```text
+<project>/.bashcut/plugins/<plugin-id>/   # highest-priority project override
+~/Library/Application Support/BashCut/Plugins/<plugin-id>/
+BashCut.app/Contents/PlugIns/<plugin-id>/ # optional bundled providers
+└── plugin.json
+└── bin/provider                         # executable entrypoint; receives `rpc`
+```
+
+Generated request outputs live in project-scoped, provider-specific request directories and are
+validated before becoming project media. Plugin manifests and provider IDs are stable; model files,
+venvs and downloaded dependencies remain owned by the plugin rather than the timeline schema.

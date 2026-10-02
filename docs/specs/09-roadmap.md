@@ -92,7 +92,8 @@ before building the UI.
 This milestone produces **the first vlog made entirely in the app**.
 
 - Text with the Bold Outline and Cinematic Serif presets, inline editing, the TikTok safe area.
-- Auto Captions with WhisperKit (after checking Vietnamese accuracy) and `.srt` export.
+- Auto Captions through a `captions.transcribe` plugin (WhisperKit is one candidate after checking
+  Vietnamese accuracy) and `.srt` export.
 - Export: TikTok and YouTube presets, queue, post-export numbers.
 - Import from `edl.json`.
 
@@ -104,8 +105,12 @@ This milestone produces **the first vlog made entirely in the app**.
 ## M4: Audio and voice (≈ 2–3 weeks)
 
 - Music/SFX library with BPM, loudness and license badges.
-- Ducking, and −14 LUFS normalization with libebur128.
-- Voice tab: generate 3 takes, score them, insert into Voiceover. Clone New Voice wizard.
+- Ducking, and −14 LUFS normalization through an `audio.loudness` provider (libebur128 is one
+  possible implementation).
+- Plugin catalog/health/install approval and provider resolution for voice, captions, beats and
+  loudness.
+- Voice tab: generate 3 takes through `voice.synthesize`, score them, insert into Voiceover. Clone
+  New Voice wizard remains a separate provider capability.
 - Warning when the voiceover overlaps real speech.
 - Beat detection, beat snapping, automatic change framing.
 
@@ -150,8 +155,9 @@ Planned steps:
 | NLE scope creep | stick to P0/P1/P2; leave to the agent anything a skill already does |
 | Claude/Codex CLI flags change | all flags in `Agent/Providers/`; interactive TUI depends on few flags; the `bashcut` CLI works even if MCP breaks |
 | Agent and user editing at the same time | `rev` + `baseRev`, one undo step per request, wait for in-progress drags |
-| WhisperKit is weaker than mlx-whisper on noisy Vietnamese audio | compare in M3. If needed, `TranscribeTool` keeps a second implementation that calls the workspace's mlx-whisper |
-| ML venvs missing or broken | Doctor, features disable themselves with install hints; editing still works |
+| WhisperKit is weaker than mlx-whisper on noisy Vietnamese audio | compare providers in M3 and keep either engine replaceable behind `captions.transcribe` |
+| Plugin dependency or ML venv is missing/broken | health probes mark only that provider degraded; Plugins shows its reviewed install plan; editing still works |
+| A plugin crashes, hangs or emits unsafe paths | one bounded child per request, timeout/cancellation, filtered environment and output-directory confinement |
 | Vietnamese fonts and emoji in captions | Core Text plus diacritics in golden tests |
 | A future Resolve export is blocked by a data decision | Resolve-ready rules (`02-project-format.md` §5) are enforced in `.claude/rules/project-model.md` and reviewed on every schema change |
 
@@ -164,6 +170,7 @@ Planned steps:
 | Codex | On par with Claude from M2 (workspace gets `AGENTS.md` + `.agents/skills`) |
 | Repo | Separate repo in `bash-cut/` |
 | UI language | English by default, Vietnamese localization |
+| Optional engines | `bashcut.plugin/1` child processes with capability/provider resolution; no provider-specific SDK in the base app |
 | DaVinci Resolve | Not built now; data model stays Resolve-ready; "Apply to Resolve" reserved |
 
 ## Open questions
@@ -172,7 +179,7 @@ The defaults below apply unless Nolan says otherwise.
 
 1. **Keyframes and speed ramps.** Default: M6. The reference videos mostly use hard cuts and
    reframes.
-2. **WhisperKit as the in-app default.** Default: yes, pending the M3 accuracy check against
-   mlx-whisper.
+2. **Default transcription provider.** Default: prefer an installed local WhisperKit provider,
+   pending the M3 accuracy check against an mlx-whisper provider.
 3. **Distribution.** Default: Nolan's machine only, so no signing, notarization or Sparkle until
    that changes.

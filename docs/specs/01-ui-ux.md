@@ -263,9 +263,31 @@ This tab is the manual counterpart of the `nolan-voice-clone` skill.
   2. Optionally remove background music with Demucs.
   3. Name the voice, add tags and test one sentence. The result is written to
      `assets/giong/voices.json`.
-- If the workspace venv `tools/.venvs/vieneu` is missing, the tab shows the install command
-  (`bash tools/editor-skills/nolan-voice-clone/setup.sh --demucs`) and a button that runs it after
-  confirmation.
+- The tab resolves an installed `voice.synthesize` provider. If its model, venv or executable is
+  missing, the tab links to Plugins, where the dependency probe and exact install command are shown
+  before the user approves them. Switching providers does not change existing timeline items.
+
+### 3.8 Plugins 🧩
+
+Plugins contain optional, replaceable providers and run outside the editor process. The Plugins
+sheet lists the plugin name/version, capability IDs, provider choices, dependency health and
+manifest diagnostics. **Install Plugin…** accepts a local folder containing `plugin.json`, stages
+and validates it, then shows every dependency recipe before copying it into the user catalog.
+
+Discovery order is project (`.bashcut/plugins`), user (`Application Support/BashCut/Plugins`), then
+bundled. A project can select a provider per capability; unavailable preferences fall back to a
+healthy provider by priority. Missing plugins disable only their feature. The project, timeline,
+preview and normal export remain available.
+
+Implemented capability consumers are:
+
+- Voice: `voice.synthesize`;
+- Text / Auto Captions: `captions.transcribe`;
+- Audio / Detect Beats: `audio.beats`;
+- Export / Normalize Audio: `audio.loudness`.
+
+The app records plugin, provider and version provenance on generated assets or measurements. It
+does not expose arbitrary plugin output directly as timeline JSON.
 
 ## 4. Agent dock
 

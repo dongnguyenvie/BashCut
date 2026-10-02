@@ -22,7 +22,7 @@ only, or no command needed.
 | M-1 | Media library: grid, list, thumbnails, hover-scrub, specs | P0 | `media list` |
 | M-2 | Source viewer, I/O, insert (E) / overwrite (Q) | P0 | `timeline apply` (insert) |
 | M-3 | Background survey: thumbnails, static-clip detection, contact sheet | P1 | — (skill `nolan-footage-survey`) |
-| M-4 | Transcript (WhisperKit), speech badge, search by speech | P1 | `media search` |
+| M-4 | Transcript through a replaceable `captions.transcribe` provider, speech badge, search by speech | P1 | `media search` |
 | M-5 | Automatic proxies for heavy footage | P1 | — |
 | M-6 | Transcode unsupported formats with ffmpeg on import | P2 | — |
 
@@ -34,7 +34,7 @@ only, or no command needed.
 | T-2 | Split, ripple delete, trim, roll, slip, move, snapping | P0 | `timeline apply` |
 | T-3 | Clip roles speech / b-roll / under VO, color coding; Sections band | P0 | `setProperties`, `setMarkers` |
 | T-4 | Linked picture and sound; borrow picture (keep the old clip's sound) | P1 | `timeline apply` |
-| T-5 | Beat detection, Beat band, beat snapping | P1 | `beats detect` |
+| T-5 | Beat detection through `audio.beats`, Beat band, beat snapping | P1 | `beats detect` |
 | T-6 | Reframe (zoom/pan/tilt) by hand | P0 | `setProperties` |
 | T-7 | Automatic "change framing" | P1 | `setProperties` |
 | T-8 | Constant speed, freeze frame | P1 | `setProperties` |
@@ -50,7 +50,7 @@ only, or no command needed.
 | X-1 | Add text, inline edit, Inspector style (font, size, color, outline, shadow, position) | P0 | `timeline apply` |
 | X-2 | Presets Bold Outline and Cinematic Serif | P0 | — |
 | X-3 | Presets Keyword Sticker, Place Card, Hook Title, Chapter Card | P1 | — |
-| X-4 | Auto Captions (WhisperKit) | P1 | `captions generate` |
+| X-4 | Auto Captions through a replaceable `captions.transcribe` provider | P1 | `captions generate` |
 | X-5 | Long-line warning, TikTok safe area | P1 | `review run` |
 | X-6 | Text animation: pop, word-by-word, typewriter, highlight, counter | P2 | `setProperties` |
 | X-7 | `.srt` export | P1 | — |
@@ -63,8 +63,8 @@ only, or no command needed.
 | A-2 | Waveforms | P0 | — |
 | A-3 | Music/SFX library with BPM, loudness, license badges | P1 | `media list` |
 | A-4 | Automatic music ducking under speech | P1 | `setProperties` |
-| A-5 | −14 LUFS normalization on export (libebur128) | P1 | — |
-| A-6 | Voice tab: pick a voice, generate 3 takes, score them, insert into Voiceover | P1 | `voice speak` |
+| A-5 | −14 LUFS normalization through an `audio.loudness` provider | P1 | — |
+| A-6 | Voice tab: choose a `voice.synthesize` provider, generate 3 takes, score them, insert into Voiceover | P1 | `voice speak` |
 | A-7 | Clone New Voice wizard | P1 | `voice enroll` |
 | A-8 | Warning when the voiceover overlaps real speech (< 0.3 s) | P1 | `review run` |
 | A-9 | Voice/background separation (Demucs) | P2 | `audio separate` |
@@ -82,6 +82,17 @@ only, or no command needed.
 | C-1 | `.cube` LUTs (`quinn-matte`, `quinn-am`, `quinn-ky-uc`, import) | P1 | `setProperties` |
 | C-2 | Basic adjustments: exposure, contrast, saturation, temperature, tint | P1 | `setProperties` |
 | C-3 | Before/after split in the viewer | P1 | — |
+
+## Plugins and providers
+
+| # | Feature | Priority | Agent |
+|---|---|---|---|
+| PL-1 | Discover validated `bashcut.plugin/1` bundles from project, user and bundled catalogs | P1 | — |
+| PL-2 | Capability/provider resolution with undoable project preferences and healthy-priority fallback | P1 | `setProviderPreference` |
+| PL-3 | Plugins UI: local-folder install, exact dependency-plan approval, health checks and diagnostics | P1 | — |
+| PL-4 | Isolated one-request process RPC with time/output bounds, filtered environment and confined generated files | P1 | — |
+| PL-5 | Store plugin/provider/version provenance while keeping generated media usable after uninstall | P1 | `project get` |
+| PL-6 | Signed remote catalog and explicit credential/permission declarations | P2 | — |
 
 ## Agent
 
@@ -106,7 +117,7 @@ only, or no command needed.
 | E-3 | Post-export numbers (duration, cuts, LUFS, speech coverage), compare with previous | P1 | `export status` |
 | E-4 | OTIO export | P2 | `export otio` |
 | E-5 | **Apply to DaVinci Resolve** through the workspace bridge | **Reserved** | `resolve plan` / `resolve apply` |
-| D-1 | Doctor: workspace validity, `claude`, `codex`, ffmpeg (optional), workspace venvs, WhisperKit model | P0 | — |
+| D-1 | Doctor: workspace validity, `claude`, `codex`, optional tools, plugin catalog diagnostics and provider dependency health | P0 | — |
 | D-2 | Fix hints per missing item; button to run `scripts/setup.sh` (with confirmation) | P0 (hints) / P1 (button) | — |
 | S-1 | Settings: workspace, default agent, agent edit permission, export presets, language (English / Tiếng Việt) | P0 | — |
 

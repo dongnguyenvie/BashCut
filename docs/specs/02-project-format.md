@@ -18,7 +18,8 @@ projects/<video-name>/
 ├── khao-sat/                 # survey: thong_so.json, transcript.json, contact sheets (format unchanged)
 ├── subtitles/                # exported .srt
 ├── render/                   # exported videos (not in git)
-└── .bashcut/                 # cache: proxies, thumbnails, waveforms, autosave, undo journal (not in git)
+└── .bashcut/                 # cache/runtime data: autosave, history, waveforms, agent context
+    └── plugins/              # optional project-scoped provider overrides
 ```
 
 BashCut can also open a project outside the workspace. Features that depend on the workspace
@@ -68,6 +69,12 @@ file easy for agents to read.
   "transitions": [{"from": "c-03", "to": "c-04", "type": "whip", "dur": 12, "dir": "left"}],
   "markers": [{"at": 0, "kind": "section", "label": "hook"}],
   "beatGrid": {"media": "m-music-1", "bpm": 117.5, "phase": 0.0},
+  "providers": {
+    "voice.synthesize": "local.vieneu.default",
+    "captions.transcribe": "local.whisper.vi",
+    "audio.beats": "workspace.beatgrid",
+    "audio.loudness": "local.ebur128"
+  },
   "textStyles": {"bold-outline": {"font": "…", "size": 0.062, "fill": "#FFFFFF", "stroke": "#000000", "strokeWidth": 0.12}},
   "audio": {"targetLUFS": -14},
   "export": {"lastPreset": "tiktok-9x16"},
@@ -92,15 +99,25 @@ on the left half and gives the right half a new ID.
 **Unknown fields are preserved** on save. An agent or a future version can add fields without
 losing them.
 
+**Provider preferences are ordinary project data.** `providers` maps a stable capability to a
+stable provider ID and changes through an undoable `EditOperation`. It is a preference rather than
+a hard dependency: if that provider is unavailable, the resolver may use another healthy provider.
+Vendor SDK types, model paths and credentials never enter the project schema.
+
+**Generated results keep provenance, not a live plugin dependency.** Generated media and captions
+may contain `generatedBy: {plugin, provider, version}`; loudness measurements use the equivalent
+`audio.measuredBy`. The rendered WAV/SRT-derived items and measurements remain usable when the
+plugin is removed or replaced. Unknown future provenance fields round-trip unchanged.
+
 **Tracks are ordered, dynamic layers.** Their array order is the visual stacking order from back
 to front. Projects may add as many video/image, text and audio tracks as needed; `role` is a
 repeatable semantic hint rather than a fixed slot. Track IDs remain stable, and schema-v1 projects
 are upgraded in memory when opened.
 
 **`contentLanguage` is separate from the UI language.** The UI can be English while the footage
-and captions are Vietnamese. Transcription (WhisperKit language hint), text normalization for
-TTS, and caption line-length rules all read `contentLanguage`. New projects default to the value
-in Settings (`vi` on Nolan's machine).
+and captions are Vietnamese. Transcription providers receive it as a language hint; voice text
+normalization and caption line-length rules also read it. New projects default to the value in
+Settings (`vi` on Nolan's machine).
 
 **Clip role values** are `speech`, `broll` and `underVO`. The importer maps the workspace's
 `noi`, `broll` and `vo` to these.
@@ -170,5 +187,5 @@ OTIO export (`.otio` is JSON) follows the same rules and needs no extra data.
 | `CLAUDE.md`: add a "BashCut projects" section. Projects with `project.bashcut.json` are edited through `bashcut`/MCP and exported by BashCut. The "render only through Resolve" rule applies only to legacy pipeline projects (`edl.py` + `build.sh`) | So agents don't apply the wrong rule |
 | `.gitignore`: add `projects/*/.bashcut/` and `projects/*/media/*.mp4` | Cache and media |
 | `AGENTS.md` (symlink to `CLAUDE.md` or shared content), and `scripts/link-skills.sh` also links into `.agents/skills/` | Lets Codex use the `nolan-*` skills like Claude |
-| Add a `--json` flag to `doc.py`, `clone_voice.py` and `beatgrid.py` that prints machine-readable results to stdout. Text output stays unchanged without the flag | The app calls these scripts reliably (`03-architecture.md` §5) |
+| Wrap `doc.py`, `clone_voice.py`, `beatgrid.py` or other optional engines in `bashcut.plugin/1` entrypoints | The app calls one versioned JSON process protocol instead of coupling feature code to workspace scripts |
 | New skill `nolan-bashcut`: how to read and edit a BashCut project, the timeline text form, the `bashcut` commands | Agents learn the app without long prompts |

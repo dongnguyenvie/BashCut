@@ -79,6 +79,23 @@ still remains possible.
   frameworks, and the size.
 - Also add it to `docs/THIRD_PARTY.md`.
 
+**Adding or changing a plugin capability** requires all of the following:
+
+1. Keep the capability and provider IDs stable and vendor neutral.
+2. Validate every manifest field, dependency command, request and response at the boundary.
+3. Confine returned files to the request directory before importing them.
+4. Convert the result into normal validated `EditOperation` values; plugins never mutate the
+   project file themselves.
+5. Store plugin/provider/version provenance without making old media depend on the installed
+   provider.
+6. Add catalog, process, health and feature-adapter tests without invoking a network, real model or
+   user venv.
+7. Update `docs/plugin-api.md`, `03-architecture.md` and the relevant feature table.
+
+Simple presets, deterministic transforms, timeline rules and normal rendering stay native/data
+driven. Use a plugin for large, optional, fast-moving or vendor-specific dependencies rather than
+for every helper function.
+
 ## Tests
 
 **Frameworks:**
@@ -116,8 +133,10 @@ still remains possible.
 
 How this is enforced:
 
-- Tools are faked through `SupervisedProcessRunner`.
-- WhisperKit is faked behind a `Transcriber` protocol.
+- Plugin tests use temporary executable fixtures and JSON responses through
+  `PluginProcessRunner`; they never invoke an installed provider or dependency recipe.
+- Provider-specific engines are represented only by manifest/capability contracts in base-app
+  tests.
 - App Support and UserDefaults are redirected to a temporary directory.
 
 ## Build and verify

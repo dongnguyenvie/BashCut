@@ -13,8 +13,8 @@
 │           BashCutCompositor (Core Image + Metal)           (Unix socket, JSON-RPC)        │
 │           Exporter (AVAssetWriter + VideoToolbox)            ▲            ▲               │
 │   Media: thumbnails, waveforms, probe, proxies               │            │               │
-│   Tools: Transcribe (WhisperKit) · Loudness (libebur128)     │            │               │
-│          VoiceSpeak/Enroll · Separate · BeatDetect ──spawn──►│ workspace venvs            │
+│   Plugins: capability resolver ──bounded process RPC────────►│ optional provider processes │
+│            voice · captions · beats · loudness               │ models / venvs / APIs       │
 │   Interchange: TimelineExporter (OTIO now-ish, Resolve later)│            │               │
 │   Agent: PTY tabs (SwiftTerm) ──spawn──► claude / codex      │            │               │
 │   Review · Doctor · Process · Storage                        │            │               │
@@ -49,8 +49,8 @@ all take the same path. This is how "one action, two callers" is guaranteed.
   - Video is composited by a custom `AVVideoCompositing` compositor written with Core Image +
     Metal.
   - Audio goes through `AVMutableAudioMix` plus offline processing.
-- **Loudness is measured with libebur128.** It is a small MIT-licensed C library, vendored as a
-  SwiftPM C target (`04-dependencies.md`), so LUFS does not need ffmpeg.
+- **Loudness is measured by an optional `audio.loudness` provider.** A libebur128 wrapper is a
+  suitable implementation, but its library is not linked into the base app.
 - **ffmpeg is optional.** It is detected by Doctor and used only to probe or transcode media that
   AVFoundation can't open; the transcode goes to ProRes Proxy on import.
 - **`RenderEngine` is a protocol.** A second implementation (for example a headless ffmpeg batch
@@ -64,7 +64,7 @@ all take the same path. This is how "one action, two callers" is guaranteed.
 | `BashCutCompositor` | `AVVideoCompositing`. For each frame, in order: <br>1. source frame <br>2. transform (reframe, crop) <br>3. color (LUT + basic adjustments) <br>4. transition (whip/blink/zoom/dissolve… as Metal shaders or CI kernels) <br>5. Overlay items <br>6. text layers <br>7. output `CVPixelBuffer` |
 | `TextRenderer` | Renders text with Core Text from `textStyles` (outline, shadow, Quinn serif, keyword sticker). Images are cached by `(text, style, size)`. Text animations (pop, word-by-word, typewriter) are evaluated from time |
 | `AudioGraph` | Volume, fades, ducking. Speech regions (Speech clips + voiceover) become an envelope, which becomes volume ramps on the Music track. Stem separation uses Demucs output prepared ahead of time |
-| `Loudness` | Before export: <br>1. mix audio offline (`AVAssetReader` with the `audioMix`) <br>2. measure with libebur128 <br>3. apply master gain <br>4. write the file |
+| `Loudness` | Optional two-pass export: <br>1. render a temporary mix <br>2. resolve and call `audio.loudness` <br>3. apply true-peak-safe master gain <br>4. export and verify through the same provider |
 | `Exporter` | `AVAssetWriter` + VideoToolbox. Presets are listed in `01-ui-ux.md` §6. The queue is an `actor` that supports cancellation and reports progress |
 | `ProxyManager` | Heavy footage (4K, HEVC 10-bit) gets a proxy (ProRes Proxy or H.264 540p) in `.bashcut/proxies/`. Preview uses the proxy; export uses the original |
 
@@ -80,8 +80,8 @@ Code is organized by layer first, then by domain.
 
 | Layer | Contains | Rules |
 |---|---|---|
-| `Packages/BashCutCore` | `BashCutProject` (model, `EditOperation`, `apply`, validation, schema migration), `BashCutTimelineText` (agent text form), `BashCutReview` (review rules), `BashCutImport` (`edl.json` → project), `BashCutInterchange` (OTIO writer, Resolve plan builder), `BashCutWire` (automation JSON-RPC types), `BashCutProcess`, `CEBUR128` (vendored C) | Pure logic. No AppKit or AVFoundation. Tested with `swift test` |
-| `BashCut/Core/` | Document, Engine, Media, Tools, Agent, Automation, Review, Doctor, Storage, Process | I/O lives in `actor`s. Anything replaced in tests sits behind a protocol |
+| `Packages/BashCutCore` | `BashCutProject` (model, `EditOperation`, validation, history and review), `BashCutPlugin` (manifest, discovery, provider resolution and process RPC), `BashCutImport` and `BashCutInterchange` | Pure logic. No AppKit or AVFoundation. Tested with `swift test` |
+| `BashCut/Core/` | Document, Engine, Storage, Agent and Automation | MainActor integration stays in Document; replaceable engines and transports sit behind protocols |
 | `BashCut/Models/` | App-only types: UI state, selection, playhead | `Sendable` |
 | `BashCut/ViewModels/` | `@MainActor @Observable final class` | Split large ones into `Name+Feature.swift` |
 | `BashCut/Views/` | SwiftUI + AppKit (timeline, viewer) | Never call services directly |
@@ -148,46 +148,48 @@ malformed manifests are isolated and reported without preventing the editor from
 The Plugins UI shows capabilities, dependency names, estimated downloads and exact commands before
 installation. Copying a plugin and running its dependency recipes requires explicit approval. No
 third-party Swift bundle is loaded into the app process. A crash therefore takes down only the
-provider process, and Claude, Codex, model APIs and native UI can all call the same capability.
+provider process. Native feature panels use this resolver now; matching CLI/MCP commands must reuse
+the same capability contract as they are added.
 
 Feature code resolves a capability such as `voice.synthesize`; it never imports or names a vendor
 SDK. A plugin can declare several provider IDs for a capability. Resolution uses the project
-preference, then the user's default, then the highest-priority healthy provider. Preferences are
-ordinary undoable project data. Generated media stores the provider ID and version as provenance,
-but remains usable if that provider is later removed. Replacing a voice, transcription or beat
-provider therefore does not migrate the timeline.
+preference, then an optional user default, then the highest-priority healthy provider. The current
+feature panels persist the project preference; a Settings UI for user-wide provider defaults is
+still pending. Project preferences are ordinary undoable data. Generated media stores the provider
+ID and version as provenance, but remains usable if that provider is later removed. Replacing a
+voice, transcription, beat or loudness provider therefore does not migrate the timeline.
 
-**What runs natively in the app:**
+The implemented process protocol starts one child for one request as `entrypoint rpc`, writes one
+bounded JSON request to stdin and accepts one bounded JSON response on stdout. Calls default to a
+120-second timeout and support task cancellation. Runtime children receive only a filtered
+environment (`HOME`, `PATH`, `TMPDIR`, locale values and `BASHCUT_PLUGIN_*` metadata); automation
+tokens, model credentials and arbitrary `.env` values are not inherited. Returned media paths are
+confined to the per-request output directory and validated before insertion. See
+[`../plugin-api.md`](../plugin-api.md) for the manifest and wire contract.
 
-- Loudness: libebur128.
-- Survey: thumbnails, specs, static-clip detection.
-
-WhisperKit is distributed as an optional transcription plugin so its package and model are fetched
-only when that feature is installed.
-
-**What runs in the workspace's Python venvs:** voice clone/TTS, stem separation and beat detection.
-
-Each tool is an `actor` that runs its process through `SupervisedProcessRunner`. Progress is read
-from stderr. Results come from stdout when `--json` is available (see the suggestion in
-`02-project-format.md` §6), otherwise from the output files.
-
-| Tool | Implementation | Output |
+| Capability | Implemented consumer and validated result | Provider examples |
 |---|---|---|
-| `TranscribeTool` | **WhisperKit** (Core ML, on device). The model is downloaded on first use, after asking | `khao-sat/transcript.json` (word timestamps) |
-| `LoudnessTool` | **libebur128** on PCM read through `AVAssetReader` | integrated LUFS, true peak, LRA |
-| `SurveyTool` | Native: `AVAssetImageGenerator` thumbnails, frame-difference static detection. Workspace `survey.py` is the fallback | `khao-sat/thong_so.json` |
-| `VoiceSpeakTool` | `tools/.venvs/vieneu/bin/python tools/editor-skills/nolan-voice-clone/doc.py …` | 3 WAVs + match scores → `voiceover/` |
-| `VoiceEnrollTool` | `…/clone_voice.py …` | new entry in `assets/giong/voices.json` |
-| `SeparateTool` | `tools/.venvs/demucs` | voice/background stems → `.bashcut/stems/` |
-| `BeatDetectTool` | `tools/editor-skills/nolan-beat-cut/beatgrid.py`. A native vDSP version may replace it later | bpm, phase, beats; half-tempo warning |
+| `voice.synthesize` | Voice panel requests 1–8 takes, validates audio, scores missing provider scores by pacing and inserts one take with provenance | VieNeu-TTS wrapper, local native voice model, remote voice API |
+| `captions.transcribe` | Text panel accepts confined UTF-8 SRT up to 4 MiB and imports it as one undoable edit | WhisperKit wrapper, workspace whisper venv, remote transcription API |
+| `audio.beats` | Audio panel validates BPM and increasing source seconds, then maps them through trim/speed to integer timeline frames | workspace beat script, future vDSP detector |
+| `audio.loudness` | Export validates LUFS/true peak/LRA, performs target-LUFS gain with a −1 dBTP ceiling and verifies the final file | libebur128 wrapper, compatible analyzer |
 
-**Process environment.** PATH is rebuilt with
-`/usr/local/bin` placed first because python.org 3.12 lives there.
+Direct voice recording, thumbnails, media metadata, waveforms, project editing, composition and
+normal export stay native because they are core editor behavior or already covered well by Apple
+frameworks. Stem separation, voice enrollment, stock sources, richer analysis and extra
+interchange providers can adopt the same process boundary later.
 
-**Timeouts and cancel.** Every tool has a timeout and a cancel button. Cancel sends SIGTERM to the
-whole process group, then SIGKILL after 2 s.
+Plugins are discovered in this order, with earlier entries winning duplicate IDs:
 
-**Crash cleanup.** `StaleProcessReaper` cleans up leftover child processes at launch.
+1. `<project>/.bashcut/plugins/`;
+2. `~/Library/Application Support/BashCut/Plugins/`;
+3. the app bundle's built-in PlugIns directory.
+
+A malformed plugin or failed dependency probe becomes a diagnostic/degraded provider; it does not
+prevent the project from opening. Dependency probes and install recipes are structured executable
+plus argument arrays. The installer stages and validates a selected folder, displays every recipe,
+runs it only after approval, then publishes the plugin atomically into the user catalog. Signed
+remote catalogs and detailed per-capability permissions are not implemented yet.
 
 ## 6. Automation server
 
