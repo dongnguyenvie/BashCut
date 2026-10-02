@@ -68,8 +68,14 @@ struct EditorView: View {
                 Text(document.message).lineLimit(2).textSelection(.enabled)
                 Spacer()
                 if document.exporting {
+                    if let detail = document.exports.detail {
+                        Text(detail).lineLimit(1).foregroundStyle(.secondary)
+                    }
                     ProgressView(value: document.exportProgress).frame(width: 120)
                     Text(document.exportProgress, format: .percent.precision(.fractionLength(0)))
+                    if document.exports.queuedCount > 0 {
+                        Text("\(document.exports.queuedCount) queued").foregroundStyle(.secondary)
+                    }
                     Button("Cancel export", action: document.cancelExport)
                 } else if document.exportReport != nil {
                     Button("Export report") { document.showExportReport = true }
@@ -202,7 +208,7 @@ struct EditorView: View {
                 Label("Settings", systemImage: "gearshape")
             }
             Button("Export…", action: document.export).keyboardShortcut("e").disabled(
-                document.project.duration == 0 || document.exporting
+                document.project.duration == 0
             )
             .buttonStyle(.borderedProminent)
             Button {

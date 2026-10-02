@@ -511,6 +511,18 @@
         "vi": { "stringUnit": { "state": "translated", "value": "Media dùng chung cần cấu hình workspace." } }
       }
     },
+    "%lld queued": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "%lld queued" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "%lld đang chờ" } }
+      }
+    },
+    "Export queued": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Export queued" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đã xếp hàng xuất video" } }
+      }
+    },
     "Handoff to %@": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Handoff to %@" } },

@@ -5,6 +5,12 @@ public struct CompositionSnapshot: @unchecked Sendable {
     public let composition: AVComposition
     public let videoComposition: AVVideoComposition
     public let audioMix: AVAudioMix
+
+    public init(composition: AVComposition, videoComposition: AVVideoComposition, audioMix: AVAudioMix) {
+        self.composition = composition
+        self.videoComposition = videoComposition
+        self.audioMix = audioMix
+    }
 }
 
 public actor CompositionBuilder {

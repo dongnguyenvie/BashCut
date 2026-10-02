@@ -85,6 +85,21 @@ targets:
         product: BashCutProject
       - package: BashCutCore
         product: BashCutPlugin
+  BashCutDocument:
+    type: framework
+    platform: macOS
+    sources: [BashCut/Core/Services]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.bashcut.document
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - target: BashCutEngine
+      - target: BashCutPlugins
+      - package: BashCutCore
+        product: BashCutProject
+      - package: BashCutCore
+        product: BashCutPlugin
   # The target name must differ from "BashCut" beyond case: on a case-insensitive disk both targets
   # would share one intermediates folder and leak compiler flags into each other.
   BashCutCLI:
@@ -116,7 +131,7 @@ targets:
     platform: macOS
     sources:
       - path: BashCut
-        excludes: [Core/Engine, Core/Storage, Core/Agent, Core/Automation, Core/Plugins, Info.plist, BashCut.entitlements, Resources/en.lproj, Resources/vi.lproj]
+        excludes: [Core/Engine, Core/Storage, Core/Agent, Core/Automation, Core/Plugins, Core/Services, Info.plist, BashCut.entitlements, Resources/en.lproj, Resources/vi.lproj]
       - path: BashCut/Resources/en.lproj/InfoPlist.strings
         buildPhase: resources
       - path: BashCut/Resources/vi.lproj/InfoPlist.strings
@@ -152,6 +167,7 @@ targets:
       - target: BashCutAgent
       - target: BashCutAutomation
       - target: BashCutPlugins
+      - target: BashCutDocument
       - package: BashCutCore
         product: BashCutProject
       - package: BashCutCore
@@ -179,6 +195,7 @@ targets:
       - target: BashCutAgent
       - target: BashCutAutomation
       - target: BashCutPlugins
+      - target: BashCutDocument
       - package: BashCutCore
         product: BashCutProject
       - package: BashCutCore

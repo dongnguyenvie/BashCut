@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Queue exports in the background (E-1): starting an export while one renders queues it instead of refusing, in the app and through `export start`. Exports render one at a time from the project as it was when requested; the status bar shows the current step, progress and queued count, `export status` lists the queue with job IDs, and `jobs status`/`jobs cancel` now cover exports as well as plugin jobs.
+- Add the `BashCutDocument` library with `JobCenter` (one job list for capability calls and exports), `ExportRequest`, `ExportPipeline` and `ExportQueue`, covered by tests with a fake render engine.
 - Make agent terminals and model APIs pluggable: each terminal program is an `AgentProvider` (Claude, Codex, Shell) and each model API a `ModelAdapter` (Responses, Chat Completions, Anthropic), registered once; the dock menus, Settings picker, resume bookmarks (now keyed by provider ID, same file format) and session discovery come from the registries.
 - Launch terminals with an allowlisted environment instead of the whole app environment: locale, home, proxy and certificate variables plus each provider's own (`CLAUDE_*`, `CODEX_*`, `OPENAI_API_KEY`); Claude still never receives `ANTHROPIC_API_KEY`.
 - Store media picked from the linked `footage` folder (or any top-level folder link) as `footage/<file>` instead of a `../../…` path into the link's target, so projects keep working when moved with their footage link.

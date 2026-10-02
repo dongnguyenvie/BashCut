@@ -1,35 +1,10 @@
 import AVFoundation
 import BashCutAutomation
+import BashCutDocument
 import BashCutPlugin
 import BashCutPlugins
 import BashCutProject
 import Foundation
-
-/// A provider-backed automation request. Plugin calls can take minutes, so automation starts a job,
-/// returns its ID immediately and the agent polls `jobs.status`.
-struct CapabilityJob: Identifiable, Sendable {
-    enum State: String, Sendable { case running, completed, failed, cancelled }
-
-    let id: String
-    let method: String
-    let author: Author
-    let startedAt: Date
-    var state: State = .running
-    var result: JSONValue = .null
-    var error: String?
-    var finishedAt: Date?
-
-    var json: JSONValue {
-        let formatter = ISO8601DateFormatter()
-        return .object([
-            "id": .string(id), "method": .string(method), "author": .string(author.rawValue),
-            "state": .string(state.rawValue), "result": result,
-            "error": error.map(JSONValue.string) ?? .null,
-            "startedAt": .string(formatter.string(from: startedAt)),
-            "finishedAt": finishedAt.map { .string(formatter.string(from: $0)) } ?? .null,
-        ])
-    }
-}
 
 private let capabilityForMethod = [
     "captions.generate": "captions.transcribe", "beats.detect": "audio.beats", "voice.speak": "voice.synthesize",
@@ -167,18 +142,15 @@ extension ProjectDocument {
         handle("plugins.list") { document, _, _ in document.pluginCatalogJSON() }
         handle("jobs.status") { document, arguments, _ in
             if let id = arguments.optionalString("job") {
-                guard let job = document.capabilityJobs.first(where: { $0.id == id }) else {
-                    throw RPCFailure(-32602, "Unknown job")
-                }
+                guard let job = document.jobs.job(id) else { throw RPCFailure(-32602, "Unknown job") }
                 return job.json
             }
-            return .array(document.capabilityJobs.map(\.json))
+            return .array(document.jobs.jobs.map(\.json))
         }
         handleAuthored("jobs.cancel") { document, arguments, _ in
-            guard let task = document.capabilityTasks[try arguments.string("job")] else {
-                throw RPCFailure(-32602, "job must name a running job")
+            guard document.jobs.cancel(try arguments.string("job")) else {
+                throw RPCFailure(-32602, "job must name a queued or running job")
             }
-            task.cancel()
             return .bool(true)
         }
         handleAuthored("captions.generate") { document, arguments, author in
@@ -265,44 +237,14 @@ extension ProjectDocument {
         if let capability = capabilityForMethod[method], plugins.calling.contains(capability) {
             throw RPCFailure(-32003, "\(capability) is already running; retry later")
         }
-        let job = CapabilityJob(id: UUID().uuidString, method: method, author: author, startedAt: Date())
-        capabilityJobs.append(job)
-        let finished = capabilityJobs.indices.filter { capabilityJobs[$0].state != .running }
-        if capabilityJobs.count > 20 { capabilityJobs.remove(atOffsets: IndexSet(finished.prefix(capabilityJobs.count - 20))) }
-        let session = sessionID
-        capabilityTasks[job.id] = Task { [weak self] in
-            let outcome: Result<JSONValue, any Error>
-            do {
-                guard let self else { return }
-                outcome = .success(try await work(self))
-            } catch { outcome = .failure(error) }
-            guard let self, session == sessionID else { return }
-            finishCapabilityJob(job.id, outcome: outcome)
-        }
+        let id = jobs.start(method, author: author, work: { [weak self] _ in
+            guard let self else { throw CancellationError() }
+            return try await work(self)
+        }, finished: { [weak self] outcome in
+            guard case .failure(let error) = outcome, !JobCenter.isCancellation(error) else { return }
+            self?.message = method + ": " + error.localizedDescription
+        })
         message = author.rawValue.capitalized + ": " + method
-        return .object(["job": .string(job.id), "state": .string("running")])
-    }
-
-    private func finishCapabilityJob(_ id: String, outcome: Result<JSONValue, any Error>) {
-        capabilityTasks[id] = nil
-        guard let index = capabilityJobs.firstIndex(where: { $0.id == id }) else { return }
-        capabilityJobs[index].finishedAt = Date()
-        switch outcome {
-        case .success(let value):
-            capabilityJobs[index].state = .completed
-            capabilityJobs[index].result = value
-        case .failure(let error):
-            let cancelled = error is CancellationError || Task.isCancelled
-                || error.localizedDescription == "Plugin request was cancelled"
-            capabilityJobs[index].state = cancelled ? .cancelled : .failed
-            capabilityJobs[index].error = error.localizedDescription
-            message = capabilityJobs[index].method + ": " + error.localizedDescription
-        }
-    }
-
-    func cancelCapabilityJobs() {
-        for task in capabilityTasks.values { task.cancel() }
-        capabilityTasks.removeAll()
-        capabilityJobs.removeAll()
+        return .object(["job": .string(id), "state": .string("running")])
     }
 }

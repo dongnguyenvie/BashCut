@@ -1,4 +1,5 @@
 import BashCutAutomation
+import BashCutDocument
 import BashCutEngine
 import BashCutProject
 import Foundation
@@ -77,7 +78,8 @@ extension ProjectDocument {
     private func exportStatusJSON() -> JSONValue {
         var result: [String: JSONValue] = [
             "state": .string(exporting ? "running" : exportReport == nil ? "idle" : "completed"),
-            "progress": .number(exportProgress),
+            "progress": .number(exporting ? exportProgress : exportReport == nil ? 0 : 1),
+            "queue": .array(exports.active.map(\.json)),
         ]
         guard let report = exportReport else { return .object(result) }
         result["preset"] = .string(report.preset.rawValue)
@@ -151,7 +153,6 @@ extension ProjectDocument {
             }
             let (name, directory) = try document.exportDestination(arguments)
             guard document.project.duration > 0 else { throw RPCFailure(-32602, "The timeline is empty") }
-            guard !document.exporting else { throw RPCFailure(-32003, "An export is already running") }
             let includeSubRip = arguments.bool("includeSRT")
             let normalizeAudio = arguments.bool("normalizeAudio")
             let output = directory.appendingPathComponent(name).appendingPathExtension(preset.fileExtension)
@@ -166,7 +167,7 @@ extension ProjectDocument {
                 guard let document else { throw RPCFailure(-32000, "Editor closed") }
                 try document.startExportAuthorized(
                     name: name, preset: preset, directory: directory, includeSubRip: includeSubRip,
-                    normalizeAudio: normalizeAudio)
+                    normalizeAudio: normalizeAudio, author: author)
             }
             document.message = String(localized: "Waiting for approval: export.start")
             return .object([

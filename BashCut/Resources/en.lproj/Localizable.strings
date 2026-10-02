@@ -277,6 +277,8 @@
 "Reveal in Finder" = "Reveal in Finder";
 "Preparing export…" = "Preparing export…";
 "Export cancelled" = "Export cancelled";
+"%lld queued" = "%lld queued";
+"Export queued" = "Export queued";
 "Save the project before exporting" = "Save the project before exporting";
 "Use a file name without slashes or colons" = "Use a file name without slashes or colons";
 "Choose a new export name; an output already exists" = "Choose a new export name; an output already exists";

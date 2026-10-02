@@ -1,6 +1,7 @@
 import AVFoundation
 import AppKit
 import BashCutAutomation
+import BashCutDocument
 import BashCutEngine
 import BashCutImport
 import BashCutProject
@@ -22,8 +23,6 @@ final class ProjectDocument {
     var showNewProject = false
     var creatingProject = false
     var showExport = false
-    var exporting = false
-    var exportProgress = 0.0
     var exportReport: ExportReport?
     var showExportReport = false
     var privilegedApproval: PrivilegedApprovalPrompt?
@@ -65,9 +64,11 @@ final class ProjectDocument {
     @ObservationIgnored var snapshot: CompositionSnapshot?
     private var comparisonSnapshot: CompositionSnapshot?
     private var rebuildTask: Task<Void, Never>?
-    var exportTask: Task<Void, Never>?
-    var capabilityJobs: [CapabilityJob] = []
-    @ObservationIgnored var capabilityTasks: [String: Task<Void, Never>] = [:]
+    /// Capability calls and exports, listed by `jobs.status` and cancelled by `jobs.cancel`.
+    let jobs = JobCenter()
+    @ObservationIgnored lazy var exports = ExportQueue(jobs: jobs) { [unowned self] in
+        ExportPipeline(engine: engine, loudness: plugins.service)
+    }
     /// Token of the external-agent file; it outlives project switches, unlike in-app terminal tokens.
     @ObservationIgnored var externalAgentToken: String?
 
@@ -89,6 +90,8 @@ final class ProjectDocument {
     }
 
     var project: Project { history.project }
+    var exporting: Bool { exports.isRunning }
+    var exportProgress: Double { exports.progress }
     var selected: Item? { project.tracks.flatMap(\.items).first { $0.id == selectedID } }
     var selectedItemTrack: Track? {
         guard let selectedID else { return nil }
@@ -190,10 +193,8 @@ final class ProjectDocument {
         showLegacyImportReport = false
         lastAutosaveRevision = -1
         rebuildTask?.cancel()
-        exportTask?.cancel()
-        cancelCapabilityJobs()
-        exporting = false
-        exportProgress = 0
+        exports.cancelAll()
+        jobs.cancelAll()
         exportReport = nil
         showExportReport = false
         privilegedApproval = nil

@@ -117,7 +117,11 @@ take is inserted on the Voiceover track and the rest are deleted). Each accepts 
 take minutes, these edit-mode commands return a job ID at once; `jobs.status` reports `running`,
 `completed` (with the new revision), `failed` or `cancelled`, and `jobs.cancel` stops a running job.
 `plugins.list` exposes installed plugins, providers, project preferences and catalog diagnostics.
-Opening another project cancels and clears all jobs.
+Exports share the same job center: each approved `export.start` (and each export started in the UI)
+becomes an `export.start` job that waits as `queued` behind the running export, then runs; exports
+render one at a time in request order from the project as it was when requested. `export status`
+lists the queue with job IDs, and `jobs.cancel` stops a queued or running export. Opening another
+project cancels and clears all jobs.
 
 Installing a plugin or running its dependency recipes stays an explicit native Plugins workflow;
 an agent may open or point to that workflow but cannot silently approve it. Provider credentials

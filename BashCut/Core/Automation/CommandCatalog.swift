@@ -37,10 +37,12 @@ public enum CommandCatalog {
         CommandSpec("media.list", .read, "List project media."),
         CommandSpec("review.run", .read, "Run the structural timeline review (not measured audio loudness)."),
         CommandSpec("captions.export", .read, "Export captions as SubRip text."),
-        CommandSpec("export.status", .read, "Read the active export, or the most recent export receipt."),
+        CommandSpec(
+            "export.status", .read,
+            "Read the running export, the export queue (job IDs for jobs.cancel) and the most recent export receipt."),
         CommandSpec("plugins.list", .read, "List installed plugins, their providers and project provider preferences."),
         CommandSpec(
-            "jobs.status", .read, "Read one provider-backed job, or all recent jobs when job is omitted.",
+            "jobs.status", .read, "Read one job (plugin call or export), or all recent jobs when job is omitted.",
             parameters: [CommandParameter("job", .string, "Job ID", cli: .positional)]),
     ]
 
@@ -158,7 +160,7 @@ public enum CommandCatalog {
 
     private static let capabilitySpecs: [CommandSpec] = [
         CommandSpec(
-            "jobs.cancel", .edit, "Cancel a running provider-backed job.",
+            "jobs.cancel", .edit, "Cancel a queued or running job (plugin call or export).",
             parameters: [CommandParameter("job", .string, "Job ID", required: true, cli: .positional)]),
         CommandSpec(
             "captions.generate", .edit,
@@ -194,7 +196,8 @@ public enum CommandCatalog {
 
     private static let privilegedSpecs: [CommandSpec] = [
         CommandSpec(
-            "export.start", .privileged, "Request a background video export; the user approves it in the app first.",
+            "export.start", .privileged,
+            "Request a background video export; the user approves it in the app first. Approved exports queue behind a running one.",
             parameters: [
                 CommandParameter("preset", .string, "Export preset", required: true, choices: exportPresets,
                                  cli: .option("preset")),
