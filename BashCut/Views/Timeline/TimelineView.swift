@@ -69,7 +69,7 @@ struct TimelineView: NSViewRepresentable {
             header.layout = layout
         }
         header.selectedTrackID = document.selectedTrackID
-        header.currentTime = Timecode.string(document.playhead, fps: project.fps)
+        header.time.text = Timecode.string(document.playhead, fps: project.fps)
         if canvas.gesture == nil || !(canvas.isScrubbing) { canvas.placePlayhead(document.playhead) }
         if let anchor = document.ui.timelineZoomAnchor, anchor != canvas.lastZoomAnchor {
             canvas.lastZoomAnchor = anchor

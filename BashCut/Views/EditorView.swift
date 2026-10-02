@@ -294,31 +294,7 @@ struct EditorView: View {
                     }
                 }
             }
-            HStack(spacing: 8) {
-                Button {
-                    document.run(.previousFrame)
-                } label: {
-                    Image(systemName: "backward.end")
-                }
-                Button {
-                    document.run(.togglePlayback)
-                } label: {
-                    Image(systemName: !document.preview.isPlaying ? "play.fill" : "pause.fill")
-                }.shortcut(.togglePlayback)
-                Button {
-                    document.run(.nextFrame)
-                } label: {
-                    Image(systemName: "forward.end")
-                }
-                Slider(
-                    value: Binding(get: { Double(document.playhead) }, set: { document.preview.seek(Int($0)) }),
-                    in: 0...Double(max(1, document.project.duration)))
-                Text(
-                    String(
-                        format: "%.2f / %.2fs", Double(document.playhead) / document.project.fps.value,
-                        Double(document.project.duration) / document.project.fps.value)
-                ).font(.caption.monospacedDigit())
-            }.buttonStyle(.borderless).padding(10)
+            TransportBar(document: document)
         }
     }
     private var timelineToolbar: some View {

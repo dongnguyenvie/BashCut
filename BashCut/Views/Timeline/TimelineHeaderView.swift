@@ -9,7 +9,9 @@ final class TimelineHeaderView: NSView {
 
     var layout = TimelineLayout(project: Project(name: ""), scale: 1) { didSet { needsDisplay = true } }
     var selectedTrackID: String? { didSet { if selectedTrackID != oldValue { needsDisplay = true } } }
-    var currentTime = "" { didSet { if currentTime != oldValue { setNeedsDisplay(timeRect) } } }
+    /// The playhead time over the ruler. A subview of its own, so playback redraws only this label.
+    let time = TimelineTimeLabel(
+        frame: NSRect(x: 0, y: 0, width: TimelineLayout.leading - 1, height: TimelineLayout.rulerHeight))
     /// Vertical scroll offset of the timeline; content is drawn shifted up by it (bounds never move, so nothing
     /// is drawn outside the view).
     var scrollOffset = 0.0 {
@@ -22,7 +24,6 @@ final class TimelineHeaderView: NSView {
     var onSelect: ((String) -> Void)?
     var onToggle: ((String, Switch) -> Void)?
 
-    private let timeRect = NSRect(x: 0, y: 0, width: TimelineLayout.leading, height: TimelineLayout.rulerHeight)
     private static let buttonSize = 18.0
     private static var symbols: [String: NSImage] = [:]
 
@@ -30,6 +31,7 @@ final class TimelineHeaderView: NSView {
         super.init(frame: frame)
         wantsLayer = true
         layer?.masksToBounds = true
+        addSubview(time)
     }
     required init?(coder: NSCoder) { nil }
 
@@ -49,12 +51,6 @@ final class TimelineHeaderView: NSView {
         shift.translateX(by: 0, yBy: -scrollOffset)
         shift.concat()
         let area = visible.offsetBy(dx: 0, dy: scrollOffset)
-        (currentTime as NSString).draw(
-            at: NSPoint(x: 8, y: 5),
-            withAttributes: [
-                .font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .semibold),
-                .foregroundColor: NSColor.systemRed,
-            ])
         ("Sections" as NSString).draw(
             at: NSPoint(x: 8, y: TimelineLayout.sectionBand.lowerBound + 4),
             withAttributes: [.font: NSFont.systemFont(ofSize: 10), .foregroundColor: NSColor.gray])
@@ -148,5 +144,27 @@ final class TimelineHeaderView: NSView {
             .withSymbolConfiguration(configuration)
         symbols[key] = image
         return image
+    }
+}
+
+/// The current time drawn in red above the layer names.
+final class TimelineTimeLabel: NSView {
+    var text = "" { didSet { if text != oldValue { needsDisplay = true } } }
+    private static let attributes: [NSAttributedString.Key: Any] = [
+        .font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .semibold), .foregroundColor: NSColor.systemRed,
+    ]
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        wantsLayer = true
+    }
+    required init?(coder: NSCoder) { nil }
+
+    override var isFlipped: Bool { true }
+
+    override func draw(_ dirtyRect: NSRect) {
+        NSColor(calibratedWhite: 0.095, alpha: 1).setFill()
+        dirtyRect.intersection(bounds).fill()
+        (text as NSString).draw(at: NSPoint(x: 8, y: 5), withAttributes: Self.attributes)
     }
 }

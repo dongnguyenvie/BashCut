@@ -16,8 +16,9 @@ public final class EditorUIState {
     /// Timeline pixels per second.
     public private(set) var timelineScale = 50.0
     public var timelineReveal: TimelineReveal?
-    /// The point a zoom keeps in place; the timeline consumes each new request once.
-    public private(set) var timelineZoomAnchor: TimelineZoomAnchor?
+    /// The point a zoom keeps in place; the timeline consumes each new request once. Not observed: it is set
+    /// with `timelineScale`, whose change already updates the timeline.
+    @ObservationIgnored public private(set) var timelineZoomAnchor: TimelineZoomAnchor?
     /// Visible timeline width in points, reported by the timeline view; used to fit the timeline.
     @ObservationIgnored public var timelineViewportWidth = 900.0
     public var snapping = true

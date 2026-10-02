@@ -32,7 +32,8 @@ final class ProjectDocument {
     var agentChangedIDs = Set<String>()
     var agentChange: AgentChangeRecord?
     let doctor = DoctorModel()
-    var timelineGestureActive = false
+    /// A timeline drag is in progress; only guards autosave and agent edits, so views do not observe it.
+    @ObservationIgnored var timelineGestureActive = false
     /// Preferences and recent projects.
     let settings: SettingsModel
     /// Zoom, toggles, panels and open sheets.

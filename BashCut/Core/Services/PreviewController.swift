@@ -61,7 +61,7 @@ public final class PreviewController {
         self.workspace = workspace
         rebuildTask?.cancel()
         clearPlayers()
-        playhead = min(playhead, project.duration)
+        if playhead > project.duration { playhead = project.duration }
         guard let root, project.duration > 0 else { return }
         let compare = showColorComparison
         rebuildTask = Task { [engine] in
@@ -85,7 +85,8 @@ public final class PreviewController {
     /// Moves the playhead and shows that exact frame. While a seek is still decoding, further calls only
     /// update the target, so dragging the playhead never queues up stale frames.
     public func seek(_ frame: Int) {
-        playhead = min(max(0, frame), project.duration)
+        let target = min(max(0, frame), project.duration)
+        if target != playhead { playhead = target }
         chase(project.fps.time(playhead))
     }
 
@@ -134,7 +135,9 @@ public final class PreviewController {
     public func updatePlayhead() {
         if let error = player.currentItem?.error { onMessage?(error.localizedDescription) }
         guard player.rate != 0, player.currentTime().isNumeric else { return }
-        playhead = project.fps.frame(player.currentTime())
+        let frame = project.fps.frame(player.currentTime())
+        // Observers (timeline, transport bar) only hear about real moves.
+        if frame != playhead { playhead = frame }
         guard showColorComparison, comparisonPlayer.currentItem != nil else { return }
         let drift = abs(comparisonPlayer.currentTime().seconds - player.currentTime().seconds)
         if drift > 1 / project.fps.value {

@@ -9,7 +9,11 @@ import BashCutProject
 /// when its content changes (see `TimelineView`).
 @MainActor final class TimelineCanvas: NSView {
     let document: ProjectDocument
-    var project: Project
+    var project: Project {
+        didSet { mediaByID = Self.index(project.media) }
+    }
+    /// Project media by ID, so drawing each clip does not search the media list.
+    private(set) var mediaByID: [String: Media] = [:]
     var layout: TimelineLayout
     var waveforms: [String: AudioWaveform] = [:]
     var selectedID: String?
@@ -71,10 +75,11 @@ import BashCutProject
         self.document = document
         project = document.project
         layout = TimelineLayout(project: document.project, scale: 1)
+        mediaByID = Self.index(document.project.media)
         super.init(frame: .zero)
         wantsLayer = true
         for overlay in [ghost, dropGuide, snapGuide, playheadView, badge] as [NSView] { addSubview(overlay) }
-        filmstrips.onUpdate = { [weak self] in self?.needsDisplay = true }
+        filmstrips.onUpdate = { [weak self] in self?.redrawFilmstrips() }
         registerForDraggedTypes([.string, .fileURL])
     }
     required init?(coder: NSCoder) { nil }
@@ -83,6 +88,18 @@ import BashCutProject
     func placePlayhead(_ frame: Int) {
         playhead = frame
         playheadView.place(atX: layout.x(frame), height: bounds.height)
+    }
+
+    private static func index(_ media: [Media]) -> [String: Media] {
+        Dictionary(media.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+    }
+
+    /// New thumbnails landed: redraw the visible part of the layers that show a filmstrip, not the whole canvas.
+    func redrawFilmstrips() {
+        for row in layout.rows where row.track.kind == "video" && row.height >= TimelineLayout.mainRowHeight {
+            let rect = CGRect(x: 0, y: row.y, width: bounds.width, height: row.height).intersection(visibleRect)
+            if !rect.isEmpty { setNeedsDisplay(rect) }
+        }
     }
 
     func redrawItems(_ ids: [String?]) {
@@ -170,15 +187,15 @@ import BashCutProject
     }
 
     private func drawBeatGrid(_ dirtyRect: CGRect) {
-        NSColor.systemOrange.withAlphaComponent(0.28).setStroke()
+        let lines = NSBezierPath()
         for frame in project.beatFrames {
             let x = layout.x(frame)
             guard x >= dirtyRect.minX, x <= dirtyRect.maxX else { continue }
-            let line = NSBezierPath()
-            line.move(to: CGPoint(x: x, y: TimelineLayout.sectionBand.upperBound + 1))
-            line.line(to: CGPoint(x: x, y: bounds.height))
-            line.stroke()
+            lines.move(to: CGPoint(x: x, y: TimelineLayout.sectionBand.upperBound + 1))
+            lines.line(to: CGPoint(x: x, y: bounds.height))
         }
+        NSColor.systemOrange.withAlphaComponent(0.28).setStroke()
+        lines.stroke()
     }
 
     private func drawGaps(in row: TimelineLayout.Row, dirtyRect: CGRect) {

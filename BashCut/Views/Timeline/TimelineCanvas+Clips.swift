@@ -118,7 +118,7 @@ extension TimelineCanvas {
             ClipStyle.icon(name)?.drawFlipped(in: CGRect(x: x, y: y + 1, width: 10, height: 10))
             x += 12
         }
-        let filename = project.media.first { $0.id == item.mediaID }.map {
+        let filename = item.mediaID.flatMap { mediaByID[$0] }.map {
             URL(fileURLWithPath: $0.path).lastPathComponent
         } ?? item.id
         let duration = Timecode.duration(item.duration, fps: project.fps)
@@ -158,7 +158,7 @@ extension TimelineCanvas {
     }
 
     func drawWaveform(item: Item, in rect: CGRect, dirtyRect: CGRect) {
-        guard let media = project.media.first(where: { $0.id == item.mediaID }),
+        guard let media = item.mediaID.flatMap({ mediaByID[$0] }),
             let waveform = waveforms[media.id], waveform.hasAudio
         else { return }
         let visible = rect.intersection(dirtyRect).intersection(visibleRect)
@@ -205,7 +205,7 @@ extension TimelineCanvas {
 
     /// Thumbnails along a video clip, one per tile, from the preview proxy when there is one.
     private func drawFilmstrip(_ item: Item, in rect: CGRect, dirtyRect: CGRect, root: URL?, fade: Double) {
-        guard let root, let media = project.media.first(where: { $0.id == item.mediaID }),
+        guard let root, let media = item.mediaID.flatMap({ mediaByID[$0] }),
             let url = filmstripURL(media, root: root)
         else { return }
         let tileWidth = max(12, rect.height * Double(project.width) / Double(max(1, project.height)))
