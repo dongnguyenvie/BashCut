@@ -1,7 +1,9 @@
 import AppKit
+import BashCutAutomation
 import BashCutDocument
 import BashCutPlugin
 import BashCutPlugins
+import BashCutProject
 import Foundation
 import Observation
 
@@ -17,8 +19,64 @@ struct PluginProviderChoice: Identifiable, Equatable {
     var id: String { provider.id }
 }
 
+/// An action a plugin adds, with its parsed `when` condition and shortcut.
+struct ContributedAction: Identifiable {
+    let plugin: InstalledPlugin
+    let spec: PluginActionContribution
+    let when: PluginWhen?
+    /// nil when the plugin gave none or it collides with a built-in or earlier plugin shortcut.
+    let shortcut: UIShortcut?
+    var id: String { spec.id }
+    var title: String { spec.title(language: PluginText.language) }
+    var params: [PluginOption] { spec.params ?? [] }
+}
+
+/// One delivered hook, for the Plugins sheet and `plugins hooks`.
+struct PluginHookRun: Identifiable {
+    enum Outcome: String { case delivered, applied, proposed, ignored, failed, dropped }
+    let id = UUID()
+    let date: Date
+    let pluginID: String
+    let event: String
+    let outcome: Outcome
+    let detail: String
+
+    var json: JSONValue {
+        .object([
+            "date": .string(ISO8601DateFormatter().string(from: date)), "plugin": .string(pluginID),
+            "event": .string(event), "outcome": .string(outcome.rawValue), "detail": .string(detail),
+        ])
+    }
+}
+
+/// An edit a hook proposed, waiting for the user (or an agent) to apply or discard it.
+struct PluginProposal: Identifiable {
+    let id: String
+    let plugin: InstalledPlugin
+    let event: String
+    let proposal: PluginEditProposal
+    let createdAt: Date
+    var title: String { proposal.label ?? "\(plugin.manifest.name): \(event)" }
+
+    var json: JSONValue {
+        .object([
+            "id": .string(id), "plugin": .string(plugin.id), "event": .string(event), "label": .string(title),
+            "message": proposal.message.map(JSONValue.string) ?? .null,
+            "operations": .array(proposal.operations.map(\.json)),
+            "baseRev": proposal.baseRevision.map(JSONValue.integer) ?? .null,
+            "pluginData": proposal.pluginData ?? .null,
+        ])
+    }
+}
+
+enum PluginText {
+    /// The language plugin titles are shown in: the app's interface language.
+    static var language: String { Bundle.main.preferredLocalizations.first ?? "en" }
+}
+
 /// UI state for the plugin catalog. Capability calls go through `CapabilityService`, which the
-/// document and automation commands share; this model only tracks which capabilities are running.
+/// document and automation commands share; this model tracks the catalog, the user's trust and on/off
+/// decisions, the actions plugins contribute, hook activity and which capabilities are running.
 @MainActor @Observable final class PluginManagerModel {
     var plugins: [InstalledPlugin] = []
     var diagnostics: [String] = []
@@ -28,8 +86,24 @@ struct PluginProviderChoice: Identifiable, Equatable {
     var health: [String: PluginHealth] = [:]
     var checking: Set<String> = []
     var calling: Set<String> = []
-    @ObservationIgnored let service = CapabilityService()
+    /// Why each plugin may or may not run.
+    var availability: [String: PluginAvailability] = [:]
+    /// Actions of runnable plugins, in catalog order.
+    var actions: [ContributedAction] = []
+    /// Most recent hook deliveries, newest last.
+    var hookLog: [PluginHookRun] = []
+    var proposals: [PluginProposal] = []
+    /// The action whose parameter sheet is open.
+    var pendingAction: PendingPluginAction?
+    @ObservationIgnored let trust: PluginTrustStore
+    @ObservationIgnored let service: CapabilityService
     private var projectRoot: URL?
+    static let hookLogLimit = 200
+
+    init(trust: PluginTrustStore = .standard) {
+        self.trust = trust
+        service = CapabilityService(trust: trust)
+    }
 
     private var userRoot: URL { service.roots.user }
 
@@ -39,6 +113,85 @@ struct PluginProviderChoice: Identifiable, Equatable {
         plugins = result.plugins
         diagnostics = result.diagnostics
         health = health.filter { id, _ in plugins.contains(where: { $0.id == id }) }
+        availability = Dictionary(uniqueKeysWithValues: plugins.map { ($0.id, service.availability($0)) })
+        rebuildActions()
+    }
+
+    private func rebuildActions() {
+        var taken = Set(UIAction.allCases.flatMap(\.shortcuts))
+        var list: [ContributedAction] = []
+        for plugin in plugins where availability[plugin.id] == .ready {
+            for spec in plugin.manifest.actions {
+                var shortcut = spec.shortcut.flatMap(UIShortcut.init(parsing:))
+                if let candidate = shortcut {
+                    if taken.contains(candidate) {
+                        diagnostics.append("\(spec.id): shortcut \(candidate) is already used")
+                        shortcut = nil
+                    } else {
+                        taken.insert(candidate)
+                    }
+                }
+                list.append(ContributedAction(
+                    plugin: plugin, spec: spec, when: spec.when.flatMap { try? PluginWhen(parsing: $0) },
+                    shortcut: shortcut))
+            }
+        }
+        actions = list
+    }
+
+    func action(_ id: String) -> ContributedAction? { actions.first { $0.id == id } }
+
+    func actions(at placement: String) -> [ContributedAction] {
+        actions.filter { $0.spec.placements.contains(placement) }
+    }
+
+    /// Plugins whose hooks receive `event` now.
+    func subscribers(for event: PluginEvent) -> [(InstalledPlugin, PluginHookContribution)] {
+        plugins.compactMap { plugin in
+            guard availability[plugin.id] == .ready, trust.hooksEnabled(plugin.id),
+                let hook = plugin.manifest.hooks.first(where: { $0.event == event.rawValue })
+            else { return nil }
+            return (plugin, hook)
+        }
+    }
+
+    func plugin(_ id: String) -> InstalledPlugin? { plugins.first { $0.id == id } }
+
+    // MARK: User decisions
+
+    /// Pins the plugin's current files so it may run. Only the Plugins sheet calls this; no command does.
+    func trustPlugin(_ plugin: InstalledPlugin) {
+        do {
+            try trust.trust(plugin)
+            message = String(format: String(localized: "Trusted %@"), plugin.manifest.name)
+        } catch { message = error.localizedDescription }
+        refresh(projectRoot: projectRoot)
+    }
+
+    func revokeTrust(_ plugin: InstalledPlugin) {
+        do { try trust.revoke(plugin.id) } catch { message = error.localizedDescription }
+        stopSession(plugin.id)
+        refresh(projectRoot: projectRoot)
+    }
+
+    func setEnabled(_ plugin: InstalledPlugin, enabled: Bool? = nil, hooks: Bool? = nil) throws {
+        try trust.setEnabled(plugin, enabled: enabled, hooks: hooks)
+        if enabled == false { stopSession(plugin.id) }
+        refresh(projectRoot: projectRoot)
+    }
+
+    func isEnabled(_ plugin: InstalledPlugin) -> Bool { trust.grant(for: plugin.id)?.enabled ?? true }
+
+    private func stopSession(_ pluginID: String) {
+        Task { await PluginSessionTransport.shared.stop(pluginID: pluginID) }
+    }
+
+    // MARK: Hook log
+
+    func log(_ plugin: String, _ event: String, _ outcome: PluginHookRun.Outcome, _ detail: String = "") {
+        hookLog.append(PluginHookRun(date: Date(), pluginID: plugin, event: event, outcome: outcome, detail: detail))
+        if hookLog.count > Self.hookLogLimit { hookLog.removeFirst(hookLog.count - Self.hookLogLimit) }
+        DebugLog.write("plugin", "hook \(event) → \(plugin): \(outcome.rawValue) \(detail)")
     }
 
     func checkHealth(_ plugin: InstalledPlugin) {
@@ -123,6 +276,10 @@ struct PluginProviderChoice: Identifiable, Equatable {
                     }
                     try manager.moveItem(at: staged, to: destination)
                 }.value
+                // The user approved these exact files: pin them so later changes need approval again.
+                if let installed = PluginCatalog.discover(in: [installRoot]).plugins.first(where: { $0.id == manifest.id }) {
+                    try trust.trust(installed)
+                }
                 message = String(localized: "Plugin installed")
                 refresh(projectRoot: projectRoot)
             } catch { message = error.localizedDescription }

@@ -23,6 +23,11 @@ struct TimelineView: NSViewRepresentable {
     func makeNSView(context: Context) -> TimelineContainerView {
         let container = TimelineContainerView(canvas: TimelineCanvas(document: document))
         container.header.onSelect = { [document] id in document.selectedTrackID = id }
+        container.header.onMenu = { [document] _ in
+            let menu = NSMenu()
+            PluginMenus.append(to: menu, document, placement: "track.context")
+            return menu.items.isEmpty ? nil : menu
+        }
         container.header.onToggle = { [document] id, kind in
             guard let track = document.project.tracks.first(where: { $0.id == id }) else { return }
             do {

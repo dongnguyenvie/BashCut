@@ -70,7 +70,7 @@ extension CapabilityService {
         return output
     }
 
-    private static func makeRequestDirectory(in outputRoot: URL) throws -> URL {
+    static func makeRequestDirectory(in outputRoot: URL) throws -> URL {
         let directory = outputRoot.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(
             at: directory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])

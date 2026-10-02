@@ -70,6 +70,8 @@ public final class JobCenter {
     @ObservationIgnored private var cancelHandlers: [String: @MainActor (String) -> Void] = [:]
     /// Finished jobs kept for `jobs.status`.
     public let historyLimit: Int
+    /// Called once for every job that completes, fails or is cancelled while running (plugin hooks).
+    @ObservationIgnored public var onFinished: (@MainActor (Job) -> Void)?
 
     public init(historyLimit: Int = 20) { self.historyLimit = historyLimit }
 
@@ -160,7 +162,9 @@ public final class JobCenter {
             jobs[index].state = cancelled || Self.isCancellation(error) ? .cancelled : .failed
             jobs[index].error = error.localizedDescription
         }
+        let job = jobs[index]
         trimHistory()
+        onFinished?(job)
     }
 
     private func trimHistory() {

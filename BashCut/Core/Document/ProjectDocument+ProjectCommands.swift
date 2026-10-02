@@ -14,6 +14,7 @@ extension ProjectDocument {
         fileSync.accept(created.diskData)
         message = String(localized: "Project created")
         DebugLog.write("project", "created \(created.url.path) layers: \(layoutSummary())")
+        emitPluginEvent(.projectCreated, ["path": .string(created.url.path), "name": .string(created.project.name)])
         return created.url
     }
 

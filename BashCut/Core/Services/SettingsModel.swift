@@ -28,6 +28,13 @@ public final class SettingsModel {
     public var autoApprovePrivileged: Bool {
         didSet { defaults.set(autoApprovePrivileged, forKey: Keys.autoApprovePrivileged) }
     }
+    /// Deliver editor events to plugin hooks. On by default; each plugin also has its own hooks switch.
+    public var runPluginHooks: Bool { didSet { defaults.set(runPluginHooks, forKey: Keys.runPluginHooks) } }
+    /// Apply edits proposed by plugin hooks at once instead of asking. Off by default; like export approval,
+    /// only the user can change it in Settings.
+    public var autoApplyPluginHookEdits: Bool {
+        didSet { defaults.set(autoApplyPluginHookEdits, forKey: Keys.autoApplyPluginHookEdits) }
+    }
     /// `ExportPreset` raw value the Export sheet starts with.
     public var defaultExportPresetRaw: String {
         didSet { defaults.set(defaultExportPresetRaw, forKey: Keys.defaultExportPreset) }
@@ -55,6 +62,8 @@ public final class SettingsModel {
         static let allowExternalAgents = "allowExternalAgents"
         static let autoApprovePrivileged = "autoApprovePrivileged"
         static let defaultExportPreset = "defaultExportPreset"
+        static let runPluginHooks = "runPluginHooks"
+        static let autoApplyPluginHookEdits = "autoApplyPluginHookEdits"
         static let interfaceLanguage = "interfaceLanguage"
         static let appleLanguages = "AppleLanguages"
         static let recentProjects = "recentProjectPaths"
@@ -67,6 +76,8 @@ public final class SettingsModel {
         allowAgentEdits = defaults.object(forKey: Keys.allowAgentEdits) as? Bool ?? true
         allowExternalAgents = defaults.object(forKey: Keys.allowExternalAgents) as? Bool ?? true
         autoApprovePrivileged = defaults.bool(forKey: Keys.autoApprovePrivileged)
+        runPluginHooks = defaults.object(forKey: Keys.runPluginHooks) as? Bool ?? true
+        autoApplyPluginHookEdits = defaults.bool(forKey: Keys.autoApplyPluginHookEdits)
         defaultExportPresetRaw = defaults.string(forKey: Keys.defaultExportPreset) ?? ExportPreset.tiktok.rawValue
         interfaceLanguage = defaults.string(forKey: Keys.interfaceLanguage) ?? "system"
         recentProjects = defaults.stringArray(forKey: Keys.recentProjects)?.map { URL(fileURLWithPath: $0) } ?? []

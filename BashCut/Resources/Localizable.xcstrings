@@ -4016,6 +4016,228 @@
         "en": { "stringUnit": { "state": "translated", "value": "Delete style kit" } },
         "vi": { "stringUnit": { "state": "translated", "value": "Xóa bộ phong cách" } }
       }
+    },
+    "Plugins": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Plugins" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Plugin" } }
+      }
+    },
+    "Hook Activity": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Hook Activity" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Hoạt động hook" } }
+      }
+    },
+    "Install Plugin…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Install Plugin…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Cài plugin…" } }
+      }
+    },
+    "Optional tools run outside the editor. A plugin runs only after you trust its exact files; dependencies are installed only after you approve the exact plan.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Optional tools run outside the editor. A plugin runs only after you trust its exact files; dependencies are installed only after you approve the exact plan." } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Công cụ tùy chọn chạy bên ngoài trình dựng. Plugin chỉ chạy sau khi bạn tin cậy đúng các file của nó; dependency chỉ được cài sau khi bạn duyệt kế hoạch cụ thể." } }
+      }
+    },
+    "No plugins installed": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "No plugins installed" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Chưa cài plugin nào" } }
+      }
+    },
+    "No hook activity yet": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "No hook activity yet" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Chưa có hoạt động hook" } }
+      }
+    },
+    "Diagnostics (%lld)": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Diagnostics (%lld)" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Chẩn đoán (%lld)" } }
+      }
+    },
+    "Installing plugin dependencies…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Installing plugin dependencies…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đang cài dependency của plugin…" } }
+      }
+    },
+    "Trust": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Trust" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Tin cậy" } }
+      }
+    },
+    "Revoke Trust": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Revoke Trust" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Thu hồi tin cậy" } }
+      }
+    },
+    "Allow this plugin to run. Its manifest and entrypoint are pinned; a change asks again.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Allow this plugin to run. Its manifest and entrypoint are pinned; a change asks again." } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Cho phép plugin này chạy. Manifest và entrypoint được ghim; nếu thay đổi sẽ hỏi lại." } }
+      }
+    },
+    "Enabled": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Enabled" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Bật" } }
+      }
+    },
+    "Hooks": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Hooks" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Hook" } }
+      }
+    },
+    "Options…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Options…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Tùy chọn…" } }
+      }
+    },
+    "Hide Options": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Hide Options" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Ẩn tùy chọn" } }
+      }
+    },
+    "Check Health": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Check Health" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Kiểm tra" } }
+      }
+    },
+    "Checking…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Checking…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đang kiểm tra…" } }
+      }
+    },
+    "Ready": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Ready" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Sẵn sàng" } }
+      }
+    },
+    "Needs setup": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Needs setup" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Cần cài đặt" } }
+      }
+    },
+    "project": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "project" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "dự án" } }
+      }
+    },
+    "this Mac": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "this Mac" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "máy này" } }
+      }
+    },
+    "Run": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Run" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Chạy" } }
+      }
+    },
+    "Apply": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Apply" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Áp dụng" } }
+      }
+    },
+    "%@ proposes an edit": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "%@ proposes an edit" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "%@ đề xuất một chỉnh sửa" } }
+      }
+    },
+    "After %@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "After %@" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Sau %@" } }
+      }
+    },
+    "%lld more waiting": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "%lld more waiting" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Còn %lld đề xuất đang chờ" } }
+      }
+    },
+    "%lld plugin edits": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "%lld plugin edits" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "%lld chỉnh sửa từ plugin" } }
+      }
+    },
+    "Review edits plugin hooks proposed": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Review edits plugin hooks proposed" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Duyệt các chỉnh sửa do hook plugin đề xuất" } }
+      }
+    },
+    "Manage Plugins…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Manage Plugins…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Quản lý plugin…" } }
+      }
+    },
+    "Review Plugin Edits (%d)": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Review Plugin Edits (%d)" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Duyệt chỉnh sửa từ plugin (%d)" } }
+      }
+    },
+    "Trusted %@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Trusted %@" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đã tin cậy %@" } }
+      }
+    },
+    "%@ is not available now": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "%@ is not available now" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "%@ hiện không dùng được" } }
+      }
+    },
+    "Running %@…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Running %@…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đang chạy %@…" } }
+      }
+    },
+    "%@ proposes an edit: %@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "%@ proposes an edit: %@" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "%@ đề xuất chỉnh sửa: %@" } }
+      }
+    },
+    "Run plugin hooks": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Run plugin hooks" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Chạy hook của plugin" } }
+      }
+    },
+    "Apply plugin hook edits without review": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Apply plugin hook edits without review" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Áp dụng chỉnh sửa từ hook plugin mà không cần duyệt" } }
+      }
+    },
+    "Installing trusts these exact files. The plugin and listed dependency commands run with your user permissions; plugin edits are validated and undoable.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Installing trusts these exact files. The plugin and listed dependency commands run with your user permissions; plugin edits are validated and undoable." } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Cài đặt nghĩa là tin cậy đúng các file này. Plugin và các lệnh dependency chạy với quyền người dùng của bạn; chỉnh sửa của plugin được kiểm tra và có thể hoàn tác." } }
+      }
     }
   },
   "version": "1.0"

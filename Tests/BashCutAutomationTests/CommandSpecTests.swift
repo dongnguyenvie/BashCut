@@ -94,6 +94,22 @@ struct CommandSpecTests {
         #expect(saturation["maximum"] == .number(4))
     }
 
+    @Test("Plugin commands take JSON parameters on the CLI and publish an object schema to MCP")
+    func pluginCommands() throws {
+        let run = try CommandLineParser.parse(["plugins", "run", "example.toolkit.grade", "--params", #"{"mode":"vivid"}"#])
+        #expect(run.spec.execution == .job)
+        #expect(run.params == ["action": .string("example.toolkit.grade"), "params": .object(["mode": .string("vivid")])])
+        #expect(throws: CommandLineParser.Failure.self) {
+            try CommandLineParser.parse(["plugins", "run", "example.toolkit.grade", "--params", "{not json"])
+        }
+        let spec = try #require(CommandCatalog.spec(named: "plugins.run"))
+        #expect(spec.inputSchema.object["properties"]?.object["params"]?.object["type"] == .string("object"))
+        let set = try CommandLineParser.parse(["plugins", "set", "example.toolkit", "--hooks", "off"])
+        #expect(set.params == ["plugin": .string("example.toolkit"), "hooks": .bool(false)])
+        #expect(CommandCatalog.spec(named: "plugins.actions")?.mode == .read)
+        #expect(CommandCatalog.dialogs.contains("plugin-proposals"))
+    }
+
     @Test("The CLI parses positionals, options, flags, files and the global format from specs")
     func commandLine() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("bashcut-cli-" + UUID().uuidString)

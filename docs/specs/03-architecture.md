@@ -224,20 +224,23 @@ covered by Apple frameworks.
 ### Plugin platform roadmap
 
 Plugins stay out of process. Providers (Python venvs, ML runtimes, remote SDKs) can crash or hang, and a crash in
-process would take down the editor. The platform grows in these steps:
+process would take down the editor. The platform grows in these steps (contract details in
+[Writing plugins](../guides/plugins.md)):
 
 | Step | Pattern | BashCut design | Status |
 |---|---|---|---|
 | 1 | Factory + adapter between feature and plugin | `CapabilityService` with `CapabilityAdapter` and `PluginTransport`, shared by panels, CLI/MCP and export; provider-backed automation runs as background jobs | **Implemented** |
 | 2 | Common providers bundled with the app | Native Swift helper executables in `Contents/PlugIns/` for `audio.loudness` (EBU R128 with vDSP) and `audio.beats` (vDSP onset/tempo); VieNeu and Whisper wrappers stay user or project plugins | **Planned** |
-| 3 | Long-lived helper with handshake, request IDs and cancel | An optional `session` transport: version handshake, NDJSON requests with IDs, `progress` events, `cancel`, idle shutdown. One request per process stays the default | **Planned** |
-| 4 | API version window and availability reasons | `minApiVersion`/`maxApiVersion` with additive-only changes; provider states `notInstalled`, `disabled`, `outdated`, `failedToLoad`, `unhealthy`; a registry of known providers so panels can offer Install/Enable; a user enable/disable list | **Planned** |
-| 5 | Code-signature trust gate | Until the app is signed, pin SHA-256 hashes of `plugin.json` and the entrypoint at install approval and require re-approval when they change; add signature checks when distributed | **Planned** |
-| 6 | Plugin-supplied settings | Plugins cannot supply SwiftUI out of process, so manifests declare an `options` schema (string, enum, number, bool) that the app renders natively and stores per project or user | **Planned** |
+| 3 | Long-lived helper with handshake, request IDs and cancel | `PluginSessionTransport` for manifests with `"transport": "session"`: `hello` handshake, NDJSON requests matched by ID, `progress` lines reported on the job, `cancel`, `shutdown` after 90 s idle, restart after a crash and a one-minute refusal after 3 crashes. `PluginRouter` picks it or the one-shot runner per plugin; one request per process stays the default | **Implemented** |
+| 4 | API version window and availability reasons | Host API 1…2 with additive changes; `minApiVersion`/`maxApiVersion`; availability `ready`, `disabled`, `untrusted`, `changed`, `outdated` plus dependency health; a user enable/disable list (and a hooks switch) per plugin. Not done: a registry of known providers offering Install/Enable, and `notInstalled`/`failedToLoad` states (catalog diagnostics remain) | **Implemented** |
+| 5 | Code-signature trust gate | `PluginTrustStore` pins SHA-256 of `plugin.json` and the entrypoint when the user installs or trusts a plugin; a change marks it `changed` until trusted again; bundled plugins are trusted. Trusting and turning plugins on are user-only. Signature checks wait for distribution | **Implemented** |
+| 6 | Plugin-supplied settings | Manifest `options` (string, enum, number, integer, bool) rendered natively in the Plugins sheet, stored per user (`plugin-trust.json`) or per project (`pluginOptions`, undoable) and sent with each request | **Implemented** |
+| 7 | Contributions and hooks | `contributes.actions` in fixed placements (Plugins menu, toolbar, clip/track/timeline/media context menus, library panels, inspector tabs) with app-evaluated `when` conditions and native parameter sheets; `contributes.hooks` for editor events (notify-only, debounced, rate-limited). Results propose operations and a per-plugin `pluginData` entry that the document validates and commits as one undoable `plugin` edit; hook edits wait for review unless Settings applies them. Every action and setting has a `plugins …` command | **Implemented** |
 
 Candidate capabilities after these steps are `media.analyze` (measured silence and speech coverage),
 `audio.separate` (Demucs), `voice.enroll`, `media.transcode` (optional ffmpeg) and `interchange.export` (FCPXML,
-Resolve plans). A signed remote catalog and per-capability permissions wait until BashCut is distributed.
+Resolve plans). A signed remote catalog, per-capability permissions and plugin-owned panels wait until BashCut is
+distributed.
 
 ## 6. Automation server
 

@@ -13,11 +13,20 @@ public struct PluginManifest: Codable, Sendable, Equatable {
     public let capabilities: [String]
     public let providers: [PluginProvider]?
     public let dependencies: [PluginDependency]
+    /// Oldest host API the plugin works with; defaults to `apiVersion`.
+    public let minApiVersion: Int?
+    /// Newest host API the plugin was built for; nil means any later additive version.
+    public let maxApiVersion: Int?
+    public let transport: PluginTransportKind?
+    public let options: [PluginOption]?
+    public let contributes: PluginContributions?
 
     public init(
         id: String, name: String, version: String, apiVersion: Int = 1,
         entrypoint: String, capabilities: [String], providers: [PluginProvider]? = nil,
-        dependencies: [PluginDependency] = []
+        dependencies: [PluginDependency] = [], minApiVersion: Int? = nil, maxApiVersion: Int? = nil,
+        transport: PluginTransportKind? = nil, options: [PluginOption]? = nil,
+        contributes: PluginContributions? = nil
     ) {
         schema = Self.schema
         self.id = id
@@ -28,6 +37,45 @@ public struct PluginManifest: Codable, Sendable, Equatable {
         self.capabilities = capabilities
         self.providers = providers
         self.dependencies = dependencies
+        self.minApiVersion = minApiVersion
+        self.maxApiVersion = maxApiVersion
+        self.transport = transport
+        self.options = options
+        self.contributes = contributes
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        schema = try container.decode(String.self, forKey: .schema)
+        id = try container.decode(String.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        version = try container.decode(String.self, forKey: .version)
+        apiVersion = try container.decode(Int.self, forKey: .apiVersion)
+        entrypoint = try container.decode(String.self, forKey: .entrypoint)
+        capabilities = try container.decodeIfPresent([String].self, forKey: .capabilities) ?? []
+        providers = try container.decodeIfPresent([PluginProvider].self, forKey: .providers)
+        dependencies = try container.decodeIfPresent([PluginDependency].self, forKey: .dependencies) ?? []
+        minApiVersion = try container.decodeIfPresent(Int.self, forKey: .minApiVersion)
+        maxApiVersion = try container.decodeIfPresent(Int.self, forKey: .maxApiVersion)
+        transport = try container.decodeIfPresent(PluginTransportKind.self, forKey: .transport)
+        options = try container.decodeIfPresent([PluginOption].self, forKey: .options)
+        contributes = try container.decodeIfPresent(PluginContributions.self, forKey: .contributes)
+    }
+
+    public var transportKind: PluginTransportKind { transport ?? .oneshot }
+    public var actions: [PluginActionContribution] { contributes?.actions ?? [] }
+    public var hooks: [PluginHookContribution] { contributes?.hooks ?? [] }
+
+    /// Why this host cannot run the plugin, or nil when its API window includes the host.
+    public var incompatibility: String? {
+        let needed = minApiVersion ?? apiVersion
+        if needed > PluginAPI.current {
+            return "Needs plugin API \(needed); this BashCut provides \(PluginAPI.current). Update BashCut."
+        }
+        if let maxApiVersion, maxApiVersion < PluginAPI.minimum {
+            return "Built for plugin API \(maxApiVersion); this BashCut needs at least \(PluginAPI.minimum). Update the plugin."
+        }
+        return nil
     }
 
     public func validate() throws {
@@ -35,7 +83,9 @@ public struct PluginManifest: Codable, Sendable, Equatable {
             value.range(of: pattern, options: .regularExpression) != nil
         }
         guard schema == Self.schema else { throw PluginError.invalid("Unsupported plugin schema") }
-        guard apiVersion == 1 else { throw PluginError.invalid("Unsupported plugin API version") }
+        guard apiVersion >= 1, (minApiVersion ?? apiVersion) <= apiVersion,
+            (maxApiVersion ?? apiVersion) >= apiVersion
+        else { throw PluginError.invalid("Unsupported plugin API version window") }
         guard matches(id, "^[a-z0-9]+(?:[.-][a-z0-9]+)+$") else {
             throw PluginError.invalid("Plugin id must be reverse-domain style")
         }
@@ -43,7 +93,7 @@ public struct PluginManifest: Codable, Sendable, Equatable {
             matches(version, "^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$")
         else { throw PluginError.invalid("Plugin name and semantic version are required") }
         try Self.validateRelativePath(entrypoint, field: "entrypoint")
-        guard !capabilities.isEmpty, Set(capabilities).count == capabilities.count,
+        guard !capabilities.isEmpty || !(contributes?.isEmpty ?? true), Set(capabilities).count == capabilities.count,
             capabilities.allSatisfy({ matches($0, "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$") })
         else { throw PluginError.invalid("Capabilities must be unique stable identifiers") }
         guard Set(dependencies.map(\.id)).count == dependencies.count else {
@@ -54,6 +104,38 @@ public struct PluginManifest: Codable, Sendable, Equatable {
             declaredProviders.allSatisfy({ capabilities.contains($0.capability) })
         else { throw PluginError.invalid("Providers must be unique and declare a plugin capability") }
         for dependency in dependencies { try dependency.validate() }
+        try validateExtensions()
+    }
+
+    /// Options, actions and hooks (plugin API 2).
+    private func validateExtensions() throws {
+        let usesExtensions = options != nil || contributes != nil || transport == .session
+        guard !usesExtensions || apiVersion >= 2 else {
+            throw PluginError.invalid("options, contributes and the session transport need apiVersion 2")
+        }
+        let options = options ?? []
+        guard Set(options.map(\.id)).count == options.count, options.count <= 64 else {
+            throw PluginError.invalid("Option ids must be unique (at most 64)")
+        }
+        for option in options { try option.validate() }
+        guard Set(actions.map(\.id)).count == actions.count, actions.count <= 64 else {
+            throw PluginError.invalid("Action ids must be unique (at most 64)")
+        }
+        for action in actions { try action.validate(pluginID: id) }
+        guard Set(hooks.map(\.event)).count == hooks.count else {
+            throw PluginError.invalid("Each hook event may appear once")
+        }
+        for hook in hooks {
+            guard let event = hook.kind else {
+                throw PluginError.invalid("Unknown hook event \(hook.event)")
+            }
+            guard !event.isFrequent || transportKind == .session else {
+                throw PluginError.invalid("Hook \(hook.event) fires often and needs \"transport\": \"session\"")
+            }
+            if let debounce = hook.debounceMs, !(0...60_000).contains(debounce) {
+                throw PluginError.invalid("Hook \(hook.event) debounceMs must be 0...60000")
+            }
+        }
     }
 
     private static func validateRelativePath(_ path: String, field: String) throws {

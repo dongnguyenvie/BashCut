@@ -1,0 +1,87 @@
+#!/usr/bin/env python3
+"""Example BashCut plugin (plugin API 2): actions, hooks and options over the session transport.
+
+`provider session` keeps answering NDJSON requests; `provider rpc` answers one request (one-shot transport).
+Results only *propose* operations; BashCut validates them and applies one undoable edit.
+"""
+import json
+import sys
+import uuid
+
+
+def action(params):
+    name, context, options = params["action"], params["context"], params.get("options", {})
+    rev = context["project"]["rev"]
+    if name == "example.toolkit.mark-playhead":
+        frame = context["playhead"]
+        label = f'{options.get("sectionPrefix", "Mark")} {frame}'
+        return {"label": "Mark section", "baseRev": rev, "message": f"Added {label}",
+                "operations": [{"op": "upsertSection", "id": str(uuid.uuid4()), "label": label, "atFrame": frame}],
+                "ui": {"reveal": frame}}
+    if name == "example.toolkit.set-opacity":
+        item = context["selection"]["id"]
+        opacity = params["params"]["opacity"]
+        return {"label": "Set opacity", "baseRev": rev,
+                "operations": [{"op": "setProperties", "item": item, "patch": {"opacity": opacity}}],
+                "ui": {"select": item, "inspector": "video"}}
+    if name == "example.toolkit.describe-media":
+        media = context["media"]
+        return {"message": f'{media.get("kind")} {media.get("frames")} frames: {media.get("path")}',
+                "data": {"media": media}}
+    raise ValueError(f"unknown action {name}")
+
+
+def hook(params):
+    event, payload, options = params["event"], params["payload"], params.get("options", {})
+    if event == "media.imported":
+        count = len(payload.get("media", []))
+        return {"message": f"Imported {count} media"} if options.get("announce", True) else {}
+    if event == "export.finished":
+        # Remember the last export in this plugin's own project data (an undoable edit).
+        exports = (params["context"].get("pluginData") or {}).get("exports", 0)
+        return {"label": "Remember last export",
+                "pluginData": {"lastExport": payload.get("output"), "exports": exports + 1}}
+    if event == "edit.committed":
+        return {}
+    return {}
+
+
+def handle(request):
+    method, params = request.get("method"), request.get("params", {})
+    try:
+        if method == "plugin.action":
+            return {"id": request["id"], "result": action(params)}
+        if method == "plugin.hook":
+            return {"id": request["id"], "result": hook(params)}
+        return {"id": request["id"], "error": {"code": "unknown_method", "message": str(method)}}
+    except Exception as error:  # noqa: BLE001 - report every failure to the app
+        return {"id": request["id"], "error": {"code": "failed", "message": str(error)}}
+
+
+def send(message):
+    sys.stdout.write(json.dumps(message) + "\n")
+    sys.stdout.flush()
+
+
+def main():
+    mode = sys.argv[1] if len(sys.argv) > 1 else "rpc"
+    if mode == "rpc":
+        send(handle(json.loads(sys.stdin.readline())))
+        return
+    for line in sys.stdin:
+        if not line.strip():
+            continue
+        message = json.loads(line)
+        kind = message.get("type")
+        if kind == "hello":
+            send({"type": "hello", "apiVersion": 2})
+        elif kind == "shutdown":
+            return
+        elif kind == "cancel":
+            continue
+        else:
+            send(handle(message))
+
+
+if __name__ == "__main__":
+    main()

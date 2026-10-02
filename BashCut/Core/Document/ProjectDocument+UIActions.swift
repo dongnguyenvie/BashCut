@@ -136,6 +136,12 @@ extension ProjectDocument {
                     "shortcuts": .array(action.shortcuts.map { .string($0.description) }),
                     "enabled": .bool(document.canPerform(action)),
                 ])
+            } + document.plugins.actions.map { action in
+                .object([
+                    "id": .string(action.id), "title": .string(action.title), "plugin": .string(action.plugin.id),
+                    "shortcuts": .array(action.shortcut.map { [.string($0.description)] } ?? []),
+                    "enabled": .bool(document.canRunPluginAction(action)),
+                ])
             })
         }
         handleAuthored("ui.action") { document, arguments, author in
@@ -163,11 +169,12 @@ extension ProjectDocument {
 
     private func performFromAutomation(_ name: String, author: Author) throws -> JSONValue {
         let candidates = UIAction.matching(name)
-        guard let first = candidates.first else {
-            throw RPCFailure(-32602, "Unknown action or shortcut \(name); see ui.actions")
-        }
         if let open = ModalCenter.shared.current {
             throw RPCFailure(-32003, "Answer the open dialog \(open.name) first (ui.dialog)")
+        }
+        guard let first = candidates.first else {
+            if let result = try performPluginActionFromAutomation(name, author: author) { return result }
+            throw RPCFailure(-32602, "Unknown action or shortcut \(name); see ui.actions")
         }
         guard let action = candidates.first(where: canPerform) else {
             throw RPCFailure(-32003, "\(first.id) is not available now")

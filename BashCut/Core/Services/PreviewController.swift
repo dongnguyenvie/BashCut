@@ -19,6 +19,9 @@ public final class PreviewController {
     @ObservationIgnored public private(set) var snapshot: CompositionSnapshot?
     /// Status-bar text: an error, or "" once a preview is ready.
     @ObservationIgnored public var onMessage: (@MainActor (String) -> Void)?
+    /// Called with the playhead when playback stops (pause or the end of the timeline).
+    @ObservationIgnored public var onPlaybackStopped: (@MainActor (Int) -> Void)?
+    @ObservationIgnored private var wasPlaying = false
 
     private let engine: any RenderEngine
     @ObservationIgnored private var project = Project(name: "Untitled")
@@ -113,6 +116,7 @@ public final class PreviewController {
 
     public func togglePlayback() {
         if player.rate == 0 {
+            wasPlaying = true
             player.play()
             if showColorComparison { comparisonPlayer.play() }
         } else {
@@ -123,6 +127,13 @@ public final class PreviewController {
     public func pause() {
         player.pause()
         comparisonPlayer.pause()
+        noteStopped()
+    }
+
+    private func noteStopped() {
+        guard wasPlaying else { return }
+        wasPlaying = false
+        onPlaybackStopped?(playhead)
     }
 
     public func setColorComparison(_ enabled: Bool) {
@@ -134,6 +145,7 @@ public final class PreviewController {
     /// Follows the player while it plays and keeps the comparison player within a frame of it.
     public func updatePlayhead() {
         if let error = player.currentItem?.error { onMessage?(error.localizedDescription) }
+        if player.rate == 0 { noteStopped() } else { wasPlaying = true }
         guard player.rate != 0, player.currentTime().isNumeric else { return }
         let frame = project.fps.frame(player.currentTime())
         // Observers (timeline, transport bar) only hear about real moves.

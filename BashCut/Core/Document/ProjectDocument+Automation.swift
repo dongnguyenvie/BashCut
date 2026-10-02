@@ -25,6 +25,9 @@ extension ProjectDocument {
         registerUICommands()
         registerUIActionCommands()
         registerToolCommands()
+        registerPluginCommands()
+        plugins.refresh(projectRoot: nil)
+        emitPluginEvent(.appLaunched)
         assert(registry.unhandledCommands.isEmpty, "Unhandled commands: \(registry.unhandledCommands)")
         Task {
             do {

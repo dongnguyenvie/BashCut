@@ -107,16 +107,28 @@ public enum CommandLineParser {
                 return .string(URL(fileURLWithPath: (text as NSString).expandingTildeInPath).standardizedFileURL.path)
             }
             if parameter.kind == .boolean { return .bool(try boolean(text, name: parameter.name)) }
-            if parameter.kind == .number {
-                guard let number = Double(text), number.isFinite else {
-                    throw Failure(message: "\(parameter.name) must be a number")
-                }
-                return .number(number)
-            }
-            guard parameter.kind == .integer else { return .string(text) }
-            guard let number = Int(text) else { throw Failure(message: "\(parameter.name) must be an integer") }
-            return .integer(number)
+            if parameter.kind == .object || parameter.kind == .array { return try json(text, name: parameter.name) }
+            return try scalar(text, for: parameter)
         }
+    }
+
+    private static func scalar(_ text: String, for parameter: CommandParameter) throws -> JSONValue {
+        if parameter.kind == .number {
+            guard let number = Double(text), number.isFinite else {
+                throw Failure(message: "\(parameter.name) must be a number")
+            }
+            return .number(number)
+        }
+        guard parameter.kind == .integer else { return .string(text) }
+        guard let number = Int(text) else { throw Failure(message: "\(parameter.name) must be an integer") }
+        return .integer(number)
+    }
+
+    private static func json(_ text: String, name: String) throws -> JSONValue {
+        guard let value = try? JSONDecoder().decode(JSONValue.self, from: Data(text.utf8)) else {
+            throw Failure(message: "\(name) must be JSON")
+        }
+        return value
     }
 
     private static func boolean(_ text: String, name: String) throws -> Bool {

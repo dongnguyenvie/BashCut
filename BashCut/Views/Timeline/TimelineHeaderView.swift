@@ -23,6 +23,8 @@ final class TimelineHeaderView: NSView {
     }
     var onSelect: ((String) -> Void)?
     var onToggle: ((String, Switch) -> Void)?
+    /// The context menu for a layer row (plugin `track.context` actions); the row is selected first.
+    var onMenu: ((String) -> NSMenu?)?
 
     private static let buttonSize = 18.0
     private static var symbols: [String: NSImage] = [:]
@@ -101,6 +103,14 @@ final class TimelineHeaderView: NSView {
         } else {
             onSelect?(row.track.id)
         }
+    }
+
+    override func menu(for event: NSEvent) -> NSMenu? {
+        var point = convert(event.locationInWindow, from: nil)
+        point.y += scrollOffset
+        guard let row = layout.rows.first(where: { point.y >= $0.y && point.y < $0.maxY }) else { return nil }
+        onSelect?(row.track.id)
+        return onMenu?(row.track.id)
     }
 
     override func resetCursorRects() {

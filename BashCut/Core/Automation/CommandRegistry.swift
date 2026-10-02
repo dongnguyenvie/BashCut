@@ -40,6 +40,11 @@ public struct AuditEvent: Codable, Sendable {
                 date: Date(), method: method + (automatic ? ".auto-approved" : approved ? ".approved" : ".denied"),
                 author: author, succeeded: approved))
     }
+    /// Audits work that does not arrive as a command, such as plugin actions and hooks.
+    public func record(method: String, author: Author?, succeeded: Bool) {
+        audit(AuditEvent(date: Date(), method: method, author: author, succeeded: succeeded))
+    }
+
     public func handle(_ request: RPCRequest) async -> RPCResponse {
         let author = request.token.flatMap { tokens[$0] }
         let started = Date()

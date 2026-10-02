@@ -5,6 +5,19 @@
 
 ## [Unreleased]
 
+- **Plugin API 2: actions, hooks, options, sessions and trust.** Plugins can add actions to the Plugins menu,
+  toolbar, clip/track/timeline/media context menus, library panels and inspector tabs (`contributes.actions`, with
+  `when` conditions, native parameter sheets and shortcuts) and subscribe to 19 editor events
+  (`contributes.hooks`: project, edit, selection, playback, import, capability, export and job events; debounced,
+  rate-limited and notify-only). A result proposes operations and the plugin's own `pluginData` entry; the app
+  validates them and commits one undoable edit by the new `plugin` author. Hook edits wait for review (toolbar
+  badge, `plugins proposal`) unless Settings › **Apply plugin hook edits without review** is on; Settings ›
+  **Run plugin hooks** stops all hooks. Manifests can declare `options` (per user or per project) and
+  `"transport": "session"` for one long-lived NDJSON process with progress and cancel. Plugins now run only after
+  the user trusts their exact files (SHA-256 pins; installing pins them) and can be turned off per plugin or per
+  hooks; `minApiVersion`/`maxApiVersion` mark outdated plugins. New commands: `plugins actions`, `run`, `hooks`,
+  `proposal`, `options`, `option`, `set`; `ui actions`/`ui action` include plugin actions. Example plugin:
+  `Fixtures/plugins/example.toolkit`. See `docs/guides/plugins.md`.
 - **Adjustment layers** replace the New Project "Style preset" setting, which was stored but never used. An
   adjustment layer (Add Layer › Adjustment Layer, `layers add --kind adjustment`) holds items with only a color
   grade (look, exposure, contrast, saturation, LUT) that applies to every layer below them while they are on screen,
