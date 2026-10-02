@@ -1,229 +1,249 @@
 # 03 — Architecture
 
+How BashCut is put together: the render engine, the code layers, `EditOperation`, the plugin boundary, the
+automation server, interchange formats, and the concurrency and security rules. What is built today is tracked
+in [implementation status](../status/implementation.md).
+
 ## 1. Big picture
 
-```
-┌────────────────────────────────────── BashCut.app ───────────────────────────────────────┐
-│ Views (SwiftUI hosted in AppKit; timeline + viewer = AppKit/Metal)                        │
-│   └─► ViewModels (@MainActor @Observable)                                                 │
-│         └─► ProjectDocument ──apply(EditOperation)──► Project (value type) + UndoLog      │
-│                 │                       ▲                                                 │
-│                 ▼                       │ same operation API                              │
-│   Engine: CompositionBuilder ──► AVPlayer (preview)      Automation server                │
-│           BashCutCompositor (Core Image + Metal)           (Unix socket, JSON-RPC)        │
-│           Exporter (AVAssetWriter + VideoToolbox)            ▲            ▲               │
-│   Media: thumbnails, waveforms, probe, proxies               │            │               │
-│   Plugins: capability resolver ──bounded process RPC────────►│ optional provider processes │
-│            voice · captions · beats · loudness               │ models / venvs / APIs       │
-│   Interchange: TimelineExporter (OTIO now-ish, Resolve later)│            │               │
-│   Agent: PTY tabs (SwiftTerm) ──spawn──► claude / codex      │            │               │
-│   Review · Doctor · Process · Storage                        │            │               │
-└──────────────────────────────────────────────────────────────┼────────────┼───────────────┘
-                                                               │            │
-                              bashcut CLI (Bash in agent tab) ─┘            └─ bashcut-mcp (stdio MCP server
-                                                                               spawned by claude/codex)
+```text
+┌─────────────────────────────────────── BashCut.app ────────────────────────────────────────┐
+│ Views (SwiftUI hosted in AppKit; the timeline is a custom NSView)                          │
+│   └─► ViewModels (@MainActor @Observable)                                                  │
+│         └─► ProjectDocument ──commit(EditOperation)──► ProjectHistory (Project + undo)     │
+│               │ per-project controllers built from AppServices                             │
+│               ▼                                                                            │
+│   Services   PreviewController · ExportController + ExportQueue · ProxyQueue · JobCenter   │
+│              FileSyncController · SettingsModel · AutomationController                     │
+│   Engine     RenderEngine ─► CompositionBuilder ─► AVPlayer (preview) / Exporter           │
+│              BashCutCompositor (Core Image) · TextRenderer · MediaSource + ProxyManager    │
+│   Plugins    CapabilityService ─► CapabilityAdapter ─► PluginTransport ──────────┐         │
+│   Formats    TimelineExporter / TimelineImporter (OTIO, SRT, edl.json)           │         │
+│   Agent      PTY tabs (SwiftTerm) ──spawn──► claude · codex · shell              │         │
+│   Automation CommandRegistry (CommandSpec) ◄── Unix socket, JSON-RPC ◄──┐        │         │
+└─────────────────────────────────────────────────────────────────────────┼────────┼─────────┘
+                                                                          │        │
+           bashcut CLI, bashcut-mcp (stdio MCP server spawned by agents) ─┘        ▼
+                                                                           plugin processes
+                                                                         (models, venvs, APIs)
 ```
 
-**Core idea:** every change to a project is an `EditOperation` that goes through
-`ProjectDocument.apply`. Operations from the UI, from the agent (MCP or CLI), and from undo/redo
-all take the same path. This is how "one action, two callers" is guaranteed.
+**Core idea:** every change to a project is an `EditOperation` that goes through `ProjectDocument.commit`.
+Operations from the UI, from agents (CLI, MCP or model APIs), from generated plugin results and from undo/redo all
+take that one path. This is how "one action, two callers" is guaranteed.
+
+### Extension boundaries
+
+A small, stable core stays inside the app; everything heavyweight or fast-moving sits behind a replaceable
+interface.
+
+| Area | Rule |
+|---|---|
+| Stable core | The project model, integer frame timing, `EditOperation` validation, undo/redo and the timeline stay in the app and in `Packages/BashCutCore`, so every project can always be opened and edited |
+| Rendering | Preview and export share one render graph. `RenderEngine` is a `Sendable` protocol; `AVFoundationRenderEngine` is the default implementation |
+| Providers | Optional features resolve a capability (`voice.synthesize`, `captions.transcribe`, …) to a provider from project, user or bundled plugin folders (§5) |
+| Presets | Export presets, text presets, reframing presets and transitions are data, not plugins |
+| Plugins | Plugins run out of process over a versioned JSON protocol. The app never loads third-party Swift bundles or dynamic libraries |
+
+Agent terminals (`AgentProvider`), model APIs (`ModelAdapter`), commands (`CommandSpec`), plugin capabilities
+(`CapabilityAdapter`) and timeline formats (`TimelineExporter`/`TimelineImporter`) are each one conforming type
+plus a registry entry. [CONTRIBUTING.md](../../CONTRIBUTING.md) has a template for each.
 
 ## 2. Render engine: AVFoundation, not ffmpeg
 
 ### Comparison
 
-| Criterion | AVFoundation + Core Image/Metal | ffmpeg (filter_complex) |
+| Criterion | AVFoundation + Core Image | ffmpeg (`filter_complex`) |
 |---|---|---|
 | **Preview matches export** | ✅ The same `AVComposition` + `AVVideoComposition` drives `AVPlayer` and the exporter | ❌ ffmpeg cannot play in real time with scrubbing, so preview would need a second engine and the two would drift |
 | Feedback while editing | ✅ Update the composition and play immediately; no pre-render | ❌ Re-render a segment after every edit |
 | Hardware encode | ✅ VideoToolbox (H.264/HEVC/ProRes) | ✅ `h264_videotoolbox` |
-| Text / captions | ✅ Core Text: any font, outline, emoji, Vietnamese diacritics | ⚠️ Needs libass/freetype. The Homebrew build on Nolan's machine **lacks them** (measured in the workspace) |
+| Text and captions | ✅ Core Text: any font, outline, emoji, Vietnamese diacritics | ⚠️ Needs libass/freetype. The Homebrew build on Nolan's machine **lacks them** (measured in the workspace) |
 | LUTs, color | ✅ `CIColorCube` reads `.cube` files | ✅ `lut3d` |
 | Shipping the app | ✅ Built into macOS | ⚠️ Bundle a binary (signing, notarization, LGPL/GPL depending on the build), or depend on Homebrew |
 | Exotic formats (MKV, WebM, old codecs) | ❌ | ✅ |
-| Loudness (EBU R128) | ❌ not built in | ✅ `ebur128` filter |
+| Loudness (EBU R128) | ❌ Not built in | ✅ `ebur128` filter |
 
 ### Decision
 
-- **Preview and export use AVFoundation.**
-  - Video is composited by a custom `AVVideoCompositing` compositor written with Core Image +
-    Metal.
-  - Audio goes through `AVMutableAudioMix` plus offline processing.
-- **Loudness is measured by an optional `audio.loudness` provider.** A libebur128 wrapper is a
-  suitable implementation, but its library is not linked into the base app.
-- **ffmpeg is optional.** It is detected by Doctor and used only to probe or transcode media that
-  AVFoundation can't open; the transcode goes to ProRes Proxy on import.
-- **`RenderEngine` is a protocol.** A second implementation (for example a headless ffmpeg batch
-  exporter) can be added later without touching the UI.
+- **Preview and export use AVFoundation.** Video is composited by a custom `AVVideoCompositing` compositor
+  written with Core Image; audio goes through `AVMutableAudioMix`.
+- **`RenderEngine` is a protocol.** `build(_:root:workspace:purpose:)` returns a composition snapshot and
+  `export(_:to:settings:progress:)` renders it. A second implementation (for example a headless batch exporter)
+  can be added without touching the UI.
+- **Loudness is measured by an optional `audio.loudness` provider.** A libebur128 wrapper is a suitable
+  implementation, but its library is not linked into the base app.
+- **ffmpeg is optional.** Doctor detects it. **Planned:** use it only to probe or transcode media that
+  AVFoundation cannot open, transcoding to ProRes Proxy on import (the `media.transcode` capability in §5).
 
 ### Engine components
 
 | Component | Responsibility |
 |---|---|
-| `CompositionBuilder` | `Project` → `AVMutableComposition` (video/audio tracks, `insertTimeRange`, `scaleTimeRange` for speed) + `AVMutableVideoComposition` (per-segment instructions) + `AVMutableAudioMix`. Rebuilds ~50 ms after an edit (debounced) |
-| `BashCutCompositor` | `AVVideoCompositing`. For each frame, in order: <br>1. source frame <br>2. transform (reframe, crop) <br>3. color (LUT + basic adjustments) <br>4. transition (whip/blink/zoom/dissolve… as Metal shaders or CI kernels) <br>5. Overlay items <br>6. text layers <br>7. output `CVPixelBuffer` |
-| `TextRenderer` | Renders text with Core Text from `textStyles` (outline, shadow, Quinn serif, keyword sticker). Images are cached by `(text, style, size)`. Text animations (pop, word-by-word, typewriter) are evaluated from time |
-| `AudioGraph` | Volume, fades, ducking. Speech regions (Speech clips + voiceover) become an envelope, which becomes volume ramps on the Music track. Stem separation uses Demucs output prepared ahead of time |
-| `Loudness` | Optional two-pass export: <br>1. render a temporary mix <br>2. resolve and call `audio.loudness` <br>3. apply true-peak-safe master gain <br>4. export and verify through the same provider |
-| `Exporter` | `AVAssetWriter` + VideoToolbox. Presets are listed in `01-ui-ux.md` §6. The queue is an `actor` that supports cancellation and reports progress |
-| `ProxyManager` | Heavy footage (4K, HEVC 10-bit) gets a proxy (ProRes Proxy or H.264 540p) in `.bashcut/proxies/`. Preview uses the proxy; export uses the original |
+| `CompositionBuilder` | An `actor`: `Project` → `AVMutableComposition` (tracks, `insertTimeRange`, `scaleTimeRange` for speed), per-frame video instructions and `AVMutableAudioMix`. Keeps up to 64 opened assets across builds. `PreviewController` rebuilds about 50 ms after an edit (debounced) |
+| `BashCutCompositor` | `AVVideoCompositing`. For each frame, in track order: source frame → transform (reframe, crop) → color (adjustments + LUT) → transition → overlay items → text layers → output `CVPixelBuffer` |
+| `TextRenderer` | Renders text with Core Text from the item's preset (`style`) and `textStyle` overrides: Bold Outline, Cinematic Serif, Keyword Sticker, Place Card, Hook Title and Chapter Card. Images are cached. **Planned:** text animations (pop, word-by-word, typewriter) evaluated from time |
+| `AudioGainPlanner` | Volume, fades, mix gain and ducking as one frame-based envelope. Speech regions (tagged speech clips and all voiceover) become volume ramps on Music tracks. **Planned:** stem separation from `audio.separate` output |
+| `ExportPipeline` | Optional two-pass loudness: render a temporary mix, measure it through `audio.loudness`, apply true-peak-safe master gain, export and verify through the same provider. Also writes the companion SRT |
+| `Exporter` | An `actor`: `AVAssetReader` + `AVAssetWriter` with hardware encoding. Presets are listed in [01 — UI/UX](01-ui-ux.md) §6. `ExportQueue` runs one export at a time on the shared `JobCenter`, with progress and cancellation |
+| `MediaSource`, `ProxyManager` | The engine reads media through a `MediaSource`. `ProxyMediaSource` (the default) uses `.bashcut/proxies/<media id>.mov` for preview when it exists and always the original for export. `ProxyManager` flags HEVC, larger-than-1920 px or high-bit-rate footage and writes H.264 proxies (≤ 960 px, keyframe every 10 frames, original frame times); `ProxyQueue` makes them one at a time |
 
-**Biggest risk:** compositor and timeline performance. It is measured first, in M0
-(`09-roadmap.md`). The targets are:
-
-- smooth 1080×1920 playback at 29.97 fps from original footage;
-- scrub latency under 100 ms.
+**Performance** was the biggest risk and was measured first, in M0. The targets were smooth 1080×1920 playback at
+29.97 fps from original footage and scrub latency under 100 ms. On 20 real HEVC clips, playback drops no frames
+and scrubbing reaches p95 19.6 ms (8.9 ms with proxies); figures and the reproduction command are in
+[implementation status](../status/implementation.md).
 
 ## 3. Code layers
 
-Code is organized by layer first, then by domain.
+Code is organized by layer first, then by domain. `Package.swift` is the single source of targets.
 
 | Layer | Contains | Rules |
 |---|---|---|
-| `Packages/BashCutCore` | `BashCutProject` (model, `EditOperation`, validation, history and review), `BashCutPlugin` (manifest, discovery, provider resolution and process RPC), `BashCutImport` and `BashCutInterchange` | Pure logic. No AppKit or AVFoundation. Tested with `swift test` |
-| `BashCut/Core/` | Document, Services, Engine, Storage, Agent and Automation | `Core/Services` is the testable `BashCutDocument` library: `EditorUIState`, `PreviewController`, `ExportController` (with `ExportQueue` and `JobCenter`), `FileSyncController`, `SettingsModel`, `AutomationController` and `AppServices`. `ProjectDocument` (app target) owns history and the single `commit` and wires these together; replaceable engines and transports sit behind protocols |
-| `BashCut/Models/` | App-only types: UI state, selection, playhead | `Sendable` |
+| `Packages/BashCutCore` | `BashCutProject` (model, `EditOperation` and its codec, validation, layer rules, history, review, SRT, timeline format protocols), `BashCutPlugin` (manifest, catalog, provider resolution, `PluginTransport` and the process runner), `BashCutImport` (legacy `edl.json`) and `BashCutInterchange` (OTIO) | Pure logic. No AppKit or AVFoundation. Tested with `swift test` |
+| `BashCut/Core/` | `Engine`, `Storage`, `Agent`, `Automation`, `Plugins` (`BashCutPlugins`: `CapabilityService` and adapters), `Services` and `Document` | `Services` is the testable `BashCutDocument` library: `EditorUIState`, `PreviewController`, `ExportController` (with `ExportQueue` and `JobCenter`), `ProxyQueue`, `FileSyncController`, `SettingsModel`, `AutomationController`, `ModalCenter` and `AppServices`. `ProjectDocument` (app target) owns history and the single `commit`, and wires the controllers together. Replaceable engines and transports sit behind protocols |
+| `BashCut/Models/` | App-only value types | `Sendable` |
 | `BashCut/ViewModels/` | `@MainActor @Observable final class` | Split large ones into `Name+Feature.swift` |
 | `BashCut/Views/` | SwiftUI + AppKit (timeline, viewer) | Never call services directly |
 
-Dependency injection goes through one composition root: `AppServices.live()` bundles the app-wide services (render
-engine, settings, automation endpoint) and `ProjectDocument(services:)` builds its per-project controllers
-from them; tests pass their own engine, `UserDefaults` suite and socket paths.
+Dependency injection goes through one composition root. `AppServices.live()` bundles the app-wide services
+(render engine, settings, automation endpoint), and `ProjectDocument(services:)` builds its per-project
+controllers from them. Tests pass their own engine, `UserDefaults` suite and socket paths.
 
-BashCut targets **macOS 14+** in order to use `@Observable` instead of
-`ObservableObject`.
+BashCut targets **macOS 14+** in order to use `@Observable` instead of `ObservableObject`.
 
 ### Timeline UI
 
-The timeline can hold hundreds of items plus waveforms and thumbnails, so it is **not built from
-SwiftUI views**. It is a custom layer-backed `NSView` (or `MTKView`):
+The timeline can hold hundreds of items plus waveforms and thumbnails, so it is **not built from SwiftUI views**.
+It is a custom `NSView` (`TimelineCanvas`) in a scroll view:
 
 - only the visible range is drawn;
-- thumbnails and waveforms are cached per zoom level;
+- thumbnails and waveforms are cached;
 - hit-testing is custom.
 
-SwiftUI is used only for track headers, the toolbar and popovers.
+SwiftUI is used for track headers, the toolbar and popovers.
 
 ## 4. `EditOperation`
 
+`EditOperation` lives in `BashCutProject`. Abridged:
+
 ```swift
-enum EditOperation: Codable, Sendable {
-    case insert(track: TrackID, item: Item)                  // E / Q, agent insert
-    case delete(item: ItemID, ripple: Bool)
-    case split(item: ItemID, atFrame: Int)
-    case trim(item: ItemID, edge: Edge, toFrame: Int, ripple: Bool)
-    case move(item: ItemID, toTrack: TrackID, atFrame: Int)
-    case setProperties(item: ItemID, patch: JSONValue)       // transform, speed, volume, color, text, style…
-    case addTransition(Transition), removeTransition(TransitionID)
-    case setMarkers([Marker]), setBeatGrid(BeatGrid?)
-    case group(label: String, author: Author, ops: [EditOperation])   // one undo step
+public indirect enum EditOperation: Codable, Sendable, Equatable {
+    case insert(track: String, item: Item)
+    case delete(item: String, ripple: Bool)
+    case split(item: String, atFrame: Int, newID: String)
+    case trim(item: String, edge: Edge, toFrame: Int, ripple: Bool)
+    case move(item: String, toTrack: String, atFrame: Int)
+    case reorder(item: String, before: String?)
+    case slip(item: String, sourceIn: Int)
+    case roll(item: String, edge: Edge, toFrame: Int)
+    case setProperties(item: String, patch: [String: JSONValue])  // transform, speed, volume, color, text…
+    case setLinkedAudio(video: String, audio: String?)
+    // media, tracks, project properties, provider preferences, beat grid,
+    // sections, transitions and LUT catalog operations …
+    case group(label: String, author: Author, ops: [EditOperation])  // one undo step
+    case restore(Project)                                            // snapshot inverse
 }
 
-enum Author: String, Codable, Sendable { case user, claude, codex, external }
+public enum Author: String, Codable, Sendable { case user, claude, codex, external, model, agent }
 ```
 
 How it behaves:
 
-- **`apply` is a pure function** in the package. It returns the new `Project` together with the
-  inverse operation (for undo).
-- **It can also fail with a reason:** unknown item, trim past the end of the source, or overlap on
-  a track that doesn't allow it.
-- **Each successful `apply` increments `rev`.**
-- **Agent requests carry a `baseRev`.** If it doesn't match the current `rev`, the request is
-  rejected with `staleRevision`. The agent then re-reads the timeline and retries.
+- **`applying` is a pure function** in the package. It validates the project before and after the edit and
+  returns the new `Project` with its inverse (a `restore` snapshot).
+- **It fails with a reason** such as an unknown item, a trim past the end of the source or an overlap on a track.
+- **Each successful edit increments `rev`** once, including a whole `group`.
+- **Agent requests carry a `baseRev`.** If it does not match the current `rev`, the request is rejected with
+  `staleRevision`; the agent re-reads the timeline and retries.
+- **One serialized form.** Operations are JSON objects keyed by `op` (`EditOperationCodec`), shared by agents,
+  model APIs and the history journal. `group` and `restore` are accepted only from trusted sources.
 
-## 5. Tools
+The on-disk effects (layer rules, linked items, undo depth) are in the
+[project format reference](../reference/project-format.md).
+
+## 5. Plugins
 
 ### Optional plugin boundary
 
-BashCut uses plugins for optional features with large or fast-moving dependencies. The timeline,
-project schema, history, compositor contract and normal export stay in the app so every project
-can always be opened and edited. Transcription, stem separation, beat analysis, voice providers,
-stock-media sources and additional interchange exporters run as child processes.
+BashCut uses plugins for optional features with large or fast-moving dependencies. The timeline, project schema,
+history, compositor contract and normal export stay in the app. Transcription, beat analysis, loudness, voice
+providers and, later, stem separation, stock-media sources and extra interchange exporters run as child
+processes. A crash takes down only the provider process.
 
-Each plugin is a folder with a `bashcut.plugin/1` `plugin.json`, an executable entrypoint, stable
-capability IDs and dependency records. Dependency probes and install recipes are argv arrays, not
-shell strings. Project plugins override user plugins, which override bundled plugins. Duplicate or
-malformed manifests are isolated and reported without preventing the editor from launching.
+Each plugin is a folder with a `bashcut.plugin/1` `plugin.json`, an executable entrypoint, stable capability IDs
+and dependency records. The manifest and wire contract are in [Writing plugins](../guides/plugins.md).
 
-The Plugins UI shows capabilities, dependency names, estimated downloads and exact commands before
-installation. Copying a plugin and running its dependency recipes requires explicit approval. No
-third-party Swift bundle is loaded into the app process. A crash therefore takes down only the
-provider process.
-
-**One capability path.** `CapabilityService` (`BashCut/Core/Plugins`, the `BashCutPlugins` module)
-discovers the catalog, probes health, resolves the provider, runs the request and validates the
-result. Native panels, the automation commands (`captions.generate`, `beats.detect`,
-`voice.speak`) and normalized export all call it; no view model or command talks to a plugin process
-directly. The document then turns the validated result into one undoable `EditOperation` attributed
-to its author (user, Claude, Codex or model), so UI and agent requests produce identical edits.
-
-Feature code resolves a capability such as `voice.synthesize`; it never imports or names a vendor
-SDK. A plugin can declare several provider IDs for a capability. Resolution uses the project
-preference, then an optional user default, then the highest-priority healthy provider. The current
-feature panels persist the project preference; a Settings UI for user-wide provider defaults is
-still pending. Project preferences are ordinary undoable data. Generated media stores the provider
-ID and version as provenance, but remains usable if that provider is later removed. Replacing a
-voice, transcription, beat or loudness provider therefore does not migrate the timeline.
-
-The implemented process protocol starts one child for one request as `entrypoint rpc`, writes one
-bounded JSON request to stdin and accepts one bounded JSON response on stdout. Calls default to a
-120-second timeout and support task cancellation. Runtime children receive only a filtered
-environment (`HOME`, `PATH`, `TMPDIR`, locale values and `BASHCUT_PLUGIN_*` metadata); automation
-tokens, model credentials and arbitrary `.env` values are not inherited. Returned media paths are
-confined to the per-request output directory and validated before insertion. See
-[`../plugin-api.md`](../plugin-api.md) for the manifest and wire contract.
-
-| Capability | Implemented consumer and validated result | Provider examples |
-|---|---|---|
-| `voice.synthesize` | Voice panel and `voice.speak` request 1–8 takes, validates audio, scores missing provider scores by pacing and inserts one take with provenance | VieNeu-TTS wrapper, local native voice model, remote voice API |
-| `captions.transcribe` | Text panel and `captions.generate` accept confined UTF-8 SRT up to 4 MiB and imports it as one undoable edit | WhisperKit wrapper, workspace whisper venv, remote transcription API |
-| `audio.beats` | Audio panel and `beats.detect` validate BPM and increasing source seconds, then maps them through trim/speed to integer timeline frames | workspace beat script, future vDSP detector |
-| `audio.loudness` | Export validates LUFS/true peak/LRA, performs target-LUFS gain with a −1 dBTP ceiling and verifies the final file | libebur128 wrapper, compatible analyzer |
-
-Direct voice recording, thumbnails, media metadata, waveforms, project editing, composition and
-normal export stay native because they are core editor behavior or already covered well by Apple
-frameworks. Stem separation, voice enrollment, stock sources, richer analysis and extra
-interchange providers can adopt the same process boundary later.
-
-Plugins are discovered in this order, with earlier entries winning duplicate IDs:
+**Discovery.** Plugins are discovered in this order, earlier entries winning duplicate IDs:
 
 1. `<project>/.bashcut/plugins/`;
 2. `~/Library/Application Support/BashCut/Plugins/`;
-3. the app bundle's built-in PlugIns directory.
+3. the app bundle's built-in `PlugIns` directory.
 
-A malformed plugin or failed dependency probe becomes a diagnostic/degraded provider; it does not
-prevent the project from opening. Dependency probes and install recipes are structured executable
-plus argument arrays. The installer stages and validates a selected folder, displays every recipe,
-runs it only after approval, then publishes the plugin atomically into the user catalog. Signed
-remote catalogs and detailed per-capability permissions are not implemented yet.
+A malformed manifest, duplicate ID or failed dependency probe becomes a diagnostic or a degraded provider; it
+never stops the editor or the project from opening.
+
+**Installation.** Dependency probes and install recipes are argv arrays, not shell strings. The Plugins window
+shows capabilities, dependency names, estimated downloads and the exact commands. The installer stages and
+validates the selected folder, runs recipes only after the user approves, then publishes the plugin atomically
+into the user catalog. Agents can cancel an install request but never approve it.
+
+**One capability path.** `CapabilityService` (`BashCut/Core/Plugins`, module `BashCutPlugins`) discovers the
+catalog, probes health, resolves the provider, runs the request and validates the result. Each capability is a
+`CapabilityAdapter` (request parameters, validation and result parsing in one file), and every call goes through
+a `PluginTransport`; `PluginProcessRunner` is the one-shot transport. Native panels, the automation commands
+(`captions.generate`, `beats.detect`, `voice.speak`) and normalized export all call the service; no view model
+or command talks to a plugin process directly. The document turns the validated result into one undoable
+`EditOperation` attributed to its author, so UI and agent requests produce identical edits.
+
+**Provider resolution.** Feature code resolves a capability such as `voice.synthesize`; it never imports or names
+a vendor SDK. A plugin can declare several provider IDs for one capability. Resolution uses the project
+preference, then an optional user default, then the highest-priority healthy provider. Feature panels persist
+the project preference as ordinary undoable data. Generated media stores the provider ID and version as
+provenance and stays usable if that provider is removed, so replacing a provider never migrates the timeline.
+
+- **Planned:** a Settings UI for user-wide provider defaults.
+
+**Process protocol.** Each request starts one child as `entrypoint rpc`, writes one bounded JSON request to stdin
+and reads one bounded JSON response from stdout. Calls time out after 120 seconds by default and support task
+cancellation; the child runs in its own process group, which is terminated as a whole on cancellation or
+timeout. Children receive a filtered environment (`HOME`, `PATH`, `TMPDIR`, locale values and
+`BASHCUT_PLUGIN_*` metadata); automation tokens, model credentials and `.env` values are not inherited. Returned
+files must lie inside the per-request output folder and are validated before insertion.
+
+| Capability | Consumer and validated result | Provider examples |
+|---|---|---|
+| `voice.synthesize` | Voice panel and `voice.speak` request 1–8 takes, validate the audio, score takes by pacing when the provider gives no score, and insert one take with provenance | VieNeu-TTS wrapper, local voice model, remote voice API |
+| `captions.transcribe` | Text panel and `captions.generate` accept confined UTF-8 SRT up to 4 MiB and import it as one undoable edit | WhisperKit wrapper, workspace Whisper venv, remote transcription API |
+| `audio.beats` | Audio panel and `beats.detect` validate BPM and increasing source seconds, then map them through trim and speed to integer timeline frames | Workspace beat script, future vDSP detector |
+| `audio.loudness` | Export validates LUFS, true peak and LRA, applies target-LUFS gain with a −1 dBTP ceiling and verifies the final file | libebur128 wrapper, compatible analyzer |
+
+Direct voice recording, thumbnails, media metadata, waveforms, project editing, composition, normal export, model
+API adapters, SRT and OTIO stay native: they are core editor behavior, small and dependency free, or already well
+covered by Apple frameworks.
 
 ### Plugin platform roadmap
 
-The design keeps out-of-process plugins. BashCut providers (Python venvs, ML runtimes, remote SDKs)
-can crash or hang, and a crash in process would take down the editor, so every provider stays a child
-process. The platform grows in these steps:
+Plugins stay out of process. Providers (Python venvs, ML runtimes, remote SDKs) can crash or hang, and a crash in
+process would take down the editor. The platform grows in these steps:
 
 | Step | Pattern | BashCut design | Status |
 |---|---|---|---|
-| 1 | Factory + adapter between feature and plugin | `CapabilityService` shared by panels, CLI/MCP and export; provider-backed automation runs as background jobs | Implemented |
-| 2 | Common providers bundled with the app | Native Swift helper executables in `Contents/PlugIns/` for `audio.loudness` (EBU R128 with vDSP) and `audio.beats` (vDSP onset/tempo); VieNeu and Whisper wrappers stay user/project plugins | Planned |
-| 3 | Long-lived helper with handshake, request IDs and cancel | Optional `session` mode: version handshake, NDJSON requests with IDs, `progress` events, `cancel`, idle shutdown. One request per process stays the default | Planned |
-| 4 | API version window and availability reasons | `minApiVersion`/`maxApiVersion` with additive-only changes; provider state `notInstalled`, `disabled`, `outdated`, `failedToLoad`, `unhealthy`; registry of known providers so panels can offer Install/Enable; user enable/disable list | Planned |
-| 5 | Code-signature trust gate | Until the app is signed, pin SHA-256 hashes of `plugin.json` and the entrypoint at install approval and require re-approval when they change; add signature checks when distributed | Planned |
-| 6 | Plugin-supplied settings | Plugins cannot supply SwiftUI out of process, so manifests declare an `options` schema (string, enum, number, bool) that the app renders natively and stores per project or user | Planned |
+| 1 | Factory + adapter between feature and plugin | `CapabilityService` with `CapabilityAdapter` and `PluginTransport`, shared by panels, CLI/MCP and export; provider-backed automation runs as background jobs | **Implemented** |
+| 2 | Common providers bundled with the app | Native Swift helper executables in `Contents/PlugIns/` for `audio.loudness` (EBU R128 with vDSP) and `audio.beats` (vDSP onset/tempo); VieNeu and Whisper wrappers stay user or project plugins | **Planned** |
+| 3 | Long-lived helper with handshake, request IDs and cancel | An optional `session` transport: version handshake, NDJSON requests with IDs, `progress` events, `cancel`, idle shutdown. One request per process stays the default | **Planned** |
+| 4 | API version window and availability reasons | `minApiVersion`/`maxApiVersion` with additive-only changes; provider states `notInstalled`, `disabled`, `outdated`, `failedToLoad`, `unhealthy`; a registry of known providers so panels can offer Install/Enable; a user enable/disable list | **Planned** |
+| 5 | Code-signature trust gate | Until the app is signed, pin SHA-256 hashes of `plugin.json` and the entrypoint at install approval and require re-approval when they change; add signature checks when distributed | **Planned** |
+| 6 | Plugin-supplied settings | Plugins cannot supply SwiftUI out of process, so manifests declare an `options` schema (string, enum, number, bool) that the app renders natively and stores per project or user | **Planned** |
 
-Candidate capabilities after these steps are `media.analyze` (measured silence and speech
-coverage), `audio.separate` (Demucs), `voice.enroll`, `media.transcode` (optional ffmpeg) and
-`interchange.export` (FCPXML, Resolve plans). Model API adapters, SRT and OTIO stay native: they are
-small, dependency free and part of the core contract. A signed remote catalog (PL-6) waits until
-BashCut is distributed.
+Candidate capabilities after these steps are `media.analyze` (measured silence and speech coverage),
+`audio.separate` (Demucs), `voice.enroll`, `media.transcode` (optional ffmpeg) and `interchange.export` (FCPXML,
+Resolve plans). A signed remote catalog and per-capability permissions wait until BashCut is distributed.
 
 ## 6. Automation server
 
-The app listens on a **Unix domain socket** at
-`~/Library/Application Support/BashCut/automation.sock`, with permissions `0600`. The protocol is
-newline-delimited JSON-RPC 2.0, with types in `BashCutWire`.
+The app listens on a **Unix domain socket** at `~/Library/Application Support/BashCut/automation.sock` with
+permissions `0600` (overridable with `BASHCUT_SOCKET`). The protocol is newline-delimited JSON-RPC 2.0; the wire
+types are in `BashCutAutomation`. Clients are served concurrently, so a slow client never stalls another.
 
 **Why a socket instead of HTTP:**
 
@@ -235,75 +255,95 @@ newline-delimited JSON-RPC 2.0, with types in `BashCutWire`.
 
 | Client | Built with | Used by |
 |---|---|---|
-| `bashcut` CLI | swift-argument-parser | Bash inside agent tabs, scripts, the user. Installed as a `/usr/local/bin/bashcut` shim pointing into the bundle |
-| `bashcut-mcp` | official MCP Swift SDK (stdio server transport) | `claude` / `codex` spawn it as an MCP server and forward each tool call to the socket |
+| `bashcut` CLI | swift-argument-parser | Bash inside agent tabs, scripts, the user. Embedded in the app bundle; agent tabs get its folder on `PATH` |
+| `bashcut-mcp` | Official MCP Swift SDK (stdio server transport) | `claude` and `codex` spawn it as an MCP server; it forwards each tool call to the socket |
 
-**Command registry.** Both clients go through one `CommandRegistry` in the app. Each command
-declares:
+**Command specs.** Every command is declared once as a `CommandSpec` in `CommandCatalog.specs`: name, mode
+(`read`, `ui`, `edit` or `privileged`), parameters, CLI binding and execution (`immediate`, `job` or `approval`).
+`CommandRegistry` validates each request against its spec (types, ranges, choices, defaults, unknown parameters)
+before the `@MainActor` handler runs. The CLI parser, the MCP tools (`bashcut_<name>`), `bashcut help` and the
+agent instructions are generated from the same specs, and a test keeps them consistent. Every toolbar button,
+menu item and shortcut is also a `UIAction` that `ui action` runs through the same code.
 
-- an input schema;
-- a mode: `read`, `ui`, `edit` or `privileged`;
-- a `@MainActor` handler.
+**Session tokens and authors.** Each agent tab gets its own token in `BASHCUT_SESSION_TOKEN`. The token identifies
+the author (Claude, Codex or which tab) and is revoked when the tab closes or when agent edits are turned off in
+Settings. Agents outside the app read a `0600` token file next to the socket and edit as `agent`; a Settings
+switch turns it off or rotates it. `edit` and `privileged` commands need a live token, and privileged commands
+such as exports also need the user's approval in the app unless Settings allows them to run without confirmation.
 
-**Session tokens.** Each agent tab gets its own token in the env (`BASHCUT_SESSION_TOKEN`). The
-token identifies the author (claude / codex / which tab) and is revoked when the tab closes.
+The full command list is in [Automation](../guides/automation.md) and
+[05 — Agent integration](05-agent-integration.md).
 
-The full command list is in `05-agent-integration.md`.
+## 7. Interchange: formats beyond video
 
-## 7. Interchange: exporters beyond video
+Timeline formats are registered in `TimelineFormats`; adding a format means one conforming type and one registry
+entry.
 
 ```swift
-protocol TimelineExporter: Sendable {
-    var id: String { get }                                   // "otio", "resolve"
-    func plan(_ project: Project) throws -> ExportPlan       // pure: what will be created, what needs pre-rendering
-    func run(_ plan: ExportPlan, progress: ProgressSink) async throws -> ExportReceipt
+public protocol TimelineExporter: Sendable {
+    var id: String { get }                 // "otio", "srt"
+    var title: String { get }
+    var fileExtension: String { get }
+    func data(for project: Project) throws -> Data
+}
+
+public protocol TimelineImporter: Sendable {
+    var id: String { get }
+    var title: String { get }
+    var fileExtensions: [String] { get }
+    func importTimeline(_ data: Data, name: String, destinationDirectory: URL) throws -> TimelineImport
 }
 ```
 
-| Exporter | Status | How |
-|---|---|---|
-| Video (`RenderEngine`) | v0.1 | §2 |
-| `.srt` captions | v0.1 | from the Captions track |
-| OTIO | later (P2) | write the OTIO JSON directly (no library). Media references the originals |
-| **Resolve** | **later, reserved** | see below |
+| Format | Direction | Status | How |
+|---|---|---|---|
+| Video (`RenderEngine`) | Export | **Implemented** | §2 |
+| `.srt` captions | Export, import | **Implemented** | `SubRipExporter` writes the caption tracks; SRT import goes through the Text library and `captions` commands |
+| OTIO | Export | **Implemented** | Writes OTIO JSON directly (no library); media references the originals |
+| Legacy `edl.json` | Import | **Implemented** | [02 — Project format](02-project-format.md) §4 |
+| **Resolve** | Export | **Reserved** | See below |
 
-### How "Apply to Resolve" will work (not built in v1)
+### How "Apply to Resolve" will work
+
+**Reserved; not built in v1.** Resolve needs more than a file: a pure planning step and a long-running apply with
+progress, so its exporter extends the format interface with `plan(_ project:) -> ExportPlan` and
+`run(_ plan:, progress:) async throws -> ExportReceipt`.
 
 1. **`plan`** classifies every property.
    - *Native in Resolve Free:* cut, transform, opacity, LUT, markers, clip color.
-   - *Rendered by BashCut:* captions and animated overlays → one ProRes 4444 alpha overlay;
-     transitions and speed changes → pre-rendered clips; volume and ducking → four premixed
-     stems.
+   - *Rendered by BashCut:* captions and animated overlays → one ProRes 4444 alpha overlay; transitions and speed
+     changes → pre-rendered clips; volume and ducking → four premixed stems.
    - The UI shows the plan before anything runs.
 2. **BashCut renders the needed artifacts** into `projects/<video>/resolve-media/b<HHMMSS>/`.
 3. **BashCut writes a task file** and runs it through the workspace bridge:
    `tools/.venvs/resolve-mcp/bin/python tools/editor-skills/nolan-resolve-bridge/bridge_run.py <task> <out.json> --project <name>`.
    - The task uses `AppendToTimeline` with `trackIndex` + `recordFrame`.
-   - Exit codes 2/3/4 are mapped to GUI instructions: start `resolve_bridge`, click **Not Yet**,
-     or switch project.
-4. **The receipt** stores Resolve IDs in each item's `interop.resolve`, along with verification
-   numbers: clips per track, offline count, V1 gaps, duration.
+   - Exit codes 2, 3 and 4 map to GUI instructions: start `resolve_bridge`, click **Not Yet**, or switch project.
+4. **The receipt** stores Resolve IDs in each item's `interop.resolve`, with verification numbers: clips per
+   track, offline count, V1 gaps, duration.
 
-No dependency is needed for this. It reuses the workspace bridge, and the data rules in
-`02-project-format.md` §5 keep it possible.
+No dependency is needed. It reuses the workspace bridge, and the data rules in
+[02 — Project format](02-project-format.md) §5 keep it possible.
 
 ## 8. Concurrency and security
 
 **Concurrency:**
 
 - Swift 6 language mode.
-- `@MainActor` for UI and `ProjectDocument`.
-- `actor`s for the export queue, tools, automation server, PTY sessions, proxies, the FSEvents
-  watcher and exporters.
-- Log and progress streams use `AsyncThrowingStream`; cancellation uses
-  `withTaskCancellationHandler`.
-- The compositor runs on AVFoundation's own queue. It only reads an immutable `Project` snapshot
-  (a value type) and never touches `@MainActor`.
+- `@MainActor` for UI, `ProjectDocument`, the `BashCutDocument` controllers, `JobCenter` and `CommandRegistry`.
+- `actor`s for composition building, export rendering, waveform analysis, project storage, the automation socket
+  server, the audit log and the credential store.
+- Long work reports progress through `@Sendable` callbacks into `JobCenter` and stops on task cancellation.
+  Plugin processes are terminated as a process group.
+- The compositor runs on AVFoundation's own queue. It reads only an immutable `Project` snapshot (a value type)
+  and never touches `@MainActor`.
 
 **Security:**
 
-- The app is not sandboxed but uses hardened runtime. It has to spawn CLIs and read the
-  workspace.
-- The automation socket is `0600`, and per-session tokens are required for `edit` and
-  `privileged` commands.
-- Logs use `privacy: .private` by default. `.env` contents and keys are never logged.
+- The app is not sandboxed: it has to spawn CLIs and read the workspace. **Planned:** hardened runtime and
+  signing when BashCut is distributed.
+- The automation socket and token file are `0600`; `edit` and `privileged` commands require a live token, and
+  privileged commands require in-app approval by default.
+- Agent terminals and plugin processes receive allowlisted environments, never the app's full environment.
+- Model API keys live in the Keychain. `.env` contents and keys are never logged; the debug log
+  (`~/Library/Logs/BashCut/debug.log`) records actions and decisions, not credentials.

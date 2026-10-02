@@ -1,171 +1,170 @@
-# 07 — Repository layout (`bash-cut/`)
+# 07 — Folder structure
 
-The layout uses:
+This is the `bash-cut/` repository as it stands at HEAD. `Package.swift` declares every target; `project.yml`
+(XcodeGen) only wraps the app bundle around them. Items marked *(planned)* do not exist yet. Do not create empty
+folders to match a plan; add a folder when the first file needs it.
 
-- XcodeGen;
-- a `Core/Models/ViewModels/Views` split;
-- a pure-logic package;
-- tests that mirror the app;
-- agent docs at the root.
+## Repository tree
 
-BashCut adds `Engine/`, `Tools/` and `Interchange`, and drops the parts that only exist for
-database drivers.
-
-The tree below is the **target** layout. The current code is flatter: `BashCut/Core/` contains
-`Agent/`, `Automation/`, `Document/`, `Engine/`, `Plugins/` and `Storage/`. `Core/Plugins`
-(`CapabilityService`, catalog roots and validated result types) is implemented; the plugin install
-flow and UI state remain in `BashCut/ViewModels/PluginManagerModel.swift`. Split files into the
-target folders as each area grows. Do not create empty folders just to match this tree.
-
-```
+```text
 bash-cut/
-├── AGENTS.md                         # instructions for Claude + Codex when DEVELOPING the app
-├── CLAUDE.md                         # @AGENTS.md
+├── AGENTS.md                      # instructions for agents developing the app
+├── CLAUDE.md                      # @AGENTS.md
+├── CONTRIBUTING.md                # build layout and one-file extension templates
 ├── README.md
-├── CHANGELOG.md                      # Keep a Changelog, [Unreleased]
-├── project.yml                       # XcodeGen; BashCut.xcodeproj is generated, not committed
-├── .swiftlint.yml  .editorconfig  .gitignore
+├── CHANGELOG.md                   # [Unreleased] section, one line per meaningful change
+├── Package.swift                  # single source of targets (app, CLI, MCP, libraries, tests, bench)
+├── Package.resolved               # committed lockfile
+├── project.yml                    # XcodeGen; BashCut.xcodeproj is generated and not committed
+├── .swiftlint.yml  .swift-format  .editorconfig  .gitignore
 │
 ├── .claude/
-│   ├── rules/                        # path-scoped rules (`paths:` frontmatter)
-│   │   ├── engine.md                 #   Core/Engine/** — compositor never touches @MainActor; perf budgets
-│   │   ├── project-model.md          #   Packages/BashCutCore/Sources/BashCutProject/** — schema, migration, stable IDs, Resolve-ready rules
-│   │   ├── automation-security.md    #   Core/Automation/**, Core/Agent/** — socket perms, tokens, modes, audit
-│   │   ├── process-tools.md          #   Core/Tools/**, Core/Process/** — PATH, cancellation, never install globally
-│   │   ├── dependencies.md           #   project.yml, Package.swift — policy from docs/specs/04-dependencies.md
-│   │   ├── ui-lifecycle.md           #   Views/**, ViewModels/**
-│   │   └── tests.md
+│   ├── rules/                     # path-scoped rules (`paths:` frontmatter)
+│   │   ├── engine.md              #   BashCut/Core/Engine/**
+│   │   ├── project-model.md       #   Packages/BashCutCore/Sources/BashCutProject/**
+│   │   └── dependencies.md        #   Package.swift, project.yml
 │   └── skills/
-│       ├── verify/                   # verify.sh build|test|lint|uitest|perf — full log on disk, short PASS/FAIL
-│       └── release/                  # (later)
+│       └── verify/SKILL.md        # how to run scripts/verify.sh
 ├── .agents/skills -> ../.claude/skills
 │
 ├── Configs/
 │   ├── Base.xcconfig  Debug.xcconfig  Release.xcconfig
-│   ├── Version.xcconfig              # MARKETING_VERSION, CURRENT_PROJECT_VERSION
-│   └── Secrets.xcconfig              # gitignored: team, per-machine bundle id
+│   └── Version.xcconfig           # MARKETING_VERSION, CURRENT_PROJECT_VERSION
+│                                  # Secrets.xcconfig is optional and gitignored
 │
-├── BashCut/                          # app target
+├── BashCut/                       # app executable (product BashCutApp)
 │   ├── main.swift  AppDelegate.swift  Info.plist  BashCut.entitlements
 │   ├── Core/
-│   │   ├── Document/                 # ProjectDocument (@MainActor), undo bridge, Autosave, FileWatcher
-│   │   ├── Engine/
-│   │   │   ├── Composition/          # CompositionBuilder, TimeMapping (frame ↔ CMTime)
-│   │   │   ├── Compositor/           # BashCutCompositor (AVVideoCompositing), FrameGraph
-│   │   │   ├── Shaders/              # *.metal: transitions, LUT, blur, film
-│   │   │   ├── Text/                 # TextRenderer (Core Text), TextAnimation
-│   │   │   ├── Audio/                # AudioGraph, Ducking
-│   │   │   ├── Export/               # RenderEngine, Exporter (actor), ExportPreset, ExportQueue
-│   │   │   └── Proxy/                # ProxyManager
-│   │   ├── Interchange/              # TimelineExporter impls: SRTExporter, OTIOExporter (P2),
-│   │   │                             # ResolveExporter (reserved: plan → render artifacts → bridge_run.py)
-│   │   ├── Media/                    # MediaLibrary, Probe (AVAsset → ffprobe fallback),
-│   │   │                             # ThumbnailService, WaveformService, FrameGrabber, StaticClipDetector
-│   │   ├── Plugins/                  # catalog roots, provider resolver, install approval, feature adapters
-│   │   ├── Tools/                    # native helpers only; optional engines stay behind Plugins/
-│   │   ├── Agent/
-│   │   │   ├── CLI/                  # AgentCLIDiscovery, CLIEnvironment (PATH)
-│   │   │   ├── Terminal/             # PTYSession (SwiftTerm), ContextPaster, QuickActions
-│   │   │   ├── Session/              # AgentSessionStore, Handoff
-│   │   │   └── Providers/            # AgentProvider impls (Claude, Codex, Shell; all CLI flags live here),
-│   │   │                             # ModelAdapter impls (Responses, Chat Completions, Anthropic)
-│   │   ├── Automation/
-│   │   │   ├── Server/               # AutomationServer (actor, Unix socket), TokenStore
-│   │   │   ├── Commands/             # CommandRegistry, Context/Timeline/Media/Voice/Export/UI commands
-│   │   │   └── Approval/             # ApprovalCenter, AuditLog
-│   │   ├── Review/                   # ReviewService (BashCutReview rules + audio measurements)
-│   │   ├── Workspace/                # WorkspaceLocator, AssetsCatalog (music/SFX/voices/LUTs)
-│   │   ├── Doctor/                   # DoctorService + one check per tool
-│   │   ├── Process/                  # SupervisedProcessRunner, PipeReader, StaleProcessReaper
-│   │   ├── Storage/                  # AppSupportPaths, SettingsStore, RecentProjects
-│   │   ├── Services/AppServices.swift
-│   │   └── Diagnostics/              # Logger categories, signposts
-│   ├── Models/                       # Selection, Playhead, PanelState, ExportJob…
-│   ├── ViewModels/
-│   │   ├── EditorViewModel.swift     # (+Selection, +Playback, +Commands)
-│   │   ├── TimelineViewModel.swift   # (+Editing, +Snapping, +Zoom)
-│   │   ├── LibraryViewModel.swift  InspectorViewModel.swift  VoiceViewModel.swift
-│   │   ├── AgentDockViewModel.swift  ReviewViewModel.swift  ExportViewModel.swift
-│   │   └── WelcomeViewModel.swift  DoctorViewModel.swift
-│   ├── Views/
-│   │   ├── Welcome/
-│   │   ├── Editor/                   # EditorWindowController, EditorSplitViewController, Toolbar
-│   │   ├── Library/                  # Media/, Audio/, Text/, Stickers/, Effects/, Transitions/, Filters/, Voice/
-│   │   ├── Viewer/                   # PlayerView (AVPlayerLayer), SafeAreaOverlay, CompareSlider
-│   │   ├── Inspector/                # Video/, Audio/, Text/, Color/, Speed/
-│   │   ├── Timeline/                 # TimelineView (NSView/CALayer), TrackHeader, Ruler, Toolbar
-│   │   ├── AgentDock/                # TerminalTab, ContextChip, QuickActionBar, AskPopover (⌘K)
-│   │   ├── Review/  Export/  History/  Doctor/  Settings/
-│   │   └── Components/               # NumberScrubField, IconTabBar, Toast…
-│   ├── Extensions/  Theme/
-│   ├── Resources/
-│   │   ├── Localizable.xcstrings     # en (development language) + vi
-│   │   ├── LUTs/  Fonts/  Stickers/  # bundled defaults
-│   │   └── Prompts/                  # bashcut-system-prompt.md, quick-actions/*.md (English)
-│   └── CLI/
-│       ├── BashCutCLIMain.swift      # target `bashcut` (swift-argument-parser)
-│       └── MCPBridgeMain.swift       # target `bashcut-mcp` (MCP Swift SDK, stdio)
+│   │   ├── Engine/                # library BashCutEngine: CompositionBuilder, BashCutCompositor,
+│   │   │                          # RenderEngine, Exporter, ExportPreset, TextRenderer, TimeMapping,
+│   │   │                          # MediaSource, ProxyManager, AudioWaveform, AudioGainPlanner, CubeLUT
+│   │   ├── Storage/               # library BashCutStorage: ProjectStorage, ProjectCreation,
+│   │   │                          # ProjectFileMonitor, ExportHistoryStore
+│   │   ├── Automation/            # library BashCutAutomation: CommandSpec, CommandCatalog,
+│   │   │                          # CommandRegistry, CommandLineParser, UIAction, UnixSocket, Wire,
+│   │   │                          # AgentInstructions, MCPBridgeClient, DebugLog
+│   │   ├── Agent/                 # library BashCutAgent: AgentProvider (Claude, Codex, Shell),
+│   │   │                          # ModelAdapter (Responses, Chat Completions, Anthropic), AgentLaunch,
+│   │   │                          # AgentEnvironment, AgentSessionStore, ModelClient, CredentialStore
+│   │   ├── Plugins/               # library BashCutPlugins: CapabilityService, CapabilityAdapter,
+│   │   │   └── Capabilities/      # one adapter per capability (transcription, beats, loudness, voice)
+│   │   ├── Services/              # library BashCutDocument: AppServices, JobCenter, ExportQueue,
+│   │   │                          # ExportPipeline, ProxyQueue, PreviewController, ExportController,
+│   │   │                          # FileSyncController, AutomationController, SettingsModel,
+│   │   │                          # EditorUIState, ModalCenter, TimelineFormats
+│   │   └── Document/              # app target: ProjectDocument, history, `commit`, command handlers
+│   │                              # (ProjectDocument+<Area>.swift)
+│   ├── Models/                    # small app-only value types
+│   ├── ViewModels/                # @Observable models: agent dock, knowledge, Doctor, plugins, voice…
+│   ├── Views/                     # SwiftUI/AppKit views, one file per screen or panel
+│   └── Resources/
+│       ├── Localizable.xcstrings  # English (development language) + Vietnamese
+│       └── en.lproj/  vi.lproj/   # InfoPlist.strings, Localizable.strings
+│
+├── CLI/BashCutCLI.swift           # executable `bashcut` (swift-argument-parser)
+├── MCPBridge/BashCutMCP.swift     # executable `bashcut-mcp` (MCP Swift SDK, stdio)
+├── Tools/Bench/main.swift         # executable `bashcut-bench`: engine benchmark on real footage
 │
 ├── Packages/
-│   └── BashCutCore/                  # swift-tools 6.0; `swift test` runs without Xcode
+│   └── BashCutCore/               # pure-logic package; `swift test` runs without Xcode
+│       ├── Package.swift  Package.resolved
 │       ├── Sources/
-│       │   ├── BashCutProject/       # Project, Track, Item, EditOperation, apply/inverse, validate, migrate
-│       │   ├── BashCutTimelineText/  # agent text form; "0:38.12" time parsing
-│       │   ├── BashCutReview/        # review rules (hook, coverage, silence, VO overlap, framing…)
-│       │   ├── BashCutImport/        # edl.json → Project
-│       │   ├── BashCutInterchange/   # OTIO JSON writer, Resolve plan builder (pure, testable)
-│       │   └── BashCutPlugin/        # bashcut.plugin/1 manifest, discovery, process RPC, health
-│       └── Tests/<Target>Tests/      # one test target per module; BashCutProjectFixtures = shared projects
+│       │   ├── BashCutProject/    # Project, tracks/items, EditOperation + codec, history, validation,
+│       │   │                      # layer rules, diff, review rules, SubRip, timeline-format protocols
+│       │   ├── BashCutPlugin/     # bashcut.plugin/1 manifest, catalog, provider resolver, transport,
+│       │   │                      # process runner
+│       │   ├── BashCutImport/     # legacy edl.json importer
+│       │   └── BashCutInterchange/  # OpenTimelineIO exporter
+│       └── Tests/
+│           ├── BashCutProjectTests/  BashCutPluginTests/
+│           ├── BashCutImportTests/   BashCutInterchangeTests/
+│           └── BashCutProjectFixtures/  # shared projects and the apply→undo→redo helper
 │
-├── Tests/                            # one test target per app module (BashCutEngineTests, …DocumentTests, …)
-│   └── BashCutTestSupport/           # shared fixtures: generated media, scratch folders, synthetic audio
-├── BashCutUITests/                   # XCTest; UITestCase launches the app on a temp fixture workspace
-├── BashCutPerfTests/                 # XCTest measure: composition build, 10 s playback, 30 s export
+├── Tests/                         # one test target per app library
+│   ├── BashCutEngineTests/        # includes __Snapshots__/ golden frames
+│   ├── BashCutStorageTests/  BashCutAutomationTests/  BashCutAgentTests/
+│   ├── BashCutPluginsTests/  BashCutDocumentTests/
+│   └── BashCutTestSupport/        # shared fixtures: generated media, scratch folders, synthetic audio
 │
 ├── Fixtures/
-│   ├── workspace-mini/               # fake workspace: CLAUDE.md, small assets, 2 projects, trimmed real edl.json
-│   ├── projects/                     # sample project.bashcut.json (schema v1), including broken files
-│   └── make-media.sh                 # generates test clips with ffmpeg (testsrc2, sine, 1–5 s); not committed
+│   ├── make-media.sh              # generates media/test.mp4 with ffmpeg
+│   └── media/                     # generated, gitignored
 │
 ├── scripts/
-│   ├── generate-project.sh           # checks XcodeGen version, generates .xcodeproj
-│   ├── verify.sh -> ../.claude/skills/verify/scripts/verify.sh
-│   ├── install-cli.sh                # /usr/local/bin/bashcut shim (asks first)
-│   └── build-release.sh  create-dmg.sh   # (later)
+│   ├── generate-project.sh        # checks for XcodeGen, generates BashCut.xcodeproj
+│   ├── verify.sh                  # build | test | lint | xcode [build|test] | perf
+│   └── run.sh                     # builds, signs and opens build/BashCut.app
+│
+├── mockups/bashcut-ui.html        # interactive UI mockup (reference only)
 │
 └── docs/
-    ├── specs/                        # these documents
-    ├── project-format.md             # canonical schema reference
-    ├── automation.md                 # bashcut / MCP command reference (for agents and users)
-    └── THIRD_PARTY.md                # dependencies and licenses
+    ├── README.md                  # documentation index
+    ├── guides/                    # automation.md (CLI/MCP commands), plugins.md (plugin API)
+    ├── reference/                 # project-format.md (schema), third-party.md (dependencies, licenses)
+    ├── status/                    # implementation.md, mockup-parity.md
+    └── specs/                     # these documents, 00–10
 ```
+
+Generated and ignored: `.build/`, `build/` (app bundle, `build/logs/`, Xcode derived data), `.swiftpm/`,
+`BashCut.xcodeproj/`, `Fixtures/media/`.
+
+### Planned
+
+These appear in earlier drafts of this spec and are not in the repository yet:
+
+- More path-scoped rules in `.claude/rules/` (automation security, process tools, UI lifecycle, tests) and a
+  `release` skill.
+- `Fixtures/workspace-mini/` (fake workspace with trimmed real `edl.json`) and `Fixtures/projects/` (sample and
+  broken project files).
+- A UI test target and a dedicated performance test target. Today `scripts/verify.sh perf` runs the engine tests
+  with `BASHCUT_PERF=1`, and real-footage numbers come from `bashcut-bench`.
+- `scripts/install-cli.sh` (a `bashcut` shim on `PATH`), `build-release.sh` and `create-dmg.sh`.
+- Finer folders inside `Core/Engine` and `Views/` once those areas grow.
 
 ## Targets
 
-`Package.swift` is the single source of targets. `project.yml` only declares what Xcode must own (the app
-bundle, the embedded CLI/MCP tools and one test bundle over `Tests/`) and links the package's library
-products (`BashCutEngine`, `BashCutStorage`, `BashCutAgent`, `BashCutAutomation`, `BashCutPlugins`,
-`BashCutDocument`). `scripts/verify.sh xcode [build|test]` regenerates the project and builds or tests it.
+`Package.swift` is the single source of targets. `project.yml` declares only what Xcode must own and links the
+package's library products. `scripts/verify.sh xcode [build|test]` regenerates the project and builds or tests it.
 
-| Target | Type | Notes |
+| Target | Kind | Path | Notes |
+|---|---|---|---|
+| `BashCut` | executable (product `BashCutApp`) | `BashCut/` | The app; excludes `Core/*` library folders. SwiftTerm is linked here only |
+| `BashCutEngine` | library | `BashCut/Core/Engine` | AVFoundation compositor, export, proxies, waveforms |
+| `BashCutStorage` | library | `BashCut/Core/Storage` | Project files, creation, monitoring, export history |
+| `BashCutAutomation` | library | `BashCut/Core/Automation` | Command specs, registry, socket, wire format, UI actions |
+| `BashCutAgent` | library | `BashCut/Core/Agent` | Agent providers, model adapters, sessions, credentials |
+| `BashCutPlugins` | library | `BashCut/Core/Plugins` | Capability service and adapters |
+| `BashCutDocument` | library | `BashCut/Core/Services` | Controllers, job center, export and proxy queues |
+| `BashCutCLI` | executable (`bashcut`) | `CLI/` | Embedded in the app bundle |
+| `BashCutMCP` | executable (`bashcut-mcp`) | `MCPBridge/` | Embedded in the app bundle |
+| `bashcut-bench` | executable | `Tools/Bench` | Not part of the app |
+| `BashCutTestSupport` | library | `Tests/BashCutTestSupport` | Test-only fixtures |
+| `BashCut<Module>Tests` | test | `Tests/` | One per app library |
+| `BashCutProject`, `BashCutPlugin`, `BashCutImport`, `BashCutInterchange` | library | `Packages/BashCutCore/Sources` | Core package products |
+| `BashCutProjectFixtures` | library | `Packages/BashCutCore/Tests` | Test-only fixtures |
+| `BashCut<Module>Tests` (core) | test | `Packages/BashCutCore/Tests` | One per core module |
+
+In `project.yml`:
+
+| Xcode target | Type | Notes |
 |---|---|---|
-| `BashCut` | application | macOS 14.0+; depends on `BashCutCore` products and SwiftTerm; provider-specific ML/audio libraries are not linked |
-| `bashcut` | tool | CLI (swift-argument-parser + `BashCutWire`); copied to `Contents/MacOS` (`copy: destination: executables`) |
-| `bashcut-mcp` | tool | stdio MCP server (MCP Swift SDK + `BashCutWire`) |
-| `BashCutTests` | unit test | Xcode bundle over every `Tests/*Tests` folder; SwiftPM runs them as per-module targets |
-| `BashCutUITests` | UI test | XCTest |
-| `BashCutPerfTests` | unit test | run separately; not part of the default CI run |
+| `BashCut` | application | macOS 14.0+, bundle ID `app.bashcut`; embeds `bashcut` and `bashcut-mcp` in `Contents/MacOS` |
+| `BashCutCLI` | tool | Product name `bashcut` |
+| `BashCutMCP` | tool | Product name `bashcut-mcp` |
+| `BashCutTests` | unit-test bundle | Compiles every `Tests/*Tests` folder into one bundle; SwiftPM runs them as per-module targets |
 
 ## Plugin bundle and catalog layout
 
+Plugins are discovered in three roots, highest priority first:
+
 ```text
-<project>/.bashcut/plugins/<plugin-id>/   # highest-priority project override
+<project>/.bashcut/plugins/<plugin-id>/            # project override
 ~/Library/Application Support/BashCut/Plugins/<plugin-id>/
-BashCut.app/Contents/PlugIns/<plugin-id>/ # optional bundled providers
-└── plugin.json
-└── bin/provider                         # executable entrypoint; receives `rpc`
+BashCut.app/Contents/PlugIns/<plugin-id>/          # optional bundled providers
+    ├── plugin.json                                # bashcut.plugin/1 manifest
+    └── <entrypoint>                               # executable named by the manifest; called with `rpc`
 ```
 
-Generated request outputs live in project-scoped, provider-specific request directories and are
-validated before becoming project media. Plugin manifests and provider IDs are stable; model files,
-venvs and downloaded dependencies remain owned by the plugin rather than the timeline schema.
+Request outputs live in project-scoped, provider-specific request folders and are validated before they become
+project media. Plugin and provider IDs are stable; model files, virtual environments and downloaded dependencies
+belong to the plugin, never to the timeline schema. See [plugins.md](../guides/plugins.md).

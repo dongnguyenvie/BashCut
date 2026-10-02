@@ -1,6 +1,6 @@
 # Developing BashCut
 
-Read docs/specs/README.md and docs/implementation-status.md. Develop only this repo; do not alter the video workspace or read tools/vendor.
+Read docs/specs/README.md and docs/status/implementation.md. Develop only this repo; do not alter the video workspace or read tools/vendor.
 
 - Swift 6, macOS 14. UI and document are MainActor; engine consumes immutable snapshots off the UI actor.
 - All project edits use EditOperation/applying. Keep integer frame timing, rational source/project FPS, stable IDs and unknown JSON fields.

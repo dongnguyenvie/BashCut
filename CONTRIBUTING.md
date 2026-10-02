@@ -1,6 +1,6 @@
 # Contributing to BashCut
 
-Read `AGENTS.md`, `docs/specs/README.md` and `docs/implementation-status.md` first. This file covers the
+Read `AGENTS.md`, `docs/specs/README.md` and `docs/status/implementation.md` first. This file covers the
 build layout and how to add the common kinds of extension. Each one is **one file plus a test**: write the
 conforming type, add it to its registry, and cover it with a test that needs no network, agent CLI or real
 footage.
@@ -125,7 +125,7 @@ recorded response. Never call the network.
 3. Tests: `Tests/BashCutAutomationTests/CommandSpecTests.swift` checks every spec has a valid schema and CLI
    form; add a parsing case if the command has unusual parameters. Debug builds assert every spec has a
    handler at launch.
-4. Document it in `docs/automation.md` and the command table in `docs/specs/05-agent-integration.md`.
+4. Document it in `docs/guides/automation.md` and the command table in `docs/specs/05-agent-integration.md`.
 
 A new button, menu item or shortcut is a `UIAction` case (ID, title, shortcuts) in
 `BashCut/Core/Automation/UIAction.swift`, handled in `ProjectDocument+UIActions.swift` and bound in the view

@@ -1,16 +1,18 @@
 # 01 — UI/UX
 
-An interactive mockup lives at [`../../mockups/bashcut-ui.html`](../../mockups/bashcut-ui.html).
-Open it in a browser.
+The windows, panels, gestures and shortcuts of the editor, and how agent edits appear in them. It is for anyone
+building or reviewing the UI; the interactive mockup is [`mockups/bashcut-ui.html`](../../mockups/bashcut-ui.html)
+(open it in a browser).
 
-The UI language is **English by default**, and Vietnamese ships as a localization. All labels in
-this document are the English strings.
+The UI is **English by default**, with Vietnamese shipped as a localization; all labels here are the English
+strings. Parts not built yet are marked **Planned** (see [status markers](README.md#status-markers)); the
+control-by-control gap list is in [mockup parity](../status/mockup-parity.md).
 
 ## 1. Windows
 
 ### 1.1 Welcome (no project open)
 
-```
+```text
 ┌──────────────────────────── BashCut ────────────────────────────┐
 │  [+ New Project]   [Open…]   [Import from edl.json…]             │
 │                                                                  │
@@ -27,7 +29,7 @@ this document are the English strings.
 
 The layout follows CapCut desktop, plus an agent dock on the right.
 
-```
+```text
 ┌ Toolbar ──────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ ◀ Lau bo noi dat ▾   ↶ ↷   │ 9:16 1080×1920 · 29.97 │                 [Review ⚠3]  [Export ⤓]  [⌘J Agent ◧] │
 ├────┬──────────────────────┬───────────────────────────────────┬──────────────────────┬──────────────────────────┤
@@ -60,66 +62,64 @@ The layout follows CapCut desktop, plus an agent dock on the right.
 |---|---|---|
 | **Tab rail** (far left) | Media 🎞, Audio ♪, Text T, Stickers ★, Effects ✦, Transitions ⇄, Filters ◐, Voice 🎙 | Same idea as CapCut's left rail |
 | **Library** | Content of the selected tab: thumbnail grid, drag to timeline, hover-scrub | Each tab is described in §3 |
-| **Viewer** | Preview in the project frame (9:16 / 16:9) | TikTok safe-area overlay can be toggled; timecode; preview quality (Full / ½ / Proxy). Same engine as export |
-| **Inspector** | Properties of the selected item | Tabs by item type: Video, Audio, Text, Color, Speed. Every number can be scrubbed and typed |
-| **Timeline** | Tracks, section band, beat band, edit toolbar | §2 |
-| **Agent dock** | Claude/Codex terminal tabs, context chip, quick actions | §4. Toggle with ⌘J; can be detached into its own window |
+| **Viewer** | Preview in the project frame (9:16 / 16:9), timecode, toggleable TikTok safe area | Same engine as export. Heavy footage plays from automatic proxies; a manual quality picker (Full / ½ / Proxy) is Planned |
+| **Inspector** | Properties of the selected item | Tabs: Video, Audio, Text, Color, Speed. Every number can be scrubbed and typed |
+| **Timeline** | Tracks, Sections band, Beat band, edit toolbar | §2 |
+| **Agent dock** | Claude / Codex / Shell terminal tabs, context chip, quick actions | §4. Toggle with ⌘J; can be detached into its own window |
 
-The minimum window size is 1280×800. On small screens the agent dock floats by default instead
-of taking a column.
+The minimum window size is 1280×800. On small screens the agent dock floats by default instead of taking a column.
 
 ## 2. Timeline
 
-### Default tracks
+### 2.1 Default tracks
 
-The tracks match the layers the workspace already uses.
+The tracks match the layers the workspace already uses. More video, text and audio layers can be added; their
+stacking order is explicit (see [02 — Project format](02-project-format.md)).
 
 | Track | Role | Today's equivalent |
 |---|---|---|
-| Sections | Named ranges: hook, place 1, … Double-click to rename, drag to move a boundary | `sec` in `edl.py` |
+| Sections | Named ranges (hook, place 1, …). Double-click to rename, drag to move a boundary | `sec` in `edl.py` |
 | Beat | Beat grid of the analyzed music track | `BEAT`/`PHASE`, `beatgrid.py` |
 | Captions | Text items, editable inline, styled by preset | `make_subs.py` + Pillow overlay |
 | Overlay (V2) | Banners, place cards, stickers, illustration images | `render_overlay.py`, `fxover.py` |
-| Main (V1) | **Magnetic** main track (like CapCut): deleting a clip closes the gap | V1 in Resolve |
+| Main (V1) | **Magnetic** main track, as in CapCut: deleting a clip closes the gap | V1 in Resolve |
 | Dialogue (A1) | Location sound, linked to its Main clip by default | `tieng-hien-truong.wav` |
-| Voiceover (A2) | TTS / cloned voice | `giong-doc.wav` |
+| Voiceover (A2) | TTS or cloned voice | `giong-doc.wav` |
 | Music (A3) | Background music, auto-ducked under speech | `nhac-nen.wav` |
 | SFX (A4) | Sound effects | `hieu-ung.wav` |
 
-### Clip roles on Main
+### 2.2 Clip roles on Main
 
-Main clips are colored by role. The role comes from the old `kind` field and can be changed in
-the Inspector.
+Main clips are colored by role. The role comes from the old `kind` field and can be changed in the Inspector.
+Review and the agent both use these roles.
 
 | Role | Meaning |
 |---|---|
-| **Speech** | A real line spoken on camera; its sound is kept. |
-| **B-roll** | Cutaway; its sound is kept quiet. |
-| **Under VO** | Picture that sits under the voiceover. |
+| **Speech** | A real line spoken on camera; its sound is kept |
+| **B-roll** | Cutaway; its sound is kept quiet |
+| **Under VO** | Picture that sits under the voiceover |
 
-Review and the agent both use these roles.
+### 2.3 Operations
 
-### Operations
-
-| Operation | Key / gesture | Notes |
+| Operation | Key or gesture | Notes |
 |---|---|---|
 | Split at playhead | S / ⌘B | |
-| Ripple delete / lift | ⌫ / ⇧⌫ | |
-| Trim, roll, slip | drag an edge / ⌥-drag / ⌘-drag the clip body | |
-| Snap | 🧲, hold ⌘ to suspend | snaps to clip edges, playhead, markers |
-| Beat snap | ♩ | edges snap to the nearest beat. Speech cuts round up, like `snap()` in `edl.py` |
-| Auto reframe | context menu → "Change framing" | cycles the `PUNCH` table (zoom/pan/tilt) so two adjacent cuts never share a framing |
-| Freeze frame, speed | ❄, ⏩ | speed ramps live in Inspector › Speed |
-| Borrow picture | ⌥-drop a clip onto a Main clip | keeps the old clip's sound and takes the new clip's picture (`pic` in `edl.py`) |
+| Ripple delete / lift | ⌫ / ⇧⌫ | Lift leaves a gap |
+| Trim, roll, slip | Drag an edge / ⌥-drag an edge / ⌘-drag the clip body | Roll and slip are also in the Inspector |
+| Move | Drag a clip | Within a magnetic track, dragging reorders and closes gaps; linked Dialogue follows |
+| Snap | 🧲 Snap; hold ⌘ to suspend | Snaps to clip edges, the playhead, markers and beats |
+| Beat snap | ♩ | **Planned** as a separate toggle (beats are already snap targets). Speech cuts should round up, like `snap()` in `edl.py` |
+| Change framing | Inspector › Video › "Change framing" | Cycles Wide, Medium, Close and left/right emphasis presets so adjacent cuts get different framing. The `PUNCH` table from `edl.py` is the model |
+| Freeze frame, speed | Inspector › Speed | Constant speed and freeze frame. Speed ramps are **Planned** |
+| Borrow picture | ⌥-drop a clip onto a Main clip | **Planned.** Keeps the old clip's sound and takes the new clip's picture (`pic` in `edl.py`); already imported from `edl.json` |
 | Ask the agent about the selection | ⌘K | §4.3 |
 
-### How agent changes appear
+### 2.4 How agent changes appear
 
 - Changed items get a small ◆ badge.
-- All changes from one request are grouped into one labeled undo step, for example
-  "Claude: Trim hotpot clip to 4 s". ⌘Z reverts the whole step.
-- The **History** panel lists every step and its author: you, Claude, Codex, or an external file
-  change.
+- All changes from one request form one labeled undo step, for example "Claude: Trim hotpot clip to 4 s". ⌘Z
+  reverts the whole step.
+- The **History** panel lists every step and its author: you, Claude, Codex, or an external file change.
 
 ## 3. Library tabs
 
@@ -127,57 +127,50 @@ Review and the agent both use these roles.
 
 The tab has three sources:
 
-- **Footage**: the shoot linked to this project (`footage/` → `viddeo-sources/<shoot>`).
-- **Project**: files added to the project, such as images, downloaded clips and generated files.
-- **Shared**: `assets/video-stock` and `assets/anh` in the workspace.
-
-Thumbnails carry badges from the survey:
-
-| Badge | Meaning |
+| Source | Content |
 |---|---|
-| 🗣 **speech** | Speech was detected. |
-| ▣ **static** | The sampled frames are identical: the camera was locked off, so the clip gives only one shot size. |
-| ⛔ **offline** | The file is missing, for example because an external drive is unplugged. |
+| **Footage** | The shoot linked to this project (`footage/` → `viddeo-sources/<shoot>`) |
+| **Project** | Files added to the project: images, downloaded clips, generated files |
+| **Shared** | `assets/video-stock` and `assets/anh` in the workspace |
 
-Views:
+Thumbnails show resolution, frame rate and duration, hover-scrub through the clip, and carry badges:
 
-- **Grid**.
-- **List**: duration, resolution, fps, codec.
-- **Contact sheet**: one row per clip with N frames, like `SHEET_*.jpg`.
+| Badge | Meaning | Status |
+|---|---|---|
+| ⛔ **offline** | The file is missing, for example because an external drive is unplugged | Implemented |
+| 🗣 **speech** | Speech was detected | Planned (needs the survey) |
+| ▣ **static** | The sampled frames are identical: the camera was locked off, so the clip gives only one shot size | Planned (needs the survey) |
 
-Search and editing:
+Heavy footage gets a preview proxy automatically; **Create Preview Proxy** in the tile menu makes one by hand.
 
-- **Search by spoken words.** Typing "lau bo" lists the clips that contain that phrase and jumps
-  to the exact second.
-- Open a clip in the source viewer and set I/O. Press E to insert at the playhead or Q to
-  overwrite.
+Open a clip in the source viewer, set In/Out with I and O, then press E to insert at the playhead or Q to
+overwrite.
 
-Survey:
+**Planned:**
 
-- **[Survey Footage]** runs in the background and produces thumbnails, specs, static-clip
-  detection and a transcript.
-- The transcript is optional and takes a few minutes. Progress shows in the status bar.
+- **List** view (duration, resolution, fps, codec) and **contact sheet** view (one row of N frames per clip, like
+  `SHEET_*.jpg`).
+- **Search by spoken words:** typing "lau bo" lists the clips that contain the phrase and jumps to the exact
+  second.
+- **[Survey Footage]:** a background job that produces thumbnails, specs, static-clip detection and an optional
+  transcript (a few minutes), with progress in the status bar.
 
 ### 3.2 Audio ♪
 
-**Music** comes from `assets/nhac/`. BPM, loudness and license are read from `GHI-CHU-NHAC.md`.
-Tracks get a license badge:
+Audio files can be imported and inserted into Music, SFX or Voiceover. **[Detect Beats]** on a music track runs an
+`audio.beats` provider and creates the Beat band, which the timeline snaps to.
 
-- ⚠ **TikTok rip, likely Content ID claimed**.
-- ✓ **CC-BY, credit required**.
+**Planned:**
 
-**SFX** come from `assets/sfx/` and are grouped by type: whoosh, pop, ding, riser, meme.
+- A **Music** catalog from `assets/nhac/`, with BPM, loudness and license read from `GHI-CHU-NHAC.md`, and license
+  badges: ⚠ **TikTok rip, likely Content ID claimed** or ✓ **CC-BY, credit required**.
+- An **SFX** catalog from `assets/sfx/`, grouped by type: whoosh, pop, ding, riser, meme.
+- Hover preview before dragging a track to Music or SFX.
+- A warning when the detected BPM looks like half the real tempo. This is a lesson from `beatgrid.py`, which once
+  reported 58.7 BPM for a 117.5 BPM track.
 
-Hover a track to preview it, then drag it to Music or SFX.
-
-**[Detect Beats]** on a music track does two things:
-
-- It creates the Beat band.
-- It warns when the detected BPM looks like half the real tempo. This is a lesson from
-  `beatgrid.py`, which once reported 58.7 BPM for a 117.5 BPM track.
-
-Downloading from TikTok or myinstants links stays agent-only (`nolan-tiktok-music`,
-`nolan-sfx`), because it involves the network and copyright.
+Downloading from TikTok or myinstants links stays agent-only (`nolan-tiktok-music`, `nolan-sfx`), because it
+involves the network and copyright.
 
 ### 3.3 Text T
 
@@ -188,53 +181,57 @@ Downloading from TikTok or myinstants links stays agent-only (`nolan-tiktok-musi
 | **Bold Outline** (food review) | White, heavy outline |
 | **Cinematic Serif** | Small mustard-yellow serif, as in `--style quinn` |
 | **Keyword Sticker** | Colored sticker behind the word |
-| **Place Card** | Name / address / opening hours |
+| **Place Card** | Name, address and opening hours |
 | **Hook Title** | Large title for the hook |
 | **Chapter Card** | Chapter heading |
 
-**[Auto Captions]** runs speech-to-text on Speech clips and the voiceover and fills the Captions
-track. Each line is editable inline. Lines that are too long get a warning, because line length
-matters more than font size.
+**[Auto Captions]** runs a `captions.transcribe` provider and fills the Captions track. Each line is editable
+inline. Review warns about lines longer than 42 characters, because line length matters more than font size.
 
-Captions can be exported as `.srt`.
+Captions can be imported from and exported to `.srt`.
 
 ### 3.4 Stickers ★ and Effects ✦
 
-The library is generated from `nolan-effects/recipes.json` and can be filtered two ways:
+Stickers currently insert emoji as text items. The rest of this tab is **Planned**.
 
-- **By genre**: food, travel, review, talking head, …
-- **By moment**: hook, transition, emphasis, product reveal, humor, mood, rhythm, orientation.
+The library is generated from `nolan-effects/recipes.json` and filters two ways:
+
+- **By genre:** food, travel, review, talking head, …
+- **By moment:** hook, transition, emphasis, product reveal, humor, mood, rhythm, orientation.
 
 There are two kinds of effects:
 
 - **Clip effects** (zoom punch, shake, flash, glitch, film look): drop them on a Main clip.
-- **Overlay effects** (pop text, word-by-word, typewriter, highlight, counter, banner, callout,
-  REC frame, progress bar): drop them on Overlay.
+- **Overlay effects** (pop text, word-by-word, typewriter, highlight, counter, banner, callout, REC frame, progress
+  bar): drop them on Overlay.
 
-Every effect has a "when to use" note. Special effects also carry *"1–2 times per video"*, taken
-from the playbook.
+Every effect has a "when to use" note. Special effects also carry *"1–2 times per video"*, from the playbook.
 
 ### 3.5 Transitions ⇄
 
-The default is a hard cut. The other transitions are whip, blink, zoom, spin, shutter, wipe and
-dissolve.
+The default is a hard cut. The other transitions are dissolve, whip, blink, zoom, spin, shutter and wipe; all of
+them render the same in preview and export.
 
-Drop a transition on the join between two clips. It shows as a small handle; drag the handle to
-change the duration.
+Select a clip beside a cut and choose a transition; the panel adjusts its duration in frames. A draggable handle
+on the join is **Planned**.
 
 ### 3.6 Filters / LUT ◐
 
-- **Looks** from `looks.json`: `quinn-matte`, `quinn-am`, `quinn-ky-uc`. You can also import a
-  `.cube`.
-- **Basic adjustments**: exposure, contrast, saturation, temperature, tint, vignette.
-- **Scope**: apply to one clip, to the selection, or to the whole video.
-- **Compare**: a split before/after slider in the viewer.
+| Control | Content | Status |
+|---|---|---|
+| **Looks** | Original, Muted film, Black & white | Implemented |
+| **3D LUTs** | Import a `.cube` into the project, apply it per clip with adjustable strength | Implemented |
+| **Bundled looks** | `quinn-matte`, `quinn-am`, `quinn-ky-uc` from `looks.json` | Planned |
+| **Basic adjustments** | Exposure, contrast, saturation (Inspector › Color) | Implemented |
+| | Temperature, tint, vignette | Planned |
+| **Scope** | Apply to the selection or the whole video (today: one clip) | Planned |
+| **Compare** | Split before/after slider in the viewer | Implemented |
 
 ### 3.7 Voice 🎙
 
 This tab is the manual counterpart of the `nolan-voice-clone` skill.
 
-```
+```text
 ┌ Voice ────────────────────────────────────────┐
 │ Voice: [nolan_podcast_ip1 ▾]  (default)       │
 │   tags: podcast · slow · warm · clean         │
@@ -253,47 +250,51 @@ This tab is the manual counterpart of the `nolan-voice-clone` skill.
 └───────────────────────────────────────────────┘
 ```
 
-- **Generate** produces 3 takes, scores each one with speech-to-text, and marks the best. This
-  matches what `scripts/doc` does today.
-- **Insert** shows a red warning on the timeline if the voiceover lands within 0.3 s of real
-  speech. The rule comes from `mix.py`.
-- **Clone New Voice** is a 3-step wizard:
-  1. Pick about 8 s of audio, from media or recorded live. The recording script from
-     `KICH-BAN-THU-GIONG.md` is shown.
+- **Generate** produces 3 takes, scores each one and marks the best, as `scripts/doc` does today.
+- **Insert** puts the chosen take on Voiceover at the playhead. The timeline shows a red warning when the
+  voiceover lands within 0.3 s of tagged speech; the rule comes from `mix.py`.
+- **Record** captures a voiceover from the microphone (48 kHz mono WAV, with a level meter) and inserts it at the
+  playhead **(to verify)** on real hardware.
+- The tab resolves an installed `voice.synthesize` provider. If its model, venv or executable is missing, the tab
+  links to Plugins, where the dependency probe and exact install command are shown before the user approves them.
+  Switching providers does not change existing timeline items.
+- **Clone New Voice** is **Planned**: a 3-step wizard.
+  1. Pick about 8 s of audio, from media or recorded live, with the recording script from `KICH-BAN-THU-GIONG.md`
+     on screen.
   2. Optionally remove background music with Demucs.
-  3. Name the voice, add tags and test one sentence. The result is written to
-     `assets/giong/voices.json`.
-- The tab resolves an installed `voice.synthesize` provider. If its model, venv or executable is
-  missing, the tab links to Plugins, where the dependency probe and exact install command are shown
-  before the user approves them. Switching providers does not change existing timeline items.
+  3. Name the voice, add tags and test one sentence. The result is written to `assets/giong/voices.json`.
 
-### 3.8 Plugins 🧩
+### 3.8 Plugins sheet 🧩
 
-Plugins contain optional, replaceable providers and run outside the editor process. The Plugins
-sheet lists the plugin name/version, capability IDs, provider choices, dependency health and
-manifest diagnostics. **Install Plugin…** accepts a local folder containing `plugin.json`, stages
-and validates it, then shows every dependency recipe before copying it into the user catalog.
+Plugins are not a rail tab; the sheet opens from the toolbar and from linked panels. They hold optional,
+replaceable providers and run outside the editor process.
 
-Discovery order is project (`.bashcut/plugins`), user (`Application Support/BashCut/Plugins`), then
-bundled. A project can select a provider per capability; unavailable preferences fall back to a
-healthy provider by priority. Missing plugins disable only their feature. The project, timeline,
-preview and normal export remain available.
+- The sheet lists each plugin's name and version, capability IDs, provider choices, dependency health and manifest
+  diagnostics.
+- **Install Plugin…** takes a local folder containing `plugin.json`, stages and validates it, and shows every
+  dependency recipe before copying it into the user catalog.
+- Discovery order is project (`.bashcut/plugins`), user (`Application Support/BashCut/Plugins`), then bundled.
+- A project can pick a provider per capability. An unavailable preference falls back to a healthy provider by
+  priority.
+- A missing plugin disables only its feature. The project, timeline, preview and normal export stay available.
 
-Implemented capability consumers are:
+Capabilities used by panels today:
 
-- Voice: `voice.synthesize`;
-- Text / Auto Captions: `captions.transcribe`;
-- Audio / Detect Beats: `audio.beats`;
-- Export / Normalize Audio: `audio.loudness`.
+| Panel | Capability |
+|---|---|
+| Voice | `voice.synthesize` |
+| Text › Auto Captions | `captions.transcribe` |
+| Audio › Detect Beats | `audio.beats` |
+| Export › Normalize Audio | `audio.loudness` |
 
-The app records plugin, provider and version provenance on generated assets or measurements. It
-does not expose arbitrary plugin output directly as timeline JSON.
+The app records plugin, provider and version provenance on generated assets and measurements. It never takes
+plugin output directly as timeline JSON. Details are in the [plugins guide](../guides/plugins.md).
 
 ## 4. Agent dock
 
 ### 4.1 Anatomy
 
-```
+```text
 ┌ AGENT ─────────────────────────────── ⤢ ✕ ┐
 │ [● Claude] [Codex] [+]                     │   one tab = one session; ● = running
 ├────────────────────────────────────────────┤
@@ -306,51 +307,52 @@ does not expose arbitrary plugin output directly as timeline JSON.
 └────────────────────────────────────────────┘
 ```
 
-**The terminal is a real terminal** (SwiftTerm) running `claude` or `codex` with `cwd` set to the
-workspace. Slash commands, `nolan-*` skills, hooks and permission prompts all behave exactly as
-they do outside BashCut.
+**The terminal is a real terminal** (SwiftTerm) running `claude` or `codex` in the workspace. Slash commands,
+`nolan-*` skills, hooks and permission prompts behave exactly as they do outside BashCut.
 
-**[+]** opens a new tab:
-
-- Choose Claude, Codex, or *Shell* (plain zsh).
-- If an earlier Claude or Codex session exists for this project, the app offers to resume it.
+**[+]** opens a new tab: Claude, Codex or *Shell* (plain zsh). When an earlier Claude or Codex conversation exists
+for this project, the dock offers **Continue** or **New conversation**. A handoff moves the project context from
+one agent to the other.
 
 **The context chip** follows the timeline or library selection. Click ✕ to send nothing.
 
-**Quick actions** insert a prompt template into the terminal. You can edit it before pressing
-Enter. The templates are stored in English; the agent replies in the language you write in.
+**Quick actions** paste a prompt template into the terminal; you can edit it before pressing Enter. Templates are
+stored in English; the agent replies in the language you write in.
 
-| Button | Template (summary) |
-|---|---|
-| Survey | "Run nolan-footage-survey on this project's footage, look at the contact sheets, say plainly if coverage is missing" |
-| Write VO | "Extract the spoken lines of Speech clips, draft continuous narration so speech covers ≥ 90 %, with a lead-in before each real line" |
-| Suggest FX | "Suggest effects for the selection from memos/hieu-ung-tra-cuu.md, at most 1–2 special effects" |
-| Review | "Run bashcut review, explain each issue and propose a fix" |
-| Lessons | "Run nolan-self-learn for this session" |
+| Button | Template (summary) | Status |
+|---|---|---|
+| Survey | "Run nolan-footage-survey on this project's footage, look at the contact sheets, say plainly if coverage is missing" | Implemented |
+| Write VO | "Extract the spoken lines of Speech clips, draft continuous narration so speech covers ≥ 90 %, with a lead-in before each real line" | Implemented |
+| Review | "Run bashcut review, explain each issue and propose a fix" | Implemented |
+| Suggest FX | "Suggest effects for the selection from memos/hieu-ung-tra-cuu.md, at most 1–2 special effects" | Planned |
+| Lessons | "Run nolan-self-learn for this session" | Planned |
+
+The dock also has a **Model API** mode (OpenAI Responses, compatible Chat Completions, Anthropic Messages) that
+proposes an edit or a script to review before it is applied as one undo step, and a **Knowledge** sheet for the
+project memo and project skills shared with Claude and Codex. See the [automation guide](../guides/automation.md).
 
 ### 4.2 How the agent edits the timeline
 
-The agent calls `timeline apply` through MCP or the `bashcut` CLI (see
-`05-agent-integration.md`). In the UI you see:
+The agent calls `timeline apply` (or a dedicated command) through MCP or the `bashcut` CLI; see
+[05 — Agent integration](05-agent-integration.md). In the UI:
 
-1. A thin "Claude is editing…" bar above the timeline.
-2. All changes landing at once, each with a ◆ badge.
-3. A toast: "Claude: Trim hotpot clip to 4 s · [Undo] [Show Changes]".
+1. All changes land at once, each with a ◆ badge.
+2. A toast appears: "Claude: Trim hotpot clip to 4 s · [Undo] [Show Changes]".
+3. **[Show Changes]** highlights the changed items and opens a before/after list.
 
-**[Show Changes]** highlights the changed items and opens a before/after list.
+A thin "Claude is editing…" bar above the timeline is **Planned**.
 
 Two guards protect your own edits:
 
-- If you are mid-drag or mid-trim, the agent's operation waits until you finish.
-- If the agent read an older revision of the timeline, its operation is rejected and it has to
-  read the timeline again (optimistic revision).
+- While you are mid-drag or mid-trim, an agent edit is rejected as busy, and the agent retries.
+- If the agent read an older revision of the timeline, its edit is rejected and it has to read the timeline again
+  (optimistic revision).
 
 ### 4.3 ⌘K: ask the agent in place
 
-Select a clip, a time range or a caption line, then press ⌘K. A small popover opens next to the
-selection:
+Select a clip, a time range or a caption line, then press ⌘K. A small popover opens next to the selection:
 
-```
+```text
 ┌ Ask the agent… ──────────────────────────┐
 │ c-25 · 0474 · hotpot · 38.1–44.6 s  [📷 frame]│
 │ ┌──────────────────────────────────────┐ │
@@ -361,32 +363,36 @@ selection:
 └──────────────────────────────────────────┘
 ```
 
-The popover sends a `[BashCut context]…` block and your sentence to the active agent tab. It also
-opens the dock if the dock is hidden.
+The popover sends a `[BashCut context]…` block and your sentence to the active agent tab, optionally with the
+current viewer frame attached. It also opens the dock if the dock is hidden. Separate **Send to Claude** and
+**Codex** buttons are **Planned**; today there is one **Send context** button.
 
 ## 5. Review
 
-The toolbar button shows how many issues are open, for example **[Review ⚠3]**. The checks come
-from the playbook and the workspace's lessons:
+The toolbar button shows how many issues are open, for example **[Review ⚠3]**. Clicking an issue jumps the
+timeline to that spot, and **[Ask agent to fix]** sends the issue to the active agent.
 
-| Check | Threshold | Source |
-|---|---|---|
-| Hook | ≤ 7 s, with a title | playbook §2 |
-| Speech coverage | ≥ 90 % of runtime (food review), ≥ 60 % (cinematic) | playbook §1, hanh-trinh-laca memo |
-| Unintended silence | > 0.8 s | playbook §5 |
-| Voiceover overlapping real speech | gap < 0.3 s | `mix.py` |
-| Two adjacent cuts with the same framing | same source clip and same zoom | `nolan-beat-cut` |
-| Special effects | used more than 2 times | playbook §3 |
-| Outro | the last 5 s contain speech or a call to action | playbook §2 |
-| Loudness | −14 LUFS ± 1 | `nolan-audio-mix` |
-| Offline media, or TikTok-ripped music in a public export | any | |
+The checks come from the playbook and the workspace's lessons. Implemented checks work from timeline structure,
+clip roles and voiceover timing; they do not measure audio.
 
-Clicking an issue jumps the timeline to that spot. Each issue also has a **[Ask Agent to Fix]**
-button.
+| Check | Threshold | Source | Status |
+|---|---|---|---|
+| Gap on Main | any gap without picture | magnetic Main | Implemented |
+| Two adjacent cuts with the same framing | same source clip and same transform | `nolan-beat-cut` | Implemented |
+| Voiceover near real speech | gap < 0.3 s from tagged speech | `mix.py` | Implemented |
+| Long caption line | > 42 characters | caption lessons | Implemented |
+| Speech coverage | ≥ 90 % of runtime (food review) from tagged speech and voiceover | playbook §1 | Implemented |
+| | ≥ 60 % (cinematic) | hanh-trinh-laca memo | Planned |
+| Hook | ≤ 7 s, with a title | playbook §2 | Planned |
+| Unintended silence | > 0.8 s | playbook §5 | Planned |
+| Special effects | used more than 2 times | playbook §3 | Planned |
+| Outro | the last 5 s contain speech or a call to action | playbook §2 | Planned |
+| Loudness | −14 LUFS ± 1 | `nolan-audio-mix` | Planned (measured only during normalized export) |
+| Offline media, or TikTok-ripped music in a public export | any | | Planned |
 
 ## 6. Export
 
-```
+```text
 ┌ Export ───────────────────────────────────────┐
 │ Name      lau-bo-noi-dat-v8                    │
 │ Preset    [TikTok / Reels 9:16 ▾]              │
@@ -399,38 +405,44 @@ button.
 └────────────────────────────────────────────────┘
 ```
 
-**Background queue.** Exports run in a background queue with progress in the status bar, so you
-can keep editing.
+| Preset | Output |
+|---|---|
+| TikTok / Reels | 9:16, H.264 |
+| YouTube 1080p / 4K | 16:9, H.264 |
+| Quick Draft | 720p, H.264 |
+| ProRes | ProRes 422 HQ, to finish in another app |
 
-**After export:**
-
-- The app shows duration, cut count, LUFS, speech coverage and file size.
-- Buttons: [Open], [Reveal in Finder], [Compare with Previous], [Lessons].
-
-**Presets:**
-
-- TikTok/Reels 9:16
-- YouTube 16:9 1080p / 4K
-- Quick Draft 720p
-- ProRes 422 HQ (to finish in another app)
-
-Later, the dialog gains *Export OTIO* and *Apply to DaVinci Resolve* targets (see
-`03-architecture.md` §7). They are not part of v1.
+- **Background queue.** Exports run one at a time in the background, with progress in the status bar, so you can
+  keep editing. Agent exports need approval in the app first.
+- **Normalize audio** needs an installed `audio.loudness` provider; it runs a two-pass normalization to the target
+  LUFS with a −1 dBTP ceiling.
+- **After export,** the report shows duration, cut count, captions, LUFS (when normalized), tagged speech coverage
+  and file size, compared with the previous export. Buttons: **[Open]** and **[Reveal in Finder]**. A
+  **[Lessons]** button is **Planned**.
+- **Other targets.** *Export OTIO* is Implemented. *Apply to DaVinci Resolve* is **Reserved** (see
+  [03 — Architecture](03-architecture.md) §7).
 
 ## 7. Keyboard shortcuts
 
-| Key | Action |
-|---|---|
-| Space / J K L | play/pause; reverse/stop/forward (press repeatedly to speed up) |
-| ← → (⇧) | 1 frame (1 s) |
-| I / O | mark in / out |
-| S, ⌘B | split |
-| ⌫ / ⇧⌫ | ripple delete / lift |
-| E / Q | insert / overwrite from the source viewer |
-| N | snapping on/off |
-| ⌘K | ask the agent about the selection |
-| ⌘J | show/hide the agent dock |
-| ⌘⇧A | switch tab Claude ↔ Codex |
-| ⌘E | export |
-| ⌘⇧R | review |
-| ⌘1…⌘8 | library tabs |
+Shortcuts belong to editor actions; `bashcut ui actions` lists every action with its current shortcuts, and
+`bashcut ui action <id|shortcut>` runs one.
+
+| Key | Action | Status |
+|---|---|---|
+| Space | Play/pause (the source viewer when it is open) | Implemented |
+| J K L | Reverse / stop / forward; press repeatedly to speed up | Planned |
+| ← → (⇧) | Step 1 frame (1 s) | Planned (frame step exists as an action without a key) |
+| I / O | Mark source in / out | Implemented |
+| E / Q | Insert / overwrite from the source viewer | Implemented |
+| S, ⌘B | Split | Implemented |
+| ⌫ / ⇧⌫ | Ripple delete / lift | Implemented |
+| ⌘= / ⌘− | Zoom the timeline in / out | Implemented |
+| ⌘Z / ⇧⌘Z | Undo / redo | Implemented |
+| ⌘N / ⌘O / ⌘S | New / open / save project | Implemented |
+| N | Snapping on/off | Planned |
+| ⌘K | Ask the agent about the selection | Implemented |
+| ⌘J | Show/hide the agent dock | Implemented |
+| ⌘⇧A | Switch tab Claude ↔ Codex | Planned |
+| ⌘E | Export | Implemented |
+| ⌘⇧R | Review | Implemented |
+| ⌘1…⌘8 | Library tabs | Planned |

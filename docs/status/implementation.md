@@ -1,0 +1,267 @@
+# Implementation status
+
+What BashCut does at HEAD, how it was verified, and what is left. The full scope is the roadmap in
+[09-roadmap.md](../specs/09-roadmap.md); the control-by-control UI audit is in [mockup-parity.md](mockup-parity.md).
+
+## Summary
+
+M0 is accepted on real DJI footage, and the refactor plan (R0–R6) is complete. Most of M1–M3 and M5 is in place,
+with parts of M4 and M6. Agents reach every UI action and dialog through 46 CLI/MCP commands. Milestones M1–M6 are
+not complete: several acceptance runs, bundled providers and the larger M4/M6 features remain.
+
+## Milestones at a glance
+
+| Milestone | Status | Notes |
+|---|---|---|
+| M0 Skeleton and engine spike | Done | Accepted on 20 HEVC DJI clips (table below) |
+| M1 Core editor | Features in place | Hand-rebuild of the 48-cut reference and accessibility QA pending |
+| M2 Agent dock and automation | Mostly done | Claude/Codex/Shell terminals, socket, CLI, MCP; real authenticated agent runs only partly smoke-tested |
+| M3 Text, captions, export | Mostly done | Export queue (E-1) done; no bundled transcription provider; first all-in-app vlog not yet recorded |
+| M4 Audio and voice | Partial | Ducking, loudness, voice takes, beats, framing done; music/SFX library and voice cloning open |
+| M5 Color, transitions, review | Mostly done | LUTs, transitions, review, resume and handoff done; measured review checks open |
+| M6 Extensions | Partial | OTIO export, voiceover recording, constant speed done; effects, ramps, keyframes, Demucs open |
+
+## Implemented
+
+### Project & storage
+
+- Separate Git repository with SwiftPM (single target source) and XcodeGen configuration, committed lockfiles and
+  verification scripts.
+- Lossless project JSON (`bashcut.project/2`, older v1 files migrate on open) with rational FPS, role-based dynamic
+  tracks, atomic `EditOperation` batches, source/overlap/render validation, revisions and persisted undo/redo.
+  Unknown fields round-trip.
+- New Project wizard: name, aspect ratio, resolution, rational FPS, content language, style, destination and an
+  optional footage symlink. Publication is exclusive and leaves existing folders and the current document intact
+  on failure. Agents use the same code through `project create`, `project open` and `project save`.
+- Atomic save, autosave every 30 seconds and on deactivation, recovery choice, restored history, and
+  external-change handling with a reload/conflict sheet listing project, media, track and item differences.
+- Project folders are watched with filesystem events, with an activation check as a fallback.
+- Open projects from Finder (double-click or **Open With**) or by dropping a `project.bashcut.json` or its folder
+  on the Dock icon. BashCut registers as an alternate app for JSON and folders, never the default.
+- Media picked from the linked `footage` folder is stored as `footage/<file>`; older `../../…` paths into it are
+  rewritten in one undoable edit when a project opens.
+
+### Timeline & editing
+
+- Mockup-based native layout: eight library tabs, media thumbnails and search, viewer with safe area, five
+  Inspector tabs, history and review.
+- Dynamic layers: repeated video/image, text and audio layers with explicit stacking order and vertical scrolling.
+  Core validation enforces layer rules (visual above audio, one undeletable main layer, no overlap within a layer,
+  matching media kinds) and repairs older projects on open. Placement spills CapCut-style onto the next free layer.
+- Source viewer with In/Out and insert/overwrite; split, delete, ripple and lift (Shift-Delete); scroll, zoom and
+  clip/beat snapping; drag move and trim.
+- Atomic roll and slip from the Inspector, modifier-key timeline gestures and agent commands.
+- Video with embedded sound creates linked Main/Dialogue items that move, trim, split, slip, roll and delete
+  together in one undo step; the Inspector can unlink them.
+- Dragging within a magnetic track reorders and compacts it; linked Dialogue follows.
+- Automatic Change Framing cycles Wide, Medium, Close and left/right presets through validated `transform` and
+  `reframePreset` properties; manual edits switch the item back to Custom.
+- Freeze Frame, tags, transform and opacity, constant speed with optional pitch preservation.
+- Edit menu (Cut, Copy, Paste, Select All) for text fields and terminals.
+
+### Media & proxies
+
+- Original-media import with probing, offline badges and metadata; thumbnails with debounced, quantized
+  hover-scrub and source-time feedback.
+- `@assets/...` media resolves through the configured workspace everywhere (thumbnails, source viewer, plugin
+  inputs, preview, export); validation rejects unknown namespaces and traversal.
+- Cached stereo waveforms read off the UI actor with cancellation and bounded peak data; refresh, progress and
+  errors show in the timeline toolbar.
+- Preview proxies (M-5): `ProxyManager` flags HEVC, larger-than-1920 px or above-20 Mbit/s video and writes
+  `.bashcut/proxies/<media id>.mov` (H.264, at most 960 px, keyframe every 10 frames, AAC, original frame times).
+  `ProxyQueue` encodes one at a time as `media.proxy` jobs; the preview switches to each proxy as it lands and
+  exports always read originals. `media proxy [--force]` and **Create Preview Proxy** make them by hand.
+- The viewer scrubs with chase-time seeking: one exact seek in flight, newest target next.
+
+### Text & captions
+
+- Six shared Core Text presets (Bold Outline, Cinematic Serif, Keyword Sticker, Place Card, Hook Title, Chapter
+  Card), editable styling, emoji text stickers and Vietnamese captions.
+- SRT add, replace and export from the Text library and the CLI, with Unicode and multiline cues, rational-FPS
+  conversion and one-step undo.
+- Auto Captions resolves a healthy `captions.transcribe` provider, sends the media path and language, validates
+  bounded UTF-8 SRT output and imports it atomically with provider provenance.
+
+### Audio & voice
+
+- Volume, mute and fades; automatic music ducking under tagged Dialogue and all Voiceover regions, with level,
+  attack and release in integer frames, mixed the same way in preview and export.
+- The Audio panel resolves `audio.beats`, validates BPM and beat times, maps them through trim and speed to
+  timeline frames, and adds undoable beat-grid drawing and snapping.
+- The Voice panel resolves a healthy `voice.synthesize` provider (with an undoable project preference), generates
+  three confined, validated takes, and previews, scores, selects and inserts one with provenance. Discarded
+  request folders are cleaned up.
+- Direct voiceover recording asks for microphone permission, writes 48 kHz mono WAV under the project, shows
+  duration and input level, and inserts at the playhead.
+- Review warns when voiceover comes within 0.3 s of tagged speech on any layer.
+
+### Color & transitions
+
+- Exposure, contrast, saturation and basic looks.
+- Project-scoped `.cube` 3D LUTs with a validated catalog, undoable add/delete/apply, adjustable strength and agent
+  operations; preview and export share one Core Image renderer. LUT files stay on disk when their catalog entry is
+  undone.
+- A synchronized vertical Before/After split in the viewer that bypasses color and LUTs only.
+- Undoable transitions (dissolve, whip, blink, zoom, spin, shutter, wipe) with adjustable duration; preview and
+  export share the same tweening, and transitions are removed when edits separate their clips.
+
+### Export
+
+- One AVFoundation custom compositor for preview and export, including captions and the audio mix.
+- Presets: TikTok, YouTube 1080p/4K, Quick Draft and ProRes; AAC 320 kbps; optional companion SRT.
+- Background export queue (E-1): `ExportRequest` snapshots the project and refuses existing or already-queued
+  outputs, `ExportPipeline` renders (with optional two-pass loudness normalization) and writes the SRT, and
+  `ExportQueue` runs one export at a time on the shared `JobCenter`. The status bar shows step, progress and queued
+  count; failed or cancelled output is removed.
+- Receipts: the last 20 exports per project persist and compare duration, size, cuts, captions, tagged speech
+  coverage and LUFS with the previous export.
+- An optional `audio.loudness` provider enables target-LUFS normalization with a −1 dBTP ceiling, final
+  measurement and undoable mix-gain/provenance persistence.
+- OpenTimelineIO export (source/timeline rates, gaps, layers, text generators, speed, markers, BashCut metadata)
+  from the Export sheet and the CLI.
+- Legacy `edl.json` import (cuts, source ranges, borrowed picture, linked dialogue, transforms, tags, subtitles,
+  voiceovers, section markers) into a new project, with a cut/voiceover/duration comparison report and warnings.
+  Exporters and importers are listed in `TimelineFormats`.
+
+### Agents & automation
+
+- SwiftTerm Claude, Codex and Shell tabs with workspace/resume input, context and quick-action paste, current-frame
+  attachment, ⌘K Ask, and a detachable, resizable Agent window.
+- Terminals are `AgentProvider` conformances in one registry that drives launch, menus, Settings, bookmarks and
+  discovery. Each terminal gets only an allowlisted environment, never the app's full environment or
+  `ANTHROPIC_API_KEY`.
+- Resume bookmarks persist per project and provider, outside source control; background discovery finds existing
+  sessions and records new ones. Handoff opens the other provider with project, timeline, memo and skill context.
+- Token-scoped local automation socket (mode 0600), the bundled `bashcut` CLI and the official-SDK `bashcut-mcp`.
+  Claude and Codex get ephemeral stdio MCP configuration. Agents outside BashCut use a 0600 token file read by the
+  CLI and MCP.
+- 46 commands declared once as `CommandSpec`s, which generate validation, the CLI parser, MCP tools and agent
+  instructions. Every button, menu item and shortcut is a `UIAction` (`ui actions`, `ui action <id|shortcut>`);
+  every alert, panel and sheet goes through `ModalCenter` (`ui dialog`, `ui respond`, `ui open`).
+- Agent edits keep a before/after diff, show ◆ markers and an Undo/Show Changes toast, and restore the latest diff
+  after reopen. Edits are recorded in a metadata-only audit log.
+- Privileged exports need a live token and an in-app approval sheet showing the concrete output; agents can only
+  decline it. A Settings switch (off by default) runs agent exports without confirmation, audited as
+  auto-approved.
+- Model APIs are `ModelAdapter` conformances (Responses, Chat Completions, Anthropic Messages) with Keychain
+  credentials, multimodal frame attachments, editable generated scripts with explicit run, and revision-checked
+  timeline proposals. Details in [automation.md](../guides/automation.md).
+- Agent Knowledge manages a shared project memo and project skills exposed to `.claude/skills` and
+  `.agents/skills`.
+- A shared debug log (`~/Library/Logs/BashCut/debug.log`) written by the app, CLI and MCP bridge.
+
+### Plugins
+
+- Versioned out-of-process `bashcut.plugin/1` manifests discovered in project, user and bundled roots, with a
+  Plugins installer that shows exact install commands before approval and reports dependency health. Agents can
+  cancel but not approve an install.
+- `CapabilityService` is the single path from a capability request to a validated, provenance-tagged result. Each
+  capability is one `CapabilityAdapter`; calls go through a `PluginTransport`, with `PluginProcessRunner` as the
+  one-shot process transport (one bounded child per request, filtered environment, process-group cancellation).
+- `captions.generate`, `beats.detect` and `voice.speak` run as background jobs with `jobs.status`/`jobs.cancel`
+  and apply one undoable agent-attributed edit; `plugins.list` and `plugins health` report providers and
+  diagnostics. See [plugins.md](../guides/plugins.md).
+
+### Settings & diagnostics
+
+- Settings persist the workspace, default agent, agent edit permission, external-agent token, export auto-approval,
+  default export preset, interface language and recent projects. Turning off edit permission revokes live tokens
+  at once.
+- Doctor reports workspace access, Claude/Codex and optional tool discovery, socket status, agent instructions and
+  skills, project folders, plugin catalog diagnostics and live dependency health (`doctor run`).
+
+### Localization
+
+- English and Vietnamese resources for current controls (`Localizable.xcstrings` plus both `Localizable.strings`),
+  with an interface-language override in Settings.
+
+## M0 engine acceptance on real DJI footage (2026-10-02)
+
+`bashcut-bench` (`Tools/Bench`) on 20 vertical DJI clips (HEVC Main10 `hvc1`, 1080×1920, 29.97 fps, about 30 Mbit/s;
+30.03 s timeline with reframes and a Vietnamese caption per clip), MacBookPro18,4 (M1 Max), release build:
+
+| Metric | Originals | With proxies (`--proxies`) | Budget |
+|---|---|---|---|
+| Composition build | 37 ms | 14 ms | — |
+| Decode through the compositor | 324 fps | 355 fps | — |
+| AVPlayer playback, 10 s | 300/299 frames, 0 dropped | 300/299, 0 dropped | ≤ 1 % dropped |
+| Scrub p95, AVPlayer exact seek to a decoded frame | 19.6 ms (p50 12.5, max 19.9) | 8.9 ms (p50 7.2, max 9.5) | < 100 ms |
+| Scrub p95, AVAssetImageGenerator (reference) | 34.8 ms | 18.6 ms | — |
+| Export 30 s H.264 (always originals) | 3.33 s (9.0× real time) | 3.33 s | > 1× |
+| Proxy generation, 20 clips | — | 4.3 s | — |
+
+All budgets pass with and without proxies. The earlier failing figure (p95 138 ms) measured AVAssetImageGenerator
+before the compositor rewrite and asset cache; the viewer seeks through AVPlayer, which the bench now measures.
+Re-run it after engine changes:
+
+```bash
+swift build -c release --product bashcut-bench
+.build/release/bashcut-bench <footage-dir> --clips 20 [--proxies]
+```
+
+## Verification
+
+### Automated tests
+
+The latest full runs pass 188 tests: 101 in the app modules (`Tests/`) and 87 in `Packages/BashCutCore`. The
+Swift 6 build and strict SwiftLint pass.
+
+- **Core:** inverses, revisions and atomic failure; ripple and source timing; linked A/V, magnetic reorder and
+  reframing; transitions; LUT catalog; freeze frame; ducking and audio validation; shared-media traversal and
+  symlink confinement; legacy EDL import; OpenTimelineIO export; unknown fields; render bounds; review rules and
+  voiceover proximity; layer rules and repair; diffs; plugin catalog, provider resolution, process isolation and
+  health; the op-keyed codec and an apply→undo→redo round trip for every operation; history depth capping.
+- **Engine:** golden frames with Vietnamese captions, grayscale and opacity, mute, six caption presets, ducking and
+  `AVAudioMix` ramps, transition tweening, `.cube` rendering, freeze frames, time mapping through one million
+  frames, media sources and proxy detection. Waveform tests use generated stereo audio and test range queries,
+  disk-cache recovery and invalidation.
+- **Storage:** reopen and history, stale saves, autosave recovery, damaged caches, export history; project
+  creation with Vietnamese folder names, footage preservation, invalid input, collisions and staging cleanup.
+- **Automation and agents:** authorization, revocation, wire decoding, 0600 socket round trips and concurrent
+  clients; command-spec consistency (names, MCP schemas, defaults, CLI parsing, agent instructions); UI actions;
+  isolated Claude/Codex MCP and resume launches; session discovery; model API request shapes without network.
+- **Plugins and document:** capability service with fake transports (resolution, health fallback, output
+  confinement, take scoring and cleanup, loudness provenance); export queue, proxy queue, preview, file sync,
+  settings, modal center and automation controllers with fakes.
+
+`scripts/verify.sh perf` repeats the engine test at 20 synthetic clips; it is not a substitute for the real-footage
+bench above.
+
+### Native smoke tests
+
+- **New Project:** name, landscape, destination and creation; the editor showed 1920×1080 at 29.97 fps.
+- **Export:** Quick Draft with captions rendered a 720×1280 H.264/AAC file while the editor stayed usable, then
+  showed a 3.00 s / 3-cut / 1-caption / 542 KB receipt; the SRT and `bashcut export status` were checked.
+- **Privileged export from the embedded Shell:** the first request was denied and wrote nothing; the second showed
+  author, preset, output and SRT, was approved and rendered. Both decisions were audited.
+- **Shell:** read context, applied a caption edit, saw it in preview and timeline, undid once; an external CLI edit
+  without a token was rejected.
+- **Codex:** started in the embedded terminal, read context and timeline, applied one operation through the socket
+  (revision 21 → 22), surfaced the agent diff and restored the caption with Undo (revision 23).
+- **Source viewer:** inserted source frames 11–33 as exactly 22 timeline frames, undid, then overwrote without
+  extending the timeline.
+- **Earlier:** opened synthetic footage, seeked, split, saved and reloaded external changes.
+
+## Known limitations / remaining work
+
+- **Acceptance:** the M1 hand rebuild of the 48-cut reference, the M3 all-in-app vlog, broader accessibility QA,
+  UI automation tests, and real authenticated Claude/API tasks are not verified. Provider-backed jobs are not yet
+  smoke-tested with a real agent and an installed provider.
+- **Native checks outstanding:** waveforms, the standalone SRT file pickers, modifier-key trim gestures, and live
+  microphone permission and metering.
+- **Xcode:** the generated project builds with signing disabled and package-plugin validation skipped for the
+  locked SwiftTerm build plugin.
+- **Automation:** voice-enrollment approval; analysis and interchange providers still need wiring to their panels.
+- **Plugin platform:** bundled native loudness and beat providers, an API version window and availability states,
+  a long-lived session transport, hash-pinned trust and declared provider options
+  ([03-architecture.md](../specs/03-architecture.md) §5).
+- **M3–M6:** bundled transcription provider and real-engine acceptance, music/SFX library with BPM and license
+  badges, voice cloning, expanded legacy effect/overlay/SFX import, effect recipes, speed ramps and keyframes,
+  Demucs, and more interchange validation. Resolve remains reserved.
+- **Review and loudness:** coverage uses explicit speech tags and voiceover timing; it does not measure silence or
+  transcribe untagged audio. Export loudness is measured only when a provider is selected for normalization.
+- **Editing scope:** ripple affects the edited track and its linked counterpart only. Source insert/overwrite
+  targets Main. Unknown future effects round-trip but are not rendered.
+- **History:** full-snapshot undo is capped at 200 steps; `history.jsonl` stores one atomic checkpoint, and an
+  append-only journal with compaction is pending.
+- **Localization:** some dynamic diagnostic messages are still English; full localization QA is pending.

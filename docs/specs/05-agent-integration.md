@@ -1,166 +1,183 @@
 # 05 — Agent integration (Claude Code / Codex)
 
+BashCut hosts Claude Code and Codex in real terminals and gives them, and any other agent, the same command
+surface as the editor UI. This spec records the design: how terminals are launched, how commands mirror the UI,
+what context agents receive and how permissions work. The user-facing guide with the complete command list is
+[Automation: CLI, MCP and model APIs](../guides/automation.md).
+
 ## 1. Terminals in the dock
 
-**Each dock tab is a PTY** ([SwiftTerm](https://github.com/migueldeicaza/SwiftTerm)) running an
-interactive CLI: `claude`, `codex`, or `zsh` for a Shell tab.
+**Each dock tab is a PTY** ([SwiftTerm](https://github.com/migueldeicaza/SwiftTerm)) running an interactive
+CLI: `claude`, `codex`, or `zsh -i` for a Shell tab.
 
-**`cwd` is the workspace root.** That keeps `CLAUDE.md`, the `nolan-*` skills, the self-learn hook
-and `.mcp.json` working exactly as they do in a normal terminal. The open project is passed to the
-agent as context (§3), not through `cwd`.
+**Working directory.** Claude runs in the workspace root, so `CLAUDE.md`, the `nolan-*` skills, the self-learn
+hook and `.mcp.json` work exactly as in a normal terminal. Codex runs in a stable
+`~/Library/Application Support/BashCut/agent-workspace` folder under a named permission profile. The open
+project reaches both as context (§3), not through the working directory.
 
-**Extra environment variables:**
+**Environment.** The child gets an allowlisted environment (common shell variables plus `CLAUDE_*`,
+`ANTHROPIC_BASE_URL` and `ANTHROPIC_MODEL` for Claude, `CODEX_*`, `OPENAI_API_KEY` and `OPENAI_BASE_URL` for
+Codex) and:
 
 - `BASHCUT_PROJECT=<project path>`
+- `BASHCUT_SOCKET=<automation socket>`
 - `BASHCUT_SESSION_TOKEN=<per-tab token>`
-- PATH rebuilt to include the directory that holds `bashcut`
-- `ANTHROPIC_API_KEY` removed for `claude`, so the user's subscription is used
+- a `PATH` that includes the folder holding `bashcut` and `bashcut-mcp`
 
-**Sessions can be resumed.** The app finds and stores the session ID per project by itself; the UI never
-shows it. The dock offers **Continue <agent>** (resume) or **New conversation** (forget the saved session):
+`ANTHROPIC_API_KEY` is never passed to `claude`, so the user's subscription login is used.
 
-- Claude: `claude --resume <id>`.
-- Codex: the resume command **(to verify)**.
+**Sessions can be resumed.** The app finds and stores the session ID per project; the UI never shows it. The
+dock offers **Continue <agent>** (resume) or **New conversation** (forget the saved session):
+
+- Claude: `claude --resume <id> …`
+- Codex: `codex … resume <id>`
 
 ### Connecting the agent to the app
 
-| CLI | How BashCut's MCP server is attached |
+| CLI | How the BashCut MCP server and instructions are attached |
 |---|---|
-| Claude | `claude --mcp-config <tmp-0600.json> --append-system-prompt "$(cat bashcut-prompt.md)"` <br>**(to verify)** that `--mcp-config` adds to the workspace `.mcp.json` rather than replacing it. The `davinci-resolve` server must stay available for legacy projects |
-| Codex | `codex -c mcp_servers.bashcut.command=… -c mcp_servers.bashcut.env…` <br>**(to verify syntax)** |
-| Both | The **`bashcut` CLI** is always on the tab's PATH, so the agent can use Bash even if MCP is not attached |
+| Claude | `claude --mcp-config '<inline JSON>' --append-system-prompt '<instructions>'`. The JSON names only the `bashcut-mcp` command, which inherits the tab's environment. Workspace MCP servers such as `davinci-resolve` stay available for legacy projects |
+| Codex | `codex -m gpt-5.6-luna -c model_reasoning_effort="low" -c mcp_servers.bashcut={ command = …, env_vars = ["BASHCUT_SOCKET", "BASHCUT_SESSION_TOKEN"] } -c developer_instructions=…`, plus a permission profile that may write the socket folder and connect to that one socket |
+| Both | The `bashcut` CLI is always on the tab's `PATH`, so the agent can use Bash even if MCP is not attached |
 
-Temporary MCP config:
-
-```json
-{"mcpServers": {"bashcut": {
-  "command": "/Applications/BashCut.app/Contents/MacOS/bashcut-mcp",
-  "env": {"BASHCUT_SESSION_TOKEN": "<per-tab token>"}}}}
-```
-
-`bashcut-mcp` is a thin stdio MCP server built on the official Swift SDK. It forwards each tool
-call to the app's automation socket (`03-architecture.md` §6).
+No MCP config or token is written into the project or workspace. `bashcut-mcp` is a thin stdio MCP server built
+on the official Swift SDK; it forwards each tool call to the app's automation socket
+([03 — Architecture](03-architecture.md) §6).
 
 ## 2. Commands: the same surface as the UI
 
-One `CommandRegistry` serves both front ends:
+Every command is declared once as a `CommandSpec` in `CommandCatalog`. One `CommandRegistry` validates requests
+against the specs and serves every front end:
 
 - MCP: tools named `bashcut_<group>_<command>`.
 - CLI: `bashcut <group> <command>`.
+- Model APIs and agent instructions: rendered from the same specs.
+
+The catalog has 46 commands. The tables below show the design intent: which mode each area uses and which UI
+it mirrors. The [automation guide](../guides/automation.md#command-reference) lists every command with its
+arguments.
 
 ### Read and UI commands
 
 | Command | Mode | UI equivalent |
 |---|---|---|
-| `context get` | read | open project, selection, playhead, current tab |
-| `project get` | read | Welcome screen |
-| `project open` | ui | Welcome screen, Open |
-| `timeline get [--range] [--format text\|json]` | read | looking at the timeline |
-| `media list` / `media search "lau bo"` | read | Library, search by speech |
-| `voice list` | read | Voice tab |
-| `review run` | read | [Review] |
-| `export status` | read | export queue |
-| `ui select [item] [--track <layer>]` / `ui seek` / `ui show <file>` / `ui notify` | ui | pointing something out to the user |
-| `project recents` | read | Welcome screen, Recent projects |
+| `context get` | read | Open project, selection, playhead |
+| `project get` / `project recents` | read | Welcome screen, Recent projects |
+| `timeline get [--format text\|json]` | read | Looking at the timeline |
+| `media list` | read | Library |
+| `review run` | read | Review |
+| `captions export` | read | Text panel, Export SRT |
+| `export status` / `jobs status` | read | Export queue, job progress |
+| `plugins list` / `plugins health` | read | Plugins sheet, Check Health |
 | `doctor run` | read | Doctor sheet |
-| `plugins health [plugin]` | read | Plugins sheet, Check Health |
 | `knowledge get` | read | Skills and project memory sheet |
-| `ui actions` | read | every toolbar button, menu item and keyboard shortcut, with its enabled state |
-| `ui view [--zoom 10…140] [--snap on\|off] [--safe-area on\|off] [--compare on\|off] [--agent-dock on\|off] [--inspector <tab>] [--reveal <frame>]` | ui | timeline zoom slider/⌘=/⌘−, Snap, Safe area, Compare, Agent button, Inspector tabs, scrolling the timeline |
-| `ui source <media> [--in N] [--out N]` | ui | clicking a Library thumbnail (source viewer) |
-| `ui dialog` / `ui respond <option> [--path]` / `ui open <dialog>` | ui | every alert, file panel, sheet and popover |
+| `ui actions` | read | Every toolbar button, menu item and shortcut, with its enabled state |
+| `ui dialog` | read | Every open alert, file panel, sheet and popover |
+| `ui respond <option> [--path]` / `ui open <dialog>` | ui | Answering or opening a dialog |
+| `ui select` / `ui seek` / `ui panel` / `ui notify` | ui | Pointing something out to the user |
+| `ui view [--zoom 10…140] [--snap] [--safe-area] [--compare] [--agent-dock] [--inspector <tab>] [--reveal <frame>]` | ui | Zoom slider and ⌘=/⌘−, Snap, Safe area, Compare, Agent button, Inspector tabs, scrolling |
+| `ui source <media> [--in N] [--out N]` | ui | Clicking a Library thumbnail (source viewer) |
 
 ### Edit commands
 
 | Command | Mode | UI equivalent |
 |---|---|---|
-| `project create` | edit | New Project |
-| `timeline apply <ops.json> --base-rev N --label "…"` | edit | every cut, trim, drag, property change |
-| `media import <paths>` | edit | dropping files into the Library |
-| `media proxy [media] [--force]` | edit | Media panel **Create Preview Proxy** (imports queue proxies for heavy footage automatically) |
-| `captions generate [--range]` | edit | [Auto Captions] |
-| `voice speak "<text>" --voice … --insert-at 12.3` | edit | Voice tab, Generate + Insert |
-| `beats detect <media>` | edit | [Detect Beats] |
-| `audio separate <item>` | edit | Inspector › Audio › Separate Voice |
-| `luts import <file.cube> [--name]` | edit | Filters panel, Import .cube… |
+| `project create` / `project open` / `project save` | edit | New Project, Open, Save |
 | `edl import <edl.json>` | edit | Welcome screen, Import from edl.json… |
-| `voice speak … --keep-takes` | edit | Voice panel take list: keep every take, then place the chosen one with `media import` |
+| `timeline apply <ops.json> --base-rev N --label "…"` | edit | Every cut, trim, drag and property change |
+| `timeline undo` / `timeline redo` | edit | Undo, Redo |
+| `timeline move` / `media place` / `layers add` | edit | Dragging clips, Import placement, Add layer |
+| `media import <path> [--place]` | edit | Dropping files into the Library |
+| `media proxy [media] [--force]` | edit | Media panel, Create Preview Proxy (imports queue proxies for heavy footage automatically) |
+| `captions import <file.srt>` | edit | Text panel, Import SRT |
+| `captions generate --media <id>` | edit, job | Auto Captions |
+| `beats detect --media <id>` | edit, job | Detect Beats |
+| `voice speak "<text>" [--takes N] [--keep-takes]` | edit, job | Voice panel, Generate + Insert; `--keep-takes` keeps every take for the take list |
+| `jobs cancel <job>` | edit | Cancelling a job or queued export |
+| `luts import <file.cube> [--name]` | edit | Filters panel, Import .cube… |
 | `knowledge memo <file>` / `knowledge skill <name> <file>` | edit | Skills and project memory sheet, Save |
-| `ui action <id\|shortcut>` | edit | any editor button or shortcut, run by the same code: `timeline.split` / `cmd+b`, `timeline.zoom-in` / `cmd+=`, `playback.toggle` / `space`, `source.mark-in` / `i` (list: `ui actions`) |
+| `ui action <id\|shortcut>` | edit | Any editor button or shortcut, run by the same code: `timeline.split` / `cmd+b`, `timeline.zoom-in` / `cmd+=`, `playback.toggle` / `space`, `source.mark-in` / `i` |
 
 ### Privileged commands
 
 | Command | Mode | UI equivalent |
 |---|---|---|
-| `voice enroll <media> --start --dur --name` | **privileged** | [Clone New Voice] |
-| `export start --preset … --name …` | **privileged** | [Export] |
+| `export start --preset … --name …` | privileged | Export |
+| `export otio --name …` | privileged | Export › OTIO |
 
-**UI parity rule.** Anything the user can click or press in the editor is an agent command: buttons, menu
-items and shortcuts are `UIAction` cases (ID, title, shortcuts) that the views bind to and `ui action` runs;
-view state (zoom, toggles, scroll) is `ui view`; dialogs go through `ModalCenter` (`ui dialog` / `ui respond`
-/ `ui open`). Every alert, file panel, sheet and popover is visible to `ui dialog`. The export approval and
-plugin-install sheets only offer `deny`/`cancel` to agents; approving stays with the user. `ui action`
-refuses while a dialog is open, and actions that open an alert or panel (`project.new`, `project.open`,
-`project.import-media`) return at once so the agent can answer it.
+### Planned commands
 
-### Reserved for later (not in v1)
+Not in the catalog yet:
 
 | Command | Mode | UI equivalent |
 |---|---|---|
-| `export otio` | privileged | Export › OTIO |
+| `media search "<speech>"` | read | Library, search by speech |
+| `voice list` | read | Voice panel |
+| `ui show <file>` | ui | Revealing a file to the user |
+| `audio separate <item>` | edit | Inspector › Audio › Separate Voice |
+| `voice enroll <media> --start --dur --name` | privileged | Clone New Voice |
 | `resolve plan` | read | Apply to Resolve › preview of what will happen |
-| `resolve apply --project <name>` | privileged | Apply to Resolve (`03-architecture.md` §7) |
+| `resolve apply --project <name>` | privileged | Apply to Resolve ([03 — Architecture](03-architecture.md) §7) |
+
+### UI parity rule
+
+Anything the user can click or press in the editor is an agent command:
+
+- Buttons, menu items and shortcuts are `UIAction` cases (ID, title, shortcuts) that the views bind to and
+  `ui action` runs.
+- View state (zoom, toggles, scroll position, inspector tab) is `ui view`.
+- Dialogs go through `ModalCenter`, so every alert, file panel, sheet and popover is visible to `ui dialog`
+  and can be answered with `ui respond` or opened with `ui open`.
+
+The export approval and plugin-install sheets only offer `deny` or `cancel` to agents; approving stays with
+the user. `ui action` refuses while a dialog is open, and actions that open an alert or panel (`project.new`,
+`project.open`, `project.import-media`) return at once so the agent can answer it.
+
+A new UI feature is not finished until it has a `UIAction`, a `ui view` field, a dialog name or a
+`CommandSpec`.
 
 ### Permissions
 
 | Mode | Behavior |
 |---|---|
-| **read**, **ui** | Always allowed. |
-| **edit** | Allowed, because every change is undoable and visible. Settings has "Ask before the agent edits the timeline" for a stricter setup. |
-| **privileged** | Shows a confirmation sheet in the app with the command and its arguments, unless the user turns on Settings → "Run agent exports without confirmation" (off by default; no automation command can change it); auto-approved requests return `approval: "approved"` and are audited as `<method>.auto-approved`. Export is slow and writes large files; voice enrollment changes the shared `voices.json`; file deletion is destructive. |
+| **read**, **ui** | Always allowed to local processes under the same OS account; no token needed. |
+| **edit** | Allowed with a live session token, because every change is undoable and visible. Settings → **Allow agent timeline edits** (on by default) withholds tokens from Claude and Codex tabs when turned off. |
+| **privileged** | Shows a confirmation sheet in the app with the author and arguments. Settings → **Run agent exports without confirmation** (off by default; no automation command can change it) skips the sheet: such requests return `approval: "approved"` and are audited as `<method>.auto-approved`. Export is slow and writes large files; planned privileged commands include voice enrollment, which changes the shared `voices.json`, and file deletion, which is destructive. |
 
-Every command is written to the session's audit log. The rule is read-only by default, with
-explicit confirmation for destructive actions.
+Every command is written to the audit log with its author and outcome. The rule is: read-only by default,
+undoable edits with a token, explicit confirmation for anything slow or destructive.
 
-The CLI's own tools (Bash, file edits) keep asking for permission inside the terminal, as usual.
-BashCut does not intercept them.
+The CLI's own tools (Bash, file edits) keep asking for permission inside the terminal as usual; BashCut does
+not intercept them.
 
 ### Provider-backed feature commands
 
-Agents never launch plugin entrypoints or dependency installers directly through BashCut's
-automation surface. A feature command such as captions, voice, beats or normalized export asks the
-app to resolve the same capability/provider used by the native panel. The app validates the result
-and converts it to normal `EditOperation` values, so revision checks, audit, provenance, UI diffs
-and undo behavior remain identical.
+Agents never launch plugin entrypoints or dependency installers through BashCut's automation surface. A
+feature command such as captions, voice, beats or normalized export asks the app to resolve the same
+capability and provider as the native panel. The app validates the result and converts it to normal
+`EditOperation` values, so revision checks, audit, provenance, change markers and undo behave identically.
 
-Implemented commands are `captions.generate` (media ID, optional replace), `beats.detect` (audio
-media ID already on the timeline) and `voice.speak` (text, 1–8 takes, optional start frame; the best
-take is inserted on the Voiceover track and the rest are deleted). Each accepts an optional
-`provider` that overrides the project preference for that request only. Because provider calls can
-take minutes, these edit-mode commands return a job ID at once; `jobs.status` reports `running`,
-`completed` (with the new revision), `failed` or `cancelled`, and `jobs.cancel` stops a running job.
-`plugins.list` exposes installed plugins, providers, project preferences and catalog diagnostics.
-Exports share the same job center: each approved `export.start` (and each export started in the UI)
-becomes an `export.start` job that waits as `queued` behind the running export, then runs; exports
-render one at a time in request order from the project as it was when requested. `export status`
-lists the queue with job IDs; while an export runs its top-level fields (`job`, `step`, `progress`,
-`preset`, `path`, `includedSRT`) describe that export and the previous receipt moves to `lastExport`.
-An export asked to include SubRip writes no `.srt` when the timeline has no captions. `jobs.cancel`
-stops a queued or running export. Opening another project cancels and clears all jobs.
+- Provider calls can take minutes, so these commands return a job ID at once; `jobs status` reports
+  `running`, `completed` (with the new revision), `failed` or `cancelled`, and `jobs cancel` stops a job.
+- Each accepts an optional `provider` that overrides the project preference for that request only.
+- Exports share the job center: each approved export, and each export started in the UI, waits as `queued`
+  behind the running one. Exports render one at a time, in request order, from the project as it was when
+  requested.
+- Opening another project cancels and clears all jobs.
 
-Installing a plugin or running its dependency recipes stays an explicit native Plugins workflow;
-an agent may open or point to that workflow but cannot silently approve it. Provider credentials
-are not placed in the terminal environment or automation request. A future credential contract may
-use Keychain references, never secret values in project JSON.
+Installing a plugin or running its dependency recipes stays an explicit native Plugins workflow; an agent may
+open or point to it but cannot approve it. Provider credentials are never placed in the terminal environment
+or in automation requests. A future credential contract may use Keychain references, never secret values in
+project JSON. The plugin protocol is described in [Writing plugins](../guides/plugins.md).
 
 ## 3. Context
 
 ### Timeline text form
 
-Agents read the timeline with `timeline get --format text`. The format is compact and cheap in
-tokens, and every line carries the item ID used for edits:
+Agents read the timeline with `timeline get --format text`. The format is compact and cheap in tokens, and
+every line carries the item ID used for edits. The target form:
 
-```
+```text
 project lau-bo-noi-dat  rev 142  1080x1920 29.97fps  1:49.81  48 cuts
 SECTIONS hook 0:00.00 | street 0:12.26 | grill 0:25.71 | hotpot 0:41.40 | eat 1:02.10 | sidewalk 1:18.50 | outro 1:33.20
 MAIN c-01 0:00.00-0:02.04 m-0449 speech z1.00          "Top 10 món nên ăn / ở Buôn Ma Thuột"
@@ -170,79 +187,88 @@ VO   vo-1 0:26.11-0:29.20 voiceover/vo1.wav  "Trong lúc chờ lẩu sôi…"
 MUS  mu-1 0:00.00-1:49.81 @assets/nhac/inspired.mp3 duck-14  beat 117.5bpm
 ```
 
-### Context block sent by ⌘K or the chip
+Today's output is simpler: a header line (`project <name> rev <rev> <width>x<height> <fps>fps`) and one line
+per item, `ROLE id at-end media=<id> in=<frame> <text>`, in frames.
 
-```
+### Context block
+
+⌘K and the context chip paste a block like this before the user's request:
+
+```text
 [BashCut context]
-project: projects/lau-bo-noi-dat  rev: 142
-selection: MAIN c-25 (m-0474, speech, section=hotpot) 0:38.12–0:44.62
-caption: "Các bạn thấy chưa? / Quá trời là topping luôn"
-frame: ~/Library/Application Support/BashCut/cache/frames/c-25@38.12.jpg
+project: /path/to/projects/lau-bo-noi-dat/project.bashcut.json
+rev: 142
+selection: c-25
+playhead: 1144 frames
 [/BashCut context]
 trim to 4 s, keep the "so much topping" line
 ```
 
-### Appended system prompt
+When the user attaches the viewer frame, its PNG is written to `.bashcut/agent-context` and the absolute path
+is included. The target form also carries the selection's track, media, tag, section, time range and caption
+text.
 
-For Claude this goes in `--append-system-prompt`. For Codex it is sent as the first message.
+### Agent instructions
 
-```
-You are running inside BashCut, a video editor. The open project is $BASHCUT_PROJECT.
-- Read the timeline with `bashcut timeline get` (or MCP bashcut_timeline_get) before editing.
-- Edit ONLY through `bashcut timeline apply` with --base-rev; never hand-edit
-  project.bashcut.json while BashCut is open. On staleRevision, re-read and retry once.
-- One user request = one apply call with a clear --label (shown to the user as an undo step).
-- "this clip / here / đoạn này" = the [BashCut context] selection; if none, run `bashcut context get`.
-- Export only via `bashcut export start` (the user confirms in the app). Never render with ffmpeg.
-- Legacy projects (edl.py + build.sh, no project.bashcut.json) keep their old Resolve workflow.
-- Reply in the language the user writes in.
-```
+Claude receives the instructions through `--append-system-prompt`; Codex through `developer_instructions`.
+They are rendered from the command specs (`BashCut/Core/Automation/AgentInstructions.swift`), followed by the
+context block and the project knowledge (memo and skills), and say:
+
+- Prefer the `bashcut_*` MCP tools; the `bashcut` CLI on `PATH` is the fallback.
+- Read `context get` and `timeline get` before editing. Track IDs and roles are dynamic; never assume them.
+- Respect the layer rules; prefer `media place` and `timeline move`, which find a free or new layer.
+- Edit only through commands with `--base-rev` from the latest read. One request is one atomic apply. On
+  `staleRevision`, re-read and retry.
+- Job commands return a job ID to poll. Installing plugins is user-only. Exports need the user's approval.
+- Never hand-edit `project.bashcut.json` while the app is open, never overwrite original footage, never render
+  with ffmpeg.
+- Ask before downloading media or installing tools. Reply in the user's language.
+
+The instructions end with an example of every timeline operation. When Settings turns agent edits off, they
+say so.
 
 ## 4. Example round trip
 
-1. The user selects c-25, presses ⌘K, types "trim to 4 s, keep the so-much-topping line", and
-   presses Enter.
-2. Claude runs `bashcut timeline get --range 0:36-0:48`. Then it runs
-   `bashcut media search "quá trời topping"` to get the word timestamps from the transcript.
+1. The user selects `c-25`, presses ⌘K, types "trim to 4 s, keep the so-much-topping line", and presses Enter.
+2. Claude runs `bashcut timeline get --format text` and finds the clip and the line's timing.
 3. Claude runs:
 
-   ```
-   bashcut timeline apply --base-rev 142 --label "Trim c-25 to 4 s" ops.json
+   ```sh
+   bashcut timeline apply /tmp/ops.json --base-rev 142 --label "Trim c-25 to 4 s"
    ```
 
    with `ops.json`:
 
    ```json
-   [{"op": "trim", "item": "c-25", "edge": "start", "to": "0:39.50", "ripple": true},
-    {"op": "trim", "item": "c-25", "edge": "end", "to": "0:43.50", "ripple": true}]
+   [{"op": "trim", "item": "c-25", "edge": "start", "toFrame": 1183, "ripple": true},
+    {"op": "trim", "item": "c-25", "edge": "end", "toFrame": 1303, "ripple": true}]
    ```
 
-4. The app applies the operations and `rev` becomes 143. The timeline updates immediately and a
-   toast appears: "Claude: Trim c-25 to 4 s · [Undo]".
-5. Claude runs `bashcut review run --range …` to check that the voiceover doesn't overlap real
-   speech and that no new silence appeared. Then it reports back.
+4. The app applies the operations and `rev` becomes 143. The timeline updates immediately, the changed clip is
+   marked, and a toast appears: "Claude: Trim c-25 to 4 s · [Undo]".
+5. Claude runs `bashcut review run` to check the structure and speech coverage, then reports back.
 
 ## 5. Switching Claude ↔ Codex
 
-The two CLIs don't share transcripts. When you open a Codex tab on a project you just worked on
-with Claude (or the reverse), the app sends a *handoff* as the first message. It contains:
+The two CLIs don't share transcripts. When the user hands a task from one agent to the other, the app pastes a
+*handoff* into the target tab (opening it if needed). Today it contains:
 
-- the project memo (`memos/<date>-<video>.md`, if any);
-- the last 5 user requests;
-- the last 5 labeled undo steps;
-- the latest review result.
+- the context block (§3);
+- the timeline text form;
+- the project knowledge: the memo (`.bashcut/agent-memory.md`) and project skills.
+
+Planned additions: the last 5 user requests, the last 5 labeled undo steps and the latest review result.
 
 Codex reaches parity with Claude only once the workspace has `AGENTS.md` and `.agents/skills/`
-(`02-project-format.md` §6).
+([02 — Project format](02-project-format.md) §6). `knowledge skill` writes project skills to both locations.
 
 ## 6. Later (P2): structured chat mode
 
-If the terminal stops being enough (for example, you want rich tool-call cards or diff-based
-approval in the UI), add a headless mode:
+If the terminal stops being enough (for example, for rich tool-call cards or diff-based approval in the UI),
+add a headless mode:
 
 - Claude: `claude -p --output-format stream-json --input-format stream-json --verbose --include-partial-messages --permission-prompt-tool …`
 - Codex: `codex exec --json`
 
-Both are **(to verify)**. Events from both CLIs are normalized into one `AgentEvent` type
-(`BashCutWire`). The terminal
-stays the default.
+Both are **(to verify)**. Events from both CLIs would be normalized into one `AgentEvent` type in
+`BashCutAutomation`. The terminal stays the default.
