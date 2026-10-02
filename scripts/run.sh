@@ -12,11 +12,12 @@ for binary in BashCutApp bashcut bashcut-mcp; do
         mv -f "$bundle/MacOS/.$binary.new" "$bundle/MacOS/$binary"
     fi
 done
+# SwiftPM resource bundles go in Contents/Resources: codesign rejects anything else at the bundle root.
 for resource in "$bin_dir"/*.bundle; do
     if [ -d "$resource" ]; then
-        resource_dest="build/BashCut.app/$(basename "$resource")"
-        if [ -d "$resource_dest" ]; then chmod -R u+w "$resource_dest"; fi
-        cp -R "$resource" build/BashCut.app/
+        name="$(basename "$resource")"
+        rm -rf "build/BashCut.app/$name" "$bundle/Resources/$name"
+        cp -R "$resource" "$bundle/Resources/"
     fi
 done
 # Expand the Xcode build settings Info.plist uses; an unexpanded bundle ID breaks AppleScript, defaults and TCC.
@@ -27,4 +28,20 @@ if pgrep -qf "build/BashCut.app/Contents/MacOS/BashCutApp"; then
     echo "BashCut is already running the previous build. Quit it (⌘Q), then run scripts/run.sh again." >&2
     exit 1
 fi
+# Sign with a stable identity so macOS privacy grants (Desktop folder access) survive rebuilds; an ad-hoc
+# signature changes with every build and macOS asks again. BASHCUT_SIGN_IDENTITY picks the identity;
+# otherwise the first valid Apple Development identity in the keychain is used.
+identity="${BASHCUT_SIGN_IDENTITY:-$(security find-identity -v -p codesigning 2>/dev/null \
+    | awk -F'"' '/Apple Development/ { print $2; exit }')}"
+if [ -z "$identity" ]; then
+    echo "warning: no Apple Development identity found; signing ad hoc (macOS will ask for folder access again)" >&2
+    identity="-"
+fi
+codesign --force --sign "$identity" --identifier app.bashcut.cli "$bundle/MacOS/bashcut" 2>&1 \
+    | { grep -v "replacing existing signature" >&2 || true; }
+codesign --force --sign "$identity" --identifier app.bashcut.mcp "$bundle/MacOS/bashcut-mcp" 2>&1 \
+    | { grep -v "replacing existing signature" >&2 || true; }
+codesign --force --sign "$identity" --identifier app.bashcut build/BashCut.app 2>&1 \
+    | { grep -v "replacing existing signature" >&2 || true; }
+echo "Signed build/BashCut.app with: $identity"
 open build/BashCut.app

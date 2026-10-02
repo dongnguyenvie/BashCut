@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- `scripts/run.sh` signs `build/BashCut.app` with a stable identity (`BASHCUT_SIGN_IDENTITY`, else the first Apple Development identity; ad hoc with a warning when there is none), so macOS stops asking for Desktop folder access after every rebuild. SwiftPM resource bundles now go in `Contents/Resources`.
 - R4b, step 1: move editor view state (timeline zoom and reveal, snapping, safe area, agent dock, library panel, Inspector tab and every editor sheet flag) out of `ProjectDocument` into a tested `EditorUIState` in `BashCutDocument`; `LibraryTab` moves there too, and its match with the `ui.panel` choices is now a test instead of a startup assert. No behavior change.
 - R4b, step 2: the viewer (program and comparison players, playhead, composition rebuilds, color compare) moves into `PreviewController` in `BashCutDocument`, tested with a counting fake engine.
 - R4b, step 3: `ExportController` in `BashCutDocument` owns the export queue, the last export report (moved into the library with its `export.status` JSON), export history, the loudness project patch and OTIO writing; the document keeps only panels, messages and the edit.
