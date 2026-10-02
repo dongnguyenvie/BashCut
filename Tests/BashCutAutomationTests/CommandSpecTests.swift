@@ -108,6 +108,13 @@ struct CommandSpecTests {
         #expect(set.params == ["plugin": .string("example.toolkit"), "hooks": .bool(false)])
         #expect(CommandCatalog.spec(named: "plugins.actions")?.mode == .read)
         #expect(CommandCatalog.dialogs.contains("plugin-proposals"))
+        let search = try CommandLineParser.parse(["plugins", "search", "silence", "--capability", "audio.beats", "--refresh"])
+        #expect(search.params == ["query": .string("silence"), "capability": .string("audio.beats"), "refresh": .bool(true)])
+        #expect(search.spec.mode == .read)
+        let install = try CommandLineParser.parse(["plugins", "install", "bashcut.silence-markers", "--version", "0.2.0"])
+        #expect(install.spec.execution == .job && install.spec.mode == .edit)
+        #expect(install.params == ["plugin": .string("bashcut.silence-markers"), "version": .string("0.2.0")])
+        #expect(try CommandLineParser.parse(["plugins", "remove", "bashcut.silence-markers"]).spec.mode == .edit)
     }
 
     @Test("The CLI parses positionals, options, flags, files and the global format from specs")

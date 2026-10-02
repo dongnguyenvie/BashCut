@@ -10,6 +10,24 @@ import Observation
 struct PendingPluginInstall: Identifiable {
     let id = UUID()
     let plugin: InstalledPlugin
+    /// Set when the plugin came from the registry: the verified download, removed after install or cancel.
+    var archive: StagedPluginArchive?
+    /// Replaces an installed copy (an update).
+    var replacing = false
+}
+
+/// Tabs of the Plugins sheet.
+enum PluginSheetTab: String, CaseIterable, Identifiable {
+    case installed, browse, updates, activity
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .installed: String(localized: "Installed")
+        case .browse: String(localized: "Browse")
+        case .updates: String(localized: "Updates")
+        case .activity: String(localized: "Hook Activity")
+        }
+    }
 }
 
 struct PluginProviderChoice: Identifiable, Equatable {
@@ -27,7 +45,7 @@ struct ContributedAction: Identifiable {
     /// nil when the plugin gave none or it collides with a built-in or earlier plugin shortcut.
     let shortcut: UIShortcut?
     var id: String { spec.id }
-    var title: String { spec.title(language: PluginText.language) }
+    var title: String { spec.title.text }
     var params: [PluginOption] { spec.params ?? [] }
 }
 
@@ -56,7 +74,7 @@ struct PluginProposal: Identifiable {
     let event: String
     let proposal: PluginEditProposal
     let createdAt: Date
-    var title: String { proposal.label ?? "\(plugin.manifest.name): \(event)" }
+    var title: String { proposal.label ?? "\(plugin.manifest.displayName): \(event)" }
 
     var json: JSONValue {
         .object([
@@ -71,7 +89,7 @@ struct PluginProposal: Identifiable {
 
 enum PluginText {
     /// The language plugin titles are shown in: the app's interface language.
-    static var language: String { Bundle.main.preferredLocalizations.first ?? "en" }
+    static var language: String { LocalizedText.preferredLanguage }
 }
 
 /// UI state for the plugin catalog. Capability calls go through `CapabilityService`, which the
@@ -95,9 +113,24 @@ enum PluginText {
     var proposals: [PluginProposal] = []
     /// The action whose parameter sheet is open.
     var pendingAction: PendingPluginAction?
+    var tab: PluginSheetTab = .installed
+    /// The remote catalog, once fetched (or the cached copy).
+    var registry: PluginRegistryDocument?
+    var registryFetchedAt: Date?
+    /// Why the last refresh failed; the cached copy, if any, is still shown.
+    var registryError: String?
+    var loadingRegistry = false
+    /// Plugins being downloaded and verified.
+    var downloading: Set<String> = []
+    /// Narrows Browse to providers of one capability (a panel's "Find a plugin…").
+    var browseCapability: String?
+    @ObservationIgnored lazy var registryClient = PluginRegistryClient(
+        url: Self.registryURL, cacheDirectory: service.roots.user.deletingLastPathComponent()
+            .appendingPathComponent("Registry", isDirectory: true))
     @ObservationIgnored let trust: PluginTrustStore
     @ObservationIgnored let service: CapabilityService
     private var projectRoot: URL?
+    var currentProjectRoot: URL? { projectRoot }
     static let hookLogLimit = 200
 
     init(trust: PluginTrustStore = .standard) {
@@ -163,7 +196,7 @@ enum PluginText {
     func trustPlugin(_ plugin: InstalledPlugin) {
         do {
             try trust.trust(plugin)
-            message = String(format: String(localized: "Trusted %@"), plugin.manifest.name)
+            message = String(format: String(localized: "Trusted %@"), plugin.manifest.displayName)
         } catch { message = error.localizedDescription }
         refresh(projectRoot: projectRoot)
     }
@@ -182,7 +215,7 @@ enum PluginText {
 
     func isEnabled(_ plugin: InstalledPlugin) -> Bool { trust.grant(for: plugin.id)?.enabled ?? true }
 
-    private func stopSession(_ pluginID: String) {
+    func stopSession(_ pluginID: String) {
         Task { await PluginSessionTransport.shared.stop(pluginID: pluginID) }
     }
 
@@ -214,7 +247,7 @@ enum PluginText {
             (plugin.manifest.providers ?? []).compactMap { provider in
                 guard provider.capability == capability else { return nil }
                 return PluginProviderChoice(
-                    pluginID: plugin.id, pluginName: plugin.manifest.name, provider: provider)
+                    pluginID: plugin.id, pluginName: plugin.manifest.displayName, provider: provider)
             }
         }.sorted {
             ($0.provider.priority, $0.provider.name) > ($1.provider.priority, $1.provider.name)
@@ -252,15 +285,21 @@ enum PluginText {
         let manifest = pendingInstall.plugin.manifest
         let installRoot = userRoot
         let destination = installRoot.appendingPathComponent(manifest.id, isDirectory: true)
+        let archive = pendingInstall.archive
+        let replacing = pendingInstall.replacing
         installing = true
         self.pendingInstall = nil
+        if replacing { stopSession(manifest.id) }
         Task {
-            defer { installing = false }
+            defer {
+                installing = false
+                archive?.discard()
+            }
             do {
                 try await Task.detached {
                     let manager = FileManager.default
                     try manager.createDirectory(at: installRoot, withIntermediateDirectories: true)
-                    guard !manager.fileExists(atPath: destination.path) else {
+                    guard replacing || !manager.fileExists(atPath: destination.path) else {
                         throw PluginError.invalid("Plugin \(manifest.id) is already installed")
                     }
                     let stagingRoot = installRoot.appendingPathComponent(".staging-\(UUID().uuidString)")
@@ -274,15 +313,33 @@ enum PluginText {
                         guard let recipe = dependency.install else { continue }
                         try Self.run(recipe.command, directory: staged)
                     }
-                    try manager.moveItem(at: staged, to: destination)
+                    try Self.place(staged, at: destination, root: installRoot)
                 }.value
                 // The user approved these exact files: pin them so later changes need approval again.
                 if let installed = PluginCatalog.discover(in: [installRoot]).plugins.first(where: { $0.id == manifest.id }) {
                     try trust.trust(installed)
                 }
-                message = String(localized: "Plugin installed")
+                message = replacing ? String(localized: "Plugin updated") : String(localized: "Plugin installed")
                 refresh(projectRoot: projectRoot)
             } catch { message = error.localizedDescription }
+        }
+    }
+
+    /// Moves a staged plugin into place. An existing copy is kept in `.previous/` until the move succeeds, and
+    /// put back if it fails.
+    nonisolated static func place(_ staged: URL, at destination: URL, root: URL) throws {
+        let manager = FileManager.default
+        let previous = root.appendingPathComponent(".previous/\(destination.lastPathComponent)", isDirectory: true)
+        guard manager.fileExists(atPath: destination.path) else { return try manager.moveItem(at: staged, to: destination) }
+        try? manager.removeItem(at: previous)
+        try manager.createDirectory(at: previous.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try manager.moveItem(at: destination, to: previous)
+        do {
+            try manager.moveItem(at: staged, to: destination)
+            try? manager.removeItem(at: previous)
+        } catch {
+            try? manager.moveItem(at: previous, to: destination)
+            throw error
         }
     }
 

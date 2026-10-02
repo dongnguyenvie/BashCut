@@ -51,7 +51,7 @@ from its standard output. Put the folder in one of the [plugin folders](#discove
 |---|---|---|
 | `schema` | Yes | Exactly `bashcut.plugin/1` |
 | `id` | Yes | Reverse-domain style: lowercase letters and digits in at least two parts separated by `.` or `-` (`example.voice`) |
-| `name` | Yes | Nonempty display name |
+| `name` | Yes | Display name, up to 80 characters; [localized text](#localized-text) |
 | `version` | Yes | Semantic version, such as `1.2.0` or `1.2.0-beta.1` |
 | `apiVersion` | Yes | `1` or `2`; see [API versions](#api-versions) |
 | `minApiVersion` / `maxApiVersion` | No | The host API window the plugin works with; `minApiVersion` defaults to `apiVersion` |
@@ -65,6 +65,19 @@ from its standard output. Put the folder in one of the [plugin folders](#discove
 
 BashCut resolves features by capability and provider ID, never by vendor SDK. A plugin is only chosen for a
 capability when it declares a provider for it.
+
+### Localized text
+
+Text people see (`name`, option `title` and `help`, action `title` and `confirm`) is either a string, which is
+English, or a map from language code to text:
+
+```json
+"title": {"en": "Set clip opacity…", "vi": "Đặt độ mờ clip…"}
+```
+
+Keys are language codes such as `en`, `vi` or `pt-BR`; a map with more than one language must include `en`. BashCut
+shows the interface language, then the base language (`pt-BR` → `pt`), then English. Values are nonempty. Provider
+and dependency names stay plain strings.
 
 ## API versions
 
@@ -96,6 +109,37 @@ user's on/off switches. Each plugin is in one state:
   only turn them off with `plugins set`.
 - Only `ready` plugins provide capabilities, show actions or receive hooks. Turning a plugin off also stops its
   session process.
+
+## Plugin registry
+
+BashCut can install plugins from a remote catalog. There is no server: the catalog is a static
+[`registry.json`](https://github.com/dongnguyenvie/bashcut-plugins/blob/main/registry.json) in the
+[`bashcut-plugins`](https://github.com/dongnguyenvie/bashcut-plugins) repo, and archives are that repo's GitHub
+Release assets. Publishing, the archive layout and the registry format are described in that repo's README.
+
+- **Browse** in the Plugins sheet lists registry plugins with their summary, publisher, size and status
+  (Install, Update, Installed, or why this Mac or BashCut cannot use it). **Updates** lists installed plugins with
+  a newer compatible version. Panels without a provider (Text, Audio, Voice, Export loudness) show
+  **Find a plugin…**, which opens Browse filtered to that capability.
+- **Fetching:** `registry.json` is cached in `~/Library/Application Support/BashCut/Registry/` for 5 minutes and
+  revalidated with its ETag. When the network fails, Browse shows the saved copy with the error. An unknown
+  `schemaVersion` asks to update BashCut. `defaults write app.bashcut pluginRegistryURL <url>` points BashCut at
+  another registry.
+- **Choosing a version:** the newest version whose `platforms` include this Mac (`macos-arm64`, `macos-x86_64` or
+  `macos-universal`), whose API window includes this BashCut and whose `minAppVersion` is not newer than the app.
+  Development builds without a version accept any `minAppVersion`.
+- **Installing:** BashCut downloads the archive over HTTPS from GitHub hosts, checks its size and the registry
+  SHA-256, unpacks it with `ditto` into a staging folder, and requires exactly one plugin folder, no links leaving
+  it, a valid manifest and the registry's id and version. Then it shows the install approval with the source URL,
+  checksum and dependency plan. Only after the user approves does it run dependency recipes, move the plugin into
+  `~/Library/Application Support/BashCut/Plugins/<id>/` and pin it. Nothing from the archive runs before that.
+- **Updating** uses the same steps and replaces the installed copy; the previous copy is kept in `.previous/` until
+  the move succeeds. A running session is stopped first. Option values and the on/off switches carry over.
+- **Removing** (Installed › Remove, `plugins remove`) deletes a plugin from the user or project plugin folder with
+  its trust pin and user-scope options; projects keep their `pluginOptions` and `pluginData`. Plugins inside the app
+  can only be turned off.
+- Archive signatures (`signature`, ed25519) are reserved and not checked yet; the checksum and the user's approval
+  are the gate.
 
 ## Discovery and precedence
 
@@ -259,7 +303,7 @@ values with every action and hook request as `options`.
 
 ```json
 "options": [
-  {"id": "sectionPrefix", "title": "Section prefix", "titleVi": "Tiền tố mốc", "type": "string",
+  {"id": "sectionPrefix", "title": {"en": "Section prefix", "vi": "Tiền tố mốc"}, "type": "string",
    "default": "Mark", "scope": "project"},
   {"id": "strength", "title": "Strength", "type": "number", "minimum": 0, "maximum": 1, "default": 0.5}
 ]
@@ -268,8 +312,8 @@ values with every action and hook request as `options`.
 | Field | Rules |
 |---|---|
 | `id` | A key: a letter, then up to 63 letters, digits, `_` or `-`; unique in the plugin |
-| `title`, `titleVi` | Display name; `titleVi` is used when the interface language is Vietnamese |
-| `help` | Optional caption under the field |
+| `title` | Label; [localized text](#localized-text) such as `{"en": "Opacity", "vi": "Độ mờ"}` |
+| `help` | Optional caption under the field; localized text |
 | `type` | `string`, `enum`, `number`, `integer` or `bool` |
 | `default` | Must fit the type; without it: empty string, the first choice, `minimum` (or 0) or `false` |
 | `choices` | Required for `enum`: 1–100 unique strings |
@@ -291,8 +335,7 @@ code.
   "actions": [
     {
       "id": "example.toolkit.set-opacity",
-      "title": "Set clip opacity…",
-      "titleVi": "Đặt độ mờ clip…",
+      "title": {"en": "Set clip opacity…", "vi": "Đặt độ mờ clip…"},
       "icon": "circle.lefthalf.filled",
       "placements": ["menu.plugins", "clip.context", "inspector.video"],
       "when": "selection.kind == video",
@@ -305,14 +348,14 @@ code.
 | Field | Rules |
 |---|---|
 | `id` | Starts with the plugin ID and a dot (`example.toolkit.grade`); unique; at most 64 actions |
-| `title`, `titleVi` | Up to 80 characters |
+| `title` | Up to 80 characters; a string (English) or a language map like `{"en": …, "vi": …}` |
 | `icon` | Optional SF Symbol name |
 | `placements` | One or more of the placements below |
 | `when` | Optional [condition](#when-conditions); without it the action is available whenever a saved project is open |
 | `params` | Up to 32 [options](#options) (their `scope` is ignored); shown in a native sheet before the action runs |
 | `shortcut` | Optional, written like `cmd+shift+g`; ignored (and reported in diagnostics) when a built-in or earlier plugin action uses it |
 | `context` | Extra read-only data: `timeline` (all tracks), `media` (all media with absolute paths), `project` (the whole document) |
-| `confirm` | A question shown before the action runs from the UI |
+| `confirm` | A question shown before the action runs from the UI; localized text |
 
 ### Placements
 
@@ -499,6 +542,10 @@ Everything above is available to agents through the CLI and MCP (`bashcut_plugin
 | `plugins options <plugin>` | read | Options… |
 | `plugins option <plugin> --option <id> [--value <text>]` | edit | Editing an option; no value resets it |
 | `plugins set <plugin> [--enabled off] [--hooks off]` | edit | The Enabled and Hooks switches (agents can only turn them off) |
+| `plugins search [query] [--capability <id>] [--refresh]` | read | Browse |
+| `plugins updates` | read | Updates |
+| `plugins install <plugin> [--version <v>]` | edit, job | Install or Update in Browse: downloads and verifies, then shows the approval (only the user can approve) |
+| `plugins remove <plugin>` | edit | Installed › Remove |
 
 `ui actions` lists plugin actions next to built-in ones and `ui action <id or shortcut>` runs them. An action with
 parameters or `confirm` opens its sheet (dialog `plugin-action`); answer it with `ui respond run|cancel`, or use
@@ -558,5 +605,5 @@ are two more adapters, `PluginActionCapability` and `PluginHookCapability`, run 
 - Voice, Text, Audio and Export use `voice.synthesize`, `captions.transcribe`, `audio.beats` and
   `audio.loudness`. Other analysis and interchange panels are not connected yet.
 - Plugins cannot own panels or windows; contributions use the fixed placements above.
-- Bundled native providers, signed remote catalogs, a credential contract and detailed capability permissions
-  are future work.
+- The plugin registry (browse, install, update, remove) is implemented; archive signatures are not checked yet.
+- Bundled native providers, a credential contract and detailed capability permissions are future work.

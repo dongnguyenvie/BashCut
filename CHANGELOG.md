@@ -5,6 +5,15 @@
 
 ## [Unreleased]
 
+- **Plugin registry**: Plugins › Browse and Updates install and update plugins from the static `registry.json` in
+  `dongnguyenvie/bashcut-plugins` (no server). Downloads are checked against the registry SHA-256, unpacked into a
+  staging folder, validated and shown for approval before anything runs; updates keep the previous copy until the
+  swap succeeds. Installed › Remove uninstalls user and project plugins. Panels without a provider offer
+  **Find a plugin…**. New commands: `plugins search`, `updates`, `install`, `remove`. `scripts/run.sh` now writes the
+  real app version into the development bundle.
+- **Localized plugin text**: plugin `name`, option `title`/`help` and action `title`/`confirm` take a string (English)
+  or a language map such as `{"en": "Opacity", "vi": "Độ mờ"}`, replacing the `titleVi` fields. BashCut shows the
+  interface language, then the base language, then English.
 - **Plugin API 2: actions, hooks, options, sessions and trust.** Plugins can add actions to the Plugins menu,
   toolbar, clip/track/timeline/media context menus, library panels and inspector tabs (`contributes.actions`, with
   `when` conditions, native parameter sheets and shortcuts) and subscribe to 19 editor events

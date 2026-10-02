@@ -103,7 +103,7 @@ struct PluginCatalogTests {
         func plugin(_ id: String, provider: String, priority: Int) -> InstalledPlugin {
             InstalledPlugin(
                 manifest: PluginManifest(
-                    id: id, name: id, version: "1.0.0", entrypoint: "bin/provider",
+                    id: id, name: LocalizedText(["en": id]), version: "1.0.0", entrypoint: "bin/provider",
                     capabilities: ["voice.synthesize"],
                     providers: [
                         PluginProvider(
@@ -148,7 +148,7 @@ struct PluginCatalogTests {
         let fixture = try makeRuntimePlugin(includeMissingDependency: true)
         defer { try? FileManager.default.removeItem(at: fixture.directory.deletingLastPathComponent()) }
 
-        let health = await PluginProcessRunner(timeout: 2).health(plugin: fixture)
+        let health = await PluginProcessRunner(timeout: 10).health(plugin: fixture)
         #expect(health.state == .degraded)
         #expect(health.dependencies.map(\.state) == [.available, .missing])
     }

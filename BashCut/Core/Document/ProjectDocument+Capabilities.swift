@@ -241,7 +241,7 @@ extension ProjectDocument {
         return .object([
             "plugins": .array(result.plugins.map { plugin in
                 .object([
-                    "id": .string(plugin.id), "name": .string(plugin.manifest.name),
+                    "id": .string(plugin.id), "name": .string(plugin.manifest.displayName),
                     "version": .string(plugin.manifest.version), "apiVersion": .integer(plugin.manifest.apiVersion),
                     "availability": .string(plugins.service.availability(plugin).name),
                     "detail": .string(plugins.service.availability(plugin).detail),

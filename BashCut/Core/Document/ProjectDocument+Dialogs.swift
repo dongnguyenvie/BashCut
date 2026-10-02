@@ -62,10 +62,10 @@ extension ProjectDocument {
         if ui.showPlugins, let pending = plugins.pendingInstall {
             // Installing runs the plugin's dependency recipes; only the user can approve it.
             sheets.append(ModalSheet(
-                name: "plugin-install", title: "Install \(pending.plugin.manifest.name)?",
+                name: "plugin-install", title: "Install \(pending.plugin.manifest.displayName)?",
                 message: "Only the user can approve a plugin install.",
                 options: [ModalOption("cancel", String(localized: "Cancel"))]
-            ) { [weak self] _ in self?.plugins.pendingInstall = nil })
+            ) { [weak self] _ in self?.plugins.cancelPendingInstall() })
         }
         sheets += pluginSheets()
         if let prompt = privilegedApproval {
@@ -95,7 +95,7 @@ extension ProjectDocument {
         }
         if ui.showPluginProposals, let proposal = plugins.proposals.first {
             sheets.append(ModalSheet(
-                name: "plugin-proposals", title: "\(proposal.plugin.manifest.name) proposes: \(proposal.title)",
+                name: "plugin-proposals", title: "\(proposal.plugin.manifest.displayName) proposes: \(proposal.title)",
                 message: "\(proposal.proposal.operations.count) operations after \(proposal.event)",
                 options: [
                     ModalOption("apply", String(localized: "Apply")), ModalOption("discard", String(localized: "Discard")),

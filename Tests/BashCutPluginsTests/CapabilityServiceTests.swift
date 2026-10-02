@@ -48,7 +48,7 @@ private struct PluginSandbox {
                 probe: PluginCommand(executable: "bashcut-test-missing-binary")),
         ]
         let manifest = PluginManifest(
-            id: id, name: id, version: "2.1.0", entrypoint: "provider.sh",
+            id: id, name: LocalizedText(["en": id]), version: "2.1.0", entrypoint: "provider.sh",
             capabilities: Array(Set(providers.map(\.capability))), providers: providers,
             dependencies: dependencies)
         try JSONEncoder().encode(manifest).write(to: directory.appendingPathComponent("plugin.json"))

@@ -43,6 +43,32 @@ extension CommandCatalog {
                 CommandParameter("value", .string, "New value as text (on/off, numbers, choices)", cli: .option("value")),
             ]),
         CommandSpec(
+            "plugins.search", .read,
+            "Search the plugin registry (Plugins › Browse): name, summary, capability, the version this BashCut would "
+                + "install and whether it is installed, has an update or is incompatible.",
+            parameters: [
+                CommandParameter("query", .string, "Search text", cli: .positional),
+                CommandParameter("capability", .string, "Only providers of this capability, such as captions.transcribe",
+                                 cli: .option("capability")),
+                CommandParameter("refresh", .boolean, "Fetch the registry again instead of using the 5-minute cache",
+                                 default: .bool(false), cli: .flag("refresh")),
+            ]),
+        CommandSpec("plugins.updates", .read, "List installed plugins with a newer compatible version in the registry."),
+        CommandSpec(
+            "plugins.install", .edit,
+            "Download a registry plugin (or its update), check its SHA-256 and manifest, and show the install approval in "
+                + "the Plugins sheet. Only the user can approve; the job ends when the approval is shown.",
+            parameters: [
+                CommandParameter("plugin", .string, "Plugin ID from plugins search", required: true, cli: .positional),
+                CommandParameter("version", .string, "A specific registry version; the newest compatible by default",
+                                 cli: .option("version")),
+            ],
+            execution: .job),
+        CommandSpec(
+            "plugins.remove", .edit, "Uninstall a plugin from the user or project plugin folder, with its trust and options (plugins that come with "
+                + "BashCut can only be turned off).",
+            parameters: [pluginID]),
+        CommandSpec(
             "plugins.set", .edit,
             "Turn a plugin or its hooks off (agents can only turn them off; turning on and trusting a plugin stays "
                 + "with the user in the Plugins sheet).",

@@ -70,6 +70,14 @@ struct ExportView: View {
             if loudnessProviders.isEmpty {
                 Text("Install an audio.loudness plugin to enable two-pass LUFS normalization.")
                     .font(.caption).foregroundStyle(.secondary)
+                Button("Find a plugin…") {
+                    document.ui.showExport = false
+                    // Let the Export sheet finish closing before the Plugins sheet opens.
+                    Task {
+                        try? await Task.sleep(for: .milliseconds(400))
+                        document.showPluginBrowser(capability: "audio.loudness")
+                    }
+                }.font(.caption)
             } else if normalizeAudio {
                 Text("BashCut renders a temporary mix, measures it, applies a true-peak-safe gain, then verifies the final export.")
                     .font(.caption).foregroundStyle(.secondary)

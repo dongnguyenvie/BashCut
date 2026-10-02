@@ -6,7 +6,7 @@ public struct PluginManifest: Codable, Sendable, Equatable {
 
     public let schema: String
     public let id: String
-    public let name: String
+    public let name: LocalizedText
     public let version: String
     public let apiVersion: Int
     public let entrypoint: String
@@ -22,7 +22,7 @@ public struct PluginManifest: Codable, Sendable, Equatable {
     public let contributes: PluginContributions?
 
     public init(
-        id: String, name: String, version: String, apiVersion: Int = 1,
+        id: String, name: LocalizedText, version: String, apiVersion: Int = 1,
         entrypoint: String, capabilities: [String], providers: [PluginProvider]? = nil,
         dependencies: [PluginDependency] = [], minApiVersion: Int? = nil, maxApiVersion: Int? = nil,
         transport: PluginTransportKind? = nil, options: [PluginOption]? = nil,
@@ -48,7 +48,7 @@ public struct PluginManifest: Codable, Sendable, Equatable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         schema = try container.decode(String.self, forKey: .schema)
         id = try container.decode(String.self, forKey: .id)
-        name = try container.decode(String.self, forKey: .name)
+        name = try container.decode(LocalizedText.self, forKey: .name)
         version = try container.decode(String.self, forKey: .version)
         apiVersion = try container.decode(Int.self, forKey: .apiVersion)
         entrypoint = try container.decode(String.self, forKey: .entrypoint)
@@ -63,6 +63,8 @@ public struct PluginManifest: Codable, Sendable, Equatable {
     }
 
     public var transportKind: PluginTransportKind { transport ?? .oneshot }
+    /// The name in the app's interface language.
+    public var displayName: String { name.text }
     public var actions: [PluginActionContribution] { contributes?.actions ?? [] }
     public var hooks: [PluginHookContribution] { contributes?.hooks ?? [] }
 
@@ -89,7 +91,7 @@ public struct PluginManifest: Codable, Sendable, Equatable {
         guard matches(id, "^[a-z0-9]+(?:[.-][a-z0-9]+)+$") else {
             throw PluginError.invalid("Plugin id must be reverse-domain style")
         }
-        guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+        guard name.isValid(limit: 80),
             matches(version, "^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$")
         else { throw PluginError.invalid("Plugin name and semantic version are required") }
         try Self.validateRelativePath(entrypoint, field: "entrypoint")

@@ -20,6 +20,7 @@ struct VoiceLibraryView: View {
             TextEditor(text: $text).frame(minHeight: 90).scrollContentBackground(.hidden)
                 .padding(5).background(.black.opacity(0.25)).clipShape(RoundedRectangle(cornerRadius: 6))
             providerPicker
+            FindPluginButton(document: document, capability: "voice.synthesize")
             Button(pluginManager.calling.contains("voice.synthesize") ? "Generating…" : "Generate → 3 takes") {
                 generate()
             }

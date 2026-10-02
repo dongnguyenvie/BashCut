@@ -147,7 +147,7 @@ extension ProjectDocument {
         }
         if let confirm = action.spec.confirm, author == .user {
             let choice = ModalCenter.shared.alert(
-                "plugin-confirm", title: action.title, message: confirm,
+                "plugin-confirm", title: action.title, message: confirm.text,
                 buttons: [ModalOption("cancel", String(localized: "Cancel")), ModalOption("run", String(localized: "Run"))])
             guard choice == "run" else { return }
         }
@@ -215,7 +215,7 @@ extension ProjectDocument {
         }
         guard session == sessionID else { throw CancellationError() }
         let revision = try applyPluginProposal(
-            proposal, plugin: plugin, label: proposal.label ?? "\(plugin.manifest.name): \(action.title)",
+            proposal, plugin: plugin, label: proposal.label ?? "\(plugin.manifest.displayName): \(action.title)",
             applyUI: true)
         registry.record(method: "plugin.action." + id, author: author, succeeded: true)
         emitPluginEvent(.pluginActionFinished, [
@@ -253,7 +253,7 @@ extension ProjectDocument {
                 baseRevision: proposal.baseRevision)
         }
         if applyUI { applyPluginUI(proposal.ui) }
-        if let text = proposal.message { message = "\(plugin.manifest.name): \(text)" }
+        if let text = proposal.message { message = "\(plugin.manifest.displayName): \(text)" }
         return revision
     }
 
@@ -330,7 +330,7 @@ extension ProjectDocument {
             let values = document.pluginOptionValues(plugin)
             return .array((plugin.manifest.options ?? []).map { option in
                 .object([
-                    "id": .string(option.id), "title": .string(option.title(language: PluginText.language)),
+                    "id": .string(option.id), "title": .string(option.title.text),
                     "scope": .string(option.effectiveScope.rawValue), "schema": option.jsonSchema,
                     "value": values[option.id] ?? .null,
                 ])
@@ -349,6 +349,7 @@ extension ProjectDocument {
             try document.setPluginOption(plugin, option: id, value: value, author: author)
             return .object(["value": document.pluginOptionValues(plugin)[id] ?? .null, "rev": .integer(document.project.revision)])
         }
+        registerPluginRegistryCommands()
         handleAuthored("plugins.set") { document, arguments, _ in
             let plugin = try document.requirePlugin(arguments.string("plugin"))
             let enabled = arguments.optionalBool("enabled")

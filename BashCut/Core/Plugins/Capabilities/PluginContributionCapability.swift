@@ -170,7 +170,7 @@ extension CapabilityService {
         progress: PluginProgressHandler? = nil
     ) async throws -> Adapter.Output {
         guard availability(plugin) == .ready else {
-            throw PluginError.invalid("\(plugin.manifest.name): \(availability(plugin).detail)")
+            throw PluginError.invalid("\(plugin.manifest.displayName): \(availability(plugin).detail)")
         }
         try adapter.validate()
         let directory = try adapter.outputRoot.map(Self.makeRequestDirectory)

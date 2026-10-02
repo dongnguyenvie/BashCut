@@ -55,7 +55,7 @@ public enum PluginCatalog {
             }
         }
         return PluginCatalogResult(
-            plugins: plugins.values.sorted { $0.manifest.name < $1.manifest.name },
+            plugins: plugins.values.sorted { $0.manifest.displayName < $1.manifest.displayName },
             diagnostics: diagnostics)
     }
 }

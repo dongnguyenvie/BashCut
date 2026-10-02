@@ -21,7 +21,7 @@ struct PluginActionStrip: View {
                         Label(action.title, systemImage: action.spec.icon ?? "puzzlepiece.extension")
                     }
                     .disabled(!document.canRunPluginAction(action))
-                    .help(action.plugin.manifest.name + ": " + action.title)
+                    .help(action.plugin.manifest.displayName + ": " + action.title)
                 }
             } else {
                 VStack(alignment: .leading, spacing: 6) {
@@ -36,7 +36,7 @@ struct PluginActionStrip: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         .disabled(!document.canRunPluginAction(action))
-                        .help(action.plugin.manifest.name)
+                        .help(action.plugin.manifest.displayName)
                     }
                 }
             }
@@ -71,9 +71,9 @@ struct PluginActionParamsSheet: View {
             VStack(alignment: .leading, spacing: 14) {
                 Label(pending.action.title, systemImage: pending.action.spec.icon ?? "puzzlepiece.extension")
                     .font(.title2)
-                Text(pending.action.plugin.manifest.name).font(.caption).foregroundStyle(.secondary)
+                Text(pending.action.plugin.manifest.displayName).font(.caption).foregroundStyle(.secondary)
                 if let confirm = pending.action.spec.confirm {
-                    Text(confirm).foregroundStyle(.orange)
+                    Text(confirm.text).foregroundStyle(.orange)
                 }
                 Form {
                     ForEach(pending.action.params) { option in
@@ -101,7 +101,7 @@ struct PluginOptionField: View {
     @State private var invalid = false
 
     var body: some View {
-        let title = option.title(language: PluginText.language)
+        let title = option.title.text
         VStack(alignment: .leading, spacing: 2) {
             switch option.type {
             case .bool:
@@ -123,7 +123,7 @@ struct PluginOptionField: View {
                     }
                     .foregroundStyle(invalid ? Color.orange : Color.primary)
             }
-            if let help = option.help { Text(help).font(.caption2).foregroundStyle(.secondary) }
+            if let help = option.help { Text(help.text).font(.caption2).foregroundStyle(.secondary) }
         }
     }
 
@@ -146,7 +146,7 @@ struct PluginProposalSheet: View {
     var body: some View {
         if let proposal = model.proposals.first {
             VStack(alignment: .leading, spacing: 12) {
-                Label("\(proposal.plugin.manifest.name) proposes an edit", systemImage: "puzzlepiece.extension")
+                Label("\(proposal.plugin.manifest.displayName) proposes an edit", systemImage: "puzzlepiece.extension")
                     .font(.title2)
                 Text(proposal.title).font(.headline)
                 Text("After \(proposal.event)").font(.caption).foregroundStyle(.secondary)
@@ -174,6 +174,23 @@ struct PluginProposalSheet: View {
     private func resolve(_ id: String, apply: Bool) {
         do { try document.resolvePluginProposal(id, apply: apply) } catch {
             document.message = error.localizedDescription
+        }
+    }
+}
+
+/// Shown under a provider picker when no installed plugin provides `capability`: opens Plugins › Browse filtered
+/// to providers of it.
+struct FindPluginButton: View {
+    @Bindable var document: ProjectDocument
+    let capability: String
+
+    var body: some View {
+        if document.plugins.providers(for: capability).isEmpty {
+            Button {
+                document.showPluginBrowser(capability: capability)
+            } label: {
+                Label("Find a plugin…", systemImage: "puzzlepiece.extension")
+            }.help(String(format: String(localized: "Browse plugins that provide %@"), capability))
         }
     }
 }

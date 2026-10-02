@@ -10,7 +10,7 @@ import BashCutAutomation
                 document?.triggerPluginAction(action, mediaID: mediaID)
             }
             item.isEnabled = document.canRunPluginAction(action, mediaID: mediaID)
-            item.toolTip = action.plugin.manifest.name
+            item.toolTip = action.plugin.manifest.displayName
             if let icon = action.spec.icon { item.image = NSImage(systemSymbolName: icon, accessibilityDescription: nil) }
             return item
         }
@@ -64,7 +64,7 @@ private final class PluginMainMenuController: NSObject, NSMenuDelegate {
             if action.plugin.id != currentPlugin {
                 currentPlugin = action.plugin.id
                 menu.addItem(.separator())
-                let header = NSMenuItem(title: action.plugin.manifest.name, action: nil, keyEquivalent: "")
+                let header = NSMenuItem(title: action.plugin.manifest.displayName, action: nil, keyEquivalent: "")
                 header.isEnabled = false
                 menu.addItem(header)
             }
