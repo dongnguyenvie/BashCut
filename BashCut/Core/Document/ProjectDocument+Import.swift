@@ -119,10 +119,6 @@ extension ProjectDocument {
     }
 
     static func relativePath(_ url: URL, root: URL) -> String {
-        let source = url.standardizedFileURL.pathComponents
-        let base = root.standardizedFileURL.pathComponents
-        let common = zip(source, base).prefix { $0 == $1 }.count
-        return (Array(repeating: "..", count: base.count - common) + source.dropFirst(common)).joined(
-            separator: "/")
+        MediaPathResolver.projectPath(for: url, projectRoot: root)
     }
 }

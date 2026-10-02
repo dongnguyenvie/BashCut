@@ -29,6 +29,31 @@ struct MediaPathResolverTests {
         }
     }
 
+    @Test("Files under the linked footage folder are stored through the link")
+    func linkedFootagePath() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let project = root.appendingPathComponent("Edit.bashcut", isDirectory: true)
+        let shoot = root.appendingPathComponent("Downloads/shoot", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: shoot.appendingPathComponent("day1"), withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: project, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        try FileManager.default.createSymbolicLink(
+            at: project.appendingPathComponent("footage"), withDestinationURL: shoot)
+
+        let picked = shoot.appendingPathComponent("day1/DJI_0001.MP4")
+        #expect(MediaPathResolver.projectPath(for: picked, projectRoot: project) == "footage/day1/DJI_0001.MP4")
+        let viaLink = project.appendingPathComponent("footage/clip.mov")
+        #expect(MediaPathResolver.projectPath(for: viaLink, projectRoot: project) == "footage/clip.mov")
+        let local = project.appendingPathComponent("voiceover/take.m4a")
+        #expect(MediaPathResolver.projectPath(for: local, projectRoot: project) == "voiceover/take.m4a")
+        let resolvedLocal = local.resolvingSymlinksInPath()
+        #expect(MediaPathResolver.projectPath(for: resolvedLocal, projectRoot: project) == "voiceover/take.m4a")
+        let outside = root.appendingPathComponent("Music/song.wav")
+        #expect(MediaPathResolver.projectPath(for: outside, projectRoot: project) == "../Music/song.wav")
+    }
+
     @Test("Shared asset symlinks cannot escape the workspace assets directory")
     func escapingSymlink() throws {
         let root = FileManager.default.temporaryDirectory

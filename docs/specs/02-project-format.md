@@ -90,8 +90,9 @@ file easy for agents to read.
 - `dur` and `at` are timeline frames, counted at `format.fps`.
 - Seconds appear only in the UI, in the agent text form, and in command arguments.
 
-**Media paths are relative** to the project folder. Shared assets are written as
-`@assets/nhac/…`, which means relative to the workspace root.
+**Media paths are relative** to the project folder. A file inside a top-level folder link
+(`footage/`) is stored through the link (`footage/<file>`), never as a path into its target.
+Shared assets are written as `@assets/nhac/…`, which means relative to the workspace root.
 
 **Item IDs are stable.** An item keeps its ID when it is trimmed or moved. A split keeps the ID
 on the left half and gives the right half a new ID.
