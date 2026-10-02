@@ -59,10 +59,10 @@ extension ProjectDocument {
         case .toggleAgentDock:
             if agents.isDetached { agents.attach() } else { ui.showAgentDock.toggle() }
         case .askAgent: ui.showAsk = true
-        case .togglePlayback: togglePlayback()
-        case .previousFrame: seek(playhead - 1)
-        case .nextFrame: seek(playhead + 1)
-        case .toggleCompare: setColorComparison(!showColorComparison)
+        case .togglePlayback: preview.togglePlayback()
+        case .previousFrame: preview.seek(playhead - 1)
+        case .nextFrame: preview.seek(playhead + 1)
+        case .toggleCompare: preview.setColorComparison(!preview.showColorComparison)
         case .toggleSafeArea: ui.showSafeArea.toggle()
         case .toggleSnap: ui.snapping.toggle()
         case .zoomIn: ui.zoomIn()
@@ -187,7 +187,7 @@ extension ProjectDocument {
         }
         if let compare = arguments.optionalBool("compare") {
             guard !compare || project.duration > 0 else { throw RPCFailure(-32602, "The timeline is empty") }
-            setColorComparison(compare)
+            preview.setColorComparison(compare)
         }
         if let frame = arguments.optionalInt("reveal") { revealInTimeline(frame) }
         if let tab = arguments.optionalString("inspector") { ui.inspectorTab = tab }
@@ -206,9 +206,9 @@ extension ProjectDocument {
             "zoom": .number(ui.timelineScale), "zoomRange": .array([
                 .number(EditorUIState.timelineZoomRange.lowerBound), .number(EditorUIState.timelineZoomRange.upperBound),
             ]),
-            "snap": .bool(ui.snapping), "safeArea": .bool(ui.showSafeArea), "compare": .bool(showColorComparison),
+            "snap": .bool(ui.snapping), "safeArea": .bool(ui.showSafeArea), "compare": .bool(preview.showColorComparison),
             "agentDock": .bool(ui.showAgentDock && !agents.isDetached), "agentDockDetached": .bool(agents.isDetached),
-            "playing": .bool(player.rate != 0), "playhead": .integer(playhead),
+            "playing": .bool(preview.isPlaying), "playhead": .integer(playhead),
             "selection": selectedID.map(JSONValue.string) ?? .null,
             "selectedTrack": selectedTrackID.map(JSONValue.string) ?? .null,
             "libraryPanel": .string(ui.libraryTab.panelName), "inspector": .string(ui.inspectorTab),

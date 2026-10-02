@@ -240,7 +240,7 @@ struct TimelineView: NSViewRepresentable {
             document.selectedID = nil
             dragState = nil
         }
-        document.seek(Int(max(0, point.x - 105) / scale))
+        document.preview.seek(Int(max(0, point.x - 105) / scale))
     }
     override func mouseDragged(with event: NSEvent) {
         if sectionDrag != nil {

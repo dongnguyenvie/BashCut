@@ -16,7 +16,6 @@ final class ProjectDocument {
     private(set) var history = ProjectHistory(project: Project(name: "Untitled"))
     var selectedID: String?
     var selectedTrackID: String?
-    var playhead = 0
     var message = ""
     var busy = false
     var dirty = false
@@ -24,8 +23,6 @@ final class ProjectDocument {
     var exportReport: ExportReport?
     var privilegedApproval: PrivilegedApprovalPrompt?
     var fileURL: URL?
-    let player = AVPlayer()
-    let comparisonPlayer = AVPlayer()
     let sourceViewer = SourceViewerModel()
     let waveforms = WaveformModel()
     let storage = ProjectStorage()
@@ -45,7 +42,6 @@ final class ProjectDocument {
     var agentChange: AgentChangeRecord?
     let doctor = DoctorModel()
     var timelineGestureActive = false
-    var showColorComparison = false
     var recentProjectURLs: [URL]
     /// Zoom, toggles, panels and open sheets.
     let ui = EditorUIState()
@@ -53,9 +49,8 @@ final class ProjectDocument {
     @ObservationIgnored lazy var plugins = PluginManagerModel()
     @ObservationIgnored var privilegedAction: (@MainActor () throws -> Void)?
     let engine: any RenderEngine
-    @ObservationIgnored var snapshot: CompositionSnapshot?
-    private var comparisonSnapshot: CompositionSnapshot?
-    private var rebuildTask: Task<Void, Never>?
+    /// Program and comparison players, the playhead and the composition they play.
+    let preview: PreviewController
     /// Capability calls and exports, listed by `jobs.status` and cancelled by `jobs.cancel`.
     let jobs = JobCenter()
     @ObservationIgnored lazy var exports = ExportQueue(jobs: jobs) { [unowned self] in
@@ -66,6 +61,7 @@ final class ProjectDocument {
 
     init(engine: any RenderEngine = AVFoundationRenderEngine()) {
         self.engine = engine
+        preview = PreviewController(engine: engine)
         recentProjectURLs = UserDefaults.standard.stringArray(forKey: "recentProjectPaths")?
             .map { URL(fileURLWithPath: $0) } ?? []
         let url = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(
@@ -78,10 +74,11 @@ final class ProjectDocument {
                 }
             }
         }
-        comparisonPlayer.isMuted = true
+        preview.onMessage = { [weak self] in self?.message = $0 }
     }
 
     var project: Project { history.project }
+    var playhead: Int { preview.playhead }
     var exporting: Bool { exports.isRunning }
     var exportProgress: Double { exports.progress }
     var selected: Item? { project.tracks.flatMap(\.items).first { $0.id == selectedID } }
@@ -194,27 +191,20 @@ final class ProjectDocument {
         conflict = false
         legacyImportReport = nil
         lastAutosaveRevision = -1
-        rebuildTask?.cancel()
         exports.cancelAll()
         jobs.cancelAll()
         exportReport = nil
         ui.closeProjectSheets()
         privilegedApproval = nil
         privilegedAction = nil
-        player.pause()
-        player.replaceCurrentItem(with: nil)
-        snapshot = nil
-        comparisonPlayer.replaceCurrentItem(with: nil)
-        comparisonSnapshot = nil
-        showColorComparison = false
         replaceHistory(ProjectHistory(project: project))
+        preview.reset(project)
         fileURL = url
         restoreExportReport()
         rememberRecentProject(url)
         selectedID = nil
         selectedTrackID = nil
         timelineGestureActive = false
-        playhead = 0
         dirty = false
         message = ""
         startExternalFileMonitor()
@@ -259,52 +249,10 @@ final class ProjectDocument {
         self.selectedID = nil
     }
     func rebuild() {
-        if let root = fileURL?.deletingLastPathComponent() { waveforms.update(media: project.media, root: root) }
-        rebuildTask?.cancel()
-        snapshot = nil
-        comparisonSnapshot = nil
-        player.pause()
-        comparisonPlayer.pause()
-        player.replaceCurrentItem(with: nil)
-        comparisonPlayer.replaceCurrentItem(with: nil)
-        guard let root = fileURL?.deletingLastPathComponent(), project.duration > 0 else { return }
-        let value = project
-        let compare = showColorComparison
-        rebuildTask = Task {
-            do {
-                try await Task.sleep(for: .milliseconds(50))
-                let built = try await engine.build(value, root: root, workspace: agents.workspace)
-                let comparisonBuilt = compare
-                    ? try await engine.build(
-                        value.withoutColorEffects(), root: root, workspace: agents.workspace)
-                    : nil
-                try Task.checkCancellation()
-                guard value.revision == project.revision, compare == showColorComparison else { return }
-                snapshot = built
-                let item = AVPlayerItem(asset: built.composition)
-                item.videoComposition = built.videoComposition
-                item.audioMix = built.audioMix
-                player.replaceCurrentItem(with: item)
-                var comparisonItem: AVPlayerItem?
-                if let comparisonBuilt {
-                    comparisonSnapshot = comparisonBuilt
-                    let original = AVPlayerItem(asset: comparisonBuilt.composition)
-                    original.videoComposition = comparisonBuilt.videoComposition
-                    original.audioMix = comparisonBuilt.audioMix
-                    comparisonPlayer.replaceCurrentItem(with: original)
-                    comparisonItem = original
-                }
-                try await waitUntilReady(item, message: "Preview could not become ready")
-                if let comparisonItem {
-                    try await waitUntilReady(
-                        comparisonItem, message: "Comparison preview could not become ready")
-                }
-                seek(playhead)
-                message = ""
-            } catch is CancellationError {} catch { message = error.localizedDescription }
-        }
+        let root = fileURL?.deletingLastPathComponent()
+        if let root { waveforms.update(media: project.media, root: root) }
+        preview.rebuild(project, root: root, workspace: agents.workspace)
     }
-
 }
 
 // MARK: - Edit choke point

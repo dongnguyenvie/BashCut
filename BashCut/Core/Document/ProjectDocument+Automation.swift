@@ -240,7 +240,7 @@ extension ProjectDocument {
             guard frame <= document.project.duration else {
                 throw RPCFailure(-32602, "frame must be within the timeline")
             }
-            document.seek(frame)
+            document.preview.seek(frame)
             return .bool(true)
         }
         handle("ui.panel") { document, arguments, _ in

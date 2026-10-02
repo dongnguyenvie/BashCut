@@ -8,7 +8,7 @@ extension ProjectDocument {
             message = String(localized: "Shared media requires a configured workspace.")
             return
         }
-        player.pause()
+        preview.pause()
         sourceViewer.open(media, url: url)
     }
     func resolvedMediaURL(_ media: Media) -> URL? {

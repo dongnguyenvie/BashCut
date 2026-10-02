@@ -107,7 +107,7 @@ struct EditorView: View {
                         guard let current = item.after else { return }
                         document.selectedID = current.id
                         document.selectedTrackID = item.afterTrackID
-                        document.seek(current.at)
+                        document.preview.seek(current.at)
                         document.ui.showAgentChanges = false
                     }, undo: document.undoAgentChange,
                     done: { document.ui.showAgentChanges = false })
@@ -150,7 +150,7 @@ struct EditorView: View {
         }
         .task {
             while !Task.isCancelled {
-                document.updatePlayhead()
+                document.preview.updatePlayhead()
                 do { try await Task.sleep(for: .milliseconds(100)) } catch { return }
             }
         }
@@ -237,8 +237,8 @@ struct EditorView: View {
                 Toggle(
                     "Compare",
                     isOn: Binding(
-                        get: { document.showColorComparison },
-                        set: { document.setColorComparison($0) })
+                        get: { document.preview.showColorComparison },
+                        set: { document.preview.setColorComparison($0) })
                 ).toggleStyle(.button).font(.caption).disabled(document.project.duration == 0)
                 Toggle("Safe area", isOn: Bindable(document.ui).showSafeArea).toggleStyle(.button).font(.caption)
             }.padding(8)
@@ -256,10 +256,10 @@ struct EditorView: View {
                         }
                     }
                 } else {
-                    PlayerView(player: document.player)
-                    if document.showColorComparison {
+                    PlayerView(player: document.preview.player)
+                    if document.preview.showColorComparison {
                         GeometryReader { geometry in
-                            PlayerView(player: document.comparisonPlayer)
+                            PlayerView(player: document.preview.comparisonPlayer)
                                 .mask {
                                     HStack(spacing: 0) {
                                         Rectangle().frame(width: geometry.size.width / 2)
@@ -303,7 +303,7 @@ struct EditorView: View {
                 Button {
                     document.run(.togglePlayback)
                 } label: {
-                    Image(systemName: document.player.rate == 0 ? "play.fill" : "pause.fill")
+                    Image(systemName: !document.preview.isPlaying ? "play.fill" : "pause.fill")
                 }.shortcut(.togglePlayback)
                 Button {
                     document.run(.nextFrame)
@@ -311,7 +311,7 @@ struct EditorView: View {
                     Image(systemName: "forward.end")
                 }
                 Slider(
-                    value: Binding(get: { Double(document.playhead) }, set: { document.seek(Int($0)) }),
+                    value: Binding(get: { Double(document.playhead) }, set: { document.preview.seek(Int($0)) }),
                     in: 0...Double(max(1, document.project.duration)))
                 Text(
                     String(
@@ -423,7 +423,7 @@ struct EditorView: View {
                     Text(issue.detail).font(.caption)
                     HStack {
                         Button("Jump") {
-                            document.seek(issue.frame)
+                            document.preview.seek(issue.frame)
                             document.ui.showReview = false
                         }
                         Button("Ask agent to fix") {
