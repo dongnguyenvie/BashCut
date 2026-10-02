@@ -106,9 +106,18 @@ public enum CommandLineParser {
             if parameter.isPath {
                 return .string(URL(fileURLWithPath: (text as NSString).expandingTildeInPath).standardizedFileURL.path)
             }
+            if parameter.kind == .boolean { return .bool(try boolean(text, name: parameter.name)) }
             guard parameter.kind == .integer else { return .string(text) }
             guard let number = Int(text) else { throw Failure(message: "\(parameter.name) must be an integer") }
             return .integer(number)
+        }
+    }
+
+    private static func boolean(_ text: String, name: String) throws -> Bool {
+        switch text.lowercased() {
+        case "true", "on", "yes", "1": return true
+        case "false", "off", "no", "0": return false
+        default: throw Failure(message: "\(name) must be on or off")
         }
     }
 

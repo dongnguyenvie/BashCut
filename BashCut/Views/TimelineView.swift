@@ -27,6 +27,11 @@ struct TimelineView: NSViewRepresentable {
                     view.contentSize.width, 105 + Double(document.project.duration) * canvas.scale + 100),
                 height: max(view.contentSize.height, Double(canvas.orderedTracks.count) * 35 + 58)))
         canvas.needsDisplay = true
+        if let reveal = document.timelineReveal, reveal != canvas.lastReveal {
+            canvas.lastReveal = reveal
+            let x = 105 + Double(reveal.frame) * canvas.scale
+            canvas.scrollToVisible(CGRect(x: max(0, x - 120), y: view.documentVisibleRect.minY, width: 240, height: 1))
+        }
     }
 }
 
@@ -36,6 +41,7 @@ struct TimelineView: NSViewRepresentable {
     var selectedID: String?
     var playhead = 0
     var scale = 1.5
+    var lastReveal: TimelineReveal?
     fileprivate var voiceoverWarningIDs: Set<String> = []
     fileprivate var reviewRevision = -1
     private let document: ProjectDocument
@@ -363,9 +369,9 @@ struct TimelineView: NSViewRepresentable {
             document.timelineGestureActive = false
             needsDisplay = true
         } else if event.keyCode == 51 {
-            document.delete(ripple: !event.modifierFlags.contains(.shift))
+            document.run(event.modifierFlags.contains(.shift) ? .lift : .delete)
         } else if event.charactersIgnoringModifiers == "s" {
-            document.split()
+            document.run(.split)
         } else {
             super.keyDown(with: event)
         }

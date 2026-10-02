@@ -52,6 +52,7 @@ final class ProjectDocument {
     var showAgentDock = true
     var libraryTab: LibraryTab = .media
     var timelineScale = 50.0
+    var timelineReveal: TimelineReveal?
     var snapping = true
     var timelineGestureActive = false
     var showSafeArea = false
@@ -269,13 +270,13 @@ final class ProjectDocument {
         } catch { message = error.localizedDescription }
         selectedID = item.id
     }
-    func split() {
-        guard let selectedID else { return }
-        apply(.split(item: selectedID, atFrame: playhead, newID: UUID().uuidString), label: "Split")
+    func split(author: Author = .user) throws {
+        guard let selectedID else { throw ProjectError.invalid("Select a clip to split") }
+        try commit(.split(item: selectedID, atFrame: playhead, newID: UUID().uuidString), label: "Split", author: author)
     }
-    func delete(ripple: Bool = true) {
-        guard let selectedID else { return }
-        apply(.delete(item: selectedID, ripple: ripple), label: ripple ? "Ripple delete" : "Lift clip")
+    func delete(ripple: Bool = true, author: Author = .user) throws {
+        guard let selectedID else { throw ProjectError.invalid("Select a clip to delete") }
+        try commit(.delete(item: selectedID, ripple: ripple), label: ripple ? "Ripple delete" : "Lift clip", author: author)
         self.selectedID = nil
     }
     func rebuild() {
@@ -377,13 +378,9 @@ extension ProjectDocument {
         do { try commit(operation, label: label) } catch { message = error.localizedDescription }
     }
 
-    func undo() {
-        do { try commitUndo() } catch { message = error.localizedDescription }
-    }
+    func undo() { run(.undo) }
 
-    func redo() {
-        do { try commitRedo() } catch { message = error.localizedDescription }
-    }
+    func redo() { run(.redo) }
 
     private func commitHistoryStep(undo: Bool, author: Author, baseRevision: Int?) throws -> Int {
         try ensureEditable(author: author)

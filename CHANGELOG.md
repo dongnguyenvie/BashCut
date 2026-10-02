@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+- Let agents do everything the editor's buttons and shortcuts do: every toolbar button, menu item and keyboard shortcut is a `UIAction` (ID, title, shortcuts) that the views bind to and `ui action <id|shortcut>` runs through the same code (`ui action cmd+b` splits, `ui action timeline.zoom-in` zooms). `ui actions` lists them with their shortcuts and enabled state. `ui view` reads and sets timeline zoom, snapping, safe area, color compare and the agent dock, and scrolls the timeline to a frame (`--reveal`). `ui source <media>` opens the source viewer with in/out marks, and `ui select --track` selects a layer (37 tools).
+- Add ⌘= / ⌘− and zoom buttons to the timeline; Delete, Shift-Delete and `s` in the timeline are listed actions too.
+- `context get` reports `dirty`, `conflict`, `busy`, `saving` and the selected layer; `ui open external-changes` shows the disk-conflict sheet. Boolean CLI options accept `on`/`off`.
+- Agents can no longer approve a plugin install from the `plugin-install` sheet; like export approval, they can only cancel it.
 - `export status` describes the running export while one renders (`job`, `step`, `progress`, `preset`, `path`, `includedSRT`), with the previous receipt under `lastExport`; exports no longer write an empty `.srt` when the timeline has no captions.
 - Rewrite older `../../…` media paths that point into the project's linked `footage` folder (or any top-level folder link) to `footage/<file>` when a project opens, as one undoable "Relink media paths" edit that is saved with the project.
 - Let agents drive every dialog like the user: all alerts and open/save panels go through `ModalCenter`, and every sheet and popover is reported too. `ui dialog` lists open dialogs with stable option IDs, `ui respond <option> [--path <file>]` answers the topmost one (a path fills a file panel), and `ui open <dialog>` shows a sheet such as Settings, Export or Doctor. The export approval sheet can only be declined by agents; approving stays with the user unless confirmation is turned off in Settings (33 tools).

@@ -180,6 +180,11 @@ public struct CommandArguments: Sendable {
     }
     public func optionalInt(_ name: String) -> Int? { values[name]?.int }
     public func bool(_ name: String) -> Bool { values[name] == .bool(true) }
+    /// nil when the parameter was not given.
+    public func optionalBool(_ name: String) -> Bool? {
+        guard case .bool(let value) = values[name] else { return nil }
+        return value
+    }
     public func value(_ name: String) throws -> JSONValue {
         guard let value = values[name] else { throw RPCFailure(-32602, "Missing \(name)") }
         return value

@@ -111,6 +111,13 @@ struct CommandSpecTests {
         #expect(throws: CommandLineParser.Failure.self) {
             try CommandLineParser.parse(["layers", "add", "--kind", "image", "--base-rev", "3"])
         }
+        let view = try CommandLineParser.parse(["ui", "view", "--zoom", "80", "--snap", "off", "--safe-area=on"])
+        #expect(view.params == ["zoom": .integer(80), "snap": .bool(false), "safeArea": .bool(true)])
+        #expect(throws: CommandLineParser.Failure.self) {
+            try CommandLineParser.parse(["ui", "view", "--snap", "maybe"])
+        }
+        let action = try CommandLineParser.parse(["ui", "action", "cmd+b"])
+        #expect(action.params == ["action": .string("cmd+b")])
 
         // Path parameters become absolute against the CLI's working directory.
         let cwd = FileManager.default.currentDirectoryPath

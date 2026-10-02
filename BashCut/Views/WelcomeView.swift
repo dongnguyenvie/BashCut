@@ -1,3 +1,4 @@
+import BashCutAutomation
 import SwiftUI
 
 struct WelcomeView: View {
@@ -14,9 +15,9 @@ struct WelcomeView: View {
                 Text("Build a cut with layered video, images, captions, audio and your preferred agent.")
                     .font(.title3).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 HStack {
-                    Button("New project", action: document.newProject)
-                        .buttonStyle(.borderedProminent).keyboardShortcut("n")
-                    Button("Open project…", action: document.openProject).keyboardShortcut("o")
+                    Button("New project") { document.run(.newProject) }
+                        .buttonStyle(.borderedProminent).action(.newProject, in: document)
+                    Button("Open project…") { document.run(.openProject) }.action(.openProject, in: document)
                 }
                 Button("Import from edl.json…", action: document.importLegacyEDL)
                 Spacer()

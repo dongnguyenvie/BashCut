@@ -7,7 +7,7 @@ public enum CommandCatalog {
     /// Sheets and popovers `ui.open` can show.
     public static let dialogs = [
         "new-project", "export", "export-report", "agent-changes", "review", "history", "plugins", "settings",
-        "doctor", "knowledge", "ask", "sections",
+        "doctor", "knowledge", "ask", "sections", "external-changes",
     ]
     public static let libraryPanels = ["media", "audio", "text", "stickers", "effects", "transitions", "filters", "voice"]
     public static let exportPresets = ["tiktok", "youtube-1080", "youtube-4k", "quick-draft", "prores"]
@@ -239,8 +239,41 @@ public enum CommandCatalog {
             parameters: [CommandParameter("dialog", .string, "Dialog", required: true, choices: dialogs,
                                           cli: .positional)]),
         CommandSpec(
-            "ui.select", .ui, "Select a timeline item in the app; omit item to clear the selection.",
-            parameters: [CommandParameter("item", .string, "Stable item ID", cli: .positional)]),
+            "ui.select", .ui,
+            "Select a timeline item in the app (omit item to clear the selection), or a layer with --track.",
+            parameters: [
+                CommandParameter("item", .string, "Stable item ID", cli: .positional),
+                CommandParameter("track", .string, "Layer (track) ID to select", cli: .option("track")),
+            ]),
+        CommandSpec(
+            "ui.actions", .read,
+            "List every editor action (buttons, menu items, keyboard shortcuts) with its shortcuts and whether it is enabled now."),
+        CommandSpec(
+            "ui.action", .edit,
+            "Run an editor action like the user: by ID (timeline.split, timeline.zoom-in, playback.toggle) or by "
+                + "shortcut (cmd+b, space, cmd+=). Actions that open a dialog return at once; answer it with ui.respond.",
+            parameters: [CommandParameter("action", .string, "Action ID or shortcut", required: true, cli: .positional)]),
+        CommandSpec(
+            "ui.view", .ui,
+            "Read the editor view state, or change it: timeline zoom (pixels per second), snapping, safe area, "
+                + "color compare, agent dock, and scroll the timeline to a frame.",
+            parameters: [
+                CommandParameter("zoom", .integer, "Timeline zoom in pixels per second", minimum: 10, maximum: 140,
+                                 cli: .option("zoom")),
+                CommandParameter("snap", .boolean, "Snapping on or off", cli: .option("snap")),
+                CommandParameter("safeArea", .boolean, "Safe-area overlay on or off", cli: .option("safe-area")),
+                CommandParameter("compare", .boolean, "Color before/after compare on or off", cli: .option("compare")),
+                CommandParameter("agentDock", .boolean, "Agent dock shown or hidden", cli: .option("agent-dock")),
+                CommandParameter("reveal", .integer, "Scroll the timeline so this frame is visible", minimum: 0,
+                                 cli: .option("reveal")),
+            ]),
+        CommandSpec(
+            "ui.source", .ui, "Open project media in the source viewer, optionally with in/out frames marked.",
+            parameters: [
+                CommandParameter("media", .string, "Media ID", required: true, cli: .positional),
+                CommandParameter("in", .integer, "Source in frame", minimum: 0, cli: .option("in")),
+                CommandParameter("out", .integer, "Source out frame (exclusive)", minimum: 1, cli: .option("out")),
+            ]),
         CommandSpec(
             "ui.seek", .ui, "Move the viewer to a timeline frame.",
             parameters: [CommandParameter("frame", .integer, "Timeline frame", required: true, minimum: 0,

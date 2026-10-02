@@ -10,8 +10,6 @@ import BashCutStorage
 import Foundation
 
 extension ProjectDocument {
-    func export() { showExport = true }
-
     func exportOTIO() {
         guard fileURL != nil else {
             message = String(localized: "Save the project before exporting")

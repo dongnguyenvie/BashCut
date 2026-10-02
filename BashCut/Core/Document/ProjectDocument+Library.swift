@@ -16,15 +16,14 @@ extension ProjectDocument {
         return try? MediaPathResolver.resolve(
             media.path, projectRoot: root, workspaceRoot: agents.workspace)
     }
-    func placeSource(_ mode: PlacementMode) {
-        guard let media = sourceViewer.media else { return }
-        do {
-            let operation = try project.sourceEdit(
-                mediaID: media.id, sourceRange: sourceViewer.inFrame..<sourceViewer.outFrame, at: playhead,
-                trackID: project.requireTrack(role: TrackRole.main, kind: "video").id, mode: mode)
-            apply(operation, label: mode == .insert ? "Insert source range" : "Overwrite source range")
-            sourceViewer.close()
-        } catch { message = error.localizedDescription }
+    func placeSource(_ mode: PlacementMode, author: Author = .user) throws {
+        guard let media = sourceViewer.media else { throw ProjectError.invalid("Open a clip in the source viewer") }
+        let operation = try project.sourceEdit(
+            mediaID: media.id, sourceRange: sourceViewer.inFrame..<sourceViewer.outFrame, at: playhead,
+            trackID: project.requireTrack(role: TrackRole.main, kind: "video").id, mode: mode)
+        try commit(
+            operation, label: mode == .insert ? "Insert source range" : "Overwrite source range", author: author)
+        sourceViewer.close()
     }
     /// `coalescing` merges continuous input (slider drags, typing) on the same keys into one undo step.
     func patchSelected(_ patch: [String: JSONValue], label: String, coalescing: Bool = false) {

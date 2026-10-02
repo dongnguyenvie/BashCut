@@ -66,20 +66,16 @@ extension ProjectDocument {
         return try commit(operation, label: label, author: author, baseRevision: baseRevision)
     }
 
-    func addTrack(kind: String) {
-        do { selectedTrackID = try addLayer(kind: kind).trackID } catch { message = error.localizedDescription }
-    }
-
-    func deleteSelectedTrack() {
-        guard let id = selectedTrackID else { return }
-        apply(.deleteTrack(track: id), label: "Delete layer")
+    func deleteSelectedTrack(author: Author = .user) throws {
+        guard let id = selectedTrackID else { throw ProjectError.invalid("Select a layer first") }
+        try commit(.deleteTrack(track: id), label: "Delete layer", author: author)
         if !project.tracks.contains(where: { $0.id == id }) { selectedTrackID = nil }
     }
 
     /// Moves the selected layer up (`offset` > 0) or down on screen, within its visual or audio band.
-    func moveSelectedTrack(by offset: Int) {
+    func moveSelectedTrack(by offset: Int, author: Author = .user) throws {
         guard let id = selectedTrackID, let index = project.tracks.firstIndex(where: { $0.id == id }) else {
-            return
+            throw ProjectError.invalid("Select a layer first")
         }
         let track = project.tracks[index]
         // Visual layers are stored back to front and shown reversed; audio layers are shown in order.
@@ -88,7 +84,7 @@ extension ProjectDocument {
         DebugLog.write(
             "layers", "reorder \(id) offset=\(offset) index \(index)→\(destination) band=\(band.lowerBound)..<\(band.upperBound)")
         guard destination != index else { return }
-        apply(.moveTrack(track: id, toIndex: destination), label: "Reorder layer")
+        try commit(.moveTrack(track: id, toIndex: destination), label: "Reorder layer", author: author)
     }
 
     // MARK: Automation

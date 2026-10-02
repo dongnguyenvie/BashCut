@@ -1,5 +1,6 @@
 import AVKit
 import AppKit
+import BashCutAutomation
 import BashCutProject
 import SwiftUI
 
@@ -159,18 +160,17 @@ struct EditorView: View {
             Text("BashCut").font(.headline).foregroundStyle(.cyan)
             Text(document.project.name + (document.dirty ? " •" : "")).lineLimit(1).frame(maxWidth: 200)
             Button {
-                document.undo()
+                document.run(.undo)
             } label: {
                 Image(systemName: "arrow.uturn.backward")
             }
-            .keyboardShortcut("z").disabled(document.history.undoEntries.isEmpty)
+            .action(.undo, in: document)
             Button {
-                document.redo()
+                document.run(.redo)
             } label: {
                 Image(systemName: "arrow.uturn.forward")
             }
-            .keyboardShortcut("z", modifiers: [.command, .shift]).disabled(
-                document.history.redoEntries.isEmpty)
+            .action(.redo, in: document)
             Text(
                 String(
                     format: "%d × %d · %.2f", document.project.width, document.project.height,
@@ -178,41 +178,33 @@ struct EditorView: View {
             )
             .font(.caption.monospaced()).foregroundStyle(.secondary)
             Spacer(minLength: 4)
-            Button("New", action: document.newProject).keyboardShortcut("n")
-            Button("Open…", action: document.openProject).keyboardShortcut("o")
-            Button("Save", action: document.save).keyboardShortcut("s").disabled(
-                document.fileURL == nil || document.saving || document.conflict)
-            Button("History") { document.showHistory = true }
-            Button("Review") { document.showReview = true }.keyboardShortcut("r", modifiers: [.command, .shift])
+            Button("New") { document.run(.newProject) }.action(.newProject, in: document)
+            Button("Open…") { document.run(.openProject) }.action(.openProject, in: document)
+            Button("Save") { document.run(.saveProject) }.action(.saveProject, in: document)
+            Button("History") { document.run(.showHistory) }
+            Button("Review") { document.run(.showReview) }.action(.showReview, in: document)
             Button {
-                document.plugins.refresh(projectRoot: document.fileURL?.deletingLastPathComponent())
-                document.showPlugins = true
+                document.run(.showPlugins)
             } label: {
                 Label("Plugins", systemImage: "puzzlepiece.extension")
             }
             Button {
-                document.showDoctor = true
+                document.run(.showDoctor)
             } label: {
                 Label("Doctor", systemImage: "stethoscope")
             }
             Button {
-                document.showSettings = true
+                document.run(.showSettings)
             } label: {
                 Label("Settings", systemImage: "gearshape")
             }
-            Button("Export…", action: document.export).keyboardShortcut("e").disabled(
-                document.project.duration == 0
-            )
-            .buttonStyle(.borderedProminent)
+            Button("Export…") { document.run(.showExport) }.action(.showExport, in: document)
+                .buttonStyle(.borderedProminent)
             Button {
-                if document.agents.isDetached {
-                    document.agents.attach()
-                } else {
-                    document.showAgentDock.toggle()
-                }
+                document.run(.toggleAgentDock)
             } label: {
                 Label("Agent", systemImage: "sidebar.right")
-            }.keyboardShortcut("j")
+            }.action(.toggleAgentDock, in: document)
         }.controlSize(.small).padding(10).disabled(document.busy)
     }
     private func runDoctor() {
@@ -311,17 +303,17 @@ struct EditorView: View {
             }
             HStack(spacing: 8) {
                 Button {
-                    document.seek(document.playhead - 1)
+                    document.run(.previousFrame)
                 } label: {
                     Image(systemName: "backward.end")
                 }
                 Button {
-                    document.togglePlayback()
+                    document.run(.togglePlayback)
                 } label: {
                     Image(systemName: document.player.rate == 0 ? "play.fill" : "pause.fill")
-                }.keyboardShortcut(.space, modifiers: [])
+                }.shortcut(.togglePlayback)
                 Button {
-                    document.seek(document.playhead + 1)
+                    document.run(.nextFrame)
                 } label: {
                     Image(systemName: "forward.end")
                 }
@@ -339,53 +331,52 @@ struct EditorView: View {
     private var timelineToolbar: some View {
         HStack(spacing: 10) {
             Text("TIMELINE").font(.caption.bold())
-            Button("Split", action: document.split).keyboardShortcut("b").disabled(
-                document.selected == nil)
-            Button("Delete") { document.delete() }.disabled(document.selected == nil)
+            Button("Split") { document.run(.split) }.action(.split, in: document)
+            Button("Delete") { document.run(.delete) }.action(.delete, in: document)
             Menu {
-                Button("Video Layer") { document.addTrack(kind: "video") }
-                Button("Text Layer") { document.addTrack(kind: "text") }
-                Button("Audio Layer") { document.addTrack(kind: "audio") }
+                Button("Video Layer") { document.run(.addVideoLayer) }
+                Button("Text Layer") { document.run(.addTextLayer) }
+                Button("Audio Layer") { document.run(.addAudioLayer) }
             } label: {
                 Label("Add Layer", systemImage: "rectangle.stack.badge.plus")
             }
             Button {
-                document.moveSelectedTrack(by: 1)
+                document.run(.layerUp)
             } label: { Image(systemName: "arrow.up") }
                 .help("Move selected layer up")
-                .disabled(document.selectedTrackID == nil)
+                .action(.layerUp, in: document)
             Button {
-                document.moveSelectedTrack(by: -1)
+                document.run(.layerDown)
             } label: { Image(systemName: "arrow.down") }
                 .help("Move selected layer down")
-                .disabled(document.selectedTrackID == nil)
-            Button(role: .destructive, action: document.deleteSelectedTrack) {
+                .action(.layerDown, in: document)
+            Button(role: .destructive) {
+                document.run(.deleteLayer)
+            } label: {
                 Image(systemName: "rectangle.stack.badge.minus")
             }
             .help("Delete selected empty layer")
-            .disabled(document.selectedTrackID == nil)
+            .action(.deleteLayer, in: document)
             Toggle("Snap", isOn: $document.snapping).toggleStyle(.button)
-            Button("Sections") { document.showSections = true }
+            Button("Sections") { document.run(.showSections) }
                 .popover(isPresented: $document.showSections) {
                     SectionManagerView(
                         document: document, newLabel: $newSectionLabel,
                         done: { document.showSections = false })
                 }
             Button {
-                if let root = document.fileURL?.deletingLastPathComponent() {
-                    document.waveforms.refresh(media: document.project.media, root: root)
-                }
+                document.run(.refreshWaveforms)
             } label: {
                 Image(systemName: "waveform")
             }
             .help("Refresh waveforms")
-            .disabled(document.fileURL == nil || document.waveforms.loading)
+            .action(.refreshWaveforms, in: document)
             if document.waveforms.loading { ProgressView().controlSize(.mini) }
             if !document.waveforms.errors.isEmpty {
                 Image(systemName: "exclamationmark.triangle").foregroundStyle(.orange)
                     .help(document.waveforms.errors.values.sorted().joined(separator: "\n"))
             }
-            Button("Ask agent") { document.showAsk = true }.keyboardShortcut("k")
+            Button("Ask agent") { document.run(.askAgent) }.shortcut(.askAgent)
                 .popover(isPresented: $document.showAsk) {
                     VStack(alignment: .leading) {
                         Text(document.selectedID ?? "Project").font(.caption)
@@ -398,9 +389,15 @@ struct EditorView: View {
                     }.padding()
                 }
             Spacer()
-            Image(systemName: "minus.magnifyingglass")
-            Slider(value: $document.timelineScale, in: 10...140).frame(width: 120)
-            Image(systemName: "plus.magnifyingglass")
+            Button {
+                document.run(.zoomOut)
+            } label: { Image(systemName: "minus.magnifyingglass") }
+                .buttonStyle(.borderless).help("Zoom timeline out (⌘-)").action(.zoomOut, in: document)
+            Slider(value: $document.timelineScale, in: ProjectDocument.timelineZoomRange).frame(width: 120)
+            Button {
+                document.run(.zoomIn)
+            } label: { Image(systemName: "plus.magnifyingglass") }
+                .buttonStyle(.borderless).help("Zoom timeline in (⌘=)").action(.zoomIn, in: document)
         }.font(.caption).controlSize(.small).padding(8).disabled(document.busy)
     }
     private func sendAsk() {

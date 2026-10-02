@@ -1,3 +1,4 @@
+import BashCutAutomation
 import BashCutProject
 import SwiftUI
 
@@ -11,7 +12,7 @@ struct SourceViewer: View {
                 Text(source.media.map { URL(fileURLWithPath: $0.path).lastPathComponent } ?? "")
                     .font(.caption).lineLimit(1)
                 Spacer()
-                Button("Timeline") { source.close() }.font(.caption)
+                Button("Timeline") { document.run(.sourceClose) }.font(.caption)
             }.padding(8)
             if let media = source.media {
                 HStack(spacing: 10) {
@@ -28,18 +29,18 @@ struct SourceViewer: View {
             PlayerView(player: source.player).background(.black)
             HStack(spacing: 8) {
                 Button {
-                    source.seek(source.frame - 1)
+                    document.run(.sourcePreviousFrame)
                 } label: {
                     Image(systemName: "backward.end")
                 }
                 Button {
-                    source.togglePlayback()
+                    document.run(.sourceTogglePlayback)
                 } label: {
                     Image(systemName: source.playing ? "pause.fill" : "play.fill")
                 }
-                .keyboardShortcut(.space, modifiers: [])
+                .shortcut(.sourceTogglePlayback)
                 Button {
-                    source.seek(source.frame + 1)
+                    document.run(.sourceNextFrame)
                 } label: {
                     Image(systemName: "forward.end")
                 }
@@ -50,14 +51,13 @@ struct SourceViewer: View {
                 .accessibilityLabel("Source playhead")
             }.buttonStyle(.borderless).padding(8)
             HStack {
-                Button("In") { source.markIn() }.keyboardShortcut("i", modifiers: [])
+                Button("In") { document.run(.markIn) }.shortcut(.markIn)
                 Text("\(source.inFrame)").monospacedDigit()
-                Button("Out") { source.markOut() }.keyboardShortcut("o", modifiers: [])
+                Button("Out") { document.run(.markOut) }.shortcut(.markOut)
                 Text("\(source.outFrame)").monospacedDigit()
                 Spacer()
-                Button("Insert") { document.placeSource(.insert) }.keyboardShortcut("e", modifiers: [])
-                Button("Overwrite") { document.placeSource(.overwrite) }.keyboardShortcut(
-                    "q", modifiers: [])
+                Button("Insert") { document.run(.sourceInsert) }.shortcut(.sourceInsert)
+                Button("Overwrite") { document.run(.sourceOverwrite) }.shortcut(.sourceOverwrite)
             }.font(.caption).controlSize(.small).padding(8)
             if !source.error.isEmpty {
                 Text(source.error).foregroundStyle(.orange).font(.caption).padding(8)

@@ -59,7 +59,11 @@ One `CommandRegistry` serves both front ends:
 | `voice list` | read | Voice tab |
 | `review run` | read | [Review] |
 | `export status` | read | export queue |
-| `ui select` / `ui seek` / `ui show <file>` / `ui notify` | ui | pointing something out to the user |
+| `ui select [item] [--track <layer>]` / `ui seek` / `ui show <file>` / `ui notify` | ui | pointing something out to the user |
+| `ui actions` | read | every toolbar button, menu item and keyboard shortcut, with its enabled state |
+| `ui view [--zoom 10…140] [--snap on\|off] [--safe-area on\|off] [--compare on\|off] [--agent-dock on\|off] [--reveal <frame>]` | ui | timeline zoom slider/⌘=/⌘−, Snap, Safe area, Compare, Agent button, scrolling the timeline |
+| `ui source <media> [--in N] [--out N]` | ui | clicking a Library thumbnail (source viewer) |
+| `ui dialog` / `ui respond <option> [--path]` / `ui open <dialog>` | ui | every alert, file panel, sheet and popover |
 
 ### Edit commands
 
@@ -72,14 +76,22 @@ One `CommandRegistry` serves both front ends:
 | `voice speak "<text>" --voice … --insert-at 12.3` | edit | Voice tab, Generate + Insert |
 | `beats detect <media>` | edit | [Detect Beats] |
 | `audio separate <item>` | edit | Inspector › Audio › Separate Voice |
+| `ui action <id\|shortcut>` | edit | any editor button or shortcut, run by the same code: `timeline.split` / `cmd+b`, `timeline.zoom-in` / `cmd+=`, `playback.toggle` / `space`, `source.mark-in` / `i` (list: `ui actions`) |
 
 ### Privileged commands
 
 | Command | Mode | UI equivalent |
 |---|---|---|
-| `voice enroll <media> --start --dur --name` | **dialogs** | Every alert, file panel, sheet and popover is visible to `ui dialog` and answerable with `ui respond` (option ID/title, or `--path` for file panels); `ui open` shows a named sheet. The privileged approval sheet only offers `deny` to agents. |
-| **privileged** | [Clone New Voice] |
+| `voice enroll <media> --start --dur --name` | **privileged** | [Clone New Voice] |
 | `export start --preset … --name …` | **privileged** | [Export] |
+
+**UI parity rule.** Anything the user can click or press in the editor is an agent command: buttons, menu
+items and shortcuts are `UIAction` cases (ID, title, shortcuts) that the views bind to and `ui action` runs;
+view state (zoom, toggles, scroll) is `ui view`; dialogs go through `ModalCenter` (`ui dialog` / `ui respond`
+/ `ui open`). Every alert, file panel, sheet and popover is visible to `ui dialog`. The export approval and
+plugin-install sheets only offer `deny`/`cancel` to agents; approving stays with the user. `ui action`
+refuses while a dialog is open, and actions that open an alert or panel (`project.new`, `project.open`,
+`project.import-media`) return at once so the agent can answer it.
 
 ### Reserved for later (not in v1)
 

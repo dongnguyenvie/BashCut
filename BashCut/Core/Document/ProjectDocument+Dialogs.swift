@@ -60,13 +60,12 @@ extension ProjectDocument {
             })
         }
         if showPlugins, let pending = plugins.pendingInstall {
+            // Installing runs the plugin's dependency recipes; only the user can approve it.
             sheets.append(ModalSheet(
                 name: "plugin-install", title: "Install \(pending.plugin.manifest.name)?",
-                options: [ModalOption("install", String(localized: "Install")),
-                          ModalOption("cancel", String(localized: "Cancel"))]
-            ) { [weak self] option in
-                if option == "install" { self?.plugins.installPendingPlugin() } else { self?.plugins.pendingInstall = nil }
-            })
+                message: "Only the user can approve a plugin install.",
+                options: [ModalOption("cancel", String(localized: "Cancel"))]
+            ) { [weak self] _ in self?.plugins.pendingInstall = nil })
         }
         if let prompt = privilegedApproval {
             // Approving stays with the user; agents can only decline.
@@ -115,27 +114,33 @@ extension ProjectDocument {
         ]
     }
 
-    private func openDialog(_ name: String) throws {
+    /// Sheets that only make sense in some states: (available, reason when not, flag).
+    private static var conditionalDialogs:
+        [String: (available: (ProjectDocument) -> Bool, reason: String, flag: ReferenceWritableKeyPath<ProjectDocument, Bool>)]
+    {
+        [
+            "export": ({ $0.project.duration > 0 }, "The timeline is empty", \.showExport),
+            "export-report": ({ $0.exportReport != nil }, "No export report yet", \.showExportReport),
+            "agent-changes": ({ $0.agentChange != nil }, "No agent change to show", \.showAgentChanges),
+            "external-changes": ({ $0.conflict }, "The project file has no conflicting change", \.showExternalChanges),
+        ]
+    }
+
+    func openDialog(_ name: String) throws {
+        if name == "plugins" { plugins.refresh(projectRoot: fileURL?.deletingLastPathComponent()) }
         if let flag = Self.toggledDialogs[name] {
             self[keyPath: flag] = true
+        } else if let dialog = Self.conditionalDialogs[name] {
+            guard dialog.available(self) else { throw RPCFailure(-32602, dialog.reason) }
+            self[keyPath: dialog.flag] = true
+        } else if name == "new-project" {
+            newProject()
+        } else if name == "knowledge" {
+            agents.knowledge.load(from: agents.directory)
+            agents.showKnowledge = true
         } else {
-            switch name {
-            case "new-project": newProject()
-            case "export":
-                guard project.duration > 0 else { throw RPCFailure(-32602, "The timeline is empty") }
-                showExport = true
-            case "export-report":
-                guard exportReport != nil else { throw RPCFailure(-32602, "No export report yet") }
-                showExportReport = true
-            case "agent-changes":
-                guard agentChange != nil else { throw RPCFailure(-32602, "No agent change to show") }
-                showAgentChanges = true
-            case "knowledge":
-                agents.knowledge.load(from: agents.directory)
-                agents.showKnowledge = true
-            default: throw RPCFailure(-32602, "Unknown dialog \(name)")
-            }
+            throw RPCFailure(-32602, "Unknown dialog \(name)")
         }
-        DebugLog.write("ui", "dialog \(name) opened by automation")
+        DebugLog.write("ui", "dialog \(name) opened")
     }
 }

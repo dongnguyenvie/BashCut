@@ -20,6 +20,7 @@ extension ProjectDocument {
         registerImportCommands()
         registerPrivilegedCommands()
         registerUICommands()
+        registerUIActionCommands()
         assert(registry.unhandledCommands.isEmpty, "Unhandled commands: \(registry.unhandledCommands)")
         assert(CommandCatalog.libraryPanels == LibraryTab.allCases.map { $0.rawValue.lowercased() })
         Task {
@@ -54,6 +55,9 @@ extension ProjectDocument {
                 "project": document.fileURL.map { .string($0.path) } ?? .null,
                 "rev": .integer(document.project.revision), "playhead": .integer(document.playhead),
                 "selection": document.selectedID.map(JSONValue.string) ?? .null,
+                "selectedTrack": document.selectedTrackID.map(JSONValue.string) ?? .null,
+                "dirty": .bool(document.dirty), "conflict": .bool(document.conflict),
+                "busy": .bool(document.busy), "saving": .bool(document.saving),
             ])
         }
         handle("project.get") { document, _, _ in .object(document.project.fields) }
@@ -220,7 +224,15 @@ extension ProjectDocument {
             if let id, !document.project.tracks.flatMap(\.items).contains(where: { $0.id == id }) {
                 throw RPCFailure(-32602, "Unknown item")
             }
-            document.selectedID = id
+            if let track = arguments.optionalString("track") {
+                guard document.project.tracks.contains(where: { $0.id == track }) else {
+                    throw RPCFailure(-32602, "Unknown layer \(track)")
+                }
+                document.selectedTrackID = track
+                if id != nil { document.selectedID = id }
+            } else {
+                document.selectedID = id
+            }
             return .bool(true)
         }
         handle("ui.seek") { document, arguments, _ in
