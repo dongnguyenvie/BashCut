@@ -1,0 +1,350 @@
+import Foundation
+
+public enum ProjectError: Error, LocalizedError, Equatable {
+    case invalid(String)
+    case staleRevision(expected: Int, actual: Int)
+    public var errorDescription: String? {
+        switch self {
+        case .invalid(let message): return message
+        case .staleRevision(let expected, let actual):
+            return "staleRevision: expected \(expected), current \(actual)"
+        }
+    }
+}
+
+extension Project {
+    // Validation stays centralized so every edit, save and import enforces the same invariants.
+    // swiftlint:disable:next cyclomatic_complexity
+    public func validate() throws {
+        func require(_ valid: Bool, _ message: String) throws {
+            guard valid else { throw ProjectError.invalid(message) }
+        }
+        try require(fields["schema"] == .string("bashcut.project/2"), "schema: unsupported version")
+        try require(!(fields["id"]?.string ?? "").isEmpty && !name.isEmpty, "id/name: required")
+        try require(revision >= 0 && revision < Int.max, "rev: invalid revision")
+        try require(
+            width > 0 && width <= 16384 && height > 0 && height <= 16384, "format: invalid dimensions")
+        try require(
+            fps.numerator > 0 && fps.numerator <= 1_000_000 && fps.denominator > 0
+                && fps.denominator <= 1_000_000,
+            "format.fps: expected positive rational")
+        try require(!tracks.isEmpty && tracks.count <= 256, "tracks: expected 1–256 layers")
+        try require(Set(tracks.map(\.id)).count == tracks.count, "tracks: duplicate IDs")
+        try require(Set(media.map(\.id)).count == media.count, "media: duplicate IDs")
+        for asset in media {
+            try validateMediaPath(asset)
+            try require(
+                asset.fps.numerator > 0 && asset.fps.numerator <= 1_000_000 && asset.fps.denominator > 0
+                    && asset.fps.denominator <= 1_000_000 && asset.frames > 0
+                    && asset.frames <= 2_000_000_000,
+                "media.\(asset.id): invalid frame metadata")
+            try validateMetadata(asset)
+        }
+        if let grid = fields["beatGrid"]?.object {
+            let frames = grid["frames"]?.array.compactMap(\.int) ?? []
+            let bpm = grid["bpm"]?.double ?? .nan
+            try require(
+                media.contains(where: { $0.id == grid["media"]?.string }),
+                "beatGrid: unknown media")
+            try require(
+                bpm.isFinite && (20...400).contains(bpm) && !frames.isEmpty
+                    && frames.count <= 100_000 && frames == Array(Set(frames)).sorted()
+                    && frames.allSatisfy({ (0...duration).contains($0) }),
+                "beatGrid: invalid timing")
+        } else if fields["beatGrid"] != nil {
+            throw ProjectError.invalid("beatGrid: expected object")
+        }
+        try validateAudioSettings()
+        try validateMarkers()
+        try validateColorLUTs()
+        var ids = Set<String>()
+        for track in tracks {
+            try require(
+                !track.id.isEmpty && ["video", "text", "audio"].contains(track.kind),
+                "track.\(track.id): invalid kind")
+            try require(!track.role.isEmpty, "track.\(track.id): role required")
+            try require(!track.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                        "track.\(track.id): name required")
+            if let value = track.fields["magnetic"], case .bool = value {
+            } else if track.fields["magnetic"] != nil {
+                throw ProjectError.invalid("track.\(track.id): magnetic must be boolean")
+            }
+            try track.validateDuckingProperties()
+            var previousEnd = 0
+            for item in track.items.sorted(by: { $0.at < $1.at }) {
+                try require(
+                    !item.id.isEmpty && ids.insert(item.id).inserted, "items: empty or duplicate ID")
+                try require(
+                    item.at >= 0 && item.duration > 0 && item.at <= 2_000_000_000 - item.duration,
+                    "item.\(item.id): invalid timeline range")
+                try require(
+                    item.sourceIn >= 0 && item.sourceIn <= 2_000_000_000 && item.speed.isFinite
+                        && item.speed > 0,
+                    "item.\(item.id): invalid source/speed")
+                try item.validateRenderProperties()
+                if let lut = item.fields["color"]?.object["lut"]?.string {
+                    try require(colorLUTs.contains(where: { $0.id == lut }), "item.\(item.id): unknown LUT")
+                }
+                if track.role == "main" {
+                    try require(item.at >= previousEnd, "item.\(item.id): main track overlap")
+                    previousEnd = item.end
+                }
+                if track.kind != "text" {
+                    guard let asset = media.first(where: { $0.id == item.mediaID }) else {
+                        throw ProjectError.invalid("item.\(item.id): unknown media")
+                    }
+                    try validateSourceRange(item, on: track, media: asset)
+                } else {
+                    try require(item.fields["text"]?.string != nil, "item.\(item.id): text required")
+                }
+            }
+        }
+        try validateLinkedItems()
+        try validateTransitions()
+    }
+}
+
+extension Project {
+    fileprivate func validateAudioSettings() throws {
+        guard let value = fields["audio"] else { return }
+        guard case .object(let audio) = value else {
+            throw ProjectError.invalid("audio: expected object")
+        }
+        func number(_ key: String, range: ClosedRange<Double>) throws {
+            guard let value = audio[key] else { return }
+            guard let number = value.double, number.isFinite, range.contains(number) else {
+                throw ProjectError.invalid("audio.\(key): expected a number in \(range)")
+            }
+        }
+        try number("targetLUFS", range: -30 ... -5)
+        try number("mixGainDb", range: -60...24)
+        try number("measuredLUFS", range: -100...10)
+        try number("truePeakDbTP", range: -100...20)
+        try number("loudnessRangeLU", range: 0...100)
+        if let enabled = audio["normalizeEnabled"], case .bool = enabled {
+        } else if audio["normalizeEnabled"] != nil {
+            throw ProjectError.invalid("audio.normalizeEnabled: expected boolean")
+        }
+        if let verified = audio["measurementVerified"], case .bool = verified {
+        } else if audio["measurementVerified"] != nil {
+            throw ProjectError.invalid("audio.measurementVerified: expected boolean")
+        }
+    }
+}
+
+extension Track {
+    fileprivate func validateDuckingProperties() throws {
+        let keys = ["duckUnderSpeechDb", "duckingEnabled", "duckAttackFrames", "duckReleaseFrames"]
+        if keys.contains(where: { fields[$0] != nil }), kind != "audio" || role != "music" {
+            throw ProjectError.invalid("track.\(id): ducking is only valid on Music audio tracks")
+        }
+        if let value = fields["duckUnderSpeechDb"],
+            !(value.double.map { $0.isFinite && (-60...0).contains($0) } ?? false)
+        {
+            throw ProjectError.invalid("track.\(id).duckUnderSpeechDb: expected -60...0 dB")
+        }
+        if let value = fields["duckingEnabled"], case .bool = value {
+        } else if fields["duckingEnabled"] != nil {
+            throw ProjectError.invalid("track.\(id).duckingEnabled: expected boolean")
+        }
+        for key in ["duckAttackFrames", "duckReleaseFrames"] {
+            if let value = fields[key], !(value.int.map { (0...10_000).contains($0) } ?? false) {
+                throw ProjectError.invalid("track.\(id).\(key): expected nonnegative integer frames")
+            }
+        }
+    }
+}
+
+extension Project {
+    private func validateMetadata(_ asset: Media) throws {
+        if asset.fields["width"] != nil || asset.fields["height"] != nil {
+            guard asset.width.map({ (1...16384).contains($0) }) == true,
+                asset.height.map({ (1...16384).contains($0) }) == true
+            else { throw ProjectError.invalid("media.\(asset.id): invalid dimensions") }
+        }
+        if let value = asset.fields["hasAudio"], case .bool = value { return }
+        guard asset.fields["hasAudio"] == nil else {
+            throw ProjectError.invalid("media.\(asset.id): hasAudio must be boolean")
+        }
+    }
+
+    private func validateMediaPath(_ asset: Media) throws {
+        guard !asset.id.isEmpty, !asset.path.isEmpty, !asset.path.hasPrefix("/") else {
+            throw ProjectError.invalid("media: relative path required")
+        }
+        guard asset.path.hasPrefix("@") else { return }
+        let prefix = "@assets/"
+        guard asset.path.hasPrefix(prefix),
+            MediaPathResolver.validSharedPath(String(asset.path.dropFirst(prefix.count)))
+        else { throw ProjectError.invalid("media.\(asset.id): invalid shared path") }
+    }
+
+    private func validateSourceRange(_ item: Item, on track: Track, media asset: Media) throws {
+        let freezeFrame = item.fields["freezeFrame"]?.int
+        if item.fields["freezeFrame"] != nil {
+            guard track.kind == "video", freezeFrame.map({ (0..<asset.frames).contains($0) }) == true else {
+                throw ProjectError.invalid("item.\(item.id): invalid freeze frame")
+            }
+        }
+        let consumed = freezeFrame == nil
+            ? Double(item.duration) / fps.value * asset.fps.value * item.speed : 1
+        let sourceStart = freezeFrame ?? item.sourceIn
+        guard item.sourceIn < asset.frames,
+            Double(sourceStart) + consumed <= Double(asset.frames) + 0.0001
+        else { throw ProjectError.invalid("item.\(item.id): trim past source end") }
+    }
+
+    private func validateMarkers() throws {
+        guard let markerValue = fields["markers"] else { return }
+        guard case .array = markerValue else {
+            throw ProjectError.invalid("markers: expected array")
+        }
+        let values = markers
+        guard values.count <= 10_000, Set(values.map(\.id)).count == values.count else {
+            throw ProjectError.invalid("markers: invalid count or duplicate IDs")
+        }
+        var sectionFrames = Set<Int>()
+        for marker in values {
+            let label = marker.label.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !marker.kind.isEmpty, !label.isEmpty, marker.label.count <= 120,
+                (0...duration).contains(marker.at)
+            else { throw ProjectError.invalid("marker.\(marker.id): invalid marker") }
+            guard marker.kind != "section" || sectionFrames.insert(marker.at).inserted else {
+                throw ProjectError.invalid("markers: duplicate section frame")
+            }
+        }
+    }
+
+    private func validateLinkedItems() throws {
+        let located = Dictionary(
+            uniqueKeysWithValues: tracks.flatMap { track in
+                track.items.map { ($0.id, (track: track, item: $0)) }
+            })
+        for track in tracks {
+            for item in track.items {
+                let audioID = item.fields["linkedAudio"]?.string
+                let videoID = item.fields["linkedVideo"]?.string
+                guard audioID == nil || videoID == nil else {
+                    throw ProjectError.invalid("item.\(item.id): cannot link as both picture and sound")
+                }
+                guard let linkedID = audioID ?? videoID else { continue }
+                guard !linkedID.isEmpty, let linked = located[linkedID] else {
+                    throw ProjectError.invalid("item.\(item.id): linked item is missing")
+                }
+                let expectsAudio = audioID != nil
+                guard track.kind == (expectsAudio ? "video" : "audio"),
+                    linked.track.kind == (expectsAudio ? "audio" : "video")
+                else { throw ProjectError.invalid("item.\(item.id): invalid linked track kinds") }
+                let reciprocalKey = expectsAudio ? "linkedVideo" : "linkedAudio"
+                guard linked.item.fields[reciprocalKey]?.string == item.id else {
+                    throw ProjectError.invalid("item.\(item.id): linked item must be reciprocal")
+                }
+                guard item.mediaID == linked.item.mediaID, item.at == linked.item.at,
+                    item.duration == linked.item.duration, item.sourceIn == linked.item.sourceIn,
+                    item.speed == linked.item.speed
+                else { throw ProjectError.invalid("item.\(item.id): linked timing or media differs") }
+            }
+        }
+    }
+
+    private func validateTransitions() throws {
+        guard let value = fields["transitions"] else { return }
+        guard case .array = value, transitions.count <= 10_000,
+            Set(transitions.map(\.id)).count == transitions.count,
+            Set(transitions.map(\.fromItemID)).count == transitions.count,
+            Set(transitions.map(\.toItemID)).count == transitions.count
+        else { throw ProjectError.invalid("transitions: invalid collection") }
+        for transition in transitions {
+            guard transitionIsValid(transition) else {
+                throw ProjectError.invalid("transition.\(transition.id): invalid cut or duration")
+            }
+        }
+    }
+
+    private func validateColorLUTs() throws {
+        guard let value = fields["luts"] else { return }
+        guard case .array = value, colorLUTs.count <= 1_000,
+            Set(colorLUTs.map(\.id)).count == colorLUTs.count
+        else { throw ProjectError.invalid("luts: invalid collection") }
+        for lut in colorLUTs {
+            let components = lut.path.split(separator: "/", omittingEmptySubsequences: false)
+            guard !lut.id.isEmpty, !lut.name.isEmpty, lut.name.count <= 120,
+                (2...64).contains(lut.size), lut.path.hasPrefix("luts/"),
+                lut.path.hasSuffix(".cube"), !components.contains(where: { $0.isEmpty || $0 == "." || $0 == ".." })
+            else { throw ProjectError.invalid("lut.\(lut.id): invalid catalog entry") }
+        }
+    }
+
+    func transitionIsValid(_ transition: TimelineTransition) -> Bool {
+        guard !transition.id.isEmpty,
+            transition.kind.range(
+                of: "^[a-z][a-z0-9-]{0,63}$", options: .regularExpression) != nil,
+            transition.fromItemID != transition.toItemID
+        else { return false }
+        for track in tracks where track.kind == "video" {
+            let items = track.items.sorted { ($0.at, $0.id) < ($1.at, $1.id) }
+            guard let from = items.firstIndex(where: { $0.id == transition.fromItemID }),
+                let to = items.firstIndex(where: { $0.id == transition.toItemID }), to == from + 1
+            else { continue }
+            let left = items[from]
+            let right = items[to]
+            return left.end == right.at && transition.duration > 0
+                && transition.duration <= min(left.duration, right.duration)
+        }
+        return false
+    }
+}
+
+extension Item {
+    fileprivate func validateRenderProperties() throws {
+        func number(
+            _ key: String, in values: [String: JSONValue], range: ClosedRange<Double>, prefix: String = ""
+        ) throws {
+            guard let value = values[key] else { return }
+            guard let number = value.double, number.isFinite, range.contains(number) else {
+                throw ProjectError.invalid("item.\(id).\(prefix)\(key): expected a number in \(range)")
+            }
+        }
+        func group(_ key: String) throws -> [String: JSONValue] {
+            guard let value = fields[key] else { return [:] }
+            guard case .object(let values) = value else {
+                throw ProjectError.invalid("item.\(id).\(key): expected an object")
+            }
+            return values
+        }
+        if let value = fields["in"], value.int == nil {
+            throw ProjectError.invalid("item.\(id).in: expected integer source frame")
+        }
+        try number("speed", in: fields, range: 0.01...100)
+        try number("opacity", in: fields, range: 0...1)
+        try number("volumeDb", in: fields, range: -120...24)
+        if let value = fields["muted"], case .bool = value {
+        } else if fields["muted"] != nil {
+            throw ProjectError.invalid("item.\(id).muted: expected a boolean")
+        }
+        if let value = fields["preservePitch"], case .bool = value {
+        } else if fields["preservePitch"] != nil {
+            throw ProjectError.invalid("item.\(id).preservePitch: expected a boolean")
+        }
+        for key in ["fadeIn", "fadeOut"] {
+            if let value = fields[key], !(value.int.map { (0...2_000_000_000).contains($0) } ?? false) {
+                throw ProjectError.invalid("item.\(id).\(key): expected nonnegative integer frames")
+            }
+        }
+        let transform = try group("transform")
+        try number("zoom", in: transform, range: 0.01...100, prefix: "transform.")
+        for key in ["pan", "tilt"] {
+            try number(key, in: transform, range: -65536...65536, prefix: "transform.")
+        }
+        let color = try group("color")
+        try number("exposure", in: color, range: -10...10, prefix: "color.")
+        for key in ["contrast", "saturation"] {
+            try number(key, in: color, range: 0...4, prefix: "color.")
+        }
+        try number("lutStrength", in: color, range: 0...1, prefix: "color.")
+        let style = try group("textStyle")
+        try number("size", in: style, range: 0.005...1, prefix: "textStyle.")
+        try number("positionY", in: style, range: 0...1, prefix: "textStyle.")
+        try number("strokeWidth", in: style, range: 0...50, prefix: "textStyle.")
+    }
+}
