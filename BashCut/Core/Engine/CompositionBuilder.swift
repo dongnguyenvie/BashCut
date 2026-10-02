@@ -13,20 +13,34 @@ public struct CompositionSnapshot: @unchecked Sendable {
     }
 }
 
+/// Builds compositions from project snapshots. One builder lives as long as its engine, so the assets it
+/// opened (and their loaded tracks) are reused by later builds until the file on disk changes.
 public actor CompositionBuilder {
-    public init() {}
+    private let source: any MediaSource
+    private let cacheLimit: Int
+    private var assets: [URL: LoadedAsset] = [:]
+    /// Least recently used first.
+    private var assetOrder: [URL] = []
+    /// Assets opened from disk so far; a cache hit does not count.
+    public private(set) var assetLoads = 0
+
+    public init(source: any MediaSource = ProxyMediaSource(), cacheLimit: Int = 64) {
+        self.source = source
+        self.cacheLimit = max(1, cacheLimit)
+    }
+
+    public var cachedAssetCount: Int { assets.count }
 
     // This coordinates media loading, video lanes, audio parameters and frame instructions.
     // swiftlint:disable:next cyclomatic_complexity function_body_length
-    public func build(_ project: Project, root: URL, workspace: URL? = nil) async throws
-        -> CompositionSnapshot
+    public func build(_ project: Project, root: URL, workspace: URL? = nil, purpose: RenderPurpose = .export)
+        async throws -> CompositionSnapshot
     {
         try project.validate()
         guard project.duration > 0 else { throw ProjectError.invalid("Timeline is empty") }
         let composition = AVMutableComposition()
         var visualByTrack: [String: [PlacedVisual]] = [:]
         var visualLanes: [String: [(end: Int, target: AVMutableCompositionTrack)]] = [:]
-        var assetCache: [URL: AVURLAsset] = [:]
         var audioParameters: [AVAudioMixInputParameters] = []
         let speechRanges = AudioGainPlanner.speechRanges(in: project)
         var lutCache: [String: CubeLUT] = [:]
@@ -36,16 +50,8 @@ public actor CompositionBuilder {
             for item in track.items.sorted(by: { ($0.at, $0.id) < ($1.at, $1.id) }) {
                 try Task.checkCancellation()
                 guard let media = project.media.first(where: { $0.id == item.mediaID }) else { continue }
-                let url = try MediaPathResolver.resolve(
-                    media.path, projectRoot: root, workspaceRoot: workspace)
-                let asset: AVURLAsset
-                if let cached = assetCache[url] {
-                    asset = cached
-                } else {
-                    let created = AVURLAsset(url: url)
-                    assetCache[url] = created
-                    asset = created
-                }
+                let asset = try await loadedAsset(
+                    source.url(for: media, root: root, workspace: workspace, purpose: purpose))
                 let freezeFrame = item["freezeFrame"]?.int
                 let normalSourceRange = CMTimeRange(
                     start: media.fps.time(item.sourceIn),
@@ -56,7 +62,7 @@ public actor CompositionBuilder {
                 } ?? normalSourceRange
                 let destination = project.fps.time(item.at)
                 if track.kind == "video" {
-                    guard let source = try await asset.loadTracks(withMediaType: .video).first else {
+                    guard let source = asset.video else {
                         throw ProjectError.invalid("No video track in \(media.path)")
                     }
                     var lanes = visualLanes[track.id] ?? []
@@ -78,9 +84,8 @@ public actor CompositionBuilder {
                     target.scaleTimeRange(
                         CMTimeRange(start: destination, duration: videoSourceRange.duration),
                         toDuration: project.fps.time(item.duration))
-                    let naturalSize = try await source.load(.naturalSize)
-                    let preferred = try await source.load(.preferredTransform)
-                    let rect = CGRect(origin: .zero, size: naturalSize).applying(preferred)
+                    let preferred = asset.preferredTransform
+                    let rect = CGRect(origin: .zero, size: asset.naturalSize).applying(preferred)
                     let properties = item["transform"]?.object ?? [:]
                     let zoom = properties["zoom"]?.double ?? 1
                     let scale =
@@ -157,7 +162,7 @@ public actor CompositionBuilder {
                 }
                 // Main sound remains attached in the spike until separate linked dialogue editing lands.
                 if track.kind == "audio" || (track.role == "main" && item["linkedAudio"] == nil) {
-                    if let source = try await asset.loadTracks(withMediaType: .audio).first,
+                    if let source = asset.audio,
                         let target = composition.addMutableTrack(
                             withMediaType: .audio,
                             preferredTrackID: kCMPersistentTrackID_Invalid)
@@ -220,6 +225,29 @@ public actor CompositionBuilder {
         audio.inputParameters = audioParameters
         return CompositionSnapshot(composition: composition, videoComposition: video, audioMix: audio)
     }
+    /// The asset at `url` with its tracks loaded, opened once and reused while the file is unchanged.
+    private func loadedAsset(_ url: URL) async throws -> LoadedAsset {
+        let signature = FileSignature(url)
+        if let cached = assets[url], cached.signature == signature {
+            assetOrder.removeAll { $0 == url }
+            assetOrder.append(url)
+            return cached
+        }
+        let asset = AVURLAsset(url: url)
+        let video = try await asset.loadTracks(withMediaType: .video).first
+        let audio = try await asset.loadTracks(withMediaType: .audio).first
+        let loaded = LoadedAsset(
+            asset: asset, signature: signature, video: video, audio: audio,
+            naturalSize: try await video?.load(.naturalSize) ?? .zero,
+            preferredTransform: try await video?.load(.preferredTransform) ?? .identity)
+        assetLoads += 1
+        assets[url] = loaded
+        assetOrder.removeAll { $0 == url }
+        assetOrder.append(url)
+        while assetOrder.count > cacheLimit { assets.removeValue(forKey: assetOrder.removeFirst()) }
+        return loaded
+    }
+
     private func audioMixParameters(
         item: Item, sourceTrack: Track, track: AVCompositionTrack, fps: FrameRate,
         envelope: (speech: [Range<Int>], mixGainDb: Double)
@@ -241,6 +269,29 @@ public actor CompositionBuilder {
         return parameters
     }
 
+}
+
+/// An opened asset with what the builder needs from it, valid while the file keeps its `signature`.
+private struct LoadedAsset {
+    /// Kept alive with its tracks: a track stops working once its asset is released.
+    let asset: AVURLAsset
+    let signature: FileSignature
+    let video: AVAssetTrack?
+    let audio: AVAssetTrack?
+    let naturalSize: CGSize
+    let preferredTransform: CGAffineTransform
+}
+
+/// Modification date and size of a file; a change means the cached asset is stale.
+private struct FileSignature: Equatable {
+    let modified: Date?
+    let size: Int?
+
+    init(_ url: URL) {
+        let values = try? url.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey])
+        modified = values?.contentModificationDate
+        size = values?.fileSize
+    }
 }
 
 private struct PlacedVisual {

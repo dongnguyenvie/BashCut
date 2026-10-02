@@ -52,7 +52,8 @@ public struct ExportPipeline: Sendable {
     ) async throws -> ExportOutcome {
         try FileManager.default.createDirectory(
             at: request.output.deletingLastPathComponent(), withIntermediateDirectories: true)
-        let snapshot = try await engine.build(request.project, root: request.root, workspace: request.workspace)
+        let snapshot = try await engine.build(
+            request.project, root: request.root, workspace: request.workspace, purpose: .export)
         try Task.checkCancellation()
         guard request.normalizeAudio else {
             let receipt = try await export(snapshot, to: request.output, request, 0...1, progress)
@@ -80,7 +81,8 @@ public struct ExportPipeline: Sendable {
         var audio = normalized["audio"]?.object ?? [:]
         audio["mixGainDb"] = .number(mixGain)
         normalized["audio"] = .object(audio)
-        let normalizedSnapshot = try await engine.build(normalized, root: request.root, workspace: request.workspace)
+        let normalizedSnapshot = try await engine.build(
+            normalized, root: request.root, workspace: request.workspace, purpose: .export)
         let receipt = try await export(normalizedSnapshot, to: request.output, request, 0.48...0.96, progress)
         progress(0.96, String(localized: "Verifying loudness…"))
         let final: LoudnessMeasurement

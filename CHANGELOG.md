@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- R5b: the engine reads media through a `MediaSource`. `ProxyMediaSource` (the default) uses `.bashcut/proxies/<media id>.mov|.mp4` for preview when present and always the original for export; `RenderEngine.build` takes a `purpose`. `CompositionBuilder` now keeps opened assets and their loaded tracks across builds (up to 64, least recently used dropped, reloaded when the file's date or size changes), so preview rebuilds after an edit no longer reopen every clip.
 - R5a: plugin capabilities are `CapabilityAdapter`s (transcription, beats, loudness, voice synthesis, one file each) run by `CapabilityService.run`, which owns validation, provider resolution, the request folder and provenance. Plugin calls go through a `PluginTransport` protocol (the process runner is the one-shot transport), so tests and future session transports plug in without changing the service.
 - `scripts/run.sh` signs `build/BashCut.app` with a stable identity (`BASHCUT_SIGN_IDENTITY`, else the first Apple Development identity; ad hoc with a warning when there is none), so macOS stops asking for Desktop folder access after every rebuild. SwiftPM resource bundles now go in `Contents/Resources`.
 - R4b, step 1: move editor view state (timeline zoom and reveal, snapping, safe area, agent dock, library panel, Inspector tab and every editor sheet flag) out of `ProjectDocument` into a tested `EditorUIState` in `BashCutDocument`; `LibraryTab` moves there too, and its match with the `ui.panel` choices is now a test instead of a startup assert. No behavior change.

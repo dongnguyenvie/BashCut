@@ -2,7 +2,9 @@ import BashCutProject
 import Foundation
 
 public protocol RenderEngine: Sendable {
-    func build(_ project: Project, root: URL, workspace: URL?) async throws -> CompositionSnapshot
+    /// Builds a playable or exportable composition; `purpose` lets the media source pick proxies for preview.
+    func build(_ project: Project, root: URL, workspace: URL?, purpose: RenderPurpose) async throws
+        -> CompositionSnapshot
     func export(
         _ snapshot: CompositionSnapshot, to url: URL, settings: ExportSettings,
         progress: @escaping @Sendable (Double) -> Void
@@ -10,13 +12,16 @@ public protocol RenderEngine: Sendable {
 }
 
 public struct AVFoundationRenderEngine: RenderEngine {
-    private let builder = CompositionBuilder()
+    private let builder: CompositionBuilder
     private let exporter = Exporter()
-    public init() {}
-    public func build(_ project: Project, root: URL, workspace: URL? = nil) async throws
+    /// One builder per engine, so opened assets are cached across preview rebuilds and exports.
+    public init(source: any MediaSource = ProxyMediaSource()) {
+        builder = CompositionBuilder(source: source)
+    }
+    public func build(_ project: Project, root: URL, workspace: URL? = nil, purpose: RenderPurpose) async throws
         -> CompositionSnapshot
     {
-        try await builder.build(project, root: root, workspace: workspace)
+        try await builder.build(project, root: root, workspace: workspace, purpose: purpose)
     }
     public func export(
         _ snapshot: CompositionSnapshot, to url: URL, settings: ExportSettings,

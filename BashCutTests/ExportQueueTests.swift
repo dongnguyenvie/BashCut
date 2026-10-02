@@ -10,7 +10,9 @@ private struct FakeEngine: RenderEngine {
     let log: ExportLog
     var steps = 3
 
-    func build(_ project: Project, root: URL, workspace: URL?) async throws -> CompositionSnapshot {
+    func build(_ project: Project, root: URL, workspace: URL?, purpose: RenderPurpose) async throws
+        -> CompositionSnapshot
+    {
         CompositionSnapshot(
             composition: AVMutableComposition(), videoComposition: AVMutableVideoComposition(),
             audioMix: AVMutableAudioMix())

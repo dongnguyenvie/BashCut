@@ -60,9 +60,10 @@ public final class PreviewController {
         rebuildTask = Task { [engine] in
             do {
                 try await Task.sleep(for: .milliseconds(50))
-                let built = try await engine.build(project, root: root, workspace: workspace)
+                let built = try await engine.build(project, root: root, workspace: workspace, purpose: .preview)
                 let comparisonBuilt = compare
-                    ? try await engine.build(project.withoutColorEffects(), root: root, workspace: workspace)
+                    ? try await engine.build(
+                        project.withoutColorEffects(), root: root, workspace: workspace, purpose: .preview)
                     : nil
                 try Task.checkCancellation()
                 guard project.revision == self.project.revision, compare == showColorComparison else { return }

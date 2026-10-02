@@ -13,7 +13,9 @@ private actor BuildLog {
 private struct CountingEngine: RenderEngine {
     let log: BuildLog
 
-    func build(_ project: Project, root: URL, workspace: URL?) async throws -> CompositionSnapshot {
+    func build(_ project: Project, root: URL, workspace: URL?, purpose: RenderPurpose) async throws
+        -> CompositionSnapshot
+    {
         await log.built()
         // AVPlayerItem rejects a video composition without a render size.
         let video = AVMutableVideoComposition()
