@@ -61,7 +61,7 @@ struct LibraryView: View {
                         } label: {
                             MediaThumbnail(
                                 media: media, root: document.fileURL?.deletingLastPathComponent(),
-                                workspace: document.agents.workspace)
+                                workspace: document.settings.workspace)
                         }.buttonStyle(.plain).help("Open source viewer")
                             .accessibilityLabel("Preview " + URL(fileURLWithPath: media.path).lastPathComponent)
                         Text(URL(fileURLWithPath: media.path).lastPathComponent).font(.caption2).lineLimit(1)
@@ -287,7 +287,7 @@ private extension LibraryView {
         if media.path.hasPrefix("@assets/") { return .shared }
         guard let root = document.fileURL?.deletingLastPathComponent(),
             let resolved = try? MediaPathResolver.resolve(
-                media.path, projectRoot: root, workspaceRoot: document.agents.workspace)
+                media.path, projectRoot: root, workspaceRoot: document.settings.workspace)
         else { return .project }
         let footage = root.appendingPathComponent("footage").resolvingSymlinksInPath().standardizedFileURL
         let candidate = resolved.resolvingSymlinksInPath().standardizedFileURL

@@ -43,7 +43,7 @@ extension ProjectDocument {
             return .object(result)
         }
         handle("project.recents") { document, _, _ in
-            .array(document.recentProjectURLs.map { .string($0.path) })
+            .array(document.settings.recentProjects.map { .string($0.path) })
         }
         handle("doctor.run") { document, _, _ in
             await document.runDoctor()

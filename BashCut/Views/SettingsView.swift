@@ -1,9 +1,11 @@
 import BashCutAgent
+import BashCutDocument
 import BashCutEngine
 import SwiftUI
 
 struct SettingsView: View {
-    @Bindable var model: AgentDockModel
+    let model: AgentDockModel
+    @Bindable var settings: SettingsModel
     let done: () -> Void
 
     var body: some View {
@@ -20,24 +22,24 @@ struct SettingsView: View {
                         Button("Change…", action: model.chooseWorkspace)
                     }
                 }
-                Picker("Default agent", selection: $model.defaultProviderRaw) {
+                Picker("Default agent", selection: $settings.defaultProviderRaw) {
                     ForEach(AgentProviders.agents, id: \.id) { Text($0.title).tag($0.id.rawValue) }
                 }
-                Toggle("Allow agent timeline edits", isOn: $model.allowAgentEdits)
+                Toggle("Allow agent timeline edits", isOn: $settings.allowAgentEdits)
                 LabeledContent("Agents outside BashCut") {
                     HStack {
-                        Toggle("Allow", isOn: $model.allowExternalAgents).labelsHidden()
+                        Toggle("Allow", isOn: $settings.allowExternalAgents).labelsHidden()
                         Button("New token", action: model.applyExternalAgentPreference)
-                            .disabled(!model.allowExternalAgents)
+                            .disabled(!settings.allowExternalAgents)
                     }
                 }
-                Toggle("Run agent exports without confirmation", isOn: $model.autoApprovePrivileged)
-                Picker("Default export preset", selection: $model.defaultExportPresetRaw) {
+                Toggle("Run agent exports without confirmation", isOn: $settings.autoApprovePrivileged)
+                Picker("Default export preset", selection: $settings.defaultExportPresetRaw) {
                     ForEach(ExportPreset.allCases) { preset in
                         Text(LocalizedStringKey(preset.title)).tag(preset.rawValue)
                     }
                 }
-                Picker("Interface language", selection: $model.interfaceLanguage) {
+                Picker("Interface language", selection: $settings.interfaceLanguage) {
                     Text("System").tag("system")
                     Text("English").tag("en")
                     Text("Tiếng Việt").tag("vi")
@@ -53,11 +55,7 @@ struct SettingsView: View {
                 .font(.caption).foregroundStyle(.secondary)
         }
         .padding(24).frame(width: 650)
-        .onChange(of: model.defaultProviderRaw) { model.savePreferences() }
-        .onChange(of: model.allowAgentEdits) { model.applyAgentEditPreference() }
-        .onChange(of: model.allowExternalAgents) { model.applyExternalAgentPreference() }
-        .onChange(of: model.autoApprovePrivileged) { model.savePreferences() }
-        .onChange(of: model.defaultExportPresetRaw) { model.savePreferences() }
-        .onChange(of: model.interfaceLanguage) { model.savePreferences() }
+        .onChange(of: settings.allowAgentEdits) { model.applyAgentEditPreference() }
+        .onChange(of: settings.allowExternalAgents) { model.applyExternalAgentPreference() }
     }
 }

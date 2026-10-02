@@ -31,18 +31,18 @@ struct WelcomeView: View {
                 HStack {
                     Text("Recent projects").font(.headline)
                     Spacer()
-                    if !document.recentProjectURLs.isEmpty {
+                    if !document.settings.recentProjects.isEmpty {
                         Button("Clear") { document.run(.clearRecentProjects) }.buttonStyle(.plain)
                     }
                 }
-                if document.recentProjectURLs.isEmpty {
+                if document.settings.recentProjects.isEmpty {
                     ContentUnavailableView(
                         "No recent projects", systemImage: "clock",
                         description: Text("Projects you open or create will appear here."))
                 } else {
                     ScrollView {
                         LazyVStack(spacing: 8) {
-                            ForEach(document.recentProjectURLs, id: \.path) { url in
+                            ForEach(document.settings.recentProjects, id: \.path) { url in
                                 Button { document.openProject(at: url) } label: {
                                     HStack(spacing: 12) {
                                         Image(systemName: "film.stack").foregroundStyle(.cyan)

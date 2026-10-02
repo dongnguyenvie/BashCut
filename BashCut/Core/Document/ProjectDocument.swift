@@ -34,7 +34,8 @@ final class ProjectDocument {
     var agentChange: AgentChangeRecord?
     let doctor = DoctorModel()
     var timelineGestureActive = false
-    var recentProjectURLs: [URL]
+    /// Preferences and recent projects.
+    let settings: SettingsModel
     /// Zoom, toggles, panels and open sheets.
     let ui = EditorUIState()
     @ObservationIgnored lazy var agents = AgentDockModel(document: self)
@@ -54,8 +55,7 @@ final class ProjectDocument {
     init(engine: any RenderEngine = AVFoundationRenderEngine()) {
         self.engine = engine
         preview = PreviewController(engine: engine)
-        recentProjectURLs = UserDefaults.standard.stringArray(forKey: "recentProjectPaths")?
-            .map { URL(fileURLWithPath: $0) } ?? []
+        settings = SettingsModel()
         let url = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(
             "Library/Application Support/BashCut/audit.jsonl")
         let audit = AuditStore(url: url)
@@ -101,7 +101,7 @@ final class ProjectDocument {
     func openProject() {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.json]
-        panel.directoryURL = recentProjectURLs.first?.deletingLastPathComponent()
+        panel.directoryURL = settings.recentProjects.first?.deletingLastPathComponent()
         guard let url = ModalCenter.shared.open(panel, name: "open-project")?.first else { return }
         openProject(at: url)
     }
@@ -109,7 +109,7 @@ final class ProjectDocument {
     func openProject(at url: URL) {
         guard !busy, !saving, confirmDiscard() else { return }
         guard FileManager.default.fileExists(atPath: url.path) else {
-            forgetRecentProject(url)
+            settings.forgetRecentProject(url)
             message = String(localized: "The project file is no longer available")
             return
         }
@@ -184,7 +184,7 @@ final class ProjectDocument {
         preview.reset(project)
         fileURL = url
         exports.restoreReport(projectRoot: url.deletingLastPathComponent())
-        rememberRecentProject(url)
+        settings.rememberRecentProject(url)
         selectedID = nil
         selectedTrackID = nil
         timelineGestureActive = false
@@ -192,25 +192,6 @@ final class ProjectDocument {
         message = ""
         startExternalFileMonitor()
         agents.projectChanged()
-    }
-
-    func clearRecentProjects() {
-        recentProjectURLs.removeAll()
-        UserDefaults.standard.removeObject(forKey: "recentProjectPaths")
-    }
-
-    private func rememberRecentProject(_ url: URL) {
-        let normalized = url.standardizedFileURL
-        recentProjectURLs.removeAll { $0.standardizedFileURL == normalized }
-        recentProjectURLs.insert(normalized, at: 0)
-        if recentProjectURLs.count > 8 { recentProjectURLs.removeLast(recentProjectURLs.count - 8) }
-        UserDefaults.standard.set(recentProjectURLs.map(\.path), forKey: "recentProjectPaths")
-    }
-
-    private func forgetRecentProject(_ url: URL) {
-        let normalized = url.standardizedFileURL
-        recentProjectURLs.removeAll { $0.standardizedFileURL == normalized }
-        UserDefaults.standard.set(recentProjectURLs.map(\.path), forKey: "recentProjectPaths")
     }
 
     func addCaption() {
@@ -234,7 +215,7 @@ final class ProjectDocument {
     func rebuild() {
         let root = fileURL?.deletingLastPathComponent()
         if let root { waveforms.update(media: project.media, root: root) }
-        preview.rebuild(project, root: root, workspace: agents.workspace)
+        preview.rebuild(project, root: root, workspace: settings.workspace)
     }
 }
 

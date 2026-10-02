@@ -128,7 +128,7 @@ extension ProjectDocument {
         guard let media = project.media.first(where: { $0.id == mediaID }) else {
             throw ProjectError.invalid("Unknown media \(mediaID)")
         }
-        let url = try MediaPathResolver.resolve(media.path, projectRoot: root, workspaceRoot: agents.workspace)
+        let url = try MediaPathResolver.resolve(media.path, projectRoot: root, workspaceRoot: settings.workspace)
         return (root, media, url)
     }
 

@@ -51,7 +51,7 @@ extension ProjectDocument {
             }
         }
         let request = try ExportRequest(
-            project: project, root: root, workspace: agents.workspace, name: name, preset: preset,
+            project: project, root: root, workspace: settings.workspace, name: name, preset: preset,
             directory: directory, includeSubRip: includeSubRip, normalizeAudio: normalizeAudio,
             reserved: exports.queue.reservedOutputs)
         let queued = exports.isRunning

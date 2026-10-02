@@ -28,7 +28,7 @@ extension ProjectDocument {
                 try await automationServer.start(path: AutomationPaths.socket) { [registry] in
                     await registry.handle($0)
                 }
-                applyExternalAgentAccess(enabled: agents.allowExternalAgents)
+                applyExternalAgentAccess(enabled: settings.allowExternalAgents)
             } catch { message = error.localizedDescription }
         }
     }

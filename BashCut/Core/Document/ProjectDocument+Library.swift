@@ -14,7 +14,7 @@ extension ProjectDocument {
     func resolvedMediaURL(_ media: Media) -> URL? {
         guard let root = fileURL?.deletingLastPathComponent() else { return nil }
         return try? MediaPathResolver.resolve(
-            media.path, projectRoot: root, workspaceRoot: agents.workspace)
+            media.path, projectRoot: root, workspaceRoot: settings.workspace)
     }
     func placeSource(_ mode: PlacementMode, author: Author = .user) throws {
         guard let media = sourceViewer.media else { throw ProjectError.invalid("Open a clip in the source viewer") }

@@ -31,7 +31,7 @@ extension ProjectDocument {
         case .undoAgentChange: return canUndoAgentChange
         case .openExportOutput, .revealExportOutput:
             return exports.report.map { FileManager.default.fileExists(atPath: $0.receipt.url.path) } ?? false
-        case .clearRecentProjects: return !recentProjectURLs.isEmpty
+        case .clearRecentProjects: return !settings.recentProjects.isEmpty
         case .showHistory, .showReview, .showPlugins, .showDoctor, .showSettings, .showSections, .toggleAgentDock,
             .askAgent, .toggleSafeArea, .toggleSnap, .addVideoLayer, .addTextLayer, .addAudioLayer:
             return true
@@ -105,7 +105,7 @@ extension ProjectDocument {
         case .openExportOutput: if let url = exports.report?.receipt.url { NSWorkspace.shared.open(url) }
         case .revealExportOutput:
             if let url = exports.report?.receipt.url { NSWorkspace.shared.activateFileViewerSelecting([url]) }
-        case .clearRecentProjects: clearRecentProjects()
+        case .clearRecentProjects: settings.clearRecentProjects()
         default: assertionFailure("Unhandled UI action \(action.id)")
         }
     }

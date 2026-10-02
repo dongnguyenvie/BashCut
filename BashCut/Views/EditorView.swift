@@ -134,7 +134,7 @@ struct EditorView: View {
             PluginManagerView(model: document.plugins, done: { document.ui.showPlugins = false })
         }
         .sheet(isPresented: Bindable(document.ui).showSettings) {
-            SettingsView(model: document.agents, done: { document.ui.showSettings = false })
+            SettingsView(model: document.agents, settings: document.settings, done: { document.ui.showSettings = false })
         }
         .sheet(isPresented: Bindable(document.ui).showDoctor) {
             DoctorView(

@@ -58,17 +58,8 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
     var scriptLanguage = "python"
     var sessionBookmarks = AgentSessionBookmarks()
     var sessionDiscoveryMessage = ""
-    var workspace: URL?
-    var defaultProviderRaw = AgentProviderID.codex.rawValue
-    var allowAgentEdits = true
-    /// Agents outside the app (CLI/MCP from any terminal) edit through the 0600 automation token file.
-    var allowExternalAgents = true
-    /// Run privileged agent commands (exports) without the in-app confirmation sheet. Off by default;
-    /// only the user can change it here — no automation command exists for it.
-    var autoApprovePrivileged = false
+    var settings: SettingsModel { document.settings }
     var showKnowledge = false
-    var defaultExportPresetRaw = "tiktok"
-    var interfaceLanguage = "system"
     var error = ""
     let knowledge = AgentKnowledgeModel()
     var requestRevision: Int?
@@ -91,24 +82,15 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
         {
             configuration = saved
         }
-        if let path = UserDefaults.standard.string(forKey: "agentWorkspace") {
-            workspace = URL(fileURLWithPath: path)
-        }
-        defaultProviderRaw = UserDefaults.standard.string(forKey: "defaultAgent") ?? "codex"
-        allowAgentEdits = UserDefaults.standard.object(forKey: "allowAgentEdits") as? Bool ?? true
-        allowExternalAgents = UserDefaults.standard.object(forKey: "allowExternalAgents") as? Bool ?? true
-        autoApprovePrivileged = UserDefaults.standard.bool(forKey: "autoApprovePrivileged")
-        defaultExportPresetRaw = UserDefaults.standard.string(forKey: "defaultExportPreset") ?? "tiktok"
-        interfaceLanguage = UserDefaults.standard.string(forKey: "interfaceLanguage") ?? "system"
     }
     var current: TerminalSession? { sessions.first { $0.id == selectedSession } }
     var defaultProvider: AgentProviderID {
-        let id = AgentProviderID(rawValue: defaultProviderRaw)
+        let id = AgentProviderID(rawValue: settings.defaultProviderRaw)
         return AgentProviders.provider(id) == nil ? .codex : id
     }
     var isDetached: Bool { detachedWindow != nil }
     var directory: URL {
-        workspace ?? document.fileURL?.deletingLastPathComponent()
+        settings.workspace ?? document.fileURL?.deletingLastPathComponent()
             ?? FileManager.default.homeDirectoryForCurrentUser
     }
     var toolsDirectory: String { Bundle.main.executableURL?.deletingLastPathComponent().path ?? "" }
@@ -127,41 +109,25 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         guard let url = ModalCenter.shared.open(panel, name: "choose-workspace")?.first else { return }
-        workspace = url
-        UserDefaults.standard.set(url.path, forKey: "agentWorkspace")
+        settings.workspace = url
         document.rebuild()
-    }
-    func savePreferences() {
-        UserDefaults.standard.set(defaultProviderRaw, forKey: "defaultAgent")
-        UserDefaults.standard.set(allowAgentEdits, forKey: "allowAgentEdits")
-        UserDefaults.standard.set(allowExternalAgents, forKey: "allowExternalAgents")
-        UserDefaults.standard.set(autoApprovePrivileged, forKey: "autoApprovePrivileged")
-        UserDefaults.standard.set(defaultExportPresetRaw, forKey: "defaultExportPreset")
-        UserDefaults.standard.set(interfaceLanguage, forKey: "interfaceLanguage")
-        if interfaceLanguage == "system" {
-            UserDefaults.standard.removeObject(forKey: "AppleLanguages")
-        } else {
-            UserDefaults.standard.set([interfaceLanguage], forKey: "AppleLanguages")
-        }
     }
     /// Turning the switch on, or asking for a new token, writes a fresh token file; off removes it.
     func applyExternalAgentPreference() {
-        savePreferences()
-        document.applyExternalAgentAccess(enabled: allowExternalAgents)
+        document.applyExternalAgentAccess(enabled: settings.allowExternalAgents)
     }
     func applyAgentEditPreference() {
-        if !allowAgentEdits {
+        if !settings.allowAgentEdits {
             for session in sessions where session.provider.isAgent {
                 document.registry.revoke(session.token)
             }
         }
-        savePreferences()
     }
     func openDefault() { open(defaultProvider) }
     func open(_ id: AgentProviderID) {
         guard let provider = AgentProviders.provider(id) else { return }
         knowledge.load(from: directory)
-        let canEdit = !provider.isAgent || allowAgentEdits
+        let canEdit = !provider.isAgent || settings.allowAgentEdits
         let token = canEdit ? document.registry.issueToken(author: provider.author) : ""
         do {
             let launchedAt = Date()

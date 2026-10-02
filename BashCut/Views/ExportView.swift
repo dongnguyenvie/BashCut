@@ -88,9 +88,8 @@ struct ExportView: View {
             .onAppear {
                 name = defaultName
                 directory = document.fileURL?.deletingLastPathComponent().appendingPathComponent("render")
-                let saved = UserDefaults.standard.string(forKey: "defaultExportPreset")
-                    .flatMap(ExportPreset.init(rawValue:))
-                preset = saved ?? (document.project.width > document.project.height ? .youtube1080 : .tiktok)
+                preset = document.settings.savedExportPreset
+                    ?? (document.project.width > document.project.height ? .youtube1080 : .tiktok)
                 document.plugins.refresh(projectRoot: document.fileURL?.deletingLastPathComponent())
                 normalizeAudio = document.project["audio"]?.object["normalizeEnabled"] == .bool(true)
                     && !loudnessProviders.isEmpty
