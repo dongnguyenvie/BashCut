@@ -29,7 +29,18 @@ public final class FrameInstruction: NSObject, AVVideoCompositionInstructionProt
 
 public enum VisualLayer: @unchecked Sendable {
     case video(FrameLayer)
+    /// Grades everything composited below it; `properties` holds the item's `color`.
+    case adjustment(AdjustmentLayer)
     case text(Item)
+}
+
+public struct AdjustmentLayer: @unchecked Sendable {
+    public let properties: [String: JSONValue]
+    public let lut: CubeLUT?
+    public init(properties: [String: JSONValue], lut: CubeLUT? = nil) {
+        self.properties = properties
+        self.lut = lut
+    }
 }
 
 public struct FrameLayer: @unchecked Sendable {
@@ -96,22 +107,7 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
                         to: sourceImage, transition: transition,
                         time: request.compositionTime.seconds, bounds: bounds)
                 }
-                let color = video.properties["color"]?.object ?? [:]
-                if !color.isEmpty {
-                    sourceImage = sourceImage.applyingFilter(
-                        "CIExposureAdjust", parameters: [kCIInputEVKey: color["exposure"]?.double ?? 0]
-                    )
-                    .applyingFilter(
-                        "CIColorControls",
-                        parameters: [
-                            kCIInputSaturationKey: color["saturation"]?.double ?? 1,
-                            kCIInputContrastKey: color["contrast"]?.double ?? 1,
-                        ])
-                }
-                if let lut = video.lut {
-                    sourceImage = lut.apply(
-                        to: sourceImage, strength: color["lutStrength"]?.double ?? 1)
-                }
+                sourceImage = Self.graded(sourceImage, properties: video.properties, lut: video.lut)
                 let opacity = (video.properties["opacity"]?.double ?? 1) * transitionOpacity
                 if opacity != 1 {
                     sourceImage = sourceImage.applyingFilter(
@@ -119,6 +115,8 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
                         parameters: ["inputAVector": CIVector(x: 0, y: 0, z: 0, w: opacity)])
                 }
                 image = sourceImage.composited(over: image)
+            case .adjustment(let adjustment):
+                image = Self.graded(image, properties: adjustment.properties, lut: adjustment.lut).cropped(to: bounds)
             case .text(let text):
                 if let overlay = TextRenderer.image(text, size: size) {
                     image = CIImage(cgImage: overlay).composited(over: image)
@@ -129,6 +127,25 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
             image.cropped(to: bounds), to: output, bounds: bounds,
             colorSpace: CGColorSpaceCreateDeviceRGB())
         request.finish(withComposedVideoFrame: output)
+    }
+
+    /// Applies an item's `color` (exposure, saturation, contrast) and its LUT; shared by clips and adjustments.
+    static func graded(_ input: CIImage, properties: [String: JSONValue], lut: CubeLUT?) -> CIImage {
+        var image = input
+        let color = properties["color"]?.object ?? [:]
+        if !color.isEmpty {
+            image = image.applyingFilter(
+                "CIExposureAdjust", parameters: [kCIInputEVKey: color["exposure"]?.double ?? 0]
+            )
+            .applyingFilter(
+                "CIColorControls",
+                parameters: [
+                    kCIInputSaturationKey: color["saturation"]?.double ?? 1,
+                    kCIInputContrastKey: color["contrast"]?.double ?? 1,
+                ])
+        }
+        if let lut { image = lut.apply(to: image, strength: color["lutStrength"]?.double ?? 1) }
+        return image
     }
 
     // Each case is intentionally isolated here so preview and export share identical tween math.

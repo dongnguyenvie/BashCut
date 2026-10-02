@@ -36,11 +36,6 @@ struct NewProjectView: View {
                 }
                 TextField("Content language", text: $setup.contentLanguage)
                     .help("Language tag for captions and narration, such as vi, en or en-US.")
-                Picker("Style preset", selection: $setup.style) {
-                    Text("Food review").tag(ProjectSetup.Style.foodReview)
-                    Text("Cinematic").tag(ProjectSetup.Style.cinematic)
-                    Text("Custom").tag(ProjectSetup.Style.custom)
-                }
                 folderRow("Save in", url: parent) { parent = chooseFolder() ?? parent }
                 folderRow("Footage folder (optional)", url: footage) { footage = chooseFolder() ?? footage }
                 if footage != nil {

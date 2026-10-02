@@ -1,7 +1,7 @@
 import Foundation
 
 // Layer rules, enforced by `Project.validate()`:
-// - Visual layers (video, text) come first in `tracks`, back to front; audio layers follow and are mixed.
+// - Visual layers (video, adjustment, text) come first in `tracks`, back to front; audio layers follow and are mixed.
 // - Exactly one main video layer.
 // - Items never overlap on one layer; overlapping content lives on separate layers.
 // - Audio media never sits on a visual layer; audio layers take audio media or video media with sound.
@@ -34,7 +34,7 @@ extension Project {
                 throw ProjectError.invalid(
                     "item.\(item.id): overlaps \(previous.id) on layer \(track.id); place it on another layer")
             }
-            guard track.kind != "text" else { continue }
+            guard track.kind == "video" || track.kind == "audio" else { continue }
             for item in items {
                 guard let asset = item.mediaID.flatMap({ mediaByID[$0] }) else { continue }
                 let fits = track.isVisual ? asset.kind != "audio" : asset.kind == "audio" || asset.hasAudio != false
@@ -45,9 +45,9 @@ extension Project {
         }
     }
 
-    /// A unique ID for a new layer of `kind`, such as `v3`, `t2` or `a5`.
+    /// A unique ID for a new layer of `kind`, such as `v3`, `fx1`, `t2` or `a5`.
     public func newTrackID(kind: String) -> String {
-        let prefix = ["video": "v", "text": "t", "audio": "a"][kind] ?? "track"
+        let prefix = ["video": "v", Track.adjustmentKind: "fx", "text": "t", "audio": "a"][kind] ?? "track"
         var number = tracks.filter { $0.kind == kind }.count + 1
         while tracks.contains(where: { $0.id == "\(prefix)\(number)" }) { number += 1 }
         return "\(prefix)\(number)"
@@ -66,12 +66,15 @@ extension Project {
     }
 
     /// The index where a new layer of `kind` goes by default: text at the front of the visual stack,
-    /// video in front of the other video layers but behind text, audio at the bottom of the audio stack.
+    /// video in front of the other video layers but behind adjustments and text, adjustments in front of the
+    /// picture but behind text (so captions are not graded), audio at the bottom of the audio stack.
     public func defaultTrackIndex(kind: String) -> Int {
         let visualEnd = tracks.firstIndex(where: { !$0.isVisual }) ?? tracks.count
         switch kind {
         case "audio": return tracks.count
         case "video": return (tracks[..<visualEnd].lastIndex(where: { $0.kind == "video" }) ?? -1) + 1
+        case Track.adjustmentKind:
+            return (tracks[..<visualEnd].lastIndex(where: { $0.kind == "video" || $0.isAdjustment }) ?? -1) + 1
         default: return visualEnd
         }
     }

@@ -6,17 +6,27 @@ struct FilterLibraryView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Button("Original") { document.patchSelected(["color": .object([:])], label: "Reset color") }
-                .disabled(document.selected == nil)
-            Button("Muted film") {
-                document.patchSelected(
-                    ["color": .object(["saturation": .number(0.8), "contrast": .number(0.9)])],
-                    label: "Muted film")
-            }.disabled(document.selected == nil)
-            Button("Black & white") {
-                document.patchSelected(
-                    ["color": .object(["saturation": .integer(0)])], label: "Black & white")
-            }.disabled(document.selected == nil)
+            Text("Style kits").font(.headline)
+            ForEach(StyleKit.all) { kit in
+                Button(LocalizedStringKey(kit.title)) { document.runStyleKit(kit) }
+                    .help("Grades the whole video and restyles every caption in one undoable step.")
+            }.disabled(document.project.contentDuration == 0)
+            Divider()
+            HStack {
+                Text("Looks").font(.headline)
+                Spacer()
+                Button("Add adjustment", systemImage: "camera.filters") {
+                    do { try document.addAdjustment() } catch { document.message = error.localizedDescription }
+                }.disabled(document.fileURL == nil)
+            }
+            Text(
+                document.selected == nil
+                    ? "With nothing selected, a look adds an adjustment that grades every layer below it."
+                    : "A look grades the selected clip or adjustment."
+            ).font(.caption).foregroundStyle(.secondary)
+            ForEach(ColorLook.all) { look in
+                Button(LocalizedStringKey(look.title)) { document.applyLook(look) }
+            }.disabled(document.fileURL == nil)
             Divider()
             HStack {
                 Text("3D LUTs").font(.headline)
@@ -29,7 +39,6 @@ struct FilterLibraryView: View {
             ForEach(document.project.colorLUTs) { lut in
                 HStack {
                     Button(lut.name) { document.applyColorLUT(lut.id) }
-                        .disabled(document.selected == nil)
                     Spacer()
                     Menu {
                         Button("Delete LUT", role: .destructive) { document.deleteColorLUT(lut) }

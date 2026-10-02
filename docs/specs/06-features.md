@@ -29,7 +29,7 @@ A command in *italics* is planned and does not exist yet. "—" means manual onl
 | # | Feature | Priority | Status | Agent |
 |---|---|---|---|---|
 | P-1 | Welcome: recent projects, open, new | P0 | Implemented | `project recents`, `project open`, `project create` |
-| P-2 | New Project: name, frame 9:16/16:9, fps 29.97/30, content language, pick a shoot → symlink `footage/`, style preset | P0 | Implemented | `project create` |
+| P-2 | New Project: name, frame 9:16/16:9, fps 29.97/30, content language, pick a shoot → symlink `footage/` | P0 | Implemented | `project create` |
 | P-3 | Atomic save, autosave, undo/redo, history with authors | P0 | Implemented (undo capped at 200 steps) | `project save`, `timeline undo`, `timeline redo` |
 | P-4 | Reload on external file change, conflict handling | P0 | Implemented | `ui dialog`, `ui respond` (answer the conflict sheet) |
 | P-5 | Import from `edl.json` with a comparison report | P1 | Implemented | `edl import` |
@@ -45,6 +45,8 @@ A command in *italics* is planned and does not exist yet. "—" means manual onl
 | # | Feature | Priority | Status | Agent |
 |---|---|---|---|---|
 | T-1 | Tracks: magnetic Main, Overlay, Captions, Dialogue, Voiceover, Music, SFX; extra layers | P0 | Implemented | `timeline get`, `layers add` |
+| T-1a | Adjustment layers: a color grade (look, exposure/contrast/saturation, LUT) on every layer below an item for its range | P0 | Implemented | `adjustment add`, `layers add --kind adjustment` |
+| T-1b | Style kits (food review, cinematic): one undoable edit adds a full-length adjustment and restyles captions | P1 | Implemented | `style apply` |
 | T-2 | Split, ripple delete, lift, trim, roll, slip, move, snapping | P0 | Implemented | `timeline apply` (`split`, `delete`, `trim`, `roll`, `slip`, `move`), `timeline move` |
 | T-3 | Clip roles speech / b-roll / under VO, color coding; Sections band | P0 | Implemented | `timeline apply` (`setProperties`, `upsertSection`) |
 | T-4 | Linked picture and sound; borrow picture (keep the old clip's sound) | P1 | Implemented (borrow-picture gesture Planned; imported from `edl.json`) | `timeline apply` (`setLinkedAudio`) |

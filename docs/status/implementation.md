@@ -27,10 +27,10 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
 
 - Separate Git repository with SwiftPM (single target source) and XcodeGen configuration, committed lockfiles and
   verification scripts.
-- Lossless project JSON (`bashcut.project/2`, older v1 files migrate on open) with rational FPS, role-based dynamic
+- Lossless project JSON (`bashcut.project/3`, older v1 and v2 files migrate on open) with rational FPS, role-based dynamic
   tracks, atomic `EditOperation` batches, source/overlap/render validation, revisions and persisted undo/redo.
   Unknown fields round-trip.
-- New Project wizard: name, aspect ratio, resolution, rational FPS, content language, style, destination and an
+- New Project wizard: name, aspect ratio, resolution, rational FPS, content language, destination and an
   optional footage symlink. Publication is exclusive and leaves existing folders and the current document intact
   on failure. Agents use the same code through `project create`, `project open` and `project save`.
 - Atomic save, autosave every 30 seconds and on deactivation, recovery choice, restored history, and
@@ -97,7 +97,13 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
 
 ### Color & transitions
 
-- Exposure, contrast, saturation and basic looks.
+- Exposure, contrast, saturation and basic looks (Original, Vivid, Muted film, Black & white).
+- Adjustment layers: items with only a `color` grade (and LUT) that apply it to every layer below them while on
+  screen, in preview and export; trimmable, movable, stackable and bypassed by hiding the layer
+  (`adjustment add`, `layers add --kind adjustment`, Add Layer › Adjustment Layer, Filters › Add adjustment).
+- Style kits (Food review, Cinematic): one undoable edit adds a full-length adjustment with the kit's look,
+  replacing an earlier kit's, and sets the kit's caption preset on every caption (`style apply`). They replace
+  the project-wide style setting, which was never read.
 - Project-scoped `.cube` 3D LUTs with a validated catalog, undoable add/delete/apply, adjustable strength and agent
   operations; preview and export share one Core Image renderer. LUT files stay on disk when their catalog entry is
   undone.

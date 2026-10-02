@@ -46,8 +46,13 @@ extension ProjectDocument {
         }
     }
 
+    /// Applies a LUT to the selected item, or adds an adjustment with it when nothing is selected.
     func applyColorLUT(_ id: String?) {
-        guard selected != nil else { return }
+        guard selected != nil else {
+            guard let id else { return }
+            do { try addAdjustment(lutID: id) } catch { message = error.localizedDescription }
+            return
+        }
         var color = selected?["color"]?.object ?? [:]
         color["lut"] = id.map(JSONValue.string)
         if id == nil { color.removeValue(forKey: "lutStrength") }

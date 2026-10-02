@@ -103,6 +103,12 @@ private extension OpenTimelineIOExporter {
                 "target_url": .string(media.path), "metadata": .object([:]),
                 "available_range": .null,
             ])
+        } else if item.fields["text"] == nil {
+            reference = .object([
+                "OTIO_SCHEMA": .string("GeneratorReference.1"), "name": .string("Adjustment"),
+                "generator_kind": .string("Adjustment"), "parameters": .object(["color": item["color"] ?? .object([:])]),
+                "metadata": .object([:]), "available_range": .null,
+            ])
         } else {
             reference = .object([
                 "OTIO_SCHEMA": .string("GeneratorReference.1"), "name": .string("Text"),

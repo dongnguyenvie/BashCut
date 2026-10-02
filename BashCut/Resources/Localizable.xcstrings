@@ -3677,22 +3677,6 @@
         }
       }
     },
-    "Style preset": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Style preset"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Phong cách"
-          }
-        }
-      }
-    },
     "Food review": {
       "localizations": {
         "en": {
@@ -3953,6 +3937,72 @@
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Voiceover recording inserted" } },
         "vi": { "stringUnit": { "state": "translated", "value": "Đã chèn bản ghi lời dẫn" } }
+      }
+    },
+    "Adjustment Layer": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Adjustment Layer" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Layer điều chỉnh" } }
+      }
+    },
+    "Add adjustment layer": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Add adjustment layer" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Thêm layer điều chỉnh" } }
+      }
+    },
+    "Style kits": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Style kits" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Bộ phong cách" } }
+      }
+    },
+    "Looks": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Looks" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Tông màu" } }
+      }
+    },
+    "Add adjustment": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Add adjustment" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Thêm điều chỉnh" } }
+      }
+    },
+    "Vivid": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Vivid" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Rực rỡ" } }
+      }
+    },
+    "Adjustment": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Adjustment" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Điều chỉnh" } }
+      }
+    },
+    "Grades the whole video and restyles every caption in one undoable step.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Grades the whole video and restyles every caption in one undoable step." } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Chỉnh màu cả video và đổi kiểu mọi phụ đề trong một bước có thể hoàn tác." } }
+      }
+    },
+    "With nothing selected, a look adds an adjustment that grades every layer below it.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "With nothing selected, a look adds an adjustment that grades every layer below it." } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Khi chưa chọn gì, một tông màu sẽ thêm một điều chỉnh áp lên mọi layer bên dưới." } }
+      }
+    },
+    "A look grades the selected clip or adjustment.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "A look grades the selected clip or adjustment." } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Tông màu áp lên clip hoặc điều chỉnh đang chọn." } }
+      }
+    },
+    "An adjustment grades every layer below it. Set its look in the Color tab or Filters.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "An adjustment grades every layer below it. Set its look in the Color tab or Filters." } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Điều chỉnh áp màu lên mọi layer bên dưới. Đặt tông màu trong tab Màu sắc hoặc Bộ lọc." } }
       }
     }
   },

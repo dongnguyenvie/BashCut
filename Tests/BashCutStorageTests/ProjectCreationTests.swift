@@ -24,7 +24,6 @@ struct ProjectCreationTests {
         setup.resolution = .ultraHD
         setup.rate = .thirty
         setup.contentLanguage = "en-US"
-        setup.style = .cinematic
         let store = ProjectStorage()
         let created = try await store.create(setup, in: root, footage: shoot)
         #expect(created.url.deletingLastPathComponent().lastPathComponent == "lau-bo-dat")
@@ -35,7 +34,8 @@ struct ProjectCreationTests {
         #expect(loaded.history.project.height == 2160)
         #expect(loaded.history.project.fps == FrameRate(30, 1))
         #expect(loaded.history.project["contentLanguage"] == .string("en-US"))
-        #expect(loaded.history.project["style"] == .string("cinematic"))
+        #expect(loaded.history.project["schema"] == .string(Project.schema))
+        #expect(loaded.history.project["style"] == nil)
         #expect(loaded.history.project.revision == 0)
         let folder = created.url.deletingLastPathComponent()
         for name in ["media", "voiceover", "khao-sat", "subtitles", "render", ".bashcut"] {

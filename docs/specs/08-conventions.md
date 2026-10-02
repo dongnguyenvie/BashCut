@@ -42,7 +42,7 @@ and import all use this path, and the document commits through one `commit` chok
 A new `EditOperation` case also gets a codec sample in `EditOperationCodecTests.samples` and an
 apply→undo→redo round trip in `UndoRedoRoundTripTests`; a test fails until it has both.
 
-**Changing the `project.bashcut.json` schema** (currently `bashcut.project/2`) requires:
+**Changing the `project.bashcut.json` schema** (currently `bashcut.project/3`) requires:
 
 1. A schema version bump.
 2. A migration from the previous version, with a test.

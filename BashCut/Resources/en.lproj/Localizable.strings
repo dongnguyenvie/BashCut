@@ -234,7 +234,6 @@
 "4K · 2160" = "4K · 2160";
 "Frame rate" = "Frame rate";
 "Content language" = "Content language";
-"Style preset" = "Style preset";
 "Food review" = "Food review";
 "Cinematic" = "Cinematic";
 "Custom" = "Custom";
@@ -404,3 +403,14 @@
 "Zoom timeline to fit" = "Zoom timeline to fit";
 "Zoom timeline to fit (⇧Z)" = "Zoom timeline to fit (⇧Z)";
 "Timeline zoom; pinch or ⌘-scroll on the timeline" = "Timeline zoom; pinch or ⌘-scroll on the timeline";
+"Adjustment Layer" = "Adjustment Layer";
+"Add adjustment layer" = "Add adjustment layer";
+"Style kits" = "Style kits";
+"Looks" = "Looks";
+"Add adjustment" = "Add adjustment";
+"Vivid" = "Vivid";
+"Adjustment" = "Adjustment";
+"Grades the whole video and restyles every caption in one undoable step." = "Grades the whole video and restyles every caption in one undoable step.";
+"With nothing selected, a look adds an adjustment that grades every layer below it." = "With nothing selected, a look adds an adjustment that grades every layer below it.";
+"A look grades the selected clip or adjustment." = "A look grades the selected clip or adjustment.";
+"An adjustment grades every layer below it. Set its look in the Color tab or Filters." = "An adjustment grades every layer below it. Set its look in the Color tab or Filters.";

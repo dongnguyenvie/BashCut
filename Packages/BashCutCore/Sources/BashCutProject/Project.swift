@@ -198,12 +198,14 @@ public struct ColorLUT: JSONObject, Identifiable {
 }
 
 public struct Project: JSONObject {
+    /// v3 added adjustment layers and retired the project-wide `style` setting.
+    public static let schema = "bashcut.project/3"
     public var fields: [String: JSONValue]
     public init(fields: [String: JSONValue]) { self.fields = fields }
     public init(name: String, fps: FrameRate = FrameRate(), contentLanguage: String = "vi") {
         fields = [
-            "schema": .string("bashcut.project/2"), "id": .string(UUID().uuidString),
-            "name": .string(name), "rev": .integer(0), "style": .string("food-review"),
+            "schema": .string(Self.schema), "id": .string(UUID().uuidString),
+            "name": .string(name), "rev": .integer(0),
             "contentLanguage": .string(contentLanguage), "media": .array([]),
             "format": .object([
                 "width": .integer(1080), "height": .integer(1920),
@@ -286,6 +288,11 @@ public struct Project: JSONObject {
             }
             project.tracks = tracks
         }
+        if project.fields["schema"] == .string("bashcut.project/2") {
+            // The v2 `style` setting was never read; style kits and adjustment layers replace it.
+            project.fields["schema"] = .string(Self.schema)
+            project.fields["style"] = nil
+        }
         project = project.normalizingLayers()
         try project.validate()
         return project
@@ -302,6 +309,7 @@ public enum TrackRole {
     public static let voiceover = "voiceover"
     public static let music = "music"
     public static let sfx = "sfx"
+    public static let adjustment = "adjustment"
 }
 
 extension Project {

@@ -53,7 +53,7 @@ An app with its own engine removes those limits.
    - It edits through undoable operations that show up in the UI immediately.
    - It takes on heavy or repetitive work: writing narration, surveying footage, suggesting effects, reviewing the
      cut.
-3. **Turn measured lessons into tools:** style presets (food review, cinematic "Quinn"), a Review panel based on the
+3. **Turn measured lessons into tools:** style kits and adjustment layers (food review, cinematic "Quinn"), a Review panel based on the
    playbook, −14 LUFS normalization, and copyright warnings for music ripped from TikTok.
 4. **Preview equals render.** One engine drives both, so what plays is what gets exported.
 5. **Bring old projects in** by importing the `edl.json` of videos already cut.

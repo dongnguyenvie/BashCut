@@ -18,7 +18,7 @@ extension Project {
         func require(_ valid: Bool, _ message: String) throws {
             guard valid else { throw ProjectError.invalid(message) }
         }
-        try require(fields["schema"] == .string("bashcut.project/2"), "schema: unsupported version")
+        try require(fields["schema"] == .string(Self.schema), "schema: unsupported version")
         try require(!(fields["id"]?.string ?? "").isEmpty && !name.isEmpty, "id/name: required")
         try require(revision >= 0 && revision < Int.max, "rev: invalid revision")
         try require(
@@ -59,7 +59,7 @@ extension Project {
         var ids = Set<String>()
         for track in tracks {
             try require(
-                !track.id.isEmpty && ["video", "text", "audio"].contains(track.kind),
+                !track.id.isEmpty && ["video", Track.adjustmentKind, "text", "audio"].contains(track.kind),
                 "track.\(track.id): invalid kind")
             try require(!track.role.isEmpty, "track.\(track.id): role required")
             try require(!track.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
@@ -87,14 +87,7 @@ extension Project {
                         lut.string.map { id in colorLUTs.contains { $0.id == id } } == true,
                         "item.\(item.id): unknown LUT")
                 }
-                if track.kind != "text" {
-                    guard let asset = media.first(where: { $0.id == item.mediaID }) else {
-                        throw ProjectError.invalid("item.\(item.id): unknown media")
-                    }
-                    try validateSourceRange(item, on: track, media: asset)
-                } else {
-                    try require(item.fields["text"]?.string != nil, "item.\(item.id): text required")
-                }
+                try validateContent(item, on: track)
             }
         }
         try validateLayers()
@@ -176,6 +169,23 @@ extension Project {
         guard asset.path.hasPrefix(prefix),
             MediaPathResolver.validSharedPath(String(asset.path.dropFirst(prefix.count)))
         else { throw ProjectError.invalid("media.\(asset.id): invalid shared path") }
+    }
+
+    /// Media items need known media and a source range that fits; text items need text; adjustment items
+    /// carry neither.
+    private func validateContent(_ item: Item, on track: Track) throws {
+        if track.isAdjustment {
+            guard item.mediaID == nil, item.fields["text"] == nil else {
+                throw ProjectError.invalid("item.\(item.id): adjustment items take no media or text")
+            }
+        } else if track.kind != "text" {
+            guard let asset = media.first(where: { $0.id == item.mediaID }) else {
+                throw ProjectError.invalid("item.\(item.id): unknown media")
+            }
+            try validateSourceRange(item, on: track, media: asset)
+        } else if item.fields["text"]?.string == nil {
+            throw ProjectError.invalid("item.\(item.id): text required")
+        }
     }
 
     private func validateSourceRange(_ item: Item, on track: Track, media asset: Media) throws {

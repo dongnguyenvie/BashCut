@@ -54,7 +54,6 @@ extension ProjectDocument {
             setup.resolution = Int(try arguments.string("resolution")).flatMap(ProjectSetup.Resolution.init) ?? .fullHD
             setup.rate = ProjectSetup.Rate(rawValue: try arguments.string("fps")) ?? .ntsc
             setup.contentLanguage = try arguments.string("language")
-            setup.style = ProjectSetup.Style(rawValue: try arguments.string("style")) ?? .foodReview
             let parent = URL(fileURLWithPath: try arguments.string("directory"), isDirectory: true).standardizedFileURL
             let footage = arguments.optionalString("footage").map { URL(fileURLWithPath: $0, isDirectory: true) }
             try await document.leaveCurrentProject(arguments)

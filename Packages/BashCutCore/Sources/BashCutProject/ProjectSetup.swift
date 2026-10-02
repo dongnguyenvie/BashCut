@@ -14,16 +14,12 @@ public struct ProjectSetup: Sendable {
             self == .ntsc ? FrameRate(30000, 1001) : FrameRate(Int(rawValue) ?? 30, 1)
         }
     }
-    public enum Style: String, CaseIterable, Sendable {
-        case foodReview = "food-review", cinematic, custom
-    }
 
     public var name = ""
     public var canvas: Canvas = .portrait
     public var resolution: Resolution = .fullHD
     public var rate: Rate = .ntsc
     public var contentLanguage = "vi"
-    public var style: Style = .foodReview
 
     public init() {}
 
@@ -58,7 +54,6 @@ public struct ProjectSetup: Sendable {
         format["width"] = .integer(dimensions.width)
         format["height"] = .integer(dimensions.height)
         project["format"] = .object(format)
-        project["style"] = .string(style.rawValue)
         try project.validate()
         return project
     }

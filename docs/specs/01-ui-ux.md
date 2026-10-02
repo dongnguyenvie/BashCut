@@ -73,8 +73,9 @@ The minimum window size is 1280×800. On small screens the agent dock floats by 
 
 ### 2.1 Default tracks
 
-The tracks match the layers the workspace already uses. More video, text and audio layers can be added; their
-stacking order is explicit (see [02 — Project format](02-project-format.md)).
+The tracks match the layers the workspace already uses. More video, adjustment, text and audio layers can be added
+(**Add Layer**); their stacking order is explicit (see [02 — Project format](02-project-format.md)). An adjustment
+layer grades every layer below it, so a look is a clip you can trim, move, stack and hide instead of a setting.
 
 | Track | Role | Today's equivalent |
 |---|---|---|
@@ -182,12 +183,12 @@ involves the network and copyright.
 
 ### 3.3 Text T
 
-**Style presets:**
+**Text presets** (per caption; a style kit can set them all at once):
 
 | Preset | Look |
 |---|---|
 | **Bold Outline** (food review) | White, heavy outline |
-| **Cinematic Serif** | Small mustard-yellow serif, as in `--style quinn` |
+| **Cinematic Serif** | Small mustard-yellow serif, as in the workspace's `--style quinn` |
 | **Keyword Sticker** | Colored sticker behind the word |
 | **Place Card** | Name, address and opening hours |
 | **Hook Title** | Large title for the hook |
@@ -227,12 +228,14 @@ on the join is **Planned**.
 
 | Control | Content | Status |
 |---|---|---|
-| **Looks** | Original, Muted film, Black & white | Implemented |
-| **3D LUTs** | Import a `.cube` into the project, apply it per clip with adjustable strength | Implemented |
+| **Style kits** | **Food review** (Vivid + Bold Outline) and **Cinematic** (Muted film + Cinematic Serif): one undoable edit adds a full-length adjustment and restyles every caption; applying another kit replaces the first kit's grade | Implemented |
+| **Add adjustment** | An adjustment item over the selected clip's range, or 3 seconds at the playhead | Implemented |
+| **Looks** | Original, Vivid, Muted film, Black & white: grade the selected clip or adjustment; with nothing selected, add an adjustment | Implemented |
+| **3D LUTs** | Import a `.cube` into the project, apply it to a clip or adjustment with adjustable strength (nothing selected adds an adjustment) | Implemented |
 | **Bundled looks** | `quinn-matte`, `quinn-am`, `quinn-ky-uc` from `looks.json` | Planned |
 | **Basic adjustments** | Exposure, contrast, saturation (Inspector › Color) | Implemented |
 | | Temperature, tint, vignette | Planned |
-| **Scope** | Apply to the selection or the whole video (today: one clip) | Planned |
+| **Scope** | One clip, or every layer below an adjustment item for its range | Implemented |
 | **Compare** | Split before/after slider in the viewer | Implemented |
 
 ### 3.7 Voice 🎙

@@ -26,7 +26,7 @@ struct LayerAndDiffTests {
         legacy["schema"] = .string("bashcut.project/1")
         for index in legacy.tracks.indices { legacy.tracks[index]["name"] = nil }
         let migrated = try Project.decode(try JSONEncoder().encode(legacy))
-        #expect(migrated["schema"] == .string("bashcut.project/2"))
+        #expect(migrated["schema"] == .string("bashcut.project/3"))
         #expect(migrated.tracks.allSatisfy { !$0.name.isEmpty })
     }
 
