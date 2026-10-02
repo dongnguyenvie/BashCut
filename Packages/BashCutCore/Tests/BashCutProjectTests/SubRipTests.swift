@@ -47,12 +47,16 @@ struct SubRipTests {
         var history = ProjectHistory(project: Project(name: "Captions"))
         try history.apply(history.project.importingSubRip(text), label: "Import")
         let original = history.project
+        // Appending the same cues overlaps them, so they go to a second caption layer.
         try history.apply(history.project.importingSubRip(text), label: "Append")
-        #expect(history.project.tracks[2].items.count == 4)
+        #expect(history.project.tracks[2].items.count == 2)
+        #expect(history.project.tracks[3].role == "captions")
+        #expect(history.project.tracks[3].items.count == 2)
         try history.apply(history.project.importingSubRip(text, replace: true), label: "Replace")
         #expect(history.project.tracks[2].items.count == 2)
+        #expect(history.project.tracks[3].items.isEmpty)
         try history.undo()
-        #expect(history.project.tracks[2].items.count == 4)
+        #expect(history.project.tracks[3].items.count == 2)
         try history.undo()
         #expect(history.project.tracks[2].items == original.tracks[2].items)
         #expect(throws: ProjectError.self) {

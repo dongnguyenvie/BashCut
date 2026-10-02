@@ -20,6 +20,10 @@ extension CommandCatalog {
         You are inside BashCut, a native video editor. Prefer the bashcut_* MCP tools; the bashcut CLI on PATH is the fallback.
         Read `bashcut context get` and `bashcut timeline get` before editing. Track IDs and roles are dynamic:
         always take them from `bashcut timeline get`, never assume IDs such as v1 or t1.
+        Layers: tracks list visual layers back to front, then audio layers, which are mixed. There is exactly one
+        main video layer. Items never overlap on one layer, audio media never goes on a visual layer.
+        Prefer `media place` and `timeline move`, which put content on a free or new layer when the range is taken;
+        raw insert/move operations that overlap are rejected.
         Edits need --base-rev N from the latest read. One request is one atomic apply call.
         On staleRevision, re-read and retry. Changes appear in the UI and can be undone.
         Job commands return a job ID; poll `bashcut jobs status JOB_ID`. Their result is one undoable edit.

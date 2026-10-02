@@ -87,15 +87,18 @@ struct EditOperationCodecTests {
         var project = Project(name: "Roles")
         #expect(project.track(role: TrackRole.voiceover)?.id == "a2")
         #expect(project.insertionFrame(trackID: "a3", playhead: 42) == 42)
-        project = try project.applying(.addTrack(track: Track(id: "vo-2", kind: "audio", role: "voiceover"), atIndex: 0))
+        project = try project.applying(.addTrack(track: Track(id: "vo-2", kind: "audio", role: "voiceover"), atIndex: 3))
             .project
         #expect(project.track(role: TrackRole.voiceover)?.id == "vo-2")
         project = try project.applying(.deleteTrack(track: "t1")).project
         #expect(throws: ProjectError.invalid("Add a captions track first")) {
             try project.requireTrack(role: TrackRole.captions)
         }
-        let media = Media(fields: ["id": .string("m1"), "path": .string("a.mov"), "hasAudio": .bool(true)])
-        let operations = project.placementOperations(media: media, trackID: "v1", at: 0, duration: 30, itemID: "x")
+        let media = Media(fields: [
+            "id": .string("m1"), "path": .string("a.mov"), "kind": .string("video"), "fps": FrameRate().json,
+            "frames": .integer(300), "hasAudio": .bool(true),
+        ])
+        let operations = try project.placementOperations(media: media, trackID: "v1", at: 0, duration: 30, itemID: "x")
         #expect(operations.count == 2)
         guard case .insert(let dialogue, let audio) = operations[0], case .insert(let main, let video) = operations[1]
         else { Issue.record("Expected two inserts"); return }

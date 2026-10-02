@@ -14,7 +14,6 @@ public enum ProjectError: Error, LocalizedError, Equatable {
 
 extension Project {
     // Validation stays centralized so every edit, save and import enforces the same invariants.
-    // swiftlint:disable:next cyclomatic_complexity
     public func validate() throws {
         func require(_ valid: Bool, _ message: String) throws {
             guard valid else { throw ProjectError.invalid(message) }
@@ -70,7 +69,6 @@ extension Project {
                 throw ProjectError.invalid("track.\(track.id): magnetic must be boolean")
             }
             try track.validateDuckingProperties()
-            var previousEnd = 0
             for item in track.items.sorted(by: { $0.at < $1.at }) {
                 try require(
                     !item.id.isEmpty && ids.insert(item.id).inserted, "items: empty or duplicate ID")
@@ -85,10 +83,6 @@ extension Project {
                 if let lut = item.fields["color"]?.object["lut"]?.string {
                     try require(colorLUTs.contains(where: { $0.id == lut }), "item.\(item.id): unknown LUT")
                 }
-                if track.role == "main" {
-                    try require(item.at >= previousEnd, "item.\(item.id): main track overlap")
-                    previousEnd = item.end
-                }
                 if track.kind != "text" {
                     guard let asset = media.first(where: { $0.id == item.mediaID }) else {
                         throw ProjectError.invalid("item.\(item.id): unknown media")
@@ -99,6 +93,7 @@ extension Project {
                 }
             }
         }
+        try validateLayers()
         try validateLinkedItems()
         try validateTransitions()
     }

@@ -8,9 +8,19 @@ Use **Agent → + → Claude terminal / Codex terminal / Shell terminal**. Each 
 
 The ⌘K popover can attach the current viewer frame. BashCut renders a bounded PNG into `.bashcut/agent-context`, keeps the ten newest frames and passes its absolute path to local terminals. Model API mode sends the same pixels through the provider-native image payload for OpenAI Responses, compatible Chat Completions or Anthropic Messages; images are limited to 5 MB.
 
-The app also embeds `bashcut-mcp`, built with the official MCP Swift SDK. Each Claude/Codex launch receives a temporary stdio server definition that inherits only the live session environment; no MCP config or token is written into the project. Twenty-two `bashcut_*` tools cover context, project, timeline, media, review, captions, UI, undo/redo, app-approved exports, plugin listing and provider-backed caption, beat and voice jobs. They forward to the same Unix socket handlers as the CLI, so permissions, revision checks, audit and undo behavior are identical. The CLI remains available when a client changes its MCP configuration format.
+The app also embeds `bashcut-mcp`, built with the official MCP Swift SDK. Each Claude/Codex launch receives a temporary stdio server definition that inherits only the live session environment; no MCP config or token is written into the project. Twenty-five `bashcut_*` tools cover context, project, timeline, media, layers, review, captions, UI, undo/redo, app-approved exports, plugin listing and provider-backed caption, beat and voice jobs. They forward to the same Unix socket handlers as the CLI, so permissions, revision checks, audit and undo behavior are identical. The CLI remains available when a client changes its MCP configuration format.
 
 Every command is declared once in `BashCut/Core/Automation/CommandCatalog.swift` as a `CommandSpec`: name, permission mode, parameters (type, range, choices, default, CLI binding) and whether it runs immediately, as a background job or after in-app approval. The socket registry validates every request against its spec before the handler runs, so the CLI, MCP and model APIs get identical errors. The CLI parser, the MCP tool list and schemas, and the agent instructions are all generated from the specs; `bashcut help` prints every usage. Adding a command means adding one spec and one `handle`/`handleAuthored` registration in `ProjectDocument`; debug builds assert that every spec has a handler, and `CommandSpecTests` checks names, schemas and CLI bindings. Export presets are strict: `tiktok`, `youtube-1080`, `youtube-4k`, `quick-draft` or `prores`.
+
+Layer commands follow the layer rules in `docs/specs/02-project-format.md`:
+
+```bash
+bashcut layers add --kind video --role overlay --name "B-roll 2" --base-rev 12
+bashcut media place --media MEDIA_ID [--track TRACK_ID] [--at-frame 90] --base-rev 13
+bashcut timeline move ITEM_ID --track TRACK_ID --at-frame 120 --base-rev 14
+```
+
+`media place` and `timeline move` use the same planner as the timeline UI: when the range is taken, the clip goes to the next free layer of the same kind and role, or to a new layer next to the target, and linked sound follows onto a dialogue layer. Both return the layer actually used. Raw `timeline apply` insert/move operations that would overlap are rejected.
 
 The app adds its bundled CLI to PATH and supplies BASHCUT_SOCKET, BASHCUT_PROJECT and an in-memory BASHCUT_SESSION_TOKEN to each child process. Codex receives a named permission profile that allows its stable workspace plus the exact BashCut Unix socket; it does not receive a broad socket allowlist. Keep tokens out of scripts, logs and project files. Closing a tab revokes its token. Shell sessions are attributed to the user; Claude/Codex sessions have their own authors.
 

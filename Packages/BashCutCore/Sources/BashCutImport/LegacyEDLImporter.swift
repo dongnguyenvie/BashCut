@@ -102,6 +102,7 @@ public enum LegacyEDLImporter {
         for key in ["fx", "transitions", "over", "sfx"] where root[key] != nil {
             warnings.append("\(key) requires manual review")
         }
+        project = project.normalizingLayers()
         try project.validate()
         return LegacyEDLImportReport(
             project: project, sourceCutCount: clips.count, sourceVoiceoverCount: root["vo"]?.array.count ?? 0,

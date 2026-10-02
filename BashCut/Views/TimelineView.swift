@@ -312,9 +312,9 @@ struct TimelineView: NSViewRepresentable {
                 document.apply(
                     .reorder(item: dragState.item.id, before: before), label: "Reorder clip")
             } else {
-                document.apply(
-                    .move(item: dragState.item.id, toTrack: destination.id, atFrame: frame),
-                    label: "Move clip")
+                do { try document.moveItem(dragState.item.id, to: destination.id, at: frame) } catch {
+                    document.message = error.localizedDescription
+                }
             }
         }
     }

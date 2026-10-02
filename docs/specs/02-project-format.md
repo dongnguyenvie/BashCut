@@ -114,6 +114,22 @@ to front. Projects may add as many video/image, text and audio tracks as needed;
 repeatable semantic hint rather than a fixed slot. Track IDs remain stable, and schema-v1 projects
 are upgraded in memory when opened.
 
+**Layer rules** (enforced by `Project.validate()`, so UI, CLI, MCP and model APIs share them):
+
+- Visual tracks (`video`, `text`) come first in `tracks`, back to front; audio tracks follow and are
+  mixed, so their order is only for display. A track cannot move across that boundary.
+- There is exactly one `main` video track. It cannot be deleted.
+- Items never overlap on one track; overlapping content lives on separate tracks.
+- Audio media never sits on a visual track. Audio tracks take audio media, or video media with sound.
+- Placement (`media place`, timeline drags, imports) spills an occupied range onto the next free track
+  with the same kind and role, or onto a new track right next to the target, as CapCut does. The
+  `main` track spills onto `overlay` tracks. Overlapping SRT cues stack onto extra caption tracks.
+- Raw `insert`/`move` operations that would overlap are rejected rather than silently relocated.
+
+Projects saved before these rules are repaired when opened, without a schema bump: tracks are
+reordered into the two bands, a missing `main` track is added and extra ones become `overlay`, and
+overlapping items move onto new tracks next to their original track. Valid projects are unchanged.
+
 **`contentLanguage` is separate from the UI language.** The UI can be English while the footage
 and captions are Vietnamese. Transcription providers receive it as a language hint; voice text
 normalization and caption line-length rules also read it. New projects default to the value in

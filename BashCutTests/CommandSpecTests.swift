@@ -101,6 +101,17 @@ struct CommandSpecTests {
         #expect(export.params["includeSRT"] == .bool(false))
         #expect(export.params["directory"] == .string("out"))
 
+        let move = try CommandLineParser.parse(["timeline", "move", "clip-1", "--track", "v2", "--at-frame", "90", "--base-rev", "3"])
+        #expect(move.params == [
+            "item": .string("clip-1"), "track": .string("v2"), "atFrame": .integer(90), "baseRev": .integer(3),
+        ])
+        let place = try CommandLineParser.parse(["media", "place", "--media", "m1", "--base-rev", "3"])
+        #expect(place.spec.mode == .edit)
+        #expect(place.params == ["media": .string("m1"), "baseRev": .integer(3)])
+        #expect(throws: CommandLineParser.Failure.self) {
+            try CommandLineParser.parse(["layers", "add", "--kind", "image", "--base-rev", "3"])
+        }
+
         let text = try CommandLineParser.parse(["--format", "text", "timeline", "get"])
         #expect(text.format == "text")
         #expect(text.params["format"] == .string("text"))

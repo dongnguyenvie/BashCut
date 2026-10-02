@@ -12,6 +12,7 @@ extension ProjectDocument {
         registerCaptionCommands()
         registerCapabilityCommands()
         registerEditCommands()
+        registerLayerCommands()
         registerPrivilegedCommands()
         registerUICommands()
         assert(registry.unhandledCommands.isEmpty, "Unhandled commands: \(registry.unhandledCommands)")

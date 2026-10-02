@@ -37,8 +37,9 @@ func importsLegacyEDL() throws {
     #expect(report.project.tracks.first { $0.role == "main" }?.items.first?.linkedItemID != nil)
     #expect(report.project.tracks.first { $0.role == "main" }?.items.last?.linkedItemID == nil)
     #expect(report.project.tracks.first { $0.role == "voiceover" }?.items.count == 1)
-    #expect(report.project.tracks.first { $0.role == "captions" }?.items.map(\.text)
-        == ["Opening", "Detail", "Voice line"])
+    // The voiceover caption overlaps clip captions, so it lands on a second caption layer.
+    #expect(report.project.tracks.filter { $0.role == "captions" }.map { $0.items.map(\.text) }
+        == [["Opening", "Detail"], ["Voice line"]])
     #expect(report.project.tracks.first { $0.role == "main" }?.items.first?.fields["transform"] != nil)
     #expect(report.warnings == ["fx requires manual review"])
 }

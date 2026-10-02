@@ -54,20 +54,11 @@ extension ProjectDocument {
     }
     /// Places media on `track`, or on the main video track when nil.
     func appendMedia(_ media: Media, track: String? = nil) {
-        guard let trackID = track ?? project.track(role: TrackRole.main, kind: "video")?.id else {
-            message = String(localized: "Add a main video track first")
-            return
-        }
-        let duration = Int((Double(media.frames) / media.fps.value * project.fps.value).rounded(.down))
         let itemID = UUID().uuidString
-        apply(
-            .group(
-                label: "Insert media", author: .user,
-                ops: project.placementOperations(
-                    media: media, trackID: trackID, at: project.insertionFrame(trackID: trackID, playhead: playhead),
-                    duration: duration, itemID: itemID)),
-            label: "Insert media")
-        selectedID = itemID
+        do {
+            try placeMedia(media, trackID: track, itemID: itemID)
+            selectedID = itemID
+        } catch { message = error.localizedDescription }
     }
 
     func unlinkSelectedAudio() {

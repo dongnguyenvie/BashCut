@@ -305,6 +305,9 @@ extension Project {
         guard tracks.count > 1, let index = tracks.firstIndex(where: { $0.id == id }) else {
             throw ProjectError.invalid("Unknown track or final remaining track")
         }
+        guard tracks[index].role != TrackRole.main else {
+            throw ProjectError.invalid("The main layer cannot be deleted")
+        }
         guard tracks[index].items.isEmpty else {
             throw ProjectError.invalid("Move or delete items before removing a track")
         }

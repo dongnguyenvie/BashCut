@@ -101,9 +101,41 @@ extension Project {
         if let provenance {
             for index in items.indices { items[index]["generatedBy"] = .object(provenance) }
         }
-        let deletions: [EditOperation] = replace ? captions.items.map { .delete(item: $0.id, ripple: false) } : []
-        return .group(
-            label: "Import SRT", author: .user,
-            ops: deletions + items.map { .insert(track: captions.id, item: $0) })
+        let layers = captionLayers(from: captions)
+        let deletions: [EditOperation] = replace
+            ? layers.flatMap(\.items).map { .delete(item: $0.id, ripple: false) } : []
+        return .group(label: "Import SRT", author: .user, ops: deletions + captionPlacements(items, base: captions, replace: replace))
+    }
+
+    /// The caption layer and the caption layers stacked above it.
+    private func captionLayers(from base: Track) -> [Track] {
+        guard let baseIndex = tracks.firstIndex(where: { $0.id == base.id }) else { return [] }
+        return tracks[baseIndex...].filter { $0.kind == "text" && $0.role == base.role }
+    }
+
+    /// Inserts cues on the caption layer; overlapping cues go to the next free caption layer, or to new
+    /// caption layers stacked above it.
+    private func captionPlacements(_ items: [Item], base: Track, replace: Bool) -> [EditOperation] {
+        guard let baseIndex = tracks.firstIndex(where: { $0.id == base.id }) else { return [] }
+        var layers = captionLayers(from: base)
+        if replace { for index in layers.indices { layers[index].items = [] } }
+        var scratch = self
+        var operations: [EditOperation] = []
+        var inserts: [EditOperation] = []
+        for item in items.sorted(by: { $0.at < $1.at }) {
+            if let lane = layers.firstIndex(where: { $0.isFree(at: item.at, duration: item.duration) }) {
+                layers[lane].items.append(item)
+                inserts.append(.insert(track: layers[lane].id, item: item))
+                continue
+            }
+            var layer = scratch.overflowTrack(from: base)
+            let index = (scratch.tracks.firstIndex(where: { $0.id == layers[layers.count - 1].id }) ?? baseIndex) + 1
+            scratch.tracks.insert(layer, at: index)
+            operations.append(.addTrack(track: layer, atIndex: index))
+            layer.items = [item]
+            layers.append(layer)
+            inserts.append(.insert(track: layer.id, item: item))
+        }
+        return operations + inserts
     }
 }

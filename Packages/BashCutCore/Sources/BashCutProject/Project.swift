@@ -286,6 +286,7 @@ public struct Project: JSONObject {
             }
             project.tracks = tracks
         }
+        project = project.normalizingLayers()
         try project.validate()
         return project
     }
@@ -324,23 +325,13 @@ extension Project {
         return track.items.map(\.end).max() ?? 0
     }
 
-    /// Operations that place `media` on a track. Video with sound on a video track also gets a
-    /// reciprocal linked item on the first dialogue track, so picture and sound edit together.
+    /// Operations that place `media` on a track, spilling onto a free layer when the range is occupied.
+    /// Video with sound on a video track also gets a reciprocal linked item on a dialogue layer.
     public func placementOperations(
         media: Media, trackID: String, at frame: Int, duration: Int, itemID: String = UUID().uuidString
-    ) -> [EditOperation] {
-        var item = Item(id: itemID, media: media.id, at: frame, duration: duration)
-        var operations: [EditOperation] = []
-        if track(id: trackID)?.kind == "video", media.hasAudio == true,
-            let dialogue = track(role: TrackRole.dialogue, kind: "audio")
-        {
-            let audioID = itemID + "-audio"
-            item.fields["linkedAudio"] = .string(audioID)
-            var audio = Item(id: audioID, media: media.id, at: frame, duration: duration)
-            audio.fields["linkedVideo"] = .string(itemID)
-            operations.append(.insert(track: dialogue.id, item: audio))
-        }
-        operations.append(.insert(track: trackID, item: item))
-        return operations
+    ) throws -> [EditOperation] {
+        var planner = LayerPlanner(self)
+        try planner.placeMedia(media, on: trackID, at: frame, duration: duration, itemID: itemID)
+        return planner.operations
     }
 }

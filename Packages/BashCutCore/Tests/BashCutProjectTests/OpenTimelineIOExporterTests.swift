@@ -3,7 +3,7 @@ import BashCutProject
 import Foundation
 import Testing
 
-@Test("OTIO export preserves timing, overlapping lanes and BashCut metadata")
+@Test("OTIO export preserves timing, overlapping layers and BashCut metadata")
 func exportsOpenTimelineIO() throws {
     var project = Project(name: "OTIO", fps: FrameRate(30, 1))
     project.media = [
@@ -19,6 +19,9 @@ func exportsOpenTimelineIO() throws {
         Item(id: "over-b", media: "m1", at: 20, duration: 30),
     ]
     project.tracks = tracks
+    // Overlapping overlay clips are split onto their own layer before export, as the layer rules require.
+    project = project.normalizingLayers()
+    #expect(project.tracks.map(\.id) == ["v1", "v2", "v3", "t1", "a1", "a2", "a3", "a4"])
     project.markers = [TimelineMarker(id: "section", at: 30, kind: "section", label: "Hook")]
 
     let data = try OpenTimelineIOExporter.data(for: project)
@@ -33,6 +36,7 @@ func exportsOpenTimelineIO() throws {
     #expect(exportedTracks[0].object["children"]?.array.last?.object["OTIO_SCHEMA"] == .string("Clip.1"))
     #expect(exportedTracks[0].object["enabled"] == .bool(true))
     #expect(exportedTracks.filter {
-        $0.object["metadata"]?.object["bashcut"]?.object["trackID"] == .string("v2")
+        let trackID = $0.object["metadata"]?.object["bashcut"]?.object["trackID"]
+        return trackID == .string("v2") || trackID == .string("v3")
     }.count == 2)
 }

@@ -5,7 +5,7 @@ import Foundation
 public enum CommandCatalog {
     public static let exportPresets = ["tiktok", "youtube-1080", "youtube-4k", "quick-draft", "prores"]
 
-    public static let specs: [CommandSpec] = readSpecs + editSpecs + capabilitySpecs + privilegedSpecs + uiSpecs
+    public static let specs: [CommandSpec] = readSpecs + editSpecs + layerSpecs + capabilitySpecs + privilegedSpecs + uiSpecs
 
     public static let modes: [String: CommandMode] = Dictionary(uniqueKeysWithValues: specs.map { ($0.name, $0.mode) })
 
@@ -62,6 +62,41 @@ public enum CommandCatalog {
                 baseRevision,
                 CommandParameter("replace", .boolean, "Replace existing captions", default: .bool(false),
                                  cli: .flag("replace")),
+            ]),
+    ]
+
+    private static let layerSpecs: [CommandSpec] = [
+        CommandSpec(
+            "layers.add", .edit,
+            "Add an empty layer: visual layers go to the front of the picture stack, audio layers below the others.",
+            parameters: [
+                CommandParameter("kind", .string, "Layer kind", required: true, choices: ["video", "text", "audio"],
+                                 cli: .option("kind")),
+                CommandParameter("role", .string, "Role such as overlay, captions, music or sfx; never main",
+                                 cli: .option("role")),
+                CommandParameter("name", .string, "Display name", cli: .option("name")),
+                baseRevision,
+            ]),
+        CommandSpec(
+            "media.place", .edit,
+            "Place project media on a layer (main by default), with linked sound on a dialogue layer; "
+                + "an occupied range spills onto a free or new layer.",
+            parameters: [
+                CommandParameter("media", .string, "Project media ID", required: true, cli: .option("media")),
+                CommandParameter("track", .string, "Layer ID; defaults to the main layer", cli: .option("track")),
+                CommandParameter("atFrame", .integer, "Timeline frame; defaults to the playhead or the end of the main layer",
+                                 minimum: 0, cli: .option("at-frame")),
+                baseRevision,
+            ]),
+        CommandSpec(
+            "timeline.move", .edit,
+            "Move an item and its linked partner; an occupied range spills onto a free or new layer.",
+            parameters: [
+                CommandParameter("item", .string, "Item ID", required: true, cli: .positional),
+                CommandParameter("track", .string, "Destination layer ID", required: true, cli: .option("track")),
+                CommandParameter("atFrame", .integer, "Timeline frame", required: true, minimum: 0,
+                                 cli: .option("at-frame")),
+                baseRevision,
             ]),
     ]
 

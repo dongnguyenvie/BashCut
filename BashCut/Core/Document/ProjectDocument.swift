@@ -225,36 +225,6 @@ final class ProjectDocument {
         UserDefaults.standard.set(recentProjectURLs.map(\.path), forKey: "recentProjectPaths")
     }
 
-    func addTrack(kind: String) {
-        let roles = ["video": "overlay", "text": "captions", "audio": "audio"]
-        let prefix = ["video": "v", "text": "t", "audio": "a"]
-        let count = project.tracks.filter { $0.kind == kind }.count + 1
-        var id = "\(prefix[kind] ?? "track")\(count)"
-        while project.tracks.contains(where: { $0.id == id }) { id += "-new" }
-        var track = Track(id: id, kind: kind, role: roles[kind] ?? kind)
-        track.name = String(localized: "New \(kind.capitalized) Layer")
-        let index = kind == "audio"
-            ? project.tracks.count
-            : project.tracks.firstIndex(where: { $0.kind == "audio" }) ?? project.tracks.count
-        apply(.addTrack(track: track, atIndex: index), label: "Add \(kind) layer")
-        selectedTrackID = id
-    }
-
-    func deleteSelectedTrack() {
-        guard let id = selectedTrackID else { return }
-        apply(.deleteTrack(track: id), label: "Delete layer")
-        if !project.tracks.contains(where: { $0.id == id }) { selectedTrackID = nil }
-    }
-
-    func moveSelectedTrack(by offset: Int) {
-        guard let id = selectedTrackID, let index = project.tracks.firstIndex(where: { $0.id == id }) else {
-            return
-        }
-        let destination = min(project.tracks.count - 1, max(0, index + offset))
-        guard destination != index else { return }
-        apply(.moveTrack(track: id, toIndex: destination), label: "Reorder layer")
-    }
-
     func addCaption() {
         var item = Item(at: playhead, duration: max(1, min(90, project.duration - playhead)))
         item["text"] = .string("Món ngon ở Buôn Ma Thuột")

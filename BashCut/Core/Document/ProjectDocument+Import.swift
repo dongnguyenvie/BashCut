@@ -21,19 +21,16 @@ extension ProjectDocument {
         Task {
             defer { busy = false }
             do {
-                var operations: [EditOperation] = []
+                var planner = LayerPlanner(project)
                 var at = project.insertionFrame(trackID: trackID, playhead: playhead)
                 for url in urls {
                     let imported = try await Self.importedMedia(
                         url: url, kind: kind, projectFPS: project.fps, root: root)
-                    operations.append(.addMedia(imported.media))
-                    operations += project.placementOperations(
-                        media: imported.media, trackID: trackID, at: at, duration: imported.frames)
+                    try planner.add([.addMedia(imported.media)])
+                    try planner.placeMedia(imported.media, on: trackID, at: at, duration: imported.frames)
                     at += imported.frames
                 }
-                apply(
-                    .group(label: "Import footage", author: .user, ops: operations),
-                    label: "Import footage")
+                try commitPlan(planner, label: "Import footage", author: .user, baseRevision: nil)
             } catch { message = error.localizedDescription }
         }
     }
