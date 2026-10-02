@@ -22,6 +22,7 @@ extension ProjectDocument {
         case .togglePlayback, .previousFrame, .nextFrame: return project.duration > 0 && !sourceViewer.visible
         case .zoomIn: return ui.canZoomIn
         case .zoomOut: return ui.canZoomOut
+        case .zoomFit: return project.duration > 0
         case .split, .delete, .lift: return selected != nil
         case .layerUp, .layerDown, .deleteLayer: return selectedTrackID != nil
         case .sourceTogglePlayback, .sourcePreviousFrame, .sourceNextFrame, .markIn, .markOut, .sourceInsert,
@@ -65,8 +66,9 @@ extension ProjectDocument {
         case .toggleCompare: preview.setColorComparison(!preview.showColorComparison)
         case .toggleSafeArea: ui.showSafeArea.toggle()
         case .toggleSnap: ui.snapping.toggle()
-        case .zoomIn: ui.zoomIn()
-        case .zoomOut: ui.zoomOut()
+        case .zoomIn: ui.zoomIn(around: playhead)
+        case .zoomOut: ui.zoomOut(around: playhead)
+        case .zoomFit: ui.zoomToFit(duration: project.duration, fps: project.fps.value)
         default: try performTimelineAction(action, author: author)
         }
     }
@@ -178,7 +180,9 @@ extension ProjectDocument {
     }
 
     private func updateView(_ arguments: CommandArguments) throws {
-        if let zoom = arguments.optionalInt("zoom") { ui.setTimelineZoom(Double(zoom)) }
+        if let zoom = arguments.optionalInt("zoom") {
+            ui.setTimelineZoom(Double(zoom), anchor: arguments.optionalInt("zoomAnchor") ?? playhead)
+        }
         if let snap = arguments.optionalBool("snap") { ui.snapping = snap }
         if let safeArea = arguments.optionalBool("safeArea") { ui.showSafeArea = safeArea }
         if let dock = arguments.optionalBool("agentDock") {

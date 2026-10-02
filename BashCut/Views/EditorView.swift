@@ -386,11 +386,20 @@ struct EditorView: View {
                 document.run(.zoomOut)
             } label: { Image(systemName: "minus.magnifyingglass") }
                 .buttonStyle(.borderless).help("Zoom timeline out (⌘-)").action(.zoomOut, in: document)
-            Slider(value: Bindable(document.ui).timelineScale, in: EditorUIState.timelineZoomRange).frame(width: 120)
+            Slider(
+                value: Binding(
+                    get: { document.ui.timelineZoomSliderValue },
+                    set: { document.ui.setTimelineZoomSliderValue($0, around: document.playhead) }),
+                in: EditorUIState.timelineZoomSliderRange
+            ).frame(width: 120).help("Timeline zoom; pinch or ⌘-scroll on the timeline")
             Button {
                 document.run(.zoomIn)
             } label: { Image(systemName: "plus.magnifyingglass") }
                 .buttonStyle(.borderless).help("Zoom timeline in (⌘=)").action(.zoomIn, in: document)
+            Button {
+                document.run(.zoomFit)
+            } label: { Image(systemName: "arrow.left.and.right.square") }
+                .buttonStyle(.borderless).help("Zoom timeline to fit (⇧Z)").disabled(!document.canPerform(.zoomFit))
         }.font(.caption).controlSize(.small).padding(8).disabled(document.busy)
     }
     private func sendAsk() {

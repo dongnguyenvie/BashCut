@@ -273,8 +273,10 @@ public enum CommandCatalog {
             "Read the editor view state, or change it: timeline zoom (pixels per second), snapping, safe area, "
                 + "color compare, agent dock, inspector tab, and scroll the timeline to a frame.",
             parameters: [
-                CommandParameter("zoom", .integer, "Timeline zoom in pixels per second", minimum: 10, maximum: 140,
+                CommandParameter("zoom", .integer, "Timeline zoom in pixels per second", minimum: 1, maximum: 600,
                                  cli: .option("zoom")),
+                CommandParameter("zoomAnchor", .integer, "Frame kept in place by --zoom; the playhead by default",
+                                 minimum: 0, cli: .option("zoom-anchor")),
                 CommandParameter("snap", .boolean, "Snapping on or off", cli: .option("snap")),
                 CommandParameter("safeArea", .boolean, "Safe-area overlay on or off", cli: .option("safe-area")),
                 CommandParameter("compare", .boolean, "Color before/after compare on or off", cli: .option("compare")),

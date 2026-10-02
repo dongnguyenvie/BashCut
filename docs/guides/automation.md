@@ -187,7 +187,7 @@ when another project opens; agents outside BashCut keep access.
 | `ui open <dialog>` | ui | Open a sheet or popover |
 | `ui actions` | read | Every editor action (buttons, menu items, shortcuts) with its shortcuts and whether it is enabled now |
 | `ui action <action>` | edit | Run an editor action by ID or shortcut, using the same code as the UI |
-| `ui view [--zoom <zoom>] [--snap <snap>] [--safe-area <safeArea>] [--compare <compare>] [--agent-dock <agentDock>] [--reveal <reveal>] [--inspector <inspector>]` | ui | Read the view state, or change zoom, toggles and inspector tab, and scroll the timeline to a frame |
+| `ui view [--zoom <zoom>] [--zoom-anchor <zoomAnchor>] [--snap <snap>] [--safe-area <safeArea>] [--compare <compare>] [--agent-dock <agentDock>] [--reveal <reveal>] [--inspector <inspector>]` | ui | Read the view state, or change zoom, toggles and inspector tab, and scroll the timeline to a frame |
 | `ui select [<item>] [--track <track>]` | ui | Select a timeline item (omit it to clear the selection), or a layer with `--track` |
 | `ui source <media> [--in <in>] [--out <out>]` | ui | Open media in the source viewer, optionally with in and out frames marked |
 | `ui seek <frame>` | ui | Move the viewer to a timeline frame |
@@ -207,7 +207,7 @@ when another project opens; agents outside BashCut keep access.
 | `export start --preset` | `tiktok`, `youtube-1080`, `youtube-4k`, `quick-draft`, `prores` |
 | `ui open <dialog>` | `new-project`, `export`, `export-report`, `agent-changes`, `review`, `history`, `plugins`, `settings`, `doctor`, `knowledge`, `ask`, `sections`, `external-changes` |
 | `ui panel <panel>` | `media`, `audio`, `text`, `stickers`, `effects`, `transitions`, `filters`, `voice` |
-| `ui view --zoom` | 10–140 pixels per second |
+| `ui view --zoom` | 1–600 pixels per second; `--zoom-anchor` is the frame kept in place (the playhead by default) |
 | `ui view --snap`, `--safe-area`, `--compare`, `--agent-dock` | `on` / `off` (also `true`/`false`, `yes`/`no`, `1`/`0`) |
 | `ui view --inspector` | `video`, `audio`, `text`, `color`, `speed` |
 
@@ -323,6 +323,8 @@ bashcut ui actions                 # every action, its shortcuts and whether it 
 bashcut ui action timeline.split   # by ID
 bashcut ui action cmd+b            # or by shortcut: cmd+=, space, i, shift+delete
 bashcut ui view --zoom 60 --snap on --inspector color --reveal 300
+bashcut ui view --zoom 480 --zoom-anchor 1200   # zoom in on frame 1200, keeping it where it is on screen
+bashcut ui action timeline.zoom-fit            # or shift+z: show the whole timeline
 ```
 
 Shortcuts are written as `cmd+shift+z`; modifiers can also be spelled `command`, `option`/`alt`/`opt` and

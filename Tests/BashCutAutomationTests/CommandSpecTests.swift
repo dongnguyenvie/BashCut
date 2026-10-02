@@ -111,8 +111,11 @@ struct CommandSpecTests {
         #expect(throws: CommandLineParser.Failure.self) {
             try CommandLineParser.parse(["layers", "add", "--kind", "image", "--base-rev", "3"])
         }
-        let view = try CommandLineParser.parse(["ui", "view", "--zoom", "80", "--snap", "off", "--safe-area=on"])
-        #expect(view.params == ["zoom": .integer(80), "snap": .bool(false), "safeArea": .bool(true)])
+        let view = try CommandLineParser.parse(
+            ["ui", "view", "--zoom", "480", "--zoom-anchor", "90", "--snap", "off", "--safe-area=on"])
+        #expect(view.params == [
+            "zoom": .integer(480), "zoomAnchor": .integer(90), "snap": .bool(false), "safeArea": .bool(true),
+        ])
         #expect(throws: CommandLineParser.Failure.self) {
             try CommandLineParser.parse(["ui", "view", "--snap", "maybe"])
         }

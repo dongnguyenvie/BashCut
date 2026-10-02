@@ -69,6 +69,7 @@ public enum UIAction: String, CaseIterable, Sendable {
     case toggleSnap = "timeline.snap"
     case zoomIn = "timeline.zoom-in"
     case zoomOut = "timeline.zoom-out"
+    case zoomFit = "timeline.zoom-fit"
     case split = "timeline.split"
     case delete = "timeline.delete"
     case lift = "timeline.lift"
@@ -124,6 +125,7 @@ public enum UIAction: String, CaseIterable, Sendable {
         case .toggleSnap: "Snap"
         case .zoomIn: "Zoom timeline in"
         case .zoomOut: "Zoom timeline out"
+        case .zoomFit: "Zoom timeline to fit"
         case .split: "Split selected clip at the playhead"
         case .delete: "Delete selected clip (ripple)"
         case .lift: "Lift selected clip (leave a gap)"
@@ -160,6 +162,8 @@ public enum UIAction: String, CaseIterable, Sendable {
         case .split: [UIShortcut("b", [.command]), UIShortcut("s")]
         case .delete: [UIShortcut("delete")]
         case .lift: [UIShortcut("delete", [.shift])]
+        // Timeline-only, like `s`: a global ⇧Z would swallow capital Z typed in text fields.
+        case .zoomFit: [UIShortcut("z", [.shift])]
         default: primaryShortcut.map { [$0] } ?? []
         }
     }

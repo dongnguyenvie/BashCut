@@ -436,7 +436,9 @@ Shortcuts belong to editor actions; `bashcut ui actions` lists every action with
 | E / Q | Insert / overwrite from the source viewer | Implemented |
 | S, ⌘B | Split | Implemented |
 | ⌫ / ⇧⌫ | Ripple delete / lift | Implemented |
-| ⌘= / ⌘− | Zoom the timeline in / out | Implemented |
+| ⌘= / ⌘− | Zoom the timeline in / out around the playhead | Implemented |
+| Pinch, ⌘ + scroll | Zoom the timeline around the pointer (scroll alone pans; ⇧ + wheel pans sideways) | Implemented |
+| ⇧Z | Zoom the timeline to fit (timeline focused) | Implemented |
 | ⌘Z / ⇧⌘Z | Undo / redo | Implemented |
 | ⌘N / ⌘O / ⌘S | New / open / save project | Implemented |
 | N | Snapping on/off | Planned |

@@ -6,12 +6,20 @@ import Observation
 /// `ui.open` and `ui.dialog` read and change it; nothing here is saved with the project.
 @MainActor @Observable
 public final class EditorUIState {
-    public static let timelineZoomRange: ClosedRange<Double> = 10...140
+    /// Timeline pixels per second: from a whole long video in view to single frames.
+    public static let timelineZoomRange: ClosedRange<Double> = 1...600
     public static let zoomStep = 1.25
+    /// Width of the track-name column left of frame 0, and the margin kept after the end when fitting.
+    public static let timelineLeading = 105.0
+    public static let fitMargin = 40.0
 
     /// Timeline pixels per second.
-    public var timelineScale = 50.0
+    public private(set) var timelineScale = 50.0
     public var timelineReveal: TimelineReveal?
+    /// The point a zoom keeps in place; the timeline consumes each new request once.
+    public private(set) var timelineZoomAnchor: TimelineZoomAnchor?
+    /// Visible timeline width in points, reported by the timeline view; used to fit the timeline.
+    @ObservationIgnored public var timelineViewportWidth = 900.0
     public var snapping = true
     public var showSafeArea = false
     public var showAgentDock = true
@@ -39,13 +47,46 @@ public final class EditorUIState {
     public var canZoomIn: Bool { timelineScale < Self.timelineZoomRange.upperBound }
     public var canZoomOut: Bool { timelineScale > Self.timelineZoomRange.lowerBound }
 
-    public func setTimelineZoom(_ value: Double) {
+    /// Sets the zoom, clamped to the range. With an `anchor` frame the timeline keeps that frame where it is
+    /// on screen (`viewOffset` from the left of the visible area, or its current position when nil).
+    public func setTimelineZoom(_ value: Double, anchor: Int? = nil, viewOffset: Double? = nil) {
+        guard value.isFinite else { return }
         timelineScale = min(max(value, Self.timelineZoomRange.lowerBound), Self.timelineZoomRange.upperBound)
+        if let anchor { timelineZoomAnchor = TimelineZoomAnchor(frame: max(0, anchor), viewOffset: viewOffset) }
     }
 
-    public func zoomIn() { setTimelineZoom(timelineScale * Self.zoomStep) }
+    /// Zoom buttons and shortcuts keep the playhead in place.
+    public func zoomIn(around playhead: Int? = nil) { setTimelineZoom(timelineScale * Self.zoomStep, anchor: playhead) }
 
-    public func zoomOut() { setTimelineZoom(timelineScale / Self.zoomStep) }
+    public func zoomOut(around playhead: Int? = nil) { setTimelineZoom(timelineScale / Self.zoomStep, anchor: playhead) }
+
+    /// Multiplies the zoom by `factor` around the frame under the pointer (pinch and ⌘-scroll).
+    public func magnifyTimeline(by factor: Double, at frame: Int, viewOffset: Double) {
+        guard factor.isFinite, factor > 0 else { return }
+        setTimelineZoom(timelineScale * factor, anchor: frame, viewOffset: viewOffset)
+    }
+
+    /// The slider position: zoom is multiplicative, so the slider moves on a log scale.
+    public var timelineZoomSliderValue: Double { log(timelineScale) }
+    public static var timelineZoomSliderRange: ClosedRange<Double> {
+        log(timelineZoomRange.lowerBound)...log(timelineZoomRange.upperBound)
+    }
+
+    public func setTimelineZoomSliderValue(_ value: Double, around playhead: Int? = nil) {
+        setTimelineZoom(exp(value), anchor: playhead)
+    }
+
+    /// The zoom that shows `duration` frames at `fps` in the visible width, with a margin after the end.
+    public func fitZoom(duration: Int, fps: Double) -> Double {
+        let seconds = Double(max(1, duration)) / max(1, fps)
+        let width = max(100, timelineViewportWidth - Self.timelineLeading - Self.fitMargin)
+        return min(max(width / seconds, Self.timelineZoomRange.lowerBound), Self.timelineZoomRange.upperBound)
+    }
+
+    /// Shows the whole timeline from its start.
+    public func zoomToFit(duration: Int, fps: Double) {
+        setTimelineZoom(fitZoom(duration: duration, fps: fps), anchor: 0, viewOffset: Self.timelineLeading)
+    }
 
     /// Asks the timeline to scroll `frame` (clamped to `0...duration`) into view.
     public func revealInTimeline(_ frame: Int, duration: Int) {
@@ -65,6 +106,19 @@ public final class EditorUIState {
         "review": \.showReview, "history": \.showHistory, "plugins": \.showPlugins, "settings": \.showSettings,
         "doctor": \.showDoctor, "ask": \.showAsk, "sections": \.showSections,
     ]
+}
+
+/// A one-off request to keep `frame` at `viewOffset` points from the left of the visible timeline after a zoom.
+/// A nil offset keeps the frame where it was before the zoom (centered if it was off screen).
+public struct TimelineZoomAnchor: Equatable, Sendable {
+    public let frame: Int
+    public let viewOffset: Double?
+    public let id = UUID()
+
+    public init(frame: Int, viewOffset: Double?) {
+        self.frame = frame
+        self.viewOffset = viewOffset
+    }
 }
 
 /// A one-off request for the timeline to scroll a frame into view.

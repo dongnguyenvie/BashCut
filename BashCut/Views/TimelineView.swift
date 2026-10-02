@@ -21,18 +21,40 @@ struct TimelineView: NSViewRepresentable {
         canvas.waveforms = document.waveforms.values
         canvas.selectedID = document.selectedID
         canvas.playhead = document.playhead
+        let previousScale = canvas.scale
+        let visible = view.documentVisibleRect
         canvas.scale = document.ui.timelineScale / document.project.fps.value
+        document.ui.timelineViewportWidth = view.contentSize.width
         canvas.setFrameSize(
             CGSize(
                 width: max(
                     view.contentSize.width, 105 + Double(document.project.duration) * canvas.scale + 100),
                 height: max(view.contentSize.height, Double(canvas.orderedTracks.count) * 35 + 58)))
         canvas.needsDisplay = true
+        if let anchor = document.ui.timelineZoomAnchor, anchor != canvas.lastZoomAnchor {
+            canvas.lastZoomAnchor = anchor
+            keep(anchor, in: view, canvas: canvas, previousScale: previousScale, visible: visible)
+        }
         if let reveal = document.ui.timelineReveal, reveal != canvas.lastReveal {
             canvas.lastReveal = reveal
             let x = 105 + Double(reveal.frame) * canvas.scale
             canvas.scrollToVisible(CGRect(x: max(0, x - 120), y: view.documentVisibleRect.minY, width: 240, height: 1))
         }
+    }
+
+    /// Scrolls so the anchor frame sits at the same place in the visible area as before the zoom.
+    private func keep(
+        _ anchor: TimelineZoomAnchor, in view: NSScrollView, canvas: TimelineCanvas, previousScale: Double,
+        visible: CGRect
+    ) {
+        let oldX = 105 + Double(anchor.frame) * previousScale
+        let offset = anchor.viewOffset
+            ?? (visible.minX...visible.maxX ~= oldX ? oldX - visible.minX : visible.width / 2)
+        let newX = 105 + Double(anchor.frame) * canvas.scale
+        let maximum = max(0, canvas.frame.width - visible.width)
+        let origin = CGPoint(x: min(max(0, newX - offset), maximum), y: visible.minY)
+        view.contentView.scroll(to: origin)
+        view.reflectScrolledClipView(view.contentView)
     }
 }
 
@@ -43,6 +65,7 @@ struct TimelineView: NSViewRepresentable {
     var playhead = 0
     var scale = 1.5
     var lastReveal: TimelineReveal?
+    var lastZoomAnchor: TimelineZoomAnchor?
     fileprivate var voiceoverWarningIDs: Set<String> = []
     fileprivate var reviewRevision = -1
     private let document: ProjectDocument
@@ -74,18 +97,7 @@ struct TimelineView: NSViewRepresentable {
             .font: NSFont.monospacedSystemFont(ofSize: 10, weight: .regular),
             .foregroundColor: NSColor.gray,
         ]
-        let seconds = max(1, Int(Double(project.duration) / project.fps.value) + 2)
-        let step = max(1, Int(50 / document.ui.timelineScale))
-        for second in stride(from: 0, through: seconds, by: step) {
-            let x = 105 + Double(second) * document.ui.timelineScale
-            if x < dirtyRect.minX || x > dirtyRect.maxX { continue }
-            ("\(second)s" as NSString).draw(at: CGPoint(x: x + 3, y: 5), withAttributes: attrs)
-            NSColor.darkGray.setStroke()
-            let line = NSBezierPath()
-            line.move(to: CGPoint(x: x, y: 0))
-            line.line(to: CGPoint(x: x, y: 20))
-            line.stroke()
-        }
+        drawRuler(dirtyRect, attributes: attrs)
         drawSectionBand(dirtyRect)
         drawBeatGrid(dirtyRect)
         let warningIDs = voiceoverWarningIDs
@@ -373,6 +385,10 @@ struct TimelineView: NSViewRepresentable {
             document.run(event.modifierFlags.contains(.shift) ? .lift : .delete)
         } else if event.charactersIgnoringModifiers == "s" {
             document.run(.split)
+        } else if event.charactersIgnoringModifiers?.lowercased() == "z",
+            event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .shift
+        {
+            document.run(.zoomFit)
         } else {
             super.keyDown(with: event)
         }
@@ -408,5 +424,58 @@ private extension TimelineCanvas {
                 .foregroundColor: NSColor.white,
                 .paragraphStyle: style,
             ])
+    }
+}
+
+// MARK: - Ruler and zoom gestures
+
+extension TimelineCanvas {
+    /// Labels at a round interval at least ~60 points apart; frame ticks once frames are wide enough to see.
+    func drawRuler(_ dirtyRect: CGRect, attributes: [NSAttributedString.Key: Any]) {
+        let pointsPerSecond = document.ui.timelineScale
+        let steps: [Double] = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600]
+        let step = steps.first { $0 * pointsPerSecond >= 60 } ?? 3600
+        let seconds = Double(project.duration) / project.fps.value + step * 2
+        NSColor.darkGray.setStroke()
+        if scale >= 6 {
+            let first = max(0, Int((dirtyRect.minX - 105) / scale))
+            let last = min(Int(seconds * project.fps.value), Int((dirtyRect.maxX - 105) / scale) + 1)
+            if first <= last {
+                for frame in first...last {
+                    let x = 105 + Double(frame) * scale
+                    let tick = NSBezierPath()
+                    tick.move(to: CGPoint(x: x, y: 16))
+                    tick.line(to: CGPoint(x: x, y: 20))
+                    tick.stroke()
+                }
+            }
+        }
+        for second in stride(from: 0.0, through: seconds, by: step) {
+            let x = 105 + second * pointsPerSecond
+            if x < dirtyRect.minX - 60 || x > dirtyRect.maxX { continue }
+            let whole = Int(second)
+            let label = step >= 60 || whole >= 60 ? String(format: "%d:%02d", whole / 60, whole % 60) : "\(whole)s"
+            (label as NSString).draw(at: CGPoint(x: x + 3, y: 5), withAttributes: attributes)
+            let line = NSBezierPath()
+            line.move(to: CGPoint(x: x, y: 0))
+            line.line(to: CGPoint(x: x, y: 20))
+            line.stroke()
+        }
+    }
+    /// Trackpad pinch zooms around the pointer.
+    override func magnify(with event: NSEvent) {
+        zoom(by: 1 + event.magnification, at: convert(event.locationInWindow, from: nil))
+    }
+
+    /// ⌘ + scroll zooms around the pointer; other scrolling pans (⇧ + wheel pans sideways).
+    override func scrollWheel(with event: NSEvent) {
+        guard event.modifierFlags.contains(.command) else { return super.scrollWheel(with: event) }
+        let delta = Double(event.scrollingDeltaY) * (event.hasPreciseScrollingDeltas ? 0.01 : 0.1)
+        zoom(by: Foundation.exp(delta), at: convert(event.locationInWindow, from: nil))
+    }
+
+    private func zoom(by factor: Double, at point: CGPoint) {
+        let frame = max(0, Int(((point.x - 105) / scale).rounded()))
+        document.ui.magnifyTimeline(by: factor, at: frame, viewOffset: point.x - visibleRect.minX)
     }
 }
