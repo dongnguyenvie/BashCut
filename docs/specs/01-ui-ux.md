@@ -106,13 +106,21 @@ Review and the agent both use these roles.
 | Split at playhead | S / ⌘B | |
 | Ripple delete / lift | ⌫ / ⇧⌫ | Lift leaves a gap |
 | Trim, roll, slip | Drag an edge / ⌥-drag an edge / ⌘-drag the clip body | Roll and slip are also in the Inspector |
-| Move | Drag a clip | Within a magnetic track, dragging reorders and closes gaps; linked Dialogue follows |
+| Move | Drag a clip | Within a magnetic track, dragging reorders; linked Dialogue follows. Clicking a clip selects it without moving the playhead; click empty space to move the playhead |
 | Snap | 🧲 Snap; hold ⌘ to suspend | Snaps to clip edges, the playhead, markers and beats |
 | Beat snap | ♩ | **Planned** as a separate toggle (beats are already snap targets). Speech cuts should round up, like `snap()` in `edl.py` |
 | Change framing | Inspector › Video › "Change framing" | Cycles Wide, Medium, Close and left/right emphasis presets so adjacent cuts get different framing. The `PUNCH` table from `edl.py` is the model |
 | Freeze frame, speed | Inspector › Speed | Constant speed and freeze frame. Speed ramps are **Planned** |
 | Borrow picture | ⌥-drop a clip onto a Main clip | **Planned.** Keeps the old clip's sound and takes the new clip's picture (`pic` in `edl.py`); already imported from `edl.json` |
 | Ask the agent about the selection | ⌘K | §4.3 |
+| Scrub | Drag the playhead grip, the red line or anywhere on the ruler | The cursor becomes ↔ over them; a timecode label follows; the playhead snaps to cuts, sections and beats; dragging past the edge scrolls. During playback the view turns the page when the playhead leaves it |
+| Step | ← / → (⇧ for one second) | Timeline focused |
+| Drag feedback | — | Moving a clip shows a see-through copy on the layer it would land on with a closed-hand cursor; trims show the new extent; a cyan line marks the target, a yellow line a snap, and a label shows the new start, duration or change |
+| Hover | — | The clip under the pointer lights up and shows CapCut-style trim brackets; the cursor shows whether a drag moves (open hand) or trims (↔) |
+| Context menu | Right-click a clip | Split, Delete, Lift, Freeze frame, Change framing, Unlink audio, Lock/Unlock layer (`clip.*` and `timeline.*` actions) |
+| Delete a gap | Click the hatched gap on Main, then ⌫, or right-click › Delete gap | `timeline close-gap` |
+| Drop media | Drag from the Media or Audio panel, or files from Finder | Lands on the layer under the pointer when it takes that kind of media (else main or music), at the snapped frame; spills like any placement |
+| Layer header | Pinned on the left | Icon and name per layer; hide (visual layers), mute (audio layers) and lock switches (`layers set`). Clips on hidden, muted or locked layers are drawn faded or striped |
 
 ### 2.4 How agent changes appear
 

@@ -1607,6 +1607,166 @@
         }
       }
     },
+    "Delete gap": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete gap"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xoá khoảng trống"
+          }
+        }
+      }
+    },
+    "Unlock %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unlock %@"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở khoá %@"
+          }
+        }
+      }
+    },
+    "Lock %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lock %@"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khoá %@"
+          }
+        }
+      }
+    },
+    "%@ is locked": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ is locked"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ đang bị khoá"
+          }
+        }
+      }
+    },
+    "New layer": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New layer"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Layer mới"
+          }
+        }
+      }
+    },
+    "Freeze frame": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Freeze frame"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đóng băng khung hình"
+          }
+        }
+      }
+    },
+    "Drag onto the timeline to place it on a layer": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drag onto the timeline to place it on a layer"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kéo vào timeline để đặt lên một layer"
+          }
+        }
+      }
+    },
+    "Zoom timeline to fit": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zoom timeline to fit"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thu phóng vừa timeline"
+          }
+        }
+      }
+    },
+    "Zoom timeline to fit (⇧Z)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zoom timeline to fit (⇧Z)"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thu phóng vừa timeline (⇧Z)"
+          }
+        }
+      }
+    },
+    "Timeline zoom; pinch or ⌘-scroll on the timeline": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Timeline zoom; pinch or ⌘-scroll on the timeline"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thu phóng timeline; chụm hai ngón hoặc ⌘ + cuộn trên timeline"
+          }
+        }
+      }
+    },
     "Import footage to start editing.": {
       "localizations": {
         "en": {

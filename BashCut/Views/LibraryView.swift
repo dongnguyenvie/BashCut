@@ -72,6 +72,8 @@ struct LibraryView: View {
                             proxyBadge(media)
                         }
                     }
+                    .onDrag { NSItemProvider(object: TimelineCanvas.mediaPasteboardPrefix + media.id as NSString) }
+                    .help("Drag onto the timeline to place it on a layer")
                     .contextMenu {
                         Button("Create Preview Proxy") {
                             Task { try? await document.requestProxies(mediaIDs: [media.id], force: true) }
@@ -125,6 +127,7 @@ struct LibraryView: View {
                     Spacer()
                     Button("Insert") { document.appendMedia(media, track: audioTrack) }.disabled(audioTrack.isEmpty)
                 }.font(.caption)
+                    .onDrag { NSItemProvider(object: TimelineCanvas.mediaPasteboardPrefix + media.id as NSString) }
             }
             Divider()
             Text("Beat Detection").font(.headline)

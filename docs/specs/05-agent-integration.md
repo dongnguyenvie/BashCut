@@ -53,7 +53,7 @@ against the specs and serves every front end:
 - CLI: `bashcut <group> <command>`.
 - Model APIs and agent instructions: rendered from the same specs.
 
-The catalog has 46 commands. The tables below show the design intent: which mode each area uses and which UI
+The catalog has 48 commands. The tables below show the design intent: which mode each area uses and which UI
 it mirrors. The [automation guide](../guides/automation.md#command-reference) lists every command with its
 arguments.
 

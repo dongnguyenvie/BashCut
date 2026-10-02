@@ -135,7 +135,7 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
 - Token-scoped local automation socket (mode 0600), the bundled `bashcut` CLI and the official-SDK `bashcut-mcp`.
   Claude and Codex get ephemeral stdio MCP configuration. Agents outside BashCut use a 0600 token file read by the
   CLI and MCP.
-- 46 commands declared once as `CommandSpec`s, which generate validation, the CLI parser, MCP tools and agent
+- 48 commands declared once as `CommandSpec`s, which generate validation, the CLI parser, MCP tools and agent
   instructions. Every button, menu item and shortcut is a `UIAction` (`ui actions`, `ui action <id|shortcut>`);
   every alert, panel and sheet goes through `ModalCenter` (`ui dialog`, `ui respond`, `ui open`).
 - Agent edits keep a before/after diff, show ◆ markers and an Undo/Show Changes toast, and restore the latest diff

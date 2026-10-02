@@ -24,6 +24,8 @@ extension ProjectDocument {
         case .zoomOut: return ui.canZoomOut
         case .zoomFit: return project.duration > 0
         case .split, .delete, .lift: return selected != nil
+        case .freezeFrame, .changeFraming: return selectedItemTrack?.kind == "video"
+        case .unlinkAudio: return selected?.linkedItemID != nil
         case .layerUp, .layerDown, .deleteLayer: return selectedTrackID != nil
         case .sourceTogglePlayback, .sourcePreviousFrame, .sourceNextFrame, .markIn, .markOut, .sourceInsert,
             .sourceOverwrite, .sourceClose:
@@ -69,6 +71,11 @@ extension ProjectDocument {
         case .zoomIn: ui.zoomIn(around: playhead)
         case .zoomOut: ui.zoomOut(around: playhead)
         case .zoomFit: ui.zoomToFit(duration: project.duration, fps: project.fps.value)
+        case .freezeFrame: toggleFreezeSelected()
+        case .unlinkAudio: unlinkSelectedAudio()
+        case .changeFraming:
+            guard let item = selected else { return }
+            patchSelected(ReframePreset.next(after: item).patch, label: "Change framing")
         default: try performTimelineAction(action, author: author)
         }
     }

@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+- A CapCut-style timeline:
+  - **Playhead:** a red playhead with a grip that you drag (on the grip, the line or anywhere on the ruler) with a timecode label, snapping and edge autoscroll. ← / → step frames, and playback turns the page.
+  - **Hover and dragging:** hovered clips light up with trim brackets and move/trim cursors. Dragging a clip shows a see-through copy where it would land with a closed-hand cursor, a cyan target line, a yellow snap line, and a label with the new start, duration or change.
+  - **Clips:** durations on clips; filmstrip thumbnails on the taller main layer (from proxies when present); clearer colors per layer and icons instead of emoji.
+  - **Clip menu:** right-click Split, Delete, Lift, Freeze frame, Change framing, Unlink audio and Lock layer (new actions `clip.freeze`, `clip.change-framing`, `clip.unlink-audio`).
+  - **Gaps:** hatched gaps on Main that can be selected and deleted (`timeline close-gap`).
+  - **Drop media:** drag from the Media and Audio panels or from Finder onto a layer.
+  - **Layer header:** pinned on the left with hide, mute and lock switches (`layers set`). Hidden layers leave preview and export, muted layers are silent and stop ducking music, and locked layers refuse edits.
+  - **Performance:** the playhead, guides and labels are separate overlay views, so playback and scrubbing no longer redraw the whole timeline.
+  - **Behavior change:** clicking a clip now selects it without moving the playhead.
 - Timeline zoom works like CapCut: pinch on the trackpad or ⌘ + scroll zooms around the pointer, the buttons and ⌘= / ⌘− zoom around the playhead, and the frame under the pointer or playhead stays in place instead of the view jumping. The slider is logarithmic, zoom now ranges from 1 to 600 pixels per second (a whole long video down to single frames, with frame ticks on the ruler), and a new **Zoom to fit** button (⇧Z in the timeline, `timeline.zoom-fit`) shows the whole timeline. `ui view --zoom` accepts the new range and `--zoom-anchor <frame>`.
 - Reorganize and rewrite the documentation: `docs/README.md` is the index; guides (`docs/guides/automation.md` with the full command list, `docs/guides/plugins.md`), reference (`docs/reference/project-format.md`, `docs/reference/third-party.md`), status (`docs/status/implementation.md`, `docs/status/mockup-parity.md`) and the design specs, all brought up to date with the code. `docs/extension-boundaries.md` is folded into the architecture spec.
 - Open projects from Finder: double-click or **Open With → BashCut** on a `project.bashcut.json`, or drop the file or its project folder on the Dock icon, whether or not BashCut is running. BashCut is listed as an alternate app for JSON files and folders, never the default. Unsaved changes still get the discard prompt.

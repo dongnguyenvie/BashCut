@@ -392,3 +392,13 @@
 "Making proxy…" = "Making proxy…";
 "Previews use a smaller copy of this clip; export uses the original." = "Previews use a smaller copy of this clip; export uses the original.";
 "No BashCut project in that folder" = "No BashCut project in that folder";
+"Delete gap" = "Delete gap";
+"Unlock %@" = "Unlock %@";
+"Lock %@" = "Lock %@";
+"%@ is locked" = "%@ is locked";
+"New layer" = "New layer";
+"Freeze frame" = "Freeze frame";
+"Drag onto the timeline to place it on a layer" = "Drag onto the timeline to place it on a layer";
+"Zoom timeline to fit" = "Zoom timeline to fit";
+"Zoom timeline to fit (⇧Z)" = "Zoom timeline to fit (⇧Z)";
+"Timeline zoom; pinch or ⌘-scroll on the timeline" = "Timeline zoom; pinch or ⌘-scroll on the timeline";

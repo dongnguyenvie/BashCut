@@ -113,7 +113,7 @@ A command in *italics* is planned and does not exist yet. "—" means manual onl
 | # | Feature | Priority | Status | Agent |
 |---|---|---|---|---|
 | G-1 | Dock: Claude / Codex / Shell terminal tabs, show/hide, detach | P0 | Implemented | `ui action agent.toggle-dock` |
-| G-2 | Automation socket, `bashcut-mcp` and `bashcut` CLI (read, UI, edit, privileged) | P0 | Implemented (46 commands) | `bashcut help` lists them |
+| G-2 | Automation socket, `bashcut-mcp` and `bashcut` CLI (read, UI, edit, privileged) | P0 | Implemented (48 commands) | `bashcut help` lists them |
 | G-3 | ⌘K popover and context chip | P0 | Implemented | `ui action agent.ask`, `context get` |
 | G-4 | Attach the current frame to ⌘K | P1 | Implemented | — |
 | G-5 | Quick actions (prompt templates) | P1 | Implemented (Survey, Write VO, Review; Suggest FX, Lessons Planned) | — |

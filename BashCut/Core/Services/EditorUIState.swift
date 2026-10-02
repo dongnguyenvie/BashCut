@@ -10,7 +10,7 @@ public final class EditorUIState {
     public static let timelineZoomRange: ClosedRange<Double> = 1...600
     public static let zoomStep = 1.25
     /// Width of the track-name column left of frame 0, and the margin kept after the end when fitting.
-    public static let timelineLeading = 105.0
+    public static let timelineLeading = 140.0
     public static let fitMargin = 40.0
 
     /// Timeline pixels per second.

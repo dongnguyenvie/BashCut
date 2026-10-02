@@ -392,3 +392,13 @@
 "Making proxy…" = "Đang tạo proxy…";
 "Previews use a smaller copy of this clip; export uses the original." = "Xem trước dùng bản nhỏ hơn của clip này; khi xuất vẫn dùng file gốc.";
 "No BashCut project in that folder" = "Thư mục này không có project BashCut";
+"Delete gap" = "Xoá khoảng trống";
+"Unlock %@" = "Mở khoá %@";
+"Lock %@" = "Khoá %@";
+"%@ is locked" = "%@ đang bị khoá";
+"New layer" = "Layer mới";
+"Freeze frame" = "Đóng băng khung hình";
+"Drag onto the timeline to place it on a layer" = "Kéo vào timeline để đặt lên một layer";
+"Zoom timeline to fit" = "Thu phóng vừa timeline";
+"Zoom timeline to fit (⇧Z)" = "Thu phóng vừa timeline (⇧Z)";
+"Timeline zoom; pinch or ⌘-scroll on the timeline" = "Thu phóng timeline; chụm hai ngón hoặc ⌘ + cuộn trên timeline";

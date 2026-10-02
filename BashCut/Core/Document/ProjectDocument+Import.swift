@@ -18,23 +18,36 @@ extension ProjectDocument {
         panel.allowsMultipleSelection = true
         panel.directoryURL = root.appendingPathComponent("footage")
         guard let urls = ModalCenter.shared.open(panel, name: "import-media"), !urls.isEmpty else { return }
+        importFiles(urls, kind: kind, trackID: trackID, at: nil)
+    }
+
+    /// Imports files and places them one after another on `trackID` (the main video layer, or Music for audio,
+    /// when nil) from `frame` (the usual insertion point when nil). Used by Import and by dropping files on the
+    /// timeline; the kind comes from each file's type unless given.
+    func importFiles(_ urls: [URL], kind: String? = nil, trackID: String?, at frame: Int?) {
+        guard let root = fileURL?.deletingLastPathComponent(), !urls.isEmpty else { return }
         busy = true
         Task {
             defer { busy = false }
             do {
                 var planner = LayerPlanner(project)
-                var at = project.insertionFrame(trackID: trackID, playhead: playhead)
+                var at = frame
                 var mediaIDs: [String] = []
                 for url in urls {
-                    let imported = try await Self.importedMedia(
-                        url: url, kind: kind, projectFPS: project.fps, root: root)
+                    let fileKind = kind ?? (UTType(filenameExtension: url.pathExtension)?.conforms(to: .audio) == true
+                        ? "audio" : "video")
+                    let target = try trackID
+                        ?? (fileKind == "audio" ? project.requireTrack(role: TrackRole.music) : project.requireTrack(
+                            role: TrackRole.main, kind: "video")).id
+                    let start = at ?? project.insertionFrame(trackID: target, playhead: playhead)
+                    let imported = try await Self.importedMedia(url: url, kind: fileKind, projectFPS: project.fps, root: root)
                     DebugLog.write(
                         "import", "\(url.lastPathComponent) → \(mediaSummary(imported.media)) timelineFrames=\(imported.frames) "
-                            + "target=\(trackID) at=\(at)")
+                            + "target=\(target) at=\(start)")
                     try planner.add([.addMedia(imported.media)])
-                    try planner.placeMedia(imported.media, on: trackID, at: at, duration: imported.frames)
+                    try planner.placeMedia(imported.media, on: target, at: start, duration: imported.frames)
                     mediaIDs.append(imported.media.id)
-                    at += imported.frames
+                    at = start + imported.frames
                 }
                 try commitPlan(planner, label: "Import footage", author: .user, baseRevision: nil)
                 requestProxiesAfterImport(mediaIDs, author: .user)

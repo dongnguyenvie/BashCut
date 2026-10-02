@@ -112,7 +112,7 @@ directory.
 
 ### Command reference
 
-All 46 commands, grouped by purpose. Prefix each with `bashcut`. Arguments in brackets are optional.
+All 48 commands, grouped by purpose. Prefix each with `bashcut`. Arguments in brackets are optional.
 
 #### Read
 
@@ -152,6 +152,8 @@ when another project opens; agents outside BashCut keep access.
 | `timeline undo --base-rev <baseRev>` | edit | Undo one timeline action |
 | `timeline redo --base-rev <baseRev>` | edit | Redo one timeline action |
 | `timeline move <item> --track <track> --at-frame <atFrame> --base-rev <baseRev>` | edit | Move an item and its linked partner; an occupied range spills onto a free or new layer |
+| `timeline close-gap --at-frame <atFrame> [--track <track>] --base-rev <baseRev>` | edit | Delete the empty gap containing a frame (main layer by default): later clips on that layer move left with their linked sound |
+| `layers set <track> [--hidden on\|off] [--muted on\|off] [--locked on\|off] --base-rev <baseRev>` | edit | The layer header switches: hide a visual layer, mute an audio layer, lock any layer (a locked layer refuses edits) |
 | `layers add --kind <kind> [--role <role>] [--name <name>] --base-rev <baseRev>` | edit | Add an empty `video`, `text` or `audio` layer; the role can be `overlay`, `captions`, `music`, `sfx` and so on, never `main` |
 | `media import <path> [--kind <kind>] [--place] [--track <track>] [--at-frame <atFrame>] --base-rev <baseRev>` | edit | Add a media file; with `--place`, also put it on a layer like the Import button |
 | `media place --media <media> [--track <track>] [--at-frame <atFrame>] --base-rev <baseRev>` | edit | Place project media on a layer (main by default), with linked sound on a dialogue layer |
@@ -325,6 +327,7 @@ bashcut ui action cmd+b            # or by shortcut: cmd+=, space, i, shift+dele
 bashcut ui view --zoom 60 --snap on --inspector color --reveal 300
 bashcut ui view --zoom 480 --zoom-anchor 1200   # zoom in on frame 1200, keeping it where it is on screen
 bashcut ui action timeline.zoom-fit            # or shift+z: show the whole timeline
+bashcut ui action clip.freeze                  # the clip context menu: clip.freeze, clip.change-framing, clip.unlink-audio
 ```
 
 Shortcuts are written as `cmd+shift+z`; modifiers can also be spelled `command`, `option`/`alt`/`opt` and

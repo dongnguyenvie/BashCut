@@ -55,8 +55,8 @@ struct EditorUIStateTests {
     @Test("Zoom to fit shows the whole timeline in the visible width, within the zoom range")
     func zoomToFit() {
         let ui = EditorUIState()
-        ui.timelineViewportWidth = 1145
-        // 30 fps × 100 s: (1145 − 105 − 40) points / 100 s = 10 points per second.
+        ui.timelineViewportWidth = 1180
+        // 30 fps × 100 s: (1180 − 140 − 40) points / 100 s = 10 points per second.
         ui.zoomToFit(duration: 3000, fps: 30)
         #expect(abs(ui.timelineScale - 10) < 1e-9)
         #expect(ui.timelineZoomAnchor?.frame == 0 && ui.timelineZoomAnchor?.viewOffset == EditorUIState.timelineLeading)
