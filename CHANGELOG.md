@@ -1,0 +1,69 @@
+# Changelog
+
+## [Unreleased]
+
+- Persist the latest 20 export metric reports per project, restore the latest report after reopen and compare duration, size, cuts, captions, tagged speech coverage and LUFS with the previous export in UI and automation status.
+- Discover matching local Claude and Codex sessions without loading full histories, persist their IDs per canonical project and automatically bookmark newly launched terminal sessions.
+- Record voiceover directly from the macOS microphone as a project-local 48 kHz mono WAV, show elapsed time and input level, validate it and insert it undoably at the playhead.
+- Attach a bounded current-viewer PNG from ⌘K to Claude/Codex terminals by local path or to configured model APIs using provider-native multimodal request bodies.
+- Let the Agent dock detach into a resizable window while preserving live Claude, Codex, Shell and API sessions, then reattach cleanly when the project closes.
+- Show red timeline badges when voiceover is less than 0.3 seconds from tagged speech, with the same layer-aware rule exposed through Review and agents.
+- Add an undoable Preserve Audio Pitch speed control, using AVFoundation spectral processing or intentional varispeed in both preview and export.
+- Add rendered Place Card, Hook Title and Chapter Card presets to the Text library and Inspector, sharing the same cached Core Text output in preview and export.
+- Add a synchronized Viewer Before/After split backed by a non-mutating comparison composition that bypasses color adjustments and LUTs.
+- Add deterministic Wide/Medium/Close/left/right Change Framing presets in core and Inspector, using the same validated properties available to agents.
+- Add optional provider-based two-pass loudness normalization: measure a temporary mix, apply target gain with a −1 dBTP ceiling, verify the final export, persist mix gain/provenance undoably and expose results through UI, CLI and MCP status.
+- Add a three-take Voice workflow with provider-scored or pacing-scored results, isolated audio preview, best-take selection, legacy single-output plugin compatibility and cleanup of discarded generated assets.
+- Add frame-accurate automatic music ducking under tagged Dialogue and Voiceover, with track-level level/attack/release controls and one shared preview/export gain envelope that composes with clip fades and volume.
+- Add an external-change comparison sheet covering project settings, media, tracks and stable timeline-item additions, removals and modifications before choosing which version to keep.
+- Add Footage, Project and Shared media-source filtering with symlink-aware footage classification.
+- Add modular legacy `edl.json` import with cut, timing, picture-borrow, dialogue, transform, tag, split-subtitle, voiceover and section mapping plus a post-import comparison report.
+- Add modular OpenTimelineIO export with overlap-preserving lanes, gaps, text generators, markers, speed effects and BashCut metadata, available from UI and privileged CLI.
+- Add stable undoable dissolve, whip, blink, zoom, spin, shutter and wipe transitions rendered identically in preview/export, with UI duration controls and agent operations.
+- Add project-scoped `.cube` 3D LUT import/catalog, validated and undoable clip application/strength, agent operations and shared Core Image preview/export rendering.
+- Add an embedded `bashcut-mcp` stdio server using the official MCP Swift SDK, with 16 structured tools and ephemeral Claude/Codex session configuration over the existing authenticated automation socket.
+- Add stable, undoable section markers with an editable timeline band, boundary dragging and Claude/Codex wire operations.
+- Record and display source resolution, frame rate, duration and audio presence, with offline media badges.
+- Add reciprocal linked A/V items for video sound, atomic paired move/trim/split/slip/roll/delete, Inspector unlinking and agent wire support.
+- Add deterministic magnetic Main-track reorder with linked Dialogue synchronization and agent wire support.
+- Add debounced media hover-scrubbing, event-driven project-file monitoring and rendered freeze frames controlled from the Inspector.
+- Persist separate Claude/Codex resume bookmarks per project and add context handoff between embedded terminal providers.
+- Resolve `@assets/...` media consistently through the configured workspace with traversal confinement across library, plugins, preview and export.
+- Added a first-launch welcome screen with persistent recent projects and stale-file cleanup.
+
+- Upgrade projects to schema v2 with dynamic ordered video/image, text and audio layers, layer controls, vertical timeline scrolling and compositor ordering across text/video tracks.
+- Reuse AV assets and composition lanes when building large timelines.
+- Add before/after agent diffs, ◆ markers, Undo/Show Changes UI and history restoration for Claude, Codex and model API edits.
+- Add Agent Knowledge for shared project memo and skill management across Claude and Codex.
+- Launch Codex idle on GPT-5.6-Luna/low with a socket-scoped permission profile and a stable app-support workspace, avoiding security-scoped project-directory stalls.
+- Add an out-of-process plugin manifest/catalog, a reviewed installer for optional capabilities and dependencies, dependency health checks and a bounded process RPC runtime with a filtered environment.
+- Connect the Voice panel to replaceable `voice.synthesize` providers with project-level selection, output confinement, audio validation, provenance and undoable insertion.
+- Connect Auto Captions to replaceable `captions.transcribe` providers with source/language input, confined SRT output, provenance and atomic replace or append.
+- Add replaceable `audio.beats` detection, validated undoable beat grids, timeline rendering, beat snapping and agent wire support.
+- Add persistent Settings for workspace, default agent, agent edit permission, export preset and UI language, plus Doctor checks for agent CLIs, the automation socket, project structure and plugin health.
+- Add capability-based provider declarations and undoable project overrides so voice, transcription and other optional providers can be replaced without changing feature code or timeline data.
+
+- Add mockup-based export options for TikTok, YouTube 1080p/4K, Quick Draft and ProRes, with real bitrate/container settings, background progress/cancellation, optional SRT, post-export receipts and `bashcut export status`.
+- Add token-gated `bashcut export start` for embedded Claude/Codex/Shell sessions, with a concrete in-app approval sheet; denied requests write nothing and approved requests use the normal export pipeline.
+- Add a native New Project wizard with canvas/resolution/FPS, content language, style, destination and optional footage reference. Publish complete folders without overwriting existing paths; preserve the open document on failure.
+- Document functional gaps against the HTML mockup in docs/mockup-parity.md.
+
+- Add off-main-actor stereo waveform analysis and bounded memory/disk caching, timeline peak drawing aligned to source trim/speed, refresh/progress/error controls and generated-audio regression tests.
+- Fix waveform invalidation by reading fresh file attributes instead of cached URL metadata.
+
+- Add UTF-8 SRT import/add/replace/export to the Text library and CLI, with frame conversion, bounded parsing, one-step undo and subtitle regression tests.
+
+- Add atomic rolling trims and source slips in core, Inspector, timeline gestures and agent wire commands; Shift-Delete lifts without ripple. Add mixed-FPS, bounds and undo regression tests.
+
+- Rebuild the native editor around the mockup: library rail, source viewer with In/Out and insert/overwrite, Inspector tabs, scroll/zoom/snap/drag timeline, safe area, review and history.
+- Add text presets, emoji text stickers, color/opacity/audio controls, render-value validation and regression coverage for source placement.
+- Add SwiftTerm Claude/Codex/Shell sessions, authenticated local socket, bundled CLI, author badges, atomic API edits and metadata-only audit records.
+- Add configurable Responses/Chat Completions/Anthropic model clients, Keychain credentials, editable Python/Shell generation and explicit script execution.
+- Fix the app/CLI executable collision on case-insensitive macOS disks, thumbnail layout, timeline hit testing after scroll, and stale model generation handling.
+- Expand English/Vietnamese resources and refactor command/render/edit functions for strict SwiftLint.
+
+- Bootstrap the separate BashCut repository, XcodeGen configuration and SwiftPM build path.
+- Add lossless schema-v1 project data, validation, atomic edits, revision checks and session undo/redo.
+- Add a native editing harness and shared AVFoundation compositor for reframing, Vietnamese captions, audio and H.264 export.
+- Add core and engine tests, generated media fixtures and verification scripts.
+- Add M1 project persistence: autosave/recovery, saved undo/redo, external-file reload/conflict handling and storage tests.
