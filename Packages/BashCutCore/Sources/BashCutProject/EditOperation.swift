@@ -1,7 +1,8 @@
 import Foundation
 
 public enum Edge: String, Codable, Sendable { case start, end }
-public enum Author: String, Codable, Sendable { case user, claude, codex, external, model }
+/// `agent` is an agent outside the app (CLI or MCP with the automation token file), not a Claude/Codex tab.
+public enum Author: String, Codable, Sendable { case user, claude, codex, external, model, agent }
 
 public indirect enum EditOperation: Codable, Sendable, Equatable {
     case insert(track: String, item: Item)

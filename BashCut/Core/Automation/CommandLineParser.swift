@@ -103,6 +103,9 @@ public enum CommandLineParser {
         case .positionalTextFile(let maximumBytes):
             return .string(try readText(text, maximumBytes: maximumBytes))
         case .positional, .option, .flag:
+            if parameter.isPath {
+                return .string(URL(fileURLWithPath: (text as NSString).expandingTildeInPath).standardizedFileURL.path)
+            }
             guard parameter.kind == .integer else { return .string(text) }
             guard let number = Int(text) else { throw Failure(message: "\(parameter.name) must be an integer") }
             return .integer(number)

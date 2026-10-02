@@ -29,11 +29,13 @@ public struct CommandParameter: Sendable {
     public let minimum: Int?
     public let maximum: Int?
     public let choices: [String]?
+    /// A file system path: the CLI makes relative values absolute against its working directory.
+    public let isPath: Bool
     public let cli: CLIBinding
 
     public init(
         _ name: String, _ kind: Kind, _ summary: String, required: Bool = false, default defaultValue: JSONValue? = nil,
-        minimum: Int? = nil, maximum: Int? = nil, choices: [String]? = nil, cli: CLIBinding
+        minimum: Int? = nil, maximum: Int? = nil, choices: [String]? = nil, isPath: Bool = false, cli: CLIBinding
     ) {
         self.name = name
         self.kind = kind
@@ -43,6 +45,7 @@ public struct CommandParameter: Sendable {
         self.minimum = minimum
         self.maximum = maximum
         self.choices = choices
+        self.isPath = isPath
         self.cli = cli
     }
 }

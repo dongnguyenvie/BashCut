@@ -378,3 +378,7 @@
 "Copy" = "Copy";
 "Paste" = "Paste";
 "Select All" = "Select All";
+"Agents outside BashCut" = "Agents outside BashCut";
+"Allow" = "Allow";
+"New token" = "New token";
+"Agents outside BashCut use the bashcut CLI or MCP with a token file only your user account can read." = "Agents outside BashCut use the bashcut CLI or MCP with a token file only your user account can read.";

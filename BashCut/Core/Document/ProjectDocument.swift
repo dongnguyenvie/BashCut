@@ -68,6 +68,8 @@ final class ProjectDocument {
     var exportTask: Task<Void, Never>?
     var capabilityJobs: [CapabilityJob] = []
     @ObservationIgnored var capabilityTasks: [String: Task<Void, Never>] = [:]
+    /// Token of the external-agent file; it outlives project switches, unlike in-app terminal tokens.
+    @ObservationIgnored var externalAgentToken: String?
 
     init(engine: any RenderEngine = AVFoundationRenderEngine()) {
         self.engine = engine
@@ -134,32 +136,38 @@ final class ProjectDocument {
         Task {
             defer { busy = false }
             do {
-                let loaded = try await storage.load(url)
-                reset(loaded.history.project, url: url)
-                replaceHistory(loaded.history)
-                diskData = loaded.diskData
-                logOpened(url, data: loaded.diskData)
-                message = loaded.warning ?? ""
-                if let warning = loaded.warning { DebugLog.write("project", "warning: \(warning)") }
-                if let recovery = loaded.recovery {
-                    let alert = NSAlert()
-                    alert.messageText = String(localized: "Recover unsaved edits?")
-                    alert.addButton(withTitle: String(localized: "Recover"))
-                    alert.addButton(withTitle: String(localized: "Use saved project"))
-                    if alert.runModal() == .alertFirstButtonReturn {
-                        replaceHistory(recovery)
-                        dirty = true
-                    } else {
-                        try await storage.discardRecovery(at: url)
-                    }
-                }
-                restoreLatestAgentChangeFromHistory()
-                rebuild()
+                try await loadProject(at: url, offerRecovery: true)
             } catch {
                 DebugLog.write("project", "open FAILED \(url.path): \(error.localizedDescription)")
                 message = error.localizedDescription
             }
         }
+    }
+
+    /// Loads and shows a project. With `offerRecovery`, asks whether to restore autosaved edits; automation
+    /// keeps the saved project and leaves the recovery file for the next interactive open.
+    func loadProject(at url: URL, offerRecovery: Bool) async throws {
+        let loaded = try await storage.load(url)
+        reset(loaded.history.project, url: url)
+        replaceHistory(loaded.history)
+        diskData = loaded.diskData
+        logOpened(url, data: loaded.diskData)
+        message = loaded.warning ?? ""
+        if let warning = loaded.warning { DebugLog.write("project", "warning: \(warning)") }
+        if offerRecovery, let recovery = loaded.recovery {
+            let alert = NSAlert()
+            alert.messageText = String(localized: "Recover unsaved edits?")
+            alert.addButton(withTitle: String(localized: "Recover"))
+            alert.addButton(withTitle: String(localized: "Use saved project"))
+            if alert.runModal() == .alertFirstButtonReturn {
+                replaceHistory(recovery)
+                dirty = true
+            } else {
+                try await storage.discardRecovery(at: url)
+            }
+        }
+        restoreLatestAgentChangeFromHistory()
+        rebuild()
     }
 
     func reset(_ project: Project, url: URL) {
@@ -396,5 +404,5 @@ struct AutomationBusy: LocalizedError {
 
 extension Author {
     /// Agent-authored edits get the ◆ diff markers and the Undo toast.
-    var isAgent: Bool { [.claude, .codex, .model].contains(self) }
+    var isAgent: Bool { [.claude, .codex, .model, .agent].contains(self) }
 }

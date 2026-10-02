@@ -26,7 +26,7 @@ private let tools: [Tool] = CommandCatalog.specs.map { spec in
                 let arguments = try JSONEncoder().encode(request.arguments ?? [:])
                 let response = try MCPBridgeClient.call(
                     method: spec.name, arguments: arguments,
-                    token: ProcessInfo.processInfo.environment["BASHCUT_SESSION_TOKEN"])
+                    token: AutomationPaths.sessionToken())
                 let structured = try JSONDecoder().decode(Value.self, from: response.data)
                 return CallTool.Result(
                     content: [.text(text: response.text, annotations: nil, _meta: nil)],

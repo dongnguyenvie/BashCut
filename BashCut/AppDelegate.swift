@@ -46,6 +46,7 @@ import SwiftUI
         }
         if document.privilegedApproval != nil { document.resolvePrivilegedApproval(false) }
         document.agents.closeAll()
+        document.removeExternalAgentToken()
         Task {
             do {
                 if document.dirty, let url = document.fileURL {

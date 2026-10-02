@@ -1,6 +1,30 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Agents outside BashCut": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Agents outside BashCut" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Agent bên ngoài BashCut" } }
+      }
+    },
+    "Allow": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Allow" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Cho phép" } }
+      }
+    },
+    "New token": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "New token" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Token mới" } }
+      }
+    },
+    "Agents outside BashCut use the bashcut CLI or MCP with a token file only your user account can read.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Agents outside BashCut use the bashcut CLI or MCP with a token file only your user account can read." } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Agent bên ngoài BashCut dùng CLI bashcut hoặc MCP với một file token mà chỉ tài khoản của bạn đọc được." } }
+      }
+    },
     "Compared with previous export": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Compared with previous export" } },

@@ -112,6 +112,19 @@ struct CommandSpecTests {
             try CommandLineParser.parse(["layers", "add", "--kind", "image", "--base-rev", "3"])
         }
 
+        // Path parameters become absolute against the CLI's working directory.
+        let cwd = FileManager.default.currentDirectoryPath
+        let create = try CommandLineParser.parse(["project", "create", "--name", "Vlog", "--dir", "projects", "--fps", "30"])
+        #expect(create.params["directory"] == .string(URL(fileURLWithPath: cwd).appendingPathComponent("projects").path))
+        #expect(create.params["canvas"] == .string("portrait"))
+        #expect(create.params["saveCurrent"] == .bool(false))
+        let open = try CommandLineParser.parse(["project", "open", "~/clip-project", "--discard-current"])
+        #expect(open.params["path"]?.string?.hasPrefix(FileManager.default.homeDirectoryForCurrentUser.path) == true)
+        #expect(open.params["discardCurrent"] == .bool(true))
+        #expect(throws: CommandLineParser.Failure.self) {
+            try CommandLineParser.parse(["project", "create", "--name", "x", "--dir", "/tmp", "--fps", "25"])
+        }
+
         let text = try CommandLineParser.parse(["--format", "text", "timeline", "get"])
         #expect(text.format == "text")
         #expect(text.params["format"] == .string("text"))

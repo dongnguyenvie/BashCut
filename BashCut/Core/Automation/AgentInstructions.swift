@@ -28,6 +28,9 @@ extension CommandCatalog {
         On staleRevision, re-read and retry. Changes appear in the UI and can be undone.
         Job commands return a job ID; poll `bashcut jobs status JOB_ID`. Their result is one undoable edit.
         Installing plugins is user-only. Add `--format text` to print text results without JSON quoting.
+        Projects: `bashcut project create` / `project open` / `project save`; they refuse to drop unsaved work unless
+        you pass --save-current or --discard-current. Outside BashCut's terminals the CLI and MCP read the
+        automation token file automatically; edits are attributed to "agent". Exports still need the user's approval.
         """
 
     private static let operations = """

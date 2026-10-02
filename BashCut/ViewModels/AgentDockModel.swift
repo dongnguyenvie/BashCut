@@ -61,6 +61,8 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
     var workspace: URL?
     var defaultProviderRaw = TerminalProvider.codex.rawValue
     var allowAgentEdits = true
+    /// Agents outside the app (CLI/MCP from any terminal) edit through the 0600 automation token file.
+    var allowExternalAgents = true
     var defaultExportPresetRaw = "tiktok"
     var interfaceLanguage = "system"
     var error = ""
@@ -90,6 +92,7 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
         }
         defaultProviderRaw = UserDefaults.standard.string(forKey: "defaultAgent") ?? "codex"
         allowAgentEdits = UserDefaults.standard.object(forKey: "allowAgentEdits") as? Bool ?? true
+        allowExternalAgents = UserDefaults.standard.object(forKey: "allowExternalAgents") as? Bool ?? true
         defaultExportPresetRaw = UserDefaults.standard.string(forKey: "defaultExportPreset") ?? "tiktok"
         interfaceLanguage = UserDefaults.standard.string(forKey: "interfaceLanguage") ?? "system"
     }
@@ -129,6 +132,7 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
     func savePreferences() {
         UserDefaults.standard.set(defaultProviderRaw, forKey: "defaultAgent")
         UserDefaults.standard.set(allowAgentEdits, forKey: "allowAgentEdits")
+        UserDefaults.standard.set(allowExternalAgents, forKey: "allowExternalAgents")
         UserDefaults.standard.set(defaultExportPresetRaw, forKey: "defaultExportPreset")
         UserDefaults.standard.set(interfaceLanguage, forKey: "interfaceLanguage")
         if interfaceLanguage == "system" {
@@ -136,6 +140,11 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
         } else {
             UserDefaults.standard.set([interfaceLanguage], forKey: "AppleLanguages")
         }
+    }
+    /// Turning the switch on, or asking for a new token, writes a fresh token file; off removes it.
+    func applyExternalAgentPreference() {
+        savePreferences()
+        document.applyExternalAgentAccess(enabled: allowExternalAgents)
     }
     func applyAgentEditPreference() {
         if !allowAgentEdits {

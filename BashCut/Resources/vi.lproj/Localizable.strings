@@ -378,3 +378,7 @@
 "Copy" = "Sao chép";
 "Paste" = "Dán";
 "Select All" = "Chọn tất cả";
+"Agents outside BashCut" = "Agent bên ngoài BashCut";
+"Allow" = "Cho phép";
+"New token" = "Token mới";
+"Agents outside BashCut use the bashcut CLI or MCP with a token file only your user account can read." = "Agent bên ngoài BashCut dùng CLI bashcut hoặc MCP với một file token mà chỉ tài khoản của bạn đọc được.";

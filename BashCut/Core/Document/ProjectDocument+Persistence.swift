@@ -1,4 +1,5 @@
 import AppKit
+import BashCutAutomation
 import BashCutProject
 import BashCutStorage
 
@@ -23,25 +24,36 @@ extension ProjectDocument {
     }
 
     func save() {
-        guard let fileURL, !saving, !conflict else { return }
+        guard fileURL != nil, !saving, !conflict else { return }
+        Task {
+            do { try await saveNow() } catch is StorageError {} catch { message = error.localizedDescription }
+        }
+    }
+
+    /// Saves and waits for the write. A disk conflict marks the document conflicted and throws.
+    func saveNow() async throws {
+        guard let fileURL else { throw ProjectError.invalid("The project has not been saved to a folder yet") }
+        guard !saving else { throw ProjectError.invalid("A save is already running") }
+        guard !conflict else { throw ProjectError.invalid(String(localized: "Resolve the file conflict before editing.")) }
         let value = history
         let baseline = diskData
         let session = sessionID
         saving = true
-        Task {
-            defer { saving = false }
-            do {
-                let written = try await storage.save(value, to: fileURL, expectedDisk: baseline)
-                guard session == sessionID else { return }
-                diskData = written
-                if project == value.project { dirty = false }
-                message = String(localized: "Project saved")
-            } catch is StorageError {
-                guard session == sessionID else { return }
-                conflict = true
-                message = String(localized: "The project changed on disk")
-                await captureExternalProject(fileURL, session: session)
-            } catch { message = error.localizedDescription }
+        defer { saving = false }
+        do {
+            let written = try await storage.save(value, to: fileURL, expectedDisk: baseline)
+            guard session == sessionID else { return }
+            diskData = written
+            if project == value.project { dirty = false }
+            message = String(localized: "Project saved")
+            DebugLog.write("project", "saved \(fileURL.path) rev=\(value.project.revision)")
+        } catch let error as StorageError {
+            guard session == sessionID else { throw error }
+            conflict = true
+            message = String(localized: "The project changed on disk")
+            DebugLog.write("project", "save CONFLICT \(fileURL.path): file changed on disk")
+            await captureExternalProject(fileURL, session: session)
+            throw error
         }
     }
 

@@ -98,7 +98,6 @@ struct NewProjectView: View {
         guard let parent, !document.saving, !document.busy,
             document.confirmDiscard(removeRecovery: false)
         else { return }
-        let previousURL = document.fileURL
         document.creatingProject = true
         document.busy = true
         error = ""
@@ -108,11 +107,7 @@ struct NewProjectView: View {
                 document.busy = false
             }
             do {
-                let created = try await document.storage.create(setup, in: parent, footage: footage)
-                if let previousURL { try? await document.storage.discardRecovery(at: previousURL) }
-                document.reset(created.project, url: created.url)
-                document.diskData = created.diskData
-                document.message = String(localized: "Project created")
+                _ = try await document.createProject(setup, in: parent, footage: footage)
                 dismiss()
             } catch {
                 self.error = error.localizedDescription

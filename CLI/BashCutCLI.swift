@@ -26,7 +26,7 @@ import Foundation
             response = try UnixRPCClient.call(
                 RPCRequest(
                     method: invocation.spec.name, params: invocation.params,
-                    token: ProcessInfo.processInfo.environment["BASHCUT_SESSION_TOKEN"]))
+                    token: AutomationPaths.sessionToken()))
         } catch {
             DebugLog.write("cli", "\(invocation.spec.name) FAILED: \(error.localizedDescription)")
             throw error

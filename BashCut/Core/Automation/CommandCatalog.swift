@@ -7,7 +7,7 @@ public enum CommandCatalog {
     public static let libraryPanels = ["media", "audio", "text", "stickers", "effects", "transitions", "filters", "voice"]
     public static let exportPresets = ["tiktok", "youtube-1080", "youtube-4k", "quick-draft", "prores"]
 
-    public static let specs: [CommandSpec] = readSpecs + editSpecs + layerSpecs + capabilitySpecs + privilegedSpecs + uiSpecs
+    public static let specs: [CommandSpec] = readSpecs + projectSpecs + editSpecs + layerSpecs + capabilitySpecs + privilegedSpecs + uiSpecs
 
     public static let modes: [String: CommandMode] = Dictionary(uniqueKeysWithValues: specs.map { ($0.name, $0.mode) })
 
@@ -42,6 +42,45 @@ public enum CommandCatalog {
         CommandSpec(
             "jobs.status", .read, "Read one provider-backed job, or all recent jobs when job is omitted.",
             parameters: [CommandParameter("job", .string, "Job ID", cli: .positional)]),
+    ]
+
+    private static let leaveCurrent = [
+        CommandParameter("saveCurrent", .boolean, "Save the open project first when it has unsaved changes",
+                         default: .bool(false), cli: .flag("save-current")),
+        CommandParameter("discardCurrent", .boolean, "Drop unsaved changes of the open project",
+                         default: .bool(false), cli: .flag("discard-current")),
+    ]
+
+    private static let projectSpecs: [CommandSpec] = [
+        CommandSpec(
+            "project.open", .edit,
+            "Open a project.bashcut.json (or its folder). Fails if the open project has unsaved changes "
+                + "unless saveCurrent or discardCurrent is set. In-app agent tabs close; external agents keep access.",
+            parameters: [
+                CommandParameter("path", .string, "Absolute path to project.bashcut.json or its folder", required: true,
+                                 isPath: true, cli: .positional)
+            ] + leaveCurrent),
+        CommandSpec(
+            "project.create", .edit,
+            "Create a project folder (media, footage, render…) like the New Project wizard and open it.",
+            parameters: [
+                CommandParameter("name", .string, "Project name", required: true, cli: .option("name")),
+                CommandParameter("directory", .string, "Absolute parent folder for the new project folder",
+                                 required: true, isPath: true, cli: .option("dir")),
+                CommandParameter("footage", .string, "Footage folder to link (never modified)", isPath: true,
+                                 cli: .option("footage")),
+                CommandParameter("canvas", .string, "Canvas", default: .string("portrait"),
+                                 choices: ["portrait", "landscape", "square"], cli: .option("canvas")),
+                CommandParameter("resolution", .string, "Short-side resolution", default: .string("1080"),
+                                 choices: ["720", "1080", "2160"], cli: .option("resolution")),
+                CommandParameter("fps", .string, "Frame rate", default: .string("29.97"),
+                                 choices: ["29.97", "30", "24", "60"], cli: .option("fps")),
+                CommandParameter("language", .string, "Content language tag", default: .string("vi"),
+                                 cli: .option("language")),
+                CommandParameter("style", .string, "Style preset", default: .string("food-review"),
+                                 choices: ["food-review", "cinematic", "custom"], cli: .option("style")),
+            ] + leaveCurrent),
+        CommandSpec("project.save", .edit, "Save the open project to disk."),
     ]
 
     private static let editSpecs: [CommandSpec] = [
@@ -84,7 +123,7 @@ public enum CommandCatalog {
             "Add a media file to the project (path relative to the project folder or absolute); "
                 + "with place, also put it on a layer like the Import button.",
             parameters: [
-                CommandParameter("path", .string, "Media file path", required: true, cli: .positional),
+                CommandParameter("path", .string, "Media file path", required: true, isPath: true, cli: .positional),
                 CommandParameter("kind", .string, "Media kind", default: .string("video"), choices: ["video", "audio"],
                                  cli: .option("kind")),
                 CommandParameter("place", .boolean, "Also place it on a layer", default: .bool(false),

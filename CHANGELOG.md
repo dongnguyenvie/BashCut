@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Add `project create`, `project open` and `project save` CLI/MCP commands sharing the wizard, open and save code; they never show modal dialogs and refuse to drop unsaved work without `--save-current` or `--discard-current` (30 tools).
+- Let agents outside BashCut edit without copying a token: the app writes a 0600 automation token file that the CLI and MCP read automatically, attributed to a new `agent` author that survives project switches; a Settings switch turns it off or rotates it. Exports still require in-app approval.
 - Keep overflow layers in creation order (after the last layer with the same role), add new video layers behind text layers, and name the moved layer in band errors.
 - Add an Edit menu (Cut, Copy, Paste, Select All) so ⌘X/⌘C/⌘V/⌘A work in text fields and the embedded Claude, Codex and Shell terminals, and a Copy/Paste/Select All right-click menu on terminals.
 - Add a `media import` CLI/MCP command that adds a media file through the same probe as the Import button and can place it on a layer (27 tools).

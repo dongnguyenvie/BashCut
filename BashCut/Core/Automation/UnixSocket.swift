@@ -7,6 +7,21 @@ public enum AutomationPaths {
             ?? FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/Application Support/BashCut/automation.sock").path
     }
+
+    /// Token for agents outside the app, written by the running app with mode 0600 next to the 0600 socket,
+    /// so it grants nothing beyond what can already open the socket. Removed when the app quits or the
+    /// Settings switch is off.
+    public static var tokenFile: URL {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/BashCut/automation-token")
+    }
+
+    /// The session token from an in-app terminal (`BASHCUT_SESSION_TOKEN`), else the external-agent token file.
+    public static func sessionToken() -> String? {
+        if let token = ProcessInfo.processInfo.environment["BASHCUT_SESSION_TOKEN"], !token.isEmpty { return token }
+        guard let data = try? Data(contentsOf: tokenFile), data.count < 256 else { return nil }
+        return String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
 }
 
 private enum SocketIO {
