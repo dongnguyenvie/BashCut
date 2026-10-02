@@ -77,6 +77,7 @@ One `CommandRegistry` serves both front ends:
 | `project create` | edit | New Project |
 | `timeline apply <ops.json> --base-rev N --label "…"` | edit | every cut, trim, drag, property change |
 | `media import <paths>` | edit | dropping files into the Library |
+| `media proxy [media] [--force]` | edit | Media panel **Create Preview Proxy** (imports queue proxies for heavy footage automatically) |
 | `captions generate [--range]` | edit | [Auto Captions] |
 | `voice speak "<text>" --voice … --insert-at 12.3` | edit | Voice tab, Generate + Insert |
 | `beats detect <media>` | edit | [Detect Beats] |

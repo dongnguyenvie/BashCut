@@ -1,7 +1,9 @@
 // bashcut-bench: measures the M0 engine budgets on real footage without touching it.
 //
-//   swift run -c release bashcut-bench <footage-dir> [--clips 20] [--clip-seconds 1.5] [--keep]
+//   swift run -c release bashcut-bench <footage-dir> [--clips 20] [--clip-seconds 1.5] [--proxies] [--keep]
 //
+// --proxies generates preview proxies (ProxyManager) first and measures preview playback and scrubbing
+// on them, the way the editor previews heavy footage; export always reads the originals.
 // Footage is only read. The project, a `footage` symlink, the report and the optional export
 // live in build/bench/run-<timestamp>/. This is a developer tool, not a test: tests must never
 // depend on real footage.
@@ -16,11 +18,12 @@ struct Options {
     var clips = 20
     var clipSeconds = 1.5
     var keep = false
+    var proxies = false
 
     init(arguments: [String]) throws {
         var rest = arguments.dropFirst()
         guard let path = rest.popFirst(), !path.hasPrefix("--") else {
-            throw BenchError("usage: bashcut-bench <footage-dir> [--clips N] [--clip-seconds S] [--keep]")
+            throw BenchError("usage: bashcut-bench <footage-dir> [--clips N] [--clip-seconds S] [--proxies] [--keep]")
         }
         footage = URL(fileURLWithPath: path).standardizedFileURL
         while let flag = rest.popFirst() {
@@ -28,6 +31,7 @@ struct Options {
             case "--clips": clips = Int(rest.popFirst() ?? "") ?? clips
             case "--clip-seconds": clipSeconds = Double(rest.popFirst() ?? "") ?? clipSeconds
             case "--keep": keep = true
+            case "--proxies": proxies = true
             default: throw BenchError("unknown option \(flag)")
             }
         }
@@ -78,21 +82,26 @@ enum Bench {
               + "source \(sources[0].codec)")
 
         var clock = ContinuousClock.now
-        let snapshot = try await CompositionBuilder().build(project, root: runDirectory)
+        let proxySeconds = options.proxies ? try await makeProxies(project, root: runDirectory) : nil
+        clock = ContinuousClock.now
+        let builder = CompositionBuilder()
+        let preview = try await builder.build(project, root: runDirectory, purpose: .preview)
         let buildTime = clock.duration(to: .now)
+        let snapshot = try await builder.build(project, root: runDirectory, purpose: .export)
         let timelineSeconds = seconds(project.duration, project.fps)
 
         clock = ContinuousClock.now
-        let readFrames = try await readThroughput(snapshot)
+        let readFrames = try await readThroughput(preview)
         let readTime = clock.duration(to: .now)
         let readFPS = Double(readFrames) / readTime.seconds
 
-        let scrub = try await scrubLatencies(snapshot, project: project)
-        let playback = try await playback(snapshot, seconds: min(10, timelineSeconds - 1), fps: project.fps.value)
+        let generatorScrub = try await scrubLatencies(preview, project: project)
+        let scrub = try await playerScrubLatencies(preview, project: project)
+        let playback = try await playback(preview, seconds: min(10, timelineSeconds - 1), fps: project.fps.value)
 
         let exportURL = runDirectory.appendingPathComponent("export.mp4")
         clock = ContinuousClock.now
-        try await Exporter().export(snapshot, to: exportURL)
+        _ = try await Exporter().export(snapshot, to: exportURL)
         let exportTime = clock.duration(to: .now)
         let exported = try await AVURLAsset(url: exportURL).load(.duration).seconds
         if !options.keep { try? FileManager.default.removeItem(at: exportURL) }
@@ -102,13 +111,21 @@ enum Bench {
              "\(playback.delivered)/\(playback.expected) frames in \(String(format: "%.1f", playback.seconds)) s, "
              + "\(playback.dropped) dropped (budget ≤ 1 %)"),
             ("scrub p95", scrub.p95 < 100,
-             String(format: "%.1f ms (p50 %.1f, max %.1f; random seeks, zero tolerance; budget < 100 ms)", scrub.p95, scrub.p50, scrub.max)),
+             String(format: "%.1f ms (p50 %.1f, max %.1f; AVPlayer exact seeks to a decoded frame; budget < 100 ms)",
+                    scrub.p95, scrub.p50, scrub.max)),
             ("export", exportTime.seconds < timelineSeconds,
              String(format: "%.2f s for %.2f s of video = %.2f× real time (budget > 1×)",
                     exportTime.seconds, exported, timelineSeconds / exportTime.seconds))
         ]
         print("")
+        if let proxySeconds {
+            print(String(format: "proxies   %.1f s for %d clips (%@)", proxySeconds, sources.count,
+                         "H.264 \(ProxyManager.longSide) px, keyframe every \(ProxyManager.keyframeInterval) frames"))
+        }
+        print("preview   \(options.proxies ? "proxies" : "originals")")
         print(String(format: "build     %.0f ms", buildTime.seconds * 1000))
+        print(String(format: "generator %.1f ms p95 (p50 %.1f; AVAssetImageGenerator, zero tolerance; for reference)",
+                     generatorScrub.p95, generatorScrub.p50))
         print(String(format: "decode    %.0f fps through the compositor (%d frames in %.2f s)", readFPS, readFrames, readTime.seconds))
         for (name, ok, detail) in checks {
             print("\(ok ? "PASS" : "FAIL")  \(name.padding(toLength: 10, withPad: " ", startingAt: 0)) \(detail)")
@@ -118,6 +135,8 @@ enum Bench {
             "buildMs": buildTime.seconds * 1000, "decodeFPS": readFPS,
             "playback": ["delivered": playback.delivered, "expected": playback.expected, "dropped": playback.dropped],
             "scrubMs": ["p50": scrub.p50, "p95": scrub.p95, "max": scrub.max],
+            "generatorScrubMs": ["p50": generatorScrub.p50, "p95": generatorScrub.p95, "max": generatorScrub.max],
+            "preview": options.proxies ? "proxies" : "originals", "proxySeconds": proxySeconds ?? 0,
             "exportSeconds": exportTime.seconds, "machine": machineModel()
         ]
         let reportURL = runDirectory.appendingPathComponent("report.json")
@@ -160,7 +179,7 @@ enum Bench {
     }
 
     static func makeProject(_ sources: [Source], clipSeconds: Double) throws -> Project {
-        var project = Project(name: "DJI engine bench")
+        let project = Project(name: "DJI engine bench")
         let clipFrames = Int((clipSeconds * project.fps.value).rounded())
         var operations: [EditOperation] = []
         for (index, source) in sources.enumerated() {
@@ -179,6 +198,25 @@ enum Bench {
             operations.append(.insert(track: "t1", item: caption))
         }
         return try project.applying(.group(label: "Bench", author: .user, ops: operations)).project
+    }
+
+    /// Writes a proxy for every media file the way the editor does, returning the total time.
+    static func makeProxies(_ project: Project, root: URL) async throws -> Double {
+        let start = ContinuousClock.now
+        let manager = ProxyManager()
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            var pending = project.media[...]
+            // Two at a time: the hardware encoder is shared, more in flight only adds memory.
+            for _ in 0..<2 { if let media = pending.popFirst() { group.addTask { try await proxy(media) } } }
+            while try await group.next() != nil {
+                if let media = pending.popFirst() { group.addTask { try await proxy(media) } }
+            }
+            @Sendable func proxy(_ media: Media) async throws {
+                guard let destination = ProxyManager.destination(for: media, root: root) else { return }
+                try await manager.generate(from: root.appendingPathComponent(media.path), to: destination)
+            }
+        }
+        return start.duration(to: .now).seconds
     }
 
     // MARK: - Measurements
@@ -215,6 +253,40 @@ enum Bench {
             let start = ContinuousClock.now
             _ = try await generator.image(at: project.fps.time(frame))
             if index > 0 { samples.append(start.duration(to: .now).seconds * 1000) } // first call warms up decoders
+        }
+        samples.sort()
+        return Latency(p50: samples[samples.count / 2], p95: samples[Int(Double(samples.count - 1) * 0.95)],
+                       max: samples.last ?? 0)
+    }
+
+    /// The viewer's path: a paused AVPlayer seeks with zero tolerance and the frame counts as shown once
+    /// the item's video output has a new pixel buffer for the target time.
+    @MainActor
+    static func playerScrubLatencies(_ snapshot: CompositionSnapshot, project: Project) async throws -> Latency {
+        let item = AVPlayerItem(asset: snapshot.composition)
+        item.videoComposition = snapshot.videoComposition
+        let output = AVPlayerItemVideoOutput(pixelBufferAttributes: [
+            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
+        ])
+        item.add(output)
+        let player = AVPlayer(playerItem: item)
+        player.isMuted = true
+        for _ in 0..<100 where item.status != .readyToPlay {
+            if item.status == .failed { throw item.error ?? BenchError("player item failed") }
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        var random = SplitMix(seed: 42)
+        let frames = (0..<41).map { _ in Int(random.next() % UInt64(project.duration - 1)) }
+        var samples: [Double] = []
+        for (index, frame) in frames.enumerated() {
+            let time = project.fps.time(frame)
+            let start = ContinuousClock.now
+            await player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero)
+            for _ in 0..<500 where !output.hasNewPixelBuffer(forItemTime: time) {
+                try await Task.sleep(for: .milliseconds(1))
+            }
+            _ = output.copyPixelBuffer(forItemTime: time, itemTimeForDisplay: nil)
+            if index > 0 { samples.append(start.duration(to: .now).seconds * 1000) }
         }
         samples.sort()
         return Latency(p50: samples[samples.count / 2], p95: samples[Int(Double(samples.count - 1) * 0.95)],

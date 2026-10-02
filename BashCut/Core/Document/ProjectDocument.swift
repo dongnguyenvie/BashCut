@@ -48,6 +48,12 @@ final class ProjectDocument {
     @ObservationIgnored lazy var exports = ExportController(jobs: jobs) { [unowned self] in
         ExportPipeline(engine: engine, loudness: plugins.service)
     }
+    /// Preview proxies for heavy footage, made one at a time; the preview rebuilds as each one lands.
+    @ObservationIgnored lazy var proxies: ProxyQueue = {
+        let queue = ProxyQueue(jobs: jobs)
+        queue.onFinished = { [weak self] _ in self?.rebuild() }
+        return queue
+    }()
 
     /// App-wide services come from `services`; per-project controllers are created here.
     init(services: AppServices) {
@@ -166,6 +172,7 @@ final class ProjectDocument {
         fileSync.reset()
         importReport = nil
         exports.reset()
+        proxies.cancelAll()
         jobs.cancelAll()
         ui.closeProjectSheets()
         privilegedApproval = nil

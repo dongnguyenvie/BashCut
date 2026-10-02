@@ -1527,6 +1527,70 @@
         }
       }
     },
+    "Create Preview Proxy": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create Preview Proxy"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tạo bản proxy xem trước"
+          }
+        }
+      }
+    },
+    "Proxy": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Proxy"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Proxy"
+          }
+        }
+      }
+    },
+    "Making proxy…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Making proxy…"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang tạo proxy…"
+          }
+        }
+      }
+    },
+    "Previews use a smaller copy of this clip; export uses the original.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Previews use a smaller copy of this clip; export uses the original."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xem trước dùng bản nhỏ hơn của clip này; khi xuất vẫn dùng file gốc."
+          }
+        }
+      }
+    },
     "Import footage to start editing.": {
       "localizations": {
         "en": {

@@ -38,11 +38,14 @@ public struct ProxyMediaSource: MediaSource {
 
     /// The proxy file for `media`, if one exists. Media IDs are restricted to safe file-name characters.
     public static func proxyURL(for media: Media, root: URL) -> URL? {
-        guard !media.id.isEmpty, media.id.range(of: "^[A-Za-z0-9._-]+$", options: .regularExpression) != nil,
-            !media.id.hasPrefix(".")
-        else { return nil }
+        guard isSafe(media.id) else { return nil }
         let directory = root.appendingPathComponent(folder, isDirectory: true)
         return extensions.lazy.map { directory.appendingPathComponent(media.id).appendingPathExtension($0) }
             .first { FileManager.default.fileExists(atPath: $0.path) }
+    }
+
+    /// Whether a media ID can name a proxy file: letters, digits, `.`, `_`, `-`, not starting with a dot.
+    public static func isSafe(_ id: String) -> Bool {
+        !id.isEmpty && !id.hasPrefix(".") && id.range(of: "^[A-Za-z0-9._-]+$", options: .regularExpression) != nil
     }
 }

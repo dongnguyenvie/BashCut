@@ -21,6 +21,8 @@ bashcut media place --media MEDIA_ID [--track TRACK_ID] [--at-frame 90] --base-r
 bashcut timeline move ITEM_ID --track TRACK_ID --at-frame 120 --base-rev 14
 ```
 
+Heavy footage (HEVC, longer side above 1920 px or above 20 Mbit/s) gets a preview proxy when it is imported: an H.264 copy at most 960 px on the long side with a keyframe every 10 frames, written to `.bashcut/proxies/<media id>.mov` with the original frame times. The viewer reads proxies; exports always read the originals. Proxies are made one at a time as `media.proxy` jobs (see `jobs status`), and the preview switches to each one as it lands. `bashcut media proxy [MEDIA_ID] [--force]` queues them by hand (the Media panel's **Create Preview Proxy** menu does the same with `--force`); `media list` reports each media's `proxy` state (`none`, `queued`, `ready`).
+
 `media place` and `timeline move` use the same planner as the timeline UI: when the range is taken, the clip goes to the next free layer of the same kind and role, or to a new layer next to the target, and linked sound follows onto a dialogue layer. Both return the layer actually used. Raw `timeline apply` insert/move operations that would overlap are rejected.
 
 The app adds its bundled CLI to PATH and supplies BASHCUT_SOCKET, BASHCUT_PROJECT and an in-memory BASHCUT_SESSION_TOKEN to each child process. Codex receives a named permission profile that allows its stable workspace plus the exact BashCut Unix socket; it does not receive a broad socket allowlist. Keep tokens out of scripts, logs and project files. Closing a tab revokes its token. Shell sessions are attributed to the user; Claude/Codex sessions have their own authors.
@@ -31,6 +33,7 @@ The app adds its bundled CLI to PATH and supplies BASHCUT_SOCKET, BASHCUT_PROJEC
 bashcut context get
 bashcut project get
 bashcut media list
+bashcut media proxy [MEDIA_ID] [--force]
 bashcut timeline get --format text
 bashcut review run
 bashcut export status

@@ -387,3 +387,7 @@
 "Allow" = "Allow";
 "New token" = "New token";
 "Agents outside BashCut use the bashcut CLI or MCP with a token file only your user account can read." = "Agents outside BashCut use the bashcut CLI or MCP with a token file only your user account can read.";
+"Create Preview Proxy" = "Create Preview Proxy";
+"Proxy" = "Proxy";
+"Making proxy…" = "Making proxy…";
+"Previews use a smaller copy of this clip; export uses the original." = "Previews use a smaller copy of this clip; export uses the original.";

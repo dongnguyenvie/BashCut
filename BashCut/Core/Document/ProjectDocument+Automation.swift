@@ -19,6 +19,7 @@ extension ProjectDocument {
         registerEditCommands()
         registerLayerCommands()
         registerImportCommands()
+        registerProxyCommands()
         registerPrivilegedCommands()
         registerUICommands()
         registerUIActionCommands()
@@ -67,7 +68,13 @@ extension ProjectDocument {
                 "tracks": document.project["tracks"] ?? .array([]),
             ])
         }
-        handle("media.list") { document, _, _ in document.project["media"] ?? .array([]) }
+        handle("media.list") { document, _, _ in
+            .array(document.project.media.map { media in
+                var fields = media.fields
+                fields["proxy"] = .string(document.proxyState(media).rawValue)
+                return .object(fields)
+            })
+        }
         handle("review.run") { document, _, _ in
             .array(
                 TimelineReview.run(document.project).map { issue in

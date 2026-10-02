@@ -143,6 +143,16 @@ public enum CommandCatalog {
                 baseRevision,
             ]),
         CommandSpec(
+            "media.proxy", .edit,
+            "Queue preview proxies (smaller, quick-to-seek copies in .bashcut/proxies; export keeps the originals) "
+                + "for heavy video media, or one media item. Imports queue them automatically. Returns a status per "
+                + "media: queued with its job ID, exists, not-needed or skipped.",
+            parameters: [
+                CommandParameter("media", .string, "Project media ID; all video media by default", cli: .positional),
+                CommandParameter("force", .boolean, "Make proxies even for light footage, replacing existing ones",
+                                 default: .bool(false), cli: .flag("force")),
+            ]),
+        CommandSpec(
             "media.place", .edit,
             "Place project media on a layer (main by default), with linked sound on a dialogue layer; "
                 + "an occupied range spills onto a free or new layer.",

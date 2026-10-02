@@ -23,7 +23,7 @@ only, or no command needed.
 | M-2 | Source viewer, I/O, insert (E) / overwrite (Q) | P0 | `timeline apply` (insert) |
 | M-3 | Background survey: thumbnails, static-clip detection, contact sheet | P1 | — (skill `nolan-footage-survey`) |
 | M-4 | Transcript through a replaceable `captions.transcribe` provider, speech badge, search by speech | P1 | `media search` |
-| M-5 | Automatic proxies for heavy footage | P1 | — |
+| M-5 | Automatic proxies for heavy footage | P1 | `media proxy` |
 | M-6 | Transcode unsupported formats with ffmpeg on import | P2 | — |
 
 ## Timeline and editing

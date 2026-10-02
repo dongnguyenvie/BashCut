@@ -24,6 +24,7 @@ extension ProjectDocument {
             do {
                 var planner = LayerPlanner(project)
                 var at = project.insertionFrame(trackID: trackID, playhead: playhead)
+                var mediaIDs: [String] = []
                 for url in urls {
                     let imported = try await Self.importedMedia(
                         url: url, kind: kind, projectFPS: project.fps, root: root)
@@ -32,9 +33,11 @@ extension ProjectDocument {
                             + "target=\(trackID) at=\(at)")
                     try planner.add([.addMedia(imported.media)])
                     try planner.placeMedia(imported.media, on: trackID, at: at, duration: imported.frames)
+                    mediaIDs.append(imported.media.id)
                     at += imported.frames
                 }
                 try commitPlan(planner, label: "Import footage", author: .user, baseRevision: nil)
+                requestProxiesAfterImport(mediaIDs, author: .user)
                 let linked = project.tracks.flatMap(\.items).filter { $0.fields["linkedAudio"] != nil }.count
                 DebugLog.write("import", "done; items with linked audio=\(linked) layers: \(layoutSummary())")
             } catch {
@@ -73,6 +76,7 @@ extension ProjectDocument {
             }
             result["rev"] = .integer(
                 try document.commitPlan(planner, label: "Import media", author: author, baseRevision: base))
+            document.requestProxiesAfterImport([imported.media.id], author: author)
             if let item = result["item"]?.string {
                 result["track"] = document.project.tracks.first { $0.items.contains { $0.id == item } }.map { .string($0.id) }
                 result["linkedAudio"] = document.project.tracks.flatMap(\.items).first { $0.id == item }?

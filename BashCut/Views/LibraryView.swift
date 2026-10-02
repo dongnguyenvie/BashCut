@@ -67,13 +67,32 @@ struct LibraryView: View {
                         Text(URL(fileURLWithPath: media.path).lastPathComponent).font(.caption2).lineLimit(1)
                         Text(mediaSummary(media))
                             .font(.system(size: 9, design: .monospaced)).foregroundStyle(.secondary)
-                        Button("Append") { document.appendMedia(media) }.font(.caption2)
+                        HStack(spacing: 6) {
+                            Button("Append") { document.appendMedia(media) }.font(.caption2)
+                            proxyBadge(media)
+                        }
+                    }
+                    .contextMenu {
+                        Button("Create Preview Proxy") {
+                            Task { try? await document.requestProxies(mediaIDs: [media.id], force: true) }
+                        }.disabled(document.fileURL == nil || document.proxyState(media) == .queued)
                     }
                 }
             }
             if visibleMedia.isEmpty {
                 Text(emptyMediaMessage).foregroundStyle(.secondary).font(.caption)
             }
+        }
+    }
+    @ViewBuilder private func proxyBadge(_ media: Media) -> some View {
+        switch document.proxyState(media) {
+        case .ready:
+            Text("Proxy").font(.system(size: 9)).foregroundStyle(.secondary)
+                .help("Previews use a smaller copy of this clip; export uses the original.")
+        case .queued:
+            Text("Making proxy…").font(.system(size: 9)).foregroundStyle(.secondary)
+        case .none:
+            EmptyView()
         }
     }
     private func mediaSummary(_ media: Media) -> String {

@@ -387,3 +387,7 @@
 "Allow" = "Cho phép";
 "New token" = "Token mới";
 "Agents outside BashCut use the bashcut CLI or MCP with a token file only your user account can read." = "Agent bên ngoài BashCut dùng CLI bashcut hoặc MCP với một file token mà chỉ tài khoản của bạn đọc được.";
+"Create Preview Proxy" = "Tạo bản proxy xem trước";
+"Proxy" = "Proxy";
+"Making proxy…" = "Đang tạo proxy…";
+"Previews use a smaller copy of this clip; export uses the original." = "Xem trước dùng bản nhỏ hơn của clip này; khi xuất vẫn dùng file gốc.";
