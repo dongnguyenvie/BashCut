@@ -44,6 +44,7 @@ extension TimelineCanvas {
             }
             menu.addItem(entry)
         }
+        if item.mediaID != nil, item.fields["freezeFrame"] == nil { menu.addItem(speedMenu(item)) }
         menu.addItem(.separator())
         let locked = track.isLocked
         let title = String(format: String(localized: locked ? "Unlock %@" : "Lock %@"), track.name)
@@ -55,6 +56,27 @@ extension TimelineCanvas {
         PluginMenus.append(to: menu, document, placement: "clip.context", mediaID: item.mediaID)
         PluginMenus.append(to: menu, document, placement: "track.context")
         return menu
+    }
+
+    /// Speed › presets and Reset, applied like the Inspector (length follows speed unless the Inspector says not).
+    private func speedMenu(_ item: Item) -> NSMenuItem {
+        let submenu = NSMenu()
+        let keepDuration = UserDefaults.standard.object(forKey: "speedChangesLength") as? Bool == false
+        for preset in UIAction.speedPresets {
+            let entry = ClosureMenuItem(UIAction.speedLabel(preset)) { [weak self] in
+                guard let self else { return }
+                do { try document.setClipSpeed(preset, item: item.id, keepDuration: keepDuration) } catch {
+                    document.message = error.localizedDescription
+                }
+            }
+            entry.state = abs(item.speed - preset) < 0.001 ? .on : .off
+            submenu.addItem(entry)
+        }
+        let parent = NSMenuItem(
+            title: String(format: String(localized: "Speed (%@)"), UIAction.speedLabel(item.speed)), action: nil,
+            keyEquivalent: "")
+        parent.submenu = submenu
+        return parent
     }
 
     // MARK: Dropping media

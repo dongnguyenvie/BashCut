@@ -18,6 +18,7 @@ extension ProjectDocument {
         registerDialogs()
         registerEditCommands()
         registerLayerCommands()
+        registerSpeedCommands()
         registerAdjustmentCommands()
         registerImportCommands()
         registerProxyCommands()

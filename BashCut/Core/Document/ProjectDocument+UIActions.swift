@@ -26,6 +26,9 @@ extension ProjectDocument {
         case .split, .delete, .lift: return selected != nil
         case .freezeFrame, .changeFraming: return selectedItemTrack?.kind == "video"
         case .unlinkAudio: return selected?.linkedItemID != nil
+        case .speedUp: return speedTarget.map { $0.speed < (UIAction.speedPresets.last ?? 4) - 0.001 } ?? false
+        case .slowDown: return speedTarget.map { $0.speed > (UIAction.speedPresets.first ?? 0.25) + 0.001 } ?? false
+        case .resetSpeed: return speedTarget.map { $0.speed != 1 } ?? false
         case .layerUp, .layerDown, .deleteLayer: return selectedTrackID != nil
         case .sourceTogglePlayback, .sourcePreviousFrame, .sourceNextFrame, .markIn, .markOut, .sourceInsert,
             .sourceOverwrite, .sourceClose:
@@ -76,6 +79,9 @@ extension ProjectDocument {
         case .zoomFit: ui.zoomToFit(duration: project.duration, fps: project.fps.value)
         case .freezeFrame: toggleFreezeSelected()
         case .unlinkAudio: unlinkSelectedAudio()
+        case .speedUp: try stepSpeed(up: true, author: author)
+        case .slowDown: try stepSpeed(up: false, author: author)
+        case .resetSpeed: try setClipSpeed(1, keepDuration: false, author: author)
         case .changeFraming:
             guard let item = selected else { return }
             patchSelected(ReframePreset.next(after: item).patch, label: "Change framing")

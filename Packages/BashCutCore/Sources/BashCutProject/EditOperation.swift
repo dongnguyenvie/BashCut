@@ -13,6 +13,7 @@ public indirect enum EditOperation: Codable, Sendable, Equatable {
     case reorder(item: String, before: String?)
     case slip(item: String, sourceIn: Int)
     case roll(item: String, edge: Edge, toFrame: Int)
+    case setSpeed(item: String, speed: Double, keepDuration: Bool)  // see EditOperation+Speed.swift
     case setProperties(item: String, patch: [String: JSONValue])
     case setLinkedAudio(video: String, audio: String?)
     case addMedia(Media)
@@ -65,7 +66,7 @@ extension Project {
         guard !overflow else { throw ProjectError.invalid("Frame arithmetic overflow") }
         return result
     }
-    fileprivate func location(_ id: String) throws -> (Int, Int) {
+    func location(_ id: String) throws -> (Int, Int) {
         for (trackIndex, track) in tracks.enumerated() {
             if let index = track.items.firstIndex(where: { $0.id == id }) { return (trackIndex, index) }
         }
@@ -160,10 +161,11 @@ extension Project {
             let linked = try linkedItemID(id)
             try rollItem(id: id, edge: edge, frame: frame)
             if let linked { try rollItem(id: linked, edge: edge, frame: frame) }
+        case .setSpeed(let id, let speed, let keepDuration): try applySpeed(id, speed: speed, keepDuration: keepDuration)
         }
     }
 
-    private func linkedItemID(_ id: String) throws -> String? {
+    func linkedItemID(_ id: String) throws -> String? {
         let (track, index) = try location(id)
         let item = tracks[track].items[index]
         return item.fields["linkedAudio"]?.string ?? item.fields["linkedVideo"]?.string
@@ -490,7 +492,7 @@ extension Project {
         }
     }
 
-    fileprivate mutating func shift(track: Int, from frame: Int, by delta: Int) throws {
+    mutating func shift(track: Int, from frame: Int, by delta: Int) throws {
         for index in tracks[track].items.indices where tracks[track].items[index].at >= frame {
             tracks[track].items[index].at = try sum(tracks[track].items[index].at, delta)
         }

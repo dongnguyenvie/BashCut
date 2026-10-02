@@ -136,7 +136,8 @@ public indirect enum EditOperation: Codable, Sendable, Equatable {
     case reorder(item: String, before: String?)
     case slip(item: String, sourceIn: Int)
     case roll(item: String, edge: Edge, toFrame: Int)
-    case setProperties(item: String, patch: [String: JSONValue])  // transform, speed, volume, color, text…
+    case setSpeed(item: String, speed: Double, keepDuration: Bool)  // clip + linked partner, ripples its layers
+    case setProperties(item: String, patch: [String: JSONValue])  // transform, volume, color, text…
     case setLinkedAudio(video: String, audio: String?)
     // media, tracks, project properties, provider preferences, beat grid,
     // sections, transitions and LUT catalog operations …

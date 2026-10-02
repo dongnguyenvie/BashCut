@@ -4526,6 +4526,66 @@
         "en": { "stringUnit": { "state": "translated", "value": "The plugin needs it but cannot install it; ask the plugin's author." } },
         "vi": { "stringUnit": { "state": "translated", "value": "Plugin cần nó nhưng không tự cài được; hãy báo tác giả plugin." } }
       }
+    },
+    "Speed applies to video and audio clips.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Speed applies to video and audio clips." } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Tốc độ chỉ áp dụng cho clip video và audio." } }
+      }
+    },
+    "A freeze frame has no speed. Remove the freeze to change it.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "A freeze frame has no speed. Remove the freeze to change it." } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Khung hình đứng không có tốc độ. Bỏ đứng hình để chỉnh." } }
+      }
+    },
+    "Change clip length": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Change clip length" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đổi độ dài clip" } }
+      }
+    },
+    "Faster clips get shorter and later clips on the layer move up.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Faster clips get shorter and later clips on the layer move up." } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Clip nhanh hơn sẽ ngắn lại và các clip phía sau trên layer dồn lên." } }
+      }
+    },
+    "The clip keeps its length and uses more or less of the source.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "The clip keeps its length and uses more or less of the source." } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Clip giữ nguyên độ dài và dùng nhiều hoặc ít đoạn gốc hơn." } }
+      }
+    },
+    "Linked sound changes too": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Linked sound changes too" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Âm thanh liên kết cũng đổi theo" } }
+      }
+    },
+    "Speed (%@)": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Speed (%@)" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Tốc độ (%@)" } }
+      }
+    },
+    "Speed up selected clip": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Speed up selected clip" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Tăng tốc clip đang chọn" } }
+      }
+    },
+    "Slow down selected clip": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Slow down selected clip" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Giảm tốc clip đang chọn" } }
+      }
+    },
+    "Reset selected clip to normal speed": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Reset selected clip to normal speed" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đưa clip đang chọn về tốc độ thường" } }
+      }
     }
   },
   "version": "1.0"

@@ -500,3 +500,13 @@
 "Installed during setup" = "Sẽ được cài trong lúc cài đặt";
 "Not available on this Mac" = "Không có trên máy này";
 "The plugin needs it but cannot install it; ask the plugin's author." = "Plugin cần nó nhưng không tự cài được; hãy báo tác giả plugin.";
+"Speed applies to video and audio clips." = "Tốc độ chỉ áp dụng cho clip video và audio.";
+"A freeze frame has no speed. Remove the freeze to change it." = "Khung hình đứng không có tốc độ. Bỏ đứng hình để chỉnh.";
+"Change clip length" = "Đổi độ dài clip";
+"Faster clips get shorter and later clips on the layer move up." = "Clip nhanh hơn sẽ ngắn lại và các clip phía sau trên layer dồn lên.";
+"The clip keeps its length and uses more or less of the source." = "Clip giữ nguyên độ dài và dùng nhiều hoặc ít đoạn gốc hơn.";
+"Linked sound changes too" = "Âm thanh liên kết cũng đổi theo";
+"Speed (%@)" = "Tốc độ (%@)";
+"Speed up selected clip" = "Tăng tốc clip đang chọn";
+"Slow down selected clip" = "Giảm tốc clip đang chọn";
+"Reset selected clip to normal speed" = "Đưa clip đang chọn về tốc độ thường";

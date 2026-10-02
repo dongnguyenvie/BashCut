@@ -94,6 +94,19 @@ struct CommandSpecTests {
         #expect(saturation["maximum"] == .number(4))
     }
 
+    @Test("clip speed parses like the Inspector: optional item, number speed, keep-duration flag")
+    func clipSpeed() throws {
+        let speed = try CommandLineParser.parse(["clip", "speed", "m1", "--speed", "1.5", "--keep-duration", "--base-rev", "7"])
+        #expect(speed.spec.mode == .edit)
+        #expect(speed.params == [
+            "item": .string("m1"), "speed": .number(1.5), "keepDuration": .bool(true), "baseRev": .integer(7),
+        ])
+        let spec = try #require(CommandCatalog.spec(named: "clip.speed"))
+        #expect(throws: RPCFailure.self) { try spec.validate(["speed": .number(40), "baseRev": .integer(1)]) }
+        #expect(UIAction.matching("clip.speed-up") == [.speedUp])
+        #expect(UIAction.speedLabel(1.5) == "1.5×" && UIAction.speedLabel(2) == "2×" && UIAction.speedLabel(0.25) == "0.25×")
+    }
+
     @Test("Plugin commands take JSON parameters on the CLI and publish an object schema to MCP")
     func pluginCommands() throws {
         let run = try CommandLineParser.parse(["plugins", "run", "example.toolkit.grade", "--params", #"{"mode":"vivid"}"#])

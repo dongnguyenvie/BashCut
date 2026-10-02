@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+- **Change speed** like CapCut: a clip's length now follows its speed (2× halves it, 0.5× doubles it) and later
+  clips on its layer, and on its linked sound's layer, move with it; "Change clip length" off keeps the old
+  behaviour. Linked picture and sound change together, and a clip is shortened to fit its source. Inspector ›
+  Speed has presets (0.25×–4×), a slider and a field (0.1×–16×), the clip menu has a Speed submenu, clips show a
+  "2×" badge, and **Speed up / Slow down / Reset speed** are editor actions. New `setSpeed` operation and
+  `clip speed` command.
 - **Plugin preflight**: before the install approval, BashCut probes the plugin's dependencies and labels each one
   *Available on this Mac*, *Installed during setup* or *Not available on this Mac*; a plugin that needs something
   this Mac lacks and cannot install is refused with a plain explanation, and the space estimate counts only what
