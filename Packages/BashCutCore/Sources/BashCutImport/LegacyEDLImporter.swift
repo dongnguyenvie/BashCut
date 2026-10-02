@@ -264,3 +264,31 @@ private struct MediaImportContext {
         Self(fps: fps, destination: destination, kind: kind, hasAudio: value)
     }
 }
+
+/// The legacy `edl.json` format as a `TimelineImporter`.
+public struct LegacyEDLFormat: TimelineImporter {
+    public let id = "legacy-edl"
+    public let title = "Legacy edl.json"
+    public let fileExtensions = ["json"]
+
+    public init() {}
+
+    public func importTimeline(_ data: Data, name: String, destinationDirectory: URL) throws -> TimelineImport {
+        try LegacyEDLImporter.decode(data, name: name, destinationDirectory: destinationDirectory).timelineImport
+    }
+}
+
+extension LegacyEDLImportReport {
+    public var timelineImport: TimelineImport {
+        TimelineImport(
+            project: project, title: "EDL import report", sourceName: "EDL",
+            counts: [
+                .init(key: "cuts", label: "Cuts", source: sourceCutCount, imported: importedCutCount),
+                .init(key: "voiceovers", label: "Voiceovers", source: sourceVoiceoverCount, imported: importedVoiceoverCount),
+                .init(key: "duration", label: "Duration (frames)", source: sourceTotalFrames, imported: importedDuration),
+            ],
+            mismatchNote: sourceTotalFrames.map { $0 != importedDuration } == true
+                ? "Imported duration differs from the EDL total." : nil,
+            warnings: warnings)
+    }
+}

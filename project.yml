@@ -104,6 +104,8 @@ targets:
         product: BashCutPlugin
       - package: BashCutCore
         product: BashCutInterchange
+      - package: BashCutCore
+        product: BashCutImport
   # The target name must differ from "BashCut" beyond case: on a case-insensitive disk both targets
   # would share one intermediates folder and leak compiler flags into each other.
   BashCutCLI:

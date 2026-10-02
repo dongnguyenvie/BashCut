@@ -24,6 +24,7 @@ let package = Package(
         .target(name: "BashCutPlugins", dependencies: [.product(name: "BashCutProject", package: "BashCutCore"),
             .product(name: "BashCutPlugin", package: "BashCutCore")], path: "BashCut/Core/Plugins"),
         .target(name: "BashCutDocument", dependencies: ["BashCutEngine", "BashCutPlugins", "BashCutAutomation", "BashCutStorage",
+            .product(name: "BashCutImport", package: "BashCutCore"),
             .product(name: "BashCutProject", package: "BashCutCore"),
             .product(name: "BashCutInterchange", package: "BashCutCore"),
             .product(name: "BashCutPlugin", package: "BashCutCore")], path: "BashCut/Core/Services"),

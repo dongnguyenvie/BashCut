@@ -2,6 +2,7 @@ import AppKit
 import BashCutAutomation
 import BashCutDocument
 import BashCutEngine
+import BashCutInterchange
 import BashCutProject
 import Foundation
 
@@ -17,7 +18,7 @@ extension ProjectDocument {
         panel.directoryURL = fileURL?.deletingLastPathComponent().appendingPathComponent("render")
         guard let url = ModalCenter.shared.save(panel, name: "export-otio") else { return }
         do {
-            try ExportController.writeOTIO(project, to: url, allowReplace: true)
+            try TimelineFormats.write(project, with: OpenTimelineIOExporter(), to: url, allowReplace: true)
             message = String(localized: "OTIO exported")
         } catch { message = error.localizedDescription }
     }

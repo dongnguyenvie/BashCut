@@ -1,7 +1,16 @@
 import BashCutProject
 import Foundation
 
-public enum OpenTimelineIOExporter {
+/// OpenTimelineIO JSON: one OTIO track per layer lane, clips referencing the original media.
+public struct OpenTimelineIOExporter: TimelineExporter {
+    public let id = "otio"
+    public let title = "OpenTimelineIO"
+    public let fileExtension = "otio"
+
+    public init() {}
+
+    public func data(for project: Project) throws -> Data { try Self.data(for: project) }
+
     public static func data(for project: Project) throws -> Data {
         try project.validate()
         let rate = project.fps.value

@@ -123,8 +123,8 @@ struct EditorView: View {
             }
         }
         .sheet(isPresented: Bindable(document.ui).showLegacyImportReport) {
-            if let report = document.legacyImportReport {
-                LegacyEDLImportReportView(
+            if let report = document.importReport {
+                TimelineImportReportView(
                     report: report, done: { document.ui.showLegacyImportReport = false })
             }
         }

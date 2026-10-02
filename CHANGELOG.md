@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- R5c: timeline formats are `TimelineExporter`s (OpenTimelineIO, SubRip) and `TimelineImporter`s (legacy edl.json) listed in `TimelineFormats`; OTIO export and EDL import go through them. The import report sheet is generic (`TimelineImport`: counts, mismatch note, warnings) and `edl import` adds `sourceDuration` to its report. R5 is done.
 - R5b: the engine reads media through a `MediaSource`. `ProxyMediaSource` (the default) uses `.bashcut/proxies/<media id>.mov|.mp4` for preview when present and always the original for export; `RenderEngine.build` takes a `purpose`. `CompositionBuilder` now keeps opened assets and their loaded tracks across builds (up to 64, least recently used dropped, reloaded when the file's date or size changes), so preview rebuilds after an edit no longer reopen every clip.
 - R5a: plugin capabilities are `CapabilityAdapter`s (transcription, beats, loudness, voice synthesis, one file each) run by `CapabilityService.run`, which owns validation, provider resolution, the request folder and provenance. Plugin calls go through a `PluginTransport` protocol (the process runner is the one-shot transport), so tests and future session transports plug in without changing the service.
 - `scripts/run.sh` signs `build/BashCut.app` with a stable identity (`BASHCUT_SIGN_IDENTITY`, else the first Apple Development identity; ad hoc with a warning when there is none), so macOS stops asking for Desktop folder access after every rebuild. SwiftPM resource bundles now go in `Contents/Resources`.

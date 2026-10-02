@@ -1,6 +1,7 @@
 import BashCutAutomation
 import BashCutDocument
 import BashCutEngine
+import BashCutInterchange
 import BashCutProject
 import Foundation
 
@@ -149,7 +150,7 @@ extension ProjectDocument {
                 arguments: ["output": output.path, "format": "OpenTimelineIO"]
             ) { [weak document] in
                 guard let document else { throw RPCFailure(-32000, "Editor closed") }
-                try ExportController.writeOTIO(document.project, to: output)
+                try TimelineFormats.write(document.project, with: OpenTimelineIOExporter(), to: output)
                 document.message = String(localized: "OTIO exported")
             }
             if !approval.autoApproved {

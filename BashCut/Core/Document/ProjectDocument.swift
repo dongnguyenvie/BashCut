@@ -24,7 +24,8 @@ final class ProjectDocument {
     let waveforms = WaveformModel()
     /// Saves, autosaves and the disk watch for the open file.
     let fileSync = FileSyncController()
-    var legacyImportReport: LegacyEDLImportReport?
+    /// Report of the timeline import that created the open project.
+    var importReport: TimelineImport?
     var sessionID = UUID()
     /// Socket server, command registry and the external-agent token file.
     let automation: AutomationController
@@ -163,7 +164,7 @@ final class ProjectDocument {
         agentChange = nil
         sessionID = UUID()
         fileSync.reset()
-        legacyImportReport = nil
+        importReport = nil
         exports.reset()
         jobs.cancelAll()
         ui.closeProjectSheets()

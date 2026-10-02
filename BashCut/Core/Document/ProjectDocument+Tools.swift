@@ -33,13 +33,7 @@ extension ProjectDocument {
             defer { document.busy = false }
             let report = try await document.importLegacyEDL(from: source)
             guard case .object(var result) = document.projectResult() else { return .null }
-            result["report"] = .object([
-                "cuts": .integer(report.importedCutCount), "sourceCuts": .integer(report.sourceCutCount),
-                "voiceovers": .integer(report.importedVoiceoverCount),
-                "sourceVoiceovers": .integer(report.sourceVoiceoverCount),
-                "duration": .integer(report.importedDuration),
-                "warnings": .array(report.warnings.map(JSONValue.string)),
-            ])
+            result["report"] = report.json
             return .object(result)
         }
         handle("project.recents") { document, _, _ in

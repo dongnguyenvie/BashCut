@@ -1,6 +1,7 @@
 import AVFoundation
 import BashCutDocument
 import BashCutEngine
+import BashCutInterchange
 import BashCutProject
 import Foundation
 import Testing
@@ -217,9 +218,24 @@ struct ExportQueueTests {
         let root = try folder()
         defer { try? FileManager.default.removeItem(at: root) }
         let url = root.appendingPathComponent("render/cut.otio")
-        try ExportController.writeOTIO(try project(), to: url)
+        try TimelineFormats.write(try project(), with: OpenTimelineIOExporter(), to: url)
         #expect(FileManager.default.fileExists(atPath: url.path))
-        #expect(throws: ProjectError.self) { try ExportController.writeOTIO(try project(), to: url) }
-        try ExportController.writeOTIO(try project(), to: url, allowReplace: true)
+        #expect(throws: ProjectError.self) { try TimelineFormats.write(try project(), with: OpenTimelineIOExporter(), to: url) }
+        try TimelineFormats.write(try project(), with: OpenTimelineIOExporter(), to: url, allowReplace: true)
+    }
+}
+
+@Suite("Timeline format registry")
+struct TimelineFormatsTests {
+    @Test("Format IDs are unique and found by ID")
+    func registry() {
+        let exporters = TimelineFormats.exporters.map(\.id)
+        let importers = TimelineFormats.importers.map(\.id)
+        #expect(Set(exporters).count == exporters.count)
+        #expect(Set(importers).count == importers.count)
+        #expect(TimelineFormats.exporter("otio")?.fileExtension == "otio")
+        #expect(TimelineFormats.exporter("srt")?.fileExtension == "srt")
+        #expect(TimelineFormats.importer("legacy-edl")?.fileExtensions == ["json"])
+        #expect(TimelineFormats.exporter("fcpxml") == nil)
     }
 }

@@ -1,5 +1,4 @@
 import BashCutEngine
-import BashCutInterchange
 import BashCutPlugin
 import BashCutProject
 import BashCutStorage
@@ -85,15 +84,6 @@ public final class ExportController {
         if let range = loudness?.loudnessRangeLU { audio["loudnessRangeLU"] = .number(range) }
         audio["measuredBy"] = .object(generated.provenance.json)
         return .object(audio)
-    }
-
-    /// Writes `project` as OpenTimelineIO, refusing to replace a file unless `allowReplace`.
-    public static func writeOTIO(_ project: Project, to url: URL, allowReplace: Bool = false) throws {
-        guard allowReplace || !FileManager.default.fileExists(atPath: url.path) else {
-            throw ProjectError.invalid("Choose a new export name; an output already exists")
-        }
-        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try OpenTimelineIOExporter.data(for: project).write(to: url, options: .atomic)
     }
 
     /// `export.status`: while an export runs, the top-level fields describe it and the last receipt

@@ -23,7 +23,7 @@ extension ProjectDocument {
     /// Converts a legacy edl.json into project.bashcut.json beside it and opens it. The caller handles
     /// unsaved changes of the open project first.
     @discardableResult
-    func importLegacyEDL(from source: URL) async throws -> LegacyEDLImportReport {
+    func importLegacyEDL(from source: URL) async throws -> TimelineImport {
         let directory = source.deletingLastPathComponent()
         let destination = directory.appendingPathComponent("project.bashcut.json")
         guard !FileManager.default.fileExists(atPath: destination.path) else {
@@ -32,13 +32,13 @@ extension ProjectDocument {
         let folder = directory.lastPathComponent == "timeline"
             ? directory.deletingLastPathComponent().lastPathComponent : directory.lastPathComponent
         let data = try await storage.readData(source)
-        let report = try LegacyEDLImporter.decode(data, name: folder, destinationDirectory: directory)
+        let report = try LegacyEDLFormat().importTimeline(data, name: folder, destinationDirectory: directory)
         let importedHistory = ProjectHistory(project: report.project)
         let written = try await storage.save(importedHistory, to: destination, expectedDisk: nil)
         reset(report.project, url: destination)
         replaceHistory(importedHistory)
         fileSync.accept(written)
-        legacyImportReport = report
+        importReport = report
         message = String(localized: "Legacy EDL imported")
         rebuild()
         return report
