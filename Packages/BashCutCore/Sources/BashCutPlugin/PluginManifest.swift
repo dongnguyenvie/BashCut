@@ -1,0 +1,189 @@
+import BashCutProject
+import Foundation
+
+public struct PluginManifest: Codable, Sendable, Equatable {
+    public static let schema = "bashcut.plugin/1"
+
+    public let schema: String
+    public let id: String
+    public let name: String
+    public let version: String
+    public let apiVersion: Int
+    public let entrypoint: String
+    public let capabilities: [String]
+    public let providers: [PluginProvider]?
+    public let dependencies: [PluginDependency]
+
+    public init(
+        id: String, name: String, version: String, apiVersion: Int = 1,
+        entrypoint: String, capabilities: [String], providers: [PluginProvider]? = nil,
+        dependencies: [PluginDependency] = []
+    ) {
+        schema = Self.schema
+        self.id = id
+        self.name = name
+        self.version = version
+        self.apiVersion = apiVersion
+        self.entrypoint = entrypoint
+        self.capabilities = capabilities
+        self.providers = providers
+        self.dependencies = dependencies
+    }
+
+    public func validate() throws {
+        func matches(_ value: String, _ pattern: String) -> Bool {
+            value.range(of: pattern, options: .regularExpression) != nil
+        }
+        guard schema == Self.schema else { throw PluginError.invalid("Unsupported plugin schema") }
+        guard apiVersion == 1 else { throw PluginError.invalid("Unsupported plugin API version") }
+        guard matches(id, "^[a-z0-9]+(?:[.-][a-z0-9]+)+$") else {
+            throw PluginError.invalid("Plugin id must be reverse-domain style")
+        }
+        guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+            matches(version, "^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$")
+        else { throw PluginError.invalid("Plugin name and semantic version are required") }
+        try Self.validateRelativePath(entrypoint, field: "entrypoint")
+        guard !capabilities.isEmpty, Set(capabilities).count == capabilities.count,
+            capabilities.allSatisfy({ matches($0, "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$") })
+        else { throw PluginError.invalid("Capabilities must be unique stable identifiers") }
+        guard Set(dependencies.map(\.id)).count == dependencies.count else {
+            throw PluginError.invalid("Dependency ids must be unique")
+        }
+        let declaredProviders = providers ?? []
+        guard Set(declaredProviders.map(\.id)).count == declaredProviders.count,
+            declaredProviders.allSatisfy({ capabilities.contains($0.capability) })
+        else { throw PluginError.invalid("Providers must be unique and declare a plugin capability") }
+        for dependency in dependencies { try dependency.validate() }
+    }
+
+    private static func validateRelativePath(_ path: String, field: String) throws {
+        let components = NSString(string: path).pathComponents
+        guard !path.isEmpty, !path.hasPrefix("/"), !components.contains("..") else {
+            throw PluginError.invalid("\(field) must stay inside the plugin bundle")
+        }
+    }
+}
+
+public struct PluginProvider: Codable, Sendable, Equatable, Identifiable {
+    public let id: String
+    public let capability: String
+    public let name: String
+    public let priority: Int
+
+    public init(id: String, capability: String, name: String, priority: Int = 0) {
+        self.id = id
+        self.capability = capability
+        self.name = name
+        self.priority = priority
+    }
+}
+
+public struct PluginDependency: Codable, Sendable, Equatable, Identifiable {
+    public enum Kind: String, Codable, Sendable { case executable, python, model, systemLibrary }
+
+    public let id: String
+    public let name: String
+    public let kind: Kind
+    public let probe: PluginCommand
+    public let install: PluginInstallRecipe?
+    public let estimatedBytes: Int64?
+
+    public init(
+        id: String, name: String, kind: Kind, probe: PluginCommand,
+        install: PluginInstallRecipe? = nil, estimatedBytes: Int64? = nil
+    ) {
+        self.id = id
+        self.name = name
+        self.kind = kind
+        self.probe = probe
+        self.install = install
+        self.estimatedBytes = estimatedBytes
+    }
+
+    fileprivate func validate() throws {
+        guard !id.isEmpty, !name.isEmpty else { throw PluginError.invalid("Invalid dependency") }
+        try probe.validate()
+        try install?.command.validate()
+        if let estimatedBytes, estimatedBytes < 0 { throw PluginError.invalid("Invalid download size") }
+    }
+}
+
+/// Commands are argv arrays and never shell strings, so manifests cannot smuggle shell expansion.
+public struct PluginCommand: Codable, Sendable, Equatable {
+    public let executable: String
+    public let arguments: [String]
+    public init(executable: String, arguments: [String] = []) {
+        self.executable = executable
+        self.arguments = arguments
+    }
+
+    fileprivate func validate() throws {
+        guard !executable.isEmpty, !executable.contains("\0"),
+            !arguments.contains(where: { $0.contains("\0") })
+        else {
+            throw PluginError.invalid("Invalid dependency command")
+        }
+        if executable.contains("/") {
+            let components = NSString(string: executable).pathComponents
+            guard !executable.hasPrefix("/"), !components.contains("..") else {
+                throw PluginError.invalid("Dependency commands must stay inside the plugin bundle")
+            }
+        }
+    }
+}
+
+public struct PluginInstallRecipe: Codable, Sendable, Equatable {
+    public let summary: String
+    public let command: PluginCommand
+    public init(summary: String, command: PluginCommand) {
+        self.summary = summary
+        self.command = command
+    }
+}
+
+public enum PluginError: Error, LocalizedError, Equatable {
+    case invalid(String)
+    public var errorDescription: String? {
+        guard case .invalid(let message) = self else { return nil }
+        return message
+    }
+}
+
+public struct PluginRPCRequest: Codable, Sendable, Equatable {
+    public let id: String
+    public let apiVersion: Int
+    public let method: String
+    public let provider: String?
+    public let params: JSONValue
+
+    public init(
+        id: String = UUID().uuidString, apiVersion: Int = 1, method: String,
+        provider: String? = nil, params: JSONValue = .object([:])
+    ) {
+        self.id = id
+        self.apiVersion = apiVersion
+        self.method = method
+        self.provider = provider
+        self.params = params
+    }
+}
+
+public struct PluginRPCFailure: Codable, Sendable, Equatable {
+    public let code: String
+    public let message: String
+    public init(code: String, message: String) {
+        self.code = code
+        self.message = message
+    }
+}
+
+public struct PluginRPCResponse: Codable, Sendable, Equatable {
+    public let id: String
+    public let result: JSONValue?
+    public let error: PluginRPCFailure?
+    public init(id: String, result: JSONValue? = nil, error: PluginRPCFailure? = nil) {
+        self.id = id
+        self.result = result
+        self.error = error
+    }
+}
