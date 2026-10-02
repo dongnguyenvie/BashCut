@@ -44,6 +44,44 @@ extension ProjectDocument {
         }
     }
 
+    /// Automation: adds one media file to the project and optionally places it like the UI import does.
+    func registerImportCommands() {
+        handleAuthored("media.import") { document, arguments, author in
+            guard let root = document.fileURL?.deletingLastPathComponent() else {
+                throw RPCFailure(-32602, "Open a saved project first")
+            }
+            let path = try arguments.string("path")
+            let url = URL(fileURLWithPath: path, relativeTo: root).standardizedFileURL
+            guard FileManager.default.fileExists(atPath: url.path) else { throw RPCFailure(-32602, "No file at \(url.path)") }
+            let kind = try arguments.string("kind")
+            let base = try arguments.int("baseRev")
+            let imported = try await Self.importedMedia(url: url, kind: kind, projectFPS: document.project.fps, root: root)
+            DebugLog.write("import", "\(url.lastPathComponent) → \(document.mediaSummary(imported.media)) (automation)")
+            var planner = LayerPlanner(document.project)
+            try planner.add([.addMedia(imported.media)])
+            var result: [String: JSONValue] = ["media": .string(imported.media.id)]
+            if arguments.bool("place") {
+                let trackID = try arguments.optionalString("track")
+                    ?? document.project.requireTrack(role: TrackRole.main, kind: "video").id
+                let itemID = UUID().uuidString
+                try planner.placeMedia(
+                    imported.media, on: trackID,
+                    at: arguments.optionalInt("atFrame")
+                        ?? document.project.insertionFrame(trackID: trackID, playhead: document.playhead),
+                    duration: imported.frames, itemID: itemID)
+                result["item"] = .string(itemID)
+            }
+            result["rev"] = .integer(
+                try document.commitPlan(planner, label: "Import media", author: author, baseRevision: base))
+            if let item = result["item"]?.string {
+                result["track"] = document.project.tracks.first { $0.items.contains { $0.id == item } }.map { .string($0.id) }
+                result["linkedAudio"] = document.project.tracks.flatMap(\.items).first { $0.id == item }?
+                    .fields["linkedAudio"] ?? .null
+            }
+            return .object(result)
+        }
+    }
+
     private static func importedMedia(
         url: URL, kind: String, projectFPS: FrameRate, root: URL
     ) async throws -> (media: Media, frames: Int) {

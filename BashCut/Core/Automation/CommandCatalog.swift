@@ -80,6 +80,21 @@ public enum CommandCatalog {
                 baseRevision,
             ]),
         CommandSpec(
+            "media.import", .edit,
+            "Add a media file to the project (path relative to the project folder or absolute); "
+                + "with place, also put it on a layer like the Import button.",
+            parameters: [
+                CommandParameter("path", .string, "Media file path", required: true, cli: .positional),
+                CommandParameter("kind", .string, "Media kind", default: .string("video"), choices: ["video", "audio"],
+                                 cli: .option("kind")),
+                CommandParameter("place", .boolean, "Also place it on a layer", default: .bool(false),
+                                 cli: .flag("place")),
+                CommandParameter("track", .string, "Layer ID for place; defaults to the main layer",
+                                 cli: .option("track")),
+                CommandParameter("atFrame", .integer, "Timeline frame for place", minimum: 0, cli: .option("at-frame")),
+                baseRevision,
+            ]),
+        CommandSpec(
             "media.place", .edit,
             "Place project media on a layer (main by default), with linked sound on a dialogue layer; "
                 + "an occupied range spills onto a free or new layer.",
