@@ -1,0 +1,3684 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "Compared with previous export": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Compared with previous export" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "So với lần xuất trước" } }
+      }
+    },
+    "Speech coverage": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Speech coverage" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Tỷ lệ có lời nói" } }
+      }
+    },
+    "Normalize audio": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Normalize audio" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Chuẩn hóa âm thanh" } }
+      }
+    },
+    "Place Card": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Place Card" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Thẻ địa điểm" } }
+      }
+    },
+    "Compare": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Compare" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "So sánh" } }
+      }
+    },
+    "Change framing": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Change framing" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đổi khung hình" } }
+      }
+    },
+    "BashCut Agent": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "BashCut Agent" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Agent BashCut" } }
+      }
+    },
+    "Detach agent dock": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Detach agent dock" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Tách dock agent" } }
+      }
+    },
+    "Attach agent dock": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Attach agent dock" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Gắn dock agent" } }
+      }
+    },
+    "Wide": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Wide" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Toàn cảnh" } }
+      }
+    },
+    "Medium": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Medium" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Trung cảnh" } }
+      }
+    },
+    "Close": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Close" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Cận cảnh" } }
+      }
+    },
+    "Left emphasis": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Left emphasis" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Nhấn bên trái" } }
+      }
+    },
+    "Right emphasis": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Right emphasis" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Nhấn bên phải" } }
+      }
+    },
+    "Before": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Before" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Trước" } }
+      }
+    },
+    "After": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "After" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Sau" } }
+      }
+    },
+    "Hook Title": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Hook Title" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Tiêu đề mở đầu" } }
+      }
+    },
+    "Chapter Card": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Chapter Card" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Thẻ chương" } }
+      }
+    },
+    "Loudness provider": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Loudness provider" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Provider độ lớn" } }
+      }
+    },
+    "Target loudness": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Target loudness" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Độ lớn mục tiêu" } }
+      }
+    },
+    "Export audio settings": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Export audio settings" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Cài đặt âm thanh xuất" } }
+      }
+    },
+    "Install an audio.loudness plugin to enable two-pass LUFS normalization.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Install an audio.loudness plugin to enable two-pass LUFS normalization." } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Cài plugin audio.loudness để bật chuẩn hóa LUFS hai lượt." } }
+      }
+    },
+    "BashCut renders a temporary mix, measures it, applies a true-peak-safe gain, then verifies the final export.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "BashCut renders a temporary mix, measures it, applies a true-peak-safe gain, then verifies the final export." } },
+        "vi": { "stringUnit": { "state": "translated", "value": "BashCut render bản trộn tạm, đo độ lớn, áp dụng gain an toàn theo true peak rồi kiểm tra tệp xuất cuối." } }
+      }
+    },
+    "Normalization gain": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Normalization gain" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Gain chuẩn hóa" } }
+      }
+    },
+    "Estimated": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Estimated" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Ước tính" } }
+      }
+    },
+    "Measuring loudness…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Measuring loudness…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đang đo độ lớn âm thanh…" } }
+      }
+    },
+    "Verifying loudness…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Verifying loudness…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đang kiểm tra độ lớn âm thanh…" } }
+      }
+    },
+    "Save the project before importing a LUT": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Save the project before importing a LUT" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Hãy lưu dự án trước khi nhập LUT" } }
+      }
+    },
+    "LUT imported": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "LUT imported" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đã nhập LUT" } }
+      }
+    },
+    "3D LUTs": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "3D LUTs" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "LUT 3D" } }
+      }
+    },
+    "Import .cube…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Import .cube…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Nhập .cube…" } }
+      }
+    },
+    "No LUTs imported.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "No LUTs imported." } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Chưa nhập LUT nào." } }
+      }
+    },
+    "Delete LUT": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Delete LUT" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Xóa LUT" } }
+      }
+    },
+    "Remove LUT": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Remove LUT" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Bỏ LUT" } }
+      }
+    },
+    "Select a video clip beside a cut, then choose a transition.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Select a video clip beside a cut, then choose a transition." } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Chọn clip video cạnh một điểm cắt, rồi chọn chuyển cảnh." } }
+      }
+    },
+    "Select a video clip beside a cut": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Select a video clip beside a cut" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Hãy chọn clip video cạnh một điểm cắt" } }
+      }
+    },
+    "Active": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Active" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đang dùng" } }
+      }
+    },
+    "Duration: %lld frames": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Duration: %lld frames" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Thời lượng: %lld frame" } }
+      }
+    },
+    "Remove transition": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Remove transition" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Xóa chuyển cảnh" } }
+      }
+    },
+    "Dissolve": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Dissolve" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Hòa tan" } }
+      }
+    },
+    "Whip": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Whip" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Quét nhanh" } }
+      }
+    },
+    "Blink": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Blink" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Chớp sáng" } }
+      }
+    },
+    "Spin": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Spin" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Xoay" } }
+      }
+    },
+    "Shutter": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Shutter" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Màn trập" } }
+      }
+    },
+    "Wipe": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Wipe" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Gạt cảnh" } }
+      }
+    },
+    "Export OTIO…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Export OTIO…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Xuất OTIO…" } }
+      }
+    },
+    "OTIO exported": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "OTIO exported" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đã xuất OTIO" } }
+      }
+    },
+    "Waiting for approval: export.otio": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Waiting for approval: export.otio" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đang chờ phê duyệt: export.otio" } }
+      }
+    },
+    "Import from edl.json…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Import from edl.json…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Nhập từ edl.json…" } }
+      }
+    },
+    "Choose an edl.json file": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Choose an edl.json file" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Chọn tệp edl.json" } }
+      }
+    },
+    "project.bashcut.json already exists beside this EDL": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "project.bashcut.json already exists beside this EDL" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "project.bashcut.json đã tồn tại cạnh EDL này" } }
+      }
+    },
+    "Legacy EDL imported": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Legacy EDL imported" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đã nhập EDL cũ" } }
+      }
+    },
+    "EDL import report": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "EDL import report" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Báo cáo nhập EDL" } }
+      }
+    },
+    "Metric": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Metric" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Chỉ số" } }
+      }
+    },
+    "EDL": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "EDL" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "EDL" } }
+      }
+    },
+    "Cuts": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Cuts" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Cảnh cắt" } }
+      }
+    },
+    "Voiceovers": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Voiceovers" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Lời dẫn" } }
+      }
+    },
+    "Duration (frames)": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Duration (frames)" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Thời lượng (frame)" } }
+      }
+    },
+    "Imported duration differs from the EDL total.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Imported duration differs from the EDL total." } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Thời lượng đã nhập khác tổng thời lượng trong EDL." } }
+      }
+    },
+    "Needs manual review": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Needs manual review" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Cần kiểm tra thủ công" } }
+      }
+    },
+    "Media source": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Media source" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Nguồn media" } }
+      }
+    },
+    "Footage": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Footage" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Footage" } }
+      }
+    },
+    "Project": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Project" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Dự án" } }
+      }
+    },
+    "Shared": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Shared" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Dùng chung" } }
+      }
+    },
+    "No matching media.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "No matching media." } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Không có media phù hợp." } }
+      }
+    },
+    "No project media.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "No project media." } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Chưa có media của dự án." } }
+      }
+    },
+    "No shared media in this project.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "No shared media in this project." } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Dự án này chưa dùng media dùng chung." } }
+      }
+    },
+    "Show differences": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Show differences" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Xem khác biệt" } }
+      }
+    },
+    "External project differences": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "External project differences" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Khác biệt với dự án trên ổ đĩa" } }
+      }
+    },
+    "App version → disk version": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "App version → disk version" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Phiên bản trong ứng dụng → phiên bản trên ổ đĩa" } }
+      }
+    },
+    "No differences": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "No differences" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Không có khác biệt" } }
+      }
+    },
+    "Project:": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Project:" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Dự án:" } }
+      }
+    },
+    "Media:": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Media:" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Media:" } }
+      }
+    },
+    "Tracks:": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Tracks:" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Track:" } }
+      }
+    },
+    "Timeline items: %lld": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Timeline items: %lld" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Mục trên timeline: %lld" } }
+      }
+    },
+    "Choose which complete project version to keep.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Choose which complete project version to keep." } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Chọn phiên bản dự án đầy đủ cần giữ lại." } }
+      }
+    },
+    "App": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "App" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Ứng dụng" } }
+      }
+    },
+    "Disk": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Disk" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Ổ đĩa" } }
+      }
+    },
+    "Shared media requires a configured workspace.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Shared media requires a configured workspace." } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Media dùng chung cần cấu hình workspace." } }
+      }
+    },
+    "Handoff to Claude": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Handoff to Claude" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Chuyển tiếp sang Claude" } }
+      }
+    },
+    "Handoff to Codex": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Handoff to Codex" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Chuyển tiếp sang Codex" } }
+      }
+    },
+    "Resume": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Resume" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Tiếp tục phiên" } }
+      }
+    },
+    "Freeze at playhead": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Freeze at playhead" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đóng băng tại đầu phát" } }
+      }
+    },
+    "Move the playhead inside the selected video clip.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Move the playhead inside the selected video clip." } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Hãy đặt đầu phát bên trong clip video đã chọn." } }
+      }
+    },
+    "Remove freeze frame": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Remove freeze frame" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Bỏ khung hình đóng băng" } }
+      }
+    },
+    "Linked A/V": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Linked A/V"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hình/âm thanh liên kết"
+          }
+        }
+      }
+    },
+    "Unlink audio": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unlink audio"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bỏ liên kết âm thanh"
+          }
+        }
+      }
+    },
+    "New": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mới"
+          }
+        }
+      }
+    },
+    "Open…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open…"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở…"
+          }
+        }
+      }
+    },
+    "Save": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lưu"
+          }
+        }
+      }
+    },
+    "Export…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Export…"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xuất…"
+          }
+        }
+      }
+    },
+    "MEDIA": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MEDIA"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PHƯƠNG TIỆN"
+          }
+        }
+      }
+    },
+    "Import footage…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Import footage…"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhập video…"
+          }
+        }
+      }
+    },
+    "M0 · Engine spike": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "M0 · Engine spike"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "M0 · Thử nghiệm engine"
+          }
+        }
+      }
+    },
+    "Play / Pause": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Play / Pause"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phát / Tạm dừng"
+          }
+        }
+      }
+    },
+    "Undo": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Undo"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hoàn tác"
+          }
+        }
+      }
+    },
+    "Redo": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Redo"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Làm lại"
+          }
+        }
+      }
+    },
+    "Split": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Split"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chia đoạn"
+          }
+        }
+      }
+    },
+    "Ripple delete": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ripple delete"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xóa và nối đoạn"
+          }
+        }
+      }
+    },
+    "Add caption": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add caption"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thêm phụ đề"
+          }
+        }
+      }
+    },
+    "Cancel export": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel export"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hủy xuất"
+          }
+        }
+      }
+    },
+    "INSPECTOR": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "INSPECTOR"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "THUỘC TÍNH"
+          }
+        }
+      }
+    },
+    "Caption": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Caption"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phụ đề"
+          }
+        }
+      }
+    },
+    "Zoom": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zoom"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thu phóng"
+          }
+        }
+      }
+    },
+    "Trim start to playhead": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trim start to playhead"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cắt đầu tại con trỏ"
+          }
+        }
+      }
+    },
+    "Trim end to playhead": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trim end to playhead"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cắt cuối tại con trỏ"
+          }
+        }
+      }
+    },
+    "Select a timeline item": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select a timeline item"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chọn một đoạn trên dòng thời gian"
+          }
+        }
+      }
+    },
+    "Discard unsaved changes?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discard unsaved changes?"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bỏ thay đổi chưa lưu?"
+          }
+        }
+      }
+    },
+    "Cancel": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hủy"
+          }
+        }
+      }
+    },
+    "Discard": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discard"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bỏ thay đổi"
+          }
+        }
+      }
+    },
+    "Project saved": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Project saved"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã lưu dự án"
+          }
+        }
+      }
+    },
+    "Preview is not ready": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preview is not ready"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bản xem trước chưa sẵn sàng"
+          }
+        }
+      }
+    },
+    "Export complete": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Export complete"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã xuất xong"
+          }
+        }
+      }
+    },
+    "Quit BashCut": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quit BashCut"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thoát BashCut"
+          }
+        }
+      }
+    },
+    "Revision %d": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revision %d"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phiên bản %d"
+          }
+        }
+      }
+    },
+    "Start: %d · Duration: %d frames": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start: %d · Duration: %d frames"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bắt đầu: %d · Thời lượng: %d khung hình"
+          }
+        }
+      }
+    },
+    "Recover unsaved edits?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recover unsaved edits?"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khôi phục thay đổi chưa lưu?"
+          }
+        }
+      }
+    },
+    "Recover": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recover"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khôi phục"
+          }
+        }
+      }
+    },
+    "Use saved project": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use saved project"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dùng bản đã lưu"
+          }
+        }
+      }
+    },
+    "The project changed on disk": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The project changed on disk"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "File dự án đã thay đổi bên ngoài ứng dụng"
+          }
+        }
+      }
+    },
+    "Keep app version": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep app version"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giữ bản trong ứng dụng"
+          }
+        }
+      }
+    },
+    "Load disk version": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Load disk version"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nạp bản trên ổ đĩa"
+          }
+        }
+      }
+    },
+    "Choose a new project path; use Open for an existing project": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose a new project path; use Open for an existing project"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chọn đường dẫn mới; dùng Mở cho dự án hiện có"
+          }
+        }
+      }
+    },
+    "Media": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Media"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phương tiện"
+          }
+        }
+      }
+    },
+    "Audio": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Audio"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Âm thanh"
+          }
+        }
+      }
+    },
+    "Text": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Text"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chữ"
+          }
+        }
+      }
+    },
+    "Stickers": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stickers"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhãn dán"
+          }
+        }
+      }
+    },
+    "Effects": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Effects"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hiệu ứng"
+          }
+        }
+      }
+    },
+    "Transitions": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transitions"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chuyển cảnh"
+          }
+        }
+      }
+    },
+    "Filters": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filters"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bộ lọc"
+          }
+        }
+      }
+    },
+    "Voice": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voice"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giọng đọc"
+          }
+        }
+      }
+    },
+    "Video": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Video"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Video"
+          }
+        }
+      }
+    },
+    "Color": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Color"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Màu sắc"
+          }
+        }
+      }
+    },
+    "Speed": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Speed"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tốc độ"
+          }
+        }
+      }
+    },
+    "History": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "History"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lịch sử"
+          }
+        }
+      }
+    },
+    "Review": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Review"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiểm tra"
+          }
+        }
+      }
+    },
+    "Agent": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trợ lý"
+          }
+        }
+      }
+    },
+    "AGENT": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AGENT"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TRỢ LÝ"
+          }
+        }
+      }
+    },
+    "VIEWER": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "VIEWER"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "XEM TRƯỚC"
+          }
+        }
+      }
+    },
+    "SOURCE": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SOURCE"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NGUỒN"
+          }
+        }
+      }
+    },
+    "TIMELINE": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TIMELINE"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DÒNG THỜI GIAN"
+          }
+        }
+      }
+    },
+    "Safe area": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Safe area"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vùng an toàn"
+          }
+        }
+      }
+    },
+    "Search media…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search media…"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tìm phương tiện…"
+          }
+        }
+      }
+    },
+    "Append": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Append"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thêm vào cuối"
+          }
+        }
+      }
+    },
+    "Import footage to start editing.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Import footage to start editing."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhập video để bắt đầu biên tập."
+          }
+        }
+      }
+    },
+    "Import audio…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Import audio…"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhập âm thanh…"
+          }
+        }
+      }
+    },
+    "Insert": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Insert"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chèn"
+          }
+        }
+      }
+    },
+    "Overwrite": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Overwrite"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ghi đè"
+          }
+        }
+      }
+    },
+    "Timeline": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Timeline"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dòng thời gian"
+          }
+        }
+      }
+    },
+    "In": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Điểm vào"
+          }
+        }
+      }
+    },
+    "Out": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Out"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Điểm ra"
+          }
+        }
+      }
+    },
+    "Open source viewer": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open source viewer"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở trình xem nguồn"
+          }
+        }
+      }
+    },
+    "Import a voiceover take…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Import a voiceover take…"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhập bản thu giọng đọc…"
+          }
+        }
+      }
+    },
+    "Voiceover": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voiceover"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giọng đọc"
+          }
+        }
+      }
+    },
+    "Generate → 3 takes": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Generate → 3 takes" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Tạo → 3 bản đọc" } }
+      }
+    },
+    "Choose a take to insert": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Choose a take to insert" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Chọn một bản đọc để chèn" } }
+      }
+    },
+    "Insert selected take into Voiceover": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Insert selected take into Voiceover" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Chèn bản đã chọn vào giọng đọc" } }
+      }
+    },
+    "Preview take": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Preview take" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Nghe thử bản đọc" } }
+      }
+    },
+    "Selected": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Selected" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đã chọn" } }
+      }
+    },
+    "Use": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Use" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Chọn" } }
+      }
+    },
+    "match": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "match" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "khớp" } }
+      }
+    },
+    "pace": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "pace" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "nhịp" } }
+      }
+    },
+    "Music": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Music"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhạc"
+          }
+        }
+      }
+    },
+    "Track": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Track"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rãnh"
+          }
+        }
+      }
+    },
+    "Role": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Role"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vai trò"
+          }
+        }
+      }
+    },
+    "Speech": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Speech"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lời nói trực tiếp"
+          }
+        }
+      }
+    },
+    "B-roll": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "B-roll"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cảnh phụ"
+          }
+        }
+      }
+    },
+    "Under VO": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Under VO"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nền cho giọng đọc"
+          }
+        }
+      }
+    },
+    "Section": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Section"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phân đoạn"
+          }
+        }
+      }
+    },
+    "Pan": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pan"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dịch ngang"
+          }
+        }
+      }
+    },
+    "Tilt": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tilt"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dịch dọc"
+          }
+        }
+      }
+    },
+    "Opacity": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opacity"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Độ trong suốt"
+          }
+        }
+      }
+    },
+    "Volume (dB)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volume (dB)"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Âm lượng (dB)"
+          }
+        }
+      }
+    },
+    "Mute": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mute"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tắt tiếng"
+          }
+        }
+      }
+    },
+    "Fade in (frames)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fade in (frames)"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tăng dần (khung hình)"
+          }
+        }
+      }
+    },
+    "Fade out (frames)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fade out (frames)"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giảm dần (khung hình)"
+          }
+        }
+      }
+    },
+    "Duck under speech": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duck under speech"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giảm nhạc dưới lời nói"
+          }
+        }
+      }
+    },
+    "Duck level (dB)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duck level (dB)"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mức giảm nhạc (dB)"
+          }
+        }
+      }
+    },
+    "Attack (frames)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Attack (frames)"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thời gian hạ (khung hình)"
+          }
+        }
+      }
+    },
+    "Release (frames)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Release (frames)"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thời gian hồi (khung hình)"
+          }
+        }
+      }
+    },
+    "Style": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Style"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiểu chữ"
+          }
+        }
+      }
+    },
+    "Font size": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Font size"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cỡ chữ"
+          }
+        }
+      }
+    },
+    "Vertical position": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vertical position"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vị trí dọc"
+          }
+        }
+      }
+    },
+    "Exposure": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exposure"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phơi sáng"
+          }
+        }
+      }
+    },
+    "Contrast": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Contrast"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tương phản"
+          }
+        }
+      }
+    },
+    "Saturation": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saturation"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Độ bão hòa"
+          }
+        }
+      }
+    },
+    "Select a caption to edit text.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select a caption to edit text."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chọn phụ đề để sửa nội dung."
+          }
+        }
+      }
+    },
+    "Bold Outline": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bold Outline"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chữ đậm viền"
+          }
+        }
+      }
+    },
+    "Cinematic Serif": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cinematic Serif"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chữ serif điện ảnh"
+          }
+        }
+      }
+    },
+    "Keyword Sticker": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keyword Sticker"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhãn từ khóa"
+          }
+        }
+      }
+    },
+    "Original": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Original"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nguyên bản"
+          }
+        }
+      }
+    },
+    "Muted film": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Muted film"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Màu phim dịu"
+          }
+        }
+      }
+    },
+    "Black & white": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Black & white"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đen trắng"
+          }
+        }
+      }
+    },
+    "Reset framing": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reset framing"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đặt lại khung hình"
+          }
+        }
+      }
+    },
+    "Punch in 1.3×": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Punch in 1.3×"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phóng gần 1,3×"
+          }
+        }
+      }
+    },
+    "Hard cuts are active": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hard cuts are active"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang dùng cắt thẳng"
+          }
+        }
+      }
+    },
+    "Animated transitions are not implemented yet.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Animated transitions are not implemented yet."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chuyển cảnh động chưa được triển khai."
+          }
+        }
+      }
+    },
+    "Start your next cut": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start your next cut"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bắt đầu video mới"
+          }
+        }
+      }
+    },
+    "New project": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New project"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dự án mới"
+          }
+        }
+      }
+    },
+    "Open project…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open project…"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở dự án…"
+          }
+        }
+      }
+    },
+    "Delete": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xóa"
+          }
+        }
+      }
+    },
+    "Snap": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Snap"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bắt dính"
+          }
+        }
+      }
+    },
+    "Ask agent": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ask agent"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hỏi trợ lý"
+          }
+        }
+      }
+    },
+    "What should the agent do?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What should the agent do?"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn muốn trợ lý làm gì?"
+          }
+        }
+      }
+    },
+    "Send context": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Send context"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gửi ngữ cảnh"
+          }
+        }
+      }
+    },
+    "Done": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Done"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xong"
+          }
+        }
+      }
+    },
+    "Jump": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jump"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đến vị trí"
+          }
+        }
+      }
+    },
+    "Ask agent to fix": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ask agent to fix"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhờ trợ lý sửa"
+          }
+        }
+      }
+    },
+    "No timeline issues found": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No timeline issues found"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không tìm thấy vấn đề trên dòng thời gian"
+          }
+        }
+      }
+    },
+    "Claude terminal": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude terminal"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminal Claude"
+          }
+        }
+      }
+    },
+    "Codex terminal": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex terminal"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminal Codex"
+          }
+        }
+      }
+    },
+    "Shell terminal": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shell terminal"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminal Shell"
+          }
+        }
+      }
+    },
+    "Model API": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Model API"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API mô hình"
+          }
+        }
+      }
+    },
+    "Choose an agent": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose an agent"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chọn trợ lý"
+          }
+        }
+      }
+    },
+    "Use your CLI login or connect a model API.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use your CLI login or connect a model API."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dùng đăng nhập CLI hoặc kết nối API mô hình."
+          }
+        }
+      }
+    },
+    "Start Claude": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start Claude"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở Claude"
+          }
+        }
+      }
+    },
+    "Start Codex": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start Codex"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở Codex"
+          }
+        }
+      }
+    },
+    "Connect model API": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connect model API"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kết nối API mô hình"
+          }
+        }
+      }
+    },
+    "Resume session ID (optional)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resume session ID (optional)"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ID phiên để tiếp tục (tùy chọn)"
+          }
+        }
+      }
+    },
+    "Workspace…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Workspace…"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thư mục làm việc…"
+          }
+        }
+      }
+    },
+    "Project context": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Project context"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngữ cảnh dự án"
+          }
+        }
+      }
+    },
+    "Survey": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Survey"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khảo sát"
+          }
+        }
+      }
+    },
+    "Write VO": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Write VO"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Viết lời đọc"
+          }
+        }
+      }
+    },
+    "Provider": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Provider"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhà cung cấp"
+          }
+        }
+      }
+    },
+    "API base URL": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API base URL"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "URL gốc API"
+          }
+        }
+      }
+    },
+    "Model ID": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Model ID"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ID mô hình"
+          }
+        }
+      }
+    },
+    "API key (Keychain)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API key (Keychain)"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khóa API (Keychain)"
+          }
+        }
+      }
+    },
+    "Save connection": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save connection"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lưu kết nối"
+          }
+        }
+      }
+    },
+    "Output": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Output"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đầu ra"
+          }
+        }
+      }
+    },
+    "Script": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Script"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mã lệnh"
+          }
+        }
+      }
+    },
+    "Timeline edit": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Timeline edit"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chỉnh dòng thời gian"
+          }
+        }
+      }
+    },
+    "Language": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Language"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngôn ngữ"
+          }
+        }
+      }
+    },
+    "Include project context": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Include project context"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kèm ngữ cảnh dự án"
+          }
+        }
+      }
+    },
+    "Generate": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Generate"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tạo"
+          }
+        }
+      }
+    },
+    "Generate sends this request to the configured endpoint.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Generate sends this request to the configured endpoint."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nút Tạo gửi yêu cầu này đến endpoint đã cấu hình."
+          }
+        }
+      }
+    },
+    "Apply as one undo step": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apply as one undo step"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Áp dụng thành một bước hoàn tác"
+          }
+        }
+      }
+    },
+    "Save script…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save script…"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lưu mã lệnh…"
+          }
+        }
+      }
+    },
+    "Run reviewed script…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Run reviewed script…"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chạy mã đã kiểm tra…"
+          }
+        }
+      }
+    },
+    "Run the reviewed script?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Run the reviewed script?"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chạy mã đã kiểm tra?"
+          }
+        }
+      }
+    },
+    "Run script": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Run script"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chạy mã"
+          }
+        }
+      }
+    },
+    "This runs local code with your user permissions in the selected workspace. Review the source above first.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This runs local code with your user permissions in the selected workspace. Review the source above first."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mã sẽ chạy với quyền tài khoản của bạn trong thư mục làm việc đã chọn. Hãy kiểm tra mã phía trên trước."
+          }
+        }
+      }
+    },
+    "Resolve the file conflict before editing.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resolve the file conflict before editing."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giải quyết xung đột file trước khi chỉnh sửa."
+          }
+        }
+      }
+    },
+    "Changing speed keeps timeline duration; source bounds must still fit.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Changing speed keeps timeline duration; source bounds must still fit."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đổi tốc độ giữ nguyên thời lượng trên dòng thời gian; đoạn nguồn phải còn đủ."
+          }
+        }
+      }
+    },
+    "Review checks the timeline. Loudness is measured during normalized export; silence analysis is not available yet.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Review checks the timeline. Loudness is measured during normalized export; silence analysis is not available yet."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Review kiểm tra dòng thời gian. Độ lớn được đo khi xuất có chuẩn hóa; phân tích khoảng lặng chưa khả dụng."
+          }
+        }
+      }
+    },
+    "Cloning and take generation will connect to the workspace voice tools. Import recorded or generated WAV files now.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cloning and take generation will connect to the workspace voice tools. Import recorded or generated WAV files now."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tạo và nhân bản giọng sẽ kết nối công cụ giọng đọc trong thư mục làm việc. Hiện có thể nhập WAV đã thu hoặc đã tạo."
+          }
+        }
+      }
+    },
+    "Select a clip. Animated effects and speed ramps are still in development.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select a clip. Animated effects and speed ramps are still in development."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chọn một clip. Hiệu ứng động và chuyển tốc độ đang được phát triển."
+          }
+        }
+      }
+    },
+    "These are color adjustments. Importing .cube LUTs is still in development.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "These are color adjustments. Importing .cube LUTs is still in development."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đây là các điều chỉnh màu. Nhập LUT .cube đang được phát triển."
+          }
+        }
+      }
+    },
+    "Roll start to playhead": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Roll start to playhead"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dời điểm cắt đầu đến con trỏ"
+          }
+        }
+      }
+    },
+    "Roll end to playhead": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Roll end to playhead"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dời điểm cắt cuối đến con trỏ"
+          }
+        }
+      }
+    },
+    "Source in (frames)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Source in (frames)"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Điểm vào nguồn (khung hình)"
+          }
+        }
+      }
+    },
+    "Source in: %d frames": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Source in: %d frames"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Điểm vào nguồn: %d khung hình"
+          }
+        }
+      }
+    },
+    "Timeline changed during the gesture; try again.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Timeline changed during the gesture; try again."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dòng thời gian đã thay đổi trong lúc kéo; hãy thử lại."
+          }
+        }
+      }
+    },
+    "Option-drag an edge to roll; Command-drag a clip to slip; Shift-Delete to lift.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Option-drag an edge to roll; Command-drag a clip to slip; Shift-Delete to lift."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Option-kéo cạnh để dời điểm cắt; Command-kéo clip để trượt nguồn; Shift-Delete để xóa và giữ khoảng trống."
+          }
+        }
+      }
+    },
+    "Import SRT…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Import SRT…"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhập SRT…"
+          }
+        }
+      }
+    },
+    "Export SRT…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Export SRT…"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xuất SRT…"
+          }
+        }
+      }
+    },
+    "Add captions…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add captions…"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thêm phụ đề…"
+          }
+        }
+      }
+    },
+    "Replace captions…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Replace captions…"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thay thế phụ đề…"
+          }
+        }
+      }
+    },
+    "Refresh waveforms": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Refresh waveforms"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Làm mới dạng sóng"
+          }
+        }
+      }
+    },
+    "Project name": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Project name"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tên dự án"
+          }
+        }
+      }
+    },
+    "Frame": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Frame"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khung hình"
+          }
+        }
+      }
+    },
+    "Portrait · 9:16": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portrait · 9:16"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dọc · 9:16"
+          }
+        }
+      }
+    },
+    "Landscape · 16:9": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Landscape · 16:9"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngang · 16:9"
+          }
+        }
+      }
+    },
+    "Square · 1:1": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Square · 1:1"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vuông · 1:1"
+          }
+        }
+      }
+    },
+    "Resolution": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resolution"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Độ phân giải"
+          }
+        }
+      }
+    },
+    "HD · 720": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HD · 720"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HD · 720"
+          }
+        }
+      }
+    },
+    "Full HD · 1080": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Full HD · 1080"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Full HD · 1080"
+          }
+        }
+      }
+    },
+    "4K · 2160": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "4K · 2160"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "4K · 2160"
+          }
+        }
+      }
+    },
+    "Frame rate": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Frame rate"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tốc độ khung hình"
+          }
+        }
+      }
+    },
+    "Content language": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Content language"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngôn ngữ nội dung"
+          }
+        }
+      }
+    },
+    "Style preset": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Style preset"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phong cách"
+          }
+        }
+      }
+    },
+    "Food review": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Food review"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đánh giá món ăn"
+          }
+        }
+      }
+    },
+    "Cinematic": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cinematic"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Điện ảnh"
+          }
+        }
+      }
+    },
+    "Custom": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Custom"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tùy chỉnh"
+          }
+        }
+      }
+    },
+    "Save in": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save in"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lưu trong"
+          }
+        }
+      }
+    },
+    "Footage folder (optional)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Footage folder (optional)"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thư mục video gốc (tùy chọn)"
+          }
+        }
+      }
+    },
+    "Clear footage selection": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clear footage selection"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bỏ chọn video gốc"
+          }
+        }
+      }
+    },
+    "Original footage is referenced without copying or modifying it. Import clips after creating the project.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Original footage is referenced without copying or modifying it. Import clips after creating the project."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Video gốc được liên kết, không sao chép hay sửa đổi. Nhập clip sau khi tạo dự án."
+          }
+        }
+      }
+    },
+    "Not selected": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not selected"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa chọn"
+          }
+        }
+      }
+    },
+    "Choose…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose…"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chọn…"
+          }
+        }
+      }
+    },
+    "Create project": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create project"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tạo dự án"
+          }
+        }
+      }
+    },
+    "Project created": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Project created"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã tạo dự án"
+          }
+        }
+      }
+    },
+    "Language tag for captions and narration, such as vi, en or en-US.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Language tag for captions and narration, such as vi, en or en-US."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mã ngôn ngữ cho phụ đề và lời dẫn, ví dụ vi, en hoặc en-US."
+          }
+        }
+      }
+    },
+    "Attach current frame": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Attach current frame" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đính kèm khung hình hiện tại" } }
+      }
+    },
+    "Preparing frame…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Preparing frame…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đang chuẩn bị khung hình…" } }
+      }
+    },
+    "Remove": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Remove" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Bỏ" } }
+      }
+    },
+    "Found a resumable %@ session": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Found a resumable %@ session"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã tìm thấy phiên %@ có thể tiếp tục"
+          }
+        }
+      }
+    },
+    "Microphone access is required to record voiceover.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Microphone access is required to record voiceover." } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Cần quyền truy cập micrô để ghi lời dẫn." } }
+      }
+    },
+    "Preserve audio pitch": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preserve audio pitch"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giữ cao độ âm thanh"
+          }
+        }
+      }
+    },
+    "Record voiceover": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Record voiceover" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Ghi lời dẫn" } }
+      }
+    },
+    "Saved %@ session for this project": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved %@ session for this project"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã lưu phiên %@ cho dự án này"
+          }
+        }
+      }
+    },
+    "Stop recording": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Stop recording" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Dừng ghi" } }
+      }
+    },
+    "Voiceover recording could not be completed.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Voiceover recording could not be completed." } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Không thể hoàn tất bản ghi lời dẫn." } }
+      }
+    },
+    "Voiceover recording inserted": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Voiceover recording inserted" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đã chèn bản ghi lời dẫn" } }
+      }
+    }
+  },
+  "version": "1.0"
+}

@@ -1,0 +1,122 @@
+import AppKit
+import BashCutProject
+import SwiftUI
+
+struct NewProjectView: View {
+    @Bindable var document: ProjectDocument
+    @Environment(\.dismiss) private var dismiss
+    @State private var setup = ProjectSetup()
+    @State private var parent: URL?
+    @State private var footage: URL?
+    @State private var error = ""
+    @FocusState private var nameFocused: Bool
+
+    private var valid: Bool { parent != nil && (try? setup.project()) != nil }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("New project").font(.title2.bold())
+            Form {
+                TextField("Project name", text: $setup.name).focused($nameFocused)
+                Picker("Frame", selection: $setup.canvas) {
+                    Text("Portrait · 9:16").tag(ProjectSetup.Canvas.portrait)
+                    Text("Landscape · 16:9").tag(ProjectSetup.Canvas.landscape)
+                    Text("Square · 1:1").tag(ProjectSetup.Canvas.square)
+                }
+                Picker("Resolution", selection: $setup.resolution) {
+                    Text("HD · 720").tag(ProjectSetup.Resolution.hd)
+                    Text("Full HD · 1080").tag(ProjectSetup.Resolution.fullHD)
+                    Text("4K · 2160").tag(ProjectSetup.Resolution.ultraHD)
+                }
+                Picker("Frame rate", selection: $setup.rate) {
+                    ForEach(ProjectSetup.Rate.allCases, id: \.self) { rate in
+                        Text(rate.rawValue + " fps").tag(rate)
+                    }
+                }
+                TextField("Content language", text: $setup.contentLanguage)
+                    .help("Language tag for captions and narration, such as vi, en or en-US.")
+                Picker("Style preset", selection: $setup.style) {
+                    Text("Food review").tag(ProjectSetup.Style.foodReview)
+                    Text("Cinematic").tag(ProjectSetup.Style.cinematic)
+                    Text("Custom").tag(ProjectSetup.Style.custom)
+                }
+                folderRow("Save in", url: parent) { parent = chooseFolder() ?? parent }
+                folderRow("Footage folder (optional)", url: footage) { footage = chooseFolder() ?? footage }
+                if footage != nil {
+                    Button("Clear footage selection") { footage = nil }
+                }
+            }.formStyle(.columns)
+            Text("Original footage is referenced without copying or modifying it. Import clips after creating the project.")
+                .font(.caption).foregroundStyle(.secondary)
+            if let parent, !setup.folderName.isEmpty {
+                Text(parent.appendingPathComponent(setup.folderName).path)
+                    .font(.caption.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
+            }
+            if !error.isEmpty {
+                Text(error).font(.caption).foregroundStyle(.red).textSelection(.enabled)
+            }
+            HStack {
+                Text("\(setup.dimensions.width) × \(setup.dimensions.height)")
+                    .font(.caption.monospaced()).foregroundStyle(.secondary)
+                Spacer()
+                if document.creatingProject { ProgressView().controlSize(.small) }
+                Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
+                Button("Create project", action: create).keyboardShortcut(.defaultAction)
+                    .buttonStyle(.borderedProminent).disabled(!valid)
+            }
+        }.padding(24).frame(width: 540)
+            .disabled(document.creatingProject)
+            .interactiveDismissDisabled(document.creatingProject)
+            .onAppear { nameFocused = true }
+    }
+
+    private func folderRow(_ title: LocalizedStringKey, url: URL?, action: @escaping () -> Void) -> some View {
+        LabeledContent(title) {
+            HStack {
+                if let url {
+                    Text(url.lastPathComponent).lineLimit(1).help(url.path)
+                } else {
+                    Text("Not selected").foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button("Choose…", action: action)
+                    .accessibilityLabel(title)
+            }.accessibilityElement(children: .contain)
+        }.accessibilityElement(children: .contain)
+    }
+
+    private func chooseFolder() -> URL? {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.canCreateDirectories = true
+        panel.directoryURL = parent
+        return panel.runModal() == .OK ? panel.url : nil
+    }
+
+    private func create() {
+        guard let parent, !document.saving, !document.busy,
+            document.confirmDiscard(removeRecovery: false)
+        else { return }
+        let previousURL = document.fileURL
+        document.creatingProject = true
+        document.busy = true
+        error = ""
+        Task {
+            defer {
+                document.creatingProject = false
+                document.busy = false
+            }
+            do {
+                let created = try await document.storage.create(setup, in: parent, footage: footage)
+                if let previousURL { try? await document.storage.discardRecovery(at: previousURL) }
+                document.reset(created.project, url: created.url)
+                document.diskData = created.diskData
+                document.message = String(localized: "Project created")
+                dismiss()
+            } catch {
+                self.error = error.localizedDescription
+            }
+        }
+    }
+}
