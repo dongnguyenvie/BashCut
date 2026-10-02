@@ -20,6 +20,11 @@ func colorLUTCatalog() throws {
     let restored = try deleted.project.applying(deleted.inverse).project
     #expect(restored.colorLUTs.first?.id == "look")
     #expect(restored.tracks[0].items[0]["color"]?.object["lut"] == .string("look"))
+    // The reference must be the catalog ID, not a copy of the entry.
+    #expect(throws: ProjectError.self) {
+        try project.applying(.setProperties(
+            item: "clip", patch: ["color": .object(["lut": .object(["id": .string("look")])])]))
+    }
 }
 
 @Test("LUT paths are confined to the project LUT directory")

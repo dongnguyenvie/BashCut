@@ -81,8 +81,11 @@ extension Project {
                         && item.speed > 0,
                     "item.\(item.id): invalid source/speed")
                 try item.validateRenderProperties()
-                if let lut = item.fields["color"]?.object["lut"]?.string {
-                    try require(colorLUTs.contains(where: { $0.id == lut }), "item.\(item.id): unknown LUT")
+                if let lut = item.fields["color"]?.object["lut"], lut != .null {
+                    // A LUT is referenced by catalog ID; anything else would be silently ignored by the engine.
+                    try require(
+                        lut.string.map { id in colorLUTs.contains { $0.id == id } } == true,
+                        "item.\(item.id): unknown LUT")
                 }
                 if track.kind != "text" {
                     guard let asset = media.first(where: { $0.id == item.mediaID }) else {
