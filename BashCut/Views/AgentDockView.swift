@@ -8,22 +8,19 @@ struct AgentDockView: View {
     var detached = false
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text("AGENT").font(.caption.bold())
+            HStack(spacing: 2) {
+                Text("AGENT").font(.caption.bold()).foregroundStyle(.secondary)
                 Spacer()
-                Button {
+                DockIconButton(
+                    systemImage: detached ? "rectangle.portrait.and.arrow.forward" : "macwindow.on.rectangle",
+                    help: detached ? "Attach agent dock" : "Detach agent dock"
+                ) {
                     detached ? model.attach() : model.detach()
-                } label: {
-                    Image(systemName: detached ? "rectangle.portrait.and.arrow.forward" : "macwindow.on.rectangle")
                 }
-                .buttonStyle(.plain)
-                .help(detached ? "Attach agent dock" : "Detach agent dock")
-                Button {
+                DockIconButton(systemImage: "books.vertical", help: "Skills and project memory") {
                     model.knowledge.load(from: model.directory)
                     model.showKnowledge = true
-                } label: {
-                    Image(systemName: "books.vertical")
-                }.buttonStyle(.plain).help("Skills and project memory")
+                }
                 Menu {
                     ForEach(AgentProviders.all, id: \.id) { provider in
                         Button("\(provider.title) terminal") { model.open(provider.id) }
@@ -35,33 +32,34 @@ struct AgentDockView: View {
                     }
                 } label: {
                     Image(systemName: "plus")
-                }.menuStyle(.borderlessButton).frame(width: 24)
-            }.padding(10)
-            ScrollView(.horizontal) {
-                HStack {
+                }
+                .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+                .frame(width: 24, height: 22).help("New terminal or handoff")
+            }.padding(.horizontal, 10).padding(.vertical, 8)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 4) {
                     ForEach(model.sessions) { session in
-                        HStack(spacing: 3) {
-                            Button(session.title) {
+                        DockTab(
+                            title: session.title, systemImage: Self.icon(for: session.provider.id),
+                            selected: model.selectedSession == session.id && !model.apiVisible,
+                            select: {
                                 model.selectedSession = session.id
                                 model.apiVisible = false
-                            }
-                            .tint(model.selectedSession == session.id && !model.apiVisible ? .cyan : .gray)
-                            Button {
-                                model.close(session)
-                            } label: {
-                                Image(systemName: "xmark").font(.caption2)
-                            }
-                            .buttonStyle(.plain)
-                        }
+                            },
+                            close: { model.close(session) })
                     }
-                    Button("API") { model.apiVisible = true }
-                }
-            }.padding(.horizontal, 8)
+                    DockTab(
+                        title: "API", systemImage: "network", selected: model.apiVisible,
+                        select: { model.apiVisible = true }, close: nil)
+                }.padding(.horizontal, 8).padding(.vertical, 6)
+            }.background(Color.white.opacity(0.03))
             Divider()
             if model.apiVisible {
                 apiPanel
             } else if let session = model.current {
                 TerminalPanel(session: session).id(session.id)
+                    .padding(.leading, 6).padding(.top, 4)
+                    .background(Color(nsColor: session.view.nativeBackgroundColor))
             } else {
                 VStack(spacing: 14) {
                     Image(systemName: "terminal").font(.largeTitle).foregroundStyle(.cyan)
@@ -122,6 +120,13 @@ struct AgentDockView: View {
             .sheet(isPresented: $model.showKnowledge) {
                 AgentKnowledgeView(model: model.knowledge, done: { model.showKnowledge = false })
             }
+    }
+    private static func icon(for provider: AgentProviderID) -> String {
+        switch provider {
+        case .claude: "sparkle"
+        case .codex: "chevron.left.forwardslash.chevron.right"
+        default: "terminal"
+        }
     }
     private var apiPanel: some View {
         ScrollView {
@@ -227,6 +232,67 @@ private struct AgentKnowledgeView: View {
             }
             Text(model.message).font(.caption).foregroundStyle(.secondary)
         }.padding(20).frame(width: 820, height: 620, alignment: .top).preferredColorScheme(.dark)
+    }
+}
+
+/// A dock tab: provider icon and title, with a close button inside the tab that shows on hover or selection.
+private struct DockTab: View {
+    let title: String
+    let systemImage: String
+    let selected: Bool
+    let select: () -> Void
+    let close: (() -> Void)?
+    @State private var hovered = false
+    var body: some View {
+        HStack(spacing: 5) {
+            Image(systemName: systemImage).font(.system(size: 10, weight: .semibold))
+            Text(title).font(.system(size: 12, weight: selected ? .semibold : .regular)).lineLimit(1)
+            if let close {
+                Button(action: close) {
+                    Image(systemName: "xmark").font(.system(size: 8, weight: .bold))
+                        .frame(width: 14, height: 14)
+                        .background(Circle().fill(Color.white.opacity(hovered ? 0.12 : 0)))
+                        .contentShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .opacity(selected || hovered ? 1 : 0)
+                .help("Close \(title)")
+            }
+        }
+        .foregroundStyle(selected ? Color.cyan : Color.primary.opacity(hovered ? 0.9 : 0.65))
+        .padding(.leading, 9).padding(.trailing, close == nil ? 9 : 4).frame(height: 24)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(Color.white.opacity(selected ? 0.08 : hovered ? 0.05 : 0)))
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .strokeBorder(selected ? Color.cyan.opacity(0.7) : Color.white.opacity(0.08), lineWidth: 1))
+        .contentShape(RoundedRectangle(cornerRadius: 6))
+        .onTapGesture(perform: select)
+        .onHover { hovered = $0 }
+        .accessibilityElement(children: .contain)
+        .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
+        .accessibilityLabel(title)
+        .accessibilityAction(.default, select)
+    }
+}
+
+/// A 22 pt icon button with a hover highlight for the dock header.
+private struct DockIconButton: View {
+    let systemImage: String
+    let help: LocalizedStringKey
+    let action: () -> Void
+    @State private var hovered = false
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemImage).font(.system(size: 12))
+                .frame(width: 24, height: 22)
+                .background(RoundedRectangle(cornerRadius: 5).fill(Color.white.opacity(hovered ? 0.08 : 0)))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain).foregroundStyle(.secondary)
+        .onHover { hovered = $0 }
+        .help(help)
     }
 }
 

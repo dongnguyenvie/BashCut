@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- Agent dock tabs: each tab shows its provider icon, the close button sits inside the tab (shown on hover or
+  selection), the selected tab is outlined in cyan, API is a tab like the others, header buttons highlight on
+  hover, and the terminal has a small inset instead of touching the dock edge.
 - Sample project for contributors: `scripts/sample-project.py` generates synthetic media with ffmpeg and builds
   `build/sample-project/bashcut-sample` through the `bashcut` CLI, with every timeline case (linked clips, LUT,
   reframing, dissolve, freeze frame, 2× speed, gap, 4K HEVC proxy, picture in picture, captions, locked, hidden

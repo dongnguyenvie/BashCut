@@ -85,6 +85,18 @@
         "vi": { "stringUnit": { "state": "translated", "value": "Gắn dock agent" } }
       }
     },
+    "New terminal or handoff": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "New terminal or handoff" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Mở terminal mới hoặc chuyển giao" } }
+      }
+    },
+    "Close %@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Close %@" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đóng %@" } }
+      }
+    },
     "Wide": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Wide" } },

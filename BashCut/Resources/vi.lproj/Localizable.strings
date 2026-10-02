@@ -151,6 +151,8 @@
 "BashCut Agent" = "Agent BashCut";
 "Detach agent dock" = "Tách dock agent";
 "Attach agent dock" = "Gắn dock agent";
+"New terminal or handoff" = "Mở terminal mới hoặc chuyển giao";
+"Close %@" = "Đóng %@";
 "Original" = "Nguyên bản";
 "Muted film" = "Màu phim dịu";
 "Black & white" = "Đen trắng";

@@ -151,6 +151,8 @@
 "BashCut Agent" = "BashCut Agent";
 "Detach agent dock" = "Detach agent dock";
 "Attach agent dock" = "Attach agent dock";
+"New terminal or handoff" = "New terminal or handoff";
+"Close %@" = "Close %@";
 "Original" = "Original";
 "Muted film" = "Muted film";
 "Black & white" = "Black & white";
