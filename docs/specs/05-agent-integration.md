@@ -121,8 +121,10 @@ take minutes, these edit-mode commands return a job ID at once; `jobs.status` re
 Exports share the same job center: each approved `export.start` (and each export started in the UI)
 becomes an `export.start` job that waits as `queued` behind the running export, then runs; exports
 render one at a time in request order from the project as it was when requested. `export status`
-lists the queue with job IDs, and `jobs.cancel` stops a queued or running export. Opening another
-project cancels and clears all jobs.
+lists the queue with job IDs; while an export runs its top-level fields (`job`, `step`, `progress`,
+`preset`, `path`, `includedSRT`) describe that export and the previous receipt moves to `lastExport`.
+An export asked to include SubRip writes no `.srt` when the timeline has no captions. `jobs.cancel`
+stops a queued or running export. Opening another project cancels and clears all jobs.
 
 Installing a plugin or running its dependency recipes stays an explicit native Plugins workflow;
 an agent may open or point to that workflow but cannot silently approve it. Provider credentials

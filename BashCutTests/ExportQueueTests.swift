@@ -39,9 +39,9 @@ private actor ExportLog {
 
 @MainActor
 struct ExportQueueTests {
-    private func project() throws -> Project {
+    private func project(captionText: String = "Xin chào") throws -> Project {
         var caption = Item(at: 0, duration: 30)
-        caption["text"] = .string("Xin chào")
+        caption["text"] = .string(captionText)
         let base = Project(name: "Queue")
         return try base.applying(.insert(track: base.requireTrack(role: TrackRole.captions).id, item: caption)).project
     }
@@ -136,6 +136,11 @@ struct ExportQueueTests {
         #expect(valid.output.lastPathComponent == "clip.mp4")
         #expect(valid.subRip?.lastPathComponent == "clip.srt")
         #expect(valid.captionText?.contains("Xin chào") == true)
+        let silent = try ExportRequest(
+            project: project(captionText: " "), root: root, workspace: nil,
+            name: "silent", preset: .quickDraft, directory: root, includeSubRip: true, normalizeAudio: false)
+        #expect(silent.subRip == nil)
+        #expect(!silent.includesSubRip)
         #expect(throws: ProjectError.self) { try request("a/b", in: root) }
         #expect(throws: ProjectError.self) { try request("clip", in: root, reserved: valid.outputs) }
         try FileManager.default.createDirectory(

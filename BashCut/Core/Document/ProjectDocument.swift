@@ -177,7 +177,21 @@ final class ProjectDocument {
             }
         }
         restoreLatestAgentChangeFromHistory()
+        relinkOlderMediaPaths(projectRoot: url.deletingLastPathComponent())
         rebuild()
+    }
+
+    /// Projects saved before footage paths went through the `footage` link store `../../…` paths;
+    /// rewrite them as one undoable edit so the project survives a move.
+    private func relinkOlderMediaPaths(projectRoot: URL) {
+        guard let relinked = MediaPathResolver.relinkingMedia(in: project, projectRoot: projectRoot) else { return }
+        do {
+            try commit(.restore(relinked), label: "Relink media paths", author: .user)
+            message = String(localized: "Media paths now go through the footage link; save to keep them")
+            DebugLog.write("project", "relinked media paths through project folder links")
+        } catch {
+            DebugLog.write("project", "relink skipped: \(error.localizedDescription)")
+        }
     }
 
     func reset(_ project: Project, url: URL) {

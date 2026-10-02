@@ -32,7 +32,10 @@ public struct ExportRequest: Sendable {
         guard source.duration > 0 else { throw ProjectError.invalid("The timeline is empty") }
         let base = directory.appendingPathComponent(baseName).standardizedFileURL
         let output = base.appendingPathExtension(preset.fileExtension)
-        let subRip = includeSubRip ? base.appendingPathExtension("srt") : nil
+        // No SubRip file when the timeline has no captions.
+        let captionText = includeSubRip ? try SubRip.encode(source) : nil
+        let hasCaptions = captionText.map { !$0.isEmpty } ?? false
+        let subRip = hasCaptions ? base.appendingPathExtension("srt") : nil
         for url in [output, subRip].compactMap({ $0 }) {
             guard !FileManager.default.fileExists(atPath: url.path), !reserved.contains(url) else {
                 throw ProjectError.invalid("Choose a new export name; an output already exists or is queued")
@@ -50,7 +53,7 @@ public struct ExportRequest: Sendable {
         self.workspace = workspace
         self.output = output
         self.subRip = subRip
-        captionText = includeSubRip ? try SubRip.encode(source) : nil
+        self.captionText = hasCaptions ? captionText : nil
         self.preset = preset
         self.normalizeAudio = normalizeAudio
     }

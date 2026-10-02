@@ -54,6 +54,28 @@ struct MediaPathResolverTests {
         #expect(MediaPathResolver.projectPath(for: outside, projectRoot: project) == "../Music/song.wav")
     }
 
+    @Test("Older ../ media paths into a linked folder are rewritten through the link")
+    func relinkOlderPaths() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let folder = root.appendingPathComponent("Edit.bashcut", isDirectory: true)
+        let shoot = root.appendingPathComponent("Downloads/shoot", isDirectory: true)
+        try FileManager.default.createDirectory(at: shoot, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        try FileManager.default.createSymbolicLink(
+            at: folder.appendingPathComponent("footage"), withDestinationURL: shoot)
+        var project = Project(name: "Relink")
+        project.media = [
+            Media(fields: ["id": .string("a"), "path": .string("../Downloads/shoot/a.mp4")]),
+            Media(fields: ["id": .string("b"), "path": .string("../Music/song.wav")]),
+            Media(fields: ["id": .string("c"), "path": .string("voiceover/take.m4a")]),
+        ]
+        let relinked = try #require(MediaPathResolver.relinkingMedia(in: project, projectRoot: folder))
+        #expect(relinked.media.map(\.path) == ["footage/a.mp4", "../Music/song.wav", "voiceover/take.m4a"])
+        #expect(MediaPathResolver.relinkingMedia(in: relinked, projectRoot: folder) == nil)
+    }
+
     @Test("Shared asset symlinks cannot escape the workspace assets directory")
     func escapingSymlink() throws {
         let root = FileManager.default.temporaryDirectory

@@ -44,7 +44,8 @@ public enum CommandCatalog {
         CommandSpec("captions.export", .read, "Export captions as SubRip text."),
         CommandSpec(
             "export.status", .read,
-            "Read the running export, the export queue (job IDs for jobs.cancel) and the most recent export receipt."),
+            "Read the export state: while one runs, its job, step, preset and path (last receipt under lastExport); "
+                + "otherwise the most recent receipt. Includes the queue (job IDs for jobs.cancel)."),
         CommandSpec("plugins.list", .read, "List installed plugins, their providers and project provider preferences."),
         CommandSpec(
             "jobs.status", .read, "Read one job (plugin call or export), or all recent jobs when job is omitted.",

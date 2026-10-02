@@ -47,6 +47,26 @@ public enum MediaPathResolver {
             .joined(separator: "/")
     }
 
+    /// `project` with `../` media paths that point into a linked project folder rewritten to go
+    /// through the link (see `projectPath`), or nil when nothing changes.
+    public static func relinkingMedia(in project: Project, projectRoot: URL) -> Project? {
+        var changed = false
+        let media = project.media.map { entry -> Media in
+            guard entry.path.hasPrefix("../") else { return entry }
+            let url = projectRoot.appendingPathComponent(entry.path).standardizedFileURL
+            let path = projectPath(for: url, projectRoot: projectRoot)
+            guard path != entry.path, !path.hasPrefix("../") else { return entry }
+            var relinked = entry
+            relinked.fields["path"] = .string(path)
+            changed = true
+            return relinked
+        }
+        guard changed else { return nil }
+        var result = project
+        result.media = media
+        return result
+    }
+
     private static func descendant(_ url: URL, of folder: URL) -> String? {
         let source = url.pathComponents
         let base = folder.pathComponents

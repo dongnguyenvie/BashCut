@@ -523,6 +523,12 @@
         "vi": { "stringUnit": { "state": "translated", "value": "Đã xếp hàng xuất video" } }
       }
     },
+    "Media paths now go through the footage link; save to keep them": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Media paths now go through the footage link; save to keep them" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đường dẫn media đã chuyển sang qua liên kết footage; hãy lưu để giữ thay đổi" } }
+      }
+    },
     "Run agent exports without confirmation": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Run agent exports without confirmation" } },

@@ -280,6 +280,7 @@
 "Export cancelled" = "Đã hủy xuất";
 "%lld queued" = "%lld đang chờ";
 "Export queued" = "Đã xếp hàng xuất video";
+"Media paths now go through the footage link; save to keep them" = "Đường dẫn media đã chuyển sang qua liên kết footage; hãy lưu để giữ thay đổi";
 "Save the project before exporting" = "Hãy lưu dự án trước khi xuất";
 "Use a file name without slashes or colons" = "Tên tệp không được chứa dấu gạch chéo hoặc dấu hai chấm";
 "Choose a new export name; an output already exists" = "Hãy chọn tên xuất mới; tệp đầu ra đã tồn tại";
