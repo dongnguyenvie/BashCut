@@ -167,6 +167,7 @@ extension TimelineCanvas {
             .filter { url in
                 let type = UTType(filenameExtension: url.pathExtension)
                 return type?.conforms(to: .movie) == true || type?.conforms(to: .audio) == true
+                    || type?.conforms(to: .image) == true
             }
         guard !media.isEmpty || !files.isEmpty else { return nil }
         let point = convert(sender.draggingLocation, from: nil)

@@ -422,10 +422,11 @@
           "type" : "string"
         },
         "kind" : {
-          "description" : "Media kind",
+          "description" : "Media kind; an image is held for as long as its items last (frames is the limit)",
           "enum" : [
             "video",
-            "audio"
+            "audio",
+            "image"
           ],
           "type" : "string"
         },

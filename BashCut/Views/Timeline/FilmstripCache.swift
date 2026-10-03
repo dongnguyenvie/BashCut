@@ -111,6 +111,10 @@ private actor FilmstripRenderer {
     private var generators: [URL: AVAssetImageGenerator] = [:]
 
     func image(url: URL, seconds: Double, tolerance: Double) async -> CGImage? {
+        if StillImageMovie.isImage(url) {
+            return StillImageMovie.decoded(url, maximumSide: Int(max(FilmstripCache.maximumSize.width,
+                                                                       FilmstripCache.maximumSize.height)))
+        }
         let generator = generators[url] ?? {
             let generator = AVAssetImageGenerator(asset: AVURLAsset(url: url))
             generator.appliesPreferredTrackTransform = true

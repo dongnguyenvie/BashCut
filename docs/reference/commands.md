@@ -129,11 +129,11 @@ List project media.
 
 ### `bashcut media import <path> [--kind <kind>] [--place] [--track <track>] [--at-frame <atFrame>] --base-rev <baseRev>`
 
-Add a media file to the project (path relative to the project folder or absolute); with place, also put it on a layer like the Import button.
+Add a media file (path relative to the project or absolute): video, audio or a still image (PNG keeps transparency; placed for 3 s, trims to any length). With place, also put it on a layer like Import.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_media_import`
 - `path`: string, required, path. Media file path
-- `kind`: string, one of video, audio, default "video". Media kind
+- `kind`: string, one of video, audio, image. Media kind; from the file type by default
 - `place`: boolean, default false. Also place it on a layer
 - `track`: string. Layer ID for place; defaults to the main layer
 - `atFrame`: integer, ≥ 0. Timeline frame for place

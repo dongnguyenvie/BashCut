@@ -8,6 +8,10 @@ extension ProjectDocument {
             message = String(localized: "Shared media requires a configured workspace.")
             return
         }
+        guard !media.isImage else {
+            message = String(localized: "Images have no source preview; drag them onto the timeline.")
+            return
+        }
         preview.pause()
         sourceViewer.open(media, url: url)
     }

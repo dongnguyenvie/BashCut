@@ -33,7 +33,7 @@ extension ProjectDocument {
         author: Author = .user, baseRevision: Int? = nil
     ) throws -> (revision: Int, trackID: String) {
         let trackID = try trackID ?? project.requireTrack(role: TrackRole.main, kind: "video").id
-        let duration = Int((Double(media.frames) / media.fps.value * project.fps.value).rounded(.down))
+        let duration = media.placementFrames(in: project.fps)
         guard duration > 0 else { throw ProjectError.invalid("Media is too short") }
         var planner = LayerPlanner(project)
         try planner.placeMedia(

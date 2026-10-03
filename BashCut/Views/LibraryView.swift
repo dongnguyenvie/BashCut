@@ -1,5 +1,6 @@
 import AVFoundation
 import BashCutDocument
+import BashCutEngine
 import BashCutProject
 import SwiftUI
 
@@ -105,6 +106,9 @@ struct LibraryView: View {
         }
     }
     private func mediaSummary(_ media: Media) -> String {
+        if media.isImage, let width = media.width, let height = media.height {
+            return "\(width)×\(height) · " + String(localized: "Image")
+        }
         let duration = String(format: "%.1fs", media.durationSeconds)
         let rate = String(format: "%.2f fps", media.fps.value)
         if let width = media.width, let height = media.height {
@@ -382,7 +386,7 @@ private struct MediaThumbnail: View {
                         Spacer()
                     }.padding(5).foregroundStyle(.orange)
                 }
-                if hovering, !isOffline {
+                if hovering, !isOffline, !media.isImage {
                     VStack {
                         Spacer()
                         HStack {
@@ -412,6 +416,10 @@ private struct MediaThumbnail: View {
             .accessibilityValue(scrubTime)
             .task(id: media.path + ":\(thumbnailFrame)") {
                 guard let mediaURL, !isOffline else { return }
+                if media.kind == "image" {
+                    image = StillImageMovie.decoded(mediaURL, maximumSide: 240).map { NSImage(cgImage: $0, size: .zero) }
+                    return
+                }
                 if thumbnailFrame > 0 {
                     do { try await Task.sleep(for: .milliseconds(60)) } catch { return }
                 }

@@ -121,6 +121,16 @@ public struct Media: JSONObject, Identifiable {
         return value
     }
     public var durationSeconds: Double { Double(frames) / fps.value }
+    /// A still image: held for as long as its items last, up to `Media.imageMaximumSeconds` (its `frames`).
+    public var isImage: Bool { kind == "image" }
+    public static let imageMaximumSeconds = 3600.0
+    /// How long a new placement of an image lasts.
+    public static let imageDefaultSeconds = 3.0
+    /// Timeline frames a new placement lasts: the whole file, or `imageDefaultSeconds` for an image.
+    public func placementFrames(in projectFPS: FrameRate) -> Int {
+        if isImage { return Int((Self.imageDefaultSeconds * projectFPS.value).rounded()) }
+        return Int((Double(frames) / fps.value * projectFPS.value).rounded(.down))
+    }
 }
 
 public struct Track: JSONObject, Identifiable {

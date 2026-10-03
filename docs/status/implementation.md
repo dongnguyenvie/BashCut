@@ -57,6 +57,9 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
 - Automatic Change Framing cycles Wide, Medium, Close and left/right presets through validated `transform` and
   `reframePreset` properties; manual edits switch the item back to Custom.
 - Freeze Frame, tags, transform and opacity, constant speed with optional pitch preservation.
+- Still images (media kind `image`): import, drag in or `media import` a JPEG, PNG (transparency kept), HEIC or other
+  image; it is placed for 3 s and trims to any length up to an hour. The engine reads it through a one-frame
+  ProRes 4444 movie in `.bashcut/stills/`, remade when the image changes.
 - Edit menu (Cut, Copy, Paste, Select All) for text fields and terminals.
 
 ### Media & proxies
