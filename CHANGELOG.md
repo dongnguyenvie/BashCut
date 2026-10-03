@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+- Record preview build, readiness and player-swap intervals in Instruments and private debug logs,
+  including interrupted stages, to separate composition work from player preparation.
+
 - Observe preview readiness instead of polling, cancel obsolete observations promptly, and keep the last
   picture if a new player takes longer than 30 seconds. Stale build failures no longer replace current status.
 

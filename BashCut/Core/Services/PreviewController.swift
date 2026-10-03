@@ -105,21 +105,28 @@ public final class PreviewController {
         let compare = showColorComparison
         let request = request
         rebuildTask = Task { [engine] in
+            let timing = PreviewTiming()
+            defer { timing.finish() }
             do {
                 if coalescing { try await coalescingDelay() }
                 try Task.checkCancellation()
+                timing.begin("build")
                 let built = try await engine.build(project, root: root, workspace: workspace, purpose: .preview)
                 let comparisonBuilt = compare
                     ? try await engine.build(
                         project.withoutColorEffects(), root: root, workspace: workspace, purpose: .preview)
                     : nil
+                timing.end()
                 try Task.checkCancellation()
                 guard request == self.request, compare == showColorComparison else { return }
                 self.built = built
                 builtRequest = request
                 buildCount += 1
-                if !update(with: built, comparison: comparisonBuilt, request: request) {
-                    try await show(built, comparison: comparisonBuilt, request: request)
+                timing.begin("swap")
+                let updated = update(with: built, comparison: comparisonBuilt, request: request)
+                timing.end()
+                if !updated {
+                    try await show(built, comparison: comparisonBuilt, request: request, timing: timing)
                 }
                 onMessage?("")
             } catch is CancellationError {} catch {
@@ -242,7 +249,10 @@ public final class PreviewController {
     }
 
     /// Readies `built` in new players at the playhead, then swaps them in for the current ones.
-    private func show(_ built: CompositionSnapshot, comparison: CompositionSnapshot?, request: Int) async throws {
+    private func show(
+        _ built: CompositionSnapshot, comparison: CompositionSnapshot?, request: Int, timing: PreviewTiming
+    ) async throws {
+        timing.begin("ready")
         let staged = AVPlayer()
         let item = Self.playerItem(built)
         staged.replaceCurrentItem(with: item)
@@ -256,6 +266,7 @@ public final class PreviewController {
         if let comparisonItem = stagedComparison?.currentItem {
             try await awaitReadiness(comparisonItem, "Comparison preview could not become ready")
         }
+        timing.begin("swap")
         let frame = playhead
         let time = project.fps.time(frame)
         await staged.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero)
