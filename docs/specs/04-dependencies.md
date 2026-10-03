@@ -30,7 +30,7 @@ external tools, and the options that were rejected. Exact versions and licenses 
 | Core Text, Core Graphics | Captions and text overlays | **Implemented** |
 | VideoToolbox (through AVFoundation) | Hardware H.264/HEVC/ProRes encode and decode | **Implemented** |
 | AVFAudio | Direct voiceover recording with an input level meter | **Implemented** |
-| Security, CryptoKit | Keychain storage for model API keys; hashing for cache keys | **Implemented** |
+| Security, CryptoKit | Hashing for cache keys | **Implemented** |
 | Dispatch file-system sources | Watching the project folder for outside edits | **Implemented** |
 | UniformTypeIdentifiers | Drag and drop, open and import panels | **Implemented** |
 | OSLog | Unified-log mirror of the debug log | **Implemented** |

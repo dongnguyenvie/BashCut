@@ -9,7 +9,7 @@ many providers before the export queue, scrub performance work, bundled provider
 
 ## Principles
 
-1. **Every extension point is an interface.** Agent CLIs, model APIs, automation commands, plugin capabilities
+1. **Every extension point is an interface.** Agent CLIs, automation commands, plugin capabilities
    and transports, interchange formats, media sources and export jobs are protocols with a registry. Adding a
    provider or a command means adding one file that conforms to a protocol, plus a test.
 2. **The core contract stays closed.** `EditOperation` keeps one exhaustive `switch` so the compiler finds every
@@ -32,7 +32,7 @@ The state of the code at the time of the audit, before R0.
 | UI | Inspector sliders and text fields created one undo entry and one player rebuild per tick or keystroke | `InspectorView.swift` |
 | Document | Nine code paths wrote history, each with its own conflict, busy and agent-diff handling | `ProjectDocument*.swift`, `AgentDockModel+API.swift` |
 | Automation | One command was declared in five places (mode, instructions, handler, CLI, MCP schema); handlers had to be synchronous | `Wire.swift`, `BashCutCLI.swift`, `BashCutMCP.swift` |
-| Agents | Agent CLIs and model APIs were closed enums with `if provider == .claude` branches; Codex inherited the whole app environment | `AgentLaunch.swift`, `ModelClient.swift`, `AgentSessionStore.swift` |
+| Agents | Agent CLIs and model APIs were closed enums with `if provider == .claude` branches; Codex inherited the whole app environment | `AgentLaunch.swift`, `AgentSessionStore.swift` |
 | Model | Fixed track IDs (`a2`, `t1`, `v1`, `a3`, `a4`) in about 15 places despite dynamic schema-v2 tracks | `ProjectDocument+*.swift`, `LibraryView.swift` |
 | Model | Unbounded full-snapshot undo, written to disk twice per save; the journal relied on synthesized `Codable` | `EditOperation.swift`, `ProjectStorage.swift` |
 | Document | `ProjectDocument` had 56 stored properties and about nine responsibilities, inside the untestable app target | `ProjectDocument.swift` |
@@ -48,7 +48,7 @@ Each round is one commit (or a short series) that passes `scripts/verify.sh test
 | R0 | Live bugs: cancellable, non-blocking plugin runner that kills the whole process group; concurrent socket clients off the cooperative pool; coalesced Inspector edits | S | Done |
 | R1 | Single `commit` choke point; `Project.track(role:)` helpers replacing fixed track IDs; capped history with explicit `before`; `"op"`-keyed `EditOperation` codec in core shared by the wire and the journal; hide `Deque` | M | Done (fixed-ID examples in agent instructions removed in R2) |
 | R2 | `CommandSpec` registry: each command declared once (name, mode, parameters, sync or job); async handlers; CLI, MCP tools and agent instructions generated from specs; consistency test | M | Done |
-| R3 | `AgentProvider` protocol (launch, MCP config, session discovery, environment allowlist) and `ModelAdapter` protocol with registries; bookmarks keyed by provider ID | M | Done |
+| R3 | `AgentProvider` protocol (launch, MCP config, session discovery, environment allowlist) with a registry (the `ModelAdapter` registry went with the model-API tab, 2026-10-04); bookmarks keyed by provider ID | M | Done |
 | R4a | `BashCutDocument` library: `JobCenter` shared by capability jobs and exports; `ExportRequest`, `ExportPipeline` and `ExportQueue`; E-1 background export queue built on them | M | Done |
 | R4b | Split `ProjectDocument` into `EditorUIState`, `PreviewController`, `ExportController`, `FileSyncController`, `SettingsModel` and `AutomationController` behind an `AppServices` composition root, all in `BashCutDocument`; the document keeps history, `commit` and command handlers | L | Done (64 → 28 stored properties) |
 | R5 | `CapabilityAdapter` and `PluginTransport` protocols (R5a); `MediaSource` (original or proxy) and a persistent asset cache for the engine (R5b); `TimelineExporter`/`TimelineImporter` protocols and `TimelineFormats` (R5c) | M–L | Done. Only the one-shot transport exists; a session transport waits for a plugin that needs it. Proxy generation (M-5) has since shipped on `MediaSource` |

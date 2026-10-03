@@ -36,7 +36,7 @@ public struct AgentLaunch: Sendable {
         env["TERM"] = "xterm-256color"
         env["COLORTERM"] = "truecolor"
         guard let executable = find(provider.command, path: env["PATH"] ?? "") else {
-            throw ModelError.invalid("\(provider.command) is not installed or is not on PATH")
+            throw AgentLaunchError.notInstalled(provider.command)
         }
         let request = AgentLaunchRequest(
             workspace: workspace, context: context,
@@ -67,5 +67,14 @@ public struct AgentLaunch: Sendable {
         path.components(separatedBy: ":")
             .map { URL(fileURLWithPath: $0).appendingPathComponent(command).path }
             .first { FileManager.default.isExecutableFile(atPath: $0) }
+    }
+}
+
+public enum AgentLaunchError: Error, LocalizedError {
+    case notInstalled(String)
+    public var errorDescription: String? {
+        switch self {
+        case .notInstalled(let command): "\(command) is not installed or is not on PATH"
+        }
     }
 }

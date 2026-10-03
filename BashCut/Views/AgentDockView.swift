@@ -25,7 +25,6 @@ struct AgentDockView: View {
                     ForEach(AgentProviders.all, id: \.id) { provider in
                         Button("\(provider.title) terminal") { model.open(provider.id) }
                     }
-                    Button("Model API") { model.apiVisible = true }
                     Divider()
                     ForEach(AgentProviders.agents, id: \.id) { provider in
                         Button("Handoff to \(provider.title)") { model.handoff(to: provider.id) }
@@ -41,22 +40,14 @@ struct AgentDockView: View {
                     ForEach(model.sessions) { session in
                         DockTab(
                             title: session.title, systemImage: Self.icon(for: session.provider.id),
-                            selected: model.selectedSession == session.id && !model.apiVisible,
-                            select: {
-                                model.selectedSession = session.id
-                                model.apiVisible = false
-                            },
+                            selected: model.selectedSession == session.id,
+                            select: { model.selectedSession = session.id },
                             close: { model.close(session) })
                     }
-                    DockTab(
-                        title: "API", systemImage: "network", selected: model.apiVisible,
-                        select: { model.apiVisible = true }, close: nil)
                 }.padding(.horizontal, 8).padding(.vertical, 6)
             }.background(Color.white.opacity(0.03))
             Divider()
-            if model.apiVisible {
-                apiPanel
-            } else if let session = model.current {
+            if let session = model.current {
                 TerminalPanel(session: session).id(session.id)
                     .padding(.leading, 6).padding(.top, 4)
                     .background(Color(nsColor: session.view.nativeBackgroundColor))
@@ -64,7 +55,7 @@ struct AgentDockView: View {
                 VStack(spacing: 14) {
                     Image(systemName: "terminal").font(.largeTitle).foregroundStyle(.cyan)
                     Text("Choose an agent").font(.headline)
-                    Text("Use your CLI login or connect a model API.").foregroundStyle(.secondary)
+                    Text("Claude Code and Codex run with your CLI login or API key.").foregroundStyle(.secondary)
                     Button("Start default agent") { model.openDefault() }
                         .buttonStyle(.borderedProminent)
                     ForEach(AgentProviders.agents, id: \.id) { provider in
@@ -79,7 +70,6 @@ struct AgentDockView: View {
                             Button("Start \(provider.title)") { model.open(provider.id) }
                         }
                     }
-                    Button("Connect model API") { model.apiVisible = true }
                     if !model.sessionDiscoveryMessage.isEmpty {
                         Label(model.sessionDiscoveryMessage, systemImage: "clock.arrow.circlepath")
                             .font(.caption).foregroundStyle(.secondary)
@@ -103,7 +93,7 @@ struct AgentDockView: View {
                         model.document.selectedID ?? String(localized: "Project context"), systemImage: "at"
                     )
                     .font(.caption).lineLimit(1)
-                }.disabled(!model.apiVisible && model.current == nil)
+                }.disabled(model.current == nil)
                 HStack {
                     Button("Survey") {
                         model.sendContext("Survey the project footage and summarize missing coverage.")
@@ -114,7 +104,7 @@ struct AgentDockView: View {
                     Button("Review") {
                         model.sendContext("Review the timeline for gaps, pacing and repeated framing.")
                     }
-                }.font(.caption).disabled(!model.apiVisible && model.current == nil)
+                }.font(.caption).disabled(model.current == nil)
             }.padding(10)
         }.background(Color(red: 0.045, green: 0.05, blue: 0.06))
             .sheet(isPresented: $model.showKnowledge) {
@@ -126,61 +116,6 @@ struct AgentDockView: View {
         case .claude: "sparkle"
         case .codex: "chevron.left.forwardslash.chevron.right"
         default: "terminal"
-        }
-    }
-    private var apiPanel: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 10) {
-                Picker("Provider", selection: $model.configuration.kind) {
-                    ForEach(ModelAdapters.all, id: \.kind) { Text($0.title).tag($0.kind) }
-                }
-                TextField("API base URL", text: $model.configuration.baseURL)
-                TextField("Model ID", text: $model.configuration.model)
-                SecureField("API key (Keychain)", text: $model.apiKey)
-                Button("Save connection", action: model.saveConfiguration)
-                Picker("Output", selection: $model.mode) {
-                    Text("Script").tag("script")
-                    Text("Timeline edit").tag("edit")
-                }.pickerStyle(.segmented)
-                if model.mode == "script" {
-                    Picker("Language", selection: $model.scriptLanguage) {
-                        Text("Python").tag("python")
-                        Text("Shell").tag("shell")
-                    }
-                }
-                TextEditor(text: $model.prompt).font(.body).frame(minHeight: 90).border(.gray.opacity(0.3))
-                    .accessibilityLabel("Request to the model")
-                Toggle("Include project context", isOn: $model.includeContext)
-                if let image = model.contextImageURL {
-                    HStack {
-                        Label(image.lastPathComponent, systemImage: "photo")
-                            .font(.caption).lineLimit(1)
-                        Spacer()
-                        Button("Remove") { model.contextImageURL = nil }.controlSize(.small)
-                    }
-                }
-                Text("Generate sends this request to the configured endpoint.").font(.caption2)
-                    .foregroundStyle(.secondary)
-                HStack {
-                    Button("Generate", action: model.generate).disabled(model.generating)
-                    if model.generating {
-                        ProgressView().controlSize(.small)
-                        Button("Cancel", action: model.cancel)
-                    }
-                }
-                TextEditor(text: $model.output).font(.system(size: 11, design: .monospaced))
-                    .frame(minHeight: 220).border(.gray.opacity(0.3)).accessibilityLabel(
-                        "Review generated output")
-                if model.outputMode == "edit" {
-                    Button("Apply as one undo step", action: model.applyProposal)
-                        .disabled(model.generating || model.output.isEmpty || model.requestRevision == nil)
-                } else if model.outputMode == "script" {
-                    HStack {
-                        Button("Save script…", action: model.saveScript)
-                        Button("Run reviewed script…", action: model.runScript)
-                    }.disabled(model.generating || model.output.isEmpty)
-                }
-            }.textFieldStyle(.roundedBorder).padding(10)
         }
     }
 }

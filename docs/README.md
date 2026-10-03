@@ -7,7 +7,7 @@ can do through the `bashcut` CLI or MCP. Start with the section that matches wha
 
 | Guide | For |
 |---|---|
-| [Automation: CLI, MCP and model APIs](guides/automation.md) | Driving the editor from agents, scripts and the terminal dock; the full command list |
+| [Automation: CLI and MCP](guides/automation.md) | Driving the editor from agents, scripts and the terminal dock; the full command list |
 | [Writing plugins](guides/plugins.md) | Adding transcription, voice, beat or loudness providers as out-of-process plugins |
 | [Sample project](guides/sample-project.md) | A generated project with every timeline case, for manual testing and an end-to-end check |
 

@@ -55,7 +55,7 @@ semantic hint (`main`, `overlay`, `adjustment`, `captions`, `dialogue`, `voiceov
 never by fixed IDs such as `v1`. New projects start with seven tracks: Main, Overlay, Captions, Dialogue,
 Voiceover, Music and SFX.
 
-`Project.validate()` enforces these layer rules, so UI, CLI, MCP and model APIs share them:
+`Project.validate()` enforces these layer rules, so UI, CLI and MCP share them:
 
 | Rule | Detail |
 |---|---|
@@ -208,7 +208,7 @@ Every change is an `EditOperation` applied by `Project.applying(_:baseRevision:)
 before and after the edit and returns the new project with its inverse.
 
 - **One serialized form.** Operations are JSON objects keyed by `op`, for example
-  `{"op": "split", "item": "c1", "atFrame": 30}`. Agents, model APIs and the history journal all use this codec
+  `{"op": "split", "item": "c1", "atFrame": 30}`. Agents and the history journal both use this codec
   (`EditOperationCodec.swift`). The internal `group` and `restore` operations are accepted only from trusted
   sources such as the journal.
 - **Batches are atomic.** A `group` validates as a whole and increments `rev` once.
