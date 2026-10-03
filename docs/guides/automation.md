@@ -11,8 +11,8 @@ The app runs one local JSON-RPC server on a Unix socket. Two thin clients talk t
 - `bashcut`, a command-line tool bundled with the app.
 - `bashcut-mcp`, a stdio MCP server built with the official MCP Swift SDK. It exposes each command as a
   tool named `bashcut_<group>_<command>` (for example `bashcut_timeline_get`).
-  Every result is in the tool's text; object results are also sent as `structuredContent` (MCP only allows
-  objects there, so lists and text results are text only).
+  Every result is the tool's text: string results as they are, everything else as compact JSON. There is no
+  `structuredContent` (the SDK re-decodes it slowly, and compact text is also fewer tokens for the agent).
   While BashCut runs, the tool list also has one `bashcut_action_<action id>` tool per installed plugin action,
   with the action's parameters as its input schema; calling it is `plugins run <action> --params …`.
 
