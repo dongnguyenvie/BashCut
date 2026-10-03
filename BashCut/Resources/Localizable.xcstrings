@@ -1,6 +1,7 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Checked after approval": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Checked after approval" } }, "vi": { "stringUnit": { "state": "translated", "value": "Kiểm tra sau khi phê duyệt" } } } },
     "Agent dock": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Agent dock" } },

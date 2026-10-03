@@ -3,7 +3,7 @@ import Darwin
 import Foundation
 
 public struct PluginDependencyStatus: Sendable, Equatable, Identifiable {
-    public enum State: String, Sendable { case available, missing, failed }
+    public enum State: String, Sendable { case available, missing, failed, notChecked }
 
     public let id: String
     public let name: String
@@ -17,6 +17,13 @@ public struct PluginHealth: Sendable, Equatable {
     public let pluginID: String
     public let state: State
     public let dependencies: [PluginDependencyStatus]
+
+    /// A blocked probe is unknown, never evidence that a dependency is missing.
+    public static func notChecked(_ plugin: InstalledPlugin, reason: String) -> PluginHealth {
+        PluginHealth(pluginID: plugin.id, state: .degraded, dependencies: plugin.manifest.dependencies.map {
+            PluginDependencyStatus(id: $0.id, name: $0.name, state: .notChecked, detail: reason)
+        })
+    }
 
     public init(pluginID: String, state: State, dependencies: [PluginDependencyStatus]) {
         self.pluginID = pluginID
@@ -122,6 +129,11 @@ public struct PluginProcessRunner: Sendable {
         plugin: InstalledPlugin, command: PluginCommand, input: Data, outputLimit: Int
     ) async throws -> Data {
         try plugin.manifest.validate()
+        let program = URL(fileURLWithPath: command.executable).lastPathComponent
+        let interpreters: Set<String> = ["sh", "bash", "zsh", "dash", "ksh", "csh", "tcsh", "osascript", "env"]
+        guard !interpreters.contains(program), !command.arguments.contains("-c"), !command.arguments.contains("-e") else {
+            throw PluginError.invalid("Dependency probes must use a tool or a plugin file, not inline interpreter code")
+        }
         let executable: URL
         let arguments: [String]
         if command.executable.contains("/") {

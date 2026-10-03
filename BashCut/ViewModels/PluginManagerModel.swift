@@ -325,15 +325,10 @@ enum PluginText {
         return recipes.reduce(0, +) + Int64(pending.archive?.version.size ?? 0)
     }
 
-    /// Probes the pending plugin's dependencies and attaches the result to the approval.
+    /// Preflight never executes a pending archive or folder before installation approval.
     func runPreflight() {
         guard let pending = pendingInstall, pending.preflight == nil, !pending.plugin.manifest.dependencies.isEmpty else { return }
-        let id = pending.id
-        let service = service
-        Task {
-            let health = await service.health(pending.plugin)
-            if pendingInstall?.id == id { pendingInstall?.preflight = health }
-        }
+        pendingInstall?.preflight = .notChecked(pending.plugin, reason: "Checked after installation approval")
     }
 
     /// Dependencies that are missing and that no recipe installs: the plugin cannot run on this Mac.

@@ -184,7 +184,9 @@ extension PluginManagerModel {
         cancelPendingInstall()
         let installed = plugins.first { $0.id == id && isUserInstalled($0) }
         var pending = PendingPluginInstall(plugin: staged.plugin, archive: staged, replacing: installed != nil)
-        if !staged.plugin.manifest.dependencies.isEmpty { pending.preflight = await service.health(staged.plugin) }
+        if !staged.plugin.manifest.dependencies.isEmpty {
+            pending.preflight = .notChecked(staged.plugin, reason: "Checked after installation approval")
+        }
         pendingInstall = pending
         tab = .browse
     }

@@ -10,7 +10,7 @@ extension ProjectDocument {
         plugins.refresh(projectRoot: fileURL?.deletingLastPathComponent())
         await doctor.run(
             workspace: agents.directory, projectRoot: fileURL?.deletingLastPathComponent(),
-            toolsDirectory: agents.toolsDirectory, plugins: plugins.plugins,
+            toolsDirectory: agents.toolsDirectory, service: plugins.service,
             pluginDiagnostics: plugins.diagnostics)
     }
 

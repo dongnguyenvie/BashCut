@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+- Require plugin trust before dependency health probes, including Doctor and automation. Install approvals list
+  probe commands without executing staged archives or chosen folders.
+
 - **A full Mac menu bar.** BashCut, File, Edit, Clip, Timeline, Playback, View, Agent, Plugins, Window and Help now
   carry every editor action with its shortcut, built from `UIAction` so menus, buttons and `ui.action` share one
   code path. File has Open Recent; Agent ▸ New Tab lists the ready chat agents; View has Library ⌘1–⌘8, Safe Area,

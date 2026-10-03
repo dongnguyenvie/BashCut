@@ -284,6 +284,8 @@ private struct PluginInstallApprovalView: View {
                             PluginDependencyBadge(state: state, installable: dependency.install != nil,
                                                   checking: pending.preflight == nil)
                         }
+                        Text(([dependency.probe.executable] + dependency.probe.arguments).joined(separator: " "))
+                            .font(.caption.monospaced()).textSelection(.enabled)
                         if state != .available, let install = dependency.install {
                             Text(install.summary)
                             Text(([install.command.executable] + install.command.arguments).joined(separator: " "))
@@ -367,6 +369,8 @@ private struct PluginDependencyBadge: View {
             Label("Checking…", systemImage: "hourglass").font(.caption2).foregroundStyle(.secondary)
         } else {
             switch state {
+            case .notChecked?:
+                Label("Checked after approval", systemImage: "lock").font(.caption2).foregroundStyle(.secondary)
             case .available?:
                 Label("Available on this Mac", systemImage: "checkmark.circle.fill").font(.caption2).foregroundStyle(.green)
             case .missing?, nil where installable:
