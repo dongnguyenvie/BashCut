@@ -91,7 +91,57 @@ struct MediaSourceTests {
         #expect(source.count == 7)
     }
 
-    @Test("The cache keeps at most its limit, dropping the least recently used asset")
+    @Test("Large projects retain every active asset across warm builds")
+    func largeAssetCache() async throws {
+        let root = try projectFolder()
+        defer { try? FileManager.default.removeItem(at: root) }
+        var operations: [EditOperation] = []
+        for index in 0..<80 {
+            let name = "media-\(index).mp4"
+            try FileManager.default.linkItem(at: root.appendingPathComponent("clip.mp4"), to: root.appendingPathComponent(name))
+            var entry = media(id: "m\(index)")
+            entry["path"] = .string(name)
+            operations += [.addMedia(entry), .insert(track: "v1", item: Item(id: "c\(index)", media: entry.id, at: index, duration: 1))]
+        }
+        let value = try Project(name: "80 assets").applying(.group(label: "Fixture", author: .user, ops: operations)).project
+        let builder = CompositionBuilder(source: OriginalMediaSource())
+        _ = try await builder.build(value, root: root, purpose: .preview)
+        var times: [Double] = []
+        for _ in 0..<3 {
+            let start = ContinuousClock.now
+            _ = try await builder.build(value, root: root, purpose: .preview)
+            let duration = start.duration(to: .now).components
+            times.append(Double(duration.seconds) * 1000 + Double(duration.attoseconds) / 1e15)
+        }
+        print("LARGE_ASSET_CACHE median_ms=\(times.sorted()[1]) opens=\(await builder.assetLoads)")
+        #expect(await builder.assetLoads == 80)
+        #expect(await builder.cachedAssetCount == 80)
+    }
+
+    @Test("The purpose cache evicts the least recently used asset and shrinks for smaller projects")
+    func leastRecentlyUsed() async throws {
+        let root = try projectFolder()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let urls = (0..<3).map { root.appendingPathComponent("copy-\($0).mp4") }
+        for url in urls { try FileManager.default.linkItem(at: root.appendingPathComponent("clip.mp4"), to: url) }
+        let cache = AssetCache(minimumCapacity: 1)
+        await cache.resize(for: 2)
+        _ = try await cache.load(urls[0])
+        _ = try await cache.load(urls[1])
+        _ = try await cache.load(urls[0])
+        _ = try await cache.load(urls[2])
+        _ = try await cache.load(urls[0])
+        #expect(await cache.loads == 3)
+        #expect(await cache.count == 2)
+        _ = try await cache.load(urls[1])
+        #expect(await cache.loads == 4)
+        await cache.resize(for: 1)
+        #expect(await cache.count == 1)
+        _ = try await cache.load(urls[1])
+        #expect(await cache.loads == 4)
+    }
+
+    @Test("Export assets cannot evict preview proxies")
     func cacheLimit() async throws {
         let root = try projectFolder()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -103,8 +153,8 @@ struct MediaSourceTests {
         _ = try await builder.build(value, root: root, purpose: .preview)
         _ = try await builder.build(value, root: root, purpose: .export)
         _ = try await builder.build(value, root: root, purpose: .preview)
-        #expect(await builder.cachedAssetCount == 1)
-        #expect(await builder.assetLoads == 3)
+        #expect(await builder.cachedAssetCount == 2)
+        #expect(await builder.assetLoads == 2)
     }
 }
 

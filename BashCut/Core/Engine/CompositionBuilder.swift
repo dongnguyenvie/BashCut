@@ -24,21 +24,20 @@ public struct CompositionSnapshot: @unchecked Sendable {
 /// opened (and their loaded tracks) are reused by later builds until the file on disk changes.
 public actor CompositionBuilder {
     private let source: any MediaSource
-    private let cacheLimit: Int
-    private var assets: [URL: LoadedAsset] = [:]
+    private let previewAssets: AssetCache
+    private let exportAssets: AssetCache
     private var parsedLUTs = LUTCache()
     public var lutLoads: Int { parsedLUTs.loads }
-    /// Least recently used first.
-    private var assetOrder: [URL] = []
-    /// Assets opened from disk so far; a cache hit does not count.
-    public private(set) var assetLoads = 0
+    /// Assets opened from disk across both purpose-specific caches; cache hits do not count.
+    public var assetLoads: Int { get async { await previewAssets.loads + exportAssets.loads } }
 
     public init(source: any MediaSource = ProxyMediaSource(), cacheLimit: Int = 64) {
         self.source = source
-        self.cacheLimit = max(1, cacheLimit)
+        previewAssets = AssetCache(minimumCapacity: cacheLimit)
+        exportAssets = AssetCache(minimumCapacity: cacheLimit)
     }
 
-    public var cachedAssetCount: Int { assets.count }
+    public var cachedAssetCount: Int { get async { await previewAssets.count + exportAssets.count } }
 
     /// The scale at zoom 1: fitting shows the whole picture inside the canvas (bars on the other sides), filling
     /// covers the canvas and crops what does not fit.
@@ -54,6 +53,8 @@ public actor CompositionBuilder {
     {
         try project.validate()
         guard project.duration > 0 else { throw ProjectError.invalid("Timeline is empty") }
+        let assets = purpose == .preview ? previewAssets : exportAssets
+        await assets.resize(for: Set(project.tracks.flatMap(\.items).compactMap(\.mediaID)).count)
         let composition = AVMutableComposition()
         var visualByTrack: [String: [PlacedVisual]] = [:]
         var visualLanes: [String: [(end: Int, target: AVMutableCompositionTrack)]] = [:]
@@ -94,7 +95,7 @@ public actor CompositionBuilder {
                     asset = cached
                 } else {
                     let mediaURL = try source.url(for: media, root: root, workspace: workspace, purpose: purpose)
-                    asset = try await loadedAsset(
+                    asset = try await assets.load(
                         isStill ? StillImageMovie.movie(for: media, image: mediaURL, root: root) : mediaURL)
                     loadedMedia[mediaID] = asset
                 }
@@ -322,28 +323,6 @@ public actor CompositionBuilder {
         }
     }
 
-    private func loadedAsset(_ url: URL) async throws -> LoadedAsset {
-        let signature = FileSignature(url)
-        if let cached = assets[url], cached.signature == signature {
-            assetOrder.removeAll { $0 == url }
-            assetOrder.append(url)
-            return cached
-        }
-        let asset = AVURLAsset(url: url)
-        let video = try await asset.loadTracks(withMediaType: .video).first
-        let audio = try await asset.loadTracks(withMediaType: .audio).first
-        let loaded = LoadedAsset(
-            asset: asset, signature: signature, video: video, audio: audio,
-            naturalSize: try await video?.load(.naturalSize) ?? .zero,
-            preferredTransform: try await video?.load(.preferredTransform) ?? .identity)
-        assetLoads += 1
-        assets[url] = loaded
-        assetOrder.removeAll { $0 == url }
-        assetOrder.append(url)
-        while assetOrder.count > cacheLimit { assets.removeValue(forKey: assetOrder.removeFirst()) }
-        return loaded
-    }
-
     private func applyAudioMixParameters(
         item: Item, sourceTrack: Track, parameters: AVMutableAudioMixInputParameters, fps: FrameRate,
         envelope: (speech: [Range<Int>], mixGainDb: Double)
@@ -359,29 +338,6 @@ public actor CompositionBuilder {
         }
     }
 
-}
-
-/// An opened asset with what the builder needs from it, valid while the file keeps its `signature`.
-private struct LoadedAsset {
-    /// Kept alive with its tracks: a track stops working once its asset is released.
-    let asset: AVURLAsset
-    let signature: FileSignature
-    let video: AVAssetTrack?
-    let audio: AVAssetTrack?
-    let naturalSize: CGSize
-    let preferredTransform: CGAffineTransform
-}
-
-/// Modification date and size of a file; a change means the cached asset is stale.
-private struct FileSignature: Equatable {
-    let modified: Date?
-    let size: Int?
-
-    init(_ url: URL) {
-        let values = try? url.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey])
-        modified = values?.contentModificationDate
-        size = values?.fileSize
-    }
 }
 
 private struct PlacedVisual {
