@@ -219,7 +219,8 @@ public final class PreviewController {
             return new.structure != nil && new.structure == shown.structure
         }
         guard let shown = snapshot, same(built, shown), same(comparison, comparisonSnapshot),
-            let item = player.currentItem, comparison == nil || comparisonPlayer.currentItem != nil
+            let item = player.currentItem, item.status == .readyToPlay, item.error == nil,
+            comparison == nil || (comparisonPlayer.currentItem?.status == .readyToPlay && comparisonPlayer.currentItem?.error == nil)
         else { return false }
         item.videoComposition = built.videoComposition
         item.audioMix = built.audioMix

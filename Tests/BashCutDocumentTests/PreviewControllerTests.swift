@@ -163,6 +163,38 @@ struct PreviewControllerTests {
         #expect(preview.player.currentItem?.status == .readyToPlay)
     }
 
+    @Test("A failed player item is replaced even when composition structure has not changed", arguments: [false, true])
+    func failedItemRecovery(comparison: Bool) async throws {
+        let video = try TestFixtures.requireVideo()
+        let media = Media(fields: [
+            "id": .string("clip"), "path": .string(video.lastPathComponent), "fps": FrameRate().json, "frames": .integer(59)
+        ])
+        let first = try Project(name: "Recovery").applying(.group(label: "Setup", author: .user, ops: [
+            .addMedia(media), .insert(track: "v1", item: Item(id: "c", media: "clip", at: 0, duration: 59))
+        ])).project
+        let preview = PreviewController(engine: AVFoundationRenderEngine(source: OriginalMediaSource()))
+        let root = video.deletingLastPathComponent()
+        preview.rebuild(first, root: root, workspace: nil)
+        try await waitUntil { preview.isCurrent }
+        if comparison {
+            preview.setColorComparison(true)
+            try await waitUntil { preview.isCurrent }
+        }
+        let broken = comparison ? preview.comparisonPlayer : preview.player
+        let missing = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".mov")
+        broken.replaceCurrentItem(with: AVPlayerItem(url: missing))
+        try await waitUntil { broken.currentItem?.status == .failed }
+        let updates = preview.inPlaceUpdates
+        let edited = try first.applying(.setProperties(item: "c", patch: ["opacity": .number(0.5)])).project
+        preview.rebuild(edited, root: root, workspace: nil)
+        try await waitUntil { preview.isCurrent }
+        #expect(preview.inPlaceUpdates == updates)
+        #expect(preview.player.currentItem?.status == .readyToPlay)
+        if comparison { #expect(preview.comparisonPlayer.currentItem?.status == .readyToPlay) }
+        #expect((comparison ? preview.comparisonPlayer : preview.player) !== broken)
+        preview.reset(edited)
+    }
+
     @Test("A look-only edit updates the shown players in place")
     func lookEditInPlace() async throws {
         let video = try TestFixtures.requireVideo()

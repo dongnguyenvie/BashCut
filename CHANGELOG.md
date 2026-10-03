@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+- Replace failed or unready preview/comparison player items on rebuild, even when the media structure is
+  unchanged. In-place instruction updates now require healthy ready-to-play items on both sides.
+
 - Build previews immediately for discrete edits, undo/redo and automation. Only edits with a coalescing key
   retain the slider/drag debounce; a discrete edit cancels a pending coalesced build without waiting for it.
 
