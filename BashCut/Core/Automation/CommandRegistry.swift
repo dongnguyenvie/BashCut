@@ -12,6 +12,10 @@ public struct AuditEvent: Codable, Sendable {
     public typealias Handler = @MainActor (CommandArguments, Author?) async throws -> JSONValue
     private var handlers: [String: Handler] = [:]
     private var tokens: [String: Author] = [:]
+    /// Tokens that have not read the project since it was switched, with the new project's name.
+    private var switchedProject: [String: String] = [:]
+    /// Reads that show an agent the open project; any one of them ends the gate after a switch.
+    static let projectReads: Set<String> = ["context.get", "timeline.get", "project.get"]
     private let audit: @Sendable (AuditEvent) -> Void
     public init(audit: @escaping @Sendable (AuditEvent) -> Void = { _ in }) { self.audit = audit }
 
@@ -29,10 +33,26 @@ public struct AuditEvent: Codable, Sendable {
         tokens[token] = author
         return token
     }
-    public func revoke(_ token: String) { tokens.removeValue(forKey: token) }
+    public func revoke(_ token: String) {
+        tokens.removeValue(forKey: token)
+        switchedProject.removeValue(forKey: token)
+    }
+
+    /// After the open project changes, every live token must read the new project (`context get`, `timeline get` or
+    /// `project get`) before it may edit, so an agent cannot apply what it remembers of the old project to the new
+    /// one. Sessions stay open across a switch; this is the boundary instead.
+    public func projectSwitched(to name: String) {
+        for token in tokens.keys { switchedProject[token] = name }
+    }
+
+    /// Whether `token` still has to read the project after a switch.
+    public func needsProjectRead(_ token: String) -> Bool { switchedProject[token] != nil }
     /// The author a live token edits as, or nil for an unknown or revoked token.
     public func author(for token: String) -> Author? { tokens[token] }
-    public func revokeAll() { tokens.removeAll() }
+    public func revokeAll() {
+        tokens.removeAll()
+        switchedProject.removeAll()
+    }
     /// `automatic` marks requests run without a prompt because the user turned confirmation off.
     public func recordApproval(method: String, author: Author, approved: Bool, automatic: Bool = false) {
         audit(
@@ -59,6 +79,14 @@ public struct AuditEvent: Codable, Sendable {
                 guard author != nil else {
                     throw RPCFailure(-32001, "A live agent session token is required")
                 }
+                if let token = request.token, let name = switchedProject[token] {
+                    throw RPCFailure(
+                        -32002, "The open project changed to \"\(name)\". Read it first (context get or timeline get), "
+                            + "then retry with its revision.")
+                }
+            }
+            if Self.projectReads.contains(request.method), let token = request.token {
+                switchedProject.removeValue(forKey: token)
             }
             let arguments = CommandArguments(try spec.validate(request.params))
             let result = try await handler(arguments, author)

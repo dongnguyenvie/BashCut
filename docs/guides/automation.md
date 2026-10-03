@@ -57,7 +57,12 @@ SwiftTerm terminal. Claude and Codex use your installed CLI and its existing log
 - **Context.** Context and quick actions paste text into the terminal for you to review before pressing
   Enter. The ⌘K popover can attach the current viewer frame: BashCut renders a bounded PNG into
   `.bashcut/agent-context`, keeps the ten newest frames and passes the absolute path to the terminal.
-- **Switching projects.** Opening a different project closes the open sessions and revokes their tokens.
+- **Switching projects.** Tabs stay open when the project changes, also when their own agent creates or opens
+  one (before, the switch closed the tab mid-task). Every token, in-app or external, must then read the new
+  project (`context get`, `timeline get` or `project get`) before its next edit; until then edits fail with
+  "The open project changed to …", so an agent cannot apply what it remembers of the old project. Open
+  conversations are bookmarked for the new project too, so **Continue** there resumes them. The model-API
+  panel's request and output are cleared.
 
 Each child process gets a filtered environment plus:
 

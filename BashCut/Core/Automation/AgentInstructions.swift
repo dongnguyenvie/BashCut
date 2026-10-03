@@ -39,7 +39,8 @@ extension CommandCatalog {
         Change the canvas of the open project with `bashcut project format --canvas landscape` (portrait, landscape,
         square); text sizes follow the short side, so titles keep their look.
         Projects: `bashcut project create` / `project open` / `project save`; they refuse to drop unsaved work unless
-        you pass --save-current or --discard-current. Outside BashCut's terminals the CLI and MCP read the
+        you pass --save-current or --discard-current. Your terminal stays open when the project changes; read
+        `context get` or `timeline get` before your next edit (edits fail until you do). Outside BashCut's terminals the CLI and MCP read the
         automation token file automatically; edits are attributed to "agent". Exports still need the user's approval.
         """
 

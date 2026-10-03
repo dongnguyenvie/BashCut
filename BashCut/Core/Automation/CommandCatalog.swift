@@ -64,7 +64,8 @@ public enum CommandCatalog {
         CommandSpec(
             "project.open", .edit,
             "Open a project.bashcut.json (or its folder). Fails if the open project has unsaved changes "
-                + "unless saveCurrent or discardCurrent is set. In-app agent tabs close; external agents keep access.",
+                + "unless saveCurrent or discardCurrent is set. Agent tabs stay open; every agent must read the new "
+                + "project (context get or timeline get) before its next edit.",
             parameters: [
                 CommandParameter("path", .string, "Absolute path to project.bashcut.json or its folder", required: true,
                                  isPath: true, cli: .positional)

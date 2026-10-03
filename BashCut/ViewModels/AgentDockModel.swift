@@ -18,6 +18,7 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
     let id = UUID()
     let provider: any AgentProvider
     let token: String
+    let launchedAt = Date()
     let view = LocalProcessTerminalView(frame: .zero)
     var title: String
     init(provider: any AgentProvider, token: String, launch: AgentLaunch) {
@@ -167,6 +168,35 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
             self.error = error.localizedDescription
         }
     }
+    /// Bookmarks of the agents with an open tab, taken before the project switches so the new project continues
+    /// the same conversations.
+    func liveBookmarks() -> [AgentProviderID: String] {
+        var live: [AgentProviderID: String] = [:]
+        for session in sessions where session.provider.isAgent {
+            let id = sessionBookmarks[session.provider.id]
+            if !id.isEmpty { live[session.provider.id] = id }
+        }
+        return live
+    }
+
+    /// Tabs stay open across a project switch (an agent that creates or opens a project keeps working). Their
+    /// tokens must read the new project before editing (`CommandRegistry.projectSwitched`), their conversations are
+    /// bookmarked for the new project too, and the ones not found yet are looked for again.
+    func keepSessions(after switching: [AgentProviderID: String]) {
+        guard !sessions.isEmpty, let project = document.fileURL else { return }
+        for (provider, id) in switching { sessionBookmarks[provider] = id }
+        if !switching.isEmpty { saveSessionBookmarks() }
+        for session in sessions where session.provider.isAgent && switching[session.provider.id] == nil {
+            discoverLaunchedSession(
+                provider: session.provider, workspace: directory, session: session.id,
+                launchedAt: session.launchedAt)
+        }
+        let name = document.project.name
+        sessionDiscoveryMessage = String(
+            format: String(localized: "Terminals kept: they now work on %@ and read it before their next edit"), name)
+        DebugLog.write("agents", "kept \(sessions.count) terminal(s) across the switch to \(project.path)")
+    }
+
     func projectChanged() {
         sessionDiscoveryTask?.cancel()
         sessionDiscoveryMessage = ""
@@ -214,13 +244,18 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
         sessions.removeAll { $0.id == session.id }
         if selectedSession == session.id { selectedSession = sessions.last?.id }
     }
-    func closeAll() {
-        if isDetached { attach() }
+    /// Ends what belongs to the open project: the model-API request and its output, and session lookups.
+    func resetProjectState() {
         sessionDiscoveryTask?.cancel()
         cancel()
         requestRevision = nil
         outputMode = nil
         output = ""
+    }
+
+    func closeAll() {
+        if isDetached { attach() }
+        resetProjectState()
         for session in sessions {
             session.close()
             document.registry.revoke(session.token)
