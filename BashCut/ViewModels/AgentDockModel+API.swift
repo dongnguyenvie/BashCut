@@ -31,7 +31,7 @@ extension AgentDockModel {
         let requestedImageURL = contextImageURL
         let id = UUID()
         var request = prompt
-        if includeContext { request += "\n" + document.contextText() + "\n" + document.timelineText() }
+        if includeContext { request += "\n" + document.contextText() + "\n" + TimelineSummary.text(document.project) }
         let instruction =
             CommandCatalog.instructions
             + (mode == "edit"

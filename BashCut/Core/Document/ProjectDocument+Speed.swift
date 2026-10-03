@@ -52,11 +52,18 @@ extension ProjectDocument {
         try setClipSpeed(next, keepDuration: false, author: author)
     }
 
+    /// Whether a keepDuration change still had to shorten the clip because its source ran out.
+    static func shortened(before: Int?, after: Int?, keepDuration: Bool) -> Bool {
+        guard keepDuration, let before, let after else { return false }
+        return after < before
+    }
+
     func registerSpeedCommands() {
         handleAuthored("clip.speed") { document, arguments, author in
             let id = arguments.optionalString("item") ?? document.selectedID
             guard let id else { throw RPCFailure(-32602, "Give an item or select a clip first") }
             let speed = arguments.optionalDouble("speed") ?? 1
+            let before = document.project.tracks.flatMap(\.items).first { $0.id == id }?.duration
             let revision = try document.setClipSpeed(
                 speed, item: id, keepDuration: arguments.bool("keepDuration"),
                 preservePitch: arguments.optionalBool("preservePitch"), author: author,
@@ -66,6 +73,7 @@ extension ProjectDocument {
                 "rev": .integer(revision), "item": .string(id), "speed": .number(item?.speed ?? speed),
                 "duration": item.map { .integer($0.duration) } ?? .null,
                 "linked": item?.linkedItemID.map(JSONValue.string) ?? .null,
+                "shortened": .bool(Self.shortened(before: before, after: item?.duration, keepDuration: arguments.bool("keepDuration"))),
             ])
         }
     }

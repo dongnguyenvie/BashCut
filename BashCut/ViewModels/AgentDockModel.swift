@@ -189,7 +189,7 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
         knowledge.load(from: directory)
         let handoff =
             "Continue this editing task handed off from \(source).\n"
-                + document.contextText() + "\n" + document.timelineText() + "\n" + knowledge.context
+                + document.contextText() + "\n" + TimelineSummary.text(document.project) + "\n" + knowledge.context
         if launchesTarget {
             Task {
                 do { try await Task.sleep(for: .milliseconds(700)) } catch { return }

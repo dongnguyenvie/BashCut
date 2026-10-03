@@ -11,6 +11,8 @@ The app runs one local JSON-RPC server on a Unix socket. Two thin clients talk t
 - `bashcut`, a command-line tool bundled with the app.
 - `bashcut-mcp`, a stdio MCP server built with the official MCP Swift SDK. It exposes each command as a
   tool named `bashcut_<group>_<command>` (for example `bashcut_timeline_get`).
+  Every result is in the tool's text; object results are also sent as `structuredContent` (MCP only allows
+  objects there, so lists and text results are text only).
   While BashCut runs, the tool list also has one `bashcut_action_<action id>` tool per installed plugin action,
   with the action's parameters as its input schema; calling it is `plugins run <action> --params …`.
 
@@ -114,7 +116,7 @@ directory.
 
 ### Command reference
 
-All 62 commands, grouped by purpose. Prefix each with `bashcut`. Arguments in brackets are optional.
+All 73 commands, grouped by purpose. Prefix each with `bashcut`. Arguments in brackets are optional.
 
 #### Read
 
@@ -123,7 +125,7 @@ All 62 commands, grouped by purpose. Prefix each with `bashcut`. Arguments in br
 | `context get` | read | Project path, revision, playhead and selection |
 | `project get` | read | The whole open project document |
 | `project recents` | read | Recently opened projects (Welcome screen) |
-| `timeline get [--format <format>]` | read | Revision, format, tracks (IDs and roles), `luts`, and the built-in and custom `looks` and `styleKits`; `json` (default) or compact `text` |
+| `timeline get [--format <format>]` | read | Revision, format, tracks (IDs and roles), `transitions`, `markers` (sections), `luts`, and the built-in and custom `looks` and `styleKits`; `json` (default) or compact `text` (one line per item, transition and marker) |
 | `schema get` | read | The JSON Schema of `project.bashcut.json`: every field, type and range ([project.schema.json](../reference/project.schema.json)) |
 | `media list` | read | Project media, each with its `proxy` state |
 | `review run` | read | Structural timeline review: timeline structure and tagged speech coverage, not measured loudness or silence |
@@ -156,7 +158,7 @@ when another project opens; agents outside BashCut keep access.
 | `timeline redo --base-rev <baseRev>` | edit | Redo one timeline action |
 | `timeline move <item> --track <track> --at-frame <atFrame> --base-rev <baseRev>` | edit | Move an item and its linked partner; an occupied range spills onto a free or new layer |
 | `timeline close-gap --at-frame <atFrame> [--track <track>] --base-rev <baseRev>` | edit | Delete the empty gap containing a frame (main layer by default): later clips on that layer move left with their linked sound |
-| `clip speed [item] --speed <x> [--keep-duration] [--preserve-pitch on\|off] --base-rev N` | edit | Constant speed like Inspector › Speed; by default the length follows the speed and later clips move |
+| `clip speed [item] --speed <x> [--keep-duration] [--preserve-pitch on\|off] --base-rev N` | edit | Constant speed like Inspector › Speed; by default the length follows the speed and later clips move. A clip is shortened when its source runs out, even with `--keep-duration`; the result then has `shortened: true` (also for `clip speed-curve`) |
 | `clip speed-curve [item] (--preset <name>\|--points '[[0,1],[0.5,3],[1,1]]') [--keep-duration] --base-rev N` | edit | Speed ramp like Inspector › Speed › Curve (montage, hero, bullet, jump-cut, flash-in, flash-out; `none` removes it) |
 | `clip reverse [item]` | edit, job | Play a video clip (and its linked sound) backwards from a rendered reversed copy; again to restore |
 | `layers set <track> [--hidden on\|off] [--muted on\|off] [--locked on\|off] --base-rev <baseRev>` | edit | The layer header switches: hide a visual layer, mute an audio layer, lock any layer (a locked layer refuses edits) |
@@ -229,6 +231,7 @@ Plugin actions also appear in `ui actions` and run with `ui action <id>`. See [W
 | `ui select [<item>] [--track <track>]` | ui | Select a timeline item (omit it to clear the selection), or a layer with `--track` |
 | `ui source <media> [--in <in>] [--out <out>]` | ui | Open media in the source viewer, optionally with in and out frames marked |
 | `ui seek <frame>` | ui | Move the viewer to a timeline frame |
+| `ui frame [<frame>]` | read | Render the viewer picture at a frame (the playhead by default) to a PNG in `.bashcut/agent-context` and return its path, without moving the playhead; the ten newest are kept |
 | `ui panel <panel>` | ui | Open a library panel in the left rail |
 | `ui notify <message>` | ui | Show a short status message in BashCut |
 

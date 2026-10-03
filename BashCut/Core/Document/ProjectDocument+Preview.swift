@@ -4,11 +4,21 @@ import BashCutProject
 import Foundation
 
 extension ProjectDocument {
-    func captureAgentFrame() async throws -> URL {
+    struct AgentFrame {
+        let url: URL
+        let frame: Int
+        let width: Int
+        let height: Int
+    }
+
+    /// The viewer frame for agents (Ask's attach button and `ui frame`) as a bounded PNG in `.bashcut/agent-context`.
+    func captureAgentFrame() async throws -> URL { try await captureAgentFrame(at: nil).url }
+
+    func captureAgentFrame(at requested: Int?) async throws -> AgentFrame {
         guard let root = fileURL?.deletingLastPathComponent(), let snapshot = preview.snapshot, project.duration > 0 else {
             throw ProjectError.invalid("The viewer has no frame to attach")
         }
-        let frame = min(playhead, project.duration - 1)
+        let frame = min(requested ?? playhead, project.duration - 1)
         let generator = AVAssetImageGenerator(asset: snapshot.composition)
         generator.videoComposition = snapshot.videoComposition
         generator.appliesPreferredTrackTransform = true
@@ -27,7 +37,7 @@ extension ProjectDocument {
         try data.write(to: url, options: .atomic)
         try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
         Self.pruneAgentFrames(in: directory, keeping: 10)
-        return url
+        return AgentFrame(url: url, frame: frame, width: image.width, height: image.height)
     }
 
     private static func scaledAgentImage(_ image: CGImage, maximumDimension: Int) -> CGImage {
