@@ -47,7 +47,7 @@ struct PluginTrustTests {
         #expect(store.availability(of: plugin) == .changed)
         try store.trust(plugin)
         #expect(store.availability(of: plugin) == .ready)
-        try store.revoke(plugin.id)
+        try store.revoke(plugin)
         #expect(store.availability(of: plugin) == .untrusted)
     }
 
@@ -60,10 +60,10 @@ struct PluginTrustTests {
         try store.validateSetup(of: plugin) // Initial setup still asks for installation approval.
         try store.trust(plugin)
         try store.validateSetup(of: plugin)
-        let approved = store.grant(for: plugin.id)
+        let approved = store.grant(for: plugin)
         try Data("#!/bin/sh\necho tampered\n".utf8).write(to: plugin.directory.appendingPathComponent("bin/provider"))
         #expect(throws: PluginError.self) { try store.validateSetup(of: plugin) }
-        #expect(store.grant(for: plugin.id) == approved)
+        #expect(store.grant(for: plugin) == approved)
         try store.setEnabled(plugin, enabled: false)
         #expect(store.availability(of: plugin) == .disabled)
         #expect(throws: PluginError.self) { try store.validateSetup(of: plugin) }
@@ -82,11 +82,11 @@ struct PluginTrustTests {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         struct Contents: Encodable { let grants: [String: PluginGrant]; let options: [String: [String: JSONValue]] }
-        try encoder.encode(Contents(grants: [plugin.id: PluginGrant(fingerprint: legacy, version: "1.0.0")], options: [:]))
+        try encoder.encode(Contents(grants: [plugin.installationID: PluginGrant(fingerprint: legacy, version: "1.0.0")], options: [:]))
             .write(to: url)
         let store = sandbox.store()
         #expect(store.availability(of: plugin) == .ready)
-        #expect(store.grant(for: plugin.id)?.fingerprint.treeSHA256 == full.treeSHA256)
+        #expect(store.grant(for: plugin)?.fingerprint.treeSHA256 == full.treeSHA256)
 
         let link = sandbox.root.appendingPathComponent("user/example.linked")
         try FileManager.default.createSymbolicLink(at: link, withDestinationURL: plugin.directory)
@@ -109,20 +109,59 @@ struct PluginTrustTests {
         #expect(store.availability(of: bundled) == .disabled)
         try store.setEnabled(bundled, enabled: true, hooks: false)
         #expect(store.availability(of: bundled) == .ready)
-        #expect(!store.hooksEnabled(bundled.id))
+        #expect(!store.hooksEnabled(bundled))
         // Turning on an unapproved plugin does not trust it.
         let user = try sandbox.plugin()
         try store.setEnabled(user, enabled: true)
         #expect(store.availability(of: user) == .untrusted)
     }
 
+    @Test("A project copy cannot inherit another installation's trust, options, or enabled state")
+    func installations() throws {
+        let sandbox = Sandbox()
+        defer { try? FileManager.default.removeItem(at: sandbox.root) }
+        let user = try sandbox.plugin()
+        let project = try sandbox.plugin(in: "project")
+        let store = sandbox.store()
+        try store.trust(user)
+        try store.setUserOption(user, key: "provider", value: .string("openai"))
+        #expect(store.availability(of: project) == .untrusted)
+        #expect(store.userOptions(project).isEmpty)
+        try store.trust(project)
+        try store.setEnabled(project, enabled: false, hooks: false)
+        #expect(store.availability(of: user) == .ready)
+        #expect(store.hooksEnabled(user))
+        try store.revoke(project)
+        #expect(store.availability(of: user) == .ready)
+        #expect(sandbox.store().availability(of: project) == .untrusted)
+        let catalog = PluginCatalog.discover(in: [project.directory.deletingLastPathComponent(), user.directory.deletingLastPathComponent()])
+        #expect(catalog.plugins.first?.installationID == project.installationID)
+        #expect(catalog.diagnostics.contains { $0.contains("shadows installed plugin") })
+    }
+
+    @Test("Legacy ID-only approvals cannot establish the root the user trusted")
+    func unscopedGrant() throws {
+        let sandbox = Sandbox()
+        defer { try? FileManager.default.removeItem(at: sandbox.root) }
+        let plugin = try sandbox.plugin()
+        let store = sandbox.store()
+        try store.trust(plugin)
+        var contents = try #require(JSONSerialization.jsonObject(with: Data(contentsOf: store.url)) as? [String: Any])
+        var grants = try #require(contents["grants"] as? [String: Any])
+        grants[plugin.id] = grants.removeValue(forKey: plugin.installationID)
+        contents["grants"] = grants
+        try JSONSerialization.data(withJSONObject: contents).write(to: store.url)
+        #expect(sandbox.store().availability(of: plugin) == .untrusted)
+    }
+
     @Test("User option values persist")
     func userOptions() throws {
         let sandbox = Sandbox()
         defer { try? FileManager.default.removeItem(at: sandbox.root) }
-        try sandbox.store().setUserOption("example.trust", key: "voice", value: .string("female"))
-        #expect(sandbox.store().userOptions("example.trust") == ["voice": .string("female")])
-        try sandbox.store().setUserOption("example.trust", key: "voice", value: nil)
-        #expect(sandbox.store().userOptions("example.trust").isEmpty)
+        let plugin = try sandbox.plugin()
+        try sandbox.store().setUserOption(plugin, key: "voice", value: .string("female"))
+        #expect(sandbox.store().userOptions(plugin) == ["voice": .string("female")])
+        try sandbox.store().setUserOption(plugin, key: "voice", value: nil)
+        #expect(sandbox.store().userOptions(plugin).isEmpty)
     }
 }

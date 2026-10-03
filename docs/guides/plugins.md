@@ -110,6 +110,9 @@ checked on its manifest and entrypoint only, so it can change while it is writte
 | `changed` | Its manifest or entrypoint changed since approval; choose **Trust** again |
 | `outdated` | Its API window does not include this BashCut |
 
+- Approvals, enabled/hooks switches and local option values belong to `(id, canonical installation root)`.
+  Another copy with the same ID starts untrusted and has separate settings. Legacy ID-only approvals cannot
+  identify the approved root and require Trust again. Catalog diagnostics identify shadowed installations.
 - Plugins in the app bundle are trusted without a pin; they can still be turned off.
 - Installing a plugin from the Plugins sheet pins the installed files.
 - **Trust**, **Revoke Trust** and turning a plugin or its hooks **on** are user-only (Plugins sheet). Agents can

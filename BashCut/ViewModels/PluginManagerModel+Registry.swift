@@ -214,8 +214,8 @@ extension PluginManagerModel {
         }
         stopSession(plugin.id)
         try FileManager.default.removeItem(at: plugin.directory)
-        try? trust.revoke(plugin.id)
-        for key in trust.userOptions(plugin.id).keys { try? trust.setUserOption(plugin.id, key: key, value: nil) }
+        try? trust.revoke(plugin)
+        for key in trust.userOptions(plugin).keys { try? trust.setUserOption(plugin, key: key, value: nil) }
         if deleteData { try PluginFolders.remove(plugin.id) }
         health[plugin.id] = nil
         message = String(format: String(localized: "Removed %@"), plugin.manifest.displayName)

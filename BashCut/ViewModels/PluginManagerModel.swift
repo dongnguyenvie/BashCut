@@ -213,7 +213,7 @@ enum PluginText {
     /// Plugins whose hooks receive `event` now.
     func subscribers(for event: PluginEvent) -> [(InstalledPlugin, PluginHookContribution)] {
         plugins.compactMap { plugin in
-            guard availability[plugin.id] == .ready, trust.hooksEnabled(plugin.id),
+            guard availability[plugin.id] == .ready, trust.hooksEnabled(plugin),
                 let hook = plugin.manifest.hooks.first(where: { $0.event == event.rawValue })
             else { return nil }
             return (plugin, hook)
@@ -234,7 +234,7 @@ enum PluginText {
     }
 
     func revokeTrust(_ plugin: InstalledPlugin) {
-        do { try trust.revoke(plugin.id) } catch { message = error.localizedDescription }
+        do { try trust.revoke(plugin) } catch { message = error.localizedDescription }
         stopSession(plugin.id)
         refresh(projectRoot: projectRoot)
     }
@@ -245,7 +245,7 @@ enum PluginText {
         refresh(projectRoot: projectRoot)
     }
 
-    func isEnabled(_ plugin: InstalledPlugin) -> Bool { trust.grant(for: plugin.id)?.enabled ?? true }
+    func isEnabled(_ plugin: InstalledPlugin) -> Bool { trust.grant(for: plugin)?.enabled ?? true }
 
     func stopSession(_ pluginID: String) {
         Task { await PluginSessionTransport.shared.stop(pluginID: pluginID) }

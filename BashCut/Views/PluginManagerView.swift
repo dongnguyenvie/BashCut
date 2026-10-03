@@ -153,7 +153,7 @@ private struct PluginRow: View {
                 if availability == .untrusted || availability == .changed {
                     Button("Trust") { model.trustPlugin(plugin) }
                         .help("Allow this plugin to run. Its manifest and entrypoint are pinned; a change asks again.")
-                } else if !model.trust.isBundled(plugin), model.trust.grant(for: plugin.id) != nil {
+                } else if !model.trust.isBundled(plugin), model.trust.grant(for: plugin) != nil {
                     Button("Revoke Trust") { model.revokeTrust(plugin) }
                 }
                 Toggle("Enabled", isOn: Binding(
@@ -163,7 +163,7 @@ private struct PluginRow: View {
                     }))
                 if !plugin.manifest.hooks.isEmpty {
                     Toggle("Hooks", isOn: Binding(
-                        get: { model.trust.hooksEnabled(plugin.id) },
+                        get: { model.trust.hooksEnabled(plugin) },
                         set: { value in
                             do { try model.setEnabled(plugin, hooks: value) } catch { model.message = error.localizedDescription }
                         }))

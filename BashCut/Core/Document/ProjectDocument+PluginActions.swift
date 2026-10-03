@@ -108,7 +108,7 @@ extension ProjectDocument {
     /// `revealSecrets` is set (requests to the plugin); otherwise each shows as `{"set": true|false}`.
     func pluginOptionValues(_ plugin: InstalledPlugin, revealSecrets: Bool = false) -> [String: JSONValue] {
         let options = plugin.manifest.options ?? []
-        let user = plugins.trust.userOptions(plugin.id)
+        let user = plugins.trust.userOptions(plugin)
         let projectValues = project["pluginOptions"]?.object[plugin.id]?.object ?? [:]
         var values: [String: JSONValue] = [:]
         let root = fileURL?.deletingLastPathComponent()
@@ -142,7 +142,7 @@ extension ProjectDocument {
             let text = try value.map(option.check)?.string ?? ""
             try plugins.secrets.write(
                 text, plugin: plugin.id, option: id,
-                binding: PluginOptionPolicy.endpointBinding(options: options, userValues: plugins.trust.userOptions(plugin.id)))
+                binding: PluginOptionPolicy.endpointBinding(options: options, userValues: plugins.trust.userOptions(plugin)))
             return
         }
         var checked = try value.map(option.check)
@@ -153,7 +153,7 @@ extension ProjectDocument {
         }
         switch PluginOptionPolicy.scope(of: option, in: options) {
         case .user:
-            try plugins.trust.setUserOption(plugin.id, key: id, value: checked)
+            try plugins.trust.setUserOption(plugin, key: id, value: checked)
         case .project:
             var all = project["pluginOptions"]?.object ?? [:]
             var mine = all[plugin.id]?.object ?? [:]
@@ -392,7 +392,7 @@ extension ProjectDocument {
             try document.plugins.setEnabled(plugin, enabled: enabled, hooks: hooks)
             return .object([
                 "plugin": .string(plugin.id), "availability": .string(document.plugins.service.availability(plugin).name),
-                "hooks": .bool(document.plugins.trust.hooksEnabled(plugin.id)),
+                "hooks": .bool(document.plugins.trust.hooksEnabled(plugin)),
             ])
         }
     }

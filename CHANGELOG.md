@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+- Scope plugin trust, enable switches, hooks and local options to the canonical installation root. A project
+  copy sharing an installed plugin's ID cannot inherit its approval or settings; catalog diagnostics identify
+  the shadowed installation. Legacy ID-only approvals require review again because their origin is unknown.
+
 - Bind plugin API keys to provider/endpoint settings. Switching destinations requires a key entered for that
   destination; legacy unbound keys must be re-entered. Plugins with secrets use user-only settings and ignore
   project option overrides, including overrides injected through raw timeline operations.
