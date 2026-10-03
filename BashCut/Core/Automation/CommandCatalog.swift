@@ -13,7 +13,7 @@ public enum CommandCatalog {
     public static let exportPresets = ["tiktok", "youtube-1080", "youtube-4k", "quick-draft", "prores"]
 
     public static let specs: [CommandSpec] = readSpecs + projectSpecs + editSpecs + layerSpecs + styleSpecs
-        + clipSpecs + capabilitySpecs + pluginSpecs + storageSpecs + privilegedSpecs + uiSpecs + toolSpecs
+        + formatSpecs + clipSpecs + capabilitySpecs + pluginSpecs + storageSpecs + privilegedSpecs + uiSpecs + toolSpecs
 
     public static let modes: [String: CommandMode] = Dictionary(uniqueKeysWithValues: specs.map { ($0.name, $0.mode) })
 
@@ -290,7 +290,7 @@ public enum CommandCatalog {
             parameters: [CommandParameter("action", .string, "Action ID or shortcut", required: true, cli: .positional)]),
         CommandSpec(
             "ui.view", .ui,
-            "Read the editor view state, or change it: timeline zoom (pixels per second), snapping, safe area, "
+            "Read the editor view state, or change it: timeline zoom (pixels per second), viewer zoom, snapping, safe area, "
                 + "color compare, agent dock, inspector tab, and scroll the timeline to a frame.",
             parameters: [
                 CommandParameter("zoom", .integer, "Timeline zoom in pixels per second", minimum: 1, maximum: 600,
@@ -299,6 +299,8 @@ public enum CommandCatalog {
                                  minimum: 0, cli: .option("zoom-anchor")),
                 CommandParameter("snap", .boolean, "Snapping on or off", cli: .option("snap")),
                 CommandParameter("safeArea", .boolean, "Safe-area overlay on or off", cli: .option("safe-area")),
+                CommandParameter("viewerZoom", .string, "Viewer zoom: fit, or a percentage of the output size",
+                                 choices: EditorViewerZoom.choices, cli: .option("viewer-zoom")),
                 CommandParameter("compare", .boolean, "Color before/after compare on or off", cli: .option("compare")),
                 CommandParameter("agentDock", .boolean, "Agent dock shown or hidden", cli: .option("agent-dock")),
                 CommandParameter("reveal", .integer, "Scroll the timeline so this frame is visible", minimum: 0,

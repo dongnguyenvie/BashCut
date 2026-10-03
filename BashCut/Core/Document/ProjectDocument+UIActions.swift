@@ -209,6 +209,7 @@ extension ProjectDocument {
         }
         if let snap = arguments.optionalBool("snap") { ui.snapping = snap }
         if let safeArea = arguments.optionalBool("safeArea") { ui.showSafeArea = safeArea }
+        if let zoom = arguments.optionalString("viewerZoom") { ui.viewerZoom = EditorViewerZoom.scale(zoom) }
         if let dock = arguments.optionalBool("agentDock") {
             if dock, agents.isDetached { agents.attach() }
             ui.showAgentDock = dock
@@ -234,6 +235,7 @@ extension ProjectDocument {
             "zoom": .number(ui.timelineScale), "zoomRange": .array([
                 .number(EditorUIState.timelineZoomRange.lowerBound), .number(EditorUIState.timelineZoomRange.upperBound),
             ]),
+            "viewerZoom": .string(EditorViewerZoom.choice(ui.viewerZoom)),
             "snap": .bool(ui.snapping), "safeArea": .bool(ui.showSafeArea), "compare": .bool(preview.showColorComparison),
             "agentDock": .bool(ui.showAgentDock && !agents.isDetached), "agentDockDetached": .bool(agents.isDetached),
             "playing": .bool(preview.isPlaying), "playhead": .integer(playhead),

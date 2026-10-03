@@ -5,6 +5,18 @@
 
 ## [Unreleased]
 
+- **Change the canvas of an open project**: the size in the toolbar is now a menu (Portrait 9:16, Landscape 16:9,
+  Square 1:1), also `project format --canvas <c> [--resolution <r>]` and the new `setFormat` operation. One undoable
+  edit; timing is kept and clip pan/tilt scale with the frame. Before, a project's format could never change.
+- **Viewer zoom**: Fit, 25, 50, 100 and 200% from the viewer header (`ui view --viewer-zoom`); zoomed views scroll.
+  Fit leaves a 12-point margin so a 16:9 picture no longer touches the panel edges.
+- Fix: text was sized from the frame *width*, so titles grew 1.8× in landscape projects and ran off the frame. Text
+  size is now a fraction of the short side (portrait looks the same as before), and a line wider than 90% of the
+  frame shrinks to fit.
+- The safe-area overlay follows the canvas: TikTok/Reels zones for vertical video, a 90% title-safe frame for
+  landscape and square.
+- `ui frame` waits for the preview to finish rebuilding after an edit instead of failing.
+- Fix: a bad `atIndex`/`toIndex` said "must be an integer frame"; it now says it must be a layer position.
 - `docs/reference/commands.md` lists every CLI command and MCP tool with its mode, how it runs and its parameters.
   It is generated from the command catalog (`scripts/update-commands.sh`) and a test fails when it is stale; the
   hand-written tables in the automation guide had fallen behind.

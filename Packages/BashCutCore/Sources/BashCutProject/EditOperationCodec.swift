@@ -50,12 +50,13 @@ extension EditOperation {
         case "setLinkedAudio": self = .setLinkedAudio(video: try read.string("video"), audio: fields["audio"]?.string)
         case "addMedia": self = .addMedia(Media(fields: try read.object("media")))
         case "addTrack":
-            self = .addTrack(track: Track(fields: try read.object("track")), atIndex: try read.frame("atIndex"))
+            self = .addTrack(track: Track(fields: try read.object("track")), atIndex: try read.index("atIndex"))
         case "deleteTrack": self = .deleteTrack(track: try read.string("track"))
-        case "moveTrack": self = .moveTrack(track: try read.string("track"), toIndex: try read.frame("toIndex"))
+        case "moveTrack": self = .moveTrack(track: try read.string("track"), toIndex: try read.index("toIndex"))
         case "setTrackProperties":
             self = .setTrackProperties(track: try read.string("track"), patch: try read.object("patch"))
         case "setProjectProperties": self = .setProjectProperties(patch: try read.object("patch"))
+        case "setFormat": self = .setFormat(width: try read.size("width"), height: try read.size("height"))
         case "setProviderPreference":
             self = .setProviderPreference(capability: try read.string("capability"), provider: fields["provider"]?.string)
         case "setBeatGrid":
@@ -133,6 +134,8 @@ extension EditOperation {
         case .setTrackProperties(let track, let patch):
             return op("setTrackProperties", ["track": .string(track), "patch": .object(patch)])
         case .setProjectProperties(let patch): return op("setProjectProperties", ["patch": .object(patch)])
+        case .setFormat(let width, let height):
+            return op("setFormat", ["width": .integer(width), "height": .integer(height)])
         case .setProviderPreference(let capability, let provider):
             return op("setProviderPreference", [
                 "capability": .string(capability), "provider": provider.map(JSONValue.string) ?? .null,
@@ -179,6 +182,20 @@ private struct OperationFields {
     func frame(_ key: String) throws -> Int {
         guard let value = fields[key]?.int, (0...EditOperation.maximumFrame).contains(value) else {
             throw ProjectError.invalid("\(key) must be an integer frame")
+        }
+        return value
+    }
+    func index(_ key: String) throws -> Int {
+        guard let value = fields[key]?.int, value >= 0 else {
+            throw ProjectError.invalid("\(key) must be a layer position, 0 or more (0 is the back layer)")
+        }
+        return value
+    }
+    func size(_ key: String) throws -> Int {
+        guard let value = fields[key]?.int, Project.formatSizeRange.contains(value), value % 2 == 0 else {
+            throw ProjectError.invalid(
+                "\(key) must be an even number of pixels from \(Project.formatSizeRange.lowerBound) to "
+                    + "\(Project.formatSizeRange.upperBound)")
         }
         return value
     }

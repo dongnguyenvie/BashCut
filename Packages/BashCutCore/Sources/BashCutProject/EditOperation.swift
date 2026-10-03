@@ -24,6 +24,8 @@ public indirect enum EditOperation: Codable, Sendable, Equatable {
     case moveTrack(track: String, toIndex: Int)
     case setTrackProperties(track: String, patch: [String: JSONValue])
     case setProjectProperties(patch: [String: JSONValue])
+    /// Output size (canvas): portrait, landscape or square at any resolution; see EditOperation+Format.swift.
+    case setFormat(width: Int, height: Int)
     case setProviderPreference(capability: String, provider: String?)
     case setBeatGrid(
         media: String, bpm: Double, frames: [Int], provenance: [String: JSONValue]?)
@@ -103,6 +105,8 @@ extension Project {
             try setTrackProperties(id: id, patch: patch)
         case .setProjectProperties(let patch):
             try setProjectProperties(patch)
+        case .setFormat(let width, let height):
+            try applyFormat(width: width, height: height)
         case .setProviderPreference(let capability, let provider):
             try setProviderPreference(capability: capability, provider: provider)
         case .setBeatGrid(let media, let bpm, let frames, let provenance):

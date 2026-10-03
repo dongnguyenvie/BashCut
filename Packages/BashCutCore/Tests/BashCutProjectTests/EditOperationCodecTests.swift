@@ -25,6 +25,7 @@ struct EditOperationCodecTests {
         .moveTrack(track: "v2", toIndex: 0),
         .setTrackProperties(track: "v2", patch: ["name": .string("B-roll")]),
         .setProjectProperties(patch: ["audio": .object(["targetLUFS": .integer(-14)])]),
+        .setFormat(width: 1920, height: 1080),
         .setProviderPreference(capability: "voice.synthesize", provider: "acme.voice"),
         .setProviderPreference(capability: "voice.synthesize", provider: nil),
         .setBeatGrid(media: "m1", bpm: 120, frames: [0, 15], provenance: ["plugin": .string("p")]),

@@ -90,7 +90,10 @@ enum TextRenderer {
         let style = item["textStyle"]?.object ?? [:]
         let relativeSize = style["size"]?.double ?? preset.size
         let fontName = style["font"]?.string ?? preset.font
-        let font = CTFontCreateWithName(fontName as CFString, size.width * relativeSize, nil)
+        let font = fittedFont(
+            fontName, size: fontSize(relativeSize, canvas: size), lines: item.text.components(separatedBy: "\n"),
+            maximumWidth: size.width * 0.9)
+        let points = CTFontGetSize(font)
         let fill = color(style["fill"]?.string ?? preset.fill)
         let stroke = style["strokeWidth"]?.double ?? preset.strokeWidth
         let baseline = style["positionY"]?.double ?? preset.baseline
@@ -101,7 +104,7 @@ enum TextRenderer {
                 style["stroke"]?.string ?? "#000000"),
             NSAttributedString.Key(kCTStrokeWidthAttributeName as String): -stroke,
         ]
-        let lineHeight = size.width * relativeSize * 1.28
+        let lineHeight = points * 1.28
         let lines = item.text.components(separatedBy: "\n").reversed().enumerated().map { index, lineText in
             let line = CTLineCreateWithAttributedString(
                 NSAttributedString(string: lineText, attributes: attributes))
@@ -126,6 +129,26 @@ enum TextRenderer {
             CaptionImage(image), forKey: key as NSString, cost: Int(size.width * size.height * 4))
         return image
     }
+    /// Text size is a fraction of the canvas's short side, so a preset looks the same in portrait, landscape and
+    /// square projects (for 1080×1920 and 1920×1080 that side is 1080).
+    static func fontSize(_ relativeSize: Double, canvas: CGSize) -> CGFloat {
+        min(canvas.width, canvas.height) * relativeSize
+    }
+
+    /// The font at `size`, made smaller when the widest line would not fit `maximumWidth`, so a title never runs
+    /// off the frame.
+    static func fittedFont(_ name: String, size: CGFloat, lines: [String], maximumWidth: CGFloat) -> CTFont {
+        let font = CTFontCreateWithName(name as CFString, size, nil)
+        let attributes = [NSAttributedString.Key(kCTFontAttributeName as String): font]
+        let widest = lines.map { text in
+            CTLineGetTypographicBounds(
+                CTLineCreateWithAttributedString(NSAttributedString(string: text, attributes: attributes)), nil, nil,
+                nil)
+        }.max() ?? 0
+        guard widest > maximumWidth, widest > 0 else { return font }
+        return CTFontCreateWithName(name as CFString, size * maximumWidth / widest, nil)
+    }
+
     private static func decorate(
         _ preset: CaptionPreset, lines: [CaptionLineLayout], lineHeight: CGFloat,
         context: CGContext, canvas: CGSize

@@ -36,6 +36,8 @@ extension CommandCatalog {
         On staleRevision, re-read and retry. Changes appear in the UI and can be undone.
         Job commands return a job ID; poll `bashcut jobs status JOB_ID`. Their result is one undoable edit.
         Installing plugins is user-only. Add `--format text` to print text results without JSON quoting.
+        Change the canvas of the open project with `bashcut project format --canvas landscape` (portrait, landscape,
+        square); text sizes follow the short side, so titles keep their look.
         Projects: `bashcut project create` / `project open` / `project save`; they refuse to drop unsaved work unless
         you pass --save-current or --discard-current. Outside BashCut's terminals the CLI and MCP read the
         automation token file automatically; edits are attributed to "agent". Exports still need the user's approval.
@@ -85,6 +87,7 @@ extension CommandCatalog {
         {"op":"moveTrack","track":"TRACK_ID","toIndex":3},
         {"op":"setTrackProperties","track":"TRACK_ID","patch":{"name":"Product shots"}},
         {"op":"setProjectProperties","patch":{"audio":{"targetLUFS":-14,"normalizeEnabled":true}}},
+        {"op":"setFormat","width":1920,"height":1080} (canvas; even pixels; pan/tilt scale with it),
         {"op":"deleteTrack","track":"TRACK_ID"},
         {"op":"setProviderPreference","capability":"voice.synthesize","provider":"acme.voice.fast"}.
         {"op":"setBeatGrid","media":"MEDIA_ID","bpm":120,"frames":[0,15,30]}.

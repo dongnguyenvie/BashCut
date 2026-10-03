@@ -1,6 +1,42 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Portrait 9:16": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Portrait 9:16" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Dọc 9:16" } }
+      }
+    },
+    "Landscape 16:9": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Landscape 16:9" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Ngang 16:9" } }
+      }
+    },
+    "Square 1:1": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Square 1:1" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Vuông 1:1" } }
+      }
+    },
+    "Fit": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Fit" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Vừa khung" } }
+      }
+    },
+    "Viewer zoom": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Viewer zoom" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Thu phóng khung xem" } }
+      }
+    },
+    "Change the canvas": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Change the canvas" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đổi khung hình" } }
+      }
+    },
     "Agents outside BashCut": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Agents outside BashCut" } },

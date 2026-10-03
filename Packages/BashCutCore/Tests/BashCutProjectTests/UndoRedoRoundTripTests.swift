@@ -48,6 +48,7 @@ struct UndoRedoRoundTripTests {
             .moveTrack(track: "v2", toIndex: 0),
             .setTrackProperties(track: "v2", patch: ["name": .string("B-roll")]),
             .setProjectProperties(patch: ["audio": .object(["targetLUFS": .integer(-14)])]),
+            .setFormat(width: 1920, height: 1080),
             .setProviderPreference(capability: "voice.synthesize", provider: "acme.voice"),
             .setBeatGrid(media: "m", bpm: 120, frames: [0, 15], provenance: ["plugin": .string("p")]),
             .upsertSection(id: "s1", label: "Hook", atFrame: 30),

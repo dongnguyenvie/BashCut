@@ -184,7 +184,8 @@ bashcut timeline redo --base-rev 14
 - **Operations.** `insert`, `delete`, `split`, `trim`, `roll`, `slip`, `move`, `reorder`, `setSpeed`, `setProperties`,
   `setLinkedAudio`, track operations (`addTrack`, `moveTrack`, `setTrackProperties`, `deleteTrack`),
   `setProjectProperties`, `setProviderPreference`, `setBeatGrid`, `upsertSection`, `deleteSection`,
-  `upsertTransition`, `deleteTransition`, `addColorLUT` and `deleteColorLUT`. The agent instructions
+  `upsertTransition`, `deleteTransition`, `addColorLUT`, `deleteColorLUT` and `setFormat` (the canvas size; the
+  `project format` command and the toolbar's format menu use it). The agent instructions
   (`BashCut/Core/Automation/AgentInstructions.swift`) show an example of each.
 - **Frames.** All frames are integers. `atFrame` and `toFrame` are absolute timeline frames; an item's `in` is a
   source frame at that media's FPS.

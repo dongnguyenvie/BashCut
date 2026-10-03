@@ -180,12 +180,7 @@ struct EditorView: View {
                 Image(systemName: "arrow.uturn.forward")
             }
             .action(.redo, in: document)
-            Text(
-                String(
-                    format: "%d × %d · %.2f", document.project.width, document.project.height,
-                    document.project.fps.value)
-            )
-            .font(.caption.monospaced()).foregroundStyle(.secondary)
+            formatMenu
             Spacer(minLength: 4)
             Button("New") { document.run(.newProject) }.action(.newProject, in: document)
             Button("Open…") { document.run(.openProject) }.action(.openProject, in: document)
@@ -249,74 +244,6 @@ struct EditorView: View {
             }
             Spacer()
         }.padding(.top, 8)
-    }
-    private var viewer: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text("VIEWER").font(.caption.bold()).foregroundStyle(.secondary)
-                Spacer()
-                Toggle(
-                    "Compare",
-                    isOn: Binding(
-                        get: { document.preview.showColorComparison },
-                        set: { document.preview.setColorComparison($0) })
-                ).toggleStyle(.button).font(.caption).disabled(document.project.duration == 0)
-                Toggle("Safe area", isOn: Bindable(document.ui).showSafeArea).toggleStyle(.button).font(.caption)
-            }.padding(8)
-            ZStack {
-                Color.black
-                if document.project.duration == 0 {
-                    VStack(spacing: 12) {
-                        Image(systemName: "film.stack").font(.largeTitle).foregroundStyle(.cyan)
-                        Text("Start your next cut").font(.headline)
-                        if document.fileURL == nil {
-                            Button("New project", action: document.newProject)
-                            Button("Open project…", action: document.openProject)
-                        } else {
-                            Button("Import footage…") { document.importMedia() }
-                        }
-                    }
-                } else {
-                    PlayerView(player: document.preview.player)
-                    if document.preview.showColorComparison {
-                        GeometryReader { geometry in
-                            PlayerView(player: document.preview.comparisonPlayer)
-                                .mask {
-                                    HStack(spacing: 0) {
-                                        Rectangle().frame(width: geometry.size.width / 2)
-                                        Color.clear
-                                    }
-                                }
-                            Rectangle().fill(.white.opacity(0.9)).frame(width: 1)
-                                .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
-                            HStack {
-                                Text("Before")
-                                Spacer()
-                                Text("After")
-                            }
-                            .font(.caption2.bold()).padding(8)
-                            .foregroundStyle(.white).shadow(radius: 2)
-                        }.allowsHitTesting(false)
-                    }
-                    if document.ui.showSafeArea {
-                        GeometryReader { geo in
-                            let aspect = Double(document.project.width) / Double(document.project.height)
-                            let height = min(geo.size.height, geo.size.width / aspect)
-                            let width = height * aspect
-                            ZStack(alignment: .bottomTrailing) {
-                                Rectangle().strokeBorder(
-                                    .red.opacity(0.6), style: StrokeStyle(lineWidth: 1, dash: [5]))
-                                Rectangle().fill(.red.opacity(0.15)).frame(height: height * 0.16)
-                                Rectangle().fill(.red.opacity(0.15)).frame(
-                                    width: width * 0.14, height: height * 0.46)
-                            }.frame(width: width, height: height).position(
-                                x: geo.size.width / 2, y: geo.size.height / 2)
-                        }.allowsHitTesting(false)
-                    }
-                }
-            }
-            TransportBar(document: document)
-        }
     }
     private var timelineToolbar: some View {
         HStack(spacing: 10) {
