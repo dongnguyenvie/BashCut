@@ -436,7 +436,7 @@ code.
 | `params` | Up to 32 [options](#options) (their `scope` is ignored); shown in a native sheet before the action runs |
 | `shortcut` | Optional, written like `cmd+shift+g`; ignored (and reported in diagnostics) when a built-in or earlier plugin action uses it |
 | `context` | Extra read-only data: `timeline` (all tracks), `media` (all media with absolute paths), `project` (the whole document) |
-| `confirm` | A question shown before the action runs from the UI; localized text |
+| `confirm` | A user-only question shown before execution from any entry point, including CLI and shortcuts; localized text |
 
 ### Placements
 
@@ -683,7 +683,9 @@ Everything above is available to agents through the CLI and MCP (`bashcut_plugin
 
 `ui actions` lists plugin actions next to built-in ones and `ui action <id or shortcut>` runs them. An action with
 parameters or `confirm` opens its sheet (dialog `plugin-action`); answer it with `ui respond run|cancel`, or use
-`plugins run --params` instead. `ui open plugin-proposals` opens the review sheet.
+`plugins run --params` instead. When `confirm` is declared, execution then opens `plugin-confirm` with
+`userOnly: true`: automation can read it but only native user interaction can answer it. Cancelling starts no
+plugin request. `ui open plugin-proposals` opens the review sheet.
 
 ## Dependencies and health
 

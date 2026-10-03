@@ -169,18 +169,11 @@ extension ProjectDocument {
 
     // MARK: Running actions
 
-    /// Starts an action from the UI: asks first when it declares `confirm`, shows the parameter sheet when it
-    /// has parameters, otherwise runs it as a job.
+    /// Starts an action from the UI: collects parameters, then the shared execution path asks for confirmation.
     func triggerPluginAction(_ action: ContributedAction, mediaID: String? = nil, author: Author = .user) {
         guard canRunPluginAction(action, mediaID: mediaID) else {
             message = String(format: String(localized: "%@ is not available now"), action.title)
             return
-        }
-        if let confirm = action.spec.confirm, author == .user {
-            let choice = ModalCenter.shared.alert(
-                "plugin-confirm", title: action.title, message: confirm.text,
-                buttons: [ModalOption("cancel", String(localized: "Cancel")), ModalOption("run", String(localized: "Run"))])
-            guard choice == "run" else { return }
         }
         if !action.params.isEmpty {
             let defaults = (try? action.params.resolve([:])) ?? [:]
@@ -226,12 +219,19 @@ extension ProjectDocument {
         }
         let values: [String: JSONValue]
         do { values = try action.params.resolve(params) } catch { throw ProjectError.invalid(error.localizedDescription) }
+        let session = sessionID
+        if let confirm = action.spec.confirm {
+            let choice = ModalCenter.shared.alert(
+                "plugin-confirm", title: action.title, message: confirm.text,
+                buttons: [ModalOption("cancel", String(localized: "Cancel")), ModalOption("run", String(localized: "Run"))],
+                userOnly: true)
+            guard choice == "run", session == sessionID else { throw CancellationError() }
+        }
         let plugin = action.plugin
         let adapter = PluginActionCapability(
             action: id, params: values, options: pluginOptionValues(plugin, revealSecrets: true),
             context: pluginContext(plugin: plugin, parts: action.spec.context ?? [], mediaID: mediaID, author: author),
             projectRoot: root, outputRoot: Self.pluginOutputRoot(root, plugin: plugin))
-        let session = sessionID
         let service = plugins.service
         DebugLog.write("plugin", "action \(id) by \(author) params=\(values)")
         let proposal: PluginEditProposal

@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+- Enforce plugin action confirmation at execution for UI, shortcuts and automation alike. Privileged dialogs
+  expose `userOnly` and cannot be answered through `ui.respond`; cancellation never starts the plugin request.
+
 - Include hidden files and Python bytecode in plugin fingerprints; reject symlinks leaving the plugin folder
   and dangling links. Cache validation now uses fresh inode, mode and nanosecond ctime/mtime metadata, so
   rewriting a same-size file and restoring its modification time cannot preserve an old approval.
