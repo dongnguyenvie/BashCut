@@ -160,7 +160,7 @@ Plugins are discovered in three roots, highest priority first:
 ```text
 <project>/.bashcut/plugins/<plugin-id>/            # project override
 ~/Library/Application Support/BashCut/Plugins/<plugin-id>/
-BashCut.app/Contents/PlugIns/<plugin-id>/          # optional bundled providers
+BashCut.app/Contents/Resources/Plugins/<plugin-id>/ # core plugins (bundled providers)
     ├── plugin.json                                # bashcut.plugin/1 manifest
     └── <entrypoint>                               # executable named by the manifest; called with `rpc`
 ```

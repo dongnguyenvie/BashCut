@@ -22,6 +22,7 @@ extension ProjectDocument {
         registerAdjustmentCommands()
         registerImportCommands()
         registerProxyCommands()
+        registerStorageCommands()
         registerPrivilegedCommands()
         registerUICommands()
         registerUIActionCommands()

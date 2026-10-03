@@ -168,6 +168,8 @@ when another project opens; agents outside BashCut keep access.
 | `media import <path> [--kind <kind>] [--place] [--track <track>] [--at-frame <atFrame>] --base-rev <baseRev>` | edit | Add a media file; with `--place`, also put it on a layer like the Import button |
 | `media place --media <media> [--track <track>] [--at-frame <atFrame>] --base-rev <baseRev>` | edit | Place project media on a layer (main by default), with linked sound on a dialogue layer |
 | `media proxy [<media>] [--force]` | edit | Queue preview proxies for heavy video, or for one media item |
+| `storage get` | read | What BashCut keeps on disk (Settings › Storage) with sizes and paths |
+| `storage clear <plugin-cache\|plugin-data\|registry\|proxies> [--plugin <id>]` | edit | Delete what can be made or downloaded again; `plugin-data` needs `--plugin` and means setting the plugin up again |
 | `captions import <text-file> --base-rev <baseRev> [--replace]` | edit | Import UTF-8 SubRip captions as one undoable edit |
 | `luts import <path> [--name <name>] --base-rev <baseRev>` | edit | Check a `.cube` LUT, copy it into the project's `luts` folder and add it (Filters panel) |
 | `knowledge memo <text-file>` | edit | Replace the project memo (`.bashcut/agent-memory.md`) |

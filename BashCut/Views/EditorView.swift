@@ -143,7 +143,7 @@ struct EditorView: View {
             if document.plugins.proposals.isEmpty { document.ui.showPluginProposals = false }
         }
         .sheet(isPresented: Bindable(document.ui).showSettings) {
-            SettingsView(model: document.agents, settings: document.settings, done: { document.ui.showSettings = false })
+            SettingsView(model: document.agents, document: document, settings: document.settings, done: { document.ui.showSettings = false })
         }
         .sheet(isPresented: Bindable(document.ui).showDoctor) {
             DoctorView(

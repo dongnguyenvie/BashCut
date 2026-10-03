@@ -4670,6 +4670,96 @@
         "en": { "stringUnit": { "state": "translated", "value": "Plugin Updates (%d)…" } },
         "vi": { "stringUnit": { "state": "translated", "value": "Cập nhật plugin (%d)…" } }
       }
+    },
+    "Storage": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Storage" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Dung lượng" } }
+      }
+    },
+    "Show in Finder": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Show in Finder" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Mở trong Finder" } }
+      }
+    },
+    "Measure again": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Measure again" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đo lại" } }
+      }
+    },
+    "Total": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Total" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Tổng" } }
+      }
+    },
+    "Delete…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Delete…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Xóa…" } }
+      }
+    },
+    "The plugin's environments and settings are deleted. Use Install Dependencies… in Plugins to set it up again.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "The plugin's environments and settings are deleted. Use Install Dependencies… in Plugins to set it up again." } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Môi trường và thiết lập của plugin sẽ bị xóa. Dùng Cài dependency… trong Plugin để cài lại." } }
+      }
+    },
+    "This is downloaded or made again when needed.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "This is downloaded or made again when needed." } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Phần này sẽ được tải hoặc tạo lại khi cần." } }
+      }
+    },
+    "Installed plugins": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Installed plugins" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Plugin đã cài" } }
+      }
+    },
+    "%@ — data": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "%@ — data" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "%@ — dữ liệu" } }
+      }
+    },
+    "%@ — downloads": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "%@ — downloads" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "%@ — bản tải về" } }
+      }
+    },
+    "Plugin catalog copy": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Plugin catalog copy" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Bản lưu danh mục plugin" } }
+      }
+    },
+    "Preview proxies (this project)": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Preview proxies (this project)" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Proxy xem trước (dự án này)" } }
+      }
+    },
+    "Automation audit log": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Automation audit log" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Nhật ký tự động hóa" } }
+      }
+    },
+    "Delete %@ (%@)?": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Delete %@ (%@)?" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Xóa %@ (%@)?" } }
+      }
+    },
+    "Free Up": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Free Up" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Giải phóng" } }
+      }
     }
   },
   "version": "1.0"

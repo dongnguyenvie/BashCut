@@ -1,0 +1,96 @@
+import BashCutEngine
+import BashCutPlugin
+import Foundation
+
+/// What BashCut keeps on disk outside the user's projects and media, with sizes, for Settings › Storage and
+/// `storage get`. Measuring walks folders, so call `measure` off the main actor.
+public struct StorageEntry: Sendable, Identifiable, Equatable {
+    public enum Kind: String, Sendable {
+        /// Installed plugin folders (code).
+        case plugins
+        /// One plugin's `BASHCUT_PLUGIN_DATA` (environments, settings): deleting it means setting the plugin up again.
+        case pluginData = "plugin-data"
+        /// One plugin's `BASHCUT_PLUGIN_CACHE` (downloaded models): fetched again when needed.
+        case pluginCache = "plugin-cache"
+        /// The saved copy of the plugin registry.
+        case registry
+        /// The open project's preview proxies (`.bashcut/proxies`), made again on demand.
+        case proxies
+        /// Automation audit log; kept as a record, never cleared from here.
+        case audit
+    }
+
+    public let kind: Kind
+    public let pluginID: String?
+    public let url: URL
+    public let bytes: Int64
+    public var id: String { kind.rawValue + (pluginID.map { ":" + $0 } ?? "") }
+    public var clearable: Bool { kind != .plugins && kind != .audit }
+}
+
+public enum StorageUsage {
+    public static var supportFolder: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("BashCut", isDirectory: true)
+    }
+
+    public static var registryFolder: URL { supportFolder.appendingPathComponent("Registry", isDirectory: true) }
+
+    public static func proxiesFolder(projectRoot: URL) -> URL {
+        projectRoot.appendingPathComponent(ProxyMediaSource.folder, isDirectory: true)
+    }
+
+    /// Every entry that exists, plugin data and caches for each plugin that has some.
+    public static func measure(projectRoot: URL?, pluginsFolder: URL) -> [StorageEntry] {
+        var entries = [StorageEntry(kind: .plugins, pluginID: nil, url: pluginsFolder, bytes: size(of: pluginsFolder))]
+        let manager = FileManager.default
+        let ids = Set([PluginFolders.dataRoot, PluginFolders.cacheRoot].flatMap { root in
+            ((try? manager.contentsOfDirectory(atPath: root.path)) ?? []).filter { !$0.hasPrefix(".") }
+        })
+        for id in ids.sorted() {
+            for (kind, url) in [(StorageEntry.Kind.pluginData, PluginFolders.data(id)), (.pluginCache, PluginFolders.cache(id))]
+            where manager.fileExists(atPath: url.path) {
+                // Every plugin gets empty folders; only ones holding something are worth a row.
+                let bytes = size(of: url)
+                if bytes > 0 { entries.append(StorageEntry(kind: kind, pluginID: id, url: url, bytes: bytes)) }
+            }
+        }
+        entries.append(StorageEntry(kind: .registry, pluginID: nil, url: registryFolder, bytes: size(of: registryFolder)))
+        if let projectRoot {
+            let proxies = proxiesFolder(projectRoot: projectRoot)
+            entries.append(StorageEntry(kind: .proxies, pluginID: nil, url: proxies, bytes: size(of: proxies)))
+        }
+        let audit = supportFolder.appendingPathComponent("audit.jsonl")
+        entries.append(StorageEntry(kind: .audit, pluginID: nil, url: audit, bytes: size(of: audit)))
+        return entries
+    }
+
+    /// Allocated bytes of a file or folder (links not followed); 0 when it does not exist.
+    public static func size(of url: URL) -> Int64 {
+        let keys: Set<URLResourceKey> = [.totalFileAllocatedSizeKey, .isSymbolicLinkKey, .isDirectoryKey]
+        guard let values = try? url.resourceValues(forKeys: keys) else { return 0 }
+        if values.isDirectory != true { return Int64(values.totalFileAllocatedSize ?? 0) }
+        guard let enumerator = FileManager.default.enumerator(at: url, includingPropertiesForKeys: Array(keys)) else { return 0 }
+        var total: Int64 = 0
+        for case let item as URL in enumerator {
+            let itemValues = try? item.resourceValues(forKeys: keys)
+            if itemValues?.isSymbolicLink == true { continue }
+            total += Int64(itemValues?.totalFileAllocatedSize ?? 0)
+        }
+        return total
+    }
+
+    /// Deletes an entry's folder contents (the folder itself is recreated empty when it is a root BashCut expects).
+    public static func clear(_ entry: StorageEntry) throws {
+        guard entry.clearable else { throw StorageUsageError("\(entry.kind.rawValue) cannot be cleared") }
+        let manager = FileManager.default
+        guard manager.fileExists(atPath: entry.url.path) else { return }
+        try manager.removeItem(at: entry.url)
+    }
+}
+
+public struct StorageUsageError: LocalizedError {
+    public let message: String
+    public init(_ message: String) { self.message = message }
+    public var errorDescription: String? { message }
+}

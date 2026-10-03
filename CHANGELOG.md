@@ -5,10 +5,13 @@
 
 ## [Unreleased]
 
+- **Settings › Storage**: sizes of installed plugins, each plugin's data and downloads, the saved plugin catalog,
+  this project's preview proxies and the audit log, with *Free Up* for what can be downloaded or made again and
+  *Delete…* for a plugin's data (after a confirmation). New `storage get` and `storage clear` commands.
 - **Plugin actions for agents**: agent instructions explain list → select → run → `jobs status`; the agent
   session context lists installed actions with their conditions and parameters; and `bashcut-mcp` lists one
   `bashcut_action_<id>` tool per installed action (input schema = its parameters), run through `plugins run`.
-- **Core plugin `bashcut.audio-analysis`** ships inside the app (`Contents/PlugIns`): `audio.loudness`
+- **Core plugin `bashcut.audio-analysis`** ships inside the app (`Contents/Resources/Plugins`): `audio.loudness`
   (BS.1770-4 integrated loudness, EBU loudness range, 4× true peak) and `audio.beats` (spectral-flux onsets,
   autocorrelation tempo, dynamic-programming beats) with AVFoundation and vDSP. Loudness-normalized export and
   **Detect beats** now work without installing anything; installed providers with a higher priority still win.
