@@ -81,10 +81,11 @@ and dependency names stay plain strings.
 
 ## API versions
 
-The host serves every plugin API version from `PluginAPI.minimum` (1) to `PluginAPI.current` (3); changes are
+The host serves every plugin API version from `PluginAPI.minimum` (1) to `PluginAPI.current` (4); changes are
 additive, so older manifests keep working. Version 2 adds `options`, `contributes` and the `session` transport.
 Version 3 adds option `choiceLabels` and the `file` option type, the `BASHCUT_PLUGIN_DATA`/`BASHCUT_PLUGIN_CACHE`
-folders and `::progress` lines from install recipes. A manifest that uses a feature with an older `apiVersion` is
+folders and `::progress` lines from install recipes. Version 4 adds the `secret` option type, the session host
+channel (`event` and `call` lines) and the `agent.chat` capability. A manifest that uses a feature with an older `apiVersion` is
 invalid; set `minApiVersion` so older BashCut builds list the plugin as outdated instead of failing.
 
 A plugin is **outdated** (listed, never run) when `minApiVersion` (or `apiVersion`) is newer than the host
@@ -279,6 +280,7 @@ builds the request parameters and validates the result.
 | `voice.synthesize` | Voice panel, `voice speak` | `text`, `language`, `outputDirectory`, `takeCount`, `takeOffset` | `takes`: 1–8 `{audioPath, score?}` objects, or a single `audioPath` |
 | `captions.transcribe` | Text panel, `captions generate` | `mediaPath`, `language`, `outputDirectory` | `srtPath`, optional `wordsPath` |
 | `audio.beats` | Audio panel, `beats detect` | `mediaPath` | `bpm`, `beatsSeconds` |
+| `agent.chat` (API 4, session only) | A chat-agent tab in the agent dock, `chat send` | `op` (`turn`, `reset`, `status`); a turn adds `conversation`, `text`, `images`, `context`, `instructions`, `tools`, `kit` | A turn: `stopReason` (`end`, `aborted`, `error`) and `error`; status: `ready`, `provider`, `model`, `detail`. See [Chat agents](#chat-agents) |
 | `audio.loudness` | Normalized export | `mediaPath` | `integratedLUFS`, `truePeakDbTP`, optional `loudnessRangeLU` |
 
 ### Output files
@@ -364,6 +366,14 @@ example the voice a `voice.synthesize` provider should use), as `options`.
 ```
 
 - `choiceLabels` (API 3) gives `enum` choices display text; the value stays the choice.
+- `secret` (API 4) is for API keys and tokens.
+  - It must have `user` scope and no `default`.
+  - BashCut keeps it in the Keychain (service `app.bashcut.plugin-secret`) and shows a password field with
+    **Save** and **Clear**.
+  - The plugin receives it in `options` like other values.
+  - `plugins options` shows only `{"set": true|false}`, and `plugins option` refuses it ("Set secrets in
+    Settings"), so agents can neither read nor replace a key.
+  - Action parameters cannot be secrets.
 - `file` (API 3) shows **Choose…** with a file panel (through `ModalCenter`, so agents answer it with
   `ui respond --path`); `fileTypes` limits the extensions. Project-scope files inside the project are stored
   relative to it, and plugins always receive absolute paths.
@@ -588,8 +598,48 @@ newline-delimited JSON over stdin/stdout. Requests may overlap; replies are matc
 - Health probes still use one-shot processes. The environment is the same filtered one as for `rpc`.
 - `PluginRouter` picks the one-shot or session transport from the manifest, so capabilities work over either.
 
+### Host channel (API 4)
+
+Requests the app sends with a host channel (today: `agent.chat`) accept two more lines while they run:
+
+| Direction | Message |
+|---|---|
+| Plugin → app | `{"type":"event","id","event":{…}}`: handed to the caller in order; counts as activity like `progress` |
+| Plugin → app | `{"type":"call","id","callId","method","params"}`: runs a BashCut command |
+| App → plugin | `{"type":"callResult","callId","result"}` or `{"type":"callResult","callId","error":{"code","message"}}` |
+
+- While a call runs, the request's silence timeout is paused.
+- Calls on a request without a host channel get the error "This request cannot call BashCut".
+- Call params and results are limited to 1 MiB.
+
 A worked example covering options, three actions, three hooks and both transports is
 `Fixtures/plugins/example.toolkit` (Python standard library only).
+
+## Chat agents
+
+A plugin that provides `agent.chat` becomes a tab in the agent dock, titled with the plugin's name. Any number of
+chat agents can be installed; Director (`bashcut.director` in `bashcut-plugins`) is the first. The full protocol
+is in [11 — Chat agents](../specs/11-chat-agents.md).
+
+- **`turn`** sends:
+  - `tools`: the BashCut commands the agent may call, as `{name, method, description, inputSchema}`. Everything
+    except `agent.*`, `chat.*` and `ui.notify`.
+  - `instructions` and `context`: a generic editing preamble, the command instructions, the project context
+    and the timeline summary.
+  - `kit`: the agent kit, as `{root, skills: [{name, description}]}`.
+- The plugin streams `event`s for the tab:
+  - `text` and `thinking` deltas;
+  - `tool` and `toolEnd` rows with `callId`, `name`, `ok` and `summary`;
+  - the final `message`;
+  - a `notice`.
+- It runs commands with `call` lines. The app runs them through the same registry as Claude Code and Codex,
+  with an agent token for that conversation. Edits need **Allow agent timeline edits**, and privileged commands
+  still ask the user.
+- The plugin never receives the automation socket or a token.
+- The tab's transcript is saved per project in `.bashcut/chat/<plugin id>.json`. The plugin keeps its own
+  conversation state.
+- **CLI:** `chat status`, `chat send <text> [--plugin] [--image]`, `chat transcript`, `chat stop`, `chat reset`,
+  and `ui action agent.open-chat`.
 
 ## Commands
 

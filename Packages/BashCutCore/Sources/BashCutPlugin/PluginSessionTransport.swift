@@ -12,6 +12,9 @@ import Foundation
 ///   `{"id","error":{"code","message"}}`. Requests may overlap; replies are matched by `id`.
 /// - a request times out after `requestTimeout` seconds without a progress line (the provider's
 ///   `timeoutSeconds` replaces that window), and after `maximumRequestDuration` in any case.
+/// - requests made with a `PluginHostChannel` (API 4) also accept `{"type":"event","id","event"}` lines, handed to
+///   the caller in order, and `{"type":"call","id","callId","method","params"}` lines, answered with
+///   `{"type":"callResult","callId","result"|"error"}`; the silence timeout pauses while a call runs.
 /// - `{"type":"cancel","id"}` when the caller gives up; `{"type":"shutdown"}` before the app stops an idle
 ///   process, followed by SIGTERM and SIGKILL to its process group.
 ///
@@ -53,6 +56,24 @@ public actor PluginSessionTransport: PluginTransport {
         plugin: InstalledPlugin, method: String, provider: String?, params: JSONValue,
         progress: PluginProgressHandler?
     ) async throws -> JSONValue {
+        try await call(plugin: plugin, method: method, provider: provider, params: params, progress: progress, host: nil)
+    }
+
+    // swiftlint:disable:next function_parameter_count
+    public func call(
+        plugin: InstalledPlugin, method: String, provider: String?, params: JSONValue,
+        progress: PluginProgressHandler?, host: PluginHostChannel
+    ) async throws -> JSONValue {
+        try await call(
+            plugin: plugin, method: method, provider: provider, params: params, progress: progress,
+            host: Optional(host))
+    }
+
+    // swiftlint:disable:next function_parameter_count
+    private func call(
+        plugin: InstalledPlugin, method: String, provider: String?, params: JSONValue,
+        progress: PluginProgressHandler?, host: PluginHostChannel?
+    ) async throws -> JSONValue {
         guard method.range(of: "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$", options: .regularExpression) != nil
         else { throw PluginError.invalid("Invalid plugin method") }
         let session = try await session(for: plugin)
@@ -60,7 +81,7 @@ public actor PluginSessionTransport: PluginTransport {
             .map { TimeInterval($0) } ?? requestTimeout
         return try await session.request(
             method: method, provider: provider, params: params,
-            limits: (silence: silence, total: max(silence, maximumRequestDuration)), progress: progress)
+            limits: (silence: silence, total: max(silence, maximumRequestDuration)), progress: progress, host: host)
     }
 
     public nonisolated func health(plugin: InstalledPlugin) async -> PluginHealth {
@@ -124,10 +145,13 @@ public actor PluginSessionTransport: PluginTransport {
 
 /// One running plugin process and its in-flight requests.
 actor PluginSession {
-    private struct Pending {
+    struct Pending {
         let continuation: CheckedContinuation<JSONValue, any Error>
         let progress: PluginProgressHandler?
+        let host: PluginHostChannel?
         var lastActivity = Date()
+        /// Host calls still running; the silence timeout waits for them.
+        var activeCalls = 0
     }
 
     nonisolated let directory: URL
@@ -138,7 +162,7 @@ actor PluginSession {
     private var pid: pid_t = 0
     private var input: FileHandle?
     private var errorLog: URL?
-    private var pending: [String: Pending] = [:]
+    var pending: [String: Pending] = [:]
     private var hello: CheckedContinuation<Void, any Error>?
     private var helloReceived = false
     private var alive = false
@@ -211,7 +235,7 @@ actor PluginSession {
 
     func request(
         method: String, provider: String?, params: JSONValue, limits: (silence: TimeInterval, total: TimeInterval),
-        progress: PluginProgressHandler?
+        progress: PluginProgressHandler?, host: PluginHostChannel? = nil
     ) async throws -> JSONValue {
         let id = UUID().uuidString
         var message: [String: JSONValue] = [
@@ -243,7 +267,7 @@ actor PluginSession {
                     continuation.resume(throwing: PluginError.invalid(exitDetail()))
                     return
                 }
-                pending[id] = Pending(continuation: continuation, progress: progress)
+                pending[id] = Pending(continuation: continuation, progress: progress, host: host)
                 do {
                     try write(data)
                 } catch {
@@ -322,21 +346,29 @@ actor PluginSession {
             pending[id]?.lastActivity = Date()
             let fraction = fields["progress"]?.double.map { min(1, max(0, $0)) }
             entry.progress?(fraction, fields["message"]?.string.map { String($0.prefix(500)) })
+        case "event":
+            receiveEvent(fields)
+        case "call":
+            receiveCall(fields)
         case "overflow":
             failAll(PluginError.invalid("Plugin response is too large"))
             _ = Darwin.kill(-pid, SIGKILL)
         default:
-            guard let id = fields["id"]?.string, let entry = pending.removeValue(forKey: id) else { return }
-            if let failure = fields["error"]?.object, !failure.isEmpty {
-                let code = failure["code"]?.string ?? "error"
-                let text = failure["message"]?.string ?? "Plugin failed"
-                entry.continuation.resume(throwing: PluginError.invalid("Plugin error \(code): \(text)"))
-            } else if let result = fields["result"] {
-                entry.continuation.resume(returning: result)
-            } else {
-                entry.continuation.resume(
-                    throwing: PluginError.invalid("Plugin returned neither a result nor an error"))
-            }
+            receiveReply(fields)
+        }
+    }
+
+    /// The final `{"id","result"}` or `{"id","error"}` of a request.
+    private func receiveReply(_ fields: [String: JSONValue]) {
+        guard let id = fields["id"]?.string, let entry = pending.removeValue(forKey: id) else { return }
+        if let failure = fields["error"]?.object, !failure.isEmpty {
+            let code = failure["code"]?.string ?? "error"
+            let text = failure["message"]?.string ?? "Plugin failed"
+            entry.continuation.resume(throwing: PluginError.invalid("Plugin error \(code): \(text)"))
+        } else if let result = fields["result"] {
+            entry.continuation.resume(returning: result)
+        } else {
+            entry.continuation.resume(throwing: PluginError.invalid("Plugin returned neither a result nor an error"))
         }
     }
 
@@ -363,7 +395,7 @@ actor PluginSession {
             fail(id, PluginError.invalid("Plugin request ran past its time limit"), notify: true)
             return false
         }
-        if now.timeIntervalSince(entry.lastActivity) >= silence {
+        if entry.activeCalls == 0, now.timeIntervalSince(entry.lastActivity) >= silence {
             let detail = "Plugin request timed out (no progress for \(Int(silence.rounded(.up))) s)"
             fail(id, PluginError.invalid(detail), notify: true)
             return false
@@ -385,7 +417,7 @@ actor PluginSession {
 
     private func send(_ message: JSONValue) throws { try write(JSONEncoder().encode(message)) }
 
-    private func write(_ data: Data) throws {
+    func write(_ data: Data) throws {
         guard let input else { throw PluginError.invalid("Plugin session is closed") }
         try input.write(contentsOf: data + Data([0x0A]))
     }

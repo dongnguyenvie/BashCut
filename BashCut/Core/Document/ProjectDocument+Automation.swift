@@ -27,6 +27,7 @@ extension ProjectDocument {
         registerProxyCommands()
         registerStorageCommands()
         registerAgentKitCommands()
+        registerChatAgentCommands()
         registerPrivilegedCommands()
         registerUICommands()
         registerUIActionCommands()
@@ -34,7 +35,7 @@ extension ProjectDocument {
         registerPluginCommands()
         plugins.jobs = jobs
         plugins.service.optionValues = { [weak self] plugin in
-            await MainActor.run { self?.pluginOptionValues(plugin) ?? [:] }
+            await MainActor.run { self?.pluginOptionValues(plugin, revealSecrets: true) ?? [:] }
         }
         plugins.refresh(projectRoot: nil)
         emitPluginEvent(.appLaunched)

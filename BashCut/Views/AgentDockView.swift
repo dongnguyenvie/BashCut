@@ -25,6 +25,9 @@ struct AgentDockView: View {
                     ForEach(AgentProviders.all, id: \.id) { provider in
                         Button("\(provider.title) terminal") { model.open(provider.id) }
                     }
+                    ForEach(model.document.chatAgents.available, id: \.pluginID) { agent in
+                        Button(agent.title) { model.openChat(agent.pluginID) }
+                    }
                     Divider()
                     ForEach(AgentProviders.agents, id: \.id) { provider in
                         Button("Handoff to \(provider.title)") { model.handoff(to: provider.id) }
@@ -35,19 +38,11 @@ struct AgentDockView: View {
                 .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
                 .frame(width: 24, height: 22).help("New terminal or handoff")
             }.padding(.horizontal, 10).padding(.vertical, 8)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 4) {
-                    ForEach(model.sessions) { session in
-                        DockTab(
-                            title: session.title, systemImage: Self.icon(for: session.provider.id),
-                            selected: model.selectedSession == session.id,
-                            select: { model.selectedSession = session.id },
-                            close: { model.close(session) })
-                    }
-                }.padding(.horizontal, 8).padding(.vertical, 6)
-            }.background(Color.white.opacity(0.03))
+            tabs
             Divider()
-            if let session = model.current {
+            if let pluginID = model.chatPluginID {
+                ChatAgentPanel(agent: model.document.chatAgents.model(for: pluginID), document: model.document)
+            } else if let session = model.current {
                 TerminalPanel(session: session).id(session.id)
                     .padding(.leading, 6).padding(.top, 4)
                     .background(Color(nsColor: session.view.nativeBackgroundColor))
@@ -58,6 +53,9 @@ struct AgentDockView: View {
                     Text("Claude Code and Codex run with your CLI login or API key.").foregroundStyle(.secondary)
                     Button("Start default agent") { model.openDefault() }
                         .buttonStyle(.borderedProminent)
+                    ForEach(model.document.chatAgents.available, id: \.pluginID) { agent in
+                        Button(String(format: String(localized: "Start %@"), agent.title)) { model.openChat(agent.pluginID) }
+                    }
                     ForEach(AgentProviders.agents, id: \.id) { provider in
                         if model.canContinue(provider.id) {
                             HStack {
@@ -93,7 +91,7 @@ struct AgentDockView: View {
                         model.document.selectedID ?? String(localized: "Project context"), systemImage: "at"
                     )
                     .font(.caption).lineLimit(1)
-                }.disabled(model.current == nil)
+                }.disabled(model.current == nil && model.chatPluginID == nil)
                 HStack {
                     Button("Survey") {
                         model.sendContext("Survey the project footage and summarize missing coverage.")
@@ -104,13 +102,36 @@ struct AgentDockView: View {
                     Button("Review") {
                         model.sendContext("Review the timeline for gaps, pacing and repeated framing.")
                     }
-                }.font(.caption).disabled(model.current == nil)
+                }.font(.caption).disabled(model.current == nil && model.chatPluginID == nil)
             }.padding(10)
         }.background(Color(red: 0.045, green: 0.05, blue: 0.06))
             .sheet(isPresented: $model.showKnowledge) {
                 AgentKnowledgeView(model: model.knowledge, done: { model.showKnowledge = false })
             }
     }
+    private var tabs: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 4) {
+                ForEach(model.sessions) { session in
+                    DockTab(
+                        title: session.title, systemImage: Self.icon(for: session.provider.id),
+                        selected: model.selectedSession == session.id && model.chatPluginID == nil,
+                        select: {
+                            model.selectedSession = session.id
+                            model.chatPluginID = nil
+                        },
+                        close: { model.close(session) })
+                }
+                ForEach(model.document.chatAgents.available, id: \.pluginID) { agent in
+                    DockTab(
+                        title: agent.title, systemImage: "bubble.left.and.text.bubble.right",
+                        selected: model.chatPluginID == agent.pluginID,
+                        select: { model.openChat(agent.pluginID) }, close: nil)
+                }
+            }.padding(.horizontal, 8).padding(.vertical, 6)
+        }.background(Color.white.opacity(0.03))
+    }
+
     private static func icon(for provider: AgentProviderID) -> String {
         switch provider {
         case .claude: "sparkle"

@@ -4,10 +4,13 @@ import Foundation
 /// Host plugin API versions. Changes are additive: a host serves every version from `minimum` to `current`.
 /// Version 2 adds `options`, `contributes` (actions and hooks) and the `session` transport. Version 3 adds option
 /// `choiceLabels` and the `file` option type, the `BASHCUT_PLUGIN_DATA`/`BASHCUT_PLUGIN_CACHE` folders and
-/// `::progress` lines from install recipes.
+/// `::progress` lines from install recipes. Version 4 adds the `secret` option type and the session host channel
+/// (`event` and `call` lines during a request), used by the `agent.chat` capability.
 public enum PluginAPI {
     public static let minimum = 1
-    public static let current = 3
+    public static let current = 4
+    /// The chat-agent capability; its requests carry a host channel (API 4).
+    public static let agentChat = "agent.chat"
 }
 
 /// How the app reaches a plugin. `oneshot` starts one process per request; `session` keeps one process
@@ -19,7 +22,7 @@ public enum PluginTransportKind: String, Codable, Sendable { case oneshot, sessi
 /// One setting a plugin declares. The app renders it natively (plugins never ship UI code) and sends the
 /// value with each request. Action parameters use the same type.
 public struct PluginOption: Codable, Sendable, Equatable, Identifiable {
-    public enum Kind: String, Codable, Sendable { case string, enumeration = "enum", number, integer, bool, file }
+    public enum Kind: String, Codable, Sendable { case string, enumeration = "enum", number, integer, bool, file, secret }
     /// Where a value is stored: per project (undoable project data) or per user (app support).
     public enum Scope: String, Codable, Sendable { case project, user }
 
@@ -72,7 +75,7 @@ public struct PluginOption: Codable, Sendable, Equatable, Identifiable {
     public var fallback: JSONValue {
         if let defaultValue { return defaultValue }
         switch type {
-        case .string, .file: return .string("")
+        case .string, .file, .secret: return .string("")
         case .enumeration: return .string(choices?.first ?? "")
         case .number: return .number(minimum ?? 0)
         case .integer: return .integer(Int(minimum ?? 0))
@@ -104,6 +107,9 @@ public struct PluginOption: Codable, Sendable, Equatable, Identifiable {
     }
 
     private func validateBounds() throws {
+        if type == .secret, effectiveScope != .user || defaultValue != nil {
+            throw PluginError.invalid("Secret option \(id) must have user scope and no default")
+        }
         if let minimum, let maximum, minimum > maximum {
             throw PluginError.invalid("Option \(id) minimum is above its maximum")
         }
@@ -123,7 +129,7 @@ public struct PluginOption: Codable, Sendable, Equatable, Identifiable {
                 throw PluginError.invalid("\(id) must be a \((fileTypes ?? []).joined(separator: ", ")) file")
             }
             return value
-        case (.string, .string(let text)):
+        case (.string, .string(let text)), (.secret, .string(let text)):
             guard text.count <= (maxLength ?? 10_000) else { throw PluginError.invalid("\(id) is too long") }
             return value
         case (.enumeration, .string(let text)):
@@ -141,7 +147,7 @@ public struct PluginOption: Codable, Sendable, Equatable, Identifiable {
     /// Reads a command-line or text-field value as the option's type.
     public func parse(_ text: String) throws -> JSONValue {
         switch type {
-        case .string, .enumeration, .file: return try check(.string(text))
+        case .string, .enumeration, .file, .secret: return try check(.string(text))
         case .bool:
             switch text.lowercased() {
             case "true", "on", "yes", "1": return .bool(true)
@@ -174,7 +180,7 @@ public struct PluginOption: Codable, Sendable, Equatable, Identifiable {
     public var jsonSchema: JSONValue {
         var schema: [String: JSONValue] = ["description": .string((help ?? title).text(for: "en"))]
         switch type {
-        case .string: schema["type"] = .string("string")
+        case .string, .secret: schema["type"] = .string("string")
         case .file:
             schema["type"] = .string("string")
             schema["format"] = .string("path")

@@ -111,7 +111,7 @@ extension ProjectDocument {
         let session = sessionID
         let root = fileURL?.deletingLastPathComponent()
         let adapter = PluginHookCapability(
-            event: event, payload: payload, options: pluginOptionValues(plugin),
+            event: event, payload: payload, options: pluginOptionValues(plugin, revealSecrets: true),
             context: pluginContext(plugin: plugin, parts: hook.context ?? [], author: .plugin),
             projectRoot: root, outputRoot: root.map { Self.pluginOutputRoot($0, plugin: plugin) })
         let proposal: PluginEditProposal

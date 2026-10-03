@@ -85,3 +85,25 @@ extension CapabilityService {
         return directory
     }
 }
+
+extension CapabilityService {
+    /// Sends one `agent.chat` request (plugin API 4) with the plugin's option values and a host channel for the
+    /// plugin's events and command calls. The chat protocol is in docs/specs/11-chat-agents.md.
+    public func chat(
+        _ params: [String: JSONValue], using resolved: ResolvedPluginProvider, host: PluginHostChannel?
+    ) async throws -> JSONValue {
+        if preparesPluginFolders { PluginFolders.prepare(resolved.plugin.id) }
+        var fields = params
+        if fields["options"] == nil, let optionValues {
+            fields["options"] = .object(await optionValues(resolved.plugin))
+        }
+        if let host {
+            return try await transport.call(
+                plugin: resolved.plugin, method: PluginAPI.agentChat, provider: resolved.provider.id,
+                params: .object(fields), progress: nil, host: host)
+        }
+        return try await transport.call(
+            plugin: resolved.plugin, method: PluginAPI.agentChat, provider: resolved.provider.id,
+            params: .object(fields))
+    }
+}

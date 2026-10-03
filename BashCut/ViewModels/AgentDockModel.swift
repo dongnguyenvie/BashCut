@@ -47,6 +47,8 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
     unowned let document: ProjectDocument
     var sessions: [TerminalSession] = []
     var selectedSession: UUID?
+    /// The chat agent (plugin ID) whose tab is shown instead of a terminal.
+    var chatPluginID: String?
     var sessionBookmarks = AgentSessionBookmarks()
     var sessionDiscoveryMessage = ""
     var settings: SettingsModel { document.settings }
@@ -132,6 +134,7 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
             let session = TerminalSession(provider: provider, token: token, launch: launch)
             sessions.append(session)
             selectedSession = session.id
+            chatPluginID = nil
             error = ""
             if provider.isAgent {
                 if resumeID(for: provider).isEmpty {
@@ -201,6 +204,7 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
         if launchesTarget { open(provider) }
         guard let target = sessions.last(where: { $0.provider.id == provider }) else { return }
         selectedSession = target.id
+        chatPluginID = nil
         knowledge.load(from: directory)
         let handoff =
             "Continue this editing task handed off from \(source).\n"
@@ -214,6 +218,12 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
         } else {
             target.paste(handoff)
         }
+    }
+    /// Shows a chat agent's tab and asks its plugin whether it is ready.
+    func openChat(_ pluginID: String) {
+        chatPluginID = pluginID
+        let agent = document.chatAgents.model(for: pluginID)
+        Task { await agent.refreshStatus() }
     }
     func close(_ session: TerminalSession) {
         session.close()
@@ -245,7 +255,13 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
         if let imageURL {
             text += "\nCurrent viewer frame: " + imageURL.path
         }
-        current?.paste(text)
+        if let chatPluginID {
+            let agent = document.chatAgents.model(for: chatPluginID)
+            agent.draft = request.isEmpty ? text : request
+            agent.draftImage = imageURL
+        } else {
+            current?.paste(text)
+        }
     }
 }
 

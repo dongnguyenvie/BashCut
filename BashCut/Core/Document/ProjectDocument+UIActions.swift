@@ -36,6 +36,7 @@ extension ProjectDocument {
             return source
         case .showAgentChanges, .dismissAgentChange: return agentChange != nil
         case .undoAgentChange: return canUndoAgentChange
+        case .openChatAgent: return !chatAgents.available.isEmpty
         case .openExportOutput, .revealExportOutput:
             return exports.report.map { FileManager.default.fileExists(atPath: $0.receipt.url.path) } ?? false
         case .clearRecentProjects: return !settings.recentProjects.isEmpty
@@ -72,6 +73,9 @@ extension ProjectDocument {
             // The dock's + menu: a new tab with its own session token.
             if !agents.isDetached { ui.showAgentDock = true }
             agents.open(AgentProviderID(rawValue: String(action.id.dropFirst("agent.open-".count))))
+        case .openChatAgent:
+            if !agents.isDetached { ui.showAgentDock = true }
+            if let first = chatAgents.available.first { agents.openChat(first.pluginID) }
         case .togglePlayback: preview.togglePlayback()
         case .previousFrame: preview.seek(playhead - 1)
         case .nextFrame: preview.seek(playhead + 1)
@@ -250,6 +254,7 @@ extension ProjectDocument {
             "viewerZoom": .string(EditorViewerZoom.choice(ui.viewerZoom)),
             "snap": .bool(ui.snapping), "safeArea": .bool(ui.showSafeArea), "compare": .bool(preview.showColorComparison),
             "agentDock": .bool(ui.showAgentDock && !agents.isDetached), "agentDockDetached": .bool(agents.isDetached),
+            "chatTab": agents.chatPluginID.map(JSONValue.string) ?? .null,
             "playing": .bool(preview.isPlaying), "playhead": .integer(playhead),
             "selection": selectedID.map(JSONValue.string) ?? .null,
             "selectedTrack": selectedTrackID.map(JSONValue.string) ?? .null,

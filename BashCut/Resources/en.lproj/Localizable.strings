@@ -567,3 +567,13 @@
 "Timing from speech" = "Timing from speech";
 "General" = "General";
 "No installed plugin has options." = "No installed plugin has options.";
+"Saved" = "Saved";
+"Not set" = "Not set";
+"Ask the agent to edit: it reads the timeline, makes undoable changes and checks the picture." = "Ask the agent to edit: it reads the timeline, makes undoable changes and checks the picture.";
+"Message to the agent" = "Message to the agent";
+"Add an API key in Settings › Plugins" = "Add an API key in Settings › Plugins";
+"Settings…" = "Settings…";
+"Stop" = "Stop";
+"Send" = "Send";
+"Stopped" = "Stopped";
+"Chat agent" = "Chat agent";

@@ -43,6 +43,7 @@ final class ProjectDocument {
     /// Zoom, toggles, panels and open sheets.
     let ui = EditorUIState()
     @ObservationIgnored lazy var agents = AgentDockModel(document: self)
+    @ObservationIgnored lazy var chatAgents = ChatAgents(document: self)
     @ObservationIgnored lazy var plugins = PluginManagerModel()
     @ObservationIgnored lazy var pluginHooks = PluginHookDispatcher(document: self)
     /// The plugin whose proposal is being committed, so its own hooks do not hear about it.
@@ -216,6 +217,7 @@ final class ProjectDocument {
         message = ""
         startExternalFileMonitor()
         agents.projectChanged()
+        chatAgents.projectChanged()
         registry.projectSwitched(to: project.name)
         agents.keepSessions(after: liveBookmarks)
         plugins.refresh(projectRoot: url.deletingLastPathComponent())
