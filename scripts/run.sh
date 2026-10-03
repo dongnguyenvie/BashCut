@@ -12,6 +12,12 @@ for binary in BashCutApp bashcut bashcut-mcp; do
         mv -f "$bundle/MacOS/.$binary.new" "$bundle/MacOS/$binary"
     fi
 done
+# Core plugins (Plugins/<name>/plugin.json + their provider executable) go in Contents/PlugIns/<id>/.
+plugin_dir="$bundle/PlugIns/bashcut.audio-analysis"
+mkdir -p "$plugin_dir/bin"
+cp Plugins/audio-analysis/plugin.json "$plugin_dir/plugin.json"
+cp "$bin_dir/bashcut-audio-analysis" "$plugin_dir/bin/.provider.new"
+mv -f "$plugin_dir/bin/.provider.new" "$plugin_dir/bin/provider"
 # SwiftPM resource bundles go in Contents/Resources: codesign rejects anything else at the bundle root.
 for resource in "$bin_dir"/*.bundle; do
     if [ -d "$resource" ]; then
@@ -41,6 +47,8 @@ if [ -z "$identity" ]; then
     echo "warning: no Apple Development identity found; signing ad hoc (macOS will ask for folder access again)" >&2
     identity="-"
 fi
+codesign --force --sign "$identity" --identifier app.bashcut.audio-analysis "$plugin_dir/bin/provider" 2>&1 \
+    | { grep -v "replacing existing signature" >&2 || true; }
 codesign --force --sign "$identity" --identifier app.bashcut.cli "$bundle/MacOS/bashcut" 2>&1 \
     | { grep -v "replacing existing signature" >&2 || true; }
 codesign --force --sign "$identity" --identifier app.bashcut.mcp "$bundle/MacOS/bashcut-mcp" 2>&1 \

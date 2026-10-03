@@ -120,7 +120,7 @@ Follows [03-architecture.md](03-architecture.md) §5 "Plugin platform roadmap".
 - **Done:** `CapabilityService` shared by panels, CLI/MCP and export; `CapabilityAdapter` and `PluginTransport`
   (one-shot process transport); `captions.generate`, `beats.detect`, `voice.speak`, `plugins.list` and
   `jobs.status`/`jobs.cancel`.
-- **Next:** bundled native `audio.loudness` and `audio.beats` providers.
+- **Done:** bundled native `audio.loudness` and `audio.beats` providers (`bashcut.audio-analysis`).
 - **Then:** an API version window, provider availability states, enable/disable and Install/Enable prompts.
 - **Then:** an optional long-lived `session` transport with progress and cancel, needed by Whisper and VieNeu
   wrappers.

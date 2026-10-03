@@ -267,13 +267,12 @@ bench above.
 - **Xcode:** the generated project builds with signing disabled and package-plugin validation skipped for the
   locked SwiftTerm build plugin.
 - **Automation:** voice-enrollment approval; analysis and interchange providers still need wiring to their panels.
-- **Plugin platform:** bundled native loudness and beat providers, a registry of known providers that panels can
-  offer to install, plugin-owned panels and a signed catalog ([03-architecture.md](../specs/03-architecture.md) §5).
+- **Plugin platform:** plugin-owned panels and a credential contract ([03-architecture.md](../specs/03-architecture.md) §5).
 - **M3–M6:** bundled transcription provider and real-engine acceptance, music/SFX library with BPM and license
   badges, voice cloning, expanded legacy effect/overlay/SFX import, effect recipes, speed ramps and keyframes,
   Demucs, and more interchange validation. Resolve remains reserved.
 - **Review and loudness:** coverage uses explicit speech tags and voiceover timing; it does not measure silence or
-  transcribe untagged audio. Export loudness is measured only when a provider is selected for normalization.
+  transcribe untagged audio. Export loudness is measured only when normalization is on (the core `bashcut.audio-analysis` plugin provides it).
 - **Editing scope:** ripple affects the edited track and its linked counterpart only. Source insert/overwrite
   targets Main. Unknown future effects round-trip but are not rendered.
 - **History:** full-snapshot undo is capped at 200 steps; `history.jsonl` stores one atomic checkpoint, and an

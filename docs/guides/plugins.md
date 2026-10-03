@@ -303,6 +303,19 @@ symlinks are followed, and the file must exist. If the call fails, BashCut delet
 Return `srtPath` pointing to a UTF-8 SubRip file of at most 4 MiB. BashCut imports it with the same validation
 as `bashcut captions import`.
 
+### Core plugins
+
+`bashcut.audio-analysis` comes inside the app (`Contents/PlugIns/`, source in `Plugins/audio-analysis/`) and needs
+no setup. It is an ordinary out-of-process plugin built from Swift with AVFoundation and vDSP:
+
+- `audio.loudness`: ITU-R BS.1770-4 integrated loudness, EBU Tech 3342 loudness range and 4× oversampled true
+  peak of the first audio track (stereo or mono; more channels are mixed to stereo).
+- `audio.beats`: spectral-flux onsets, tempo from their autocorrelation (60–200 BPM, weighted toward 120) and
+  dynamic-programming beat tracking.
+
+Both providers have priority 0, so an installed provider with a higher priority, or one chosen for the project,
+takes over. Core plugins can be turned off but not removed; a registry copy with a higher version replaces one.
+
 ### `audio.beats`
 
 Return `bpm` (20–400) and `beatsSeconds`, a nonempty, strictly increasing array of up to 100,000 finite,
@@ -664,4 +677,4 @@ are two more adapters, `PluginActionCapability` and `PluginHookCapability`, run 
 - Plugins cannot own panels or windows; contributions use the fixed placements above.
 - The plugin registry (browse, install, update, remove, signatures, yanked versions, daily update check) is
   implemented.
-- Bundled native providers, a credential contract and detailed capability permissions are future work.
+- A credential contract and detailed capability permissions are future work.
