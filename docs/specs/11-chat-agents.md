@@ -81,6 +81,31 @@ Requires `"transport": "session"` and API 4. Method `agent.chat`; `params.op` se
 | `turn` | `conversation` (string), `text`, `images` (paths, optional), `context` (string), `instructions` (string), `tools` (array of `{name, method, description, inputSchema}`), `kit` (`{root, skills:[{name, description}]}` or null), `options` | `{"stopReason":"end"\|"aborted"\|"error","error"?}` | Streams `event`s and makes `call`s while it runs |
 | `reset` | `conversation` | `{}` | Forgets the conversation |
 | `status` | `options` | `{"ready":bool,"provider","model","detail"}` | Is a key set, and is the model known |
+| `commands` | `options` | `{"commands":[{"name","args"?,"summary","choices"?}]}` | The plugin's own slash commands. `choices` are argument suggestions, such as thinking levels or model IDs |
+| `command` | `conversation`, `name`, `args` (string), `options` | `{"text"?,"options"?}` | Runs one of those commands. `text` is shown as a notice. `options` is a patch of the plugin's non-secret options; the app stores it, as if the user had changed Settings |
+
+### 3.4 Slash commands
+
+Typing `/` in a chat-agent tab opens a menu: arrows move, Tab or Enter completes, and Escape closes it. A message
+that starts with a known command runs the command instead of going to the model.
+
+- **App commands**, the same for every chat agent:
+
+  | Command | What it does |
+  |---|---|
+  | `/new` (alias `/clear`) | Start a new conversation |
+  | `/stop` | Stop the running turn |
+  | `/settings` | Open Settings › Plugins |
+  | `/copy` | Copy the last reply |
+  | `/export [path]` | Save the conversation as Markdown |
+  | `/skill:<name> [task]` | Ask the agent to follow that agent-kit skill |
+
+- **Plugin commands:** those that op `commands` lists, for example Director's `/compact`, `/model`, `/thinking` and
+  `/session`. App commands win when a name clashes.
+- **Input:** Enter sends, and Shift+Enter or Option+Enter inserts a new line. While an input method is composing
+  (Vietnamese Telex, for example), Enter only commits the text.
+- **CLI:** `chat commands [--plugin]` lists the commands. `chat command "<line>" [--plugin]` runs one as typed,
+  such as `chat command "/compact keep the caption decisions"`.
 
 Events (`event.kind`):
 

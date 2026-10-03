@@ -39,6 +39,38 @@ extension ProjectDocument {
             await agent.reset()
             return .object(["plugin": .string(agent.pluginID), "reset": .bool(true)])
         }
+        handle("chat.commands") { document, arguments, _ in
+            let agent = try document.chatAgents.target(arguments.optionalString("plugin"))
+            await agent.refreshStatus()
+            return .object(["plugin": .string(agent.pluginID), "commands": agent.commandsJSON])
+        }
+        handle("chat.command") { document, arguments, author in
+            let agent = try document.chatAgents.target(arguments.optionalString("plugin"))
+            let line = try arguments.string("line")
+            if agent.pluginCommands.isEmpty { await agent.refreshStatus() }
+            guard agent.isCommand(line) else { throw RPCFailure(-32602, "Unknown command \(line)") }
+            if ChatAgentModel.parse(line)?.0 == "export", ChatAgentModel.parse(line)?.1.isEmpty == true {
+                throw RPCFailure(-32602, "Give /export a path")
+            }
+            // Socket clients wait about 10 s: a slow command (such as /compact) keeps running and lands in the transcript.
+            let command = Task { try await agent.runCommand(line, author: author ?? .external) }
+            let shown = try await withThrowingTaskGroup(of: String?.self) { group in
+                group.addTask { try await command.value }
+                group.addTask {
+                    try await Task.sleep(for: .seconds(8))
+                    return nil
+                }
+                defer { group.cancelAll() }
+                return try await group.next() ?? nil
+            }
+            guard let shown else {
+                return .object([
+                    "plugin": .string(agent.pluginID), "running": .bool(true),
+                    "note": .string("Still running; its result appears in chat transcript"),
+                ])
+            }
+            return .object(["plugin": .string(agent.pluginID), "text": .string(shown)])
+        }
         handle("chat.transcript") { document, arguments, _ in
             let agent = try document.chatAgents.target(arguments.optionalString("plugin"))
             var transcript = agent.transcriptJSON.object

@@ -638,8 +638,17 @@ is in [11 — Chat agents](../specs/11-chat-agents.md).
 - The plugin never receives the automation socket or a token.
 - The tab's transcript is saved per project in `.bashcut/chat/<plugin id>.json`. The plugin keeps its own
   conversation state.
+- **Slash commands.** Typing `/` in the tab opens a menu:
+  - the app's own commands for every agent: `/new` (`/clear`), `/stop`, `/settings`, `/copy`, `/export`;
+  - `/skill:<name>` for each agent-kit skill;
+  - the plugin's commands, which it lists with op `commands` (`{commands: [{name, args?, summary, choices?}]}`).
+
+  When the user runs a plugin command, the app sends op `command` with `name` and `args`. The plugin answers
+  `{text?, options?}`: `text` is shown in the tab, and `options` is a patch of its non-secret options that the
+  app stores.
+- **Input:** Enter sends, and Shift+Enter or Option+Enter starts a new line.
 - **CLI:** `chat status`, `chat send <text> [--plugin] [--image]`, `chat transcript`, `chat stop`, `chat reset`,
-  and `ui action agent.open-chat`.
+  `chat commands`, `chat command "<line>"`, and `ui action agent.open-chat`.
 
 ## Commands
 

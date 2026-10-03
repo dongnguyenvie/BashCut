@@ -6,6 +6,8 @@ import SwiftUI
 struct ChatAgentPanel: View {
     let agent: ChatAgentModel
     let document: ProjectDocument
+    /// The highlighted row of the slash-command menu.
+    @State private var selection = 0
 
     var body: some View {
         VStack(spacing: 0) {
@@ -23,6 +25,13 @@ struct ChatAgentPanel: View {
                         }
                         if agent.running {
                             ProgressView().controlSize(.small).id("running")
+                        }
+                        if let command = agent.runningCommand {
+                            HStack(spacing: 6) {
+                                ProgressView().controlSize(.small)
+                                Text(String(format: String(localized: "Running %@…"), command))
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
                         }
                     }.padding(10)
                 }
@@ -65,11 +74,16 @@ struct ChatAgentPanel: View {
                     Button("Remove") { agent.draftImage = nil }.controlSize(.small)
                 }
             }
-            TextEditor(text: $agent.draft)
-                .font(.body).frame(minHeight: 54, maxHeight: 120)
-                .scrollContentBackground(.hidden).padding(4)
-                .background(RoundedRectangle(cornerRadius: 6).fill(Color.white.opacity(0.05)))
-                .accessibilityLabel("Message to the agent")
+            if !suggestions.isEmpty { suggestionMenu }
+            ZStack(alignment: .topLeading) {
+                ChatInputView(text: $agent.draft, placeholder: String(localized: "Message to the agent"), onKey: key)
+                if agent.draft.isEmpty {
+                    Text("Message, or / for commands. Shift+Enter for a new line.")
+                        .foregroundStyle(.tertiary).padding(.leading, 7).padding(.top, 4).allowsHitTesting(false)
+                }
+            }
+            .frame(minHeight: 54, maxHeight: 120).padding(4)
+            .background(RoundedRectangle(cornerRadius: 6).fill(Color.white.opacity(0.05)))
             HStack {
                 if !agent.error.isEmpty {
                     Text(agent.error).font(.caption).foregroundStyle(.orange).lineLimit(2)
@@ -78,20 +92,123 @@ struct ChatAgentPanel: View {
                 if agent.running {
                     Button("Stop", action: agent.stop)
                 } else {
-                    Button("Send", action: send)
-                        .keyboardShortcut(.return, modifiers: .command)
+                    Button("Send", action: submit)
                         .buttonStyle(.borderedProminent)
-                        .disabled(agent.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        .disabled(agent.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                            || agent.runningCommand != nil)
                 }
             }
         }.padding(10)
+        .onChange(of: agent.draft) { selection = 0 }
     }
 
-    private func send() {
+    // MARK: Slash commands
+
+    private struct Suggestion: Identifiable {
+        let completion: String
+        let title: String
+        let detail: String
+        /// Runs at once when chosen with Enter (a command that takes no arguments).
+        let runs: Bool
+        var id: String { completion }
+    }
+
+    /// Commands matching what is typed after `/`, or the argument choices of the command being typed.
+    private var suggestions: [Suggestion] {
+        let draft = agent.draft
+        guard draft.hasPrefix("/"), !draft.contains("\n") else { return [] }
+        let body = draft.dropFirst()
+        if let space = body.firstIndex(of: " ") {
+            let name = body[..<space].lowercased()
+            let typed = body[body.index(after: space)...].lowercased()
+            guard let command = agent.commands.first(where: { $0.name == name }), !typed.contains(" ") else { return [] }
+            return command.choices.filter { typed.isEmpty || $0.lowercased().hasPrefix(typed) }.prefix(8).map {
+                Suggestion(completion: "/\(name) \($0)", title: $0, detail: command.summary, runs: true)
+            }
+        }
+        let typed = body.lowercased()
+        return agent.commands.filter { $0.name.hasPrefix(typed) || (typed.count > 1 && $0.name.contains(typed)) }
+            .prefix(10).map { command in
+                Suggestion(
+                    completion: "/" + command.name + (command.args == nil ? "" : " "),
+                    title: "/" + command.name + (command.args.map { " " + $0 } ?? ""), detail: command.summary,
+                    runs: command.args == nil)
+            }
+    }
+
+    private var suggestionMenu: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(suggestions.enumerated()), id: \.element.id) { index, suggestion in
+                HStack {
+                    Text(suggestion.title).font(.callout.monospaced()).lineLimit(1).layoutPriority(1)
+                    Spacer(minLength: 8)
+                    Text(suggestion.detail).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                }
+                .padding(.horizontal, 8).padding(.vertical, 4)
+                .background(index == selection ? Color.accentColor.opacity(0.3) : Color.clear)
+                .contentShape(Rectangle())
+                .onTapGesture { accept(suggestion, run: false) }
+            }
+        }
+        .background(RoundedRectangle(cornerRadius: 6).fill(Color(nsColor: .controlBackgroundColor)))
+        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Color.white.opacity(0.1)))
+    }
+
+    /// Keys from the input: the menu takes arrows, Tab, Enter and Escape while it shows.
+    private func key(_ key: ChatInputKey) -> Bool {
+        let shown = suggestions
+        if !shown.isEmpty {
+            menuKey(key, shown)
+            return true
+        }
+        switch key {
+        case .submit:
+            submit()
+            return true
+        case .escape:
+            if agent.running { agent.stop() }
+            return agent.running
+        default: return false
+        }
+    }
+
+    private func menuKey(_ key: ChatInputKey, _ shown: [Suggestion]) {
+        let chosen = shown[min(selection, shown.count - 1)]
+        switch key {
+        case .up: selection = (selection - 1 + shown.count) % shown.count
+        case .down: selection = (selection + 1) % shown.count
+        case .tab: accept(chosen, run: false)
+        // Enter on a command typed in full runs it; otherwise it completes the highlighted one.
+        case .submit:
+            if agent.draft.trimmingCharacters(in: .whitespaces) == chosen.completion && chosen.runs {
+                submit()
+            } else {
+                accept(chosen, run: true)
+            }
+        case .escape: agent.draft = ""
+        }
+    }
+
+    private func accept(_ suggestion: Suggestion, run: Bool) {
+        agent.draft = suggestion.completion
+        if run && suggestion.runs { submit() }
+    }
+
+    private func submit() {
         let text = agent.draft
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        if agent.isCommand(text) {
+            agent.draft = ""
+            Task {
+                do { try await agent.runCommand(text) } catch { agent.error = error.localizedDescription }
+            }
+            return
+        }
+        guard !agent.running, agent.runningCommand == nil else { return }
         let image = agent.draftImage
         agent.draft = ""
         agent.draftImage = nil
+        agent.error = ""
         agent.send(text, imageURL: image)
     }
 

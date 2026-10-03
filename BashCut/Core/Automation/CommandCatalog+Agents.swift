@@ -45,6 +45,20 @@ extension CommandCatalog {
             ]),
         CommandSpec("chat.stop", .ui, "Stop a chat agent's running turn.", parameters: [plugin]),
         CommandSpec(
+            "chat.commands", .read,
+            "The slash commands a chat agent's tab offers: the app's (new, clear, stop, settings, copy, export), "
+                + "the agent kit's skills (skill:<name>) and the plugin's own (for Director: compact, model, thinking, "
+                + "session), with their arguments and choices.",
+            parameters: [plugin]),
+        CommandSpec(
+            "chat.command", .ui,
+            "Run a slash command as typed in a chat agent's tab, such as \"/compact keep the caption decisions\" or "
+                + "\"/thinking low\"; returns what it showed. /export needs a path here.",
+            parameters: [
+                CommandParameter("line", .string, "The command line, starting with /", required: true, cli: .positional),
+                plugin,
+            ]),
+        CommandSpec(
             "chat.reset", .ui, "Start a new conversation with a chat agent for this project; the old one is forgotten.",
             parameters: [plugin]),
         CommandSpec(

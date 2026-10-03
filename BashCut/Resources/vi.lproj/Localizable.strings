@@ -577,3 +577,13 @@
 "Send" = "Gửi";
 "Stopped" = "Đã dừng";
 "Chat agent" = "Agent chat";
+"Start a new conversation" = "Bắt đầu cuộc trò chuyện mới";
+"Stop the running turn" = "Dừng lượt đang chạy";
+"Open the agent's settings" = "Mở cài đặt của agent";
+"Copy the last reply" = "Sao chép câu trả lời cuối";
+"Save the conversation as Markdown" = "Lưu cuộc trò chuyện dạng Markdown";
+"Follow this agent-kit skill" = "Làm theo skill này trong agent kit";
+"Copied the last reply" = "Đã sao chép câu trả lời cuối";
+"Saved the conversation to %@" = "Đã lưu cuộc trò chuyện vào %@";
+"Message, or / for commands. Shift+Enter for a new line." = "Nhập tin nhắn, hoặc / để xem lệnh. Shift+Enter để xuống dòng.";
+"Running %@…" = "Đang chạy %@…";
