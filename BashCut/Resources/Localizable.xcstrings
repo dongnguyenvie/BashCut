@@ -1,6 +1,30 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Clips fill the frame": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Clips fill the frame" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Clip phủ kín khung" } }
+      }
+    },
+    "Clips fit inside the frame": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Clips fit inside the frame" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Clip vừa trong khung" } }
+      }
+    },
+    "Fill frame": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Fill frame" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Phủ kín khung" } }
+      }
+    },
+    "Fill crops the clip to cover the frame; off shows it whole with bars": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Fill crops the clip to cover the frame; off shows it whole with bars" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Bật: cắt clip cho phủ kín khung; tắt: thấy trọn hình, có viền đen" } }
+      }
+    },
     "Terminals kept: they now work on %@ and read it before their next edit": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Terminals kept: they now work on %@ and read it before their next edit" } },

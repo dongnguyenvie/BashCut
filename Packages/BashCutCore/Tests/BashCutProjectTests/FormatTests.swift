@@ -49,4 +49,20 @@ struct FormatTests {
             "\(error)".contains("layer position")
         }
     }
+
+    @Test("New projects fit clips inside the frame; older projects fill it; a clip can choose")
+    func clipFill() throws {
+        var setup = ProjectSetup()
+        setup.name = "Fit"
+        let created = try setup.project()
+        #expect(!created.clipsFill)
+        #expect(Project(name: "Older").clipsFill)
+        var item = Item(at: 0, duration: 10)
+        #expect(!created.fills(item))
+        item["fill"] = .bool(true)
+        #expect(created.fills(item))
+        var invalid = created
+        invalid["clipFill"] = .string("yes")
+        #expect(throws: ProjectError.self) { try invalid.validate() }
+    }
 }

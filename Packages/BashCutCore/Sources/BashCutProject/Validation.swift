@@ -55,6 +55,9 @@ extension Project {
         } else if self["beatGrid"] != nil {
             throw ProjectError.invalid("beatGrid: expected object")
         }
+        if let value = self["clipFill"], value.bool == nil {
+            throw ProjectError.invalid("clipFill: expected boolean")
+        }
         try validateAudioSettings()
         try validateMarkers()
         try validateColorLUTs()

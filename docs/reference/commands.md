@@ -52,12 +52,13 @@ Save the open project to disk.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_project_save`
 
-### `bashcut project format --canvas <canvas> [--resolution <resolution>] --base-rev <baseRev>`
+### `bashcut project format [--canvas <canvas>] [--clips <clips>] [--resolution <resolution>] --base-rev <baseRev>`
 
-Change the open project's canvas like the format menu in the toolbar: portrait 9:16, landscape 16:9 or square, at a short-side resolution (the current one by default). One undoable edit; timing is kept and clip pan/tilt scale with the frame.
+Change the open project's canvas like the format menu in the toolbar: portrait 9:16, landscape 16:9 or square, at a short-side resolution (the current one by default); timing is kept and clip pan/tilt scale with the frame. --clips fit shows each clip whole (bars where its shape differs), fill covers the frame and crops; a clip's own `fill` property overrides it. Each change is one undoable edit.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_project_format`
-- `canvas`: string, required, one of portrait, landscape, square. Canvas
+- `canvas`: string, one of portrait, landscape, square. Canvas
+- `clips`: string, one of fit, fill. How clips meet the frame by default
 - `resolution`: string, one of 720, 1080, 2160. Short-side resolution; the current one by default
 - `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
 

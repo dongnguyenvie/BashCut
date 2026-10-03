@@ -46,6 +46,8 @@ public struct ProjectSetup: Sendable {
         format["width"] = .integer(dimensions.width)
         format["height"] = .integer(dimensions.height)
         project["format"] = .object(format)
+        // New projects show the whole picture: footage of another shape gets bars instead of being cropped.
+        project["clipFill"] = .bool(false)
         try project.validate()
         return project
     }
