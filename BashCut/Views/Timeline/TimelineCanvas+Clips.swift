@@ -148,7 +148,7 @@ extension TimelineCanvas {
     /// cyan on the selected clip. Keys outside the clip (left over from a trim) are skipped, and keys closer than a
     /// diamond are drawn once.
     private func drawKeyframes(_ item: Item, in rect: CGRect, selected: Bool, dirtyRect: CGRect) {
-        guard let frames = item.motion?.keyedFrames, rect.width > 12 else { return }
+        guard rect.width > 12, item["keyframes"] != nil, let frames = item.motion?.keyedFrames else { return }
         let size = 10.0, y = rect.maxY - 8
         var lastX = -Double.infinity
         let diamonds = NSBezierPath()

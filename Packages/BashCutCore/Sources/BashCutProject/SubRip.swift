@@ -123,9 +123,7 @@ extension Project {
         let placed = media.map { id in tracks.contains { $0.items.contains { $0.mediaID == id } } } ?? false
         var items = placed
             ? try placedCues(SubRip.cues(text), in: media.map(audibleClips) ?? [], words: words)
-            : try SubRip.decode(text, fps: fps).map { item in
-                item.attachingWords(words) { Int(($0 * self.fps.value).rounded()) }
-            }
+            : try timelineCues(SubRip.decode(text, fps: fps), words: words)
         guard !items.isEmpty else { throw ProjectError.invalid("No captions fall inside the media's clips") }
         for index in items.indices {
             if let provenance { items[index]["generatedBy"] = .object(provenance) }
@@ -155,14 +153,37 @@ extension Project {
         }.sorted { $0.item.at < $1.item.at }
     }
 
+    /// Cues at timeline times, with the words heard during each (words near the cue are handed to attachingWords,
+    /// which keeps the ones whose middle falls inside it).
+    private func timelineCues(_ cues: [Item], words: [CaptionWords.Timed]) -> [Item] {
+        guard !words.isEmpty else { return cues }
+        let sorted = words.sorted { $0.start < $1.start }
+        let longest = sorted.map { $0.end - $0.start }.max() ?? 0
+        let frame = 1 / fps.value
+        return cues.map { item in
+            let start = Double(item.at) / fps.value, end = Double(item.end) / fps.value
+            let first = sorted.partitioningIndex { $0.start >= start - frame - longest }
+            let last = sorted.partitioningIndex { $0.start > end + frame }
+            return item.attachingWords(first < last ? Array(sorted[first..<last]) : []) {
+                Int(($0 * self.fps.value).rounded())
+            }
+        }
+    }
+
     /// Places source-time cues through each clip; a cue spanning a cut is split at it.
     func placedCues(
         _ cues: [SubRip.Cue], in clips: [(item: Item, media: Media)], words: [CaptionWords.Timed] = []
     ) -> [Item] {
         var items: [Item] = []
+        // A word whose middle lands inside a cue's frames is at most a couple of timeline frames outside the cue in
+        // source time (rounding, at the fastest speed); only words that near a cue are handed to attachingWords.
+        let margin = 2 * Project.speedRange.upperBound / fps.value
         for (clip, asset) in clips {
             let sourceStart = Double(clip.sourceIn) / asset.fps.value
             let sourceEnd = sourceStart + clip.sourceSeconds(afterFrames: clip.duration, fps: fps)
+            // Words heard inside this clip only, mapped through it like the cue.
+            let heard = words.filter { $0.end > sourceStart && $0.start < sourceEnd }.sorted { $0.start < $1.start }
+            let longest = heard.map { $0.end - $0.start }.max() ?? 0
             for cue in cues where cue.end > sourceStart && cue.start < sourceEnd {
                 let frame = { (seconds: Double) in
                     clip.at + Int(clip.timelineFrames(atSourceSeconds: seconds - sourceStart, fps: self.fps).rounded())
@@ -170,9 +191,10 @@ extension Project {
                 let at = max(clip.at, frame(max(cue.start, sourceStart)))
                 let end = min(clip.end, frame(min(cue.end, sourceEnd)))
                 guard end > at else { continue }
-                // Words heard inside this clip only, mapped through it like the cue.
-                let heard = words.filter { $0.end > sourceStart && $0.start < sourceEnd }
-                items.append(SubRip.caption(cue.text, at: at, duration: end - at).attachingWords(heard) {
+                let first = heard.partitioningIndex { $0.start >= cue.start - margin - longest }
+                let last = heard.partitioningIndex { $0.start > cue.end + margin }
+                let near = first < last ? Array(heard[first..<last]) : []
+                items.append(SubRip.caption(cue.text, at: at, duration: end - at).attachingWords(near) {
                     frame(min(max($0, sourceStart), sourceEnd))
                 })
             }
@@ -210,5 +232,18 @@ extension Project {
             inserts.append(.insert(track: layer.id, item: item))
         }
         return operations + inserts
+    }
+}
+
+extension Array {
+    /// The first index whose element satisfies `belongs`, for an array where every such element comes after every
+    /// other one (binary search); `endIndex` when there is none.
+    func partitioningIndex(where belongs: (Element) -> Bool) -> Int {
+        var low = startIndex, high = endIndex
+        while low < high {
+            let middle = (low + high) / 2
+            if belongs(self[middle]) { high = middle } else { low = middle + 1 }
+        }
+        return low
     }
 }

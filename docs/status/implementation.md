@@ -286,6 +286,12 @@ What changed:
 - `bashcut-mcp` answers `tools/list` itself from the catalog encoded once; the SDK encoded the 35 KB list through
   its `Value` tree on every call.
 
+Render hot paths after keyframes and word captions (2026-10-04): playback and export stay within budget
+(`bashcut-bench`, 14 DJI clips: 315 fps decode plain, about 255 fps with every clip keyed and karaoke captions; the
+difference is the per-frame transforms and opacity, not text). The text cache key (the whole item JSON-encoded) and
+the keyframe anchor are made once per text layer instead of per frame; the Inspector reads the playhead only in the
+*Keyframe at playhead* buttons; `placedCues` binary-searches the words near each cue.
+
 Still open: timing edits (trim, move, speed, new clips) still build and load a whole new composition (patching the
 shown `AVMutableComposition` in place would need engine work), and the remaining per-edit cost is one full
 `validate()` (about 2.6 µs per item).

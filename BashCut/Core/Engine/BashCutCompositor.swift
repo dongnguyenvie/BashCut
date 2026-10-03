@@ -44,11 +44,20 @@ public struct TextLayer: @unchecked Sendable {
     /// Word starts (frames from the item's start) when the item shows its words as they are spoken.
     public let wordStarts: [Int]?
     public let fps: Double
+    /// `TextRenderer.cacheKey(item)`, made once instead of on every frame.
+    let cacheKey: String
+    private let anchors = AnchorCache()
     public init(item: Item, motion: LayerMotion? = nil, fps: Double = 30) {
         self.item = item
         self.motion = motion
         self.fps = fps
         wordStarts = item.wordStyle == nil ? nil : item.wordTimings.map(\.at)
+        cacheKey = TextRenderer.cacheKey(item)
+    }
+
+    /// Where keyframes scale and rotate the text (`TextRenderer.anchor`), laid out once per render size.
+    func anchor(size: CGSize) -> CGPoint {
+        anchors.value(size: size) { TextRenderer.anchor(item, size: size) }
     }
 
     /// The word being spoken at `seconds` of composition time.
@@ -56,6 +65,23 @@ public struct TextLayer: @unchecked Sendable {
         guard let wordStarts else { return nil }
         let frame = Int((seconds * fps - Double(item.at) + 0.001).rounded(.down))
         return wordStarts.lastIndex { $0 <= frame }
+    }
+}
+
+/// The last text anchor and the render size it was laid out for; frames render on several threads.
+private final class AnchorCache: @unchecked Sendable {
+    private let lock = NSLock()
+    private var size: CGSize?
+    private var point = CGPoint.zero
+
+    func value(size: CGSize, _ make: () -> CGPoint) -> CGPoint {
+        lock.lock()
+        defer { lock.unlock() }
+        if self.size != size {
+            point = make()
+            self.size = size
+        }
+        return point
     }
 }
 
@@ -150,7 +176,7 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
                 image = Self.graded(image, properties: adjustment.properties, lut: adjustment.lut).cropped(to: bounds)
             case .text(let text):
                 let spoken = text.spokenWord(at: request.compositionTime.seconds)
-                if let overlay = TextRenderer.image(text.item, size: size, spoken: spoken) {
+                if let overlay = TextRenderer.image(text.item, size: size, spoken: spoken, itemKey: text.cacheKey) {
                     image = Self.animated(CIImage(cgImage: overlay), text: text, size: size,
                                           time: request.compositionTime.seconds).composited(over: image)
                 }
@@ -165,7 +191,7 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
     /// A text overlay moved by its keyframes: zoom and rotation around the text's own position, pan and tilt, opacity.
     static func animated(_ overlay: CIImage, text: TextLayer, size: CGSize, time: Double) -> CIImage {
         guard let motion = text.motion else { return overlay }
-        let anchor = TextRenderer.anchor(text.item, size: size)
+        let anchor = text.anchor(size: size)
         let zoom = motion.value("zoom", at: time), rotation = motion.value("rotation", at: time)
         var transform = CGAffineTransform(translationX: -anchor.x, y: -anchor.y)
             .concatenating(CGAffineTransform(scaleX: zoom, y: zoom))

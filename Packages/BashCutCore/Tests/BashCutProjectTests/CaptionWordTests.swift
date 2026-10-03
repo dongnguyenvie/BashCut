@@ -46,6 +46,60 @@ struct CaptionWordTests {
         #expect(caption["words"]?.array.count == 3)
     }
 
+    @Test("Long transcripts attach the same words as scanning every word for every cue")
+    func longTranscript() throws {
+        // 300 cues of 1.2 s with 4 words each; a ramped, trimmed clip and the timeline path.
+        let words = (0..<1200).map { index in
+            CaptionWords.Timed(text: "w\(index)", start: Double(index) * 0.3, end: Double(index) * 0.3 + 0.27)
+        }
+        let cues = (0..<300).map { SubRip.Cue(start: Double($0) * 1.2, end: Double($0) * 1.2 + 1.1, text: "cue \($0)") }
+        var clip = Item(id: "a", media: "m", at: 45, duration: 9_000, sourceIn: 37)
+        clip["speed"] = .number(1.5)
+        let project = try Project(name: "Words", fps: FrameRate(30_000, 1_001)).applying(.group(
+            label: "Setup", author: .user, ops: [
+                .addMedia(ProjectFixtures.media(
+                    "m", path: "m.mov", frames: 30_000, fps: FrameRate(30, 1), kind: "audio", hasAudio: true)),
+                .insert(track: "a1", item: clip),
+            ])).project
+        let clips = project.audibleClips("m")
+        var expected: [Item] = []
+        for (clip, asset) in clips {
+            let sourceStart = Double(clip.sourceIn) / asset.fps.value
+            let sourceEnd = sourceStart + clip.sourceSeconds(afterFrames: clip.duration, fps: project.fps)
+            for cue in cues where cue.end > sourceStart && cue.start < sourceEnd {
+                let frame = { (seconds: Double) in
+                    clip.at + Int(clip.timelineFrames(atSourceSeconds: seconds - sourceStart, fps: project.fps).rounded())
+                }
+                let at = max(clip.at, frame(max(cue.start, sourceStart)))
+                let end = min(clip.end, frame(min(cue.end, sourceEnd)))
+                guard end > at else { continue }
+                let heard = words.filter { $0.end > sourceStart && $0.start < sourceEnd }
+                expected.append(SubRip.caption(cue.text, at: at, duration: end - at).attachingWords(heard) {
+                    frame(min(max($0, sourceStart), sourceEnd))
+                })
+            }
+        }
+        let placed = project.placedCues(cues, in: clips, words: words)
+        #expect(placed.count == expected.count && placed.count > 100)
+        #expect(placed.map { $0["words"] } == expected.map { $0["words"] })
+        #expect(placed.allSatisfy { $0["words"] != nil })
+
+        let srt = cues.enumerated().map { index, cue in
+            func stamp(_ seconds: Double) -> String {
+                let ms = Int((seconds * 1000).rounded())
+                return String(format: "%02d:%02d:%02d,%03d", ms / 3_600_000, ms / 60_000 % 60, ms / 1000 % 60, ms % 1000)
+            }
+            return "\(index + 1)\n\(stamp(cue.start)) --> \(stamp(cue.end))\n\(cue.text)\n"
+        }.joined(separator: "\n")
+        let imported = try project.applying(project.importingSubRip(srt, words: words)).project
+        let captions = imported.tracks.filter { $0.kind == "text" }.flatMap(\.items).sorted { $0.at < $1.at }
+        let reference = try SubRip.decode(srt, fps: project.fps).map { item in
+            item.attachingWords(words) { Int(($0 * project.fps.value).rounded()) }
+        }.sorted { $0.at < $1.at }
+        #expect(captions.count == reference.count)
+        #expect(captions.map { $0["words"] } == reference.map { $0["words"] })
+    }
+
     @Test("Word timing files decode; bad styles and words are rejected")
     func decodeAndValidate() throws {
         let data = Data(#"[{"text":"Xin","start":0.5,"end":0.8},{"word":" chào","start":0.8,"end":1.1},{"text":"","start":1,"end":2}]"#.utf8)
