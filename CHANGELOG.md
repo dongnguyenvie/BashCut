@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+- Refresh bundled agent kits when their content changes, even at the same version and skill names. Validate the
+  staged copy before replacing the stable folder so a failed refresh preserves the installed instructions.
+
 - Cache parsed LUTs across composition rebuilds with a 64 MiB LRU budget and fresh file signatures. Build LUT
   catalogs once and avoid repeated item lookups; replacing or removing a LUT invalidates cached results.
 
