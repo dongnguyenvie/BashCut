@@ -73,12 +73,14 @@ private struct CaptionLineLayout {
 
 enum TextRenderer {
     private static let cache = CaptionCache()
-    static func image(_ item: Item, size: CGSize) -> CGImage? {
+    /// The item's text drawn over a transparent frame. `spoken` is the index of the word being spoken, for items
+    /// with a `wordStyle`.
+    static func image(_ item: Item, size: CGSize, spoken: Int? = nil) -> CGImage? {
         let encoder = JSONEncoder()
         encoder.outputFormatting = .sortedKeys
         let key =
             ((try? encoder.encode(item)).flatMap { String(data: $0, encoding: .utf8) } ?? item.text)
-            + "\(size.width)x\(size.height)"
+            + "\(size.width)x\(size.height)" + (item.wordStyle == nil ? "" : "#\(spoken ?? -1)")
         if let cached = cache.images.object(forKey: key as NSString) { return cached.image }
         guard
             let context = CGContext(
@@ -105,9 +107,19 @@ enum TextRenderer {
             NSAttributedString.Key(kCTStrokeWidthAttributeName as String): -stroke,
         ]
         let lineHeight = points * 1.28
-        let lines = item.text.components(separatedBy: "\n").reversed().enumerated().map { index, lineText in
-            let line = CTLineCreateWithAttributedString(
-                NSAttributedString(string: lineText, attributes: attributes))
+        let lineTexts = item.text.components(separatedBy: "\n")
+        let words = WordColoring(item: item, spoken: spoken, attributes: attributes,
+                                 highlight: color(style["highlight"]?.string ?? CaptionWords.defaultHighlight))
+        // Word indexes run in reading order; lines are laid out bottom-up.
+        var firstWord: [Int] = []
+        var wordCount = 0
+        for text in lineTexts {
+            firstWord.append(wordCount)
+            wordCount += CaptionWords.tokens(text).count
+        }
+        let lines = Array(zip(lineTexts, firstWord)).reversed().enumerated().map { index, entry in
+            let (lineText, first) = entry
+            let line = CTLineCreateWithAttributedString(words.string(lineText, firstWord: first))
             let width = CTLineGetTypographicBounds(line, nil, nil, nil)
             let position = CGPoint(
                 x: preset.leftAligned ? size.width * 0.1 : (size.width - width) / 2,
@@ -219,5 +231,44 @@ enum TextRenderer {
         return CGColor(
             red: CGFloat((value >> 16) & 255) / 255, green: CGFloat((value >> 8) & 255) / 255,
             blue: CGFloat(value & 255) / 255, alpha: 1)
+    }
+}
+
+/// Colours each word of a line by its state for the item's `wordStyle`.
+private struct WordColoring {
+    let style: String?
+    let spoken: Int?
+    let attributes: [NSAttributedString.Key: Any]
+    let highlight: CGColor
+
+    init(item: Item, spoken: Int?, attributes: [NSAttributedString.Key: Any], highlight: CGColor) {
+        style = item.wordStyle
+        self.spoken = spoken
+        self.attributes = attributes
+        self.highlight = highlight
+    }
+
+    func string(_ line: String, firstWord: Int) -> NSAttributedString {
+        let text = NSMutableAttributedString(string: line, attributes: attributes)
+        guard let style else { return text }
+        let fill = NSAttributedString.Key(kCTForegroundColorAttributeName as String)
+        let stroke = NSAttributedString.Key(kCTStrokeColorAttributeName as String)
+        let clear = CGColor(gray: 0, alpha: 0)
+        var index = firstWord
+        let nsLine = line as NSString
+        let pattern = try? NSRegularExpression(pattern: "\\S+")
+        for match in pattern?.matches(in: line, range: NSRange(location: 0, length: nsLine.length)) ?? [] {
+            defer { index += 1 }
+            switch style {
+            case "highlight" where index == spoken:
+                text.addAttribute(fill, value: highlight, range: match.range)
+            case "karaoke" where spoken.map({ index <= $0 }) == true:
+                text.addAttribute(fill, value: highlight, range: match.range)
+            case "reveal" where spoken.map({ index > $0 }) ?? true:
+                text.addAttributes([fill: clear, stroke: clear], range: match.range)
+            default: break
+            }
+        }
+        return text
     }
 }

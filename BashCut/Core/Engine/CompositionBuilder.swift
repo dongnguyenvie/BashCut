@@ -224,7 +224,7 @@ public actor CompositionBuilder {
                         contentsOf: track.items.filter { $0.at <= start && $0.end > start }.map { item in
                             .text(TextLayer(item: item, motion: item.motion.map {
                                 LayerMotion(motion: $0, item: item, fps: project.fps.value)
-                            }))
+                            }, fps: project.fps.value))
                         })
                 }
             }

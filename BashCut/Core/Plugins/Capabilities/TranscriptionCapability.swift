@@ -2,7 +2,8 @@ import BashCutPlugin
 import BashCutProject
 import Foundation
 
-/// `captions.transcribe`: the plugin writes an SRT file for a media file into the request folder.
+/// `captions.transcribe`: the plugin writes an SRT file for a media file into the request folder, and optionally a
+/// JSON file of word timings (`wordsPath`: `[{"text", "start", "end"}]` in seconds) for word-by-word captions.
 public struct TranscriptionCapability: CapabilityAdapter {
     public static let capability = "captions.transcribe"
     public let mediaURL: URL
@@ -39,6 +40,13 @@ public struct TranscriptionCapability: CapabilityAdapter {
         guard data.count <= SubRip.maximumBytes, let text = String(data: data, encoding: .utf8) else {
             throw PluginError.invalid("Transcription output must be UTF-8 SRT no larger than 4 MiB")
         }
-        return GeneratedPluginCaptions(text: text, provenance: context.provenance)
+        var words: [CaptionWords.Timed] = []
+        if let path = result.object["wordsPath"]?.string, !path.isEmpty {
+            let url = try context.confinedOutput(path, label: "Transcription plugin")
+            let handle = try FileHandle(forReadingFrom: url)
+            defer { try? handle.close() }
+            words = try CaptionWords.decode(handle.read(upToCount: 8 * 1024 * 1024 + 1) ?? Data())
+        }
+        return GeneratedPluginCaptions(text: text, provenance: context.provenance, words: words)
     }
 }

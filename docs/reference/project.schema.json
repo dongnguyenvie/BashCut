@@ -479,6 +479,42 @@
           "maximum" : 24,
           "minimum" : -120,
           "type" : "number"
+        },
+        "wordStyle" : {
+          "description" : "Text: show the words as they are spoken (highlight the current word, karaoke fill, or reveal); timings come from words, or are estimated",
+          "enum" : [
+            "highlight",
+            "karaoke",
+            "reveal"
+          ],
+          "type" : "string"
+        },
+        "words" : {
+          "description" : "Text: timing of each word of the text (split at white space), in frames from the item's start; set by captions generate when the provider returns word timings",
+          "items" : {
+            "properties" : {
+              "at" : {
+                "type" : "integer"
+              },
+              "dur" : {
+                "description" : "Frames",
+                "minimum" : 1,
+                "type" : "integer"
+              },
+              "text" : {
+                "description" : "The word",
+                "type" : "string"
+              }
+            },
+            "required" : [
+              "text",
+              "at",
+              "dur"
+            ],
+            "type" : "object"
+          },
+          "maxItems" : 2000,
+          "type" : "array"
         }
       },
       "required" : [

@@ -113,7 +113,8 @@ extension Project {
     /// `media`, or when the media is not on the timeline, cue times are timeline times and `replace` removes every
     /// caption.
     public func importingSubRip(
-        _ text: String, replace: Bool = false, provenance: [String: JSONValue]? = nil, media: String? = nil
+        _ text: String, replace: Bool = false, provenance: [String: JSONValue]? = nil, media: String? = nil,
+        words: [CaptionWords.Timed] = [], wordStyle: String? = nil
     ) throws -> EditOperation {
         try validate()
         guard let captions = tracks.first(where: { $0.role == "captions" }) else {
@@ -121,11 +122,15 @@ extension Project {
         }
         let placed = media.map { id in tracks.contains { $0.items.contains { $0.mediaID == id } } } ?? false
         var items = placed
-            ? try placedCues(SubRip.cues(text), in: media.map(audibleClips) ?? []) : try SubRip.decode(text, fps: fps)
+            ? try placedCues(SubRip.cues(text), in: media.map(audibleClips) ?? [], words: words)
+            : try SubRip.decode(text, fps: fps).map { item in
+                item.attachingWords(words) { Int(($0 * self.fps.value).rounded()) }
+            }
         guard !items.isEmpty else { throw ProjectError.invalid("No captions fall inside the media's clips") }
         for index in items.indices {
             if let provenance { items[index]["generatedBy"] = .object(provenance) }
             if let media { items[index]["captionMedia"] = .string(media) }
+            if let wordStyle { items[index]["wordStyle"] = .string(wordStyle) }
         }
         let layers = captionLayers(from: captions)
         let removed = replace
@@ -151,7 +156,9 @@ extension Project {
     }
 
     /// Places source-time cues through each clip; a cue spanning a cut is split at it.
-    func placedCues(_ cues: [SubRip.Cue], in clips: [(item: Item, media: Media)]) -> [Item] {
+    func placedCues(
+        _ cues: [SubRip.Cue], in clips: [(item: Item, media: Media)], words: [CaptionWords.Timed] = []
+    ) -> [Item] {
         var items: [Item] = []
         for (clip, asset) in clips {
             let sourceStart = Double(clip.sourceIn) / asset.fps.value
@@ -162,7 +169,12 @@ extension Project {
                 }
                 let at = max(clip.at, frame(max(cue.start, sourceStart)))
                 let end = min(clip.end, frame(min(cue.end, sourceEnd)))
-                if end > at { items.append(SubRip.caption(cue.text, at: at, duration: end - at)) }
+                guard end > at else { continue }
+                // Words heard inside this clip only, mapped through it like the cue.
+                let heard = words.filter { $0.end > sourceStart && $0.start < sourceEnd }
+                items.append(SubRip.caption(cue.text, at: at, duration: end - at).attachingWords(heard) {
+                    frame(min(max($0, sourceStart), sourceEnd))
+                })
             }
         }
         return items

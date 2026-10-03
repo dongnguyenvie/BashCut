@@ -13,6 +13,7 @@ struct LibraryView: View {
     @State private var captionSource = ""
     @State private var captionProvider = ""
     @State private var replaceGeneratedCaptions = true
+    @State private var captionWordStyle = "none"
     @State private var captionMessage = ""
     @State private var beatSource = ""
     @State private var beatProvider = ""
@@ -218,6 +219,12 @@ struct LibraryView: View {
             FindPluginButton(document: document, capability: "captions.transcribe")
             ProviderOptionsView(document: document, capability: "captions.transcribe", providerID: captionProvider)
             Toggle("Replace existing captions", isOn: $replaceGeneratedCaptions)
+            Picker("Word by word", selection: $captionWordStyle) {
+                Text("Off").tag("none")
+                Text("Highlight word").tag("highlight")
+                Text("Karaoke").tag("karaoke")
+                Text("Reveal").tag("reveal")
+            }
             Button(
                 pluginManager.calling.contains("captions.transcribe") ? "Transcribing…" : "Generate captions"
             ) {
@@ -272,7 +279,9 @@ struct LibraryView: View {
         captionMessage = ""
         Task {
             do {
-                try await document.generateCaptions(mediaID: captionSource, replace: replaceGeneratedCaptions)
+                try await document.generateCaptions(
+                    mediaID: captionSource, replace: replaceGeneratedCaptions,
+                    wordStyle: captionWordStyle == "none" ? nil : captionWordStyle)
                 captionMessage = String(localized: "Captions generated")
             } catch { captionMessage = error.localizedDescription }
         }

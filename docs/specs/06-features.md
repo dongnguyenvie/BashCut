@@ -69,7 +69,7 @@ A command in *italics* is planned and does not exist yet. "—" means manual onl
 | X-3 | Presets Keyword Sticker, Place Card, Hook Title, Chapter Card | P1 | Implemented | `timeline apply` (`setProperties`) |
 | X-4 | Auto Captions through a replaceable `captions.transcribe` provider | P1 | Implemented | `captions generate` |
 | X-5 | Long-line warning (over 42 characters), TikTok safe area | P1 | Implemented | `review run`, `ui view` |
-| X-6 | Text animation: pop, word-by-word, typewriter, highlight, counter | P2 | Partly implemented (fade, pop, slide and zoom presets and keyframes; the others Planned) | `clip motion` |
+| X-6 | Text animation: pop, word-by-word, typewriter, highlight, counter | P2 | Partly implemented (fade, pop, slide and zoom presets, keyframes, word-by-word highlight/karaoke/reveal; typewriter and counter Planned) | `clip motion`, `captions words`, `captions generate --word-style` |
 | X-7 | `.srt` import and export | P1 | Implemented | `captions import`, `captions export` |
 
 ## Audio and voice

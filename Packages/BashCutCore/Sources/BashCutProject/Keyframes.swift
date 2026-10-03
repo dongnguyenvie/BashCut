@@ -126,7 +126,7 @@ public struct ItemMotion: Sendable, Equatable {
 
 extension Item {
     /// Fields a `setProperties` patch removes when it sets them to null.
-    public static let removableFields: Set<String> = ["freezeFrame", "keyframes"]
+    public static let removableFields: Set<String> = ["freezeFrame", "keyframes", "words", "wordStyle"]
 
     /// The item's keyframes; nil when it has none (or they are invalid, which validation rejects).
     public var motion: ItemMotion? {
@@ -136,11 +136,18 @@ extension Item {
         return motion
     }
 
-    /// Moves time-based content (keyframes) after the item's picture moved by `offset` frames against its start:
-    /// splitting off the right part, or trimming the start.
+    /// Moves time-based content (keyframes, word timings) after the item's picture moved by `offset` frames against
+    /// its start: splitting off the right part, or trimming the start.
     mutating func shiftTimedContent(by offset: Int) {
-        guard offset != 0, let motion else { return }
-        fields["keyframes"] = motion.shifted(by: offset).json
+        guard offset != 0 else { return }
+        if let motion { fields["keyframes"] = motion.shifted(by: offset).json }
+        if case .array(let words) = fields["words"] {
+            fields["words"] = .array(words.map { word in
+                var entry = word.object
+                if let at = entry["at"]?.int { entry["at"] = .integer(at + offset) }
+                return .object(entry)
+            })
+        }
     }
 }
 

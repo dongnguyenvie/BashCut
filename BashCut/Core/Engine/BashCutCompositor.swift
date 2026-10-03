@@ -19,7 +19,7 @@ public final class FrameInstruction: NSObject, AVVideoCompositionInstructionProt
         containsTweening = layers.contains {
             switch $0 {
             case .video(let layer): layer.transition != nil || layer.motion != nil
-            case .text(let text): text.motion != nil
+            case .text(let text): text.motion != nil || text.wordStarts != nil
             case .adjustment: false
             }
         }
@@ -41,9 +41,21 @@ public enum VisualLayer: @unchecked Sendable {
 public struct TextLayer: @unchecked Sendable {
     public let item: Item
     public let motion: LayerMotion?
-    public init(item: Item, motion: LayerMotion? = nil) {
+    /// Word starts (frames from the item's start) when the item shows its words as they are spoken.
+    public let wordStarts: [Int]?
+    public let fps: Double
+    public init(item: Item, motion: LayerMotion? = nil, fps: Double = 30) {
         self.item = item
         self.motion = motion
+        self.fps = fps
+        wordStarts = item.wordStyle == nil ? nil : item.wordTimings.map(\.at)
+    }
+
+    /// The word being spoken at `seconds` of composition time.
+    func spokenWord(at seconds: Double) -> Int? {
+        guard let wordStarts else { return nil }
+        let frame = Int((seconds * fps - Double(item.at) + 0.001).rounded(.down))
+        return wordStarts.lastIndex { $0 <= frame }
     }
 }
 
@@ -137,7 +149,8 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
             case .adjustment(let adjustment):
                 image = Self.graded(image, properties: adjustment.properties, lut: adjustment.lut).cropped(to: bounds)
             case .text(let text):
-                if let overlay = TextRenderer.image(text.item, size: size) {
+                let spoken = text.spokenWord(at: request.compositionTime.seconds)
+                if let overlay = TextRenderer.image(text.item, size: size, spoken: spoken) {
                     image = Self.animated(CIImage(cgImage: overlay), text: text, size: size,
                                           time: request.compositionTime.seconds).composited(over: image)
                 }
