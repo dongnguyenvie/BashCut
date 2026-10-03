@@ -28,7 +28,13 @@ struct EditorView: View {
                 }.padding(8).background(Color.orange.opacity(0.15))
             }
             if document.fileURL == nil {
-                WelcomeView(document: document)
+                // The dock works before a project is open, so an agent can be asked to create or open one.
+                HSplitView {
+                    WelcomeView(document: document).frame(minWidth: 560, maxHeight: .infinity)
+                    if document.ui.showAgentDock {
+                        AgentDockView(model: document.agents).frame(minWidth: 330, idealWidth: 370, maxWidth: 500)
+                    }
+                }.frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
             HSplitView {
                 VStack(spacing: 0) {

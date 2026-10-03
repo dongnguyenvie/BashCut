@@ -23,7 +23,7 @@ struct WelcomeView: View {
                 Spacer()
             }
             .frame(maxWidth: 440, maxHeight: .infinity, alignment: .leading)
-            .padding(56)
+            .padding(40)
 
             Divider()
 
@@ -65,9 +65,10 @@ struct WelcomeView: View {
                     }
                 }
             }
-            .frame(width: 480)
+            // Narrower next to the agent dock.
+            .frame(minWidth: 240, idealWidth: 480, maxWidth: 480)
             .frame(maxHeight: .infinity, alignment: .top)
-            .padding(40)
+            .padding(32)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(red: 0.065, green: 0.07, blue: 0.08))

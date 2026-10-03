@@ -235,7 +235,7 @@ extension ProjectDocument {
     func contextText() -> String {
         """
         [BashCut context]
-        project: \(fileURL?.path ?? "unsaved")
+        project: \(fileURL?.path ?? "none open yet (use project create or project open)")
         rev: \(project.revision)
         selection: \(selectedID ?? "none")
         playhead: \(playhead) frames
