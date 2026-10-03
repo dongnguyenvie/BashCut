@@ -274,11 +274,17 @@ What changed:
 - The preview builds the new composition in a fresh `AVPlayer`, waits until it is ready at the playhead and swaps
   it in; the viewer keeps the previous picture instead of going blank. `ui frame` does not wait for the swap: it grabs
   from `PreviewController.currentBuild`, the new composition as soon as it is built.
+- Edits that keep what plays where (colour, text, opacity, transform, keyframes, volume, fades) no longer load a
+  new player: the builder hashes the composition's tracks and segments (`CompositionSnapshot.structure`), and when
+  the hash matches what is shown, the shown player item takes the new video composition and audio mix and redraws
+  the playhead frame. With 40 clips, such an edit is on screen about 7 ms after the 50 ms debounce, against about
+  110 ms for a swap.
 - `bashcut-mcp` answers `tools/list` itself from the catalog encoded once; the SDK encoded the 35 KB list through
   its `Value` tree on every call.
 
-Still open: the preview rebuilds the whole composition on every edit (an incremental composition would need
-engine work), and the remaining per-edit cost is one full `validate()` (about 2.6 µs per item).
+Still open: timing edits (trim, move, speed, new clips) still build and load a whole new composition (patching the
+shown `AVMutableComposition` in place would need engine work), and the remaining per-edit cost is one full
+`validate()` (about 2.6 µs per item).
 
 ## Verification
 

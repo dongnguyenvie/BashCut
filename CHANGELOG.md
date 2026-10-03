@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+- **Faster preview for look edits.** Changing colour, text, opacity, framing, keyframes, volume or fades no longer
+  reloads the preview player. The builder hashes what the composition plays where (`CompositionSnapshot.structure`),
+  and when it is unchanged, the shown player takes the new instructions and audio mix and redraws the frame: about
+  7 ms instead of about 110 ms with 40 clips. Trims, moves and speed changes still load the new composition behind
+  the current picture.
+
 - **Word-by-word captions.** A caption can show its words as they are spoken: **Highlight word** colours the word
   being said, **Karaoke** colours the words said so far, and **Reveal** makes words appear one by one (item field
   `wordStyle`, colour `textStyle.highlight`, default #FFD400). A transcription provider may return word timings
