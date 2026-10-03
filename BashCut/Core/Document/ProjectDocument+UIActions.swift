@@ -225,7 +225,13 @@ extension ProjectDocument {
             preview.setColorComparison(compare)
         }
         if let frame = arguments.optionalInt("reveal") { revealInTimeline(frame) }
+        updatePanels(arguments)
+    }
+
+    /// Which tab the Inspector and section the Settings sheet show.
+    private func updatePanels(_ arguments: CommandArguments) {
         if let tab = arguments.optionalString("inspector") { ui.inspectorTab = tab }
+        if let section = arguments.optionalString("settingsSection") { ui.settingsSection = section }
     }
 
     func viewStateJSON() -> JSONValue {
@@ -248,6 +254,7 @@ extension ProjectDocument {
             "selection": selectedID.map(JSONValue.string) ?? .null,
             "selectedTrack": selectedTrackID.map(JSONValue.string) ?? .null,
             "libraryPanel": .string(ui.libraryTab.panelName), "inspector": .string(ui.inspectorTab),
+            "settingsSection": .string(ui.settingsSection),
             "source": source,
         ])
     }

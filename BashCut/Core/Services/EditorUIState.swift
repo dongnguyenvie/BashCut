@@ -29,6 +29,8 @@ public final class EditorUIState {
     public var libraryTab: LibraryTab = .media
     /// One of `UIAction.inspectorTabs`.
     public var inspectorTab = "video"
+    /// One of `UIAction.settingsSections`: the section the Settings sheet shows.
+    public var settingsSection = "general"
 
     // Editor sheets and popovers; `ModalCenter` reports them to automation.
     public var showNewProject = false

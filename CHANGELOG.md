@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+- **Settings in sections.** A sidebar splits Settings into General, Agents, Plugins and Storage, with each note
+  under the setting it explains. Plugins lists the options of every installed plugin that has any (the same values
+  as Plugins › Options… and `plugins option`) and links to Manage Plugins…. Agents open a section with
+  `ui open settings` and `ui view --settings-section general|agents|plugins|storage`.
+
 - **Removed the dock's model-API tab.** It sent one request to OpenAI or Anthropic and returned a script or a single
   timeline proposal, without tools, the agent kit or a look at the result, so it could not finish a video. Use a
   Claude Code or Codex tab instead (Codex also accepts `OPENAI_API_KEY`). The saved connection is forgotten on

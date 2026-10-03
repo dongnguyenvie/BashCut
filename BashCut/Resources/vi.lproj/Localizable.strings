@@ -565,3 +565,5 @@
 "Use on all captions" = "Dùng cho mọi phụ đề";
 "Timing estimated from word length" = "Thời gian ước lượng theo độ dài chữ";
 "Timing from speech" = "Thời gian theo giọng nói";
+"General" = "Chung";
+"No installed plugin has options." = "Chưa có plugin nào có tuỳ chọn.";
