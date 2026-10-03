@@ -208,7 +208,8 @@ provenance and stays usable if that provider is removed, so replacing a provider
 - **Planned:** a Settings UI for user-wide provider defaults.
 
 **Process protocol.** Each request starts one child as `entrypoint rpc`, writes one bounded JSON request to stdin
-and reads one bounded JSON response from stdout. Calls time out after 120 seconds by default and support task
+and reads one bounded JSON response from stdout. Calls time out after 120 seconds by default (a provider may set `timeoutSeconds`; session requests restart
+that window on each progress line, up to 4 hours) and support task
 cancellation; the child runs in its own process group, which is terminated as a whole on cancellation or
 timeout. Children receive a filtered environment (`HOME`, `PATH`, `TMPDIR`, locale values and
 `BASHCUT_PLUGIN_*` metadata); automation tokens, model credentials and `.env` values are not inherited. Returned

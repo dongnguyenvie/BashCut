@@ -57,7 +57,7 @@ from its standard output. Put the folder in one of the [plugin folders](#discove
 | `minApiVersion` / `maxApiVersion` | No | The host API window the plugin works with; `minApiVersion` defaults to `apiVersion` |
 | `entrypoint` | Yes | Relative path inside the bundle to an executable file; no leading `/` and no `..` |
 | `capabilities` | Yes | List of unique capability IDs (lowercase, segments separated by `.` or `-`); may be empty only when `contributes` is not |
-| `providers` | No | Implementations the app can choose; each needs a unique `id`, a `capability` from `capabilities`, a `name` and an optional `priority` (default 0) |
+| `providers` | No | Implementations the app can choose; each needs a unique `id`, a `capability` from `capabilities`, a `name`, an optional `priority` (default 0) and an optional `timeoutSeconds` (10–3600, default 120; see [Limits](#limits)) |
 | `dependencies` | No | External tools or models the plugin needs; see [Dependencies and health](#dependencies-and-health) |
 | `transport` | No | `oneshot` (default) or `session`; see [Session transport](#session-transport). API 2 |
 | `options` | No | Up to 64 settings; see [Options](#options). API 2 |
@@ -243,7 +243,7 @@ standard error become the error shown to the user.
 |---|---|
 | Request size | 1 MiB |
 | Response size | 8 MiB |
-| Call timeout | 120 seconds |
+| Call timeout | 120 seconds, or the provider's `timeoutSeconds`. With the session transport this is the longest a request may go **without a progress line**; every `progress` message restarts it, up to 4 hours in total |
 | Health probe timeout | 15 seconds, 256 KiB of output |
 
 BashCut rejects malformed JSON, a mismatched response `id`, a response with neither `result` nor `error`,
@@ -571,12 +571,15 @@ newline-delimited JSON over stdin/stdout. Requests may overlap; replies are matc
 | App → plugin | `{"type":"request","id","apiVersion","method","provider"?,"params"}` |
 | Plugin → app | Any number of `{"type":"progress","id","progress"?,"message"?}` (`progress` 0–1; shown on the job) |
 | Plugin → app | `{"id","result"}` or `{"id","error":{"code","message"}}` |
-| App → plugin | `{"type":"cancel","id"}` when the caller cancels or the request times out (120 s) |
+| App → plugin | `{"type":"cancel","id"}` when the caller cancels or the request times out (120 s without progress, or the provider's `timeoutSeconds`; 4 h in total) |
 | App → plugin | `{"type":"shutdown"}` after 90 s idle, then `SIGTERM` and `SIGKILL` to the process group |
 
 - Lines are at most 8 MiB and requests at most 1 MiB; invalid JSON or an oversized line ends the session.
 - When the process exits, pending requests fail with the last 4,000 bytes of its stderr; the next request starts a
   new process. After 3 crashes in a minute the plugin is refused for a minute.
+- Long jobs (transcribing an hour of audio, a model download) should send a `progress` line at least every
+  minute, even without a new fraction, to keep the request alive. A provider whose steps stay silent for longer
+  sets `timeoutSeconds`.
 - Health probes still use one-shot processes. The environment is the same filtered one as for `rpc`.
 - `PluginRouter` picks the one-shot or session transport from the manifest, so capabilities work over either.
 

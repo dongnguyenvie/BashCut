@@ -105,6 +105,8 @@ public struct PluginManifest: Codable, Sendable, Equatable {
         guard Set(declaredProviders.map(\.id)).count == declaredProviders.count,
             declaredProviders.allSatisfy({ capabilities.contains($0.capability) })
         else { throw PluginError.invalid("Providers must be unique and declare a plugin capability") }
+        guard declaredProviders.allSatisfy({ ($0.timeoutSeconds ?? 120) >= 10 && ($0.timeoutSeconds ?? 120) <= 3600 })
+        else { throw PluginError.invalid("Provider timeoutSeconds must be 10...3600") }
         for dependency in dependencies { try dependency.validate() }
         try validateExtensions()
     }
@@ -161,12 +163,15 @@ public struct PluginProvider: Codable, Sendable, Equatable, Identifiable {
     public let capability: String
     public let name: String
     public let priority: Int
+    /// Seconds a request may go without reporting progress (default 120), for providers with long silent steps.
+    public let timeoutSeconds: Int?
 
-    public init(id: String, capability: String, name: String, priority: Int = 0) {
+    public init(id: String, capability: String, name: String, priority: Int = 0, timeoutSeconds: Int? = nil) {
         self.id = id
         self.capability = capability
         self.name = name
         self.priority = priority
+        self.timeoutSeconds = timeoutSeconds
     }
 }
 
