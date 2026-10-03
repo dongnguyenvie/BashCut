@@ -30,4 +30,18 @@ struct ProjectSwitchGateTests {
         registry.revoke(other)
         #expect(!registry.needsProjectRead(other))
     }
+
+    @Test("The token that switched the project already knows it")
+    func switcherIsNotGated() async throws {
+        let registry = CommandRegistry()
+        registry.register("project.open") { _, _ in
+            registry.projectSwitched(to: "Next")
+            return .object(["rev": .integer(0)])
+        }
+        let token = registry.issueToken(author: .codex)
+        let other = registry.issueToken(author: .claude)
+        #expect(await registry.handle(request("project.open", token: token, params: ["path": .string("/p")])).error == nil)
+        #expect(!registry.needsProjectRead(token))
+        #expect(registry.needsProjectRead(other))
+    }
 }

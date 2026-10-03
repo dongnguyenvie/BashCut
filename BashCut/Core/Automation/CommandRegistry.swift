@@ -16,6 +16,8 @@ public struct AuditEvent: Codable, Sendable {
     private var switchedProject: [String: String] = [:]
     /// Reads that show an agent the open project; any one of them ends the gate after a switch.
     static let projectReads: Set<String> = ["context.get", "timeline.get", "project.get"]
+    /// Commands that switch the project; their result shows the new project to the caller.
+    static let projectSwitches: Set<String> = ["project.open", "project.create", "edl.import"]
     private let audit: @Sendable (AuditEvent) -> Void
     public init(audit: @escaping @Sendable (AuditEvent) -> Void = { _ in }) { self.audit = audit }
 
@@ -90,6 +92,9 @@ public struct AuditEvent: Codable, Sendable {
             }
             let arguments = CommandArguments(try spec.validate(request.params))
             let result = try await handler(arguments, author)
+            if Self.projectSwitches.contains(request.method), let token = request.token {
+                switchedProject.removeValue(forKey: token)
+            }
             audit(AuditEvent(date: Date(), method: request.method, author: author, succeeded: true))
             DebugLog.write(
                 "rpc", "\(request.method) by \(who) ok in \(Self.milliseconds(since: started)) ms "

@@ -30,7 +30,8 @@ extension ProjectDocument {
         }
         try ensureSession(session)
         try commit(
-            project.importingSubRip(generated.text, replace: replace, provenance: generated.provenance.json),
+            project.importingSubRip(
+                generated.text, replace: replace, provenance: generated.provenance.json, media: mediaID),
             label: "Generate captions", author: author)
         emitPluginEvent(.captionsGenerated, [
             "media": .string(mediaID), "provider": .object(generated.provenance.json), "rev": .integer(project.revision),

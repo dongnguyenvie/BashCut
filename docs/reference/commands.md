@@ -183,11 +183,11 @@ Import UTF-8 SubRip captions as one undoable edit.
 
 ### `bashcut captions generate --media <media> [--replace] [--provider <provider>]`
 
-Transcribe project media with a captions.transcribe provider and import the captions as one undoable edit.
+Transcribe project media with a captions.transcribe provider and import the captions as one undoable edit. Captions follow the clips where the media is heard (trim, position, speed): place the clips first.
 
 - Mode: edit · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_captions_generate`
 - `media`: string, required. Project media ID
-- `replace`: boolean, default false. Replace existing captions
+- `replace`: boolean, default false. Replace this media's captions
 - `provider`: string. Provider ID overriding the project preference for one request
 
 ## export
