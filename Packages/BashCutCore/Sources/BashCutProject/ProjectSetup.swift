@@ -30,15 +30,7 @@ public struct ProjectSetup: Sendable {
             .filter { !$0.isEmpty }.joined(separator: "-")
     }
 
-    public var dimensions: (width: Int, height: Int) {
-        let short = resolution.rawValue
-        let long = short * 16 / 9
-        switch canvas {
-        case .portrait: return (short, long)
-        case .landscape: return (long, short)
-        case .square: return (short, short)
-        }
-    }
+    public var dimensions: (width: Int, height: Int) { canvas.dimensions(shortSide: resolution.rawValue) }
 
     public func project() throws -> Project {
         let title = name.trimmingCharacters(in: .whitespacesAndNewlines)

@@ -39,7 +39,7 @@ public struct ItemProperty: Sendable {
         .init("transform", "zoom", .number(0.01...100), "Scale over the fill-the-frame size"),
         .init("transform", "pan", .number(-65536...65536), "Horizontal offset in output pixels"),
         .init("transform", "tilt", .number(-65536...65536), "Vertical offset in output pixels"),
-        .init("textStyle", "size", .number(0.005...1), "Font size as a fraction of the frame height"),
+        .init("textStyle", "size", .number(0.005...1), "Font size as a fraction of the frame's short side (shrunk to fit 90% of the width)"),
         .init("textStyle", "positionY", .number(0...1), "Baseline position from the bottom, as a fraction"),
         .init("textStyle", "strokeWidth", .number(0...50), "Outline width in points"),
     ] + ColorGrade.ranges.map { .init("color", $0.key, .number($0.range), ColorGrade.summaries[$0.key] ?? "") }

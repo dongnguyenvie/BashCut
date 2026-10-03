@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 73 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 74 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -51,6 +51,15 @@ Create a project folder (media, footage, render…) like the New Project wizard 
 Save the open project to disk.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_project_save`
+
+### `bashcut project format --canvas <canvas> [--resolution <resolution>] --base-rev <baseRev>`
+
+Change the open project's canvas like the format menu in the toolbar: portrait 9:16, landscape 16:9 or square, at a short-side resolution (the current one by default). One undoable edit; timing is kept and clip pan/tilt scale with the frame.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_project_format`
+- `canvas`: string, required, one of portrait, landscape, square. Canvas
+- `resolution`: string, one of 720, 1080, 2160. Short-side resolution; the current one by default
+- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
 
 ### `bashcut project recents`
 
@@ -548,15 +557,16 @@ Run an editor action like the user: by ID (timeline.split, timeline.zoom-in, pla
 - Mode: edit · Runs: immediately · MCP: `bashcut_ui_action`
 - `action`: string, required. Action ID or shortcut
 
-### `bashcut ui view [--zoom <zoom>] [--zoom-anchor <zoomAnchor>] [--snap <snap>] [--safe-area <safeArea>] [--compare <compare>] [--agent-dock <agentDock>] [--reveal <reveal>] [--inspector <inspector>]`
+### `bashcut ui view [--zoom <zoom>] [--zoom-anchor <zoomAnchor>] [--snap <snap>] [--safe-area <safeArea>] [--viewer-zoom <viewerZoom>] [--compare <compare>] [--agent-dock <agentDock>] [--reveal <reveal>] [--inspector <inspector>]`
 
-Read the editor view state, or change it: timeline zoom (pixels per second), snapping, safe area, color compare, agent dock, inspector tab, and scroll the timeline to a frame.
+Read the editor view state, or change it: timeline zoom (pixels per second), viewer zoom, snapping, safe area, color compare, agent dock, inspector tab, and scroll the timeline to a frame.
 
 - Mode: ui · Runs: immediately · MCP: `bashcut_ui_view`
 - `zoom`: integer, 1…600. Timeline zoom in pixels per second
 - `zoomAnchor`: integer, ≥ 0. Frame kept in place by --zoom; the playhead by default
 - `snap`: boolean. Snapping on or off
 - `safeArea`: boolean. Safe-area overlay on or off
+- `viewerZoom`: string, one of fit, 25, 50, 100, 200. Viewer zoom: fit, or a percentage of the output size
 - `compare`: boolean. Color before/after compare on or off
 - `agentDock`: boolean. Agent dock shown or hidden
 - `reveal`: integer, ≥ 0. Scroll the timeline so this frame is visible

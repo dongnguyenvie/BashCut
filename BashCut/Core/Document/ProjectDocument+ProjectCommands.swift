@@ -32,11 +32,47 @@ extension ProjectDocument {
         }
     }
 
+    /// The project's canvas from its size (square when equal sides).
+    var canvas: ProjectSetup.Canvas {
+        project.width == project.height ? .square : (project.width > project.height ? .landscape : .portrait)
+    }
+
+    /// Changes the canvas (toolbar format menu, `project format`) as one undoable edit, keeping the short side
+    /// unless `shortSide` is given.
+    @discardableResult
+    func setCanvas(
+        _ canvas: ProjectSetup.Canvas, shortSide: Int? = nil, author: Author = .user, baseRevision: Int? = nil
+    ) throws -> Int {
+        let side = shortSide ?? min(project.width, project.height)
+        let size = canvas.dimensions(shortSide: side)
+        guard size.width != project.width || size.height != project.height else { return project.revision }
+        let name = switch canvas {
+        case .portrait: "Portrait 9:16"
+        case .landscape: "Landscape 16:9"
+        case .square: "Square 1:1"
+        }
+        return try commit(
+            .setFormat(width: size.width, height: size.height), label: "Canvas: \(name)", author: author,
+            baseRevision: baseRevision)
+    }
+
     func projectResult() -> JSONValue {
         .object(["project": fileURL.map { .string($0.path) } ?? .null, "rev": .integer(project.revision)])
     }
 
     func registerProjectCommands() {
+        handleAuthored("project.format") { document, arguments, author in
+            guard let canvas = ProjectSetup.Canvas(rawValue: try arguments.string("canvas")) else {
+                throw RPCFailure(-32602, "Unknown canvas")
+            }
+            let revision = try document.setCanvas(
+                canvas, shortSide: arguments.optionalString("resolution").flatMap(Int.init), author: author,
+                baseRevision: try arguments.int("baseRev"))
+            return .object([
+                "rev": .integer(revision), "width": .integer(document.project.width),
+                "height": .integer(document.project.height),
+            ])
+        }
         handleAuthored("project.open") { document, arguments, _ in
             let path = try arguments.string("path")
             guard path.hasPrefix("/"), let url = ProjectStorage.projectFile(for: URL(fileURLWithPath: path)) else {

@@ -23,6 +23,8 @@ public final class EditorUIState {
     @ObservationIgnored public var timelineViewportWidth = 900.0
     public var snapping = true
     public var showSafeArea = false
+    /// nil fits the frame in the viewer; otherwise the output's scale (see `EditorViewerZoom`).
+    public var viewerZoom: Double?
     public var showAgentDock = true
     public var libraryTab: LibraryTab = .media
     /// One of `UIAction.inspectorTabs`.

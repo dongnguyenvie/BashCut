@@ -249,7 +249,7 @@
               "type" : "number"
             },
             "size" : {
-              "description" : "Font size as a fraction of the frame height",
+              "description" : "Font size as a fraction of the frame's short side (shrunk to fit 90% of the width)",
               "maximum" : 1,
               "minimum" : 0.005,
               "type" : "number"
