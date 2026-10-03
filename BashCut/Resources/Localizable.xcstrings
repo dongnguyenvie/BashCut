@@ -1,6 +1,18 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "General": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "General" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Chung" } }
+      }
+    },
+    "No installed plugin has options.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "No installed plugin has options." } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Chưa có plugin nào có tuỳ chọn." } }
+      }
+    },
     "Clips fill the frame": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Clips fill the frame" } },

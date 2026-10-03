@@ -120,6 +120,8 @@ public enum UIAction: String, CaseIterable, Sendable {
 
     /// Inspector tabs, for `ui.view --inspector`.
     public static let inspectorTabs = ["video", "audio", "text", "color", "speed"]
+    /// Settings sections, for `ui.view --settings-section`.
+    public static let settingsSections = ["general", "agents", "plugins", "storage"]
 
     public var title: String {
         switch self {
