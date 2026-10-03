@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+- **Keyframes and motion presets.** Clips, images and text can animate zoom, pan, tilt, rotation and opacity
+  (item field `keyframes`: per property, keys `{frame, value, ease}` counted from the item's start; eases linear,
+  in, out, inOut, hold). Inspector › Video/Text › **Animation** has presets: slow zoom in/out and pan left/right/up/down
+  (Ken Burns for photos), and fade in and out, pop in, slide up and zoom punch for titles. **Keyframe at playhead**
+  records every property there. Once a property has keys, its slider sets the key at the playhead. Agents use
+  `clip motion --preset` or `--keyframes` and `clip keyframe`. Splitting a clip or trimming its start keeps the
+  keys on the same picture. Clips also get a static **Rotation** (`transform.rotation`).
+
 - **Still images on the timeline.** Import (or drag in, or `media import`) a JPEG, PNG, HEIC or other image: it
   becomes media of kind `image`, is placed for 3 s and can be trimmed to any length up to an hour. PNG
   transparency is kept, so stickers and logos sit over the clips below. Images fit or fill the frame like clips

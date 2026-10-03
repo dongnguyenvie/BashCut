@@ -129,6 +129,26 @@ enum TextRenderer {
             CaptionImage(image), forKey: key as NSString, cost: Int(size.width * size.height * 4))
         return image
     }
+    /// The middle of the item's text block, where text keyframes scale and rotate it.
+    static func anchor(_ item: Item, size: CGSize) -> CGPoint {
+        let preset = CaptionPreset(item.textPreset)
+        let style = item["textStyle"]?.object ?? [:]
+        let lines = item.text.components(separatedBy: "\n")
+        let font = fittedFont(
+            style["font"]?.string ?? preset.font, size: fontSize(style["size"]?.double ?? preset.size, canvas: size),
+            lines: lines, maximumWidth: size.width * 0.9)
+        let points = CTFontGetSize(font)
+        let baseline = style["positionY"]?.double ?? preset.baseline
+        let y = size.height * baseline + points * 1.28 * Double(lines.count - 1) / 2 + points * 0.35
+        guard preset.leftAligned else { return CGPoint(x: size.width / 2, y: y) }
+        let attributes = [NSAttributedString.Key(kCTFontAttributeName as String): font]
+        let widest = lines.map {
+            CTLineGetTypographicBounds(
+                CTLineCreateWithAttributedString(NSAttributedString(string: $0, attributes: attributes)), nil, nil, nil)
+        }.max() ?? 0
+        return CGPoint(x: size.width * 0.1 + widest / 2, y: y)
+    }
+
     /// Text size is a fraction of the canvas's short side, so a preset looks the same in portrait, landscape and
     /// square projects (for 1080×1920 and 1920×1080 that side is 1080).
     static func fontSize(_ relativeSize: Double, canvas: CGSize) -> CGFloat {

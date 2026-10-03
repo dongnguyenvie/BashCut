@@ -89,6 +89,7 @@ extension Project {
                         && item.speed > 0,
                     "item.\(item.id): invalid source/speed")
                 try item.validateRenderProperties()
+                try item.validateKeyframes(on: track)
                 if let color = item.fields["color"]?.object {
                     // A LUT is referenced by catalog ID; anything else would be silently ignored by the engine.
                     try ColorGrade.validate(color, path: "item.\(item.id).color", lutIDs: lutIDs)
@@ -353,6 +354,16 @@ struct VideoCuts {
 }
 
 extension Item {
+    fileprivate func validateKeyframes(on track: Track) throws {
+        guard let keyframes = fields["keyframes"] else { return }
+        guard track.kind == TrackKind.video || track.kind == TrackKind.text else {
+            throw ProjectError.invalid("item.\(id).keyframes: only video and text items animate")
+        }
+        do { _ = try ItemMotion(json: keyframes) } catch {
+            throw ProjectError.invalid("item.\(id).\(error.localizedDescription)")
+        }
+    }
+
     fileprivate func validateRenderProperties() throws {
         if let value = fields["in"], value.int == nil {
             throw ProjectError.invalid("item.\(id).in: expected integer source frame")

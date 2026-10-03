@@ -118,20 +118,15 @@ public actor CompositionBuilder {
                     let preferred = asset.preferredTransform
                     let rect = CGRect(origin: .zero, size: asset.naturalSize).applying(preferred)
                     let properties = item["transform"]?.object ?? [:]
-                    let zoom = properties["zoom"]?.double ?? 1
-                    let scale = Self.baseScale(
-                        source: rect.size, canvas: CGSize(width: project.width, height: project.height),
-                        fill: project.fills(item)) * zoom
-                    let pan = properties["pan"]?.double ?? 0
-                    let tilt = properties["tilt"]?.double ?? 0
-                    let transform = preferred.concatenating(
-                        CGAffineTransform(translationX: -rect.minX, y: -rect.minY)
-                    )
-                    .concatenating(CGAffineTransform(scaleX: scale, y: scale))
-                    .concatenating(
-                        CGAffineTransform(
-                            translationX: (Double(project.width) - rect.width * scale) / 2 + pan,
-                            y: (Double(project.height) - rect.height * scale) / 2 + tilt))
+                    let canvas = CGSize(width: project.width, height: project.height)
+                    let placement = ClipPlacement(
+                        orientation: preferred.concatenating(CGAffineTransform(translationX: -rect.minX, y: -rect.minY)),
+                        size: rect.size, baseScale: Self.baseScale(source: rect.size, canvas: canvas, fill: project.fills(item)),
+                        canvas: canvas)
+                    let transform = placement.transform(
+                        zoom: properties["zoom"]?.double ?? 1, pan: properties["pan"]?.double ?? 0,
+                        tilt: properties["tilt"]?.double ?? 0, rotation: properties["rotation"]?.double ?? 0)
+                    let motion = item.motion.map { LayerMotion(motion: $0, item: item, fps: project.fps.value) }
                     let incoming = transitionTo[item.id].map {
                         RenderTransition(
                             kind: $0.kind, startFrame: item.at, duration: $0.duration,
@@ -143,7 +138,8 @@ public actor CompositionBuilder {
                             start: item.at, end: item.end,
                             layer: FrameLayer(
                                 trackID: target.trackID, transform: transform,
-                                properties: item.fields, transition: incoming, lut: lut)))
+                                properties: item.fields, transition: incoming, lut: lut,
+                                motion: motion.map { ($0, placement) })))
                     if let transition = transitionFrom[item.id],
                         let hold = composition.addMutableTrack(
                             withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid)
@@ -168,7 +164,8 @@ public actor CompositionBuilder {
                                     transition: RenderTransition(
                                         kind: transition.kind, startFrame: item.end,
                                         duration: transition.duration, incoming: false,
-                                        fps: project.fps.value), lut: lut)))
+                                        fps: project.fps.value), lut: lut,
+                                    motion: motion.map { ($0, placement) })))
                     }
                 }
                 // Main sound remains attached in the spike until separate linked dialogue editing lands.
@@ -224,8 +221,10 @@ public actor CompositionBuilder {
                     }
                 } else if track.kind == "text" {
                     layers.append(
-                        contentsOf: track.items.filter { $0.at <= start && $0.end > start }.map {
-                            .text($0)
+                        contentsOf: track.items.filter { $0.at <= start && $0.end > start }.map { item in
+                            .text(TextLayer(item: item, motion: item.motion.map {
+                                LayerMotion(motion: $0, item: item, fps: project.fps.value)
+                            }))
                         })
                 }
             }

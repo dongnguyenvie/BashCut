@@ -17,8 +17,11 @@ public final class FrameInstruction: NSObject, AVVideoCompositionInstructionProt
         timeRange = range
         self.layers = layers
         containsTweening = layers.contains {
-            guard case .video(let layer) = $0 else { return false }
-            return layer.transition != nil
+            switch $0 {
+            case .video(let layer): layer.transition != nil || layer.motion != nil
+            case .text(let text): text.motion != nil
+            case .adjustment: false
+            }
         }
         requiredSourceTrackIDs = layers.compactMap {
             guard case .video(let layer) = $0 else { return nil }
@@ -31,7 +34,17 @@ public enum VisualLayer: @unchecked Sendable {
     case video(FrameLayer)
     /// Grades everything composited below it; `properties` holds the item's `color`.
     case adjustment(AdjustmentLayer)
-    case text(Item)
+    case text(TextLayer)
+}
+
+/// A caption or title, and its keyframes when it has any.
+public struct TextLayer: @unchecked Sendable {
+    public let item: Item
+    public let motion: LayerMotion?
+    public init(item: Item, motion: LayerMotion? = nil) {
+        self.item = item
+        self.motion = motion
+    }
 }
 
 public struct AdjustmentLayer: @unchecked Sendable {
@@ -49,16 +62,19 @@ public struct FrameLayer: @unchecked Sendable {
     public let properties: [String: JSONValue]
     public let transition: RenderTransition?
     public let lut: CubeLUT?
+    /// Keyframes and the placement they move; `transform` is then only the first frame's.
+    public let motion: (LayerMotion, ClipPlacement)?
     public init(
         trackID: CMPersistentTrackID, transform: CGAffineTransform,
         properties: [String: JSONValue] = [:], transition: RenderTransition? = nil,
-        lut: CubeLUT? = nil
+        lut: CubeLUT? = nil, motion: (LayerMotion, ClipPlacement)? = nil
     ) {
         self.trackID = trackID
         self.transform = transform
         self.properties = properties
         self.transition = transition
         self.lut = lut
+        self.motion = motion
     }
 }
 
@@ -100,7 +116,9 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
                     request.finish(with: NSError(domain: "BashCutCompositor.MissingFrame", code: 2))
                     return
                 }
-                var sourceImage = CIImage(cvPixelBuffer: source).transformed(by: video.transform)
+                let time = request.compositionTime.seconds
+                var sourceImage = CIImage(cvPixelBuffer: source).transformed(
+                    by: video.motion.map { $0.0.transform($0.1, at: time) } ?? video.transform)
                 var transitionOpacity = 1.0
                 if let transition = video.transition {
                     (sourceImage, transitionOpacity) = applyTransition(
@@ -108,7 +126,8 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
                         time: request.compositionTime.seconds, bounds: bounds)
                 }
                 sourceImage = Self.graded(sourceImage, properties: video.properties, lut: video.lut)
-                let opacity = (video.properties["opacity"]?.double ?? 1) * transitionOpacity
+                let opacity = (video.motion?.0.value("opacity", at: time) ?? video.properties["opacity"]?.double ?? 1)
+                    * transitionOpacity
                 if opacity != 1 {
                     sourceImage = sourceImage.applyingFilter(
                         "CIColorMatrix",
@@ -118,8 +137,9 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
             case .adjustment(let adjustment):
                 image = Self.graded(image, properties: adjustment.properties, lut: adjustment.lut).cropped(to: bounds)
             case .text(let text):
-                if let overlay = TextRenderer.image(text, size: size) {
-                    image = CIImage(cgImage: overlay).composited(over: image)
+                if let overlay = TextRenderer.image(text.item, size: size) {
+                    image = Self.animated(CIImage(cgImage: overlay), text: text, size: size,
+                                          time: request.compositionTime.seconds).composited(over: image)
                 }
             }
         }
@@ -127,6 +147,26 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
             image.cropped(to: bounds), to: output, bounds: bounds,
             colorSpace: CGColorSpaceCreateDeviceRGB())
         request.finish(withComposedVideoFrame: output)
+    }
+
+    /// A text overlay moved by its keyframes: zoom and rotation around the text's own position, pan and tilt, opacity.
+    static func animated(_ overlay: CIImage, text: TextLayer, size: CGSize, time: Double) -> CIImage {
+        guard let motion = text.motion else { return overlay }
+        let anchor = TextRenderer.anchor(text.item, size: size)
+        let zoom = motion.value("zoom", at: time), rotation = motion.value("rotation", at: time)
+        var transform = CGAffineTransform(translationX: -anchor.x, y: -anchor.y)
+            .concatenating(CGAffineTransform(scaleX: zoom, y: zoom))
+            .concatenating(CGAffineTransform(rotationAngle: rotation * .pi / 180))
+            .concatenating(CGAffineTransform(translationX: anchor.x, y: anchor.y))
+        transform = transform.concatenating(CGAffineTransform(
+            translationX: motion.value("pan", at: time), y: motion.value("tilt", at: time)))
+        var image = overlay.transformed(by: transform)
+        let opacity = motion.value("opacity", at: time)
+        if opacity < 1 {
+            image = image.applyingFilter(
+                "CIColorMatrix", parameters: ["inputAVector": CIVector(x: 0, y: 0, z: 0, w: max(0, opacity))])
+        }
+        return image
     }
 
     /// Applies an item's `color` (exposure, saturation, contrast) and its LUT; shared by clips and adjustments.
