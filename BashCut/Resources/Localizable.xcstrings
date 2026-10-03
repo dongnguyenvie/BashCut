@@ -4832,6 +4832,12 @@
         "en": { "stringUnit": { "state": "translated", "value": "Flash out" } },
         "vi": { "stringUnit": { "state": "translated", "value": "Lóe ra" } }
       }
+    },
+    "Clear File": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Clear File" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Bỏ chọn file" } }
+      }
     }
   },
   "version": "1.0"
