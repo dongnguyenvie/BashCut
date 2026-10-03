@@ -5,11 +5,18 @@ public struct CompositionSnapshot: @unchecked Sendable {
     public let composition: AVComposition
     public let videoComposition: AVVideoComposition
     public let audioMix: AVAudioMix
+    /// Identifies the composition's tracks and what each plays where (`CompositionBuilder.structure`). Two
+    /// snapshots with the same value differ only in their video composition and audio mix, so a player can take the
+    /// new ones without loading the composition again. Nil: unknown, never reused.
+    public let structure: Int?
 
-    public init(composition: AVComposition, videoComposition: AVVideoComposition, audioMix: AVAudioMix) {
+    public init(
+        composition: AVComposition, videoComposition: AVVideoComposition, audioMix: AVAudioMix, structure: Int? = nil
+    ) {
         self.composition = composition
         self.videoComposition = videoComposition
         self.audioMix = audioMix
+        self.structure = structure
     }
 }
 
@@ -241,7 +248,41 @@ public actor CompositionBuilder {
         video.instructions = instructions
         let audio = AVMutableAudioMix()
         audio.inputParameters = audioParameters
-        return CompositionSnapshot(composition: composition, videoComposition: video, audioMix: audio)
+        return CompositionSnapshot(
+            composition: composition, videoComposition: video, audioMix: audio, structure: Self.structure(of: composition))
+    }
+
+    /// A hash of every track (ID and media type) and segment (source file and its state on disk, source track, source
+    /// and target time ranges). Edits that keep it (colour, text, opacity, transform, keyframes, volume, fades) change
+    /// only the instructions and the audio mix.
+    static func structure(of composition: AVComposition) -> Int {
+        var hasher = Hasher()
+        var files: [URL: FileSignature] = [:]
+        func add(_ time: CMTime) {
+            hasher.combine(time.value)
+            hasher.combine(time.timescale)
+        }
+        for track in composition.tracks {
+            hasher.combine(track.trackID)
+            hasher.combine(track.mediaType.rawValue)
+            for segment in track.segments {
+                hasher.combine(segment.isEmpty)
+                if let url = segment.sourceURL {
+                    hasher.combine(url)
+                    let signature = files[url] ?? FileSignature(url)
+                    files[url] = signature
+                    hasher.combine(signature.modified)
+                    hasher.combine(signature.size)
+                }
+                hasher.combine(segment.sourceTrackID)
+                let mapping = segment.timeMapping
+                for range in [mapping.source, mapping.target] {
+                    add(range.start)
+                    add(range.duration)
+                }
+            }
+        }
+        return hasher.finalize()
     }
     /// The asset at `url` with its tracks loaded, opened once and reused while the file is unchanged.
     /// A speed ramp as pieces of about two timeline frames, each inserted from its stretch of source and scaled

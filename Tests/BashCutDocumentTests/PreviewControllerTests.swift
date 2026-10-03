@@ -123,7 +123,8 @@ struct PreviewControllerTests {
         let first = try base.applying(.group(label: "Setup", author: .user, ops: [
             .addMedia(media), .insert(track: "v1", item: Item(id: "c", media: "clip", at: 0, duration: 59)),
         ])).project
-        let second = try first.applying(.setProperties(item: "c", patch: ["opacity": .number(0.5)])).project
+        // A timing change: the composition plays different media times, so it needs new players.
+        let second = try first.applying(.trim(item: "c", edge: .end, toFrame: 40, ripple: false)).project
         let preview = PreviewController(engine: AVFoundationRenderEngine(source: OriginalMediaSource()))
         let root = video.deletingLastPathComponent()
         preview.rebuild(first, root: root, workspace: nil)
@@ -140,5 +141,90 @@ struct PreviewControllerTests {
         #expect(preview.snapshot?.composition !== composition)
         #expect(preview.player !== shown && shown.currentItem == nil)
         #expect(preview.player.currentItem?.status == .readyToPlay)
+    }
+
+    @Test("A look-only edit updates the shown players in place")
+    func lookEditInPlace() async throws {
+        let video = try TestFixtures.requireVideo()
+        let media = Media(fields: [
+            "id": .string("clip"), "path": .string(video.lastPathComponent), "fps": FrameRate().json, "frames": .integer(59),
+        ])
+        var caption = Item(id: "t", at: 0, duration: 59)
+        caption["text"] = .string("Xin chào")
+        let first = try Project(name: "Look").applying(.group(label: "Setup", author: .user, ops: [
+            .addMedia(media), .insert(track: "v1", item: Item(id: "c", media: "clip", at: 0, duration: 59)),
+            .insert(track: "t1", item: caption),
+        ])).project
+        let preview = PreviewController(engine: AVFoundationRenderEngine(source: OriginalMediaSource()))
+        let root = video.deletingLastPathComponent()
+        preview.rebuild(first, root: root, workspace: nil)
+        try await waitUntil { preview.isCurrent }
+        let shown = preview.player, item = preview.player.currentItem
+        var edited = first
+        for patch: (String, [String: JSONValue]) in [
+            ("c", ["opacity": .number(0.5)]), ("c", ["color": .object(["saturation": .number(0)])]),
+            ("t", ["text": .string("Tạm biệt")]),
+            ("c", ["keyframes": ItemMotion(keys: ["zoom": [.init(frame: 0, value: 1), .init(frame: 58, value: 1.3)]]).json]),
+        ] {
+            edited = try edited.applying(.setProperties(item: patch.0, patch: patch.1)).project
+            let before = preview.inPlaceUpdates
+            preview.rebuild(edited, root: root, workspace: nil)
+            try await waitUntil { preview.isCurrent }
+            #expect(preview.inPlaceUpdates == before + 1, "\(patch.1.keys)")
+        }
+        #expect(preview.player === shown && preview.player.currentItem === item)
+        #expect(preview.buildCount == 5)
+    }
+
+    @Test("The shown picture follows an in-place update")
+    func inPlacePicture() async throws {
+        let video = try TestFixtures.requireVideo()
+        let media = Media(fields: [
+            "id": .string("clip"), "path": .string(video.lastPathComponent), "fps": FrameRate().json, "frames": .integer(59),
+        ])
+        let first = try Project(name: "Gray").applying(.group(label: "Setup", author: .user, ops: [
+            .addMedia(media), .insert(track: "v1", item: Item(id: "c", media: "clip", at: 0, duration: 59)),
+        ])).project
+        let preview = PreviewController(engine: AVFoundationRenderEngine(source: OriginalMediaSource()))
+        let root = video.deletingLastPathComponent()
+        preview.rebuild(first, root: root, workspace: nil)
+        try await waitUntil { preview.isCurrent }
+        let item = try #require(preview.player.currentItem)
+        let output = AVPlayerItemVideoOutput(pixelBufferAttributes: [
+            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
+        ])
+        item.add(output)
+        preview.seek(20)
+        func spread() async throws -> Int {
+            var buffer: CVPixelBuffer?
+            for _ in 0..<200 {
+                if output.hasNewPixelBuffer(forItemTime: first.fps.time(20)) {
+                    buffer = output.copyPixelBuffer(forItemTime: first.fps.time(20), itemTimeForDisplay: nil)
+                    if buffer != nil { break }
+                }
+                try await Task.sleep(for: .milliseconds(10))
+            }
+            let pixels = try #require(buffer)
+            CVPixelBufferLockBaseAddress(pixels, .readOnly)
+            defer { CVPixelBufferUnlockBaseAddress(pixels, .readOnly) }
+            let base = try #require(CVPixelBufferGetBaseAddress(pixels)).assumingMemoryBound(to: UInt8.self)
+            let row = CVPixelBufferGetBytesPerRow(pixels)
+            var widest = 0
+            for y in stride(from: 0, to: CVPixelBufferGetHeight(pixels), by: 37) {
+                for x in stride(from: 0, to: CVPixelBufferGetWidth(pixels), by: 37) {
+                    let pixel = base + y * row + x * 4
+                    let values = [Int(pixel[0]), Int(pixel[1]), Int(pixel[2])]
+                    widest = max(widest, values.max()! - values.min()!)
+                }
+            }
+            return widest
+        }
+        #expect(try await spread() > 20)  // the generated clip is colourful
+        let gray = try first.applying(.setProperties(item: "c", patch: ["color": .object(["saturation": .number(0)])])).project
+        preview.rebuild(gray, root: root, workspace: nil)
+        try await waitUntil { preview.isCurrent }
+        #expect(preview.inPlaceUpdates == 1)
+        let after = try await spread()
+        #expect(after < 6, "spread \(after)")
     }
 }

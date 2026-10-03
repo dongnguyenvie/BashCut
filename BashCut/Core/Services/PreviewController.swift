@@ -9,7 +9,9 @@ import Observation
 /// and the comparison toggle work against the last project it was given.
 ///
 /// A rebuild prepares the new composition in fresh players (ready and sought to the playhead) and then
-/// swaps them in, so the viewer keeps showing the previous picture instead of going blank on every edit.
+/// swaps them in, so the viewer keeps showing the previous picture instead of going blank on every edit. When the
+/// new composition plays the same media at the same times (a colour, text, transform, keyframe or volume edit), the
+/// shown players only take its video composition and audio mix, which is much quicker than loading it again.
 @MainActor @Observable
 public final class PreviewController {
     public private(set) var player = AVPlayer()
@@ -45,6 +47,8 @@ public final class PreviewController {
     @ObservationIgnored private var rebuildTask: Task<Void, Never>?
     /// Number of compositions built; tests use it to see that a rebuild ran.
     @ObservationIgnored public private(set) var buildCount = 0
+    /// Rebuilds that updated the shown players in place instead of loading new ones.
+    @ObservationIgnored public private(set) var inPlaceUpdates = 0
     /// Exact seeks sent to the program player; tests use it to see that scrubbing coalesces.
     @ObservationIgnored public private(set) var seekCount = 0
     /// Chase-time scrubbing (Apple QA1820): one exact seek in flight, the newest target waits for it.
@@ -106,7 +110,9 @@ public final class PreviewController {
                 self.built = built
                 builtRequest = request
                 buildCount += 1
-                try await show(built, comparison: comparisonBuilt, request: request)
+                if !update(with: built, comparison: comparisonBuilt, request: request) {
+                    try await show(built, comparison: comparisonBuilt, request: request)
+                }
                 onMessage?("")
             } catch is CancellationError {} catch {
                 // A stale picture would hide that the edit cannot be previewed.
@@ -198,6 +204,31 @@ public final class PreviewController {
         pause()
         player.replaceCurrentItem(with: nil)
         comparisonPlayer.replaceCurrentItem(with: nil)
+    }
+
+    /// Gives the shown players the new video composition and audio mix when `built` (and the comparison) has the
+    /// structure of what they play; false when they need new player items.
+    private func update(with built: CompositionSnapshot, comparison: CompositionSnapshot?, request: Int) -> Bool {
+        func same(_ new: CompositionSnapshot?, _ shown: CompositionSnapshot?) -> Bool {
+            guard let new, let shown else { return new == nil && shown == nil }
+            return new.structure != nil && new.structure == shown.structure
+        }
+        guard let shown = snapshot, same(built, shown), same(comparison, comparisonSnapshot),
+            let item = player.currentItem, comparison == nil || comparisonPlayer.currentItem != nil
+        else { return false }
+        item.videoComposition = built.videoComposition
+        item.audioMix = built.audioMix
+        if let comparison, let comparisonItem = comparisonPlayer.currentItem {
+            comparisonItem.videoComposition = comparison.videoComposition
+            comparisonItem.audioMix = comparison.audioMix
+        }
+        snapshot = built
+        comparisonSnapshot = comparison
+        shownRequest = request
+        inPlaceUpdates += 1
+        // A paused player keeps its last frame: seek to the playhead so it renders with the new instructions.
+        seek(playhead)
+        return true
     }
 
     /// Readies `built` in new players at the playhead, then swaps them in for the current ones.
