@@ -371,8 +371,12 @@ example the voice a `voice.synthesize` provider should use), as `options`.
   - BashCut keeps it in the Keychain (service `app.bashcut.plugin-secret`) and shows a password field with
     **Save** and **Clear**.
   - The plugin receives it in `options` like other values.
-  - `plugins options` shows only `{"set": true|false}`, and `plugins option` refuses it ("Set secrets in
-    Settings"), so agents can neither read nor replace a key.
+  - `plugins options` shows only `{"set": true|false}`. For a plugin declaring any secret, **all** options
+    are user-only and stored for this Mac; project `pluginOptions` overrides are ignored. Automated option
+    writes are refused, including non-secret settings such as the endpoint.
+  - Keys are bound to the plugin's `provider` and `baseUrl` option values. Enter a key after selecting the
+    destination. Changing either value selects a separate key; changing `model` does not. Legacy unbound
+    keys are never reused automatically and must be re-entered in Settings.
   - Action parameters cannot be secrets.
 - `file` (API 3) shows **Choose…** with a file panel (through `ModalCenter`, so agents answer it with
   `ui respond --path`); `fileTypes` limits the extensions. Project-scope files inside the project are stored

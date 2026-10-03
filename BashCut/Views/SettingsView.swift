@@ -184,7 +184,7 @@ private struct SettingsPluginsSection: View {
                                     error = ""
                                 } catch { self.error = error.localizedDescription }
                             }))
-                        Text(option.effectiveScope == .project ? "project" : "this Mac")
+                        Text(PluginOptionPolicy.scope(of: option, in: plugin.manifest.options ?? []) == .project ? "project" : "this Mac")
                             .font(.caption2).foregroundStyle(.secondary)
                     }
                 }

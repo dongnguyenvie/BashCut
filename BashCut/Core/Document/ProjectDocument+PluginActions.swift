@@ -114,11 +114,13 @@ extension ProjectDocument {
         let root = fileURL?.deletingLastPathComponent()
         for option in options {
             if option.type == .secret {
-                let secret = plugins.secrets.read(plugin: plugin.id, option: option.id)
+                let secret = plugins.secrets.read(
+                    plugin: plugin.id, option: option.id,
+                    binding: PluginOptionPolicy.endpointBinding(options: options, userValues: user))
                 values[option.id] = revealSecrets ? .string(secret) : .object(["set": .bool(!secret.isEmpty)])
                 continue
             }
-            let stored = option.effectiveScope == .project ? projectValues[option.id] : user[option.id]
+            let stored = PluginOptionPolicy.scope(of: option, in: options) == .project ? projectValues[option.id] : user[option.id]
             var value = stored.flatMap { try? option.check($0) } ?? option.fallback
             // File options in a project are stored relative to it; plugins always get absolute paths.
             if option.type == .file, let path = value.string, !path.isEmpty, !path.hasPrefix("/"), let root {
@@ -130,22 +132,26 @@ extension ProjectDocument {
     }
 
     func setPluginOption(_ plugin: InstalledPlugin, option id: String, value: JSONValue?, author: Author) throws {
-        guard let option = plugin.manifest.options?.first(where: { $0.id == id }) else {
+        let options = plugin.manifest.options ?? []
+        try PluginOptionPolicy.validateEdit(options: options, author: author)
+        guard let option = options.first(where: { $0.id == id }) else {
             throw ProjectError.invalid("Unknown option \(id) for \(plugin.id)")
         }
         if option.type == .secret {
             guard author == .user else { throw ProjectError.invalid("Set secrets in Settings") }
             let text = try value.map(option.check)?.string ?? ""
-            try plugins.secrets.write(text, plugin: plugin.id, option: id)
+            try plugins.secrets.write(
+                text, plugin: plugin.id, option: id,
+                binding: PluginOptionPolicy.endpointBinding(options: options, userValues: plugins.trust.userOptions(plugin.id)))
             return
         }
         var checked = try value.map(option.check)
-        if option.type == .file, option.effectiveScope == .project, let path = checked?.string, path.hasPrefix("/"),
+        if option.type == .file, PluginOptionPolicy.scope(of: option, in: options) == .project, let path = checked?.string, path.hasPrefix("/"),
             let root = fileURL?.deletingLastPathComponent()
         {
             checked = .string(MediaPathResolver.projectPath(for: URL(fileURLWithPath: path), projectRoot: root))
         }
-        switch option.effectiveScope {
+        switch PluginOptionPolicy.scope(of: option, in: options) {
         case .user:
             try plugins.trust.setUserOption(plugin.id, key: id, value: checked)
         case .project:
@@ -362,7 +368,9 @@ extension ProjectDocument {
         handleAuthored("plugins.option") { document, arguments, author in
             let plugin = try document.requirePlugin(arguments.string("plugin"))
             let id = try arguments.string("option")
-            guard let option = plugin.manifest.options?.first(where: { $0.id == id }) else {
+            let options = plugin.manifest.options ?? []
+        try PluginOptionPolicy.validateEdit(options: options, author: author)
+        guard let option = options.first(where: { $0.id == id }) else {
                 throw RPCFailure(-32602, "Unknown option \(id)")
             }
             let value: JSONValue?

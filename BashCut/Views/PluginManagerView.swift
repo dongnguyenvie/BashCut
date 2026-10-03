@@ -238,7 +238,7 @@ private struct PluginRow: View {
                                 try document.setPluginOption(plugin, option: option.id, value: value, author: .user)
                             } catch { model.message = error.localizedDescription }
                         }))
-                    Text(option.effectiveScope == .project ? "project" : "this Mac")
+                    Text(PluginOptionPolicy.scope(of: option, in: plugin.manifest.options ?? []) == .project ? "project" : "this Mac")
                         .font(.caption2).foregroundStyle(.secondary)
                 }
             }

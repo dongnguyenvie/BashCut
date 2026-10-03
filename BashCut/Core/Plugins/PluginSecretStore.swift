@@ -2,7 +2,7 @@ import Foundation
 import Security
 
 /// Values of `secret` plugin options (API keys), kept in the Keychain under service `app.bashcut.plugin-secret`
-/// and account `<plugin id>/<option id>`. They are sent to the plugin with its requests and never shown, listed
+/// and account `<plugin id>/<option id>/endpoint/<binding>` for endpoint-bound keys. They are never shown, listed
 /// or logged. Tests use an in-memory store.
 public final class PluginSecretStore: @unchecked Sendable {
     public static let service = "app.bashcut.plugin-secret"
@@ -12,8 +12,8 @@ public final class PluginSecretStore: @unchecked Sendable {
 
     public init(keychain: Bool = true) { self.keychain = keychain }
 
-    public func read(plugin: String, option: String) -> String {
-        let account = Self.account(plugin, option)
+    public func read(plugin: String, option: String, binding: String? = nil) -> String {
+        let account = Self.account(plugin, option, binding: binding)
         lock.lock()
         defer { lock.unlock() }
         if let cached = memory[account] { return cached }
@@ -29,8 +29,8 @@ public final class PluginSecretStore: @unchecked Sendable {
     }
 
     /// Stores `value`; an empty value deletes the secret.
-    public func write(_ value: String, plugin: String, option: String) throws {
-        let account = Self.account(plugin, option)
+    public func write(_ value: String, plugin: String, option: String, binding: String? = nil) throws {
+        let account = Self.account(plugin, option, binding: binding)
         lock.lock()
         defer { lock.unlock() }
         if keychain {
@@ -51,7 +51,9 @@ public final class PluginSecretStore: @unchecked Sendable {
         memory[account] = value
     }
 
-    private static func account(_ plugin: String, _ option: String) -> String { plugin + "/" + option }
+    private static func account(_ plugin: String, _ option: String, binding: String?) -> String {
+        plugin + "/" + option + (binding.map { "/endpoint/" + $0 } ?? "")
+    }
 
     private static func query(_ account: String) -> [String: Any] {
         [

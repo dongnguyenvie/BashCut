@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+- Bind plugin API keys to provider/endpoint settings. Switching destinations requires a key entered for that
+  destination; legacy unbound keys must be re-entered. Plugins with secrets use user-only settings and ignore
+  project option overrides, including overrides injected through raw timeline operations.
+
 - Restrict chat tools to reviewed editing commands. Revoke chat tokens when agent edits are disabled, and
   check the preference on every host call before issuing or reusing a token.
 
