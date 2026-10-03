@@ -73,14 +73,8 @@ extension ProjectDocument {
         }
         handle("project.get") { document, _, _ in .object(document.project.fields) }
         handle("timeline.get") { document, arguments, _ in
-            if arguments.optionalString("format") == "text" { return .string(document.timelineText()) }
-            let project = document.project
-            return .object([
-                "rev": .integer(project.revision), "format": project["format"] ?? .null,
-                "tracks": project["tracks"] ?? .array([]),
-                "luts": .array(project.colorLUTs.map { .object($0.fields) }),
-                "looks": .array(project.looks.map(\.json)), "styleKits": .array(project.styleKits.map(\.json)),
-            ])
+            arguments.optionalString("format") == "text"
+                ? .string(TimelineSummary.text(document.project)) : TimelineSummary.json(document.project)
         }
         handle("media.list") { document, _, _ in
             .array(document.project.media.map { media in
@@ -206,6 +200,17 @@ extension ProjectDocument {
             document.preview.seek(frame)
             return .bool(true)
         }
+        handle("ui.frame") { document, arguments, _ in
+            let frame = arguments.optionalInt("frame")
+            if let frame, frame >= document.project.duration {
+                throw RPCFailure(-32602, "frame must be within the timeline")
+            }
+            let capture = try await document.captureAgentFrame(at: frame)
+            return .object([
+                "path": .string(capture.url.path), "frame": .integer(capture.frame),
+                "width": .integer(capture.width), "height": .integer(capture.height),
+            ])
+        }
         handle("ui.panel") { document, arguments, _ in
             let name = try arguments.string("panel")
             guard let tab = LibraryTab(panelName: name) else {
@@ -223,21 +228,6 @@ extension ProjectDocument {
     func showLibraryTab(_ tab: LibraryTab) {
         DebugLog.write("ui", "library panel \(ui.libraryTab.rawValue) → \(tab.rawValue)")
         ui.libraryTab = tab
-    }
-
-    func timelineText() -> String {
-        var lines = [
-            "project \(project.name) rev \(project.revision) \(project.width)x\(project.height) \(project.fps.value)fps"
-        ]
-        for track in project.tracks {
-            for item in track.items.sorted(by: { $0.at < $1.at }) {
-                let media = item.mediaID ?? (track.isAdjustment ? "adjustment" : "text")
-                lines.append(
-                    "\(track.role.uppercased()) \(item.id) \(item.at)-\(item.end) media=\(media) in=\(item.sourceIn) \(item.text)"
-                )
-            }
-        }
-        return lines.joined(separator: "\n")
     }
 
     func contextText() -> String {

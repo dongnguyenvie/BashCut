@@ -108,6 +108,7 @@ extension ProjectDocument {
             do { curve = try Self.curve(preset: arguments.optionalString("preset"), points: arguments.optionalString("points")) } catch {
                 throw RPCFailure(-32602, error.localizedDescription)
             }
+            let before = document.project.tracks.flatMap(\.items).first { $0.id == id }?.duration
             let revision = try document.setClipSpeedCurve(
                 curve, item: id, keepDuration: arguments.bool("keepDuration"), author: author,
                 baseRevision: try arguments.int("baseRev"))
@@ -115,6 +116,7 @@ extension ProjectDocument {
             return .object([
                 "rev": .integer(revision), "item": .string(id), "speed": .number(item?.speed ?? 1),
                 "duration": item.map { .integer($0.duration) } ?? .null, "curve": item?.speedCurve?.json ?? .null,
+                "shortened": .bool(Self.shortened(before: before, after: item?.duration, keepDuration: arguments.bool("keepDuration"))),
             ])
         }
         handleAuthored("clip.reverse") { document, arguments, author in

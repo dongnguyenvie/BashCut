@@ -23,10 +23,10 @@ private func actionTools() -> [PluginActionTools.Tool] {
 }
 
 private func result(_ response: MCPBridgeResponse) throws -> CallTool.Result {
-    let structured = try JSONDecoder().decode(Value.self, from: response.data)
-    return CallTool.Result(
+    let structured: Value? = response.isObject ? try JSONDecoder().decode(Value.self, from: response.data) : nil
+    return try CallTool.Result(
         content: [.text(text: response.text, annotations: nil, _meta: nil)],
-        structuredContent: Optional.some(structured), isError: false)
+        structuredContent: structured, isError: false)
 }
 
 private func failure(_ message: String) -> CallTool.Result {

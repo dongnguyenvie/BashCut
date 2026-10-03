@@ -318,6 +318,12 @@ public enum CommandCatalog {
             parameters: [CommandParameter("frame", .integer, "Timeline frame", required: true, minimum: 0,
                                           cli: .positional)]),
         CommandSpec(
+            "ui.frame", .read,
+            "Render the viewer's picture at a timeline frame (the playhead by default) to a PNG, like attaching the "
+                + "viewer frame in Ask; returns its path. Read the file to look at the edit. Keeps the ten newest.",
+            parameters: [CommandParameter("frame", .integer, "Timeline frame; the playhead by default", minimum: 0,
+                                          cli: .positional)]),
+        CommandSpec(
             "ui.panel", .ui, "Open a library panel in the left rail.",
             parameters: [CommandParameter("panel", .string, "Panel", required: true, choices: libraryPanels,
                                           cli: .positional)]),

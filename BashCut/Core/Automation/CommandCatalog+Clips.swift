@@ -7,7 +7,8 @@ extension CommandCatalog {
             "clip.speed", .edit,
             "Change a clip's constant speed like Inspector › Speed. By default the clip keeps its source and its length "
                 + "changes (2× halves it), moving later clips on its layer; with keepDuration it keeps its length and uses "
-                + "more or less source. Linked picture and sound change together; a clip is shortened to fit its source.",
+                + "more or less source. Linked picture and sound change together. A clip is shortened to fit its source even "
+                + "with keepDuration; the result then has shortened: true.",
             parameters: [
                 CommandParameter("item", .string, "Item ID; the selected clip by default", cli: .positional),
                 CommandParameter("speed", .number, "Speed, for example 0.5, 1.5 or 2", required: true,
@@ -23,7 +24,8 @@ extension CommandCatalog {
             "Give a clip a speed ramp (CapCut Curve) like Inspector › Speed › Curve: a preset ("
                 + SpeedCurve.presets.map(\.id).joined(separator: ", ") + ", or none to remove it) or points "
                 + "[[t, speed], …] with t from 0 (clip start) to 1 (clip end). The clip keeps its source and its length "
-                + "follows the average speed unless keepDuration; linked sound follows; one undo step.",
+                + "follows the average speed unless keepDuration (still shortened to fit its source, reported as shortened: "
+                + "true); linked sound follows; one undo step.",
             parameters: [
                 CommandParameter("item", .string, "Item ID; the selected clip by default", cli: .positional),
                 CommandParameter("preset", .string, "Preset name, or none",

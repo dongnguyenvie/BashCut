@@ -225,6 +225,37 @@ import Testing
             let value = try JSONDecoder().decode(JSONValue.self, from: response.data)
             #expect(value.object["revision"] == .integer(7))
             #expect(response.text.contains("revision"))
+            #expect(response.isObject)
+        } catch {
+            await server.stop()
+            throw error
+        }
+        await server.stop()
+    }
+
+    @Test("MCP bridge marks array and text results as not structured")
+    func mcpBridgeNonObjectResults() async throws {
+        let directory = URL(fileURLWithPath: "/tmp/bashcut-mcp-test-" + UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let path = directory.appendingPathComponent("a.sock").path
+        let server = UnixRPCServer()
+        try await server.start(path: path) { request in
+            RPCResponse(
+                id: request.id,
+                result: request.method == "review.run"
+                    ? .array([.object(["id": .string("gap")])]) : .string("project Sample rev 3"))
+        }
+        do {
+            let review = try await Task.detached {
+                try MCPBridgeClient.call(method: "review.run", arguments: Data("{}".utf8), token: nil, path: path)
+            }.value
+            let timeline = try await Task.detached {
+                try MCPBridgeClient.call(method: "timeline.get", arguments: Data("{}".utf8), token: nil, path: path)
+            }.value
+            #expect(!review.isObject)
+            #expect(review.text.contains("gap"))
+            #expect(!timeline.isObject)
+            #expect(timeline.text == "project Sample rev 3")
         } catch {
             await server.stop()
             throw error

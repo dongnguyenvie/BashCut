@@ -5,6 +5,15 @@
 
 ## [Unreleased]
 
+- **`ui frame [frame]`** renders the viewer picture at a timeline frame (the playhead by default) to a PNG and
+  returns its path, without moving the playhead, so agents can look at their edits. It is the same capture as
+  Ask's *attach viewer frame* (which had no command until now).
+- `timeline get` also returns `transitions` and `markers` (sections); the text format adds one `TRANSITION` and
+  one `MARKER` line each. Agents could not see the transitions they had added.
+- Fix: `bashcut-mcp` sent list and text results (`timeline get --format text`, `review run`, `media list`,
+  `ui seek`…) as `structuredContent`, which MCP clients such as Claude Code reject; they are now text only.
+- `clip speed` and `clip speed-curve` report `shortened: true` when a `keepDuration` change still had to shorten
+  the clip because its source ran out.
 - Fix: a plugin's file option (VieNeu's *Clone voice from*) squeezed its buttons to "C" in narrow panels; the file
   name and *Choose… / Clear File* now sit on their own lines.
 - **Speed ramps** (CapCut Curve): Inspector › Speed › Curve and the clip menu offer Montage, Hero time, Bullet

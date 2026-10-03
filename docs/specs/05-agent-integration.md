@@ -63,7 +63,7 @@ arguments.
 |---|---|---|
 | `context get` | read | Open project, selection, playhead |
 | `project get` / `project recents` | read | Welcome screen, Recent projects |
-| `timeline get [--format text\|json]` | read | Looking at the timeline |
+| `timeline get [--format text\|json]` | read | Looking at the timeline, its transitions and section markers |
 | `media list` | read | Library |
 | `review run` | read | Review |
 | `captions export` | read | Text panel, Export SRT |
@@ -73,6 +73,7 @@ arguments.
 | `plugins actions` / `plugins hooks` / `plugins options <plugin>` | read | Plugin actions wherever they appear, Hook Activity, Options… |
 | `doctor run` | read | Doctor sheet |
 | `knowledge get` | read | Skills and project memory sheet |
+| `ui frame [frame]` | read | Ask's attach viewer frame: the viewer picture at a frame as a PNG path |
 | `ui actions` | read | Every toolbar button, menu item and shortcut, with its enabled state |
 | `ui dialog` | read | Every open alert, file panel, sheet and popover |
 | `ui respond <option> [--path]` / `ui open <dialog>` | ui | Answering or opening a dialog |
@@ -216,7 +217,7 @@ trim to 4 s, keep the "so much topping" line
 ```
 
 When the user attaches the viewer frame, its PNG is written to `.bashcut/agent-context` and the absolute path
-is included. The target form also carries the selection's track, media, tag, section, time range and caption
+is included. Agents capture the same PNG themselves with `ui frame [frame]`. The target form also carries the selection's track, media, tag, section, time range and caption
 text.
 
 ### Agent instructions
