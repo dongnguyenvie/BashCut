@@ -39,6 +39,9 @@ public final class PreviewController {
     @ObservationIgnored public var onPlaybackStopped: (@MainActor (Int) -> Void)?
     @ObservationIgnored private var wasPlaying = false
 
+    @ObservationIgnored var awaitReadiness: @MainActor (AVPlayerItem, String) async throws -> Void = { item, message in
+        try await PlayerItemReadiness.wait(item, message: message)
+    }
     private let engine: any RenderEngine
     private let coalescingDelay: @Sendable () async throws -> Void
     @ObservationIgnored private var project = Project(name: "Untitled")
@@ -120,8 +123,9 @@ public final class PreviewController {
                 }
                 onMessage?("")
             } catch is CancellationError {} catch {
-                // A stale picture would hide that the edit cannot be previewed.
-                if request == self.request { clearPlayers() }
+                // Keep the last picture if preparation is slow; stale requests must not overwrite current errors.
+                guard request == self.request else { return }
+                if !(error is PlayerItemReadiness.Timeout) { clearPlayers() }
                 onMessage?(error.localizedDescription)
             }
         }
@@ -248,9 +252,9 @@ public final class PreviewController {
             player.replaceCurrentItem(with: Self.playerItem(comparison))
             stagedComparison = player
         }
-        try await Self.waitUntilReady(item, message: "Preview could not become ready")
+        try await awaitReadiness(item, "Preview could not become ready")
         if let comparisonItem = stagedComparison?.currentItem {
-            try await Self.waitUntilReady(comparisonItem, message: "Comparison preview could not become ready")
+            try await awaitReadiness(comparisonItem, "Comparison preview could not become ready")
         }
         let frame = playhead
         let time = project.fps.time(frame)
@@ -281,14 +285,4 @@ public final class PreviewController {
         return item
     }
 
-    private static func waitUntilReady(_ item: AVPlayerItem, message: String) async throws {
-        // Poll finely: a 100 ms step kept the viewer blank up to 100 ms longer after every edit.
-        for _ in 0..<500 where item.status == .unknown {
-            try await Task.sleep(for: .milliseconds(10))
-        }
-        try Task.checkCancellation()
-        guard item.status == .readyToPlay else {
-            throw item.error ?? ProjectError.invalid(message)
-        }
-    }
 }

@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+- Observe preview readiness instead of polling, cancel obsolete observations promptly, and keep the last
+  picture if a new player takes longer than 30 seconds. Stale build failures no longer replace current status.
+
 - Replace failed or unready preview/comparison player items on rebuild, even when the media structure is
   unchanged. In-place instruction updates now require healthy ready-to-play items on both sides.
 
