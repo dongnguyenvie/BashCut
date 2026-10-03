@@ -77,7 +77,7 @@ public struct AuditEvent: Codable, Sendable {
             else {
                 throw RPCFailure(-32601, "Unknown command: \(request.method)")
             }
-            if spec.mode == .edit || spec.mode == .privileged {
+            if spec.mode != .read {
                 guard author != nil else {
                     throw RPCFailure(-32001, "A live agent session token is required")
                 }

@@ -139,7 +139,7 @@ directory.
 | Mode | Token | Behavior |
 |---|---|---|
 | `read` | Not needed | Reads state; changes nothing |
-| `ui` | Not needed | Changes what the app shows (selection, playhead, panels, dialogs), never the project |
+| `ui` | Required | Controls selection, playback, panels and dialogs; dialog responses can also apply edits |
 | `edit` | Required | Changes the project as one undoable, visible step; edits also need the current `--base-rev` |
 | `privileged` | Required | Waits for the user to approve in the app (see [Exports and approval](#exports-and-approval)) |
 

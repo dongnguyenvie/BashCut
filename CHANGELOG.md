@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+- Require a live automation token for UI commands and chat mutations; after project switches, callers must read
+  the new project before controlling it. Automated chat transcript exports stay inside the open project folder.
+
 - Snapshot Vietnamese captions directly from the compositor before H.264 encoding; test player readiness and
   export metadata/non-black picture separately so encoder noise cannot fail caption layout checks.
 

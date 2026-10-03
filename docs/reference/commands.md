@@ -579,7 +579,7 @@ The chat agents in the agent dock (plugins with the agent.chat capability): each
 
 Send a message to a chat agent like typing it in its tab. Returns at once; poll chat transcript until running is false to read the reply and the commands it ran.
 
-- Mode: ui · Runs: immediately · MCP: `bashcut_chat_send`
+- Mode: edit · Runs: immediately · MCP: `bashcut_chat_send`
 - `text`: string, required. Message
 - `plugin`: string. Chat agent plugin ID; by default the one shown in the dock, else the first
 - `image`: string. PNG or JPEG to attach, such as a ui frame
@@ -602,7 +602,7 @@ The slash commands a chat agent's tab offers: the app's (new, clear, stop, setti
 
 Run a slash command as typed in a chat agent's tab, such as "/compact keep the caption decisions" or "/thinking low"; returns what it showed. /export needs a path here.
 
-- Mode: ui · Runs: immediately · MCP: `bashcut_chat_command`
+- Mode: edit · Runs: immediately · MCP: `bashcut_chat_command`
 - `line`: string, required. The command line, starting with /
 - `plugin`: string. Chat agent plugin ID; by default the one shown in the dock, else the first
 
@@ -610,7 +610,7 @@ Run a slash command as typed in a chat agent's tab, such as "/compact keep the c
 
 Start a new conversation with a chat agent for this project; the old one is forgotten.
 
-- Mode: ui · Runs: immediately · MCP: `bashcut_chat_reset`
+- Mode: edit · Runs: immediately · MCP: `bashcut_chat_reset`
 - `plugin`: string. Chat agent plugin ID; by default the one shown in the dock, else the first
 
 ### `bashcut chat transcript [--plugin <plugin>]`

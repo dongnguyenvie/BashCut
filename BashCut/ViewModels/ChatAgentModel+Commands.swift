@@ -86,7 +86,7 @@ extension ChatAgentModel {
             NSPasteboard.general.setString(reply, forType: .string)
             text = String(localized: "Copied the last reply")
         case (.app, "export"):
-            text = try exportTranscript(to: args)
+            text = try exportTranscript(to: args, author: author)
         case (.skill, _):
             let skill = String(name.dropFirst("skill:".count))
             send("Use the agent-kit skill \(skill): read it with read_skill first, then follow it."
@@ -122,9 +122,11 @@ extension ChatAgentModel {
     }
 
     /// Writes the transcript as Markdown to `path`, or to a file the user picks.
-    private func exportTranscript(to path: String) throws -> String {
+    private func exportTranscript(to path: String, author: Author) throws -> String {
         let url: URL
-        if path.isEmpty {
+        if author != .user {
+            url = try AutomationOutputPath.resolve(path, projectRoot: document.fileURL?.deletingLastPathComponent())
+        } else if path.isEmpty {
             let panel = NSSavePanel()
             panel.nameFieldStringValue = "\(title) \(Date().formatted(date: .numeric, time: .omitted)).md"
                 .replacingOccurrences(of: "/", with: "-")

@@ -42,12 +42,13 @@ import Testing
     func specValidation() async throws {
         let registry = CommandRegistry()
         registry.register("ui.seek") { arguments, _ in .integer(try arguments.int("frame")) }
-        #expect(await registry.handle(RPCRequest(method: "ui.seek", params: ["frame": .integer(12)])).result == .integer(12))
-        #expect(await registry.handle(RPCRequest(method: "ui.seek", params: ["frame": .number(12)])).result == .integer(12))
+        let token = registry.issueToken(author: .codex)
+        #expect(await registry.handle(RPCRequest(method: "ui.seek", params: ["frame": .integer(12)], token: token)).result == .integer(12))
+        #expect(await registry.handle(RPCRequest(method: "ui.seek", params: ["frame": .number(12)], token: token)).result == .integer(12))
         for params: [String: JSONValue] in [
             [:], ["frame": .integer(-1)], ["frame": .string("12")], ["frame": .integer(1), "extra": .bool(true)],
         ] {
-            #expect(await registry.handle(RPCRequest(method: "ui.seek", params: params)).error?.code == -32602)
+            #expect(await registry.handle(RPCRequest(method: "ui.seek", params: params, token: token)).error?.code == -32602)
         }
     }
 
@@ -125,18 +126,18 @@ import Testing
                 .reorder(item: "b", before: "a"), .reorder(item: "a", before: nil),
             ])
     }
-    @Test("Registered read and UI commands need no token; unknown commands fail")
+    @Test("Registered read commands need no token; UI and edits require authentication")
     func modes() async {
         let registry = CommandRegistry()
         for spec in CommandCatalog.specs { registry.register(spec.name) { _, _ in .bool(true) } }
         #expect(registry.unhandledCommands.isEmpty)
         for method in [
             "context.get", "project.get", "timeline.get", "media.list", "review.run", "captions.export", "export.status",
-            "ui.select",
         ] {
             #expect(await registry.handle(RPCRequest(method: method)).result == .bool(true))
         }
-        for method in ["timeline.undo", "timeline.redo", "captions.import", "export.start"] {
+        for method in ["ui.select", "ui.respond", "chat.send", "chat.command", "chat.reset",
+                       "timeline.undo", "timeline.redo", "captions.import", "export.start"] {
             #expect(await registry.handle(RPCRequest(method: method)).error?.code == -32001)
         }
         let token = registry.issueToken(author: .claude)
