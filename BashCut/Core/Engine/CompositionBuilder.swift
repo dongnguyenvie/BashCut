@@ -225,40 +225,34 @@ public actor CompositionBuilder {
         let boundaries = Set(
             [0, project.duration] + allItems.flatMap { [$0.at, $0.end] } + transitionBoundaries
         ).sorted()
-        // Text layers are made once per item (keyframes parsed, words timed), then shared by every segment.
-        var textByTrack: [String: [(item: Item, layer: TextLayer)]] = [:]
-        for track in project.tracks where !track.isHidden && track.kind == "text" {
-            textByTrack[track.id] = track.items.map { item in
-                (item, TextLayer(item: item, motion: item.pictureMotion.map {
-                    LayerMotion(motion: $0, item: item, fps: project.fps.value)
-                }, fps: project.fps.value))
-            }
-        }
-        var instructions: [FrameInstruction] = []
-        for (start, end) in zip(boundaries, boundaries.dropFirst()) {
-            var layers: [VisualLayer] = []
-            for track in project.tracks where !track.isHidden {
-                if track.kind == "video" {
-                    layers.append(
-                        contentsOf: (visualByTrack[track.id] ?? [])
-                            .filter { $0.start <= start && $0.end > start }
-                            .map { .video($0.layer) })
-                } else if track.isAdjustment {
-                    for item in track.items where item.at <= start && item.end > start {
-                        layers.append(.adjustment(AdjustmentLayer(properties: item.fields, lut: try loadLUT(for: item))))
-                    }
-                } else if track.kind == "text" {
-                    layers.append(
-                        contentsOf: (textByTrack[track.id] ?? [])
-                            .filter { $0.item.at <= start && $0.item.end > start }
-                            .map { .text($0.layer) })
+        // Make each layer once, in its original compositing order. Sweep boundaries rather than scanning
+        // every track's items again for each caption-sized segment.
+        var timedLayers: [(start: Int, end: Int, value: VisualLayer)] = []
+        for track in project.tracks where !track.isHidden {
+            if track.kind == "video" {
+                timedLayers += (visualByTrack[track.id] ?? []).map { ($0.start, $0.end, .video($0.layer)) }
+            } else if track.isAdjustment {
+                for item in track.items {
+                    let layer = AdjustmentLayer(properties: item.fields, lut: try loadLUT(for: item))
+                    timedLayers.append((item.at, item.end, .adjustment(layer)))
+                }
+            } else if track.kind == "text" {
+                for item in track.items {
+                    let layer = TextLayer(item: item, motion: item.pictureMotion.map {
+                        LayerMotion(motion: $0, item: item, fps: project.fps.value)
+                    }, fps: project.fps.value)
+                    timedLayers.append((item.at, item.end, .text(layer)))
                 }
             }
+        }
+        var sweep = IntervalSweep(timedLayers)
+        var instructions: [FrameInstruction] = []
+        for (start, end) in zip(boundaries, boundaries.dropFirst()) {
             instructions.append(
                 FrameInstruction(
                     range: CMTimeRange(
                         start: project.fps.time(start), duration: project.fps.time(end - start)),
-                    layers: layers))
+                    layers: sweep.values(at: start)))
         }
         let video = AVMutableVideoComposition()
         video.customVideoCompositorClass = BashCutCompositor.self

@@ -386,3 +386,11 @@ builder, then measures five Debug builds on the same M1 Max. Before (070b6c1): m
 source resolutions across six builds. After per-build media/item dictionaries and loaded-media reuse: median
 23.075 ms and six resolutions. The test asserts one resolution per media per build and verifies that a proxy
 created between builds is selected. These timings measure composition construction, not player readiness.
+
+### Caption interval sweep (2026-10-04)
+
+`swift test --filter CaptionBuildTests` constructs 1,000 sequential three-frame captions, verifies every
+instruction's caption ID and measures three Debug builds on the same M1 Max. Before (b4db9bf): median
+390.820 ms. After sweeping start/end events with an active layer set: 16.692 ms (about 23× faster).
+`IntervalSweepTests` compares overlapping, unsorted, empty, skipped and repeated boundaries with the previous
+half-open interval filtering rule, retaining original layer order. This measures construction, not rendering.

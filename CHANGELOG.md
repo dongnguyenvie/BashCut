@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+- Build frame instructions with an interval sweep that preserves compositing order and visits each layer's
+  start/end once. A generated 1,000-caption Debug timeline improved from 390.82 ms to 16.69 ms median build.
+
 - Index media and timeline items once per composition build, and resolve/load each media once per snapshot.
   Repeated cuts reuse the same source decision, still-image movie and asset metadata; later builds still
   detect new proxies. A 240-cut Debug fixture improved from 41.29 ms to 23.07 ms median rebuild time.
