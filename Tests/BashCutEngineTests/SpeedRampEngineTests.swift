@@ -23,11 +23,21 @@ struct SpeedRampEngineTests {
         ).project
         let item = try #require(project.tracks.flatMap(\.items).first)
         #expect(item.duration == 40 && abs(item.speed - 1.25) < 1e-9)
-        let snapshot = try await CompositionBuilder().build(project, root: TestFixtures.mediaRoot)
+        let builder = CompositionBuilder()
+        let snapshot = try await builder.build(project, root: TestFixtures.mediaRoot)
+        _ = try await builder.build(project, root: TestFixtures.mediaRoot)
+        #expect(await builder.rampPlanBuilds == 1)
         let video = try #require(snapshot.composition.tracks(withMediaType: .video).first)
         let pieces = video.segments.filter { !$0.isEmpty }
-        // 20 pieces; AVFoundation may merge neighbours that have the same rate.
-        #expect(pieces.count >= 10)
+        // Adaptive pieces retain the curve while using fewer than the previous 20 uniform pieces.
+        #expect(pieces.count > 2 && pieces.count < 20)
+        let audio = try #require(snapshot.composition.tracks(withMediaType: .audio).first)
+        let audioPieces = audio.segments.filter { !$0.isEmpty }
+        #expect(audioPieces.count == pieces.count)
+        for (sound, picture) in zip(audioPieces, pieces) {
+            #expect(sound.timeMapping.source == picture.timeMapping.source)
+            #expect(sound.timeMapping.target == picture.timeMapping.target)
+        }
         let end = try #require(pieces.last).timeMapping.target.end
         #expect(abs(end.seconds - FrameRate().time(40).seconds) < 0.001)
         // The source used is the clip's 40 frames at 1.25× on average: 50 source frames.

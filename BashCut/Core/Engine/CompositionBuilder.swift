@@ -27,6 +27,8 @@ public actor CompositionBuilder {
     private let previewAssets: AssetCache
     private let exportAssets: AssetCache
     private var parsedLUTs = LUTCache()
+    private var rampPlans = SpeedRampPlans()
+    public var rampPlanBuilds: Int { rampPlans.builds }
     public var lutLoads: Int { parsedLUTs.loads }
     /// Assets opened from disk across both purpose-specific caches; cache hits do not count.
     public var assetLoads: Int { get async { await previewAssets.loads + exportAssets.loads } }
@@ -79,6 +81,7 @@ public actor CompositionBuilder {
         let mediaByID = Dictionary(uniqueKeysWithValues: project.media.map { ($0.id, $0) })
         let allItems = project.tracks.flatMap(\.items)
         let itemsByID = Dictionary(uniqueKeysWithValues: allItems.map { ($0.id, $0) })
+        rampPlans.retain(Set(itemsByID.keys))
         // One source decision, still conversion and asset signature check per media in this snapshot.
         // Keep this local: a later build must discover newly created proxies or replaced originals.
         var loadedMedia: [String: LoadedAsset] = [:]
@@ -109,14 +112,15 @@ public actor CompositionBuilder {
                     CMTimeRange(start: media.fps.time($0), duration: media.fps.time(1))
                 } ?? normalSourceRange
                 let destination = project.fps.time(item.at)
+                let ramp = rampPlans.plan(for: item, mediaFPS: media.fps, fps: project.fps)
                 if track.kind == "video" {
                     guard let source = asset.video else {
                         throw ProjectError.invalid("No video track in \(media.path)")
                     }
                     let target = try visualLanes.take(
                         layer: track.id, start: item.at, end: item.end, composition: composition)
-                    if freezeFrame == nil, !isStill, item.speedCurve != nil {
-                        try Self.insertRamp(item, media: media, fps: project.fps, from: source, into: target)
+                    if freezeFrame == nil, !isStill, let ramp {
+                        try ramp.insert(from: source, into: target)
                     } else {
                         try target.insertTimeRange(videoSourceRange, of: source, at: destination)
                         target.scaleTimeRange(
@@ -180,8 +184,8 @@ public actor CompositionBuilder {
                     if let source = asset.audio {
                         let lane = try audioLanes.take(for: item, sourceTrack: track.id, composition: composition)
                         let target = lane.track
-                        if item.speedCurve != nil {
-                            try Self.insertRamp(item, media: media, fps: project.fps, from: source, into: target)
+                        if let ramp {
+                            try ramp.insert(from: source, into: target)
                         } else {
                             try target.insertTimeRange(normalSourceRange, of: source, at: destination)
                             target.scaleTimeRange(
@@ -281,34 +285,6 @@ public actor CompositionBuilder {
         }
         return hasher.finalize()
     }
-    /// The asset at `url` with its tracks loaded, opened once and reused while the file is unchanged.
-    /// A speed ramp as pieces of about two timeline frames, each inserted from its stretch of source and scaled
-    /// to its length. Piece boundaries are exact in a fine timescale so the pieces butt with no gap.
-    static func insertRamp(
-        _ item: Item, media: Media, fps: FrameRate, from source: AVAssetTrack, into target: AVMutableCompositionTrack
-    ) throws {
-        guard let curve = item.speedCurve else { return }
-        let scale: CMTimeScale = 600_000
-        func time(_ seconds: Double) -> CMTime { CMTime(value: CMTimeValue((seconds * Double(scale)).rounded()), timescale: scale) }
-        let pieces = max(2, min(240, item.duration / 2))
-        let clipSeconds = Double(item.duration) / fps.value
-        let sourceStart = Double(item.sourceIn) / media.fps.value
-        let start = Double(item.at) / fps.value
-        for piece in 0..<pieces {
-            let from = Double(piece) / Double(pieces), to = Double(piece + 1) / Double(pieces)
-            let sourceFrom = time(sourceStart + curve.integral(to: from) * clipSeconds)
-            let sourceTo = time(sourceStart + curve.integral(to: to) * clipSeconds)
-            let destinationFrom = time(start + from * clipSeconds)
-            let destinationTo = time(start + to * clipSeconds)
-            let sourceRange = CMTimeRange(start: sourceFrom, end: sourceTo)
-            guard sourceRange.duration > .zero else { continue }
-            try target.insertTimeRange(sourceRange, of: source, at: destinationFrom)
-            target.scaleTimeRange(
-                CMTimeRange(start: destinationFrom, duration: sourceRange.duration),
-                toDuration: destinationTo - destinationFrom)
-        }
-    }
-
     private func applyAudioMixParameters(
         item: Item, sourceTrack: Track, parameters: AVMutableAudioMixInputParameters, fps: FrameRate,
         envelope: (speech: [Range<Int>], mixGainDb: Double)

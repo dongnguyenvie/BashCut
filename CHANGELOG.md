@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+- Plan speed ramps adaptively per linear-speed span, using one piece for flat spans and bounding source-time
+  error to a quarter source frame. Cache plans per item across edits and share them between picture and audio.
+  This reduces audio rate-change boundaries; dedicated rendered-audio quality checks remain pending.
+
 - Key caption raster caches only on text and drawing styles, hashed once per text layer. Moving, trimming,
   duplicating or animating captions now reuses their images; canvas size and spoken-word variants stay distinct.
 
