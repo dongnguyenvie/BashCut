@@ -7,16 +7,30 @@ import Observation
 /// The editor viewer: the program player, the color-comparison player, the composition they play and
 /// the playhead. The document hands it each new project revision through `rebuild`; seeking, playback
 /// and the comparison toggle work against the last project it was given.
+///
+/// A rebuild prepares the new composition in fresh players (ready and sought to the playhead) and then
+/// swaps them in, so the viewer keeps showing the previous picture instead of going blank on every edit.
 @MainActor @Observable
 public final class PreviewController {
-    public let player = AVPlayer()
-    public let comparisonPlayer = AVPlayer()
+    public private(set) var player = AVPlayer()
+    public private(set) var comparisonPlayer = PreviewController.mutedPlayer()
     /// Current frame of the program viewer.
     public private(set) var playhead = 0
     /// Whether the viewer shows the ungraded original beside the graded program.
     public private(set) var showColorComparison = false
-    /// The composition the program player is playing, for frame grabs.
+    /// The composition the program player is playing, for frame grabs. After an edit it is the previous
+    /// composition until the new one is shown; `isCurrent` tells them apart.
     @ObservationIgnored public private(set) var snapshot: CompositionSnapshot?
+    /// Whether `snapshot` shows the last project given to `rebuild`.
+    public var isCurrent: Bool { snapshot != nil && shownRequest == request }
+    /// The composition of the last project given to `rebuild` as soon as it is built, before the players are
+    /// ready to show it; frame grabs (`ui frame`) need no player.
+    public var currentBuild: CompositionSnapshot? { builtRequest == request ? built : nil }
+    @ObservationIgnored private var built: CompositionSnapshot?
+    @ObservationIgnored private var builtRequest = -1
+    /// Bumped by every `rebuild` and `reset`; `shownRequest` is the one on screen.
+    @ObservationIgnored private var request = 0
+    @ObservationIgnored private var shownRequest = -1
     /// Status-bar text: an error, or "" once a preview is ready.
     @ObservationIgnored public var onMessage: (@MainActor (String) -> Void)?
     /// Called with the playhead when playback stops (pause or the end of the timeline).
@@ -41,7 +55,12 @@ public final class PreviewController {
 
     public init(engine: any RenderEngine) {
         self.engine = engine
-        comparisonPlayer.isMuted = true
+    }
+
+    private static func mutedPlayer() -> AVPlayer {
+        let player = AVPlayer()
+        player.isMuted = true
+        return player
     }
 
     public var isPlaying: Bool { player.rate != 0 }
@@ -50,6 +69,7 @@ public final class PreviewController {
     public func reset(_ project: Project) {
         rebuildTask?.cancel()
         rebuildTask = nil
+        request += 1
         clearPlayers()
         showColorComparison = false
         self.project = project
@@ -63,10 +83,16 @@ public final class PreviewController {
         self.root = root
         self.workspace = workspace
         rebuildTask?.cancel()
-        clearPlayers()
+        request += 1
+        // The previous picture stays up while the new composition builds; only playback stops.
+        pause()
         if playhead > project.duration { playhead = project.duration }
-        guard let root, project.duration > 0 else { return }
+        guard let root, project.duration > 0 else {
+            clearPlayers()
+            return
+        }
         let compare = showColorComparison
+        let request = request
         rebuildTask = Task { [engine] in
             do {
                 try await Task.sleep(for: .milliseconds(50))
@@ -76,12 +102,17 @@ public final class PreviewController {
                         project.withoutColorEffects(), root: root, workspace: workspace, purpose: .preview)
                     : nil
                 try Task.checkCancellation()
-                guard project.revision == self.project.revision, compare == showColorComparison else { return }
+                guard request == self.request, compare == showColorComparison else { return }
+                self.built = built
+                builtRequest = request
                 buildCount += 1
-                try await show(built, comparison: comparisonBuilt)
-                seek(playhead)
+                try await show(built, comparison: comparisonBuilt, request: request)
                 onMessage?("")
-            } catch is CancellationError {} catch { onMessage?(error.localizedDescription) }
+            } catch is CancellationError {} catch {
+                // A stale picture would hide that the edit cannot be previewed.
+                if request == self.request { clearPlayers() }
+                onMessage?(error.localizedDescription)
+            }
         }
     }
 
@@ -163,25 +194,47 @@ public final class PreviewController {
         chaseTarget = nil
         snapshot = nil
         comparisonSnapshot = nil
+        built = nil
         pause()
         player.replaceCurrentItem(with: nil)
         comparisonPlayer.replaceCurrentItem(with: nil)
     }
 
-    private func show(_ built: CompositionSnapshot, comparison: CompositionSnapshot?) async throws {
-        snapshot = built
+    /// Readies `built` in new players at the playhead, then swaps them in for the current ones.
+    private func show(_ built: CompositionSnapshot, comparison: CompositionSnapshot?, request: Int) async throws {
+        let staged = AVPlayer()
         let item = Self.playerItem(built)
-        player.replaceCurrentItem(with: item)
-        var comparisonItem: AVPlayerItem?
+        staged.replaceCurrentItem(with: item)
+        var stagedComparison: AVPlayer?
         if let comparison {
-            comparisonSnapshot = comparison
-            comparisonItem = Self.playerItem(comparison)
-            comparisonPlayer.replaceCurrentItem(with: comparisonItem)
+            let player = Self.mutedPlayer()
+            player.replaceCurrentItem(with: Self.playerItem(comparison))
+            stagedComparison = player
         }
         try await Self.waitUntilReady(item, message: "Preview could not become ready")
-        if let comparisonItem {
+        if let comparisonItem = stagedComparison?.currentItem {
             try await Self.waitUntilReady(comparisonItem, message: "Comparison preview could not become ready")
         }
+        let frame = playhead
+        let time = project.fps.time(frame)
+        await staged.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero)
+        if let stagedComparison {
+            await stagedComparison.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero)
+        }
+        try Task.checkCancellation()
+        guard request == self.request else { return }
+        player.replaceCurrentItem(with: nil)
+        comparisonPlayer.replaceCurrentItem(with: nil)
+        player = staged
+        comparisonPlayer = stagedComparison ?? Self.mutedPlayer()
+        snapshot = built
+        comparisonSnapshot = comparison
+        shownRequest = request
+        seekGeneration += 1
+        seekInFlight = false
+        chaseTarget = nil
+        // The playhead may have moved while the new players were getting ready.
+        if playhead != frame { seek(playhead) }
     }
 
     private static func playerItem(_ snapshot: CompositionSnapshot) -> AVPlayerItem {

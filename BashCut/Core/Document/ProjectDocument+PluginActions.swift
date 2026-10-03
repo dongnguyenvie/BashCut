@@ -81,7 +81,7 @@ extension ProjectDocument {
                 "duration": .integer(project.duration), "contentLanguage": .string(contentLanguage),
             ]),
             "playhead": .integer(playhead),
-            "pluginData": project.fields["pluginData"]?.object[plugin.id] ?? .null,
+            "pluginData": project["pluginData"]?.object[plugin.id] ?? .null,
         ]
         if let item = selected {
             var fields = item.fields
@@ -108,7 +108,7 @@ extension ProjectDocument {
     func pluginOptionValues(_ plugin: InstalledPlugin) -> [String: JSONValue] {
         let options = plugin.manifest.options ?? []
         let user = plugins.trust.userOptions(plugin.id)
-        let projectValues = project.fields["pluginOptions"]?.object[plugin.id]?.object ?? [:]
+        let projectValues = project["pluginOptions"]?.object[plugin.id]?.object ?? [:]
         var values: [String: JSONValue] = [:]
         let root = fileURL?.deletingLastPathComponent()
         for option in options {
@@ -137,7 +137,7 @@ extension ProjectDocument {
         case .user:
             try plugins.trust.setUserOption(plugin.id, key: id, value: checked)
         case .project:
-            var all = project.fields["pluginOptions"]?.object ?? [:]
+            var all = project["pluginOptions"]?.object ?? [:]
             var mine = all[plugin.id]?.object ?? [:]
             mine[id] = checked
             all[plugin.id] = mine.isEmpty ? nil : .object(mine)
@@ -253,7 +253,7 @@ extension ProjectDocument {
         if proposal.hasEdits {
             var operations = proposal.operations
             if let data = proposal.pluginData {
-                var all = project.fields["pluginData"]?.object ?? [:]
+                var all = project["pluginData"]?.object ?? [:]
                 all[plugin.id] = data == .null ? nil : data
                 operations.append(.setProjectProperties(patch: ["pluginData": .object(all)]))
             }

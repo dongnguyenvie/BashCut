@@ -5,6 +5,18 @@
 
 ## [Unreleased]
 
+- **Edits stay fast on long timelines.** Tracks and items are stored typed instead of being rebuilt from JSON on
+  every change, validation indexes transitions and media once instead of sorting a layer per transition, and a
+  project that already passed validation is not validated again. At 1,000 items an edit takes 3 ms instead of
+  24 ms. `swift run -c release bashcut-core-bench` in `Packages/BashCutCore` measures it.
+- **Smaller, faster history journal.** Undo steps are saved as differences from the next state instead of full
+  project snapshots: at 1,000 items a 200-step journal is 0.1 MB instead of 13 MB, saves in 35 ms instead of 1 s and
+  opens in 70 ms instead of 5.5 s. Old journals still open.
+- **The viewer no longer goes blank after an edit.** The new composition is prepared in its own player and swapped in
+  once it shows the frame at the playhead; until then the previous picture stays. `ui frame` grabs from the new
+  composition as soon as it is built (edit → frame about 210 ms).
+- MCP `tools/list` answers in 0.1 ms instead of 35 ms: the command catalog is encoded once.
+
 - **Faster agent round trips.** `bashcut-mcp` reads and writes stdio without the SDK's 10 ms polling and returns results
   as compact text only (the SDK re-decoded structured results slowly; compact JSON is also about a third fewer
   tokens): MCP calls dropped from 12–45 ms to 2–14 ms. Preview readiness and `ui frame` poll every 10 ms instead of

@@ -55,12 +55,15 @@ extension Project {
         try next.perform(operation)
         try enforceLocks(after: next, operation: operation)
         next.removeInvalidTransitions()
-        try next.validate()
         guard max(revision, next.revision) < Int.max - 1 else {
             throw ProjectError.invalid("Revision counter exhausted")
         }
         next.revision = max(revision, next.revision) + 1
-        return EditResult(project: next, inverse: .restore(self))
+        try next.validate()
+        next.markValid()
+        var before = self
+        before.markValid()
+        return EditResult(project: next, inverse: .restore(before))
     }
 }
 
@@ -229,17 +232,18 @@ extension Project {
         guard capability.range(
             of: "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$", options: .regularExpression) != nil
         else { throw ProjectError.invalid("Invalid provider capability") }
-        var values = fields["providers"]?.object ?? [:]
+        var values = self["providers"]?.object ?? [:]
         values[capability] = provider.map(JSONValue.string)
-        fields["providers"] = .object(values)
+        self["providers"] = .object(values)
     }
 
     private mutating func setBeatGrid(
         media: String, bpm: Double, frames: [Int], provenance: [String: JSONValue]?
     ) throws {
+        let end = duration
         guard self.media.contains(where: { $0.id == media }), bpm.isFinite, (20...400).contains(bpm),
             !frames.isEmpty, frames.count <= 100_000,
-            frames.allSatisfy({ (0...duration).contains($0) }),
+            frames.allSatisfy({ (0...end).contains($0) }),
             frames == Array(Set(frames)).sorted()
         else { throw ProjectError.invalid("Invalid beat grid") }
         var value: [String: JSONValue] = [
@@ -247,7 +251,7 @@ extension Project {
             "frames": .array(frames.map(JSONValue.integer)),
         ]
         if let provenance { value["generatedBy"] = .object(provenance) }
-        fields["beatGrid"] = .object(value)
+        self["beatGrid"] = .object(value)
     }
 
     private mutating func upsertSection(id: String, label: String, frame: Int) throws {
@@ -304,10 +308,6 @@ extension Project {
         transitions = values
     }
 
-    fileprivate mutating func removeInvalidTransitions() {
-        transitions = transitions.filter(transitionIsValid)
-    }
-
     private mutating func addTrack(_ track: Track, at index: Int) throws {
         guard !track.id.isEmpty, !tracks.contains(where: { $0.id == track.id }),
             (0...tracks.count).contains(index)
@@ -346,7 +346,7 @@ extension Project {
         guard protected.isDisjoint(with: patch.keys) else {
             throw ProjectError.invalid("Track identity, kind and items cannot be patched")
         }
-        tracks[index].fields.merge(patch) { _, new in new }
+        for (key, value) in patch { tracks[index][key] = value }
     }
 
     private mutating func setProjectProperties(_ patch: [String: JSONValue]) throws {
@@ -354,7 +354,7 @@ extension Project {
         guard protected.isDisjoint(with: patch.keys) else {
             throw ProjectError.invalid("Project identity, format, media and tracks cannot be patched")
         }
-        fields.merge(patch) { _, new in new }
+        for (key, value) in patch { self[key] = value }
     }
 
     private mutating func insertItem(track: String, item: Item) throws {

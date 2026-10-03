@@ -15,11 +15,14 @@ extension ProjectDocument {
     func captureAgentFrame() async throws -> URL { try await captureAgentFrame(at: nil).url }
 
     func captureAgentFrame(at requested: Int?) async throws -> AgentFrame {
-        // Right after an edit the preview is rebuilt (its snapshot is nil meanwhile); wait for it, up to 5 seconds.
-        for _ in 0..<500 where preview.snapshot == nil && project.duration > 0 && fileURL != nil {
+        // Right after an edit the preview still shows the previous composition; wait for the new one to be built
+        // (not shown: the grab needs no player), up to 5 seconds.
+        for _ in 0..<500 where preview.currentBuild == nil && project.duration > 0 && fileURL != nil {
             try await Task.sleep(for: .milliseconds(10))
         }
-        guard let root = fileURL?.deletingLastPathComponent(), let snapshot = preview.snapshot, project.duration > 0 else {
+        guard let root = fileURL?.deletingLastPathComponent(), let snapshot = preview.currentBuild,
+            project.duration > 0
+        else {
             throw ProjectError.invalid("The viewer has no frame to attach")
         }
         let frame = min(requested ?? playhead, project.duration - 1)

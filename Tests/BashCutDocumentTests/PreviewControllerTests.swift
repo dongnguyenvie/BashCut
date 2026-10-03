@@ -112,4 +112,33 @@ struct PreviewControllerTests {
         try await waitUntil { value.fps.frame(preview.player.currentTime()) == 40 }
         #expect(preview.seekCount - before <= 3)
     }
+
+    @Test("An edit keeps the previous picture until the new composition is ready")
+    func rebuildKeepsPicture() async throws {
+        let video = try TestFixtures.requireVideo()
+        let media = Media(fields: [
+            "id": .string("clip"), "path": .string(video.lastPathComponent), "fps": FrameRate().json, "frames": .integer(59),
+        ])
+        let base = Project(name: "Swap")
+        let first = try base.applying(.group(label: "Setup", author: .user, ops: [
+            .addMedia(media), .insert(track: "v1", item: Item(id: "c", media: "clip", at: 0, duration: 59)),
+        ])).project
+        let second = try first.applying(.setProperties(item: "c", patch: ["opacity": .number(0.5)])).project
+        let preview = PreviewController(engine: AVFoundationRenderEngine(source: OriginalMediaSource()))
+        let root = video.deletingLastPathComponent()
+        preview.rebuild(first, root: root, workspace: nil)
+        try await waitUntil { preview.isCurrent }
+        let shown = preview.player
+        let composition = try #require(preview.snapshot?.composition)
+
+        preview.rebuild(second, root: root, workspace: nil)
+        #expect(!preview.isCurrent && preview.currentBuild == nil)
+        #expect(preview.snapshot?.composition === composition)
+        #expect(preview.player === shown && shown.currentItem != nil)
+        try await waitUntil { preview.isCurrent }
+        #expect(preview.currentBuild?.composition === preview.snapshot?.composition)
+        #expect(preview.snapshot?.composition !== composition)
+        #expect(preview.player !== shown && shown.currentItem == nil)
+        #expect(preview.player.currentItem?.status == .readyToPlay)
+    }
 }

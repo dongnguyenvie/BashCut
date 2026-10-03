@@ -61,14 +61,38 @@ extension Item {
             guard let value = fields[group] else { continue }
             guard case .object = value else { throw ProjectError.invalid("item.\(id).\(group): expected an object") }
         }
-        for property in ItemProperty.all {
-            let container = property.group.map { fields[$0]?.object ?? [:] } ?? fields
-            guard let value = container[property.key] else { continue }
-            guard let expected = property.rule.mismatch(value) else { continue }
-            let path = "item.\(id)." + (property.group.map { $0 + "." } ?? "") + property.key
-            throw ProjectError.invalid("\(path): expected \(expected)")
+        // Walks the item's own fields (a handful) rather than every declared property; the first
+        // mismatch in `ItemProperty.all` order is reported, as before.
+        var first: (index: Int, expected: String)?
+        func check(_ values: [String: JSONValue], group: String?) {
+            for (key, value) in values {
+                guard let index = ItemProperty.index[ItemProperty.Key(group: group, key: key)],
+                    first.map({ index < $0.index }) ?? true,
+                    let expected = ItemProperty.all[index].rule.mismatch(value)
+                else { continue }
+                first = (index, expected)
+            }
         }
+        check(fields, group: nil)
+        for group in ItemProperty.groups {
+            if case .object(let values) = fields[group] { check(values, group: group) }
+        }
+        guard let first else { return }
+        let property = ItemProperty.all[first.index]
+        let path = "item.\(id)." + (property.group.map { $0 + "." } ?? "") + property.key
+        throw ProjectError.invalid("\(path): expected \(first.expected)")
     }
+}
+
+extension ItemProperty {
+    struct Key: Hashable {
+        let group: String?
+        let key: String
+    }
+
+    /// Position of each property in `all`.
+    static let index = Dictionary(
+        all.enumerated().map { (Key(group: $1.group, key: $1.key), $0) }, uniquingKeysWith: { first, _ in first })
 }
 
 extension ItemProperty.Rule {

@@ -11,7 +11,7 @@ private let capabilityForMethod = [
 ]
 
 extension ProjectDocument {
-    var contentLanguage: String { project.fields["contentLanguage"]?.string ?? "vi" }
+    var contentLanguage: String { project["contentLanguage"]?.string ?? "vi" }
 
     // MARK: Shared actions for native panels and automation
 

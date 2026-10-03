@@ -22,6 +22,8 @@ let package = Package(
         .target(name: "BashCutInterchange", dependencies: ["BashCutProject"]),
         // Tests: one target per module; shared project fixtures live in BashCutProjectFixtures.
         .target(name: "BashCutProjectFixtures", dependencies: ["BashCutProject"], path: "Tests/BashCutProjectFixtures"),
+        // `swift run -c release bashcut-core-bench`: core edit, validation and history cost at scale.
+        .executableTarget(name: "bashcut-core-bench", dependencies: ["BashCutProject"], path: "Benchmarks/CoreBench"),
         .testTarget(name: "BashCutProjectTests", dependencies: ["BashCutProject", "BashCutProjectFixtures"]),
         .testTarget(name: "BashCutPluginTests", dependencies: ["BashCutPlugin", "BashCutProject"]),
         .testTarget(name: "BashCutImportTests", dependencies: ["BashCutImport", "BashCutProject"]),

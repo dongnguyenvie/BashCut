@@ -59,7 +59,7 @@ extension Project {
         let role = source.role == TrackRole.main ? TrackRole.overlay : source.role
         var track = Track(id: newTrackID(kind: source.kind), kind: source.kind, role: role)
         for (key, value) in source.fields where !["id", "items", "name", "magnetic", "role"].contains(key) {
-            track.fields[key] = value
+            track[key] = value
         }
         track.name = "\(role.capitalized) \(tracks.filter { $0.role == role }.count + 1)"
         return track
@@ -113,8 +113,8 @@ extension Project {
         var sawMain = false
         for index in tracks.indices where tracks[index].role == TrackRole.main {
             if sawMain || tracks[index].kind != "video" {
-                tracks[index].fields["role"] = .string(TrackRole.overlay)
-                tracks[index].fields["magnetic"] = .bool(false)
+                tracks[index]["role"] = .string(TrackRole.overlay)
+                tracks[index]["magnetic"] = .bool(false)
             } else {
                 sawMain = true
             }
