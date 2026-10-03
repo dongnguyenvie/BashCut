@@ -75,6 +75,7 @@ enum ToolList {
 
 @main enum BashCutMCP {
     static func main() async throws {
+        defer { DebugLog.flush() }
         let server = Server(
             name: "bashcut-mcp", version: "0.1.0",
             capabilities: .init(tools: .init()))

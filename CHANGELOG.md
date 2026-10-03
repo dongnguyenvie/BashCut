@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+- Keep debug-log handles open and serialize append/rotation across processes with a stable flock lock file.
+  Writers detect another process's rotation before appending. MCP flushes on shutdown; Release logging is off
+  unless explicitly enabled. `BASHCUT_DEBUG_LOG_PATH` permits isolated diagnostics and process-level tests.
+
 - Redact sensitive command arguments and omit RPC results/error payloads from persistent diagnostics. CLI
   logging no longer records raw argv; chat, plugin options, operation payloads and arbitrary action parameters
   stay out of logs. Unified-log content is private, and log/rotation files use owner-only permissions.

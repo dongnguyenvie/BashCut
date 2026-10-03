@@ -410,7 +410,10 @@ Sensitive command parameters are marked in `CommandParameter` and replaced with 
 fields are redacted too. Chat text, option values, arbitrary plugin parameters and operation payloads are not
 persisted. RPC results and error messages are omitted because they may echo secrets. The CLI logs the parsed
 command name, never raw argv. Log files are created with `0600`, existing active files are restricted on write,
-and unified-log messages use private visibility. Open uses `O_NOFOLLOW` and append mode.
+and unified-log messages use private visibility. Open uses `O_NOFOLLOW` and append mode. Handles are retained;
+a stable `.lock` file protects append and rotation across processes, and writers reopen when the pathname's
+inode changes. Release builds disable logging by default; use `BASHCUT_DEBUG_LOG=1` to enable it explicitly,
+or `BASHCUT_DEBUG_LOG=0` to disable it in Debug. `BASHCUT_DEBUG_LOG_PATH` overrides the file destination.
 
 ```sh
 tail -f ~/Library/Logs/BashCut/debug.log
