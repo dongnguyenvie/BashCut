@@ -25,7 +25,10 @@ A project file with another name (for example a test fixture) gets its own cache
 - **Autosave** runs every 30 seconds and when the app loses focus. On open, the autosave is offered only if its
   baseline equals the current disk bytes, so a stale recovery cannot overwrite an external edit.
 - **History** is restored on open only when the journal's project equals the saved project; otherwise it is
-  ignored. The journal is a single checkpoint today, not a compact append-only log.
+  ignored. The journal is a single checkpoint, not an append-only log. Each undo and redo step is stored as a
+  delta against the next newer state: changed project fields, and for each changed layer its fields plus runs of
+  unchanged items (`[start, count]`) and the changed items in full. Journals written with full `restore`
+  snapshots still load.
 
 ## Timing and IDs
 

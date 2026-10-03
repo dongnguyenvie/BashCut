@@ -106,11 +106,11 @@ public struct StyleKit: Sendable, Equatable, Identifiable {
 extension Project {
     /// Built-in looks, then the project's own.
     public var looks: [ColorLook] { ColorLook.builtIn + customLooks }
-    public var customLooks: [ColorLook] { (fields["looks"]?.array ?? []).map { ColorLook(fields: $0.object) } }
+    public var customLooks: [ColorLook] { (self["looks"]?.array ?? []).map { ColorLook(fields: $0.object) } }
     /// Built-in style kits, then the project's own.
     public var styleKits: [StyleKit] { StyleKit.builtIn + customStyleKits }
     public var customStyleKits: [StyleKit] {
-        (fields["styleKits"]?.array ?? []).map { StyleKit(fields: $0.object) }
+        (self["styleKits"]?.array ?? []).map { StyleKit(fields: $0.object) }
     }
 
     public func look(_ id: String) -> ColorLook? { looks.first { $0.id == id } }
@@ -122,7 +122,7 @@ extension Project {
             throw ProjectError.invalid("\(look.id) is a built-in look; choose another ID")
         }
         let entry = JSONValue.object(["id": .string(look.id), "title": .string(look.title), "color": .object(look.color)])
-        return .setProjectProperties(patch: ["looks": .array(replacing(look.id, in: fields["looks"], with: entry))])
+        return .setProjectProperties(patch: ["looks": .array(replacing(look.id, in: self["looks"], with: entry))])
     }
 
     /// Deletes a custom look; refused while a custom style kit uses it.
@@ -131,7 +131,7 @@ extension Project {
         if let kit = customStyleKits.first(where: { $0.lookID == id }) {
             throw ProjectError.invalid("Style kit \(kit.id) uses look \(id); delete or change the kit first")
         }
-        return .setProjectProperties(patch: ["looks": .array(replacing(id, in: fields["looks"], with: nil))])
+        return .setProjectProperties(patch: ["looks": .array(replacing(id, in: self["looks"], with: nil))])
     }
 
     /// Saves (adds or replaces) a custom style kit. Built-in IDs are reserved.
@@ -144,14 +144,14 @@ extension Project {
             "captionPreset": .string(kit.captionPreset),
         ])
         return .setProjectProperties(
-            patch: ["styleKits": .array(replacing(kit.id, in: fields["styleKits"], with: entry))])
+            patch: ["styleKits": .array(replacing(kit.id, in: self["styleKits"], with: entry))])
     }
 
     public func deletingStyleKit(_ id: String) throws -> EditOperation {
         guard customStyleKits.contains(where: { $0.id == id }) else {
             throw ProjectError.invalid("Unknown custom style kit: \(id)")
         }
-        return .setProjectProperties(patch: ["styleKits": .array(replacing(id, in: fields["styleKits"], with: nil))])
+        return .setProjectProperties(patch: ["styleKits": .array(replacing(id, in: self["styleKits"], with: nil))])
     }
 
     /// The catalog with the entry `id` replaced in place, appended, or (with nil) removed; other entries keep
@@ -194,7 +194,7 @@ extension Project {
 
     /// The objects in a catalog array, at most 1 000.
     private func catalogEntries(_ key: String) throws -> [[String: JSONValue]] {
-        guard let value = fields[key] else { return [] }
+        guard let value = self[key] else { return [] }
         guard case .array(let values) = value, values.count <= 1_000 else {
             throw ProjectError.invalid("\(key): expected an array of at most 1000 entries")
         }

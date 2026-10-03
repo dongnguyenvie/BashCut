@@ -5,21 +5,27 @@ import MCP
 /// stdio transport for `bashcut-mcp` without polling. The SDK's `StdioTransport` puts stdin and stdout in
 /// non-blocking mode and sleeps 10 ms whenever no data is ready, which added about 10 ms to every request and
 /// 30–40 ms to large results. Here a dedicated thread blocks on `read(2)` and hands complete lines to the server at
-/// once; writes block until the client has taken the bytes.
+/// once; writes block until the client has taken the bytes. `intercept` may answer a line itself (the reply is
+/// written directly and the server never sees the request).
 actor BlockingStdioTransport: Transport {
     nonisolated let logger = Logger(label: "app.bashcut.mcp.stdio")
     private let messages: AsyncThrowingStream<Data, Swift.Error>
     private let continuation: AsyncThrowingStream<Data, Swift.Error>.Continuation
+    private let intercept: (@Sendable (Data) -> Data?)?
     private var started = false
+    /// Replies from `intercept` and from the server come from different threads; one line at a time.
+    private static let writeLock = NSLock()
 
-    init() {
+    init(intercept: (@Sendable (Data) -> Data?)? = nil) {
         (messages, continuation) = AsyncThrowingStream.makeStream()
+        self.intercept = intercept
     }
 
     func connect() async throws {
         guard !started else { return }
         started = true
         let continuation = self.continuation
+        let intercept = self.intercept
         let reader = Thread {
             var pending = Data()
             var buffer = [UInt8](repeating: 0, count: 64 * 1024)
@@ -32,7 +38,13 @@ actor BlockingStdioTransport: Transport {
                 }
                 if count == 0 { break }
                 pending.append(contentsOf: buffer[..<count])
-                for line in Self.takeLines(&pending) { continuation.yield(line) }
+                for line in Self.takeLines(&pending) {
+                    if let reply = intercept?(line) {
+                        try? Self.writeLine(reply)
+                    } else {
+                        continuation.yield(line)
+                    }
+                }
             }
             continuation.finish()
         }
@@ -45,8 +57,14 @@ actor BlockingStdioTransport: Transport {
     }
 
     func send(_ data: Data) async throws {
+        try Self.writeLine(data)
+    }
+
+    private static func writeLine(_ data: Data) throws {
         var message = data
         message.append(UInt8(ascii: "\n"))
+        writeLock.lock()
+        defer { writeLock.unlock() }
         try message.withUnsafeBytes { bytes in
             guard let base = bytes.baseAddress else { return }
             var offset = 0

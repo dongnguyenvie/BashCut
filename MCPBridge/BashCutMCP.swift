@@ -33,6 +33,46 @@ private func failure(_ message: String) -> CallTool.Result {
     .init(content: [.text(text: message, annotations: nil, _meta: nil)], isError: true)
 }
 
+/// `tools/list` answered before the SDK sees it. The SDK encoded the 35 KB tool list through its `Value` tree on
+/// every call (about 35 ms); here the catalog is encoded once and only installed plugin actions are asked for
+/// each time. The SDK handler below stays for the capability and as the fallback.
+enum ToolList {
+    static let catalog: Data = encode(CommandCatalog.specs.map { tool($0.mcpToolName, $0.summary, $0.inputSchema) })
+
+    private static func tool(_ name: String, _ description: String, _ schema: JSONValue) -> JSONValue {
+        .object(["name": .string(name), "description": .string(description), "inputSchema": schema])
+    }
+
+    private static func encode(_ tools: [JSONValue]) -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
+        return (try? encoder.encode(tools)) ?? Data("[]".utf8)
+    }
+
+    /// The JSON-RPC response when `line` is a `tools/list` request, else nil.
+    static func response(to line: Data) -> Data? {
+        guard line.range(of: Data("\"tools/list\"".utf8)) != nil,
+            let request = try? JSONSerialization.jsonObject(with: line) as? [String: Any],
+            request["method"] as? String == "tools/list", let id = request["id"],
+            let idJSON = try? JSONSerialization.data(withJSONObject: id, options: .fragmentsAllowed)
+        else { return nil }
+        var tools = catalog
+        let plugins = actionTools().map { tool($0.name, $0.description, $0.inputSchema) }
+        if !plugins.isEmpty {
+            // Splices `[catalog…]` and `[plugins…]` into one array.
+            tools.removeLast()
+            tools.append(UInt8(ascii: ","))
+            tools.append(encode(plugins).dropFirst())
+        }
+        var response = Data(#"{"jsonrpc":"2.0","id":"#.utf8)
+        response.append(idJSON)
+        response.append(Data(#","result":{"tools":"#.utf8))
+        response.append(tools)
+        response.append(Data("}}".utf8))
+        return response
+    }
+}
+
 @main enum BashCutMCP {
     static func main() async throws {
         let server = Server(
@@ -68,7 +108,8 @@ private func failure(_ message: String) -> CallTool.Result {
                 return failure(error.localizedDescription)
             }
         }
-        let transport = BlockingStdioTransport()
+        Task.detached { _ = ToolList.catalog }
+        let transport = BlockingStdioTransport(intercept: ToolList.response(to:))
         try await server.start(transport: transport)
         await server.waitUntilCompleted()
     }

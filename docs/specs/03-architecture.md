@@ -151,7 +151,10 @@ public enum Author: String, Codable, Sendable { case user, claude, codex, extern
 How it behaves:
 
 - **`applying` is a pure function** in the package. It validates the project before and after the edit and
-  returns the new `Project` with its inverse (a `restore` snapshot).
+  returns the new `Project` with its inverse (a `restore` snapshot). A project remembers that it passed
+  validation until it changes, so validating an unchanged project again (before the next edit, in the preview
+  builder, on save) is free. Tracks and items are stored typed inside `Project`, so an edit changes one item in
+  place; `fields` builds the whole JSON object and is meant for encoding, not for reading one key.
 - **It fails with a reason** such as an unknown item, a trim past the end of the source or an overlap on a track.
 - **Each successful edit increments `rev`** once, including a whole `group`.
 - **Agent requests carry a `baseRev`.** If it does not match the current `rev`, the request is rejected with

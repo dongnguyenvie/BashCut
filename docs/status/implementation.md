@@ -235,25 +235,44 @@ results through Codable at about 1 ms per KB (now compact text only, also about 
 readiness and `ui frame` polled every 100 ms (now 10 ms); the debug log JSON-encoded whole results on the main actor
 before truncating them (now a bounded writer).
 
-Core edit cost on synthetic projects (release, `Project.applying`): one `setProperties` 0.9 / 4 / 8 ms at 100 / 500 /
-1,000 items; ripple delete 1.1 / 7.3 / 20 ms; a group of 50 property changes 1.1 / 4.8 / 9.5 ms. Encoding a full
-200-step history (autosave every 30 s while dirty, off the main actor) takes 0.17 / 0.55 / 1.0 s and 2 / 7 / 13 MB.
+Core edit cost on synthetic projects: `swift run -c release bashcut-core-bench` in `Packages/BashCutCore` (20
+media; 60% of the items on the main layer with a dissolve at every tenth cut, 20% captions, 20% music). p50 at
+100 / 500 / 1,000 items, before → after the core-scaling fixes:
 
-Known follow-ups, by expected impact on large projects:
-- Item mutations go through computed `tracks` / `items` arrays, so one edit rebuilds whole arrays and `shift` is
-  O(items²) per ripple; keep one id→index map per apply.
-- `validate()` runs before and after every apply and again in `CompositionBuilder`; it has O(items × media) and
-  O(transitions × items log items) parts.
-- The history journal stores 200 full snapshots; store inverse operations or cap it by bytes.
-- The preview clears the player on every edit (the viewer goes blank until the rebuild) and rebuilds the whole
-  composition; keep the old item until the new one is ready.
-- `tools/list` cost is the SDK's Codable round trip of the schemas.
+| Measure | Before | After |
+|---|---|---|
+| One `setProperties` edit | 0.97 / 8.0 / 24 ms | 0.6 / 1.5 / 3.1 ms |
+| Ripple delete | 1.0 / 9.6 / 30 ms | 0.5 / 1.5 / 3.2 ms |
+| Undo | 1.4 / 11 / 34 ms | 0.3 / 1.5 / 3.0 ms |
+| `validate()` of a changed project | 0.5 / 3.2 / 9.2 ms | 0.4 / 1.3 / 2.6 ms |
+| 200-step history journal | 1.9 / 6.9 / 13 MB | 0.02 / 0.1 / 0.1 MB |
+| Journal encode / decode | 0.14 / 0.52 / 0.97 s, 0.77 / 2.9 / 5.5 s | 5 / 21 / 35 ms, 14 / 48 / 66 ms |
+| MCP `tools/list` (bridge alone) | 35 ms | 0.1 ms |
+
+What changed:
+- `Project` keeps `tracks` (and each `Track` its `items`) as typed stored arrays. Before, every item mutation
+  rebuilt the layer's and the project's arrays from JSON, so one ripple was O(items²). `fields` is now computed
+  (whole JSON for encoding); single keys are read through the subscript.
+- Validation built a sorted copy of a video layer for every transition (80% of an edit at 1,000 items); `VideoCuts`
+  indexes the cuts once. Media lookups use a dictionary; item properties are checked by walking the item's own keys.
+- A project remembers that it passed `validate()` until it changes, so `applying` validates once per edit, and the
+  preview builder and saves skip it.
+- The history journal stores each step as a `ProjectDelta` against the next newer state (runs of unchanged items
+  are `[start, count]`). Old full-snapshot journals still load.
+- The preview builds the new composition in a fresh `AVPlayer`, waits until it is ready at the playhead and swaps
+  it in; the viewer keeps the previous picture instead of going blank. `PreviewController.isCurrent` tells `ui frame`
+  when the new one is up.
+- `bashcut-mcp` answers `tools/list` itself from the catalog encoded once; the SDK encoded the 35 KB list through
+  its `Value` tree on every call.
+
+Still open: the preview rebuilds the whole composition on every edit (an incremental composition would need
+engine work), and the remaining per-edit cost is one full `validate()` (about 2.6 µs per item).
 
 ## Verification
 
 ### Automated tests
 
-The latest full runs pass 188 tests: 101 in the app modules (`Tests/`) and 87 in `Packages/BashCutCore`. The
+The latest full runs pass 287 tests: 136 in the app modules (`Tests/`) and 151 in `Packages/BashCutCore`. The
 Swift 6 build and strict SwiftLint pass.
 
 - **Core:** inverses, revisions and atomic failure; ripple and source timing; linked A/V, magnetic reorder and

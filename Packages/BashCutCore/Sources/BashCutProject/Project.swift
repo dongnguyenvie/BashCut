@@ -124,28 +124,65 @@ public struct Media: JSONObject, Identifiable {
 }
 
 public struct Track: JSONObject, Identifiable {
-    public var fields: [String: JSONValue]
-    public init(fields: [String: JSONValue]) { self.fields = fields }
+    /// Every field except a valid `items` array, which is kept typed so item edits mutate in place
+    /// instead of re-encoding the whole track.
+    private(set) var storage: [String: JSONValue]
+    private(set) var hasItems: Bool
+    public var items: [Item] { didSet { hasItems = true } }
+    init(storage: [String: JSONValue], hasItems: Bool, items: [Item]) {
+        self.storage = storage
+        self.hasItems = hasItems
+        self.items = items
+    }
+    public init(fields: [String: JSONValue]) {
+        var fields = fields
+        if case .array(let values) = fields["items"] {
+            fields["items"] = nil
+            items = values.map { Item(fields: $0.object) }
+            hasItems = true
+        } else {
+            items = []
+            hasItems = false
+        }
+        storage = fields
+    }
+    /// The track as JSON. Building it encodes every item; read single fields through the subscript.
+    public var fields: [String: JSONValue] {
+        get {
+            var fields = storage
+            if hasItems { fields["items"] = .array(items.map { .object($0.fields) }) }
+            return fields
+        }
+        set { self = Track(fields: newValue) }
+    }
+    public subscript(key: String) -> JSONValue? {
+        get { key == "items" ? fields[key] : storage[key] }
+        set {
+            if key == "items" {
+                var fields = fields
+                fields[key] = newValue
+                self = Track(fields: fields)
+            } else {
+                storage[key] = newValue
+            }
+        }
+    }
     public init(id: String, kind: String, role: String, magnetic: Bool = false) {
-        fields = [
+        self.init(fields: [
             "id": .string(id), "kind": .string(kind), "role": .string(role), "name": .string(role.capitalized),
             "magnetic": .bool(magnetic), "items": .array([]),
-        ]
+        ])
     }
-    public var id: String { fields["id"]?.string ?? "" }
-    public var kind: String { fields["kind"]?.string ?? "" }
-    public var role: String { fields["role"]?.string ?? "" }
+    public var id: String { storage["id"]?.string ?? "" }
+    public var kind: String { storage["kind"]?.string ?? "" }
+    public var role: String { storage["role"]?.string ?? "" }
     public var magnetic: Bool {
-        guard case .bool(let value) = fields["magnetic"] else { return false }
+        guard case .bool(let value) = storage["magnetic"] else { return false }
         return value
     }
     public var name: String {
-        get { fields["name"]?.string ?? "" }
-        set { fields["name"] = .string(newValue) }
-    }
-    public var items: [Item] {
-        get { fields["items"]?.array.map { Item(fields: $0.object) } ?? [] }
-        set { fields["items"] = .array(newValue.map { .object($0.fields) }) }
+        get { storage["name"]?.string ?? "" }
+        set { storage["name"] = .string(newValue) }
     }
 }
 
@@ -202,10 +239,64 @@ public struct ColorLUT: JSONObject, Identifiable {
 public struct Project: JSONObject {
     /// The only schema so far. A breaking change bumps it and adds a migration in `decode`.
     public static let schema = "bashcut.project/1"
-    public var fields: [String: JSONValue]
-    public init(fields: [String: JSONValue]) { self.fields = fields }
+    /// Every field except a valid `tracks` array, which is kept typed (down to the items) so an edit
+    /// mutates one item in place instead of re-encoding the timeline.
+    private(set) var storage: [String: JSONValue] { didSet { knownValid = false } }
+    private(set) var hasTracks: Bool
+    public var tracks: [Track] {
+        didSet {
+            hasTracks = true
+            knownValid = false
+        }
+    }
+    /// Set once this exact value passed `validate()`; any change clears it, so validating an unchanged
+    /// project again (before an edit, when building the preview, when saving) costs nothing.
+    private var knownValid = false
+    init(storage: [String: JSONValue], hasTracks: Bool, tracks: [Track]) {
+        self.storage = storage
+        self.hasTracks = hasTracks
+        self.tracks = tracks
+    }
+    public init(fields: [String: JSONValue]) {
+        var fields = fields
+        if case .array(let values) = fields["tracks"] {
+            fields["tracks"] = nil
+            tracks = values.map { Track(fields: $0.object) }
+            hasTracks = true
+        } else {
+            tracks = []
+            hasTracks = false
+        }
+        storage = fields
+    }
+    /// The project as JSON. Building it encodes the whole timeline; read single fields through the subscript.
+    public var fields: [String: JSONValue] {
+        get {
+            var fields = storage
+            if hasTracks { fields["tracks"] = .array(tracks.map { .object($0.fields) }) }
+            return fields
+        }
+        set { self = Project(fields: newValue) }
+    }
+    public static func == (lhs: Project, rhs: Project) -> Bool {
+        lhs.hasTracks == rhs.hasTracks && lhs.tracks == rhs.tracks && lhs.storage == rhs.storage
+    }
+    var isKnownValid: Bool { knownValid }
+    mutating func markValid() { knownValid = true }
+    public subscript(key: String) -> JSONValue? {
+        get { key == "tracks" ? fields[key] : storage[key] }
+        set {
+            if key == "tracks" {
+                var fields = fields
+                fields[key] = newValue
+                self = Project(fields: fields)
+            } else {
+                storage[key] = newValue
+            }
+        }
+    }
     public init(name: String, fps: FrameRate = FrameRate(), contentLanguage: String = "vi") {
-        fields = [
+        self.init(fields: [
             "schema": .string(Self.schema), "id": .string(UUID().uuidString),
             "name": .string(name), "rev": .integer(0),
             "contentLanguage": .string(contentLanguage), "media": .array([]),
@@ -215,12 +306,13 @@ public struct Project: JSONObject {
             ]),
             "transitions": .array([]), "markers": .array([]), "targets": .object([:]),
             "audio": .object(["targetLUFS": .integer(-14), "normalizeEnabled": .bool(true)]),
-        ]
+        ])
         var music = Track(id: "a3", kind: "audio", role: "music")
         music["duckingEnabled"] = .bool(true)
         music["duckUnderSpeechDb"] = .integer(-14)
         music["duckAttackFrames"] = .integer(3)
         music["duckReleaseFrames"] = .integer(8)
+        hasTracks = true  // `didSet` does not run inside an initializer
         tracks = [
             Track(id: "v1", kind: "video", role: "main", magnetic: true),
             Track(id: "v2", kind: "video", role: "overlay"),
@@ -231,33 +323,29 @@ public struct Project: JSONObject {
             Track(id: "a4", kind: "audio", role: "sfx"),
         ]
     }
-    public var name: String { fields["name"]?.string ?? "" }
+    public var name: String { storage["name"]?.string ?? "" }
     public var revision: Int {
-        get { fields["rev"]?.int ?? -1 }
-        set { fields["rev"] = .integer(newValue) }
+        get { storage["rev"]?.int ?? -1 }
+        set { storage["rev"] = .integer(newValue) }
     }
-    public var fps: FrameRate { FrameRate(json: fields["format"]?.object["fps"]) }
-    public var width: Int { fields["format"]?.object["width"]?.int ?? 0 }
-    public var height: Int { fields["format"]?.object["height"]?.int ?? 0 }
-    public var tracks: [Track] {
-        get { fields["tracks"]?.array.map { Track(fields: $0.object) } ?? [] }
-        set { fields["tracks"] = .array(newValue.map { .object($0.fields) }) }
-    }
+    public var fps: FrameRate { FrameRate(json: storage["format"]?.object["fps"]) }
+    public var width: Int { storage["format"]?.object["width"]?.int ?? 0 }
+    public var height: Int { storage["format"]?.object["height"]?.int ?? 0 }
     public var media: [Media] {
-        get { fields["media"]?.array.map { Media(fields: $0.object) } ?? [] }
-        set { fields["media"] = .array(newValue.map { .object($0.fields) }) }
+        get { storage["media"]?.array.map { Media(fields: $0.object) } ?? [] }
+        set { storage["media"] = .array(newValue.map { .object($0.fields) }) }
     }
     public var markers: [TimelineMarker] {
-        get { fields["markers"]?.array.map { TimelineMarker(fields: $0.object) } ?? [] }
-        set { fields["markers"] = .array(newValue.map { .object($0.fields) }) }
+        get { storage["markers"]?.array.map { TimelineMarker(fields: $0.object) } ?? [] }
+        set { storage["markers"] = .array(newValue.map { .object($0.fields) }) }
     }
     public var transitions: [TimelineTransition] {
-        get { fields["transitions"]?.array.map { TimelineTransition(fields: $0.object) } ?? [] }
-        set { fields["transitions"] = .array(newValue.map { .object($0.fields) }) }
+        get { storage["transitions"]?.array.map { TimelineTransition(fields: $0.object) } ?? [] }
+        set { storage["transitions"] = .array(newValue.map { .object($0.fields) }) }
     }
     public var colorLUTs: [ColorLUT] {
-        get { fields["luts"]?.array.map { ColorLUT(fields: $0.object) } ?? [] }
-        set { fields["luts"] = .array(newValue.map { .object($0.fields) }) }
+        get { storage["luts"]?.array.map { ColorLUT(fields: $0.object) } ?? [] }
+        set { storage["luts"] = .array(newValue.map { .object($0.fields) }) }
     }
     public var sectionMarkers: [TimelineMarker] {
         markers.filter { $0.kind == "section" }.sorted { lhs, rhs in
@@ -266,14 +354,14 @@ public struct Project: JSONObject {
     }
     public var duration: Int { tracks.flatMap(\.items).map(\.end).max() ?? 0 }
     public func preferredProvider(for capability: String) -> String? {
-        fields["providers"]?.object[capability]?.string
+        storage["providers"]?.object[capability]?.string
     }
     public var beatFrames: [Int] {
-        fields["beatGrid"]?.object["frames"]?.array.compactMap(\.int) ?? []
+        storage["beatGrid"]?.object["frames"]?.array.compactMap(\.int) ?? []
     }
-    public var beatBPM: Double? { fields["beatGrid"]?.object["bpm"]?.double }
-    public var targetLUFS: Double { fields["audio"]?.object["targetLUFS"]?.double ?? -14 }
-    public var mixGainDb: Double { fields["audio"]?.object["mixGainDb"]?.double ?? 0 }
+    public var beatBPM: Double? { storage["beatGrid"]?.object["bpm"]?.double }
+    public var targetLUFS: Double { storage["audio"]?.object["targetLUFS"]?.double ?? -14 }
+    public var mixGainDb: Double { storage["audio"]?.object["mixGainDb"]?.double ?? 0 }
     public func data() throws -> Data {
         try validate()
         let encoder = JSONEncoder()
@@ -285,6 +373,7 @@ public struct Project: JSONObject {
         try ProjectMigration.upgrade(&project)
         project = project.normalizingLayers()
         try project.validate()
+        project.markValid()
         return project
     }
 }
