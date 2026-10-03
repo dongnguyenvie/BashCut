@@ -225,7 +225,7 @@ import Testing
             let value = try JSONDecoder().decode(JSONValue.self, from: response.data)
             #expect(value.object["revision"] == .integer(7))
             #expect(response.text.contains("revision"))
-            #expect(response.isObject)
+            #expect(!response.text.contains("\n"), "compact JSON")
         } catch {
             await server.stop()
             throw error
@@ -233,7 +233,7 @@ import Testing
         await server.stop()
     }
 
-    @Test("MCP bridge marks array and text results as not structured")
+    @Test("MCP bridge returns text results as they are and other results as compact JSON")
     func mcpBridgeNonObjectResults() async throws {
         let directory = URL(fileURLWithPath: "/tmp/bashcut-mcp-test-" + UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -252,9 +252,7 @@ import Testing
             let timeline = try await Task.detached {
                 try MCPBridgeClient.call(method: "timeline.get", arguments: Data("{}".utf8), token: nil, path: path)
             }.value
-            #expect(!review.isObject)
-            #expect(review.text.contains("gap"))
-            #expect(!timeline.isObject)
+            #expect(review.text == #"[{"id":"gap"}]"#)
             #expect(timeline.text == "project Sample rev 3")
         } catch {
             await server.stop()

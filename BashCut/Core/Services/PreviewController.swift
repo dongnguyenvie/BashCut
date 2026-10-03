@@ -192,8 +192,9 @@ public final class PreviewController {
     }
 
     private static func waitUntilReady(_ item: AVPlayerItem, message: String) async throws {
-        for _ in 0..<50 where item.status == .unknown {
-            try await Task.sleep(for: .milliseconds(100))
+        // Poll finely: a 100 ms step kept the viewer blank up to 100 ms longer after every edit.
+        for _ in 0..<500 where item.status == .unknown {
+            try await Task.sleep(for: .milliseconds(10))
         }
         try Task.checkCancellation()
         guard item.status == .readyToPlay else {

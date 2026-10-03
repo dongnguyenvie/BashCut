@@ -35,3 +35,14 @@ struct TimelineSummaryTests {
         #expect(text.contains("MARKER section-hook section at=0 Hook"))
     }
 }
+
+struct LogSummaryTests {
+    @Test("The debug-log summary is compact JSON and stops at the limit for large results")
+    func boundedSummary() {
+        #expect(CommandRegistry.summary(["b": .integer(1), "a": .string("x\"y")]) == #"{"a":"x\"y","b":1}"#)
+        let big = JSONValue.array((0..<100_000).map { .object(["id": .string("item-\($0)")]) })
+        let text = CommandRegistry.summary(big)
+        #expect(text.count <= 401)
+        #expect(text.hasSuffix("…"))
+    }
+}
