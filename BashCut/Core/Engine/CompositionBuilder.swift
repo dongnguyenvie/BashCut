@@ -57,7 +57,7 @@ public actor CompositionBuilder {
         await assets.resize(for: Set(project.tracks.flatMap(\.items).compactMap(\.mediaID)).count)
         let composition = AVMutableComposition()
         var visualByTrack: [String: [PlacedVisual]] = [:]
-        var visualLanes: [String: [(end: Int, target: AVMutableCompositionTrack)]] = [:]
+        var visualLanes = VideoCompositionLanes()
         var audioLanes = AudioCompositionLanes()
         let speechRanges = AudioGainPlanner.speechRanges(in: project)
         var lutCache: [String: CubeLUT] = [:]
@@ -113,21 +113,8 @@ public actor CompositionBuilder {
                     guard let source = asset.video else {
                         throw ProjectError.invalid("No video track in \(media.path)")
                     }
-                    var lanes = visualLanes[track.id] ?? []
-                    let laneIndex = lanes.firstIndex(where: { $0.end <= item.at })
-                    let target: AVMutableCompositionTrack
-                    if let laneIndex {
-                        target = lanes[laneIndex].target
-                        lanes[laneIndex].end = item.end
-                    } else {
-                        guard let created = composition.addMutableTrack(
-                            withMediaType: .video,
-                            preferredTrackID: kCMPersistentTrackID_Invalid)
-                        else { throw ProjectError.invalid("Could not allocate video layer") }
-                        target = created
-                        lanes.append((end: item.end, target: created))
-                    }
-                    visualLanes[track.id] = lanes
+                    let target = try visualLanes.take(
+                        layer: track.id, start: item.at, end: item.end, composition: composition)
                     if freezeFrame == nil, !isStill, item.speedCurve != nil {
                         try Self.insertRamp(item, media: media, fps: project.fps, from: source, into: target)
                     } else {
@@ -161,10 +148,9 @@ public actor CompositionBuilder {
                                 trackID: target.trackID, transform: transform,
                                 properties: item.fields, transition: incoming, lut: lut,
                                 motion: motion.map { ($0, placement) })))
-                    if let transition = transitionFrom[item.id],
-                        let hold = composition.addMutableTrack(
-                            withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid)
-                    {
+                    if let transition = transitionFrom[item.id] {
+                        let hold = try visualLanes.take(
+                            layer: track.id, start: item.end, end: item.end + transition.duration, composition: composition)
                         let consumed = max(
                             1, Int((Double(item.duration) / project.fps.value * media.fps.value
                                 * item.speed).rounded(.down)))

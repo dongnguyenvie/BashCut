@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+- Share video lanes between clips and non-overlapping transition holds, keeping sequential transitions
+  on two video tracks per project layer instead of allocating a new track for each transition.
+
 - Size independent preview/export asset LRUs to the active media count, retaining large projects across edits
   without exports evicting preview proxies. An 80-media Debug fixture opens 80 instead of 320 assets over four
   builds; median warm build time drops from 69.897 ms to 27.544 ms. Smaller projects shrink the cache again.
