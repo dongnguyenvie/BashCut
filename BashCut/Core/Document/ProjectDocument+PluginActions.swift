@@ -104,14 +104,20 @@ extension ProjectDocument {
         return .object(context)
     }
 
-    /// Option values for a plugin: project values over user values over defaults.
-    func pluginOptionValues(_ plugin: InstalledPlugin) -> [String: JSONValue] {
+    /// Option values for a plugin: project values over user values over defaults. Secrets are only included when
+    /// `revealSecrets` is set (requests to the plugin); otherwise each shows as `{"set": true|false}`.
+    func pluginOptionValues(_ plugin: InstalledPlugin, revealSecrets: Bool = false) -> [String: JSONValue] {
         let options = plugin.manifest.options ?? []
         let user = plugins.trust.userOptions(plugin.id)
         let projectValues = project["pluginOptions"]?.object[plugin.id]?.object ?? [:]
         var values: [String: JSONValue] = [:]
         let root = fileURL?.deletingLastPathComponent()
         for option in options {
+            if option.type == .secret {
+                let secret = plugins.secrets.read(plugin: plugin.id, option: option.id)
+                values[option.id] = revealSecrets ? .string(secret) : .object(["set": .bool(!secret.isEmpty)])
+                continue
+            }
             let stored = option.effectiveScope == .project ? projectValues[option.id] : user[option.id]
             var value = stored.flatMap { try? option.check($0) } ?? option.fallback
             // File options in a project are stored relative to it; plugins always get absolute paths.
@@ -126,6 +132,12 @@ extension ProjectDocument {
     func setPluginOption(_ plugin: InstalledPlugin, option id: String, value: JSONValue?, author: Author) throws {
         guard let option = plugin.manifest.options?.first(where: { $0.id == id }) else {
             throw ProjectError.invalid("Unknown option \(id) for \(plugin.id)")
+        }
+        if option.type == .secret {
+            guard author == .user else { throw ProjectError.invalid("Set secrets in Settings") }
+            let text = try value.map(option.check)?.string ?? ""
+            try plugins.secrets.write(text, plugin: plugin.id, option: id)
+            return
         }
         var checked = try value.map(option.check)
         if option.type == .file, option.effectiveScope == .project, let path = checked?.string, path.hasPrefix("/"),
@@ -208,7 +220,7 @@ extension ProjectDocument {
         do { values = try action.params.resolve(params) } catch { throw ProjectError.invalid(error.localizedDescription) }
         let plugin = action.plugin
         let adapter = PluginActionCapability(
-            action: id, params: values, options: pluginOptionValues(plugin),
+            action: id, params: values, options: pluginOptionValues(plugin, revealSecrets: true),
             context: pluginContext(plugin: plugin, parts: action.spec.context ?? [], mediaID: mediaID, author: author),
             projectRoot: root, outputRoot: Self.pluginOutputRoot(root, plugin: plugin))
         let session = sessionID

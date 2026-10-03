@@ -1,6 +1,66 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Saved": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Saved" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đã lưu" } }
+      }
+    },
+    "Not set": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Not set" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Chưa đặt" } }
+      }
+    },
+    "Ask the agent to edit: it reads the timeline, makes undoable changes and checks the picture.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Ask the agent to edit: it reads the timeline, makes undoable changes and checks the picture." } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Nhờ agent chỉnh sửa: agent đọc timeline, sửa có thể hoàn tác và kiểm tra hình." } }
+      }
+    },
+    "Message to the agent": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Message to the agent" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Tin nhắn cho agent" } }
+      }
+    },
+    "Add an API key in Settings › Plugins": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Add an API key in Settings › Plugins" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Thêm API key trong Cài đặt › Plugin" } }
+      }
+    },
+    "Settings…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Settings…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Cài đặt…" } }
+      }
+    },
+    "Stop": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Stop" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Dừng" } }
+      }
+    },
+    "Send": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Send" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Gửi" } }
+      }
+    },
+    "Stopped": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Stopped" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đã dừng" } }
+      }
+    },
+    "Chat agent": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Chat agent" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Agent chat" } }
+      }
+    },
     "General": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "General" } },

@@ -153,6 +153,8 @@ enum PluginText {
         return client
     }
     @ObservationIgnored let trust: PluginTrustStore
+    /// Values of `secret` options (Keychain; in memory in tests).
+    @ObservationIgnored var secrets = PluginSecretStore()
     @ObservationIgnored var service: CapabilityService
     private var projectRoot: URL?
     var currentProjectRoot: URL? { projectRoot }

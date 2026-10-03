@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 79 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 84 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -566,6 +566,44 @@ Set up the agent kit like Settings › Agents: in-app (load it in BashCut's tabs
 - `kit`: string. Kit folder to use, or built-in
 - `claudeConfigDir`: string. Claude Code's configuration folder (CLAUDE_CONFIG_DIR), or default to detect it
 - `codexHome`: string. Codex's home folder (CODEX_HOME), or default to detect it
+
+## chat
+
+### `bashcut chat status`
+
+The chat agents in the agent dock (plugins with the agent.chat capability): each one's plugin ID, name, provider and model, whether it is ready (an API key is set) and whether a turn is running.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_chat_status`
+
+### `bashcut chat send <text> [--plugin <plugin>] [--image <image>]`
+
+Send a message to a chat agent like typing it in its tab. Returns at once; poll chat transcript until running is false to read the reply and the commands it ran.
+
+- Mode: ui · Runs: immediately · MCP: `bashcut_chat_send`
+- `text`: string, required. Message
+- `plugin`: string. Chat agent plugin ID; by default the one shown in the dock, else the first
+- `image`: string. PNG or JPEG to attach, such as a ui frame
+
+### `bashcut chat stop [--plugin <plugin>]`
+
+Stop a chat agent's running turn.
+
+- Mode: ui · Runs: immediately · MCP: `bashcut_chat_stop`
+- `plugin`: string. Chat agent plugin ID; by default the one shown in the dock, else the first
+
+### `bashcut chat reset [--plugin <plugin>]`
+
+Start a new conversation with a chat agent for this project; the old one is forgotten.
+
+- Mode: ui · Runs: immediately · MCP: `bashcut_chat_reset`
+- `plugin`: string. Chat agent plugin ID; by default the one shown in the dock, else the first
+
+### `bashcut chat transcript [--plugin <plugin>]`
+
+A chat agent's conversation for this project: messages, tool rows (command, ok) and whether a turn is running.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_chat_transcript`
+- `plugin`: string. Chat agent plugin ID; by default the one shown in the dock, else the first
 
 ## ui
 

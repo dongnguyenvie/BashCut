@@ -5,6 +5,15 @@
 
 ## [Unreleased]
 
+- **Chat agents in the dock (plugin API 4).** A plugin with the new `agent.chat` capability becomes a tab in the
+  agent dock: a chat whose model edits through BashCut's own commands (with the same checks, history and approvals
+  as Claude Code and Codex), looks at the result with `ui frame` and follows the agent kit's skills.
+  - The app side is generic; Director (`bashcut-plugins`) is the first such plugin.
+  - Plugin API 4 adds the `secret` option type (Keychain; never listed or settable by agents) and the session
+    host channel (`event` and `call` lines).
+  - New commands `chat status|send|stop|reset|transcript` and `ui action agent.open-chat`.
+  - Provider `priority` may now be left out of a manifest, as the plugin guide always said.
+
 - **Settings in sections.** A sidebar splits Settings into General, Agents, Plugins and Storage, with each note
   under the setting it explains. Plugins lists the options of every installed plugin that has any (the same values
   as Plugins › Options… and `plugins option`) and links to Manage Plugins…. Agents open a section with

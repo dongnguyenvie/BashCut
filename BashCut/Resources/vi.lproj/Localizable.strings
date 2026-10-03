@@ -567,3 +567,13 @@
 "Timing from speech" = "Thời gian theo giọng nói";
 "General" = "Chung";
 "No installed plugin has options." = "Chưa có plugin nào có tuỳ chọn.";
+"Saved" = "Đã lưu";
+"Not set" = "Chưa đặt";
+"Ask the agent to edit: it reads the timeline, makes undoable changes and checks the picture." = "Nhờ agent chỉnh sửa: agent đọc timeline, sửa có thể hoàn tác và kiểm tra hình.";
+"Message to the agent" = "Tin nhắn cho agent";
+"Add an API key in Settings › Plugins" = "Thêm API key trong Cài đặt › Plugin";
+"Settings…" = "Cài đặt…";
+"Stop" = "Dừng";
+"Send" = "Gửi";
+"Stopped" = "Đã dừng";
+"Chat agent" = "Agent chat";

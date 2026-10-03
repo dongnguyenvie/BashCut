@@ -127,6 +127,18 @@ struct PluginOptionField: View {
                         Button("Clear File") { value = .string("") }.fixedSize()
                     }
                 }.controlSize(.small)
+            case .secret:
+                Text(title)
+                HStack(spacing: 6) {
+                    SecureField(value.object["set"] == .bool(true) ? "Saved" : "Not set", text: $text)
+                    Button("Save") {
+                        value = .string(text)
+                        text = ""
+                    }.disabled(text.isEmpty).fixedSize()
+                    if value.object["set"] == .bool(true) {
+                        Button("Clear") { value = .string("") }.fixedSize()
+                    }
+                }
             case .string, .number, .integer:
                 TextField(title, text: $text)
                     .onAppear { text = Self.text(value) }

@@ -122,6 +122,16 @@ public struct PluginManifest: Codable, Sendable, Equatable {
         guard !usesAPI3 || apiVersion >= 3 else {
             throw PluginError.invalid("file options and choiceLabels need apiVersion 3")
         }
+        guard !(actions.flatMap { $0.params ?? [] }).contains(where: { $0.type == .secret }) else {
+            throw PluginError.invalid("Action parameters cannot be secrets")
+        }
+        let usesAPI4 = options.contains { $0.type == .secret } || capabilities.contains(PluginAPI.agentChat)
+        guard !usesAPI4 || apiVersion >= 4 else {
+            throw PluginError.invalid("secret options and agent.chat need apiVersion 4")
+        }
+        guard !capabilities.contains(PluginAPI.agentChat) || transport == .session else {
+            throw PluginError.invalid("agent.chat needs the session transport")
+        }
         guard Set(options.map(\.id)).count == options.count, options.count <= 64 else {
             throw PluginError.invalid("Option ids must be unique (at most 64)")
         }
@@ -172,6 +182,16 @@ public struct PluginProvider: Codable, Sendable, Equatable, Identifiable {
         self.name = name
         self.priority = priority
         self.timeoutSeconds = timeoutSeconds
+    }
+
+    /// `priority` may be left out of a manifest; it defaults to 0, as the plugin guide says.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        capability = try container.decode(String.self, forKey: .capability)
+        name = try container.decode(String.self, forKey: .name)
+        priority = try container.decodeIfPresent(Int.self, forKey: .priority) ?? 0
+        timeoutSeconds = try container.decodeIfPresent(Int.self, forKey: .timeoutSeconds)
     }
 }
 

@@ -27,4 +27,34 @@ extension CommandCatalog {
             ],
             execution: .approval),
     ]
+
+    /// Chat-agent tabs: plugins with the `agent.chat` capability (docs/specs/11-chat-agents.md), such as Director.
+    static let chatSpecs: [CommandSpec] = [
+        CommandSpec(
+            "chat.status", .read,
+            "The chat agents in the agent dock (plugins with the agent.chat capability): each one's plugin ID, name, "
+                + "provider and model, whether it is ready (an API key is set) and whether a turn is running."),
+        CommandSpec(
+            "chat.send", .ui,
+            "Send a message to a chat agent like typing it in its tab. Returns at once; poll chat transcript until "
+                + "running is false to read the reply and the commands it ran.",
+            parameters: [
+                CommandParameter("text", .string, "Message", required: true, cli: .positional),
+                plugin,
+                CommandParameter("image", .string, "PNG or JPEG to attach, such as a ui frame", cli: .option("image")),
+            ]),
+        CommandSpec("chat.stop", .ui, "Stop a chat agent's running turn.", parameters: [plugin]),
+        CommandSpec(
+            "chat.reset", .ui, "Start a new conversation with a chat agent for this project; the old one is forgotten.",
+            parameters: [plugin]),
+        CommandSpec(
+            "chat.transcript", .read,
+            "A chat agent's conversation for this project: messages, tool rows (command, ok) and whether a turn is "
+                + "running.",
+            parameters: [plugin]),
+    ]
+
+    private static let plugin = CommandParameter(
+        "plugin", .string, "Chat agent plugin ID; by default the one shown in the dock, else the first",
+        cli: .option("plugin"))
 }
