@@ -10,6 +10,19 @@ extension CommandCatalog {
         + "\(eases) (default inOut). Keys replace the item's static value for that property. Images with zoom-in, "
         + "zoom-out or pan-* make a Ken Burns move."
 
+    /// Caption import (generation is with the plugin capabilities).
+    static let captionSpecs: [CommandSpec] = [
+        CommandSpec(
+            "captions.import", .edit, "Import UTF-8 SubRip captions as one undoable edit.",
+            parameters: [
+                CommandParameter("text", .string, "SubRip text (CLI: path to a .srt file)", required: true,
+                                 cli: .positionalTextFile(maximumBytes: SubRip.maximumBytes)),
+                baseRevision,
+                CommandParameter("replace", .boolean, "Replace existing captions", default: .bool(false),
+                                 cli: .flag("replace")),
+            ]),
+    ]
+
     /// Clip-level edits that have their own Inspector controls.
     static let clipSpecs: [CommandSpec] = [
         CommandSpec(
@@ -72,6 +85,21 @@ extension CommandCatalog {
                                  cli: .option("ease")),
                 CommandParameter("remove", .boolean, "Remove the key at that frame", default: .bool(false),
                                  cli: .flag("remove")),
+                baseRevision,
+            ]),
+        CommandSpec(
+            "captions.words", .edit,
+            "Show caption words as they are spoken (Inspector › Text › Word by word): highlight colours the word being "
+                + "said, karaoke colours the words already said, reveal makes words appear as they are said; none shows "
+                + "them all at once. Timings come from the transcription's word timings (captions generate) or are "
+                + "estimated from word length.",
+            parameters: [
+                CommandParameter("item", .string, "Text item ID; the selection by default", cli: .positional),
+                CommandParameter("style", .string, "Word style", required: true,
+                                 choices: CaptionWords.styles + ["none"], cli: .option("style")),
+                CommandParameter("all", .boolean, "Every caption on the caption layers", default: .bool(false),
+                                 cli: .flag("all")),
+                CommandParameter("color", .string, "Highlight colour, #RRGGBB (default #FFD400)", cli: .option("color")),
                 baseRevision,
             ]),
         CommandSpec(

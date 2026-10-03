@@ -90,6 +90,7 @@ extension Project {
                     "item.\(item.id): invalid source/speed")
                 try item.validateRenderProperties()
                 try item.validateKeyframes(on: track)
+                try item.validateWords()
                 if let color = item.fields["color"]?.object {
                     // A LUT is referenced by catalog ID; anything else would be silently ignored by the engine.
                     try ColorGrade.validate(color, path: "item.\(item.id).color", lutIDs: lutIDs)

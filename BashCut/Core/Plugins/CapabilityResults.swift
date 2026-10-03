@@ -41,6 +41,8 @@ public struct GeneratedVoiceTake: Identifiable, Sendable {
 public struct GeneratedPluginCaptions: Sendable {
     public let text: String
     public let provenance: PluginProvenance
+    /// Word timings in media seconds, when the provider returned a `wordsPath`.
+    public var words: [CaptionWords.Timed] = []
 }
 
 public struct GeneratedBeatGrid: Sendable {

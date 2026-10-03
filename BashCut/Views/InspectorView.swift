@@ -227,6 +227,29 @@ struct InspectorView: View {
             number(
                 "Vertical position", group: "textStyle", key: "positionY", defaultValue: 0.18,
                 range: 0.05...0.9)
+            Picker(
+                "Word by word",
+                selection: Binding(
+                    get: { document.selected?.wordStyle ?? "none" },
+                    set: { value in
+                        guard let id = document.selectedID else { return }
+                        do { try document.setWordStyle(value == "none" ? nil : value, items: [id]) } catch {
+                            document.message = error.localizedDescription
+                        }
+                    })
+            ) {
+                Text("Off").tag("none")
+                Text("Highlight word").tag("highlight")
+                Text("Karaoke").tag("karaoke")
+                Text("Reveal").tag("reveal")
+            }
+            if let style = item.wordStyle {
+                Button("Use on all captions") {
+                    do { try document.setWordStyle(style) } catch { document.message = error.localizedDescription }
+                }
+                Text(item["words"] == nil ? "Timing estimated from word length" : "Timing from speech")
+                    .foregroundStyle(.secondary)
+            }
             Divider()
             MotionControls(document: document, item: item, forText: true)
         } else {

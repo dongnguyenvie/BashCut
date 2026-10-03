@@ -64,6 +64,10 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   linear, ease-in/out/in-out and hold keys. Presets: slow zoom in/out and pans (Ken Burns), and fade, pop, slide-up
   and zoom-punch for text. Inspector › Animation, the diamond key at the playhead, and sliders that set keys once a
   property is animated; `clip motion` and `clip keyframe`. Split and start trims keep keys on the same picture.
+- Word-by-word captions: `wordStyle` highlight (the word being said), karaoke (words said so far) or reveal (words
+  appear as said), in the highlight colour `textStyle.highlight`. Timings come from the provider's word timings
+  (`wordsPath`, stored as the caption's `words`) or are estimated from word length. Inspector › Text › Word by word,
+  Auto Captions, `captions words`, `captions generate --word-style`.
 - Edit menu (Cut, Copy, Paste, Select All) for text fields and terminals.
 
 ### Media & proxies

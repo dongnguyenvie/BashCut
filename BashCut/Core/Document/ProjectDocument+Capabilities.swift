@@ -17,7 +17,7 @@ extension ProjectDocument {
 
     /// Transcribes one project media item and imports the SRT as one undoable edit.
     func generateCaptions(
-        mediaID: String, replace: Bool, provider: String? = nil, author: Author = .user
+        mediaID: String, replace: Bool, provider: String? = nil, wordStyle: String? = nil, author: Author = .user
     ) async throws {
         let (root, _, url) = try capabilityMedia(mediaID)
         let session = sessionID
@@ -31,7 +31,8 @@ extension ProjectDocument {
         try ensureSession(session)
         try commit(
             project.importingSubRip(
-                generated.text, replace: replace, provenance: generated.provenance.json, media: mediaID),
+                generated.text, replace: replace, provenance: generated.provenance.json, media: mediaID,
+                words: generated.words, wordStyle: wordStyle),
             label: "Generate captions", author: author)
         emitPluginEvent(.captionsGenerated, [
             "media": .string(mediaID), "provider": .object(generated.provenance.json), "rev": .integer(project.revision),
@@ -168,9 +169,10 @@ extension ProjectDocument {
             let media = try arguments.string("media")
             let replace = arguments.bool("replace")
             let provider = arguments.optionalString("provider")
+            let wordStyle = arguments.optionalString("wordStyle").flatMap { $0 == "none" ? nil : $0 }
             return try document.startCapabilityJob("captions.generate", author: author) { document in
                 try await document.generateCaptions(
-                    mediaID: media, replace: replace, provider: provider, author: author)
+                    mediaID: media, replace: replace, provider: provider, wordStyle: wordStyle, author: author)
                 return .object(["rev": .integer(document.project.revision)])
             }
         }

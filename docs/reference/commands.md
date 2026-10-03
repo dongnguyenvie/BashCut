@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 78 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 79 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -182,13 +182,25 @@ Import UTF-8 SubRip captions as one undoable edit.
 - `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
 - `replace`: boolean, default false. Replace existing captions
 
-### `bashcut captions generate --media <media> [--replace] [--provider <provider>]`
+### `bashcut captions words [<item>] --style <style> [--all] [--color <color>] --base-rev <baseRev>`
+
+Show caption words as they are spoken (Inspector › Text › Word by word): highlight colours the word being said, karaoke colours the words already said, reveal makes words appear as they are said; none shows them all at once. Timings come from the transcription's word timings (captions generate) or are estimated from word length.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_captions_words`
+- `item`: string. Text item ID; the selection by default
+- `style`: string, required, one of highlight, karaoke, reveal, none. Word style
+- `all`: boolean, default false. Every caption on the caption layers
+- `color`: string. Highlight colour, #RRGGBB (default #FFD400)
+- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
+
+### `bashcut captions generate --media <media> [--replace] [--word-style <wordStyle>] [--provider <provider>]`
 
 Transcribe project media with a captions.transcribe provider and import the captions as one undoable edit. Captions follow the clips where the media is heard (trim, position, speed): place the clips first.
 
 - Mode: edit · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_captions_generate`
 - `media`: string, required. Project media ID
 - `replace`: boolean, default false. Replace this media's captions
+- `wordStyle`: string, one of highlight, karaoke, reveal, none. Show words as they are spoken (see captions.words)
 - `provider`: string. Provider ID overriding the project preference for one request
 
 ## export

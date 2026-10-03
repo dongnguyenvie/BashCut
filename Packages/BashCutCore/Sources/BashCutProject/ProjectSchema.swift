@@ -341,6 +341,22 @@ public enum ProjectSchema {
                     ]))
                 })),
             ]),
+            "words": .object([
+                "type": .string("array"), "maxItems": .integer(CaptionWords.maximumWords),
+                "description": .string(
+                    "Text: timing of each word of the text (split at white space), in frames from the item's start; "
+                        + "set by captions generate when the provider returns word timings"),
+                "items": .object([
+                    "type": .string("object"), "required": .array([.string("text"), .string("at"), .string("dur")]),
+                    "properties": .object([
+                        "text": string("The word"), "at": .object(["type": .string("integer")]),
+                        "dur": integer("Frames", minimum: 1),
+                    ]),
+                ]),
+            ]),
+            "wordStyle": enumeration(
+                "Text: show the words as they are spoken (highlight the current word, karaoke fill, or reveal); "
+                    + "timings come from words, or are estimated", CaptionWords.styles),
             "styleKit": string("Adjustment: the style kit that added it; the next kit replaces it"),
             "tag": .object([
                 "type": .string("object"), "description": .string("Editorial tags"),

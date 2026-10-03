@@ -83,7 +83,8 @@ struct CapabilityServiceTests {
             "test.captions", providers: [PluginProvider(id: "test.whisper", capability: "captions.transcribe", name: "W")],
             body: """
                 printf '1\\n00:00:00,000 --> 00:00:01,000\\nXin chào\\n' > "$out/captions.srt"
-                printf '{"id":"%s","result":{"srtPath":"captions.srt"}}\\n' "$id"
+                printf '[{"text":"Xin","start":0.1,"end":0.4},{"text":"chào","start":0.4,"end":0.9}]' > "$out/words.json"
+                printf '{"id":"%s","result":{"srtPath":"captions.srt","wordsPath":"words.json"}}\\n' "$id"
                 """)
         let generated = try await sandbox.service.transcribe(
             mediaURL: try sandbox.media(), language: "vi", preferredProvider: nil, projectRoot: sandbox.project,
@@ -91,6 +92,7 @@ struct CapabilityServiceTests {
         #expect(generated.text.contains("Xin chào"))
         #expect(generated.provenance == PluginProvenance(pluginID: "test.captions", pluginVersion: "2.1.0", providerID: "test.whisper"))
         #expect(generated.provenance.json["provider"] == .string("test.whisper"))
+        #expect(generated.words.map(\.text) == ["Xin", "chào"])
     }
 
     @Test("Output outside the request directory is rejected and the request folder removed")

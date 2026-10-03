@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+- **Word-by-word captions.** A caption can show its words as they are spoken: **Highlight word** colours the word
+  being said, **Karaoke** colours the words said so far, and **Reveal** makes words appear one by one (item field
+  `wordStyle`, colour `textStyle.highlight`, default #FFD400). A transcription provider may return word timings
+  (`wordsPath`), which are stored on each caption as `words` and follow the clip's trim and speed. Without them,
+  timings are estimated from word length. Inspector › Text › Word by word (and *Use on all captions*), the Auto
+  Captions picker, `captions words` and `captions generate --word-style`.
+
 - **Keyframes and motion presets.** Clips, images and text can animate zoom, pan, tilt, rotation and opacity
   (item field `keyframes`: per property, keys `{frame, value, ease}` counted from the item's start; eases linear,
   in, out, inOut, hold). Inspector › Video/Text › **Animation** has presets: slow zoom in/out and pan left/right/up/down

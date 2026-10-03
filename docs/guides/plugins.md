@@ -277,7 +277,7 @@ builds the request parameters and validates the result.
 | Capability | Used by | Params | Result |
 |---|---|---|---|
 | `voice.synthesize` | Voice panel, `voice speak` | `text`, `language`, `outputDirectory`, `takeCount`, `takeOffset` | `takes`: 1–8 `{audioPath, score?}` objects, or a single `audioPath` |
-| `captions.transcribe` | Text panel, `captions generate` | `mediaPath`, `language`, `outputDirectory` | `srtPath` |
+| `captions.transcribe` | Text panel, `captions generate` | `mediaPath`, `language`, `outputDirectory` | `srtPath`, optional `wordsPath` |
 | `audio.beats` | Audio panel, `beats detect` | `mediaPath` | `bpm`, `beatsSeconds` |
 | `audio.loudness` | Normalized export | `mediaPath` | `integratedLUFS`, `truePeakDbTP`, optional `loudnessRangeLU` |
 
@@ -306,6 +306,11 @@ validates it like `bashcut captions import`, then places each cue through every 
 or freeze frames), through the clip's trim, position, speed and speed ramp. Cues outside the clips are dropped and
 a cue across a cut is split. Media that is not on the timeline keeps the cue times as timeline times. Captions
 carry `captionMedia`, so generating again with `replace` swaps only that media's captions.
+
+Optionally also return `wordsPath`: a JSON file in the output folder, `[{"text", "start", "end"}]` with each word's
+time in the media's seconds (at most 8 MiB). BashCut stores the words that fall inside each placed caption as its
+`words` (frames from the caption's start), which word-by-word captions (`wordStyle`, `captions words`) follow.
+Without it, word timings are estimated from word length.
 
 ### Core plugins
 
