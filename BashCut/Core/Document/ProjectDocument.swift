@@ -346,8 +346,9 @@ extension ProjectDocument {
 }
 
 /// Thrown when an agent edit arrives while the user is mid-gesture or a long operation runs.
-struct AutomationBusy: LocalizedError {
-    var errorDescription: String? { "The editor is busy or has a file conflict; retry later" }
+struct AutomationBusy: LocalizedError, RPCFailureProviding {
+    var errorDescription: String? { rpcFailure.message }
+    var rpcFailure: RPCFailure { RPCFailure(-32003, "The editor is busy or has a file conflict; retry later") }
 }
 
 extension Author {

@@ -420,3 +420,22 @@ tail -f ~/Library/Logs/BashCut/debug.log
 ```
 
 Set `BASHCUT_DEBUG_LOG=0` to turn it off. Test runners never write to it.
+
+### Error responses
+
+CLI failures write `{"error":{"code":-32002,"message":"…","data":{"expected":1,"actual":2}}}` to stderr
+and leave stdout empty. `data` is optional. MCP returns the same object in `structuredContent` and JSON text,
+with `isError: true`. Error messages are intended for the requesting client and are omitted from debug logs.
+
+| Condition | RPC code | CLI exit status |
+|---|---:|---:|
+| Stale revision / project read required | -32002 | 75 |
+| Editor busy | -32003 | 69 |
+| App/socket unavailable | -32000 | 69 |
+| Missing or revoked token | -32001 | 77 |
+| Invalid request, command or arguments | -32600 / -32601 / -32602 | 64 |
+| Malformed response | -32700 | 65 |
+| Internal / other failure | -32603 / other | 70 |
+
+Stale revision errors include `data.expected` and `data.actual`. Refresh the project before constructing a new
+edit; do not blindly replay after a timeout because a timed-out mutation may already have completed.

@@ -29,8 +29,10 @@ private func result(_ response: MCPBridgeResponse) -> CallTool.Result {
     CallTool.Result(content: [.text(text: response.text, annotations: nil, _meta: nil)], isError: false)
 }
 
-private func failure(_ message: String) -> CallTool.Result {
-    .init(content: [.text(text: message, annotations: nil, _meta: nil)], isError: true)
+private func failure(_ error: RPCFailure) -> CallTool.Result {
+    let encoded = (try? JSONEncoder().encode(error.payload)).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
+    return .init(content: [.text(text: encoded, annotations: nil, _meta: nil)],
+                 structuredContent: value(error.payload), isError: true)
 }
 
 /// `tools/list` answered before the SDK sees it. The SDK encoded the 35 KB tool list through its `Value` tree on
@@ -91,7 +93,8 @@ enum ToolList {
                 let arguments = try JSONEncoder().encode(request.arguments ?? [:])
                 if request.name.hasPrefix(PluginActionTools.prefix) {
                     guard let action = actionTools().first(where: { $0.name == request.name }) else {
-                        return failure("That plugin action is not installed or not available any more; see bashcut_plugins_actions")
+                        return failure(RPCFailure(
+                            -32601, "That plugin action is not installed or not available any more; see bashcut_plugins_actions"))
                     }
                     let params = try JSONDecoder().decode(JSONValue.self, from: arguments)
                     let call = try JSONEncoder().encode(JSONValue.object(["action": .string(action.actionID), "params": params]))
@@ -100,13 +103,13 @@ enum ToolList {
                 }
                 guard let spec = CommandCatalog.specs.first(where: { $0.mcpToolName == request.name }) else {
                     DebugLog.write("mcp", "unknown tool")
-                    return failure("Unknown BashCut tool")
+                    return failure(RPCFailure(-32601, "Unknown BashCut tool"))
                 }
                 return result(try MCPBridgeClient.call(
                     method: spec.name, arguments: arguments, token: AutomationPaths.sessionToken()))
             } catch {
                 DebugLog.write("mcp", "tool call failed")
-                return failure(error.localizedDescription)
+                return failure(RPCFailure.from(error))
             }
         }
         Task.detached { _ = ToolList.catalog }

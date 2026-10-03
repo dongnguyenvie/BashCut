@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+- Preserve RPC error codes and data through CLI and MCP. CLI writes a JSON error to stderr with distinct exit
+  statuses; MCP supplies structured error content. Editor busy maps to -32003, and stale-revision errors
+  include expected/actual revisions. Regression tests exercise real CLI/MCP processes against isolated sockets.
+
 - Run an isolated real MCP process regression in the full verification suite: initialization, tool failure,
   EOF shutdown and private log flushing, without contacting an app or reading real session credentials.
 

@@ -115,14 +115,7 @@ public struct AuditEvent: Codable, Sendable {
             return RPCResponse(id: request.id, result: result)
         } catch {
             audit(AuditEvent(date: Date(), method: request.method, author: author, succeeded: false))
-            let failure: RPCFailure
-            if let wire = error as? RPCFailure {
-                failure = wire
-            } else if case ProjectError.staleRevision = error {
-                failure = RPCFailure(-32002, error.localizedDescription)
-            } else {
-                failure = RPCFailure(-32602, error.localizedDescription)
-            }
+            let failure = RPCFailure.from(error, fallbackCode: -32602)
             log(
                 "rpc", "\(CommandCatalog.spec(named: request.method)?.name ?? "unknown command") by \(who) "
                     + "FAILED \(failure.code) in \(Self.milliseconds(since: started)) ms")

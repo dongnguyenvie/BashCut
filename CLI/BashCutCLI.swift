@@ -17,8 +17,7 @@ import Foundation
         let invocation: CommandLineParser.Invocation
         do { invocation = try CommandLineParser.parse(words) } catch {
             DebugLog.write("cli", "command parsing failed")
-            FileHandle.standardError.write(Data("Error: \(error.localizedDescription)\n".utf8))
-            throw ExitCode.validationFailure
+            throw report(RPCFailure.from(error, fallbackCode: -32602))
         }
         DebugLog.write("cli", "call \(invocation.spec.name)")
         let response: RPCResponse
@@ -29,9 +28,19 @@ import Foundation
                     token: AutomationPaths.sessionToken()))
         } catch {
             DebugLog.write("cli", "\(invocation.spec.name) failed")
-            throw error
+            throw report(RPCFailure.from(error))
         }
         try write(response, format: invocation.format)
+    }
+
+    private func report(_ failure: RPCFailure) -> ExitCode {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
+        if var data = try? encoder.encode(failure.payload) {
+            data.append(10)
+            FileHandle.standardError.write(data)
+        }
+        return ExitCode(failure.exitStatus)
     }
 
     private func write(_ response: RPCResponse, format: String) throws {
