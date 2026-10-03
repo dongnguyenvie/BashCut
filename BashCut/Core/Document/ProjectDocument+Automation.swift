@@ -245,8 +245,29 @@ extension ProjectDocument {
         rev: \(project.revision)
         selection: \(selectedID ?? "none")
         playhead: \(playhead) frames
+        \(pluginActionsText())
         [/BashCut context]
         """
+    }
+
+    /// Installed plugin actions in one line each, for agent prompts: id, title, when, and parameters with their
+    /// ranges and defaults.
+    func pluginActionsText() -> String {
+        guard !plugins.actions.isEmpty else { return "plugin actions: none installed (plugins search finds more)" }
+        let lines = plugins.actions.map { action -> String in
+            let params = action.params.map { option -> String in
+                var text = "\(option.id) \(option.type.rawValue)"
+                if let minimum = option.minimum, let maximum = option.maximum { text += " \(minimum)…\(maximum)" }
+                if let value = option.defaultValue, let json = try? JSONEncoder().encode(value) {
+                    text += " =" + (String(bytes: json, encoding: .utf8) ?? "")
+                }
+                return text
+            }
+            return "- \(action.id) (\(action.plugin.manifest.displayName)): \(action.title)"
+                + (action.spec.when.map { "; when \($0)" } ?? "")
+                + (params.isEmpty ? "" : "; params " + params.joined(separator: ", "))
+        }
+        return (["plugin actions (bashcut plugins run ID --params JSON):"] + lines).joined(separator: "\n")
     }
     func markAgentChanges(from before: Project, author: Author, label: String) {
         let changes = project.itemChanges(from: before)

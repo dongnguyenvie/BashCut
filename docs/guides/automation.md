@@ -11,6 +11,8 @@ The app runs one local JSON-RPC server on a Unix socket. Two thin clients talk t
 - `bashcut`, a command-line tool bundled with the app.
 - `bashcut-mcp`, a stdio MCP server built with the official MCP Swift SDK. It exposes each command as a
   tool named `bashcut_<group>_<command>` (for example `bashcut_timeline_get`).
+  While BashCut runs, the tool list also has one `bashcut_action_<action id>` tool per installed plugin action,
+  with the action's parameters as its input schema; calling it is `plugins run <action> --params …`.
 
 Both clients forward to the same handlers the UI uses. Edits go through the validated `EditOperation` and
 history path, so permissions, revision checks, audit records and undo behave the same whether a change comes
@@ -187,6 +189,9 @@ when another project opens; agents outside BashCut keep access.
 |---|---|---|
 | `plugins actions` | read | Actions plugins add (menus, toolbar, context menus, panels) with placements, parameter schema and enabled state |
 | `plugins run <action> [--params <json>]` | edit, job | Run a plugin action like clicking it; its proposed operations become one undoable edit by `plugin` |
+
+Agents get the plugin workflow in their instructions (list → select → run → `jobs status`), and the session
+context lists every installed action with its `when` condition and parameters (ranges and defaults).
 | `plugins hooks` | read | Hook subscriptions, recent hook runs and hook edits waiting for review |
 | `plugins proposal <id> --decision <apply\|discard>` | edit | Apply or discard an edit a hook proposed |
 | `plugins options <plugin>` | read | A plugin's options: schema, scope and current values |

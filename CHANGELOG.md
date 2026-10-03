@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+- **Plugin actions for agents**: agent instructions explain list → select → run → `jobs status`; the agent
+  session context lists installed actions with their conditions and parameters; and `bashcut-mcp` lists one
+  `bashcut_action_<id>` tool per installed action (input schema = its parameters), run through `plugins run`.
 - **Core plugin `bashcut.audio-analysis`** ships inside the app (`Contents/PlugIns`): `audio.loudness`
   (BS.1770-4 integrated loudness, EBU loudness range, 4× true peak) and `audio.beats` (spectral-flux onsets,
   autocorrelation tempo, dynamic-programming beats) with AVFoundation and vDSP. Loudness-normalized export and
