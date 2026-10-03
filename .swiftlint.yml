@@ -2,6 +2,7 @@ included:
   - BashCut
   - Tests
   - CLI
+  - Plugins
   - Packages/BashCutCore/Sources
   - Packages/BashCutCore/Tests
 excluded:

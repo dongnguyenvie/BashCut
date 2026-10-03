@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+- **Core plugin `bashcut.audio-analysis`** ships inside the app (`Contents/PlugIns`): `audio.loudness`
+  (BS.1770-4 integrated loudness, EBU loudness range, 4× true peak) and `audio.beats` (spectral-flux onsets,
+  autocorrelation tempo, dynamic-programming beats) with AVFoundation and vDSP. Loudness-normalized export and
+  **Detect beats** now work without installing anything; installed providers with a higher priority still win.
+  Built by `scripts/run.sh` and the Xcode project (`Plugins/audio-analysis/`).
 - **Signed plugins**: registry archives signed with ed25519 (over their SHA-256) show *Signed by BashCut* or
   *Signed by <publisher>*; unsigned ones show a warning, and a signature that matches no key is refused. The BashCut
   key is compiled into the app; the registry cannot add first-party keys.
