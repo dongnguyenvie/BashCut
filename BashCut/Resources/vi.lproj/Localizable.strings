@@ -510,3 +510,8 @@
 "Speed up selected clip" = "Tăng tốc clip đang chọn";
 "Slow down selected clip" = "Giảm tốc clip đang chọn";
 "Reset selected clip to normal speed" = "Đưa clip đang chọn về tốc độ thường";
+"No plugins published yet" = "Chưa có plugin nào được phát hành";
+"No plugins match" = "Không có plugin phù hợp";
+"The registry at %@ lists no plugins." = "Kho plugin tại %@ chưa có plugin nào.";
+"No published plugin provides %@ yet." = "Chưa có plugin nào cung cấp %@.";
+"Try another search, or clear the filter." = "Thử từ khóa khác hoặc bỏ bộ lọc.";

@@ -510,3 +510,8 @@
 "Speed up selected clip" = "Speed up selected clip";
 "Slow down selected clip" = "Slow down selected clip";
 "Reset selected clip to normal speed" = "Reset selected clip to normal speed";
+"No plugins published yet" = "No plugins published yet";
+"No plugins match" = "No plugins match";
+"The registry at %@ lists no plugins." = "The registry at %@ lists no plugins.";
+"No published plugin provides %@ yet." = "No published plugin provides %@ yet.";
+"Try another search, or clear the filter." = "Try another search, or clear the filter.";

@@ -57,6 +57,17 @@ struct PluginRegistryTests {
         #expect(SemanticVersion("x.y") == nil)
     }
 
+    @Test("A forced refresh adds a cache-busting query; file URLs and normal fetches stay as they are")
+    func forceURL() throws {
+        let remote = try #require(URL(string: "https://raw.githubusercontent.com/o/r/main/registry.json"))
+        #expect(PluginRegistryClient.requestURL(remote, force: false) == remote)
+        let forced = PluginRegistryClient.requestURL(remote, force: true)
+        #expect(forced.path == remote.path)
+        #expect(URLComponents(url: forced, resolvingAgainstBaseURL: false)?.queryItems?.first?.name == "t")
+        let local = URL(fileURLWithPath: "/tmp/registry.json")
+        #expect(PluginRegistryClient.requestURL(local, force: true) == local)
+    }
+
     @Test("The client caches the last good copy and falls back to it")
     func clientCache() async throws {
         defer { try? FileManager.default.removeItem(at: root) }
