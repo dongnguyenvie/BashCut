@@ -96,10 +96,14 @@ public actor CompositionBuilder {
                         lanes.append((end: item.end, target: created))
                     }
                     visualLanes[track.id] = lanes
-                    try target.insertTimeRange(videoSourceRange, of: source, at: destination)
-                    target.scaleTimeRange(
-                        CMTimeRange(start: destination, duration: videoSourceRange.duration),
-                        toDuration: project.fps.time(item.duration))
+                    if freezeFrame == nil, item.speedCurve != nil {
+                        try Self.insertRamp(item, media: media, fps: project.fps, from: source, into: target)
+                    } else {
+                        try target.insertTimeRange(videoSourceRange, of: source, at: destination)
+                        target.scaleTimeRange(
+                            CMTimeRange(start: destination, duration: videoSourceRange.duration),
+                            toDuration: project.fps.time(item.duration))
+                    }
                     let preferred = asset.preferredTransform
                     let rect = CGRect(origin: .zero, size: asset.naturalSize).applying(preferred)
                     let properties = item["transform"]?.object ?? [:]
@@ -162,10 +166,14 @@ public actor CompositionBuilder {
                             withMediaType: .audio,
                             preferredTrackID: kCMPersistentTrackID_Invalid)
                     {
-                        try target.insertTimeRange(normalSourceRange, of: source, at: destination)
-                        target.scaleTimeRange(
-                            CMTimeRange(start: destination, duration: normalSourceRange.duration),
-                            toDuration: project.fps.time(item.duration))
+                        if item.speedCurve != nil {
+                            try Self.insertRamp(item, media: media, fps: project.fps, from: source, into: target)
+                        } else {
+                            try target.insertTimeRange(normalSourceRange, of: source, at: destination)
+                            target.scaleTimeRange(
+                                CMTimeRange(start: destination, duration: normalSourceRange.duration),
+                                toDuration: project.fps.time(item.duration))
+                        }
                         let parameters = audioMixParameters(
                             item: item, sourceTrack: track, track: target, fps: project.fps,
                             envelope: (speechRanges, project.mixGainDb))
@@ -225,6 +233,33 @@ public actor CompositionBuilder {
         return CompositionSnapshot(composition: composition, videoComposition: video, audioMix: audio)
     }
     /// The asset at `url` with its tracks loaded, opened once and reused while the file is unchanged.
+    /// A speed ramp as pieces of about two timeline frames, each inserted from its stretch of source and scaled
+    /// to its length. Piece boundaries are exact in a fine timescale so the pieces butt with no gap.
+    static func insertRamp(
+        _ item: Item, media: Media, fps: FrameRate, from source: AVAssetTrack, into target: AVMutableCompositionTrack
+    ) throws {
+        guard let curve = item.speedCurve else { return }
+        let scale: CMTimeScale = 600_000
+        func time(_ seconds: Double) -> CMTime { CMTime(value: CMTimeValue((seconds * Double(scale)).rounded()), timescale: scale) }
+        let pieces = max(2, min(240, item.duration / 2))
+        let clipSeconds = Double(item.duration) / fps.value
+        let sourceStart = Double(item.sourceIn) / media.fps.value
+        let start = Double(item.at) / fps.value
+        for piece in 0..<pieces {
+            let from = Double(piece) / Double(pieces), to = Double(piece + 1) / Double(pieces)
+            let sourceFrom = time(sourceStart + curve.integral(to: from) * clipSeconds)
+            let sourceTo = time(sourceStart + curve.integral(to: to) * clipSeconds)
+            let destinationFrom = time(start + from * clipSeconds)
+            let destinationTo = time(start + to * clipSeconds)
+            let sourceRange = CMTimeRange(start: sourceFrom, end: sourceTo)
+            guard sourceRange.duration > .zero else { continue }
+            try target.insertTimeRange(sourceRange, of: source, at: destinationFrom)
+            target.scaleTimeRange(
+                CMTimeRange(start: destinationFrom, duration: sourceRange.duration),
+                toDuration: destinationTo - destinationFrom)
+        }
+    }
+
     private func loadedAsset(_ url: URL) async throws -> LoadedAsset {
         let signature = FileSignature(url)
         if let cached = assets[url], cached.signature == signature {

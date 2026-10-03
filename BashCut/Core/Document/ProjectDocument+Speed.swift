@@ -26,7 +26,7 @@ extension ProjectDocument {
         guard let id = id ?? selectedID else { throw ProjectError.invalid("Select a clip to change its speed") }
         // The same speed (and no pitch change) is not an edit: it would only add an undo step that changes nothing.
         if preservePitch == nil, let current = project.tracks.flatMap(\.items).first(where: { $0.id == id }),
-            abs(current.speed - speed) < 0.0001
+            current.speedCurve == nil, abs(current.speed - speed) < 0.0001
         {
             return project.revision
         }

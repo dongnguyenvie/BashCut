@@ -539,3 +539,15 @@
 "Automation audit log" = "Automation audit log";
 "Delete %@ (%@)?" = "Delete %@ (%@)?";
 "Free Up" = "Free Up";
+"Curve" = "Curve";
+"Average %@" = "Average %@";
+"Reverse" = "Reverse";
+"Play Forward" = "Play Forward";
+"Point the clip back at the original footage" = "Point the clip back at the original footage";
+"Render a reversed copy of the footage this clip uses and play it backwards" = "Render a reversed copy of the footage this clip uses and play it backwards";
+"Montage" = "Montage";
+"Hero time" = "Hero time";
+"Bullet time" = "Bullet time";
+"Jump cut" = "Jump cut";
+"Flash in" = "Flash in";
+"Flash out" = "Flash out";

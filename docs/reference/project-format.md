@@ -118,6 +118,17 @@ To change the format:
 3. For a breaking change, bump `Project.schema` and append a `ProjectMigration.Step` from the previous version,
    with a test. Additive optional fields need neither.
 
+## Speed ramps and reversed clips
+
+- `speedCurve` (optional) is a speed ramp: 2–16 points `{"t": …, "speed": …}` with `t` from 0 (clip start) to 1
+  (clip end), speed linear between them, 0.1×–16×. `speed` then holds the curve's average (validation checks it), so
+  `dur × speed` is still the source the clip uses. Split and trim keep each part's share of the ramp on the same
+  source; lengthening holds the end speed. `setSpeed` removes a ramp; `setSpeedCurve` with no points keeps the clip
+  at its average speed.
+- `reversed` (optional) marks a clip pointed at a reversed copy (`reversed/<file>-reversed-<in>-<frames>.mov`, media with
+  `reverseOf`): `{"media": original ID, "in": original in-point, "frames": frames used}`. `setSource` changes a
+  clip's media and in-point (with its linked partner); reversing again restores the original.
+
 ## Linked audio and video
 
 Video media with embedded sound is inserted as a reciprocal pair: the picture item stores `linkedAudio`, the

@@ -154,11 +154,51 @@
           "description" : "Framing preset ID, or custom",
           "type" : "string"
         },
+        "reversed" : {
+          "description" : "Set by clip reverse: the original media and in-point, restored by reversing again",
+          "properties" : {
+            "in" : {
+              "description" : "Original in-point",
+              "minimum" : 0,
+              "type" : "integer"
+            },
+            "media" : {
+              "description" : "Original media ID",
+              "type" : "string"
+            }
+          },
+          "type" : "object"
+        },
         "speed" : {
           "description" : "Source frames per timeline frame; the timeline duration is kept",
           "maximum" : 100,
           "minimum" : 0.01,
           "type" : "number"
+        },
+        "speedCurve" : {
+          "description" : "Speed ramp: points from t 0 (clip start) to t 1 (clip end), speed linear between them; speed then holds the curve's average. Set with setSpeedCurve.",
+          "items" : {
+            "properties" : {
+              "speed" : {
+                "maximum" : 16,
+                "minimum" : 0.1,
+                "type" : "number"
+              },
+              "t" : {
+                "maximum" : 1,
+                "minimum" : 0,
+                "type" : "number"
+              }
+            },
+            "required" : [
+              "t",
+              "speed"
+            ],
+            "type" : "object"
+          },
+          "maxItems" : 16,
+          "minItems" : 2,
+          "type" : "array"
         },
         "styleKit" : {
           "description" : "Adjustment: the style kit that added it; the next kit replaces it",

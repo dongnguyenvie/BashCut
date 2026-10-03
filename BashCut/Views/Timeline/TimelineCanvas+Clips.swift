@@ -131,10 +131,7 @@ extension TimelineCanvas {
         var title = track.isAdjustment
             ? String(localized: String.LocalizationValue(item.adjustmentTitle(in: project)))
             : item.text.isEmpty ? filename : item.text
-        // A changed speed reads first, like CapCut's badge: "2× clip.mp4".
-        if item.mediaID != nil, abs(item.speed - 1) > 0.0001, item.fields["freezeFrame"] == nil {
-            title = UIAction.speedLabel(item.speed) + " " + title
-        }
+        title = Self.speedBadge(item) + title
         if titleWidth > 8 {
             (title as NSString).draw(
                 with: CGRect(x: x, y: y, width: titleWidth, height: 13),
@@ -235,5 +232,17 @@ extension TimelineCanvas {
                 image.drawFlipped(in: tile, fraction: 0.9 * fade)
             }
         }
+    }
+
+    /// A changed speed reads first, like CapCut's badge: "2× clip.mp4"; a ramp shows 〰 and a reversed clip ◀.
+    static func speedBadge(_ item: Item) -> String {
+        guard item.mediaID != nil, item.fields["freezeFrame"] == nil else { return "" }
+        var badge = item.fields["reversed"] != nil ? "◀ " : ""
+        if item.speedCurve != nil {
+            badge += "〰 "
+        } else if abs(item.speed - 1) > 0.0001 {
+            badge += UIAction.speedLabel(item.speed) + " "
+        }
+        return badge
     }
 }

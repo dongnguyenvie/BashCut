@@ -53,9 +53,10 @@ extension ProjectDocument {
         var frames = Set<Int>()
         for item in project.tracks.flatMap(\.items) where item.mediaID == media.id {
             let sourceStart = Double(item.sourceIn) / media.fps.value
-            let sourceEnd = sourceStart + Double(item.duration) / project.fps.value * item.speed
+            let sourceEnd = sourceStart + item.sourceSeconds(afterFrames: item.duration, fps: project.fps)
             for second in generated.beatSeconds where second >= sourceStart && second <= sourceEnd {
-                let frame = item.at + Int(((second - sourceStart) / item.speed * project.fps.value).rounded())
+                // Through trim, speed and any speed ramp.
+                let frame = item.at + Int(item.timelineFrames(atSourceSeconds: second - sourceStart, fps: project.fps).rounded())
                 if frame >= item.at && frame <= item.end { frames.insert(frame) }
             }
         }
@@ -141,7 +142,7 @@ extension ProjectDocument {
         return (root, media, url)
     }
 
-    private func ensureSession(_ session: UUID) throws {
+    func ensureSession(_ session: UUID) throws {
         guard session == sessionID else { throw CancellationError() }
     }
 

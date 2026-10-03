@@ -18,5 +18,27 @@ extension CommandCatalog {
                                  cli: .option("preserve-pitch")),
                 baseRevision,
             ]),
+        CommandSpec(
+            "clip.speed-curve", .edit,
+            "Give a clip a speed ramp (CapCut Curve) like Inspector › Speed › Curve: a preset ("
+                + SpeedCurve.presets.map(\.id).joined(separator: ", ") + ", or none to remove it) or points "
+                + "[[t, speed], …] with t from 0 (clip start) to 1 (clip end). The clip keeps its source and its length "
+                + "follows the average speed unless keepDuration; linked sound follows; one undo step.",
+            parameters: [
+                CommandParameter("item", .string, "Item ID; the selected clip by default", cli: .positional),
+                CommandParameter("preset", .string, "Preset name, or none",
+                                 choices: SpeedCurve.presets.map(\.id) + ["none"], cli: .option("preset")),
+                CommandParameter("points", .string, "Custom points as JSON, e.g. [[0,1],[0.5,3],[1,1]]",
+                                 cli: .option("points")),
+                CommandParameter("keepDuration", .boolean, "Keep the clip's length instead", default: .bool(false),
+                                 cli: .flag("keep-duration")),
+                baseRevision,
+            ]),
+        CommandSpec(
+            "clip.reverse", .edit,
+            "Play a video clip backwards (with its linked sound): renders a reversed copy of the source it uses into "
+                + "the project's reversed/ folder and points the clip at it. Reversing again restores the original.",
+            parameters: [CommandParameter("item", .string, "Item ID; the selected clip by default", cli: .positional)],
+            execution: .job),
     ]
 }

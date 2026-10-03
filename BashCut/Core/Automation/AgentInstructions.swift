@@ -76,6 +76,8 @@ extension CommandCatalog {
         {"op":"setLinkedAudio","video":"VIDEO_ID","audio":"AUDIO_ID"}; omit audio to unlink,
         {"op":"setSpeed","item":"ID","speed":2}; the clip and its linked sound get 2x and half the length, later
         clips on their layers move up; add "keepDuration":true to keep the length (prefer this over a speed patch),
+        {"op":"setSpeedCurve","item":"ID","preset":"hero"} or "points":[{"t":0,"speed":1},{"t":0.5,"speed":3},{"t":1,"speed":1}]
+        for a speed ramp (t 0…1 along the clip; "points":null removes it); reverse a clip with `clip reverse ID`,
         {"op":"insert","track":"TEXT_TRACK_ID","item":{"id":"new-id","at":0,"dur":90,"text":"Caption"}},
         {"op":"addTrack","track":{"id":"NEW_TRACK_ID","kind":"video","role":"overlay","name":"B-roll 2","items":[]},"atIndex":2},
         {"op":"moveTrack","track":"TRACK_ID","toIndex":3},

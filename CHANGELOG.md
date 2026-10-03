@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+- **Speed ramps** (CapCut Curve): Inspector › Speed › Curve and the clip menu offer Montage, Hero time, Bullet
+  time, Jump cut, Flash in and Flash out with a preview of the curve; custom points through `clip speed-curve`
+  or the `setSpeedCurve` operation. The clip keeps its source and its length follows the average speed; split and
+  trim keep the ramp on the same source; linked sound follows; clips show 〰. Built from short scaled pieces, so
+  no keyframe system is needed.
+- **Reverse**: Inspector › Speed and the clip menu play a video clip backwards (with its linked sound) from a
+  reversed copy rendered into the project's `reversed/` folder as a job; *Play Forward* restores the original.
+  New `setSource` operation and `clip reverse` command; reversed clips show ◀.
 - **Settings › Storage**: sizes of installed plugins, each plugin's data and downloads, the saved plugin catalog,
   this project's preview proxies and the audit log, with *Free Up* for what can be downloaded or made again and
   *Delete…* for a plugin's data (after a confirmation). New `storage get` and `storage clear` commands.
