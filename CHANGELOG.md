@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+- **Keyframes on the timeline.** A clip with keyframes shows a diamond along its bottom edge at each keyed frame
+  (cyan on the selected clip), and scrubbing the playhead snaps to the selected clip's keys, so it lands on a key to
+  change it. Keys left outside the clip by a trim are not drawn.
+
 - **Faster preview for look edits.** Changing colour, text, opacity, framing, keyframes, volume or fades no longer
   reloads the preview player. The builder hashes what the composition plays where (`CompositionSnapshot.structure`),
   and when it is unchanged, the shown player takes the new instructions and audio mix and redraws the frame: about
