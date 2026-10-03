@@ -75,17 +75,29 @@ public actor CompositionBuilder {
             lutCache[lutID] = loaded
             return loaded
         }
+        let mediaByID = Dictionary(uniqueKeysWithValues: project.media.map { ($0.id, $0) })
+        let allItems = project.tracks.flatMap(\.items)
+        let itemsByID = Dictionary(uniqueKeysWithValues: allItems.map { ($0.id, $0) })
+        // One source decision, still conversion and asset signature check per media in this snapshot.
+        // Keep this local: a later build must discover newly created proxies or replaced originals.
+        var loadedMedia: [String: LoadedAsset] = [:]
         let transitionFrom = Dictionary(uniqueKeysWithValues: project.transitions.map { ($0.fromItemID, $0) })
         let transitionTo = Dictionary(uniqueKeysWithValues: project.transitions.map { ($0.toItemID, $0) })
         for track in project.tracks where track.kind == "video" || track.kind == "audio" {
             for item in track.items.sorted(by: { ($0.at, $0.id) < ($1.at, $1.id) }) {
                 try Task.checkCancellation()
-                guard let media = project.media.first(where: { $0.id == item.mediaID }) else { continue }
+                guard let mediaID = item.mediaID, let media = mediaByID[mediaID] else { continue }
                 // An image is read through its one-frame still movie and held like a freeze frame.
                 let isStill = media.kind == "image"
-                let mediaURL = try source.url(for: media, root: root, workspace: workspace, purpose: purpose)
-                let asset = try await loadedAsset(
-                    isStill ? StillImageMovie.movie(for: media, image: mediaURL, root: root) : mediaURL)
+                let asset: LoadedAsset
+                if let cached = loadedMedia[mediaID] {
+                    asset = cached
+                } else {
+                    let mediaURL = try source.url(for: media, root: root, workspace: workspace, purpose: purpose)
+                    asset = try await loadedAsset(
+                        isStill ? StillImageMovie.movie(for: media, image: mediaURL, root: root) : mediaURL)
+                    loadedMedia[mediaID] = asset
+                }
                 let stillRange = CMTimeRange(start: .zero, duration: StillImageMovie.sampleDuration)
                 let freezeFrame = item["freezeFrame"]?.int
                 let normalSourceRange = CMTimeRange(
@@ -206,9 +218,8 @@ public actor CompositionBuilder {
                     start: composition.duration,
                     duration: targetDuration - composition.duration))
         }
-        let allItems = project.tracks.flatMap(\.items)
         let transitionBoundaries = project.transitions.compactMap { transition -> [Int]? in
-            guard let item = allItems.first(where: { $0.id == transition.toItemID }) else { return nil }
+            guard let item = itemsByID[transition.toItemID] else { return nil }
             return [item.at, item.at + transition.duration]
         }.flatMap { $0 }
         let boundaries = Set(

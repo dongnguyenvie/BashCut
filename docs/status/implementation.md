@@ -378,3 +378,11 @@ bench above.
 - **History:** full-snapshot undo is capped at 200 steps; `history.jsonl` stores one atomic checkpoint, and an
   append-only journal with compaction is pending.
 - **Localization:** some dynamic diagnostic messages are still English; full localization QA is pending.
+
+### Repeated-media build lookup (2026-10-04)
+
+`swift test --filter MediaSourceTests/repeatedSource` uses 240 one-frame cuts of generated video, warms the
+builder, then measures five Debug builds on the same M1 Max. Before (070b6c1): median 41.294 ms and 1,440
+source resolutions across six builds. After per-build media/item dictionaries and loaded-media reuse: median
+23.075 ms and six resolutions. The test asserts one resolution per media per build and verifies that a proxy
+created between builds is selected. These timings measure composition construction, not player readiness.

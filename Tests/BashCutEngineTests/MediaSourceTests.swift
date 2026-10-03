@@ -65,6 +65,32 @@ struct MediaSourceTests {
         #expect(await builder.cachedAssetCount == 1)
     }
 
+    @Test("A heavily cut source is resolved once per build, with fresh proxy selection on the next build")
+    func repeatedSource() async throws {
+        let root = try projectFolder()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let source = CountingMediaSource()
+        let builder = CompositionBuilder(source: source)
+        let clips = (0..<240).map { EditOperation.insert(track: "v1", item: Item(id: "clip-\($0)", media: "clip", at: $0, duration: 1)) }
+        let value = try Project(name: "Many cuts").applying(.group(label: "Fixture", author: .user, ops: [.addMedia(media())] + clips)).project
+        _ = try await builder.build(value, root: root, purpose: .preview)
+        var times: [Double] = []
+        for _ in 0..<5 {
+            let start = ContinuousClock.now
+            _ = try await builder.build(value, root: root, purpose: .preview)
+            let elapsed = start.duration(to: .now).components
+            times.append(Double(elapsed.seconds) * 1000 + Double(elapsed.attoseconds) / 1e15)
+        }
+        print("REPEATED_MEDIA_BUILD median_ms=\(times.sorted()[2]) resolutions=\(source.count)")
+        #expect(source.count == 6, "Each build resolves the source once regardless of clip count")
+        let proxies = root.appendingPathComponent(ProxyMediaSource.folder)
+        try FileManager.default.createDirectory(at: proxies, withIntermediateDirectories: true)
+        try FileManager.default.copyItem(at: fixture, to: proxies.appendingPathComponent("clip.mov"))
+        _ = try await builder.build(value, root: root, purpose: .preview)
+        #expect(await builder.assetLoads == 2, "A proxy added between builds must be selected")
+        #expect(source.count == 7)
+    }
+
     @Test("The cache keeps at most its limit, dropping the least recently used asset")
     func cacheLimit() async throws {
         let root = try projectFolder()
@@ -79,5 +105,15 @@ struct MediaSourceTests {
         _ = try await builder.build(value, root: root, purpose: .preview)
         #expect(await builder.cachedAssetCount == 1)
         #expect(await builder.assetLoads == 3)
+    }
+}
+
+private final class CountingMediaSource: MediaSource, @unchecked Sendable {
+    private let lock = NSLock()
+    private var calls = 0
+    var count: Int { lock.withLock { calls } }
+    func url(for media: Media, root: URL, workspace: URL?, purpose: RenderPurpose) throws -> URL {
+        lock.withLock { calls += 1 }
+        return try ProxyMediaSource().url(for: media, root: root, workspace: workspace, purpose: purpose)
     }
 }
