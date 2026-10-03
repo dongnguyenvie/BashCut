@@ -13,7 +13,7 @@ extension CommandCatalog {
             }
             return "- `\(spec.usage)`: \(spec.summary)\(note)"
         }
-        return ([preamble, color, "Commands (MCP tool `bashcut_<group>_<command>` takes the same parameters):"]
+        return ([preamble, color, plugins, "Commands (MCP tool `bashcut_<group>_<command>` takes the same parameters):"]
             + commands + [operations]).joined(separator: "\n")
     }()
 
@@ -37,6 +37,22 @@ extension CommandCatalog {
         Projects: `bashcut project create` / `project open` / `project save`; they refuse to drop unsaved work unless
         you pass --save-current or --discard-current. Outside BashCut's terminals the CLI and MCP read the
         automation token file automatically; edits are attributed to "agent". Exports still need the user's approval.
+        """
+
+    /// How agents find and run what installed plugins add. The installed actions themselves are listed in the
+    /// session context (`ProjectDocument.pluginActionsText()`) and by `plugins actions`.
+    private static let plugins = """
+        Plugin actions: installed plugins add actions (Plugins menu, clip and timeline menus, panels). To use one:
+        1. `bashcut plugins actions` lists each action's id, title, plugin, `when` condition, params as JSON Schema
+           and `enabled` (whether it can run with the current selection).
+        2. Make it runnable: most actions work on the selection, so `bashcut ui select ITEM_ID` first.
+        3. `bashcut plugins run ACTION_ID --params '{"name":value}'` (MCP: `bashcut_plugins_run`, or the per-action
+           tool `\(PluginActionTools.prefix)<id>`); omitted params use their defaults. It returns a job ID.
+        4. `bashcut jobs status JOB_ID` gives the result: the plugin's message and `data` (for example the ranges it
+           removed). The edit is one undo step attributed to the plugin.
+        Plugins that provide capabilities (voice, captions, beats, loudness) are used by `voice speak`,
+        `captions generate`, `beats detect` and export; `--provider` picks one, `plugins list` shows them.
+        Find more with `plugins search`; installing, trusting and turning plugins on are for the user only.
         """
 
     /// Color keys and ranges, from the same table validation uses.
