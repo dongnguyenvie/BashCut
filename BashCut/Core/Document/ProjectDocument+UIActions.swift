@@ -40,7 +40,8 @@ extension ProjectDocument {
         case .openExportOutput, .revealExportOutput:
             return exports.report.map { FileManager.default.fileExists(atPath: $0.receipt.url.path) } ?? false
         case .clearRecentProjects: return !settings.recentProjects.isEmpty
-        case .showHistory, .showReview, .showPlugins, .showDoctor, .showSettings, .showSections, .toggleAgentDock,
+        case .showHistory, .showReview, .showPlugins, .showDoctor, .showSettings, .showSections, .showCommands,
+            .showShortcuts, .toggleAgentDock,
             .askAgent, .openClaudeTerminal, .openCodexTerminal, .openShellTerminal,
             .toggleSafeArea, .toggleSnap, .addVideoLayer, .addAdjustmentLayer, .addTextLayer,
             .addAudioLayer:
@@ -64,7 +65,8 @@ extension ProjectDocument {
         case .openProject: openProject()
         case .saveProject: save()
         case .importMedia: importMedia()
-        case .showHistory, .showReview, .showPlugins, .showDoctor, .showSettings, .showExport, .showSections:
+        case .showHistory, .showReview, .showPlugins, .showDoctor, .showSettings, .showExport, .showSections,
+            .showCommands, .showShortcuts:
             try openDialog(String(action.id.dropFirst("show.".count)))
         case .toggleAgentDock:
             if agents.isDetached { agents.attach() } else { ui.showAgentDock.toggle() }

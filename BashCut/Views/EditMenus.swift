@@ -1,22 +1,8 @@
 import AppKit
 
-/// Standard macOS editing commands. Without an Edit menu, ⌘C/⌘V/⌘X/⌘A never reach text fields or the
-/// embedded terminals, because AppKit routes those shortcuts through menu key equivalents.
+/// Editing commands for the embedded terminals. The menu bar's Edit menu (`MainMenu`) carries the same
+/// nil-targeted Cut/Copy/Paste/Select All, which ⌘X/⌘C/⌘V/⌘A need to reach text fields and terminals.
 @MainActor enum EditMenus {
-    /// The main-menu Edit item. Actions are nil-targeted, so they go to whichever view has focus.
-    /// Undo/Redo stay with the timeline's own ⌘Z buttons.
-    static func mainMenuItem() -> NSMenuItem {
-        let menu = NSMenu(title: String(localized: "Edit"))
-        menu.addItem(withTitle: String(localized: "Cut"), action: #selector(NSText.cut(_:)), keyEquivalent: "x")
-        menu.addItem(withTitle: String(localized: "Copy"), action: #selector(NSText.copy(_:)), keyEquivalent: "c")
-        menu.addItem(withTitle: String(localized: "Paste"), action: #selector(NSText.paste(_:)), keyEquivalent: "v")
-        menu.addItem(
-            withTitle: String(localized: "Select All"), action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
-        let item = NSMenuItem()
-        item.submenu = menu
-        return item
-    }
-
     /// Right-click menu for a terminal, targeted at that terminal even when another view has focus.
     static func terminalContextMenu(for view: NSView) -> NSMenu {
         let menu = NSMenu()

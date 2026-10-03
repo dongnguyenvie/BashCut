@@ -21,6 +21,10 @@ extension ProjectDocument {
         }
         closing("ask", "Ask agent", when: ui.showAsk) { [weak self] in self?.ui.showAsk = false }
         closing("sections", "Sections", when: ui.showSections) { [weak self] in self?.ui.showSections = false }
+        closing("commands", "Command palette", when: ui.showCommands) { [weak self] in self?.ui.showCommands = false }
+        closing("shortcuts", "Keyboard shortcuts", when: ui.showShortcuts) { [weak self] in
+            self?.ui.showShortcuts = false
+        }
         closing("new-project", "New project", when: ui.showNewProject) { [weak self] in self?.ui.showNewProject = false }
         closing("export", "Export", when: ui.showExport) { [weak self] in self?.ui.showExport = false }
         closing("export-report", "Export report", when: ui.showExportReport) { [weak self] in

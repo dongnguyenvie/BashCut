@@ -6,7 +6,6 @@ import BashCutProject
 import SwiftUI
 
 // The editor keeps its major panels together so AppKit timeline and SwiftUI sheets share one document.
-// swiftlint:disable:next type_body_length
 struct EditorView: View {
     @Bindable var document: ProjectDocument
     @State private var ask = ""
@@ -64,30 +63,26 @@ struct EditorView: View {
                 }
             }
             }
+            // Export progress, the save state and the revision are in the toolbar's activity capsule.
             HStack {
                 Text(document.message).lineLimit(2).textSelection(.enabled)
                 Spacer()
-                if document.exports.isRunning {
-                    if let detail = document.exports.queue.detail {
-                        Text(detail).lineLimit(1).foregroundStyle(.secondary)
-                    }
-                    ProgressView(value: document.exports.progress).frame(width: 120)
-                    Text(document.exports.progress, format: .percent.precision(.fractionLength(0)))
-                    if document.exports.queue.queuedCount > 0 {
-                        Text("\(document.exports.queue.queuedCount) queued").foregroundStyle(.secondary)
-                    }
-                    Button("Cancel export", action: document.exports.cancelActive)
-                } else if document.exports.report != nil {
-                    Button("Export report") { document.ui.showExportReport = true }
-                }
-                if document.busy {
-                    ProgressView().controlSize(.small)
-                }
-                Text(String(format: "rev %d", document.project.revision)).foregroundStyle(.secondary)
             }.font(.caption).padding(6)
         }
+        .ignoresSafeArea(.container, edges: .top)
         .background(Color(red: 0.065, green: 0.07, blue: 0.08)).preferredColorScheme(.dark).tint(.cyan)
         .frame(minWidth: 1280, minHeight: 800)
+        .overlay {
+            if document.ui.showCommands {
+                ZStack(alignment: .top) {
+                    Color.black.opacity(0.3).onTapGesture { document.ui.showCommands = false }
+                    CommandPaletteView { document.ui.showCommands = false }.padding(.top, 90)
+                }
+            }
+        }
+        .sheet(isPresented: Bindable(document.ui).showShortcuts) {
+            ShortcutsView { document.ui.showShortcuts = false }
+        }
         .overlay(alignment: .bottomTrailing) {
             if let change = document.agentChange {
                 AgentChangeToast(
@@ -169,65 +164,6 @@ struct EditorView: View {
                 do { try await Task.sleep(for: .milliseconds(100)) } catch { return }
             }
         }
-    }
-    private var toolbar: some View {
-        HStack(spacing: 10) {
-            Text("BashCut").font(.headline).foregroundStyle(.cyan)
-            Text(document.project.name + (document.dirty ? " •" : "")).lineLimit(1).frame(maxWidth: 200)
-            Button {
-                document.run(.undo)
-            } label: {
-                Image(systemName: "arrow.uturn.backward")
-            }
-            .action(.undo, in: document)
-            Button {
-                document.run(.redo)
-            } label: {
-                Image(systemName: "arrow.uturn.forward")
-            }
-            .action(.redo, in: document)
-            formatMenu
-            Spacer(minLength: 4)
-            Button("New") { document.run(.newProject) }.action(.newProject, in: document)
-            Button("Open…") { document.run(.openProject) }.action(.openProject, in: document)
-            Button("Save") { document.run(.saveProject) }.action(.saveProject, in: document)
-            Button("History") { document.run(.showHistory) }
-            Button("Review") { document.run(.showReview) }.action(.showReview, in: document)
-            PluginActionStrip(document: document, placement: "toolbar", compact: true)
-            PluginShortcutButtons(document: document)
-            if !document.plugins.proposals.isEmpty {
-                Button {
-                    document.ui.showPluginProposals = true
-                } label: {
-                    Label("\(document.plugins.proposals.count) plugin edits", systemImage: "puzzlepiece.extension.fill")
-                }.foregroundStyle(.orange).help("Review edits plugin hooks proposed")
-            }
-            Button {
-                if !document.plugins.updates.isEmpty { document.plugins.tab = .updates }
-                document.run(.showPlugins)
-            } label: {
-                let updates = document.plugins.updates.count
-                Label(updates > 0 ? String(format: String(localized: "Plugins (%d)"), updates) : String(localized: "Plugins"),
-                      systemImage: updates > 0 ? "puzzlepiece.extension.fill" : "puzzlepiece.extension")
-            }.help(document.plugins.updates.isEmpty ? "" : String(localized: "Plugin updates are available"))
-            Button {
-                document.run(.showDoctor)
-            } label: {
-                Label("Doctor", systemImage: "stethoscope")
-            }
-            Button {
-                document.run(.showSettings)
-            } label: {
-                Label("Settings", systemImage: "gearshape")
-            }
-            Button("Export…") { document.run(.showExport) }.action(.showExport, in: document)
-                .buttonStyle(.borderedProminent)
-            Button {
-                document.run(.toggleAgentDock)
-            } label: {
-                Label("Agent", systemImage: "sidebar.right")
-            }.action(.toggleAgentDock, in: document)
-        }.controlSize(.small).padding(10).disabled(document.busy)
     }
     private func runDoctor() { Task { await document.runDoctor() } }
     private var rail: some View {

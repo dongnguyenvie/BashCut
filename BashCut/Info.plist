@@ -32,6 +32,12 @@
 	<string>$(PRODUCT_NAME)</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
+	<key>BCContactEmail</key>
+	<string>dongnguyenvie@gmail.com</string>
+	<key>BCIssuesURL</key>
+	<string>https://github.com/dongnguyenvie/BashCut/issues</string>
+	<key>BCRepositoryURL</key>
+	<string>https://github.com/dongnguyenvie/BashCut</string>
 	<key>CFBundleShortVersionString</key>
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>

@@ -1,6 +1,624 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Agent dock": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Agent dock" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Khung trợ lý" } }
+      }
+    },
+    "BashCut": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "BashCut" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "BashCut" } }
+      }
+    },
+    "Close Window": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Close Window" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đóng cửa sổ" } }
+      }
+    },
+    "Command Palette…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Command Palette…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Bảng lệnh…" } }
+      }
+    },
+    "Doctor…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Doctor…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Doctor…" } }
+      }
+    },
+    "Export (⌘E)": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Export (⌘E)" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Xuất (⌘E)" } }
+      }
+    },
+    "Export report": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Export report" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Báo cáo xuất" } }
+      }
+    },
+    "Exporting": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Exporting" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đang xuất" } }
+      }
+    },
+    "Filter": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Filter" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Lọc" } }
+      }
+    },
+    "Keyboard Shortcuts": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Keyboard Shortcuts" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Phím tắt" } }
+      }
+    },
+    "Keyboard Shortcuts…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Keyboard Shortcuts…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Phím tắt…" } }
+      }
+    },
+    "Keys without ⌘ (Space, I, O, ←, ⌫…) act on the timeline or viewer; while you type in a field they type.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Keys without ⌘ (Space, I, O, ←, ⌫…) act on the timeline or viewer; while you type in a field they type." } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Phím không có ⌘ (Space, I, O, ←, ⌫…) tác động lên timeline hoặc trình xem; khi đang gõ trong ô nhập thì chúng gõ chữ như thường." } }
+      }
+    },
+    "More": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "More" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Thêm" } }
+      }
+    },
+    "No matching command": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "No matching command" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Không có lệnh phù hợp" } }
+      }
+    },
+    "No project": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "No project" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Chưa có dự án" } }
+      }
+    },
+    "Plugins…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Plugins…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Plugin…" } }
+      }
+    },
+    "Project: reveal in Finder, open another": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Project: reveal in Finder, open another" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Dự án: hiện trong Finder, mở dự án khác" } }
+      }
+    },
+    "Redo (⇧⌘Z)": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Redo (⇧⌘Z)" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Làm lại (⇧⌘Z)" } }
+      }
+    },
+    "Reveal in Finder": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Reveal in Finder" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Hiện trong Finder" } }
+      }
+    },
+    "Review before export (⇧⌘R)": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Review before export (⇧⌘R)" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Duyệt trước khi xuất (⇧⌘R)" } }
+      }
+    },
+    "Search commands": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Search commands" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Tìm lệnh" } }
+      }
+    },
+    "Show or hide the agent dock (⌘J)": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Show or hide the agent dock (⌘J)" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Hiện hoặc ẩn khung trợ lý (⌘J)" } }
+      }
+    },
+    "Undo (⌘Z)": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Undo (⌘Z)" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Hoàn tác (⌘Z)" } }
+      }
+    },
+    "Unsaved changes; BashCut saves automatically every 30 seconds": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Unsaved changes; BashCut saves automatically every 30 seconds" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Có thay đổi chưa lưu; BashCut tự lưu mỗi 30 giây" } }
+      }
+    },
+    "Working…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Working…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đang xử lý…" } }
+      }
+    },
+    "About BashCut": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "About BashCut" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Giới thiệu BashCut" } }
+      }
+    },
+    "Add Layer": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Add Layer" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Thêm layer" } }
+      }
+    },
+    "Agent Dock": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Agent Dock" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Khung trợ lý" } }
+      }
+    },
+    "Ask Agent About Selection…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Ask Agent About Selection…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Hỏi trợ lý về phần đang chọn…" } }
+      }
+    },
+    "Ask Agent…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Ask Agent…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Hỏi trợ lý…" } }
+      }
+    },
+    "Audio Layer": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Audio Layer" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Layer âm thanh" } }
+      }
+    },
+    "Back 1 Second": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Back 1 Second" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Lùi 1 giây" } }
+      }
+    },
+    "BashCut on GitHub": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "BashCut on GitHub" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "BashCut trên GitHub" } }
+      }
+    },
+    "Bring All to Front": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Bring All to Front" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đưa tất cả lên trước" } }
+      }
+    },
+    "Change Framing": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Change Framing" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đổi khung hình" } }
+      }
+    },
+    "Chat agents": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Chat agents" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Agent chat" } }
+      }
+    },
+    "Check Setup (Doctor)…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Check Setup (Doctor)…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Kiểm tra cài đặt (Doctor)…" } }
+      }
+    },
+    "Claude Terminal": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Claude Terminal" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Terminal Claude" } }
+      }
+    },
+    "Clear Menu": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Clear Menu" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Xoá danh sách" } }
+      }
+    },
+    "Clip": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Clip" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Clip" } }
+      }
+    },
+    "Close Source Viewer": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Close Source Viewer" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đóng trình xem nguồn" } }
+      }
+    },
+    "Codex Terminal": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Codex Terminal" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Terminal Codex" } }
+      }
+    },
+    "Compare Before / After": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Compare Before / After" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "So sánh trước / sau" } }
+      }
+    },
+    "Contact": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Contact" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Liên hệ" } }
+      }
+    },
+    "Contact Support…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Contact Support…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Liên hệ hỗ trợ…" } }
+      }
+    },
+    "Delete (Ripple)": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Delete (Ripple)" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Xoá (dồn khoảng trống)" } }
+      }
+    },
+    "Delete Empty Layer": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Delete Empty Layer" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Xoá layer trống" } }
+      }
+    },
+    "Enter Full Screen": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Enter Full Screen" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Toàn màn hình" } }
+      }
+    },
+    "Export Report…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Export Report…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Báo cáo xuất…" } }
+      }
+    },
+    "File": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "File" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Tệp" } }
+      }
+    },
+    "Forward 1 Second": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Forward 1 Second" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Tiến 1 giây" } }
+      }
+    },
+    "Freeze Frame": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Freeze Frame" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Dừng hình" } }
+      }
+    },
+    "Help": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Help" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Trợ giúp" } }
+      }
+    },
+    "Hide BashCut": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Hide BashCut" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Ẩn BashCut" } }
+      }
+    },
+    "Hide Others": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Hide Others" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Ẩn ứng dụng khác" } }
+      }
+    },
+    "History…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "History…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Lịch sử…" } }
+      }
+    },
+    "Import Footage…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Import Footage…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Nhập footage…" } }
+      }
+    },
+    "Insert at Playhead": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Insert at Playhead" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Chèn tại đầu phát" } }
+      }
+    },
+    "Issues": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Issues" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Báo lỗi" } }
+      }
+    },
+    "Library": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Library" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Thư viện" } }
+      }
+    },
+    "Lift (Leave Gap)": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Lift (Leave Gap)" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Nhấc ra (để khoảng trống)" } }
+      }
+    },
+    "Mark In": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Mark In" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đánh dấu điểm vào" } }
+      }
+    },
+    "Mark Out": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Mark Out" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đánh dấu điểm ra" } }
+      }
+    },
+    "Minimize": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Minimize" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Thu nhỏ cửa sổ" } }
+      }
+    },
+    "Move Layer Down": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Move Layer Down" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Chuyển layer xuống" } }
+      }
+    },
+    "Move Layer Up": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Move Layer Up" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Chuyển layer lên" } }
+      }
+    },
+    "New Project…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "New Project…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Dự án mới…" } }
+      }
+    },
+    "New Tab": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "New Tab" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Tab mới" } }
+      }
+    },
+    "Next Frame": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Next Frame" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Khung hình sau" } }
+      }
+    },
+    "Normal Speed": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Normal Speed" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Tốc độ thường" } }
+      }
+    },
+    "Open Last Export": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Open Last Export" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Mở bản xuất gần nhất" } }
+      }
+    },
+    "Open Logs Folder": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Open Logs Folder" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Mở thư mục log" } }
+      }
+    },
+    "Open Project…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Open Project…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Mở dự án…" } }
+      }
+    },
+    "Open Recent": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Open Recent" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Mở gần đây" } }
+      }
+    },
+    "Overwrite at Playhead": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Overwrite at Playhead" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Ghi đè tại đầu phát" } }
+      }
+    },
+    "Playback": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Playback" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Phát" } }
+      }
+    },
+    "Plugin API": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Plugin API" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Plugin API" } }
+      }
+    },
+    "Plugin Guide": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Plugin Guide" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Hướng dẫn plugin" } }
+      }
+    },
+    "Previous Frame": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Previous Frame" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Khung hình trước" } }
+      }
+    },
+    "Refresh Waveforms": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Refresh Waveforms" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Làm mới dạng sóng" } }
+      }
+    },
+    "Report an Issue…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Report an Issue…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Báo lỗi…" } }
+      }
+    },
+    "Repository": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Repository" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Mã nguồn" } }
+      }
+    },
+    "Reveal Last Export in Finder": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Reveal Last Export in Finder" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Hiện bản xuất gần nhất trong Finder" } }
+      }
+    },
+    "Review Before Export…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Review Before Export…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Duyệt trước khi xuất…" } }
+      }
+    },
+    "Run Doctor…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Run Doctor…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Chạy Doctor…" } }
+      }
+    },
+    "Safe Area": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Safe Area" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Vùng an toàn" } }
+      }
+    },
+    "Sections…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Sections…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Phân đoạn…" } }
+      }
+    },
+    "Services": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Services" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Dịch vụ" } }
+      }
+    },
+    "Shell": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Shell" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Shell" } }
+      }
+    },
+    "Show Agent Changes": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Show Agent Changes" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Xem thay đổi của trợ lý" } }
+      }
+    },
+    "Show All": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Show All" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Hiện tất cả" } }
+      }
+    },
+    "Slow Down": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Slow Down" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Chậm lại" } }
+      }
+    },
+    "Source Viewer": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Source Viewer" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Trình xem nguồn" } }
+      }
+    },
+    "Speed Up": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Speed Up" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Tăng tốc" } }
+      }
+    },
+    "Split at Playhead": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Split at Playhead" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Cắt tại đầu phát" } }
+      }
+    },
+    "Text Layer": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Text Layer" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Layer chữ" } }
+      }
+    },
+    "Undo Agent Change": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Undo Agent Change" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Hoàn tác thay đổi của trợ lý" } }
+      }
+    },
+    "Unlink Audio": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Unlink Audio" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Tách âm thanh" } }
+      }
+    },
+    "Video Layer": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Video Layer" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Layer video" } }
+      }
+    },
+    "Window": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Window" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Cửa sổ" } }
+      }
+    },
+    "Zoom In": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Zoom In" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Phóng to" } }
+      }
+    },
+    "Zoom Out": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Zoom Out" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Thu nhỏ" } }
+      }
+    },
+    "Zoom to Fit": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Zoom to Fit" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Vừa khung" } }
+      }
+    },
     "Start a new conversation": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Start a new conversation" } },

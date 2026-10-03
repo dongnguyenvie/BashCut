@@ -5,6 +5,27 @@
 
 ## [Unreleased]
 
+- **A full Mac menu bar.** BashCut, File, Edit, Clip, Timeline, Playback, View, Agent, Plugins, Window and Help now
+  carry every editor action with its shortcut, built from `UIAction` so menus, buttons and `ui.action` share one
+  code path. File has Open Recent; Agent ▸ New Tab lists the ready chat agents; View has Library ⌘1–⌘8, Safe Area,
+  Compare and the agent dock with check marks; Help links to the repository, plugin guide and issues (Info.plist
+  `BCRepositoryURL`, `BCIssuesURL`, `BCContactEmail`; an empty key hides its item) and opens the logs folder.
+  - New shortcuts: Settings ⌘,, Import Footage ⌘I, History ⌥⌘Z, Safe Area ⇧⌘', Compare ⌥⌘C, Speed Up ⌘],
+    Slow Down ⌘[, Normal Speed ⌥⌘R, Unlink Audio ⌥⌘L.
+  - Shortcuts without ⌘/⌥/⌃ (Space, I, O, ←, ⌫…) are shown in the menus but only run from a click, so typing in
+    text fields and the timeline's own keys keep working. Editor items are disabled while a sheet is open.
+  - On the timeline, ⇧F freezes the frame and N toggles snapping. File ▸ Close Window (⌘W) is added.
+  - About BashCut shows the plugin API version, repository, issues and contact links.
+- **A one-row toolbar in the title bar.** The project name (with an unsaved dot) opens a menu to reveal it in
+  Finder or open another; undo, redo and the format stay; an activity capsule in the middle shows export progress
+  (with cancel), work in progress, plugin edits waiting, or Saved/Edited with the revision and the export report.
+  Review, Export… and the agent-dock toggle stay on the right; New, Open, Save, History, Plugins, Doctor and Settings
+  move to a ☰ menu (with a dot for plugin updates or edits) and the menu bar. Empty toolbar space drags the window.
+- **Command palette (⇧⌘P)** searches every menu-bar command, including recent projects, chat agents and plugin
+  actions, ignoring case and Vietnamese marks; arrows and Enter run one. **Keyboard Shortcuts (⌘/)** lists every
+  shortcut by menu plus the timeline-only keys. Both read the menu bar, so they never disagree with it
+  (`ui open commands`, `ui open shortcuts`).
+
 - **Slash commands and a better input in chat-agent tabs.** Enter sends the message; Shift+Enter or Option+Enter
   starts a new line, and Enter while typing with an input method (Vietnamese Telex) only commits the word.
   - Typing `/` opens a menu (arrows, Tab, Enter, Escape) with the app's commands, available for every agent:
