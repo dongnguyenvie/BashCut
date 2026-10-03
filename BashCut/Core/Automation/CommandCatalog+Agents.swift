@@ -39,7 +39,7 @@ extension CommandCatalog {
             "Send a message to a chat agent like typing it in its tab. Returns at once; poll chat transcript until "
                 + "running is false to read the reply and the commands it ran.",
             parameters: [
-                CommandParameter("text", .string, "Message", required: true, cli: .positional),
+                CommandParameter("text", .string, "Message", required: true, sensitive: true, cli: .positional),
                 plugin,
                 CommandParameter("image", .string, "PNG or JPEG to attach, such as a ui frame", cli: .option("image")),
             ]),
@@ -55,7 +55,7 @@ extension CommandCatalog {
             "Run a slash command as typed in a chat agent's tab, such as \"/compact keep the caption decisions\" or "
                 + "\"/thinking low\"; returns what it showed. /export needs a path here.",
             parameters: [
-                CommandParameter("line", .string, "The command line, starting with /", required: true, cli: .positional),
+                CommandParameter("line", .string, "The command line, starting with /", required: true, sensitive: true, cli: .positional),
                 plugin,
             ]),
         CommandSpec(

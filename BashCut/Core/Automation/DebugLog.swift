@@ -28,7 +28,7 @@ public enum DebugLog {
         guard enabled else { return }
         // One entry per line, so multi-line errors (usage text) stay greppable.
         let text = message().replacingOccurrences(of: "\n", with: " ⏎ ")
-        Logger(subsystem: "app.bashcut", category: category).debug("\(text, privacy: .public)")
+        Logger(subsystem: "app.bashcut", category: category).debug("\(text, privacy: .private)")
         let line = "\(Date().formatted(timestamp)) [\(process)] \(category): \(text)\n"
         queue.async { append(line) }
     }
@@ -37,17 +37,6 @@ public enum DebugLog {
     public static func flush() { queue.sync {} }
 
     private static func append(_ line: String) {
-        let manager = FileManager.default
-        try? manager.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        if let size = (try? manager.attributesOfItem(atPath: url.path))?[.size] as? UInt64, size > maximumBytes {
-            let rotated = url.deletingLastPathComponent().appendingPathComponent("debug.1.log")
-            try? manager.removeItem(at: rotated)
-            try? manager.moveItem(at: url, to: rotated)
-        }
-        if !manager.fileExists(atPath: url.path) { manager.createFile(atPath: url.path, contents: nil) }
-        guard let handle = try? FileHandle(forWritingTo: url) else { return }
-        defer { try? handle.close() }
-        _ = try? handle.seekToEnd()
-        try? handle.write(contentsOf: Data(line.utf8))
+        DebugLogFile.append(line, to: url, maximumBytes: maximumBytes)
     }
 }

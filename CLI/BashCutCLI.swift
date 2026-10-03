@@ -14,13 +14,13 @@ import Foundation
     func run() throws {
         if words.isEmpty || ["help", "-h", "--help"].contains(words[0]) { throw CleanExit.helpRequest(self) }
         defer { DebugLog.flush() }
-        DebugLog.write("cli", "bashcut \(words.joined(separator: " "))")
         let invocation: CommandLineParser.Invocation
         do { invocation = try CommandLineParser.parse(words) } catch {
-            DebugLog.write("cli", "parse FAILED: \(error.localizedDescription)")
+            DebugLog.write("cli", "command parsing failed")
             FileHandle.standardError.write(Data("Error: \(error.localizedDescription)\n".utf8))
             throw ExitCode.validationFailure
         }
+        DebugLog.write("cli", "call \(invocation.spec.name)")
         let response: RPCResponse
         do {
             response = try UnixRPCClient.call(
@@ -28,7 +28,7 @@ import Foundation
                     method: invocation.spec.name, params: invocation.params,
                     token: AutomationPaths.sessionToken()))
         } catch {
-            DebugLog.write("cli", "\(invocation.spec.name) FAILED: \(error.localizedDescription)")
+            DebugLog.write("cli", "\(invocation.spec.name) failed")
             throw error
         }
         try write(response, format: invocation.format)

@@ -85,7 +85,7 @@ enum ToolList {
             return .init(tools: tools + plugins)
         }
         await server.withMethodHandler(CallTool.self) { request in
-            DebugLog.write("mcp", "call \(request.name)")
+            DebugLog.write("mcp", "tool call")
             do {
                 let arguments = try JSONEncoder().encode(request.arguments ?? [:])
                 if request.name.hasPrefix(PluginActionTools.prefix) {
@@ -98,13 +98,13 @@ enum ToolList {
                         method: "plugins.run", arguments: call, token: AutomationPaths.sessionToken()))
                 }
                 guard let spec = CommandCatalog.specs.first(where: { $0.mcpToolName == request.name }) else {
-                    DebugLog.write("mcp", "unknown tool \(request.name)")
+                    DebugLog.write("mcp", "unknown tool")
                     return failure("Unknown BashCut tool")
                 }
                 return result(try MCPBridgeClient.call(
                     method: spec.name, arguments: arguments, token: AutomationPaths.sessionToken()))
             } catch {
-                DebugLog.write("mcp", "\(request.name) FAILED: \(error.localizedDescription)")
+                DebugLog.write("mcp", "tool call failed")
                 return failure(error.localizedDescription)
             }
         }

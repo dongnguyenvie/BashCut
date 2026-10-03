@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+- Redact sensitive command arguments and omit RPC results/error payloads from persistent diagnostics. CLI
+  logging no longer records raw argv; chat, plugin options, operation payloads and arbitrary action parameters
+  stay out of logs. Unified-log content is private, and log/rotation files use owner-only permissions.
+
 - Add `timeline apply --dry-run` / MCP `dryRun`: validate a batch without mutating history, files or preview,
   and return the projected revision/duration plus changed items/tracks and added/removed tracks.
 

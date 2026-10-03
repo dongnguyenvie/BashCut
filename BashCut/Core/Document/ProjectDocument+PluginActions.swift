@@ -233,7 +233,7 @@ extension ProjectDocument {
             context: pluginContext(plugin: plugin, parts: action.spec.context ?? [], mediaID: mediaID, author: author),
             projectRoot: root, outputRoot: Self.pluginOutputRoot(root, plugin: plugin))
         let service = plugins.service
-        DebugLog.write("plugin", "action \(id) by \(author) params=\(values)")
+        DebugLog.write("plugin", "action \(id) by \(author)")
         let proposal: PluginEditProposal
         do {
             proposal = try await plugins.running(id) {
@@ -241,7 +241,7 @@ extension ProjectDocument {
             }
         } catch {
             registry.record(method: "plugin.action." + id, author: author, succeeded: false)
-            DebugLog.write("plugin", "action \(id) FAILED: \(error.localizedDescription)")
+            DebugLog.write("plugin", "action \(id) failed")
             throw error
         }
         guard session == sessionID else { throw CancellationError() }

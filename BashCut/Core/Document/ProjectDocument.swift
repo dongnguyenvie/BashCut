@@ -266,14 +266,14 @@ extension ProjectDocument {
                 operation, label: label, author: author, baseRevision: baseRevision, coalescingKey: coalescingKey)
         } catch {
             DebugLog.write(
-                "edit", "REJECTED \"\(label)\" by \(author) base=\(baseRevision.map(String.init) ?? "-") "
-                    + "rev=\(before.revision): \(error.localizedDescription) op=\(Self.describe(operation))")
+                "edit", "REJECTED edit by \(author) base=\(baseRevision.map(String.init) ?? "-") "
+                    + "rev=\(before.revision) op=\(Self.describe(operation))")
             throw error
         }
         didCommit(from: before, author: author, label: label)
         emitPluginEvent(.editCommitted, editEventPayload(label: label, author: author, before: before))
         DebugLog.write(
-            "edit", "\"\(label)\" by \(author) rev \(before.revision)→\(project.revision) op=\(Self.describe(operation))"
+            "edit", "edit by \(author) rev \(before.revision)→\(project.revision) op=\(Self.describe(operation))"
                 + (before.tracks.map(\.id) == project.tracks.map(\.id) ? "" : " layers: \(layoutSummary())"))
         return project.revision
     }

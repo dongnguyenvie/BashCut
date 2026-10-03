@@ -401,10 +401,16 @@ The app, the `bashcut` CLI and `bashcut-mcp` append one line per event to `~/Lib
 
 - app launch, with the executable path and build time;
 - project opens, with the layer layout and any layer-rule repair;
-- every committed or rejected edit with its operations, and layer placement and spill decisions;
+- every committed or rejected edit with its operation name, and layer placement and spill decisions;
 - media import details (`kind`, `hasAudio`, frames), proxy queueing, timeline gestures and library panel
   switches;
-- every automation request with its author, duration and result, and auto-approved exports.
+- every automation request with its author, duration and success/failure code, and auto-approved exports.
+
+Sensitive command parameters are marked in `CommandParameter` and replaced with `[redacted]`; unknown input
+fields are redacted too. Chat text, option values, arbitrary plugin parameters and operation payloads are not
+persisted. RPC results and error messages are omitted because they may echo secrets. The CLI logs the parsed
+command name, never raw argv. Log files are created with `0600`, existing active files are restricted on write,
+and unified-log messages use private visibility. Open uses `O_NOFOLLOW` and append mode.
 
 ```sh
 tail -f ~/Library/Logs/BashCut/debug.log

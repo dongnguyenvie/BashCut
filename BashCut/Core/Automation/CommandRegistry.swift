@@ -19,7 +19,20 @@ public struct AuditEvent: Codable, Sendable {
     /// Commands that switch the project; their result shows the new project to the caller.
     static let projectSwitches: Set<String> = ["project.open", "project.create", "edl.import"]
     private let audit: @Sendable (AuditEvent) -> Void
-    public init(audit: @escaping @Sendable (AuditEvent) -> Void = { _ in }) { self.audit = audit }
+    private let logger: (@Sendable (String, String) -> Void)?
+    public init(audit: @escaping @Sendable (AuditEvent) -> Void = { _ in }) {
+        logger = nil
+        self.audit = audit
+    }
+
+    init(logger: @escaping @Sendable (String, String) -> Void) {
+        self.logger = logger
+        audit = { _ in }
+    }
+
+    private func log(_ category: String, _ message: @autoclosure () -> String) {
+        if let logger { logger(category, message()) } else { DebugLog.write(category, message()) }
+    }
 
     /// Registers the handler for a catalogued command. Requests reach it only after spec validation.
     public func register(_ method: String, handler: @escaping Handler) {
@@ -96,9 +109,9 @@ public struct AuditEvent: Codable, Sendable {
                 switchedProject.removeValue(forKey: token)
             }
             audit(AuditEvent(date: Date(), method: request.method, author: author, succeeded: true))
-            DebugLog.write(
+            log(
                 "rpc", "\(request.method) by \(who) ok in \(Self.milliseconds(since: started)) ms "
-                    + "params=\(Self.summary(arguments.values)) result=\(Self.summary(result))")
+                    + "params=\(Self.summary(spec.logParameters(arguments.values)))")
             return RPCResponse(id: request.id, result: result)
         } catch {
             audit(AuditEvent(date: Date(), method: request.method, author: author, succeeded: false))
@@ -110,9 +123,9 @@ public struct AuditEvent: Codable, Sendable {
             } else {
                 failure = RPCFailure(-32602, error.localizedDescription)
             }
-            DebugLog.write(
-                "rpc", "\(request.method) by \(who) FAILED \(failure.code) in \(Self.milliseconds(since: started)) ms: "
-                    + "\(failure.message) params=\(Self.summary(request.params))")
+            log(
+                "rpc", "\(CommandCatalog.spec(named: request.method)?.name ?? "unknown command") by \(who) "
+                    + "FAILED \(failure.code) in \(Self.milliseconds(since: started)) ms")
             return RPCResponse(id: request.id, error: failure)
         }
     }
