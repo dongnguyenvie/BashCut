@@ -5,6 +5,18 @@ build layout and how to add the common kinds of extension. Each one is **one fil
 conforming type, add it to its registry, and cover it with a test that needs no network, agent CLI or real
 footage.
 
+Not everything lives here:
+
+- **Plugins** (out-of-process tools such as transcription, voice or silence detection) go to
+  [bashcut-plugins](https://github.com/dongnguyenvie/bashcut-plugins), which is also the registry BashCut installs
+  from. The plugin API and capabilities stay in this repo ([Writing plugins](docs/guides/plugins.md),
+  [Add a plugin capability](#add-a-plugin-capability)).
+- **Agent skills** (how Claude Code and Codex should edit with BashCut) go to
+  [bashcut-agent-kit](https://github.com/dongnguyenvie/bashcut-agent-kit). `scripts/run.sh` bundles a checkout
+  placed next to this repo (or `$BASHCUT_AGENT_KIT`), and Settings › Agents can point at a checkout you are
+  working on, so skill changes can be tried in BashCut's tabs without a rebuild. Commands that agents call
+  belong here ([Add a command](#add-a-command-cli-mcp-and-agent-instructions)).
+
 ## Build and verify
 
 `Package.swift` is the single source of targets. `project.yml` (XcodeGen) only declares the app bundle, the

@@ -2,6 +2,17 @@
 
 Native macOS video editor with a shared AVFoundation preview/export engine. This repository contains a working M0 foundation and partial M1/M2 editor and agent features. The complete editor in [the specs](docs/specs/README.md) is still under development.
 
+## Related repositories
+
+Two other repositories are part of BashCut. Contributions are welcome in each:
+
+| Repository | What it holds | Contribute there |
+|---|---|---|
+| [bashcut-plugins](https://github.com/dongnguyenvie/bashcut-plugins) | The plugin registry (`registry.json`) and its plugins, such as Silence Markers and VieNeu TTS | New plugins and fixes to existing ones. See [Writing plugins](docs/guides/plugins.md) |
+| [bashcut-agent-kit](https://github.com/dongnguyenvie/bashcut-agent-kit) | Editing skills for Claude Code and Codex (footage survey, beat cuts, audio mix, captions, colour, effects, voiceover…). BashCut ships them and loads them in its agent tabs | Editing know-how that agents should follow. See its README › Writing skills |
+
+Changes to the editor itself, its commands and the plugin API belong in this repository.
+
 ## Run
 
 Requires macOS 14+, Xcode with Swift 6, and network access for the first package resolution.
