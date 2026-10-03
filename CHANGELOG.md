@@ -9,6 +9,7 @@
   Square 1:1), also `project format --canvas <c> [--resolution <r>]` and the new `setFormat` operation. One undoable
   edit; timing is kept and clip pan/tilt scale with the frame. Before, a project's format could never change.
 - **Viewer zoom**: Fit, 25, 50, 100 and 200% from the viewer header (`ui view --viewer-zoom`); zoomed views scroll.
+  Fit leaves a 12-point margin so a 16:9 picture no longer touches the panel edges.
 - Fix: text was sized from the frame *width*, so titles grew 1.8× in landscape projects and ran off the frame. Text
   size is now a fraction of the short side (portrait looks the same as before), and a line wider than 90% of the
   frame shrinks to fit.

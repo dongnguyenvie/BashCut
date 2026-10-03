@@ -86,7 +86,14 @@ extension EditorView {
                             width: Double(document.project.width) * zoom, height: Double(document.project.height) * zoom)
                     }
                 } else {
-                    viewerFrame
+                    // Fit with a margin, so a 16:9 picture does not touch the panel edges. The size is set
+                    // explicitly: AVPlayerView fills whatever frame it gets and ignores padding around it.
+                    GeometryReader { geometry in
+                        let aspect = Double(document.project.width) / Double(max(1, document.project.height))
+                        let width = max(1, min(geometry.size.width - 24, (geometry.size.height - 24) * aspect))
+                        viewerFrame.frame(width: width, height: width / aspect)
+                            .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                    }
                 }
             }
             TransportBar(document: document)
