@@ -191,6 +191,15 @@ extension Project {
     }
 
     private func validateSourceRange(_ item: Item, on track: Track, media asset: Media) throws {
+        if let value = item.fields["speedCurve"] {
+            let curve: SpeedCurve
+            do { curve = try SpeedCurve(json: value) } catch {
+                throw ProjectError.invalid("item.\(item.id).speedCurve: \(error.localizedDescription)")
+            }
+            guard abs(curve.average - item.speed) < 0.0001 else {
+                throw ProjectError.invalid("item.\(item.id): speed must equal the speed curve's average")
+            }
+        }
         let freezeFrame = item.fields["freezeFrame"]?.int
         if item.fields["freezeFrame"] != nil {
             guard track.kind == "video", freezeFrame.map({ (0..<asset.frames).contains($0) }) == true else {

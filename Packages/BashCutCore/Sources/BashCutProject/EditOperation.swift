@@ -14,6 +14,8 @@ public indirect enum EditOperation: Codable, Sendable, Equatable {
     case slip(item: String, sourceIn: Int)
     case roll(item: String, edge: Edge, toFrame: Int)
     case setSpeed(item: String, speed: Double, keepDuration: Bool)  // see EditOperation+Speed.swift
+    case setSpeedCurve(item: String, curve: SpeedCurve?, keepDuration: Bool)
+    case setSource(item: String, media: String, sourceIn: Int, reversed: JSONValue?)
     case setProperties(item: String, patch: [String: JSONValue])
     case setLinkedAudio(video: String, audio: String?)
     case addMedia(Media)
@@ -75,7 +77,7 @@ extension Project {
     fileprivate func sourceOffset(_ frames: Int, item: Item) throws -> Int {
         guard let asset = media.first(where: { $0.id == item.mediaID }) else { return 0 }
         // A cut at a fractional source frame rounds down so the right half cannot overrun the source.
-        let offset = (Double(frames) / fps.value * asset.fps.value * item.speed).rounded(.down)
+        let offset = (item.sourceSeconds(afterFrames: frames, fps: fps) * asset.fps.value).rounded(.down)
         guard offset.isFinite, offset > Double(Int.min), offset < Double(Int.max) else {
             throw ProjectError.invalid("Source frame overflow")
         }
@@ -162,6 +164,10 @@ extension Project {
             try rollItem(id: id, edge: edge, frame: frame)
             if let linked { try rollItem(id: linked, edge: edge, frame: frame) }
         case .setSpeed(let id, let speed, let keepDuration): try applySpeed(id, speed: speed, keepDuration: keepDuration)
+        case .setSpeedCurve(let id, let curve, let keepDuration):
+            try applySpeedCurve(id, curve: curve, keepDuration: keepDuration)
+        case .setSource(let id, let media, let sourceIn, let reversed):
+            try applySource(id, media: media, sourceIn: sourceIn, reversed: reversed)
         }
     }
 
@@ -347,32 +353,6 @@ extension Project {
         fields.merge(patch) { _, new in new }
     }
 
-    private mutating func slipItem(id: String, sourceIn: Int) throws {
-        let (track, index) = try location(id)
-        guard tracks[track].items[index].mediaID != nil, sourceIn >= 0, sourceIn <= 2_000_000_000 else {
-            throw ProjectError.invalid("Slip requires a media item and a valid source frame")
-        }
-        tracks[track].items[index].sourceIn = sourceIn
-    }
-
-    private mutating func rollItem(id: String, edge: Edge, frame: Int) throws {
-        let (track, index) = try location(id)
-        let selected = tracks[track].items[index]
-        let neighbors = tracks[track].items.filter {
-            $0.id != id && (edge == .start ? $0.end == selected.at : $0.at == selected.end)
-        }
-        guard neighbors.count == 1, let neighbor = neighbors.first else {
-            throw ProjectError.invalid("Roll requires exactly one adjacent clip on the same track")
-        }
-        let left = edge == .start ? neighbor : selected
-        let right = edge == .start ? selected : neighbor
-        guard frame > left.at, frame < right.end else {
-            throw ProjectError.invalid("A rolling trim must leave both clips nonempty")
-        }
-        try trimItem(id: left.id, edge: .end, frame: frame, ripple: false)
-        try trimItem(id: right.id, edge: .start, frame: frame, ripple: false)
-    }
-
     private mutating func insertItem(track: String, item: Item) throws {
         guard item.at >= 0, item.duration > 0, item.at <= 2_000_000_000 - item.duration else {
             throw ProjectError.invalid("Invalid inserted timeline range")
@@ -416,10 +396,16 @@ extension Project {
         right.duration = original.end - frame
         right.sourceIn = try sum(right.sourceIn, sourceOffset(frame - original.at, item: original))
         tracks[track].items[index].duration = frame - original.at
+        if let curve = original.speedCurve {
+            // Each half keeps its part of the ramp, and its own average speed.
+            let cut = Double(frame - original.at) / Double(original.duration)
+            tracks[track].items[index].setSpeedCurve(curve.cut(from: 0, to: cut))
+            right.setSpeedCurve(curve.cut(from: cut, to: 1))
+        }
         tracks[track].items.insert(right, at: index + 1)
     }
 
-    private mutating func trimItem(id: String, edge: Edge, frame: Int, ripple: Bool) throws {
+    mutating func trimItem(id: String, edge: Edge, frame: Int, ripple: Bool) throws {
         let (track, index) = try location(id)
         let original = tracks[track].items[index]
         var trimmed = original
@@ -436,6 +422,10 @@ extension Project {
         case .end:
             guard frame > original.at else { throw ProjectError.invalid("Empty trim") }
             trimmed.duration = frame - original.at
+        }
+        if let curve = original.speedCurve {
+            trimmed.setSpeedCurve(curve.trimmed(edge: edge, by: frame - (edge == .start ? original.at : original.end),
+                                                duration: original.duration))
         }
         tracks[track].items[index] = trimmed
         if ripple {

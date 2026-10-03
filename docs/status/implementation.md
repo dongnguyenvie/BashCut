@@ -269,7 +269,7 @@ bench above.
 - **Automation:** voice-enrollment approval; analysis and interchange providers still need wiring to their panels.
 - **Plugin platform:** plugin-owned panels and a credential contract ([03-architecture.md](../specs/03-architecture.md) §5).
 - **M3–M6:** bundled transcription provider and real-engine acceptance, music/SFX library with BPM and license
-  badges, voice cloning, expanded legacy effect/overlay/SFX import, effect recipes, speed ramps and keyframes,
+  badges, voice cloning, expanded legacy effect/overlay/SFX import, effect recipes, keyframes,
   Demucs, and more interchange validation. Resolve remains reserved.
 - **Review and loudness:** coverage uses explicit speech tags and voiceover timing; it does not measure silence or
   transcribe untagged audio. Export loudness is measured only when normalization is on (the core `bashcut.audio-analysis` plugin provides it).

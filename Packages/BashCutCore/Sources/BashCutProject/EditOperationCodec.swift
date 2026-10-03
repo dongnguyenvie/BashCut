@@ -36,6 +36,17 @@ extension EditOperation {
         case "setSpeed":
             guard let speed = fields["speed"]?.double else { throw ProjectError.invalid("setSpeed: speed is required") }
             self = .setSpeed(item: try read.string("item"), speed: speed, keepDuration: fields["keepDuration"] == .bool(true))
+        case "setSpeedCurve":
+            let curve = try fields["points"].flatMap { $0 == .null ? nil : try SpeedCurve(json: $0) }
+                ?? fields["preset"]?.string.map { name in
+                    guard let preset = SpeedCurve.preset(name) else { throw ProjectError.invalid("Unknown speed curve preset \(name)") }
+                    return preset
+                }
+            self = .setSpeedCurve(item: try read.string("item"), curve: curve, keepDuration: fields["keepDuration"] == .bool(true))
+        case "setSource":
+            self = .setSource(
+                item: try read.string("item"), media: try read.string("media"), sourceIn: try read.frame("sourceIn"),
+                reversed: fields["reversed"].flatMap { $0 == .null ? nil : $0 })
         case "setLinkedAudio": self = .setLinkedAudio(video: try read.string("video"), audio: fields["audio"]?.string)
         case "addMedia": self = .addMedia(Media(fields: try read.object("media")))
         case "addTrack":
@@ -104,6 +115,14 @@ extension EditOperation {
             return op("setProperties", ["item": .string(item), "patch": .object(patch)])
         case .setSpeed(let item, let speed, let keepDuration):
             return op("setSpeed", ["item": .string(item), "speed": .number(speed), "keepDuration": .bool(keepDuration)])
+        case .setSpeedCurve(let item, let curve, let keepDuration):
+            return op("setSpeedCurve", [
+                "item": .string(item), "points": curve?.json ?? .null, "keepDuration": .bool(keepDuration),
+            ])
+        case .setSource(let item, let media, let sourceIn, let reversed):
+            return op("setSource", [
+                "item": .string(item), "media": .string(media), "sourceIn": .integer(sourceIn), "reversed": reversed ?? .null,
+            ])
         case .setLinkedAudio(let video, let audio):
             return op("setLinkedAudio", ["video": .string(video), "audio": audio.map(JSONValue.string) ?? .null])
         case .addMedia(let media): return op("addMedia", ["media": .object(media.fields)])

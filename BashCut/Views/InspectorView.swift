@@ -314,7 +314,8 @@ private struct SpeedControls: View {
         } else {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text(UIAction.speedLabel(speed)).font(.title2.monospacedDigit().bold())
+                    Text(item.speedCurve == nil || dragging != nil ? UIAction.speedLabel(speed) : String(localized: "Curve"))
+                        .font(.title2.monospacedDigit().bold())
                     Spacer()
                     Text(lengthText).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
                 }
@@ -322,7 +323,7 @@ private struct SpeedControls: View {
                     ForEach(UIAction.speedPresets, id: \.self) { preset in
                         Button(UIAction.speedLabel(preset)) { apply(preset) }
                             .buttonStyle(.bordered).controlSize(.small)
-                            .tint(abs(item.speed - preset) < 0.001 ? .cyan : nil)
+                            .tint(item.speedCurve == nil && abs(item.speed - preset) < 0.001 ? .cyan : nil)
                     }
                 }
                 Slider(
@@ -358,6 +359,7 @@ private struct SpeedControls: View {
                 if item.linkedItemID != nil {
                     Label("Linked sound changes too", systemImage: "link").font(.caption2).foregroundStyle(.secondary)
                 }
+                SpeedCurveControls(document: document, item: item)
             }
             .onAppear { typed = String(format: "%g", item.speed) }
             .onChange(of: item.speed) { typed = String(format: "%g", item.speed) }

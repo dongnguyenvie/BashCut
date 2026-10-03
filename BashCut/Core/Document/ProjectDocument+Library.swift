@@ -78,8 +78,8 @@ extension ProjectDocument {
             message = String(localized: "Move the playhead inside the selected video clip.")
             return
         }
-        let elapsed = Double(playhead - item.at) / project.fps.value
-        let source = item.sourceIn + Int((elapsed * media.fps.value * item.speed).rounded(.down))
+        let elapsed = item.sourceSeconds(afterFrames: playhead - item.at, fps: project.fps)
+        let source = item.sourceIn + Int((elapsed * media.fps.value).rounded(.down))
         apply(
             .setProperties(item: item.id, patch: ["freezeFrame": .integer(source)]),
             label: "Freeze frame")

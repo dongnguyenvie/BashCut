@@ -44,7 +44,16 @@ extension TimelineCanvas {
             }
             menu.addItem(entry)
         }
-        if item.mediaID != nil, item.fields["freezeFrame"] == nil { menu.addItem(speedMenu(item)) }
+        if item.mediaID != nil, item.fields["freezeFrame"] == nil {
+            menu.addItem(speedMenu(item))
+            if track.kind == "video" {
+                let reversed = item.fields["reversed"] != nil
+                menu.addItem(ClosureMenuItem(String(localized: reversed ? "Play Forward" : "Reverse")) { [weak self] in
+                    guard let self else { return }
+                    do { _ = try document.reverseClip(item.id) } catch { document.message = error.localizedDescription }
+                })
+            }
+        }
         menu.addItem(.separator())
         let locked = track.isLocked
         let title = String(format: String(localized: locked ? "Unlock %@" : "Lock %@"), track.name)
@@ -72,8 +81,26 @@ extension TimelineCanvas {
             entry.state = abs(item.speed - preset) < 0.001 ? .on : .off
             submenu.addItem(entry)
         }
+        submenu.addItem(.separator())
+        let curves = NSMenu()
+        let current = document.speedCurvePreset(of: item)
+        for preset in [("none", "None")] + SpeedCurve.presets.map({ ($0.id, $0.title) }) {
+            let entry = ClosureMenuItem(String(localized: String.LocalizationValue(preset.1))) { [weak self] in
+                guard let self else { return }
+                do {
+                    try document.setClipSpeedCurve(
+                        SpeedCurve.preset(preset.0), item: item.id, keepDuration: keepDuration)
+                } catch { document.message = error.localizedDescription }
+            }
+            entry.state = (current ?? "none") == preset.0 ? .on : .off
+            curves.addItem(entry)
+        }
+        let curveItem = NSMenuItem(title: String(localized: "Curve"), action: nil, keyEquivalent: "")
+        curveItem.submenu = curves
+        submenu.addItem(curveItem)
+        let label = item.speedCurve == nil ? UIAction.speedLabel(item.speed) : String(localized: "Curve")
         let parent = NSMenuItem(
-            title: String(format: String(localized: "Speed (%@)"), UIAction.speedLabel(item.speed)), action: nil,
+            title: String(format: String(localized: "Speed (%@)"), label), action: nil,
             keyEquivalent: "")
         parent.submenu = submenu
         return parent

@@ -539,3 +539,15 @@
 "Automation audit log" = "Nhật ký tự động hóa";
 "Delete %@ (%@)?" = "Xóa %@ (%@)?";
 "Free Up" = "Giải phóng";
+"Curve" = "Đường cong";
+"Average %@" = "Trung bình %@";
+"Reverse" = "Đảo ngược";
+"Play Forward" = "Phát xuôi";
+"Point the clip back at the original footage" = "Cho clip dùng lại cảnh quay gốc";
+"Render a reversed copy of the footage this clip uses and play it backwards" = "Tạo bản đảo ngược của đoạn cảnh quay clip đang dùng và phát ngược";
+"Montage" = "Montage";
+"Hero time" = "Khoảnh khắc anh hùng";
+"Bullet time" = "Bullet time";
+"Jump cut" = "Jump cut";
+"Flash in" = "Lóe vào";
+"Flash out" = "Lóe ra";

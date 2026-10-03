@@ -265,6 +265,27 @@ public enum ProjectSchema {
             "reframePreset": string("Framing preset ID, or custom"),
             "linkedAudio": string("Video: ID of its linked sound item"),
             "linkedVideo": string("Audio: ID of its linked picture item"),
+            "speedCurve": .object([
+                "type": .string("array"), "minItems": .integer(2), "maxItems": .integer(SpeedCurve.maximumPoints),
+                "description": .string(
+                    "Speed ramp: points from t 0 (clip start) to t 1 (clip end), speed linear between them; "
+                        + "speed then holds the curve's average. Set with setSpeedCurve."),
+                "items": .object([
+                    "type": .string("object"), "required": .array([.string("t"), .string("speed")]),
+                    "properties": .object([
+                        "t": .object(["type": .string("number"), "minimum": .integer(0), "maximum": .integer(1)]),
+                        "speed": .object([
+                            "type": .string("number"), "minimum": .number(Project.speedRange.lowerBound),
+                            "maximum": .number(Project.speedRange.upperBound),
+                        ]),
+                    ]),
+                ]),
+            ]),
+            "reversed": .object([
+                "type": .string("object"),
+                "description": .string("Set by clip reverse: the original media and in-point, restored by reversing again"),
+                "properties": .object(["media": string("Original media ID"), "in": integer("Original in-point", minimum: 0)]),
+            ]),
             "styleKit": string("Adjustment: the style kit that added it; the next kit replaces it"),
             "tag": .object([
                 "type": .string("object"), "description": .string("Editorial tags"),
