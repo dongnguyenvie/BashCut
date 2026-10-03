@@ -131,7 +131,9 @@ recorded response. Never call the network.
 3. Tests: `Tests/BashCutAutomationTests/CommandSpecTests.swift` checks every spec has a valid schema and CLI
    form; add a parsing case if the command has unusual parameters. Debug builds assert every spec has a
    handler at launch.
-4. Document it in `docs/guides/automation.md` and the command table in `docs/specs/05-agent-integration.md`.
+4. Run `scripts/update-commands.sh` to regenerate `docs/reference/commands.md` (`CommandReferenceTests` fails
+   until you do). Explain new concepts in `docs/guides/automation.md`; add the command to the design tables in
+   `docs/specs/05-agent-integration.md` only when it is a new area.
 
 A new button, menu item or shortcut is a `UIAction` case (ID, title, shortcuts) in
 `BashCut/Core/Automation/UIAction.swift`, handled in `ProjectDocument+UIActions.swift` and bound in the view

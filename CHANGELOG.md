@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+- `docs/reference/commands.md` lists every CLI command and MCP tool with its mode, how it runs and its parameters.
+  It is generated from the command catalog (`scripts/update-commands.sh`) and a test fails when it is stale; the
+  hand-written tables in the automation guide had fallen behind.
 - **`ui frame [frame]`** renders the viewer picture at a timeline frame (the playhead by default) to a PNG and
   returns its path, without moving the playhead, so agents can look at their edits. It is the same capture as
   Ask's *attach viewer frame* (which had no command until now).
