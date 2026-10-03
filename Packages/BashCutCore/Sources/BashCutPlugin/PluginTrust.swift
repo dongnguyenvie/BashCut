@@ -198,6 +198,14 @@ public final class PluginTrustStore: @unchecked Sendable {
         return value
     }
 
+    /// Credentials belong to these exact plugin files and installation. Re-trusting changed code never
+    /// transfers the previous version's keys; the user must enter a key for the new fingerprint.
+    public func credentialIdentity(for plugin: InstalledPlugin) throws -> String {
+        let current = try fingerprint(plugin)
+        let digest = [current.manifestSHA256, current.entrypointSHA256, current.treeSHA256 ?? ""].joined(separator: ":")
+        return plugin.installationID + "@" + PluginFingerprint.hex(Data(digest.utf8))
+    }
+
     private static func stamp(_ folder: URL) -> [String] {
         let root = folder.resolvingSymlinksInPath()
         let keys: [URLResourceKey] = [.fileSizeKey, .contentModificationDateKey]

@@ -139,6 +139,25 @@ struct PluginTrustTests {
         #expect(catalog.diagnostics.contains { $0.contains("shadows installed plugin") })
     }
 
+    @Test("Credential identity follows installation and code, not the decision to trust it")
+    func credentialIdentity() throws {
+        let sandbox = Sandbox()
+        defer { try? FileManager.default.removeItem(at: sandbox.root) }
+        let user = try sandbox.plugin()
+        let project = try sandbox.plugin(in: "project")
+        let store = sandbox.store()
+        let original = try store.credentialIdentity(for: user)
+        #expect(try store.credentialIdentity(for: project) != original)
+        try store.trust(project)
+        #expect(try store.credentialIdentity(for: project) != original)
+        #expect(try store.credentialIdentity(for: user) == original)
+        try Data("changed code".utf8).write(to: user.directory.appendingPathComponent("bin/helper.py"))
+        let changed = try store.credentialIdentity(for: user)
+        #expect(changed != original)
+        try store.trust(user)
+        #expect(try store.credentialIdentity(for: user) == changed)
+    }
+
     @Test("Legacy ID-only approvals cannot establish the root the user trusted")
     func unscopedGrant() throws {
         let sandbox = Sandbox()

@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+- Scope plugin credentials to the installation root and complete fingerprint, as well as provider/endpoint.
+  Trusting a same-ID project copy or a changed plugin does not transfer the original installation's secrets.
+
 - Scope plugin trust, enable switches, hooks and local options to the canonical installation root. A project
   copy sharing an installed plugin's ID cannot inherit its approval or settings; catalog diagnostics identify
   the shadowed installation. Legacy ID-only approvals require review again because their origin is unknown.

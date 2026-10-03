@@ -377,9 +377,10 @@ example the voice a `voice.synthesize` provider should use), as `options`.
   - `plugins options` shows only `{"set": true|false}`. For a plugin declaring any secret, **all** options
     are user-only and stored for this Mac; project `pluginOptions` overrides are ignored. Automated option
     writes are refused, including non-secret settings such as the endpoint.
-  - Keys are bound to the plugin's `provider` and `baseUrl` option values. Enter a key after selecting the
+  - Keys are bound to the canonical installation root, fingerprint and the plugin's `provider` and `baseUrl` option values. Enter a key after selecting the
     destination. Changing either value selects a separate key; changing `model` does not. Legacy unbound
-    keys are never reused automatically and must be re-entered in Settings.
+    keys are never reused automatically and must be re-entered in Settings. Changed plugin code also requires
+    a new key entry, even after Trust; approving code does not grant it the previous version's credentials.
   - Action parameters cannot be secrets.
 - `file` (API 3) shows **Choose…** with a file panel (through `ModalCenter`, so agents answer it with
   `ui respond --path`); `fileTypes` limits the extensions. Project-scope files inside the project are stored

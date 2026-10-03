@@ -114,9 +114,11 @@ extension ProjectDocument {
         let root = fileURL?.deletingLastPathComponent()
         for option in options {
             if option.type == .secret {
-                let secret = plugins.secrets.read(
-                    plugin: plugin.id, option: option.id,
-                    binding: PluginOptionPolicy.endpointBinding(options: options, userValues: user))
+                let identity = try? plugins.trust.credentialIdentity(for: plugin)
+                let secret = identity.map {
+                    plugins.secrets.read(plugin: $0, option: option.id,
+                                         binding: PluginOptionPolicy.endpointBinding(options: options, userValues: user))
+                } ?? ""
                 values[option.id] = revealSecrets ? .string(secret) : .object(["set": .bool(!secret.isEmpty)])
                 continue
             }
@@ -141,7 +143,7 @@ extension ProjectDocument {
             guard author == .user else { throw ProjectError.invalid("Set secrets in Settings") }
             let text = try value.map(option.check)?.string ?? ""
             try plugins.secrets.write(
-                text, plugin: plugin.id, option: id,
+                text, plugin: plugins.trust.credentialIdentity(for: plugin), option: id,
                 binding: PluginOptionPolicy.endpointBinding(options: options, userValues: plugins.trust.userOptions(plugin)))
             return
         }
