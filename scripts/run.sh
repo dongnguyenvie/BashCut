@@ -12,8 +12,10 @@ for binary in BashCutApp bashcut bashcut-mcp; do
         mv -f "$bundle/MacOS/.$binary.new" "$bundle/MacOS/$binary"
     fi
 done
-# Core plugins (Plugins/<name>/plugin.json + their provider executable) go in Contents/PlugIns/<id>/.
-plugin_dir="$bundle/PlugIns/bashcut.audio-analysis"
+# Core plugins (Plugins/<name>/plugin.json + their provider executable) go in Contents/Resources/Plugins/<id>/
+# (Contents/PlugIns is for code bundles: codesign rejects plain folders there).
+rm -rf "$bundle/PlugIns"
+plugin_dir="$bundle/Resources/Plugins/bashcut.audio-analysis"
 mkdir -p "$plugin_dir/bin"
 cp Plugins/audio-analysis/plugin.json "$plugin_dir/plugin.json"
 cp "$bin_dir/bashcut-audio-analysis" "$plugin_dir/bin/.provider.new"

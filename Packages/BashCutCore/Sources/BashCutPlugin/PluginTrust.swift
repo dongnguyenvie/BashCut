@@ -144,7 +144,7 @@ public final class PluginTrustStore: @unchecked Sendable {
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return PluginTrustStore(
             url: support.appendingPathComponent("BashCut/plugin-trust.json"),
-            trustedRoots: Bundle.main.builtInPlugInsURL.map { [$0] } ?? [])
+            trustedRoots: PluginFolders.bundled.map { [$0] } ?? [])
     }
 
     public func grant(for pluginID: String) -> PluginGrant? { locked { contents.grants[pluginID] } }

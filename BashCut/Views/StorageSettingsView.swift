@@ -1,0 +1,100 @@
+import AppKit
+import BashCutDocument
+import SwiftUI
+
+/// Settings › Storage: sizes of plugin folders, plugin data and caches, the registry copy and preview proxies,
+/// with Clear for what can be made or downloaded again.
+struct StorageSettingsView: View {
+    let document: ProjectDocument
+    @State private var entries: [StorageEntry]?
+    @State private var clearing: String?
+    @State private var confirm: StorageEntry?
+    @State private var error = ""
+
+    var body: some View {
+        Section {
+            if let entries {
+                ForEach(entries) { entry in row(entry) }
+                LabeledContent("Total") {
+                    Text(Self.bytes(entries.reduce(0) { $0 + $1.bytes })).monospacedDigit().bold()
+                }
+            } else {
+                ProgressView().controlSize(.small)
+            }
+            if !error.isEmpty { Text(error).font(.caption).foregroundStyle(.orange) }
+        } header: {
+            HStack {
+                Text("Storage")
+                Spacer()
+                Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([StorageUsage.supportFolder]) }
+                    .buttonStyle(.link)
+                Button {
+                    Task { await load() }
+                } label: { Image(systemName: "arrow.clockwise") }.buttonStyle(.borderless).help("Measure again")
+            }
+        }
+        .task { await load() }
+        .confirmationDialog(
+            confirm.map(confirmTitle) ?? "", isPresented: Binding(get: { confirm != nil }, set: { if !$0 { confirm = nil } }),
+            presenting: confirm
+        ) { entry in
+            Button("Delete", role: .destructive) { clear(entry) }
+        } message: { entry in
+            Text(entry.kind == .pluginData
+                ? LocalizedStringKey("The plugin's environments and settings are deleted. Use Install Dependencies… in Plugins to set it up again.")
+                : LocalizedStringKey("This is downloaded or made again when needed."))
+        }
+    }
+
+    private func row(_ entry: StorageEntry) -> some View {
+        LabeledContent {
+            HStack {
+                Text(Self.bytes(entry.bytes)).monospacedDigit().foregroundStyle(.secondary)
+                if entry.clearable {
+                    if clearing == entry.id {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Button(entry.kind == .pluginData ? LocalizedStringKey("Delete…") : LocalizedStringKey("Free Up")) {
+                            if entry.kind == .pluginData || entry.kind == .pluginCache { confirm = entry } else { clear(entry) }
+                        }.disabled(entry.bytes == 0 || clearing != nil)
+                    }
+                }
+            }
+        } label: {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title(entry))
+                Text(entry.url.path).font(.caption2).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
+            }
+        }
+    }
+
+    private func title(_ entry: StorageEntry) -> String {
+        let plugin = entry.pluginID.map { id in document.plugins.plugin(id)?.manifest.displayName ?? id } ?? ""
+        switch entry.kind {
+        case .plugins: return String(localized: "Installed plugins")
+        case .pluginData: return String(format: String(localized: "%@ — data"), plugin)
+        case .pluginCache: return String(format: String(localized: "%@ — downloads"), plugin)
+        case .registry: return String(localized: "Plugin catalog copy")
+        case .proxies: return String(localized: "Preview proxies (this project)")
+        case .audit: return String(localized: "Automation audit log")
+        }
+    }
+
+    private func confirmTitle(_ entry: StorageEntry) -> String {
+        String(format: String(localized: "Delete %@ (%@)?"), title(entry), Self.bytes(entry.bytes))
+    }
+
+    private func clear(_ entry: StorageEntry) {
+        clearing = entry.id
+        error = ""
+        Task {
+            do { try await document.clearStorage(entry) } catch { self.error = error.localizedDescription }
+            clearing = nil
+            await load()
+        }
+    }
+
+    private func load() async { entries = await document.storageEntries() }
+
+    static func bytes(_ value: Int64) -> String { ByteCountFormatter.string(fromByteCount: value, countStyle: .file) }
+}

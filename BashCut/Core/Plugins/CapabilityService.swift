@@ -20,7 +20,7 @@ public struct PluginRoots: Sendable, Equatable {
         PluginRoots(
             user: FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
                 .appendingPathComponent("BashCut/Plugins", isDirectory: true),
-            bundled: Bundle.main.builtInPlugInsURL, includesUserPlugins: PluginChannel.current.allowsUserPlugins)
+            bundled: PluginFolders.bundled, includesUserPlugins: PluginChannel.current.allowsUserPlugins)
     }
 
     public func ordered(projectRoot: URL?) -> [URL] {

@@ -25,6 +25,10 @@ public enum PluginFolders {
             .appendingPathComponent("BashCut/PluginData", isDirectory: true)
     }
 
+    /// Plugins that come with the app: `Contents/Resources/Plugins/`. Not `Contents/PlugIns`, which codesign
+    /// reserves for code bundles; each core plugin's executable is signed on its own before the app.
+    public static var bundled: URL? { Bundle.main.resourceURL?.appendingPathComponent("Plugins", isDirectory: true) }
+
     public static func data(_ pluginID: String) -> URL { dataRoot.appendingPathComponent(pluginID, isDirectory: true) }
     public static func cache(_ pluginID: String) -> URL { cacheRoot.appendingPathComponent(pluginID, isDirectory: true) }
 

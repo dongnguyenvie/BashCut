@@ -168,7 +168,7 @@ BashCut looks for plugin folders (each containing `plugin.json`) in three places
 
 1. The project: `<project>/.bashcut/plugins/`
 2. The user: `~/Library/Application Support/BashCut/Plugins/`
-3. The app bundle's `PlugIns` folder
+3. The app bundle's `Contents/Resources/Plugins` folder (core plugins)
 
 When two plugins share an `id`, the first one found wins, so project plugins override user plugins, which
 override bundled ones — except that a copy found earlier replaces a bundled plugin only when its version is
@@ -305,7 +305,7 @@ as `bashcut captions import`.
 
 ### Core plugins
 
-`bashcut.audio-analysis` comes inside the app (`Contents/PlugIns/`, source in `Plugins/audio-analysis/`) and needs
+`bashcut.audio-analysis` comes inside the app (`Contents/Resources/Plugins/`, source in `Plugins/audio-analysis/`) and needs
 no setup. It is an ordinary out-of-process plugin built from Swift with AVFoundation and vDSP:
 
 - `audio.loudness`: ITU-R BS.1770-4 integrated loudness, EBU Tech 3342 loudness range and 4× oversampled true

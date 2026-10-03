@@ -178,7 +178,7 @@ and dependency records. The manifest and wire contract are in [Writing plugins](
 
 1. `<project>/.bashcut/plugins/`;
 2. `~/Library/Application Support/BashCut/Plugins/`;
-3. the app bundle's built-in `PlugIns` directory.
+3. the app bundle's `Contents/Resources/Plugins` directory (core plugins).
 
 A malformed manifest, duplicate ID or failed dependency probe becomes a diagnostic or a degraded provider; it
 never stops the editor or the project from opening.
@@ -231,7 +231,7 @@ process would take down the editor. The platform grows in these steps (contract 
 | Step | Pattern | BashCut design | Status |
 |---|---|---|---|
 | 1 | Factory + adapter between feature and plugin | `CapabilityService` with `CapabilityAdapter` and `PluginTransport`, shared by panels, CLI/MCP and export; provider-backed automation runs as background jobs | **Implemented** |
-| 2 | Common providers bundled with the app | Native Swift helper executables in `Contents/PlugIns/` for `audio.loudness` (EBU R128 with vDSP) and `audio.beats` (vDSP onset/tempo); VieNeu and Whisper wrappers stay user or project plugins. Shipped as `bashcut.audio-analysis` (`Plugins/audio-analysis/`) | **Implemented** |
+| 2 | Common providers bundled with the app | Native Swift helper executables in `Contents/Resources/Plugins/` for `audio.loudness` (EBU R128 with vDSP) and `audio.beats` (vDSP onset/tempo); VieNeu and Whisper wrappers stay user or project plugins. Shipped as `bashcut.audio-analysis` (`Plugins/audio-analysis/`) | **Implemented** |
 | 3 | Long-lived helper with handshake, request IDs and cancel | `PluginSessionTransport` for manifests with `"transport": "session"`: `hello` handshake, NDJSON requests matched by ID, `progress` lines reported on the job, `cancel`, `shutdown` after 90 s idle, restart after a crash and a one-minute refusal after 3 crashes. `PluginRouter` picks it or the one-shot runner per plugin; one request per process stays the default | **Implemented** |
 | 4 | API version window and availability reasons | Host API 1…2 with additive changes; `minApiVersion`/`maxApiVersion`; availability `ready`, `disabled`, `untrusted`, `changed`, `outdated` plus dependency health; a user enable/disable list (and a hooks switch) per plugin. The remote registry (row 8) offers providers to install from panels. Not done: `notInstalled`/`failedToLoad` states (catalog diagnostics remain) | **Implemented** |
 | 5 | Code-signature trust gate | `PluginTrustStore` pins SHA-256 of `plugin.json` and the entrypoint when the user installs or trusts a plugin; a change marks it `changed` until trusted again; bundled plugins are trusted. Trusting and turning plugins on are user-only. Registry archives carry ed25519 signatures checked against the key compiled into the app | **Implemented** |

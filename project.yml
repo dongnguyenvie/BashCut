@@ -61,7 +61,8 @@ targets:
         product: BashCutAutomation
       - package: MCPSwiftSDK
         product: MCP
-  # Core plugin: the provider executable of Plugins/audio-analysis, embedded in Contents/PlugIns.
+  # Core plugin: the provider executable of Plugins/audio-analysis, embedded in Contents/Resources/Plugins
+  # (Contents/PlugIns is for code bundles; codesign rejects a plain plugin folder there).
   AudioAnalysisProvider:
     type: tool
     platform: macOS
@@ -87,8 +88,8 @@ targets:
       - path: Plugins/audio-analysis/plugin.json
         buildPhase:
           copyFiles:
-            destination: plugins
-            subpath: bashcut.audio-analysis
+            destination: resources
+            subpath: Plugins/bashcut.audio-analysis
     info:
       path: BashCut/Info.plist
       properties:
@@ -130,8 +131,8 @@ targets:
         embed: true
         codeSign: true
         copy:
-          destination: plugins
-          subpath: bashcut.audio-analysis/bin
+          destination: resources
+          subpath: Plugins/bashcut.audio-analysis/bin
       - package: BashCut
         product: BashCutEngine
       - package: BashCut
