@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+- **Clips fit inside the frame in new projects.** A clip of another shape (portrait footage on a 16:9 canvas) was
+  always scaled to cover the frame, cropping most of it. New projects now scale each clip by its longest side
+  against the frame and show it whole with bars. The format menu switches the project between *Clips fit inside
+  the frame* and *Clips fill the frame* (`project format --clips fit|fill`, project field `clipFill`), and the
+  Inspector's **Fill frame** sets one clip (item field `fill`). Projects made before keep filling, so their
+  zoom settings look the same.
+
 - Fix: the agent dock did not show on the Welcome screen (no project open), so an agent could not be asked to
   create or open a project. The dock now sits beside the Welcome screen, whose recent-projects column narrows to
   make room, and agents are told that no project is open yet.

@@ -109,6 +109,10 @@
           "minimum" : 0,
           "type" : "integer"
         },
+        "fill" : {
+          "description" : "Fill the frame (cropping) instead of fitting inside it; the project's clipFill by default",
+          "type" : "boolean"
+        },
         "freezeFrame" : {
           "description" : "Video: source frame held for the whole item",
           "minimum" : 0,
@@ -279,7 +283,7 @@
               "type" : "number"
             },
             "zoom" : {
-              "description" : "Scale over the fill-the-frame size",
+              "description" : "Scale over the fitted or filled size",
               "maximum" : 100,
               "minimum" : 0.01,
               "type" : "number"
@@ -758,6 +762,10 @@
         "frames"
       ],
       "type" : "object"
+    },
+    "clipFill" : {
+      "description" : "Clips fill the frame, cropping what does not fit, instead of fitting inside it. New projects fit (false); a project without it fills, as projects did before it existed",
+      "type" : "boolean"
     },
     "contentLanguage" : {
       "description" : "BCP 47 language of speech and captions",

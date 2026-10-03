@@ -56,21 +56,37 @@ extension ProjectDocument {
             baseRevision: baseRevision)
     }
 
+    /// Whether clips fill the frame (cropping) or fit inside it by default (format menu, `project format --clips`).
+    @discardableResult
+    func setClipFill(_ fill: Bool, author: Author = .user, baseRevision: Int? = nil) throws -> Int {
+        guard project.clipsFill != fill else { return project.revision }
+        return try commit(
+            .setProjectProperties(patch: ["clipFill": .bool(fill)]),
+            label: fill ? "Clips fill the frame" : "Clips fit inside the frame", author: author,
+            baseRevision: baseRevision)
+    }
+
     func projectResult() -> JSONValue {
         .object(["project": fileURL.map { .string($0.path) } ?? .null, "rev": .integer(project.revision)])
     }
 
     func registerProjectCommands() {
         handleAuthored("project.format") { document, arguments, author in
-            guard let canvas = ProjectSetup.Canvas(rawValue: try arguments.string("canvas")) else {
-                throw RPCFailure(-32602, "Unknown canvas")
+            let canvas = arguments.optionalString("canvas")
+            let clips = arguments.optionalString("clips")
+            guard canvas != nil || clips != nil else { throw RPCFailure(-32602, "Give canvas, clips or both") }
+            var baseRevision: Int? = try arguments.int("baseRev")
+            if let canvas {
+                guard let value = ProjectSetup.Canvas(rawValue: canvas) else { throw RPCFailure(-32602, "Unknown canvas") }
+                try document.setCanvas(
+                    value, shortSide: arguments.optionalString("resolution").flatMap(Int.init), author: author,
+                    baseRevision: baseRevision)
+                baseRevision = nil
             }
-            let revision = try document.setCanvas(
-                canvas, shortSide: arguments.optionalString("resolution").flatMap(Int.init), author: author,
-                baseRevision: try arguments.int("baseRev"))
+            if let clips { try document.setClipFill(clips == "fill", author: author, baseRevision: baseRevision) }
             return .object([
-                "rev": .integer(revision), "width": .integer(document.project.width),
-                "height": .integer(document.project.height),
+                "rev": .integer(document.project.revision), "width": .integer(document.project.width),
+                "height": .integer(document.project.height), "clips": .string(document.project.clipsFill ? "fill" : "fit"),
             ])
         }
         handleAuthored("project.open") { document, arguments, _ in

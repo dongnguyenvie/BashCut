@@ -360,6 +360,13 @@ public struct Project: JSONObject {
         storage["beatGrid"]?.object["frames"]?.array.compactMap(\.int) ?? []
     }
     public var beatBPM: Double? { storage["beatGrid"]?.object["bpm"]?.double }
+    /// Whether clips fill the frame (cropping) by default instead of fitting inside it; a clip's `fill` overrides it.
+    /// Projects from before the setting existed fill.
+    public var clipsFill: Bool { storage["clipFill"] != .bool(false) }
+    public func fills(_ item: Item) -> Bool {
+        if case .bool(let fill)? = item["fill"] { return fill }
+        return clipsFill
+    }
     public var targetLUFS: Double { storage["audio"]?.object["targetLUFS"]?.double ?? -14 }
     public var mixGainDb: Double { storage["audio"]?.object["mixGainDb"]?.double ?? 0 }
     public func data() throws -> Data {

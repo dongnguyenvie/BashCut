@@ -105,6 +105,14 @@ Deleting a LUT removes it from clips, adjustments and custom looks alike.
 ]}
 ```
 
+## Framing
+
+A clip's base size is its source scaled to the canvas: **fit** shows the whole picture, using the scale of its
+longest side against the frame (bars on the other sides), **fill** covers the frame and crops. The item field
+`fill` chooses for one clip; without it the project's `clipFill` decides. New projects write `clipFill: false`
+(fit); a project without the field fills, as every project did before it existed, so older zoom values keep their
+look. `transform.zoom` scales from that base size, and `pan` / `tilt` move it in output pixels.
+
 ## Schema and versioning
 
 [project.schema.json](project.schema.json) is a JSON Schema (draft 2020-12) of the whole file. It is generated,

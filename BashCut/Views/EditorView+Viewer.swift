@@ -19,6 +19,15 @@ extension EditorView {
                     }
                 }
             }
+            Divider()
+            ForEach([false, true], id: \.self) { fill in
+                Button {
+                    do { try document.setClipFill(fill) } catch { document.message = error.localizedDescription }
+                } label: {
+                    let title: LocalizedStringKey = fill ? "Clips fill the frame" : "Clips fit inside the frame"
+                    if document.project.clipsFill == fill { Label(title, systemImage: "checkmark") } else { Text(title) }
+                }
+            }
         } label: {
             Text(
                 String(

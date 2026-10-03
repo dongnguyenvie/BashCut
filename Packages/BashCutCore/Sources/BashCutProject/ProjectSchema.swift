@@ -36,7 +36,8 @@ public struct ItemProperty: Sendable {
         .init(nil, "preservePitch", .boolean, "Keeps pitch when speed changes (default true)"),
         .init(nil, "fadeIn", .integer(0...2_000_000_000), "Audio fade-in in timeline frames"),
         .init(nil, "fadeOut", .integer(0...2_000_000_000), "Audio fade-out in timeline frames"),
-        .init("transform", "zoom", .number(0.01...100), "Scale over the fill-the-frame size"),
+        .init(nil, "fill", .boolean, "Fill the frame (cropping) instead of fitting inside it; the project's clipFill by default"),
+        .init("transform", "zoom", .number(0.01...100), "Scale over the fitted or filled size"),
         .init("transform", "pan", .number(-65536...65536), "Horizontal offset in output pixels"),
         .init("transform", "tilt", .number(-65536...65536), "Vertical offset in output pixels"),
         .init("textStyle", "size", .number(0.005...1), "Font size as a fraction of the frame's short side (shrunk to fit 90% of the width)"),
@@ -121,6 +122,9 @@ public enum ProjectSchema {
                 "id": string("Stable project ID", minLength: 1),
                 "name": string("Display name", minLength: 1),
                 "rev": integer("Revision, +1 on every applied edit", minimum: 0),
+                "clipFill": boolean(
+                    "Clips fill the frame, cropping what does not fit, instead of fitting inside it. New projects "
+                        + "fit (false); a project without it fills, as projects did before it existed"),
                 "contentLanguage": string("BCP 47 language of speech and captions", pattern: "^[A-Za-z]{2,8}(-[A-Za-z0-9]{1,8})*$"),
                 "format": object(
                     "Output format", required: ["width", "height", "fps"],

@@ -37,7 +37,9 @@ extension CommandCatalog {
         Job commands return a job ID; poll `bashcut jobs status JOB_ID`. Their result is one undoable edit.
         Installing plugins is user-only. Add `--format text` to print text results without JSON quoting.
         Change the canvas of the open project with `bashcut project format --canvas landscape` (portrait, landscape,
-        square); text sizes follow the short side, so titles keep their look.
+        square); text sizes follow the short side, so titles keep their look. New projects fit each clip inside the
+        frame (bars where its shape differs; `--clips fill` crops to cover instead); a clip's `fill` (setProperties)
+        overrides that, and transform zoom scales from it.
         Projects: `bashcut project create` / `project open` / `project save`; they refuse to drop unsaved work unless
         you pass --save-current or --discard-current. Your terminal stays open when the project changes; read
         `context get` or `timeline get` before your next edit (edits fail until you do). Outside BashCut's terminals the CLI and MCP read the

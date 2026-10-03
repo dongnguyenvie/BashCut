@@ -125,6 +125,10 @@ struct InspectorView: View {
                         ReframePreset.current(for: item)?.title ?? "Custom"))
                     .font(.caption).foregroundStyle(.secondary)
             }
+            Toggle("Fill frame", isOn: Binding(
+                get: { document.project.fills(item) },
+                set: { document.patchSelected(["fill": .bool($0)], label: "Fill frame") }))
+                .help("Fill crops the clip to cover the frame; off shows it whole with bars")
             number("Zoom", group: "transform", key: "zoom", defaultValue: 1, range: 0.25...3)
             number("Pan", group: "transform", key: "pan", defaultValue: 0, range: -600...600)
             number("Tilt", group: "transform", key: "tilt", defaultValue: 0, range: -600...600)

@@ -31,6 +31,13 @@ public actor CompositionBuilder {
 
     public var cachedAssetCount: Int { assets.count }
 
+    /// The scale at zoom 1: fitting shows the whole picture inside the canvas (bars on the other sides), filling
+    /// covers the canvas and crops what does not fit.
+    public static func baseScale(source: CGSize, canvas: CGSize, fill: Bool) -> Double {
+        let horizontal = canvas.width / abs(source.width), vertical = canvas.height / abs(source.height)
+        return fill ? max(horizontal, vertical) : min(horizontal, vertical)
+    }
+
     // This coordinates media loading, video lanes, audio parameters and frame instructions.
     // swiftlint:disable:next cyclomatic_complexity function_body_length
     public func build(_ project: Project, root: URL, workspace: URL? = nil, purpose: RenderPurpose = .export)
@@ -108,8 +115,9 @@ public actor CompositionBuilder {
                     let rect = CGRect(origin: .zero, size: asset.naturalSize).applying(preferred)
                     let properties = item["transform"]?.object ?? [:]
                     let zoom = properties["zoom"]?.double ?? 1
-                    let scale =
-                        max(Double(project.width) / rect.width, Double(project.height) / rect.height) * zoom
+                    let scale = Self.baseScale(
+                        source: rect.size, canvas: CGSize(width: project.width, height: project.height),
+                        fill: project.fills(item)) * zoom
                     let pan = properties["pan"]?.double ?? 0
                     let tilt = properties["tilt"]?.double ?? 0
                     let transform = preferred.concatenating(
