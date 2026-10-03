@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+- Fix: the agent dock did not show on the Welcome screen (no project open), so an agent could not be asked to
+  create or open a project. The dock now sits beside the Welcome screen, whose recent-projects column narrows to
+  make room, and agents are told that no project is open yet.
+
 - Fix: `captions generate` placed captions at the media's own times from the start of the timeline. Captions now
   follow every clip where the media is heard (position, trim, speed, speed ramp); speech cut out of the edit gets
   none, and `--replace` replaces only the captions made from that media.
