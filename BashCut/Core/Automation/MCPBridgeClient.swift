@@ -3,9 +3,8 @@ import Foundation
 
 public struct MCPBridgeResponse: Sendable {
     public let data: Data
+    /// What the MCP tool returns: string results as they are, everything else as compact JSON.
     public let text: String
-    /// MCP `structuredContent` must be a JSON object; arrays, strings and other results travel only as text.
-    public let isObject: Bool
 }
 
 public enum MCPBridgeClient {
@@ -17,11 +16,11 @@ public enum MCPBridgeClient {
             RPCRequest(method: method, params: params, token: token), path: path)
         let result = response.result ?? .null
         let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+        // Compact: agents read every byte as tokens, and indentation added about a third more.
+        encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
         let data = try encoder.encode(result)
         return MCPBridgeResponse(
             data: data,
-            text: result.string ?? String(data: data, encoding: .utf8) ?? "null",
-            isObject: { if case .object = result { true } else { false } }())
+            text: result.string ?? String(data: data, encoding: .utf8) ?? "null")
     }
 }

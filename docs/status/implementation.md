@@ -214,6 +214,41 @@ swift build -c release --product bashcut-bench
 .build/release/bashcut-bench <footage-dir> --clips 20 [--proxies]
 ```
 
+## Agent automation latency (2026-10-03)
+
+`scripts/bench-automation.py --edits 5` against the running app (debug build from `scripts/run.sh`, a 16:9 project
+with 44 items and 18 media, M1 Max). p50 values, before → after the agent-latency fixes:
+
+| Path | Before | After |
+|---|---|---|
+| Socket `context get` / `timeline get` (JSON, 7 KB) | 0.1–0.4 / 1.0 ms | unchanged |
+| MCP `context get` | 11.7–15 ms | 2–3 ms |
+| MCP `timeline get --format text` | 13–23 ms | 3–4 ms |
+| MCP `timeline get` (JSON) | 40–45 ms | 11–14 ms |
+| MCP start + initialize | 95 ms | 9–13 ms |
+| MCP `tools/list` (73 tools with schemas, once per session) | 50–60 ms | 50 ms |
+| Edit → `ui frame` ready | ~255 ms (first 1.2 s) | ~230 ms |
+
+Causes fixed: the MCP SDK's stdio transport polled stdin/stdout every 10 ms (`MCPBridge/BlockingStdioTransport.swift`
+blocks instead); every result was sent twice (pretty text and `structuredContent`) and the SDK re-decodes structured
+results through Codable at about 1 ms per KB (now compact text only, also about a third fewer tokens); preview
+readiness and `ui frame` polled every 100 ms (now 10 ms); the debug log JSON-encoded whole results on the main actor
+before truncating them (now a bounded writer).
+
+Core edit cost on synthetic projects (release, `Project.applying`): one `setProperties` 0.9 / 4 / 8 ms at 100 / 500 /
+1,000 items; ripple delete 1.1 / 7.3 / 20 ms; a group of 50 property changes 1.1 / 4.8 / 9.5 ms. Encoding a full
+200-step history (autosave every 30 s while dirty, off the main actor) takes 0.17 / 0.55 / 1.0 s and 2 / 7 / 13 MB.
+
+Known follow-ups, by expected impact on large projects:
+- Item mutations go through computed `tracks` / `items` arrays, so one edit rebuilds whole arrays and `shift` is
+  O(items²) per ripple; keep one id→index map per apply.
+- `validate()` runs before and after every apply and again in `CompositionBuilder`; it has O(items × media) and
+  O(transitions × items log items) parts.
+- The history journal stores 200 full snapshots; store inverse operations or cap it by bytes.
+- The preview clears the player on every edit (the viewer goes blank until the rebuild) and rebuilds the whole
+  composition; keep the old item until the new one is ready.
+- `tools/list` cost is the SDK's Codable round trip of the schemas.
+
 ## Verification
 
 ### Automated tests

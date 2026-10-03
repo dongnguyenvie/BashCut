@@ -16,8 +16,8 @@ extension ProjectDocument {
 
     func captureAgentFrame(at requested: Int?) async throws -> AgentFrame {
         // Right after an edit the preview is rebuilt (its snapshot is nil meanwhile); wait for it, up to 5 seconds.
-        for _ in 0..<50 where preview.snapshot == nil && project.duration > 0 && fileURL != nil {
-            try await Task.sleep(for: .milliseconds(100))
+        for _ in 0..<500 where preview.snapshot == nil && project.duration > 0 && fileURL != nil {
+            try await Task.sleep(for: .milliseconds(10))
         }
         guard let root = fileURL?.deletingLastPathComponent(), let snapshot = preview.snapshot, project.duration > 0 else {
             throw ProjectError.invalid("The viewer has no frame to attach")

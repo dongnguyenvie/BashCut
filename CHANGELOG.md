@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+- **Faster agent round trips.** `bashcut-mcp` reads and writes stdio without the SDK's 10 ms polling and returns results
+  as compact text only (the SDK re-decoded structured results slowly; compact JSON is also about a third fewer
+  tokens): MCP calls dropped from 12–45 ms to 2–14 ms. Preview readiness and `ui frame` poll every 10 ms instead of
+  100 ms, and the debug log no longer encodes whole results on the main actor. `scripts/bench-automation.py`
+  measures it; numbers in `docs/status/implementation.md`.
 - **Change the canvas of an open project**: the size in the toolbar is now a menu (Portrait 9:16, Landscape 16:9,
   Square 1:1), also `project format --canvas <c> [--resolution <r>]` and the new `setFormat` operation. One undoable
   edit; timing is kept and clip pan/tilt scale with the frame. Before, a project's format could never change.

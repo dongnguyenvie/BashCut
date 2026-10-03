@@ -22,17 +22,11 @@ private func actionTools() -> [PluginActionTools.Tool] {
     return PluginActionTools.tools(from: actions)
 }
 
-private func result(_ response: MCPBridgeResponse) throws -> CallTool.Result {
-    let text = response.text
-    // Only objects may be structuredContent. Leave it out otherwise: passing a nil `Value?` picks the generic
-    // initializer, which would send `"structuredContent": null` and clients reject the result.
-    guard response.isObject else {
-        return CallTool.Result(content: [.text(text: text, annotations: nil, _meta: nil)], isError: false)
-    }
-    let structured = try JSONDecoder().decode(Value.self, from: response.data)
-    return CallTool.Result(
-        content: [.text(text: text, annotations: nil, _meta: nil)],
-        structuredContent: Optional.some(structured), isError: false)
+/// Results go out as text only. The SDK re-decodes every result into a `Value` tree through Codable, which costs
+/// about 1 ms per KB of structured content (a 7 KB `timeline get` took 37 ms); one string decodes at once.
+/// `structuredContent` is optional for tools without an output schema, and clients read the text.
+private func result(_ response: MCPBridgeResponse) -> CallTool.Result {
+    CallTool.Result(content: [.text(text: response.text, annotations: nil, _meta: nil)], isError: false)
 }
 
 private func failure(_ message: String) -> CallTool.Result {
@@ -60,21 +54,21 @@ private func failure(_ message: String) -> CallTool.Result {
                     }
                     let params = try JSONDecoder().decode(JSONValue.self, from: arguments)
                     let call = try JSONEncoder().encode(JSONValue.object(["action": .string(action.actionID), "params": params]))
-                    return try result(MCPBridgeClient.call(
+                    return result(try MCPBridgeClient.call(
                         method: "plugins.run", arguments: call, token: AutomationPaths.sessionToken()))
                 }
                 guard let spec = CommandCatalog.specs.first(where: { $0.mcpToolName == request.name }) else {
                     DebugLog.write("mcp", "unknown tool \(request.name)")
                     return failure("Unknown BashCut tool")
                 }
-                return try result(MCPBridgeClient.call(
+                return result(try MCPBridgeClient.call(
                     method: spec.name, arguments: arguments, token: AutomationPaths.sessionToken()))
             } catch {
                 DebugLog.write("mcp", "\(request.name) FAILED: \(error.localizedDescription)")
                 return failure(error.localizedDescription)
             }
         }
-        let transport = StdioTransport()
+        let transport = BlockingStdioTransport()
         try await server.start(transport: transport)
         await server.waitUntilCompleted()
     }

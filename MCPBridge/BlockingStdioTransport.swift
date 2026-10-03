@@ -1,0 +1,77 @@
+import Foundation
+import Logging
+import MCP
+
+/// stdio transport for `bashcut-mcp` without polling. The SDK's `StdioTransport` puts stdin and stdout in
+/// non-blocking mode and sleeps 10 ms whenever no data is ready, which added about 10 ms to every request and
+/// 30–40 ms to large results. Here a dedicated thread blocks on `read(2)` and hands complete lines to the server at
+/// once; writes block until the client has taken the bytes.
+actor BlockingStdioTransport: Transport {
+    nonisolated let logger = Logger(label: "app.bashcut.mcp.stdio")
+    private let messages: AsyncThrowingStream<Data, Swift.Error>
+    private let continuation: AsyncThrowingStream<Data, Swift.Error>.Continuation
+    private var started = false
+
+    init() {
+        (messages, continuation) = AsyncThrowingStream.makeStream()
+    }
+
+    func connect() async throws {
+        guard !started else { return }
+        started = true
+        let continuation = self.continuation
+        let reader = Thread {
+            var pending = Data()
+            var buffer = [UInt8](repeating: 0, count: 64 * 1024)
+            while true {
+                let count = buffer.withUnsafeMutableBytes { read(STDIN_FILENO, $0.baseAddress, $0.count) }
+                if count < 0 {
+                    if errno == EINTR { continue }
+                    continuation.finish(throwing: MCPError.transportError(POSIXError(.init(rawValue: errno) ?? .EIO)))
+                    return
+                }
+                if count == 0 { break }
+                pending.append(contentsOf: buffer[..<count])
+                for line in Self.takeLines(&pending) { continuation.yield(line) }
+            }
+            continuation.finish()
+        }
+        reader.name = "bashcut-mcp stdin"
+        reader.start()
+    }
+
+    func disconnect() async {
+        continuation.finish()
+    }
+
+    func send(_ data: Data) async throws {
+        var message = data
+        message.append(UInt8(ascii: "\n"))
+        try message.withUnsafeBytes { bytes in
+            guard let base = bytes.baseAddress else { return }
+            var offset = 0
+            while offset < bytes.count {
+                let written = write(STDOUT_FILENO, base + offset, bytes.count - offset)
+                if written < 0 {
+                    if errno == EINTR { continue }
+                    throw MCPError.transportError(POSIXError(.init(rawValue: errno) ?? .EIO))
+                }
+                offset += written
+            }
+        }
+    }
+
+    nonisolated func receive() -> AsyncThrowingStream<Data, Swift.Error> { messages }
+
+    /// Removes every complete newline-terminated line from `pending` (empty lines are skipped).
+    static func takeLines(_ pending: inout Data) -> [Data] {
+        var lines: [Data] = []
+        var start = pending.startIndex
+        while let newline = pending[start...].firstIndex(of: UInt8(ascii: "\n")) {
+            if newline > start { lines.append(Data(pending[start..<newline])) }
+            start = pending.index(after: newline)
+        }
+        pending = Data(pending[start...])
+        return lines
+    }
+}

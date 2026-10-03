@@ -86,12 +86,56 @@ public struct AuditEvent: Codable, Sendable {
 
     private static func milliseconds(since date: Date) -> Int { Int(Date().timeIntervalSince(date) * 1000) }
 
-    /// Compact JSON, truncated so large results (project.get, captions) do not flood the log.
-    static func summary(_ value: some Encodable) -> String {
-        guard let data = try? JSONEncoder().encode(value), let text = String(data: data, encoding: .utf8) else {
-            return "?"
+    /// Compact JSON for the debug log, at most `limit` characters. It stops walking as soon as the limit is reached,
+    /// so a large result (project.get, timeline.get) costs no more than a small one on the main actor.
+    nonisolated static func summary(_ params: [String: JSONValue], limit: Int = 400) -> String {
+        summary(.object(params), limit: limit)
+    }
+
+    nonisolated static func summary(_ value: JSONValue, limit: Int = 400) -> String {
+        var writer = BoundedJSONWriter(limit: limit)
+        return writer.write(value) ? writer.text : String(writer.text.prefix(limit)) + "…"
+    }
+}
+
+/// Writes JSON until `limit` bytes; each call returns false once the limit is reached.
+private struct BoundedJSONWriter {
+    let limit: Int
+    var text = ""
+
+    mutating func write(_ value: JSONValue) -> Bool {
+        switch value {
+        case .null: append("null")
+        case .bool(let flag): append(flag ? "true" : "false")
+        case .integer(let number): append(String(number))
+        case .number(let number): append(String(number))
+        case .string(let string): append(quoted(string))
+        case .array(let values): write(values.lazy.map { (nil, $0) }, open: "[", close: "]")
+        case .object(let fields): write(fields.keys.sorted().lazy.map { ($0, fields[$0] ?? .null) }, open: "{", close: "}")
         }
-        return text.count > 400 ? text.prefix(400) + "…(\(text.count) chars)" : text
+    }
+
+    private mutating func write(_ entries: some Sequence<(String?, JSONValue)>, open: String, close: String) -> Bool {
+        guard append(open) else { return false }
+        var first = true
+        for (key, value) in entries {
+            if !first, !append(",") { return false }
+            first = false
+            if let key, !append(quoted(key) + ":") { return false }
+            if !write(value) { return false }
+        }
+        return append(close)
+    }
+
+    private mutating func append(_ piece: String) -> Bool {
+        text += piece
+        return text.utf8.count < limit
+    }
+
+    private func quoted(_ string: String) -> String {
+        let escaped = string.prefix(limit).replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"").replacingOccurrences(of: "\n", with: "\\n")
+        return "\"" + escaped + "\""
     }
 }
 
