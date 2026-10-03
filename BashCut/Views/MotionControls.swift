@@ -9,7 +9,6 @@ struct MotionControls: View {
     let forText: Bool
 
     private var animated: [String] { item.motion?.keys.filter { !$0.value.isEmpty }.map(\.key).sorted() ?? [] }
-    private var insideItem: Bool { (item.at..<item.end).contains(document.playhead) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -27,9 +26,10 @@ struct MotionControls: View {
                 }.menuStyle(.borderlessButton).fixedSize()
             }
             HStack {
-                Button("Keyframe at playhead", systemImage: "diamond") { run { try document.keyframeAll() } }
-                    .disabled(!insideItem)
-                    .help("Records zoom, pan, tilt, rotation and opacity here; then change a slider at another frame")
+                PlayheadKeyframeButton(
+                    document: document, item: item, title: "Keyframe at playhead",
+                    help: "Records zoom, pan, tilt, rotation and opacity here; then change a slider at another frame"
+                ) { run { try document.keyframeAll() } }
             }
             if !animated.isEmpty {
                 Text(String(format: String(localized: "Animated: %@"), animated.joined(separator: ", ")))
@@ -42,5 +42,21 @@ struct MotionControls: View {
 
     private func run(_ body: () throws -> Int) {
         do { _ = try body() } catch { document.message = error.localizedDescription }
+    }
+}
+
+/// A "keyframe at playhead" button, enabled while the playhead is inside the item. It is its own view so only it
+/// redraws as the playhead moves during playback, not the whole Inspector.
+struct PlayheadKeyframeButton: View {
+    let document: ProjectDocument
+    let item: Item
+    let title: LocalizedStringKey
+    let help: LocalizedStringKey
+    let action: () -> Void
+
+    var body: some View {
+        Button(title, systemImage: "diamond", action: action)
+            .disabled(!(item.at..<item.end).contains(document.playhead))
+            .help(help)
     }
 }

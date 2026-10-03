@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+- **Lighter rendering and Inspector during playback.** The Inspector no longer redraws on every played frame: only
+  the *Keyframe at playhead* buttons follow the playhead (about 3% less CPU while playing with the Audio tab open).
+  Text layers make their image cache key and keyframe anchor once instead of on every frame (the key alone cost
+  0.7 ms per frame for a 200-word caption, 6.6 ms for 2,000 words), and the composition builds each text layer once
+  rather than once per segment. Captions generated with word timings look only at the words near each cue instead
+  of every word for every cue, and the timeline parses keyframes only for clips that have them.
+
 - **Volume keyframes.** Audio clips and clips with sound can change volume over time: keyframe property `volume` in
   dB (like `volumeDb`, which it replaces while keyed), with the same eases as other keys, on top of fades and music
   ducking. Inspector › Audio › **Keyframe volume at playhead**, after which the Volume slider sets keys; `clip

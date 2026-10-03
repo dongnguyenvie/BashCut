@@ -149,11 +149,12 @@ struct InspectorView: View {
 
     @ViewBuilder private func audioControls(_ item: Item) -> some View {
         number("Volume (dB)", key: "volumeDb", defaultValue: 0, range: -60...12)
-        Button("Keyframe volume at playhead", systemImage: "diamond") {
+        PlayheadKeyframeButton(
+            document: document, item: item, title: "Keyframe volume at playhead",
+            help: "Keys the volume here; then change it at another frame to fade between keys"
+        ) {
             do { try document.setKeyframe("volume", value: nil) } catch { document.message = error.localizedDescription }
         }
-        .disabled(!(item.at..<item.end).contains(document.playhead))
-        .help("Keys the volume here; then change it at another frame to fade between keys")
         Toggle(
             "Mute",
             isOn: Binding(

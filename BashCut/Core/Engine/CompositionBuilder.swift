@@ -213,6 +213,15 @@ public actor CompositionBuilder {
         let boundaries = Set(
             [0, project.duration] + allItems.flatMap { [$0.at, $0.end] } + transitionBoundaries
         ).sorted()
+        // Text layers are made once per item (keyframes parsed, words timed), then shared by every segment.
+        var textByTrack: [String: [(item: Item, layer: TextLayer)]] = [:]
+        for track in project.tracks where !track.isHidden && track.kind == "text" {
+            textByTrack[track.id] = track.items.map { item in
+                (item, TextLayer(item: item, motion: item.pictureMotion.map {
+                    LayerMotion(motion: $0, item: item, fps: project.fps.value)
+                }, fps: project.fps.value))
+            }
+        }
         var instructions: [FrameInstruction] = []
         for (start, end) in zip(boundaries, boundaries.dropFirst()) {
             var layers: [VisualLayer] = []
@@ -228,11 +237,9 @@ public actor CompositionBuilder {
                     }
                 } else if track.kind == "text" {
                     layers.append(
-                        contentsOf: track.items.filter { $0.at <= start && $0.end > start }.map { item in
-                            .text(TextLayer(item: item, motion: item.pictureMotion.map {
-                                LayerMotion(motion: $0, item: item, fps: project.fps.value)
-                            }, fps: project.fps.value))
-                        })
+                        contentsOf: (textByTrack[track.id] ?? [])
+                            .filter { $0.item.at <= start && $0.item.end > start }
+                            .map { .text($0.layer) })
                 }
             }
             instructions.append(

@@ -75,11 +75,10 @@ enum TextRenderer {
     private static let cache = CaptionCache()
     /// The item's text drawn over a transparent frame. `spoken` is the index of the word being spoken, for items
     /// with a `wordStyle`.
-    static func image(_ item: Item, size: CGSize, spoken: Int? = nil) -> CGImage? {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = .sortedKeys
-        let key =
-            ((try? encoder.encode(item)).flatMap { String(data: $0, encoding: .utf8) } ?? item.text)
+    /// `itemKey` is `cacheKey(item)`, passed by callers that draw the same item many times (the compositor makes
+    /// it once per layer, not once per frame).
+    static func image(_ item: Item, size: CGSize, spoken: Int? = nil, itemKey: String? = nil) -> CGImage? {
+        let key = (itemKey ?? cacheKey(item))
             + "\(size.width)x\(size.height)" + (item.wordStyle == nil ? "" : "#\(spoken ?? -1)")
         if let cached = cache.images.object(forKey: key as NSString) { return cached.image }
         guard
@@ -141,6 +140,13 @@ enum TextRenderer {
             CaptionImage(image), forKey: key as NSString, cost: Int(size.width * size.height * 4))
         return image
     }
+    /// Identifies everything that changes how the item is drawn: the whole item, encoded with sorted keys.
+    static func cacheKey(_ item: Item) -> String {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .sortedKeys
+        return (try? encoder.encode(item)).flatMap { String(data: $0, encoding: .utf8) } ?? item.text
+    }
+
     /// The middle of the item's text block, where text keyframes scale and rotate it.
     static func anchor(_ item: Item, size: CGSize) -> CGPoint {
         let preset = CaptionPreset(item.textPreset)
@@ -236,6 +242,7 @@ enum TextRenderer {
 
 /// Colours each word of a line by its state for the item's `wordStyle`.
 private struct WordColoring {
+    private static let wordPattern = try? NSRegularExpression(pattern: "\\S+")
     let style: String?
     let spoken: Int?
     let attributes: [NSAttributedString.Key: Any]
@@ -256,8 +263,7 @@ private struct WordColoring {
         let clear = CGColor(gray: 0, alpha: 0)
         var index = firstWord
         let nsLine = line as NSString
-        let pattern = try? NSRegularExpression(pattern: "\\S+")
-        for match in pattern?.matches(in: line, range: NSRange(location: 0, length: nsLine.length)) ?? [] {
+        for match in Self.wordPattern?.matches(in: line, range: NSRange(location: 0, length: nsLine.length)) ?? [] {
             defer { index += 1 }
             switch style {
             case "highlight" where index == spoken:
