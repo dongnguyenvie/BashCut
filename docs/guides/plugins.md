@@ -95,10 +95,12 @@ the lower of the plugin's `apiVersion` and the host's current version.
 ## Trust and availability
 
 A plugin runs only after the user trusts its exact files. Trusting pins the SHA-256 of `plugin.json`, of the
-entrypoint and of every other file in the plugin folder (path, executable bit and contents; hidden files,
-`__pycache__` and `.pyc` are skipped) in `~/Library/Application Support/BashCut/plugin-trust.json` (mode `0600`),
+entrypoint and every other file in the plugin folder (path, mode and contents, including hidden files and
+Python bytecode; only `.DS_Store` is skipped) in `~/Library/Application Support/BashCut/plugin-trust.json` (mode `0600`),
 together with the user's on/off switches. Changing any file, such as a script the entrypoint runs, asks for Trust
-again. Grants made before folder digests existed are upgraded once while the manifest and entrypoint still match.
+again. Symlinks must resolve to an existing target inside the plugin folder; other links are rejected.
+The fingerprint cache checks fresh inode, mode, ctime and mtime metadata before reuse.
+Grants made before folder digests existed are upgraded once while the manifest and entrypoint still match.
 In development builds a plugin folder that is a symbolic link (`scripts/dev-link.sh` in `bashcut-plugins`) is
 checked on its manifest and entrypoint only, so it can change while it is written. Each plugin is in one state:
 

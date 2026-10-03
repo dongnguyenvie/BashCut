@@ -17,11 +17,12 @@ public struct PluginFingerprint: Codable, Sendable, Equatable {
     }
 
     public init(plugin: InstalledPlugin) throws {
+        let tree = try Self.tree(plugin.directory)
         let manifest = try Data(contentsOf: plugin.directory.appendingPathComponent("plugin.json"))
         let entrypoint = try Data(contentsOf: plugin.entrypointURL())
         self.init(
             manifestSHA256: Self.hex(manifest), entrypointSHA256: Self.hex(entrypoint),
-            treeSHA256: try Self.tree(plugin.directory))
+            treeSHA256: tree)
     }
 
     /// Same files as `other`, treating a grant without a tree digest as matching on manifest and entrypoint.
@@ -30,32 +31,8 @@ public struct PluginFingerprint: Codable, Sendable, Equatable {
             && (other.treeSHA256 == nil || treeSHA256 == other.treeSHA256)
     }
 
-    /// Files under the folder, sorted: `path`, executable bit and SHA-256 (or a link's target). Hidden files,
-    /// `__pycache__` and `.pyc` files are skipped; they change on their own.
-    static func tree(_ folder: URL) throws -> String {
-        let root = folder.resolvingSymlinksInPath().standardizedFileURL
-        let keys: [URLResourceKey] = [.isRegularFileKey, .isSymbolicLinkKey, .isDirectoryKey]
-        guard let enumerator = FileManager.default.enumerator(
-            at: root, includingPropertiesForKeys: keys, options: [.skipsHiddenFiles])
-        else { throw PluginError.invalid("Cannot read the plugin folder") }
-        var lines: [String] = []
-        for case let url as URL in enumerator {
-            let values = try url.resourceValues(forKeys: Set(keys))
-            if values.isDirectory == true, url.lastPathComponent == "__pycache__" {
-                enumerator.skipDescendants()
-                continue
-            }
-            let relative = String(url.standardizedFileURL.path.dropFirst(root.path.count + 1))
-            if values.isSymbolicLink == true {
-                let target = (try? FileManager.default.destinationOfSymbolicLink(atPath: url.path)) ?? ""
-                lines.append("\(relative)\0link\0\(target)")
-            } else if values.isRegularFile == true, url.pathExtension != "pyc" {
-                let executable = FileManager.default.isExecutableFile(atPath: url.path) ? "x" : "-"
-                lines.append("\(relative)\0\(executable)\0\(hex(try Data(contentsOf: url)))")
-            }
-        }
-        return hex(Data(lines.sorted().joined(separator: "\n").utf8))
-    }
+    /// Hash every file, including hidden files and Python bytecode. Only Finder metadata is ignored.
+    static func tree(_ folder: URL) throws -> String { try PluginTree.digest(folder) }
 
     static func hex(_ data: Data) -> String {
         SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
@@ -188,9 +165,9 @@ public final class PluginTrustStore: @unchecked Sendable {
     }
 
     /// The plugin's fingerprint, hashed again only when a file in its folder was added, removed or changed size or
-    /// date.
+    /// date, inode, mode or ctime.
     func fingerprint(_ plugin: InstalledPlugin) throws -> PluginFingerprint {
-        let stamp = Self.stamp(plugin.directory)
+        let stamp = try PluginTree.stamp(plugin.directory)
         let key = plugin.directory.standardizedFileURL.path
         if let cached = locked({ fingerprints[key] }), cached.stamp == stamp { return cached.value }
         let value = try PluginFingerprint(plugin: plugin)
@@ -204,18 +181,6 @@ public final class PluginTrustStore: @unchecked Sendable {
         let current = try fingerprint(plugin)
         let digest = [current.manifestSHA256, current.entrypointSHA256, current.treeSHA256 ?? ""].joined(separator: ":")
         return plugin.installationID + "@" + PluginFingerprint.hex(Data(digest.utf8))
-    }
-
-    private static func stamp(_ folder: URL) -> [String] {
-        let root = folder.resolvingSymlinksInPath()
-        let keys: [URLResourceKey] = [.fileSizeKey, .contentModificationDateKey]
-        let enumerator = FileManager.default.enumerator(at: root, includingPropertiesForKeys: keys, options: [.skipsHiddenFiles])
-        var entries: [String] = []
-        while let url = enumerator?.nextObject() as? URL {
-            let values = try? url.resourceValues(forKeys: Set(keys))
-            entries.append("\(url.path)|\(values?.fileSize ?? -1)|\(values?.contentModificationDate?.timeIntervalSince1970 ?? 0)")
-        }
-        return entries.sorted()
     }
 
     /// Pins the plugin's current files. Only the user may call this (Plugins sheet, install approval).

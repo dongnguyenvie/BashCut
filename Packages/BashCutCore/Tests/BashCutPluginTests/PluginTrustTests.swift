@@ -158,6 +158,67 @@ struct PluginTrustTests {
         #expect(try store.credentialIdentity(for: user) == changed)
     }
 
+    @Test("Hidden code and Python bytecode participate in trust; Finder metadata does not")
+    func hiddenCode() throws {
+        let sandbox = Sandbox()
+        defer { try? FileManager.default.removeItem(at: sandbox.root) }
+        let plugin = try sandbox.plugin()
+        let store = sandbox.store()
+        try store.trust(plugin)
+        try Data("Finder".utf8).write(to: plugin.directory.appendingPathComponent(".DS_Store"))
+        #expect(store.availability(of: plugin) == .ready)
+        for path in [".hidden.py", "__pycache__/helper.pyc", "helper.pyc"] {
+            let url = plugin.directory.appendingPathComponent(path)
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try Data("code".utf8).write(to: url)
+            #expect(store.availability(of: plugin) == .changed)
+            try store.trust(plugin)
+        }
+        let before = try store.credentialIdentity(for: plugin)
+        try FileManager.default.moveItem(at: plugin.directory.appendingPathComponent(".hidden.py"),
+                                         to: plugin.directory.appendingPathComponent(".renamed.py"))
+        #expect(try store.credentialIdentity(for: plugin) != before)
+    }
+
+    @Test("A same-size rewrite with restored mtime cannot reuse the cached fingerprint")
+    func restoredModificationDate() throws {
+        let sandbox = Sandbox()
+        defer { try? FileManager.default.removeItem(at: sandbox.root) }
+        let plugin = try sandbox.plugin()
+        let store = sandbox.store()
+        let helper = plugin.directory.appendingPathComponent("helper")
+        try Data("old!".utf8).write(to: helper)
+        let date = try #require(FileManager.default.attributesOfItem(atPath: helper.path)[.modificationDate] as? Date)
+        try store.trust(plugin)
+        #expect(store.availability(of: plugin) == .ready) // Populate the cache.
+        try Data("new!".utf8).write(to: helper)
+        try FileManager.default.setAttributes([.modificationDate: date], ofItemAtPath: helper.path)
+        #expect(store.availability(of: plugin) == .changed)
+    }
+
+    @Test("Internal symlink targets are hashed; outside and dangling links cannot be trusted")
+    func symlinkBoundaries() throws {
+        let sandbox = Sandbox()
+        defer { try? FileManager.default.removeItem(at: sandbox.root) }
+        let plugin = try sandbox.plugin()
+        let store = sandbox.store()
+        let link = plugin.directory.appendingPathComponent("helper-link")
+        let target = plugin.directory.appendingPathComponent("helper")
+        try Data("first".utf8).write(to: target)
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: target)
+        try store.trust(plugin)
+        #expect(store.availability(of: plugin) == .ready)
+        try Data("second".utf8).write(to: target)
+        #expect(store.availability(of: plugin) == .changed)
+        try FileManager.default.removeItem(at: link)
+        let external = sandbox.root.appendingPathComponent("outside")
+        try Data("outside".utf8).write(to: external)
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: external)
+        #expect(throws: PluginError.self) { try store.trust(plugin) }
+        try FileManager.default.removeItem(at: external)
+        #expect(throws: PluginError.self) { try store.trust(plugin) }
+    }
+
     @Test("Legacy ID-only approvals cannot establish the root the user trusted")
     func unscopedGrant() throws {
         let sandbox = Sandbox()

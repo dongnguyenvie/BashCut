@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+- Include hidden files and Python bytecode in plugin fingerprints; reject symlinks leaving the plugin folder
+  and dangling links. Cache validation now uses fresh inode, mode and nanosecond ctime/mtime metadata, so
+  rewriting a same-size file and restoring its modification time cannot preserve an old approval.
+
 - Scope plugin credentials to the installation root and complete fingerprint, as well as provider/endpoint.
   Trusting a same-ID project copy or a changed plugin does not transfer the original installation's secrets.
 
