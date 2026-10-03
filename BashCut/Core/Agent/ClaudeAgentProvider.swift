@@ -17,7 +17,8 @@ public struct ClaudeAgentProvider: AgentProvider {
         AgentCommandLine(
             arguments: (request.resumeID.isEmpty ? [] : ["--resume", request.resumeID])
                 + ["--mcp-config", Self.mcpConfig(command: request.mcpExecutable),
-                   "--append-system-prompt", request.context.prompt])
+                   "--append-system-prompt", request.context.prompt]
+                + (request.kit.map { ["--plugin-dir", $0.claudePlugin.path] } ?? []))
     }
 
     private static func mcpConfig(command: String) -> String {

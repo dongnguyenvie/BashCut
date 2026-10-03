@@ -18,6 +18,7 @@ public struct CodexAgentProvider: AgentProvider {
         let agentDirectory = URL(fileURLWithPath: socketDirectory)
             .appendingPathComponent("agent-workspace", isDirectory: true)
         try FileManager.default.createDirectory(at: agentDirectory, withIntermediateDirectories: true)
+        try Self.linkKit(request.kit?.kit, into: agentDirectory.appendingPathComponent(".agents/skills", isDirectory: true))
         let permissionProfile = """
             permissions.bashcut={ extends = ":workspace", \
             filesystem = { \(Self.tomlString(socketDirectory)) = "write" }, \
@@ -36,6 +37,14 @@ public struct CodexAgentProvider: AgentProvider {
         return AgentCommandLine(
             arguments: arguments + (request.resumeID.isEmpty ? [] : ["resume", request.resumeID]),
             directory: agentDirectory)
+    }
+
+    /// Codex reads skills from `.agents/skills` in its working folder, which belongs to BashCut: it holds exactly
+    /// the kit's skills, or none when the kit is off.
+    static func linkKit(_ kit: AgentKit?, into folder: URL) throws {
+        let present = (try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []
+        AgentKitInstall.unlinkSkills(named: present.filter { !(kit?.skills.contains($0) ?? false) }, in: folder)
+        if let kit { try AgentKitInstall.linkSkills(of: kit, into: folder) }
     }
 
     private static func tomlString(_ value: String) -> String {

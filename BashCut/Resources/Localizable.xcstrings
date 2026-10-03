@@ -1,6 +1,126 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Other…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Other…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Khác…" } }
+      }
+    },
+    "Load the agent kit in Claude and Codex tabs": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Load the agent kit in Claude and Codex tabs" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Nạp bộ kỹ năng agent trong tab Claude và Codex" } }
+      }
+    },
+    "Agent kit": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Agent kit" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Bộ kỹ năng agent" } }
+      }
+    },
+    "Use Built-in": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Use Built-in" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Dùng bản có sẵn" } }
+      }
+    },
+    "Claude Code settings folder": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Claude Code settings folder" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Thư mục cấu hình Claude Code" } }
+      }
+    },
+    "Codex home folder": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Codex home folder" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Thư mục home của Codex" } }
+      }
+    },
+    "Agents": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Agents" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Agent" } }
+      }
+    },
+    "Check again": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Check again" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Kiểm tra lại" } }
+      }
+    },
+    "New tabs pick up changes. Claude Code and Codex outside BashCut get the skills and the BashCut MCP server.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "New tabs pick up changes. Claude Code and Codex outside BashCut get the skills and the BashCut MCP server." } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Tab mới sẽ nhận thay đổi. Claude Code và Codex bên ngoài BashCut nhận các kỹ năng và máy chủ MCP của BashCut." } }
+      }
+    },
+    "Not found": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Not found" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Không tìm thấy" } }
+      }
+    },
+    "Built-in": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Built-in" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Có sẵn" } }
+      }
+    },
+    "%lld skills, version %@ · %@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "%lld skills, version %@ · %@" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "%lld kỹ năng, phiên bản %@ · %@" } }
+      }
+    },
+    "Detect": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Detect" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Tự dò" } }
+      }
+    },
+    "chosen here": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "chosen here" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "chọn ở đây" } }
+      }
+    },
+    "from BashCut's environment": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "from BashCut's environment" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "từ môi trường của BashCut" } }
+      }
+    },
+    "from your shell profile": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "from your shell profile" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "từ shell profile của bạn" } }
+      }
+    },
+    "default": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "default" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "mặc định" } }
+      }
+    },
+    "Not installed": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Not installed" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Chưa cài" } }
+      }
+    },
+    "Kit set up": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Kit set up" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đã cài bộ kỹ năng" } }
+      }
+    },
+    "Kit not set up": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Kit not set up" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Chưa cài bộ kỹ năng" } }
+      }
+    },
     "Portrait 9:16": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Portrait 9:16" } },

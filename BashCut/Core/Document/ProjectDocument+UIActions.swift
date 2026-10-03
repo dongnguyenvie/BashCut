@@ -1,4 +1,5 @@
 import AppKit
+import BashCutAgent
 import BashCutAutomation
 import BashCutDocument
 import BashCutProject
@@ -39,7 +40,8 @@ extension ProjectDocument {
             return exports.report.map { FileManager.default.fileExists(atPath: $0.receipt.url.path) } ?? false
         case .clearRecentProjects: return !settings.recentProjects.isEmpty
         case .showHistory, .showReview, .showPlugins, .showDoctor, .showSettings, .showSections, .toggleAgentDock,
-            .askAgent, .toggleSafeArea, .toggleSnap, .addVideoLayer, .addAdjustmentLayer, .addTextLayer,
+            .askAgent, .openClaudeTerminal, .openCodexTerminal, .openShellTerminal,
+            .toggleSafeArea, .toggleSnap, .addVideoLayer, .addAdjustmentLayer, .addTextLayer,
             .addAudioLayer:
             return true
         }
@@ -66,6 +68,10 @@ extension ProjectDocument {
         case .toggleAgentDock:
             if agents.isDetached { agents.attach() } else { ui.showAgentDock.toggle() }
         case .askAgent: ui.showAsk = true
+        case .openClaudeTerminal, .openCodexTerminal, .openShellTerminal:
+            // The dock's + menu: a new tab with its own session token.
+            if !agents.isDetached { ui.showAgentDock = true }
+            agents.open(AgentProviderID(rawValue: String(action.id.dropFirst("agent.open-".count))))
         case .togglePlayback: preview.togglePlayback()
         case .previousFrame: preview.seek(playhead - 1)
         case .nextFrame: preview.seek(playhead + 1)

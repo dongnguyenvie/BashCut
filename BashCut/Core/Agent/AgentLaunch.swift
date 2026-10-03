@@ -25,36 +25,47 @@ public struct AgentLaunch: Sendable {
     /// variables, the executable found on the extended PATH, and the provider's command line.
     public static func make(
         provider: any AgentProvider, workspace: URL, context: AgentSessionContext,
-        resumeID: String = "", environment: [String: String] = ProcessInfo.processInfo.environment
+        resumeID: String = "", kit: AgentKitLaunch? = nil,
+        environment: [String: String] = ProcessInfo.processInfo.environment
     ) throws -> AgentLaunch {
         var env = AgentEnvironment.filtered(environment, allowing: provider.environmentAllowlist)
-        let home = FileManager.default.homeDirectoryForCurrentUser.path
-        let paths = [
-            context.toolsDirectory, "/usr/local/bin", "/opt/homebrew/bin", home + "/.local/bin",
-            home + "/.cargo/bin",
-            "/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS",
-            environment["PATH"] ?? "/usr/bin:/bin:/usr/sbin:/sbin",
-        ]
-        env["PATH"] = paths.joined(separator: ":")
+        env["PATH"] = searchPath(toolsDirectory: context.toolsDirectory, environment: environment)
         env["BASHCUT_SESSION_TOKEN"] = context.token
         env["BASHCUT_SOCKET"] = context.socket
         env["BASHCUT_PROJECT"] = context.project?.path ?? ""
         env["TERM"] = "xterm-256color"
         env["COLORTERM"] = "truecolor"
-        guard
-            let executable = env["PATH"]?.components(separatedBy: ":")
-                .map({ URL(fileURLWithPath: $0).appendingPathComponent(provider.command).path })
-                .first(where: { FileManager.default.isExecutableFile(atPath: $0) })
-        else {
+        guard let executable = find(provider.command, path: env["PATH"] ?? "") else {
             throw ModelError.invalid("\(provider.command) is not installed or is not on PATH")
         }
         let request = AgentLaunchRequest(
             workspace: workspace, context: context,
             resumeID: provider.isAgent ? resumeID.trimmingCharacters(in: .whitespacesAndNewlines) : "",
-            mcpExecutable: URL(fileURLWithPath: context.toolsDirectory).appendingPathComponent("bashcut-mcp").path)
+            mcpExecutable: URL(fileURLWithPath: context.toolsDirectory).appendingPathComponent("bashcut-mcp").path,
+            kit: provider.isAgent ? kit : nil)
         let commandLine = try provider.commandLine(for: request)
         return AgentLaunch(
             executable: executable, arguments: commandLine.arguments, environment: env,
             directory: (commandLine.directory ?? workspace).path)
+    }
+
+    /// BashCut's tools first, then where agent CLIs usually live (including the ChatGPT app's Codex), then the
+    /// inherited PATH.
+    public static func searchPath(
+        toolsDirectory: String, environment: [String: String] = ProcessInfo.processInfo.environment
+    ) -> String {
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        return [
+            toolsDirectory, "/usr/local/bin", "/opt/homebrew/bin", home + "/.local/bin", home + "/.cargo/bin",
+            "/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS",
+            environment["PATH"] ?? "/usr/bin:/bin:/usr/sbin:/sbin",
+        ].joined(separator: ":")
+    }
+
+    /// The first executable named `command` on `path`.
+    public static func find(_ command: String, path: String) -> String? {
+        path.components(separatedBy: ":")
+            .map { URL(fileURLWithPath: $0).appendingPathComponent(command).path }
+            .first { FileManager.default.isExecutableFile(atPath: $0) }
     }
 }

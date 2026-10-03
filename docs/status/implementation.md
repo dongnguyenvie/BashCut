@@ -273,7 +273,7 @@ engine work), and the remaining per-edit cost is one full `validate()` (about 2.
 
 ### Automated tests
 
-The latest full runs pass 287 tests: 136 in the app modules (`Tests/`) and 151 in `Packages/BashCutCore`. The
+The latest full runs pass 294 tests: 143 in the app modules (`Tests/`) and 151 in `Packages/BashCutCore`. The
 Swift 6 build and strict SwiftLint pass.
 
 - **Core:** inverses, revisions and atomic failure; ripple and source timing; linked A/V, magnetic reorder and

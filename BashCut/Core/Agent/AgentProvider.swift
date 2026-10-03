@@ -25,6 +25,18 @@ public struct AgentLaunchRequest: Sendable {
     public let resumeID: String
     /// Path of the bundled `bashcut-mcp` server.
     public let mcpExecutable: String
+    /// The agent kit to load, or nil when Settings › Agents turns it off or no kit is found.
+    public var kit: AgentKitLaunch?
+}
+
+/// The installed agent kit and the skills-only Claude plugin made from it (`AgentKitInstall`).
+public struct AgentKitLaunch: Sendable {
+    public let kit: AgentKit
+    public let claudePlugin: URL
+    public init(kit: AgentKit, claudePlugin: URL) {
+        self.kit = kit
+        self.claudePlugin = claudePlugin
+    }
 }
 
 /// Arguments and working directory for one terminal launch.

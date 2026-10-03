@@ -5,6 +5,17 @@
 
 ## [Unreleased]
 
+- **Agent kit in BashCut.** The editing skills of `bashcut-agent-kit` ship inside BashCut and load in its Claude and
+  Codex tabs (Claude: a skills-only plugin; Codex: links in its working folder). **Settings → Agents** shows the
+  kit, can use another kit folder, and sets up Claude Code and Codex outside BashCut (plugin, skill links, MCP
+  server). CLI/MCP: `agent status`, `agent setup in-app|claude|codex [--remove]` (approval required).
+- `ui action agent.open-claude|agent.open-codex|agent.open-shell` opens a terminal tab like the dock's + menu (the
+  only dock action without a command until now).
+- Claude Code and Codex configuration folders moved with `CLAUDE_CONFIG_DIR` / `CODEX_HOME` are found even when
+  BashCut starts from Finder (Settings, then BashCut's environment, then the login shell). In-app tabs get the
+  variables, and resuming finds their sessions there; before, a moved folder meant a different login and no
+  resume.
+
 - **Edits stay fast on long timelines.** Tracks and items are stored typed instead of being rebuilt from JSON on
   every change, validation indexes transitions and media once instead of sorting a layer per transition, and a
   project that already passed validation is not validated again. At 1,000 items an edit takes 3 ms instead of

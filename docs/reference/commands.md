@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 74 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 76 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -511,6 +511,25 @@ Delete what can be made or downloaded again: plugin-cache (all plugins, or --plu
 - Mode: edit · Runs: immediately · MCP: `bashcut_storage_clear`
 - `target`: string, required, one of plugin-cache, plugin-data, registry, proxies. What to clear
 - `plugin`: string. Only this plugin's data or cache
+
+## agent
+
+### `bashcut agent status`
+
+The agent kit (editing skills) BashCut uses: its folder, version and skills, whether BashCut's Claude and Codex tabs load it, and for Claude Code and Codex outside BashCut: the CLI, whether the kit is set up, and the configuration folder (CLAUDE_CONFIG_DIR, CODEX_HOME) with where it came from.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_agent_status`
+
+### `bashcut agent setup <target> [--remove] [--kit <kit>] [--claude-config-dir <claudeConfigDir>] [--codex-home <codexHome>]`
+
+Set up the agent kit like Settings › Agents: in-app (load it in BashCut's tabs), claude (install the bashcut plugin in Claude Code) or codex (link the skills and register the MCP server); remove undoes it. Can also choose the kit folder and the agents' configuration folders.
+
+- Mode: privileged · Runs: after the user approves in the app · MCP: `bashcut_agent_setup`
+- `target`: string, required, one of in-app, claude, codex. What to set up
+- `remove`: boolean, default false. Undo the setup instead
+- `kit`: string. Kit folder to use, or built-in
+- `claudeConfigDir`: string. Claude Code's configuration folder (CLAUDE_CONFIG_DIR), or default to detect it
+- `codexHome`: string. Codex's home folder (CODEX_HOME), or default to detect it
 
 ## ui
 

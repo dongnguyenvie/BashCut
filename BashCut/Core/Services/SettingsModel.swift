@@ -16,6 +16,18 @@ public final class SettingsModel {
             }
         }
     }
+    /// Load the agent kit's editing skills in BashCut's Claude and Codex tabs. On by default.
+    public var loadAgentKit: Bool { didSet { defaults.set(loadAgentKit, forKey: Keys.loadAgentKit) } }
+    /// A kit folder to use instead of the one inside BashCut (a checkout being worked on); nil uses the built-in kit.
+    public var agentKitFolder: URL? { didSet { store(agentKitFolder, Keys.agentKitFolder) } }
+    /// Claude Code's configuration folder when it is not found by itself (`CLAUDE_CONFIG_DIR`); nil detects it.
+    public var claudeConfigFolder: URL? {
+        didSet { store(claudeConfigFolder, Keys.claudeConfigFolder) }
+    }
+    /// Codex's home folder when it is not found by itself (`CODEX_HOME`); nil detects it.
+    public var codexHomeFolder: URL? {
+        didSet { store(codexHomeFolder, Keys.codexHomeFolder) }
+    }
     /// `AgentProviderID` raw value of the agent the dock starts by default.
     public var defaultProviderRaw: String { didSet { defaults.set(defaultProviderRaw, forKey: Keys.defaultAgent) } }
     public var allowAgentEdits: Bool { didSet { defaults.set(allowAgentEdits, forKey: Keys.allowAgentEdits) } }
@@ -63,6 +75,10 @@ public final class SettingsModel {
     private enum Keys {
         static let workspace = "agentWorkspace"
         static let defaultAgent = "defaultAgent"
+        static let loadAgentKit = "loadAgentKit"
+        static let agentKitFolder = "agentKitFolder"
+        static let claudeConfigFolder = "claudeConfigFolder"
+        static let codexHomeFolder = "codexHomeFolder"
         static let allowAgentEdits = "allowAgentEdits"
         static let allowExternalAgents = "allowExternalAgents"
         static let autoApprovePrivileged = "autoApprovePrivileged"
@@ -79,6 +95,10 @@ public final class SettingsModel {
         self.defaults = defaults
         workspace = defaults.string(forKey: Keys.workspace).map { URL(fileURLWithPath: $0) }
         defaultProviderRaw = defaults.string(forKey: Keys.defaultAgent) ?? "codex"
+        loadAgentKit = defaults.object(forKey: Keys.loadAgentKit) as? Bool ?? true
+        agentKitFolder = defaults.string(forKey: Keys.agentKitFolder).map { URL(fileURLWithPath: $0) }
+        claudeConfigFolder = defaults.string(forKey: Keys.claudeConfigFolder).map { URL(fileURLWithPath: $0) }
+        codexHomeFolder = defaults.string(forKey: Keys.codexHomeFolder).map { URL(fileURLWithPath: $0) }
         allowAgentEdits = defaults.object(forKey: Keys.allowAgentEdits) as? Bool ?? true
         allowExternalAgents = defaults.object(forKey: Keys.allowExternalAgents) as? Bool ?? true
         autoApprovePrivileged = defaults.bool(forKey: Keys.autoApprovePrivileged)
@@ -113,6 +133,10 @@ public final class SettingsModel {
     public func clearRecentProjects() {
         recentProjects.removeAll()
         defaults.removeObject(forKey: Keys.recentProjects)
+    }
+
+    private func store(_ url: URL?, _ key: String) {
+        if let url { defaults.set(url.path, forKey: key) } else { defaults.removeObject(forKey: key) }
     }
 
     private func saveRecentProjects() {
