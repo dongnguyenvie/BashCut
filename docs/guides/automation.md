@@ -116,124 +116,14 @@ directory.
 
 ### Command reference
 
-All 73 commands, grouped by purpose. Prefix each with `bashcut`. Arguments in brackets are optional.
+**[Command reference](../reference/commands.md)** lists every command with its usage, mode, how it runs, MCP
+tool name and parameters (types, ranges, choices, defaults). It is generated from the catalog
+(`scripts/update-commands.sh`) and a test fails when it is out of date, so it never misses a command.
 
-#### Read
-
-| Command | Mode | Summary |
-|---|---|---|
-| `context get` | read | Project path, revision, playhead and selection |
-| `project get` | read | The whole open project document |
-| `project recents` | read | Recently opened projects (Welcome screen) |
-| `timeline get [--format <format>]` | read | Revision, format, tracks (IDs and roles), `transitions`, `markers` (sections), `luts`, and the built-in and custom `looks` and `styleKits`; `json` (default) or compact `text` (one line per item, transition and marker) |
-| `schema get` | read | The JSON Schema of `project.bashcut.json`: every field, type and range ([project.schema.json](../reference/project.schema.json)) |
-| `media list` | read | Project media, each with its `proxy` state |
-| `review run` | read | Structural timeline review: timeline structure and tagged speech coverage, not measured loudness or silence |
-| `captions export` | read | Captions as SubRip text on stdout |
-| `export status` | read | Export state, queue with job IDs, and the most recent receipt |
-| `plugins list` | read | Installed plugins, their providers and project provider preferences, plus catalog diagnostics |
-| `plugins health [<plugin>]` | read | Run plugin health checks (Plugins sheet, Check Health); all plugins by default |
-| `doctor run` | read | Run the Doctor checks (workspace, tools, plugins) |
-| `knowledge get` | read | The project memo and project skills shared with the agents |
-
-#### Project
-
-| Command | Mode | Summary |
-|---|---|---|
-| `project create --name <name> --dir <directory> [--footage <footage>] [--canvas <canvas>] [--resolution <resolution>] [--fps <fps>] [--language <language>] [--save-current] [--discard-current]` | edit | Create a project folder like the New Project wizard and open it |
-| `project open <path> [--save-current] [--discard-current]` | edit | Open a `project.bashcut.json` or its folder |
-| `project save` | edit | Save the open project to disk |
-| `edl import <path> [--save-current] [--discard-current]` | edit | Convert a legacy `edl.json` into `project.bashcut.json` beside it and open it |
-
-`project open`, `project create` and `edl import` never show the discard dialog. When the open project has
-unsaved changes they fail unless you pass `--save-current` or `--discard-current`. In-app agent tabs close
-when another project opens; agents outside BashCut keep access.
-
-#### Edit
-
-| Command | Mode | Summary |
-|---|---|---|
-| `timeline apply <ops.json> --base-rev <baseRev> [--label <label>]` | edit | Atomically apply validated timeline operations as one undo step |
-| `timeline undo --base-rev <baseRev>` | edit | Undo one timeline action |
-| `timeline redo --base-rev <baseRev>` | edit | Redo one timeline action |
-| `timeline move <item> --track <track> --at-frame <atFrame> --base-rev <baseRev>` | edit | Move an item and its linked partner; an occupied range spills onto a free or new layer |
-| `timeline close-gap --at-frame <atFrame> [--track <track>] --base-rev <baseRev>` | edit | Delete the empty gap containing a frame (main layer by default): later clips on that layer move left with their linked sound |
-| `clip speed [item] --speed <x> [--keep-duration] [--preserve-pitch on\|off] --base-rev N` | edit | Constant speed like Inspector › Speed; by default the length follows the speed and later clips move. A clip is shortened when its source runs out, even with `--keep-duration`; the result then has `shortened: true` (also for `clip speed-curve`) |
-| `clip speed-curve [item] (--preset <name>\|--points '[[0,1],[0.5,3],[1,1]]') [--keep-duration] --base-rev N` | edit | Speed ramp like Inspector › Speed › Curve (montage, hero, bullet, jump-cut, flash-in, flash-out; `none` removes it) |
-| `clip reverse [item]` | edit, job | Play a video clip (and its linked sound) backwards from a rendered reversed copy; again to restore |
-| `layers set <track> [--hidden on\|off] [--muted on\|off] [--locked on\|off] --base-rev <baseRev>` | edit | The layer header switches: hide a visual layer, mute an audio layer, lock any layer (a locked layer refuses edits) |
-| `layers add --kind <kind> [--role <role>] [--name <name>] --base-rev <baseRev>` | edit | Add an empty `video`, `adjustment`, `text` or `audio` layer; the role can be `overlay`, `captions`, `music`, `sfx` and so on, never `main` |
-| `adjustment add [--look <look>] [--exposure <n>] [--contrast <n>] [--saturation <n>] [--lut-strength <n>] [--lut <lut>] [--at-frame <atFrame>] [--duration <duration>] [--track <track>] --base-rev <baseRev>` | edit | Add an adjustment item: a color grade on every layer below it for its range (the selected clip's range, else 3 seconds at the playhead). Starts from the look; the grade options override it. Adds an adjustment layer when needed |
-| `style apply <kit> --base-rev <baseRev>` | edit | Apply a built-in or custom style kit as one undo step: a full-length adjustment with the kit's look (replacing an earlier kit's) and the kit's preset on captions |
-| `looks save <id> --title <title> [--item <item>] [grade options] --base-rev <baseRev>` | edit | Save a custom look in the project, starting from an item's grade when given; saving an existing custom ID replaces it |
-| `looks delete <id> --base-rev <baseRev>` | edit | Delete a custom look (refused while a custom kit uses it) |
-| `style save <id> --title <title> --look <look> [--caption-preset <preset>] --base-rev <baseRev>` | edit | Save a custom style kit in the project |
-| `style delete <id> --base-rev <baseRev>` | edit | Delete a custom style kit |
-| `media import <path> [--kind <kind>] [--place] [--track <track>] [--at-frame <atFrame>] --base-rev <baseRev>` | edit | Add a media file; with `--place`, also put it on a layer like the Import button |
-| `media place --media <media> [--track <track>] [--at-frame <atFrame>] --base-rev <baseRev>` | edit | Place project media on a layer (main by default), with linked sound on a dialogue layer |
-| `media proxy [<media>] [--force]` | edit | Queue preview proxies for heavy video, or for one media item |
-| `storage get` | read | What BashCut keeps on disk (Settings › Storage) with sizes and paths |
-| `storage clear <plugin-cache\|plugin-data\|registry\|proxies> [--plugin <id>]` | edit | Delete what can be made or downloaded again; `plugin-data` needs `--plugin` and means setting the plugin up again |
-| `captions import <text-file> --base-rev <baseRev> [--replace]` | edit | Import UTF-8 SubRip captions as one undoable edit |
-| `luts import <path> [--name <name>] --base-rev <baseRev>` | edit | Check a `.cube` LUT, copy it into the project's `luts` folder and add it (Filters panel) |
-| `knowledge memo <text-file>` | edit | Replace the project memo (`.bashcut/agent-memory.md`) |
-| `knowledge skill <name> <text-file>` | edit | Write a project skill's `SKILL.md`, creating it and sharing it with Claude and Codex if needed |
-
-#### Jobs
-
-| Command | Mode | Summary |
-|---|---|---|
-| `captions generate --media <media> [--replace] [--provider <provider>]` | edit, job | Transcribe media with a `captions.transcribe` provider and import the captions |
-| `beats detect --media <media> [--provider <provider>]` | edit, job | Detect beats in audio media already on the timeline and set its beat grid |
-| `voice speak <text> [--takes <takes>] [--at-frame <atFrame>] [--provider <provider>] [--keep-takes]` | edit, job | Synthesize 1–8 takes (default 3) and insert the best one on the Voiceover track |
-| `jobs status [<job>]` | read | One job (plugin call or export), or all recent jobs |
-| `jobs cancel <job>` | edit | Cancel a queued or running job |
-
-#### Plugins
-
-| Command | Mode | Summary |
-|---|---|---|
-| `plugins actions` | read | Actions plugins add (menus, toolbar, context menus, panels) with placements, parameter schema and enabled state |
-| `plugins run <action> [--params <json>]` | edit, job | Run a plugin action like clicking it; its proposed operations become one undoable edit by `plugin` |
-
-Agents get the plugin workflow in their instructions (list → select → run → `jobs status`), and the session
-context lists every installed action with its `when` condition and parameters (ranges and defaults).
-| `plugins hooks` | read | Hook subscriptions, recent hook runs and hook edits waiting for review |
-| `plugins proposal <id> --decision <apply\|discard>` | edit | Apply or discard an edit a hook proposed |
-| `plugins options <plugin>` | read | A plugin's options: schema, scope and current values |
-| `plugins option <plugin> --option <option> [--value <value>]` | edit | Set one option (project scope: undoable edit; user scope: this Mac); no value resets it |
-| `plugins set <plugin> [--enabled <bool>] [--hooks <bool>]` | edit | Turn a plugin or its hooks off; turning them on and trusting stay with the user |
-| `plugins search [query] [--capability <id>] [--refresh]` | read | Search the plugin registry with install status |
-| `plugins updates` | read | Installed plugins with a newer compatible registry version |
-| `plugins install <plugin> [--version <v>]` | edit | Download and verify a registry plugin, then show the install approval (job; only the user approves) |
-| `plugins remove <plugin> [--data]` | edit | Uninstall a plugin from the user or project plugin folder; `--data` also deletes its environments and models |
-| `plugins setup <plugin>` | edit | Ask to run a plugin's install recipes again (approval stays with the user; then `jobs status`) |
-
-Plugin actions also appear in `ui actions` and run with `ui action <id>`. See [Writing plugins](plugins.md#commands).
-
-#### Privileged
-
-| Command | Mode | Summary |
-|---|---|---|
-| `export start --preset <preset> --name <name> [--output-dir <directory>] [--include-srt] [--normalize-audio]` | privileged, approval | Request a background video export |
-| `export otio --name <name> [--output-dir <directory>]` | privileged, approval | Request an OpenTimelineIO export |
-
-#### UI
-
-| Command | Mode | Summary |
-|---|---|---|
-| `ui dialog` | read | The open dialogs (alerts, file panels, sheets), topmost last, with their option IDs |
-| `ui respond [<option>] [--path <path>] [--dialog <dialog>]` | ui | Answer the topmost dialog like the user: an option ID or title, or a path for a file panel |
-| `ui open <dialog>` | ui | Open a sheet or popover |
-| `ui actions` | read | Every editor action (buttons, menu items, shortcuts) with its shortcuts and whether it is enabled now |
-| `ui action <action>` | edit | Run an editor action by ID or shortcut, using the same code as the UI |
-| `ui view [--zoom <zoom>] [--zoom-anchor <zoomAnchor>] [--snap <snap>] [--safe-area <safeArea>] [--compare <compare>] [--agent-dock <agentDock>] [--reveal <reveal>] [--inspector <inspector>]` | ui | Read the view state, or change zoom, toggles and inspector tab, and scroll the timeline to a frame |
-| `ui select [<item>] [--track <track>]` | ui | Select a timeline item (omit it to clear the selection), or a layer with `--track` |
-| `ui source <media> [--in <in>] [--out <out>]` | ui | Open media in the source viewer, optionally with in and out frames marked |
-| `ui seek <frame>` | ui | Move the viewer to a timeline frame |
-| `ui frame [<frame>]` | read | Render the viewer picture at a frame (the playhead by default) to a PNG in `.bashcut/agent-context` and return its path, without moving the playhead; the ten newest are kept |
-| `ui panel <panel>` | ui | Open a library panel in the left rail |
-| `ui notify <message>` | ui | Show a short status message in BashCut |
+- Plugin actions: agents get the workflow in their instructions (list → select → run → `jobs status`), and the
+  session context lists every installed action with its `when` condition and parameters. Plugin actions also
+  appear in `ui actions` and run with `ui action <id>`. See [Writing plugins](plugins.md#commands).
+- `ui frame [frame]` renders the viewer picture to a PNG for agents to look at; it never moves the playhead.
 
 #### Allowed values
 
@@ -259,8 +149,9 @@ Plugin actions also appear in `ui actions` and run with `ui action <id>`. See [W
 
 ### Adding a command
 
-Add one `CommandSpec` to the catalog and one `handle`/`handleAuthored` registration in `ProjectDocument`. Debug
-builds assert that every spec has a handler, and `CommandSpecTests` checks names, schemas and CLI bindings. If
+Add one `CommandSpec` to the catalog and one `handle`/`handleAuthored` registration in `ProjectDocument`, then
+run `scripts/update-commands.sh`. Debug builds assert that every spec has a handler, `CommandSpecTests` checks
+names, schemas and CLI bindings, and `CommandReferenceTests` fails until the reference is regenerated. If
 the command mirrors something in the UI, see the parity rule in
 [05 — Agent integration](../specs/05-agent-integration.md#ui-parity-rule). The step-by-step checklist is in
 [CONTRIBUTING.md](../../CONTRIBUTING.md).

@@ -15,6 +15,7 @@ can do through the `bashcut` CLI or MCP. Start with the section that matches wha
 
 | Document | Contents |
 |---|---|
+| [Command reference](reference/commands.md) | Every CLI command and MCP tool with its parameters (generated) |
 | [Project format reference](reference/project-format.md) | How `project.bashcut.json`, history and edits behave on disk |
 | [Third-party dependencies](reference/third-party.md) | Packages, licenses and why each one is used |
 
