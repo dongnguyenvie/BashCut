@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+- Run an isolated real MCP process regression in the full verification suite: initialization, tool failure,
+  EOF shutdown and private log flushing, without contacting an app or reading real session credentials.
+
 - Keep debug-log handles open and serialize append/rotation across processes with a stable flock lock file.
   Writers detect another process's rotation before appending. MCP flushes on shutdown; Release logging is off
   unless explicitly enabled. `BASHCUT_DEBUG_LOG_PATH` permits isolated diagnostics and process-level tests.
