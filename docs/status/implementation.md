@@ -296,6 +296,20 @@ Still open: timing edits (trim, move, speed, new clips) still build and load a w
 shown `AVMutableComposition` in place would need engine work), and the remaining per-edit cost is one full
 `validate()` (about 2.6 µs per item).
 
+### LUT rebuild cache (2026-10-04)
+
+Reproduce with `scripts/verify.sh test --filter LUTBuildTests`. Generated fixture: one 30-frame video item and
+one 64³ LUT; warm the builder, then measure five opacity edits. Debug build on this M1 Max; milliseconds:
+
+| Metric | Before (`04b87fc`) | Persistent parsed-LUT cache |
+|---|---|---|
+| Median `CompositionBuilder.build` | 2165.721 | 0.315 |
+| Parsed LUT loads across warm-up + five edits | 6 | 1 |
+
+This measures rebuild work only, not player readiness or end-to-end display latency. The first parse still has
+its original cost. The cache is bounded to 64 MiB, keyed by resolved URL and freshly read modification time,
+size and inode. Tests cover reuse, replacement, deletion, dimension validation and least-recently-used eviction.
+
 ## Verification
 
 ### Automated tests

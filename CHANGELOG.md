@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+- Cache parsed LUTs across composition rebuilds with a 64 MiB LRU budget and fresh file signatures. Build LUT
+  catalogs once and avoid repeated item lookups; replacing or removing a LUT invalidates cached results.
+
 - Require a live automation token for UI commands and chat mutations; after project switches, callers must read
   the new project before controlling it. Automated chat transcript exports stay inside the open project folder.
 

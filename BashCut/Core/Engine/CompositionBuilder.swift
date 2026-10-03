@@ -26,6 +26,8 @@ public actor CompositionBuilder {
     private let source: any MediaSource
     private let cacheLimit: Int
     private var assets: [URL: LoadedAsset] = [:]
+    private var parsedLUTs = LUTCache()
+    public var lutLoads: Int { parsedLUTs.loads }
     /// Least recently used first.
     private var assetOrder: [URL] = []
     /// Assets opened from disk so far; a cache hit does not count.
@@ -58,19 +60,18 @@ public actor CompositionBuilder {
         var audioParameters: [AVAudioMixInputParameters] = []
         let speechRanges = AudioGainPlanner.speechRanges(in: project)
         var lutCache: [String: CubeLUT] = [:]
+        let lutCatalog = Dictionary(uniqueKeysWithValues: project.colorLUTs.map { ($0.id, $0) })
         /// The LUT an item's `color.lut` names, loaded once per build from the project `luts` folder.
         func loadLUT(for item: Item) throws -> CubeLUT? {
-            guard let lutID = item["color"]?.object["lut"]?.string,
-                let catalog = project.colorLUTs.first(where: { $0.id == lutID })
-            else { return nil }
+            guard let lutID = item["color"]?.object["lut"]?.string else { return nil }
             if let cached = lutCache[lutID] { return cached }
+            guard let catalog = lutCatalog[lutID] else { return nil }
             let directory = root.appendingPathComponent("luts").resolvingSymlinksInPath()
             let lutURL = root.appendingPathComponent(catalog.path).resolvingSymlinksInPath()
             guard lutURL.path.hasPrefix(directory.path + "/") else {
                 throw ProjectError.invalid("LUT escapes the project luts folder")
             }
-            let loaded = try CubeLUT.load(lutURL)
-            guard loaded.dimension == catalog.size else { throw ProjectError.invalid("LUT size changed on disk") }
+            let loaded = try parsedLUTs.load(lutURL, dimension: catalog.size)
             lutCache[lutID] = loaded
             return loaded
         }
