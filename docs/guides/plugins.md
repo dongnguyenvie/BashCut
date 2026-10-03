@@ -300,8 +300,12 @@ symlinks are followed, and the file must exist. If the call fails, BashCut delet
 
 ### `captions.transcribe`
 
-Return `srtPath` pointing to a UTF-8 SubRip file of at most 4 MiB. BashCut imports it with the same validation
-as `bashcut captions import`.
+Return `srtPath` pointing to a UTF-8 SubRip file of at most 4 MiB, timed in the media's own seconds. BashCut
+validates it like `bashcut captions import`, then places each cue through every clip where the media is heard
+(audio clips, including sound linked to video, and video clips without linked sound; not muted clips, muted layers
+or freeze frames), through the clip's trim, position, speed and speed ramp. Cues outside the clips are dropped and
+a cue across a cut is split. Media that is not on the timeline keeps the cue times as timeline times. Captions
+carry `captionMedia`, so generating again with `replace` swaps only that media's captions.
 
 ### Core plugins
 

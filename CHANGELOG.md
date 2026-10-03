@@ -5,6 +5,15 @@
 
 ## [Unreleased]
 
+- Fix: `captions generate` placed captions at the media's own times from the start of the timeline. Captions now
+  follow every clip where the media is heard (position, trim, speed, speed ramp); speech cut out of the edit gets
+  none, and `--replace` replaces only the captions made from that media.
+- Fix: approving **Install Dependencies…** for a plugin that was not trusted yet (a linked or copied folder) ran
+  its setup but left it "Not approved yet". The approval now trusts those files, like installing from the
+  registry.
+- After `project open` / `project create`, the token that asked may edit at once (the result shows the new
+  project); other tokens still read the project first.
+
 - Fix: creating or opening a project closed every agent terminal, including the Codex or Claude tab that asked
   for it, so an agent could not create a project and then fill it. Tabs now stay open across project switches;
   each token must read the new project (`context get` / `timeline get` / `project get`) before its next edit,

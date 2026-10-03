@@ -202,11 +202,11 @@ public enum CommandCatalog {
             parameters: [CommandParameter("job", .string, "Job ID", required: true, cli: .positional)]),
         CommandSpec(
             "captions.generate", .edit,
-            "Transcribe project media with a captions.transcribe provider and import the captions as one undoable edit.",
+            "Transcribe project media with a captions.transcribe provider and import the captions as one undoable edit. "
+                + "Captions follow the clips where the media is heard (trim, position, speed): place the clips first.",
             parameters: [
                 CommandParameter("media", .string, "Project media ID", required: true, cli: .option("media")),
-                CommandParameter("replace", .boolean, "Replace existing captions", default: .bool(false),
-                                 cli: .flag("replace")),
+                CommandParameter("replace", .boolean, "Replace this media's captions", default: .bool(false), cli: .flag("replace")),
                 provider,
             ],
             execution: .job),
