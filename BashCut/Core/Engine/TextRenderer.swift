@@ -1,6 +1,7 @@
 import BashCutProject
 import CoreGraphics
 import CoreText
+import CryptoKit
 import Foundation
 
 private final class CaptionImage: @unchecked Sendable {
@@ -140,11 +141,18 @@ enum TextRenderer {
             CaptionImage(image), forKey: key as NSString, cost: Int(size.width * size.height * 4))
         return image
     }
-    /// Identifies everything that changes how the item is drawn: the whole item, encoded with sorted keys.
+    /// Hash only raster drawing inputs, once per TextLayer. Timing, identity and compositor transforms
+    /// do not change these pixels; canvas size and the spoken word are appended by `image`.
     static func cacheKey(_ item: Item) -> String {
+        let drawing: [String: JSONValue] = [
+            "text": .string(item.text), "textPreset": .string(item.textPreset ?? ""),
+            "textStyle": .object(item["textStyle"]?.object ?? [:]), "wordStyle": .string(item.wordStyle ?? "")
+        ]
         let encoder = JSONEncoder()
         encoder.outputFormatting = .sortedKeys
-        return (try? encoder.encode(item)).flatMap { String(data: $0, encoding: .utf8) } ?? item.text
+        encoder.nonConformingFloatEncodingStrategy = .convertToString(positiveInfinity: "inf", negativeInfinity: "-inf", nan: "nan")
+        let data = (try? encoder.encode(drawing)) ?? Data(item.text.utf8)
+        return Data(SHA256.hash(data: data)).base64EncodedString()
     }
 
     /// The middle of the item's text block, where text keyframes scale and rotate it.

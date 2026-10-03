@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+- Key caption raster caches only on text and drawing styles, hashed once per text layer. Moving, trimming,
+  duplicating or animating captions now reuses their images; canvas size and spoken-word variants stay distinct.
+
 - Share video lanes between clips and non-overlapping transition holds, keeping sequential transitions
   on two video tracks per project layer instead of allocating a new track for each transition.
 
