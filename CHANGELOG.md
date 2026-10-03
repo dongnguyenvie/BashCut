@@ -13,7 +13,8 @@
   project snapshots: at 1,000 items a 200-step journal is 0.1 MB instead of 13 MB, saves in 35 ms instead of 1 s and
   opens in 70 ms instead of 5.5 s. Old journals still open.
 - **The viewer no longer goes blank after an edit.** The new composition is prepared in its own player and swapped in
-  once it shows the frame at the playhead; until then the previous picture stays. `ui frame` waits for the new one.
+  once it shows the frame at the playhead; until then the previous picture stays. `ui frame` grabs from the new
+  composition as soon as it is built (edit → frame about 210 ms).
 - MCP `tools/list` answers in 0.1 ms instead of 35 ms: the command catalog is encoded once.
 
 - **Faster agent round trips.** `bashcut-mcp` reads and writes stdio without the SDK's 10 ms polling and returns results

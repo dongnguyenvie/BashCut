@@ -132,10 +132,11 @@ struct PreviewControllerTests {
         let composition = try #require(preview.snapshot?.composition)
 
         preview.rebuild(second, root: root, workspace: nil)
-        #expect(!preview.isCurrent)
+        #expect(!preview.isCurrent && preview.currentBuild == nil)
         #expect(preview.snapshot?.composition === composition)
         #expect(preview.player === shown && shown.currentItem != nil)
         try await waitUntil { preview.isCurrent }
+        #expect(preview.currentBuild?.composition === preview.snapshot?.composition)
         #expect(preview.snapshot?.composition !== composition)
         #expect(preview.player !== shown && shown.currentItem == nil)
         #expect(preview.player.currentItem?.status == .readyToPlay)

@@ -226,8 +226,8 @@ with 44 items and 18 media, M1 Max). p50 values, before → after the agent-late
 | MCP `timeline get --format text` | 13–23 ms | 3–4 ms |
 | MCP `timeline get` (JSON) | 40–45 ms | 11–14 ms |
 | MCP start + initialize | 95 ms | 9–13 ms |
-| MCP `tools/list` (73 tools with schemas, once per session) | 50–60 ms | 50 ms |
-| Edit → `ui frame` ready | ~255 ms (first 1.2 s) | ~230 ms |
+| MCP `tools/list` (73 tools with schemas, once per session) | 50–60 ms | 50 ms, then 1.6–1.8 ms (core scaling) |
+| Edit → `ui frame` ready | ~255 ms (first 1.2 s) | ~230 ms, then ~210 ms (core scaling) |
 
 Causes fixed: the MCP SDK's stdio transport polled stdin/stdout every 10 ms (`MCPBridge/BlockingStdioTransport.swift`
 blocks instead); every result was sent twice (pretty text and `structuredContent`) and the SDK re-decodes structured
@@ -247,7 +247,8 @@ media; 60% of the items on the main layer with a dissolve at every tenth cut, 20
 | `validate()` of a changed project | 0.5 / 3.2 / 9.2 ms | 0.4 / 1.3 / 2.6 ms |
 | 200-step history journal | 1.9 / 6.9 / 13 MB | 0.02 / 0.1 / 0.1 MB |
 | Journal encode / decode | 0.14 / 0.52 / 0.97 s, 0.77 / 2.9 / 5.5 s | 5 / 21 / 35 ms, 14 / 48 / 66 ms |
-| MCP `tools/list` (bridge alone) | 35 ms | 0.1 ms |
+| MCP `tools/list` (bridge alone / with the app's plugin actions) | 35 / 50 ms | 0.1 / 1.7 ms |
+| Edit → `ui frame` ready (running app, 44 items) | ~230 ms | ~210 ms |
 
 What changed:
 - `Project` keeps `tracks` (and each `Track` its `items`) as typed stored arrays. Before, every item mutation
@@ -260,8 +261,8 @@ What changed:
 - The history journal stores each step as a `ProjectDelta` against the next newer state (runs of unchanged items
   are `[start, count]`). Old full-snapshot journals still load.
 - The preview builds the new composition in a fresh `AVPlayer`, waits until it is ready at the playhead and swaps
-  it in; the viewer keeps the previous picture instead of going blank. `PreviewController.isCurrent` tells `ui frame`
-  when the new one is up.
+  it in; the viewer keeps the previous picture instead of going blank. `ui frame` does not wait for the swap: it grabs
+  from `PreviewController.currentBuild`, the new composition as soon as it is built.
 - `bashcut-mcp` answers `tools/list` itself from the catalog encoded once; the SDK encoded the 35 KB list through
   its `Value` tree on every call.
 

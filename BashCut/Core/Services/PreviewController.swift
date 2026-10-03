@@ -23,6 +23,11 @@ public final class PreviewController {
     @ObservationIgnored public private(set) var snapshot: CompositionSnapshot?
     /// Whether `snapshot` shows the last project given to `rebuild`.
     public var isCurrent: Bool { snapshot != nil && shownRequest == request }
+    /// The composition of the last project given to `rebuild` as soon as it is built, before the players are
+    /// ready to show it; frame grabs (`ui frame`) need no player.
+    public var currentBuild: CompositionSnapshot? { builtRequest == request ? built : nil }
+    @ObservationIgnored private var built: CompositionSnapshot?
+    @ObservationIgnored private var builtRequest = -1
     /// Bumped by every `rebuild` and `reset`; `shownRequest` is the one on screen.
     @ObservationIgnored private var request = 0
     @ObservationIgnored private var shownRequest = -1
@@ -98,6 +103,8 @@ public final class PreviewController {
                     : nil
                 try Task.checkCancellation()
                 guard request == self.request, compare == showColorComparison else { return }
+                self.built = built
+                builtRequest = request
                 buildCount += 1
                 try await show(built, comparison: comparisonBuilt, request: request)
                 onMessage?("")
@@ -187,6 +194,7 @@ public final class PreviewController {
         chaseTarget = nil
         snapshot = nil
         comparisonSnapshot = nil
+        built = nil
         pause()
         player.replaceCurrentItem(with: nil)
         comparisonPlayer.replaceCurrentItem(with: nil)
