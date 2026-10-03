@@ -642,7 +642,7 @@ Answer the topmost dialog like the user: choose an option ID or title, or give a
 Open a sheet or popover in the app.
 
 - Mode: ui · Runs: immediately · MCP: `bashcut_ui_open`
-- `dialog`: string, required, one of new-project, export, export-report, agent-changes, review, history, plugins, settings, doctor, knowledge, ask, sections, external-changes, plugin-proposals. Dialog
+- `dialog`: string, required, one of new-project, export, export-report, agent-changes, review, history, plugins, settings, doctor, knowledge, ask, sections, external-changes, plugin-proposals, commands, shortcuts. Dialog
 
 ### `bashcut ui select [<item>] [--track <track>]`
 

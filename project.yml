@@ -102,6 +102,10 @@ targets:
         LSMinimumSystemVersion: "14.0"
         NSHighResolutionCapable: true
         NSMicrophoneUsageDescription: BashCut records voiceover directly into the current project.
+        # Help menu and About panel links (MainMenu); an empty value hides the item.
+        BCRepositoryURL: https://github.com/dongnguyenvie/BashCut
+        BCIssuesURL: https://github.com/dongnguyenvie/BashCut/issues
+        BCContactEmail: dongnguyenvie@gmail.com
         # Finder "Open With" and Dock drops for project.bashcut.json or a project folder; never the default for JSON.
         CFBundleDocumentTypes:
           - CFBundleTypeName: BashCut Project

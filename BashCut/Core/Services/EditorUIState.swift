@@ -46,6 +46,9 @@ public final class EditorUIState {
     public var showDoctor = false
     public var showAsk = false
     public var showSections = false
+    /// The command palette (⇧⌘P) and the keyboard-shortcuts sheet (⌘/), both built from the menu bar.
+    public var showCommands = false
+    public var showShortcuts = false
     /// Edits plugin hooks proposed, waiting for review.
     public var showPluginProposals = false
 
@@ -112,7 +115,8 @@ public final class EditorUIState {
     /// Sheets that open unconditionally by name (`ui.open`).
     public static let toggledDialogs: [String: ReferenceWritableKeyPath<EditorUIState, Bool>] = [
         "review": \.showReview, "history": \.showHistory, "plugins": \.showPlugins, "settings": \.showSettings,
-        "doctor": \.showDoctor, "ask": \.showAsk, "sections": \.showSections,
+        "doctor": \.showDoctor, "ask": \.showAsk, "sections": \.showSections, "commands": \.showCommands,
+        "shortcuts": \.showShortcuts,
     ]
 }
 

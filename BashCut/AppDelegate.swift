@@ -8,6 +8,8 @@ import SwiftUI
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private let document = ProjectDocument(services: .live())
     private var window: NSWindow?
+    /// Target of the menu bar items; NSMenu keeps only weak references to them.
+    private var mainMenu: MainMenu?
     /// A project Finder asked to open before the window existed.
     private var pendingOpen: URL?
 
@@ -23,22 +25,16 @@ import SwiftUI
             styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false
         )
         window.title = "BashCut"
+        // The editor's toolbar sits in the title bar, next to the close, minimize and zoom buttons.
+        window.styleMask.insert(.fullSizeContentView)
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
         window.contentView = NSHostingView(rootView: EditorView(document: document))
         window.delegate = self
         window.center()
         window.makeKeyAndOrderFront(nil)
         self.window = window
-        let menu = NSMenu()
-        let item = NSMenuItem()
-        let appMenu = NSMenu()
-        appMenu.addItem(
-            withTitle: String(localized: "Quit BashCut"), action: #selector(NSApplication.terminate(_:)),
-            keyEquivalent: "q")
-        item.submenu = appMenu
-        menu.addItem(item)
-        menu.addItem(EditMenus.mainMenuItem())
-        menu.addItem(PluginMenus.mainMenuItem(document))
-        NSApp.mainMenu = menu
+        mainMenu = MainMenu.install(document)
         NSApp.activate(ignoringOtherApps: true)
         if let pendingOpen {
             self.pendingOpen = nil

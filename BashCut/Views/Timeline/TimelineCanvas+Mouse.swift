@@ -308,6 +308,10 @@ extension TimelineCanvas {
             document.run(.split)
         case (_, "z") where modifiers == .shift:
             document.run(.zoomFit)
+        case (_, "f") where modifiers == .shift:
+            document.run(.freezeFrame)
+        case (_, "n") where modifiers.isEmpty:
+            document.run(.toggleSnap)
         default:
             super.keyDown(with: event)
         }

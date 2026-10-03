@@ -59,6 +59,8 @@ public enum UIAction: String, CaseIterable, Sendable {
     case showSettings = "show.settings"
     case showExport = "show.export"
     case showSections = "show.sections"
+    case showCommands = "show.commands"
+    case showShortcuts = "show.shortcuts"
     case toggleAgentDock = "agent.toggle-dock"
     case askAgent = "agent.ask"
     case openClaudeTerminal = "agent.open-claude"
@@ -139,6 +141,8 @@ public enum UIAction: String, CaseIterable, Sendable {
         case .showSettings: "Settings"
         case .showExport: "Export…"
         case .showSections: "Sections"
+        case .showCommands: "Command palette"
+        case .showShortcuts: "Keyboard shortcuts"
         case .toggleAgentDock: "Show or hide the agent dock"
         case .askAgent: "Ask agent"
         case .openClaudeTerminal: "Claude terminal"
@@ -201,6 +205,8 @@ public enum UIAction: String, CaseIterable, Sendable {
         case .lift: [UIShortcut("delete", [.shift])]
         // Timeline-only, like `s`: a global ⇧Z would swallow capital Z typed in text fields.
         case .zoomFit: [UIShortcut("z", [.shift])]
+        case .freezeFrame: [UIShortcut("f", [.shift])]
+        case .toggleSnap: [UIShortcut("n")]
         // Arrow keys step the playhead while the timeline has keyboard focus.
         case .previousFrame: [UIShortcut("left")]
         case .nextFrame: [UIShortcut("right")]
@@ -217,10 +223,21 @@ public enum UIAction: String, CaseIterable, Sendable {
         case .newProject: UIShortcut("n", [.command])
         case .openProject: UIShortcut("o", [.command])
         case .saveProject: UIShortcut("s", [.command])
+        case .importMedia: UIShortcut("i", [.command])
+        case .showHistory: UIShortcut("z", [.command, .option])
+        case .showSettings: UIShortcut(",", [.command])
+        case .showCommands: UIShortcut("p", [.command, .shift])
+        case .showShortcuts: UIShortcut("/", [.command])
         case .showReview: UIShortcut("r", [.command, .shift])
         case .showExport: UIShortcut("e", [.command])
         case .toggleAgentDock: UIShortcut("j", [.command])
         case .askAgent: UIShortcut("k", [.command])
+        case .toggleSafeArea: UIShortcut("'", [.command, .shift])
+        case .toggleCompare: UIShortcut("c", [.command, .option])
+        case .speedUp: UIShortcut("]", [.command])
+        case .slowDown: UIShortcut("[", [.command])
+        case .resetSpeed: UIShortcut("r", [.command, .option])
+        case .unlinkAudio: UIShortcut("l", [.command, .option])
         case .togglePlayback: UIShortcut("space")
         case .zoomIn: UIShortcut("=", [.command])
         case .zoomOut: UIShortcut("-", [.command])

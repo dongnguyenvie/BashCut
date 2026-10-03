@@ -29,15 +29,13 @@ input,textarea,select{font:inherit;color:var(--text);background:#0f1013;border:1
 textarea{resize:none;width:100%}
 
 /* top bar */
-.top{height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 10px;background:var(--panel);border-bottom:1px solid var(--line)}
-.top .grp{display:flex;align-items:center;gap:6px}
 .pname{font-weight:600;margin:0 8px}
 .fmt{color:var(--muted);font:12px var(--mono)}
 .brand{font-weight:700;letter-spacing:.3px;margin-right:6px}
 .brand i{color:var(--accent);font-style:normal}
 
 /* main grid */
-main{display:grid;height:calc(100vh - 44px);grid-template-columns:52px 290px minmax(380px,1fr) 270px 390px;grid-template-rows:minmax(280px,1fr) 330px}
+main{display:grid;height:calc(100vh - 24px - 44px);grid-template-columns:52px 290px minmax(380px,1fr) 270px 390px;grid-template-rows:minmax(280px,1fr) 330px}
 main.dock-closed{grid-template-columns:52px 290px minmax(380px,1fr) 270px 0}
 main.dock-closed .dock{display:none}
 .rail{grid-column:1;grid-row:1;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;padding-top:8px;gap:4px}
@@ -183,6 +181,69 @@ main.dock-closed .dock{display:none}
 .qa{display:flex;flex-wrap:wrap;gap:5px}
 .qa button{font-size:11.5px;padding:3px 9px}
 
+/* ---- macOS menu bar (simulated) + unified window toolbar ---- */
+.macbar{height:24px;display:flex;align-items:center;gap:2px;padding:0 10px;background:#2b2a2f;border-bottom:1px solid #000;font-size:13px;position:relative;z-index:80;user-select:none}
+.macbar .apple{width:26px;text-align:center;font-size:14px}
+.macbar .mt{padding:1px 8px;border-radius:4px;cursor:default}
+.macbar .mt.app{font-weight:700}
+.macbar .mt.open,.macbar .mt.flash{background:#3d6fd8}
+.macbar .mt.newm::after{content:"";display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--accent);margin-left:4px;vertical-align:2px}
+.macbar .right{margin-left:auto;display:flex;gap:10px;align-items:center;color:var(--muted);font-size:12px}
+.macbar .right button{padding:1px 8px;font-size:11px;border-color:#155e75;background:#0b2a30;color:var(--accent)}
+.mmenu{position:fixed;min-width:250px;background:#2c2c30f2;backdrop-filter:blur(20px);border:1px solid #47474e;border-radius:8px;box-shadow:0 12px 36px #000b;padding:5px;z-index:90;display:none;font-size:13px}
+.mmenu.on{display:block}
+.mmenu .mi{display:flex;align-items:center;gap:8px;padding:3px 10px 3px 8px;border-radius:5px;cursor:default;position:relative;white-space:nowrap}
+.mmenu .mi:hover{background:#3d6fd8}
+.mmenu .mi .ico{width:16px;text-align:center;color:var(--muted)}
+.mmenu .mi:hover .ico,.mmenu .mi:hover .k{color:#fff}
+.mmenu .mi .t{flex:1}
+.mmenu .mi .k{color:var(--muted);font-size:12px;margin-left:18px;letter-spacing:.5px}
+.mmenu .mi .k.sug{border-bottom:1px dashed var(--accent)}
+.mmenu .mi.dis{color:var(--dim)}.mmenu .mi.dis:hover{background:transparent}
+.mmenu .mi .tagn{font-size:9px;border-radius:4px;padding:0 4px;background:#0b2a30;color:var(--accent);border:1px solid #155e75}
+.mmenu .mi .tagt{font-size:9px;border-radius:4px;padding:0 4px;color:#fcd34d;border:1px solid #5a4313}
+.mmenu .mi .cnt{font-size:10px;border-radius:8px;padding:0 6px;background:var(--accent);color:#06222a;font-weight:700}
+.mmenu .mi .cnt.warn{background:var(--warn)}
+.mmenu .mi .arr{color:var(--muted)}
+.mmenu .sep{height:1px;background:#47474e;margin:4px 6px}
+.mmenu .hd{padding:4px 8px 2px;font-size:11px;color:var(--dim);font-weight:600}
+.mmenu .subm{display:none;position:absolute;left:100%;top:-6px;min-width:220px;background:#2c2c30;border:1px solid #47474e;border-radius:8px;padding:5px;box-shadow:0 12px 36px #000b}
+.mmenu .mi:hover>.subm{display:block}
+.top{height:44px;display:flex;align-items:center;gap:8px;padding:0 10px 0 12px;background:var(--panel);border-bottom:1px solid var(--line)}
+.top .lights{display:flex;gap:8px;margin-right:10px}
+.top .lights i{width:12px;height:12px;border-radius:50%;display:block}
+.top .grp{display:flex;align-items:center;gap:6px}
+.top .vsep{width:1px;height:20px;background:var(--line2);margin:0 2px}
+.top .icon{width:30px;height:26px;padding:0;display:inline-flex;align-items:center;justify-content:center;position:relative}
+.top .icon .dot{position:absolute;top:3px;right:3px;width:7px;height:7px;border-radius:50%;background:var(--accent);border:1.5px solid var(--panel)}
+.pbtn{display:flex;align-items:center;gap:6px;background:transparent;border-color:transparent;font-weight:600}
+.pbtn:hover{background:var(--panel2)}
+.pbtn .dirty{width:6px;height:6px;border-radius:50%;background:var(--muted)}
+.fmtpill{font:12px var(--mono);color:var(--accent);background:#0f1013;border-color:var(--line2)}
+.status{flex:1;display:flex;justify-content:center;min-width:0}
+.status .cap{display:flex;align-items:center;gap:8px;min-width:260px;max-width:420px;height:26px;padding:0 12px;border-radius:7px;background:#0f1013;border:1px solid var(--line);color:var(--muted);font-size:12px;cursor:pointer}
+.status .cap b{color:var(--text);font-weight:500}
+.status .cap .bar{flex:1;height:3px;border-radius:2px;background:var(--line2);overflow:hidden}
+.status .cap .bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+.plugpin{font-size:12px}
+.anno{outline:1.5px dashed #f472b6;outline-offset:2px}
+.legend-k{border-bottom:1px dashed var(--accent)}
+#mMenu .box{width:min(1100px,94vw);max-height:88vh;display:flex;flex-direction:column}
+#mMenu .bd{overflow:auto;font-size:12.5px}
+#mMenu h3{margin:16px 0 6px;font-size:13px;color:var(--accent)}
+#mMenu h3:first-child{margin-top:0}
+#mMenu table{width:100%;border-collapse:collapse}
+#mMenu td,#mMenu th{border-bottom:1px solid var(--line);padding:5px 8px;text-align:left;vertical-align:top}
+#mMenu th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px}
+#mMenu .cols{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+#mMenu .card{background:var(--panel2);border:1px solid var(--line2);border-radius:8px;padding:10px}
+#mMenu .card b{display:block;margin-bottom:4px}
+#mMenu .card ul{margin:0;padding-left:16px;color:var(--muted)}
+#mMenu .shot{width:100%;border-radius:8px;border:1px solid var(--line2)}
+#mMenu .why{color:var(--muted)}
+#mMenu .x{color:#fca5a5}#mMenu .o{color:#86efac}
+#mMenu ol{margin:0;padding-left:18px}#mMenu ol li{margin:4px 0}
+
 /* popover / modal / toast */
 .pop{position:fixed;width:360px;background:var(--panel2);border:1px solid #155e75;border-radius:10px;box-shadow:0 12px 40px #000a;padding:10px;z-index:50;display:none}
 .pop.on{display:block}
@@ -207,19 +268,25 @@ main.dock-closed .dock{display:none}
 </head>
 <body>
 
+<div class="macbar" id="macbar"></div>
+
 <header class="top">
+  <div class="lights"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div>
   <div class="grp">
-    <span class="brand">code<i>cut</i></span>
-    <button class="ghost" title="Back to Welcome">◀</button>
-    <span class="pname">Lau bo noi dat ▾</span>
-    <button class="ghost" id="btnUndo" title="Undo ⌘Z">↶</button>
-    <button class="ghost" title="Redo ⇧⌘Z">↷</button>
+    <button class="pbtn" id="btnProject" title="Project: rename, format, recent, reveal in Finder">live-test <span class="dirty" title="Unsaved changes · autosaves every 30 s"></span> <span style="color:var(--muted)">▾</span></button>
+    <span class="vsep"></span>
+    <button class="ghost icon" id="btnUndo" title="Undo ⌘Z">↶</button>
+    <button class="ghost icon" title="Redo ⇧⌘Z">↷</button>
+    <button class="fmtpill" id="btnFmt" title="Project format">9:16 · 1080×1920 · 29.97 ▾</button>
   </div>
-  <div class="grp"><span class="fmt">projects/lau-bo-noi-dat · 9:16 1080×1920 · 29.97 fps</span></div>
+  <div class="status"><div class="cap" id="statusCap" title="Activity: save, export, agent and plugin jobs. Click for details."><span id="statusIco">✓</span><b id="statusText">Saved</b><span id="statusSub">rev 38 · 2 min ago</span><div class="bar"><i id="statusBar"></i></div></div></div>
   <div class="grp">
-    <button class="warn" id="btnReview">Review <b>⚠ 3</b></button>
-    <button class="primary" id="btnExport">Export ⤓</button>
-    <button class="ghost" id="btnDock">Agent ◧<kbd>⌘J</kbd></button>
+    <button class="plugpin ghost" title="Plugin action pinned to the toolbar (placement: toolbar)">✦ Captions</button>
+    <button class="warn" id="btnReview" title="Review ⇧⌘R">Review <b>⚠ 3</b></button>
+    <span class="vsep"></span>
+    <button class="primary" id="btnExport" title="Export ⌘E">Export…</button>
+    <button class="ghost icon" id="btnMore" title="More: project, history, plugins, doctor, settings">☰<span class="dot" title="2 plugin updates"></span></button>
+    <button class="ghost icon" id="btnDock" title="Show or hide the agent dock ⌘J">◧</button>
   </div>
 </header>
 
@@ -339,6 +406,36 @@ main.dock-closed .dock{display:none}
     <div class="frow"><label></label><span class="pill warn">⚠ 3 review issues still open</span></div>
   </div>
   <div class="phead" style="border-top:1px solid var(--line);border-bottom:none;justify-content:flex-end;gap:6px"><button class="ghost" data-close>Cancel</button><button class="primary" data-close>Export ⏎</button></div>
+</div></div>
+
+<div class="mmenu" id="mmenu"></div>
+
+<div class="modal" id="mMenu"><div class="box">
+  <div class="phead">Menu redesign · mac menu bar / toolbar / ☰ <small>2026-10-04 · from app screenshot + UIAction catalog</small></div>
+  <div class="bd" id="menuSpec"></div>
+  <div class="phead" style="border-top:1px solid var(--line);border-bottom:none;justify-content:flex-end;gap:6px"><button class="ghost" data-close>Close</button></div>
+</div></div>
+
+<div class="modal" id="mAbout"><div class="box" style="width:460px">
+  <div class="bd" style="text-align:center;padding:22px 22px 10px">
+    <div style="width:72px;height:72px;margin:0 auto 10px;border-radius:18px;background:linear-gradient(140deg,#22d3ee,#0e7490);display:flex;align-items:center;justify-content:center;font:700 30px var(--mono);color:#06222a;box-shadow:0 8px 24px #0008">&gt;_</div>
+    <div style="font-size:20px;font-weight:700">BashCut</div>
+    <div style="color:var(--muted);margin-top:2px">Version 0.0.1 (build 1) · Plugin API 4</div>
+    <div style="color:var(--dim);font-size:11px;margin-top:2px">Agent-first video editor for macOS</div>
+  </div>
+  <div class="bd" style="padding:6px 18px 12px">
+    <div class="frow"><label>Repository</label><span class="tc">github.com/dongnguyenvie/BashCut ↗</span></div>
+    <div class="frow"><label>Plugins</label><span class="tc">github.com/dongnguyenvie/bashcut-plugins ↗</span></div>
+    <div class="frow"><label>Docs</label><span>Plugin guide · Specs · <a style="color:var(--accent)">What's new</a></span></div>
+    <div class="frow"><label>Contact</label><span class="tc" title="Fill from Info.plist (BCContactEmail)">&lt;contact email — to fill&gt;</span></div>
+    <div class="frow"><label>Issues</label><span class="tc">github.com/dongnguyenvie/BashCut/issues ↗</span></div>
+    <div class="frow"><label>License</label><span>&lt;license — to fill&gt; · <a style="color:var(--accent)">Open-source notices…</a></span></div>
+    <div class="frow"><label>This Mac</label><span class="tc" style="color:var(--muted)">macOS 15.6 · agent kit 034cc37 · 4 plugins · Doctor ✓</span></div>
+  </div>
+  <div class="phead" style="border-top:1px solid var(--line);border-bottom:none;justify-content:space-between;gap:6px">
+    <span style="color:var(--dim);font-weight:400;font-size:11px">© 2026 BashCut</span>
+    <span style="display:flex;gap:6px"><button class="ghost" onclick="status('Copied diagnostics','paste it into the issue',false)">Copy Diagnostics</button><button>Report an Issue…</button><button class="primary" data-close>OK</button></span>
+  </div>
 </div></div>
 
 <div class="note-mock">Local mockup · sample data based on projects/lau-bo-noi-dat · not the real app</div>
@@ -609,6 +706,205 @@ document.addEventListener("keydown",e=>{
   if(e.key==="ArrowRight"){S.t=Math.min(total(),S.t+(e.shiftKey?1:1/29.97));movePH()}
   if(e.key==="ArrowLeft"){S.t=Math.max(0,S.t-(e.shiftKey?1:1/29.97));movePH()}
 });
+
+// ---------- menus: one catalog for the mac menu bar, the ☰ menu and the spec ----------
+// t title · k shortcut · s shortcut is suggested (new) · n new in the mac menu (today: only BashCut/Edit/Plugins)
+// tb also on the toolbar · hm also in ☰ · id UIAction id · a mockup handler · sub submenu · h header · "-" separator
+const RECENTS=[{t:"live-test",a:"toast"},{t:"lau-bo-noi-dat",a:"toast"},{t:"da-lat-vlog",a:"toast"},"-",{t:"Clear Menu",id:"project.clear-recents"}];
+const MENUS=[
+ {m:"BashCut",app:1,items:[
+  {t:"About BashCut",n:1,hm:1,a:"about",ico:"ⓘ"},"-",
+  {t:"Settings…",k:"⌘,",s:1,n:1,hm:1,id:"show.settings",ico:"⚙"},
+  {t:"Check Setup (Doctor)…",n:1,hm:1,id:"show.doctor",ico:"🩺"},
+  {t:"Check for Plugin Updates…",n:1,id:"show.plugins",cnt:2},"-",
+  {t:"Hide BashCut",k:"⌘H",n:1},{t:"Hide Others",k:"⌥⌘H",n:1},"-",
+  {t:"Quit BashCut",k:"⌘Q"}]},
+ {m:"File",items:[
+  {t:"New Project…",k:"⌘N",n:1,hm:1,id:"project.new"},
+  {t:"Open Project…",k:"⌘O",n:1,hm:1,id:"project.open"},
+  {t:"Open Recent",n:1,hm:1,sub:RECENTS},"-",
+  {t:"Close Window",k:"⌘W",n:1},
+  {t:"Save",k:"⌘S",n:1,hm:1,id:"project.save"},"-",
+  {t:"Import Footage…",k:"⌘I",s:1,n:1,hm:1,id:"project.import-media"},
+  {t:"Import",n:1,sub:[{t:"Captions (SubRip .srt)…",id:"captions.import"},{t:"Timeline (EDL)…",id:"edl.import"},{t:"LUT (.cube)…",id:"luts.import"}]},"-",
+  {t:"Review Before Export…",k:"⇧⌘R",n:1,tb:1,id:"show.review",cnt:"3",warn:1},
+  {t:"Export…",k:"⌘E",n:1,tb:1,id:"show.export",a:"export"},
+  {t:"Export",n:1,sub:[{t:"Captions (.srt)…",id:"captions.export"},{t:"Timeline (OTIO)…",id:"export.otio"}]},
+  {t:"Open Last Export",n:1,id:"export.open-output"},{t:"Reveal Last Export in Finder",n:1,id:"export.reveal-output"},
+  {t:"Export Report…",n:1,id:"export.report"},"-",
+  {t:"Project Format…",n:1,id:"project.format"}]},
+ {m:"Edit",items:[
+  {t:"Undo",k:"⌘Z",n:1,tb:1,id:"edit.undo",a:"undo"},{t:"Redo",k:"⇧⌘Z",n:1,tb:1,id:"edit.redo"},
+  {t:"History…",k:"⌥⌘Z",s:1,n:1,hm:1,id:"show.history"},"-",
+  {t:"Cut",k:"⌘X"},{t:"Copy",k:"⌘C"},{t:"Paste",k:"⌘V"},{t:"Select All",k:"⌘A"},"-",
+  {t:"Delete (Ripple)",k:"⌫",n:1,id:"timeline.delete"},{t:"Lift (Leave Gap)",k:"⇧⌫",n:1,id:"timeline.lift"},"-",
+  {t:"Emoji & Symbols",k:"fn E",n:1}]},
+ {m:"Clip",nm:1,items:[
+  {t:"Split at Playhead",k:"⌘B",n:1,id:"timeline.split"},
+  {t:"Freeze Frame",k:"⇧F",s:1,n:1,id:"clip.freeze"},
+  {t:"Change Framing…",n:1,id:"clip.change-framing"},"-",
+  {t:"Speed",n:1,sub:[{t:"Speed Up",k:"⌘]",s:1,id:"clip.speed-up"},{t:"Slow Down",k:"⌘[",s:1,id:"clip.slow-down"},"-",{t:"Normal Speed",k:"⌥⌘R",s:1,id:"clip.speed-reset"}]},
+  {t:"Unlink Audio",k:"⌥⌘L",s:1,n:1,id:"clip.unlink-audio"},"-",
+  {t:"Ask Agent About Selection…",k:"⌘K",n:1,id:"agent.ask",a:"ask"}]},
+ {m:"Timeline",nm:1,items:[
+  {t:"Add Layer",n:1,sub:[{t:"Video Layer",id:"layer.add-video"},{t:"Adjustment Layer",id:"layer.add-adjustment"},{t:"Text Layer",id:"layer.add-text"},{t:"Audio Layer",id:"layer.add-audio"}]},
+  {t:"Move Layer Up",k:"⌥⌘↑",s:1,n:1,id:"layer.up"},{t:"Move Layer Down",k:"⌥⌘↓",s:1,n:1,id:"layer.down"},
+  {t:"Delete Empty Layer",n:1,id:"layer.delete"},"-",
+  {t:"Snap",k:"N",s:1,n:1,id:"timeline.snap",chk:1},
+  {t:"Sections…",n:1,id:"show.sections"},
+  {t:"Refresh Waveforms",n:1,id:"timeline.refresh-waveforms"},"-",
+  {t:"Zoom In",k:"⌘=",n:1,id:"timeline.zoom-in"},{t:"Zoom Out",k:"⌘-",n:1,id:"timeline.zoom-out"},{t:"Zoom to Fit",k:"⇧Z",n:1,id:"timeline.zoom-fit"}]},
+ {m:"Playback",nm:1,items:[
+  {t:"Play / Pause",k:"Space",n:1,id:"playback.toggle",a:"play"},"-",
+  {t:"Previous Frame",k:"←",n:1,id:"playhead.previous-frame"},{t:"Next Frame",k:"→",n:1,id:"playhead.next-frame"},
+  {t:"Back 1 Second",k:"⇧←",n:1,id:"playhead.back-second"},{t:"Forward 1 Second",k:"⇧→",n:1,id:"playhead.forward-second"},"-",
+  {h:"Source viewer"},
+  {t:"Mark In",k:"I",n:1,id:"source.mark-in"},{t:"Mark Out",k:"O",n:1,id:"source.mark-out"},
+  {t:"Insert at Playhead",k:"E",n:1,id:"source.insert"},{t:"Overwrite at Playhead",k:"Q",n:1,id:"source.overwrite"},
+  {t:"Close Source Viewer",k:"⎋",s:1,n:1,id:"source.close"}]},
+ {m:"View",nm:1,items:[
+  {t:"Library",n:1,sub:["Media","Audio","Text","Stickers","Effects","Transitions","Filters","Voice"].map((x,i)=>({t:x,k:"⌘"+(i+1),s:1,id:"ui.panel "+x.toLowerCase()}))},"-",
+  {t:"Safe Area",k:"⇧⌘'",s:1,n:1,id:"view.safe-area",a:"safe",chk:1},
+  {t:"Compare Before / After",k:"⌥⌘C",s:1,n:1,id:"view.compare"},"-",
+  {t:"Show Agent Dock",k:"⌘J",n:1,tb:1,id:"agent.toggle-dock",a:"dock",chk:1},"-",
+  {t:"Command Palette…",k:"⇧⌘P",s:1,n:1,hm:1,id:"(new) command palette",tag:"idea"},
+  {t:"Enter Full Screen",k:"⌃⌘F",n:1}]},
+ {m:"Agent",nm:1,items:[
+  {t:"Ask Agent…",k:"⌘K",n:1,id:"agent.ask",a:"ask"},
+  {t:"Show Agent Dock",k:"⌘J",n:1,id:"agent.toggle-dock",a:"dock"},"-",
+  {t:"New Tab",n:1,sub:[{h:"Chat agents (plugins)"},{t:"Director",id:"agent.open-chat"},"-",{t:"Claude Terminal",id:"agent.open-claude"},{t:"Codex Terminal",id:"agent.open-codex"},{t:"Shell",id:"agent.open-shell"}]},"-",
+  {t:"Show Agent Changes",n:1,id:"agent.show-changes"},{t:"Undo Agent Change",n:1,id:"agent.undo-changes"},"-",
+  {t:"Project Context…",n:1,id:"context.get"},{t:"Workspace…",n:1}]},
+ {m:"Plugins",items:[
+  {t:"Manage Plugins…",hm:1,id:"show.plugins",ico:"🧩"},
+  {t:"Plugin Updates…",id:"show.plugins (updates)",cnt:2},
+  {t:"Review Plugin Edits…",id:"plugins.proposal",cnt:1,warn:1},"-",
+  {h:"Whisper Captions"},{t:"Generate Captions",k:"⌥⌘T",tb:1,id:"plugins.run"},"-",
+  {h:"Director"},{t:"Open Chat",id:"agent.open-chat"}]},
+ {m:"Window",nm:1,items:[{t:"Minimize",k:"⌘M",n:1},{t:"Zoom",n:1},"-",{t:"Bring All to Front",n:1}]},
+ {m:"Help",nm:1,items:[
+  {t:"BashCut Help",n:1},{t:"Keyboard Shortcuts…",k:"⌘/",s:1,n:1,hm:1},{t:"What's New",n:1,a:"about"},"-",
+  {t:"BashCut on GitHub",n:1,ico:"↗"},{t:"Plugin Registry",n:1,ico:"↗"},{t:"Plugin Guide",n:1,ico:"↗"},"-",
+  {t:"Report an Issue…",n:1,hm:1,ico:"🐞",a:"about"},{t:"Contact Support…",n:1,ico:"✉",a:"about"},{t:"Copy Diagnostics",n:1},"-",
+  {t:"Run Doctor…",n:1,id:"show.doctor"},{t:"Open Logs Folder",n:1}]},
+];
+// ☰ = rare, project-level things that used to be loose toolbar buttons
+const HAMBURGER=[
+ {h:"Project"},
+ {t:"New Project…",k:"⌘N",id:"project.new"},{t:"Open Project…",k:"⌘O",id:"project.open"},{t:"Open Recent",sub:RECENTS},
+ {t:"Save",k:"⌘S",id:"project.save"},{t:"Import Footage…",k:"⌘I",s:1,id:"project.import-media"},"-",
+ {t:"History…",k:"⌥⌘Z",s:1,id:"show.history",ico:"🕘"},"-",
+ {t:"Plugins…",id:"show.plugins",ico:"🧩",cnt:2},
+ {t:"Review Plugin Edits…",id:"plugins.proposal",ico:"✎",cnt:1,warn:1},
+ {t:"Doctor…",id:"show.doctor",ico:"🩺",tagt:"all OK"},
+ {t:"Settings…",k:"⌘,",s:1,id:"show.settings",ico:"⚙"},"-",
+ {t:"Command Palette…",k:"⇧⌘P",s:1,ico:"⌘",tag:"idea"},
+ {t:"Keyboard Shortcuts…",k:"⌘/",s:1,ico:"⌨"},"-",
+ {t:"Report an Issue…",ico:"🐞",a:"about"},
+ {t:"About BashCut",ico:"ⓘ",a:"about",tagt:"0.0.1"}];
+
+const mm=$("mmenu");let openM=null;
+function itemHTML(it){
+  if(it==="-")return`<div class="sep"></div>`;
+  if(it.h)return`<div class="hd">${it.h}</div>`;
+  const right=it.sub?`<span class="arr">▸</span>`:(it.k?`<span class="k${it.s?" sug":""}" title="${it.s?"suggested shortcut (new)":"existing shortcut"}">${it.k}</span>`:"");
+  return`<div class="mi" data-mi='${JSON.stringify({t:it.t,id:it.id||"",a:it.a||""}).replace(/'/g,"&#39;")}' title="${it.id?"UIAction "+it.id:""}">
+    <span class="ico">${it.chk?(it.a==="dock"?(!$("app").classList.contains("dock-closed")?"✓":""):""):(it.ico||"")}</span><span class="t">${it.t}</span>
+    ${it.cnt?`<span class="cnt${it.warn?" warn":""}">${it.cnt}</span>`:""}${it.tag?`<span class="tagn">${it.tag}</span>`:""}${it.tagt?`<span class="tagt">${it.tagt}</span>`:""}
+    ${right}${it.sub?`<div class="subm">${it.sub.map(itemHTML).join("")}</div>`:""}</div>`}
+function showMenu(items,x,y,key){mm.innerHTML=items.map(itemHTML).join("");mm.style.left=Math.min(x,innerWidth-270)+"px";mm.style.top=y+"px";mm.classList.add("on");openM=key;
+  document.querySelectorAll(".macbar .mt").forEach(e=>e.classList.toggle("open",e.dataset.m===key))}
+function hideMenu(){mm.classList.remove("on");openM=null;document.querySelectorAll(".macbar .mt").forEach(e=>e.classList.remove("open"))}
+function renderMacbar(){
+  $("macbar").innerHTML=`<span class="apple"></span>`+MENUS.map(g=>`<span class="mt${g.app?" app":""}${g.nm?" newm":""}" data-m="${g.m}" title="${g.nm?"New top-level menu":""}">${g.m}</span>`).join("")+
+   `<span class="right"><span>● = new menu · <span class="legend-k">dashed</span> = suggested shortcut</span><button id="btnSpec">📋 Menu spec</button><span>Sun 4 Oct 03:31</span></span>`;
+}
+function openMac(key){const el=document.querySelector(`.macbar .mt[data-m="${key}"]`);const r=el.getBoundingClientRect();showMenu(MENUS.find(g=>g.m===key).items,r.left,r.bottom+1,key)}
+$("macbar").addEventListener("mousedown",e=>{const t=e.target.closest(".mt");if(t){e.stopPropagation();openM===t.dataset.m?hideMenu():openMac(t.dataset.m)}});
+$("macbar").addEventListener("mouseover",e=>{const t=e.target.closest(".mt");if(t&&openM&&openM!=="☰"&&openM!=="proj"&&openM!==t.dataset.m)openMac(t.dataset.m)});
+$("btnMore").onclick=e=>{e.stopPropagation();if(openM==="☰")return hideMenu();const r=$("btnMore").getBoundingClientRect();showMenu(HAMBURGER,r.right-260,r.bottom+4,"☰")};
+$("btnProject").onclick=e=>{e.stopPropagation();if(openM==="proj")return hideMenu();const r=$("btnProject").getBoundingClientRect();
+  showMenu([{h:"projects/live-test"},{t:"Rename…"},{t:"Project Format…",id:"project.format"},{t:"Reveal in Finder"},"-",{t:"Open Recent",sub:RECENTS},{t:"Open Project…",k:"⌘O",id:"project.open"}],r.left,r.bottom+4,"proj")};
+$("btnFmt").onclick=$("btnProject").onclick.bind(null);
+document.addEventListener("mousedown",e=>{if(openM&&!e.target.closest("#mmenu")&&!e.target.closest("#btnMore")&&!e.target.closest("#btnProject"))hideMenu()});
+function runAction(d){hideMenu();
+  const A={about:()=>{$("mAbout").classList.add("on")},export:()=>$("btnExport").click(),undo:undo,ask:openPop,play:togglePlay,safe:()=>$("safe").classList.toggle("on"),dock:()=>$("app").classList.toggle("dock-closed")};
+  if(d.a&&A[d.a])return A[d.a]();
+  if(d.id==="show.review")return $("btnReview").click();
+  status("→ "+d.t,d.id?"bashcut ui action "+d.id:"system menu item",true)}
+mm.addEventListener("click",e=>{const it=e.target.closest(".mi");if(!it||e.target.closest(".subm")&&e.target.closest(".mi")!==it)return;const d=JSON.parse(it.dataset.mi);if(it.querySelector(".subm"))return;runAction(d)});
+function status(text,sub,busy){$("statusText").textContent=text;$("statusSub").textContent=sub;$("statusIco").textContent=busy?"◌":"✓";
+  const b=$("statusBar");b.style.width="0";if(busy){let w=0;const iv=setInterval(()=>{w+=20;b.style.width=w+"%";if(w>=100){clearInterval(iv);setTimeout(()=>{status("Saved","rev 38 · just now");b.style.width="0"},500)}},120)}}
+function flash(m){const el=document.querySelector(`.macbar .mt[data-m="${m}"]`);if(!el)return;el.classList.add("flash");setTimeout(()=>el.classList.remove("flash"),160)}
+document.addEventListener("keydown",e=>{if(!(e.metaKey||e.ctrlKey))return;const k=e.key.toLowerCase();
+  const map={",":["BashCut","show.settings"],"e":["File","show.export"],"s":["File","project.save"],"j":["View",""],"k":["Agent",""],"/":["Help",""],"p":["View",""]};
+  if(!map[k])return;flash(map[k][0]);
+  if(k==="e"){e.preventDefault();$("btnExport").click()}
+  if(k===","||k==="s"||k==="/"||(k==="p"&&e.shiftKey)){e.preventDefault();status("→ "+(k===","?"Settings…":k==="s"?"Save":k==="/"?"Keyboard Shortcuts…":"Command Palette…"),"shortcut ⌘"+k.toUpperCase(),true)}},true);
+
+// ---------- spec modal ----------
+function renderSpec(){
+  const rows=[];MENUS.forEach(g=>g.items.forEach(it=>{if(it==="-"||it.h)return;rows.push({m:g.m,...it});(it.sub||[]).forEach(s=>{if(s!=="-"&&!s.h)rows.push({m:g.m,...s,t:it.t+" ▸ "+s.t})})}));
+  const nNew=rows.filter(r=>r.n).length,nSug=rows.filter(r=>r.s).length;
+  $("menuSpec").innerHTML=`
+  <h3>1 · Before (app screenshot, rev 38)</h3>
+  <p class="why">Toolbar before: BashCut · project · undo/redo · format · New · Open… · Save · History · Review · Plugins · Doctor · Settings · Export… · Agent, under a separate title bar.</p>
+  <table style="margin-top:8px"><tr><th style="width:26%">Problem</th><th>Why it hurts</th></tr>
+   <tr><td class="x">mac menu bar = BashCut · Edit · Plugins</td><td class="why">The menu bar is where Mac users look for every command and its shortcut. ~60 UIActions exist but only Quit, Cut/Copy/Paste/Select All and plugins are reachable there. Undo/Redo are not in Edit.</td></tr>
+   <tr><td class="x">13 equal-weight buttons in the toolbar</td><td class="why">New · Open… · Save · History · Review · Plugins · Doctor · Settings · Export… · Agent all look the same; Export is the only one that stands out. Rare actions (Doctor, Settings, New) take the space of daily ones.</td></tr>
+   <tr><td class="x">Two title rows + "BashCut" twice</td><td class="why">Title bar says "BashCut", toolbar says "BashCut" again: ~30 px of height lost, and the project name sits in an unlabeled field.</td></tr>
+   <tr><td class="x">Status scattered</td><td class="why">"rev 38" + "Export report" float alone in the bottom-right; dirty state is a tiny "•"; there is no single place showing save / export / agent progress.</td></tr>
+   <tr><td class="x">Review in 3 places</td><td class="why">Toolbar "Review", dock quick button "Review", and the timeline ⚠ icon. None shows the issue count.</td></tr>
+  </table>
+
+  <h3>2 · The rule</h3>
+  <div class="cols">
+   <div class="card"><b>🍎 mac menu bar = full catalog</b><ul><li>Every UIAction lives here, with its shortcut</li><li>Built from <code>UIAction</code> (title + shortcut already exist)</li><li>Standard order: App · File · Edit · Clip · Timeline · Playback · View · Agent · Plugins · Window · Help</li></ul></div>
+   <div class="card"><b>🔘 Toolbar = daily + state</b><ul><li>Project name ▾, Undo/Redo, format</li><li>Activity capsule (save / export / agent)</li><li>Review <i>with count</i>, pinned plugin actions</li><li><b>Export…</b> (primary), ☰, dock toggle</li></ul></div>
+   <div class="card"><b>☰ = rare, project-level</b><ul><li>New / Open / Recent / Save / Import</li><li>History</li><li>Plugins (badge), Plugin edits, Doctor, Settings</li><li>Command palette, Shortcuts</li></ul></div>
+   <div class="card"><b>🧭 Panels keep their own</b><ul><li>Clip ops on the timeline bar + right-click</li><li>Viewer: Fit / Compare / Safe area</li><li>Dock: tabs, + new tab, quick prompts</li><li>Everything also in the menu bar</li></ul></div>
+  </div>
+
+  <h3>3 · Toolbar: before → after</h3>
+  <table><tr><th>Item</th><th>Before</th><th>After</th><th>Why</th></tr>
+   <tr><td>BashCut label</td><td>toolbar</td><td class="o">removed</td><td class="why">App name is already in the menu bar. Merge the title bar into the toolbar (<code>.windowStyle(.hiddenTitleBar)</code> / unified toolbar) and save one row.</td></tr>
+   <tr><td>Project name</td><td>plain text</td><td class="o">button "live-test ● ▾"</td><td class="why">Popover: rename, format, reveal in Finder, recents. Dot = unsaved (autosave 30 s).</td></tr>
+   <tr><td>Undo / Redo</td><td>toolbar</td><td class="o">toolbar + Edit menu</td><td class="why">Daily; also needs the Edit menu entry.</td></tr>
+   <tr><td>Format 1080×1920 · 29.97</td><td>toolbar</td><td class="o">toolbar pill</td><td class="why">Shows aspect first (9:16), easier to read.</td></tr>
+   <tr><td>New · Open… · Save</td><td>toolbar</td><td class="o">☰ + File menu</td><td class="why">⌘N/⌘O/⌘S already exist; autosave makes Save rare.</td></tr>
+   <tr><td>History</td><td>toolbar</td><td class="o">☰ + Edit menu (⌥⌘Z)</td><td class="why">Belongs next to Undo; not a daily button.</td></tr>
+   <tr><td>Review</td><td>toolbar</td><td class="o">toolbar, <b>with ⚠ count</b>, warn style only if issues</td><td class="why">Pre-export check; the count makes it worth its space.</td></tr>
+   <tr><td>Plugins</td><td>toolbar</td><td class="o">☰ (dot on ☰ when updates) + Plugins menu</td><td class="why">Management is rare; plugin <i>actions</i> stay pinned (placement <code>toolbar</code>, max 2).</td></tr>
+   <tr><td>Plugin edits (n)</td><td>orange toolbar label</td><td class="o">☰ with count + status capsule</td><td class="why">Still visible, no layout jump.</td></tr>
+   <tr><td>Doctor</td><td>toolbar</td><td class="o">☰ + BashCut/Help menu</td><td class="why">Show a red dot on ☰ only when a check fails.</td></tr>
+   <tr><td>Settings</td><td>toolbar</td><td class="o">☰ + BashCut ▸ Settings… ⌘,</td><td class="why">Mac standard place and shortcut.</td></tr>
+   <tr><td>Export…</td><td>toolbar</td><td class="o">toolbar, primary</td><td class="why">The one job of the app.</td></tr>
+   <tr><td>Agent</td><td>text button</td><td class="o">◧ icon at the far right</td><td class="why">Sidebar-toggle icon on the side the dock opens (Xcode/Finder pattern). ⌘J.</td></tr>
+   <tr><td>rev 38 · Export report</td><td>bottom-right</td><td class="o">activity capsule (center)</td><td class="why">One place for Saved · Exporting 42% · Agent working · plugin job.</td></tr>
+  </table>
+
+  <h3>4 · Mac menu bar catalog (${rows.length} items · ${nNew} new to the menu bar · ${nSug} suggested shortcuts)</h3>
+  <table><tr><th>Menu</th><th>Item</th><th>Shortcut</th><th>UIAction</th><th>Also</th></tr>
+  ${rows.map(r=>`<tr><td>${r.m}</td><td>${r.t}${r.n?' <span class="pill ok">new</span>':""}</td><td>${r.k?(r.s?`<span class="legend-k">${r.k}</span>`:r.k):""}</td><td class="tc">${r.id||""}</td><td>${[r.tb?"toolbar":"",r.hm?"☰":""].filter(Boolean).join(" · ")}</td></tr>`).join("")}
+  </table>
+
+  <h3>5 · More suggestions</h3>
+  <ol>
+   <li><b>Build menus from <code>UIAction</code></b>: add a <code>menu</code> (File/Edit/Clip/…) and <code>group</code> to each case, and generate <code>NSMenu</code> like <code>PluginMenus</code>. One catalog for buttons, menu bar, palette and <code>ui actions</code> — and shortcuts never drift.</li>
+   <li><b>Command palette ⇧⌘P</b>: fuzzy search over every UIAction + plugin action (titles/shortcuts already exist). Cheap, and it also helps agents' users discover features. Keep ⌘K for Ask agent.</li>
+   <li><b>Keyboard Shortcuts sheet ⌘/</b> generated from the same catalog.</li>
+   <li><b>Plugin menu placements</b>: allow <code>menu.file.import</code>, <code>menu.clip</code>, <code>menu.timeline</code> so plugin actions land where users expect, not only in Plugins. Generic, no plugin names in app code.</li>
+   <li><b>Timeline bar</b>: "Add Layer" picker stretches too wide → a compact <b>＋ Layer ▾</b>; label the icon-only buttons (↑ ↓ layer, freeze, waveform) with tooltips that include the shortcut.</li>
+   <li><b>Inspector tabs</b> (Video Audio Text Color Speed) look like plain text → segmented control like the Media panel's Footage/Project/Shared.</li>
+   <li><b>Dock footer</b>: the "Review" quick prompt duplicates the toolbar; rename to "Fix review issues" or drop it.</li>
+   <li><b>Suggested shortcuts to check for conflicts</b>: ⌘I (import) and ⌘1–8 (library) are free today; N for snap matches CapCut/FCP; ⌘[ ⌘] speed.</li>
+   <li><b>About / Info</b> (BashCut ▸ About, ☰ footer, Help menu, and a Settings ▸ About section): version + build, plugin API, repo links, contact email, license, open-source notices, and <b>Copy Diagnostics</b> (version, macOS, agent kit, plugins + versions, last Doctor result) so bug reports arrive complete. Use a custom About sheet instead of the bare <code>orderFrontStandardAboutPanel</code>; fill the contact email and links from Info.plist keys so they are not hard-coded in views.</li>
+   <li>Menu titles in English (Title Case per HIG); vi.lproj translations come from the same strings.</li>
+  </ol>`;
+}
+renderMacbar();
+$("btnSpec").onclick=()=>{renderSpec();$("mMenu").classList.add("on")};
+$("statusCap").onclick=()=>status("Exporting live-test.mp4","H.264 · 1080×1920",true);
 
 // ---------- init ----------
 layout();
