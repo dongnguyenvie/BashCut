@@ -199,6 +199,14 @@ bashcut timeline undo --base-rev 13
 bashcut timeline redo --base-rev 14
 ```
 
+Use `timeline apply ... --dry-run` (MCP parameter `dryRun: true`) to validate the same batch on a copy.
+It checks the base revision, locks and project invariants, but changes no revision, undo history, files,
+preview or plugin hooks. The response has `dryRun: true`, current `rev`, `projectedRev`, predicted `duration`
+and `previousDuration` in frames, `changedItems`, `changedTracks`, `addedTracks` and `removedTracks`.
+Changed item IDs include additions, deletions, property changes and moves. A live edit token is still required.
+The preview does not reserve a revision; apply the batch with the same base revision and handle stale errors.
+
+
 ### Timeline operations
 
 `ops.json` is an array of up to 1,000 operations:

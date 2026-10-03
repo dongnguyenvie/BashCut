@@ -278,6 +278,11 @@ extension ProjectDocument {
         return project.revision
     }
 
+    func previewEdit(_ operation: EditOperation, author: Author, baseRevision: Int) throws -> JSONValue {
+        try ensureEditable(author: author)
+        return try TimelineEditPreview.evaluate(operation, on: project, baseRevision: baseRevision)
+    }
+
     @discardableResult
     func commitUndo(author: Author = .user, baseRevision: Int? = nil) throws -> Int {
         try commitHistoryStep(undo: true, author: author, baseRevision: baseRevision)

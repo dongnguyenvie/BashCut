@@ -77,7 +77,7 @@ Read the revision, format and tracks, including track IDs and roles.
 - Mode: read · Runs: immediately · MCP: `bashcut_timeline_get`
 - `format`: string, one of json, text. json (default) or a compact text listing
 
-### `bashcut timeline apply <ops.json> --base-rev <baseRev> [--label <label>]`
+### `bashcut timeline apply <ops.json> --base-rev <baseRev> [--label <label>] [--dry-run]`
 
 Atomically apply validated timeline operations as one undoable edit.
 
@@ -85,6 +85,7 @@ Atomically apply validated timeline operations as one undoable edit.
 - `ops`: array, required. Operations array (CLI: path to ops.json)
 - `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
 - `label`: string, default "Agent edit". Short description of the edit
+- `dryRun`: boolean, default false. Validate without editing; return projected duration and changed IDs
 
 ### `bashcut timeline undo --base-rev <baseRev>`
 

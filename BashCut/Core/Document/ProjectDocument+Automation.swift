@@ -103,9 +103,11 @@ extension ProjectDocument {
     private func registerEditCommands() {
         handleAuthored("timeline.apply") { document, arguments, author in
             let label = try arguments.string("label")
-            let revision = try document.commit(
-                .group(label: label, author: author, ops: WireOperations.decode(arguments.value("ops"))),
-                label: label, author: author, baseRevision: arguments.int("baseRev"))
+            let operation = EditOperation.group(label: label, author: author, ops: try WireOperations.decode(arguments.value("ops")))
+            if arguments.bool("dryRun") {
+                return try document.previewEdit(operation, author: author, baseRevision: arguments.int("baseRev"))
+            }
+            let revision = try document.commit(operation, label: label, author: author, baseRevision: arguments.int("baseRev"))
             return .object(["rev": .integer(revision)])
         }
         handleAuthored("timeline.undo") { document, arguments, author in

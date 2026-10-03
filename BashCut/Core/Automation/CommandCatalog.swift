@@ -100,6 +100,8 @@ public enum CommandCatalog {
                 baseRevision,
                 CommandParameter("label", .string, "Short description of the edit", default: .string("Agent edit"),
                                  cli: .option("label")),
+                CommandParameter("dryRun", .boolean, "Validate without editing; return projected duration and changed IDs",
+                                 default: .bool(false), cli: .flag("dry-run")),
             ]),
         CommandSpec("timeline.undo", .edit, "Undo one timeline action.", parameters: [baseRevision]),
         CommandSpec("timeline.redo", .edit, "Redo one timeline action.", parameters: [baseRevision]),

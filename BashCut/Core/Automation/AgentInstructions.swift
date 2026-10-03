@@ -72,6 +72,8 @@ extension CommandCatalog {
 
     private static let operations = """
         `bashcut timeline apply /absolute/path/ops.json --base-rev N --label "Describe the edit"` reads an array of objects.
+        Add `--dry-run` to validate without changing the project. It returns the current rev, projectedRev,
+        changedItems/changedTracks, addedTracks/removedTracks and the predicted duration in frames.
         Supported operations:
         {"op":"split","item":"ID","atFrame":30}, {"op":"delete","item":"ID","ripple":true},
         {"op":"trim","item":"ID","edge":"end","toFrame":120,"ripple":true},

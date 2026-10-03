@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+- Add `timeline apply --dry-run` / MCP `dryRun`: validate a batch without mutating history, files or preview,
+  and return the projected revision/duration plus changed items/tracks and added/removed tracks.
+
 - Reuse audio composition tracks for sequential clips on the same project layer with the same pitch mode.
   Reset each clip's gain envelope and retain separate lanes for overlaps and different pitch algorithms.
   A 240-cut fixture uses one audio track instead of 240; build-to-player-ready median fell from 718 to 94 ms.
