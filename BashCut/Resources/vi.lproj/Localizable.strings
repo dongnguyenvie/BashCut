@@ -558,6 +558,8 @@
 "Presets" = "Mẫu";
 "Remove animation" = "Bỏ chuyển động";
 "Keyframe at playhead" = "Keyframe tại đầu phát";
+"Keyframe volume at playhead" = "Keyframe âm lượng tại đầu phát";
+"Keys the volume here; then change it at another frame to fade between keys" = "Đặt key âm lượng tại đây; rồi đổi âm lượng ở khung hình khác để chuyển dần giữa các key";
 "Records zoom, pan, tilt, rotation and opacity here; then change a slider at another frame" = "Ghi zoom, pan, tilt, xoay và độ mờ tại đây; sau đó đổi thanh trượt ở khung hình khác";
 "Animated: %@" = "Đang chuyển động: %@";
 "Sliders of animated properties set a keyframe at the playhead." = "Thanh trượt của thuộc tính có chuyển động sẽ đặt keyframe tại đầu phát.";

@@ -357,11 +357,14 @@ struct VideoCuts {
 extension Item {
     fileprivate func validateKeyframes(on track: Track) throws {
         guard let keyframes = fields["keyframes"] else { return }
-        guard track.kind == TrackKind.video || track.kind == TrackKind.text else {
-            throw ProjectError.invalid("item.\(id).keyframes: only video and text items animate")
-        }
-        do { _ = try ItemMotion(json: keyframes) } catch {
+        let motion: ItemMotion
+        do { motion = try ItemMotion(json: keyframes) } catch {
             throw ProjectError.invalid("item.\(id).\(error.localizedDescription)")
+        }
+        let allowed = ItemMotion.properties(onTrackKind: track.kind)
+        if let property = motion.keys.keys.sorted().first(where: { !allowed.contains($0) }) {
+            throw ProjectError.invalid(
+                "item.\(id).keyframes.\(property): \(track.kind) items animate \(allowed.joined(separator: ", "))")
         }
     }
 

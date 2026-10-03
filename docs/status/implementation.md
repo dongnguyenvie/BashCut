@@ -64,6 +64,10 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   linear, ease-in/out/in-out and hold keys. Presets: slow zoom in/out and pans (Ken Burns), and fade, pop, slide-up
   and zoom-punch for text. Inspector › Animation, the diamond key at the playhead, and sliders that set keys once a
   property is animated; `clip motion` and `clip keyframe`. Split and start trims keep keys on the same picture.
+- Volume keyframes: the `volume` property (dB, replacing `volumeDb`) on audio items and clips with sound, stacked
+  with fades and ducking. The audio mix gets a point at each key plus steps between keys, so eases and the dB curve
+  hold with AVAudioMix's linear ramps. Inspector › Audio › Keyframe volume at playhead; `clip keyframe --property
+  volume`. Picture keys alone decide whether the compositor animates a layer.
 - Word-by-word captions: `wordStyle` highlight (the word being said), karaoke (words said so far) or reveal (words
   appear as said), in the highlight colour `textStyle.highlight`. Timings come from the provider's word timings
   (`wordsPath`, stored as the caption's `words`) or are estimated from word length. Inspector › Text › Word by word,

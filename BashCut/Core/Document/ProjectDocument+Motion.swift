@@ -2,19 +2,24 @@ import BashCutAutomation
 import BashCutProject
 import Foundation
 
-/// Keyframe animation (Inspector › Video/Text › Animation and keyframes, `clip motion`, `clip keyframe`). Each change
-/// is one undoable `setProperties` edit of the item's `keyframes`.
+/// Keyframe animation (Inspector › Video/Text › Animation and keyframes, Audio › Volume keyframe, `clip motion`,
+/// `clip keyframe`). Each change is one undoable `setProperties` edit of the item's `keyframes`.
 extension ProjectDocument {
-    /// The item `id` (the selection by default) when it can animate: a clip or image on a video layer, or text.
+    /// The item `id` (the selection by default) when it can animate: a clip or image on a video layer, text, or
+    /// sound (volume only).
     func motionTarget(_ id: String? = nil) throws -> Item {
+        try motionTargetAndTrack(id).item
+    }
+
+    private func motionTargetAndTrack(_ id: String?) throws -> (item: Item, track: Track) {
         guard let id = id ?? selectedID,
             let track = project.tracks.first(where: { $0.items.contains { $0.id == id } }),
             let item = track.items.first(where: { $0.id == id })
         else { throw ProjectError.invalid("Select a clip or text to animate") }
-        guard track.kind == TrackKind.video || track.kind == TrackKind.text else {
-            throw ProjectError.invalid("Only clips, images and text animate")
+        guard !ItemMotion.properties(onTrackKind: track.kind).isEmpty else {
+            throw ProjectError.invalid("Only clips, images, text and audio animate")
         }
-        return item
+        return (item, track)
     }
 
     /// Replaces an item's animation, or removes it with nil.
@@ -35,9 +40,12 @@ extension ProjectDocument {
     func applyMotionPreset(_ preset: String, item id: String? = nil, author: Author = .user, baseRevision: Int? = nil)
         throws -> Int
     {
-        let item = try motionTarget(id)
+        let (item, track) = try motionTargetAndTrack(id)
         if preset == "none" {
             return try setMotion(nil, item: item.id, label: "Remove animation", author: author, baseRevision: baseRevision)
+        }
+        guard track.kind != TrackKind.audio else {
+            throw ProjectError.invalid("Presets move pictures; key audio volume with clip keyframe --property volume")
         }
         let motion = try MotionPreset.motion(
             preset, duration: item.duration, width: project.width, height: project.height, fps: project.fps)
@@ -51,6 +59,7 @@ extension ProjectDocument {
         if let value = item.motion?.value(property, at: local) { return value }
         switch property {
         case "opacity": return item["opacity"]?.double ?? 1
+        case "volume": return item["volumeDb"]?.double ?? 0
         case "zoom": return item["transform"]?.object["zoom"]?.double ?? 1
         default: return item["transform"]?.object[property]?.double ?? 0
         }
@@ -66,7 +75,12 @@ extension ProjectDocument {
         guard let range = ItemMotion.ranges[property] else {
             throw ProjectError.invalid("Unknown property \(property); use \(ItemMotion.ranges.keys.sorted().joined(separator: ", "))")
         }
-        let item = try motionTarget(id)
+        let (item, track) = try motionTargetAndTrack(id)
+        let allowed = ItemMotion.properties(onTrackKind: track.kind)
+        guard allowed.contains(property) else {
+            throw ProjectError.invalid(
+                "\(track.kind.capitalized) items animate \(allowed.joined(separator: ", ")), not \(property)")
+        }
         let local = (frame ?? playhead) - item.at
         guard (0..<item.duration).contains(local) else {
             throw ProjectError.invalid("Move the playhead inside the item to set a keyframe")
@@ -86,18 +100,19 @@ extension ProjectDocument {
             baseRevision: baseRevision, coalescingKey: coalesce ? "keyframe.\(item.id).\(property).\(local)" : nil)
     }
 
-    /// Keys every animatable property of the item at the playhead with its current value (Inspector's diamond).
+    /// Keys every property that moves the item's picture (volume on audio items) at the playhead with its current
+    /// value (Inspector's diamond).
     @discardableResult
     func keyframeAll(
         item id: String? = nil, at frame: Int? = nil, author: Author = .user, baseRevision: Int? = nil
     ) throws -> Int {
-        let item = try motionTarget(id)
+        let (item, track) = try motionTargetAndTrack(id)
         let local = (frame ?? playhead) - item.at
         guard (0..<item.duration).contains(local) else {
             throw ProjectError.invalid("Move the playhead inside the item to set a keyframe")
         }
         var motion = item.motion ?? ItemMotion(keys: [:])
-        for property in ItemMotion.ranges.keys.sorted() {
+        for property in track.kind == TrackKind.audio ? ["volume"] : ItemMotion.pictureProperties {
             let value = motionValue(property, item: item, at: item.at + local)
             var keys = (motion.keys[property] ?? []).filter { $0.frame != local }
             keys.append(.init(frame: local, value: value))

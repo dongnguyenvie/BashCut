@@ -50,6 +50,27 @@ struct AudioDuckingTests {
         #expect(AudioGainPlanner.points(for: voice, on: tracks[4], speech: []).allSatisfy { $0.volume == 0 })
     }
 
+    @Test("Volume keys set the gain over the item, and a hold key jumps at the next key")
+    func volumeKeys() {
+        let track = Project(name: "Keys", fps: FrameRate(30, 1)).tracks[5]
+        var music = Item(id: "music", media: "media", at: 100, duration: 60)
+        music["volumeDb"] = .integer(6)  // replaced by the keys
+        music["keyframes"] = ItemMotion(keys: ["volume": [
+            .init(frame: 0, value: 0, ease: .linear), .init(frame: 20, value: -20, ease: .hold),
+            .init(frame: 40, value: 0),
+        ]]).json
+        let points = AudioGainPlanner.points(for: music, on: track, speech: [])
+        func volume(_ frame: Int) -> Float? { points.first { $0.frame == frame }?.volume }
+        #expect(volume(100) == 1)
+        #expect(abs((volume(120) ?? 0) - 0.1) < 0.0001)
+        #expect(abs((volume(110) ?? 0) - 0.316_228) < 0.0001)  // -10 dB halfway
+        #expect(points.contains { $0.frame == 104 })  // steps between keys
+        #expect(abs((volume(139) ?? 0) - 0.1) < 0.0001)  // held until the next key
+        #expect(volume(140) == 1)
+        #expect(volume(160) == 1)
+        #expect(points.allSatisfy { (100...160).contains($0.frame) })
+    }
+
     @Test("Composition applies track ducking to music parameters")
     func composition() async throws {
         let root = TestFixtures.mediaRoot

@@ -133,7 +133,7 @@ public actor CompositionBuilder {
                     let transform = placement.transform(
                         zoom: properties["zoom"]?.double ?? 1, pan: properties["pan"]?.double ?? 0,
                         tilt: properties["tilt"]?.double ?? 0, rotation: properties["rotation"]?.double ?? 0)
-                    let motion = item.motion.map { LayerMotion(motion: $0, item: item, fps: project.fps.value) }
+                    let motion = item.pictureMotion.map { LayerMotion(motion: $0, item: item, fps: project.fps.value) }
                     let incoming = transitionTo[item.id].map {
                         RenderTransition(
                             kind: $0.kind, startFrame: item.at, duration: $0.duration,
@@ -229,7 +229,7 @@ public actor CompositionBuilder {
                 } else if track.kind == "text" {
                     layers.append(
                         contentsOf: track.items.filter { $0.at <= start && $0.end > start }.map { item in
-                            .text(TextLayer(item: item, motion: item.motion.map {
+                            .text(TextLayer(item: item, motion: item.pictureMotion.map {
                                 LayerMotion(motion: $0, item: item, fps: project.fps.value)
                             }, fps: project.fps.value))
                         })

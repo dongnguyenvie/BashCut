@@ -130,7 +130,7 @@
         },
         "keyframes" : {
           "additionalProperties" : false,
-          "description" : "Animation (video and text layers): property → keys sorted by frame, counted from the item's start; values between keys follow each key's ease, and hold before the first and after the last key",
+          "description" : "Animation (video, text and audio layers; audio animates volume only): property → keys sorted by frame, counted from the item's start; values between keys follow each key's ease, and hold before the first and after the last key",
           "properties" : {
             "opacity" : {
               "description" : "Opacity, 0 to 1",
@@ -255,6 +255,40 @@
                   "value" : {
                     "maximum" : 65536,
                     "minimum" : -65536,
+                    "type" : "number"
+                  }
+                },
+                "required" : [
+                  "frame",
+                  "value"
+                ],
+                "type" : "object"
+              },
+              "maxItems" : 1000,
+              "minItems" : 1,
+              "type" : "array"
+            },
+            "volume" : {
+              "description" : "Gain in dB (0 = unchanged), like volumeDb; audio and clips with sound",
+              "items" : {
+                "properties" : {
+                  "ease" : {
+                    "description" : "Change to the next key; default inOut",
+                    "enum" : [
+                      "linear",
+                      "in",
+                      "out",
+                      "inOut",
+                      "hold"
+                    ],
+                    "type" : "string"
+                  },
+                  "frame" : {
+                    "type" : "integer"
+                  },
+                  "value" : {
+                    "maximum" : 24,
+                    "minimum" : -120,
                     "type" : "number"
                   }
                 },

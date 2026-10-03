@@ -34,8 +34,14 @@ enum AudioGainPlanner {
     static func points(
         for item: Item, on track: Track, speech: [Range<Int>], mixGainDb: Double = 0
     ) -> [AudioGainPoint] {
-        let baseDb = (item["volumeDb"]?.double ?? 0) + mixGainDb
-        let base: Double = item["muted"] == .bool(true) || track.isMuted ? 0 : pow(10, baseDb / 20)
+        let silent = item["muted"] == .bool(true) || track.isMuted
+        let staticDb = item["volumeDb"]?.double ?? 0
+        let volumeKeys = item.motion.flatMap { motion in motion.keys["volume"].map { (motion, $0) } }
+        func base(_ frame: Int) -> Double {
+            guard !silent else { return 0 }
+            let db = volumeKeys.flatMap { $0.0.value("volume", at: Double(frame - item.at)) } ?? staticDb
+            return pow(10, (db + mixGainDb) / 20)
+        }
         let fadeIn = min(item.duration / 2, max(0, item["fadeIn"]?.int ?? 0))
         let fadeOut = min(item.duration / 2, max(0, item["fadeOut"]?.int ?? 0))
         let duckDb = track.role == "music" && track["duckingEnabled"] != .bool(false)
@@ -46,6 +52,7 @@ enum AudioGainPlanner {
             $0.upperBound + release > item.at && $0.lowerBound - attack < item.end
         }
         var frames = Set([item.at, item.end])
+        if let keys = volumeKeys?.1 { frames.formUnion(volumeFrames(keys, item: item)) }
         if fadeIn > 0 { frames.insert(item.at + fadeIn) }
         if fadeOut > 0 { frames.insert(item.end - fadeOut) }
         for range in relevant {
@@ -62,8 +69,24 @@ enum AudioGainPlanner {
                 attenuation(at: frame, speech: $0, db: duckDb ?? 0, attack: attack, release: release)
             }.min() ?? 1
             return AudioGainPoint(
-                frame: frame, volume: Float(base * max(0, min(1, fadeGain)) * duckGain))
+                frame: frame, volume: Float(base(frame) * max(0, min(1, fadeGain)) * duckGain))
         }
+    }
+
+    /// Timeline frames inside the item where the volume keys need a point: each key, and between keys whose value
+    /// changes, enough steps that the linear ramps between points follow the ease and the dB curve; a hold key
+    /// jumps one frame before the next key.
+    private static func volumeFrames(_ keys: [ItemMotion.Key], item: Item) -> Set<Int> {
+        var frames = Set(keys.map { item.at + $0.frame })
+        for (from, to) in zip(keys, keys.dropFirst()) where from.value != to.value {
+            if from.ease == .hold {
+                frames.insert(item.at + to.frame - 1)
+                continue
+            }
+            let step = max(2, (to.frame - from.frame) / 100)
+            frames.formUnion(stride(from: from.frame + step, to: to.frame, by: step).map { item.at + $0 })
+        }
+        return frames.filter { (item.at...item.end).contains($0) }
     }
 
     private static func attenuation(

@@ -149,6 +149,11 @@ struct InspectorView: View {
 
     @ViewBuilder private func audioControls(_ item: Item) -> some View {
         number("Volume (dB)", key: "volumeDb", defaultValue: 0, range: -60...12)
+        Button("Keyframe volume at playhead", systemImage: "diamond") {
+            do { try document.setKeyframe("volume", value: nil) } catch { document.message = error.localizedDescription }
+        }
+        .disabled(!(item.at..<item.end).contains(document.playhead))
+        .help("Keys the volume here; then change it at another frame to fade between keys")
         Toggle(
             "Mute",
             isOn: Binding(
@@ -267,9 +272,10 @@ struct InspectorView: View {
         _ title: String, group: String? = nil, key: String, defaultValue: Double,
         range: ClosedRange<Double>, integer: Bool = false
     ) -> some View {
-        // Transform and opacity are animatable: once the item has keys for one, the control reads and sets the key
-        // at the playhead.
-        let animatable = (group == "transform" || (group == nil && key == "opacity")) ? key : nil
+        // Transform, opacity and volume are animatable: once the item has keys for one, the control reads and sets
+        // the key at the playhead.
+        let animatable = group == "transform" || (group == nil && key == "opacity") ? key
+            : group == nil && key == "volumeDb" ? "volume" : nil
         func isAnimated() -> Bool { animatable.flatMap { document.selected?.motion?.keys[$0] } != nil }
         let binding = Binding<Double>(
             get: {

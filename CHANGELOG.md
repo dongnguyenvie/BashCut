@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+- **Volume keyframes.** Audio clips and clips with sound can change volume over time: keyframe property `volume` in
+  dB (like `volumeDb`, which it replaces while keyed), with the same eases as other keys, on top of fades and music
+  ducking. Inspector › Audio › **Keyframe volume at playhead**, after which the Volume slider sets keys; `clip
+  keyframe --property volume`. Audio items take only `volume`; text has none; motion presets stay for pictures.
+  Keys show as diamonds on the timeline like the others.
+
 - **Keyframes on the timeline.** A clip with keyframes shows a diamond along its bottom edge at each keyed frame
   (cyan on the selected clip), and scrubbing the playhead snaps to the selected clip's keys, so it lands on a key to
   change it. Keys left outside the clip by a trim are not drawn.
