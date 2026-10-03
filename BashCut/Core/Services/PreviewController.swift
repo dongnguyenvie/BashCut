@@ -53,13 +53,11 @@ public final class PreviewController {
     @ObservationIgnored public private(set) var buildCount = 0
     /// Rebuilds that updated the shown players in place instead of loading new ones.
     @ObservationIgnored public private(set) var inPlaceUpdates = 0
-    /// Exact seeks sent to the program player; tests use it to see that scrubbing coalesces.
-    @ObservationIgnored public private(set) var seekCount = 0
-    /// Chase-time scrubbing (Apple QA1820): one exact seek in flight, the newest target waits for it.
-    @ObservationIgnored private var seekInFlight = false
-    @ObservationIgnored private var chaseTarget: CMTime?
-    /// Bumped when the player item changes, so a stale seek completion is ignored.
-    @ObservationIgnored private var seekGeneration = 0
+    /// Exact seeks sent to each player, for diagnostics and coalescing tests.
+    public var seekCount: Int { programSeeks.count }
+    public var comparisonSeekCount: Int { comparisonSeeks.count }
+    @ObservationIgnored private let programSeeks = PreviewSeekQueue()
+    @ObservationIgnored private let comparisonSeeks = PreviewSeekQueue()
 
     public init(engine: any RenderEngine, coalescingDelay: @escaping @Sendable () async throws -> Void = {
         try await Task.sleep(for: .milliseconds(50))
@@ -147,24 +145,18 @@ public final class PreviewController {
     }
 
     private func chase(_ time: CMTime) {
-        chaseTarget = time
-        guard !seekInFlight, player.currentItem != nil else { return }
-        chaseTarget = nil
-        seekInFlight = true
-        seekCount += 1
-        let generation = seekGeneration
-        player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] _ in
-            Task { @MainActor in self?.seekFinished(generation) }
+        guard player.currentItem != nil else { return }
+        programSeeks.submit(time) { [player] target, completion in
+            player.seek(to: target, toleranceBefore: .zero, toleranceAfter: .zero, completionHandler: completion)
         }
-        if showColorComparison {
-            comparisonPlayer.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero)
-        }
+        if showColorComparison { chaseComparison(time) }
     }
 
-    private func seekFinished(_ generation: Int) {
-        guard generation == seekGeneration else { return }
-        seekInFlight = false
-        if let next = chaseTarget { chase(next) }
+    private func chaseComparison(_ time: CMTime) {
+        guard comparisonPlayer.currentItem != nil else { return }
+        comparisonSeeks.submit(time) { [comparisonPlayer] target, completion in
+            comparisonPlayer.seek(to: target, toleranceBefore: .zero, toleranceAfter: .zero, completionHandler: completion)
+        }
     }
 
     public func togglePlayback() {
@@ -206,14 +198,13 @@ public final class PreviewController {
         guard showColorComparison, comparisonPlayer.currentItem != nil else { return }
         let drift = abs(comparisonPlayer.currentTime().seconds - player.currentTime().seconds)
         if drift > 1 / project.fps.value {
-            comparisonPlayer.seek(to: player.currentTime(), toleranceBefore: .zero, toleranceAfter: .zero)
+            chaseComparison(player.currentTime())
         }
     }
 
     private func clearPlayers() {
-        seekGeneration += 1
-        seekInFlight = false
-        chaseTarget = nil
+        programSeeks.reset()
+        comparisonSeeks.reset()
         snapshot = nil
         comparisonSnapshot = nil
         built = nil
@@ -282,9 +273,8 @@ public final class PreviewController {
         snapshot = built
         comparisonSnapshot = comparison
         shownRequest = request
-        seekGeneration += 1
-        seekInFlight = false
-        chaseTarget = nil
+        programSeeks.reset()
+        comparisonSeeks.reset()
         // The playhead may have moved while the new players were getting ready.
         if playhead != frame { seek(playhead) }
     }

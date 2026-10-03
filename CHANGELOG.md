@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+- Coalesce comparison scrubbing and playback drift correction through one seek queue per player.
+  New targets replace pending seeks, and stale completions cannot affect a replacement player.
+
 - Record preview build, readiness and player-swap intervals in Instruments and private debug logs,
   including interrupted stages, to separate composition work from player preparation.
 

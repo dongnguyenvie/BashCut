@@ -179,6 +179,14 @@ struct PreviewControllerTests {
         if comparison {
             preview.setColorComparison(true)
             try await waitUntil { preview.isCurrent }
+            let programSeeks = preview.seekCount, comparisonSeeks = preview.comparisonSeekCount
+            for frame in 1...45 { preview.seek(frame) }
+            try await waitUntil {
+                first.fps.frame(preview.player.currentTime()) == 45
+                    && first.fps.frame(preview.comparisonPlayer.currentTime()) == 45
+            }
+            #expect(preview.seekCount - programSeeks <= 2)
+            #expect(preview.comparisonSeekCount - comparisonSeeks <= 2)
         }
         let broken = comparison ? preview.comparisonPlayer : preview.player
         let missing = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".mov")
