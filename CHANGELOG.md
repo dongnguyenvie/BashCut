@@ -11,7 +11,8 @@
 - `timeline get` also returns `transitions` and `markers` (sections); the text format adds one `TRANSITION` and
   one `MARKER` line each. Agents could not see the transitions they had added.
 - Fix: `bashcut-mcp` sent list and text results (`timeline get --format text`, `review run`, `media list`,
-  `ui seek`…) as `structuredContent`, which MCP clients such as Claude Code reject; they are now text only.
+  `ui seek`…) as `structuredContent` (first as the value, then as `null`), which MCP clients such as Claude Code
+  reject; they are now text only and the field is left out.
 - `clip speed` and `clip speed-curve` report `shortened: true` when a `keepDuration` change still had to shorten
   the clip because its source ran out.
 - Fix: a plugin's file option (VieNeu's *Clone voice from*) squeezed its buttons to "C" in narrow panels; the file
