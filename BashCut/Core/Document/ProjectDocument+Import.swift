@@ -2,6 +2,7 @@ import AppKit
 import AVFoundation
 import BashCutAutomation
 import BashCutDocument
+import BashCutEngine
 import BashCutProject
 import UniformTypeIdentifiers
 
@@ -14,7 +15,7 @@ extension ProjectDocument {
             return
         }
         let panel = NSOpenPanel()
-        panel.allowedContentTypes = kind == "audio" ? [.audio] : [.movie]
+        panel.allowedContentTypes = kind == "audio" ? [.audio] : [.movie, .image]
         panel.allowsMultipleSelection = true
         panel.directoryURL = root.appendingPathComponent("footage")
         guard let urls = ModalCenter.shared.open(panel, name: "import-media"), !urls.isEmpty else { return }
@@ -34,8 +35,7 @@ extension ProjectDocument {
                 var at = frame
                 var mediaIDs: [String] = []
                 for url in urls {
-                    let fileKind = kind ?? (UTType(filenameExtension: url.pathExtension)?.conforms(to: .audio) == true
-                        ? "audio" : "video")
+                    let fileKind = kind == "video" && StillImageMovie.isImage(url) ? "image" : kind ?? Self.kind(of: url)
                     let target = try trackID
                         ?? (fileKind == "audio" ? project.requireTrack(role: TrackRole.music) : project.requireTrack(
                             role: TrackRole.main, kind: "video")).id
@@ -70,7 +70,7 @@ extension ProjectDocument {
             let path = try arguments.string("path")
             let url = URL(fileURLWithPath: path, relativeTo: root).standardizedFileURL
             guard FileManager.default.fileExists(atPath: url.path) else { throw RPCFailure(-32602, "No file at \(url.path)") }
-            let kind = try arguments.string("kind")
+            let kind = arguments.optionalString("kind") ?? Self.kind(of: url)
             let base = try arguments.int("baseRev")
             let imported = try await Self.importedMedia(url: url, kind: kind, projectFPS: document.project.fps, root: root)
             DebugLog.write("import", "\(url.lastPathComponent) → \(document.mediaSummary(imported.media)) (automation)")
@@ -101,9 +101,31 @@ extension ProjectDocument {
         }
     }
 
+    /// The media kind a file's type suggests: audio, image or video.
+    static func kind(of url: URL) -> String {
+        if StillImageMovie.isImage(url) { return "image" }
+        return UTType(filenameExtension: url.pathExtension)?.conforms(to: .audio) == true ? "audio" : "video"
+    }
+
+    /// An image: its oriented size, the project frame rate and `Media.imageMaximumSeconds` of frames, placed for
+    /// `Media.imageDefaultSeconds`.
+    private static func importedImage(url: URL, projectFPS: FrameRate, root: URL) throws -> (media: Media, frames: Int) {
+        guard let size = StillImageMovie.pixelSize(of: url) else {
+            throw ProjectError.invalid("Cannot read the image \(url.lastPathComponent)")
+        }
+        let fields: [String: JSONValue] = [
+            "id": .string(UUID().uuidString), "path": .string(relativePath(url, root: root)), "kind": .string("image"),
+            "fps": projectFPS.json, "frames": .integer(Int(Media.imageMaximumSeconds * projectFPS.value)),
+            "hasAudio": .bool(false), "width": .integer(Int(size.width)), "height": .integer(Int(size.height)),
+        ]
+        let media = Media(fields: fields)
+        return (media, media.placementFrames(in: projectFPS))
+    }
+
     private static func importedMedia(
         url: URL, kind: String, projectFPS: FrameRate, root: URL
     ) async throws -> (media: Media, frames: Int) {
+        if kind == "image" { return try importedImage(url: url, projectFPS: projectFPS, root: root) }
         let asset = AVURLAsset(url: url)
         let video = try await asset.loadTracks(withMediaType: .video).first
         let audio = try await asset.loadTracks(withMediaType: .audio)

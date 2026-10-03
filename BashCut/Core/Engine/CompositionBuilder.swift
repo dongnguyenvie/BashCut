@@ -73,14 +73,18 @@ public actor CompositionBuilder {
             for item in track.items.sorted(by: { ($0.at, $0.id) < ($1.at, $1.id) }) {
                 try Task.checkCancellation()
                 guard let media = project.media.first(where: { $0.id == item.mediaID }) else { continue }
+                // An image is read through its one-frame still movie and held like a freeze frame.
+                let isStill = media.kind == "image"
+                let mediaURL = try source.url(for: media, root: root, workspace: workspace, purpose: purpose)
                 let asset = try await loadedAsset(
-                    source.url(for: media, root: root, workspace: workspace, purpose: purpose))
+                    isStill ? StillImageMovie.movie(for: media, image: mediaURL, root: root) : mediaURL)
+                let stillRange = CMTimeRange(start: .zero, duration: StillImageMovie.sampleDuration)
                 let freezeFrame = item["freezeFrame"]?.int
                 let normalSourceRange = CMTimeRange(
                     start: media.fps.time(item.sourceIn),
                     duration: CMTimeMultiplyByFloat64(
                         project.fps.time(item.duration), multiplier: item.speed))
-                let videoSourceRange = freezeFrame.map {
+                let videoSourceRange = isStill ? stillRange : freezeFrame.map {
                     CMTimeRange(start: media.fps.time($0), duration: media.fps.time(1))
                 } ?? normalSourceRange
                 let destination = project.fps.time(item.at)
@@ -103,7 +107,7 @@ public actor CompositionBuilder {
                         lanes.append((end: item.end, target: created))
                     }
                     visualLanes[track.id] = lanes
-                    if freezeFrame == nil, item.speedCurve != nil {
+                    if freezeFrame == nil, !isStill, item.speedCurve != nil {
                         try Self.insertRamp(item, media: media, fps: project.fps, from: source, into: target)
                     } else {
                         try target.insertTimeRange(videoSourceRange, of: source, at: destination)
@@ -148,7 +152,7 @@ public actor CompositionBuilder {
                             1, Int((Double(item.duration) / project.fps.value * media.fps.value
                                 * item.speed).rounded(.down)))
                         let frame = freezeFrame ?? min(media.frames - 1, item.sourceIn + consumed - 1)
-                        let holdRange = CMTimeRange(
+                        let holdRange = isStill ? stillRange : CMTimeRange(
                             start: media.fps.time(frame), duration: media.fps.time(1))
                         let holdStart = project.fps.time(item.end)
                         try hold.insertTimeRange(holdRange, of: source, at: holdStart)

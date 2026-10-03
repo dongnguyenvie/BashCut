@@ -178,7 +178,8 @@ public enum ProjectSchema {
                 properties: [
                     "id": string("Stable media ID", minLength: 1),
                     "path": string("Relative to the project folder, or @assets/… in the workspace", minLength: 1, pattern: "^[^/]"),
-                    "kind": enumeration("Media kind", ["video", "audio"]),
+                    "kind": enumeration("Media kind; an image is held for as long as its items last (frames is the limit)",
+                                        ["video", "audio", "image"]),
                     "fps": ref("rational"), "frames": integer("Length in source frames", minimum: 1),
                     "width": integer("Pixels", minimum: 1, maximum: 16384),
                     "height": integer("Pixels", minimum: 1, maximum: 16384),
