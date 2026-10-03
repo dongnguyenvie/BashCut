@@ -5,6 +5,8 @@
 
 ## [Unreleased]
 
+- Fix: a plugin's file option (VieNeu's *Clone voice from*) squeezed its buttons to "C" in narrow panels; the file
+  name and *Choose… / Clear File* now sit on their own lines.
 - **Speed ramps** (CapCut Curve): Inspector › Speed › Curve and the clip menu offer Montage, Hero time, Bullet
   time, Jump cut, Flash in and Flash out with a preview of the curve; custom points through `clip speed-curve`
   or the `setSpeedCurve` operation. The clip keeps its source and its length follows the average speed; split and

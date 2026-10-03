@@ -114,18 +114,19 @@ struct PluginOptionField: View {
                     ForEach(option.choices ?? [], id: \.self) { Text(option.label(for: $0)).tag($0) }
                 }
             case .file:
-                LabeledContent(title) {
-                    HStack(spacing: 6) {
-                        Text(value.string.flatMap { $0.isEmpty ? nil : URL(fileURLWithPath: $0).lastPathComponent }
-                            ?? String(localized: "None"))
-                            .lineLimit(1).truncationMode(.middle).foregroundStyle(.secondary)
-                            .help(value.string ?? "")
-                        Button("Choose…") { if let path = Self.chooseFile(option) { value = .string(path) } }
-                        if value.string?.isEmpty == false {
-                            Button("Clear") { value = .string("") }
-                        }
+                // Stacked, so narrow panels (Voice, Text, Audio) keep the file name and both buttons readable.
+                Text(title)
+                Text(value.string.flatMap { $0.isEmpty ? nil : URL(fileURLWithPath: $0).lastPathComponent }
+                    ?? String(localized: "None"))
+                    .lineLimit(1).truncationMode(.middle).foregroundStyle(.secondary)
+                    .help(value.string ?? "")
+                HStack(spacing: 6) {
+                    Button("Choose…") { if let path = Self.chooseFile(option) { value = .string(path) } }
+                        .fixedSize()
+                    if value.string?.isEmpty == false {
+                        Button("Clear File") { value = .string("") }.fixedSize()
                     }
-                }
+                }.controlSize(.small)
             case .string, .number, .integer:
                 TextField(title, text: $text)
                     .onAppear { text = Self.text(value) }
