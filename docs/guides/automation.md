@@ -73,6 +73,31 @@ project files.
 **Settings → Allow agent timeline edits** is on by default. When it is off, Claude and Codex tabs get no
 token, so they can read and point at things but cannot edit.
 
+## Agent kit
+
+The [agent kit](https://github.com/dongnguyenvie/bashcut-agent-kit) is a set of editing skills (footage survey,
+beat cuts, audio mix, captions, colour, effects, voiceover…) for Claude Code and Codex. BashCut ships a copy in
+`Contents/Resources/AgentKit` (`scripts/run.sh` copies a `bashcut-agent-kit` checkout next to the repo, or
+`$BASHCUT_AGENT_KIT`). **Settings → Agents** and `agent status` / `agent setup` manage it.
+
+- **BashCut's tabs** load it by default (`agent setup in-app`, `--remove` to stop). The built-in kit is copied to
+  `~/Library/Application Support/BashCut/agent-kit`. Claude tabs get a skills-only plugin
+  (`agent-kit-claude`, passed with `--plugin-dir`; the tab already has the BashCut MCP server). Codex tabs see
+  the skills as links in `agent-workspace/.agents/skills`, which holds only the kit's skills.
+- **Another kit folder** (a checkout being worked on): **Choose…** in Settings or `agent setup in-app --kit
+  /abs/path` (`--kit built-in` to go back). It is used in place, so edits show up in the next tab.
+- **Claude Code and Codex outside BashCut**: `agent setup claude` adds the kit as the `bashcut-agent-kit`
+  marketplace and installs the `bashcut` plugin (skills and MCP server); `agent setup codex` links the skills
+  into `~/.agents/skills` (never over a folder that is not a link) and runs `codex mcp add bashcut`. `--remove`
+  undoes either. From the CLI this asks for approval like an export, because it changes the agents' own
+  configuration.
+- **Configuration folders.** Claude Code and Codex may keep their login and settings elsewhere
+  (`CLAUDE_CONFIG_DIR`, `CODEX_HOME`), often set in a shell profile that BashCut does not see when it starts
+  from Finder. Each folder comes from Settings (`--claude-config-dir`, `--codex-home`; `default` detects
+  again), else BashCut's environment, else the login shell (`$SHELL -ilc`, read once at launch), else
+  `~/.claude` / `~/.codex`. The result is used for setup, for the tabs' environment and for finding their
+  sessions to resume. `agent status` shows each folder and where it came from.
+
 ## Agents outside BashCut
 
 Claude Code in another terminal, scripts and other MCP clients need no copied token. While BashCut runs, it

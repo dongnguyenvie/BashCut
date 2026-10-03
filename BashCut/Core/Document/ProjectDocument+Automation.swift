@@ -24,6 +24,7 @@ extension ProjectDocument {
         registerImportCommands()
         registerProxyCommands()
         registerStorageCommands()
+        registerAgentKitCommands()
         registerPrivilegedCommands()
         registerUICommands()
         registerUIActionCommands()
@@ -36,6 +37,7 @@ extension ProjectDocument {
         plugins.refresh(projectRoot: nil)
         emitPluginEvent(.appLaunched)
         assert(registry.unhandledCommands.isEmpty, "Unhandled commands: \(registry.unhandledCommands)")
+        Task { _ = await agentConfigFolders() }
         Task {
             do {
                 try await automation.start()

@@ -13,7 +13,7 @@ public enum CommandCatalog {
     public static let exportPresets = ["tiktok", "youtube-1080", "youtube-4k", "quick-draft", "prores"]
 
     public static let specs: [CommandSpec] = readSpecs + projectSpecs + editSpecs + layerSpecs + styleSpecs
-        + formatSpecs + clipSpecs + capabilitySpecs + pluginSpecs + storageSpecs + privilegedSpecs + uiSpecs + toolSpecs
+        + formatSpecs + clipSpecs + capabilitySpecs + pluginSpecs + storageSpecs + agentSpecs + privilegedSpecs + uiSpecs + toolSpecs
 
     public static let modes: [String: CommandMode] = Dictionary(uniqueKeysWithValues: specs.map { ($0.name, $0.mode) })
 

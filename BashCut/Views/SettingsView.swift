@@ -52,6 +52,7 @@ struct SettingsView: View {
                     Text("English").tag("en")
                     Text("Tiếng Việt").tag("vi")
                 }
+                AgentSettingsView(document: document, settings: settings)
                 StorageSettingsView(document: document)
             }.formStyle(.grouped)
             Text("Language changes apply after restarting BashCut.")

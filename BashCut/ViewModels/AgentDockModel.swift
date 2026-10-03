@@ -69,7 +69,14 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
     let credentials = CredentialStore()
     let client = ModelClient()
     private let sessionStore = AgentSessionStore()
-    private let sessionDiscovery = AgentSessionDiscovery()
+    /// Session transcripts live in the agents' configuration folders, which users may move.
+    private var sessionDiscovery: AgentSessionDiscovery {
+        let folders = document.currentAgentConfigFolders
+        return AgentSessionDiscovery(roots: [
+            .claude: folders.claude.url.appendingPathComponent("projects", isDirectory: true),
+            .codex: folders.codex.url.appendingPathComponent("sessions", isDirectory: true),
+        ])
+    }
     var generation: Task<Void, Never>?
     private var sessionDiscoveryTask: Task<Void, Never>?
     @ObservationIgnored private var detachedWindow: NSWindow?
@@ -139,7 +146,8 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
                     + "\n" + document.contextText() + "\n" + knowledge.context)
             let launch = try AgentLaunch.make(
                 provider: provider, workspace: directory, context: context,
-                resumeID: resumeID(for: provider))
+                resumeID: resumeID(for: provider), kit: document.agentKitLaunch(),
+                environment: document.currentAgentEnvironment)
             let session = TerminalSession(provider: provider, token: token, launch: launch)
             sessions.append(session)
             selectedSession = session.id
