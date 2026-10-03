@@ -198,7 +198,8 @@ extension PluginManagerModel {
     }
 
     /// Shows the approval to run an installed plugin's dependency recipes again.
-    func requestSetup(_ plugin: InstalledPlugin) {
+    func requestSetup(_ plugin: InstalledPlugin) throws {
+        try trust.validateSetup(of: plugin)
         cancelPendingInstall()
         pendingInstall = PendingPluginInstall(plugin: plugin, repair: true)
         tab = .installed

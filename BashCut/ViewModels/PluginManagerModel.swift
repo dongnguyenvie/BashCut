@@ -408,13 +408,14 @@ enum PluginText {
             Task { @MainActor in self?.recipeOutput(output, reporter: reporter) }
         }
         if pending.repair {
+            try trust.validateSetup(of: plugin)
             for (index, (dependency, recipe)) in recipes.enumerated() {
                 installStep = String(format: String(localized: "Setting up %@ (%d of %d)…"), dependency.name, index + 1, recipes.count)
                 try await PluginRecipeRunner.run(recipe.command, plugin: plugin, directory: plugin.directory, output: report)
             }
             // Approving the setup ran the plugin's own code, so its files are pinned like an install from the
             // registry; before, a plugin set up this way (a linked or copied folder) still said "Not approved yet".
-            if [.untrusted, .changed].contains(trust.availability(of: plugin)) { try trust.trust(plugin) }
+            if trust.availability(of: plugin) == .untrusted { try trust.trust(plugin) }
             await checkHealthNow(plugin)
             return
         }

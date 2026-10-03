@@ -154,6 +154,16 @@ public final class PluginTrustStore: @unchecked Sendable {
         return trustedRoots.contains { path.hasPrefix($0.path + "/") }
     }
 
+    /// Repair may execute recipes only from the approved bundle. Check the full pin independently of enabled
+    /// state: a disabled plugin can also have changed files. Initial setup remains part of install approval.
+    public func validateSetup(of plugin: InstalledPlugin) throws {
+        guard !isBundled(plugin), let approved = grant(for: plugin.id),
+            !approved.fingerprint.manifestSHA256.isEmpty else { return }
+        guard (try? PluginFingerprint(plugin: plugin)) == approved.fingerprint else {
+            throw PluginError.invalid("Plugin files changed; review and trust them before running setup")
+        }
+    }
+
     public func availability(of plugin: InstalledPlugin) -> PluginAvailability {
         if let reason = plugin.manifest.incompatibility { return .outdated(reason) }
         let grant = grant(for: plugin.id)

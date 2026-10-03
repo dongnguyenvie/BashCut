@@ -51,6 +51,26 @@ struct PluginTrustTests {
         #expect(store.availability(of: plugin) == .untrusted)
     }
 
+    @Test("Repair cannot silently reapprove changed files, including disabled plugins")
+    func repairTrust() throws {
+        let sandbox = Sandbox()
+        defer { try? FileManager.default.removeItem(at: sandbox.root) }
+        let plugin = try sandbox.plugin()
+        let store = sandbox.store()
+        try store.validateSetup(of: plugin) // Initial setup still asks for installation approval.
+        try store.trust(plugin)
+        try store.validateSetup(of: plugin)
+        let approved = store.grant(for: plugin.id)
+        try Data("#!/bin/sh\necho tampered\n".utf8).write(to: plugin.directory.appendingPathComponent("bin/provider"))
+        #expect(throws: PluginError.self) { try store.validateSetup(of: plugin) }
+        #expect(store.grant(for: plugin.id) == approved)
+        try store.setEnabled(plugin, enabled: false)
+        #expect(store.availability(of: plugin) == .disabled)
+        #expect(throws: PluginError.self) { try store.validateSetup(of: plugin) }
+        try store.trust(plugin) // A separate, explicit Trust action allows repairs again.
+        try store.validateSetup(of: plugin)
+    }
+
     @Test("Older grants without a folder digest are upgraded once; dev links relax in debug builds")
     func legacyAndLinked() throws {
         let sandbox = Sandbox()

@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+- Refuse dependency repair when an approved plugin's files have changed, including disabled plugins. Recheck
+  the full fingerprint before recipes start and require an explicit Trust action instead of silently repinning.
+
 - Refresh bundled agent kits when their content changes, even at the same version and skill names. Validate the
   staged copy before replacing the stable folder so a failed refresh preserves the installed instructions.
 

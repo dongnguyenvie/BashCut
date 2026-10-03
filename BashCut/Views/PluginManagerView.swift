@@ -173,7 +173,9 @@ private struct PluginRow: View {
                 }
                 Spacer()
                 if needsSetup {
-                    Button("Install Dependencies…") { model.requestSetup(plugin) }.disabled(model.installing)
+                    Button("Install Dependencies…") {
+                        do { try model.requestSetup(plugin) } catch { model.message = error.localizedDescription }
+                    }.disabled(model.installing)
                         .help("Run this plugin's install recipes again (after a failed or cancelled setup)")
                 }
                 if model.isRemovable(plugin) {
