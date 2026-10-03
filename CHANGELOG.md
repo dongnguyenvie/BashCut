@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+- Build previews immediately for discrete edits, undo/redo and automation. Only edits with a coalescing key
+  retain the slider/drag debounce; a discrete edit cancels a pending coalesced build without waiting for it.
+
 - Preserve RPC error codes and data through CLI and MCP. CLI writes a JSON error to stderr with distinct exit
   statuses; MCP supplies structured error content. Editor busy maps to -32003, and stale-revision errors
   include expected/actual revisions. Regression tests exercise real CLI/MCP processes against isolated sockets.

@@ -8,6 +8,8 @@ import Testing
 
 private actor BuildLog {
     private(set) var builds = 0
+    private(set) var delays = 0
+    func delayed() { delays += 1 }
     func built() { builds += 1 }
 }
 
@@ -48,6 +50,24 @@ struct PreviewControllerTests {
         #expect(await condition())
     }
 
+    @Test("A discrete edit preempts coalescing without waiting through the debounce")
+    func discretePreemptsDebounce() async throws {
+        let log = BuildLog()
+        let preview = PreviewController(engine: CountingEngine(log: log), coalescingDelay: {
+            await log.delayed()
+            try await Task.sleep(for: .seconds(30))
+        })
+        let value = try project()
+        let root = FileManager.default.temporaryDirectory
+        preview.rebuild(value, root: root, workspace: nil, coalescing: true)
+        try await waitUntil { await log.delays == 1 }
+        #expect(await log.builds == 0)
+        preview.rebuild(value, root: root, workspace: nil)
+        try await waitUntil { await log.builds == 1 }
+        #expect(await log.delays == 1)
+        preview.reset(value)
+    }
+
     @Test("Seeking clamps to the last project the preview was given")
     func seekClamps() throws {
         let preview = PreviewController(engine: CountingEngine(log: BuildLog()))
@@ -78,8 +98,8 @@ struct PreviewControllerTests {
         let preview = PreviewController(engine: CountingEngine(log: log))
         let root = FileManager.default.temporaryDirectory
         let value = try project()
-        preview.rebuild(value, root: root, workspace: nil)
-        preview.rebuild(value, root: root, workspace: nil)
+        preview.rebuild(value, root: root, workspace: nil, coalescing: true)
+        preview.rebuild(value, root: root, workspace: nil, coalescing: true)
         try await waitUntil { await log.builds == 1 }
         #expect(preview.buildCount == 1)
 

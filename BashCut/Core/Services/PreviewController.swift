@@ -40,6 +40,7 @@ public final class PreviewController {
     @ObservationIgnored private var wasPlaying = false
 
     private let engine: any RenderEngine
+    private let coalescingDelay: @Sendable () async throws -> Void
     @ObservationIgnored private var project = Project(name: "Untitled")
     @ObservationIgnored private var root: URL?
     @ObservationIgnored private var workspace: URL?
@@ -57,8 +58,11 @@ public final class PreviewController {
     /// Bumped when the player item changes, so a stale seek completion is ignored.
     @ObservationIgnored private var seekGeneration = 0
 
-    public init(engine: any RenderEngine) {
+    public init(engine: any RenderEngine, coalescingDelay: @escaping @Sendable () async throws -> Void = {
+        try await Task.sleep(for: .milliseconds(50))
+    }) {
         self.engine = engine
+        self.coalescingDelay = coalescingDelay
     }
 
     private static func mutedPlayer() -> AVPlayer {
@@ -81,8 +85,8 @@ public final class PreviewController {
         playhead = 0
     }
 
-    /// Builds the preview for `project` (after a short debounce); a newer call cancels an older one.
-    public func rebuild(_ project: Project, root: URL?, workspace: URL?) {
+    /// Discrete edits build immediately; coalesced slider/drag edits debounce. Newer calls cancel older ones.
+    public func rebuild(_ project: Project, root: URL?, workspace: URL?, coalescing: Bool = false) {
         self.project = project
         self.root = root
         self.workspace = workspace
@@ -99,7 +103,8 @@ public final class PreviewController {
         let request = request
         rebuildTask = Task { [engine] in
             do {
-                try await Task.sleep(for: .milliseconds(50))
+                if coalescing { try await coalescingDelay() }
+                try Task.checkCancellation()
                 let built = try await engine.build(project, root: root, workspace: workspace, purpose: .preview)
                 let comparisonBuilt = compare
                     ? try await engine.build(

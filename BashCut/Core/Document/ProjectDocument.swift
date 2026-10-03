@@ -242,10 +242,10 @@ final class ProjectDocument {
         try commit(.delete(item: selectedID, ripple: ripple), label: ripple ? "Ripple delete" : "Lift clip", author: author)
         self.selectedID = nil
     }
-    func rebuild() {
+    func rebuild(coalescing: Bool = false) {
         let root = fileURL?.deletingLastPathComponent()
         if let root { waveforms.update(media: project.media, root: root) }
-        preview.rebuild(project, root: root, workspace: settings.workspace)
+        preview.rebuild(project, root: root, workspace: settings.workspace, coalescing: coalescing)
     }
 }
 
@@ -270,7 +270,7 @@ extension ProjectDocument {
                     + "rev=\(before.revision) op=\(Self.describe(operation))")
             throw error
         }
-        didCommit(from: before, author: author, label: label)
+        didCommit(from: before, author: author, label: label, coalescing: coalescingKey != nil)
         emitPluginEvent(.editCommitted, editEventPayload(label: label, author: author, before: before))
         DebugLog.write(
             "edit", "edit by \(author) rev \(before.revision)→\(project.revision) op=\(Self.describe(operation))"
@@ -333,7 +333,7 @@ extension ProjectDocument {
         }
     }
 
-    private func didCommit(from before: Project, author: Author, label: String) {
+    private func didCommit(from before: Project, author: Author, label: String, coalescing: Bool = false) {
         if author.isAgent {
             markAgentChanges(from: before, author: author, label: label)
             message = author.rawValue.capitalized + ": " + label
@@ -341,7 +341,7 @@ extension ProjectDocument {
             clearAgentChange()
         }
         dirty = true
-        rebuild()
+        rebuild(coalescing: coalescing)
     }
 }
 
