@@ -28,6 +28,8 @@ public actor CompositionBuilder {
     private let exportAssets: AssetCache
     private var parsedLUTs = LUTCache()
     private var rampPlans = SpeedRampPlans()
+    private let rampedAudio = RampedAudio()
+    public var rampAudioRenders: Int { get async { await rampedAudio.renders } }
     public var rampPlanBuilds: Int { rampPlans.builds }
     public var lutLoads: Int { parsedLUTs.loads }
     /// Assets opened from disk across both purpose-specific caches; cache hits do not count.
@@ -56,7 +58,8 @@ public actor CompositionBuilder {
         try project.validate()
         guard project.duration > 0 else { throw ProjectError.invalid("Timeline is empty") }
         let assets = purpose == .preview ? previewAssets : exportAssets
-        await assets.resize(for: Set(project.tracks.flatMap(\.items).compactMap(\.mediaID)).count)
+        let activeItems = project.tracks.flatMap(\.items)
+        await assets.resize(for: Set(activeItems.compactMap(\.mediaID)).count + activeItems.filter { $0.speedCurve != nil }.count)
         let composition = AVMutableComposition()
         var visualByTrack: [String: [PlacedVisual]] = [:]
         var visualLanes = VideoCompositionLanes()
@@ -184,8 +187,12 @@ public actor CompositionBuilder {
                     if let source = asset.audio {
                         let lane = try audioLanes.take(for: item, sourceTrack: track.id, composition: composition)
                         let target = lane.track
-                        if let ramp {
-                            try ramp.insert(from: source, into: target)
+                        if ramp != nil {
+                            let url = try await rampedAudio.render(asset: asset, item: item, mediaFPS: media.fps, fps: project.fps, root: root)
+                            let rendered = try await assets.load(url)
+                            guard let audio = rendered.audio else { throw ProjectError.invalid("Missing rendered ramp audio") }
+                            try target.insertTimeRange(
+                                CMTimeRange(start: .zero, duration: project.fps.time(item.duration)), of: audio, at: destination)
                         } else {
                             try target.insertTimeRange(normalSourceRange, of: source, at: destination)
                             target.scaleTimeRange(

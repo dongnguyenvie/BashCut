@@ -33,11 +33,10 @@ struct SpeedRampEngineTests {
         #expect(pieces.count > 2 && pieces.count < 20)
         let audio = try #require(snapshot.composition.tracks(withMediaType: .audio).first)
         let audioPieces = audio.segments.filter { !$0.isEmpty }
-        #expect(audioPieces.count == pieces.count)
-        for (sound, picture) in zip(audioPieces, pieces) {
-            #expect(sound.timeMapping.source == picture.timeMapping.source)
-            #expect(sound.timeMapping.target == picture.timeMapping.target)
-        }
+        #expect(audioPieces.count == 1)
+        let sound = try #require(audioPieces.first)
+        #expect(sound.timeMapping.source.start == .zero)
+        #expect(sound.timeMapping.target == CMTimeRange(start: .zero, duration: project.fps.time(item.duration)))
         let end = try #require(pieces.last).timeMapping.target.end
         #expect(abs(end.seconds - FrameRate().time(40).seconds) < 0.001)
         // The source used is the clip's 40 frames at 1.25× on average: 50 source frames.

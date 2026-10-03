@@ -5,9 +5,14 @@
 
 ## [Unreleased]
 
+- Prerender speed-ramped audio as one continuous PCM segment: bounded WSOLA alignment preserves pitch and
+  native varispeed preserves resampler state when pitch follows speed. Source-signature/curve/trim/pitch caches
+  avoid rerendering gain edits; cancelled renders remove staging files. Synthetic PCM tests cover preset
+  boundaries, exact duration, source timing, low/high fundamentals, stereo phase and cache invalidation.
+
 - Plan speed ramps adaptively per linear-speed span, using one piece for flat spans and bounding source-time
   error to a quarter source frame. Cache plans per item across edits and share them between picture and audio.
-  This reduces audio rate-change boundaries; dedicated rendered-audio quality checks remain pending.
+  Continuous prerendered audio now avoids separate rate processors at those visual piece boundaries.
 
 - Key caption raster caches only on text and drawing styles, hashed once per text layer. Moving, trimming,
   duplicating or animating captions now reuses their images; canvas size and spoken-word variants stay distinct.
