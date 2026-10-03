@@ -5,7 +5,8 @@ import Foundation
 import Testing
 
 /// A shell plugin that speaks the session protocol: it answers the handshake, then handles each request line
-/// by its `method` (`fixture.echo`, `fixture.fail`, `fixture.crash`, `fixture.hang`).
+/// by its `method` (`fixture.echo`, `fixture.fail`, `fixture.crash`, `fixture.hang`, `fixture.slow` reports
+/// progress every 0.2 s for 1.2 s, `fixture.quiet` answers after 1 s without progress).
 private let sessionScript = #"""
 #!/bin/sh
 while IFS= read -r line; do
@@ -20,13 +21,19 @@ while IFS= read -r line; do
     *'fixture.fail'*) echo "{\"id\":\"$id\",\"error\":{\"code\":\"bad_input\",\"message\":\"nope\"}}" ;;
     *'fixture.crash'*) echo 'boom' >&2; exit 4 ;;
     *'fixture.hang'*) ;;
+    *'fixture.slow'*)
+      for step in 1 2 3 4 5 6; do sleep 0.2; echo "{\"type\":\"progress\",\"id\":\"$id\"}"; done
+      echo "{\"id\":\"$id\",\"result\":{}}" ;;
+    *'fixture.quiet'*) sleep 1; echo "{\"id\":\"$id\",\"result\":{}}" ;;
   esac
 done
 """#
 
 @Suite("Plugin session transport")
 struct PluginSessionTransportTests {
-    private func makePlugin(script: String = sessionScript) throws -> (InstalledPlugin, URL) {
+    private func makePlugin(
+        script: String = sessionScript, providers: [PluginProvider]? = nil
+    ) throws -> (InstalledPlugin, URL) {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let directory = root.appendingPathComponent("session")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -35,7 +42,7 @@ struct PluginSessionTransportTests {
         try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: executable.path)
         let manifest = PluginManifest(
             id: "app.bashcut.session", name: "Session", version: "1.0.0", apiVersion: 2,
-            entrypoint: "provider.sh", capabilities: ["audio.beats"], transport: .session)
+            entrypoint: "provider.sh", capabilities: ["audio.beats"], providers: providers, transport: .session)
         return (InstalledPlugin(manifest: manifest, directory: directory), root)
     }
 
@@ -104,7 +111,7 @@ struct PluginSessionTransportTests {
         defer { try? FileManager.default.removeItem(at: root) }
         let transport = PluginSessionTransport(requestTimeout: 0.4)
         let started = Date()
-        await #expect(throws: PluginError.invalid("Plugin request timed out")) {
+        await #expect(throws: PluginError.invalid("Plugin request timed out (no progress for 1 s)")) {
             try await transport.call(plugin: plugin, method: "fixture.hang", provider: nil, params: .object([:]))
         }
         #expect(Date().timeIntervalSince(started) < 3)
@@ -116,6 +123,35 @@ struct PluginSessionTransportTests {
         await #expect(throws: PluginError.invalid("Plugin request was cancelled")) { try await call.value }
         // The process survives and still answers.
         _ = try await transport.call(plugin: plugin, method: "fixture.echo", provider: nil, params: .object([:]))
+        await transport.stopAll()
+    }
+
+    @Test("Progress keeps a request alive past the silence window, up to the total limit")
+    func progressExtends() async throws {
+        let (plugin, root) = try makePlugin()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let transport = PluginSessionTransport(requestTimeout: 0.5)
+        _ = try await transport.call(plugin: plugin, method: "fixture.slow", provider: nil, params: .object([:]))
+        await transport.stopAll()
+
+        let capped = PluginSessionTransport(requestTimeout: 0.5, maximumRequestDuration: 0.6)
+        await #expect(throws: PluginError.invalid("Plugin request ran past its time limit")) {
+            try await capped.call(plugin: plugin, method: "fixture.slow", provider: nil, params: .object([:]))
+        }
+        await capped.stopAll()
+    }
+
+    @Test("A provider's timeoutSeconds replaces the silence window")
+    func providerTimeout() async throws {
+        let provider = PluginProvider(id: "app.bashcut.session.slow", capability: "audio.beats", name: "Slow",
+                                      timeoutSeconds: 10)
+        let (plugin, root) = try makePlugin(providers: [provider])
+        defer { try? FileManager.default.removeItem(at: root) }
+        let transport = PluginSessionTransport(requestTimeout: 0.4)
+        await #expect(throws: PluginError.invalid("Plugin request timed out (no progress for 1 s)")) {
+            try await transport.call(plugin: plugin, method: "fixture.quiet", provider: nil, params: .object([:]))
+        }
+        _ = try await transport.call(plugin: plugin, method: "fixture.quiet", provider: provider.id, params: .object([:]))
         await transport.stopAll()
     }
 

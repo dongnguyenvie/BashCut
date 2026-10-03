@@ -33,6 +33,7 @@ public struct PluginProcessRunner: Sendable {
         let environment: [String: String]
         let input: Data
         let outputLimit: Int
+        let timeout: TimeInterval
     }
 
     public let timeout: TimeInterval
@@ -58,8 +59,11 @@ public struct PluginProcessRunner: Sendable {
         guard data.count <= 1024 * 1024 else {
             throw PluginError.invalid("Plugin request is too large")
         }
+        // One-shot requests cannot report progress, so a provider's timeoutSeconds is the whole limit.
+        let limit = plugin.manifest.providers?.first { $0.id == provider }?.timeoutSeconds
+            .map { TimeInterval($0) } ?? timeout
         let responseData = try await execute(
-            plugin: plugin, arguments: ["rpc"], input: data + Data([0x0A]))
+            plugin: plugin, arguments: ["rpc"], input: data + Data([0x0A]), timeout: limit)
         let response: PluginRPCResponse
         do {
             response = try JSONDecoder().decode(PluginRPCResponse.self, from: responseData)
@@ -104,14 +108,14 @@ public struct PluginProcessRunner: Sendable {
     }
 
     private func execute(
-        plugin: InstalledPlugin, arguments: [String], input: Data
+        plugin: InstalledPlugin, arguments: [String], input: Data, timeout: TimeInterval
     ) async throws -> Data {
         let executable = try plugin.entrypointURL()
         return try await execute(
             Execution(
                 executable: executable, arguments: arguments, directory: plugin.directory,
                 environment: Self.environment(for: plugin), input: input,
-                outputLimit: maximumOutputBytes))
+                outputLimit: maximumOutputBytes, timeout: timeout))
     }
 
     private func execute(
@@ -133,7 +137,8 @@ public struct PluginProcessRunner: Sendable {
         return try await execute(
             Execution(
                 executable: executable, arguments: arguments, directory: plugin.directory,
-                environment: Self.environment(for: plugin), input: input, outputLimit: outputLimit))
+                environment: Self.environment(for: plugin), input: input, outputLimit: outputLimit,
+                timeout: timeout))
     }
 
     /// Runs the child in its own process group and waits without blocking a cooperative thread.
@@ -152,7 +157,7 @@ public struct PluginProcessRunner: Sendable {
 
         let child = try ChildProcess.spawn(
             execution, input: inputURL.path, output: outputURL.path, error: errorURL.path)
-        let deadline = Date().addingTimeInterval(timeout)
+        let deadline = Date().addingTimeInterval(execution.timeout)
         var failure: PluginError?
         var status: Int32?
         while status == nil {

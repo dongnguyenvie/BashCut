@@ -10,6 +10,8 @@ import Foundation
 /// - requests: `{"type":"request","id","apiVersion","method","provider","params"}`; the plugin may send any
 ///   number of `{"type":"progress","id","progress"?,"message"?}` lines, then `{"id","result"}` or
 ///   `{"id","error":{"code","message"}}`. Requests may overlap; replies are matched by `id`.
+/// - a request times out after `requestTimeout` seconds without a progress line (the provider's
+///   `timeoutSeconds` replaces that window), and after `maximumRequestDuration` in any case.
 /// - `{"type":"cancel","id"}` when the caller gives up; `{"type":"shutdown"}` before the app stops an idle
 ///   process, followed by SIGTERM and SIGKILL to its process group.
 ///
@@ -18,7 +20,10 @@ import Foundation
 public actor PluginSessionTransport: PluginTransport {
     public static let shared = PluginSessionTransport()
 
+    /// The longest a request may go without a progress line.
     public let requestTimeout: TimeInterval
+    /// The longest a request may run, however often it reports progress.
+    public let maximumRequestDuration: TimeInterval
     public let idleTimeout: TimeInterval
     public let handshakeTimeout: TimeInterval
     public let maximumLineBytes: Int
@@ -27,10 +32,11 @@ public actor PluginSessionTransport: PluginTransport {
     private var crashes: [String: [Date]] = [:]
 
     public init(
-        requestTimeout: TimeInterval = 120, idleTimeout: TimeInterval = 90, handshakeTimeout: TimeInterval = 10,
-        maximumLineBytes: Int = 8 * 1024 * 1024
+        requestTimeout: TimeInterval = 120, maximumRequestDuration: TimeInterval = 4 * 3600,
+        idleTimeout: TimeInterval = 90, handshakeTimeout: TimeInterval = 10, maximumLineBytes: Int = 8 * 1024 * 1024
     ) {
         self.requestTimeout = requestTimeout
+        self.maximumRequestDuration = maximumRequestDuration
         self.idleTimeout = idleTimeout
         self.handshakeTimeout = handshakeTimeout
         self.maximumLineBytes = maximumLineBytes
@@ -50,8 +56,11 @@ public actor PluginSessionTransport: PluginTransport {
         guard method.range(of: "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$", options: .regularExpression) != nil
         else { throw PluginError.invalid("Invalid plugin method") }
         let session = try await session(for: plugin)
+        let silence = plugin.manifest.providers?.first { $0.id == provider }?.timeoutSeconds
+            .map { TimeInterval($0) } ?? requestTimeout
         return try await session.request(
-            method: method, provider: provider, params: params, timeout: requestTimeout, progress: progress)
+            method: method, provider: provider, params: params,
+            limits: (silence: silence, total: max(silence, maximumRequestDuration)), progress: progress)
     }
 
     public nonisolated func health(plugin: InstalledPlugin) async -> PluginHealth {
@@ -118,6 +127,7 @@ actor PluginSession {
     private struct Pending {
         let continuation: CheckedContinuation<JSONValue, any Error>
         let progress: PluginProgressHandler?
+        var lastActivity = Date()
     }
 
     nonisolated let directory: URL
@@ -200,7 +210,7 @@ actor PluginSession {
     }
 
     func request(
-        method: String, provider: String?, params: JSONValue, timeout: TimeInterval,
+        method: String, provider: String?, params: JSONValue, limits: (silence: TimeInterval, total: TimeInterval),
         progress: PluginProgressHandler?
     ) async throws -> JSONValue {
         let id = UUID().uuidString
@@ -213,13 +223,18 @@ actor PluginSession {
         guard data.count <= 1024 * 1024 else { throw PluginError.invalid("Plugin request is too large") }
         lastUsed = Date()
         idleTask?.cancel()
-        let timeoutTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
-            guard !Task.isCancelled else { return }
-            await self?.fail(id, PluginError.invalid("Plugin request timed out"), notify: true)
+        let deadline = Date().addingTimeInterval(limits.total)
+        let check = UInt64(min(1, limits.silence / 4) * 1_000_000_000)
+        let watchdog = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: check)
+                guard !Task.isCancelled, let self,
+                    await self.keepWaiting(id, silence: limits.silence, deadline: deadline)
+                else { return }
+            }
         }
         defer {
-            timeoutTask.cancel()
+            watchdog.cancel()
             scheduleIdleShutdown()
         }
         return try await withTaskCancellationHandler {
@@ -304,6 +319,7 @@ actor PluginSession {
             resolveHello(nil)
         case "progress":
             guard let id = fields["id"]?.string, let entry = pending[id] else { return }
+            pending[id]?.lastActivity = Date()
             let fraction = fields["progress"]?.double.map { min(1, max(0, $0)) }
             entry.progress?(fraction, fields["message"]?.string.map { String($0.prefix(500)) })
         case "overflow":
@@ -338,6 +354,22 @@ actor PluginSession {
     }
 
     // MARK: Helpers
+
+    /// False once the request has finished or timed out (then it is failed and the plugin is told to cancel).
+    private func keepWaiting(_ id: String, silence: TimeInterval, deadline: Date) -> Bool {
+        guard let entry = pending[id] else { return false }
+        let now = Date()
+        if now >= deadline {
+            fail(id, PluginError.invalid("Plugin request ran past its time limit"), notify: true)
+            return false
+        }
+        if now.timeIntervalSince(entry.lastActivity) >= silence {
+            let detail = "Plugin request timed out (no progress for \(Int(silence.rounded(.up))) s)"
+            fail(id, PluginError.invalid(detail), notify: true)
+            return false
+        }
+        return true
+    }
 
     private func fail(_ id: String, _ error: PluginError, notify: Bool) {
         guard let entry = pending.removeValue(forKey: id) else { return }

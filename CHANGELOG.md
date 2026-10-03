@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+- **Long plugin jobs no longer hit a fixed 120 s limit.** A session request now times out after 120 s
+  *without a progress line*; each `progress` message restarts that window, up to 4 hours in total. A provider can
+  declare `timeoutSeconds` (10–3600) for steps that stay silent longer; one-shot plugins use it as their whole
+  limit.
+
 - **Clips fit inside the frame in new projects.** A clip of another shape (portrait footage on a 16:9 canvas) was
   always scaled to cover the frame, cropping most of it. New projects now scale each clip by its longest side
   against the frame and show it whole with bars. The format menu switches the project between *Clips fit inside
