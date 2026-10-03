@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 84 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 86 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -589,6 +589,21 @@ Send a message to a chat agent like typing it in its tab. Returns at once; poll 
 Stop a chat agent's running turn.
 
 - Mode: ui · Runs: immediately · MCP: `bashcut_chat_stop`
+- `plugin`: string. Chat agent plugin ID; by default the one shown in the dock, else the first
+
+### `bashcut chat commands [--plugin <plugin>]`
+
+The slash commands a chat agent's tab offers: the app's (new, clear, stop, settings, copy, export), the agent kit's skills (skill:<name>) and the plugin's own (for Director: compact, model, thinking, session), with their arguments and choices.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_chat_commands`
+- `plugin`: string. Chat agent plugin ID; by default the one shown in the dock, else the first
+
+### `bashcut chat command <line> [--plugin <plugin>]`
+
+Run a slash command as typed in a chat agent's tab, such as "/compact keep the caption decisions" or "/thinking low"; returns what it showed. /export needs a path here.
+
+- Mode: ui · Runs: immediately · MCP: `bashcut_chat_command`
+- `line`: string, required. The command line, starting with /
 - `plugin`: string. Chat agent plugin ID; by default the one shown in the dock, else the first
 
 ### `bashcut chat reset [--plugin <plugin>]`

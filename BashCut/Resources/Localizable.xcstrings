@@ -1,6 +1,60 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Start a new conversation": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Start a new conversation" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Bắt đầu cuộc trò chuyện mới" } }
+      }
+    },
+    "Stop the running turn": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Stop the running turn" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Dừng lượt đang chạy" } }
+      }
+    },
+    "Open the agent's settings": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Open the agent's settings" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Mở cài đặt của agent" } }
+      }
+    },
+    "Copy the last reply": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Copy the last reply" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Sao chép câu trả lời cuối" } }
+      }
+    },
+    "Save the conversation as Markdown": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Save the conversation as Markdown" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Lưu cuộc trò chuyện dạng Markdown" } }
+      }
+    },
+    "Follow this agent-kit skill": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Follow this agent-kit skill" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Làm theo skill này trong agent kit" } }
+      }
+    },
+    "Copied the last reply": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Copied the last reply" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đã sao chép câu trả lời cuối" } }
+      }
+    },
+    "Saved the conversation to %@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Saved the conversation to %@" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đã lưu cuộc trò chuyện vào %@" } }
+      }
+    },
+    "Message, or / for commands. Shift+Enter for a new line.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Message, or / for commands. Shift+Enter for a new line." } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Nhập tin nhắn, hoặc / để xem lệnh. Shift+Enter để xuống dòng." } }
+      }
+    },
     "Saved": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Saved" } },

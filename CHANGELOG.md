@@ -5,6 +5,15 @@
 
 ## [Unreleased]
 
+- **Slash commands and a better input in chat-agent tabs.** Enter sends the message; Shift+Enter or Option+Enter
+  starts a new line, and Enter while typing with an input method (Vietnamese Telex) only commits the word.
+  - Typing `/` opens a menu (arrows, Tab, Enter, Escape) with the app's commands, available for every agent:
+    `/new` or `/clear`, `/stop`, `/settings`, `/copy`, `/export`.
+  - The same menu lists `/skill:<name>` for each agent-kit skill, plus the plugin's own commands. Director adds
+    `/compact`, `/model`, `/thinking` and `/session`.
+  - Plugins list their commands with the `agent.chat` ops `commands` and `command`.
+  - From the CLI: `chat commands` and `chat command "<line>"`.
+
 - **Chat agents in the dock (plugin API 4).** A plugin with the new `agent.chat` capability becomes a tab in the
   agent dock: a chat whose model edits through BashCut's own commands (with the same checks, history and approvals
   as Claude Code and Codex), looks at the result with `ui frame` and follows the agent kit's skills.

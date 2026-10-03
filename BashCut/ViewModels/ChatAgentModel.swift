@@ -35,11 +35,15 @@ enum ChatEntryKind: String, Codable { case user, assistant, tool, notice, error 
     private(set) var running = false
     /// What the provider reported: whether a key is set and which model it uses.
     private(set) var status: JSONValue?
+    /// Slash commands the plugin declares (op `commands`); the app's own come first (see `commands`).
+    var pluginCommands: [ChatCommand] = []
+    /// The plugin command running now, such as `/compact`.
+    var runningCommand: String?
     var error = ""
     /// The message being written in the agent's tab, and a frame to attach (the dock's quick prompts fill these).
     var draft = ""
     var draftImage: URL?
-    private var conversation = UUID().uuidString
+    private(set) var conversation = UUID().uuidString
     private var turn: Task<Void, Never>?
     private var token: String?
     /// The assistant entry text deltas are added to.
@@ -100,7 +104,9 @@ enum ChatEntryKind: String, Codable { case user, assistant, tool, notice, error 
             status = nil
             return
         }
-        status = try? await document.plugins.service.chat(["op": .string("status")], using: resolved, host: nil)
+        status = try? await document.plugins.service.chat(
+            ["op": .string("status"), "conversation": .string(conversation)], using: resolved, host: nil)
+        await loadPluginCommands(resolved)
     }
 
     /// The open project changed: stop, and show that project's conversation.
@@ -223,7 +229,7 @@ enum ChatEntryKind: String, Codable { case user, assistant, tool, notice, error 
     // MARK: Helpers
 
     /// This plugin's `agent.chat` provider.
-    private func resolve() async throws -> ResolvedPluginProvider {
+    func resolve() async throws -> ResolvedPluginProvider {
         let provider = plugin?.manifest.providers?.first { $0.capability == PluginAPI.agentChat }
         guard let provider else { throw ProjectError.invalid("\(title) is not installed or not ready") }
         return try await document.plugins.service.resolve(
@@ -231,7 +237,7 @@ enum ChatEntryKind: String, Codable { case user, assistant, tool, notice, error 
             projectRoot: document.fileURL?.deletingLastPathComponent())
     }
 
-    private func append(_ entry: Entry) {
+    func append(_ entry: Entry) {
         entries.append(entry)
         if entries.count > Self.maximumEntries { entries.removeFirst(entries.count - Self.maximumEntries) }
     }

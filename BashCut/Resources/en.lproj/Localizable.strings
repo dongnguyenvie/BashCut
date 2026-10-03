@@ -577,3 +577,13 @@
 "Send" = "Send";
 "Stopped" = "Stopped";
 "Chat agent" = "Chat agent";
+"Start a new conversation" = "Start a new conversation";
+"Stop the running turn" = "Stop the running turn";
+"Open the agent's settings" = "Open the agent's settings";
+"Copy the last reply" = "Copy the last reply";
+"Save the conversation as Markdown" = "Save the conversation as Markdown";
+"Follow this agent-kit skill" = "Follow this agent-kit skill";
+"Copied the last reply" = "Copied the last reply";
+"Saved the conversation to %@" = "Saved the conversation to %@";
+"Message, or / for commands. Shift+Enter for a new line." = "Message, or / for commands. Shift+Enter for a new line.";
+"Running %@…" = "Running %@…";
