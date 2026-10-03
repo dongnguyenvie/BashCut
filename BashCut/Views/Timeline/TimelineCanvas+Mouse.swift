@@ -84,6 +84,10 @@ extension TimelineCanvas {
         var candidates = project.tracks.flatMap(\.items).filter { $0.id != itemID }.flatMap { [$0.at, $0.end] }
         candidates += project.sectionMarkers.map(\.at) + project.beatFrames + [0, project.duration]
         if toPlayhead { candidates.append(playhead) }
+        // The selected clip's keys, so the playhead lands on one to change it.
+        if let selected = selectedID.flatMap(locate)?.1, let motion = selected.motion {
+            candidates += motion.keyedFrames.filter { (0..<selected.duration).contains($0) }.map { selected.at + $0 }
+        }
         guard let nearest = candidates.min(by: { abs($0 - frame) < abs($1 - frame) }),
             Double(abs(nearest - frame)) * scale < Self.snapDistance
         else { return (frame, false) }

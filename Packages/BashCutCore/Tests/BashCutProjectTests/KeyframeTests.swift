@@ -35,6 +35,16 @@ struct KeyframeTests {
         #expect(try ItemMotion(json: motion.json) == motion)
     }
 
+    @Test("Keyed frames list each frame with a key once, in order")
+    func keyedFrames() {
+        let motion = ItemMotion(keys: [
+            "zoom": [.init(frame: 10, value: 1), .init(frame: 30, value: 2)],
+            "opacity": [.init(frame: 0, value: 0), .init(frame: 10, value: 1)],
+        ])
+        #expect(motion.keyedFrames == [0, 10, 30])
+        #expect(motion.shifted(by: -10).keyedFrames == [-10, 0, 20])
+    }
+
     @Test("Validation rejects unknown properties, values out of range and frames out of order")
     func validation() throws {
         func rejects(_ json: JSONValue, _ fragment: String) {

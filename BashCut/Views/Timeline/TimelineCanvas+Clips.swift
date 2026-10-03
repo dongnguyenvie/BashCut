@@ -106,6 +106,7 @@ extension TimelineCanvas {
         path.stroke()
         drawVoiceoverWarning(track: track, item: item, path: path, rect: rect)
         if hovered || selected, !track.isLocked, rect.width > 16 { drawTrimHandles(rect) }
+        drawKeyframes(item, in: rect, selected: selected, dirtyRect: dirtyRect)
     }
 
     private func drawTitle(_ item: Item, track: Track, in rect: CGRect, compact: Bool) {
@@ -141,6 +142,32 @@ extension TimelineCanvas {
         let durationY = compact ? rect.midY - 6 : rect.maxY - 13
         (duration as NSString).draw(
             at: CGPoint(x: rect.maxX - durationWidth - 5, y: durationY), withAttributes: ClipStyle.durationText)
+    }
+
+    /// A diamond near the bottom edge for each frame with a key, like the Inspector's, drawn over the trim handles;
+    /// cyan on the selected clip. Keys outside the clip (left over from a trim) are skipped, and keys closer than a
+    /// diamond are drawn once.
+    private func drawKeyframes(_ item: Item, in rect: CGRect, selected: Bool, dirtyRect: CGRect) {
+        guard let frames = item.motion?.keyedFrames, rect.width > 12 else { return }
+        let size = 10.0, y = rect.maxY - 8
+        var lastX = -Double.infinity
+        let diamonds = NSBezierPath()
+        for frame in frames where (0..<item.duration).contains(frame) {
+            let x = min(rect.maxX - size / 2, max(rect.minX + size / 2, rect.minX + (Double(frame) + 0.5) * scale))
+            guard x - lastX >= size, x + size >= dirtyRect.minX, x - size <= dirtyRect.maxX else { continue }
+            lastX = x
+            diamonds.move(to: CGPoint(x: x, y: y - size / 2))
+            diamonds.line(to: CGPoint(x: x + size / 2, y: y))
+            diamonds.line(to: CGPoint(x: x, y: y + size / 2))
+            diamonds.line(to: CGPoint(x: x - size / 2, y: y))
+            diamonds.close()
+        }
+        guard !diamonds.isEmpty else { return }
+        NSColor.black.withAlphaComponent(0.7).setStroke()
+        diamonds.lineWidth = 2.5
+        diamonds.stroke()
+        (selected ? NSColor.systemCyan : NSColor.white).setFill()
+        diamonds.fill()
     }
 
     private func drawLockStripes(_ rect: CGRect) {

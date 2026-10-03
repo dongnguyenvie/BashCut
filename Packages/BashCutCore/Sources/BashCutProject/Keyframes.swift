@@ -106,6 +106,9 @@ public struct ItemMotion: Sendable, Equatable {
 
     public var isEmpty: Bool { keys.values.allSatisfy(\.isEmpty) }
 
+    /// Every frame that has a key on any property, sorted and without repeats; the timeline marks these on the clip.
+    public var keyedFrames: [Int] { Set(keys.values.joined().map(\.frame)).sorted() }
+
     /// The animated value of `property` at `frame` (from the item's start; fractions allowed), or nil when it has
     /// no keys.
     public func value(_ property: String, at frame: Double) -> Double? {
