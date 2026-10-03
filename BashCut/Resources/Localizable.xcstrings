@@ -1,6 +1,12 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Terminals kept: they now work on %@ and read it before their next edit": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Terminals kept: they now work on %@ and read it before their next edit" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Giữ các terminal: giờ chúng làm việc trên %@ và sẽ đọc lại project trước lần sửa tiếp theo" } }
+      }
+    },
     "Other…": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Other…" } },

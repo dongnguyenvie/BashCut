@@ -188,7 +188,9 @@ final class ProjectDocument {
         plugins.proposals.removeAll()
         plugins.pendingAction = nil
         if privilegedApproval != nil { resolvePrivilegedApproval(false) }
-        agents.closeAll()
+        // Terminals stay open; the model-API panel and pending session lookups end with the old project.
+        let liveBookmarks = agents.liveBookmarks()
+        agents.resetProjectState()
         sourceViewer.reset()
         waveforms.reset()
         agentChangedIDs.removeAll()
@@ -214,6 +216,8 @@ final class ProjectDocument {
         message = ""
         startExternalFileMonitor()
         agents.projectChanged()
+        registry.projectSwitched(to: project.name)
+        agents.keepSessions(after: liveBookmarks)
         plugins.refresh(projectRoot: url.deletingLastPathComponent())
         if settings.checkPluginUpdatesDaily { Task { await plugins.checkForUpdatesIfDue() } }
     }

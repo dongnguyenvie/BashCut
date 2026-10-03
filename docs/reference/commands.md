@@ -24,7 +24,7 @@ Read the whole open project document.
 
 ### `bashcut project open <path> [--save-current] [--discard-current]`
 
-Open a project.bashcut.json (or its folder). Fails if the open project has unsaved changes unless saveCurrent or discardCurrent is set. In-app agent tabs close; external agents keep access.
+Open a project.bashcut.json (or its folder). Fails if the open project has unsaved changes unless saveCurrent or discardCurrent is set. Agent tabs stay open; every agent must read the new project (context get or timeline get) before its next edit.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_project_open`
 - `path`: string, required, path. Absolute path to project.bashcut.json or its folder

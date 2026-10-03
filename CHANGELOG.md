@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+- Fix: creating or opening a project closed every agent terminal, including the Codex or Claude tab that asked
+  for it, so an agent could not create a project and then fill it. Tabs now stay open across project switches;
+  each token must read the new project (`context get` / `timeline get` / `project get`) before its next edit,
+  and open conversations are bookmarked for the new project.
+
 - **Agent kit in BashCut.** The editing skills of `bashcut-agent-kit` ship inside BashCut and load in its Claude and
   Codex tabs (Claude: a skills-only plugin; Codex: links in its working folder). **Settings → Agents** shows the
   kit, can use another kit folder, and sets up Claude Code and Codex outside BashCut (plugin, skill links, MCP
