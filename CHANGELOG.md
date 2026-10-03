@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+- Snapshot Vietnamese captions directly from the compositor before H.264 encoding; test player readiness and
+  export metadata/non-black picture separately so encoder noise cannot fail caption layout checks.
+
 - Require plugin trust before dependency health probes, including Doctor and automation. Install approvals list
   probe commands without executing staged archives or chosen folders.
 

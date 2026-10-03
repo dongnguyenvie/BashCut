@@ -300,6 +300,10 @@ shown `AVMutableComposition` in place would need engine work), and the remaining
 
 ### Automated tests
 
+2026-10-04 rework: the Vietnamese caption golden is captured directly from the shared compositor, before
+hardware H.264 encoding. Player readiness and export metadata/non-black picture are separate tests. Full build,
+app/core tests and strict lint pass. A deliberate missing-caption mutation fails the golden comparison.
+
 The latest full runs pass 294 tests: 143 in the app modules (`Tests/`) and 151 in `Packages/BashCutCore`. The
 Swift 6 build and strict SwiftLint pass.
 
