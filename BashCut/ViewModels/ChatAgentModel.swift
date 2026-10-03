@@ -45,7 +45,7 @@ enum ChatEntryKind: String, Codable { case user, assistant, tool, notice, error 
     var draftImage: URL?
     private(set) var conversation = UUID().uuidString
     private var turn: Task<Void, Never>?
-    private var token: String?
+    private let commandSession = ChatCommandSession()
     /// The assistant entry text deltas are added to.
     private var streaming: UUID?
     static let maximumEntries = 400
@@ -171,12 +171,8 @@ enum ChatEntryKind: String, Codable { case user, assistant, tool, notice, error 
 
     /// Runs one command the model called, as an agent with this conversation's token.
     private func perform(_ method: String, _ params: JSONValue) async -> Result<JSONValue, PluginCallFailure> {
-        guard Self.tools.contains(where: { $0.object["method"]?.string == method }) else {
-            return .failure(PluginCallFailure(code: -32601, message: "Chat agents cannot run \(method)"))
-        }
-        if token == nil, document.settings.allowAgentEdits { token = document.registry.issueToken(author: .agent) }
-        let response = await document.registry.handle(
-            RPCRequest(id: .string(UUID().uuidString), method: method, params: params.object, token: token))
+        let response = await commandSession.perform(
+            method, params: params.object, allowEdits: document.settings.allowAgentEdits, registry: document.registry)
         if let failure = response.error { return .failure(PluginCallFailure(code: failure.code, message: failure.message)) }
         return .success(response.result ?? .null)
     }
@@ -242,9 +238,8 @@ enum ChatEntryKind: String, Codable { case user, assistant, tool, notice, error 
         if entries.count > Self.maximumEntries { entries.removeFirst(entries.count - Self.maximumEntries) }
     }
 
-    private func revokeToken() {
-        if let token { document.registry.revoke(token) }
-        token = nil
+    func revokeToken() {
+        commandSession.revoke(in: document.registry)
     }
 
     private var stateURL: URL? {
@@ -287,9 +282,9 @@ enum ChatEntryKind: String, Codable { case user, assistant, tool, notice, error 
         return .object(fields)
     }
 
-    /// Commands a chat agent may call: the catalogue, without the commands that manage agents and chat agents.
+    /// Reviewed commands exposed to the chat agent. The same allow-list guards execution.
     static let tools: [JSONValue] = CommandCatalog.specs
-        .filter { !$0.name.hasPrefix("agent.") && !$0.name.hasPrefix("chat.") && $0.name != "ui.notify" }
+        .filter { ChatCommandSession.allowedMethods.contains($0.name) }
         .map { spec in
             .object([
                 "name": .string(spec.mcpToolName), "method": .string(spec.name),
@@ -344,6 +339,10 @@ enum ChatEntryKind: String, Codable { case user, assistant, tool, notice, error 
             throw ProjectError.invalid("No chat agent is installed (plugins search --capability agent.chat)")
         }
         return first
+    }
+
+    func revokeTokens() {
+        for model in models.values { model.revokeToken() }
     }
 
     func projectChanged() {

@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+- Restrict chat tools to reviewed editing commands. Revoke chat tokens when agent edits are disabled, and
+  check the preference on every host call before issuing or reusing a token.
+
 - Refuse dependency repair when an approved plugin's files have changed, including disabled plugins. Recheck
   the full fingerprint before recipes start and require an explicit Trust action instead of silently repinning.
 
