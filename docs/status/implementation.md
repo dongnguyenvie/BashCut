@@ -394,3 +394,14 @@ instruction's caption ID and measures three Debug builds on the same M1 Max. Bef
 390.820 ms. After sweeping start/end events with an active layer set: 16.692 ms (about 23× faster).
 `IntervalSweepTests` compares overlapping, unsorted, empty, skipped and repeated boundaries with the previous
 half-open interval filtering rule, retaining original layer order. This measures construction, not rendering.
+
+### Audio composition lanes (2026-10-04)
+
+`swift test --filter AudioLaneTests/sequential` measures 240 one-frame audio cuts from generated AAC media,
+three Debug builds with a muted AVPlayer on this M1 Max. Before (22cce9d): 240 tracks, median construction
+19.420 ms and build-to-ready 717.611 ms. With shared lanes: one track, construction 18.793 ms and
+build-to-ready 93.591 ms. Separate earlier construction-only runs were 8.912 vs 15.446 ms: fewer tracks do not
+necessarily make construction faster, but the player readiness improvement is substantial in this fixture.
+Tests verify independent overlapping project layers, pitch-mode separation, ramp reset after fades and gaps,
+and decoded PCM RMS retaining a -20 dB step at a shared-track clip boundary. Readiness is polled every 1 ms;
+these timings are local observations, not portable thresholds.

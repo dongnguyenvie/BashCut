@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+- Reuse audio composition tracks for sequential clips on the same project layer with the same pitch mode.
+  Reset each clip's gain envelope and retain separate lanes for overlaps and different pitch algorithms.
+  A 240-cut fixture uses one audio track instead of 240; build-to-player-ready median fell from 718 to 94 ms.
+
 - Build frame instructions with an interval sweep that preserves compositing order and visits each layer's
   start/end once. A generated 1,000-caption Debug timeline improved from 390.82 ms to 16.69 ms median build.
 

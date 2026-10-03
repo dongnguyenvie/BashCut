@@ -57,7 +57,7 @@ public actor CompositionBuilder {
         let composition = AVMutableComposition()
         var visualByTrack: [String: [PlacedVisual]] = [:]
         var visualLanes: [String: [(end: Int, target: AVMutableCompositionTrack)]] = [:]
-        var audioParameters: [AVAudioMixInputParameters] = []
+        var audioLanes = AudioCompositionLanes()
         let speechRanges = AudioGainPlanner.speechRanges(in: project)
         var lutCache: [String: CubeLUT] = [:]
         let lutCatalog = Dictionary(uniqueKeysWithValues: project.colorLUTs.map { ($0.id, $0) })
@@ -190,11 +190,9 @@ public actor CompositionBuilder {
                 }
                 // Main sound remains attached in the spike until separate linked dialogue editing lands.
                 if track.kind == "audio" || (track.role == "main" && item["linkedAudio"] == nil) {
-                    if let source = asset.audio,
-                        let target = composition.addMutableTrack(
-                            withMediaType: .audio,
-                            preferredTrackID: kCMPersistentTrackID_Invalid)
-                    {
+                    if let source = asset.audio {
+                        let lane = try audioLanes.take(for: item, sourceTrack: track.id, composition: composition)
+                        let target = lane.track
                         if item.speedCurve != nil {
                             try Self.insertRamp(item, media: media, fps: project.fps, from: source, into: target)
                         } else {
@@ -203,10 +201,9 @@ public actor CompositionBuilder {
                                 CMTimeRange(start: destination, duration: normalSourceRange.duration),
                                 toDuration: project.fps.time(item.duration))
                         }
-                        let parameters = audioMixParameters(
-                            item: item, sourceTrack: track, track: target, fps: project.fps,
+                        applyAudioMixParameters(
+                            item: item, sourceTrack: track, parameters: lane.parameters, fps: project.fps,
                             envelope: (speechRanges, project.mixGainDb))
-                        audioParameters.append(parameters)
                     }
                 }
             }
@@ -260,7 +257,7 @@ public actor CompositionBuilder {
         video.frameDuration = project.fps.time(1)
         video.instructions = instructions
         let audio = AVMutableAudioMix()
-        audio.inputParameters = audioParameters
+        audio.inputParameters = audioLanes.parameters
         return CompositionSnapshot(
             composition: composition, videoComposition: video, audioMix: audio, structure: Self.structure(of: composition))
     }
@@ -347,15 +344,10 @@ public actor CompositionBuilder {
         return loaded
     }
 
-    private func audioMixParameters(
-        item: Item, sourceTrack: Track, track: AVCompositionTrack, fps: FrameRate,
+    private func applyAudioMixParameters(
+        item: Item, sourceTrack: Track, parameters: AVMutableAudioMixInputParameters, fps: FrameRate,
         envelope: (speech: [Range<Int>], mixGainDb: Double)
-    )
-        -> AVAudioMixInputParameters
-    {
-        let parameters = AVMutableAudioMixInputParameters(track: track)
-        parameters.audioTimePitchAlgorithm =
-            item["preservePitch"] == .bool(false) ? .varispeed : .spectral
+    ) {
         let points = AudioGainPlanner.points(
             for: item, on: sourceTrack, speech: envelope.speech, mixGainDb: envelope.mixGainDb)
         if let first = points.first { parameters.setVolume(first.volume, at: fps.time(first.frame)) }
@@ -365,7 +357,6 @@ public actor CompositionBuilder {
                 timeRange: CMTimeRange(
                     start: fps.time(start.frame), duration: fps.time(end.frame - start.frame)))
         }
-        return parameters
     }
 
 }
