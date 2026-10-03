@@ -465,7 +465,6 @@
 "Update %@?" = "Cập nhật %@?";
 "Update" = "Cập nhật";
 "From the plugin registry" = "Từ kho plugin";
-"Checksum verified. Archive signatures are not checked yet." = "Đã kiểm checksum. Chưa kiểm chữ ký của gói.";
 "Search plugins…" = "Tìm plugin…";
 "Show every plugin" = "Hiện mọi plugin";
 "Updated %@ ago" = "Cập nhật %@ trước";
@@ -515,3 +514,13 @@
 "The registry at %@ lists no plugins." = "Kho plugin tại %@ chưa có plugin nào.";
 "No published plugin provides %@ yet." = "Chưa có plugin nào cung cấp %@.";
 "Try another search, or clear the filter." = "Thử từ khóa khác hoặc bỏ bộ lọc.";
+"This version of BashCut from the App Store only runs the plugins that come with it" = "Bản BashCut từ App Store chỉ chạy các plugin đi kèm ứng dụng";
+"Signed by BashCut" = "Đã ký bởi BashCut";
+"Signed by %@" = "Đã ký bởi %@";
+"Signed by its publisher" = "Đã ký bởi nhà phát hành";
+"Not signed: only the checksum is verified. Install it only if you trust where it comes from." = "Chưa ký: chỉ kiểm được checksum. Chỉ cài nếu bạn tin nguồn của nó.";
+"Your version was withdrawn: %@" = "Phiên bản bạn đang dùng đã bị thu hồi: %@";
+"Check for plugin updates daily" = "Kiểm tra bản cập nhật plugin mỗi ngày";
+"Plugins (%d)" = "Plugin (%d)";
+"Plugin updates are available" = "Có bản cập nhật plugin";
+"Plugin Updates (%d)…" = "Cập nhật plugin (%d)…";

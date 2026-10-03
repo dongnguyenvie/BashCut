@@ -16,13 +16,26 @@ public struct PluginRegistryDocument: Codable, Sendable, Equatable {
     }
 
     public func entry(_ id: String) -> PluginRegistryEntry? { plugins.first { $0.id == id } }
+
+    /// Keys the registry lists for a third-party publisher; none for `bashcut`, whose keys only the app carries.
+    public func keys(for publisher: String?) -> [String] {
+        guard let publisher, publisher != "bashcut" else { return [] }
+        return publishers[publisher]?.keys ?? []
+    }
 }
 
 public struct PluginRegistryPublisher: Codable, Sendable, Equatable {
     public let name: LocalizedText
-    /// ed25519 public keys (`ed25519:BASE64`); reserved until archive signatures are checked.
+    /// ed25519 public keys (`ed25519:BASE64`) that sign this publisher's archives. Keys listed for `bashcut` here
+    /// are ignored: first-party keys are compiled into the app (`PluginSignature.firstPartyKeys`).
     public let keys: [String]?
     public let verified: Bool?
+
+    public init(name: LocalizedText, keys: [String]? = nil, verified: Bool? = nil) {
+        self.name = name
+        self.keys = keys
+        self.verified = verified
+    }
 }
 
 public struct PluginRegistryEntry: Codable, Sendable, Equatable, Identifiable {
@@ -57,7 +70,9 @@ public struct PluginRegistryEntry: Codable, Sendable, Equatable, Identifiable {
     /// Newest version this app can install, or why none can be.
     public func resolve(appVersion: String, platform: String = PluginPlatform.current) -> Result<PluginRegistryVersion, PluginError> {
         let app = SemanticVersion(appVersion)
-        let candidates = versions.filter { $0.platforms?.contains(where: { PluginPlatform.matches($0, platform) }) ?? true }
+        let published = versions.filter { $0.yanked == nil }
+        guard !published.isEmpty else { return .failure(.invalid("Every version was withdrawn")) }
+        let candidates = published.filter { $0.platforms?.contains(where: { PluginPlatform.matches($0, platform) }) ?? true }
         guard !candidates.isEmpty else { return .failure(.invalid("No build for this Mac (\(platform))")) }
         let apiFits = candidates.filter { version in
             let needed = version.minApiVersion ?? version.apiVersion
@@ -73,6 +88,9 @@ public struct PluginRegistryEntry: Codable, Sendable, Equatable, Identifiable {
         else { return .failure(.invalid("Needs a newer BashCut")) }
         return .success(best)
     }
+
+    /// The registry's record of an installed version, to tell whether it was yanked.
+    public func version(_ version: String) -> PluginRegistryVersion? { versions.first { $0.version == version } }
 
     /// True when the entry matches a search text (name, summary, id, category or capability).
     public func matches(_ query: String) -> Bool {
@@ -97,11 +115,14 @@ public struct PluginRegistryVersion: Codable, Sendable, Equatable {
     /// Models or tools the plugin's install recipes download, shown before approval.
     public let downloadBytes: Int?
     public let releasedAt: String?
+    /// Why this version was withdrawn (a serious bug, a bad archive). Yanked versions are never offered; users who
+    /// have one are told to update.
+    public let yanked: String?
 
     public init(
         version: String, apiVersion: Int, minApiVersion: Int? = nil, minAppVersion: String? = nil,
         platforms: [String]? = nil, url: String, sha256: String, signature: String? = nil, size: Int? = nil,
-        downloadBytes: Int? = nil, releasedAt: String? = nil
+        downloadBytes: Int? = nil, releasedAt: String? = nil, yanked: String? = nil
     ) {
         self.version = version
         self.apiVersion = apiVersion
@@ -114,6 +135,7 @@ public struct PluginRegistryVersion: Codable, Sendable, Equatable {
         self.size = size
         self.downloadBytes = downloadBytes
         self.releasedAt = releasedAt
+        self.yanked = yanked
     }
 }
 
@@ -220,6 +242,11 @@ public actor PluginRegistryClient {
             guard let cached else { throw error }
             return Snapshot(document: cached.document, fetchedAt: cached.meta.fetchedAt, staleReason: error.localizedDescription)
         }
+    }
+
+    /// The last good copy, without touching the network; nil when there is none for this URL.
+    public func cached() -> Snapshot? {
+        loadCache().map { Snapshot(document: $0.document, fetchedAt: $0.meta.fetchedAt, staleReason: nil) }
     }
 
     /// The URL to fetch: with `force`, an extra `t` query item makes the CDN treat it as a new resource.

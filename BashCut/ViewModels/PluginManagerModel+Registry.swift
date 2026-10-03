@@ -18,6 +18,10 @@ struct PluginListing: Identifiable {
     let version: PluginRegistryVersion?
     let installed: InstalledPlugin?
     let status: Status
+    /// Who signed the offered version; nil when there is none to offer.
+    var publisherTrust: PluginPublisherTrust?
+    /// Why the installed version was withdrawn from the registry, when it was.
+    var installedYanked: String?
     var id: String { entry.id }
 
     var json: JSONValue {
@@ -38,6 +42,8 @@ struct PluginListing: Identifiable {
             "version": version.map { .string($0.version) } ?? .null,
             "installedVersion": installed.map { .string($0.manifest.version) } ?? .null,
             "size": version?.size.map(JSONValue.integer) ?? .null,
+            "signature": publisherTrust.map { .string($0.name) } ?? .null,
+            "installedYanked": installedYanked.map(JSONValue.string) ?? .null,
         ]
         if case .incompatible(let reason) = status { fields["reason"] = .string(reason) }
         return .object(fields)
@@ -68,6 +74,29 @@ extension PluginManagerModel {
         }
     }
 
+    static let updateCheckInterval: TimeInterval = 24 * 60 * 60
+    static let updateCheckKey = "pluginUpdatesCheckedAt"
+
+    /// Once a day, fetches the registry so Updates and the Plugins button can show what is new; otherwise reads
+    /// the saved copy only. Installs nothing.
+    func checkForUpdatesIfDue(defaults: UserDefaults = .standard, now: Date = Date()) async {
+        guard PluginChannel.current.allowsUserPlugins else { return }
+        let last = defaults.object(forKey: Self.updateCheckKey) as? Date ?? .distantPast
+        if now.timeIntervalSince(last) >= Self.updateCheckInterval {
+            await refreshRegistry()
+            if registryError == nil { defaults.set(now, forKey: Self.updateCheckKey) }
+        } else if registry == nil, let cached = await registryClient.cached() {
+            registry = cached.document
+            registryFetchedAt = cached.fetchedAt
+        }
+    }
+
+    /// Why the registry withdrew this installed version, if it did.
+    func yankedReason(_ plugin: InstalledPlugin) -> String? {
+        guard isUserInstalled(plugin) else { return nil }
+        return registry?.entry(plugin.id)?.version(plugin.manifest.version)?.yanked
+    }
+
     /// Registry plugins matching `query` and `capability`, with what installing would do.
     func listings(query: String = "", capability: String? = nil) -> [PluginListing] {
         (registry?.plugins ?? []).filter { entry in
@@ -80,20 +109,43 @@ extension PluginManagerModel {
     }
 
     func listing(_ entry: PluginRegistryEntry) -> PluginListing {
+        var listing = resolvedListing(entry)
+        if let installed = listing.installed { listing.installedYanked = entry.version(installed.manifest.version)?.yanked }
+        return listing
+    }
+
+    private func resolvedListing(_ entry: PluginRegistryEntry) -> PluginListing {
         let installed = plugins.first { $0.id == entry.id }
         switch entry.resolve(appVersion: Self.appVersion) {
         case .failure(let error):
             return PluginListing(entry: entry, version: nil, installed: installed, status: .incompatible(error.localizedDescription))
         case .success(let version):
-            guard let installed else { return PluginListing(entry: entry, version: version, installed: nil, status: .available) }
+            let signer: PluginPublisherTrust
+            do {
+                signer = try PluginSignature.verify(
+                    digest: version.sha256.lowercased(), signature: version.signature, publisher: entry.publisher,
+                    registryKeys: registry?.keys(for: entry.publisher) ?? [])
+            } catch {
+                return PluginListing(entry: entry, version: nil, installed: installed, status: .incompatible(error.localizedDescription))
+            }
+            guard let installed else {
+                return PluginListing(entry: entry, version: version, installed: nil, status: .available, publisherTrust: signer)
+            }
             guard isUserInstalled(installed) else {
-                return PluginListing(entry: entry, version: version, installed: installed, status: .shadowed)
+                return PluginListing(entry: entry, version: version, installed: installed, status: .shadowed, publisherTrust: signer)
             }
             let current = SemanticVersion(installed.manifest.version) ?? .zero
-            let status: PluginListing.Status = (SemanticVersion(version.version) ?? .zero) > current
+            let offered = SemanticVersion(version.version) ?? .zero
+            // A withdrawn installed version is replaced by the newest good one, even an older one.
+            let yanked = entry.version(installed.manifest.version)?.yanked != nil
+            let status: PluginListing.Status = offered > current || (yanked && offered != current)
                 ? .update(from: installed.manifest.version) : .installed
-            return PluginListing(entry: entry, version: version, installed: installed, status: status)
+            return PluginListing(entry: entry, version: version, installed: installed, status: status, publisherTrust: signer)
         }
+    }
+
+    static var channelRefusal: String {
+        String(localized: "This version of BashCut from the App Store only runs the plugins that come with it")
     }
 
     /// Plugins in the user or project folder can be removed; plugins inside the app can only be turned off.
@@ -106,6 +158,7 @@ extension PluginManagerModel {
     /// Downloads and verifies a registry plugin, then shows the install approval. Nothing runs before the user
     /// approves it.
     func requestInstall(_ id: String, version requested: String? = nil) async throws {
+        guard PluginChannel.current.allowsUserPlugins else { throw PluginError.invalid(Self.channelRefusal) }
         if registry == nil { await refreshRegistry() }
         guard let entry = registry?.entry(id) else { throw PluginError.invalid("No plugin \(id) in the registry") }
         let version: PluginRegistryVersion
@@ -126,7 +179,8 @@ extension PluginManagerModel {
             let allowFiles = false
         #endif
         let installer = PluginArchiveInstaller(stagingParent: service.roots.user, allowFileURLs: allowFiles)
-        let staged = try await installer.stage(entry, version: version)
+        let staged = try await installer.stage(
+            entry, version: version, publisherKeys: registry?.keys(for: entry.publisher) ?? [])
         cancelPendingInstall()
         let installed = plugins.first { $0.id == id && isUserInstalled($0) }
         var pending = PendingPluginInstall(plugin: staged.plugin, archive: staged, replacing: installed != nil)

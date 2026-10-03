@@ -25,8 +25,11 @@ public struct PluginCatalogResult: Sendable {
 }
 
 public enum PluginCatalog {
-    /// Earlier roots win: project plugins can override user plugins, which can override bundled plugins.
-    public static func discover(in roots: [URL]) -> PluginCatalogResult {
+    /// Earlier roots win: project plugins can override user plugins, which can override bundled plugins. A plugin
+    /// in `bundled` (inside the app) is overridden only by a higher version, so a stale download never hides the
+    /// newer copy an app update brought.
+    public static func discover(in roots: [URL], bundled: URL? = nil) -> PluginCatalogResult {
+        let bundledPath = bundled?.standardizedFileURL.path
         let manager = FileManager.default
         var plugins: [String: InstalledPlugin] = [:]
         var diagnostics: [String] = []
@@ -42,8 +45,19 @@ public enum PluginCatalog {
                     let manifest = try decoder.decode(
                         PluginManifest.self, from: Data(contentsOf: manifestURL))
                     try manifest.validate()
-                    guard plugins[manifest.id] == nil else {
-                        diagnostics.append("Ignored duplicate plugin \(manifest.id) at \(directory.path)")
+                    if let earlier = plugins[manifest.id] {
+                        let newer = root.standardizedFileURL.path == bundledPath
+                            && (SemanticVersion(manifest.version) ?? .zero) > (SemanticVersion(earlier.manifest.version) ?? .zero)
+                        guard newer else {
+                            diagnostics.append("Ignored duplicate plugin \(manifest.id) at \(directory.path)")
+                            continue
+                        }
+                        let plugin = InstalledPlugin(manifest: manifest, directory: directory)
+                        _ = try plugin.entrypointURL()
+                        diagnostics.append(
+                            "\(manifest.id) \(earlier.manifest.version) at \(earlier.directory.path) is older than the "
+                                + "copy in BashCut (\(manifest.version)); using BashCut's")
+                        plugins[manifest.id] = plugin
                         continue
                     }
                     let plugin = InstalledPlugin(manifest: manifest, directory: directory)

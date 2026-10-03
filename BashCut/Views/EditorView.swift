@@ -202,10 +202,13 @@ struct EditorView: View {
                 }.foregroundStyle(.orange).help("Review edits plugin hooks proposed")
             }
             Button {
+                if !document.plugins.updates.isEmpty { document.plugins.tab = .updates }
                 document.run(.showPlugins)
             } label: {
-                Label("Plugins", systemImage: "puzzlepiece.extension")
-            }
+                let updates = document.plugins.updates.count
+                Label(updates > 0 ? String(format: String(localized: "Plugins (%d)"), updates) : String(localized: "Plugins"),
+                      systemImage: updates > 0 ? "puzzlepiece.extension.fill" : "puzzlepiece.extension")
+            }.help(document.plugins.updates.isEmpty ? "" : String(localized: "Plugin updates are available"))
             Button {
                 document.run(.showDoctor)
             } label: {

@@ -84,9 +84,12 @@ private struct PluginListingRow: View {
                 HStack(spacing: 6) {
                     Text(listing.entry.name.text).font(.headline)
                     if let version = listing.version { Text("v" + version.version).foregroundStyle(.secondary) }
-                    if publisherVerified {
+                    if listing.publisherTrust == .firstParty {
                         Label("BashCut", systemImage: "checkmark.seal.fill").labelStyle(.titleAndIcon)
-                            .font(.caption2).foregroundStyle(.cyan)
+                            .font(.caption2).foregroundStyle(.cyan).help("Signed by BashCut")
+                    } else if case .verifiedPublisher(let publisher)? = listing.publisherTrust {
+                        Label(publisher, systemImage: "checkmark.seal").labelStyle(.titleAndIcon)
+                            .font(.caption2).foregroundStyle(.green).help("Signed by its publisher")
                     }
                 }
                 if let summary = listing.entry.summary { Text(summary.text).font(.caption) }
@@ -104,6 +107,10 @@ private struct PluginListingRow: View {
                 if case .incompatible(let reason) = listing.status {
                     Text(reason).font(.caption).foregroundStyle(.orange)
                 }
+                if let reason = listing.installedYanked {
+                    Label(String(format: String(localized: "Your version was withdrawn: %@"), reason),
+                          systemImage: "exclamationmark.triangle.fill").font(.caption).foregroundStyle(.orange)
+                }
                 if case .shadowed = listing.status {
                     Text("Installed in this project or the app").font(.caption).foregroundStyle(.secondary)
                 }
@@ -111,11 +118,6 @@ private struct PluginListingRow: View {
             Spacer()
             action
         }.padding(.vertical, 4)
-    }
-
-    private var publisherVerified: Bool {
-        guard let id = listing.entry.publisher else { return false }
-        return model.registry?.publishers[id]?.verified == true
     }
 
     @ViewBuilder private var action: some View {

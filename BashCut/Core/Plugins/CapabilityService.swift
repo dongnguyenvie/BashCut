@@ -3,26 +3,32 @@ import BashCutProject
 import Foundation
 
 /// Catalog roots in resolution order: project overrides user, which overrides bundled plugins.
+/// The App Store channel searches the bundled root only (`PluginChannel`).
 public struct PluginRoots: Sendable, Equatable {
     public let user: URL
     public let bundled: URL?
+    /// Project and user plugins are found (false in the App Store build).
+    public let includesUserPlugins: Bool
 
-    public init(user: URL, bundled: URL?) {
+    public init(user: URL, bundled: URL?, includesUserPlugins: Bool = true) {
         self.user = user
         self.bundled = bundled
+        self.includesUserPlugins = includesUserPlugins
     }
 
     public static var standard: PluginRoots {
         PluginRoots(
             user: FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
                 .appendingPathComponent("BashCut/Plugins", isDirectory: true),
-            bundled: Bundle.main.builtInPlugInsURL)
+            bundled: Bundle.main.builtInPlugInsURL, includesUserPlugins: PluginChannel.current.allowsUserPlugins)
     }
 
     public func ordered(projectRoot: URL?) -> [URL] {
         var roots: [URL] = []
-        if let projectRoot { roots.append(projectRoot.appendingPathComponent(".bashcut/plugins")) }
-        roots.append(user)
+        if includesUserPlugins {
+            if let projectRoot { roots.append(projectRoot.appendingPathComponent(".bashcut/plugins")) }
+            roots.append(user)
+        }
         if let bundled { roots.append(bundled) }
         return roots
     }
@@ -55,7 +61,7 @@ public struct CapabilityService: Sendable {
     }
 
     public func catalog(projectRoot: URL?) -> PluginCatalogResult {
-        PluginCatalog.discover(in: roots.ordered(projectRoot: projectRoot))
+        PluginCatalog.discover(in: roots.ordered(projectRoot: projectRoot), bundled: roots.bundled)
     }
 
     /// Whether the plugin may run now: approved, unchanged, turned on and API-compatible.

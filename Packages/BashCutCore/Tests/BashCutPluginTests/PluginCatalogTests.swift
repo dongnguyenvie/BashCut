@@ -90,6 +90,34 @@ struct PluginCatalogTests {
         #expect(result.diagnostics.count == 1)
     }
 
+    @Test("A bundled plugin wins over an older user copy, but not over a newer one")
+    func bundledPrecedence() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        func install(_ folder: String, version: String) throws -> URL {
+            let directory = root.appendingPathComponent(folder)
+            let plugin = directory.appendingPathComponent("audio")
+            try FileManager.default.createDirectory(at: plugin.appendingPathComponent("bin"), withIntermediateDirectories: true)
+            let executable = plugin.appendingPathComponent("bin/provider")
+            try Data("#!/bin/sh\n".utf8).write(to: executable)
+            try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: executable.path)
+            let manifest = PluginManifest(
+                id: "bashcut.audio-analysis", name: "Audio", version: version, entrypoint: "bin/provider",
+                capabilities: ["audio.beats"])
+            try JSONEncoder().encode(manifest).write(to: plugin.appendingPathComponent("plugin.json"))
+            return directory
+        }
+        let bundled = try install("bundled", version: "1.2.0")
+        let olderUser = try install("user-old", version: "1.1.0")
+        let newerUser = try install("user-new", version: "1.3.0")
+        let stale = PluginCatalog.discover(in: [olderUser, bundled], bundled: bundled)
+        #expect(stale.plugins.first?.manifest.version == "1.2.0")
+        let hotfix = PluginCatalog.discover(in: [newerUser, bundled], bundled: bundled)
+        #expect(hotfix.plugins.first?.manifest.version == "1.3.0")
+        // Without a bundled root, the earlier root wins as before.
+        #expect(PluginCatalog.discover(in: [olderUser, bundled]).plugins.first?.manifest.version == "1.1.0")
+    }
+
     @Test("Entrypoints cannot escape a plugin bundle")
     func traversal() {
         let manifest = PluginManifest(

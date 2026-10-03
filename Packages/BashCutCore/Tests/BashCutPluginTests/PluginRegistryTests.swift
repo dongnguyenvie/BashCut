@@ -8,10 +8,11 @@ struct PluginRegistryTests {
 
     private func version(
         _ value: String, api: Int = 2, minApp: String? = nil, platforms: [String]? = nil, url: String = "https://github.com/x.zip",
-        sha256: String = "00"
+        sha256: String = "00", signature: String? = nil, yanked: String? = nil
     ) -> PluginRegistryVersion {
         PluginRegistryVersion(
-            version: value, apiVersion: api, minAppVersion: minApp, platforms: platforms, url: url, sha256: sha256)
+            version: value, apiVersion: api, minAppVersion: minApp, platforms: platforms, url: url, sha256: sha256,
+            signature: signature, yanked: yanked)
     }
 
     @Test("Registry JSON decodes localized names and rejects newer schemas")
@@ -47,6 +48,50 @@ struct PluginRegistryTests {
         #expect(throws: PluginError.self) { try intelOnly.resolve(appVersion: "1.0.0", platform: "macos-arm64").get() }
         let universal = PluginRegistryEntry(id: "a.b", name: "A", versions: [version("1.0.0", platforms: ["macos-universal"])])
         #expect(try universal.resolve(appVersion: "1.0.0", platform: "macos-arm64").get().version == "1.0.0")
+    }
+
+    @Test("Yanked versions are never offered")
+    func yanked() throws {
+        let entry = PluginRegistryEntry(id: "a.b", name: "A", versions: [
+            version("0.0.1"), version("0.0.2", yanked: "Deletes clips"),
+        ])
+        #expect(try entry.resolve(appVersion: "1.0.0").get().version == "0.0.1")
+        #expect(entry.version("0.0.2")?.yanked == "Deletes clips")
+        let allYanked = PluginRegistryEntry(id: "a.b", name: "A", versions: [version("0.0.2", yanked: "Bad")])
+        #expect(throws: PluginError.self) { try allYanked.resolve(appVersion: "1.0.0").get() }
+    }
+
+    @Test("Signatures: first-party key, a registry publisher key, unsigned, and forgeries")
+    func signatures() throws {
+        let bashcut = Data(repeating: 1, count: 32)
+        let partner = Data(repeating: 2, count: 32)
+        let firstParty = [try PluginSignature.publicKey(of: bashcut)]
+        let partnerKeys = [try PluginSignature.publicKey(of: partner)]
+        let digest = String(repeating: "ab", count: 32)
+        let signed = try PluginSignature.sign(digest: digest, privateKey: bashcut)
+        #expect(try PluginSignature.verify(
+            digest: digest, signature: signed, publisher: "bashcut", registryKeys: [], firstPartyKeys: firstParty) == .firstParty)
+        let partnerSigned = try PluginSignature.sign(digest: digest, privateKey: partner)
+        #expect(try PluginSignature.verify(
+            digest: digest, signature: partnerSigned, publisher: "acme", registryKeys: partnerKeys,
+            firstPartyKeys: firstParty) == .verifiedPublisher("acme"))
+        #expect(try PluginSignature.verify(
+            digest: digest, signature: nil, publisher: "acme", registryKeys: [], firstPartyKeys: firstParty) == .unsigned)
+        // A partner key cannot pass as first party, and a signature for another archive is refused.
+        #expect(throws: PluginError.self) {
+            try PluginSignature.verify(
+                digest: digest, signature: partnerSigned, publisher: "bashcut", registryKeys: [], firstPartyKeys: firstParty)
+        }
+        #expect(throws: PluginError.self) {
+            try PluginSignature.verify(
+                digest: String(repeating: "cd", count: 32), signature: signed, publisher: "bashcut", registryKeys: [],
+                firstPartyKeys: firstParty)
+        }
+        // The registry cannot list keys for bashcut.
+        let document = PluginRegistryDocument(
+            publishers: ["bashcut": PluginRegistryPublisher(name: "BashCut", keys: partnerKeys, verified: true)], plugins: [])
+        #expect(document.keys(for: "bashcut").isEmpty)
+        #expect(PluginSignature.firstPartyKeys.count == 1)
     }
 
     @Test("Semantic versions compare numerically with prereleases first")
@@ -120,8 +165,25 @@ struct PluginRegistryTests {
         #expect(staged.plugin.id == "bashcut.demo")
         #expect(staged.plugin.directory.lastPathComponent == "bashcut.demo")
         #expect(FileManager.default.isExecutableFile(atPath: staged.plugin.directory.appendingPathComponent("bin/provider").path))
+        #expect(staged.publisherTrust == .unsigned)
         staged.discard()
         #expect(!FileManager.default.fileExists(atPath: staged.stagingRoot.path))
+        let key = Data(repeating: 7, count: 32)
+        let signature = try PluginSignature.sign(digest: sha, privateKey: key)
+        let signedEntry = PluginRegistryEntry(id: "bashcut.demo", name: "Demo", publisher: "bashcut", versions: [])
+        let signed = try await installer().stage(
+            signedEntry, version: version("1.0.0", url: zip.absoluteString, sha256: sha, signature: signature),
+            firstPartyKeys: [try PluginSignature.publicKey(of: key)])
+        #expect(signed.publisherTrust == .firstParty)
+        signed.discard()
+        await #expect(throws: PluginError.self) {
+            try await installer().stage(
+                signedEntry, version: version("1.0.0", url: zip.absoluteString, sha256: sha, signature: signature))
+        }
+        await #expect(throws: PluginError.self) {
+            try await installer().stage(
+                entry, version: version("1.0.0", url: zip.absoluteString, sha256: sha, yanked: "Broken"))
+        }
     }
 
     @Test("Wrong checksum, id, version, links or source are refused")

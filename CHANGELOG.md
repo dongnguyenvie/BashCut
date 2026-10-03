@@ -5,6 +5,16 @@
 
 ## [Unreleased]
 
+- **Signed plugins**: registry archives signed with ed25519 (over their SHA-256) show *Signed by BashCut* or
+  *Signed by <publisher>*; unsigned ones show a warning, and a signature that matches no key is refused. The BashCut
+  key is compiled into the app; the registry cannot add first-party keys.
+- **Yanked plugin versions**: a registry version marked `yanked` is never offered; users who have it see why, and
+  Updates offers the newest good version.
+- **Daily plugin update check**: opening a project checks the registry once a day (Settings switch, on by
+  default); the Plugins button and menu show how many updates wait. Nothing installs without the user.
+- **App Store channel**: sandboxed builds run only the plugins inside the app (no Browse, Updates or Install
+  Plugin…, no user or project plugin folders). A bundled plugin now loses only to a higher version of itself.
+
 - Plugins › Browse: the refresh button bypasses GitHub's 5-minute CDN copy of `registry.json`, so a just-published
   plugin shows at once; an empty list now says whether nothing is published, nothing matches or no plugin provides
   the capability yet.

@@ -25,6 +25,10 @@ struct PendingPluginInstall: Identifiable {
 enum PluginSheetTab: String, CaseIterable, Identifiable {
     case installed, browse, updates, activity
     var id: String { rawValue }
+    /// The App Store build has no registry, so no Browse or Updates.
+    static var visible: [PluginSheetTab] {
+        PluginChannel.current.allowsUserPlugins ? allCases : [.installed, .activity]
+    }
     var title: String {
         switch self {
         case .installed: String(localized: "Installed")
@@ -290,6 +294,10 @@ enum PluginText {
     }
 
     func choosePlugin() {
+        guard PluginChannel.current.allowsUserPlugins else {
+            message = Self.channelRefusal
+            return
+        }
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
