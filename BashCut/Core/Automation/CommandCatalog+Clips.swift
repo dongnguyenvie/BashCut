@@ -6,9 +6,10 @@ extension CommandCatalog {
     private static let motionSummary: String =
         "Animate a clip, image or text over its length (Inspector › Animation): a preset (\(motionPresets); none "
         + "removes the animation) sized to the item, or keyframes JSON {property: [{frame, value, ease?}, …]} with "
-        + "frames from the item's start. Properties: zoom, pan, tilt (px, up), rotation (degrees), opacity; ease: "
-        + "\(eases) (default inOut). Keys replace the item's static value for that property. Images with zoom-in, "
-        + "zoom-out or pan-* make a Ken Burns move."
+        + "frames from the item's start. Properties: zoom, pan, tilt (px, up), rotation (degrees), opacity, and volume "
+        + "(dB, like volumeDb; the only one on audio items, none on text); ease: \(eases) (default inOut). Keys "
+        + "replace the item's static value for that property. Images with zoom-in, zoom-out or pan-* make a Ken Burns "
+        + "move; presets are for pictures and text."
 
     /// Caption import (generation is with the plugin capabilities).
     static let captionSpecs: [CommandSpec] = [
@@ -73,7 +74,8 @@ extension CommandCatalog {
             "clip.keyframe", .edit,
             "Set one keyframe like the Inspector's controls with keyframes on: property at a timeline frame (the "
                 + "playhead by default) to value (its current value when omitted); remove deletes that key. Without "
-                + "property, keys every property at its current value (the Inspector's Keyframe at playhead).",
+                + "property, keys every picture property at its current value (the Inspector's Keyframe at playhead); "
+                + "on an audio item, its volume. Volume (dB) works on audio items and clips with sound.",
             parameters: [
                 CommandParameter("item", .string, "Item ID; the selection by default", cli: .positional),
                 CommandParameter("property", .string, "Property; all of them by default",

@@ -35,6 +35,34 @@ struct KeyframeTests {
         #expect(try ItemMotion(json: motion.json) == motion)
     }
 
+    @Test("Audio items animate only volume, text items no volume; picture motion leaves volume out")
+    func volumeKeys() throws {
+        #expect(ItemMotion.properties(onTrackKind: TrackKind.audio) == ["volume"])
+        #expect(!ItemMotion.properties(onTrackKind: TrackKind.text).contains("volume"))
+        #expect(ItemMotion.properties(onTrackKind: TrackKind.video).contains("volume"))
+        let volume = ItemMotion(keys: ["volume": [.init(frame: 0, value: -6)]])
+        #expect(volume.picture == nil)
+        let both = ItemMotion(keys: ["volume": [.init(frame: 0, value: -6)], "zoom": [.init(frame: 0, value: 2)]])
+        #expect(both.picture?.keys.keys.sorted() == ["zoom"])
+        _ = try project(keyframes: volume.json)
+        #expect(throws: ProjectError.self) {
+            try project(keyframes: ItemMotion(keys: ["volume": [.init(frame: 0, value: 30)]]).json)
+        }
+
+        func insert(_ item: Item, on track: String) throws {
+            _ = try project().applying(.insert(track: track, item: item))
+        }
+        var music = Item(id: "b", media: "m", at: 0, duration: 30)
+        music["keyframes"] = volume.json
+        try insert(music, on: "a1")
+        music["keyframes"] = both.json
+        #expect(throws: ProjectError.self) { try insert(music, on: "a1") }
+        var title = Item(id: "c", at: 0, duration: 30)
+        title["text"] = .string("Hi")
+        title["keyframes"] = volume.json
+        #expect(throws: ProjectError.self) { try insert(title, on: "t1") }
+    }
+
     @Test("Keyed frames list each frame with a key once, in order")
     func keyedFrames() {
         let motion = ItemMotion(keys: [

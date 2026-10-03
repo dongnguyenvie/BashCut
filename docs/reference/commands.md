@@ -481,7 +481,7 @@ Give a clip a speed ramp (CapCut Curve) like Inspector › Speed › Curve: a pr
 
 ### `bashcut clip motion [<item>] [--preset <preset>] [--keyframes <keyframes>] --base-rev <baseRev>`
 
-Animate a clip, image or text over its length (Inspector › Animation): a preset (zoom-in, zoom-out, pan-left, pan-right, pan-up, pan-down, fade-in-out, pop-in, slide-up, zoom-punch; none removes the animation) sized to the item, or keyframes JSON {property: [{frame, value, ease?}, …]} with frames from the item's start. Properties: zoom, pan, tilt (px, up), rotation (degrees), opacity; ease: linear, in, out, inOut, hold (default inOut). Keys replace the item's static value for that property. Images with zoom-in, zoom-out or pan-* make a Ken Burns move.
+Animate a clip, image or text over its length (Inspector › Animation): a preset (zoom-in, zoom-out, pan-left, pan-right, pan-up, pan-down, fade-in-out, pop-in, slide-up, zoom-punch; none removes the animation) sized to the item, or keyframes JSON {property: [{frame, value, ease?}, …]} with frames from the item's start. Properties: zoom, pan, tilt (px, up), rotation (degrees), opacity, and volume (dB, like volumeDb; the only one on audio items, none on text); ease: linear, in, out, inOut, hold (default inOut). Keys replace the item's static value for that property. Images with zoom-in, zoom-out or pan-* make a Ken Burns move; presets are for pictures and text.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_clip_motion`
 - `item`: string. Item ID; the selection by default
@@ -491,11 +491,11 @@ Animate a clip, image or text over its length (Inspector › Animation): a prese
 
 ### `bashcut clip keyframe [<item>] [--property <property>] [--value <value>] [--at-frame <atFrame>] [--ease <ease>] [--remove] --base-rev <baseRev>`
 
-Set one keyframe like the Inspector's controls with keyframes on: property at a timeline frame (the playhead by default) to value (its current value when omitted); remove deletes that key. Without property, keys every property at its current value (the Inspector's Keyframe at playhead).
+Set one keyframe like the Inspector's controls with keyframes on: property at a timeline frame (the playhead by default) to value (its current value when omitted); remove deletes that key. Without property, keys every picture property at its current value (the Inspector's Keyframe at playhead); on an audio item, its volume. Volume (dB) works on audio items and clips with sound.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_clip_keyframe`
 - `item`: string. Item ID; the selection by default
-- `property`: string, one of opacity, pan, rotation, tilt, zoom. Property; all of them by default
+- `property`: string, one of opacity, pan, rotation, tilt, volume, zoom. Property; all of them by default
 - `value`: number. Value
 - `atFrame`: integer, ≥ 0. Timeline frame inside the item; the playhead by default
 - `ease`: string, one of linear, in, out, inOut, hold. Change to the next key

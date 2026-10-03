@@ -56,7 +56,7 @@ A command in *italics* is planned and does not exist yet. "—" means manual onl
 | T-7 | Automatic "Change framing" | P1 | Implemented | `timeline apply` (`setProperties`) |
 | T-8 | Constant speed, freeze frame | P1 | Implemented | `timeline apply` (`setProperties`) |
 | T-9 | Speed ramps (curve) | P2 | Planned | *`timeline apply` (`setProperties`)* |
-| T-10 | Keyframes for zoom, pan, tilt, rotation and opacity (clips, images, text), presets such as Ken Burns | P2 | Implemented (volume keyframes Planned) | `clip motion`, `clip keyframe` |
+| T-10 | Keyframes for zoom, pan, tilt, rotation and opacity (clips, images, text) and volume (audio, clips with sound), presets such as Ken Burns | P2 | Implemented | `clip motion`, `clip keyframe` |
 | T-11 | ◆ badge on agent changes, undo toast, Show Changes | P0 | Implemented | `ui action agent.show-changes` / `agent.undo-changes` |
 | T-12 | Face-aware placement (Vision): stickers and captions avoid faces; reframe keeps faces in frame | P2 | Planned | *`timeline apply` (`setProperties`)* |
 

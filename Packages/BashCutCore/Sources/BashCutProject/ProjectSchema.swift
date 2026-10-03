@@ -319,7 +319,8 @@ public enum ProjectSchema {
             "keyframes": .object([
                 "type": .string("object"),
                 "description": .string(
-                    "Animation (video and text layers): property → keys sorted by frame, counted from the item's start; "
+                    "Animation (video, text and audio layers; audio animates volume only): property → keys sorted by "
+                        + "frame, counted from the item's start; "
                         + "values between keys follow each key's ease, and hold before the first and after the last key"),
                 "additionalProperties": .bool(false),
                 "properties": .object(Dictionary(uniqueKeysWithValues: ItemMotion.ranges.map { name, range in

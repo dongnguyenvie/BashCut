@@ -1,14 +1,15 @@
 import Foundation
 
-/// Animation of an item's picture over its length: the item field `keyframes`, an object from property name to a
+/// Animation of an item's picture and sound over its length: the item field `keyframes`, an object from property name to a
 /// list of `{"frame", "value", "ease"?}` sorted by frame. Frames count from the item's start (0 = its first frame)
 /// and move with the picture when the item is split or its start is trimmed. Before the first key the property
 /// keeps the first value, after the last key the last value. `ease` shapes the change from that key to the next.
 ///
 /// Properties: `zoom` (scale over the fitted or filled size, like `transform.zoom`), `pan` and `tilt` (offset in
-/// output pixels, like `transform.pan`/`tilt`; tilt is up), `rotation` (degrees, counterclockwise) and `opacity`.
-/// A property with keys replaces the item's static value; the others keep it. On text items, zoom scales the text
-/// around its own position.
+/// output pixels, like `transform.pan`/`tilt`; tilt is up), `rotation` (degrees, counterclockwise) and `opacity`
+/// animate the picture; `volume` (gain in dB, like `volumeDb`) the sound. A property with keys replaces the item's
+/// static value; the others keep it. On text items, zoom scales the text around its own position. Audio items have
+/// only `volume`, text items have no `volume` (see `properties(onTrackKind:)`).
 public struct ItemMotion: Sendable, Equatable {
     public enum Ease: String, Sendable, CaseIterable {
         case linear
@@ -43,6 +44,7 @@ public struct ItemMotion: Sendable, Equatable {
 
     public static let ranges: [String: ClosedRange<Double>] = [
         "zoom": 0.01...100, "pan": -65536...65536, "tilt": -65536...65536, "rotation": -3600...3600, "opacity": 0...1,
+        "volume": -120...24,
     ]
     public static let summaries = [
         "zoom": "Scale over the fitted or filled size (1 = unchanged)",
@@ -50,7 +52,20 @@ public struct ItemMotion: Sendable, Equatable {
         "tilt": "Vertical offset in output pixels, up",
         "rotation": "Rotation in degrees, counterclockwise",
         "opacity": "Opacity, 0 to 1",
+        "volume": "Gain in dB (0 = unchanged), like volumeDb; audio and clips with sound",
     ]
+    /// The properties that move the picture, in the order the Inspector shows them.
+    public static let pictureProperties = ["zoom", "pan", "tilt", "rotation", "opacity"]
+
+    /// The properties an item on a layer of `kind` can animate.
+    public static func properties(onTrackKind kind: String) -> [String] {
+        switch kind {
+        case TrackKind.video: pictureProperties + ["volume"]
+        case TrackKind.text: pictureProperties
+        case TrackKind.audio: ["volume"]
+        default: []
+        }
+    }
 
     public var keys: [String: [Key]]
 
@@ -121,6 +136,12 @@ public struct ItemMotion: Sendable, Equatable {
         return from.value + (to.value - from.value) * from.ease.apply(t)
     }
 
+    /// Only the keys that move the picture; nil when there are none (the compositor then draws the item still).
+    public var picture: ItemMotion? {
+        let motion = ItemMotion(keys: keys.filter { Self.pictureProperties.contains($0.key) && !$0.value.isEmpty })
+        return motion.isEmpty ? nil : motion
+    }
+
     /// The same animation with every key `offset` frames later (negative: earlier).
     public func shifted(by offset: Int) -> ItemMotion {
         ItemMotion(keys: keys.mapValues { $0.map { Key(frame: $0.frame + offset, value: $0.value, ease: $0.ease) } })
@@ -138,6 +159,9 @@ extension Item {
         }
         return motion
     }
+
+    /// The keys that move the item's picture, if any.
+    public var pictureMotion: ItemMotion? { motion?.picture }
 
     /// Moves time-based content (keyframes, word timings) after the item's picture moved by `offset` frames against
     /// its start: splitting off the right part, or trimming the start.

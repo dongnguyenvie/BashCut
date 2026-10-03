@@ -558,6 +558,8 @@
 "Presets" = "Presets";
 "Remove animation" = "Remove animation";
 "Keyframe at playhead" = "Keyframe at playhead";
+"Keyframe volume at playhead" = "Keyframe volume at playhead";
+"Keys the volume here; then change it at another frame to fade between keys" = "Keys the volume here; then change it at another frame to fade between keys";
 "Records zoom, pan, tilt, rotation and opacity here; then change a slider at another frame" = "Records zoom, pan, tilt, rotation and opacity here; then change a slider at another frame";
 "Animated: %@" = "Animated: %@";
 "Sliders of animated properties set a keyframe at the playhead." = "Sliders of animated properties set a keyframe at the playhead.";
