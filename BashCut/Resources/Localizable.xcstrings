@@ -4311,12 +4311,6 @@
         "vi": { "stringUnit": { "state": "translated", "value": "Từ kho plugin" } }
       }
     },
-    "Checksum verified. Archive signatures are not checked yet.": {
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Checksum verified. Archive signatures are not checked yet." } },
-        "vi": { "stringUnit": { "state": "translated", "value": "Đã kiểm checksum. Chưa kiểm chữ ký của gói." } }
-      }
-    },
     "Search plugins…": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Search plugins…" } },
@@ -4615,6 +4609,66 @@
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Try another search, or clear the filter." } },
         "vi": { "stringUnit": { "state": "translated", "value": "Thử từ khóa khác hoặc bỏ bộ lọc." } }
+      }
+    },
+    "This version of BashCut from the App Store only runs the plugins that come with it": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "This version of BashCut from the App Store only runs the plugins that come with it" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Bản BashCut từ App Store chỉ chạy các plugin đi kèm ứng dụng" } }
+      }
+    },
+    "Signed by BashCut": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Signed by BashCut" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đã ký bởi BashCut" } }
+      }
+    },
+    "Signed by %@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Signed by %@" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đã ký bởi %@" } }
+      }
+    },
+    "Signed by its publisher": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Signed by its publisher" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đã ký bởi nhà phát hành" } }
+      }
+    },
+    "Not signed: only the checksum is verified. Install it only if you trust where it comes from.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Not signed: only the checksum is verified. Install it only if you trust where it comes from." } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Chưa ký: chỉ kiểm được checksum. Chỉ cài nếu bạn tin nguồn của nó." } }
+      }
+    },
+    "Your version was withdrawn: %@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Your version was withdrawn: %@" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Phiên bản bạn đang dùng đã bị thu hồi: %@" } }
+      }
+    },
+    "Check for plugin updates daily": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Check for plugin updates daily" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Kiểm tra bản cập nhật plugin mỗi ngày" } }
+      }
+    },
+    "Plugins (%d)": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Plugins (%d)" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Plugin (%d)" } }
+      }
+    },
+    "Plugin updates are available": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Plugin updates are available" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Có bản cập nhật plugin" } }
+      }
+    },
+    "Plugin Updates (%d)…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Plugin Updates (%d)…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Cập nhật plugin (%d)…" } }
       }
     }
   },

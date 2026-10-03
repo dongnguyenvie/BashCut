@@ -465,7 +465,6 @@
 "Update %@?" = "Update %@?";
 "Update" = "Update";
 "From the plugin registry" = "From the plugin registry";
-"Checksum verified. Archive signatures are not checked yet." = "Checksum verified. Archive signatures are not checked yet.";
 "Search plugins…" = "Search plugins…";
 "Show every plugin" = "Show every plugin";
 "Updated %@ ago" = "Updated %@ ago";
@@ -515,3 +514,13 @@
 "The registry at %@ lists no plugins." = "The registry at %@ lists no plugins.";
 "No published plugin provides %@ yet." = "No published plugin provides %@ yet.";
 "Try another search, or clear the filter." = "Try another search, or clear the filter.";
+"This version of BashCut from the App Store only runs the plugins that come with it" = "This version of BashCut from the App Store only runs the plugins that come with it";
+"Signed by BashCut" = "Signed by BashCut";
+"Signed by %@" = "Signed by %@";
+"Signed by its publisher" = "Signed by its publisher";
+"Not signed: only the checksum is verified. Install it only if you trust where it comes from." = "Not signed: only the checksum is verified. Install it only if you trust where it comes from.";
+"Your version was withdrawn: %@" = "Your version was withdrawn: %@";
+"Check for plugin updates daily" = "Check for plugin updates daily";
+"Plugins (%d)" = "Plugins (%d)";
+"Plugin updates are available" = "Plugin updates are available";
+"Plugin Updates (%d)…" = "Plugin Updates (%d)…";

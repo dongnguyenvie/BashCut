@@ -1,6 +1,7 @@
 import BashCutAgent
 import BashCutDocument
 import BashCutEngine
+import BashCutPlugins
 import SwiftUI
 
 struct SettingsView: View {
@@ -37,6 +38,9 @@ struct SettingsView: View {
                 Toggle("Run plugin hooks", isOn: $settings.runPluginHooks)
                 Toggle("Apply plugin hook edits without review", isOn: $settings.autoApplyPluginHookEdits)
                     .disabled(!settings.runPluginHooks)
+                if PluginChannel.current.allowsUserPlugins {
+                    Toggle("Check for plugin updates daily", isOn: $settings.checkPluginUpdatesDaily)
+                }
                 Picker("Default export preset", selection: $settings.defaultExportPresetRaw) {
                     ForEach(ExportPreset.allCases) { preset in
                         Text(LocalizedStringKey(preset.title)).tag(preset.rawValue)

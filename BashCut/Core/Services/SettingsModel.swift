@@ -35,6 +35,11 @@ public final class SettingsModel {
     public var autoApplyPluginHookEdits: Bool {
         didSet { defaults.set(autoApplyPluginHookEdits, forKey: Keys.autoApplyPluginHookEdits) }
     }
+    /// Look for plugin updates in the registry once a day when a project opens. Only marks them; installing
+    /// stays a user decision.
+    public var checkPluginUpdatesDaily: Bool {
+        didSet { defaults.set(checkPluginUpdatesDaily, forKey: Keys.checkPluginUpdatesDaily) }
+    }
     /// `ExportPreset` raw value the Export sheet starts with.
     public var defaultExportPresetRaw: String {
         didSet { defaults.set(defaultExportPresetRaw, forKey: Keys.defaultExportPreset) }
@@ -64,6 +69,7 @@ public final class SettingsModel {
         static let defaultExportPreset = "defaultExportPreset"
         static let runPluginHooks = "runPluginHooks"
         static let autoApplyPluginHookEdits = "autoApplyPluginHookEdits"
+        static let checkPluginUpdatesDaily = "checkPluginUpdatesDaily"
         static let interfaceLanguage = "interfaceLanguage"
         static let appleLanguages = "AppleLanguages"
         static let recentProjects = "recentProjectPaths"
@@ -78,6 +84,7 @@ public final class SettingsModel {
         autoApprovePrivileged = defaults.bool(forKey: Keys.autoApprovePrivileged)
         runPluginHooks = defaults.object(forKey: Keys.runPluginHooks) as? Bool ?? true
         autoApplyPluginHookEdits = defaults.bool(forKey: Keys.autoApplyPluginHookEdits)
+        checkPluginUpdatesDaily = defaults.object(forKey: Keys.checkPluginUpdatesDaily) as? Bool ?? true
         defaultExportPresetRaw = defaults.string(forKey: Keys.defaultExportPreset) ?? ExportPreset.tiktok.rawValue
         interfaceLanguage = defaults.string(forKey: Keys.interfaceLanguage) ?? "system"
         recentProjects = defaults.stringArray(forKey: Keys.recentProjects)?.map { URL(fileURLWithPath: $0) } ?? []

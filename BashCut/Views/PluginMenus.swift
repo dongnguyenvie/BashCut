@@ -40,6 +40,15 @@ import BashCutAutomation
 }
 
 private final class PluginMainMenuController: NSObject, NSMenuDelegate {
+    @MainActor private func addUpdatesItem(_ menu: NSMenu, document: ProjectDocument) {
+        guard !document.plugins.updates.isEmpty else { return }
+        let title = String(format: String(localized: "Plugin Updates (%d)…"), document.plugins.updates.count)
+        menu.addItem(ClosureMenuItem(title) { [weak document] in
+            document?.plugins.tab = .updates
+            document?.run(.showPlugins)
+        })
+    }
+
     nonisolated(unsafe) static var key = 0
     weak var document: ProjectDocument?
 
@@ -55,6 +64,7 @@ private final class PluginMainMenuController: NSObject, NSMenuDelegate {
         menu.addItem(ClosureMenuItem(String(localized: "Manage Plugins…")) { [weak document] in
             document?.run(.showPlugins)
         })
+        addUpdatesItem(menu, document: document)
         if !document.plugins.proposals.isEmpty {
             let title = String(format: String(localized: "Review Plugin Edits (%d)"), document.plugins.proposals.count)
             menu.addItem(ClosureMenuItem(title) { [weak document] in document?.ui.showPluginProposals = true })

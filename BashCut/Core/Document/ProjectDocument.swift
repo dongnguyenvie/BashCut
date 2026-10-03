@@ -215,6 +215,7 @@ final class ProjectDocument {
         startExternalFileMonitor()
         agents.projectChanged()
         plugins.refresh(projectRoot: url.deletingLastPathComponent())
+        if settings.checkPluginUpdatesDaily { Task { await plugins.checkForUpdatesIfDue() } }
     }
 
     func addCaption() {

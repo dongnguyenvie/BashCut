@@ -144,8 +144,23 @@ Release assets. Publishing, the archive layout and the registry format are descr
 - **Removing** (Installed › Remove, `plugins remove`) deletes a plugin from the user or project plugin folder with
   its trust pin and user-scope options; projects keep their `pluginOptions` and `pluginData`. Plugins inside the app
   can only be turned off.
-- Archive signatures (`signature`, ed25519) are reserved and not checked yet; the checksum and the user's approval
-  are the gate.
+- **Signatures:** `signature` is `ed25519:BASE64` over the 32 raw bytes of the archive's SHA-256. BashCut checks it
+  before downloading: a signature from the BashCut key compiled into the app is shown as *Signed by BashCut*; one
+  from a key the registry lists under the plugin's `publisher` as *Signed by <publisher>*; no signature as
+  *Not signed* with a warning. A signature that matches no key is refused. The registry cannot add BashCut keys
+  (keys listed for `bashcut` are ignored), so only an app release can change what counts as first party.
+  `plugins search` reports `signature: first-party | verified-publisher | unsigned`.
+- **Yanked versions:** a registry version with `"yanked": "<reason>"` is never offered or installed. If the
+  installed version is yanked, Browse and Installed say so and Updates offers the newest good version, even an
+  older one.
+- **Update check:** when a project opens, BashCut fetches the registry at most once a day (Settings › *Check for
+  plugin updates daily*) and shows the count on the Plugins button and in the Plugins menu. It never installs on
+  its own.
+- **App Store channel:** a sandboxed build (the Mac App Store and TestFlight build, or one compiled with
+  `BASHCUT_APP_STORE`) only runs plugins inside the app: no Browse or Updates, no Install Plugin…, and the user and
+  project plugin folders are not searched (App Store Review Guideline 2.5.2; the sandbox would block most
+  downloaded tools anyway). Developer ID and `scripts/run.sh` builds have every source. `BASHCUT_PLUGIN_CHANNEL=
+  app-store` simulates it in a development build.
 
 ## Discovery and precedence
 
@@ -156,7 +171,8 @@ BashCut looks for plugin folders (each containing `plugin.json`) in three places
 3. The app bundle's `PlugIns` folder
 
 When two plugins share an `id`, the first one found wins, so project plugins override user plugins, which
-override bundled ones. Invalid manifests, duplicates and entrypoints that are missing or not executable are
+override bundled ones — except that a copy found earlier replaces a bundled plugin only when its version is
+higher, so an old download never hides the newer copy an app update brought. Invalid manifests, duplicates and entrypoints that are missing or not executable are
 skipped and reported as catalog diagnostics in the Plugins panel and in `bashcut plugins list`.
 
 ### Provider resolution
@@ -646,5 +662,6 @@ are two more adapters, `PluginActionCapability` and `PluginHookCapability`, run 
 - Voice, Text, Audio and Export use `voice.synthesize`, `captions.transcribe`, `audio.beats` and
   `audio.loudness`. Other analysis and interchange panels are not connected yet.
 - Plugins cannot own panels or windows; contributions use the fixed placements above.
-- The plugin registry (browse, install, update, remove) is implemented; archive signatures are not checked yet.
+- The plugin registry (browse, install, update, remove, signatures, yanked versions, daily update check) is
+  implemented.
 - Bundled native providers, a credential contract and detailed capability permissions are future work.

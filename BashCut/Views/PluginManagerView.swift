@@ -1,5 +1,6 @@
 import BashCutDocument
 import BashCutPlugin
+import BashCutPlugins
 import SwiftUI
 
 struct PluginManagerView: View {
@@ -13,13 +14,15 @@ struct PluginManagerView: View {
                 Text("Plugins").font(.title2)
                 Spacer()
                 Picker("View", selection: $model.tab) {
-                    ForEach(PluginSheetTab.allCases) { tab in
+                    ForEach(PluginSheetTab.visible) { tab in
                         Text(tab == .updates && !model.updates.isEmpty ? "\(tab.title) (\(model.updates.count))" : tab.title)
                             .tag(tab)
                     }
                 }.pickerStyle(.segmented).labelsHidden().frame(width: 360)
-                Button("Install Plugin…", action: model.choosePlugin).disabled(model.installing)
-                    .help("Install a plugin folder from this Mac")
+                if PluginChannel.current.allowsUserPlugins {
+                    Button("Install Plugin…", action: model.choosePlugin).disabled(model.installing)
+                        .help("Install a plugin folder from this Mac")
+                }
                 Button("Done", action: done)
             }
             Text("Optional tools run outside the editor. A plugin runs only after you trust its exact files; "
@@ -57,7 +60,7 @@ struct PluginManagerView: View {
             ContentUnavailableView {
                 Label("No plugins installed", systemImage: "puzzlepiece.extension")
             } actions: {
-                Button("Browse Plugins") { model.tab = .browse }
+                if PluginChannel.current.allowsUserPlugins { Button("Browse Plugins") { model.tab = .browse } }
             }.frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             List(model.plugins) { plugin in
@@ -113,6 +116,10 @@ private struct PluginRow: View {
                 stateBadge
             }
             Text(plugin.id).font(.caption2.monospaced()).foregroundStyle(.secondary)
+            if let reason = model.yankedReason(plugin) {
+                Label(String(format: String(localized: "Your version was withdrawn: %@"), reason),
+                      systemImage: "exclamationmark.triangle.fill").font(.caption).foregroundStyle(.orange)
+            }
             if !plugin.manifest.capabilities.isEmpty {
                 Text(plugin.manifest.capabilities.joined(separator: " · ")).font(.caption.monospaced())
             }
@@ -310,12 +317,11 @@ private struct PluginInstallApprovalView: View {
         let publisher = archive.entry.publisher.flatMap { registry?.publishers[$0] }
         return VStack(alignment: .leading, spacing: 3) {
             Text("From the plugin registry").font(.headline)
-            Text("Version \(archive.version.version)" + (publisher.map { " · " + $0.name.text } ?? "")
-                + (publisher?.verified == true ? " ✓" : ""))
+            Text("Version \(archive.version.version)" + (publisher.map { " · " + $0.name.text } ?? ""))
+            PluginSignatureBadge(trust: archive.publisherTrust)
             Text(archive.version.url).font(.caption.monospaced()).lineLimit(1).truncationMode(.middle).textSelection(.enabled)
             Text("SHA-256 " + archive.version.sha256).font(.caption2.monospaced()).foregroundStyle(.secondary)
                 .textSelection(.enabled)
-            Text("Checksum verified. Archive signatures are not checked yet.").font(.caption2).foregroundStyle(.secondary)
         }.padding(8).frame(maxWidth: .infinity, alignment: .leading).background(.white.opacity(0.04)).cornerRadius(6)
     }
 }
@@ -369,6 +375,24 @@ private struct PluginDependencyBadge: View {
                 Label("Not available on this Mac", systemImage: "xmark.octagon.fill").font(.caption2).foregroundStyle(.orange)
                     .help("The plugin needs it but cannot install it; ask the plugin's author.")
             }
+        }
+    }
+}
+
+/// Who signed a registry archive: BashCut, a publisher the registry lists, or nobody.
+struct PluginSignatureBadge: View {
+    let trust: PluginPublisherTrust
+
+    var body: some View {
+        switch trust {
+        case .firstParty:
+            Label("Signed by BashCut", systemImage: "checkmark.seal.fill").font(.caption).foregroundStyle(.cyan)
+        case .verifiedPublisher(let publisher):
+            Label(String(format: String(localized: "Signed by %@"), publisher), systemImage: "checkmark.seal")
+                .font(.caption).foregroundStyle(.green)
+        case .unsigned:
+            Label("Not signed: only the checksum is verified. Install it only if you trust where it comes from.",
+                  systemImage: "exclamationmark.shield").font(.caption).foregroundStyle(.orange)
         }
     }
 }

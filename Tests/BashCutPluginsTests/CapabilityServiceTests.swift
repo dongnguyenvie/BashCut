@@ -63,6 +63,18 @@ private struct PluginSandbox {
 
 @Suite("Capability service")
 struct CapabilityServiceTests {
+    @Test("The App Store channel searches only the plugins inside the app")
+    func channelRoots() {
+        let user = URL(fileURLWithPath: "/tmp/user")
+        let bundled = URL(fileURLWithPath: "/tmp/app/PlugIns")
+        let project = URL(fileURLWithPath: "/tmp/project")
+        let direct = PluginRoots(user: user, bundled: bundled)
+        #expect(direct.ordered(projectRoot: project).map(\.lastPathComponent) == ["plugins", "user", "PlugIns"])
+        let store = PluginRoots(user: user, bundled: bundled, includesUserPlugins: false)
+        #expect(store.ordered(projectRoot: project) == [bundled])
+        #expect(PluginChannel.direct.allowsUserPlugins && !PluginChannel.appStore.allowsUserPlugins)
+    }
+
     @Test("Transcription returns confined SRT text with plugin provenance")
     func transcribe() async throws {
         let sandbox = try PluginSandbox()

@@ -6,6 +6,8 @@ public struct StagedPluginArchive: Sendable {
     public let plugin: InstalledPlugin
     public let entry: PluginRegistryEntry
     public let version: PluginRegistryVersion
+    /// Who signed the archive.
+    public let publisherTrust: PluginPublisherTrust
     /// Folder that holds the unpacked plugin; remove it with `discard()` once installed or cancelled.
     public let stagingRoot: URL
 
@@ -14,7 +16,8 @@ public struct StagedPluginArchive: Sendable {
 
 /// Downloads a registry archive and checks it before anything in it can run:
 ///
-/// 1. HTTPS on an allowed host; 2. size; 3. SHA-256 from the registry; 4. unpack with `ditto` into a staging
+/// 1. HTTPS on an allowed host; 2. size; 3. SHA-256 from the registry, and its ed25519 signature when there is
+/// one (a wrong signature is refused); 4. unpack with `ditto` into a staging
 /// folder; 5. exactly one plugin folder, no links leaving it; 6. manifest valid, with the registry's id and
 /// version; 7. quarantine removed. Moving it into place, dependency recipes and trust stay with the app, after
 /// the user approves.
@@ -42,9 +45,21 @@ public struct PluginArchiveInstaller: Sendable {
         self.session = session
     }
 
-    public func stage(_ entry: PluginRegistryEntry, version: PluginRegistryVersion) async throws -> StagedPluginArchive {
+    /// `publisherKeys` are the registry's keys for the entry's publisher (`PluginRegistryDocument.keys(for:)`).
+    public func stage(
+        _ entry: PluginRegistryEntry, version: PluginRegistryVersion, publisherKeys: [String] = [],
+        firstPartyKeys: [String] = PluginSignature.firstPartyKeys
+    ) async throws -> StagedPluginArchive {
         guard let url = URL(string: version.url) else { throw PluginError.invalid("Invalid archive URL") }
+        if let reason = version.yanked { throw PluginError.invalid("Version \(version.version) was withdrawn: \(reason)") }
         try checkSource(url)
+        // Before downloading: a bad signature means the registry entry itself is wrong.
+        let publisherTrust = try PluginSignature.verify(
+            digest: version.sha256.lowercased(), signature: version.signature, publisher: entry.publisher,
+            registryKeys: publisherKeys, firstPartyKeys: firstPartyKeys)
+        if publisherTrust == .firstParty, entry.publisher != "bashcut" {
+            throw PluginError.invalid("\(entry.id) is signed with the BashCut key but names another publisher")
+        }
         let archive = try await download(url, expectedSize: version.size)
         defer { try? FileManager.default.removeItem(at: archive) }
         guard try Self.sha256(of: archive) == version.sha256.lowercased() else {
@@ -56,7 +71,8 @@ public struct PluginArchiveInstaller: Sendable {
         try manager.createDirectory(at: stagingRoot, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
         do {
             let plugin = try unpack(archive, into: stagingRoot, entry: entry, version: version)
-            return StagedPluginArchive(plugin: plugin, entry: entry, version: version, stagingRoot: stagingRoot)
+            return StagedPluginArchive(
+                plugin: plugin, entry: entry, version: version, publisherTrust: publisherTrust, stagingRoot: stagingRoot)
         } catch {
             try? manager.removeItem(at: stagingRoot)
             throw error
