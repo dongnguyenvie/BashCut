@@ -40,6 +40,7 @@ public struct ItemProperty: Sendable {
         .init("transform", "zoom", .number(0.01...100), "Scale over the fitted or filled size"),
         .init("transform", "pan", .number(-65536...65536), "Horizontal offset in output pixels"),
         .init("transform", "tilt", .number(-65536...65536), "Vertical offset in output pixels"),
+        .init("transform", "rotation", .number(-3600...3600), "Rotation in degrees, counterclockwise, around the frame centre"),
         .init("textStyle", "size", .number(0.005...1), "Font size as a fraction of the frame's short side (shrunk to fit 90% of the width)"),
         .init("textStyle", "positionY", .number(0...1), "Baseline position from the bottom, as a fraction"),
         .init("textStyle", "strokeWidth", .number(0...50), "Outline width in points"),
@@ -314,6 +315,31 @@ public enum ProjectSchema {
                 "type": .string("object"),
                 "description": .string("Set by clip reverse: the original media and in-point, restored by reversing again"),
                 "properties": .object(["media": string("Original media ID"), "in": integer("Original in-point", minimum: 0)]),
+            ]),
+            "keyframes": .object([
+                "type": .string("object"),
+                "description": .string(
+                    "Animation (video and text layers): property → keys sorted by frame, counted from the item's start; "
+                        + "values between keys follow each key's ease, and hold before the first and after the last key"),
+                "additionalProperties": .bool(false),
+                "properties": .object(Dictionary(uniqueKeysWithValues: ItemMotion.ranges.map { name, range in
+                    (name, .object([
+                        "type": .string("array"), "minItems": .integer(1), "maxItems": .integer(1000),
+                        "description": .string(ItemMotion.summaries[name] ?? name),
+                        "items": .object([
+                            "type": .string("object"), "required": .array([.string("frame"), .string("value")]),
+                            "properties": .object([
+                                "frame": .object(["type": .string("integer")]),
+                                "value": .object([
+                                    "type": .string("number"), "minimum": .number(range.lowerBound),
+                                    "maximum": .number(range.upperBound),
+                                ]),
+                                "ease": enumeration("Change to the next key; default inOut",
+                                                    ItemMotion.Ease.allCases.map(\.rawValue)),
+                            ]),
+                        ]),
+                    ]))
+                })),
             ]),
             "styleKit": string("Adjustment: the style kit that added it; the next kit replaces it"),
             "tag": .object([

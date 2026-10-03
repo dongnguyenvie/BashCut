@@ -56,7 +56,7 @@ A command in *italics* is planned and does not exist yet. "—" means manual onl
 | T-7 | Automatic "Change framing" | P1 | Implemented | `timeline apply` (`setProperties`) |
 | T-8 | Constant speed, freeze frame | P1 | Implemented | `timeline apply` (`setProperties`) |
 | T-9 | Speed ramps (curve) | P2 | Planned | *`timeline apply` (`setProperties`)* |
-| T-10 | Simple keyframes for transform and volume | P2 | Planned | *`timeline apply` (`setProperties`)* |
+| T-10 | Keyframes for zoom, pan, tilt, rotation and opacity (clips, images, text), presets such as Ken Burns | P2 | Implemented (volume keyframes Planned) | `clip motion`, `clip keyframe` |
 | T-11 | ◆ badge on agent changes, undo toast, Show Changes | P0 | Implemented | `ui action agent.show-changes` / `agent.undo-changes` |
 | T-12 | Face-aware placement (Vision): stickers and captions avoid faces; reframe keeps faces in frame | P2 | Planned | *`timeline apply` (`setProperties`)* |
 
@@ -69,7 +69,7 @@ A command in *italics* is planned and does not exist yet. "—" means manual onl
 | X-3 | Presets Keyword Sticker, Place Card, Hook Title, Chapter Card | P1 | Implemented | `timeline apply` (`setProperties`) |
 | X-4 | Auto Captions through a replaceable `captions.transcribe` provider | P1 | Implemented | `captions generate` |
 | X-5 | Long-line warning (over 42 characters), TikTok safe area | P1 | Implemented | `review run`, `ui view` |
-| X-6 | Text animation: pop, word-by-word, typewriter, highlight, counter | P2 | Planned | *`timeline apply` (`setProperties`)* |
+| X-6 | Text animation: pop, word-by-word, typewriter, highlight, counter | P2 | Partly implemented (fade, pop, slide and zoom presets and keyframes; the others Planned) | `clip motion` |
 | X-7 | `.srt` import and export | P1 | Implemented | `captions import`, `captions export` |
 
 ## Audio and voice

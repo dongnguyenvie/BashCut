@@ -128,6 +128,183 @@
           "minimum" : 0,
           "type" : "integer"
         },
+        "keyframes" : {
+          "additionalProperties" : false,
+          "description" : "Animation (video and text layers): property → keys sorted by frame, counted from the item's start; values between keys follow each key's ease, and hold before the first and after the last key",
+          "properties" : {
+            "opacity" : {
+              "description" : "Opacity, 0 to 1",
+              "items" : {
+                "properties" : {
+                  "ease" : {
+                    "description" : "Change to the next key; default inOut",
+                    "enum" : [
+                      "linear",
+                      "in",
+                      "out",
+                      "inOut",
+                      "hold"
+                    ],
+                    "type" : "string"
+                  },
+                  "frame" : {
+                    "type" : "integer"
+                  },
+                  "value" : {
+                    "maximum" : 1,
+                    "minimum" : 0,
+                    "type" : "number"
+                  }
+                },
+                "required" : [
+                  "frame",
+                  "value"
+                ],
+                "type" : "object"
+              },
+              "maxItems" : 1000,
+              "minItems" : 1,
+              "type" : "array"
+            },
+            "pan" : {
+              "description" : "Horizontal offset in output pixels",
+              "items" : {
+                "properties" : {
+                  "ease" : {
+                    "description" : "Change to the next key; default inOut",
+                    "enum" : [
+                      "linear",
+                      "in",
+                      "out",
+                      "inOut",
+                      "hold"
+                    ],
+                    "type" : "string"
+                  },
+                  "frame" : {
+                    "type" : "integer"
+                  },
+                  "value" : {
+                    "maximum" : 65536,
+                    "minimum" : -65536,
+                    "type" : "number"
+                  }
+                },
+                "required" : [
+                  "frame",
+                  "value"
+                ],
+                "type" : "object"
+              },
+              "maxItems" : 1000,
+              "minItems" : 1,
+              "type" : "array"
+            },
+            "rotation" : {
+              "description" : "Rotation in degrees, counterclockwise",
+              "items" : {
+                "properties" : {
+                  "ease" : {
+                    "description" : "Change to the next key; default inOut",
+                    "enum" : [
+                      "linear",
+                      "in",
+                      "out",
+                      "inOut",
+                      "hold"
+                    ],
+                    "type" : "string"
+                  },
+                  "frame" : {
+                    "type" : "integer"
+                  },
+                  "value" : {
+                    "maximum" : 3600,
+                    "minimum" : -3600,
+                    "type" : "number"
+                  }
+                },
+                "required" : [
+                  "frame",
+                  "value"
+                ],
+                "type" : "object"
+              },
+              "maxItems" : 1000,
+              "minItems" : 1,
+              "type" : "array"
+            },
+            "tilt" : {
+              "description" : "Vertical offset in output pixels, up",
+              "items" : {
+                "properties" : {
+                  "ease" : {
+                    "description" : "Change to the next key; default inOut",
+                    "enum" : [
+                      "linear",
+                      "in",
+                      "out",
+                      "inOut",
+                      "hold"
+                    ],
+                    "type" : "string"
+                  },
+                  "frame" : {
+                    "type" : "integer"
+                  },
+                  "value" : {
+                    "maximum" : 65536,
+                    "minimum" : -65536,
+                    "type" : "number"
+                  }
+                },
+                "required" : [
+                  "frame",
+                  "value"
+                ],
+                "type" : "object"
+              },
+              "maxItems" : 1000,
+              "minItems" : 1,
+              "type" : "array"
+            },
+            "zoom" : {
+              "description" : "Scale over the fitted or filled size (1 = unchanged)",
+              "items" : {
+                "properties" : {
+                  "ease" : {
+                    "description" : "Change to the next key; default inOut",
+                    "enum" : [
+                      "linear",
+                      "in",
+                      "out",
+                      "inOut",
+                      "hold"
+                    ],
+                    "type" : "string"
+                  },
+                  "frame" : {
+                    "type" : "integer"
+                  },
+                  "value" : {
+                    "maximum" : 100,
+                    "minimum" : 0.01,
+                    "type" : "number"
+                  }
+                },
+                "required" : [
+                  "frame",
+                  "value"
+                ],
+                "type" : "object"
+              },
+              "maxItems" : 1000,
+              "minItems" : 1,
+              "type" : "array"
+            }
+          },
+          "type" : "object"
+        },
         "linkedAudio" : {
           "description" : "Video: ID of its linked sound item",
           "type" : "string"
@@ -274,6 +451,12 @@
               "description" : "Horizontal offset in output pixels",
               "maximum" : 65536,
               "minimum" : -65536,
+              "type" : "number"
+            },
+            "rotation" : {
+              "description" : "Rotation in degrees, counterclockwise, around the frame centre",
+              "maximum" : 3600,
+              "minimum" : -3600,
               "type" : "number"
             },
             "tilt" : {

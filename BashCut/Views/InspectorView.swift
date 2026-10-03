@@ -132,7 +132,10 @@ struct InspectorView: View {
             number("Zoom", group: "transform", key: "zoom", defaultValue: 1, range: 0.25...3)
             number("Pan", group: "transform", key: "pan", defaultValue: 0, range: -600...600)
             number("Tilt", group: "transform", key: "tilt", defaultValue: 0, range: -600...600)
+            number("Rotation", group: "transform", key: "rotation", defaultValue: 0, range: -180...180)
             number("Opacity", key: "opacity", defaultValue: 1, range: 0...1)
+            Divider()
+            MotionControls(document: document, item: item, forText: false)
         case "Audio":
             audioControls(item)
         case "Text":
@@ -224,6 +227,8 @@ struct InspectorView: View {
             number(
                 "Vertical position", group: "textStyle", key: "positionY", defaultValue: 0.18,
                 range: 0.05...0.9)
+            Divider()
+            MotionControls(document: document, item: item, forText: true)
         } else {
             Text("Select a caption to edit text.").foregroundStyle(.secondary)
         }
@@ -239,14 +244,27 @@ struct InspectorView: View {
         _ title: String, group: String? = nil, key: String, defaultValue: Double,
         range: ClosedRange<Double>, integer: Bool = false
     ) -> some View {
+        // Transform and opacity are animatable: once the item has keys for one, the control reads and sets the key
+        // at the playhead.
+        let animatable = (group == "transform" || (group == nil && key == "opacity")) ? key : nil
+        func isAnimated() -> Bool { animatable.flatMap { document.selected?.motion?.keys[$0] } != nil }
         let binding = Binding<Double>(
             get: {
+                if let animatable, isAnimated(), let item = document.selected {
+                    return document.motionValue(animatable, item: item)
+                }
                 let value = group.map { document.selected?[$0]?.object[key] } ?? document.selected?[key]
                 return value?.double ?? defaultValue
             },
             set: {
                 guard $0.isFinite else { return }
                 let bounded = min(range.upperBound, max(range.lowerBound, $0))
+                if let animatable, isAnimated() {
+                    do { try document.setKeyframe(animatable, value: bounded, coalesce: true) } catch {
+                        document.message = error.localizedDescription
+                    }
+                    return
+                }
                 let value: JSONValue = integer ? .integer(Int(bounded.rounded())) : .number(bounded)
                 if let group {
                     patchNested(group, key, value, coalescing: true)
@@ -257,6 +275,10 @@ struct InspectorView: View {
         return VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Text(LocalizedStringKey(title))
+                if isAnimated() {
+                    Image(systemName: "diamond.fill").font(.system(size: 7)).foregroundStyle(.cyan)
+                        .help("Animated: changes set a keyframe at the playhead")
+                }
                 Spacer()
                 TextField(
                     LocalizedStringKey(title), value: binding,

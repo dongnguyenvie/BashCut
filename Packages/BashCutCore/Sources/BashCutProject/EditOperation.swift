@@ -374,7 +374,7 @@ extension Project {
             throw ProjectError.invalid("Use timeline operations to change identity or timing")
         }
         for (key, value) in patch {
-            if key == "freezeFrame", value == .null {
+            if Item.removableFields.contains(key), value == .null {
                 tracks[track].items[index].fields.removeValue(forKey: key)
             } else {
                 tracks[track].items[index].fields[key] = value
@@ -399,6 +399,7 @@ extension Project {
         right.at = frame
         right.duration = original.end - frame
         right.sourceIn = try sum(right.sourceIn, sourceOffset(frame - original.at, item: original))
+        right.shiftTimedContent(by: original.at - frame)
         tracks[track].items[index].duration = frame - original.at
         if let curve = original.speedCurve {
             // Each half keeps its part of the ramp, and its own average speed.
@@ -423,6 +424,7 @@ extension Project {
                 trimmed.sourceIn, sourceOffset(frame - original.at, item: original))
             trimmed.duration = original.end - frame
             trimmed.at = ripple ? original.at : frame
+            trimmed.shiftTimedContent(by: original.at - frame)
         case .end:
             guard frame > original.at else { throw ProjectError.invalid("Empty trim") }
             trimmed.duration = frame - original.at

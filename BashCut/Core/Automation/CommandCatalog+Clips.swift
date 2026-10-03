@@ -1,6 +1,15 @@
 import BashCutProject
 
 extension CommandCatalog {
+    private static let motionPresets: String = MotionPreset.all.map(\.id).joined(separator: ", ")
+    private static let eases: String = ItemMotion.Ease.allCases.map(\.rawValue).joined(separator: ", ")
+    private static let motionSummary: String =
+        "Animate a clip, image or text over its length (Inspector › Animation): a preset (\(motionPresets); none "
+        + "removes the animation) sized to the item, or keyframes JSON {property: [{frame, value, ease?}, …]} with "
+        + "frames from the item's start. Properties: zoom, pan, tilt (px, up), rotation (degrees), opacity; ease: "
+        + "\(eases) (default inOut). Keys replace the item's static value for that property. Images with zoom-in, "
+        + "zoom-out or pan-* make a Ken Burns move."
+
     /// Clip-level edits that have their own Inspector controls.
     static let clipSpecs: [CommandSpec] = [
         CommandSpec(
@@ -34,6 +43,35 @@ extension CommandCatalog {
                                  cli: .option("points")),
                 CommandParameter("keepDuration", .boolean, "Keep the clip's length instead", default: .bool(false),
                                  cli: .flag("keep-duration")),
+                baseRevision,
+            ]),
+        CommandSpec(
+            "clip.motion", .edit,
+            motionSummary,
+            parameters: [
+                CommandParameter("item", .string, "Item ID; the selection by default", cli: .positional),
+                CommandParameter("preset", .string, "Preset name, or none",
+                                 choices: MotionPreset.all.map(\.id) + ["none"], cli: .option("preset")),
+                CommandParameter("keyframes", .string, "Keyframes as JSON, replacing the item's animation",
+                                 cli: .option("keyframes")),
+                baseRevision,
+            ]),
+        CommandSpec(
+            "clip.keyframe", .edit,
+            "Set one keyframe like the Inspector's controls with keyframes on: property at a timeline frame (the "
+                + "playhead by default) to value (its current value when omitted); remove deletes that key. Without "
+                + "property, keys every property at its current value (the Inspector's Keyframe at playhead).",
+            parameters: [
+                CommandParameter("item", .string, "Item ID; the selection by default", cli: .positional),
+                CommandParameter("property", .string, "Property; all of them by default",
+                                 choices: ItemMotion.ranges.keys.sorted(), cli: .option("property")),
+                CommandParameter("value", .number, "Value", cli: .option("value")),
+                CommandParameter("atFrame", .integer, "Timeline frame inside the item; the playhead by default",
+                                 minimum: 0, cli: .option("at-frame")),
+                CommandParameter("ease", .string, "Change to the next key", choices: ItemMotion.Ease.allCases.map(\.rawValue),
+                                 cli: .option("ease")),
+                CommandParameter("remove", .boolean, "Remove the key at that frame", default: .bool(false),
+                                 cli: .flag("remove")),
                 baseRevision,
             ]),
         CommandSpec(

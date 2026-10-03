@@ -19,7 +19,7 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
 | M3 Text, captions, export | Mostly done | Export queue (E-1) done; no bundled transcription provider; first all-in-app vlog not yet recorded |
 | M4 Audio and voice | Partial | Ducking, loudness, voice takes, beats, framing done; music/SFX library and voice cloning open |
 | M5 Color, transitions, review | Mostly done | LUTs, transitions, review, resume and handoff done; measured review checks open |
-| M6 Extensions | Partial | OTIO export, voiceover recording, constant speed done; effects, ramps, keyframes, Demucs open |
+| M6 Extensions | Partial | OTIO export, voiceover recording, constant speed, ramps, keyframes done; effects, Demucs open |
 
 ## Implemented
 
@@ -60,6 +60,10 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
 - Still images (media kind `image`): import, drag in or `media import` a JPEG, PNG (transparency kept), HEIC or other
   image; it is placed for 3 s and trims to any length up to an hour. The engine reads it through a one-frame
   ProRes 4444 movie in `.bashcut/stills/`, remade when the image changes.
+- Keyframes (item field `keyframes`) animate zoom, pan, tilt, rotation and opacity of clips, images and text, with
+  linear, ease-in/out/in-out and hold keys. Presets: slow zoom in/out and pans (Ken Burns), and fade, pop, slide-up
+  and zoom-punch for text. Inspector › Animation, the diamond key at the playhead, and sliders that set keys once a
+  property is animated; `clip motion` and `clip keyframe`. Split and start trims keep keys on the same picture.
 - Edit menu (Cut, Copy, Paste, Select All) for text fields and terminals.
 
 ### Media & proxies
