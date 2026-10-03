@@ -40,14 +40,37 @@ struct PluginBrowseView: View {
                       systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.orange)
             }
             if listings.isEmpty {
-                ContentUnavailableView(
-                    updatesOnly ? "Everything is up to date" : (model.registry == nil ? "Loading plugins…" : "No plugins found"),
-                    systemImage: updatesOnly ? "checkmark.circle" : "puzzlepiece.extension"
-                ).frame(maxWidth: .infinity, maxHeight: .infinity)
+                ContentUnavailableView {
+                    Label(emptyTitle, systemImage: updatesOnly ? "checkmark.circle" : "puzzlepiece.extension")
+                } description: {
+                    if let detail = emptyDetail { Text(detail) }
+                }.frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 List(listings) { listing in PluginListingRow(model: model, listing: listing) }
             }
         }
+    }
+}
+
+extension PluginBrowseView {
+    /// Says why the list is empty: loading, nothing published, nothing matching, or nothing to update.
+    fileprivate var emptyTitle: String {
+        if updatesOnly { return String(localized: "Everything is up to date") }
+        guard let registry = model.registry else { return String(localized: "Loading plugins…") }
+        if registry.plugins.isEmpty { return String(localized: "No plugins published yet") }
+        return String(localized: "No plugins match")
+    }
+
+    fileprivate var emptyDetail: String? {
+        guard !updatesOnly, let registry = model.registry else { return nil }
+        if registry.plugins.isEmpty {
+            return String(format: String(localized: "The registry at %@ lists no plugins."),
+                          PluginManagerModel.registryURL.host ?? PluginManagerModel.registryURL.path)
+        }
+        if let capability = model.browseCapability, query.isEmpty {
+            return String(format: String(localized: "No published plugin provides %@ yet."), capability)
+        }
+        return String(localized: "Try another search, or clear the filter.")
     }
 }
 

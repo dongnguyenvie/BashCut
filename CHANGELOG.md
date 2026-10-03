@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+- Plugins › Browse: the refresh button bypasses GitHub's 5-minute CDN copy of `registry.json`, so a just-published
+  plugin shows at once; an empty list now says whether nothing is published, nothing matches or no plugin provides
+  the capability yet.
 - Fix: releasing the speed slider recorded the change twice, so one undo seemed to do nothing. Setting a clip to
   the speed it already has is no longer an edit.
 - **Change speed** like CapCut: a clip's length now follows its speed (2× halves it, 0.5× doubles it) and later

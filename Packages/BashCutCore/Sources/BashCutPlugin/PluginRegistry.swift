@@ -201,8 +201,10 @@ public actor PluginRegistryClient {
             return Snapshot(document: cached.document, fetchedAt: cached.meta.fetchedAt, staleReason: nil)
         }
         do {
-            var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 20)
-            if let etag = cached?.meta.etag { request.setValue(etag, forHTTPHeaderField: "If-None-Match") }
+            var request = URLRequest(url: Self.requestURL(url, force: force), cachePolicy: .reloadIgnoringLocalCacheData,
+                                     timeoutInterval: 20)
+            // A manual refresh skips the CDN copy (raw.githubusercontent.com keeps one for 5 minutes) and the ETag.
+            if !force, let etag = cached?.meta.etag { request.setValue(etag, forHTTPHeaderField: "If-None-Match") }
             let (data, response) = try await session.data(for: request)
             let status = (response as? HTTPURLResponse)?.statusCode ?? 200
             if status == 304, let cached {
@@ -218,6 +220,14 @@ public actor PluginRegistryClient {
             guard let cached else { throw error }
             return Snapshot(document: cached.document, fetchedAt: cached.meta.fetchedAt, staleReason: error.localizedDescription)
         }
+    }
+
+    /// The URL to fetch: with `force`, an extra `t` query item makes the CDN treat it as a new resource.
+    public static func requestURL(_ url: URL, force: Bool) -> URL {
+        guard force, !url.isFileURL, var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return url }
+        components.queryItems = (components.queryItems ?? [])
+            + [URLQueryItem(name: "t", value: String(Int(Date().timeIntervalSince1970)))]
+        return components.url ?? url
     }
 
     public static func decode(_ data: Data) throws -> PluginRegistryDocument {
