@@ -5,6 +5,8 @@
 
 ## [Unreleased]
 
+- Fix: releasing the speed slider recorded the change twice, so one undo seemed to do nothing. Setting a clip to
+  the speed it already has is no longer an edit.
 - **Change speed** like CapCut: a clip's length now follows its speed (2× halves it, 0.5× doubles it) and later
   clips on its layer, and on its linked sound's layer, move with it; "Change clip length" off keeps the old
   behaviour. Linked picture and sound change together, and a clip is shortened to fit its source. Inspector ›

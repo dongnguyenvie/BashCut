@@ -329,10 +329,10 @@ private struct SpeedControls: View {
                     value: Binding(get: { log2(speed) }, set: { dragging = Self.rounded(pow(2, $0)) }),
                     in: log2(0.25)...log2(4)
                 ) { editing in
-                    if !editing, let value = dragging {
-                        apply(value)
-                        dragging = nil
-                    }
+                    // macOS can report the end of a drag twice; take the value once.
+                    guard !editing, let value = dragging else { return }
+                    dragging = nil
+                    apply(value)
                 }
                 HStack {
                     TextField("Speed", text: $typed).textFieldStyle(.roundedBorder).frame(width: 70)
@@ -374,7 +374,9 @@ private struct SpeedControls: View {
     }
 
     private func apply(_ value: Double) {
-        guard abs(value - item.speed) > 0.0001 else { return }
+        // Compare with the project, not this view's copy of the item, which is stale right after an edit.
+        let current = document.project.tracks.flatMap(\.items).first { $0.id == item.id }?.speed ?? item.speed
+        guard abs(value - current) > 0.0001 else { return }
         do { try document.setClipSpeed(value, item: item.id, keepDuration: !changesLength) } catch {
             document.message = error.localizedDescription
         }
