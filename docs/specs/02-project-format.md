@@ -135,7 +135,7 @@ Style kits (food review, cinematic "Quinn") are one-shot recipes that add such a
 one undoable edit; nothing about the kit is remembered afterwards. For Resolve, an adjustment item maps to an
 adjustment clip with the same grade parameters.
 
-**Layer rules** are enforced by `Project.validate()`, so UI, CLI, MCP and model APIs share them:
+**Layer rules** are enforced by `Project.validate()`, so UI, CLI and MCP share them:
 
 - Visual tracks (`video`, `adjustment`, `text`) come first, back to front; audio tracks follow and are mixed, so their order is
   only for display. A track cannot move across that boundary.

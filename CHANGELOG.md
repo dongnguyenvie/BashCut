@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+- **Removed the dock's model-API tab.** It sent one request to OpenAI or Anthropic and returned a script or a single
+  timeline proposal, without tools, the agent kit or a look at the result, so it could not finish a video. Use a
+  Claude Code or Codex tab instead (Codex also accepts `OPENAI_API_KEY`). The saved connection is forgotten on
+  launch; an API key saved before stays in your Keychain (service `app.bashcut.model-api`) until you delete it.
+
 - **Lighter rendering and Inspector during playback.** The Inspector no longer redraws on every played frame: only
   the *Keyframe at playhead* buttons follow the playhead (about 3% less CPU while playing with the Audio tab open).
   Text layers make their image cache key and keyframe anchor once instead of on every frame (the key alone cost

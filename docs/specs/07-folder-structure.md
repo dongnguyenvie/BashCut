@@ -44,8 +44,7 @@ bash-cut/
 │   │   │                          # CommandRegistry, CommandLineParser, UIAction, UnixSocket, Wire,
 │   │   │                          # AgentInstructions, MCPBridgeClient, DebugLog
 │   │   ├── Agent/                 # library BashCutAgent: AgentProvider (Claude, Codex, Shell),
-│   │   │                          # ModelAdapter (Responses, Chat Completions, Anthropic), AgentLaunch,
-│   │   │                          # AgentEnvironment, AgentSessionStore, ModelClient, CredentialStore
+│   │   │                          # AgentLaunch, AgentEnvironment, AgentSessionStore
 │   │   ├── Plugins/               # library BashCutPlugins: CapabilityService, CapabilityAdapter,
 │   │   │   └── Capabilities/      # one adapter per capability (transcription, beats, loudness, voice)
 │   │   ├── Services/              # library BashCutDocument: AppServices, JobCenter, ExportQueue,

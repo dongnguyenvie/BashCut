@@ -29,7 +29,7 @@ in [implementation status](../status/implementation.md).
 ```
 
 **Core idea:** every change to a project is an `EditOperation` that goes through `ProjectDocument.commit`.
-Operations from the UI, from agents (CLI, MCP or model APIs), from generated plugin results and from undo/redo all
+Operations from the UI, from agents (CLI or MCP), from generated plugin results and from undo/redo all
 take that one path. This is how "one action, two callers" is guaranteed.
 
 ### Extension boundaries
@@ -45,7 +45,7 @@ interface.
 | Presets | Export presets, text presets, reframing presets and transitions are data, not plugins |
 | Plugins | Plugins run out of process over a versioned JSON protocol. The app never loads third-party Swift bundles or dynamic libraries |
 
-Agent terminals (`AgentProvider`), model APIs (`ModelAdapter`), commands (`CommandSpec`), plugin capabilities
+Agent terminals (`AgentProvider`), commands (`CommandSpec`), plugin capabilities
 (`CapabilityAdapter`) and timeline formats (`TimelineExporter`/`TimelineImporter`) are each one conforming type
 plus a registry entry. [CONTRIBUTING.md](../../CONTRIBUTING.md) has a template for each.
 
@@ -160,7 +160,7 @@ How it behaves:
 - **Agent requests carry a `baseRev`.** If it does not match the current `rev`, the request is rejected with
   `staleRevision`; the agent re-reads the timeline and retries.
 - **One serialized form.** Operations are JSON objects keyed by `op` (`EditOperationCodec`), shared by agents,
-  model APIs and the history journal. `group` and `restore` are accepted only from trusted sources.
+  and the history journal. `group` and `restore` are accepted only from trusted sources.
 
 The on-disk effects (layer rules, linked items, undo depth) are in the
 [project format reference](../reference/project-format.md).
@@ -354,5 +354,5 @@ No dependency is needed. It reuses the workspace bridge, and the data rules in
 - The automation socket and token file are `0600`; `edit` and `privileged` commands require a live token, and
   privileged commands require in-app approval by default.
 - Agent terminals and plugin processes receive allowlisted environments, never the app's full environment.
-- Model API keys live in the Keychain. `.env` contents and keys are never logged; the debug log
+- `.env` contents and keys are never logged; the debug log
   (`~/Library/Logs/BashCut/debug.log`) records actions and decisions, not credentials.

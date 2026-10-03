@@ -88,36 +88,6 @@ public struct ExampleAgentProvider: AgentProvider {
 Test in `Tests/BashCutAgentTests` with `AgentLaunch.make(provider:…)`: the arguments, that only allowlisted
 variables reach the environment, and the session folder.
 
-## Add a model API adapter
-
-`BashCut/Core/Agent/<Name>ModelAdapter.swift`, registered in `ModelAdapters.all`:
-
-```swift
-import BashCutProject
-import Foundation
-
-public struct ExampleModelAdapter: ModelAdapter {
-    public init() {}
-    public let kind: ModelAPIKind = "example"
-    public let title = "Example API"
-    public let endpointPath = "generate"
-
-    public func body(_ request: ModelRequest) -> [String: JSONValue] {
-        ["model": .string(request.model), "system": .string(request.system), "input": .string(request.prompt),
-         "max_tokens": .integer(request.maxOutputTokens)]
-    }
-
-    public func authorize(_ request: inout URLRequest, key: String) {
-        request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
-    }
-
-    public func text(from response: [String: JSONValue]) -> String { response["output"]?.string ?? "" }
-}
-```
-
-Test in `Tests/BashCutAgentTests/ModelClientTests.swift`: request body and headers, and text extraction from a
-recorded response. Never call the network.
-
 ## Add a command (CLI, MCP and agent instructions)
 
 1. A `CommandSpec` in `BashCut/Core/Automation/CommandCatalog.swift`, in the group that matches its mode.

@@ -25,7 +25,7 @@ This builds with SwiftPM, packages a local `build/BashCut.app`, signs it with th
 
 The native layout follows `mockups/bashcut-ui.html`: eight library tabs, viewer/source viewer, Inspector, a scrollable timeline and the agent dock. Click a media thumbnail to preview it, set In/Out, then Insert or Overwrite at the timeline playhead. Text presets, color controls, volume/fades, source-aligned waveforms, basic review and history are functional; tabs explicitly identify advanced features still in development.
 
-The dock launches real Claude, Codex or Shell terminals. It also accepts model APIs to generate editable Python/Shell scripts or undoable timeline proposals. See [automation and API setup](docs/guides/automation.md). The app executable is `BashCutApp` and the bundled CLI is `bashcut`, avoiding a name collision on case-insensitive disks.
+The dock launches real Claude, Codex or Shell terminals (with your CLI login; Codex also takes `OPENAI_API_KEY`). See [automation](docs/guides/automation.md). The app executable is `BashCutApp` and the bundled CLI is `bashcut`, avoiding a name collision on case-insensitive disks.
 
 For Xcode, install XcodeGen >= 2.46, then run `scripts/generate-project.sh` and open `BashCut.xcodeproj`. Xcode builds the string catalog; the SwiftPM launcher copies equivalent `.strings` resources. Localization follows the system language in this milestone.
 

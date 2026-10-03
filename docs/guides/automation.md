@@ -1,7 +1,7 @@
-# Automation: CLI, MCP and model APIs
+# Automation: CLI and MCP
 
 BashCut can be driven by agents, scripts and the built-in terminal dock. This guide covers how they connect,
-every command they can run, and how the in-app model API mode works. The design rationale is in
+and every command they can run. The design rationale is in
 [05 — Agent integration](../specs/05-agent-integration.md).
 
 ## Overview
@@ -18,7 +18,7 @@ The app runs one local JSON-RPC server on a Unix socket. Two thin clients talk t
 
 Both clients forward to the same handlers the UI uses. Edits go through the validated `EditOperation` and
 history path, so permissions, revision checks, audit records and undo behave the same whether a change comes
-from a click, the CLI, MCP or a model API.
+from a click, the CLI or MCP.
 
 ### Socket protocol
 
@@ -61,8 +61,7 @@ SwiftTerm terminal. Claude and Codex use your installed CLI and its existing log
   one (before, the switch closed the tab mid-task). Every token, in-app or external, must then read the new
   project (`context get`, `timeline get` or `project get`) before its next edit; until then edits fail with
   "The open project changed to …", so an agent cannot apply what it remembers of the old project. Open
-  conversations are bookmarked for the new project too, so **Continue** there resumes them. The model-API
-  panel's request and output are cleared.
+  conversations are bookmarked for the new project too, so **Continue** there resumes them.
 
 Each child process gets a filtered environment plus:
 
@@ -121,7 +120,7 @@ read it whenever `BASHCUT_SESSION_TOKEN` is not set.
 Every command is declared once as a `CommandSpec` in `BashCut/Core/Automation/CommandCatalog.swift`: its name,
 permission mode, parameters (type, range, choices, default and CLI binding) and whether it runs immediately,
 as a background job or after in-app approval. The socket validates every request against its spec before the
-handler runs, so the CLI, MCP and model APIs return identical errors. The CLI parser, the MCP tool list and
+handler runs, so the CLI and MCP return identical errors. The CLI parser, the MCP tool list and
 schemas, and the agent instructions are all generated from these specs.
 
 Print every usage line (also shown by `bashcut --help`) with:
@@ -380,27 +379,11 @@ you turn it on, requests run at once, return `approval: "approved"` and are audi
 
 ## Model APIs
 
-The dock's **API** tab sends requests to a model provider directly instead of through a terminal agent.
-
-- **Providers.** OpenAI Responses, OpenAI-compatible Chat Completions and Anthropic Messages. Enter a base URL
-  and the provider's model ID; no model or key is hardcoded.
-- **Transport.** HTTPS is required except for local HTTP endpoints, and redirects are refused.
-- **Credentials.** **Save connection** stores the API key in the macOS Keychain. Other settings live in
-  UserDefaults.
-
-Choose **Script** (Python or Shell) or **Timeline edit**, write a request, and choose whether to include
-project context. Generate sends text context and your request to the endpoint; it never uploads original
-video. An attached viewer frame is sent through the provider's native image payload, up to 5 MB.
-
-The output is editable before use:
-
-- Scripts can be saved, or run in a new local Shell tab after you confirm.
-- Timeline proposals apply as one `model` undo step against the revision they were generated from.
-- A new generation clears the old output. Cancelling or switching projects discards in-flight results.
-
-Protocol references: [OpenAI text generation](https://developers.openai.com/api/docs/guides/text),
-[Anthropic Messages](https://platform.claude.com/docs/en/api/messages/create),
-[Claude CLI reference](https://code.claude.com/docs/en/cli-reference),
+The dock no longer has a model-API tab (removed 2026-10-04): it generated a script or one timeline proposal per
+request, without tools, the agent kit or a look at the result, which is not enough to finish a video. To use a
+model with API billing, use a Codex tab (it passes `OPENAI_API_KEY` through) or log the Claude CLI in with a Console
+account (Claude tabs never receive `ANTHROPIC_API_KEY`); both get the agent kit and the full command set. See the
+[Claude CLI reference](https://code.claude.com/docs/en/cli-reference) and the
 [Codex CLI reference](https://developers.openai.com/codex/cli/reference).
 
 ## Debug log

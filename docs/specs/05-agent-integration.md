@@ -3,7 +3,7 @@
 BashCut hosts Claude Code and Codex in real terminals and gives them, and any other agent, the same command
 surface as the editor UI. This spec records the design: how terminals are launched, how commands mirror the UI,
 what context agents receive and how permissions work. The user-facing guide with the complete command list is
-[Automation: CLI, MCP and model APIs](../guides/automation.md).
+[Automation: CLI and MCP](../guides/automation.md).
 
 ## 1. Terminals in the dock
 
@@ -51,7 +51,7 @@ against the specs and serves every front end:
 
 - MCP: tools named `bashcut_<group>_<command>`.
 - CLI: `bashcut <group> <command>`.
-- Model APIs and agent instructions: rendered from the same specs.
+- Agent instructions: rendered from the same specs.
 
 The tables below show the design intent: which mode each area uses and which UI it mirrors; they are not a
 complete list. The generated [command reference](../reference/commands.md) lists every command with its

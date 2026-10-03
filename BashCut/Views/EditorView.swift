@@ -308,8 +308,7 @@ struct EditorView: View {
                         Toggle("Attach current frame", isOn: $attachAskFrame)
                         Button(sendingAsk ? "Preparing frame…" : "Send context", action: sendAsk)
                             .disabled(
-                                sendingAsk
-                                    || (document.agents.current == nil && !document.agents.apiVisible))
+                                sendingAsk || document.agents.current == nil)
                     }.padding()
                 }
             Spacer()
@@ -370,7 +369,7 @@ struct EditorView: View {
                             document.ui.showAgentDock = true
                             document.agents.sendContext("Fix this review issue: " + issue.detail)
                             document.ui.showReview = false
-                        }.disabled(document.agents.current == nil && !document.agents.apiVisible)
+                        }.disabled(document.agents.current == nil)
                     }
                 }.padding(8).frame(maxWidth: .infinity, alignment: .leading).background(
                     .orange.opacity(0.08)

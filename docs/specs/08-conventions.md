@@ -36,7 +36,7 @@ timeline format live in [CONTRIBUTING.md](../../CONTRIBUTING.md) and are not rep
 
 ## Project model
 
-**Every change to `Project` goes through `EditOperation` and `Project.applying`.** UI, agents, model APIs, undo
+**Every change to `Project` goes through `EditOperation` and `Project.applying`.** UI, agents, undo
 and import all use this path, and the document commits through one `commit` choke point.
 
 A new `EditOperation` case also gets a codec sample in `EditOperationCodecTests.samples` and an
@@ -131,7 +131,6 @@ Vietnamese diacritics (ă, ơ, ư, ỹ…). Test media comes from `Fixtures/make
 
 - Plugin tests use temporary executable fixtures and JSON responses through a fake or temporary
   `PluginTransport`; they never run an installed provider or dependency recipe.
-- Model API tests check request bodies and recorded responses without network calls.
 - App Support and `UserDefaults` are redirected to temporary locations.
 
 ## Build and verify

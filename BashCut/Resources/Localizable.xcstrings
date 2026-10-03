@@ -2947,22 +2947,6 @@
         }
       }
     },
-    "Model API": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Model API"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "API mô hình"
-          }
-        }
-      }
-    },
     "Choose an agent": {
       "localizations": {
         "en": {
@@ -2979,18 +2963,18 @@
         }
       }
     },
-    "Use your CLI login or connect a model API.": {
+    "Claude Code and Codex run with your CLI login or API key.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Use your CLI login or connect a model API."
+            "value": "Claude Code and Codex run with your CLI login or API key."
           }
         },
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dùng đăng nhập CLI hoặc kết nối API mô hình."
+            "value": "Claude Code và Codex chạy bằng đăng nhập CLI hoặc API key của bạn."
           }
         }
       }
@@ -3045,22 +3029,6 @@
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "%@ will continue this conversation next time" } },
         "vi": { "stringUnit": { "state": "translated", "value": "Lần sau %@ sẽ tiếp tục cuộc trò chuyện này" } }
-      }
-    },
-    "Connect model API": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Connect model API"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Kết nối API mô hình"
-          }
-        }
       }
     },
     "Workspace…": {
@@ -3143,70 +3111,6 @@
         }
       }
     },
-    "API base URL": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "API base URL"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "URL gốc API"
-          }
-        }
-      }
-    },
-    "Model ID": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Model ID"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ID mô hình"
-          }
-        }
-      }
-    },
-    "API key (Keychain)": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "API key (Keychain)"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Khóa API (Keychain)"
-          }
-        }
-      }
-    },
-    "Save connection": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Save connection"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Lưu kết nối"
-          }
-        }
-      }
-    },
     "Output": {
       "localizations": {
         "en": {
@@ -3219,198 +3123,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Đầu ra"
-          }
-        }
-      }
-    },
-    "Script": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Script"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Mã lệnh"
-          }
-        }
-      }
-    },
-    "Timeline edit": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Timeline edit"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Chỉnh dòng thời gian"
-          }
-        }
-      }
-    },
-    "Language": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Language"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ngôn ngữ"
-          }
-        }
-      }
-    },
-    "Include project context": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Include project context"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Kèm ngữ cảnh dự án"
-          }
-        }
-      }
-    },
-    "Generate": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Generate"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tạo"
-          }
-        }
-      }
-    },
-    "Generate sends this request to the configured endpoint.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Generate sends this request to the configured endpoint."
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nút Tạo gửi yêu cầu này đến endpoint đã cấu hình."
-          }
-        }
-      }
-    },
-    "Apply as one undo step": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apply as one undo step"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Áp dụng thành một bước hoàn tác"
-          }
-        }
-      }
-    },
-    "Save script…": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Save script…"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Lưu mã lệnh…"
-          }
-        }
-      }
-    },
-    "Run reviewed script…": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Run reviewed script…"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Chạy mã đã kiểm tra…"
-          }
-        }
-      }
-    },
-    "Run the reviewed script?": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Run the reviewed script?"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Chạy mã đã kiểm tra?"
-          }
-        }
-      }
-    },
-    "Run script": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Run script"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Chạy mã"
-          }
-        }
-      }
-    },
-    "This runs local code with your user permissions in the selected workspace. Review the source above first.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This runs local code with your user permissions in the selected workspace. Review the source above first."
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Mã sẽ chạy với quyền tài khoản của bạn trong thư mục làm việc đã chọn. Hãy kiểm tra mã phía trên trước."
           }
         }
       }

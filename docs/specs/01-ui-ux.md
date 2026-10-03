@@ -338,8 +338,7 @@ stored in English; the agent replies in the language you write in.
 | Suggest FX | "Suggest effects for the selection from memos/hieu-ung-tra-cuu.md, at most 1–2 special effects" | Planned |
 | Lessons | "Run nolan-self-learn for this session" | Planned |
 
-The dock also has a **Model API** mode (OpenAI Responses, compatible Chat Completions, Anthropic Messages) that
-proposes an edit or a script to review before it is applied as one undo step, and a **Knowledge** sheet for the
+The dock also has a **Knowledge** sheet for the
 project memo and project skills shared with Claude and Codex. See the [automation guide](../guides/automation.md).
 
 ### 4.2 How the agent edits the timeline

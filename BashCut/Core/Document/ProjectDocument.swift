@@ -188,7 +188,7 @@ final class ProjectDocument {
         plugins.proposals.removeAll()
         plugins.pendingAction = nil
         if privilegedApproval != nil { resolvePrivilegedApproval(false) }
-        // Terminals stay open; the model-API panel and pending session lookups end with the old project.
+        // Terminals stay open; pending session lookups end with the old project.
         let liveBookmarks = agents.liveBookmarks()
         agents.resetProjectState()
         sourceViewer.reset()

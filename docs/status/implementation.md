@@ -164,9 +164,9 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
 - Privileged exports need a live token and an in-app approval sheet showing the concrete output; agents can only
   decline it. A Settings switch (off by default) runs agent exports without confirmation, audited as
   auto-approved.
-- Model APIs are `ModelAdapter` conformances (Responses, Chat Completions, Anthropic Messages) with Keychain
-  credentials, multimodal frame attachments, editable generated scripts with explicit run, and revision-checked
-  timeline proposals. Details in [automation.md](../guides/automation.md).
+- The model-API tab (Responses, Chat Completions, Anthropic Messages; one script or timeline proposal per request)
+  was removed on 2026-10-04: without tools or the agent kit it could not finish a video. API keys work through the
+  Claude Code and Codex tabs.
 - Agent Knowledge manages a shared project memo and project skills exposed to `.claude/skills` and
   `.agents/skills`.
 - A shared debug log (`~/Library/Logs/BashCut/debug.log`) written by the app, CLI and MCP bridge.
@@ -316,7 +316,7 @@ Swift 6 build and strict SwiftLint pass.
   creation with Vietnamese folder names, footage preservation, invalid input, collisions and staging cleanup.
 - **Automation and agents:** authorization, revocation, wire decoding, 0600 socket round trips and concurrent
   clients; command-spec consistency (names, MCP schemas, defaults, CLI parsing, agent instructions); UI actions;
-  isolated Claude/Codex MCP and resume launches; session discovery; model API request shapes without network.
+  isolated Claude/Codex MCP and resume launches; session discovery.
 - **Plugins and document:** capability service with fake transports (resolution, health fallback, output
   confinement, take scoring and cleanup, loudness provenance); export queue, proxy queue, preview, file sync,
   settings, modal center and automation controllers with fakes.

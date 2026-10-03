@@ -47,28 +47,12 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
     unowned let document: ProjectDocument
     var sessions: [TerminalSession] = []
     var selectedSession: UUID?
-    var apiVisible = false
-    var configuration = ModelConfiguration()
-    var apiKey = ""
-    var prompt = ""
-    var output = ""
-    var generating = false
-    var includeContext = true
-    var contextImageURL: URL?
-    var mode = "script"
-    var scriptLanguage = "python"
     var sessionBookmarks = AgentSessionBookmarks()
     var sessionDiscoveryMessage = ""
     var settings: SettingsModel { document.settings }
     var showKnowledge = false
     var error = ""
     let knowledge = AgentKnowledgeModel()
-    var requestRevision: Int?
-    var outputMode: String?
-    var outputLanguage = "python"
-    var generationID: UUID?
-    let credentials = CredentialStore()
-    let client = ModelClient()
     private let sessionStore = AgentSessionStore()
     /// Session transcripts live in the agents' configuration folders, which users may move.
     private var sessionDiscovery: AgentSessionDiscovery {
@@ -78,18 +62,14 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
             .codex: folders.codex.url.appendingPathComponent("sessions", isDirectory: true),
         ])
     }
-    var generation: Task<Void, Never>?
     private var sessionDiscoveryTask: Task<Void, Never>?
     @ObservationIgnored private var detachedWindow: NSWindow?
     @ObservationIgnored private var detachedDelegate: AgentDockWindowDelegate?
 
     init(document: ProjectDocument) {
         self.document = document
-        if let data = UserDefaults.standard.data(forKey: "modelConfiguration"),
-            let saved = try? JSONDecoder().decode(ModelConfiguration.self, from: data)
-        {
-            configuration = saved
-        }
+        // The model-API panel was removed; forget its saved connection (API keys stay in the user's Keychain).
+        UserDefaults.standard.removeObject(forKey: "modelConfiguration")
     }
     var current: TerminalSession? { sessions.first { $0.id == selectedSession } }
     var defaultProvider: AgentProviderID {
@@ -152,7 +132,6 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
             let session = TerminalSession(provider: provider, token: token, launch: launch)
             sessions.append(session)
             selectedSession = session.id
-            apiVisible = false
             error = ""
             if provider.isAgent {
                 if resumeID(for: provider).isEmpty {
@@ -200,7 +179,6 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
     func projectChanged() {
         sessionDiscoveryTask?.cancel()
         sessionDiscoveryMessage = ""
-        contextImageURL = nil
         sessionBookmarks = AgentSessionBookmarks()
         guard let project = document.fileURL else { return }
         do {
@@ -223,7 +201,6 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
         if launchesTarget { open(provider) }
         guard let target = sessions.last(where: { $0.provider.id == provider }) else { return }
         selectedSession = target.id
-        apiVisible = false
         knowledge.load(from: directory)
         let handoff =
             "Continue this editing task handed off from \(source).\n"
@@ -244,13 +221,9 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
         sessions.removeAll { $0.id == session.id }
         if selectedSession == session.id { selectedSession = sessions.last?.id }
     }
-    /// Ends what belongs to the open project: the model-API request and its output, and session lookups.
+    /// Ends what belongs to the open project: pending session lookups.
     func resetProjectState() {
         sessionDiscoveryTask?.cancel()
-        cancel()
-        requestRevision = nil
-        outputMode = nil
-        output = ""
     }
 
     func closeAll() {
@@ -269,11 +242,10 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
     func sendContext(_ request: String = "", imageURL: URL? = nil) {
         knowledge.load(from: directory)
         var text = document.contextText() + "\n" + knowledge.context + "\n" + request
-        contextImageURL = imageURL
         if let imageURL {
             text += "\nCurrent viewer frame: " + imageURL.path
         }
-        if apiVisible { prompt = text } else { current?.paste(text) }
+        current?.paste(text)
     }
 }
 

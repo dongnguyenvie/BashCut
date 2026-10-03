@@ -2,7 +2,7 @@ import BashCutProject
 import Foundation
 
 extension CommandCatalog {
-    /// Instructions given to terminal agents and model APIs, rendered from the command specs.
+    /// Instructions given to terminal agents, rendered from the command specs.
     public static let instructions: String = {
         let commands = specs.map { spec in
             let note: String

@@ -39,7 +39,7 @@ public struct RPCResponse: Codable, Sendable {
 }
 
 public enum CommandMode: String, Sendable { case read, ui, edit, privileged }
-/// Agent and model-API operations use the core `EditOperation` codec; internal operations
+/// Agent operations use the core `EditOperation` codec; internal operations
 /// (`group`, `restore`) are rejected at this boundary.
 public enum WireOperations {
     public static func decode(_ value: JSONValue) throws -> [EditOperation] {
