@@ -379,10 +379,12 @@ example the voice a `voice.synthesize` provider should use), as `options`.
   - `plugins options` shows only `{"set": true|false}`. For a plugin declaring any secret, **all** options
     are user-only and stored for this Mac; project `pluginOptions` overrides are ignored. Automated option
     writes are refused, including non-secret settings such as the endpoint.
-  - Keys are bound to the canonical installation root, fingerprint and the plugin's `provider` and `baseUrl` option values. Enter a key after selecting the
-    destination. Changing either value selects a separate key; changing `model` does not. Legacy unbound
+  - Keys are bound to the canonical installation root, the fingerprint and the values of every option marked
+    `"bindsSecrets": true` (for example a provider and an endpoint). Enter a key after selecting the
+    destination. Changing a binding value selects a separate key; other options do not. Legacy unbound
     keys are never reused automatically and must be re-entered in Settings. Changed plugin code also requires
     a new key entry, even after Trust; approving code does not grant it the previous version's credentials.
+    Saving a key for new code deletes that installation's keys for older fingerprints.
   - Action parameters cannot be secrets.
 - `file` (API 3) shows **Choose…** with a file panel (through `ModalCenter`, so agents answer it with
   `ui respond --path`); `fileTypes` limits the extensions. Project-scope files inside the project are stored
@@ -401,6 +403,7 @@ example the voice a `voice.synthesize` provider should use), as `options`.
 | `minimum`, `maximum` | Bounds for `number` and `integer` |
 | `maxLength` | For `string`: 1–100,000 (default limit 10,000) |
 | `scope` | `user` (default): saved for this Mac in `plugin-trust.json`. `project`: stored in the project under `pluginOptions.<plugin id>` as an undoable edit |
+| `bindsSecrets` | Not on `secret` or `file` options. The plugin's secrets are stored per value of this option, so a key entered for one destination is never sent to another |
 
 A stored value that no longer fits the option falls back to its default. Agents read options with
 `plugins options` and set them with `plugins option`.

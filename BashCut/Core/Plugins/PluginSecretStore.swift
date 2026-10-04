@@ -51,6 +51,31 @@ public final class PluginSecretStore: @unchecked Sendable {
         memory[account] = value
     }
 
+    /// Deletes `option` keys of identities starting with `prefix` other than `identity`: keys entered for an
+    /// installation's older code, which can never be read again. Keys for other bindings of `identity` stay.
+    public func removeStale(option: String, prefix: String, keeping identity: String) {
+        func stale(_ account: String) -> Bool {
+            guard account.hasPrefix(prefix), !account.hasPrefix(identity + "/") else { return false }
+            let parts = account.dropFirst(prefix.count).split(separator: "/", maxSplits: 1)
+            guard parts.count == 2 else { return false }
+            return parts[1] == option || parts[1].hasPrefix(option + "/")
+        }
+        lock.lock()
+        defer { lock.unlock() }
+        for account in memory.keys where stale(account) { memory[account] = nil }
+        guard keychain else { return }
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: Self.service,
+            kSecMatchLimit as String: kSecMatchLimitAll, kSecReturnAttributes as String: true,
+        ]
+        var result: CFTypeRef?
+        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
+            let items = result as? [[String: Any]] else { return }
+        for case let account as String in items.map({ $0[kSecAttrAccount as String] }) where stale(account) {
+            SecItemDelete(Self.query(account) as CFDictionary)
+        }
+    }
+
     private static func account(_ plugin: String, _ option: String, binding: String?) -> String {
         plugin + "/" + option + (binding.map { "/endpoint/" + $0 } ?? "")
     }

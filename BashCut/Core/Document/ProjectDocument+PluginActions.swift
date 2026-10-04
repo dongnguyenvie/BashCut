@@ -142,9 +142,11 @@ extension ProjectDocument {
         if option.type == .secret {
             guard author == .user else { throw ProjectError.invalid("Set secrets in Settings") }
             let text = try value.map(option.check)?.string ?? ""
+            let identity = try plugins.trust.credentialIdentity(for: plugin)
             try plugins.secrets.write(
-                text, plugin: plugins.trust.credentialIdentity(for: plugin), option: id,
+                text, plugin: identity, option: id,
                 binding: PluginOptionPolicy.endpointBinding(options: options, userValues: plugins.trust.userOptions(plugin)))
+            plugins.secrets.removeStale(option: id, prefix: plugin.installationID + "@", keeping: identity)
             return
         }
         var checked = try value.map(option.check)
@@ -371,8 +373,8 @@ extension ProjectDocument {
             let plugin = try document.requirePlugin(arguments.string("plugin"))
             let id = try arguments.string("option")
             let options = plugin.manifest.options ?? []
-        try PluginOptionPolicy.validateEdit(options: options, author: author)
-        guard let option = options.first(where: { $0.id == id }) else {
+            try PluginOptionPolicy.validateEdit(options: options, author: author)
+            guard let option = options.first(where: { $0.id == id }) else {
                 throw RPCFailure(-32602, "Unknown option \(id)")
             }
             let value: JSONValue?

@@ -137,6 +137,14 @@ struct PluginHostChannelTests {
             capabilities: ["agent.chat"], transport: .session, options: [projectSecret])
         #expect(throws: PluginError.self) { try scoped.validate() }
         #expect(try secret.parse("sk-test") == .string("sk-test"))
+        let selfBinding = PluginManifest(
+            id: "app.bashcut.agent", name: "Agent", version: "1.0.0", apiVersion: 4, entrypoint: "bin/provider",
+            capabilities: ["agent.chat"], transport: .session,
+            options: [PluginOption(id: "apiKey", title: "API key", type: .secret, bindsSecrets: true)])
+        #expect(throws: PluginError.self) { try selfBinding.validate() }
+        let decoded = try JSONDecoder().decode(PluginOption.self, from: Data(
+            #"{"id":"provider","title":{"en":"Provider"},"type":"string","bindsSecrets":true}"#.utf8))
+        #expect(decoded.bindsSecrets == true)
     }
 }
 
