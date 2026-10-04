@@ -10,6 +10,7 @@
 </p>
 
 <p align="center">
+  <a href="https://testflight.apple.com/join/XwsNZxre">TestFlight beta</a> ·
   <a href="docs/README.md">Docs</a> ·
   <a href="docs/guides/automation.md">Automation</a> ·
   <a href="docs/guides/plugins.md">Plugins</a> ·
@@ -56,7 +57,8 @@ verified and what is left.
 
 ## Install
 
-There is no public release yet. Beta builds go to TestFlight; to try BashCut now, build it from source.
+There is no App Store release yet. Join the public beta on [TestFlight](https://testflight.apple.com/join/XwsNZxre) (macOS 14+, needs the TestFlight
+app), or build BashCut from source.
 
 ## How to Build
 
