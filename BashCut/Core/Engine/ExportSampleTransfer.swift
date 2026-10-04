@@ -36,6 +36,7 @@ final class ExportSampleTransfer: @unchecked Sendable {
     private let progress: @Sendable (Double) -> Void
     private let failure: @Sendable () -> (any Error)?
     private let interrupt: @Sendable () -> Void
+    private let interruptGrace: DispatchTimeInterval
     // Control-queue state, except lastProgress which belongs to stream zero's queue.
     private var phase = Phase.idle
     private var error: (any Error)?
@@ -45,12 +46,14 @@ final class ExportSampleTransfer: @unchecked Sendable {
     private var monitor: DispatchSourceTimer?
 
     init(lanes: [Lane], duration: Double, progress: @escaping @Sendable (Double) -> Void,
-         failure: @escaping @Sendable () -> (any Error)?, interrupt: @escaping @Sendable () -> Void) {
+         failure: @escaping @Sendable () -> (any Error)?, interrupt: @escaping @Sendable () -> Void,
+         interruptGrace: DispatchTimeInterval = .milliseconds(500)) {
         streams = lanes.enumerated().map { Stream($0.element, index: $0.offset) }
         self.duration = duration
         self.progress = progress
         self.failure = failure
         self.interrupt = interrupt
+        self.interruptGrace = interruptGrace
     }
 
     func run() async throws {
@@ -126,8 +129,12 @@ final class ExportSampleTransfer: @unchecked Sendable {
         monitor?.cancel()
         let wasIdle = phase == .idle
         phase = .stopping
-        interrupt() // Cancels native reading to unblock an in-flight copyNextSampleBuffer.
-        guard !wasIdle else { return } // start() will install and resume the continuation.
+        guard !wasIdle else { return } // No read is in flight; start() will resume the continuation.
+        // Lanes stop after their current sample. Cancelling the reader while another thread waits inside
+        // copyNextSampleBuffer crashed AVFoundation under load (freed wait condition), so interrupt only a
+        // read that is still blocked after the grace period.
+        let blocked = DispatchWorkItem { [interrupt] in interrupt() }
+        control.asyncAfter(deadline: .now() + interruptGrace, execute: blocked)
         let drained = DispatchGroup()
         for stream in streams {
             drained.enter()
@@ -137,7 +144,10 @@ final class ExportSampleTransfer: @unchecked Sendable {
             }
         }
         // Writer cancellation/cleanup by the caller cannot race any remaining sample append.
-        drained.notify(queue: control) { self.complete() }
+        drained.notify(queue: control) {
+            blocked.cancel()
+            self.complete()
+        }
     }
 
     private func complete() {

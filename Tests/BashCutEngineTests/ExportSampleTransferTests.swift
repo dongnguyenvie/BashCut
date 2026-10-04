@@ -102,6 +102,23 @@ struct ExportSampleTransferTests {
         #expect(stream.readCount == 1 && stream.finishCount == 1)
     }
 
+    @Test("A read that returns on its own is never interrupted, so the reader is not cancelled under it")
+    func gracefulCancellation() async throws {
+        let stream = TestStream(samples: 20), gate = DispatchSemaphore(value: 0), state = TransferState()
+        stream.gate = gate
+        let transfer = ExportSampleTransfer(lanes: [stream.lane], duration: 20, progress: { _ in }, failure: { nil },
+                                            interrupt: { state.fail(); gate.signal() }, interruptGrace: .seconds(5))
+        let task = Task { try await transfer.run() }
+        defer { task.cancel() }
+        try await wait { stream.readCount == 1 }
+        task.cancel()
+        try await Task.sleep(for: .milliseconds(50))
+        gate.signal() // The in-flight decode finishes normally within the grace period.
+        await #expect(throws: CancellationError.self) { try await task.value }
+        #expect(state.failure == nil)
+        #expect(stream.readCount == 1 && stream.finishCount == 1)
+    }
+
     @Test("Read errors interrupt other lanes and preserve the original error")
     func readFailure() async {
         let bad = TestStream(samples: 20), waiting = TestStream(samples: 20, ready: false)
