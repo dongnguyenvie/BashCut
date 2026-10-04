@@ -415,3 +415,22 @@ also match within one level. The existing pre-encode caption golden remains unch
 “Xin chào” raster occupies 303,104 bytes versus 33,177,600 bytes for a full canvas, about 109× smaller.
 This is CPU bitmap storage, not a measurement of GPU upload time. The cache retains the positioned CIImage,
 and the compositor reuses it without constructing a wrapper on each frame.
+
+### Prepared picture keyframes (2026-10-04)
+
+`PreparedMotionTests` compares the previous `ItemMotion.value` scan with prepared segments plus binary search
+on the same M1 Max Debug run. For 10,000 picture samples (all five properties plus transform), two keys per
+property take 20.014 → 14.213 ms; 1,000 keys per property take 2,042.708 → 31.427 ms. The checksum includes
+transform and opacity. These are interpolation/transform costs, not total render throughput. Tests cover every
+easing mode, exact hold boundaries, negative/shifted keys, reverse seek order, fractional FPS, static defaults
+and transition holds. The compositor clamps local time once and samples typed channels together.
+
+### Native test isolation (2026-10-04)
+
+`verify.sh test` runs the app suites explicitly with `--no-parallel`; core model tests remain parallel and
+concurrency tests still create their own concurrent tasks. Running all native players, audio engines and
+encoders at once reproduced socket/readiness timeouts on the B1 baseline as well as the B4 worktree.
+The audio lane benchmark now waits for paused readiness instead of starting/stopping playback between
+samples. On this host, immediate playback left later items at `.unknown`; paused readiness passed all
+three iterations (27.773 ms median build-to-ready in the isolated check). No timeout or correctness
+assertion was loosened. Native ramp playback/export coverage remains separate.

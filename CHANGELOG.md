@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+- Prepare keyframe interpolation segments once per layer and binary-search them during arbitrary seeks.
+  Sample all five picture properties together, preserving easing and hold boundaries while avoiding per-frame
+  property dictionary lookups and repeated time conversion.
+
 - Rasterize captions into their visible text/decorations bounds and cache the positioned CIImage across frames.
   A short 4K caption uses 303,104 bytes instead of 33,177,600; pixel tests cover all presets, outlines,
   shadows, Vietnamese/emoji, canvas edges and animated word variants.
