@@ -10,6 +10,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/dongnguyenvie/BashCut/releases/latest">Download</a> ·
   <a href="https://testflight.apple.com/join/XwsNZxre">TestFlight beta</a> ·
   <a href="docs/README.md">Docs</a> ·
   <a href="docs/guides/automation.md">Automation</a> ·
@@ -57,8 +58,36 @@ verified and what is left.
 
 ## Install
 
-There is no App Store release yet. Join the public beta on [TestFlight](https://testflight.apple.com/join/XwsNZxre) (macOS 14+, needs the TestFlight
-app), or build BashCut from source.
+Requires macOS 14 or later.
+
+### Homebrew
+
+```sh
+brew install --cask dongnguyenvie/tap/bashcut
+```
+
+This installs `BashCut.app` into `/Applications` and links the `bashcut` CLI and `bashcut-mcp` server into
+Homebrew's `bin`, so agents in any terminal can drive the app. Update with `brew upgrade --cask bashcut`; remove
+with `brew uninstall --cask bashcut` (add `--zap` to also delete settings and caches).
+
+### Download a release
+
+Download `BashCut-<version>.dmg` (or `.zip`) from the [latest release](https://github.com/dongnguyenvie/BashCut/releases/latest),
+open it and drag BashCut to Applications. Builds are signed with Developer ID and notarized by Apple; check a download
+against the release's `SHA256SUMS` with `shasum -a 256 -c --ignore-missing SHA256SUMS`. To use the CLI from a terminal, link it yourself:
+
+```sh
+sudo ln -s /Applications/BashCut.app/Contents/MacOS/bashcut /usr/local/bin/bashcut
+sudo ln -s /Applications/BashCut.app/Contents/MacOS/bashcut-mcp /usr/local/bin/bashcut-mcp
+```
+
+### TestFlight
+
+Join the public beta on [TestFlight](https://testflight.apple.com/join/XwsNZxre) (needs the TestFlight app). The
+TestFlight build is the sandboxed Mac App Store build: it runs only the plugins bundled with the app, and its
+bundled CLI cannot run from a regular terminal.
+
+Or build BashCut from source, below.
 
 ## How to Build
 
