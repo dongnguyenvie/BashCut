@@ -457,3 +457,22 @@ returning to writer cleanup, so no append can race cleanup. Tests exercise contr
 blocked-read cancellation, cancellation before registration, read errors and failures while all inputs
 are not ready. Native tests cover video-only, audio/video, ProRes, ramped export, compositor failure,
 publication/cancellation cleanup and destination races.
+
+### Audio-only loudness measurement pass (2026-10-04)
+
+`RenderEngine.exportAudio` writes 48 kHz, stereo, float PCM in CAF through the same mixed-audio reader and
+atomic publication path as full export, with no video reader/compositor. The normalization pipeline uses
+this file for its first measurement, applies the gain through `EditOperation`, exports the final movie and
+still verifies that encoded movie. Temporary PCM is removed on success/failure. PCM uses more temporary
+space than AAC (115,319,296 bytes for this five-minute fixture), in exchange for avoiding a lossy first pass.
+The same C1 fixture on the C2 worktree takes 9.886 seconds for the full movie versus 0.264 seconds for PCM.
+This compares **measurement rendering only**, excluding the loudness analyzer and final encode.
+
+Tests deliberately install a failing video compositor: audio-only measurement succeeds without invoking it.
+Native normalization with gain, fades and volume keys reaches −20 LUFS within 0.3 LU using the bundled meter;
+the actual encoded movie is measured again and temporary files are absent afterward. Tests also cover an
+analyzer failure, no-audio projects, stereo PCM format/duration and both pitch modes of ramped audio.
+
+Full verification for this change: SwiftPM build/test/lint passed (114913/114915/115043), and
+`verify.sh xcode test -parallel-testing-enabled NO` passed 243 tests in 76 suites (115043).
+The Xcode test target now explicitly links `BashCutAudioAnalysis`. CI wiring remains a separate open item.

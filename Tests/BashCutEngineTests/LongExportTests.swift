@@ -41,9 +41,18 @@ struct LongExportTests {
         let audioDuration = try await #require(audio.first).load(.timeRange).duration.seconds
         #expect(abs(audioDuration - project.fps.time(project.duration).seconds) < 0.05)
         #expect(abs(try await asset.load(.duration).seconds - project.fps.time(project.duration).seconds) < 0.05)
+        let audioURL = root.appendingPathComponent("measurement.caf")
+        let audioStart = ContinuousClock.now
+        let audioReceipt = try await Exporter().exportAudio(snapshot, to: audioURL)
+        let audioElapsed = audioStart.duration(to: .now).components
+        let audioSeconds = Double(audioElapsed.seconds) + Double(audioElapsed.attoseconds) / 1e18
+        let measurement = AVURLAsset(url: audioURL)
+        #expect(try await measurement.loadTracks(withMediaType: .video).isEmpty)
+        #expect(abs(try await measurement.load(.duration).seconds - receipt.duration) < 0.05)
         let report: [String: Any] = [
             "scenario": "five-minute-av-export", "sha": ProcessInfo.processInfo.environment["BASHCUT_BENCH_SHA"] ?? "unknown",
             "timelineSeconds": receipt.duration, "exportSeconds": seconds, "fps": Double(frames) / seconds,
+            "measurementSeconds": audioSeconds, "measurementBytes": audioReceipt.bytes,
             "frames": frames, "width": 160, "height": 90, "bytes": receipt.bytes,
             "os": ProcessInfo.processInfo.operatingSystemVersionString
         ]

@@ -73,6 +73,7 @@ let package = Package(
             .product(name: "BashCutPlugin", package: "BashCutCore")]),
         .testTarget(name: "BashCutAudioAnalysisTests", dependencies: ["BashCutAudioAnalysis"]),
         .testTarget(name: "BashCutDocumentTests", dependencies: ["BashCutDocument", "BashCutEngine", "BashCutStorage",
+            "BashCutAudioAnalysis", "BashCutPlugins",
             "BashCutAutomation", "BashCutTestSupport",
             .product(name: "BashCutProject", package: "BashCutCore"),
             .product(name: "BashCutInterchange", package: "BashCutCore")]),

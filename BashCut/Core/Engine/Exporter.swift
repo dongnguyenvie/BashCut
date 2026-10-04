@@ -15,15 +15,22 @@ public actor Exporter {
         try await performExport(snapshot, to: url, settings: settings, progress: progress)
     }
 
+    /// Lossless 48 kHz stereo PCM for loudness measurement; no video reader or compositor is created.
+    public func exportAudio(
+        _ snapshot: CompositionSnapshot, to url: URL, progress: @escaping @Sendable (Double) -> Void = { _ in }
+    ) async throws -> ExportReceipt {
+        try await performExport(snapshot, to: url, settings: nil, audioOnly: true, progress: progress)
+    }
+
     private func performExport(
-        _ snapshot: CompositionSnapshot, to url: URL, settings: ExportSettings?,
+        _ snapshot: CompositionSnapshot, to url: URL, settings: ExportSettings?, audioOnly: Bool = false,
         progress: @escaping @Sendable (Double) -> Void
     ) async throws -> ExportReceipt {
         try Task.checkCancellation()
         let destination = try ExportDestination(url)
         defer { destination.discard() }
         let reader = try AVAssetReader(asset: snapshot.composition)
-        let writer = try AVAssetWriter(outputURL: destination.partial, fileType: settings?.preset.fileType ?? .mp4)
+        let writer = try AVAssetWriter(outputURL: destination.partial, fileType: audioOnly ? .caf : settings?.preset.fileType ?? .mp4)
         var completed = false
         defer {
             if !completed {
@@ -31,6 +38,57 @@ public actor Exporter {
                 writer.cancelWriting()
             }
         }
+        var pairs: [(AVAssetReaderOutput, AVAssetWriterInput)] = []
+        if !audioOnly { pairs.append(try await videoPair(snapshot, reader: reader, writer: writer, settings: settings)) }
+        let audioTracks = try await snapshot.composition.loadTracks(withMediaType: .audio)
+        if !audioTracks.isEmpty {
+            let audio = AVAssetReaderAudioMixOutput(
+                audioTracks: audioTracks, audioSettings: Self.measurementPCM)
+            audio.audioMix = snapshot.audioMix
+            let input = AVAssetWriterInput(
+                mediaType: .audio,
+                outputSettings: audioOnly ? Self.measurementPCM : [
+                    AVFormatIDKey: kAudioFormatMPEG4AAC, AVSampleRateKey: 48000, AVNumberOfChannelsKey: 2,
+                    AVEncoderBitRateKey: 320000,
+                ])
+            guard reader.canAdd(audio), writer.canAdd(input) else {
+                throw ProjectError.invalid("Cannot configure audio export")
+            }
+            reader.add(audio)
+            writer.add(input)
+            pairs.append((audio, input))
+        }
+        guard !pairs.isEmpty else { throw ProjectError.invalid("Timeline has no audio to measure") }
+        guard writer.startWriting(), reader.startReading() else {
+            throw writer.error ?? reader.error ?? ProjectError.invalid("Export could not start")
+        }
+        writer.startSession(atSourceTime: .zero)
+        progress(0)
+        try await transferSamples(
+            pairs, duration: snapshot.composition.duration.seconds, reader: reader, writer: writer,
+            progress: progress)
+        await writer.finishWriting()
+        guard writer.status == .completed else {
+            throw writer.error ?? ProjectError.invalid("Export failed")
+        }
+        try Task.checkCancellation()
+        let attributes = try FileManager.default.attributesOfItem(atPath: destination.partial.path)
+        try destination.publish()
+        completed = true
+        progress(1)
+        return ExportReceipt(
+            url: url, duration: snapshot.composition.duration.seconds,
+            bytes: (attributes[.size] as? NSNumber)?.int64Value ?? 0)
+    }
+    private static let measurementPCM: [String: any Sendable] = [
+        AVFormatIDKey: kAudioFormatLinearPCM, AVSampleRateKey: 48000, AVNumberOfChannelsKey: 2,
+        AVLinearPCMBitDepthKey: 32, AVLinearPCMIsFloatKey: true, AVLinearPCMIsBigEndianKey: false,
+        AVLinearPCMIsNonInterleaved: false
+    ]
+
+    private func videoPair(
+        _ snapshot: CompositionSnapshot, reader: AVAssetReader, writer: AVAssetWriter, settings: ExportSettings?
+    ) async throws -> (AVAssetReaderOutput, AVAssetWriterInput) {
         let tracks = try await snapshot.composition.loadTracks(withMediaType: .video)
         let video = AVAssetReaderVideoCompositionOutput(
             videoTracks: tracks,
@@ -56,46 +114,9 @@ public actor Exporter {
         }
         reader.add(video)
         writer.add(videoInput)
-        var pairs: [(AVAssetReaderOutput, AVAssetWriterInput)] = [(video, videoInput)]
-        let audioTracks = try await snapshot.composition.loadTracks(withMediaType: .audio)
-        if !audioTracks.isEmpty {
-            let audio = AVAssetReaderAudioMixOutput(
-                audioTracks: audioTracks, audioSettings: [AVFormatIDKey: kAudioFormatLinearPCM])
-            audio.audioMix = snapshot.audioMix
-            let input = AVAssetWriterInput(
-                mediaType: .audio,
-                outputSettings: [
-                    AVFormatIDKey: kAudioFormatMPEG4AAC, AVSampleRateKey: 48000, AVNumberOfChannelsKey: 2,
-                    AVEncoderBitRateKey: 320000,
-                ])
-            guard reader.canAdd(audio), writer.canAdd(input) else {
-                throw ProjectError.invalid("Cannot configure audio export")
-            }
-            reader.add(audio)
-            writer.add(input)
-            pairs.append((audio, input))
-        }
-        guard writer.startWriting(), reader.startReading() else {
-            throw writer.error ?? reader.error ?? ProjectError.invalid("Export could not start")
-        }
-        writer.startSession(atSourceTime: .zero)
-        progress(0)
-        try await transferSamples(
-            pairs, duration: snapshot.composition.duration.seconds, reader: reader, writer: writer,
-            progress: progress)
-        await writer.finishWriting()
-        guard writer.status == .completed else {
-            throw writer.error ?? ProjectError.invalid("Export failed")
-        }
-        try Task.checkCancellation()
-        let attributes = try FileManager.default.attributesOfItem(atPath: destination.partial.path)
-        try destination.publish()
-        completed = true
-        progress(1)
-        return ExportReceipt(
-            url: url, duration: snapshot.composition.duration.seconds,
-            bytes: (attributes[.size] as? NSNumber)?.int64Value ?? 0)
+        return (video, videoInput)
     }
+
     private func transferSamples(
         _ pairs: [(AVAssetReaderOutput, AVAssetWriterInput)],
         duration: Double, reader: AVAssetReader, writer: AVAssetWriter,

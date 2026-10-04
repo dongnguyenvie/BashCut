@@ -21,6 +21,11 @@ private actor ComparisonProbe: RenderEngine {
         return CompositionSnapshot(composition: AVMutableComposition(), videoComposition: AVMutableVideoComposition(),
                                    audioMix: AVMutableAudioMix(), structure: structure)
     }
+    func exportAudio(_ snapshot: CompositionSnapshot, to url: URL,
+                     progress: @escaping @Sendable (Double) -> Void) async throws -> ExportReceipt {
+        throw ProjectError.invalid("Unexpected audio measurement export in this test")
+    }
+
     func export(_ snapshot: CompositionSnapshot, to url: URL, settings: ExportSettings,
                 progress: @escaping @Sendable (Double) -> Void) async throws -> ExportReceipt {
         ExportReceipt(url: url, duration: 0, bytes: 0)

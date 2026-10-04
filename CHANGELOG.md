@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+- Normalize exports from a lossless audio-only measurement pass, preserving the mixed gain, fades,
+  keyframes and ramped audio while skipping video compositing/encoding. The final movie is still measured
+  after encoding. On the synthetic five-minute fixture, measurement rendering drops from 9.886 to 0.264 seconds.
+- Keep export partial filenames short even for long Vietnamese output names.
+
 - Feed export audio/video on dedicated readiness-driven queues instead of sleeping 1 ms per transfer loop.
   Cancellation interrupts reads and drains callbacks before cleanup; asynchronous failures also terminate
   under backpressure. The synthetic five-minute 160×90 benchmark drops from 22.811 to 9.651 seconds.

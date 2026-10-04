@@ -55,6 +55,31 @@ struct ExportPublicationTests {
         #expect(try await asset.loadTracks(withMediaType: .audio).isEmpty)
         #expect(try await asset.loadTracks(withMediaType: .video).count == 1)
         #expect(abs(try await asset.load(.duration).seconds - silent.composition.duration.seconds) < 0.05)
+        let measurement = root.appendingPathComponent("empty.caf")
+        await #expect(throws: (any Error).self) { _ = try await Exporter().exportAudio(silent, to: measurement) }
+        #expect(try FileManager.default.contentsOfDirectory(atPath: root.path) == ["silent.mp4"])
+    }
+
+    @Test("Audio measurement never invokes the video compositor and retains stereo PCM")
+    func audioOnly() async throws {
+        let root = try TestFixtures.temporaryDirectory("audio-measurement")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let original = try await snapshot()
+        let video = try #require(original.videoComposition.mutableCopy() as? AVMutableVideoComposition)
+        video.customVideoCompositorClass = FailingExportCompositor.self
+        let snapshot = CompositionSnapshot(composition: original.composition, videoComposition: video, audioMix: original.audioMix)
+        let url = root.appendingPathComponent("measurement.caf")
+        let receipt = try await Exporter().exportAudio(snapshot, to: url)
+        let asset = AVURLAsset(url: url)
+        #expect(try await asset.loadTracks(withMediaType: .video).isEmpty)
+        let track = try #require(try await asset.loadTracks(withMediaType: .audio).first)
+        let format = try #require(try await track.load(.formatDescriptions).first)
+        let basic = try #require(CMAudioFormatDescriptionGetStreamBasicDescription(format))
+        #expect(basic.pointee.mFormatID == kAudioFormatLinearPCM)
+        #expect(basic.pointee.mSampleRate == 48000 && basic.pointee.mChannelsPerFrame == 2)
+        #expect(abs(try await asset.load(.duration).seconds - receipt.duration) < 0.001)
+        let samples = try await TestFixtures.decodeStereo(url)
+        #expect(samples.count == 2 && samples[0].contains { abs($0) > 0.01 })
     }
 
     @Test("Cancellation after writer startup removes the partial and leaves no final file")
