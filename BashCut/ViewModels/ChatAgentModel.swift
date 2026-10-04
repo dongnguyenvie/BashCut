@@ -258,21 +258,7 @@ enum ChatEntryKind: String, Codable { case user, assistant, tool, notice, error 
     }
 
     private func kitJSON() -> JSONValue {
-        guard let kit = document.agentKitLaunch()?.kit else { return .null }
-        return .object([
-            "root": .string(kit.root.path),
-            "skills": .array(kit.skills.map { name in
-                .object(["name": .string(name), "description": .string(Self.skillDescription(kit, name))])
-            }),
-        ])
-    }
-
-    /// The `description:` line of a skill's front matter.
-    private static func skillDescription(_ kit: AgentKit, _ name: String) -> String {
-        let url = kit.skillsFolder.appendingPathComponent("\(name)/SKILL.md")
-        guard let text = try? String(contentsOf: url, encoding: .utf8) else { return "" }
-        let line = text.split(separator: "\n", maxSplits: 30).first { $0.hasPrefix("description:") }
-        return line.map { String($0.dropFirst("description:".count)).trimmingCharacters(in: .whitespaces) } ?? ""
+        document.agentKitLaunch().map { PluginTerminals.kitJSON($0.kit) } ?? .null
     }
 
     private static func json(_ entry: Entry) -> JSONValue {

@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 92 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 94 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -595,6 +595,20 @@ Check bashcut-agent-kit's signed releases for a newer agent kit than the one Bas
 Download and install the newest signed agent kit release (Settings › Agents › Download & Update), then refresh Claude Code and Codex where the kit is set up.
 
 - Mode: privileged · Runs: after the user approves in the app · MCP: `bashcut_agent_kit-update`
+
+### `bashcut agent terminals`
+
+The terminals the agent dock can open: built-in (claude, codex, shell) and agent CLIs from plugins with the agent.terminal capability, whether each can continue its last conversation in this project, and the open terminal tabs.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_agent_terminals`
+
+### `bashcut agent open <terminal> [--new]`
+
+Open a terminal tab in the agent dock like its + menu: claude, codex, shell or a terminal plugin's ID. Returns once it started; a plugin's launch error is this command's error.
+
+- Mode: ui · Runs: immediately · MCP: `bashcut_agent_open`
+- `terminal`: string, required. claude, codex, shell or a plugin ID (agent terminals)
+- `new`: boolean, default false. Start a new conversation instead of continuing the last one
 
 ## app
 

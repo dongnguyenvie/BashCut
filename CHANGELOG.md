@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+- **Terminal agents from plugins** (plugin API 5). A plugin with the new `agent.terminal` capability adds an agent CLI
+  (Gemini CLI, Qwen Code, opencode…) to the agent dock as a terminal tab next to Claude, Codex and Shell: in the +
+  menu, the empty dock (Start / Continue / New conversation) and Handoff, with the icon from its manifest. The plugin
+  answers `launch` with the command line (argv, a few variables, the folder to start in); BashCut gives the tab its
+  own token and the `bashcut` MCP server, filters the environment to what the manifest declares, and links the agent
+  kit's skills where the plugin asks, so skills stay in BashCut. An optional `session` op lets the next tab continue
+  the project's conversation. Agents use `agent terminals` and `agent open <id> [--new]`. Spec:
+  `docs/specs/12-terminal-agents.md`.
 - BashCut is released under the MIT License (`LICENSE`).
 - **Close Project** (the window's close button or ⌘W, File menu, the project name menu at the top left, ⇧⌘W) returns
   to the Welcome screen with its recent projects, as CapCut's editor returns to Home. Closing the window again on the

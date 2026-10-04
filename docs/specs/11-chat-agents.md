@@ -78,7 +78,7 @@ Requires `"transport": "session"` and API 4. Method `agent.chat`; `params.op` se
 
 | op | Params | Result | Notes |
 |---|---|---|---|
-| `turn` | `conversation` (string), `text`, `images` (paths, optional), `context` (string), `instructions` (string), `tools` (array of `{name, method, description, inputSchema}`), `kit` (`{root, skills:[{name, description}]}` or null), `options` | `{"stopReason":"end"\|"aborted"\|"error","error"?}` | Streams `event`s and makes `call`s while it runs |
+| `turn` | `conversation` (string), `text`, `images` (paths, optional), `context` (string), `instructions` (string), `tools` (array of `{name, method, description, inputSchema}`), `kit` (`{root, skillsFolder, version, skills:[{name, description}]}` or null), `options` | `{"stopReason":"end"\|"aborted"\|"error","error"?}` | Streams `event`s and makes `call`s while it runs |
 | `reset` | `conversation` | `{}` | Forgets the conversation |
 | `status` | `options` | `{"ready":bool,"provider","model","detail"}` | Is a key set, and is the model known |
 | `commands` | `options` | `{"commands":[{"name","args"?,"summary","choices"?}]}` | The plugin's own slash commands. `choices` are argument suggestions, such as thinking levels or model IDs |

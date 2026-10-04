@@ -81,11 +81,12 @@ and dependency names stay plain strings.
 
 ## API versions
 
-The host serves every plugin API version from `PluginAPI.minimum` (1) to `PluginAPI.current` (4); changes are
+The host serves every plugin API version from `PluginAPI.minimum` (1) to `PluginAPI.current` (5); changes are
 additive, so older manifests keep working. Version 2 adds `options`, `contributes` and the `session` transport.
 Version 3 adds option `choiceLabels` and the `file` option type, the `BASHCUT_PLUGIN_DATA`/`BASHCUT_PLUGIN_CACHE`
 folders and `::progress` lines from install recipes. Version 4 adds the `secret` option type, the session host
-channel (`event` and `call` lines) and the `agent.chat` capability. A manifest that uses a feature with an older `apiVersion` is
+channel (`event` and `call` lines) and the `agent.chat` capability. Version 5 adds the `agent.terminal` capability
+and the manifest's `terminal` object. A manifest that uses a feature with an older `apiVersion` is
 invalid; set `minApiVersion` so older BashCut builds list the plugin as outdated instead of failing.
 
 A plugin is **outdated** (listed, never run) when `minApiVersion` (or `apiVersion`) is newer than the host
@@ -639,7 +640,7 @@ is in [11 — Chat agents](../specs/11-chat-agents.md).
     except `agent.*`, `chat.*` and `ui.notify`.
   - `instructions` and `context`: a generic editing preamble, the command instructions, the project context
     and the timeline summary.
-  - `kit`: the agent kit, as `{root, skills: [{name, description}]}`.
+  - `kit`: the agent kit, as `{root, skillsFolder, version, skills: [{name, description}]}`.
 - The plugin streams `event`s for the tab:
   - `text` and `thinking` deltas;
   - `tool` and `toolEnd` rows with `callId`, `name`, `ok` and `summary`;
@@ -662,6 +663,34 @@ is in [11 — Chat agents](../specs/11-chat-agents.md).
 - **Input:** Enter sends, and Shift+Enter or Option+Enter starts a new line.
 - **CLI:** `chat status`, `chat send <text> [--plugin] [--image]`, `chat transcript`, `chat stop`, `chat reset`,
   `chat commands`, `chat command "<line>"`, and `ui action agent.open-chat`.
+
+## Terminal agents
+
+A plugin that provides `agent.terminal` (API 5) adds an agent CLI, such as Gemini CLI, to the agent dock as a
+terminal tab next to Claude, Codex and Shell. The CLI keeps its own interface and login, and reaches BashCut through
+the bundled `bashcut-mcp` server with a token for that tab, like Claude Code and Codex. Use `agent.chat` instead when
+the plugin runs the model loop itself against an API. The full protocol is in
+[12 — Terminal agents](../specs/12-terminal-agents.md).
+
+```json
+"apiVersion": 5,
+"capabilities": ["agent.terminal"],
+"providers": [{"id": "dev.example.gemini.terminal", "capability": "agent.terminal", "name": "Gemini"}],
+"terminal": {"icon": "sparkles", "environment": ["GEMINI_*", "GOOGLE_*"]}
+```
+
+- `terminal.environment` lists the variables the CLI may inherit (a trailing `*` is a prefix; `BASHCUT_*` and `PATH`
+  are refused). Everything else in the app's environment stays out.
+- Op **`launch`** gets `workspace`, `agentFolder` (a folder BashCut owns for the plugin's tabs), `project`, `prompt`
+  (BashCut's instructions and the project context), `mcp` (`{name, command, arguments, environment}`), `kit`,
+  `resume` and `canEdit`. It answers `{executable, arguments?, directory?, environment?, skillsFolder?}`: argv only,
+  never a shell string. The plugin may write the CLI's config files in `agentFolder` first.
+- Op **`session`** (optional) gets `workspace`, `agentFolder`, `project` and `notBefore`, and answers `{id}` with the
+  newest session for the project, so the next tab continues it.
+- **Skills stay in BashCut.** The plugin never ships the agent kit. It returns `skillsFolder` (inside `agentFolder`)
+  and BashCut links the kit's skills there, or it tells the model where `kit.root` is.
+- The plugin process never sees the token; only the terminal does, in `BASHCUT_SESSION_TOKEN`, for the MCP server.
+- **CLI:** `agent terminals` lists what the dock can open; `agent open <id> [--new]` opens one.
 
 ## Commands
 

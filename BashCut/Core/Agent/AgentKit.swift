@@ -37,6 +37,14 @@ public struct AgentKit: Sendable, Equatable {
 
     public var skillsFolder: URL { root.appendingPathComponent("skills", isDirectory: true) }
 
+    /// The `description:` line of a skill's front matter.
+    public func description(of skill: String) -> String {
+        let url = skillsFolder.appendingPathComponent("\(skill)/SKILL.md")
+        guard let text = try? String(contentsOf: url, encoding: .utf8) else { return "" }
+        let line = text.split(separator: "\n", maxSplits: 30).first { $0.hasPrefix("description:") }
+        return line.map { String($0.dropFirst("description:".count)).trimmingCharacters(in: .whitespaces) } ?? ""
+    }
+
     /// Hash the distributed content, including helper scripts and hidden manifests. Version strings alone do
     /// not identify a kit during development. Length-delimited paths and bytes make additions/deletions visible.
     func contentHash() throws -> String {
@@ -150,6 +158,14 @@ public struct AgentKitInstall: Sendable {
             }
         }
         return linked
+    }
+
+    /// Makes `folder` (one BashCut owns) hold exactly the kit's skills as links, or none when `kit` is nil. Files
+    /// and folders that are not links are left alone.
+    public static func syncSkills(of kit: AgentKit?, into folder: URL) throws {
+        let present = (try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []
+        unlinkSkills(named: present.filter { !(kit?.skills.contains($0) ?? false) }, in: folder)
+        if let kit { try linkSkills(of: kit, into: folder) }
     }
 
     /// Removes the links in `folder` that point into a kit's `skills` folder (any copy), leaving everything else.

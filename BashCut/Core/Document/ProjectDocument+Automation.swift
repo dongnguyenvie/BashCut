@@ -29,6 +29,7 @@ extension ProjectDocument {
         registerAgentKitCommands()
         registerAppCommands()
         registerChatAgentCommands()
+        registerTerminalCommands()
         registerPrivilegedCommands()
         registerUICommands()
         registerUIActionCommands()

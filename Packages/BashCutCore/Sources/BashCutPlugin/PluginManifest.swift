@@ -20,13 +20,15 @@ public struct PluginManifest: Codable, Sendable, Equatable {
     public let transport: PluginTransportKind?
     public let options: [PluginOption]?
     public let contributes: PluginContributions?
+    /// The dock tab of an `agent.terminal` plugin (API 5).
+    public let terminal: PluginTerminal?
 
     public init(
         id: String, name: LocalizedText, version: String, apiVersion: Int = 1,
         entrypoint: String, capabilities: [String], providers: [PluginProvider]? = nil,
         dependencies: [PluginDependency] = [], minApiVersion: Int? = nil, maxApiVersion: Int? = nil,
         transport: PluginTransportKind? = nil, options: [PluginOption]? = nil,
-        contributes: PluginContributions? = nil
+        contributes: PluginContributions? = nil, terminal: PluginTerminal? = nil
     ) {
         schema = Self.schema
         self.id = id
@@ -42,6 +44,7 @@ public struct PluginManifest: Codable, Sendable, Equatable {
         self.transport = transport
         self.options = options
         self.contributes = contributes
+        self.terminal = terminal
     }
 
     public init(from decoder: any Decoder) throws {
@@ -60,6 +63,7 @@ public struct PluginManifest: Codable, Sendable, Equatable {
         transport = try container.decodeIfPresent(PluginTransportKind.self, forKey: .transport)
         options = try container.decodeIfPresent([PluginOption].self, forKey: .options)
         contributes = try container.decodeIfPresent(PluginContributions.self, forKey: .contributes)
+        terminal = try container.decodeIfPresent(PluginTerminal.self, forKey: .terminal)
     }
 
     public var transportKind: PluginTransportKind { transport ?? .oneshot }
@@ -132,6 +136,7 @@ public struct PluginManifest: Codable, Sendable, Equatable {
         guard !capabilities.contains(PluginAPI.agentChat) || transport == .session else {
             throw PluginError.invalid("agent.chat needs the session transport")
         }
+        try validateTerminal()
         guard Set(options.map(\.id)).count == options.count, options.count <= 64 else {
             throw PluginError.invalid("Option ids must be unique (at most 64)")
         }
@@ -141,6 +146,15 @@ public struct PluginManifest: Codable, Sendable, Equatable {
         }
         for action in actions { try action.validate(pluginID: id) }
         try validateHooks()
+    }
+
+    private func validateTerminal() throws {
+        let declares = capabilities.contains(PluginAPI.agentTerminal)
+        guard !declares || apiVersion >= 5 else { throw PluginError.invalid("agent.terminal needs apiVersion 5") }
+        guard declares == (terminal != nil) else {
+            throw PluginError.invalid("agent.terminal and the terminal object go together")
+        }
+        try terminal?.validate()
     }
 
     private func validateHooks() throws {
