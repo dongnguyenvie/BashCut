@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+- Add macOS CI for SwiftPM build/tests, CLI/MCP process tests, strict lint and Xcode tests on every PR.
+  Verification logs and Xcode results are retained for failed-run diagnosis.
+
 - Disable unconditional reader sample copies; configure H.264 High with source frame rate and a two-second
   keyframe interval, and optimize MP4 metadata placement for streaming. ProRes keeps its codec-specific
   settings. Private staging directories also contain encoder sidecars for complete failure/cancellation cleanup.
