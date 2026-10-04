@@ -44,9 +44,8 @@ jobs:
           path: |
             .build
             Packages/BashCutCore/.build
-          key: spm-${{ runner.os }}-${{ runner.arch }}-xcode26.3-${{ hashFiles('Package.resolved', 'Packages/BashCutCore/Package.resolved') }}-${{ github.sha }}
-          restore-keys: |
-            spm-${{ runner.os }}-${{ runner.arch }}-xcode26.3-${{ hashFiles('Package.resolved', 'Packages/BashCutCore/Package.resolved') }}-
+          # One entry per toolchain and dependency set; a commit-specific key uploaded a new cache every run.
+          key: spm-${{ runner.os }}-${{ runner.arch }}-xcode26.3-${{ hashFiles('Package.resolved', 'Packages/BashCutCore/Package.resolved') }}
       - name: Check whitespace
         env:
           PR_BASE: ${{ github.event.pull_request.base.sha }}
@@ -62,7 +61,13 @@ jobs:
         run: scripts/verify.sh test
       - name: Lint strictly
         run: scripts/verify.sh lint
+      # SwiftPM already ran every suite. Pull requests prove the Xcode app and test targets compile;
+      # a manual run also executes the Xcode test plan.
+      - name: Build Xcode app and tests
+        if: github.event_name != 'workflow_dispatch'
+        run: scripts/verify.sh xcode build-for-testing
       - name: Build and test Xcode
+        if: github.event_name == 'workflow_dispatch'
         run: scripts/verify.sh xcode test -parallel-testing-enabled NO
       - name: Preserve verification logs
         if: always()
