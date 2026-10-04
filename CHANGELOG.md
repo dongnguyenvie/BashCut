@@ -5,6 +5,22 @@
 
 ## [Unreleased]
 
+- Render speed-ramp audio on a private queue instead of Swift's cooperative executor, publish cache files
+  with an atomic rename, check reader outputs before adding them and decode sources with more than two
+  channels as stereo. The cache folder is now `.bashcut/ramp-audio`, matching its storage entry.
+- Bind plugin secrets to the options a manifest marks `bindsSecrets` instead of hard-coded Director option
+  names. Saving a key for changed plugin code removes that installation's keys for older fingerprints.
+- Run plugin processes with `PYTHONDONTWRITEBYTECODE=1` so bytecode never changes a pinned plugin tree.
+  Dependency probes refuse inline code in combined, attached and long flags of script interpreters, while
+  ordinary tools such as `grep -e` remain allowed.
+- Rotate a custom `BASHCUT_DEBUG_LOG_PATH` beside its own name and record preview signposts under the
+  `app.bashcut` subsystem.
+
+- Keep abrupt audio gain changes on separate reusable composition lanes, preventing the native mixer
+  from turning an adjacent -20 dB cut into a fade. Continuous-gain cuts still share one lane.
+- Generate H.264/AAC test footage natively on demand, with exact 30000/1001 frame timestamps and isolated
+  temporary storage. Clean-checkout tests no longer need ffmpeg or a manual fixture-generation step.
+
 - Inject storage roots and inherited plugin environments in tests instead of changing process-wide
   environment variables. Plugin subprocess tests continue to verify that secrets are filtered out.
 

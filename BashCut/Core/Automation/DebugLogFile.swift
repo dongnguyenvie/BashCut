@@ -41,7 +41,9 @@ final class DebugLogFile: @unchecked Sendable {
         }
         if exists, info.st_mode & 0o777 != 0o600, fchmod(descriptor, 0o600) != 0 { return }
         if exists, info.st_size > maximumBytes {
-            let rotated = url.deletingLastPathComponent().appendingPathComponent("debug.1.log")
+            // debug.log → debug.1.log; a custom BASHCUT_DEBUG_LOG_PATH keeps its own name beside it.
+            let name = url.deletingPathExtension().lastPathComponent + ".1" + (url.pathExtension.isEmpty ? "" : "." + url.pathExtension)
+            let rotated = url.deletingLastPathComponent().appendingPathComponent(name)
             guard rename(url.path, rotated.path) == 0, openLog() else { return }
         }
         writeLine(line)

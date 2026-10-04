@@ -5,7 +5,7 @@ import os
 /// One rebuild's intervals, including cancelled/failed stages, visible in Instruments and the private debug log.
 @MainActor
 final class PreviewTiming {
-    private static let signposter = OSSignposter(subsystem: "com.bashcut.app", category: "Preview")
+    private static let signposter = OSSignposter(subsystem: "app.bashcut", category: "preview")
     private var active: (name: StaticString, state: OSSignpostIntervalState, start: ContinuousClock.Instant)?
     private var milliseconds: [String: Double] = [:]
 
