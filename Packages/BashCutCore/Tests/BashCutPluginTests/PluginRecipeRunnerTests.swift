@@ -31,11 +31,10 @@ struct PluginRecipeRunnerTests {
             echo oops >&2
             """)
         defer { try? FileManager.default.removeItem(at: root) }
-        setenv("BASHCUT_TEST_SECRET", "leak", 1)
-        defer { unsetenv("BASHCUT_TEST_SECRET") }
         let lines = Lines()
         try await PluginRecipeRunner.run(
-            PluginCommand(executable: "bin/setup"), plugin: plugin, directory: plugin.directory, output: lines.add)
+            PluginCommand(executable: "bin/setup"), plugin: plugin, directory: plugin.directory,
+            inheritedEnvironment: ["PATH": "/usr/bin:/bin", "BASHCUT_TEST_SECRET": "leak"], output: lines.add)
         #expect(lines.all == [
             .progress(0.5, "Downloading model"), .line("secret=unset data=test.recipe"), .line("oops"),
         ])

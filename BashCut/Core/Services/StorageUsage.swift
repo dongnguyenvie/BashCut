@@ -43,21 +43,25 @@ public enum StorageUsage {
     }
 
     /// Every entry that exists, plugin data and caches for each plugin that has some.
-    public static func measure(projectRoot: URL?, pluginsFolder: URL) -> [StorageEntry] {
+    public static func measure(projectRoot: URL?, pluginsFolder: URL,
+                               pluginDataRoot: URL = PluginFolders.dataRoot, pluginCacheRoot: URL = PluginFolders.cacheRoot,
+                               supportRoot: URL = supportFolder) -> [StorageEntry] {
         var entries = [StorageEntry(kind: .plugins, pluginID: nil, url: pluginsFolder, bytes: size(of: pluginsFolder))]
         let manager = FileManager.default
-        let ids = Set([PluginFolders.dataRoot, PluginFolders.cacheRoot].flatMap { root in
+        let ids = Set([pluginDataRoot, pluginCacheRoot].flatMap { root in
             ((try? manager.contentsOfDirectory(atPath: root.path)) ?? []).filter { !$0.hasPrefix(".") }
         })
         for id in ids.sorted() {
-            for (kind, url) in [(StorageEntry.Kind.pluginData, PluginFolders.data(id)), (.pluginCache, PluginFolders.cache(id))]
+            for (kind, url) in [(StorageEntry.Kind.pluginData, pluginDataRoot.appendingPathComponent(id)),
+                               (.pluginCache, pluginCacheRoot.appendingPathComponent(id))]
             where manager.fileExists(atPath: url.path) {
                 // Every plugin gets empty folders; only ones holding something are worth a row.
                 let bytes = size(of: url)
                 if bytes > 0 { entries.append(StorageEntry(kind: kind, pluginID: id, url: url, bytes: bytes)) }
             }
         }
-        entries.append(StorageEntry(kind: .registry, pluginID: nil, url: registryFolder, bytes: size(of: registryFolder)))
+        let registry = supportRoot.appendingPathComponent("Registry", isDirectory: true)
+        entries.append(StorageEntry(kind: .registry, pluginID: nil, url: registry, bytes: size(of: registry)))
         if let projectRoot {
             let proxies = proxiesFolder(projectRoot: projectRoot)
             entries.append(StorageEntry(kind: .proxies, pluginID: nil, url: proxies, bytes: size(of: proxies)))
@@ -66,7 +70,7 @@ public enum StorageUsage {
             let audio = projectRoot.appendingPathComponent(".bashcut/ramped-audio", isDirectory: true)
             entries.append(StorageEntry(kind: .rampAudio, pluginID: nil, url: audio, bytes: size(of: audio)))
         }
-        let audit = supportFolder.appendingPathComponent("audit.jsonl")
+        let audit = supportRoot.appendingPathComponent("audit.jsonl")
         entries.append(StorageEntry(kind: .audit, pluginID: nil, url: audit, bytes: size(of: audit)))
         return entries
     }

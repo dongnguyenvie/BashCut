@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+- Inject storage roots and inherited plugin environments in tests instead of changing process-wide
+  environment variables. Plugin subprocess tests continue to verify that secrets are filtered out.
+
 - Make the caption golden independent of lossy fixture backgrounds and use explicit sRGB in still-image
   test fixtures. CI retains failed snapshot images along with test logs.
 

@@ -45,10 +45,13 @@ public struct PluginProcessRunner: Sendable {
 
     public let timeout: TimeInterval
     public let maximumOutputBytes: Int
+    private let inheritedEnvironment: [String: String]
 
-    public init(timeout: TimeInterval = 120, maximumOutputBytes: Int = 8 * 1024 * 1024) {
+    public init(timeout: TimeInterval = 120, maximumOutputBytes: Int = 8 * 1024 * 1024,
+                inheritedEnvironment: [String: String] = ProcessInfo.processInfo.environment) {
         self.timeout = timeout
         self.maximumOutputBytes = maximumOutputBytes
+        self.inheritedEnvironment = inheritedEnvironment
     }
 
     /// Starts one isolated plugin process for one request. The entrypoint receives `rpc` and one
@@ -121,7 +124,7 @@ public struct PluginProcessRunner: Sendable {
         return try await execute(
             Execution(
                 executable: executable, arguments: arguments, directory: plugin.directory,
-                environment: Self.environment(for: plugin), input: input,
+                environment: Self.environment(for: plugin, inheriting: inheritedEnvironment), input: input,
                 outputLimit: maximumOutputBytes, timeout: timeout))
     }
 
@@ -149,7 +152,7 @@ public struct PluginProcessRunner: Sendable {
         return try await execute(
             Execution(
                 executable: executable, arguments: arguments, directory: plugin.directory,
-                environment: Self.environment(for: plugin), input: input, outputLimit: outputLimit,
+                environment: Self.environment(for: plugin, inheriting: inheritedEnvironment), input: input, outputLimit: outputLimit,
                 timeout: timeout))
     }
 
@@ -213,8 +216,8 @@ public struct PluginProcessRunner: Sendable {
     /// The app creates the data and cache folders (`PluginFolders.prepare`) before it starts the plugin.
     /// The only environment plugin processes, probes and install recipes get: no app secrets, tokens or sockets.
     /// `PATH` gains the usual tool folders, since an app opened from Finder starts with only `/usr/bin:/bin:…`.
-    public static func environment(for plugin: InstalledPlugin) -> [String: String] {
-        let source = ProcessInfo.processInfo.environment
+    public static func environment(for plugin: InstalledPlugin,
+                                   inheriting source: [String: String] = ProcessInfo.processInfo.environment) -> [String: String] {
         var environment: [String: String] = [:]
         for key in ["HOME", "PATH", "TMPDIR", "LANG", "LC_ALL"] {
             if let value = source[key] { environment[key] = value }

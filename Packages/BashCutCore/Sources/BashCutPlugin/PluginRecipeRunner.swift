@@ -22,10 +22,11 @@ public enum PluginRecipeOutput: Sendable, Equatable {
 public enum PluginRecipeRunner {
     public static func run(
         _ command: PluginCommand, plugin: InstalledPlugin, directory: URL,
+        inheritedEnvironment: [String: String] = ProcessInfo.processInfo.environment,
         output: @escaping @Sendable (PluginRecipeOutput) -> Void
     ) async throws {
         let (executable, arguments) = try resolve(command, directory: directory)
-        var environment = PluginProcessRunner.environment(for: plugin)
+        var environment = PluginProcessRunner.environment(for: plugin, inheriting: inheritedEnvironment)
         environment["BASHCUT_PLUGIN_DIR"] = directory.path
         let pipe = Pipe()
         let pid = try spawn(
