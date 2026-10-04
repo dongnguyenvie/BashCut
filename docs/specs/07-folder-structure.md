@@ -104,6 +104,7 @@ bash-cut/
 │   ├── build-release.sh           # Developer ID: archive, verify, notarize; zip + dmg (+ pkg) in build/release/
 │   ├── create-dmg.sh              # dmg from a signed app (a build-release.sh step, also runnable alone)
 │   ├── create-pkg.sh              # pkg from a signed app (likewise)
+│   ├── render-app-icon.sh         # AppIcon.appiconset and the README logo, rendered from BashCutLogo
 │   ├── lib/                       # sourced helpers: common.sh (.env, version), signing.sh, notarize.sh
 │   └── ci/                        # checks of the scripts themselves (test-script-lib.sh)
 │
