@@ -443,4 +443,17 @@ then reads the encoded video to verify every frame, the audio track and duration
 with Git SHA, OS, dimensions, duration, bytes, elapsed export seconds and throughput. It is intentionally
 small in pixel dimensions to expose sample-transfer overhead; it is not a 1080p/4K export claim.
 Baseline `e760321` on this M1 Max / macOS 15.7.7 Debug run: 22.811 seconds, 394.545 frames/s,
-43,566,760 bytes. C1's callback-driven sample pump is still pending.
+43,566,760 bytes. This is the baseline before C1's callback-driven sample pump.
+
+### Readiness-driven export transfer (2026-10-04)
+
+The C1 worktree based on `3cfd5dd` completes the same long-export scenario in 9.651 seconds (932.523 fps),
+versus 22.811 seconds before, about 2.36× faster. Both verify 9,000 encoded frames, audio and timeline duration;
+these low-resolution numbers isolate sample-transfer overhead and do not represent 1080p/4K performance.
+Each reader/writer pair has a dedicated serial queue and drains only while the writer input is ready.
+A 100 ms health check handles terminal native failures that may not trigger another readiness callback;
+it does not pace samples. Cancellation interrupts native reading, then drains every stream queue before
+returning to writer cleanup, so no append can race cleanup. Tests exercise controlled backpressure,
+blocked-read cancellation, cancellation before registration, read errors and failures while all inputs
+are not ready. Native tests cover video-only, audio/video, ProRes, ramped export, compositor failure,
+publication/cancellation cleanup and destination races.

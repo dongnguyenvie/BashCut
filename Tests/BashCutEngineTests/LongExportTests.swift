@@ -36,7 +36,10 @@ struct LongExportTests {
         while let buffer = output.copyNextSampleBuffer() { frames += CMSampleBufferGetNumSamples(buffer) }
         #expect(reader.status == .completed)
         #expect(frames == count * clipFrames)
-        #expect(try await asset.loadTracks(withMediaType: .audio).count == 1)
+        let audio = try await asset.loadTracks(withMediaType: .audio)
+        #expect(audio.count == 1)
+        let audioDuration = try await #require(audio.first).load(.timeRange).duration.seconds
+        #expect(abs(audioDuration - project.fps.time(project.duration).seconds) < 0.05)
         #expect(abs(try await asset.load(.duration).seconds - project.fps.time(project.duration).seconds) < 0.05)
         let report: [String: Any] = [
             "scenario": "five-minute-av-export", "sha": ProcessInfo.processInfo.environment["BASHCUT_BENCH_SHA"] ?? "unknown",

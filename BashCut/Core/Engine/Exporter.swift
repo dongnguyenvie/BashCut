@@ -101,36 +101,25 @@ public actor Exporter {
         duration: Double, reader: AVAssetReader, writer: AVAssetWriter,
         progress: @escaping @Sendable (Double) -> Void
     ) async throws {
-        var finished = Set<Int>()
-        var lastProgress = -1.0
-        while finished.count < pairs.count {
-            try Task.checkCancellation()
-            guard writer.status == .writing else {
-                throw writer.error ?? ProjectError.invalid("Writer stopped")
-            }
-            for (index, pair) in pairs.enumerated()
-            where !finished.contains(index) && pair.1.isReadyForMoreMediaData {
-                if let sample = pair.0.copyNextSampleBuffer() {
-                    guard pair.1.append(sample) else {
-                        throw writer.error ?? ProjectError.invalid("Cannot write sample")
-                    }
-                    if index == 0, duration > 0 {
-                        let value = min(0.99, max(0, sample.presentationTimeStamp.seconds / duration))
-                        if value - lastProgress >= 0.005 {
-                            lastProgress = value
-                            progress(value)
-                        }
-                    }
-                } else {
-                    pair.1.markAsFinished()
-                    finished.insert(index)
+        let lanes = pairs.map { output, input in
+            SampleTransfer.Lane(request: { queue, callback in
+                input.requestMediaDataWhenReady(on: queue, using: callback)
+            }, ready: { input.isReadyForMoreMediaData }, next: {
+                guard let sample = output.copyNextSampleBuffer() else { return nil }
+                guard input.append(sample) else {
+                    throw writer.error ?? ProjectError.invalid("Cannot write sample")
                 }
-            }
-            if reader.status == .failed {
-                throw reader.error ?? ProjectError.invalid("Cannot read media")
-            }
-            try await Task.sleep(for: .milliseconds(1))
+                return sample.presentationTimeStamp.seconds
+            }, finish: {
+                if writer.status == .writing { input.markAsFinished() }
+            })
         }
+        let transfer = SampleTransfer(lanes: lanes, duration: duration, progress: progress, failure: {
+            if reader.status == .failed { return reader.error ?? ProjectError.invalid("Cannot read media") }
+            if reader.status == .cancelled { return CancellationError() }
+            if writer.status != .writing { return writer.error ?? ProjectError.invalid("Writer stopped") }
+            return nil
+        }, interrupt: { reader.cancelReading() })
+        try await transfer.run()
     }
-
 }

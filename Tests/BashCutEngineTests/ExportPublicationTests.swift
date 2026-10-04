@@ -40,6 +40,23 @@ struct ExportPublicationTests {
         #expect(try FileManager.default.contentsOfDirectory(atPath: root.path) == [final.lastPathComponent])
     }
 
+    @Test("A video-only composition finishes without an audio input")
+    func videoOnly() async throws {
+        let root = try TestFixtures.temporaryDirectory("silent-export")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let original = try await snapshot()
+        let composition = try #require(original.composition.mutableCopy() as? AVMutableComposition)
+        for track in composition.tracks where track.mediaType == .audio { composition.removeTrack(track) }
+        let silent = CompositionSnapshot(composition: composition, videoComposition: original.videoComposition,
+                                         audioMix: AVMutableAudioMix())
+        let final = root.appendingPathComponent("silent.mp4")
+        _ = try await Exporter().export(silent, to: final)
+        let asset = AVURLAsset(url: final)
+        #expect(try await asset.loadTracks(withMediaType: .audio).isEmpty)
+        #expect(try await asset.loadTracks(withMediaType: .video).count == 1)
+        #expect(abs(try await asset.load(.duration).seconds - silent.composition.duration.seconds) < 0.05)
+    }
+
     @Test("Cancellation after writer startup removes the partial and leaves no final file")
     func cancellation() async throws {
         let root = try TestFixtures.temporaryDirectory("cancel-export")
@@ -71,6 +88,20 @@ struct ExportPublicationTests {
         #expect(try FileManager.default.contentsOfDirectory(atPath: root.path).isEmpty)
     }
 
+    @Test("A native compositor failure terminates export and removes its partial file")
+    func renderFailure() async throws {
+        let root = try TestFixtures.temporaryDirectory("failed-export")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let original = try await snapshot()
+        let video = try #require(original.videoComposition.mutableCopy() as? AVMutableVideoComposition)
+        video.customVideoCompositorClass = FailingExportCompositor.self
+        let broken = CompositionSnapshot(composition: original.composition, videoComposition: video, audioMix: original.audioMix)
+        await #expect(throws: (any Error).self) {
+            _ = try await Exporter().export(broken, to: root.appendingPathComponent("failed.mp4"))
+        }
+        #expect(try FileManager.default.contentsOfDirectory(atPath: root.path).isEmpty)
+    }
+
     @Test("An export preserves a competing destination and cleans up its own output")
     func destinationRace() async throws {
         let root = try TestFixtures.temporaryDirectory("racing-export")
@@ -96,5 +127,18 @@ struct ExportPublicationTests {
             .group(label: "Fixture", author: .user, ops: [.setFormat(width: 320, height: 180), .addMedia(media),
                 .insert(track: "v1", item: Item(id: "clip", media: "m", at: 0, duration: 45))])).project
         return try await CompositionBuilder().build(project, root: TestFixtures.mediaRoot)
+    }
+}
+
+private final class FailingExportCompositor: NSObject, AVVideoCompositing, @unchecked Sendable {
+    let sourcePixelBufferAttributes: [String: any Sendable]? = [
+        kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
+    ]
+    let requiredPixelBufferAttributesForRenderContext: [String: any Sendable] = [
+        kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
+    ]
+    func renderContextChanged(_ newRenderContext: AVVideoCompositionRenderContext) {}
+    func startRequest(_ request: AVAsynchronousVideoCompositionRequest) {
+        request.finish(with: NSError(domain: "ExportPublicationTests", code: 1))
     }
 }

@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+- Feed export audio/video on dedicated readiness-driven queues instead of sleeping 1 ms per transfer loop.
+  Cancellation interrupts reads and drains callbacks before cleanup; asynchronous failures also terminate
+  under backpressure. The synthetic five-minute 160×90 benchmark drops from 22.811 to 9.651 seconds.
+
 - Export to a hidden partial file beside the destination, then publish the completed movie with an exclusive
   atomic rename. Cancellation and failures clean up only the partial; a destination created during rendering
   is preserved. MP4/ProRes publication, cancellation and destination-race tests cover the native writer.
