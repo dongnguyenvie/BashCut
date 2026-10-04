@@ -371,6 +371,12 @@ extension Item {
             throw ProjectError.invalid("item.\(id).in: expected integer source frame")
         }
         try validateDeclaredProperties()
+        if case .object(let crop) = fields["crop"] {
+            let side = { (key: String) in crop[key]?.double ?? 0 }
+            guard side("left") + side("right") < 0.95 + 1e-9, side("top") + side("bottom") < 0.95 + 1e-9 else {
+                throw ProjectError.invalid("item.\(id).crop: left + right and top + bottom must each be at most 0.95")
+            }
+        }
     }
 }
 

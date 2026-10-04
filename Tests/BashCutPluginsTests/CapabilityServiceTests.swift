@@ -198,10 +198,83 @@ struct CapabilityServiceTests {
         #expect(measured.provenance.providerID == "test.r128")
     }
 
+    @Test("Loudness with bands asks for them and reads the band shares; bad shares are refused")
+    func loudnessBands() async throws {
+        let sandbox = try PluginSandbox()
+        defer { sandbox.cleanup() }
+        let transport = RecordingTransport(result: .object([
+            "integratedLUFS": .number(-20), "truePeakDbTP": .number(-3), "loudnessRangeLU": .number(2),
+            "speechShare": .number(0.21), "presenceShare": .number(0.009),
+        ]))
+        try sandbox.addPlugin(
+            "test.loudness", providers: [PluginProvider(id: "test.r128", capability: "audio.loudness", name: "R")],
+            body: "exit 1")
+        let service = CapabilityService(
+            roots: PluginRoots(user: sandbox.root.appendingPathComponent("user"), bundled: nil),
+            transport: transport, healthTransport: transport)
+        let media = try sandbox.media()
+        let measured = try await service.analyzeLoudness(
+            mediaURL: media, bands: true, preferredProvider: nil, projectRoot: sandbox.project)
+        #expect(measured.measurement.presenceShare == 0.009)
+        #expect(measured.measurement.speechShare == 0.21)
+        #expect(await transport.calls.last?.params.object["bands"] == .bool(true))
+        _ = try await service.analyzeLoudness(mediaURL: media, preferredProvider: nil, projectRoot: sandbox.project)
+        #expect(await transport.calls.last?.params.object["bands"] == nil)
+        #expect(throws: PluginError.self) {
+            try LoudnessMeasurement(result: .object([
+                "integratedLUFS": .number(-20), "truePeakDbTP": .number(-3), "presenceShare": .number(1.5),
+            ]))
+        }
+    }
+
+    @Test("Sync results carry the offset, the halves and whether they agree; malformed ones are refused")
+    func sync() async throws {
+        let sandbox = try PluginSandbox()
+        defer { sandbox.cleanup() }
+        try sandbox.addPlugin(
+            "test.sync", providers: [PluginProvider(id: "test.sync.provider", capability: "audio.sync", name: "S")],
+            body: #"""
+                halves='[{"offsetSeconds":2.49,"correlation":0.8},{"offsetSeconds":2.5,"correlation":0.77}]'
+                overlap='"overlapStartSeconds":0,"overlapEndSeconds":280'
+                printf '{"id":"%s","result":{"offsetSeconds":2.49,"correlation":0.79,%s,"halves":%s}}\n' "$id" "$overlap" "$halves"
+                """#)
+        let first = try sandbox.media("camera.wav"), second = try sandbox.media("screen.wav")
+        let result = try await sandbox.service.syncAudio(
+            mediaURL: first, otherURL: second, preferredProvider: nil, projectRoot: sandbox.project)
+        #expect(result.match == GeneratedAudioSync.Match(offsetSeconds: 2.49, correlation: 0.79))
+        #expect(result.halves.count == 2 && result.isSteady)
+        #expect(result.overlap == 0...280)
+        #expect(result.provenance.providerID == "test.sync.provider")
+
+        let transport = RecordingTransport(result: .object(["offsetSeconds": .string("soon")]))
+        let service = CapabilityService(
+            roots: PluginRoots(user: sandbox.root.appendingPathComponent("user"), bundled: nil),
+            transport: transport, healthTransport: transport)
+        await #expect(throws: PluginError.self) {
+            try await service.syncAudio(mediaURL: first, otherURL: second, preferredProvider: nil, projectRoot: sandbox.project)
+        }
+        let params = await transport.calls.last?.params.object
+        #expect(params?["mediaPath"] == .string(first.path) && params?["otherPath"] == .string(second.path))
+    }
+
+    @Test("A transcription range is sent as startSeconds and endSeconds")
+    func transcriptionRange() {
+        let capability = TranscriptionCapability(
+            mediaURL: URL(fileURLWithPath: "/tmp/a.wav"), language: "vi", outputRoot: URL(fileURLWithPath: "/tmp"),
+            range: 128...148.5)
+        let params = capability.params(outputDirectory: nil).object
+        #expect(params["startSeconds"] == .number(128) && params["endSeconds"] == .number(148.5))
+        let whole = TranscriptionCapability(
+            mediaURL: URL(fileURLWithPath: "/tmp/a.wav"), language: "vi", outputRoot: URL(fileURLWithPath: "/tmp"))
+        #expect(whole.params(outputDirectory: nil).object["startSeconds"] == nil)
+    }
+
     @Test("Provider-backed automation commands are catalogued with their permission modes")
     func commandModes() {
         #expect(CommandCatalog.modes["plugins.list"] == .read)
         #expect(CommandCatalog.modes["jobs.status"] == .read)
+        #expect(CommandCatalog.modes["audio.measure"] == .read)
+        #expect(CommandCatalog.modes["media.sync"] == .read)
         for method in ["captions.generate", "beats.detect", "voice.speak", "jobs.cancel"] {
             #expect(CommandCatalog.modes[method] == .edit)
         }

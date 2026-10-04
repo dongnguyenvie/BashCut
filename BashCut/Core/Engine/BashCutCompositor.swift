@@ -102,10 +102,12 @@ public struct FrameLayer: @unchecked Sendable {
     public let lut: CubeLUT?
     /// Keyframes and the placement they move; `transform` is then only the first frame's.
     public let motion: (LayerMotion, ClipPlacement)?
+    /// The visible part of the source frame, cut before the transform.
+    public let crop: SourceCrop?
     public init(
         trackID: CMPersistentTrackID, transform: CGAffineTransform,
         properties: [String: JSONValue] = [:], transition: RenderTransition? = nil,
-        lut: CubeLUT? = nil, motion: (LayerMotion, ClipPlacement)? = nil
+        lut: CubeLUT? = nil, motion: (LayerMotion, ClipPlacement)? = nil, crop: SourceCrop? = nil
     ) {
         self.trackID = trackID
         self.transform = transform
@@ -113,6 +115,7 @@ public struct FrameLayer: @unchecked Sendable {
         self.transition = transition
         self.lut = lut
         self.motion = motion
+        self.crop = crop
     }
 }
 
@@ -157,8 +160,9 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
                 let time = request.compositionTime.seconds
                 let motion = video.motion?.0.sample(at: time)
                 let transform = video.motion.flatMap { layer in motion?.transform(layer.1) } ?? video.transform
-                var sourceImage = CIImage(cvPixelBuffer: source).transformed(
-                    by: transform)
+                var sourceImage = CIImage(cvPixelBuffer: source)
+                if let crop = video.crop { sourceImage = crop.apply(to: sourceImage) }
+                sourceImage = sourceImage.transformed(by: transform)
                 var transitionOpacity = 1.0
                 if let transition = video.transition {
                     (sourceImage, transitionOpacity) = applyTransition(

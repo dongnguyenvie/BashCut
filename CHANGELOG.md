@@ -5,6 +5,21 @@
 
 ## [Unreleased]
 
+- **Sound analysis for agents, no ffmpeg needed.** `audio measure --media ID` returns a file's loudness (LUFS),
+  true peak, loudness range and its energy share in the speech and presence bands (1–4 kHz), to choose music that
+  sits under a voice. `media sync --media CAMERA --to SCREEN [--item ITEM]` finds the offset between two recordings
+  of one session from their sound (or where a render plays inside a screen recording), checks both halves for
+  drift, and with `--item` gives the matching source frame. The core Audio Analysis plugin (1.1.0) provides the new
+  `audio.sync` capability and the band shares (`bands` on `audio.loudness`).
+- `captions generate --from S --to S` transcribes one stretch of the media again; with `--replace` only the captions
+  heard in that stretch are replaced. Providers get `startSeconds`/`endSeconds`. `review run` flags captions that
+  look like a recognition loop (over 10 s, or one word repeated).
+- **Crop and rounded corners** for video clips: the item's `crop` group (`left`, `right`, `top`, `bottom` as
+  fractions of the picture, `radius` as a fraction of the visible part's shorter side) cuts the source before it is
+  placed, for a presenter box over a screen recording.
+- `clip motion --focus x,y,w,h [--focus-to x,y,w,h]` frames a rectangle of a clip's picture (a panel of a screen
+  recording): BashCut works out zoom, pan and tilt for the canvas and keeps the picture's edges outside the frame.
+
 - Use Nolan in the BashCut copyright notice to match the App Store listing.
 
 - Add a public privacy policy covering local editing, optional integrations, network requests, and support.

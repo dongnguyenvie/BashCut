@@ -8,6 +8,7 @@ import Foundation
 
 private let capabilityForMethod = [
     "captions.generate": "captions.transcribe", "beats.detect": "audio.beats", "voice.speak": "voice.synthesize",
+    "audio.measure": "audio.loudness", "media.sync": "audio.sync",
 ]
 
 extension ProjectDocument {
@@ -16,14 +17,16 @@ extension ProjectDocument {
     // MARK: Shared actions for native panels and automation
 
     /// Transcribes one project media item and imports the SRT as one undoable edit.
+    /// With `range` (source seconds), only that stretch is transcribed and replaced.
     func generateCaptions(
-        mediaID: String, replace: Bool, provider: String? = nil, wordStyle: String? = nil, author: Author = .user
+        mediaID: String, replace: Bool, provider: String? = nil, wordStyle: String? = nil,
+        range: ClosedRange<Double>? = nil, author: Author = .user
     ) async throws {
         let (root, _, url) = try capabilityMedia(mediaID)
         let session = sessionID
         let generated = try await plugins.running("captions.transcribe") {
             try await plugins.service.transcribe(
-                mediaURL: url, language: contentLanguage,
+                mediaURL: url, language: contentLanguage, range: range,
                 preferredProvider: provider ?? project.preferredProvider(for: "captions.transcribe"),
                 projectRoot: root,
                 outputRoot: root.appendingPathComponent("subtitles/generated", isDirectory: true))
@@ -32,7 +35,7 @@ extension ProjectDocument {
         try commit(
             project.importingSubRip(
                 generated.text, replace: replace, provenance: generated.provenance.json, media: mediaID,
-                words: generated.words, wordStyle: wordStyle),
+                words: generated.words, wordStyle: wordStyle, range: range),
             label: "Generate captions", author: author)
         emitPluginEvent(.captionsGenerated, [
             "media": .string(mediaID), "provider": .object(generated.provenance.json), "rev": .integer(project.revision),
@@ -73,6 +76,67 @@ extension ProjectDocument {
         emitPluginEvent(.beatsDetected, [
             "media": .string(media.id), "bpm": .number(generated.bpm), "beats": .integer(frames.count),
         ])
+    }
+
+    /// Loudness, loudness range and speech-band shares of one media item.
+    func measureAudio(mediaID: String, provider: String? = nil) async throws -> JSONValue {
+        let (root, media, url) = try capabilityMedia(mediaID)
+        let generated = try await plugins.running("audio.loudness") {
+            try await plugins.service.analyzeLoudness(
+                mediaURL: url, bands: true, preferredProvider: provider ?? project.preferredProvider(for: "audio.loudness"),
+                projectRoot: root)
+        }
+        guard case .object(var fields) = generated.measurement.json else { return generated.measurement.json }
+        fields["media"] = .string(media.id)
+        fields["seconds"] = .number((Double(media.frames) / media.fps.value * 100).rounded() / 100)
+        fields["provider"] = .object(generated.provenance.json)
+        return .object(fields)
+    }
+
+    /// The offset between two recordings of one moment: time in `otherID` = time in `mediaID` + offsetSeconds.
+    /// With `itemID` (a clip of `mediaID`), also the source frame of `otherID` matching the clip's in-point.
+    func syncMedia(mediaID: String, otherID: String, itemID: String? = nil, provider: String? = nil) async throws
+        -> JSONValue
+    {
+        guard mediaID != otherID else { throw ProjectError.invalid("Pick two different media items to sync") }
+        let (root, media, url) = try capabilityMedia(mediaID)
+        let (_, other, otherURL) = try capabilityMedia(otherID)
+        let item = try itemID.map { id in
+            guard let item = project.tracks.flatMap(\.items).first(where: { $0.id == id }) else {
+                throw ProjectError.invalid("Unknown item \(id)")
+            }
+            guard item.mediaID == media.id else { throw ProjectError.invalid("Item \(id) is not a clip of \(media.id)") }
+            return item
+        }
+        let generated = try await plugins.running("audio.sync") {
+            try await plugins.service.syncAudio(
+                mediaURL: url, otherURL: otherURL,
+                preferredProvider: provider ?? project.preferredProvider(for: "audio.sync"), projectRoot: root)
+        }
+        func match(_ value: GeneratedAudioSync.Match) -> JSONValue {
+            .object(["offsetSeconds": .number(value.offsetSeconds), "correlation": .number(value.correlation)])
+        }
+        var fields: [String: JSONValue] = [
+            "media": .string(media.id), "to": .string(other.id),
+            "offsetSeconds": .number(generated.match.offsetSeconds), "correlation": .number(generated.match.correlation),
+            "halves": .array(generated.halves.map(match)), "steady": .bool(generated.isSteady),
+            "reliable": .bool(generated.match.correlation >= 0.4 && generated.isSteady),
+            "meaning": .string("time in \(other.id) = time in \(media.id) + offsetSeconds"),
+            "provider": .object(generated.provenance.json),
+        ]
+        if let overlap = generated.overlap {
+            fields["overlapSeconds"] = .array([.number(overlap.lowerBound), .number(overlap.upperBound)])
+        }
+        if let item {
+            let seconds = Double(item.sourceIn) / media.fps.value + generated.match.offsetSeconds
+            let frame = Int((seconds * other.fps.value).rounded())
+            fields["item"] = .object([
+                "item": .string(item.id), "at": .integer(item.at),
+                "otherSourceIn": .integer(frame), "otherSourceSeconds": .number((seconds * 1000).rounded() / 1000),
+                "inside": .bool(frame >= 0 && frame < other.frames),
+            ])
+        }
+        return .object(fields)
     }
 
     func generateVoiceTakes(
@@ -170,10 +234,35 @@ extension ProjectDocument {
             let replace = arguments.bool("replace")
             let provider = arguments.optionalString("provider")
             let wordStyle = arguments.optionalString("wordStyle").flatMap { $0 == "none" ? nil : $0 }
+            let from = arguments.optionalDouble("from"), to = arguments.optionalDouble("to")
+            var range: ClosedRange<Double>?
+            if from != nil || to != nil {
+                let lower = from ?? 0, upper = to ?? 86_400
+                guard upper > lower else { throw RPCFailure(-32602, "to must be after from") }
+                range = lower...upper
+            }
             return try document.startCapabilityJob("captions.generate", author: author) { document in
                 try await document.generateCaptions(
-                    mediaID: media, replace: replace, provider: provider, wordStyle: wordStyle, author: author)
+                    mediaID: media, replace: replace, provider: provider, wordStyle: wordStyle, range: range,
+                    author: author)
                 return .object(["rev": .integer(document.project.revision)])
+            }
+        }
+        handleAuthored("audio.measure") { document, arguments, author in
+            let media = try arguments.string("media")
+            let provider = arguments.optionalString("provider")
+            return try document.startCapabilityJob("audio.measure", author: author) { document in
+                try await document.measureAudio(mediaID: media, provider: provider)
+            }
+        }
+        handleAuthored("media.sync") { document, arguments, author in
+            let media = try arguments.string("media")
+            let other = try arguments.string("to")
+            let item = arguments.optionalString("item")
+            let provider = arguments.optionalString("provider")
+            guard media != other else { throw RPCFailure(-32602, "Pick two different media items to sync") }
+            return try document.startCapabilityJob("media.sync", author: author) { document in
+                try await document.syncMedia(mediaID: media, otherID: other, itemID: item, provider: provider)
             }
         }
         handleAuthored("beats.detect") { document, arguments, author in

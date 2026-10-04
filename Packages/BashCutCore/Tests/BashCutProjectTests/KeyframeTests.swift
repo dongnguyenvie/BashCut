@@ -3,12 +3,13 @@ import Testing
 @testable import BashCutProject
 
 struct KeyframeTests {
-    private func project(keyframes: JSONValue? = nil) throws -> Project {
+    private func project(keyframes: JSONValue? = nil, fields: [String: JSONValue] = [:]) throws -> Project {
         let media = Media(fields: [
             "id": .string("m"), "path": .string("a.mov"), "fps": FrameRate(30, 1).json, "frames": .integer(300),
         ])
         var clip = Item(id: "a", media: "m", at: 30, duration: 90)
         if let keyframes { clip["keyframes"] = keyframes }
+        for (key, value) in fields { clip[key] = value }
         return try Project(name: "Keys", fps: FrameRate(30, 1)).applying(.group(label: "clip", author: .user, ops: [
             .addMedia(media), .insert(track: "v1", item: clip),
         ])).project
@@ -129,5 +130,36 @@ struct KeyframeTests {
         // A very short item still gets increasing frames.
         let short = try MotionPreset.motion("fade-in-out", duration: 3, width: 1080, height: 1920, fps: FrameRate())
         _ = try ItemMotion(json: short.json)
+    }
+
+    @Test("Focus frames a rectangle of a 1920×1080 recording on a 1080-wide canvas")
+    func focus() throws {
+        // A 480×270 panel centred at (1400, 300): zoom 4 over the fitted 0.5625 scale, centre moved to the middle.
+        let panel = try MotionFocus.framing(
+            MotionFocus.parse("1160,165,480,270"), source: (1920, 1080), canvas: (1080, 1920), fill: false)
+        #expect(panel.zoom == 4)
+        #expect(panel.pan == (960 - 1400) * 0.5625 * 4)
+        // Centring would need tilt −540, but the 2430 px tall picture only has 255 px to spare above the 1920 frame.
+        #expect(panel.tilt == -(1080 * 0.5625 * 4 - 1920) / 2)
+        // The whole picture filled on a portrait canvas stays inside its edges: pan is clamped.
+        let edge = try MotionFocus.framing(
+            MotionFocus.parse("1800,0,120,1080"), source: (1920, 1080), canvas: (1080, 1920), fill: true)
+        let spare = (1920 * (1920.0 / 1080) * edge.zoom - 1080) / 2
+        #expect(abs(edge.pan) <= spare + 0.1)
+        #expect(throws: ProjectError.self) { try MotionFocus.parse("1,2,3") }
+        #expect(throws: ProjectError.self) {
+            try MotionFocus.framing(
+                MotionFocus.parse("3000,0,100,100"), source: (1920, 1080), canvas: (1080, 1920), fill: false)
+        }
+    }
+
+    @Test("Crop sides and radius are validated")
+    func crop() throws {
+        _ = try project(fields: ["crop": .object(["left": .number(0.3), "right": .number(0.3), "radius": .number(0.5)])])
+        #expect(throws: ProjectError.self) {
+            try project(fields: ["crop": .object(["top": .number(0.6), "bottom": .number(0.5)])])
+        }
+        #expect(throws: ProjectError.self) { try project(fields: ["crop": .object(["radius": .number(0.7)])]) }
+        #expect(throws: ProjectError.self) { try project(fields: ["crop": .number(1)]) }
     }
 }

@@ -2,12 +2,17 @@ import BashCutPlugin
 import BashCutProject
 import Foundation
 
-/// `audio.loudness`: integrated loudness, true peak and loudness range of a media file.
+/// `audio.loudness`: integrated loudness, true peak and loudness range of a media file; with `bands`, also the energy
+/// shares in the speech and presence bands (providers that do not know `bands` leave them out).
 public struct LoudnessCapability: CapabilityAdapter {
     public static let capability = "audio.loudness"
     public let mediaURL: URL
+    public let bands: Bool
 
-    public init(mediaURL: URL) { self.mediaURL = mediaURL }
+    public init(mediaURL: URL, bands: Bool = false) {
+        self.mediaURL = mediaURL
+        self.bands = bands
+    }
 
     public func validate() throws {
         guard FileManager.default.fileExists(atPath: mediaURL.path) else {
@@ -16,7 +21,7 @@ public struct LoudnessCapability: CapabilityAdapter {
     }
 
     public func params(outputDirectory: URL?) -> JSONValue {
-        .object(["mediaPath": .string(mediaURL.path)])
+        .object(bands ? ["mediaPath": .string(mediaURL.path), "bands": .bool(true)] : ["mediaPath": .string(mediaURL.path)])
     }
 
     public func output(from result: JSONValue, context: CapabilityContext) async throws

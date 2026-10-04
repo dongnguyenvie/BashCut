@@ -63,4 +63,71 @@ struct AudioAnalysisTests {
     func silentBeats() {
         #expect(throws: AnalysisError.self) { try BeatTracker.track([Float](repeating: 0, count: 22_050 * 5)) }
     }
+
+    /// Speech-like sound at 8 kHz: noise bursts of random length and level, so every stretch has its own envelope.
+    private func bursts(seconds: Double, seed: UInt64) -> [Float] {
+        var state = seed
+        func random() -> Double {
+            state = state &* 6_364_136_223_846_793_005 &+ 1_442_695_040_888_963_407
+            return Double(state >> 11) / Double(1 << 53)
+        }
+        let rate = AudioSync.sampleRate
+        var samples: [Float] = []
+        samples.reserveCapacity(Int(seconds * rate))
+        while Double(samples.count) < seconds * rate {
+            let length = Int((0.08 + random() * 0.5) * rate)
+            let level = random() < 0.3 ? 0.002 : 0.05 + random() * 0.4
+            for _ in 0..<length { samples.append(Float((random() * 2 - 1) * level)) }
+        }
+        return Array(samples.prefix(Int(seconds * rate)))
+    }
+
+    @Test("Two recordings of one session are matched to their offset, with agreeing halves")
+    func syncOffset() throws {
+        let rate = AudioSync.sampleRate
+        let session = bursts(seconds: 70, seed: 7)
+        // The camera starts 3 s into the session, the screen recording 5.49 s in: screen = camera + (-2.49) ... and the
+        // room mic adds its own noise.
+        let camera = Array(session[Int(3 * rate)..<Int(63 * rate)])
+        var noise: UInt64 = 99
+        let screen = session[Int(5.49 * rate)...].map { sample -> Float in
+            noise = noise &* 6_364_136_223_846_793_005 &+ 1
+            return sample * 0.5 + Float(Double(noise >> 40) / Double(1 << 24) - 0.5) * 0.01
+        }
+        let result = try AudioSync.align(camera, screen)
+        #expect(abs(result.match.offsetSeconds - -2.49) < 0.011)
+        #expect(result.match.correlation > 0.8)
+        #expect(result.isSteady)
+        #expect(result.halves.count == 2)
+    }
+
+    @Test("A short render played inside a long screen recording is found where it starts")
+    func syncInside() throws {
+        let rate = AudioSync.sampleRate
+        let screen = bursts(seconds: 90, seed: 3)
+        let render = Array(screen[Int(41.2 * rate)..<Int(61.2 * rate)])
+        let result = try AudioSync.align(screen, render)
+        // Render time = screen time - 41.2.
+        #expect(abs(result.match.offsetSeconds - -41.2) < 0.011)
+        #expect(result.match.correlation > 0.95)
+    }
+
+    @Test("Unrelated recordings correlate weakly; too short ones are refused")
+    func syncUnrelated() throws {
+        let result = try AudioSync.align(bursts(seconds: 30, seed: 1), bursts(seconds: 30, seed: 2))
+        #expect(result.match.correlation < 0.4)
+        #expect(throws: AnalysisError.self) { try AudioSync.align(bursts(seconds: 2, seed: 1), bursts(seconds: 30, seed: 2)) }
+    }
+
+    @Test("Band shares put a 2 kHz tone in the presence band and a 100 Hz hum outside both")
+    func bandShares() throws {
+        let presence = try SpectralShare.measure([sine(amplitude: 0.1, seconds: 2, frequency: 2_000)])
+        // 24 dB/octave edges: one octave inside an edge keeps (16/17)² of the power at each edge.
+        #expect(presence.presence > 0.72 && presence.speech > 0.6)
+        let hum = try SpectralShare.measure([sine(amplitude: 0.1, seconds: 2, frequency: 100)])
+        #expect(hum.presence < 0.01 && hum.speech < 0.05)
+        let low = try SpectralShare.measure([sine(amplitude: 0.1, seconds: 2, frequency: 500)])
+        #expect(low.speech > 0.7 && low.presence < 0.01)
+        #expect(throws: AnalysisError.self) { try SpectralShare.measure([[Float](repeating: 0, count: 4_800)]) }
+    }
 }

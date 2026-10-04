@@ -109,10 +109,11 @@ public struct CapabilityService: Sendable {
     }
 
     public func transcribe(
-        mediaURL: URL, language: String, preferredProvider: String?, projectRoot: URL, outputRoot: URL
+        mediaURL: URL, language: String, range: ClosedRange<Double>? = nil, preferredProvider: String?, projectRoot: URL,
+        outputRoot: URL
     ) async throws -> GeneratedPluginCaptions {
         try await run(
-            TranscriptionCapability(mediaURL: mediaURL, language: language, outputRoot: outputRoot),
+            TranscriptionCapability(mediaURL: mediaURL, language: language, outputRoot: outputRoot, range: range),
             preferredProvider: preferredProvider, projectRoot: projectRoot)
     }
 
@@ -125,7 +126,22 @@ public struct CapabilityService: Sendable {
     public func analyzeLoudness(
         mediaURL: URL, preferredProvider: String?, projectRoot: URL?
     ) async throws -> GeneratedLoudnessMeasurement {
-        try await run(LoudnessCapability(mediaURL: mediaURL), preferredProvider: preferredProvider, projectRoot: projectRoot)
+        try await analyzeLoudness(mediaURL: mediaURL, bands: false, preferredProvider: preferredProvider, projectRoot: projectRoot)
+    }
+
+    public func analyzeLoudness(
+        mediaURL: URL, bands: Bool, preferredProvider: String?, projectRoot: URL?
+    ) async throws -> GeneratedLoudnessMeasurement {
+        try await run(
+            LoudnessCapability(mediaURL: mediaURL, bands: bands), preferredProvider: preferredProvider, projectRoot: projectRoot)
+    }
+
+    public func syncAudio(
+        mediaURL: URL, otherURL: URL, preferredProvider: String?, projectRoot: URL?
+    ) async throws -> GeneratedAudioSync {
+        try await run(
+            AudioSyncCapability(mediaURL: mediaURL, otherURL: otherURL), preferredProvider: preferredProvider,
+            projectRoot: projectRoot)
     }
 
     /// Removes discarded takes and their request folders, keeping only `keptURL` when given.

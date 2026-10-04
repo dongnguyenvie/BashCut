@@ -3,17 +3,21 @@ import BashCutProject
 import Foundation
 
 /// `captions.transcribe`: the plugin writes an SRT file for a media file into the request folder, and optionally a
-/// JSON file of word timings (`wordsPath`: `[{"text", "start", "end"}]` in seconds) for word-by-word captions.
+/// JSON file of word timings (`wordsPath`: `[{"text", "start", "end"}]` in seconds) for word-by-word captions. With
+/// `startSeconds`/`endSeconds` only that stretch of the media is asked for; times stay in media seconds (a provider
+/// that ignores the range transcribes everything and the host keeps the range).
 public struct TranscriptionCapability: CapabilityAdapter {
     public static let capability = "captions.transcribe"
     public let mediaURL: URL
     public let language: String
     public let outputRoot: URL?
+    public let range: ClosedRange<Double>?
 
-    public init(mediaURL: URL, language: String, outputRoot: URL) {
+    public init(mediaURL: URL, language: String, outputRoot: URL, range: ClosedRange<Double>? = nil) {
         self.mediaURL = mediaURL
         self.language = language
         self.outputRoot = outputRoot
+        self.range = range
     }
 
     public func validate() throws {
@@ -23,10 +27,15 @@ public struct TranscriptionCapability: CapabilityAdapter {
     }
 
     public func params(outputDirectory: URL?) -> JSONValue {
-        .object([
+        var fields: [String: JSONValue] = [
             "language": .string(language), "mediaPath": .string(mediaURL.path),
             "outputDirectory": .string(outputDirectory?.path ?? ""),
-        ])
+        ]
+        if let range {
+            fields["startSeconds"] = .number(range.lowerBound)
+            fields["endSeconds"] = .number(range.upperBound)
+        }
+        return .object(fields)
     }
 
     public func output(from result: JSONValue, context: CapabilityContext) async throws -> GeneratedPluginCaptions {

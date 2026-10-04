@@ -247,3 +247,65 @@ public enum MotionPreset {
         }
     }
 }
+
+/// Zoom, pan and tilt that frame one rectangle of a clip's picture (`clip motion --focus`): the rectangle, in the
+/// source picture's pixels as seen (origin top left), is scaled to fit the frame and centred, and the pan and tilt are
+/// kept so that no edge of the picture comes inside the frame where the picture covers it.
+public enum MotionFocus {
+    public struct Framing: Sendable, Equatable {
+        public let zoom: Double
+        public let pan: Double
+        public let tilt: Double
+    }
+
+    /// `x,y,w,h` in source pixels.
+    public static func parse(_ text: String) throws -> Region {
+        let numbers = text.split(separator: ",").map { Double($0.trimmingCharacters(in: .whitespaces)) }
+        guard numbers.count == 4, let x = numbers[0], let y = numbers[1], let w = numbers[2], let h = numbers[3],
+            [x, y, w, h].allSatisfy(\.isFinite), w >= 1, h >= 1
+        else { throw ProjectError.invalid("focus must be x,y,width,height in source pixels") }
+        return Region(x: x, y: y, width: w, height: h)
+    }
+
+    public struct Region: Sendable, Equatable {
+        public let x: Double
+        public let y: Double
+        public let width: Double
+        public let height: Double
+        public init(x: Double, y: Double, width: Double, height: Double) {
+            self.x = x
+            self.y = y
+            self.width = width
+            self.height = height
+        }
+    }
+
+    /// The framing of `rect` for a `source`-sized picture on a `canvas`-sized frame, fitted or filled like the clip
+    /// (`fill`).
+    public static func framing(
+        _ rect: Region, source: (width: Double, height: Double), canvas: (width: Double, height: Double), fill: Bool
+    ) throws -> Framing {
+        let sourceWidth = source.width, sourceHeight = source.height
+        let canvasWidth = canvas.width, canvasHeight = canvas.height
+        guard sourceWidth > 0, sourceHeight > 0, canvasWidth > 0, canvasHeight > 0 else {
+            throw ProjectError.invalid("The clip's picture size is unknown")
+        }
+        let left = max(0, rect.x), top = max(0, rect.y)
+        let right = min(sourceWidth, rect.x + rect.width), bottom = min(sourceHeight, rect.y + rect.height)
+        guard right - left >= 1, bottom - top >= 1 else { throw ProjectError.invalid("focus lies outside the picture") }
+        let horizontal = canvasWidth / sourceWidth, vertical = canvasHeight / sourceHeight
+        let base = fill ? max(horizontal, vertical) : min(horizontal, vertical)
+        let zoomRange = ItemMotion.ranges["zoom"] ?? 0.01...100
+        let zoom = min(zoomRange.upperBound, max(zoomRange.lowerBound,
+            min(canvasWidth / ((right - left) * base), canvasHeight / ((bottom - top) * base))))
+        let scale = base * zoom
+        // Centre of the rectangle to the centre of the frame (tilt is up, source y grows down).
+        var pan = (sourceWidth / 2 - (left + right) / 2) * scale
+        var tilt = ((top + bottom) / 2 - sourceHeight / 2) * scale
+        let spareX = (sourceWidth * scale - canvasWidth) / 2, spareY = (sourceHeight * scale - canvasHeight) / 2
+        if spareX >= 0 { pan = min(spareX, max(-spareX, pan)) }
+        if spareY >= 0 { tilt = min(spareY, max(-spareY, tilt)) }
+        func rounded(_ value: Double, _ places: Double) -> Double { (value * places).rounded() / places }
+        return Framing(zoom: rounded(zoom, 1000), pan: rounded(pan, 10), tilt: rounded(tilt, 10))
+    }
+}

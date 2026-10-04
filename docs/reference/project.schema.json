@@ -92,6 +92,42 @@
         "color" : {
           "$ref" : "#/$defs/color"
         },
+        "crop" : {
+          "description" : "Video picture: the visible part of the source frame (the picture keeps its place; zoom and pan move it)",
+          "properties" : {
+            "bottom" : {
+              "description" : "Video picture: fraction of the height hidden at the bottom",
+              "maximum" : 0.95,
+              "minimum" : 0,
+              "type" : "number"
+            },
+            "left" : {
+              "description" : "Video picture: fraction of the width hidden on the left (left + right at most 0.95)",
+              "maximum" : 0.95,
+              "minimum" : 0,
+              "type" : "number"
+            },
+            "radius" : {
+              "description" : "Video picture: corner radius as a fraction of the visible part's shorter side (0.5 = circle or pill)",
+              "maximum" : 0.5,
+              "minimum" : 0,
+              "type" : "number"
+            },
+            "right" : {
+              "description" : "Video picture: fraction of the width hidden on the right",
+              "maximum" : 0.95,
+              "minimum" : 0,
+              "type" : "number"
+            },
+            "top" : {
+              "description" : "Video picture: fraction of the height hidden at the top (top + bottom at most 0.95)",
+              "maximum" : 0.95,
+              "minimum" : 0,
+              "type" : "number"
+            }
+          },
+          "type" : "object"
+        },
         "dur" : {
           "description" : "Length, in timeline frames",
           "minimum" : 1,

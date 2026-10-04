@@ -121,12 +121,50 @@ extension ProjectDocument {
         return try setMotion(motion, item: item.id, label: "Keyframe", author: author, baseRevision: baseRevision)
     }
 
+    /// Frames a rectangle of a video clip's picture with zoom, pan and tilt keys (moving to `target` by the last
+    /// frame when given), keeping the item's other keys.
+    @discardableResult
+    func applyFocus(
+        _ focus: String, to target: String? = nil, ease: ItemMotion.Ease = .easeInOut, item id: String? = nil,
+        author: Author = .user, baseRevision: Int? = nil
+    ) throws -> Int {
+        let (item, track) = try motionTargetAndTrack(id)
+        guard track.kind == TrackKind.video, let media = project.media.first(where: { $0.id == item.mediaID }),
+            let width = media.width, let height = media.height
+        else { throw ProjectError.invalid("focus frames a video clip or image whose media has a known size") }
+        func framing(_ text: String) throws -> MotionFocus.Framing {
+            try MotionFocus.framing(
+                MotionFocus.parse(text), source: (Double(width), Double(height)),
+                canvas: (Double(project.width), Double(project.height)), fill: project.fills(item))
+        }
+        let start = try framing(focus)
+        let end = try target.map(framing)
+        let last = max(1, item.duration - 1)
+        var motion = item.motion ?? ItemMotion(keys: [:])
+        for (property, value) in [("zoom", \MotionFocus.Framing.zoom), ("pan", \.pan), ("tilt", \.tilt)] {
+            var keys = [ItemMotion.Key(frame: 0, value: start[keyPath: value], ease: ease)]
+            if let end { keys.append(.init(frame: last, value: end[keyPath: value])) }
+            motion.keys[property] = keys
+        }
+        return try setMotion(motion, item: item.id, label: "Focus", author: author, baseRevision: baseRevision)
+    }
+
     func registerMotionCommands() {
         handleAuthored("clip.motion") { document, arguments, author in
             let id = arguments.optionalString("item") ?? document.selectedID
             let base = try arguments.int("baseRev")
             let revision: Int
-            if let text = arguments.optionalString("keyframes") {
+            if let focus = arguments.optionalString("focus") {
+                let ease = try arguments.optionalString("ease").map { text -> ItemMotion.Ease in
+                    guard let ease = ItemMotion.Ease(rawValue: text) else { throw RPCFailure(-32602, "Unknown ease \(text)") }
+                    return ease
+                }
+                revision = try document.applyFocus(
+                    focus, to: arguments.optionalString("focusTo"), ease: ease ?? .easeInOut, item: id, author: author,
+                    baseRevision: base)
+            } else if arguments.optionalString("focusTo") != nil {
+                throw RPCFailure(-32602, "focus-to needs focus")
+            } else if let text = arguments.optionalString("keyframes") {
                 guard let json = try? JSONDecoder().decode(JSONValue.self, from: Data(text.utf8)) else {
                     throw RPCFailure(-32602, "keyframes must be a JSON object")
                 }
@@ -136,7 +174,7 @@ extension ProjectDocument {
             } else if let preset = arguments.optionalString("preset") {
                 revision = try document.applyMotionPreset(preset, item: id, author: author, baseRevision: base)
             } else {
-                throw RPCFailure(-32602, "Give a preset (or none) or keyframes")
+                throw RPCFailure(-32602, "Give a preset (or none), keyframes or focus")
             }
             let item = try document.motionTarget(id)
             return .object(["rev": .integer(revision), "item": .string(item.id), "keyframes": item["keyframes"] ?? .null])

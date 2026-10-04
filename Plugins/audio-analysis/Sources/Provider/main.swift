@@ -1,5 +1,6 @@
-// BashCut Audio Analysis: the core plugin that provides `audio.loudness` and `audio.beats` with AVFoundation and
-// vDSP, so loudness-normalized export and beat grids work without installing anything.
+// BashCut Audio Analysis: the core plugin that provides `audio.loudness`, `audio.beats` and `audio.sync` with
+// AVFoundation and vDSP, so loudness-normalized export, beat grids and syncing recordings work without installing
+// anything.
 //
 // Plugin API one-shot transport: `provider rpc` reads one JSON request from stdin and writes one JSON response.
 import AVFoundation
@@ -43,8 +44,8 @@ func decode(_ path: String, sampleRate: Double, maximumChannels: Int) async thro
     return (0..<channels).map { channel in (0..<frames).map { interleaved[$0 * channels + channel] } }
 }
 
-func mediaPath(_ params: [String: Any]) throws -> String {
-    guard let path = params["mediaPath"] as? String, FileManager.default.fileExists(atPath: path) else {
+func mediaPath(_ params: [String: Any], key: String = "mediaPath") throws -> String {
+    guard let path = params[key] as? String, FileManager.default.fileExists(atPath: path) else {
         throw AnalysisError("The media file is missing")
     }
     return path
@@ -58,7 +59,25 @@ func loudness(_ params: [String: Any]) async throws -> [String: Any] {
         "truePeakDbTP": (result.truePeakDbTP * 10).rounded() / 10,
     ]
     if let range = result.loudnessRangeLU { values["loudnessRangeLU"] = (range * 10).rounded() / 10 }
+    if params["bands"] as? Bool == true {
+        let shares = try SpectralShare.measure(channels)
+        values["speechShare"] = shares.speech
+        values["presenceShare"] = shares.presence
+    }
     return values
+}
+
+func sync(_ params: [String: Any]) async throws -> [String: Any] {
+    let first = try await decode(mediaPath(params), sampleRate: AudioSync.sampleRate, maximumChannels: 1)
+    let second = try await decode(mediaPath(params, key: "otherPath"), sampleRate: AudioSync.sampleRate, maximumChannels: 1)
+    let result = try AudioSync.align(first[0], second[0])
+    func match(_ value: AudioSync.Match) -> [String: Any] {
+        ["offsetSeconds": value.offsetSeconds, "correlation": value.correlation]
+    }
+    return match(result.match).merging([
+        "overlapStartSeconds": result.overlapStartSeconds, "overlapEndSeconds": result.overlapEndSeconds,
+        "halves": result.halves.map(match),
+    ]) { current, _ in current }
 }
 
 func beats(_ params: [String: Any]) async throws -> [String: Any] {
@@ -74,6 +93,7 @@ func handle(_ request: [String: Any]) async -> [String: Any] {
         switch request["method"] as? String {
         case "audio.loudness": return ["id": id, "result": try await loudness(params)]
         case "audio.beats": return ["id": id, "result": try await beats(params)]
+        case "audio.sync": return ["id": id, "result": try await sync(params)]
         default: return ["id": id, "error": ["code": "unknown_method", "message": "\(request["method"] ?? "")"]]
         }
     } catch {

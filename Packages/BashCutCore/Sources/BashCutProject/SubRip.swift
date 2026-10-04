@@ -9,11 +9,21 @@ public enum SubRip {
         public let start: Double
         public let end: Double
         public let text: String
+
+        /// The part of the cue inside `range`, or nil when it falls outside.
+        func clipped(to range: ClosedRange<Double>) -> Cue? {
+            let start = max(start, range.lowerBound), end = min(end, range.upperBound)
+            return end > start ? Cue(start: start, end: end, text: text) : nil
+        }
     }
 
     public static func decode(_ text: String, fps: FrameRate) throws -> [Item] {
+        try decode(cues: cues(text), fps: fps)
+    }
+
+    static func decode(cues: [Cue], fps: FrameRate) throws -> [Item] {
         guard fps.numerator > 0, fps.denominator > 0 else { throw ProjectError.invalid("Frame rate is invalid") }
-        return try cues(text).enumerated().map { index, cue in
+        return try cues.enumerated().map { index, cue in
             let at = (cue.start * fps.value).rounded()
             let finish = (cue.end * fps.value).rounded()
             guard at >= 0, finish <= 2_000_000_000, at < finish else {
@@ -111,33 +121,60 @@ extension Project {
     /// through every clip where the media is heard (its trim, position, speed and speed ramp), parts outside the
     /// clips (and muted clips) are dropped, and `replace` removes only captions made from that media before. Without
     /// `media`, or when the media is not on the timeline, cue times are timeline times and `replace` removes every
-    /// caption.
+    /// caption. With `range` (seconds in the same time as the cues), cues and words are cut to it and `replace`
+    /// removes only the captions heard inside it, so one stretch can be transcribed again.
     public func importingSubRip(
         _ text: String, replace: Bool = false, provenance: [String: JSONValue]? = nil, media: String? = nil,
-        words: [CaptionWords.Timed] = [], wordStyle: String? = nil
+        words: [CaptionWords.Timed] = [], wordStyle: String? = nil, range: ClosedRange<Double>? = nil
     ) throws -> EditOperation {
         try validate()
         guard let captions = tracks.first(where: { $0.role == "captions" }) else {
             throw ProjectError.invalid("Caption track is missing")
         }
         let placed = media.map { id in tracks.contains { $0.items.contains { $0.mediaID == id } } } ?? false
+        let cues = try SubRip.cues(text).compactMap { cue in range.map { cue.clipped(to: $0) } ?? cue }
+        let words = range.map { range in words.filter { $0.end > range.lowerBound && $0.start < range.upperBound } } ?? words
+        let clips = media.map(audibleClips) ?? []
         var items = placed
-            ? try placedCues(SubRip.cues(text), in: media.map(audibleClips) ?? [], words: words)
-            : try timelineCues(SubRip.decode(text, fps: fps), words: words)
-        guard !items.isEmpty else { throw ProjectError.invalid("No captions fall inside the media's clips") }
+            ? placedCues(cues, in: clips, words: words)
+            : try timelineCues(SubRip.decode(cues: cues, fps: fps), words: words)
+        guard !items.isEmpty else {
+            throw ProjectError.invalid(range == nil ? "No captions fall inside the media's clips" : "No captions fall inside the range")
+        }
         for index in items.indices {
             if let provenance { items[index]["generatedBy"] = .object(provenance) }
             if let media { items[index]["captionMedia"] = .string(media) }
             if let wordStyle { items[index]["wordStyle"] = .string(wordStyle) }
         }
         let layers = captionLayers(from: captions)
+        // Timeline frames the range is heard at: through each clip of the media, or as timeline time.
+        let spans: [Range<Int>]? = range.map { range in
+            placed ? clips.compactMap { clipSpan(of: range, in: $0.item, media: $0.media) }
+                : [Int((range.lowerBound * fps.value).rounded())..<Int((range.upperBound * fps.value).rounded())]
+        }
         let removed = replace
-            ? Set(layers.flatMap(\.items).filter { media == nil || $0["captionMedia"]?.string == media }.map(\.id))
+            ? Set(layers.flatMap(\.items).filter { item in
+                (media == nil || item["captionMedia"]?.string == media)
+                    && (spans.map { $0.contains { item.at < $0.upperBound && item.end > $0.lowerBound } } ?? true)
+            }.map(\.id))
             : []
         let deletions = removed.sorted().map { EditOperation.delete(item: $0, ripple: false) }
         return .group(
             label: "Import SRT", author: .user,
             ops: deletions + captionPlacements(items, base: captions, removing: removed))
+    }
+
+    /// Timeline frames where the source seconds `range` of `item`'s media play.
+    func clipSpan(of range: ClosedRange<Double>, in item: Item, media: Media) -> Range<Int>? {
+        let sourceStart = Double(item.sourceIn) / media.fps.value
+        let sourceEnd = sourceStart + item.sourceSeconds(afterFrames: item.duration, fps: fps)
+        let start = max(range.lowerBound, sourceStart), end = min(range.upperBound, sourceEnd)
+        guard end > start else { return nil }
+        let frame = { (seconds: Double) in
+            item.at + Int(item.timelineFrames(atSourceSeconds: seconds - sourceStart, fps: self.fps).rounded())
+        }
+        let lower = max(item.at, frame(start)), upper = min(item.end, frame(end))
+        return upper > lower ? lower..<upper : nil
     }
 
     /// Clips where `mediaID` is heard: audio clips (including the sound linked to a video clip) and video clips

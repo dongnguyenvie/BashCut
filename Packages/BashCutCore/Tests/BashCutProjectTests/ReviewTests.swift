@@ -51,4 +51,24 @@ struct ReviewTests {
         #expect(overlapIDs == ["overlap-close"])
         #expect(abs(TimelineReview.speechCoverage(project) - 36.0 / 44.0) < 0.0001)
     }
+
+    @Test("Review flags captions that look like a recognition loop")
+    func recognitionLoops() throws {
+        var project = Project(name: "Loops", fps: FrameRate(30, 1))
+        func caption(_ id: String, _ text: String, at: Int, duration: Int = 60) -> Item {
+            var item = Item(id: id, at: at, duration: duration)
+            item["text"] = .string(text)
+            return item
+        }
+        let captions = [
+            caption("long", "một câu rất dài", at: 0, duration: 330),
+            caption("repeat", "à à à à", at: 400),
+            caption("half", "và nói và nói và nói", at: 500),
+            caption("fine", "không không, mình nói tiếp nhé", at: 600),
+        ]
+        project = try project.applying(
+            .group(label: "fixture", author: .user, ops: captions.map { .insert(track: "t1", item: $0) })).project
+        let loops = TimelineReview.run(project).map(\.id).filter { $0.hasPrefix("loop-") }
+        #expect(loops == ["loop-long", "loop-repeat", "loop-half"])
+    }
 }
