@@ -14,7 +14,7 @@ struct ExportDestination {
             throw ProjectError.invalid("Export destination already exists")
         }
         partial = url.deletingLastPathComponent().appendingPathComponent(
-            ".\(url.lastPathComponent).\(UUID().uuidString).partial")
+            ".bashcut-export-\(UUID().uuidString).partial")
     }
 
     func publish() throws {
