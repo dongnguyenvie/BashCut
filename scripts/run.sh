@@ -1,6 +1,7 @@
 #!/bin/bash
 set -euo pipefail
-cd "$(dirname "$0")/.."
+# shellcheck source=lib/common.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/common.sh"
 swift build
 bundle="build/BashCut.app/Contents"
 mkdir -p "$bundle/MacOS" "$bundle/Resources"
@@ -32,8 +33,8 @@ for resource in "$bin_dir"/*.bundle; do
 done
 # Expand the Xcode build settings Info.plist uses; an unexpanded bundle ID breaks AppleScript, defaults and TCC.
 # The version comes from Configs/Version.xcconfig, like the Xcode build; plugin registry checks compare against it.
-version="$(awk -F' *= *' '/^MARKETING_VERSION/ { print $2 }' Configs/Version.xcconfig)"
-build_number="$(awk -F' *= *' '/^CURRENT_PROJECT_VERSION/ { print $2 }' Configs/Version.xcconfig)"
+version="$(version_setting MARKETING_VERSION)"
+build_number="$(version_setting CURRENT_PROJECT_VERSION)"
 sed -e 's/$(PRODUCT_BUNDLE_IDENTIFIER)/app.bashcut/' -e 's/$(PRODUCT_NAME)/BashCut/' \
     -e "s/\$(MARKETING_VERSION)/${version:-0.0.0}/" -e "s/\$(CURRENT_PROJECT_VERSION)/${build_number:-1}/" \
     BashCut/Info.plist >"$bundle/Info.plist"

@@ -100,8 +100,12 @@ bash-cut/
 │   ├── generate-project.sh        # checks for XcodeGen, generates BashCut.xcodeproj
 │   ├── verify.sh                  # build | test | lint | xcode [build|test] | perf
 │   ├── run.sh                     # builds, signs and opens build/BashCut.app
-│   ├── build-release.sh           # Developer ID signed, notarized dmg/zip (and pkg) in build/release/
-│   └── load-env.sh                # sourced by release scripts: BASHCUT_* account keys from .env
+│   ├── deploy-testflight.sh       # Mac App Store archive, uploaded to TestFlight
+│   ├── build-release.sh           # Developer ID: archive, verify, notarize; zip + dmg (+ pkg) in build/release/
+│   ├── create-dmg.sh              # dmg from a signed app (a build-release.sh step, also runnable alone)
+│   ├── create-pkg.sh              # pkg from a signed app (likewise)
+│   ├── lib/                       # sourced helpers: common.sh (.env, version), signing.sh, notarize.sh
+│   └── ci/                        # checks of the scripts themselves (test-script-lib.sh)
 │
 ├── mockups/bashcut-ui.html        # interactive UI mockup (reference only)
 │

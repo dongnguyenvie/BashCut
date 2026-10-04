@@ -5,10 +5,14 @@
 
 ## [Unreleased]
 
-- Add `scripts/build-release.sh` for releases outside the Mac App Store: archives with a Developer ID identity,
-  checks every Mach-O for the hardened runtime and a secure timestamp, notarizes and staples, then writes
-  `BashCut-<version>.dmg`, `.zip` (and `.pkg` with `--pkg`) and `SHA256SUMS` to `build/release/`. Account details
-  come only from the git-ignored `.env` (`scripts/load-env.sh`, template in `.env.example`).
+- Add release scripts. `scripts/build-release.sh` builds for distribution outside the Mac App Store: it archives
+  with a Developer ID identity, checks every Mach-O for a secure timestamp (executables also for the hardened
+  runtime), notarizes, staples and validates the ticket, then writes `BashCut-<version>.zip`, `.dmg` (and `.pkg`
+  with `--pkg`) and `SHA256SUMS` to `build/release/`. `create-dmg.sh` and `create-pkg.sh` are its steps and also run
+  alone. `scripts/deploy-testflight.sh` uploads a Mac App Store build to TestFlight.
+- Shared shell helpers in `scripts/lib/` (`common.sh`, `signing.sh`, `notarize.sh`), tested under bash 3.2 by
+  `scripts/ci/test-script-lib.sh` in `verify.sh test`. Account details (team ID, Apple ID, app-specific password)
+  come only from the git-ignored `.env`; `.env.example` lists the keys.
 - Split the ramp window envelope expression: Release (`-O`) archives failed with "unable to type-check this
   expression in reasonable time".
 

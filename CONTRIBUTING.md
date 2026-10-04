@@ -39,6 +39,20 @@ freeze frame, speed, a gap, a transition, picture in picture, captions, locked/h
 music with a beat grid and ducking, SFX and sections. `scripts/sample-project.py` also runs as an end-to-end
 check; when you add something the timeline shows, add it there too.
 
+### Releases
+
+Release scripts read the Apple account from `.env` (git-ignored; copy `.env.example`). Never put the team ID,
+Apple ID or passwords in tracked files.
+
+```bash
+scripts/deploy-testflight.sh     # archive for the Mac App Store and upload to TestFlight
+scripts/build-release.sh         # Developer ID: notarized zip + dmg (--pkg for a pkg) in build/release/
+scripts/create-dmg.sh <app>      # one step of build-release.sh, runnable alone (also create-pkg.sh)
+```
+
+Shared shell helpers live in `scripts/lib/` (sourced, never run); `scripts/ci/test-script-lib.sh` tests them under
+the system bash 3.2 and runs in `scripts/verify.sh test`.
+
 Each run writes its full log to `build/logs/` and prints one PASS/FAIL line.
 
 | Module | Sources | Tests |
