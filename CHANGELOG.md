@@ -5,6 +5,8 @@
 
 ## [Unreleased]
 
+- Include MCPBridge, Tools and the core benchmarks in strict SwiftLint verification.
+
 - Add macOS CI for SwiftPM build/tests, CLI/MCP process tests, strict lint and Xcode tests on every PR.
   Verification logs and Xcode results are retained for failed-run diagnosis.
 

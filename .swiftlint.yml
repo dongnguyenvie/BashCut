@@ -2,9 +2,12 @@ included:
   - BashCut
   - Tests
   - CLI
+  - MCPBridge
+  - Tools
   - Plugins
   - Packages/BashCutCore/Sources
   - Packages/BashCutCore/Tests
+  - Packages/BashCutCore/Benchmarks
 excluded:
   - .build
   - Packages/BashCutCore/.build

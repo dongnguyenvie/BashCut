@@ -87,7 +87,8 @@ for size in sizes.isEmpty ? [100, 500, 1_000] : sizes {
     let decode = try measure(3) { _ = try JSONDecoder().decode(ProjectHistory.self, from: journal) }
     let undo = try measure(1) { for _ in 0..<50 { try history.undo() } } / 50
     print("""
-        \(size) items: open \(format(open)) (\(file.count / 1_000) KB), validate \(format(validate)), setProperties \(format(property)), ripple delete \(format(ripple)), \
+        \(size) items: open \(format(open)) (\(file.count / 1_000) KB), validate \(format(validate)), \
+        setProperties \(format(property)), ripple delete \(format(ripple)), \
         50-op group \(format(group)), history step \(format(steps)), undo \(format(undo)); \
         200-step journal \(String(format: "%.1f", Double(journal.count) / 1e6)) MB, encode \(format(encode)), \
         decode \(format(decode))
