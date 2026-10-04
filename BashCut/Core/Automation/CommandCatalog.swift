@@ -13,7 +13,7 @@ public enum CommandCatalog {
     public static let exportPresets = ["tiktok", "youtube-1080", "youtube-4k", "quick-draft", "prores"]
 
     public static let specs: [CommandSpec] = readSpecs + projectSpecs + editSpecs + captionSpecs + layerSpecs + styleSpecs
-        + formatSpecs + clipSpecs + capabilitySpecs + pluginSpecs + storageSpecs + agentSpecs + appSpecs + chatSpecs
+        + formatSpecs + clipSpecs + capabilitySpecs + analysisSpecs + pluginSpecs + storageSpecs + agentSpecs + appSpecs + chatSpecs
         + privilegedSpecs + uiSpecs + toolSpecs
 
     public static let modes: [String: CommandMode] = Dictionary(uniqueKeysWithValues: specs.map { ($0.name, $0.mode) })
@@ -23,7 +23,7 @@ public enum CommandCatalog {
     static let baseRevision = CommandParameter(
         "baseRev", .integer, "Current project revision from timeline.get", required: true, minimum: 0,
         cli: .option("base-rev"))
-    private static let provider = CommandParameter(
+    static let provider = CommandParameter(
         "provider", .string, "Provider ID overriding the project preference for one request", cli: .option("provider"))
     private static let outputName = CommandParameter(
         "name", .string, "Output base name without an extension", required: true, cli: .option("name"))
@@ -172,6 +172,11 @@ public enum CommandCatalog {
                 CommandParameter("replace", .boolean, "Replace this media's captions", default: .bool(false), cli: .flag("replace")),
                 CommandParameter("wordStyle", .string, "Show words as they are spoken (see captions.words)",
                                  choices: CaptionWords.styles + ["none"], cli: .option("word-style")),
+                CommandParameter("from", .number, "Transcribe only from this source second of the media (with replace, "
+                                 + "only this media's captions heard in the range are replaced)", range: 0...86_400,
+                                 cli: .option("from")),
+                CommandParameter("to", .number, "Transcribe only up to this source second of the media", range: 0...86_400,
+                                 cli: .option("to")),
                 provider,
             ],
             execution: .job),

@@ -56,6 +56,26 @@ public struct GeneratedLoudnessMeasurement: Sendable {
     public let provenance: PluginProvenance
 }
 
+public struct GeneratedAudioSync: Sendable {
+    public struct Match: Sendable, Equatable {
+        /// Time in the other file = time in the first + `offsetSeconds`.
+        public let offsetSeconds: Double
+        public let correlation: Double
+    }
+
+    public let match: Match
+    /// The match of each half of the overlap; agreeing halves mean no clock drift.
+    public let halves: [Match]
+    /// The overlap in the first file's time, when the provider reports it.
+    public let overlap: ClosedRange<Double>?
+    public let provenance: PluginProvenance
+
+    /// The halves agree within 0.02 s.
+    public var isSteady: Bool {
+        halves.count == 2 && abs(halves[0].offsetSeconds - halves[1].offsetSeconds) <= 0.020_001
+    }
+}
+
 public extension Array where Element == GeneratedVoiceTake {
     /// Highest score wins; equal scores prefer the earlier take so the choice is deterministic.
     var best: GeneratedVoiceTake? {

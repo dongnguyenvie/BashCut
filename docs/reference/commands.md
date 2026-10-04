@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 94 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 96 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -174,6 +174,16 @@ Place project media on a layer (main by default), with linked sound on a dialogu
 - `atFrame`: integer, ≥ 0. Timeline frame; defaults to the playhead or the end of the main layer
 - `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
 
+### `bashcut media sync --media <media> --to <to> [--item <item>] [--provider <provider>]`
+
+Find the time offset between two recordings of the same moment (a camera and a screen recording, or a render played inside a screen recording) from their sound, with an audio.sync provider. The job's result: time in `to` = time in `media` + offsetSeconds, the correlation (below 0.4: no shared sound) and each half of the overlap (steady: no clock drift). With item, also the matching source frame of `to` for that clip's in-point.
+
+- Mode: read · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_media_sync`
+- `media`: string, required. Project media ID of the first recording
+- `to`: string, required. Project media ID of the second recording
+- `item`: string. A timeline item of the first media whose in-point to map
+- `provider`: string. Provider ID overriding the project preference for one request
+
 ## review
 
 ### `bashcut review run`
@@ -210,7 +220,7 @@ Show caption words as they are spoken (Inspector › Text › Word by word): hig
 - `color`: string. Highlight colour, #RRGGBB (default #FFD400)
 - `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
 
-### `bashcut captions generate --media <media> [--replace] [--word-style <wordStyle>] [--provider <provider>]`
+### `bashcut captions generate --media <media> [--replace] [--word-style <wordStyle>] [--from <from>] [--to <to>] [--provider <provider>]`
 
 Transcribe project media with a captions.transcribe provider and import the captions as one undoable edit. Captions follow the clips where the media is heard (trim, position, speed): place the clips first.
 
@@ -218,6 +228,8 @@ Transcribe project media with a captions.transcribe provider and import the capt
 - `media`: string, required. Project media ID
 - `replace`: boolean, default false. Replace this media's captions
 - `wordStyle`: string, one of highlight, karaoke, reveal, none. Show words as they are spoken (see captions.words)
+- `from`: number, 0…86400. Transcribe only from this source second of the media (with replace, only this media's captions heard in the range are replaced)
+- `to`: number, 0…86400. Transcribe only up to this source second of the media
 - `provider`: string. Provider ID overriding the project preference for one request
 
 ## export
@@ -496,14 +508,17 @@ Give a clip a speed ramp (CapCut Curve) like Inspector › Speed › Curve: a pr
 - `keepDuration`: boolean, default false. Keep the clip's length instead
 - `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
 
-### `bashcut clip motion [<item>] [--preset <preset>] [--keyframes <keyframes>] --base-rev <baseRev>`
+### `bashcut clip motion [<item>] [--preset <preset>] [--keyframes <keyframes>] [--focus <focus>] [--focus-to <focusTo>] [--ease <ease>] --base-rev <baseRev>`
 
-Animate a clip, image or text over its length (Inspector › Animation): a preset (zoom-in, zoom-out, pan-left, pan-right, pan-up, pan-down, fade-in-out, pop-in, slide-up, zoom-punch; none removes the animation) sized to the item, or keyframes JSON {property: [{frame, value, ease?}, …]} with frames from the item's start. Properties: zoom, pan, tilt (px, up), rotation (degrees), opacity, and volume (dB, like volumeDb; the only one on audio items, none on text); ease: linear, in, out, inOut, hold (default inOut). Keys replace the item's static value for that property. Images with zoom-in, zoom-out or pan-* make a Ken Burns move; presets are for pictures and text.
+Animate a clip, image or text over its length (Inspector › Animation): a preset (zoom-in, zoom-out, pan-left, pan-right, pan-up, pan-down, fade-in-out, pop-in, slide-up, zoom-punch; none removes the animation) sized to the item, or keyframes JSON {property: [{frame, value, ease?}, …]} with frames from the item's start. Properties: zoom, pan, tilt (px, up), rotation (degrees), opacity, and volume (dB, like volumeDb; the only one on audio items, none on text); ease: linear, in, out, inOut, hold (default inOut). Keys replace the item's static value for that property. Images with zoom-in, zoom-out or pan-* make a Ken Burns move; presets are for pictures and text. focus frames a rectangle of a video clip (a panel of a screen recording) without working out zoom, pan and tilt by hand.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_clip_motion`
 - `item`: string. Item ID; the selection by default
 - `preset`: string, one of zoom-in, zoom-out, pan-left, pan-right, pan-up, pan-down, fade-in-out, pop-in, slide-up, zoom-punch, none. Preset name, or none
 - `keyframes`: string. Keyframes as JSON, replacing the item's animation
+- `focus`: string. Frame a rectangle of a video clip's picture: x,y,width,height in source pixels from the top left (media.list width/height); sets zoom, pan and tilt and keeps the other keys
+- `focusTo`: string. With focus: move to this rectangle by the item's last frame
+- `ease`: string, one of linear, in, out, inOut, hold. With focus-to: the move's ease
 - `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
 
 ### `bashcut clip keyframe [<item>] [--property <property>] [--value <value>] [--at-frame <atFrame>] [--ease <ease>] [--remove] --base-rev <baseRev>`
@@ -548,6 +563,16 @@ Synthesize voice takes and insert the best take on the Voiceover track; with kee
 - `atFrame`: integer, ≥ 0. Timeline frame; defaults to the playhead
 - `provider`: string. Provider ID overriding the project preference for one request
 - `keepTakes`: boolean, default false. Keep all takes in voiceover/generated and insert none
+
+## audio
+
+### `bashcut audio measure --media <media> [--provider <provider>]`
+
+Measure a media file's sound with an audio.loudness provider: integrated loudness (LUFS), true peak, loudness range (LU) and the energy share in the speech band (300-3000 Hz) and the presence band (1-4 kHz, where consonants carry words). Under a voice, prefer music with a low presence share and loudness range. The job's result holds the values.
+
+- Mode: read · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_audio_measure`
+- `media`: string, required. Project media ID
+- `provider`: string. Provider ID overriding the project preference for one request
 
 ## storage
 

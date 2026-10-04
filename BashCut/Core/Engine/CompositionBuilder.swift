@@ -148,13 +148,15 @@ public actor CompositionBuilder {
                             incoming: true, fps: project.fps.value)
                     }
                     let lut = try loadLUT(for: item)
+                    let crop = SourceCrop(
+                        fields: item.fields, naturalSize: asset.naturalSize, orientation: placement.orientation)
                     visualByTrack[track.id, default: []].append(
                         PlacedVisual(
                             start: item.at, end: item.end,
                             layer: FrameLayer(
                                 trackID: target.trackID, transform: transform,
                                 properties: item.fields, transition: incoming, lut: lut,
-                                motion: motion.map { ($0, placement) })))
+                                motion: motion.map { ($0, placement) }, crop: crop)))
                     if let transition = transitionFrom[item.id] {
                         let hold = try visualLanes.take(
                             layer: track.id, start: item.end, end: item.end + transition.duration, composition: composition)
@@ -179,7 +181,7 @@ public actor CompositionBuilder {
                                         kind: transition.kind, startFrame: item.end,
                                         duration: transition.duration, incoming: false,
                                         fps: project.fps.value), lut: lut,
-                                    motion: motion.map { ($0, placement) })))
+                                    motion: motion.map { ($0, placement) }, crop: crop)))
                     }
                 }
                 // Main sound remains attached in the spike until separate linked dialogue editing lands.

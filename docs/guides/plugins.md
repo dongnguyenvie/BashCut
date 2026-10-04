@@ -278,16 +278,17 @@ environment access.
 
 ## Capabilities
 
-The app wires four capabilities. Each is a `CapabilityAdapter` in `BashCut/Core/Plugins/Capabilities/` that
+The app wires these capabilities. Each is a `CapabilityAdapter` in `BashCut/Core/Plugins/Capabilities/` that
 builds the request parameters and validates the result.
 
 | Capability | Used by | Params | Result |
 |---|---|---|---|
 | `voice.synthesize` | Voice panel, `voice speak` | `text`, `language`, `outputDirectory`, `takeCount`, `takeOffset` | `takes`: 1–8 `{audioPath, score?}` objects, or a single `audioPath` |
-| `captions.transcribe` | Text panel, `captions generate` | `mediaPath`, `language`, `outputDirectory` | `srtPath`, optional `wordsPath` |
+| `captions.transcribe` | Text panel, `captions generate` | `mediaPath`, `language`, `outputDirectory`, optional `startSeconds`/`endSeconds` | `srtPath`, optional `wordsPath` |
 | `audio.beats` | Audio panel, `beats detect` | `mediaPath` | `bpm`, `beatsSeconds` |
 | `agent.chat` (API 4, session only) | A chat-agent tab in the agent dock, `chat send` | `op` (`turn`, `reset`, `status`); a turn adds `conversation`, `text`, `images`, `context`, `instructions`, `tools`, `kit` | A turn: `stopReason` (`end`, `aborted`, `error`) and `error`; status: `ready`, `provider`, `model`, `detail`. See [Chat agents](#chat-agents) |
-| `audio.loudness` | Normalized export | `mediaPath` | `integratedLUFS`, `truePeakDbTP`, optional `loudnessRangeLU` |
+| `audio.loudness` | Normalized export, `audio measure` | `mediaPath`, optional `bands` | `integratedLUFS`, `truePeakDbTP`, optional `loudnessRangeLU`, `speechShare`, `presenceShare` |
+| `audio.sync` | `media sync` | `mediaPath`, `otherPath` | `offsetSeconds`, `correlation`, optional `halves`, `overlapStartSeconds`, `overlapEndSeconds` |
 
 ### Output files
 
@@ -320,6 +321,11 @@ time in the media's seconds (at most 8 MiB). BashCut stores the words that fall 
 `words` (frames from the caption's start), which word-by-word captions (`wordStyle`, `captions words`) follow.
 Without it, word timings are estimated from word length.
 
+With `startSeconds` and `endSeconds` (`captions generate --from/--to`), transcribe only that stretch of the media and
+keep the times in the media's seconds. BashCut cuts the cues and words to the range and, with `replace`, removes only
+this media's captions heard inside it, so a stretch where recognition looped can be transcribed again. A provider
+that ignores the range still works: it transcribes everything and BashCut keeps the range.
+
 ### Core plugins
 
 `bashcut.audio-analysis` comes inside the app (`Contents/Resources/Plugins/`, source in `Plugins/audio-analysis/`) and needs
@@ -327,10 +333,13 @@ no setup. It is an ordinary out-of-process plugin built from Swift with AVFounda
 
 - `audio.loudness`: ITU-R BS.1770-4 integrated loudness, EBU Tech 3342 loudness range and 4× oversampled true
   peak of the first audio track (stereo or mono; more channels are mixed to stereo).
+  With `bands`, also the speech-band (300–3000 Hz) and presence-band (1–4 kHz) energy shares.
 - `audio.beats`: spectral-flux onsets, tempo from their autocorrelation (60–200 BPM, weighted toward 120) and
   dynamic-programming beat tracking.
+- `audio.sync`: cross-correlation of the two files' loudness envelopes (100 per second), coarse over every overlap
+  of at least half the shorter file, then fine around the best lag, and again on each half of the overlap.
 
-Both providers have priority 0, so an installed provider with a higher priority, or one chosen for the project,
+The providers have priority 0, so an installed provider with a higher priority, or one chosen for the project,
 takes over. Core plugins can be turned off but not removed; a registry copy with a higher version replaces one.
 
 ### `audio.beats`
@@ -348,6 +357,17 @@ During a normalized export, BashCut renders a temporary mix and asks the provide
 gain toward the project target while keeping the true peak at or below −1 dBTP, exports again, and measures the
 final file. The chosen mix gain and the measurement's provenance are stored as an undoable project edit.
 Providers can wrap libebur128, FFmpeg filters or anything else without linking that dependency into the app.
+
+With `bands: true` (`audio measure`), also return `speechShare` and `presenceShare`, each 0 to 1: the share of the
+file's energy in the speech band (300–3000 Hz) and in the presence band (1–4 kHz). A provider that leaves them out
+still answers `audio measure` without them.
+
+### `audio.sync`
+
+`mediaPath` and `otherPath` are two recordings of the same moment. Return `offsetSeconds` (time in `otherPath` =
+time in `mediaPath` + offset, finite, under a day) and `correlation` (−1 to 1). Optionally return `halves`, up to two
+`{offsetSeconds, correlation}` matches of the first and second half of the overlap (BashCut reports them as steady
+when they agree within 0.02 s), and the overlap in the first file's seconds.
 
 ### Provenance
 

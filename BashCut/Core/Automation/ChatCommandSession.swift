@@ -11,6 +11,7 @@ import Foundation
         "plugins.hooks", "plugins.options", "plugins.health", "jobs.status", "jobs.cancel", "layers.add", "layers.set",
         "adjustment.add", "style.apply", "style.save", "style.delete", "looks.save", "looks.delete", "schema.get",
         "clip.speed", "clip.speed-curve", "clip.motion", "clip.keyframe", "clip.reverse", "beats.detect", "voice.speak",
+        "audio.measure", "media.sync",
         "storage.get", "ui.select", "ui.view", "ui.source", "ui.seek", "ui.frame", "ui.panel", "luts.import",
         "knowledge.get", "knowledge.memo"
     ]

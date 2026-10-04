@@ -5,13 +5,14 @@
     "en": "Audio Analysis",
     "vi": "Phân tích âm thanh"
   },
-  "version": "1.0.0",
+  "version": "1.1.0",
   "apiVersion": 2,
   "entrypoint": "bin/provider",
-  "capabilities": ["audio.loudness", "audio.beats"],
+  "capabilities": ["audio.loudness", "audio.beats", "audio.sync"],
   "providers": [
     {"id": "bashcut.audio-analysis.loudness", "capability": "audio.loudness", "name": "BS.1770 loudness (built in)", "priority": 0},
-    {"id": "bashcut.audio-analysis.beats", "capability": "audio.beats", "name": "Beat tracker (built in)", "priority": 0}
+    {"id": "bashcut.audio-analysis.beats", "capability": "audio.beats", "name": "Beat tracker (built in)", "priority": 0},
+    {"id": "bashcut.audio-analysis.sync", "capability": "audio.sync", "name": "Sound sync (built in)", "priority": 0}
   ],
   "dependencies": []
 }

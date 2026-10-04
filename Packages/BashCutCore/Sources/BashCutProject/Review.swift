@@ -67,6 +67,16 @@ public enum TimelineReview {
                     id: "caption-" + text.id, title: "Long caption line",
                     detail: "Consider splitting lines longer than 42 characters.", frame: text.at))
         }
+        for caption in project.tracks.filter({ $0.kind == "text" && $0.role == "captions" }).flatMap(\.items)
+        where isRecognitionLoop(caption, fps: project.fps.value) {
+            issues.append(
+                ReviewIssue(
+                    id: "loop-" + caption.id, title: "Possible recognition loop",
+                    detail: "A caption over 10 seconds or one word repeated many times: speech recognition looped and "
+                        + "its timings are smeared. Do not cut on it; transcribe the stretch again "
+                        + "(captions generate --from/--to, about 20 s at a time).",
+                    frame: caption.at))
+        }
         if project.duration > 0 {
             let coverage = speechCoverage(project)
             if coverage < 0.9 {
@@ -80,5 +90,20 @@ public enum TimelineReview {
             }
         }
         return issues
+    }
+
+    /// A caption longer than 10 s, or one where a word comes 4 times in a row or makes up half of 6+ words.
+    static func isRecognitionLoop(_ caption: Item, fps: Double) -> Bool {
+        if Double(caption.duration) > 10 * fps { return true }
+        let words = caption.text.lowercased()
+            .components(separatedBy: CharacterSet.alphanumerics.inverted).filter { !$0.isEmpty }
+        var run = 1
+        for (previous, word) in zip(words, words.dropFirst()) {
+            run = previous == word ? run + 1 : 1
+            if run >= 4 { return true }
+        }
+        guard words.count >= 6 else { return false }
+        let most = Dictionary(grouping: words, by: { $0 }).values.map(\.count).max() ?? 0
+        return most * 2 >= words.count
     }
 }

@@ -69,6 +69,33 @@ struct GeneratedCaptionTests {
         #expect(captions(project).map(\.text) == ["Tiêu đề", "Cũ", "Giữa", "Qua cắt"])
     }
 
+    @Test("A range keeps only its cues and replaces only the captions heard inside it")
+    func rangeReplacesOneStretch() throws {
+        var project = try project()
+        project = try project.applying(project.importingSubRip(srt, media: "m")).project
+        let again = """
+            1
+            00:00:01,500 --> 00:00:02,000
+            Giữa mới
+
+            2
+            00:00:02,000 --> 00:00:02,600
+            Tràn ra
+
+            3
+            00:00:02,800 --> 00:00:03,400
+            Ngoài khoảng
+            """
+        project = try project.applying(
+            project.importingSubRip(again, replace: true, media: "m", range: 1.4...2.2)).project
+        // Source 1.4–2.2 s plays at frames 102–126: "Giữa" goes, "Qua cắt" (frame 144) stays, the spill is cut at 2.2 s.
+        #expect(captions(project).map(\.text) == ["Tiêu đề", "Giữa mới", "Tràn ra", "Qua cắt"])
+        #expect(captions(project).first { $0.text == "Tràn ra" }.map { [$0.at, $0.end] } == [120, 126])
+        #expect(throws: ProjectError.self) {
+            try project.importingSubRip(again, media: "m", range: 10...12)
+        }
+    }
+
     @Test("Speed changes the timeline position")
     func followsSpeed() throws {
         var project = try project()

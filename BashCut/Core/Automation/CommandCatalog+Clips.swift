@@ -9,7 +9,8 @@ extension CommandCatalog {
         + "frames from the item's start. Properties: zoom, pan, tilt (px, up), rotation (degrees), opacity, and volume "
         + "(dB, like volumeDb; the only one on audio items, none on text); ease: \(eases) (default inOut). Keys "
         + "replace the item's static value for that property. Images with zoom-in, zoom-out or pan-* make a Ken Burns "
-        + "move; presets are for pictures and text."
+        + "move; presets are for pictures and text. focus frames a rectangle of a video clip (a panel of a screen "
+        + "recording) without working out zoom, pan and tilt by hand."
 
     /// Caption import (generation is with the plugin capabilities).
     static let captionSpecs: [CommandSpec] = [
@@ -68,6 +69,13 @@ extension CommandCatalog {
                                  choices: MotionPreset.all.map(\.id) + ["none"], cli: .option("preset")),
                 CommandParameter("keyframes", .string, "Keyframes as JSON, replacing the item's animation",
                                  cli: .option("keyframes")),
+                CommandParameter("focus", .string, "Frame a rectangle of a video clip's picture: x,y,width,height in "
+                                 + "source pixels from the top left (media.list width/height); sets zoom, pan and tilt "
+                                 + "and keeps the other keys", cli: .option("focus")),
+                CommandParameter("focusTo", .string, "With focus: move to this rectangle by the item's last frame",
+                                 cli: .option("focus-to")),
+                CommandParameter("ease", .string, "With focus-to: the move's ease",
+                                 choices: ItemMotion.Ease.allCases.map(\.rawValue), cli: .option("ease")),
                 baseRevision,
             ]),
         CommandSpec(

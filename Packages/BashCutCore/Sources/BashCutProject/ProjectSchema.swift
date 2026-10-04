@@ -26,7 +26,7 @@ public struct ItemProperty: Sendable {
         self.summary = summary
     }
 
-    public static let groups = ["transform", "color", "textStyle"]
+    public static let groups = ["transform", "crop", "color", "textStyle"]
 
     public static let all: [ItemProperty] = [
         .init(nil, "speed", .number(0.01...100), "Source frames per timeline frame; the timeline duration is kept"),
@@ -41,6 +41,14 @@ public struct ItemProperty: Sendable {
         .init("transform", "pan", .number(-65536...65536), "Horizontal offset in output pixels"),
         .init("transform", "tilt", .number(-65536...65536), "Vertical offset in output pixels"),
         .init("transform", "rotation", .number(-3600...3600), "Rotation in degrees, counterclockwise, around the frame centre"),
+        .init("crop", "left", .number(0...0.95),
+              "Video picture: fraction of the width hidden on the left (left + right at most 0.95)"),
+        .init("crop", "right", .number(0...0.95), "Video picture: fraction of the width hidden on the right"),
+        .init("crop", "top", .number(0...0.95),
+              "Video picture: fraction of the height hidden at the top (top + bottom at most 0.95)"),
+        .init("crop", "bottom", .number(0...0.95), "Video picture: fraction of the height hidden at the bottom"),
+        .init("crop", "radius", .number(0...0.5),
+              "Video picture: corner radius as a fraction of the visible part's shorter side (0.5 = circle or pill)"),
         .init("textStyle", "size", .number(0.005...1), "Font size as a fraction of the frame's short side (shrunk to fit 90% of the width)"),
         .init("textStyle", "positionY", .number(0...1), "Baseline position from the bottom, as a fraction"),
         .init("textStyle", "strokeWidth", .number(0...50), "Outline width in points"),
@@ -373,7 +381,11 @@ public enum ProjectSchema {
             "color": ref("color"),
         ]
         for name in ItemProperty.groups where name != "color" {
-            properties[name] = .object(group(name, name == "transform" ? "Framing" : "Text style overrides"))
+            let summaries = [
+                "transform": "Framing",
+                "crop": "Video picture: the visible part of the source frame (the picture keeps its place; zoom and pan move it)",
+            ]
+            properties[name] = .object(group(name, summaries[name] ?? "Text style overrides"))
         }
         for property in ItemProperty.all where property.group == nil {
             properties[property.key] = schema(for: property)
