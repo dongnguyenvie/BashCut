@@ -2,7 +2,7 @@
 import BashCutProject
 
 /// Render one continuous stream. Pitch preservation uses WSOLA; varispeed keeps native resampling state across the curve.
-enum OfflineAudioRamp {
+enum SpeedRampAudioRenderer {
     /// The output duration and the speed curve that maps it onto source time.
     struct Shape: Sendable {
         let curve: SpeedCurve
@@ -13,7 +13,7 @@ enum OfflineAudioRamp {
     static func render(input url: URL, output: URL, shape: Shape, check: () throws -> Void) throws {
         let curve = shape.curve, seconds = shape.seconds
         if shape.preservesPitch {
-            try WaveformAudioRamp.render(input: url, output: output, curve: curve, seconds: seconds, check: check)
+            try SpeedRampTimeStretch.render(input: url, output: output, curve: curve, seconds: seconds, check: check)
             return
         }
         let input = try AVAudioFile(forReading: url)

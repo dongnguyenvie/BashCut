@@ -38,8 +38,8 @@ private final class TestStream: @unchecked Sendable {
         if value, let queue = registered.0, let callback = registered.1 { queue.async(execute: callback) }
     }
 
-    var lane: SampleTransfer.Lane {
-        SampleTransfer.Lane(request: { queue, callback in
+    var lane: ExportSampleTransfer.Lane {
+        ExportSampleTransfer.Lane(request: { queue, callback in
             self.lock.withLock { self.queue = queue; self.callback = callback }
             queue.setSpecific(key: self.key, value: true)
             queue.async(execute: callback)
@@ -56,11 +56,11 @@ private final class TestStream: @unchecked Sendable {
     }
 }
 
-struct SampleTransferTests {
+struct ExportSampleTransferTests {
     @Test("Streams drain independently under backpressure and finish exactly once")
     func backpressure() async throws {
         let video = TestStream(samples: 20, ready: false), audio = TestStream(samples: 50), state = TransferState()
-        let transfer = SampleTransfer(lanes: [video.lane, audio.lane], duration: 20,
+        let transfer = ExportSampleTransfer(lanes: [video.lane, audio.lane], duration: 20,
                                       progress: { state.report($0) }, failure: { state.failure }, interrupt: {})
         let task = Task { try await transfer.run() }
         defer { task.cancel() }
@@ -80,7 +80,7 @@ struct SampleTransferTests {
     @Test("Failure while all inputs are not ready still completes without a readiness callback")
     func idleFailure() async throws {
         let video = TestStream(samples: 20, ready: false), state = TransferState()
-        let transfer = SampleTransfer(lanes: [video.lane], duration: 20,
+        let transfer = ExportSampleTransfer(lanes: [video.lane], duration: 20,
                                       progress: { _ in }, failure: { state.failure }, interrupt: {})
         let task = Task { try await transfer.run() }
         state.fail()
@@ -92,7 +92,7 @@ struct SampleTransferTests {
     func blockedCancellation() async throws {
         let stream = TestStream(samples: 20), gate = DispatchSemaphore(value: 0)
         stream.gate = gate
-        let transfer = SampleTransfer(lanes: [stream.lane], duration: 20,
+        let transfer = ExportSampleTransfer(lanes: [stream.lane], duration: 20,
                                       progress: { _ in }, failure: { nil }, interrupt: { gate.signal() })
         let task = Task { try await transfer.run() }
         defer { task.cancel() }
@@ -106,7 +106,7 @@ struct SampleTransferTests {
     func readFailure() async {
         let bad = TestStream(samples: 20), waiting = TestStream(samples: 20, ready: false)
         bad.throwOnRead = true
-        let transfer = SampleTransfer(lanes: [bad.lane, waiting.lane], duration: 20,
+        let transfer = ExportSampleTransfer(lanes: [bad.lane, waiting.lane], duration: 20,
                                       progress: { _ in }, failure: { nil }, interrupt: {})
         await #expect(throws: TransferTestError.self) { try await transfer.run() }
         #expect(bad.finishCount == 1 && waiting.finishCount == 1)
@@ -115,7 +115,7 @@ struct SampleTransferTests {
     @Test("Cancellation before registration resumes once without reading")
     func cancelledBeforeStart() async {
         let stream = TestStream(samples: 20)
-        let transfer = SampleTransfer(lanes: [stream.lane], duration: 20,
+        let transfer = ExportSampleTransfer(lanes: [stream.lane], duration: 20,
                                       progress: { _ in }, failure: { nil }, interrupt: {})
         let task = Task {
             withUnsafeCurrentTask { $0?.cancel() }

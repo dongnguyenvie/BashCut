@@ -134,7 +134,7 @@ public actor Exporter {
         progress: @escaping @Sendable (Double) -> Void
     ) async throws {
         let lanes = pairs.map { output, input in
-            SampleTransfer.Lane(request: { queue, callback in
+            ExportSampleTransfer.Lane(request: { queue, callback in
                 input.requestMediaDataWhenReady(on: queue, using: callback)
             }, ready: { input.isReadyForMoreMediaData }, next: {
                 guard let sample = output.copyNextSampleBuffer() else { return nil }
@@ -146,7 +146,7 @@ public actor Exporter {
                 if writer.status == .writing { input.markAsFinished() }
             })
         }
-        let transfer = SampleTransfer(lanes: lanes, duration: duration, progress: progress, failure: {
+        let transfer = ExportSampleTransfer(lanes: lanes, duration: duration, progress: progress, failure: {
             if reader.status == .failed { return reader.error ?? ProjectError.invalid("Cannot read media") }
             if reader.status == .cancelled { return CancellationError() }
             if writer.status != .writing { return writer.error ?? ProjectError.invalid("Writer stopped") }

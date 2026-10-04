@@ -28,8 +28,8 @@ public actor CompositionBuilder {
     private let exportAssets: AssetCache
     private var parsedLUTs = LUTCache()
     private var rampPlans = SpeedRampPlans()
-    private let rampedAudio = RampedAudio()
-    public var rampAudioRenders: Int { get async { await rampedAudio.renders } }
+    private let rampAudio = SpeedRampAudioCache()
+    public var rampAudioRenders: Int { get async { await rampAudio.renders } }
     public var rampPlanBuilds: Int { rampPlans.builds }
     public var lutLoads: Int { parsedLUTs.loads }
     /// Assets opened from disk across both purpose-specific caches; cache hits do not count.
@@ -190,7 +190,7 @@ public actor CompositionBuilder {
                         let lane = try audioLanes.take(for: item, sourceTrack: track.id, gain: gain, composition: composition)
                         let target = lane.track
                         if ramp != nil {
-                            let url = try await rampedAudio.render(asset: asset, item: item, mediaFPS: media.fps, fps: project.fps, root: root)
+                            let url = try await rampAudio.render(asset: asset, item: item, mediaFPS: media.fps, fps: project.fps, root: root)
                             let rendered = try await assets.load(url)
                             guard let audio = rendered.audio else { throw ProjectError.invalid("Missing rendered ramp audio") }
                             try target.insertTimeRange(

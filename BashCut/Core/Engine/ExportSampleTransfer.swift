@@ -2,7 +2,7 @@ import Foundation
 
 /// Pulls each stream on its own serial queue. No blocking media reads run on Swift's cooperative executor.
 /// The control queue owns completion; lane queues own EOF/finish state; the stop flag is lock-protected.
-final class SampleTransfer: @unchecked Sendable {
+final class ExportSampleTransfer: @unchecked Sendable {
     struct Lane: Sendable {
         let request: @Sendable (DispatchQueue, @escaping @Sendable () -> Void) -> Void
         let ready: @Sendable () -> Bool

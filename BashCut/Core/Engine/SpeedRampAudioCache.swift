@@ -6,7 +6,7 @@ import os
 
 /// Disk-backed ramp audio. Decoding and offline rendering block, so they run on a private serial queue instead
 /// of Swift's cooperative executor; the actor only publishes counters.
-actor RampedAudio {
+actor SpeedRampAudioCache {
     private(set) var renders = 0
     private let queue = DispatchQueue(label: "app.bashcut.ramp-audio")
 
@@ -16,7 +16,7 @@ actor RampedAudio {
         let key = try cacheKey(asset: asset, item: item, mediaFPS: mediaFPS, fps: fps)
         let job = RampAudioJob(
             asset: asset, track: track, sourceStart: mediaFPS.time(item.sourceIn),
-            shape: OfflineAudioRamp.Shape(curve: curve, seconds: fps.time(item.duration).seconds,
+            shape: SpeedRampAudioRenderer.Shape(curve: curve, seconds: fps.time(item.duration).seconds,
                                           preservesPitch: item["preservePitch"] != .bool(false)),
             directory: root.appendingPathComponent(".bashcut/ramp-audio", isDirectory: true), key: key)
         let flag = CancellationFlag()
@@ -44,7 +44,7 @@ actor RampedAudio {
         defer { try? FileManager.default.removeItem(at: scratch) }
         let input = scratch.appendingPathComponent("input.caf"), output = scratch.appendingPathComponent("output.caf")
         try decode(job, to: input, check: check)
-        try OfflineAudioRamp.render(input: input, output: output, shape: job.shape, check: check)
+        try SpeedRampAudioRenderer.render(input: input, output: output, shape: job.shape, check: check)
         try check()
         // rename(2) replaces an invalid entry atomically; a reader holding the old file keeps its inode, and a
         // concurrent writer of the same key publishes identical content.
@@ -132,7 +132,7 @@ private struct RampAudioJob: @unchecked Sendable {
     let asset: LoadedAsset
     let track: AVAssetTrack
     let sourceStart: CMTime
-    let shape: OfflineAudioRamp.Shape
+    let shape: SpeedRampAudioRenderer.Shape
     let directory: URL
     let key: String
 }

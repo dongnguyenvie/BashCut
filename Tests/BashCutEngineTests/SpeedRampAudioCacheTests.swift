@@ -5,7 +5,7 @@ import Foundation
 import Testing
 @testable import BashCutEngine
 
-struct RampedAudioCacheTests {
+struct SpeedRampAudioCacheTests {
     private func project(root: URL) throws -> Project {
         try TestFixtures.writeTone(to: root.appendingPathComponent("tone.caf"), seconds: 6, channels: 2)
         let media = Media(fields: ["id": .string("m"), "kind": .string("audio"), "path": .string("tone.caf"),
