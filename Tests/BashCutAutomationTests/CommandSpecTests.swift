@@ -192,7 +192,7 @@ struct CommandSpecTests {
         let cwd = FileManager.default.currentDirectoryPath
         let create = try CommandLineParser.parse(["project", "create", "--name", "Vlog", "--dir", "projects", "--fps", "30"])
         #expect(create.params["directory"] == .string(URL(fileURLWithPath: cwd).appendingPathComponent("projects").path))
-        #expect(create.params["canvas"] == .string("portrait"))
+        #expect(create.params["canvas"] == .string("auto"))
         #expect(create.params["saveCurrent"] == .bool(false))
         let open = try CommandLineParser.parse(["project", "open", "~/clip-project", "--discard-current"])
         #expect(open.params["path"]?.string?.hasPrefix(FileManager.default.homeDirectoryForCurrentUser.path) == true)

@@ -39,6 +39,60 @@ struct FormatTests {
         #expect(ProjectSetup.Canvas.square.dimensions(shortSide: 2160) == (2160, 2160))
     }
 
+    private func autoProject() throws -> Project {
+        var setup = ProjectSetup()
+        setup.name = "Auto"
+        var project = try setup.project()
+        for (id, width, height) in [("wide", 1920, 1080), ("tall", 1080, 1920), ("square", 1000, 1040)] {
+            var media = ProjectFixtures.media(id, kind: "video")
+            media.fields["width"] = .integer(width)
+            media.fields["height"] = .integer(height)
+            project = try project.applying(.addMedia(media)).project
+        }
+        return project
+    }
+
+    @Test("The first picture clip sets the canvas shape, keeping the short side, only once")
+    func firstClipSetsCanvas() throws {
+        let empty = try autoProject()
+        #expect(empty.canvasFromFirstClip && empty.width == 1080 && empty.height == 1920)
+        let placed = try empty.applying(.insert(track: "v1", item: Item(id: "a", media: "wide", at: 0, duration: 30))).project
+        let format = try #require(empty.formatForFirstClip(in: placed))
+        #expect(format.canvas == .landscape && format.width == 1920 && format.height == 1080)
+
+        // Setting the format, by hand or for the first clip, makes the canvas final.
+        let landscape = try placed.applying(.setFormat(width: format.width, height: format.height)).project
+        #expect(!landscape.canvasFromFirstClip)
+        let next = try landscape.applying(.insert(track: "v1", item: Item(id: "b", media: "tall", at: 30, duration: 30))).project
+        #expect(landscape.formatForFirstClip(in: next) == nil)
+
+        // A matching shape needs no change; a near-square picture makes a square canvas.
+        let tall = try empty.applying(.insert(track: "v1", item: Item(id: "c", media: "tall", at: 0, duration: 30))).project
+        #expect(empty.formatForFirstClip(in: tall) == nil)
+        let square = try empty.applying(.insert(track: "v1", item: Item(id: "d", media: "square", at: 0, duration: 30))).project
+        #expect(empty.formatForFirstClip(in: square)?.canvas == .square)
+    }
+
+    @Test("A canvas chosen on purpose, or a project from before, is never changed by a clip")
+    func chosenCanvasStays() throws {
+        let empty = try autoProject()
+        let chosen = try empty.applying(.setFormat(width: 1080, height: 1920)).project
+        #expect(!chosen.canvasFromFirstClip)
+        let placed = try chosen.applying(.insert(track: "v1", item: Item(id: "a", media: "wide", at: 0, duration: 30))).project
+        #expect(chosen.formatForFirstClip(in: placed) == nil)
+
+        var setup = ProjectSetup()
+        setup.name = "Fixed"
+        setup.canvasFromFirstClip = false
+        #expect(try !setup.project().canvasFromFirstClip)
+        #expect(!Project(name: "Older").canvasFromFirstClip)
+        #expect(throws: ProjectError.self) {
+            var invalid = Project(name: "Bad")
+            invalid["canvasFromFirstClip"] = .string("yes")
+            try invalid.validate()
+        }
+    }
+
     @Test("A bad layer position says so, not 'frame'")
     func layerPositionMessage() {
         #expect {

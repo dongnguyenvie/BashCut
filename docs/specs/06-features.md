@@ -29,7 +29,7 @@ A command in *italics* is planned and does not exist yet. "—" means manual onl
 | # | Feature | Priority | Status | Agent |
 |---|---|---|---|---|
 | P-1 | Welcome: recent projects, open, new | P0 | Implemented | `project recents`, `project open`, `project create` |
-| P-2 | New Project: name, frame 9:16/16:9, fps 29.97/30, content language, pick a shoot → symlink `footage/` | P0 | Implemented | `project create` |
+| P-2 | New Project: name, frame Auto (the first clip sets 9:16, 16:9 or 1:1) or a fixed shape, fps 29.97/30, content language, pick a shoot → symlink `footage/`, default folder ~/Movies/BashCut | P0 | Implemented | `project create`, `project folder` |
 | P-3 | Atomic save, autosave, undo/redo, history with authors | P0 | Implemented (undo capped at 200 steps) | `project save`, `timeline undo`, `timeline redo` |
 | P-4 | Reload on external file change, conflict handling | P0 | Implemented | `ui dialog`, `ui respond` (answer the conflict sheet) |
 | P-5 | Import from `edl.json` with a comparison report | P1 | Implemented | `edl import` |

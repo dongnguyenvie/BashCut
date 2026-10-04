@@ -126,6 +126,10 @@ public enum ProjectSchema {
                 "clipFill": boolean(
                     "Clips fill the frame, cropping what does not fit, instead of fitting inside it. New projects "
                         + "fit (false); a project without it fills, as projects did before it existed"),
+                "canvasFromFirstClip": boolean(
+                    "The first video or image clip placed on the timeline sets the canvas shape (portrait, landscape or "
+                        + "square, keeping the short side). Cleared by any canvas change, so a canvas set on purpose "
+                        + "stays; absent in projects made before it existed"),
                 "contentLanguage": string("BCP 47 language of speech and captions", pattern: "^[A-Za-z]{2,8}(-[A-Za-z0-9]{1,8})*$"),
                 "format": object(
                     "Output format", required: ["width", "height", "fps"],

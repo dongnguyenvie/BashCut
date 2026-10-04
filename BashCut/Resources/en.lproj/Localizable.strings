@@ -723,3 +723,6 @@
 "Viewer mode" = "Viewer mode";
 "Show Source Viewer" = "Show Source Viewer";
 "A Media clip, not on the timeline yet. Mark In and Out, then Insert (E) or Overwrite (Q) at the playhead. Esc: back to the timeline." = "A Media clip, not on the timeline yet. Mark In and Out, then Insert (E) or Overwrite (Q) at the playhead. Esc: back to the timeline.";
+"Auto · from the first clip" = "Auto · from the first clip";
+"Auto · %dp short side" = "Auto · %dp short side";
+"Canvas set to %@ to match the first clip" = "Canvas set to %@ to match the first clip";

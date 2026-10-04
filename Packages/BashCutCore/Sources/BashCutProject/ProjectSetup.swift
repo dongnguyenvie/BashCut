@@ -17,6 +17,8 @@ public struct ProjectSetup: Sendable {
 
     public var name = ""
     public var canvas: Canvas = .portrait
+    /// The first picture clip sets the canvas shape (`canvasFromFirstClip`); `canvas` holds until then.
+    public var canvasFromFirstClip = true
     public var resolution: Resolution = .fullHD
     public var rate: Rate = .ntsc
     public var contentLanguage = "vi"
@@ -48,6 +50,7 @@ public struct ProjectSetup: Sendable {
         project["format"] = .object(format)
         // New projects show the whole picture: footage of another shape gets bars instead of being cropped.
         project["clipFill"] = .bool(false)
+        if canvasFromFirstClip { project["canvasFromFirstClip"] = .bool(true) }
         try project.validate()
         return project
     }

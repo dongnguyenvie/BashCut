@@ -723,3 +723,6 @@
 "Viewer mode" = "Chế độ xem";
 "Show Source Viewer" = "Hiện trình xem Source";
 "A Media clip, not on the timeline yet. Mark In and Out, then Insert (E) or Overwrite (Q) at the playhead. Esc: back to the timeline." = "Clip trong Media, chưa có trên dòng thời gian. Đánh dấu In và Out, rồi Insert (E) hoặc Overwrite (Q) tại playhead. Esc: quay về dòng thời gian.";
+"Auto · from the first clip" = "Tự động · theo clip đầu tiên";
+"Auto · %dp short side" = "Tự động · cạnh ngắn %dp";
+"Canvas set to %@ to match the first clip" = "Đã đặt khung %@ theo clip đầu tiên";

@@ -12,6 +12,16 @@ struct NewProjectView: View {
     @State private var error = ""
     @FocusState private var nameFocused: Bool
 
+    /// nil is Auto: the first video or image clip sets the shape; picking a shape fixes it.
+    private var frame: Binding<ProjectSetup.Canvas?> {
+        Binding(
+            get: { setup.canvasFromFirstClip ? nil : setup.canvas },
+            set: { choice in
+                setup.canvasFromFirstClip = choice == nil
+                setup.canvas = choice ?? .portrait
+            })
+    }
+
     private var valid: Bool { parent != nil && (try? setup.project()) != nil }
 
     var body: some View {
@@ -19,10 +29,12 @@ struct NewProjectView: View {
             Text("New project").font(.title2.bold())
             Form {
                 TextField("Project name", text: $setup.name).focused($nameFocused)
-                Picker("Frame", selection: $setup.canvas) {
-                    Text("Portrait · 9:16").tag(ProjectSetup.Canvas.portrait)
-                    Text("Landscape · 16:9").tag(ProjectSetup.Canvas.landscape)
-                    Text("Square · 1:1").tag(ProjectSetup.Canvas.square)
+                Picker("Frame", selection: frame) {
+                    Text("Auto · from the first clip").tag(ProjectSetup.Canvas?.none)
+                    Divider()
+                    Text("Portrait · 9:16").tag(ProjectSetup.Canvas?.some(.portrait))
+                    Text("Landscape · 16:9").tag(ProjectSetup.Canvas?.some(.landscape))
+                    Text("Square · 1:1").tag(ProjectSetup.Canvas?.some(.square))
                 }
                 Picker("Resolution", selection: $setup.resolution) {
                     Text("HD · 720").tag(ProjectSetup.Resolution.hd)
@@ -52,7 +64,9 @@ struct NewProjectView: View {
                 Text(error).font(.caption).foregroundStyle(.red).textSelection(.enabled)
             }
             HStack {
-                Text("\(setup.dimensions.width) × \(setup.dimensions.height)")
+                Text(setup.canvasFromFirstClip
+                    ? String(format: String(localized: "Auto · %dp short side"), setup.resolution.rawValue)
+                    : "\(setup.dimensions.width) × \(setup.dimensions.height)")
                     .font(.caption.monospaced()).foregroundStyle(.secondary)
                 Spacer()
                 if document.creatingProject { ProgressView().controlSize(.small) }

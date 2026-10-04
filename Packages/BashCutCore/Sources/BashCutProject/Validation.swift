@@ -55,9 +55,7 @@ extension Project {
         } else if self["beatGrid"] != nil {
             throw ProjectError.invalid("beatGrid: expected object")
         }
-        if let value = self["clipFill"], value.bool == nil {
-            throw ProjectError.invalid("clipFill: expected boolean")
-        }
+        try validateProjectFlags()
         try validateAudioSettings()
         try validateMarkers()
         try validateColorLUTs()
@@ -373,5 +371,14 @@ extension Item {
             throw ProjectError.invalid("item.\(id).in: expected integer source frame")
         }
         try validateDeclaredProperties()
+    }
+}
+
+extension Project {
+    /// Project-level switches that must be booleans when present.
+    fileprivate func validateProjectFlags() throws {
+        for key in ["clipFill", "canvasFromFirstClip"] {
+            if let value = self[key], value.bool == nil { throw ProjectError.invalid("\(key): expected boolean") }
+        }
     }
 }

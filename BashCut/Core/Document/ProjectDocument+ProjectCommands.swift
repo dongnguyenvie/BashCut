@@ -50,14 +50,17 @@ extension ProjectDocument {
         let side = shortSide ?? min(project.width, project.height)
         let size = canvas.dimensions(shortSide: side)
         guard size.width != project.width || size.height != project.height else { return project.revision }
-        let name = switch canvas {
+        return try commit(
+            .setFormat(width: size.width, height: size.height), label: "Canvas: \(Self.canvasName(canvas))",
+            author: author, baseRevision: baseRevision)
+    }
+
+    static func canvasName(_ canvas: ProjectSetup.Canvas) -> String {
+        switch canvas {
         case .portrait: "Portrait 9:16"
         case .landscape: "Landscape 16:9"
         case .square: "Square 1:1"
         }
-        return try commit(
-            .setFormat(width: size.width, height: size.height), label: "Canvas: \(name)", author: author,
-            baseRevision: baseRevision)
     }
 
     /// Whether clips fill the frame (cropping) or fit inside it by default (format menu, `project format --clips`).
@@ -107,7 +110,9 @@ extension ProjectDocument {
         handleAuthored("project.create") { document, arguments, _ in
             var setup = ProjectSetup()
             setup.name = try arguments.string("name")
-            setup.canvas = ProjectSetup.Canvas(rawValue: try arguments.string("canvas")) ?? .portrait
+            let canvas = try arguments.string("canvas")
+            setup.canvasFromFirstClip = canvas == "auto"
+            setup.canvas = ProjectSetup.Canvas(rawValue: canvas) ?? .portrait
             setup.resolution = Int(try arguments.string("resolution")).flatMap(ProjectSetup.Resolution.init) ?? .fullHD
             setup.rate = ProjectSetup.Rate(rawValue: try arguments.string("fps")) ?? .ntsc
             setup.contentLanguage = try arguments.string("language")

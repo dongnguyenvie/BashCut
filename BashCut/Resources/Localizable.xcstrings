@@ -1,6 +1,9 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Auto \u00b7 from the first clip": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Auto \u00b7 from the first clip" } }, "vi": { "stringUnit": { "state": "translated", "value": "Tự động · theo clip đầu tiên" } } } },
+    "Auto \u00b7 %dp short side": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Auto \u00b7 %dp short side" } }, "vi": { "stringUnit": { "state": "translated", "value": "Tự động · cạnh ngắn %dp" } } } },
+    "Canvas set to %@ to match the first clip": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Canvas set to %@ to match the first clip" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đã đặt khung %@ theo clip đầu tiên" } } } },
     "Source": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Source" } }, "vi": { "stringUnit": { "state": "translated", "value": "Nguồn" } } } },
     "Back to the timeline (Esc)": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Back to the timeline (Esc)" } }, "vi": { "stringUnit": { "state": "translated", "value": "Quay về dòng thời gian (Esc)" } } } },
     "Showing the timeline": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Showing the timeline" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đang xem dòng thời gian" } } } },
