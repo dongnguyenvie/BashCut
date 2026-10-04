@@ -39,6 +39,13 @@ sed -e 's/$(PRODUCT_BUNDLE_IDENTIFIER)/app.bashcut/' -e 's/$(PRODUCT_NAME)/BashC
     -e "s/\$(MARKETING_VERSION)/${version:-0.0.0}/" -e "s/\$(CURRENT_PROJECT_VERSION)/${build_number:-1}/" \
     BashCut/Info.plist >"$bundle/Info.plist"
 cp -R BashCut/Resources/en.lproj BashCut/Resources/vi.lproj "$bundle/Resources/"
+# The app icon: Xcode compiles Assets.xcassets; this bundle gets the same PNGs as an .icns.
+iconset="$(mktemp -d)/AppIcon.iconset"
+mkdir -p "$iconset"
+cp BashCut/Assets.xcassets/AppIcon.appiconset/icon_*.png "$iconset/"
+iconutil -c icns -o "$bundle/Resources/AppIcon.icns" "$iconset"
+rm -rf "$(dirname "$iconset")"
+plutil -replace CFBundleIconFile -string AppIcon "$bundle/Info.plist"
 if pgrep -qf "build/BashCut.app/Contents/MacOS/BashCutApp"; then
     echo "BashCut is already running the previous build. Quit it (⌘Q), then run scripts/run.sh again." >&2
     exit 1

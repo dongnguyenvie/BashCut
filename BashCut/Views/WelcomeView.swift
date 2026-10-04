@@ -8,12 +8,20 @@ struct WelcomeView: View {
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 18) {
                 Spacer()
-                Image(systemName: "scissors")
-                    .font(.system(size: 46, weight: .semibold))
-                    .foregroundStyle(.cyan)
-                Text("BashCut").font(.largeTitle.bold())
-                Text("Build a cut with layered video, images, captions, audio and your preferred agent.")
-                    .font(.title3).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                // The mark and name as one lockup, without the app icon's tile, so it sits on the window
+                // background; the tagline reads as a shell line, like the agent terminals beside the editor.
+                HStack(spacing: 12) {
+                    BashCutLogo(tile: false, waveforms: false).frame(width: 64, height: 64)
+                    Text(verbatim: "BashCut").font(.system(size: 30, weight: .bold))
+                }
+                .padding(.leading, -8)
+                .accessibilityElement(children: .combine)
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(verbatim: "$").foregroundStyle(.cyan).accessibilityHidden(true)
+                    Text("Build a cut with layered video, images, captions, audio and your preferred agent.")
+                        .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                }
+                .font(.system(.body, design: .monospaced))
                 HStack {
                     Button("New project") { document.run(.newProject) }
                         .buttonStyle(.borderedProminent).action(.newProject, in: document)

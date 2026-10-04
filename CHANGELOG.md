@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+- One BashCut mark everywhere: `BashCutLogo` draws the shell prompt over a timeline as vectors, and
+  `scripts/render-app-icon.sh` renders the app icon (now on the macOS icon grid: a rounded 824-point tile with a
+  shadow, not a full square) and the README logo from it. The Welcome screen shows the mark beside the name with a
+  shell-style tagline instead of a scissors symbol, and `scripts/run.sh` builds now carry the icon too.
 - README follows a landing-page layout: logo, tagline and links, a screenshot of the sample project, About,
   What's inside, Install, How to Build, Verify, Related repositories and Documentation. Images live in
   `.github/assets/`. A Vietnamese README (`README.vi.md`) mirrors it.
