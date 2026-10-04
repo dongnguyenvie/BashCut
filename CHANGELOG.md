@@ -62,6 +62,8 @@
 
 - Add a public privacy policy covering local editing, optional integrations, network requests, and support.
 
+- Adding an emoji sticker or text preset where the text layer already has an item no longer fails with "overlaps … place it
+  on another layer": it goes to the next free text layer, or a new one, like dropped media.
 - **Terminal agents from plugins** (plugin API 5). A plugin with the new `agent.terminal` capability adds an agent CLI
   (Gemini CLI, Qwen Code, opencode…) to the agent dock as a terminal tab next to Claude, Codex and Shell: in the +
   menu, the empty dock (Start / Continue / New conversation) and Handoff, with the icon from its manifest. The plugin
