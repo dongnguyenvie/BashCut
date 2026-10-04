@@ -66,7 +66,7 @@ checked manifest, an entrypoint that already speaks the protocol and smoke tests
 | `dependencies` | No | External tools or models the plugin needs; see [Dependencies and health](#dependencies-and-health) |
 | `transport` | No | `oneshot` (default) or `session`; see [Session transport](#session-transport). API 2 |
 | `options` | No | Up to 64 settings; see [Options](#options). API 2 |
-| `contributes` | No | `actions` and `hooks`; see [Actions](#actions) and [Hooks](#hooks). API 2 |
+| `contributes` | No | `actions` and `hooks` (API 2), `stickers` (API 6); see [Actions](#actions), [Hooks](#hooks) and [Sticker packs](#sticker-packs) |
 | `category` | No | Where Plugins and Settings group it: `agents`, `captions`, `voice`, `audio`, `color`, `effects`, `export` or `utilities`. A registry listing's category wins; without either, BashCut guesses from the capabilities (`agent.*`, `captions.*`, `voice.*`, `audio.*`) and falls back to Utilities. Older BashCut versions ignore it |
 
 BashCut resolves features by capability and provider ID, never by vendor SDK. A plugin is only chosen for a
@@ -87,12 +87,12 @@ and dependency names stay plain strings.
 
 ## API versions
 
-The host serves every plugin API version from `PluginAPI.minimum` (1) to `PluginAPI.current` (5); changes are
+The host serves every plugin API version from `PluginAPI.minimum` (1) to `PluginAPI.current` (6); changes are
 additive, so older manifests keep working. Version 2 adds `options`, `contributes` and the `session` transport.
 Version 3 adds option `choiceLabels` and the `file` option type, the `BASHCUT_PLUGIN_DATA`/`BASHCUT_PLUGIN_CACHE`
 folders and `::progress` lines from install recipes. Version 4 adds the `secret` option type, the session host
 channel (`event` and `call` lines) and the `agent.chat` capability. Version 5 adds the `agent.terminal` capability
-and the manifest's `terminal` object. A manifest that uses a feature with an older `apiVersion` is
+and the manifest's `terminal` object. Version 6 adds `contributes.stickers`. A manifest that uses a feature with an older `apiVersion` is
 invalid; set `minApiVersion` so older BashCut builds list the plugin as outdated instead of failing.
 
 A plugin is **outdated** (listed, never run) when `minApiVersion` (or `apiVersion`) is newer than the host
@@ -685,6 +685,34 @@ Delivery rules:
   Otherwise they wait: the toolbar shows **N plugin edits**, the review sheet (dialog `plugin-proposals`) offers
   Apply or Discard, and agents use `plugins proposal <id> --decision apply|discard`. Up to 20 proposals are kept.
 
+## Sticker packs
+
+`contributes.stickers` (API 6) adds folders of images to the Stickers panel. The app lists the images of each pack
+as a grid under the pack's title, below **My stickers**; clicking one places it like a library sticker: copied into
+the project's `stickers` folder and put at the playhead on a free overlay layer at 35 % zoom. An animated GIF, APNG
+or WebP is written as a movie with alpha first. No plugin code runs for a pack.
+
+```json
+"contributes": {
+  "stickers": [
+    {"id": "example.stickers.food", "title": {"en": "Food", "vi": "Đồ ăn"}, "path": "packs/food"}
+  ]
+}
+```
+
+| Field | Rules |
+|---|---|
+| `id` | Starts with the plugin ID and a dot; unique; at most 16 packs |
+| `title` | Up to 80 characters; [localized text](#localized-text) |
+| `path` | Folder inside the bundle (no leading `/`, no `..`). The images directly in it are the stickers, in name order; a missing folder, one that resolves outside the bundle or one without images is not shown |
+
+- Packs show only while the plugin may run (trusted and enabled), and the images are part of its
+  [fingerprint](#trust-and-availability) like every other file.
+- A manifest still needs an `entrypoint`; a plugin that only ships packs uses a stub that exits nonzero, as
+  [BashCut Stickers](https://github.com/dongnguyenvie/bashcut-plugins/tree/main/plugins/stickers)
+  (`bashcut.stickers`) in the plugin registry does.
+- Agents place a pack's image with `media import <path> --place --track <overlay layer>`.
+
 ## Context
 
 Actions and hooks receive a read-only snapshot:
@@ -902,7 +930,8 @@ are two more adapters, `PluginActionCapability` and `PluginHookCapability`, run 
   hooks and the session transport are implemented.
 - Voice, Text, Audio and Export use `voice.synthesize`, `captions.transcribe`, `audio.beats` and
   `audio.loudness`. Other analysis and interchange panels are not connected yet.
-- Plugins cannot own panels or windows; contributions use the fixed placements above.
+- Plugins cannot own panels or windows; contributions use the fixed placements above, and sticker packs are
+  listed by the app.
 - The plugin registry (browse, install, update, remove, signatures, yanked versions, daily update check) is
   implemented.
 - A credential contract and detailed capability permissions are future work.

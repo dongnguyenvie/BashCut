@@ -94,7 +94,7 @@ A command in *italics* is planned and does not exist yet. "—" means manual onl
 | F-1 | Transitions: dissolve, whip, blink, zoom | P1 | Implemented | `timeline apply` (`upsertTransition`) |
 | F-2 | Transitions: spin, shutter, wipe | P2 | Implemented | `timeline apply` (`upsertTransition`) |
 | F-3 | Clip effects: zoom punch, shake, flash, glitch, film look | P2 | Planned | *`timeline apply` (`setProperties`)* |
-| F-4 | Overlays: banner, callout, place card, REC frame, progress bar, stickers | P2 | Implemented (emoji stickers only; the rest Planned) | `timeline apply` (`insert`) |
+| F-4 | Overlays: banner, callout, place card, REC frame, progress bar, stickers | P2 | Implemented (emoji and image stickers, animated GIF; the rest Planned) | `timeline apply` (`insert`) |
 | F-5 | Effect library by genre and moment from `recipes.json` | P2 | Planned | — (skill `nolan-effects`) |
 | C-1 | `.cube` LUTs: import, apply, strength; bundled `quinn-matte`, `quinn-am`, `quinn-ky-uc` | P1 | Implemented (bundled looks Planned) | `luts import`, `timeline apply` (`setProperties`) |
 | C-2 | Basic adjustments: exposure, contrast, saturation, temperature, tint | P1 | Implemented (temperature, tint Planned) | `timeline apply` (`setProperties`) |

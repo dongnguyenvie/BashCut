@@ -764,3 +764,15 @@
 "Project closed" = "Đã đóng dự án";
 "The project changed on disk; resolve it before closing" = "Dự án đã thay đổi trên ổ đĩa; hãy xử lý trước khi đóng";
 "Project: reveal in Finder, open another, close it" = "Dự án: hiện trong Finder, mở dự án khác, đóng dự án";
+"Reactions" = "Cảm xúc";
+"Gestures" = "Cử chỉ";
+"Hearts and highlights" = "Trái tim và điểm nhấn";
+"Food and drink" = "Đồ ăn và thức uống";
+"Travel and places" = "Du lịch và địa điểm";
+"Celebration" = "Lễ hội";
+"Animals and nature" = "Động vật và thiên nhiên";
+"Signs and arrows" = "Ký hiệu và mũi tên";
+"My stickers" = "Nhãn dán của tôi";
+"Import stickers…" = "Nhập nhãn dán…";
+"Remove sticker" = "Xoá nhãn dán";
+"Import PNG or GIF images to use them as stickers in any project." = "Nhập ảnh PNG hoặc GIF để dùng làm nhãn dán trong mọi dự án.";

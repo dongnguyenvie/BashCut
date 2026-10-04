@@ -75,6 +75,7 @@ public struct PluginManifest: Codable, Sendable, Equatable {
     public var displayName: String { name.text }
     public var actions: [PluginActionContribution] { contributes?.actions ?? [] }
     public var hooks: [PluginHookContribution] { contributes?.hooks ?? [] }
+    public var stickerPacks: [PluginStickerPack] { contributes?.stickers ?? [] }
 
     /// Why this host cannot run the plugin, or nil when its API window includes the host.
     public var incompatibility: String? {
@@ -141,6 +142,7 @@ public struct PluginManifest: Codable, Sendable, Equatable {
             throw PluginError.invalid("agent.chat needs the session transport")
         }
         try validateTerminal()
+        try validateStickerPacks()
         guard Set(options.map(\.id)).count == options.count, options.count <= 64 else {
             throw PluginError.invalid("Option ids must be unique (at most 64)")
         }
@@ -159,6 +161,16 @@ public struct PluginManifest: Codable, Sendable, Equatable {
             throw PluginError.invalid("agent.terminal and the terminal object go together")
         }
         try terminal?.validate()
+    }
+
+    private func validateStickerPacks() throws {
+        guard stickerPacks.isEmpty || apiVersion >= 6 else {
+            throw PluginError.invalid("contributes.stickers needs apiVersion 6")
+        }
+        guard Set(stickerPacks.map(\.id)).count == stickerPacks.count, stickerPacks.count <= 16 else {
+            throw PluginError.invalid("Sticker pack ids must be unique (at most 16)")
+        }
+        for pack in stickerPacks { try pack.validate(pluginID: id) }
     }
 
     private func validateHooks() throws {

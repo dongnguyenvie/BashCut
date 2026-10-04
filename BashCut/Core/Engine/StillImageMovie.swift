@@ -95,7 +95,7 @@ public enum StillImageMovie {
         try FileManager.default.moveItem(at: partial, to: destination)
     }
 
-    private static func pixelBuffer(_ picture: CGImage, width: Int, height: Int) throws -> CVPixelBuffer {
+    static func pixelBuffer(_ picture: CGImage, width: Int, height: Int) throws -> CVPixelBuffer {
         var created: CVPixelBuffer?
         CVPixelBufferCreate(kCFAllocatorDefault, width, height, kCVPixelFormatType_32BGRA, [
             kCVPixelBufferCGImageCompatibilityKey: true, kCVPixelBufferCGBitmapContextCompatibilityKey: true,

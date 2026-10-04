@@ -206,7 +206,9 @@ Captions can be imported from and exported to `.srt`.
 
 ### 3.4 Stickers ★ and Effects ✦
 
-Stickers currently insert emoji as text items. The rest of this tab is **Planned**.
+Stickers has **My stickers**, a library of imported PNG, GIF and other images shared by every project, and the sticker packs of installed plugins, placed as
+overlay clips (animated images become movies with alpha), and emoji by category, inserted as text items. The rest of
+this tab is **Planned**.
 
 The library is generated from `nolan-effects/recipes.json` and filters two ways:
 
