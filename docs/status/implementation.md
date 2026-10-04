@@ -476,3 +476,18 @@ analyzer failure, no-audio projects, stereo PCM format/duration and both pitch m
 Full verification for this change: SwiftPM build/test/lint passed (114913/114915/115043), and
 `verify.sh xcode test -parallel-testing-enabled NO` passed 243 tests in 76 suites (115043).
 The Xcode test target now explicitly links `BashCutAudioAnalysis`. CI wiring remains a separate open item.
+
+### Export buffer and codec settings (2026-10-04)
+
+C4 disables `alwaysCopiesSampleData` for video/audio readers, sets H.264 High AutoLevel, expected source
+frame rate and a two-second maximum keyframe interval, and enables MP4 fast-start metadata placement.
+ProRes remains intra-frame and does not receive H.264-only settings. Native tests parse MP4 top-level boxes
+(`moov` before `mdat`), AVC profile metadata, rational frame rate, all 225 encoded frames, sync-picture
+spacing and decoded start coverage. Marker buffers are excluded from sync-picture checks; B-pictures may
+present before the first sync picture. MP4/ProRes, PCM, error and cancellation tests continue to pass.
+
+The five-minute fixture is 9.834 s / 915.231 fps / 42,968,270 bytes, versus C2's 9.886 s / 43,562,566 bytes;
+throughput is effectively unchanged at this scale. No broader speedup is claimed. Full build/test including
+the long benchmark/lint passed 120222/120225/120412. Fast-start creates an encoder sidecar on some failures,
+so each export now owns a private 0700 staging directory and removes that entire directory after publication
+or failure. The final path is still published with an exclusive same-filesystem rename.

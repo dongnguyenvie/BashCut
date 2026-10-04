@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+- Disable unconditional reader sample copies; configure H.264 High with source frame rate and a two-second
+  keyframe interval, and optimize MP4 metadata placement for streaming. ProRes keeps its codec-specific
+  settings. Private staging directories also contain encoder sidecars for complete failure/cancellation cleanup.
+
 - Normalize exports from a lossless audio-only measurement pass, preserving the mixed gain, fades,
   keyframes and ramped audio while skipping video compositing/encoding. The final movie is still measured
   after encoding. On the synthetic five-minute fixture, measurement rendering drops from 9.886 to 0.264 seconds.

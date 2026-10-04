@@ -31,6 +31,7 @@ public actor Exporter {
         defer { destination.discard() }
         let reader = try AVAssetReader(asset: snapshot.composition)
         let writer = try AVAssetWriter(outputURL: destination.partial, fileType: audioOnly ? .caf : settings?.preset.fileType ?? .mp4)
+        writer.shouldOptimizeForNetworkUse = !audioOnly && (settings?.preset.fileType ?? .mp4) == .mp4
         var completed = false
         defer {
             if !completed {
@@ -44,6 +45,7 @@ public actor Exporter {
         if !audioTracks.isEmpty {
             let audio = AVAssetReaderAudioMixOutput(
                 audioTracks: audioTracks, audioSettings: Self.measurementPCM)
+            audio.alwaysCopiesSampleData = false
             audio.audioMix = snapshot.audioMix
             let input = AVAssetWriterInput(
                 mediaType: .audio,
@@ -95,14 +97,23 @@ public actor Exporter {
             videoSettings: [
                 kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
             ])
+        video.alwaysCopiesSampleData = false
         video.videoComposition = snapshot.videoComposition
         let size = snapshot.videoComposition.renderSize
+        let codec = settings?.preset.videoCodec ?? .h264
         var compression: [String: Any] = [:]
+        if codec == .h264 {
+            let fps = 1 / snapshot.videoComposition.frameDuration.seconds
+            guard fps.isFinite, fps > 0 else { throw ProjectError.invalid("Invalid export frame duration") }
+            compression[AVVideoExpectedSourceFrameRateKey] = fps
+            compression[AVVideoMaxKeyFrameIntervalDurationKey] = 2.0
+            compression[AVVideoProfileLevelKey] = AVVideoProfileLevelH264HighAutoLevel
+        }
         if let bitRate = settings?.preset.videoBitRate {
             compression[AVVideoAverageBitRateKey] = bitRate
         }
         var videoSettings: [String: Any] = [
-            AVVideoCodecKey: settings?.preset.videoCodec ?? .h264, AVVideoWidthKey: Int(size.width),
+            AVVideoCodecKey: codec, AVVideoWidthKey: Int(size.width),
             AVVideoHeightKey: Int(size.height),
         ]
         if !compression.isEmpty { videoSettings[AVVideoCompressionPropertiesKey] = compression }
