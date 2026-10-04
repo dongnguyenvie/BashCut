@@ -148,3 +148,7 @@ Tài liệu chi tiết hiện chỉ có bằng tiếng Anh.
 - [CONTRIBUTING.md](CONTRIBUTING.md): cấu trúc build và các mẫu một file (agent provider, model adapter, lệnh,
   capability, định dạng timeline)
 - [CHANGELOG.md](CHANGELOG.md)
+
+## Giấy phép
+
+MIT. Xem [LICENSE](LICENSE).

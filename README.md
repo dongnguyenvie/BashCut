@@ -147,3 +147,7 @@ Changes to the editor itself, its commands and the plugin API belong in this rep
 - [CONTRIBUTING.md](CONTRIBUTING.md): build layout and one-file templates (agent providers, model adapters,
   commands, capabilities, timeline formats)
 - [CHANGELOG.md](CHANGELOG.md)
+
+## License
+
+MIT. See [LICENSE](LICENSE).

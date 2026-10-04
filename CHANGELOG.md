@@ -5,6 +5,7 @@
 
 ## [Unreleased]
 
+- BashCut is released under the MIT License (`LICENSE`).
 - **Plugins** is a labelled toolbar button next to Review and Export instead of an item in ☰. Its dot shows plugin
   updates (cyan) or plugin edits to review (orange), and clicking it opens what needs attention.
 - The agent dock asks to set up the agent kit when Claude Code or Codex is installed without it (or with an older
