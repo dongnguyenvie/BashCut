@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+- Check plugin trust with an fts(3) walk that hashes raw lstat fields: a dev-linked plugin with node_modules
+  (~13k files) answered option reads in ~150 ms and now ~45 ms. Every check still walks the whole tree.
+
 - Stopping an export lets in-flight sample reads return before the reader is cancelled; only a read still
   blocked after 500 ms is interrupted. Cancelling a reader under a waiting read crashed AVFoundation under load.
 

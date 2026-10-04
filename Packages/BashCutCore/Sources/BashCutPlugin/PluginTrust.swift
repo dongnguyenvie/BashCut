@@ -109,7 +109,7 @@ public final class PluginTrustStore: @unchecked Sendable {
     private let lock = NSLock()
     private var contents: Contents
     /// Fingerprints by plugin folder, reused while both files keep their size and modification date.
-    private var fingerprints: [String: (stamp: [String], value: PluginFingerprint)] = [:]
+    private var fingerprints: [String: (stamp: String, value: PluginFingerprint)] = [:]
 
     public init(url: URL, trustedRoots: [URL] = []) {
         self.url = url
