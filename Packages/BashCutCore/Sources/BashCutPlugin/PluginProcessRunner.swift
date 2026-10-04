@@ -132,9 +132,7 @@ public struct PluginProcessRunner: Sendable {
         plugin: InstalledPlugin, command: PluginCommand, input: Data, outputLimit: Int
     ) async throws -> Data {
         try plugin.manifest.validate()
-        let program = URL(fileURLWithPath: command.executable).lastPathComponent
-        let interpreters: Set<String> = ["sh", "bash", "zsh", "dash", "ksh", "csh", "tcsh", "osascript", "env"]
-        guard !interpreters.contains(program), !command.arguments.contains("-c"), !command.arguments.contains("-e") else {
+        guard !Self.runsInlineCode(command) else {
             throw PluginError.invalid("Dependency probes must use a tool or a plugin file, not inline interpreter code")
         }
         let executable: URL
@@ -213,6 +211,23 @@ public struct PluginProcessRunner: Sendable {
         ((try? FileManager.default.attributesOfItem(atPath: url.path)[.size]) as? NSNumber)?.intValue ?? 0
     }
 
+    /// Probes must run fingerprinted files or ordinary tools. Shells always interpret their arguments; script
+    /// interpreters do so with an inline-code flag, including combined short flags such as `python3 -Bc`.
+    static func runsInlineCode(_ command: PluginCommand) -> Bool {
+        let program = URL(fileURLWithPath: command.executable).lastPathComponent.lowercased()
+        let shells: Set<String> = ["sh", "bash", "zsh", "dash", "ksh", "csh", "tcsh", "fish", "osascript", "env"]
+        if shells.contains(program) { return true }
+        let interpreters = ["python", "node", "perl", "ruby", "php", "deno", "bun", "lua", "tclsh"]
+        guard interpreters.contains(where: { program.hasPrefix($0) }) else { return false }
+        if command.arguments.first == "eval" { return true } // deno eval, bun eval
+        let long = ["--eval", "--print", "--command"]
+        return command.arguments.contains { argument in
+            if long.contains(where: { argument == $0 || argument.hasPrefix($0 + "=") }) { return true }
+            guard argument.hasPrefix("-"), !argument.hasPrefix("--") else { return false }
+            return argument.dropFirst().contains { "ceEpr".contains($0) }
+        }
+    }
+
     /// The app creates the data and cache folders (`PluginFolders.prepare`) before it starts the plugin.
     /// The only environment plugin processes, probes and install recipes get: no app secrets, tokens or sockets.
     /// `PATH` gains the usual tool folders, since an app opened from Finder starts with only `/usr/bin:/bin:…`.
@@ -232,6 +247,8 @@ public struct PluginProcessRunner: Sendable {
         environment["BASHCUT_PLUGIN_API_VERSION"] = String(min(plugin.manifest.apiVersion, PluginAPI.current))
         environment["BASHCUT_PLUGIN_DATA"] = data.path
         environment["BASHCUT_PLUGIN_CACHE"] = cache.path
+        // Bytecode written beside plugin sources would change the pinned file tree after the first run.
+        environment["PYTHONDONTWRITEBYTECODE"] = "1"
         return environment
     }
 }
