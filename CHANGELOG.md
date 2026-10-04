@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+- README (English and Vietnamese) Install covers Homebrew (`brew install --cask dongnguyenvie/tap/bashcut`), the
+  notarized dmg/zip from GitHub Releases (with checksums and linking the CLI), and TestFlight; the header links the
+  latest release.
 - Developer ID builds (`scripts/build-release.sh`) are no longer sandboxed: they sign with
   `Configs/DeveloperID.entitlements` (microphone only, hardened runtime), so the bundled `bashcut` and `bashcut-mcp`
   run from any terminal; sandboxed helpers that inherit the app's sandbox were killed (SIGTRAP) there. The build

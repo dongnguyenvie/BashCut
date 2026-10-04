@@ -10,6 +10,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/dongnguyenvie/BashCut/releases/latest">Tải về</a> ·
   <a href="https://testflight.apple.com/join/XwsNZxre">Beta TestFlight</a> ·
   <a href="docs/README.md">Tài liệu</a> ·
   <a href="docs/guides/automation.md">Tự động hóa</a> ·
@@ -57,8 +58,36 @@ chứng và phần nào còn lại.
 
 ## Cài đặt
 
-Chưa có bản trên App Store. Tham gia bản beta công khai qua [TestFlight](https://testflight.apple.com/join/XwsNZxre) (macOS 14+, cần app TestFlight),
-hoặc build BashCut từ mã nguồn.
+Cần macOS 14 trở lên.
+
+### Homebrew
+
+```sh
+brew install --cask dongnguyenvie/tap/bashcut
+```
+
+Lệnh này cài `BashCut.app` vào `/Applications` và link CLI `bashcut` cùng server `bashcut-mcp` vào `bin` của
+Homebrew, để agent ở bất kỳ terminal nào cũng điều khiển được app. Cập nhật bằng `brew upgrade --cask bashcut`; gỡ
+bằng `brew uninstall --cask bashcut` (thêm `--zap` để xóa luôn cài đặt và cache).
+
+### Tải bản release
+
+Tải `BashCut-<version>.dmg` (hoặc `.zip`) ở [bản release mới nhất](https://github.com/dongnguyenvie/BashCut/releases/latest),
+mở ra rồi kéo BashCut vào Applications. Các bản build được ký Developer ID và Apple notarize; kiểm tra file tải về
+với `SHA256SUMS` của release bằng `shasum -a 256 -c --ignore-missing SHA256SUMS`. Muốn dùng CLI từ terminal thì tự tạo link:
+
+```sh
+sudo ln -s /Applications/BashCut.app/Contents/MacOS/bashcut /usr/local/bin/bashcut
+sudo ln -s /Applications/BashCut.app/Contents/MacOS/bashcut-mcp /usr/local/bin/bashcut-mcp
+```
+
+### TestFlight
+
+Tham gia bản beta công khai qua [TestFlight](https://testflight.apple.com/join/XwsNZxre) (cần app TestFlight). Bản
+TestFlight là bản Mac App Store có sandbox: chỉ chạy plugin đi kèm app, và CLI đi kèm không chạy được từ terminal
+thông thường.
+
+Hoặc build BashCut từ mã nguồn, xem bên dưới.
 
 ## Build
 
