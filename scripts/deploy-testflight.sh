@@ -85,11 +85,40 @@ for executable in BashCutApp bashcut bashcut-mcp; do
         || { echo "error: App Sandbox is not enabled for $executable" >&2; exit 1; }
 done
 
+# SwiftPM resource bundles (SwiftTerm_SwiftTerm.bundle: Metal shaders) come out of the archive signed with the
+# development identity, and the App Store export re-signs only code, so App Store Connect rejects the upload
+# (ITMS-90284: must be signed with the certificate in the provisioning profile). They hold no executable, so their
+# signature is removed and the exported app's signature seals them as resources.
+for bundle in "$app"/Contents/Resources/*.bundle; do
+    [[ -d "$bundle/Contents/_CodeSignature" ]] || continue
+    if plutil -extract CFBundleExecutable raw "$bundle/Contents/Info.plist" >/dev/null 2>&1; then
+        echo "error: $(basename "$bundle") contains code; sign it in the export instead" >&2
+        exit 1
+    fi
+    codesign --remove-signature "$bundle"
+    rmdir "$bundle/Contents/_CodeSignature" # left empty; a signature folder would still read as signed code
+done
+
 echo "$($export_only && echo Exporting || echo "Uploading to App Store Connect")..."
 xcodebuild -exportArchive -archivePath "$archive" -exportPath "$output/export" -exportOptionsPlist "$options" \
     -allowProvisioningUpdates -quiet
 if $export_only; then
-    pkgutil --check-signature "$output/export/BashCut.pkg" | head -3
+    # Every signed item in the exported app must carry the app's distribution signer, as App Store Connect checks.
+    expanded="$(mktemp -d)"
+    pkgutil --expand-full "$output/export/BashCut.pkg" "$expanded/pkg"
+    exported="$(find "$expanded/pkg" -maxdepth 3 -name BashCut.app -type d | head -1)"
+    codesign --verify --deep --strict "$exported"
+    signer="$(codesign -dvv "$exported" 2>&1 | sed -n 's/^Authority=//p' | head -1)"
+    [[ "$signer" == "Apple Distribution:"* ]] || { echo "error: the app is signed by '$signer'" >&2; exit 1; }
+    while IFS= read -r -d '' item; do
+        # Unsigned items (resource files, the unsigned resource bundles) have no authority; codesign then fails.
+        authority="$(codesign -dvv "$item" 2>&1 | sed -n 's/^Authority=//p' | head -1 || true)"
+        [[ -z "$authority" || "$authority" == "$signer" ]] \
+            || { echo "error: ${item#"$exported"/} is signed by '$authority', not '$signer'" >&2; exit 1; }
+    done < <(find "$exported/Contents" \( -name '*.bundle' -o -name '*.app' -o -name '*.framework' -o -name '*.dylib' \
+        -o -perm -u+x -type f \) -print0)
+    rm -rf "$expanded"
+    pkgutil --check-signature "$output/export/BashCut.pkg" | sed -n '4p' | sed 's/^ *[0-9]*\. /Installer: /'
     echo "Exported $output/export/BashCut.pkg; upload it with Transporter."
     exit 0
 fi
