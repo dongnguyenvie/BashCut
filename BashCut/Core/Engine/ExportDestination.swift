@@ -3,18 +3,22 @@ import Darwin
 import Foundation
 
 /// Render beside the destination so publication is one same-filesystem, exclusive rename.
-/// A crash may leave a hidden partial file, but never a partial movie at the user's final path.
+/// A crash may leave a hidden staging directory, but never a partial movie at the user's final path.
 struct ExportDestination {
     let final: URL
     let partial: URL
+    private let directory: URL
 
     init(_ url: URL) throws {
         final = url
         guard !FileManager.default.fileExists(atPath: url.path) else {
             throw ProjectError.invalid("Export destination already exists")
         }
-        partial = url.deletingLastPathComponent().appendingPathComponent(
-            ".bashcut-export-\(UUID().uuidString).partial")
+        directory = url.deletingLastPathComponent().appendingPathComponent(
+            ".bashcut-export-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false,
+                                                attributes: [.posixPermissions: 0o700])
+        partial = directory.appendingPathComponent("movie.partial")
     }
 
     func publish() throws {
@@ -30,5 +34,5 @@ struct ExportDestination {
         }
     }
 
-    func discard() { try? FileManager.default.removeItem(at: partial) }
+    func discard() { try? FileManager.default.removeItem(at: directory) }
 }
