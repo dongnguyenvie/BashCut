@@ -38,11 +38,12 @@ extension ProjectDocument {
         case .showAgentChanges, .dismissAgentChange: return agentChange != nil
         case .undoAgentChange: return canUndoAgentChange
         case .openChatAgent: return !chatAgents.available.isEmpty
+        case .dismissAgentKitPrompt: return agents.showsKitPrompt
         case .openExportOutput, .revealExportOutput:
             return exports.report.map { FileManager.default.fileExists(atPath: $0.receipt.url.path) } ?? false
         case .clearRecentProjects: return !settings.recentProjects.isEmpty
-        case .showHistory, .showReview, .showPlugins, .showDoctor, .showSettings, .showSections, .showCommands,
-            .showShortcuts, .toggleAgentDock,
+        case .showHistory, .showReview, .showPlugins, .showDoctor, .showSettings, .showAgentKit, .showSections,
+            .showCommands, .showShortcuts, .toggleAgentDock,
             .askAgent, .openClaudeTerminal, .openCodexTerminal, .openShellTerminal,
             .toggleSafeArea, .toggleSnap, .addVideoLayer, .addAdjustmentLayer, .addTextLayer,
             .addAudioLayer:
@@ -132,9 +133,14 @@ extension ProjectDocument {
         }
     }
 
+    // swiftlint:disable:next cyclomatic_complexity
     private func performOtherAction(_ action: UIAction) throws {
         switch action {
         case .showAgentChanges: try openDialog("agent-changes")
+        case .showAgentKit:
+            ui.settingsSection = "agents"
+            try openDialog("settings")
+        case .dismissAgentKitPrompt: agents.dismissKitPrompt()
         case .undoAgentChange: undoAgentChange()
         case .dismissAgentChange: clearAgentChange()
         case .openExportOutput: if let url = exports.report?.receipt.url { NSWorkspace.shared.open(url) }

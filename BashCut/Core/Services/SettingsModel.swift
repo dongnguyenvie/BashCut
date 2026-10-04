@@ -22,6 +22,10 @@ public final class SettingsModel {
     public var loadAgentKit: Bool { didSet { defaults.set(loadAgentKit, forKey: Keys.loadAgentKit) } }
     /// A kit folder to use instead of the one inside BashCut (a checkout being worked on); nil uses the built-in kit.
     public var agentKitFolder: URL? { didSet { store(agentKitFolder, Keys.agentKitFolder) } }
+    /// The kit version whose setup banner the user put off with Later; a newer kit shows it again.
+    public var agentKitPromptDismissed: String? {
+        didSet { defaults.set(agentKitPromptDismissed, forKey: Keys.agentKitPromptDismissed) }
+    }
     /// Claude Code's configuration folder when it is not found by itself (`CLAUDE_CONFIG_DIR`); nil detects it.
     public var claudeConfigFolder: URL? {
         didSet { store(claudeConfigFolder, Keys.claudeConfigFolder) }
@@ -80,6 +84,7 @@ public final class SettingsModel {
         static let defaultAgent = "defaultAgent"
         static let loadAgentKit = "loadAgentKit"
         static let agentKitFolder = "agentKitFolder"
+        static let agentKitPromptDismissed = "agentKitPromptDismissed"
         static let claudeConfigFolder = "claudeConfigFolder"
         static let codexHomeFolder = "codexHomeFolder"
         static let allowAgentEdits = "allowAgentEdits"
@@ -101,6 +106,7 @@ public final class SettingsModel {
         defaultProviderRaw = defaults.string(forKey: Keys.defaultAgent) ?? "codex"
         loadAgentKit = defaults.object(forKey: Keys.loadAgentKit) as? Bool ?? true
         agentKitFolder = defaults.string(forKey: Keys.agentKitFolder).map { URL(fileURLWithPath: $0) }
+        agentKitPromptDismissed = defaults.string(forKey: Keys.agentKitPromptDismissed)
         claudeConfigFolder = defaults.string(forKey: Keys.claudeConfigFolder).map { URL(fileURLWithPath: $0) }
         codexHomeFolder = defaults.string(forKey: Keys.codexHomeFolder).map { URL(fileURLWithPath: $0) }
         allowAgentEdits = defaults.object(forKey: Keys.allowAgentEdits) as? Bool ?? true

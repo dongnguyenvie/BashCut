@@ -40,6 +40,10 @@ struct AgentDockView: View {
             }.padding(.horizontal, 10).padding(.vertical, 8)
             tabs
             Divider()
+            if model.showsKitPrompt, let prompt = model.kitPrompt {
+                AgentKitBanner(model: model, prompt: prompt)
+                Divider()
+            }
             if let pluginID = model.chatPluginID {
                 ChatAgentPanel(agent: model.document.chatAgents.model(for: pluginID), document: model.document)
             } else if let session = model.current {
@@ -105,6 +109,7 @@ struct AgentDockView: View {
                 }.font(.caption).disabled(model.current == nil && model.chatPluginID == nil)
             }.padding(10)
         }.background(Color(red: 0.045, green: 0.05, blue: 0.06))
+            .task { await model.refreshKitPrompt() }
             .sheet(isPresented: $model.showKnowledge) {
                 AgentKnowledgeView(model: model.knowledge, done: { model.showKnowledge = false })
             }

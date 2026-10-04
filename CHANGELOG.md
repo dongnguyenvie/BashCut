@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+- **Plugins** is a labelled toolbar button next to Review and Export instead of an item in ☰. Its dot shows plugin
+  updates (cyan) or plugin edits to review (orange), and clicking it opens what needs attention.
+- The agent dock asks to set up the agent kit when Claude Code or Codex is installed without it (or with an older
+  one): **Set Up** / **Update** does what `agent setup claude|codex` does, **Details…** opens Settings › Agents
+  (new `show.agent-kit` action, also Agent › Agent Skills… and ☰), and **Later** (`agent.kit-later`) hides it
+  until BashCut has a newer kit.
+- The detached agent window (BashCut Agent) uses the editor's dark appearance; its text was dark on dark before.
+
 - The first clip sets the canvas. New Project's Frame starts at **Auto · from the first clip**: the first video or
   image placed on the timeline (drag, Append, Insert/Overwrite, import, or an agent's edit) sets portrait, landscape
   or square to match it, keeping the short side, in the same undo step as the clip, and the status bar says so.

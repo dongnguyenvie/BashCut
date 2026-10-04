@@ -203,5 +203,6 @@ struct AgentSettingsView: View {
         kit = try? document.installedAgentKit()
         folders = await document.agentConfigFolders()
         statuses = await document.agentSetupStatuses()
+        document.agents.updateKitPrompt(kit: kit, statuses: statuses)
     }
 }

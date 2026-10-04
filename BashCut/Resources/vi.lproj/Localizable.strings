@@ -726,3 +726,11 @@
 "Auto · from the first clip" = "Tự động · theo clip đầu tiên";
 "Auto · %dp short side" = "Tự động · cạnh ngắn %dp";
 "Canvas set to %@ to match the first clip" = "Đã đặt khung %@ theo clip đầu tiên";
+"%@ and %@" = "%1$@ và %2$@";
+"Update the BashCut skills for %@" = "Cập nhật bộ kỹ năng BashCut cho %@";
+"Give %@ the BashCut skills" = "Cài bộ kỹ năng BashCut cho %@";
+"The agent kit is the agent's brain for BashCut: %d editing skills and the BashCut tools. BashCut's tabs load it already; set it up so %@ in your own terminal can edit your projects too." = "Agent kit là bộ não của agent khi làm việc với BashCut: %d kỹ năng dựng phim và các công cụ BashCut. Các tab trong BashCut đã tự nạp; hãy cài để %@ trong terminal của bạn cũng dựng được dự án.";
+"Details…" = "Chi tiết…";
+"Later" = "Để sau";
+"Agent Skills…" = "Kỹ năng agent…";
+"Plugins: install, update and manage" = "Plugin: cài, cập nhật và quản lý";
