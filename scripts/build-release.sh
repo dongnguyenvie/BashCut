@@ -9,6 +9,9 @@
 #     BASHCUT_NOTARY_PASSWORD     app-specific password from appleid.apple.com, for notarization
 #     BASHCUT_RELEASE_IDENTITY    defaults to the team's "Developer ID Application" identity in the keychain
 #     BASHCUT_INSTALLER_IDENTITY  for --pkg; defaults to the team's "Developer ID Installer" identity
+# The Developer ID build is not sandboxed (Configs/DeveloperID.entitlements): the bundled `bashcut` and `bashcut-mcp`
+# must run from any terminal, which sandboxed helpers that inherit the app's sandbox cannot. The App Store build
+# (scripts/deploy-testflight.sh) keeps BashCut.entitlements.
 # Steps: archive and verify here, then scripts/create-dmg.sh and scripts/create-pkg.sh, which also run alone.
 set -euo pipefail
 # shellcheck source=lib/common.sh
@@ -28,7 +31,7 @@ while [[ $# -gt 0 ]]; do
         --pkg) make_pkg=true; shift ;;
         --skip-notarize) notarize=false; shift ;;
         --dry-run) dry_run=true; shift ;;
-        -h|--help) sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help) sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "error: unknown option: $1" >&2; exit 2 ;;
     esac
 done
@@ -47,7 +50,7 @@ fi
 
 output="$REPO_ROOT/build/release/$version-$build_number"
 echo "BashCut release $version ($build_number)"
-echo "  Signing:   $identity"
+echo "  Signing:   ${identity% (*}"
 echo "  Notarize:  $($notarize && echo yes || echo no)"
 echo "  Packages:  zip, dmg$($make_pkg && echo ", pkg" || true)"
 echo "  Output:    $output"
@@ -69,6 +72,7 @@ xcodebuild archive \
     -skipPackagePluginValidation -quiet \
     DEVELOPMENT_TEAM="$BASHCUT_TEAM_ID" CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="$identity" \
     OTHER_CODE_SIGN_FLAGS=--timestamp ENABLE_HARDENED_RUNTIME=YES \
+    CODE_SIGN_ENTITLEMENTS="$REPO_ROOT/Configs/DeveloperID.entitlements" \
     MARKETING_VERSION="$version" CURRENT_PROJECT_VERSION="$build_number"
 
 app="$work/BashCut.app"
@@ -81,6 +85,7 @@ info="$app/Contents/Info.plist"
 
 echo "Checking signatures..."
 verify_app_signatures "$app" "$identity"
+verify_not_sandboxed "$app"
 
 # The app is stapled before it is packaged, so the zip and the app inside the dmg open offline.
 ! $notarize || notarize_and_staple "$app" execute

@@ -38,6 +38,24 @@ verify_app_signatures() {
     done < <(find "$app" -type f -perm -u+x -print0)
 }
 
+# Fails if any Mach-O in the app carries the App Sandbox entitlement, and proves the bundled CLI starts outside
+# the app: a helper that inherits a sandbox is killed (SIGTRAP) when a terminal launches it.
+verify_not_sandboxed() {
+    local app="$1" file status=0
+    while IFS= read -r -d '' file; do
+        [[ "$(file -b "$file")" == *Mach-O* ]] || continue
+        if codesign -d --entitlements - --xml "$file" 2>/dev/null | grep -q 'com.apple.security.app-sandbox'; then
+            echo "error: sandboxed: ${file#"$app"/}" >&2
+            return 1
+        fi
+    done < <(find "$app" -type f -perm -u+x -print0)
+    "$app/Contents/MacOS/bashcut" --help >/dev/null 2>&1 || status=$?
+    if [[ $status -ge 128 ]]; then
+        echo "error: Contents/MacOS/bashcut was killed by signal $((status - 128)) when run from a terminal" >&2
+        return 1
+    fi
+}
+
 # Resolves the identity to sign with: BASHCUT_RELEASE_IDENTITY, else the team's Developer ID Application identity.
 # Prints it; fails with what to do when there is none.
 developer_id_identity() {

@@ -14,6 +14,7 @@
 set -euo pipefail
 # shellcheck source=lib/common.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/common.sh"
+source "$BASHCUT_LIB_DIR/signing.sh"
 source "$BASHCUT_LIB_DIR/homebrew.sh"
 
 version=""
@@ -73,6 +74,7 @@ for binary in bashcut bashcut-mcp; do
     [[ -x "$app/Contents/MacOS/$binary" ]] || { echo "error: the app has no Contents/MacOS/$binary" >&2; exit 1; }
 done
 codesign --verify --deep --strict "$app"
+verify_not_sandboxed "$app"
 # A dry run may check a development build, so Gatekeeper's verdict only fails a real publish.
 if ! gatekeeper="$(spctl --assess --type execute --verbose "$app" 2>&1)" \
     || ! xcrun stapler validate -q "$app" >/dev/null 2>&1; then
