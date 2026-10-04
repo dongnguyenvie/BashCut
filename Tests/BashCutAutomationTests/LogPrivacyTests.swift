@@ -54,19 +54,19 @@ struct LogPrivacyTests {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
         let url = root.appendingPathComponent("debug.log")
-        DebugLogFile.append("first\n", to: url, maximumBytes: 10)
+        DebugLogWriter(url: url, maximumBytes: 10).append("first\n")
         #expect(try mode(url) == 0o600)
         try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: url.path)
-        DebugLogFile.append("second\n", to: url, maximumBytes: 10)
+        DebugLogWriter(url: url, maximumBytes: 10).append("second\n")
         #expect(try mode(url) == 0o600)
-        DebugLogFile.append("third\n", to: url, maximumBytes: 10)
+        DebugLogWriter(url: url, maximumBytes: 10).append("third\n")
         #expect(try mode(root.appendingPathComponent("debug.1.log")) == 0o600)
         #expect(try String(contentsOf: url, encoding: .utf8) == "third\n")
         try FileManager.default.removeItem(at: url)
         let outside = root.appendingPathComponent("outside")
         try Data("unchanged".utf8).write(to: outside)
         try FileManager.default.createSymbolicLink(at: url, withDestinationURL: outside)
-        DebugLogFile.append("do not write", to: url, maximumBytes: 10)
+        DebugLogWriter(url: url, maximumBytes: 10).append("do not write")
         #expect(try String(contentsOf: outside, encoding: .utf8) == "unchanged")
     }
 

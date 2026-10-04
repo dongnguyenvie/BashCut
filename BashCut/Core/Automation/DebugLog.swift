@@ -27,7 +27,7 @@ public enum DebugLog {
 
     private static let maximumBytes: UInt64 = 5 * 1024 * 1024
     private static let queue = DispatchQueue(label: "app.bashcut.debug-log")
-    private static let writer = DebugLogFile(url: url, maximumBytes: maximumBytes)
+    private static let writer = DebugLogWriter(url: url, maximumBytes: maximumBytes)
     private static let process = ProcessInfo.processInfo.processName + ":" + String(ProcessInfo.processInfo.processIdentifier)
     private static let timestamp = Date.ISO8601FormatStyle(includingFractionalSeconds: true, timeZone: .current)
 

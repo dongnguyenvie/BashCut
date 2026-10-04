@@ -278,9 +278,9 @@ extension ProjectDocument {
         return project.revision
     }
 
-    func previewEdit(_ operation: EditOperation, author: Author, baseRevision: Int) throws -> JSONValue {
+    func dryRunEdit(_ operation: EditOperation, author: Author, baseRevision: Int) throws -> JSONValue {
         try ensureEditable(author: author)
-        return try TimelineEditPreview.evaluate(operation, on: project, baseRevision: baseRevision)
+        return try TimelineDryRun.evaluate(operation, on: project, baseRevision: baseRevision)
     }
 
     @discardableResult

@@ -1,7 +1,7 @@
 import BashCutProject
 
 /// Validates the exact edit pipeline on a value copy without history, disk writes, preview rebuilds or hooks.
-public enum TimelineEditPreview {
+public enum TimelineDryRun {
     private struct Position: Equatable {
         let track: String
         let index: Int

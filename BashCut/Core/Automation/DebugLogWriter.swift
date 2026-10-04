@@ -2,7 +2,7 @@ import Darwin
 import Foundation
 
 /// Persistent append-only handles. A separate, never-rotated lock file serializes writers across processes.
-final class DebugLogFile: @unchecked Sendable {
+final class DebugLogWriter: @unchecked Sendable {
     private let url: URL
     private let maximumBytes: UInt64
     private let mutex = NSLock()
@@ -20,10 +20,6 @@ final class DebugLogFile: @unchecked Sendable {
     deinit {
         if descriptor >= 0 { close(descriptor) }
         if lockDescriptor >= 0 { close(lockDescriptor) }
-    }
-
-    static func append(_ line: String, to url: URL, maximumBytes: UInt64) {
-        DebugLogFile(url: url, maximumBytes: maximumBytes).append(line)
     }
 
     func append(_ line: String) {

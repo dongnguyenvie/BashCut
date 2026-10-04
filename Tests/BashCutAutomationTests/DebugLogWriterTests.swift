@@ -15,8 +15,8 @@ struct DebugLogWriterTests {
         let root = try folder()
         defer { try? FileManager.default.removeItem(at: root) }
         let url = root.appendingPathComponent("debug.log")
-        let first = DebugLogFile(url: url, maximumBytes: 10)
-        let second = DebugLogFile(url: url, maximumBytes: 10)
+        let first = DebugLogWriter(url: url, maximumBytes: 10)
+        let second = DebugLogWriter(url: url, maximumBytes: 10)
         first.append("first\n")
         second.append("second\n")
         #expect(first.openCount == 1 && second.openCount == 1)
@@ -32,7 +32,7 @@ struct DebugLogWriterTests {
         let root = try folder()
         defer { try? FileManager.default.removeItem(at: root) }
         let url = root.appendingPathComponent("debug.log")
-        let writers = (0..<4).map { _ in DebugLogFile(url: url, maximumBytes: 1_000_000) }
+        let writers = (0..<4).map { _ in DebugLogWriter(url: url, maximumBytes: 1_000_000) }
         DispatchQueue.concurrentPerform(iterations: 400) { index in writers[index % writers.count].append("line-\(index)\n") }
         let lines = try String(contentsOf: url, encoding: .utf8).split(separator: "\n").map(String.init)
         #expect(Set(lines) == Set((0..<400).map { "line-\($0)" }))

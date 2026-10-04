@@ -105,7 +105,7 @@ extension ProjectDocument {
             let label = try arguments.string("label")
             let operation = EditOperation.group(label: label, author: author, ops: try WireOperations.decode(arguments.value("ops")))
             if arguments.bool("dryRun") {
-                return try document.previewEdit(operation, author: author, baseRevision: arguments.int("baseRev"))
+                return try document.dryRunEdit(operation, author: author, baseRevision: arguments.int("baseRev"))
             }
             let revision = try document.commit(operation, label: label, author: author, baseRevision: arguments.int("baseRev"))
             return .object(["rev": .integer(revision)])
