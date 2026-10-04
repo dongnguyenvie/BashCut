@@ -65,6 +65,10 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
         ])
     }
     private var sessionDiscoveryTask: Task<Void, Never>?
+    /// Claude Code and Codex on this Mac that lack the kit; nil when none do or it was not checked yet.
+    var kitPrompt: AgentKitPrompt?
+    var kitSettingUp = false
+    @ObservationIgnored var kitPromptChecked: Date?
     @ObservationIgnored private var detachedWindow: NSWindow?
     @ObservationIgnored private var detachedDelegate: AgentDockWindowDelegate?
 
@@ -334,7 +338,15 @@ extension AgentDockModel {
         window.title = String(localized: "BashCut Agent")
         window.minSize = NSSize(width: 360, height: 520)
         window.isReleasedWhenClosed = false
-        window.contentView = NSHostingView(rootView: AgentDockView(model: self, detached: true))
+        // The detached window lives outside EditorView, so it needs the editor's dark appearance and tint itself.
+        window.appearance = NSAppearance(named: .darkAqua)
+        window.backgroundColor = NSColor(red: 0.065, green: 0.07, blue: 0.08, alpha: 1)
+        let hosting = NSHostingView(rootView: AgentDockView(model: self, detached: true)
+            .background(Color(red: 0.065, green: 0.07, blue: 0.08))
+            .preferredColorScheme(.dark).tint(.cyan))
+        // The window keeps its own size: wrapping text measured at a narrow width would otherwise grow it.
+        hosting.sizingOptions = []
+        window.contentView = hosting
         let delegate = AgentDockWindowDelegate { [weak self] in
             self?.detachedWindow = nil
             self?.detachedDelegate = nil

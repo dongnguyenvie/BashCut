@@ -21,6 +21,7 @@ extension EditorView {
             Spacer(minLength: 8)
             PluginActionStrip(document: document, placement: "toolbar", compact: true)
             PluginShortcutButtons(document: document)
+            pluginsButton
             Button("Review") { document.run(.showReview) }.help("Review before export (⇧⌘R)")
                 .action(.showReview, in: document)
             Divider().frame(height: 18)
@@ -81,11 +82,36 @@ extension EditorView {
         }
     }
 
-    /// ☰: project, history and app commands that do not need a toolbar button of their own.
-    private var moreMenu: some View {
+    /// Plugins sit beside Review and Export so they are found; the dot means updates (cyan) or edits to review
+    /// (orange), and the click opens what needs attention.
+    private var pluginsButton: some View {
         let updates = document.plugins.updates.count
         let proposals = document.plugins.proposals.count
-        return Menu {
+        return Button {
+            if proposals > 0 {
+                document.ui.showPluginProposals = true
+            } else {
+                if updates > 0 { document.plugins.tab = .updates }
+                document.run(.showPlugins)
+            }
+        } label: {
+            Label(
+                updates > 0 ? String(format: String(localized: "Plugins (%d)"), updates) : String(localized: "Plugins"),
+                systemImage: "puzzlepiece.extension")
+        }
+        .action(.showPlugins, in: document)
+        .overlay(alignment: .topTrailing) {
+            if updates > 0 || proposals > 0 {
+                Circle().fill(proposals > 0 ? Color.orange : Color.cyan).frame(width: 7, height: 7).offset(x: 3, y: -3)
+            }
+        }
+        .help(proposals > 0 ? String(format: String(localized: "Review Plugin Edits (%d)"), proposals)
+            : updates > 0 ? String(localized: "Plugin updates are available") : String(localized: "Plugins: install, update and manage"))
+    }
+
+    /// ☰: project, history and app commands that do not need a toolbar button of their own.
+    private var moreMenu: some View {
+        Menu {
             Section {
                 Button("New Project…") { document.run(.newProject) }
                 Button("Open Project…") { document.run(.openProject) }
@@ -95,15 +121,7 @@ extension EditorView {
             }
             Button("History…") { document.run(.showHistory) }
             Section {
-                Button(updates > 0 ? String(format: String(localized: "Plugins (%d)"), updates) : String(localized: "Plugins…")) {
-                    if updates > 0 { document.plugins.tab = .updates }
-                    document.run(.showPlugins)
-                }
-                if proposals > 0 {
-                    Button(String(format: String(localized: "Review Plugin Edits (%d)"), proposals)) {
-                        document.ui.showPluginProposals = true
-                    }
-                }
+                Button("Agent Skills…") { document.run(.showAgentKit) }
                 Button("Doctor…") { document.run(.showDoctor) }
                 Button("Settings…") { document.run(.showSettings) }
             }
@@ -122,12 +140,7 @@ extension EditorView {
         }
         .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
         .accessibilityLabel("More")
-        .overlay(alignment: .topTrailing) {
-            if updates > 0 || proposals > 0 {
-                Circle().fill(proposals > 0 ? Color.orange : Color.cyan).frame(width: 7, height: 7).offset(x: 3, y: -2)
-            }
-        }
-        .help(updates > 0 ? String(localized: "Plugin updates are available") : String(localized: "More"))
+        .help("More")
     }
 
     /// What the app is doing: export progress, work in progress, plugin edits waiting, or the save state.

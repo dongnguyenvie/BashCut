@@ -85,6 +85,11 @@ beat cuts, audio mix, captions, colour, effects, voiceover…) for Claude Code a
 the tracked files of a `bashcut-agent-kit` checkout next to the repo, or `$BASHCUT_AGENT_KIT`). **Settings → Agents**
 and `agent status` / `agent setup` manage it.
 
+- **Finding it.** When Claude Code or Codex is installed but lacks the kit (or has an older one), the agent dock
+  shows a banner: **Set Up** (or **Update**) runs `agent setup` for each of them, **Details…** opens Settings →
+  Agents (`ui action show.agent-kit`; also Agent › Agent Skills… and ☰), and **Later** (`ui action
+  agent.kit-later`) hides it until BashCut has a newer kit.
+
 - **Kit updates.** Settings → Agents checks the kit's signed releases (`releases.json` on bashcut-agent-kit's
   `main`) and offers **Download & Update** (`agent kit-check`, `agent kit-update`; the update asks for approval).
   BashCut installs a release only over HTTPS from GitHub, with a first-party ed25519 signature checked before the

@@ -208,6 +208,8 @@ import BashCutPlugin
         menu.addItem(.separator())
         menu.addItem(item(.showAgentChanges, String(localized: "Show Agent Changes")))
         menu.addItem(item(.undoAgentChange, String(localized: "Undo Agent Change")))
+        menu.addItem(.separator())
+        menu.addItem(item(.showAgentKit, String(localized: "Agent Skills…")))
         return wrap(menu)
     }
 

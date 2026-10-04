@@ -726,3 +726,11 @@
 "Auto · from the first clip" = "Auto · from the first clip";
 "Auto · %dp short side" = "Auto · %dp short side";
 "Canvas set to %@ to match the first clip" = "Canvas set to %@ to match the first clip";
+"%@ and %@" = "%@ and %@";
+"Update the BashCut skills for %@" = "Update the BashCut skills for %@";
+"Give %@ the BashCut skills" = "Give %@ the BashCut skills";
+"The agent kit is the agent's brain for BashCut: %d editing skills and the BashCut tools. BashCut's tabs load it already; set it up so %@ in your own terminal can edit your projects too." = "The agent kit is the agent's brain for BashCut: %d editing skills and the BashCut tools. BashCut's tabs load it already; set it up so %@ in your own terminal can edit your projects too.";
+"Details…" = "Details…";
+"Later" = "Later";
+"Agent Skills…" = "Agent Skills…";
+"Plugins: install, update and manage" = "Plugins: install, update and manage";
