@@ -679,7 +679,6 @@
 "No matching command" = "No matching command";
 "No project" = "No project";
 "Plugins…" = "Plugins…";
-"Project: reveal in Finder, open another" = "Project: reveal in Finder, open another";
 "Redo (⇧⌘Z)" = "Redo (⇧⌘Z)";
 "Review before export (⇧⌘R)" = "Review before export (⇧⌘R)";
 "Search commands" = "Search commands";
@@ -761,3 +760,7 @@
 "Release notes:" = "Release notes:";
 "No reminders for this version; a newer release shows again" = "No reminders for this version; a newer release shows again";
 "Ask again tomorrow" = "Ask again tomorrow";
+"Close Project" = "Close Project";
+"Project closed" = "Project closed";
+"The project changed on disk; resolve it before closing" = "The project changed on disk; resolve it before closing";
+"Project: reveal in Finder, open another, close it" = "Project: reveal in Finder, open another, close it";

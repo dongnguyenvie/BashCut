@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 91 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 92 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -28,6 +28,14 @@ Open a project.bashcut.json (or its folder). Fails if the open project has unsav
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_project_open`
 - `path`: string, required, path. Absolute path to project.bashcut.json or its folder
+- `saveCurrent`: boolean, default false. Save the open project first when it has unsaved changes
+- `discardCurrent`: boolean, default false. Drop unsaved changes of the open project
+
+### `bashcut project close [--save-current] [--discard-current]`
+
+Close the open project and show the Welcome screen, like File › Close Project. Fails if it has unsaved changes unless saveCurrent or discardCurrent is set. Agent tabs stay open; edits fail until a project is opened or created.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_project_close`
 - `saveCurrent`: boolean, default false. Save the open project first when it has unsaved changes
 - `discardCurrent`: boolean, default false. Drop unsaved changes of the open project
 

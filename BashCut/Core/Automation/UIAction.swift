@@ -51,6 +51,7 @@ public enum UIAction: String, CaseIterable, Sendable {
     case newProject = "project.new"
     case openProject = "project.open"
     case saveProject = "project.save"
+    case closeProject = "project.close"
     case importMedia = "project.import-media"
     case showHistory = "show.history"
     case showReview = "show.review"
@@ -140,6 +141,7 @@ public enum UIAction: String, CaseIterable, Sendable {
         case .newProject: "New project"
         case .openProject: "Open project…"
         case .saveProject: "Save"
+        case .closeProject: "Close project (save, then show the Welcome screen)"
         case .importMedia: "Import footage…"
         case .showHistory: "History"
         case .showReview: "Review"
@@ -237,6 +239,7 @@ public enum UIAction: String, CaseIterable, Sendable {
         case .newProject: UIShortcut("n", [.command])
         case .openProject: UIShortcut("o", [.command])
         case .saveProject: UIShortcut("s", [.command])
+        case .closeProject: UIShortcut("w", [.command, .shift])
         case .importMedia: UIShortcut("i", [.command])
         case .showHistory: UIShortcut("z", [.command, .option])
         case .showSettings: UIShortcut(",", [.command])

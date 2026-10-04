@@ -131,12 +131,6 @@
         "vi": { "stringUnit": { "state": "translated", "value": "Plugin…" } }
       }
     },
-    "Project: reveal in Finder, open another": {
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Project: reveal in Finder, open another" } },
-        "vi": { "stringUnit": { "state": "translated", "value": "Dự án: hiện trong Finder, mở dự án khác" } }
-      }
-    },
     "Redo (⇧⌘Z)": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Redo (⇧⌘Z)" } },
@@ -5681,6 +5675,30 @@
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Ask again tomorrow" } },
         "vi": { "stringUnit": { "state": "translated", "value": "Hỏi lại vào ngày mai" } }
+      }
+    },
+    "Close Project": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Close Project" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đóng dự án" } }
+      }
+    },
+    "Project closed": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Project closed" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đã đóng dự án" } }
+      }
+    },
+    "The project changed on disk; resolve it before closing": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "The project changed on disk; resolve it before closing" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Dự án đã thay đổi trên ổ đĩa; hãy xử lý trước khi đóng" } }
+      }
+    },
+    "Project: reveal in Finder, open another, close it": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Project: reveal in Finder, open another, close it" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Dự án: hiện trong Finder, mở dự án khác, đóng dự án" } }
       }
     }
   },

@@ -87,8 +87,14 @@ import SwiftUI
         }
         return .terminateLater
     }
+    /// The close button and ⌘W work in two steps: with a project open they close it (saving first) and show the
+    /// Welcome screen; on the Welcome screen they quit. ⌘Q always quits.
     func windowShouldClose(_ sender: NSWindow) -> Bool {
-        NSApp.terminate(nil)
+        if document.fileURL != nil {
+            document.run(.closeProject)
+        } else {
+            NSApp.terminate(nil)
+        }
         return false
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }

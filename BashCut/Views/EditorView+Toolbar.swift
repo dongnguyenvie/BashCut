@@ -56,6 +56,10 @@ extension EditorView {
             recentProjects
             Button("Open Project…") { document.run(.openProject) }
             Button("New Project…") { document.run(.newProject) }
+            if document.fileURL != nil {
+                Divider()
+                Button("Close Project") { document.run(.closeProject) }
+            }
         } label: {
             HStack(spacing: 5) {
                 Text(projectName).fontWeight(.semibold).lineLimit(1).frame(maxWidth: 200)
@@ -66,7 +70,7 @@ extension EditorView {
             }
         }
         .menuStyle(.borderlessButton).fixedSize()
-        .help("Project: reveal in Finder, open another")
+        .help("Project: reveal in Finder, open another, close it")
     }
 
     @ViewBuilder private var recentProjects: some View {

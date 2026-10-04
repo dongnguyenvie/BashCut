@@ -18,6 +18,7 @@ extension ProjectDocument {
         case .redo: return history.canRedo
         case .newProject, .openProject: return !saving
         case .saveProject: return hasProject && !saving && !conflict
+        case .closeProject: return hasProject && !saving
         case .importMedia, .refreshWaveforms: return hasProject && !(action == .refreshWaveforms && waveforms.loading)
         case .showExport, .toggleCompare: return project.duration > 0
         case .togglePlayback, .previousFrame, .nextFrame, .backSecond, .forwardSecond: return project.duration > 0 && !sourceViewer.visible
@@ -67,6 +68,7 @@ extension ProjectDocument {
         case .newProject: newProject()
         case .openProject: openProject()
         case .saveProject: save()
+        case .closeProject: closeProject()
         case .importMedia: importMedia()
         case .showHistory, .showReview, .showPlugins, .showDoctor, .showSettings, .showExport, .showSections,
             .showCommands, .showShortcuts, .showUpdates:
