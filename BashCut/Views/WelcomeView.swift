@@ -1,4 +1,5 @@
 import BashCutAutomation
+import BashCutStorage
 import SwiftUI
 
 struct WelcomeView: View {
@@ -55,9 +56,9 @@ struct WelcomeView: View {
                                     HStack(spacing: 12) {
                                         Image(systemName: "film.stack").foregroundStyle(.cyan)
                                         VStack(alignment: .leading, spacing: 3) {
-                                            Text(url.deletingPathExtension().lastPathComponent)
+                                            Text(Self.projectName(url))
                                                 .font(.body.weight(.medium)).lineLimit(1)
-                                            Text(url.deletingLastPathComponent().path)
+                                            Text(Self.projectLocation(url).path)
                                                 .font(.caption).foregroundStyle(.secondary).lineLimit(1)
                                         }
                                         Spacer()
@@ -80,5 +81,21 @@ struct WelcomeView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(red: 0.065, green: 0.07, blue: 0.08))
+    }
+
+    /// Every project file is `project.bashcut.json`, so a project is named by the folder that holds it.
+    static func projectName(_ url: URL) -> String {
+        isStandardProjectFile(url) ? url.deletingLastPathComponent().lastPathComponent
+            : url.deletingPathExtension().lastPathComponent
+    }
+
+    /// Where the project lives: the folder that holds the project folder, beside the name.
+    static func projectLocation(_ url: URL) -> URL {
+        let folder = url.deletingLastPathComponent()
+        return isStandardProjectFile(url) ? folder.deletingLastPathComponent() : folder
+    }
+
+    private static func isStandardProjectFile(_ url: URL) -> Bool {
+        url.lastPathComponent == ProjectStorage.projectFileName
     }
 }
