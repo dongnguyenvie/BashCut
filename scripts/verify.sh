@@ -25,7 +25,9 @@ run() {
         xcode) scripts/generate-project.sh && xcodebuild -project BashCut.xcodeproj -scheme BashCut \
                    -configuration Debug -derivedDataPath build/xcode CODE_SIGNING_ALLOWED=NO \
                    -skipPackagePluginValidation "${@:-build}" ;;
-        perf) BASHCUT_PERF=1 swift test --filter EngineTests "$@" ;;
+        # Only the EngineTests suite, alone: a bare "EngineTests" filter also matched the whole
+        # BashCutEngineTests module and timed the 20-clip export against ~100 concurrent tests.
+        perf) BASHCUT_PERF=1 swift test --no-parallel --filter 'BashCutEngineTests\.EngineTests/' "$@" ;;
         uitest) echo "error: UI automation tests are not implemented in M0"; return 1 ;;
         *) echo "error: usage: scripts/verify.sh build|test|lint|xcode [build|test]|perf|uitest"; return 1 ;;
     esac
