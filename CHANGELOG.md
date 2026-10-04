@@ -5,6 +5,8 @@
 
 ## [Unreleased]
 
+- CI (`Build and verify`) runs only when triggered by hand, not on pull requests or pushes; the `xcode-tests`
+  input chooses between running the Xcode test plan and only building its targets.
 - Add release scripts. `scripts/build-release.sh` builds for distribution outside the Mac App Store: it archives
   with a Developer ID identity, checks every Mach-O for a secure timestamp (executables also for the hardened
   runtime), notarizes, staples and validates the ticket, then writes `BashCut-<version>.zip`, `.dmg` (and `.pkg`
