@@ -26,7 +26,7 @@
 ---
 
 <p align="center">
-  <img alt="BashCut editing the sample project: media library, viewer with picture in picture and a caption, Inspector, layered timeline and the agent dock" src=".github/assets/app.png" width="800">
+  <img alt="BashCut demo: Codex terminal, layered timeline, captions, transitions, color and plugins" src=".github/assets/app.gif" width="800">
 </p>
 
 ## About
