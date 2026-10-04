@@ -178,6 +178,19 @@ class MCPHandshakeTests(unittest.TestCase):
                              b'"capabilities":{"\\u0065xperimental":{"x":{}}},"clientInfo":{"name":"t","version":"1"}}}')
             self.assertInitialized(session.receive())
 
+    def test_codex_initialize_after_a_rejected_one(self):
+        with mcp_session(self) as session:
+            session.send({'jsonrpc': '2.0', 'id': 55, 'method': 'initialize', 'params': {
+                'protocolVersion': '2025-06-18', 'capabilities': [], 'clientInfo': {'name': 't', 'version': '1'}}})
+            rejected = session.receive()
+            self.assertEqual(rejected['id'], 55)
+            self.assertIn('error', rejected)
+            session.send_raw(CODEX_INITIALIZE)
+            self.assertInitialized(session.receive(), request_id=0)
+            session.send({'jsonrpc': '2.0', 'method': 'notifications/initialized'})
+            session.send({'jsonrpc': '2.0', 'id': 1, 'method': 'tools/list'})
+            self.assertIn('bashcut_context_get', [tool['name'] for tool in session.receive()['result']['tools']])
+
     def test_malformed_json_does_not_stop_the_server(self):
         with mcp_session(self) as session:
             session.send_raw(b'{not json')
