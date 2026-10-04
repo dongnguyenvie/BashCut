@@ -76,7 +76,9 @@ public struct CapabilityService: Sendable {
     }
 
     public func health(_ plugin: InstalledPlugin) async -> PluginHealth {
-        await healthTransport.health(plugin: plugin)
+        let state = availability(plugin)
+        guard state == .ready else { return .notChecked(plugin, reason: state.detail) }
+        return await healthTransport.health(plugin: plugin)
     }
 
     // MARK: Capabilities
@@ -159,10 +161,9 @@ public struct CapabilityService: Sendable {
             let reasons = declaring.map { "\($0.manifest.displayName): \(availability($0).detail)" }
             throw PluginError.invalid("No enabled provider for \(capability). " + reasons.joined(separator: "; "))
         }
-        let transport = healthTransport
         let ready = await withTaskGroup(of: InstalledPlugin?.self, returning: [InstalledPlugin].self) { group in
             for plugin in candidates {
-                group.addTask { await transport.health(plugin: plugin).state == .ready ? plugin : nil }
+                group.addTask { await health(plugin).state == .ready ? plugin : nil }
             }
             var values: [InstalledPlugin] = []
             for await value in group { if let value { values.append(value) } }

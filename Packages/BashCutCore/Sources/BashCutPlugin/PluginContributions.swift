@@ -40,9 +40,12 @@ public struct PluginOption: Codable, Sendable, Equatable, Identifiable {
     public let choiceLabels: [String: LocalizedText]?
     /// File extensions a `file` option accepts (`["wav", "m4a"]`); any file when empty.
     public let fileTypes: [String]?
+    /// The plugin's secrets belong to this option's value (a provider or endpoint): changing it selects
+    /// another stored key instead of sending the current one elsewhere.
+    public let bindsSecrets: Bool?
 
     enum CodingKeys: String, CodingKey {
-        case id, title, help, type, choices, minimum, maximum, maxLength, scope, choiceLabels, fileTypes
+        case id, title, help, type, choices, minimum, maximum, maxLength, scope, choiceLabels, fileTypes, bindsSecrets
         case defaultValue = "default"
     }
 
@@ -50,7 +53,7 @@ public struct PluginOption: Codable, Sendable, Equatable, Identifiable {
         id: String, title: LocalizedText, help: LocalizedText? = nil, type: Kind,
         default defaultValue: JSONValue? = nil, choices: [String]? = nil, minimum: Double? = nil,
         maximum: Double? = nil, maxLength: Int? = nil, scope: Scope? = nil,
-        choiceLabels: [String: LocalizedText]? = nil, fileTypes: [String]? = nil
+        choiceLabels: [String: LocalizedText]? = nil, fileTypes: [String]? = nil, bindsSecrets: Bool? = nil
     ) {
         self.id = id
         self.title = title
@@ -64,6 +67,7 @@ public struct PluginOption: Codable, Sendable, Equatable, Identifiable {
         self.choiceLabels = choiceLabels
         self.fileTypes = fileTypes
         self.scope = scope
+        self.bindsSecrets = bindsSecrets
     }
 
     public var effectiveScope: Scope { scope ?? .user }
@@ -109,6 +113,9 @@ public struct PluginOption: Codable, Sendable, Equatable, Identifiable {
     private func validateBounds() throws {
         if type == .secret, effectiveScope != .user || defaultValue != nil {
             throw PluginError.invalid("Secret option \(id) must have user scope and no default")
+        }
+        if bindsSecrets == true, type == .secret || type == .file {
+            throw PluginError.invalid("Option \(id) cannot bind secrets: use a string, enum, number or bool option")
         }
         if let minimum, let maximum, minimum > maximum {
             throw PluginError.invalid("Option \(id) minimum is above its maximum")

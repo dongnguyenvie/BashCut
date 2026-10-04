@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 86 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 88 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -77,7 +77,7 @@ Read the revision, format and tracks, including track IDs and roles.
 - Mode: read · Runs: immediately · MCP: `bashcut_timeline_get`
 - `format`: string, one of json, text. json (default) or a compact text listing
 
-### `bashcut timeline apply <ops.json> --base-rev <baseRev> [--label <label>]`
+### `bashcut timeline apply <ops.json> --base-rev <baseRev> [--label <label>] [--dry-run]`
 
 Atomically apply validated timeline operations as one undoable edit.
 
@@ -85,6 +85,7 @@ Atomically apply validated timeline operations as one undoable edit.
 - `ops`: array, required. Operations array (CLI: path to ops.json)
 - `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
 - `label`: string, default "Agent edit". Short description of the edit
+- `dryRun`: boolean, default false. Validate without editing; return projected duration and changed IDs
 
 ### `bashcut timeline undo --base-rev <baseRev>`
 
@@ -536,16 +537,16 @@ Synthesize voice takes and insert the best take on the Voiceover track; with kee
 
 ### `bashcut storage get`
 
-What BashCut keeps on disk (Settings › Storage): plugin folders, each plugin's data and cache, the saved plugin registry, this project's preview proxies and the audit log, with sizes and paths.
+What BashCut keeps on disk (Settings › Storage): plugin folders, each plugin's data and cache, the saved plugin registry, this project's preview proxies, ramp audio and the audit log, with sizes and paths.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_storage_get`
 
 ### `bashcut storage clear <target> [--plugin <plugin>]`
 
-Delete what can be made or downloaded again: plugin-cache (all plugins, or --plugin), registry, proxies (made again on demand), or plugin-data --plugin ID (the plugin must be set up again).
+Delete what can be made or downloaded again: plugin-cache (all plugins, or --plugin), registry, proxies or ramp-audio (made again on demand), or plugin-data --plugin ID (the plugin must be set up again).
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_storage_clear`
-- `target`: string, required, one of plugin-cache, plugin-data, registry, proxies. What to clear
+- `target`: string, required, one of plugin-cache, plugin-data, registry, proxies, ramp-audio. What to clear
 - `plugin`: string. Only this plugin's data or cache
 
 ## agent
@@ -567,6 +568,18 @@ Set up the agent kit like Settings › Agents: in-app (load it in BashCut's tabs
 - `claudeConfigDir`: string. Claude Code's configuration folder (CLAUDE_CONFIG_DIR), or default to detect it
 - `codexHome`: string. Codex's home folder (CODEX_HOME), or default to detect it
 
+### `bashcut agent kit-check`
+
+Check bashcut-agent-kit's signed releases for a newer agent kit than the one BashCut uses (built-in or downloaded). A chosen kit folder is never updated.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_agent_kit-check`
+
+### `bashcut agent kit-update`
+
+Download and install the newest signed agent kit release (Settings › Agents › Download & Update), then refresh Claude Code and Codex where the kit is set up.
+
+- Mode: privileged · Runs: after the user approves in the app · MCP: `bashcut_agent_kit-update`
+
 ## chat
 
 ### `bashcut chat status`
@@ -579,7 +592,7 @@ The chat agents in the agent dock (plugins with the agent.chat capability): each
 
 Send a message to a chat agent like typing it in its tab. Returns at once; poll chat transcript until running is false to read the reply and the commands it ran.
 
-- Mode: ui · Runs: immediately · MCP: `bashcut_chat_send`
+- Mode: edit · Runs: immediately · MCP: `bashcut_chat_send`
 - `text`: string, required. Message
 - `plugin`: string. Chat agent plugin ID; by default the one shown in the dock, else the first
 - `image`: string. PNG or JPEG to attach, such as a ui frame
@@ -602,7 +615,7 @@ The slash commands a chat agent's tab offers: the app's (new, clear, stop, setti
 
 Run a slash command as typed in a chat agent's tab, such as "/compact keep the caption decisions" or "/thinking low"; returns what it showed. /export needs a path here.
 
-- Mode: ui · Runs: immediately · MCP: `bashcut_chat_command`
+- Mode: edit · Runs: immediately · MCP: `bashcut_chat_command`
 - `line`: string, required. The command line, starting with /
 - `plugin`: string. Chat agent plugin ID; by default the one shown in the dock, else the first
 
@@ -610,7 +623,7 @@ Run a slash command as typed in a chat agent's tab, such as "/compact keep the c
 
 Start a new conversation with a chat agent for this project; the old one is forgotten.
 
-- Mode: ui · Runs: immediately · MCP: `bashcut_chat_reset`
+- Mode: edit · Runs: immediately · MCP: `bashcut_chat_reset`
 - `plugin`: string. Chat agent plugin ID; by default the one shown in the dock, else the first
 
 ### `bashcut chat transcript [--plugin <plugin>]`

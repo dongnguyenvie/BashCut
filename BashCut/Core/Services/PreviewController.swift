@@ -20,6 +20,7 @@ public final class PreviewController {
     public private(set) var playhead = 0
     /// Whether the viewer shows the ungraded original beside the graded program.
     public private(set) var showColorComparison = false
+    public private(set) var isMaintainingCache = false
     /// The composition the program player is playing, for frame grabs. After an edit it is the previous
     /// composition until the new one is shown; `isCurrent` tells them apart.
     @ObservationIgnored public private(set) var snapshot: CompositionSnapshot?
@@ -39,26 +40,34 @@ public final class PreviewController {
     @ObservationIgnored public var onPlaybackStopped: (@MainActor (Int) -> Void)?
     @ObservationIgnored private var wasPlaying = false
 
+    @ObservationIgnored var awaitReadiness: @MainActor (AVPlayerItem, String) async throws -> Void = { item, message in
+        try await PlayerItemReadiness.wait(item, message: message)
+    }
     private let engine: any RenderEngine
+    private let coalescingDelay: @Sendable () async throws -> Void
     @ObservationIgnored private var project = Project(name: "Untitled")
     @ObservationIgnored private var root: URL?
     @ObservationIgnored private var workspace: URL?
     @ObservationIgnored private var comparisonSnapshot: CompositionSnapshot?
+    @ObservationIgnored private var comparisonCache: ComparisonBuildCache?
+    @ObservationIgnored public private(set) var comparisonBuildCount = 0
+    @ObservationIgnored public private(set) var comparisonReuseCount = 0
     @ObservationIgnored private var rebuildTask: Task<Void, Never>?
     /// Number of compositions built; tests use it to see that a rebuild ran.
     @ObservationIgnored public private(set) var buildCount = 0
     /// Rebuilds that updated the shown players in place instead of loading new ones.
     @ObservationIgnored public private(set) var inPlaceUpdates = 0
-    /// Exact seeks sent to the program player; tests use it to see that scrubbing coalesces.
-    @ObservationIgnored public private(set) var seekCount = 0
-    /// Chase-time scrubbing (Apple QA1820): one exact seek in flight, the newest target waits for it.
-    @ObservationIgnored private var seekInFlight = false
-    @ObservationIgnored private var chaseTarget: CMTime?
-    /// Bumped when the player item changes, so a stale seek completion is ignored.
-    @ObservationIgnored private var seekGeneration = 0
+    /// Exact seeks sent to each player, for diagnostics and coalescing tests.
+    public var seekCount: Int { programSeeks.count }
+    public var comparisonSeekCount: Int { comparisonSeeks.count }
+    @ObservationIgnored private let programSeeks = PreviewSeekQueue()
+    @ObservationIgnored private let comparisonSeeks = PreviewSeekQueue()
 
-    public init(engine: any RenderEngine) {
+    public init(engine: any RenderEngine, coalescingDelay: @escaping @Sendable () async throws -> Void = {
+        try await Task.sleep(for: .milliseconds(50))
+    }) {
         self.engine = engine
+        self.coalescingDelay = coalescingDelay
     }
 
     private static func mutedPlayer() -> AVPlayer {
@@ -81,8 +90,25 @@ public final class PreviewController {
         playhead = 0
     }
 
-    /// Builds the preview for `project` (after a short debounce); a newer call cancels an older one.
-    public func rebuild(_ project: Project, root: URL?, workspace: URL?) {
+    /// Drain the old build and release file-backed players before cache removal. Edits arriving while the
+    /// operation awaits update the pending project; only its latest version rebuilds when maintenance ends.
+    public func maintainCache(_ operation: @MainActor () async throws -> Void) async throws {
+        guard !isMaintainingCache else { throw ProjectError.invalid(String(localized: "Preview cache maintenance is already in progress")) }
+        isMaintainingCache = true
+        let previous = rebuildTask
+        previous?.cancel()
+        request += 1
+        await previous?.value
+        clearPlayers()
+        defer {
+            isMaintainingCache = false
+            rebuild(project, root: root, workspace: workspace)
+        }
+        try await operation()
+    }
+
+    /// Discrete edits build immediately; coalesced slider/drag edits debounce. Newer calls cancel older ones.
+    public func rebuild(_ project: Project, root: URL?, workspace: URL?, coalescing: Bool = false) {
         self.project = project
         self.root = root
         self.workspace = workspace
@@ -91,6 +117,7 @@ public final class PreviewController {
         // The previous picture stays up while the new composition builds; only playback stops.
         pause()
         if playhead > project.duration { playhead = project.duration }
+        guard !isMaintainingCache else { return }
         guard let root, project.duration > 0 else {
             clearPlayers()
             return
@@ -98,28 +125,42 @@ public final class PreviewController {
         let compare = showColorComparison
         let request = request
         rebuildTask = Task { [engine] in
+            let timing = PreviewTiming()
+            defer { timing.finish() }
             do {
-                try await Task.sleep(for: .milliseconds(50))
-                let built = try await engine.build(project, root: root, workspace: workspace, purpose: .preview)
-                let comparisonBuilt = compare
-                    ? try await engine.build(
-                        project.withoutColorEffects(), root: root, workspace: workspace, purpose: .preview)
-                    : nil
+                if coalescing { try await coalescingDelay() }
+                try Task.checkCancellation()
+                timing.begin("build")
+                let pair = try await PreviewBuildPair.build(
+                    engine: engine, project: project, location: (root, workspace), compare: compare, cached: comparisonCache)
+                let built = pair.program, comparisonBuilt = pair.comparison
+                timing.end()
                 try Task.checkCancellation()
                 guard request == self.request, compare == showColorComparison else { return }
+                recordComparison(pair)
                 self.built = built
                 builtRequest = request
                 buildCount += 1
-                if !update(with: built, comparison: comparisonBuilt, request: request) {
-                    try await show(built, comparison: comparisonBuilt, request: request)
+                timing.begin("swap")
+                let updated = update(with: built, comparison: comparisonBuilt, request: request)
+                timing.end()
+                if !updated {
+                    try await show(built, comparison: comparisonBuilt, request: request, timing: timing)
                 }
                 onMessage?("")
             } catch is CancellationError {} catch {
-                // A stale picture would hide that the edit cannot be previewed.
-                if request == self.request { clearPlayers() }
+                // Keep the last picture if preparation is slow; stale requests must not overwrite current errors.
+                guard request == self.request else { return }
+                if !(error is PlayerItemReadiness.Timeout) { clearPlayers() }
                 onMessage?(error.localizedDescription)
             }
         }
+    }
+
+    private func recordComparison(_ pair: PreviewBuildPair) {
+        comparisonCache = pair.cache
+        guard pair.comparison != nil else { return }
+        if pair.reusedComparison { comparisonReuseCount += 1 } else { comparisonBuildCount += 1 }
     }
 
     /// Moves the playhead and shows that exact frame. While a seek is still decoding, further calls only
@@ -131,24 +172,18 @@ public final class PreviewController {
     }
 
     private func chase(_ time: CMTime) {
-        chaseTarget = time
-        guard !seekInFlight, player.currentItem != nil else { return }
-        chaseTarget = nil
-        seekInFlight = true
-        seekCount += 1
-        let generation = seekGeneration
-        player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] _ in
-            Task { @MainActor in self?.seekFinished(generation) }
+        guard player.currentItem != nil else { return }
+        programSeeks.submit(time) { [player] target, completion in
+            player.seek(to: target, toleranceBefore: .zero, toleranceAfter: .zero, completionHandler: completion)
         }
-        if showColorComparison {
-            comparisonPlayer.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero)
-        }
+        if showColorComparison { chaseComparison(time) }
     }
 
-    private func seekFinished(_ generation: Int) {
-        guard generation == seekGeneration else { return }
-        seekInFlight = false
-        if let next = chaseTarget { chase(next) }
+    private func chaseComparison(_ time: CMTime) {
+        guard comparisonPlayer.currentItem != nil else { return }
+        comparisonSeeks.submit(time) { [comparisonPlayer] target, completion in
+            comparisonPlayer.seek(to: target, toleranceBefore: .zero, toleranceAfter: .zero, completionHandler: completion)
+        }
     }
 
     public func togglePlayback() {
@@ -190,16 +225,16 @@ public final class PreviewController {
         guard showColorComparison, comparisonPlayer.currentItem != nil else { return }
         let drift = abs(comparisonPlayer.currentTime().seconds - player.currentTime().seconds)
         if drift > 1 / project.fps.value {
-            comparisonPlayer.seek(to: player.currentTime(), toleranceBefore: .zero, toleranceAfter: .zero)
+            chaseComparison(player.currentTime())
         }
     }
 
     private func clearPlayers() {
-        seekGeneration += 1
-        seekInFlight = false
-        chaseTarget = nil
+        programSeeks.reset()
+        comparisonSeeks.reset()
         snapshot = nil
         comparisonSnapshot = nil
+        comparisonCache = nil
         built = nil
         pause()
         player.replaceCurrentItem(with: nil)
@@ -214,7 +249,8 @@ public final class PreviewController {
             return new.structure != nil && new.structure == shown.structure
         }
         guard let shown = snapshot, same(built, shown), same(comparison, comparisonSnapshot),
-            let item = player.currentItem, comparison == nil || comparisonPlayer.currentItem != nil
+            let item = player.currentItem, item.status == .readyToPlay, item.error == nil,
+            comparison == nil || (comparisonPlayer.currentItem?.status == .readyToPlay && comparisonPlayer.currentItem?.error == nil)
         else { return false }
         item.videoComposition = built.videoComposition
         item.audioMix = built.audioMix
@@ -232,7 +268,10 @@ public final class PreviewController {
     }
 
     /// Readies `built` in new players at the playhead, then swaps them in for the current ones.
-    private func show(_ built: CompositionSnapshot, comparison: CompositionSnapshot?, request: Int) async throws {
+    private func show(
+        _ built: CompositionSnapshot, comparison: CompositionSnapshot?, request: Int, timing: PreviewTiming
+    ) async throws {
+        timing.begin("ready")
         let staged = AVPlayer()
         let item = Self.playerItem(built)
         staged.replaceCurrentItem(with: item)
@@ -242,10 +281,11 @@ public final class PreviewController {
             player.replaceCurrentItem(with: Self.playerItem(comparison))
             stagedComparison = player
         }
-        try await Self.waitUntilReady(item, message: "Preview could not become ready")
+        try await awaitReadiness(item, "Preview could not become ready")
         if let comparisonItem = stagedComparison?.currentItem {
-            try await Self.waitUntilReady(comparisonItem, message: "Comparison preview could not become ready")
+            try await awaitReadiness(comparisonItem, "Comparison preview could not become ready")
         }
+        timing.begin("swap")
         let frame = playhead
         let time = project.fps.time(frame)
         await staged.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero)
@@ -261,9 +301,8 @@ public final class PreviewController {
         snapshot = built
         comparisonSnapshot = comparison
         shownRequest = request
-        seekGeneration += 1
-        seekInFlight = false
-        chaseTarget = nil
+        programSeeks.reset()
+        comparisonSeeks.reset()
         // The playhead may have moved while the new players were getting ready.
         if playhead != frame { seek(playhead) }
     }
@@ -275,14 +314,4 @@ public final class PreviewController {
         return item
     }
 
-    private static func waitUntilReady(_ item: AVPlayerItem, message: String) async throws {
-        // Poll finely: a 100 ms step kept the viewer blank up to 100 ms longer after every edit.
-        for _ in 0..<500 where item.status == .unknown {
-            try await Task.sleep(for: .milliseconds(10))
-        }
-        try Task.checkCancellation()
-        guard item.status == .readyToPlay else {
-            throw item.error ?? ProjectError.invalid(message)
-        }
-    }
 }

@@ -1,0 +1,82 @@
+name: Build and verify
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  macos:
+    name: SwiftPM and Xcode (macOS 15)
+    runs-on: macos-15
+    timeout-minutes: 45
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+      HOMEBREW_NO_AUTO_UPDATE: '1'
+      SNAPSHOT_ARTIFACTS: ${{ github.workspace }}/build/snapshots
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Install verification tools
+        run: brew install swiftlint xcodegen
+      - name: Record toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+          swiftlint version
+          xcodegen version
+          python3 --version
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .build
+            Packages/BashCutCore/.build
+          # One entry per toolchain and dependency set; a commit-specific key uploaded a new cache every run.
+          key: spm-${{ runner.os }}-${{ runner.arch }}-xcode26.3-${{ hashFiles('Package.resolved', 'Packages/BashCutCore/Package.resolved') }}
+      - name: Check whitespace
+        env:
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [[ -n "$PR_BASE" ]]; then
+            git diff --check "$PR_BASE" HEAD
+          else
+            git show --check --oneline HEAD
+          fi
+      - name: Build SwiftPM
+        run: scripts/verify.sh build
+      - name: Test SwiftPM and CLI/MCP processes
+        run: scripts/verify.sh test
+      - name: Lint strictly
+        run: scripts/verify.sh lint
+      # SwiftPM already ran every suite. Pull requests prove the Xcode app and test targets compile;
+      # a manual run also executes the Xcode test plan.
+      - name: Build Xcode app and tests
+        if: github.event_name != 'workflow_dispatch'
+        run: scripts/verify.sh xcode build-for-testing
+      - name: Build and test Xcode
+        if: github.event_name == 'workflow_dispatch'
+        run: scripts/verify.sh xcode test -parallel-testing-enabled NO
+      - name: Preserve verification logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: verification-${{ github.run_id }}
+          path: |
+            build/logs
+            build/snapshots
+            build/xcode/Logs/Test/*.xcresult
+          if-no-files-found: ignore
+          retention-days: 7

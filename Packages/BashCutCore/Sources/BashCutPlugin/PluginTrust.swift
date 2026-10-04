@@ -17,11 +17,12 @@ public struct PluginFingerprint: Codable, Sendable, Equatable {
     }
 
     public init(plugin: InstalledPlugin) throws {
+        let tree = try Self.tree(plugin.directory)
         let manifest = try Data(contentsOf: plugin.directory.appendingPathComponent("plugin.json"))
         let entrypoint = try Data(contentsOf: plugin.entrypointURL())
         self.init(
             manifestSHA256: Self.hex(manifest), entrypointSHA256: Self.hex(entrypoint),
-            treeSHA256: try Self.tree(plugin.directory))
+            treeSHA256: tree)
     }
 
     /// Same files as `other`, treating a grant without a tree digest as matching on manifest and entrypoint.
@@ -30,32 +31,8 @@ public struct PluginFingerprint: Codable, Sendable, Equatable {
             && (other.treeSHA256 == nil || treeSHA256 == other.treeSHA256)
     }
 
-    /// Files under the folder, sorted: `path`, executable bit and SHA-256 (or a link's target). Hidden files,
-    /// `__pycache__` and `.pyc` files are skipped; they change on their own.
-    static func tree(_ folder: URL) throws -> String {
-        let root = folder.resolvingSymlinksInPath().standardizedFileURL
-        let keys: [URLResourceKey] = [.isRegularFileKey, .isSymbolicLinkKey, .isDirectoryKey]
-        guard let enumerator = FileManager.default.enumerator(
-            at: root, includingPropertiesForKeys: keys, options: [.skipsHiddenFiles])
-        else { throw PluginError.invalid("Cannot read the plugin folder") }
-        var lines: [String] = []
-        for case let url as URL in enumerator {
-            let values = try url.resourceValues(forKeys: Set(keys))
-            if values.isDirectory == true, url.lastPathComponent == "__pycache__" {
-                enumerator.skipDescendants()
-                continue
-            }
-            let relative = String(url.standardizedFileURL.path.dropFirst(root.path.count + 1))
-            if values.isSymbolicLink == true {
-                let target = (try? FileManager.default.destinationOfSymbolicLink(atPath: url.path)) ?? ""
-                lines.append("\(relative)\0link\0\(target)")
-            } else if values.isRegularFile == true, url.pathExtension != "pyc" {
-                let executable = FileManager.default.isExecutableFile(atPath: url.path) ? "x" : "-"
-                lines.append("\(relative)\0\(executable)\0\(hex(try Data(contentsOf: url)))")
-            }
-        }
-        return hex(Data(lines.sorted().joined(separator: "\n").utf8))
-    }
+    /// Hash every file, including hidden files and Python bytecode. Only Finder metadata is ignored.
+    static func tree(_ folder: URL) throws -> String { try PluginTree.digest(folder) }
 
     static func hex(_ data: Data) -> String {
         SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
@@ -115,6 +92,8 @@ public enum PluginAvailability: Sendable, Equatable {
 
 /// The user's plugin decisions and user-scope option values, in one 0600 JSON file. Bundled plugins are
 /// trusted without a pin; every other plugin runs only after the user approves its exact files.
+/// Keys include the canonical installation root. Legacy ID-only grants cannot establish which copy was
+/// approved, so they are intentionally ignored until the user trusts a particular installation again.
 public final class PluginTrustStore: @unchecked Sendable {
     struct Contents: Codable {
         var grants: [String: PluginGrant] = [:]
@@ -130,7 +109,7 @@ public final class PluginTrustStore: @unchecked Sendable {
     private let lock = NSLock()
     private var contents: Contents
     /// Fingerprints by plugin folder, reused while both files keep their size and modification date.
-    private var fingerprints: [String: (stamp: [String], value: PluginFingerprint)] = [:]
+    private var fingerprints: [String: (stamp: String, value: PluginFingerprint)] = [:]
 
     public init(url: URL, trustedRoots: [URL] = []) {
         self.url = url
@@ -147,16 +126,26 @@ public final class PluginTrustStore: @unchecked Sendable {
             trustedRoots: PluginFolders.bundled.map { [$0] } ?? [])
     }
 
-    public func grant(for pluginID: String) -> PluginGrant? { locked { contents.grants[pluginID] } }
+    public func grant(for plugin: InstalledPlugin) -> PluginGrant? { locked { contents.grants[plugin.installationID] } }
 
     public func isBundled(_ plugin: InstalledPlugin) -> Bool {
         let path = plugin.directory.standardizedFileURL.path
         return trustedRoots.contains { path.hasPrefix($0.path + "/") }
     }
 
+    /// Repair may execute recipes only from the approved bundle. Check the full pin independently of enabled
+    /// state: a disabled plugin can also have changed files. Initial setup remains part of install approval.
+    public func validateSetup(of plugin: InstalledPlugin) throws {
+        guard !isBundled(plugin), let approved = grant(for: plugin),
+            !approved.fingerprint.manifestSHA256.isEmpty else { return }
+        guard (try? PluginFingerprint(plugin: plugin)) == approved.fingerprint else {
+            throw PluginError.invalid("Plugin files changed; review and trust them before running setup")
+        }
+    }
+
     public func availability(of plugin: InstalledPlugin) -> PluginAvailability {
         if let reason = plugin.manifest.incompatibility { return .outdated(reason) }
-        let grant = grant(for: plugin.id)
+        let grant = grant(for: plugin)
         if let grant, !grant.enabled { return .disabled }
         if isBundled(plugin) { return .ready }
         guard let grant, !grant.fingerprint.manifestSHA256.isEmpty else { return .untrusted }
@@ -170,15 +159,15 @@ public final class PluginTrustStore: @unchecked Sendable {
         guard current.matches(grant.fingerprint) else { return .changed }
         if grant.fingerprint.treeSHA256 == nil {
             // An older grant: pin the folder as it is now, since manifest and entrypoint still match.
-            try? update { $0.grants[plugin.id]?.fingerprint = current }
+            try? update { $0.grants[plugin.installationID]?.fingerprint = current }
         }
         return .ready
     }
 
     /// The plugin's fingerprint, hashed again only when a file in its folder was added, removed or changed size or
-    /// date.
+    /// date, inode, mode or ctime.
     func fingerprint(_ plugin: InstalledPlugin) throws -> PluginFingerprint {
-        let stamp = Self.stamp(plugin.directory)
+        let stamp = try PluginTree.stamp(plugin.directory)
         let key = plugin.directory.standardizedFileURL.path
         if let cached = locked({ fingerprints[key] }), cached.stamp == stamp { return cached.value }
         let value = try PluginFingerprint(plugin: plugin)
@@ -186,16 +175,12 @@ public final class PluginTrustStore: @unchecked Sendable {
         return value
     }
 
-    private static func stamp(_ folder: URL) -> [String] {
-        let root = folder.resolvingSymlinksInPath()
-        let keys: [URLResourceKey] = [.fileSizeKey, .contentModificationDateKey]
-        let enumerator = FileManager.default.enumerator(at: root, includingPropertiesForKeys: keys, options: [.skipsHiddenFiles])
-        var entries: [String] = []
-        while let url = enumerator?.nextObject() as? URL {
-            let values = try? url.resourceValues(forKeys: Set(keys))
-            entries.append("\(url.path)|\(values?.fileSize ?? -1)|\(values?.contentModificationDate?.timeIntervalSince1970 ?? 0)")
-        }
-        return entries.sorted()
+    /// Credentials belong to these exact plugin files and installation. Re-trusting changed code never
+    /// transfers the previous version's keys; the user must enter a key for the new fingerprint.
+    public func credentialIdentity(for plugin: InstalledPlugin) throws -> String {
+        let current = try fingerprint(plugin)
+        let digest = [current.manifestSHA256, current.entrypointSHA256, current.treeSHA256 ?? ""].joined(separator: ":")
+        return plugin.installationID + "@" + PluginFingerprint.hex(Data(digest.utf8))
     }
 
     /// Pins the plugin's current files. Only the user may call this (Plugins sheet, install approval).
@@ -203,17 +188,17 @@ public final class PluginTrustStore: @unchecked Sendable {
         let fingerprint = try PluginFingerprint(plugin: plugin)
         locked { fingerprints[plugin.directory.standardizedFileURL.path] = nil }
         try update { contents in
-            var grant = contents.grants[plugin.id]
+            var grant = contents.grants[plugin.installationID]
                 ?? PluginGrant(fingerprint: fingerprint, version: plugin.manifest.version)
             grant.fingerprint = fingerprint
             grant.version = plugin.manifest.version
             grant.approvedAt = Date()
-            contents.grants[plugin.id] = grant
+            contents.grants[plugin.installationID] = grant
         }
     }
 
-    public func revoke(_ pluginID: String) throws {
-        try update { $0.grants[pluginID] = nil }
+    public func revoke(_ plugin: InstalledPlugin) throws {
+        try update { $0.grants[plugin.installationID] = nil }
     }
 
     /// Turns a plugin or its hooks on or off. A bundled plugin without a grant gets one so the switch persists.
@@ -221,24 +206,24 @@ public final class PluginTrustStore: @unchecked Sendable {
         let fingerprint = (try? PluginFingerprint(plugin: plugin))
             ?? PluginFingerprint(manifestSHA256: "", entrypointSHA256: "")
         try update { contents in
-            var grant = contents.grants[plugin.id] ?? PluginGrant(
+            var grant = contents.grants[plugin.installationID] ?? PluginGrant(
                 fingerprint: self.isBundled(plugin) ? fingerprint : PluginFingerprint(manifestSHA256: "", entrypointSHA256: ""),
                 version: plugin.manifest.version)
             if let enabled { grant.enabled = enabled }
             if let hooks { grant.hooksEnabled = hooks }
-            contents.grants[plugin.id] = grant
+            contents.grants[plugin.installationID] = grant
         }
     }
 
-    public func hooksEnabled(_ pluginID: String) -> Bool { grant(for: pluginID)?.hooksEnabled ?? true }
+    public func hooksEnabled(_ plugin: InstalledPlugin) -> Bool { grant(for: plugin)?.hooksEnabled ?? true }
 
-    public func userOptions(_ pluginID: String) -> [String: JSONValue] { locked { contents.options[pluginID] ?? [:] } }
+    public func userOptions(_ plugin: InstalledPlugin) -> [String: JSONValue] { locked { contents.options[plugin.installationID] ?? [:] } }
 
-    public func setUserOption(_ pluginID: String, key: String, value: JSONValue?) throws {
+    public func setUserOption(_ plugin: InstalledPlugin, key: String, value: JSONValue?) throws {
         try update { contents in
-            var values = contents.options[pluginID] ?? [:]
+            var values = contents.options[plugin.installationID] ?? [:]
             values[key] = value
-            contents.options[pluginID] = values.isEmpty ? nil : values
+            contents.options[plugin.installationID] = values.isEmpty ? nil : values
         }
     }
 

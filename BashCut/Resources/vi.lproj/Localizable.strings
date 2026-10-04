@@ -688,3 +688,25 @@
 "Unsaved changes; BashCut saves automatically every 30 seconds" = "Có thay đổi chưa lưu; BashCut tự lưu mỗi 30 giây";
 "Working…" = "Đang xử lý…";
 "Agent dock" = "Khung trợ lý";
+
+"Checked after approval" = "Kiểm tra sau khi phê duyệt";
+
+"Speed ramp audio (this project)" = "Âm thanh speed ramp (dự án này)";
+
+"Wait for exports to finish before clearing ramp audio" = "Hãy đợi xuất video xong rồi mới xoá âm thanh speed ramp";
+
+"Preview cache maintenance is already in progress" = "Đang dọn bộ nhớ đệm xem trước";
+
+"Kit updates" = "Cập nhật kit";
+
+"Up to date" = "Đã là bản mới nhất";
+
+"Version %@ available" = "Có phiên bản %@";
+
+"Download & Update" = "Tải về và cập nhật";
+
+"Check for Updates" = "Kiểm tra cập nhật";
+
+"Downloaded" = "Đã tải về";
+
+"Older kit set up: update it" = "Đang dùng kit cũ: hãy cập nhật";

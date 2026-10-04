@@ -14,13 +14,12 @@ import Foundation
     func run() throws {
         if words.isEmpty || ["help", "-h", "--help"].contains(words[0]) { throw CleanExit.helpRequest(self) }
         defer { DebugLog.flush() }
-        DebugLog.write("cli", "bashcut \(words.joined(separator: " "))")
         let invocation: CommandLineParser.Invocation
         do { invocation = try CommandLineParser.parse(words) } catch {
-            DebugLog.write("cli", "parse FAILED: \(error.localizedDescription)")
-            FileHandle.standardError.write(Data("Error: \(error.localizedDescription)\n".utf8))
-            throw ExitCode.validationFailure
+            DebugLog.write("cli", "command parsing failed")
+            throw report(RPCFailure.from(error, fallbackCode: -32602))
         }
+        DebugLog.write("cli", "call \(invocation.spec.name)")
         let response: RPCResponse
         do {
             response = try UnixRPCClient.call(
@@ -28,10 +27,20 @@ import Foundation
                     method: invocation.spec.name, params: invocation.params,
                     token: AutomationPaths.sessionToken()))
         } catch {
-            DebugLog.write("cli", "\(invocation.spec.name) FAILED: \(error.localizedDescription)")
-            throw error
+            DebugLog.write("cli", "\(invocation.spec.name) failed")
+            throw report(RPCFailure.from(error))
         }
         try write(response, format: invocation.format)
+    }
+
+    private func report(_ failure: RPCFailure) -> ExitCode {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
+        if var data = try? encoder.encode(failure.payload) {
+            data.append(10)
+            FileHandle.standardError.write(data)
+        }
+        return ExitCode(failure.exitStatus)
     }
 
     private func write(_ response: RPCResponse, format: String) throws {

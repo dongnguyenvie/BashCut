@@ -250,7 +250,7 @@ extension ProjectDocument {
                     "availability": .string(plugins.service.availability(plugin).name),
                     "detail": .string(plugins.service.availability(plugin).detail),
                     "transport": .string(plugin.manifest.transportKind.rawValue),
-                    "hooksEnabled": .bool(plugins.trust.hooksEnabled(plugin.id)),
+                    "hooksEnabled": .bool(plugins.trust.hooksEnabled(plugin)),
                     "actions": .array(plugin.manifest.actions.map { .string($0.id) }),
                     "hooks": .array(plugin.manifest.hooks.map { .string($0.event) }),
                     "options": .array((plugin.manifest.options ?? []).map { .string($0.id) }),

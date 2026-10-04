@@ -5,6 +5,28 @@ import Testing
 
 @MainActor
 struct ModalCenterTests {
+    @Test("Privileged dialogs are readable but automation cannot approve, cancel or inject paths")
+    func userOnly() throws {
+        let center = ModalCenter()
+        var responses = 0
+        center.sheets = {
+            [ModalSheet(name: "plugin-confirm", title: "Confirm", options: [
+                ModalOption("run", "Run"), ModalOption("cancel", "Cancel")
+            ], userOnly: true) { _ in responses += 1 }]
+        }
+        #expect(center.current?.json.object["userOnly"] == .bool(true))
+        for option in ["run", "Run", "cancel"] {
+            #expect(throws: ModalError.self) { try center.respond(option: option, path: nil) }
+        }
+        #expect(throws: ModalError.self) {
+            try center.respond(option: nil, path: URL(fileURLWithPath: "/tmp/example"))
+        }
+        #expect(responses == 0)
+        // The native UI's response closure is unaffected by the automation boundary.
+        try center.sheets()[0].respond("run")
+        #expect(responses == 1)
+    }
+
     @Test("Sheets are listed topmost last and answered by option ID or title")
     func sheets() throws {
         let center = ModalCenter()

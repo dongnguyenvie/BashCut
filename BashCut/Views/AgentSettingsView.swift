@@ -14,6 +14,14 @@ struct AgentSettingsView: View {
     @State private var statuses: [AgentKitSetup.Target: AgentKitSetup.Status] = [:]
     @State private var working: AgentKitSetup.Target?
     @State private var result = ""
+    @State private var update = KitUpdate.unknown
+
+    /// The release check for the built-in or downloaded kit; a chosen folder is never updated.
+    private enum KitUpdate: Equatable {
+        case unknown, checking, upToDate, installing
+        case available(AgentKitRelease)
+        case failed(String)
+    }
 
     var body: some View {
         Section {
@@ -30,6 +38,7 @@ struct AgentSettingsView: View {
                     }
                 }
             }
+            if settings.agentKitFolder == nil { updateRow }
             ForEach(AgentKitSetup.Target.allCases, id: \.self) { target in agentRow(target) }
             if let folders {
                 folderRow("Claude Code settings folder", folders.claude, claude: true) { settings.claudeConfigFolder = $0 }
@@ -48,12 +57,54 @@ struct AgentSettingsView: View {
             Text("New tabs pick up changes. Claude Code and Codex outside BashCut get the skills and the BashCut MCP server.")
                 .font(.caption).foregroundStyle(.secondary)
         }
-        .task { await load() }
+        .task {
+            await load()
+            if settings.agentKitFolder == nil { await checkForUpdate() }
+        }
+    }
+
+    private var updateRow: some View {
+        LabeledContent("Kit updates") {
+            HStack {
+                switch update {
+                case .unknown: EmptyView()
+                case .checking, .installing: ProgressView().controlSize(.small)
+                case .upToDate: Text("Up to date").foregroundStyle(.secondary)
+                case .available(let release):
+                    Text(String(format: String(localized: "Version %@ available"), release.version))
+                        .help(release.notes?["en"] ?? "")
+                    Button("Download & Update") { install() }.buttonStyle(.borderedProminent)
+                case .failed(let message): Text(message).foregroundStyle(.secondary).lineLimit(1).help(message)
+                }
+                if ![.checking, .installing].contains(update) {
+                    Button("Check for Updates") { Task { await checkForUpdate() } }
+                }
+            }
+        }
+    }
+
+    private func checkForUpdate() async {
+        update = .checking
+        do {
+            update = try await document.checkAgentKitUpdate().release.map(KitUpdate.available) ?? .upToDate
+        } catch { update = .failed(error.localizedDescription) }
+    }
+
+    private func install() {
+        update = .installing
+        Task {
+            do {
+                result = try await document.updateAgentKit()
+                update = .upToDate
+            } catch { update = .failed(error.localizedDescription) }
+            await load()
+        }
     }
 
     private var kitSummary: String {
         guard let kit else { return String(localized: "Not found") }
-        let source = settings.agentKitFolder == nil ? String(localized: "Built-in") : kit.root.path
+        let source = settings.agentKitFolder != nil ? kit.root.path
+            : kit.source == .downloaded ? String(localized: "Downloaded") : String(localized: "Built-in")
         return String(localized: "\(kit.skills.count) skills, version \(kit.version) · \(source)")
     }
 
@@ -79,6 +130,7 @@ struct AgentSettingsView: View {
     private func summary(_ status: AgentKitSetup.Status?) -> String {
         guard let status else { return "…" }
         if status.executable == nil { return String(localized: "Not installed") }
+        if status.installed, status.outdated { return String(localized: "Older kit set up: update it") }
         return status.installed ? String(localized: "Kit set up") : String(localized: "Kit not set up")
     }
 

@@ -2,6 +2,9 @@ import BashCutProject
 import Foundation
 
 public protocol RenderEngine: Sendable {
+    /// Writes the mixed audio as lossless 48 kHz stereo PCM in CAF, without rendering video.
+    func exportAudio(_ snapshot: CompositionSnapshot, to url: URL,
+                     progress: @escaping @Sendable (Double) -> Void) async throws -> ExportReceipt
     /// Builds a playable or exportable composition; `purpose` lets the media source pick proxies for preview.
     func build(_ project: Project, root: URL, workspace: URL?, purpose: RenderPurpose) async throws
         -> CompositionSnapshot
@@ -14,7 +17,7 @@ public protocol RenderEngine: Sendable {
 public struct AVFoundationRenderEngine: RenderEngine {
     private let builder: CompositionBuilder
     private let exporter = Exporter()
-    /// One builder per engine, so opened assets are cached across preview rebuilds and exports.
+    /// One builder per engine, with separate asset caches for preview rebuilds and exports.
     public init(source: any MediaSource = ProxyMediaSource()) {
         builder = CompositionBuilder(source: source)
     }
@@ -22,6 +25,10 @@ public struct AVFoundationRenderEngine: RenderEngine {
         -> CompositionSnapshot
     {
         try await builder.build(project, root: root, workspace: workspace, purpose: purpose)
+    }
+    public func exportAudio(_ snapshot: CompositionSnapshot, to url: URL,
+                            progress: @escaping @Sendable (Double) -> Void) async throws -> ExportReceipt {
+        try await exporter.exportAudio(snapshot, to: url, progress: progress)
     }
     public func export(
         _ snapshot: CompositionSnapshot, to url: URL, settings: ExportSettings,

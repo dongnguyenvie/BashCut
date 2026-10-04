@@ -47,8 +47,28 @@ struct PluginTrustTests {
         #expect(store.availability(of: plugin) == .changed)
         try store.trust(plugin)
         #expect(store.availability(of: plugin) == .ready)
-        try store.revoke(plugin.id)
+        try store.revoke(plugin)
         #expect(store.availability(of: plugin) == .untrusted)
+    }
+
+    @Test("Repair cannot silently reapprove changed files, including disabled plugins")
+    func repairTrust() throws {
+        let sandbox = Sandbox()
+        defer { try? FileManager.default.removeItem(at: sandbox.root) }
+        let plugin = try sandbox.plugin()
+        let store = sandbox.store()
+        try store.validateSetup(of: plugin) // Initial setup still asks for installation approval.
+        try store.trust(plugin)
+        try store.validateSetup(of: plugin)
+        let approved = store.grant(for: plugin)
+        try Data("#!/bin/sh\necho tampered\n".utf8).write(to: plugin.directory.appendingPathComponent("bin/provider"))
+        #expect(throws: PluginError.self) { try store.validateSetup(of: plugin) }
+        #expect(store.grant(for: plugin) == approved)
+        try store.setEnabled(plugin, enabled: false)
+        #expect(store.availability(of: plugin) == .disabled)
+        #expect(throws: PluginError.self) { try store.validateSetup(of: plugin) }
+        try store.trust(plugin) // A separate, explicit Trust action allows repairs again.
+        try store.validateSetup(of: plugin)
     }
 
     @Test("Older grants without a folder digest are upgraded once; dev links relax in debug builds")
@@ -62,11 +82,11 @@ struct PluginTrustTests {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         struct Contents: Encodable { let grants: [String: PluginGrant]; let options: [String: [String: JSONValue]] }
-        try encoder.encode(Contents(grants: [plugin.id: PluginGrant(fingerprint: legacy, version: "1.0.0")], options: [:]))
+        try encoder.encode(Contents(grants: [plugin.installationID: PluginGrant(fingerprint: legacy, version: "1.0.0")], options: [:]))
             .write(to: url)
         let store = sandbox.store()
         #expect(store.availability(of: plugin) == .ready)
-        #expect(store.grant(for: plugin.id)?.fingerprint.treeSHA256 == full.treeSHA256)
+        #expect(store.grant(for: plugin)?.fingerprint.treeSHA256 == full.treeSHA256)
 
         let link = sandbox.root.appendingPathComponent("user/example.linked")
         try FileManager.default.createSymbolicLink(at: link, withDestinationURL: plugin.directory)
@@ -89,20 +109,139 @@ struct PluginTrustTests {
         #expect(store.availability(of: bundled) == .disabled)
         try store.setEnabled(bundled, enabled: true, hooks: false)
         #expect(store.availability(of: bundled) == .ready)
-        #expect(!store.hooksEnabled(bundled.id))
+        #expect(!store.hooksEnabled(bundled))
         // Turning on an unapproved plugin does not trust it.
         let user = try sandbox.plugin()
         try store.setEnabled(user, enabled: true)
         #expect(store.availability(of: user) == .untrusted)
     }
 
+    @Test("A project copy cannot inherit another installation's trust, options, or enabled state")
+    func installations() throws {
+        let sandbox = Sandbox()
+        defer { try? FileManager.default.removeItem(at: sandbox.root) }
+        let user = try sandbox.plugin()
+        let project = try sandbox.plugin(in: "project")
+        let store = sandbox.store()
+        try store.trust(user)
+        try store.setUserOption(user, key: "provider", value: .string("openai"))
+        #expect(store.availability(of: project) == .untrusted)
+        #expect(store.userOptions(project).isEmpty)
+        try store.trust(project)
+        try store.setEnabled(project, enabled: false, hooks: false)
+        #expect(store.availability(of: user) == .ready)
+        #expect(store.hooksEnabled(user))
+        try store.revoke(project)
+        #expect(store.availability(of: user) == .ready)
+        #expect(sandbox.store().availability(of: project) == .untrusted)
+        let catalog = PluginCatalog.discover(in: [project.directory.deletingLastPathComponent(), user.directory.deletingLastPathComponent()])
+        #expect(catalog.plugins.first?.installationID == project.installationID)
+        #expect(catalog.diagnostics.contains { $0.contains("shadows installed plugin") })
+    }
+
+    @Test("Credential identity follows installation and code, not the decision to trust it")
+    func credentialIdentity() throws {
+        let sandbox = Sandbox()
+        defer { try? FileManager.default.removeItem(at: sandbox.root) }
+        let user = try sandbox.plugin()
+        let project = try sandbox.plugin(in: "project")
+        let store = sandbox.store()
+        let original = try store.credentialIdentity(for: user)
+        #expect(try store.credentialIdentity(for: project) != original)
+        try store.trust(project)
+        #expect(try store.credentialIdentity(for: project) != original)
+        #expect(try store.credentialIdentity(for: user) == original)
+        try Data("changed code".utf8).write(to: user.directory.appendingPathComponent("bin/helper.py"))
+        let changed = try store.credentialIdentity(for: user)
+        #expect(changed != original)
+        try store.trust(user)
+        #expect(try store.credentialIdentity(for: user) == changed)
+    }
+
+    @Test("Hidden code and Python bytecode participate in trust; Finder metadata does not")
+    func hiddenCode() throws {
+        let sandbox = Sandbox()
+        defer { try? FileManager.default.removeItem(at: sandbox.root) }
+        let plugin = try sandbox.plugin()
+        let store = sandbox.store()
+        try store.trust(plugin)
+        try Data("Finder".utf8).write(to: plugin.directory.appendingPathComponent(".DS_Store"))
+        #expect(store.availability(of: plugin) == .ready)
+        for path in [".hidden.py", "__pycache__/helper.pyc", "helper.pyc"] {
+            let url = plugin.directory.appendingPathComponent(path)
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try Data("code".utf8).write(to: url)
+            #expect(store.availability(of: plugin) == .changed)
+            try store.trust(plugin)
+        }
+        let before = try store.credentialIdentity(for: plugin)
+        try FileManager.default.moveItem(at: plugin.directory.appendingPathComponent(".hidden.py"),
+                                         to: plugin.directory.appendingPathComponent(".renamed.py"))
+        #expect(try store.credentialIdentity(for: plugin) != before)
+    }
+
+    @Test("A same-size rewrite with restored mtime cannot reuse the cached fingerprint")
+    func restoredModificationDate() throws {
+        let sandbox = Sandbox()
+        defer { try? FileManager.default.removeItem(at: sandbox.root) }
+        let plugin = try sandbox.plugin()
+        let store = sandbox.store()
+        let helper = plugin.directory.appendingPathComponent("helper")
+        try Data("old!".utf8).write(to: helper)
+        let date = try #require(FileManager.default.attributesOfItem(atPath: helper.path)[.modificationDate] as? Date)
+        try store.trust(plugin)
+        #expect(store.availability(of: plugin) == .ready) // Populate the cache.
+        try Data("new!".utf8).write(to: helper)
+        try FileManager.default.setAttributes([.modificationDate: date], ofItemAtPath: helper.path)
+        #expect(store.availability(of: plugin) == .changed)
+    }
+
+    @Test("Internal symlink targets are hashed; outside and dangling links cannot be trusted")
+    func symlinkBoundaries() throws {
+        let sandbox = Sandbox()
+        defer { try? FileManager.default.removeItem(at: sandbox.root) }
+        let plugin = try sandbox.plugin()
+        let store = sandbox.store()
+        let link = plugin.directory.appendingPathComponent("helper-link")
+        let target = plugin.directory.appendingPathComponent("helper")
+        try Data("first".utf8).write(to: target)
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: target)
+        try store.trust(plugin)
+        #expect(store.availability(of: plugin) == .ready)
+        try Data("second".utf8).write(to: target)
+        #expect(store.availability(of: plugin) == .changed)
+        try FileManager.default.removeItem(at: link)
+        let external = sandbox.root.appendingPathComponent("outside")
+        try Data("outside".utf8).write(to: external)
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: external)
+        #expect(throws: PluginError.self) { try store.trust(plugin) }
+        try FileManager.default.removeItem(at: external)
+        #expect(throws: PluginError.self) { try store.trust(plugin) }
+    }
+
+    @Test("Legacy ID-only approvals cannot establish the root the user trusted")
+    func unscopedGrant() throws {
+        let sandbox = Sandbox()
+        defer { try? FileManager.default.removeItem(at: sandbox.root) }
+        let plugin = try sandbox.plugin()
+        let store = sandbox.store()
+        try store.trust(plugin)
+        var contents = try #require(JSONSerialization.jsonObject(with: Data(contentsOf: store.url)) as? [String: Any])
+        var grants = try #require(contents["grants"] as? [String: Any])
+        grants[plugin.id] = grants.removeValue(forKey: plugin.installationID)
+        contents["grants"] = grants
+        try JSONSerialization.data(withJSONObject: contents).write(to: store.url)
+        #expect(sandbox.store().availability(of: plugin) == .untrusted)
+    }
+
     @Test("User option values persist")
     func userOptions() throws {
         let sandbox = Sandbox()
         defer { try? FileManager.default.removeItem(at: sandbox.root) }
-        try sandbox.store().setUserOption("example.trust", key: "voice", value: .string("female"))
-        #expect(sandbox.store().userOptions("example.trust") == ["voice": .string("female")])
-        try sandbox.store().setUserOption("example.trust", key: "voice", value: nil)
-        #expect(sandbox.store().userOptions("example.trust").isEmpty)
+        let plugin = try sandbox.plugin()
+        try sandbox.store().setUserOption(plugin, key: "voice", value: .string("female"))
+        #expect(sandbox.store().userOptions(plugin) == ["voice": .string("female")])
+        try sandbox.store().setUserOption(plugin, key: "voice", value: nil)
+        #expect(sandbox.store().userOptions(plugin).isEmpty)
     }
 }

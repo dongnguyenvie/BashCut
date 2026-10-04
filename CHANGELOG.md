@@ -5,6 +5,202 @@
 
 ## [Unreleased]
 
+- Update the agent kit in the app: Settings › Agents checks bashcut-agent-kit's signed `releases.json` and offers
+  **Download & Update** (`agent kit-check`, `agent kit-update`). Releases are verified (HTTPS from GitHub,
+  first-party signature, SHA-256, one kit folder without escaping links) before they replace the built-in kit, and
+  Claude Code and Codex are refreshed afterwards. Claude Code's row flags an older cached plugin version.
+- Bundle the agent kit's tracked files in Xcode builds too (`scripts/bundle-agent-kit.sh`, shared with `run.sh`).
+
+- Check plugin trust with an fts(3) walk that hashes raw lstat fields: a dev-linked plugin with node_modules
+  (~13k files) answered option reads in ~150 ms and now ~45 ms. Every check still walks the whole tree.
+
+- Stopping an export lets in-flight sample reads return before the reader is cancelled; only a read still
+  blocked after 500 ms is interrupted. Cancelling a reader under a waiting read crashed AVFoundation under load.
+
+- Run app test suites in parallel again, with only the Unix-socket suites in a separate sequential pass (~29 s
+  instead of ~65 s). Five engine tests that depended on another test generating the fixture now await it.
+- Pull-request CI compiles the Xcode app and tests without re-running the suites SwiftPM already ran; a
+  manual run still executes the Xcode test plan. The SwiftPM cache is no longer re-uploaded on every commit.
+- Localize the new ramp-audio clearing and preview-cache messages in Vietnamese. Tests report benchmark
+  numbers through one `TestMeasurement` helper instead of scattered `print` calls.
+
+- Name internal types after their role: `TimelineDryRun`, `DebugLogWriter`, the `SpeedRamp*` audio types,
+  `ExportSampleTransfer` and `FileSignature`. Bound plugin secrets use `…/binding/<hash>` Keychain accounts.
+
+- Render speed-ramp audio on a private queue instead of Swift's cooperative executor, publish cache files
+  with an atomic rename, check reader outputs before adding them and decode sources with more than two
+  channels as stereo. The cache folder is now `.bashcut/ramp-audio`, matching its storage entry.
+- Bind plugin secrets to the options a manifest marks `bindsSecrets` instead of hard-coded Director option
+  names. Saving a key for changed plugin code removes that installation's keys for older fingerprints.
+- Run plugin processes with `PYTHONDONTWRITEBYTECODE=1` so bytecode never changes a pinned plugin tree.
+  Dependency probes refuse inline code in combined, attached and long flags of script interpreters, while
+  ordinary tools such as `grep -e` remain allowed.
+- Rotate a custom `BASHCUT_DEBUG_LOG_PATH` beside its own name and record preview signposts under the
+  `app.bashcut` subsystem.
+
+- Keep abrupt audio gain changes on separate reusable composition lanes, preventing the native mixer
+  from turning an adjacent -20 dB cut into a fade. Continuous-gain cuts still share one lane.
+- Generate H.264/AAC test footage natively on demand, with exact 30000/1001 frame timestamps and isolated
+  temporary storage. Clean-checkout tests no longer need ffmpeg or a manual fixture-generation step.
+
+- Inject storage roots and inherited plugin environments in tests instead of changing process-wide
+  environment variables. Plugin subprocess tests continue to verify that secrets are filtered out.
+
+- Make the caption golden independent of lossy fixture backgrounds and use explicit sRGB in still-image
+  test fixtures. CI retains failed snapshot images along with test logs.
+
+- Check Undo/Redo availability through constant-time history accessors instead of copying both stacks.
+
+- Include MCPBridge, Tools and the core benchmarks in strict SwiftLint verification.
+
+- Add macOS CI for SwiftPM build/tests, CLI/MCP process tests, strict lint and Xcode tests on every PR.
+  Verification logs and Xcode results are retained for failed-run diagnosis.
+
+- Disable unconditional reader sample copies; configure H.264 High with source frame rate and a two-second
+  keyframe interval, and optimize MP4 metadata placement for streaming. ProRes keeps its codec-specific
+  settings. Private staging directories also contain encoder sidecars for complete failure/cancellation cleanup.
+
+- Normalize exports from a lossless audio-only measurement pass, preserving the mixed gain, fades,
+  keyframes and ramped audio while skipping video compositing/encoding. The final movie is still measured
+  after encoding. On the synthetic five-minute fixture, measurement rendering drops from 9.886 to 0.264 seconds.
+- Keep export partial filenames short even for long Vietnamese output names.
+
+- Feed export audio/video on dedicated readiness-driven queues instead of sleeping 1 ms per transfer loop.
+  Cancellation interrupts reads and drains callbacks before cleanup; asynchronous failures also terminate
+  under backpressure. The synthetic five-minute 160×90 benchmark drops from 22.811 to 9.651 seconds.
+
+- Export to a hidden partial file beside the destination, then publish the completed movie with an exclusive
+  atomic rename. Cancellation and failures clean up only the partial; a destination created during rendering
+  is preserved. MP4/ProRes publication, cancellation and destination-race tests cover the native writer.
+
+- Prepare keyframe interpolation segments once per layer and binary-search them during arbitrary seeks.
+  Sample all five picture properties together, preserving easing and hold boundaries while avoiding per-frame
+  property dictionary lookups and repeated time conversion.
+
+- Rasterize captions into their visible text/decorations bounds and cache the positioned CIImage across frames.
+  A short 4K caption uses 303,104 bytes instead of 33,177,600; pixel tests cover all presets, outlines,
+  shadows, Vietnamese/emoji, canvas edges and animated word variants.
+
+- Reuse one synchronized color-cube filter per LUT, precompute custom-domain normalization and skip it for
+  the standard 0–1 domain. Zero strength bypasses the graph. A 64³ LUT Debug graph benchmark drops from
+  872.335 ms to 1.653 ms per 1,000 frames; domain/blend pixel parity and concurrent frame isolation pass.
+
+- Skip neutral exposure and color-control filters, including LUT-only color dictionaries. A 1,000-frame
+  Debug graph-construction benchmark drops from 10.004 ms to 0.361 ms; non-neutral pixel parity is tested.
+
+- Reuse the ungraded comparison build for color-only edits when its drawing inputs and current media
+  structure match. Build both variants concurrently on a cache miss; changed proxies/files and non-color
+  edits invalidate reuse. File replacement identity is included in composition structure checks.
+
+- Verify ramped media through native AVPlayer readiness/seeking and H.264/AAC export for both pitch modes,
+  including exported duration, audio/video tracks and visible picture.
+
+- Show speed-ramp PCM cache usage in Settings and CLI/MCP storage commands. Clearing ramp audio drains
+  preview builds and releases both players before deletion, then restores the latest edit; exports wait until
+  clearing ends. Supported 0.1× and 16× rates now have duration, pitch and PCM regression coverage.
+
+- Prerender speed-ramped audio as one continuous PCM segment: bounded WSOLA alignment preserves pitch and
+  native varispeed preserves resampler state when pitch follows speed. Source-signature/curve/trim/pitch caches
+  avoid rerendering gain edits; cancelled renders remove staging files. Synthetic PCM tests cover preset
+  boundaries, exact duration, source timing, low/high fundamentals, stereo phase and cache invalidation.
+
+- Plan speed ramps adaptively per linear-speed span, using one piece for flat spans and bounding source-time
+  error to a quarter source frame. Cache plans per item across edits and share them between picture and audio.
+  Continuous prerendered audio now avoids separate rate processors at those visual piece boundaries.
+
+- Key caption raster caches only on text and drawing styles, hashed once per text layer. Moving, trimming,
+  duplicating or animating captions now reuses their images; canvas size and spoken-word variants stay distinct.
+
+- Share video lanes between clips and non-overlapping transition holds, keeping sequential transitions
+  on two video tracks per project layer instead of allocating a new track for each transition.
+
+- Size independent preview/export asset LRUs to the active media count, retaining large projects across edits
+  without exports evicting preview proxies. An 80-media Debug fixture opens 80 instead of 320 assets over four
+  builds; median warm build time drops from 69.897 ms to 27.544 ms. Smaller projects shrink the cache again.
+
+- Coalesce comparison scrubbing and playback drift correction through one seek queue per player.
+  New targets replace pending seeks, and stale completions cannot affect a replacement player.
+
+- Record preview build, readiness and player-swap intervals in Instruments and private debug logs,
+  including interrupted stages, to separate composition work from player preparation.
+
+- Observe preview readiness instead of polling, cancel obsolete observations promptly, and keep the last
+  picture if a new player takes longer than 30 seconds. Stale build failures no longer replace current status.
+
+- Replace failed or unready preview/comparison player items on rebuild, even when the media structure is
+  unchanged. In-place instruction updates now require healthy ready-to-play items on both sides.
+
+- Build previews immediately for discrete edits, undo/redo and automation. Only edits with a coalescing key
+  retain the slider/drag debounce; a discrete edit cancels a pending coalesced build without waiting for it.
+
+- Preserve RPC error codes and data through CLI and MCP. CLI writes a JSON error to stderr with distinct exit
+  statuses; MCP supplies structured error content. Editor busy maps to -32003, and stale-revision errors
+  include expected/actual revisions. Regression tests exercise real CLI/MCP processes against isolated sockets.
+
+- Run an isolated real MCP process regression in the full verification suite: initialization, tool failure,
+  EOF shutdown and private log flushing, without contacting an app or reading real session credentials.
+
+- Keep debug-log handles open and serialize append/rotation across processes with a stable flock lock file.
+  Writers detect another process's rotation before appending. MCP flushes on shutdown; Release logging is off
+  unless explicitly enabled. `BASHCUT_DEBUG_LOG_PATH` permits isolated diagnostics and process-level tests.
+
+- Redact sensitive command arguments and omit RPC results/error payloads from persistent diagnostics. CLI
+  logging no longer records raw argv; chat, plugin options, operation payloads and arbitrary action parameters
+  stay out of logs. Unified-log content is private, and log/rotation files use owner-only permissions.
+
+- Add `timeline apply --dry-run` / MCP `dryRun`: validate a batch without mutating history, files or preview,
+  and return the projected revision/duration plus changed items/tracks and added/removed tracks.
+
+- Reuse audio composition tracks for sequential clips on the same project layer with the same pitch mode.
+  Reset each clip's gain envelope and retain separate lanes for overlaps and different pitch algorithms.
+  A 240-cut fixture uses one audio track instead of 240; build-to-player-ready median fell from 718 to 94 ms.
+
+- Build frame instructions with an interval sweep that preserves compositing order and visits each layer's
+  start/end once. A generated 1,000-caption Debug timeline improved from 390.82 ms to 16.69 ms median build.
+
+- Index media and timeline items once per composition build, and resolve/load each media once per snapshot.
+  Repeated cuts reuse the same source decision, still-image movie and asset metadata; later builds still
+  detect new proxies. A 240-cut Debug fixture improved from 41.29 ms to 23.07 ms median rebuild time.
+
+- Enforce plugin action confirmation at execution for UI, shortcuts and automation alike. Privileged dialogs
+  expose `userOnly` and cannot be answered through `ui.respond`; cancellation never starts the plugin request.
+
+- Include hidden files and Python bytecode in plugin fingerprints; reject symlinks leaving the plugin folder
+  and dangling links. Cache validation now uses fresh inode, mode and nanosecond ctime/mtime metadata, so
+  rewriting a same-size file and restoring its modification time cannot preserve an old approval.
+
+- Scope plugin credentials to the installation root and complete fingerprint, as well as provider/endpoint.
+  Trusting a same-ID project copy or a changed plugin does not transfer the original installation's secrets.
+
+- Scope plugin trust, enable switches, hooks and local options to the canonical installation root. A project
+  copy sharing an installed plugin's ID cannot inherit its approval or settings; catalog diagnostics identify
+  the shadowed installation. Legacy ID-only approvals require review again because their origin is unknown.
+
+- Bind plugin API keys to provider/endpoint settings. Switching destinations requires a key entered for that
+  destination; legacy unbound keys must be re-entered. Plugins with secrets use user-only settings and ignore
+  project option overrides, including overrides injected through raw timeline operations.
+
+- Restrict chat tools to reviewed editing commands. Revoke chat tokens when agent edits are disabled, and
+  check the preference on every host call before issuing or reusing a token.
+
+- Refuse dependency repair when an approved plugin's files have changed, including disabled plugins. Recheck
+  the full fingerprint before recipes start and require an explicit Trust action instead of silently repinning.
+
+- Refresh bundled agent kits when their content changes, even at the same version and skill names. Validate the
+  staged copy before replacing the stable folder so a failed refresh preserves the installed instructions.
+
+- Cache parsed LUTs across composition rebuilds with a 64 MiB LRU budget and fresh file signatures. Build LUT
+  catalogs once and avoid repeated item lookups; replacing or removing a LUT invalidates cached results.
+
+- Require a live automation token for UI commands and chat mutations; after project switches, callers must read
+  the new project before controlling it. Automated chat transcript exports stay inside the open project folder.
+
+- Snapshot Vietnamese captions directly from the compositor before H.264 encoding; test player readiness and
+  export metadata/non-black picture separately so encoder noise cannot fail caption layout checks.
+
+- Require plugin trust before dependency health probes, including Doctor and automation. Install approvals list
+  probe commands without executing staged archives or chosen folders.
+
 - **A full Mac menu bar.** BashCut, File, Edit, Clip, Timeline, Playback, View, Agent, Plugins, Window and Help now
   carry every editor action with its shortcut, built from `UIAction` so menus, buttons and `ui.action` share one
   code path. File has Open Recent; Agent ▸ New Tab lists the ready chat agents; View has Library ⌘1–⌘8, Safe Area,

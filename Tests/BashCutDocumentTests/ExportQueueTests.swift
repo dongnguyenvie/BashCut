@@ -19,6 +19,11 @@ private struct FakeEngine: RenderEngine {
             audioMix: AVMutableAudioMix())
     }
 
+    func exportAudio(_ snapshot: CompositionSnapshot, to url: URL,
+                     progress: @escaping @Sendable (Double) -> Void) async throws -> ExportReceipt {
+        throw ProjectError.invalid("Unexpected audio measurement export in this test")
+    }
+
     func export(
         _ snapshot: CompositionSnapshot, to url: URL, settings: ExportSettings,
         progress: @escaping @Sendable (Double) -> Void

@@ -32,7 +32,6 @@ For Xcode, install XcodeGen >= 2.46, then run `scripts/generate-project.sh` and 
 ## Verify
 
 ```sh
-Fixtures/make-media.sh       # requires ffmpeg; generated media is ignored
 scripts/verify.sh build
 scripts/verify.sh test
 scripts/verify.sh perf       # 20 synthetic clips, ~30 seconds, 1080×1920

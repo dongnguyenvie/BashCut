@@ -96,10 +96,12 @@ public enum CommandCatalog {
             "timeline.apply", .edit, "Atomically apply validated timeline operations as one undoable edit.",
             parameters: [
                 CommandParameter("ops", .array, "Operations array (CLI: path to ops.json)", required: true,
-                                 cli: .positionalJSONFile),
+                                 sensitive: true, cli: .positionalJSONFile),
                 baseRevision,
                 CommandParameter("label", .string, "Short description of the edit", default: .string("Agent edit"),
                                  cli: .option("label")),
+                CommandParameter("dryRun", .boolean, "Validate without editing; return projected duration and changed IDs",
+                                 default: .bool(false), cli: .flag("dry-run")),
             ]),
         CommandSpec("timeline.undo", .edit, "Undo one timeline action.", parameters: [baseRevision]),
         CommandSpec("timeline.redo", .edit, "Redo one timeline action.", parameters: [baseRevision]),
@@ -217,7 +219,7 @@ public enum CommandCatalog {
                 + "and keep every take file so one can be chosen and placed with media.import.",
             parameters: [
                 CommandParameter("text", .string, "Voiceover text in the project content language", required: true,
-                                 cli: .positional),
+                                 sensitive: true, cli: .positional),
                 CommandParameter("takes", .integer, "Number of takes to generate", default: .integer(3), minimum: 1,
                                  maximum: 8, cli: .option("takes")),
                 CommandParameter("atFrame", .integer, "Timeline frame; defaults to the playhead", minimum: 0,
@@ -354,14 +356,14 @@ public enum CommandCatalog {
         CommandSpec(
             "knowledge.memo", .edit, "Replace the project memo (.bashcut/agent-memory.md).",
             parameters: [CommandParameter("text", .string, "Memo text (CLI: path to a text file)", required: true,
-                                          cli: .positionalTextFile(maximumBytes: 256 * 1024))]),
+                                          sensitive: true, cli: .positionalTextFile(maximumBytes: 256 * 1024))]),
         CommandSpec(
             "knowledge.skill", .edit,
             "Write a project skill's SKILL.md, creating the skill and sharing it with Claude and Codex if needed.",
             parameters: [
                 CommandParameter("name", .string, "Lowercase hyphenated skill name", required: true, cli: .positional),
                 CommandParameter("text", .string, "SKILL.md text (CLI: path to a text file)", required: true,
-                                 cli: .positionalTextFile(maximumBytes: 256 * 1024)),
+                                 sensitive: true, cli: .positionalTextFile(maximumBytes: 256 * 1024)),
             ]),
     ]
 }

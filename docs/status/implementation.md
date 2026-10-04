@@ -296,9 +296,27 @@ Still open: timing edits (trim, move, speed, new clips) still build and load a w
 shown `AVMutableComposition` in place would need engine work), and the remaining per-edit cost is one full
 `validate()` (about 2.6 µs per item).
 
+### LUT rebuild cache (2026-10-04)
+
+Reproduce with `scripts/verify.sh test --filter LUTBuildTests`. Generated fixture: one 30-frame video item and
+one 64³ LUT; warm the builder, then measure five opacity edits. Debug build on this M1 Max; milliseconds:
+
+| Metric | Before (`04b87fc`) | Persistent parsed-LUT cache |
+|---|---|---|
+| Median `CompositionBuilder.build` | 2165.721 | 0.315 |
+| Parsed LUT loads across warm-up + five edits | 6 | 1 |
+
+This measures rebuild work only, not player readiness or end-to-end display latency. The first parse still has
+its original cost. The cache is bounded to 64 MiB, keyed by resolved URL and freshly read modification time,
+size and inode. Tests cover reuse, replacement, deletion, dimension validation and least-recently-used eviction.
+
 ## Verification
 
 ### Automated tests
+
+2026-10-04 rework: the Vietnamese caption golden is captured directly from the shared compositor, before
+hardware H.264 encoding. Player readiness and export metadata/non-black picture are separate tests. Full build,
+app/core tests and strict lint pass. A deliberate missing-caption mutation fails the golden comparison.
 
 The latest full runs pass 294 tests: 143 in the app modules (`Tests/`) and 151 in `Packages/BashCutCore`. The
 Swift 6 build and strict SwiftLint pass.
@@ -360,3 +378,154 @@ bench above.
 - **History:** full-snapshot undo is capped at 200 steps; `history.jsonl` stores one atomic checkpoint, and an
   append-only journal with compaction is pending.
 - **Localization:** some dynamic diagnostic messages are still English; full localization QA is pending.
+
+### Repeated-media build lookup (2026-10-04)
+
+`swift test --filter MediaSourceTests/repeatedSource` uses 240 one-frame cuts of generated video, warms the
+builder, then measures five Debug builds on the same M1 Max. Before (070b6c1): median 41.294 ms and 1,440
+source resolutions across six builds. After per-build media/item dictionaries and loaded-media reuse: median
+23.075 ms and six resolutions. The test asserts one resolution per media per build and verifies that a proxy
+created between builds is selected. These timings measure composition construction, not player readiness.
+
+### Caption interval sweep (2026-10-04)
+
+`swift test --filter CaptionBuildTests` constructs 1,000 sequential three-frame captions, verifies every
+instruction's caption ID and measures three Debug builds on the same M1 Max. Before (b4db9bf): median
+390.820 ms. After sweeping start/end events with an active layer set: 16.692 ms (about 23× faster).
+`IntervalSweepTests` compares overlapping, unsorted, empty, skipped and repeated boundaries with the previous
+half-open interval filtering rule, retaining original layer order. This measures construction, not rendering.
+
+### Audio composition lanes (2026-10-04)
+
+`swift test --filter AudioLaneTests/sequential` measures 240 one-frame audio cuts from generated AAC media,
+three Debug builds with a muted AVPlayer on this M1 Max. Before (22cce9d): 240 tracks, median construction
+19.420 ms and build-to-ready 717.611 ms. With shared lanes: one track, construction 18.793 ms and
+build-to-ready 93.591 ms. Separate earlier construction-only runs were 8.912 vs 15.446 ms: fewer tracks do not
+necessarily make construction faster, but the player readiness improvement is substantial in this fixture.
+Tests verify independent overlapping project layers, pitch-mode separation, ramp reset after fades and gaps,
+and decoded PCM RMS retaining a -20 dB step at a shared-track clip boundary. Readiness is polled every 1 ms;
+these timings are local observations, not portable thresholds.
+
+### Bounded caption rasters (2026-10-04)
+
+`CaptionRasterTests` compares cropped and full-canvas reference drawing for six presets at landscape and
+portrait sizes, three vertical positions, Vietnamese accents, emoji and thick outlines. Every RGBA channel
+stays within one 8-bit level (integer-translated CoreText antialias quantization); animated word variants
+also match within one level. The existing pre-encode caption golden remains unchanged. A 3840×2160
+“Xin chào” raster occupies 303,104 bytes versus 33,177,600 bytes for a full canvas, about 109× smaller.
+This is CPU bitmap storage, not a measurement of GPU upload time. The cache retains the positioned CIImage,
+and the compositor reuses it without constructing a wrapper on each frame.
+
+### Prepared picture keyframes (2026-10-04)
+
+`PreparedMotionTests` compares the previous `ItemMotion.value` scan with prepared segments plus binary search
+on the same M1 Max Debug run. For 10,000 picture samples (all five properties plus transform), two keys per
+property take 20.014 → 14.213 ms; 1,000 keys per property take 2,042.708 → 31.427 ms. The checksum includes
+transform and opacity. These are interpolation/transform costs, not total render throughput. Tests cover every
+easing mode, exact hold boundaries, negative/shifted keys, reverse seek order, fractional FPS, static defaults
+and transition holds. The compositor clamps local time once and samples typed channels together.
+
+### Native test isolation (2026-10-04)
+
+`verify.sh test` runs app suites in parallel again, then the two Unix-socket suites (`AutomationTests`,
+`AutomationControllerTests`) in a quiet sequential pass; core model tests remain parallel. The earlier global
+`--no-parallel` hid five `EngineControlsTests` that read generated media without awaiting its generation
+(AVFoundation -11800/-17913 when run first); they now await `TestFixtures.requireMediaRoot()`. The socket
+suites' latency assertions and client timeouts fail only while CPU-bound render suites saturate the machine.
+App suites take ~29 s instead of ~65 s on this host.
+The audio lane benchmark now waits for paused readiness instead of starting/stopping playback between
+samples. On this host, immediate playback left later items at `.unknown`; paused readiness passed all
+three iterations (27.773 ms median build-to-ready in the isolated check). No timeout or correctness
+assertion was loosened. Native ramp playback/export coverage remains separate.
+
+### Long export baseline (2026-10-04)
+
+Run `BASHCUT_LONG_EXPORT_BENCH=1 BASHCUT_BENCH_SHA="$(git rev-parse HEAD)" scripts/verify.sh test --filter LongExportTests`.
+The opt-in benchmark exports 200 generated-media cuts, 9,000 frames / 300.3 seconds, at 160×90 with AAC,
+then reads the encoded video to verify every frame, the audio track and duration. It prints a JSON report
+with Git SHA, OS, dimensions, duration, bytes, elapsed export seconds and throughput. It is intentionally
+small in pixel dimensions to expose sample-transfer overhead; it is not a 1080p/4K export claim.
+Baseline `e760321` on this M1 Max / macOS 15.7.7 Debug run: 22.811 seconds, 394.545 frames/s,
+43,566,760 bytes. This is the baseline before C1's callback-driven sample pump.
+
+### Readiness-driven export transfer (2026-10-04)
+
+The C1 worktree based on `3cfd5dd` completes the same long-export scenario in 9.651 seconds (932.523 fps),
+versus 22.811 seconds before, about 2.36× faster. Both verify 9,000 encoded frames, audio and timeline duration;
+these low-resolution numbers isolate sample-transfer overhead and do not represent 1080p/4K performance.
+Each reader/writer pair has a dedicated serial queue and drains only while the writer input is ready.
+A 100 ms health check handles terminal native failures that may not trigger another readiness callback;
+it does not pace samples. Cancellation interrupts native reading, then drains every stream queue before
+returning to writer cleanup, so no append can race cleanup. Tests exercise controlled backpressure,
+blocked-read cancellation, cancellation before registration, read errors and failures while all inputs
+are not ready. Native tests cover video-only, audio/video, ProRes, ramped export, compositor failure,
+publication/cancellation cleanup and destination races.
+
+### Audio-only loudness measurement pass (2026-10-04)
+
+`RenderEngine.exportAudio` writes 48 kHz, stereo, float PCM in CAF through the same mixed-audio reader and
+atomic publication path as full export, with no video reader/compositor. The normalization pipeline uses
+this file for its first measurement, applies the gain through `EditOperation`, exports the final movie and
+still verifies that encoded movie. Temporary PCM is removed on success/failure. PCM uses more temporary
+space than AAC (115,319,296 bytes for this five-minute fixture), in exchange for avoiding a lossy first pass.
+The same C1 fixture on the C2 worktree takes 9.886 seconds for the full movie versus 0.264 seconds for PCM.
+This compares **measurement rendering only**, excluding the loudness analyzer and final encode.
+
+Tests deliberately install a failing video compositor: audio-only measurement succeeds without invoking it.
+Native normalization with gain, fades and volume keys reaches −20 LUFS within 0.3 LU using the bundled meter;
+the actual encoded movie is measured again and temporary files are absent afterward. Tests also cover an
+analyzer failure, no-audio projects, stereo PCM format/duration and both pitch modes of ramped audio.
+
+Full verification for this change: SwiftPM build/test/lint passed (114913/114915/115043), and
+`verify.sh xcode test -parallel-testing-enabled NO` passed 243 tests in 76 suites (115043).
+The Xcode test target now explicitly links `BashCutAudioAnalysis`. CI wiring remains a separate open item.
+
+### Export buffer and codec settings (2026-10-04)
+
+C4 disables `alwaysCopiesSampleData` for video/audio readers, sets H.264 High AutoLevel, expected source
+frame rate and a two-second maximum keyframe interval, and enables MP4 fast-start metadata placement.
+ProRes remains intra-frame and does not receive H.264-only settings. Native tests parse MP4 top-level boxes
+(`moov` before `mdat`), AVC profile metadata, rational frame rate, all 225 encoded frames, sync-picture
+spacing and decoded start coverage. Marker buffers are excluded from sync-picture checks; B-pictures may
+present before the first sync picture. MP4/ProRes, PCM, error and cancellation tests continue to pass.
+
+The five-minute fixture is 9.834 s / 915.231 fps / 42,968,270 bytes, versus C2's 9.886 s / 43,562,566 bytes;
+throughput is effectively unchanged at this scale. No broader speedup is claimed. Full build/test including
+the long benchmark/lint passed 120222/120225/120412. Fast-start creates an encoder sidecar on some failures,
+so each export now owns a private 0700 staging directory and removes that entire directory after publication
+or failure. The final path is still published with an exclusive same-filesystem rename.
+
+### History availability (2026-10-04)
+
+Document action validation now uses `canUndo`/`canRedo` instead of materializing arrays of snapshot entries.
+`HistoryAvailabilityTests` checks 10,000 pairs at 199 undo entries and one redo entry: 28.583 ms for the old
+array path versus 2.753 ms for the direct accessors (M1 Max, Debug). This is a small per-call saving, not an
+overall edit-latency claim. The test also verifies availability and the top label before editing, after undo,
+redo, exhausting the stack and branching after undo.
+
+### Hosted verification (2026-10-04)
+
+The macOS 15 arm64 / Xcode 26.3 workflow runs SwiftPM build, full app/core tests and CLI/MCP subprocess
+tests, strict lint, and Xcode build/test on every pull request. Logs and failed snapshot images are retained.
+[Run 37181160682](https://github.com/dongnguyenvie/BashCut/actions/runs/37181160682) at `1b9e228` passed all
+steps. Its first predecessor exposed device-dependent RGB fixtures and H.264 source variation in a caption
+golden. Explicit sRGB fixtures and a black compositor background fixed those dependencies without relaxing
+image thresholds. Local Xcode verification also passed 245 tests in 77 suites.
+
+
+### Native fixtures and discontinuous audio gain (2026-10-04)
+
+Tests generate a shared, per-process temporary H.264/AAC fixture with AVFoundation: 60 moving 320×180
+frames at 30000/1001 and a 48 kHz mono sine tone. The video input explicitly uses a 30000 timescale;
+default writer rounding otherwise changes fractional frame timestamps. The standalone `bashcut-fixtures`
+executable uses the same generator. CI needs neither ffmpeg nor a manual fixture step. Tests check every
+frame timestamp, codecs, dimensions, duration, audible PCM, concurrent requests, cancellation before
+publication and preservation of an existing destination.
+
+The new fixture exposed a native audio-mix regression at adjacent clips with different gain. A -20 dB
+cut decoded at a 0.7385 amplitude ratio instead of 0.1, despite correct `getVolumeRamp` metadata. The
+failure also reproduces with generated PCM, so it is not confined to AAC priming. Touching discontinuous
+envelopes now use different composition lanes; a lane becomes reusable after a gap or at a continuous
+gain boundary. Four adjacent 0/-20/-6/-14 dB clips use two lanes and decode within the existing 0.005
+amplitude tolerance on both AAC and PCM, with spectral and varispeed pitch modes. The 240-cut constant-gain
+fixture still uses one lane. No ramp timestamps or correctness thresholds were relaxed.

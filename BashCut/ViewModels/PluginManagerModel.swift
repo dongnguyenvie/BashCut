@@ -213,7 +213,7 @@ enum PluginText {
     /// Plugins whose hooks receive `event` now.
     func subscribers(for event: PluginEvent) -> [(InstalledPlugin, PluginHookContribution)] {
         plugins.compactMap { plugin in
-            guard availability[plugin.id] == .ready, trust.hooksEnabled(plugin.id),
+            guard availability[plugin.id] == .ready, trust.hooksEnabled(plugin),
                 let hook = plugin.manifest.hooks.first(where: { $0.event == event.rawValue })
             else { return nil }
             return (plugin, hook)
@@ -234,7 +234,7 @@ enum PluginText {
     }
 
     func revokeTrust(_ plugin: InstalledPlugin) {
-        do { try trust.revoke(plugin.id) } catch { message = error.localizedDescription }
+        do { try trust.revoke(plugin) } catch { message = error.localizedDescription }
         stopSession(plugin.id)
         refresh(projectRoot: projectRoot)
     }
@@ -245,7 +245,7 @@ enum PluginText {
         refresh(projectRoot: projectRoot)
     }
 
-    func isEnabled(_ plugin: InstalledPlugin) -> Bool { trust.grant(for: plugin.id)?.enabled ?? true }
+    func isEnabled(_ plugin: InstalledPlugin) -> Bool { trust.grant(for: plugin)?.enabled ?? true }
 
     func stopSession(_ pluginID: String) {
         Task { await PluginSessionTransport.shared.stop(pluginID: pluginID) }
@@ -325,15 +325,10 @@ enum PluginText {
         return recipes.reduce(0, +) + Int64(pending.archive?.version.size ?? 0)
     }
 
-    /// Probes the pending plugin's dependencies and attaches the result to the approval.
+    /// Preflight never executes a pending archive or folder before installation approval.
     func runPreflight() {
         guard let pending = pendingInstall, pending.preflight == nil, !pending.plugin.manifest.dependencies.isEmpty else { return }
-        let id = pending.id
-        let service = service
-        Task {
-            let health = await service.health(pending.plugin)
-            if pendingInstall?.id == id { pendingInstall?.preflight = health }
-        }
+        pendingInstall?.preflight = .notChecked(pending.plugin, reason: "Checked after installation approval")
     }
 
     /// Dependencies that are missing and that no recipe installs: the plugin cannot run on this Mac.
@@ -413,13 +408,14 @@ enum PluginText {
             Task { @MainActor in self?.recipeOutput(output, reporter: reporter) }
         }
         if pending.repair {
+            try trust.validateSetup(of: plugin)
             for (index, (dependency, recipe)) in recipes.enumerated() {
                 installStep = String(format: String(localized: "Setting up %@ (%d of %d)…"), dependency.name, index + 1, recipes.count)
                 try await PluginRecipeRunner.run(recipe.command, plugin: plugin, directory: plugin.directory, output: report)
             }
             // Approving the setup ran the plugin's own code, so its files are pinned like an install from the
             // registry; before, a plugin set up this way (a linked or copied folder) still said "Not approved yet".
-            if [.untrusted, .changed].contains(trust.availability(of: plugin)) { try trust.trust(plugin) }
+            if trust.availability(of: plugin) == .untrusted { try trust.trust(plugin) }
             await checkHealthNow(plugin)
             return
         }

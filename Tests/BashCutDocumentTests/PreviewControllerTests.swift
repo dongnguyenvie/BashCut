@@ -8,6 +8,8 @@ import Testing
 
 private actor BuildLog {
     private(set) var builds = 0
+    private(set) var delays = 0
+    func delayed() { delays += 1 }
     func built() { builds += 1 }
 }
 
@@ -24,6 +26,11 @@ private struct CountingEngine: RenderEngine {
         video.frameDuration = CMTime(value: 1, timescale: 30)
         return CompositionSnapshot(
             composition: AVMutableComposition(), videoComposition: video, audioMix: AVMutableAudioMix())
+    }
+
+    func exportAudio(_ snapshot: CompositionSnapshot, to url: URL,
+                     progress: @escaping @Sendable (Double) -> Void) async throws -> ExportReceipt {
+        throw ProjectError.invalid("Unexpected audio measurement export in this test")
     }
 
     func export(
@@ -46,6 +53,24 @@ struct PreviewControllerTests {
     private func waitUntil(_ condition: @MainActor () async -> Bool) async throws {
         for _ in 0..<400 where !(await condition()) { try await Task.sleep(for: .milliseconds(10)) }
         #expect(await condition())
+    }
+
+    @Test("A discrete edit preempts coalescing without waiting through the debounce")
+    func discretePreemptsDebounce() async throws {
+        let log = BuildLog()
+        let preview = PreviewController(engine: CountingEngine(log: log), coalescingDelay: {
+            await log.delayed()
+            try await Task.sleep(for: .seconds(30))
+        })
+        let value = try project()
+        let root = FileManager.default.temporaryDirectory
+        preview.rebuild(value, root: root, workspace: nil, coalescing: true)
+        try await waitUntil { await log.delays == 1 }
+        #expect(await log.builds == 0)
+        preview.rebuild(value, root: root, workspace: nil)
+        try await waitUntil { await log.builds == 1 }
+        #expect(await log.delays == 1)
+        preview.reset(value)
     }
 
     @Test("Seeking clamps to the last project the preview was given")
@@ -78,8 +103,8 @@ struct PreviewControllerTests {
         let preview = PreviewController(engine: CountingEngine(log: log))
         let root = FileManager.default.temporaryDirectory
         let value = try project()
-        preview.rebuild(value, root: root, workspace: nil)
-        preview.rebuild(value, root: root, workspace: nil)
+        preview.rebuild(value, root: root, workspace: nil, coalescing: true)
+        preview.rebuild(value, root: root, workspace: nil, coalescing: true)
         try await waitUntil { await log.builds == 1 }
         #expect(preview.buildCount == 1)
 
@@ -93,7 +118,7 @@ struct PreviewControllerTests {
 
     @Test("Scrubbing keeps one exact seek in flight and lands on the newest frame")
     func scrubChases() async throws {
-        let video = try TestFixtures.requireVideo()
+        let video = try await TestFixtures.requireVideo()
         let media = Media(fields: [
             "id": .string("clip"), "path": .string(video.lastPathComponent), "fps": FrameRate().json, "frames": .integer(59),
         ])
@@ -115,7 +140,7 @@ struct PreviewControllerTests {
 
     @Test("An edit keeps the previous picture until the new composition is ready")
     func rebuildKeepsPicture() async throws {
-        let video = try TestFixtures.requireVideo()
+        let video = try await TestFixtures.requireVideo()
         let media = Media(fields: [
             "id": .string("clip"), "path": .string(video.lastPathComponent), "fps": FrameRate().json, "frames": .integer(59),
         ])
@@ -143,9 +168,49 @@ struct PreviewControllerTests {
         #expect(preview.player.currentItem?.status == .readyToPlay)
     }
 
+    @Test("A failed player item is replaced even when composition structure has not changed", arguments: [false, true])
+    func failedItemRecovery(comparison: Bool) async throws {
+        let video = try await TestFixtures.requireVideo()
+        let media = Media(fields: [
+            "id": .string("clip"), "path": .string(video.lastPathComponent), "fps": FrameRate().json, "frames": .integer(59)
+        ])
+        let first = try Project(name: "Recovery").applying(.group(label: "Setup", author: .user, ops: [
+            .addMedia(media), .insert(track: "v1", item: Item(id: "c", media: "clip", at: 0, duration: 59))
+        ])).project
+        let preview = PreviewController(engine: AVFoundationRenderEngine(source: OriginalMediaSource()))
+        let root = video.deletingLastPathComponent()
+        preview.rebuild(first, root: root, workspace: nil)
+        try await waitUntil { preview.isCurrent }
+        if comparison {
+            preview.setColorComparison(true)
+            try await waitUntil { preview.isCurrent }
+            let programSeeks = preview.seekCount, comparisonSeeks = preview.comparisonSeekCount
+            for frame in 1...45 { preview.seek(frame) }
+            try await waitUntil {
+                first.fps.frame(preview.player.currentTime()) == 45
+                    && first.fps.frame(preview.comparisonPlayer.currentTime()) == 45
+            }
+            #expect(preview.seekCount - programSeeks <= 2)
+            #expect(preview.comparisonSeekCount - comparisonSeeks <= 2)
+        }
+        let broken = comparison ? preview.comparisonPlayer : preview.player
+        let missing = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".mov")
+        broken.replaceCurrentItem(with: AVPlayerItem(url: missing))
+        try await waitUntil { broken.currentItem?.status == .failed }
+        let updates = preview.inPlaceUpdates
+        let edited = try first.applying(.setProperties(item: "c", patch: ["opacity": .number(0.5)])).project
+        preview.rebuild(edited, root: root, workspace: nil)
+        try await waitUntil { preview.isCurrent }
+        #expect(preview.inPlaceUpdates == updates)
+        #expect(preview.player.currentItem?.status == .readyToPlay)
+        if comparison { #expect(preview.comparisonPlayer.currentItem?.status == .readyToPlay) }
+        #expect((comparison ? preview.comparisonPlayer : preview.player) !== broken)
+        preview.reset(edited)
+    }
+
     @Test("A look-only edit updates the shown players in place")
     func lookEditInPlace() async throws {
-        let video = try TestFixtures.requireVideo()
+        let video = try await TestFixtures.requireVideo()
         let media = Media(fields: [
             "id": .string("clip"), "path": .string(video.lastPathComponent), "fps": FrameRate().json, "frames": .integer(59),
         ])
@@ -178,7 +243,7 @@ struct PreviewControllerTests {
 
     @Test("The shown picture follows an in-place update")
     func inPlacePicture() async throws {
-        let video = try TestFixtures.requireVideo()
+        let video = try await TestFixtures.requireVideo()
         let media = Media(fields: [
             "id": .string("clip"), "path": .string(video.lastPathComponent), "fps": FrameRate().json, "frames": .integer(59),
         ])

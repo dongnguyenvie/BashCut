@@ -1,9 +1,16 @@
+import CryptoKit
 import Foundation
 
 public struct InstalledPlugin: Sendable, Equatable, Identifiable {
     public let manifest: PluginManifest
     public let directory: URL
     public var id: String { manifest.id }
+    /// Approvals and local settings belong to one installation, never every copy sharing its manifest ID.
+    public var installationID: String {
+        let root = directory.resolvingSymlinksInPath().standardizedFileURL.path
+        let digest = SHA256.hash(data: Data(root.utf8)).map { String(format: "%02x", $0) }.joined()
+        return id + "@" + digest
+    }
     public init(manifest: PluginManifest, directory: URL) {
         self.manifest = manifest
         self.directory = directory
@@ -49,7 +56,7 @@ public enum PluginCatalog {
                         let newer = root.standardizedFileURL.path == bundledPath
                             && (SemanticVersion(manifest.version) ?? .zero) > (SemanticVersion(earlier.manifest.version) ?? .zero)
                         guard newer else {
-                            diagnostics.append("Ignored duplicate plugin \(manifest.id) at \(directory.path)")
+                            diagnostics.append("\(earlier.directory.path) shadows installed plugin \(manifest.id) at \(directory.path)")
                             continue
                         }
                         let plugin = InstalledPlugin(manifest: manifest, directory: directory)

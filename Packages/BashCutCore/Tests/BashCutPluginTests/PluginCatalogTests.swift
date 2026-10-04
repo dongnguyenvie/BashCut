@@ -159,10 +159,9 @@ struct PluginCatalogTests {
     func processRuntime() async throws {
         let fixture = try makeRuntimePlugin()
         defer { try? FileManager.default.removeItem(at: fixture.directory.deletingLastPathComponent()) }
-        setenv("BASHCUT_TEST_SECRET", "must-not-leak", 1)
-        defer { unsetenv("BASHCUT_TEST_SECRET") }
-
-        let result = try await PluginProcessRunner(timeout: 10).call(
+        let result = try await PluginProcessRunner(timeout: 10, inheritedEnvironment: [
+            "PATH": "/usr/bin:/bin", "BASHCUT_TEST_SECRET": "must-not-leak"
+        ]).call(
             plugin: fixture, method: "voice.synthesize", provider: "fixture.voice",
             params: .object(["text": .string("xin chào")]))
         #expect(result.object["ok"] == .bool(true))

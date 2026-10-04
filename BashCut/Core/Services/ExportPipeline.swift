@@ -65,10 +65,10 @@ public struct ExportPipeline: Sendable {
         let temporaryDirectory = request.root.appendingPathComponent(".bashcut/loudness", isDirectory: true)
         try FileManager.default.createDirectory(at: temporaryDirectory, withIntermediateDirectories: true)
         let temporary = temporaryDirectory.appendingPathComponent(UUID().uuidString)
-            .appendingPathExtension(request.preset.fileExtension)
+            .appendingPathExtension("caf")
         defer { try? FileManager.default.removeItem(at: temporary) }
-        _ = try await export(snapshot, to: temporary, request, 0...0.42, progress)
-        progress(0.42, String(localized: "Measuring loudness…"))
+        _ = try await engine.exportAudio(snapshot, to: temporary) { value in progress(value * 0.15, nil) }
+        progress(0.15, String(localized: "Measuring loudness…"))
         let preferred = request.source.preferredProvider(for: "audio.loudness")
         let measured = try await loudness.analyzeLoudness(
             mediaURL: temporary, preferredProvider: preferred, projectRoot: request.root)
@@ -77,13 +77,12 @@ public struct ExportPipeline: Sendable {
         let currentMixGain = request.project.mixGainDb
         let mixGain = max(-60, min(24, currentMixGain + correction))
         let appliedGain = mixGain - currentMixGain
-        var normalized = request.project
-        var audio = normalized["audio"]?.object ?? [:]
+        var audio = request.project["audio"]?.object ?? [:]
         audio["mixGainDb"] = .number(mixGain)
-        normalized["audio"] = .object(audio)
+        let normalized = try request.project.applying(.setProjectProperties(patch: ["audio": .object(audio)])).project
         let normalizedSnapshot = try await engine.build(
             normalized, root: request.root, workspace: request.workspace, purpose: .export)
-        let receipt = try await export(normalizedSnapshot, to: request.output, request, 0.48...0.96, progress)
+        let receipt = try await export(normalizedSnapshot, to: request.output, request, 0.20...0.96, progress)
         progress(0.96, String(localized: "Verifying loudness…"))
         let final: LoudnessMeasurement
         let verified: Bool

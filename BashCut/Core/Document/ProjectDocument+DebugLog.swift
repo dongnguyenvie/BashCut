@@ -16,10 +16,9 @@ extension ProjectDocument {
     }
 
     static func describe(_ operation: EditOperation) -> String {
-        if case .restore = operation { return "restore(snapshot)" }
-        guard let data = try? JSONEncoder().encode(operation.json), let text = String(data: data, encoding: .utf8)
-        else { return "\(operation)" }
-        return text.count > 600 ? text.prefix(600) + "…(\(text.count) chars)" : text
+        // Operation payloads may contain captions, prompts or arbitrary plugin settings.
+        // Keep only the operation name, never user-authored text or values.
+        operation.json.object["op"]?.string ?? "edit"
     }
 
     /// Logs a freshly opened project, including whether layer rules repaired it on load.

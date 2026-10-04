@@ -34,11 +34,12 @@ public struct CommandParameter: Sendable {
     /// A file system path: the CLI makes relative values absolute against its working directory.
     public let isPath: Bool
     public let cli: CLIBinding
+    public let sensitive: Bool
 
     public init(
         _ name: String, _ kind: Kind, _ summary: String, required: Bool = false, default defaultValue: JSONValue? = nil,
         minimum: Int? = nil, maximum: Int? = nil, choices: [String]? = nil, range: ClosedRange<Double>? = nil,
-        isPath: Bool = false, cli: CLIBinding
+        isPath: Bool = false, sensitive: Bool = false, cli: CLIBinding
     ) {
         self.name = name
         self.kind = kind
@@ -51,6 +52,7 @@ public struct CommandParameter: Sendable {
         self.range = range
         self.isPath = isPath
         self.cli = cli
+        self.sensitive = sensitive
     }
 }
 
@@ -78,6 +80,14 @@ public struct CommandSpec: Sendable {
 
     public var mcpToolName: String { "bashcut_" + name.replacingOccurrences(of: ".", with: "_") }
     public var cliWords: [String] { name.split(separator: ".").map(String.init) }
+
+    /// Unknown fields may contain secrets too; never persist their values after failed validation.
+    public func logParameters(_ values: [String: JSONValue]) -> [String: JSONValue] {
+        Dictionary(uniqueKeysWithValues: values.map { key, value in
+            let parameter = parameters.first { $0.name == key }
+            return (key, parameter?.sensitive == false ? value : .string("[redacted]"))
+        })
+    }
 
     /// JSON Schema for the MCP tool input.
     public var inputSchema: JSONValue {

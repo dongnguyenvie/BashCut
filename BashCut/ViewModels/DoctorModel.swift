@@ -1,5 +1,6 @@
 import BashCutAutomation
 import BashCutPlugin
+import BashCutPlugins
 import Foundation
 import Observation
 
@@ -15,7 +16,6 @@ struct DoctorCheck: Identifiable, Sendable {
     var checks: [DoctorCheck] = []
     var running = false
     private var runID = UUID()
-    private let pluginRunner = PluginProcessRunner(timeout: 15, maximumOutputBytes: 256 * 1024)
 
     var summary: DoctorCheck.State {
         checks.map(\.state).max(by: { $0.rawValue < $1.rawValue }) ?? .warning
@@ -24,17 +24,17 @@ struct DoctorCheck: Identifiable, Sendable {
     /// Runs every check; returns when plugin health checks finish (a newer run supersedes this one).
     func run(
         workspace: URL, projectRoot: URL?, toolsDirectory: String,
-        plugins: [InstalledPlugin], pluginDiagnostics: [String]
+        service: CapabilityService, pluginDiagnostics: [String]
     ) async {
+        let plugins = service.catalog(projectRoot: projectRoot).plugins
         let id = UUID()
         runID = id
         running = true
         checks = Self.localChecks(
             workspace: workspace, projectRoot: projectRoot, toolsDirectory: toolsDirectory,
             pluginCount: plugins.count, pluginDiagnostics: pluginDiagnostics)
-        let runner = pluginRunner
         let results = await withTaskGroup(of: PluginHealth.self, returning: [PluginHealth].self) { group in
-            for plugin in plugins { group.addTask { await runner.health(plugin: plugin) } }
+            for plugin in plugins { group.addTask { await service.health(plugin) } }
             var values: [PluginHealth] = []
             for await value in group { values.append(value) }
             return values
@@ -46,9 +46,9 @@ struct DoctorCheck: Identifiable, Sendable {
                 DoctorCheck(
                     id: "plugin." + result.pluginID, title: "Plugin " + result.pluginID,
                     detail: missing.isEmpty
-                        ? "Ready"
+                        ? (result.state == .ready ? "Ready" : "Not approved for execution")
                         : missing.map { "\($0.name): \($0.detail)" }.joined(separator: "\n"),
-                    state: missing.isEmpty ? .pass : .warning))
+                    state: result.state == .ready ? .pass : .warning))
         }
         running = false
     }

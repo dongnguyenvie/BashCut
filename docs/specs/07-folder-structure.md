@@ -35,20 +35,26 @@ bash-cut/
 ├── BashCut/                       # app executable (product BashCutApp)
 │   ├── main.swift  AppDelegate.swift  Info.plist  BashCut.entitlements
 │   ├── Core/
-│   │   ├── Engine/                # library BashCutEngine: CompositionBuilder, BashCutCompositor,
-│   │   │                          # RenderEngine, Exporter, ExportPreset, TextRenderer, TimeMapping,
-│   │   │                          # MediaSource, ProxyManager, AudioWaveform, AudioGainPlanner, CubeLUT
+│   │   ├── Engine/                # library BashCutEngine: CompositionBuilder (+ Audio/VideoCompositionLanes,
+│   │   │                          # IntervalSweep, AssetCache, FileSignature, LUTCache), BashCutCompositor,
+│   │   │                          # RenderEngine, Exporter (+ ExportDestination, ExportSampleTransfer),
+│   │   │                          # ExportPreset, TextRenderer, TimeMapping, MediaSource, ProxyManager,
+│   │   │                          # AudioWaveform, AudioGainPlanner, CubeLUT, SpeedRampPlan,
+│   │   │                          # SpeedRampAudioCache/Renderer, SpeedRampTimeStretch
 │   │   ├── Storage/               # library BashCutStorage: ProjectStorage, ProjectCreation,
 │   │   │                          # ProjectFileMonitor, ExportHistoryStore
 │   │   ├── Automation/            # library BashCutAutomation: CommandSpec, CommandCatalog,
 │   │   │                          # CommandRegistry, CommandLineParser, UIAction, UnixSocket, Wire,
-│   │   │                          # AgentInstructions, MCPBridgeClient, DebugLog
+│   │   │                          # AgentInstructions, MCPBridgeClient, DebugLog (+ DebugLogWriter),
+│   │   │                          # ChatCommandSession, TimelineDryRun, AutomationOutputPath
 │   │   ├── Agent/                 # library BashCutAgent: AgentProvider (Claude, Codex, Shell),
 │   │   │                          # AgentLaunch, AgentEnvironment, AgentSessionStore
 │   │   ├── Plugins/               # library BashCutPlugins: CapabilityService, CapabilityAdapter,
+│   │   │                          # PluginOptionPolicy, PluginSecretStore
 │   │   │   └── Capabilities/      # one adapter per capability (transcription, beats, loudness, voice)
 │   │   ├── Services/              # library BashCutDocument: AppServices, JobCenter, ExportQueue,
-│   │   │                          # ExportPipeline, ProxyQueue, PreviewController, ExportController,
+│   │   │                          # ExportPipeline, ProxyQueue, PreviewController (+ PreviewBuildPair,
+│   │   │                          # PreviewSeekQueue, PreviewTiming, PlayerItemReadiness), ExportController,
 │   │   │                          # FileSyncController, AutomationController, SettingsModel,
 │   │   │                          # EditorUIState, ModalCenter, TimelineFormats
 │   │   └── Document/              # app target: ProjectDocument, history, `commit`, command handlers
@@ -63,6 +69,7 @@ bash-cut/
 ├── CLI/BashCutCLI.swift           # executable `bashcut` (swift-argument-parser)
 ├── MCPBridge/BashCutMCP.swift     # executable `bashcut-mcp` (MCP Swift SDK, stdio)
 ├── Tools/Bench/main.swift         # executable `bashcut-bench`: engine benchmark on real footage
+├── Tools/Fixtures/main.swift      # executable `bashcut-fixtures`: writes the synthetic sample movie
 │
 ├── Packages/
 │   └── BashCutCore/               # pure-logic package; `swift test` runs without Xcode
@@ -86,7 +93,7 @@ bash-cut/
 │   └── BashCutTestSupport/        # shared fixtures: generated media, scratch folders, synthetic audio
 │
 ├── Fixtures/
-│   ├── make-media.sh              # generates media/test.mp4 with ffmpeg
+│   ├── make-media.sh              # optional native AVFoundation sample in media/test.mp4
 │   └── media/                     # generated, gitignored
 │
 ├── scripts/
@@ -137,6 +144,7 @@ package's library products. `scripts/verify.sh xcode [build|test]` regenerates t
 | `BashCutCLI` | executable (`bashcut`) | `CLI/` | Embedded in the app bundle |
 | `BashCutMCP` | executable (`bashcut-mcp`) | `MCPBridge/` | Embedded in the app bundle |
 | `bashcut-bench` | executable | `Tools/Bench` | Not part of the app |
+| `bashcut-fixtures` | executable | `Tools/Fixtures` | Not part of the app; `Fixtures/make-media.sh` runs it |
 | `BashCutTestSupport` | library | `Tests/BashCutTestSupport` | Test-only fixtures |
 | `BashCut<Module>Tests` | test | `Tests/` | One per app library |
 | `BashCutProject`, `BashCutPlugin`, `BashCutImport`, `BashCutInterchange` | library | `Packages/BashCutCore/Sources` | Core package products |

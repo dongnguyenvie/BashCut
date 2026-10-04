@@ -90,6 +90,11 @@ targets:
           copyFiles:
             destination: resources
             subpath: Plugins/bashcut.audio-analysis
+    # The agent kit from a sibling checkout ($BASHCUT_AGENT_KIT); without one the app downloads kit releases.
+    postCompileScripts:
+      - name: Bundle the agent kit
+        basedOnDependencyAnalysis: false
+        script: scripts/bundle-agent-kit.sh "$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/AgentKit"
     info:
       path: BashCut/Info.plist
       properties:
@@ -172,6 +177,8 @@ targets:
       base:
         GENERATE_INFOPLIST_FILE: YES
     dependencies:
+      - package: BashCut
+        product: BashCutAudioAnalysis
       - package: BashCut
         product: BashCutEngine
       - package: BashCut

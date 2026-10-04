@@ -108,6 +108,7 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
     }
     func applyAgentEditPreference() {
         if !settings.allowAgentEdits {
+            document.chatAgents.revokeTokens()
             for session in sessions where session.provider.isAgent {
                 document.registry.revoke(session.token)
             }

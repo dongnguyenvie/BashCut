@@ -155,8 +155,10 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
                     return
                 }
                 let time = request.compositionTime.seconds
+                let motion = video.motion?.0.sample(at: time)
+                let transform = video.motion.flatMap { layer in motion?.transform(layer.1) } ?? video.transform
                 var sourceImage = CIImage(cvPixelBuffer: source).transformed(
-                    by: video.motion.map { $0.0.transform($0.1, at: time) } ?? video.transform)
+                    by: transform)
                 var transitionOpacity = 1.0
                 if let transition = video.transition {
                     (sourceImage, transitionOpacity) = applyTransition(
@@ -164,7 +166,7 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
                         time: request.compositionTime.seconds, bounds: bounds)
                 }
                 sourceImage = Self.graded(sourceImage, properties: video.properties, lut: video.lut)
-                let opacity = (video.motion?.0.value("opacity", at: time) ?? video.properties["opacity"]?.double ?? 1)
+                let opacity = (motion?.opacity ?? video.properties["opacity"]?.double ?? 1)
                     * transitionOpacity
                 if opacity != 1 {
                     sourceImage = sourceImage.applyingFilter(
@@ -176,8 +178,8 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
                 image = Self.graded(image, properties: adjustment.properties, lut: adjustment.lut).cropped(to: bounds)
             case .text(let text):
                 let spoken = text.spokenWord(at: request.compositionTime.seconds)
-                if let overlay = TextRenderer.image(text.item, size: size, spoken: spoken, itemKey: text.cacheKey) {
-                    image = Self.animated(CIImage(cgImage: overlay), text: text, size: size,
+                if let overlay = TextRenderer.overlay(text.item, size: size, spoken: spoken, itemKey: text.cacheKey) {
+                    image = Self.animated(overlay, text: text, size: size,
                                           time: request.compositionTime.seconds).composited(over: image)
                 }
             }
@@ -192,15 +194,16 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
     static func animated(_ overlay: CIImage, text: TextLayer, size: CGSize, time: Double) -> CIImage {
         guard let motion = text.motion else { return overlay }
         let anchor = text.anchor(size: size)
-        let zoom = motion.value("zoom", at: time), rotation = motion.value("rotation", at: time)
+        let values = motion.sample(at: time)
+        let zoom = values.zoom, rotation = values.rotation
         var transform = CGAffineTransform(translationX: -anchor.x, y: -anchor.y)
             .concatenating(CGAffineTransform(scaleX: zoom, y: zoom))
             .concatenating(CGAffineTransform(rotationAngle: rotation * .pi / 180))
             .concatenating(CGAffineTransform(translationX: anchor.x, y: anchor.y))
         transform = transform.concatenating(CGAffineTransform(
-            translationX: motion.value("pan", at: time), y: motion.value("tilt", at: time)))
+            translationX: values.pan, y: values.tilt))
         var image = overlay.transformed(by: transform)
-        let opacity = motion.value("opacity", at: time)
+        let opacity = values.opacity
         if opacity < 1 {
             image = image.applyingFilter(
                 "CIColorMatrix", parameters: ["inputAVector": CIVector(x: 0, y: 0, z: 0, w: max(0, opacity))])
@@ -212,16 +215,16 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
     static func graded(_ input: CIImage, properties: [String: JSONValue], lut: CubeLUT?) -> CIImage {
         var image = input
         let color = properties["color"]?.object ?? [:]
-        if !color.isEmpty {
-            image = image.applyingFilter(
-                "CIExposureAdjust", parameters: [kCIInputEVKey: color["exposure"]?.double ?? 0]
-            )
-            .applyingFilter(
-                "CIColorControls",
-                parameters: [
-                    kCIInputSaturationKey: color["saturation"]?.double ?? 1,
-                    kCIInputContrastKey: color["contrast"]?.double ?? 1,
-                ])
+        let exposure = color["exposure"]?.double ?? 0
+        let saturation = color["saturation"]?.double ?? 1
+        let contrast = color["contrast"]?.double ?? 1
+        if exposure != 0 {
+            image = image.applyingFilter("CIExposureAdjust", parameters: [kCIInputEVKey: exposure])
+        }
+        if saturation != 1 || contrast != 1 {
+            image = image.applyingFilter("CIColorControls", parameters: [
+                kCIInputSaturationKey: saturation, kCIInputContrastKey: contrast
+            ])
         }
         if let lut { image = lut.apply(to: image, strength: color["lutStrength"]?.double ?? 1) }
         return image

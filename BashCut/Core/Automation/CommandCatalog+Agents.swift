@@ -26,6 +26,15 @@ extension CommandCatalog {
                                  cli: .option("codex-home")),
             ],
             execution: .approval),
+        CommandSpec(
+            "agent.kit-check", .read,
+            "Check bashcut-agent-kit's signed releases for a newer agent kit than the one BashCut uses (built-in or "
+                + "downloaded). A chosen kit folder is never updated."),
+        CommandSpec(
+            "agent.kit-update", .privileged,
+            "Download and install the newest signed agent kit release (Settings › Agents › Download & Update), then "
+                + "refresh Claude Code and Codex where the kit is set up.",
+            execution: .approval),
     ]
 
     /// Chat-agent tabs: plugins with the `agent.chat` capability (docs/specs/11-chat-agents.md), such as Director.
@@ -35,11 +44,11 @@ extension CommandCatalog {
             "The chat agents in the agent dock (plugins with the agent.chat capability): each one's plugin ID, name, "
                 + "provider and model, whether it is ready (an API key is set) and whether a turn is running."),
         CommandSpec(
-            "chat.send", .ui,
+            "chat.send", .edit,
             "Send a message to a chat agent like typing it in its tab. Returns at once; poll chat transcript until "
                 + "running is false to read the reply and the commands it ran.",
             parameters: [
-                CommandParameter("text", .string, "Message", required: true, cli: .positional),
+                CommandParameter("text", .string, "Message", required: true, sensitive: true, cli: .positional),
                 plugin,
                 CommandParameter("image", .string, "PNG or JPEG to attach, such as a ui frame", cli: .option("image")),
             ]),
@@ -51,15 +60,15 @@ extension CommandCatalog {
                 + "session), with their arguments and choices.",
             parameters: [plugin]),
         CommandSpec(
-            "chat.command", .ui,
+            "chat.command", .edit,
             "Run a slash command as typed in a chat agent's tab, such as \"/compact keep the caption decisions\" or "
                 + "\"/thinking low\"; returns what it showed. /export needs a path here.",
             parameters: [
-                CommandParameter("line", .string, "The command line, starting with /", required: true, cli: .positional),
+                CommandParameter("line", .string, "The command line, starting with /", required: true, sensitive: true, cli: .positional),
                 plugin,
             ]),
         CommandSpec(
-            "chat.reset", .ui, "Start a new conversation with a chat agent for this project; the old one is forgotten.",
+            "chat.reset", .edit, "Start a new conversation with a chat agent for this project; the old one is forgotten.",
             parameters: [plugin]),
         CommandSpec(
             "chat.transcript", .read,

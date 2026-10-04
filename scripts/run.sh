@@ -13,13 +13,7 @@ for binary in BashCutApp bashcut bashcut-mcp; do
     fi
 done
 # The agent kit (editing skills for Claude Code and Codex) from a checkout next to this repo, or $BASHCUT_AGENT_KIT.
-kit="${BASHCUT_AGENT_KIT:-../bashcut-agent-kit}"
-if [ -f "$kit/.claude-plugin/plugin.json" ]; then
-    rsync -a --delete --exclude .git "$kit/" "$bundle/Resources/AgentKit/"
-else
-    rm -rf "$bundle/Resources/AgentKit"
-    echo "note: no agent kit at $kit; Settings › Agents can point at one" >&2
-fi
+scripts/bundle-agent-kit.sh "$bundle/Resources/AgentKit"
 # Core plugins (Plugins/<name>/plugin.json + their provider executable) go in Contents/Resources/Plugins/<id>/
 # (Contents/PlugIns is for code bundles: codesign rejects plain folders there).
 rm -rf "$bundle/PlugIns"

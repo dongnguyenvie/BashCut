@@ -242,10 +242,10 @@ final class ProjectDocument {
         try commit(.delete(item: selectedID, ripple: ripple), label: ripple ? "Ripple delete" : "Lift clip", author: author)
         self.selectedID = nil
     }
-    func rebuild() {
+    func rebuild(coalescing: Bool = false) {
         let root = fileURL?.deletingLastPathComponent()
         if let root { waveforms.update(media: project.media, root: root) }
-        preview.rebuild(project, root: root, workspace: settings.workspace)
+        preview.rebuild(project, root: root, workspace: settings.workspace, coalescing: coalescing)
     }
 }
 
@@ -266,16 +266,21 @@ extension ProjectDocument {
                 operation, label: label, author: author, baseRevision: baseRevision, coalescingKey: coalescingKey)
         } catch {
             DebugLog.write(
-                "edit", "REJECTED \"\(label)\" by \(author) base=\(baseRevision.map(String.init) ?? "-") "
-                    + "rev=\(before.revision): \(error.localizedDescription) op=\(Self.describe(operation))")
+                "edit", "REJECTED edit by \(author) base=\(baseRevision.map(String.init) ?? "-") "
+                    + "rev=\(before.revision) op=\(Self.describe(operation))")
             throw error
         }
-        didCommit(from: before, author: author, label: label)
+        didCommit(from: before, author: author, label: label, coalescing: coalescingKey != nil)
         emitPluginEvent(.editCommitted, editEventPayload(label: label, author: author, before: before))
         DebugLog.write(
-            "edit", "\"\(label)\" by \(author) rev \(before.revision)→\(project.revision) op=\(Self.describe(operation))"
+            "edit", "edit by \(author) rev \(before.revision)→\(project.revision) op=\(Self.describe(operation))"
                 + (before.tracks.map(\.id) == project.tracks.map(\.id) ? "" : " layers: \(layoutSummary())"))
         return project.revision
+    }
+
+    func dryRunEdit(_ operation: EditOperation, author: Author, baseRevision: Int) throws -> JSONValue {
+        try ensureEditable(author: author)
+        return try TimelineDryRun.evaluate(operation, on: project, baseRevision: baseRevision)
     }
 
     @discardableResult
@@ -328,7 +333,7 @@ extension ProjectDocument {
         }
     }
 
-    private func didCommit(from before: Project, author: Author, label: String) {
+    private func didCommit(from before: Project, author: Author, label: String, coalescing: Bool = false) {
         if author.isAgent {
             markAgentChanges(from: before, author: author, label: label)
             message = author.rawValue.capitalized + ": " + label
@@ -336,13 +341,14 @@ extension ProjectDocument {
             clearAgentChange()
         }
         dirty = true
-        rebuild()
+        rebuild(coalescing: coalescing)
     }
 }
 
 /// Thrown when an agent edit arrives while the user is mid-gesture or a long operation runs.
-struct AutomationBusy: LocalizedError {
-    var errorDescription: String? { "The editor is busy or has a file conflict; retry later" }
+struct AutomationBusy: LocalizedError, RPCFailureProviding {
+    var errorDescription: String? { rpcFailure.message }
+    var rpcFailure: RPCFailure { RPCFailure(-32003, "The editor is busy or has a file conflict; retry later") }
 }
 
 extension Author {

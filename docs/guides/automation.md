@@ -81,8 +81,17 @@ token, so they can read and point at things but cannot edit.
 
 The [agent kit](https://github.com/dongnguyenvie/bashcut-agent-kit) is a set of editing skills (footage survey,
 beat cuts, audio mix, captions, colour, effects, voiceover…) for Claude Code and Codex. BashCut ships a copy in
-`Contents/Resources/AgentKit` (`scripts/run.sh` copies a `bashcut-agent-kit` checkout next to the repo, or
-`$BASHCUT_AGENT_KIT`). **Settings → Agents** and `agent status` / `agent setup` manage it.
+`Contents/Resources/AgentKit` (`scripts/bundle-agent-kit.sh`, run by `scripts/run.sh` and the Xcode build, copies
+the tracked files of a `bashcut-agent-kit` checkout next to the repo, or `$BASHCUT_AGENT_KIT`). **Settings → Agents**
+and `agent status` / `agent setup` manage it.
+
+- **Kit updates.** Settings → Agents checks the kit's signed releases (`releases.json` on bashcut-agent-kit's
+  `main`) and offers **Download & Update** (`agent kit-check`, `agent kit-update`; the update asks for approval).
+  BashCut installs a release only over HTTPS from GitHub, with a first-party ed25519 signature checked before the
+  download and the SHA-256 after it, into `~/Library/Application Support/BashCut/agent-kits/<version>`. The newer
+  of that download and the built-in kit is used; a chosen folder is never updated. After installing, Claude Code
+  and Codex are refreshed where the kit is set up. Claude Code caches the plugin per version, so its row shows
+  "Older kit set up" until **Update** runs.
 
 - **BashCut's tabs** load it by default (`agent setup in-app`, `--remove` to stop). The built-in kit is copied to
   `~/Library/Application Support/BashCut/agent-kit`. Claude tabs get a skills-only plugin
@@ -139,7 +148,7 @@ directory.
 | Mode | Token | Behavior |
 |---|---|---|
 | `read` | Not needed | Reads state; changes nothing |
-| `ui` | Not needed | Changes what the app shows (selection, playhead, panels, dialogs), never the project |
+| `ui` | Required | Controls selection, playback, panels and dialogs; dialog responses can also apply edits |
 | `edit` | Required | Changes the project as one undoable, visible step; edits also need the current `--base-rev` |
 | `privileged` | Required | Waits for the user to approve in the app (see [Exports and approval](#exports-and-approval)) |
 
@@ -198,6 +207,14 @@ bashcut timeline apply /absolute/path/ops.json --base-rev 12 --label 'Trim openi
 bashcut timeline undo --base-rev 13
 bashcut timeline redo --base-rev 14
 ```
+
+Use `timeline apply ... --dry-run` (MCP parameter `dryRun: true`) to validate the same batch on a copy.
+It checks the base revision, locks and project invariants, but changes no revision, undo history, files,
+preview or plugin hooks. The response has `dryRun: true`, current `rev`, `projectedRev`, predicted `duration`
+and `previousDuration` in frames, `changedItems`, `changedTracks`, `addedTracks` and `removedTracks`.
+Changed item IDs include additions, deletions, property changes and moves. A live edit token is still required.
+The preview does not reserve a revision; apply the batch with the same base revision and handle stale errors.
+
 
 ### Timeline operations
 
@@ -393,13 +410,41 @@ The app, the `bashcut` CLI and `bashcut-mcp` append one line per event to `~/Lib
 
 - app launch, with the executable path and build time;
 - project opens, with the layer layout and any layer-rule repair;
-- every committed or rejected edit with its operations, and layer placement and spill decisions;
+- every committed or rejected edit with its operation name, and layer placement and spill decisions;
 - media import details (`kind`, `hasAudio`, frames), proxy queueing, timeline gestures and library panel
   switches;
-- every automation request with its author, duration and result, and auto-approved exports.
+- every automation request with its author, duration and success/failure code, and auto-approved exports.
+
+Sensitive command parameters are marked in `CommandParameter` and replaced with `[redacted]`; unknown input
+fields are redacted too. Chat text, option values, arbitrary plugin parameters and operation payloads are not
+persisted. RPC results and error messages are omitted because they may echo secrets. The CLI logs the parsed
+command name, never raw argv. Log files are created with `0600`, existing active files are restricted on write,
+and unified-log messages use private visibility. Open uses `O_NOFOLLOW` and append mode. Handles are retained;
+a stable `.lock` file protects append and rotation across processes, and writers reopen when the pathname's
+inode changes. Release builds disable logging by default; use `BASHCUT_DEBUG_LOG=1` to enable it explicitly,
+or `BASHCUT_DEBUG_LOG=0` to disable it in Debug. `BASHCUT_DEBUG_LOG_PATH` overrides the file destination.
 
 ```sh
 tail -f ~/Library/Logs/BashCut/debug.log
 ```
 
 Set `BASHCUT_DEBUG_LOG=0` to turn it off. Test runners never write to it.
+
+### Error responses
+
+CLI failures write `{"error":{"code":-32002,"message":"…","data":{"expected":1,"actual":2}}}` to stderr
+and leave stdout empty. `data` is optional. MCP returns the same object in `structuredContent` and JSON text,
+with `isError: true`. Error messages are intended for the requesting client and are omitted from debug logs.
+
+| Condition | RPC code | CLI exit status |
+|---|---:|---:|
+| Stale revision / project read required | -32002 | 75 |
+| Editor busy | -32003 | 69 |
+| App/socket unavailable | -32000 | 69 |
+| Missing or revoked token | -32001 | 77 |
+| Invalid request, command or arguments | -32600 / -32601 / -32602 | 64 |
+| Malformed response | -32700 | 65 |
+| Internal / other failure | -32603 / other | 70 |
+
+Stale revision errors include `data.expected` and `data.actual`. Refresh the project before constructing a new
+edit; do not blindly replay after a timeout because a timed-out mutation may already have completed.

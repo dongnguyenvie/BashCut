@@ -60,7 +60,7 @@ extension ProjectDocument {
             guard plugin.manifest.dependencies.contains(where: { $0.install != nil }) else {
                 throw RPCFailure(-32602, "\(plugin.id) has no install recipes")
             }
-            document.plugins.requestSetup(plugin)
+            try document.plugins.requestSetup(plugin)
             document.ui.showPlugins = true
             return .object(["plugin": .string(plugin.id), "approval": .string("pending")])
         }

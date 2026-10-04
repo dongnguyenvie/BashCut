@@ -3,7 +3,7 @@ import Darwin
 import Foundation
 
 public struct PluginDependencyStatus: Sendable, Equatable, Identifiable {
-    public enum State: String, Sendable { case available, missing, failed }
+    public enum State: String, Sendable { case available, missing, failed, notChecked }
 
     public let id: String
     public let name: String
@@ -17,6 +17,13 @@ public struct PluginHealth: Sendable, Equatable {
     public let pluginID: String
     public let state: State
     public let dependencies: [PluginDependencyStatus]
+
+    /// A blocked probe is unknown, never evidence that a dependency is missing.
+    public static func notChecked(_ plugin: InstalledPlugin, reason: String) -> PluginHealth {
+        PluginHealth(pluginID: plugin.id, state: .degraded, dependencies: plugin.manifest.dependencies.map {
+            PluginDependencyStatus(id: $0.id, name: $0.name, state: .notChecked, detail: reason)
+        })
+    }
 
     public init(pluginID: String, state: State, dependencies: [PluginDependencyStatus]) {
         self.pluginID = pluginID
@@ -38,10 +45,13 @@ public struct PluginProcessRunner: Sendable {
 
     public let timeout: TimeInterval
     public let maximumOutputBytes: Int
+    private let inheritedEnvironment: [String: String]
 
-    public init(timeout: TimeInterval = 120, maximumOutputBytes: Int = 8 * 1024 * 1024) {
+    public init(timeout: TimeInterval = 120, maximumOutputBytes: Int = 8 * 1024 * 1024,
+                inheritedEnvironment: [String: String] = ProcessInfo.processInfo.environment) {
         self.timeout = timeout
         self.maximumOutputBytes = maximumOutputBytes
+        self.inheritedEnvironment = inheritedEnvironment
     }
 
     /// Starts one isolated plugin process for one request. The entrypoint receives `rpc` and one
@@ -114,7 +124,7 @@ public struct PluginProcessRunner: Sendable {
         return try await execute(
             Execution(
                 executable: executable, arguments: arguments, directory: plugin.directory,
-                environment: Self.environment(for: plugin), input: input,
+                environment: Self.environment(for: plugin, inheriting: inheritedEnvironment), input: input,
                 outputLimit: maximumOutputBytes, timeout: timeout))
     }
 
@@ -122,6 +132,9 @@ public struct PluginProcessRunner: Sendable {
         plugin: InstalledPlugin, command: PluginCommand, input: Data, outputLimit: Int
     ) async throws -> Data {
         try plugin.manifest.validate()
+        guard !Self.runsInlineCode(command) else {
+            throw PluginError.invalid("Dependency probes must use a tool or a plugin file, not inline interpreter code")
+        }
         let executable: URL
         let arguments: [String]
         if command.executable.contains("/") {
@@ -137,7 +150,7 @@ public struct PluginProcessRunner: Sendable {
         return try await execute(
             Execution(
                 executable: executable, arguments: arguments, directory: plugin.directory,
-                environment: Self.environment(for: plugin), input: input, outputLimit: outputLimit,
+                environment: Self.environment(for: plugin, inheriting: inheritedEnvironment), input: input, outputLimit: outputLimit,
                 timeout: timeout))
     }
 
@@ -198,11 +211,28 @@ public struct PluginProcessRunner: Sendable {
         ((try? FileManager.default.attributesOfItem(atPath: url.path)[.size]) as? NSNumber)?.intValue ?? 0
     }
 
+    /// Probes must run fingerprinted files or ordinary tools. Shells always interpret their arguments; script
+    /// interpreters do so with an inline-code flag, including combined short flags such as `python3 -Bc`.
+    static func runsInlineCode(_ command: PluginCommand) -> Bool {
+        let program = URL(fileURLWithPath: command.executable).lastPathComponent.lowercased()
+        let shells: Set<String> = ["sh", "bash", "zsh", "dash", "ksh", "csh", "tcsh", "fish", "osascript", "env"]
+        if shells.contains(program) { return true }
+        let interpreters = ["python", "node", "perl", "ruby", "php", "deno", "bun", "lua", "tclsh"]
+        guard interpreters.contains(where: { program.hasPrefix($0) }) else { return false }
+        if command.arguments.first == "eval" { return true } // deno eval, bun eval
+        let long = ["--eval", "--print", "--command"]
+        return command.arguments.contains { argument in
+            if long.contains(where: { argument == $0 || argument.hasPrefix($0 + "=") }) { return true }
+            guard argument.hasPrefix("-"), !argument.hasPrefix("--") else { return false }
+            return argument.dropFirst().contains { "ceEpr".contains($0) }
+        }
+    }
+
     /// The app creates the data and cache folders (`PluginFolders.prepare`) before it starts the plugin.
     /// The only environment plugin processes, probes and install recipes get: no app secrets, tokens or sockets.
     /// `PATH` gains the usual tool folders, since an app opened from Finder starts with only `/usr/bin:/bin:…`.
-    public static func environment(for plugin: InstalledPlugin) -> [String: String] {
-        let source = ProcessInfo.processInfo.environment
+    public static func environment(for plugin: InstalledPlugin,
+                                   inheriting source: [String: String] = ProcessInfo.processInfo.environment) -> [String: String] {
         var environment: [String: String] = [:]
         for key in ["HOME", "PATH", "TMPDIR", "LANG", "LC_ALL"] {
             if let value = source[key] { environment[key] = value }
@@ -217,6 +247,8 @@ public struct PluginProcessRunner: Sendable {
         environment["BASHCUT_PLUGIN_API_VERSION"] = String(min(plugin.manifest.apiVersion, PluginAPI.current))
         environment["BASHCUT_PLUGIN_DATA"] = data.path
         environment["BASHCUT_PLUGIN_CACHE"] = cache.path
+        // Bytecode written beside plugin sources would change the pinned file tree after the first run.
+        environment["PYTHONDONTWRITEBYTECODE"] = "1"
         return environment
     }
 }

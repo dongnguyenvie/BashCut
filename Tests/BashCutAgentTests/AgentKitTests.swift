@@ -61,6 +61,46 @@ struct AgentKitTests {
         #expect(try install.stableRoot(for: folder).root == folder.root)
     }
 
+    @Test("Unchanged kit content keeps the installed directory; same-version content changes refresh it")
+    func contentRefresh() throws {
+        let root = try temporaryFolder()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let install = AgentKitInstall(support: root.appendingPathComponent("support"))
+        let bundled = try #require(AgentKit(root: makeKit(at: root.appendingPathComponent("app")), source: .bundled))
+        let first = try install.stableRoot(for: bundled)
+        let inode = try FileManager.default.attributesOfItem(atPath: first.root.path)[.systemFileNumber] as? NSNumber
+        _ = try install.stableRoot(for: bundled)
+        #expect(try FileManager.default.attributesOfItem(atPath: first.root.path)[.systemFileNumber] as? NSNumber == inode)
+        let skill = "skills/bashcut-one/SKILL.md"
+        try Data("Updated editing instructions".utf8).write(to: bundled.root.appendingPathComponent(skill))
+        let second = try install.stableRoot(for: bundled)
+        #expect(second.version == first.version)
+        #expect(try String(contentsOf: second.root.appendingPathComponent(skill), encoding: .utf8) == "Updated editing instructions")
+        let helper = "skills/bashcut-one/helper.py"
+        try Data("print('updated helper')".utf8).write(to: bundled.root.appendingPathComponent(helper))
+        _ = try install.stableRoot(for: bundled)
+        #expect(FileManager.default.fileExists(atPath: first.root.appendingPathComponent(helper).path))
+        try FileManager.default.removeItem(at: bundled.root.appendingPathComponent(helper))
+        _ = try install.stableRoot(for: bundled)
+        #expect(!FileManager.default.fileExists(atPath: first.root.appendingPathComponent(helper).path))
+        #expect(try FileManager.default.contentsOfDirectory(atPath: install.support.path) == ["agent-kit"])
+    }
+
+    @Test("Invalid bundled content leaves the last installed kit intact")
+    func failedRefreshPreservesInstalledKit() throws {
+        let root = try temporaryFolder()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let install = AgentKitInstall(support: root.appendingPathComponent("support"))
+        let bundled = try #require(AgentKit(root: makeKit(at: root.appendingPathComponent("app")), source: .bundled))
+        let installed = try install.stableRoot(for: bundled)
+        let hash = try installed.contentHash()
+        try FileManager.default.createSymbolicLink(
+            at: bundled.skillsFolder.appendingPathComponent("external"), withDestinationURL: root)
+        #expect(throws: AgentKitError.self) { try install.stableRoot(for: bundled) }
+        #expect(try installed.contentHash() == hash)
+        #expect(try FileManager.default.contentsOfDirectory(atPath: install.support.path) == ["agent-kit"])
+    }
+
     @Test("BashCut's Claude tabs get a skills-only plugin, without the kit's MCP server")
     func claudePlugin() throws {
         let root = try temporaryFolder()

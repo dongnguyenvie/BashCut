@@ -15,57 +15,41 @@ public actor Exporter {
         try await performExport(snapshot, to: url, settings: settings, progress: progress)
     }
 
+    /// Lossless 48 kHz stereo PCM for loudness measurement; no video reader or compositor is created.
+    public func exportAudio(
+        _ snapshot: CompositionSnapshot, to url: URL, progress: @escaping @Sendable (Double) -> Void = { _ in }
+    ) async throws -> ExportReceipt {
+        try await performExport(snapshot, to: url, settings: nil, audioOnly: true, progress: progress)
+    }
+
     private func performExport(
-        _ snapshot: CompositionSnapshot, to url: URL, settings: ExportSettings?,
+        _ snapshot: CompositionSnapshot, to url: URL, settings: ExportSettings?, audioOnly: Bool = false,
         progress: @escaping @Sendable (Double) -> Void
     ) async throws -> ExportReceipt {
-        guard !FileManager.default.fileExists(atPath: url.path) else {
-            throw ProjectError.invalid("Export destination already exists")
-        }
+        try Task.checkCancellation()
+        let destination = try ExportDestination(url)
+        defer { destination.discard() }
         let reader = try AVAssetReader(asset: snapshot.composition)
-        let writer = try AVAssetWriter(outputURL: url, fileType: settings?.preset.fileType ?? .mp4)
+        let writer = try AVAssetWriter(outputURL: destination.partial, fileType: audioOnly ? .caf : settings?.preset.fileType ?? .mp4)
+        writer.shouldOptimizeForNetworkUse = !audioOnly && (settings?.preset.fileType ?? .mp4) == .mp4
         var completed = false
         defer {
             if !completed {
                 reader.cancelReading()
                 writer.cancelWriting()
-                try? FileManager.default.removeItem(at: url)
             }
         }
-        let tracks = try await snapshot.composition.loadTracks(withMediaType: .video)
-        let video = AVAssetReaderVideoCompositionOutput(
-            videoTracks: tracks,
-            videoSettings: [
-                kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
-            ])
-        video.videoComposition = snapshot.videoComposition
-        let size = snapshot.videoComposition.renderSize
-        var compression: [String: Any] = [:]
-        if let bitRate = settings?.preset.videoBitRate {
-            compression[AVVideoAverageBitRateKey] = bitRate
-        }
-        var videoSettings: [String: Any] = [
-            AVVideoCodecKey: settings?.preset.videoCodec ?? .h264, AVVideoWidthKey: Int(size.width),
-            AVVideoHeightKey: Int(size.height),
-        ]
-        if !compression.isEmpty { videoSettings[AVVideoCompressionPropertiesKey] = compression }
-        let videoInput = AVAssetWriterInput(
-            mediaType: .video,
-            outputSettings: videoSettings)
-        guard reader.canAdd(video), writer.canAdd(videoInput) else {
-            throw ProjectError.invalid("Cannot configure video export")
-        }
-        reader.add(video)
-        writer.add(videoInput)
-        var pairs: [(AVAssetReaderOutput, AVAssetWriterInput)] = [(video, videoInput)]
+        var pairs: [(AVAssetReaderOutput, AVAssetWriterInput)] = []
+        if !audioOnly { pairs.append(try await videoPair(snapshot, reader: reader, writer: writer, settings: settings)) }
         let audioTracks = try await snapshot.composition.loadTracks(withMediaType: .audio)
         if !audioTracks.isEmpty {
             let audio = AVAssetReaderAudioMixOutput(
-                audioTracks: audioTracks, audioSettings: [AVFormatIDKey: kAudioFormatLinearPCM])
+                audioTracks: audioTracks, audioSettings: Self.measurementPCM)
+            audio.alwaysCopiesSampleData = false
             audio.audioMix = snapshot.audioMix
             let input = AVAssetWriterInput(
                 mediaType: .audio,
-                outputSettings: [
+                outputSettings: audioOnly ? Self.measurementPCM : [
                     AVFormatIDKey: kAudioFormatMPEG4AAC, AVSampleRateKey: 48000, AVNumberOfChannelsKey: 2,
                     AVEncoderBitRateKey: 320000,
                 ])
@@ -76,6 +60,7 @@ public actor Exporter {
             writer.add(input)
             pairs.append((audio, input))
         }
+        guard !pairs.isEmpty else { throw ProjectError.invalid("Timeline has no audio to measure") }
         guard writer.startWriting(), reader.startReading() else {
             throw writer.error ?? reader.error ?? ProjectError.invalid("Export could not start")
         }
@@ -88,48 +73,85 @@ public actor Exporter {
         guard writer.status == .completed else {
             throw writer.error ?? ProjectError.invalid("Export failed")
         }
+        try Task.checkCancellation()
+        let attributes = try FileManager.default.attributesOfItem(atPath: destination.partial.path)
+        try destination.publish()
         completed = true
         progress(1)
-        let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
         return ExportReceipt(
             url: url, duration: snapshot.composition.duration.seconds,
             bytes: (attributes[.size] as? NSNumber)?.int64Value ?? 0)
     }
+    private static let measurementPCM: [String: any Sendable] = [
+        AVFormatIDKey: kAudioFormatLinearPCM, AVSampleRateKey: 48000, AVNumberOfChannelsKey: 2,
+        AVLinearPCMBitDepthKey: 32, AVLinearPCMIsFloatKey: true, AVLinearPCMIsBigEndianKey: false,
+        AVLinearPCMIsNonInterleaved: false
+    ]
+
+    private func videoPair(
+        _ snapshot: CompositionSnapshot, reader: AVAssetReader, writer: AVAssetWriter, settings: ExportSettings?
+    ) async throws -> (AVAssetReaderOutput, AVAssetWriterInput) {
+        let tracks = try await snapshot.composition.loadTracks(withMediaType: .video)
+        let video = AVAssetReaderVideoCompositionOutput(
+            videoTracks: tracks,
+            videoSettings: [
+                kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
+            ])
+        video.alwaysCopiesSampleData = false
+        video.videoComposition = snapshot.videoComposition
+        let size = snapshot.videoComposition.renderSize
+        let codec = settings?.preset.videoCodec ?? .h264
+        var compression: [String: Any] = [:]
+        if codec == .h264 {
+            let fps = 1 / snapshot.videoComposition.frameDuration.seconds
+            guard fps.isFinite, fps > 0 else { throw ProjectError.invalid("Invalid export frame duration") }
+            compression[AVVideoExpectedSourceFrameRateKey] = fps
+            compression[AVVideoMaxKeyFrameIntervalDurationKey] = 2.0
+            compression[AVVideoProfileLevelKey] = AVVideoProfileLevelH264HighAutoLevel
+        }
+        if let bitRate = settings?.preset.videoBitRate {
+            compression[AVVideoAverageBitRateKey] = bitRate
+        }
+        var videoSettings: [String: Any] = [
+            AVVideoCodecKey: codec, AVVideoWidthKey: Int(size.width),
+            AVVideoHeightKey: Int(size.height),
+        ]
+        if !compression.isEmpty { videoSettings[AVVideoCompressionPropertiesKey] = compression }
+        let videoInput = AVAssetWriterInput(
+            mediaType: .video,
+            outputSettings: videoSettings)
+        guard reader.canAdd(video), writer.canAdd(videoInput) else {
+            throw ProjectError.invalid("Cannot configure video export")
+        }
+        reader.add(video)
+        writer.add(videoInput)
+        return (video, videoInput)
+    }
+
     private func transferSamples(
         _ pairs: [(AVAssetReaderOutput, AVAssetWriterInput)],
         duration: Double, reader: AVAssetReader, writer: AVAssetWriter,
         progress: @escaping @Sendable (Double) -> Void
     ) async throws {
-        var finished = Set<Int>()
-        var lastProgress = -1.0
-        while finished.count < pairs.count {
-            try Task.checkCancellation()
-            guard writer.status == .writing else {
-                throw writer.error ?? ProjectError.invalid("Writer stopped")
-            }
-            for (index, pair) in pairs.enumerated()
-            where !finished.contains(index) && pair.1.isReadyForMoreMediaData {
-                if let sample = pair.0.copyNextSampleBuffer() {
-                    guard pair.1.append(sample) else {
-                        throw writer.error ?? ProjectError.invalid("Cannot write sample")
-                    }
-                    if index == 0, duration > 0 {
-                        let value = min(0.99, max(0, sample.presentationTimeStamp.seconds / duration))
-                        if value - lastProgress >= 0.005 {
-                            lastProgress = value
-                            progress(value)
-                        }
-                    }
-                } else {
-                    pair.1.markAsFinished()
-                    finished.insert(index)
+        let lanes = pairs.map { output, input in
+            ExportSampleTransfer.Lane(request: { queue, callback in
+                input.requestMediaDataWhenReady(on: queue, using: callback)
+            }, ready: { input.isReadyForMoreMediaData }, next: {
+                guard let sample = output.copyNextSampleBuffer() else { return nil }
+                guard input.append(sample) else {
+                    throw writer.error ?? ProjectError.invalid("Cannot write sample")
                 }
-            }
-            if reader.status == .failed {
-                throw reader.error ?? ProjectError.invalid("Cannot read media")
-            }
-            try await Task.sleep(for: .milliseconds(1))
+                return sample.presentationTimeStamp.seconds
+            }, finish: {
+                if writer.status == .writing { input.markAsFinished() }
+            })
         }
+        let transfer = ExportSampleTransfer(lanes: lanes, duration: duration, progress: progress, failure: {
+            if reader.status == .failed { return reader.error ?? ProjectError.invalid("Cannot read media") }
+            if reader.status == .cancelled { return CancellationError() }
+            if writer.status != .writing { return writer.error ?? ProjectError.invalid("Writer stopped") }
+            return nil
+        }, interrupt: { reader.cancelReading() })
+        try await transfer.run()
     }
-
 }

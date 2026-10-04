@@ -25,12 +25,14 @@ public struct ModalSnapshot: Sendable, Equatable {
     public let title: String
     public let message: String?
     public let options: [ModalOption]
+    /// Privileged decisions are visible to automation but only native user interaction may answer them.
+    public let userOnly: Bool
     /// Open and save panels are answered with a `path` (or `cancel`).
     public var acceptsPath: Bool { kind == .open || kind == .save }
 
     public init(
         id: String = UUID().uuidString, kind: Kind, name: String, title: String, message: String? = nil,
-        options: [ModalOption]
+        options: [ModalOption], userOnly: Bool = false
     ) {
         self.id = id
         self.kind = kind
@@ -38,6 +40,7 @@ public struct ModalSnapshot: Sendable, Equatable {
         self.title = title
         self.message = message
         self.options = options
+        self.userOnly = userOnly
     }
 
     public var json: JSONValue {
@@ -45,7 +48,7 @@ public struct ModalSnapshot: Sendable, Equatable {
             "id": .string(id), "kind": .string(kind.rawValue), "name": .string(name), "title": .string(title),
             "message": message.map(JSONValue.string) ?? .null,
             "options": .array(options.map { .object(["id": .string($0.id), "title": .string($0.title)]) }),
-            "acceptsPath": .bool(acceptsPath),
+            "acceptsPath": .bool(acceptsPath), "userOnly": .bool(userOnly),
         ])
     }
 }
@@ -55,11 +58,11 @@ public struct ModalSheet {
     public let snapshot: ModalSnapshot
     public let respond: @MainActor (String) throws -> Void
     public init(
-        name: String, title: String, message: String? = nil, options: [ModalOption],
+        name: String, title: String, message: String? = nil, options: [ModalOption], userOnly: Bool = false,
         respond: @escaping @MainActor (String) throws -> Void
     ) {
         snapshot = ModalSnapshot(id: "sheet:" + name, kind: .sheet, name: name, title: title, message: message,
-                                 options: options)
+                                 options: options, userOnly: userOnly)
         self.respond = respond
     }
 }
@@ -89,6 +92,9 @@ public final class ModalCenter {
 
     /// Answers the topmost dialog (or `dialog`, when given) with an option ID or title, or a path.
     public func respond(option: String?, path: URL?, dialog: String? = nil) throws {
+        guard current?.userOnly != true else {
+            throw ModalError("This decision requires the user to respond in the app")
+        }
         if let dialog, current?.id != dialog {
             guard open.contains(where: { $0.id == dialog }) else { throw ModalError("No open dialog \(dialog)") }
             throw ModalError("Dialog \(dialog) is behind another dialog; answer \(current?.id ?? "") first")
@@ -107,14 +113,14 @@ public final class ModalCenter {
     /// Runs an alert and returns the chosen button's ID (the first button is the default).
     public func alert(
         _ name: String, title: String, message: String? = nil, buttons: [ModalOption],
-        style: NSAlert.Style = .warning
+        style: NSAlert.Style = .warning, userOnly: Bool = false
     ) -> String {
         let alert = NSAlert()
         alert.alertStyle = style
         alert.messageText = title
         if let message { alert.informativeText = message }
         for button in buttons { alert.addButton(withTitle: button.title) }
-        let snapshot = ModalSnapshot(kind: .alert, name: name, title: title, message: message, options: buttons)
+        let snapshot = ModalSnapshot(kind: .alert, name: name, title: title, message: message, options: buttons, userOnly: userOnly)
         let index = run(snapshot) { option, _ in
             guard let option, let index = buttons.firstIndex(where: { $0.id == option }) else {
                 throw ModalError("Choose one of: \(Self.list(snapshot))")

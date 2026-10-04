@@ -95,10 +95,12 @@ the lower of the plugin's `apiVersion` and the host's current version.
 ## Trust and availability
 
 A plugin runs only after the user trusts its exact files. Trusting pins the SHA-256 of `plugin.json`, of the
-entrypoint and of every other file in the plugin folder (path, executable bit and contents; hidden files,
-`__pycache__` and `.pyc` are skipped) in `~/Library/Application Support/BashCut/plugin-trust.json` (mode `0600`),
+entrypoint and every other file in the plugin folder (path, mode and contents, including hidden files and
+Python bytecode; only `.DS_Store` is skipped) in `~/Library/Application Support/BashCut/plugin-trust.json` (mode `0600`),
 together with the user's on/off switches. Changing any file, such as a script the entrypoint runs, asks for Trust
-again. Grants made before folder digests existed are upgraded once while the manifest and entrypoint still match.
+again. Symlinks must resolve to an existing target inside the plugin folder; other links are rejected.
+The fingerprint cache checks fresh inode, mode, ctime and mtime metadata before reuse.
+Grants made before folder digests existed are upgraded once while the manifest and entrypoint still match.
 In development builds a plugin folder that is a symbolic link (`scripts/dev-link.sh` in `bashcut-plugins`) is
 checked on its manifest and entrypoint only, so it can change while it is written. Each plugin is in one state:
 
@@ -110,6 +112,9 @@ checked on its manifest and entrypoint only, so it can change while it is writte
 | `changed` | Its manifest or entrypoint changed since approval; choose **Trust** again |
 | `outdated` | Its API window does not include this BashCut |
 
+- Approvals, enabled/hooks switches and local option values belong to `(id, canonical installation root)`.
+  Another copy with the same ID starts untrusted and has separate settings. Legacy ID-only approvals cannot
+  identify the approved root and require Trust again. Catalog diagnostics identify shadowed installations.
 - Plugins in the app bundle are trusted without a pin; they can still be turned off.
 - Installing a plugin from the Plugins sheet pins the installed files.
 - **Trust**, **Revoke Trust** and turning a plugin or its hooks **on** are user-only (Plugins sheet). Agents can
@@ -371,8 +376,15 @@ example the voice a `voice.synthesize` provider should use), as `options`.
   - BashCut keeps it in the Keychain (service `app.bashcut.plugin-secret`) and shows a password field with
     **Save** and **Clear**.
   - The plugin receives it in `options` like other values.
-  - `plugins options` shows only `{"set": true|false}`, and `plugins option` refuses it ("Set secrets in
-    Settings"), so agents can neither read nor replace a key.
+  - `plugins options` shows only `{"set": true|false}`. For a plugin declaring any secret, **all** options
+    are user-only and stored for this Mac; project `pluginOptions` overrides are ignored. Automated option
+    writes are refused, including non-secret settings such as the endpoint.
+  - Keys are bound to the canonical installation root, the fingerprint and the values of every option marked
+    `"bindsSecrets": true` (for example a provider and an endpoint). Enter a key after selecting the
+    destination. Changing a binding value selects a separate key; other options do not. Legacy unbound
+    keys are never reused automatically and must be re-entered in Settings. Changed plugin code also requires
+    a new key entry, even after Trust; approving code does not grant it the previous version's credentials.
+    Saving a key for new code deletes that installation's keys for older fingerprints.
   - Action parameters cannot be secrets.
 - `file` (API 3) shows **Choose…** with a file panel (through `ModalCenter`, so agents answer it with
   `ui respond --path`); `fileTypes` limits the extensions. Project-scope files inside the project are stored
@@ -391,6 +403,7 @@ example the voice a `voice.synthesize` provider should use), as `options`.
 | `minimum`, `maximum` | Bounds for `number` and `integer` |
 | `maxLength` | For `string`: 1–100,000 (default limit 10,000) |
 | `scope` | `user` (default): saved for this Mac in `plugin-trust.json`. `project`: stored in the project under `pluginOptions.<plugin id>` as an undoable edit |
+| `bindsSecrets` | Not on `secret` or `file` options. The plugin's secrets are stored per value of this option, so a key entered for one destination is never sent to another |
 
 A stored value that no longer fits the option falls back to its default. Agents read options with
 `plugins options` and set them with `plugins option`.
@@ -426,7 +439,7 @@ code.
 | `params` | Up to 32 [options](#options) (their `scope` is ignored); shown in a native sheet before the action runs |
 | `shortcut` | Optional, written like `cmd+shift+g`; ignored (and reported in diagnostics) when a built-in or earlier plugin action uses it |
 | `context` | Extra read-only data: `timeline` (all tracks), `media` (all media with absolute paths), `project` (the whole document) |
-| `confirm` | A question shown before the action runs from the UI; localized text |
+| `confirm` | A user-only question shown before execution from any entry point, including CLI and shortcuts; localized text |
 
 ### Placements
 
@@ -673,7 +686,9 @@ Everything above is available to agents through the CLI and MCP (`bashcut_plugin
 
 `ui actions` lists plugin actions next to built-in ones and `ui action <id or shortcut>` runs them. An action with
 parameters or `confirm` opens its sheet (dialog `plugin-action`); answer it with `ui respond run|cancel`, or use
-`plugins run --params` instead. `ui open plugin-proposals` opens the review sheet.
+`plugins run --params` instead. When `confirm` is declared, execution then opens `plugin-confirm` with
+`userOnly: true`: automation can read it but only native user interaction can answer it. Cancelling starts no
+plugin request. `ui open plugin-proposals` opens the review sheet.
 
 ## Dependencies and health
 
@@ -714,11 +729,11 @@ Agents can open that panel but can never approve an install or run a recipe.
   A cancelled or failed install leaves the installed copy, if any, untouched.
 - **Progress:** a recipe line `::progress <0…1> [message]` sets the bar and the step; other lines are shown as
   output, and the last 4,000 characters become the error when the recipe fails.
-- **Preflight:** before the approval, BashCut runs the probes on the unpacked plugin and labels each dependency
-  *Available on this Mac*, *Installed during setup* (missing, with a recipe) or *Not available on this Mac* (missing,
-  no recipe). A plugin with an unavailable dependency cannot be installed: the sheet says so in plain words.
-- **Space:** the approval shows the archive plus the `estimatedBytes` of dependencies that are still missing and the free space, and refuses
-  to start when less than 1.2 × that is free.
+- **Preflight:** the approval lists dependency probes and install commands without executing the pending
+  archive or chosen folder. Dependencies are marked *Checked after approval*. Health checks run only for
+  approved, unchanged, enabled, API-compatible plugins, including checks from Doctor and automation.
+- **Space:** before approval, the estimate conservatively includes every declared dependency download and the
+  archive. Installation requires at least 1.2 × this estimate in free space.
 - **Repair:** when a probe reports a dependency with a recipe as missing (for example after a cancelled setup),
   Installed shows **Install Dependencies…**, which asks for approval and runs the recipes again
   (`plugins setup <plugin>` opens the same approval).

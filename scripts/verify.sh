@@ -5,10 +5,19 @@ mode="${1:-build}"
 shift || true
 mkdir -p build/logs
 log="build/logs/${mode}-$(date +%Y%m%d-%H%M%S).log"
+socket_suites='\.(AutomationTests|AutomationControllerTests)/'
 run() {
     case "$mode" in
         build) swift build "$@" ;;
-        test) swift test "$@" && (cd Packages/BashCutCore && swift test "$@") ;;
+        # Suites run in parallel, except the Unix-socket suites: their latency assertions and client timeouts
+        # do not hold while CPU-bound render suites saturate the machine, so they get a quiet second pass.
+        # Filtered runs (`verify.sh test --filter X`) stay sequential.
+        test) if [ "$#" -eq 0 ]; then
+                  swift test --skip "$socket_suites" && swift test --skip-build --no-parallel --filter "$socket_suites" \
+                      && (cd Packages/BashCutCore && swift test) && python3 scripts/test-mcp-process.py
+              else
+                  swift test --no-parallel "$@" && (cd Packages/BashCutCore && swift test "$@")
+              fi ;;
         lint) command -v swiftlint >/dev/null || { echo "error: SwiftLint is not installed"; return 1; }
               swiftlint lint --strict "$@" ;;
         # Builds the Xcode project generated from project.yml (which links the Package.swift products), so a
@@ -16,7 +25,9 @@ run() {
         xcode) scripts/generate-project.sh && xcodebuild -project BashCut.xcodeproj -scheme BashCut \
                    -configuration Debug -derivedDataPath build/xcode CODE_SIGNING_ALLOWED=NO \
                    -skipPackagePluginValidation "${@:-build}" ;;
-        perf) BASHCUT_PERF=1 swift test --filter EngineTests "$@" ;;
+        # Only the EngineTests suite, alone: a bare "EngineTests" filter also matched the whole
+        # BashCutEngineTests module and timed the 20-clip export against ~100 concurrent tests.
+        perf) BASHCUT_PERF=1 swift test --no-parallel --filter 'BashCutEngineTests\.EngineTests/' "$@" ;;
         uitest) echo "error: UI automation tests are not implemented in M0"; return 1 ;;
         *) echo "error: usage: scripts/verify.sh build|test|lint|xcode [build|test]|perf|uitest"; return 1 ;;
     esac

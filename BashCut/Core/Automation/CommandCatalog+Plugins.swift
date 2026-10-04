@@ -16,7 +16,7 @@ extension CommandCatalog {
                 + "proposed operations are validated and applied as one undoable edit attributed to the plugin.",
             parameters: [
                 CommandParameter("action", .string, "Action ID from plugins actions", required: true, cli: .positional),
-                CommandParameter("params", .object, "Action parameters (JSON object)", cli: .option("params")),
+                CommandParameter("params", .object, "Action parameters (JSON object)", sensitive: true, cli: .option("params")),
             ],
             execution: .job),
         CommandSpec(
@@ -40,7 +40,7 @@ extension CommandCatalog {
             parameters: [
                 pluginID,
                 CommandParameter("option", .string, "Option ID", required: true, cli: .option("option")),
-                CommandParameter("value", .string, "New value as text (on/off, numbers, choices)", cli: .option("value")),
+                CommandParameter("value", .string, "New value as text (on/off, numbers, choices)", sensitive: true, cli: .option("value")),
             ]),
         CommandSpec(
             "plugins.search", .read,

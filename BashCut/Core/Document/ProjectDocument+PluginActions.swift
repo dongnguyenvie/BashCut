@@ -108,17 +108,21 @@ extension ProjectDocument {
     /// `revealSecrets` is set (requests to the plugin); otherwise each shows as `{"set": true|false}`.
     func pluginOptionValues(_ plugin: InstalledPlugin, revealSecrets: Bool = false) -> [String: JSONValue] {
         let options = plugin.manifest.options ?? []
-        let user = plugins.trust.userOptions(plugin.id)
+        let user = plugins.trust.userOptions(plugin)
         let projectValues = project["pluginOptions"]?.object[plugin.id]?.object ?? [:]
         var values: [String: JSONValue] = [:]
         let root = fileURL?.deletingLastPathComponent()
         for option in options {
             if option.type == .secret {
-                let secret = plugins.secrets.read(plugin: plugin.id, option: option.id)
+                let identity = try? plugins.trust.credentialIdentity(for: plugin)
+                let secret = identity.map {
+                    plugins.secrets.read(plugin: $0, option: option.id,
+                                         binding: PluginOptionPolicy.secretBinding(options: options, userValues: user))
+                } ?? ""
                 values[option.id] = revealSecrets ? .string(secret) : .object(["set": .bool(!secret.isEmpty)])
                 continue
             }
-            let stored = option.effectiveScope == .project ? projectValues[option.id] : user[option.id]
+            let stored = PluginOptionPolicy.scope(of: option, in: options) == .project ? projectValues[option.id] : user[option.id]
             var value = stored.flatMap { try? option.check($0) } ?? option.fallback
             // File options in a project are stored relative to it; plugins always get absolute paths.
             if option.type == .file, let path = value.string, !path.isEmpty, !path.hasPrefix("/"), let root {
@@ -130,24 +134,30 @@ extension ProjectDocument {
     }
 
     func setPluginOption(_ plugin: InstalledPlugin, option id: String, value: JSONValue?, author: Author) throws {
-        guard let option = plugin.manifest.options?.first(where: { $0.id == id }) else {
+        let options = plugin.manifest.options ?? []
+        try PluginOptionPolicy.validateEdit(options: options, author: author)
+        guard let option = options.first(where: { $0.id == id }) else {
             throw ProjectError.invalid("Unknown option \(id) for \(plugin.id)")
         }
         if option.type == .secret {
             guard author == .user else { throw ProjectError.invalid("Set secrets in Settings") }
             let text = try value.map(option.check)?.string ?? ""
-            try plugins.secrets.write(text, plugin: plugin.id, option: id)
+            let identity = try plugins.trust.credentialIdentity(for: plugin)
+            try plugins.secrets.write(
+                text, plugin: identity, option: id,
+                binding: PluginOptionPolicy.secretBinding(options: options, userValues: plugins.trust.userOptions(plugin)))
+            plugins.secrets.removeStale(option: id, prefix: plugin.installationID + "@", keeping: identity)
             return
         }
         var checked = try value.map(option.check)
-        if option.type == .file, option.effectiveScope == .project, let path = checked?.string, path.hasPrefix("/"),
+        if option.type == .file, PluginOptionPolicy.scope(of: option, in: options) == .project, let path = checked?.string, path.hasPrefix("/"),
             let root = fileURL?.deletingLastPathComponent()
         {
             checked = .string(MediaPathResolver.projectPath(for: URL(fileURLWithPath: path), projectRoot: root))
         }
-        switch option.effectiveScope {
+        switch PluginOptionPolicy.scope(of: option, in: options) {
         case .user:
-            try plugins.trust.setUserOption(plugin.id, key: id, value: checked)
+            try plugins.trust.setUserOption(plugin, key: id, value: checked)
         case .project:
             var all = project["pluginOptions"]?.object ?? [:]
             var mine = all[plugin.id]?.object ?? [:]
@@ -161,18 +171,11 @@ extension ProjectDocument {
 
     // MARK: Running actions
 
-    /// Starts an action from the UI: asks first when it declares `confirm`, shows the parameter sheet when it
-    /// has parameters, otherwise runs it as a job.
+    /// Starts an action from the UI: collects parameters, then the shared execution path asks for confirmation.
     func triggerPluginAction(_ action: ContributedAction, mediaID: String? = nil, author: Author = .user) {
         guard canRunPluginAction(action, mediaID: mediaID) else {
             message = String(format: String(localized: "%@ is not available now"), action.title)
             return
-        }
-        if let confirm = action.spec.confirm, author == .user {
-            let choice = ModalCenter.shared.alert(
-                "plugin-confirm", title: action.title, message: confirm.text,
-                buttons: [ModalOption("cancel", String(localized: "Cancel")), ModalOption("run", String(localized: "Run"))])
-            guard choice == "run" else { return }
         }
         if !action.params.isEmpty {
             let defaults = (try? action.params.resolve([:])) ?? [:]
@@ -218,14 +221,21 @@ extension ProjectDocument {
         }
         let values: [String: JSONValue]
         do { values = try action.params.resolve(params) } catch { throw ProjectError.invalid(error.localizedDescription) }
+        let session = sessionID
+        if let confirm = action.spec.confirm {
+            let choice = ModalCenter.shared.alert(
+                "plugin-confirm", title: action.title, message: confirm.text,
+                buttons: [ModalOption("cancel", String(localized: "Cancel")), ModalOption("run", String(localized: "Run"))],
+                userOnly: true)
+            guard choice == "run", session == sessionID else { throw CancellationError() }
+        }
         let plugin = action.plugin
         let adapter = PluginActionCapability(
             action: id, params: values, options: pluginOptionValues(plugin, revealSecrets: true),
             context: pluginContext(plugin: plugin, parts: action.spec.context ?? [], mediaID: mediaID, author: author),
             projectRoot: root, outputRoot: Self.pluginOutputRoot(root, plugin: plugin))
-        let session = sessionID
         let service = plugins.service
-        DebugLog.write("plugin", "action \(id) by \(author) params=\(values)")
+        DebugLog.write("plugin", "action \(id) by \(author)")
         let proposal: PluginEditProposal
         do {
             proposal = try await plugins.running(id) {
@@ -233,7 +243,7 @@ extension ProjectDocument {
             }
         } catch {
             registry.record(method: "plugin.action." + id, author: author, succeeded: false)
-            DebugLog.write("plugin", "action \(id) FAILED: \(error.localizedDescription)")
+            DebugLog.write("plugin", "action \(id) failed")
             throw error
         }
         guard session == sessionID else { throw CancellationError() }
@@ -362,7 +372,9 @@ extension ProjectDocument {
         handleAuthored("plugins.option") { document, arguments, author in
             let plugin = try document.requirePlugin(arguments.string("plugin"))
             let id = try arguments.string("option")
-            guard let option = plugin.manifest.options?.first(where: { $0.id == id }) else {
+            let options = plugin.manifest.options ?? []
+            try PluginOptionPolicy.validateEdit(options: options, author: author)
+            guard let option = options.first(where: { $0.id == id }) else {
                 throw RPCFailure(-32602, "Unknown option \(id)")
             }
             let value: JSONValue?
@@ -384,7 +396,7 @@ extension ProjectDocument {
             try document.plugins.setEnabled(plugin, enabled: enabled, hooks: hooks)
             return .object([
                 "plugin": .string(plugin.id), "availability": .string(document.plugins.service.availability(plugin).name),
-                "hooks": .bool(document.plugins.trust.hooksEnabled(plugin.id)),
+                "hooks": .bool(document.plugins.trust.hooksEnabled(plugin)),
             ])
         }
     }

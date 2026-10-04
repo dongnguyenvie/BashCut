@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Measure what an agent waits for: socket and MCP latency of common commands, and the time from an edit until
 `ui frame` can show it. Run it against a running BashCut with a project open (a scratch or sample project:
---edits applies a small opacity change to the first main clip and undoes it).
+--edits applies a small opacity change to the first main clip and undoes it). When plugins are installed it also
+times the read-only plugin commands, per plugin; it never runs plugin actions.
 
-    scripts/bench-automation.py [--mcp PATH_TO_bashcut-mcp] [--edits 5]
+    scripts/bench-automation.py [--mcp PATH_TO_bashcut-mcp] [--edits 5] [--no-plugins]
 
 Python standard library only; reads the automation token file like the CLI.
 """
@@ -36,11 +37,12 @@ def rpc(method, params=None):
     return (time.perf_counter() - start) * 1000, response["result"], len(data)
 
 
-def report(label, samples, size=None):
+def report(label, samples, size=None, first=None):
     samples = sorted(samples)
     p95 = samples[max(0, int(len(samples) * 0.95) - 1)]
     extra = f"  {size / 1024:6.1f} KB" if size is not None else ""
-    print(f"{label:40s} p50 {statistics.median(samples):7.2f} ms  p95 {p95:7.2f} ms{extra}")
+    cold = f"  first {first:7.2f} ms" if first is not None else ""
+    print(f"{label:40s} p50 {statistics.median(samples):7.2f} ms  p95 {p95:7.2f} ms{extra}{cold}")
 
 
 def socket_bench():
@@ -55,7 +57,39 @@ def socket_bench():
         report(f"  {method} {json.dumps(params) if params else ''}", times, size)
 
 
-def mcp_bench(path):
+def timed(method, params=None, runs=20):
+    """The first call separately: it can pay one-time costs (plugin fingerprints, probes) the rest reuse."""
+    first, _, size = rpc(method, params)
+    rest = [rpc(method, params)[0] for _ in range(runs - 1)]
+    return first, rest, size
+
+
+def plugin_bench():
+    _, listed, _ = rpc("plugins.list")
+    plugins = listed.get("plugins", [])
+    if not plugins:
+        print("Plugins: none installed, skipped")
+        return []
+    print(f"Plugins ({len(plugins)} installed; read-only commands, first call reported separately)")
+    for method in ["plugins.list", "plugins.actions", "plugins.hooks"]:
+        first, rest, size = timed(method)
+        report(f"  {method}", rest, size, first)
+    for plugin in plugins:
+        identifier = plugin["id"]
+        print(f"  {identifier} {plugin.get('version', '?')} · {plugin.get('transport', '?')} · "
+              f"{plugin.get('availability', '?')}, {len(plugin.get('providers', []))} providers")
+        first, rest, size = timed("plugins.options", {"plugin": identifier})
+        report("    plugins.options", rest, size, first)
+        # Health runs the plugin's dependency probes as processes: fewer samples, and the result says whether
+        # they ran (ready) or were skipped (untrusted, disabled, outdated).
+        first, rest, size = timed("plugins.health", {"plugin": identifier}, runs=5)
+        _, health, _ = rpc("plugins.health", {"plugin": identifier})
+        state = health[0].get("state", "?") if isinstance(health, list) and health else "?"
+        report(f"    plugins.health ({state})", rest, size, first)
+    return plugins
+
+
+def mcp_bench(path, plugins=False):
     print(f"MCP ({path})")
     process = subprocess.Popen([path], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
                                text=True, bufsize=1)
@@ -79,8 +113,11 @@ def mcp_bench(path):
                                                          "clientInfo": {"name": "bench", "version": "1"}})])
     send("notifications/initialized", notify=True)
     report("  tools/list", [send("tools/list") for _ in range(10)])
-    for tool, arguments in [("bashcut_context_get", {}), ("bashcut_timeline_get", {"format": "text"}),
-                            ("bashcut_timeline_get", {}), ("bashcut_review_run", {})]:
+    tools = [("bashcut_context_get", {}), ("bashcut_timeline_get", {"format": "text"}),
+             ("bashcut_timeline_get", {}), ("bashcut_review_run", {})]
+    if plugins:
+        tools.append(("bashcut_plugins_list", {}))
+    for tool, arguments in tools:
         report(f"  {tool} {json.dumps(arguments) if arguments else ''}",
                [send("tools/call", {"name": tool, "arguments": arguments}) for _ in range(30)])
     process.terminate()
@@ -111,9 +148,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--mcp", default="/Applications/BashCut.app/Contents/MacOS/bashcut-mcp")
     parser.add_argument("--edits", type=int, default=0, help="also measure N edit → frame round trips")
+    parser.add_argument("--no-plugins", action="store_true", help="skip the installed-plugin commands")
     options = parser.parse_args()
     socket_bench()
+    plugins = [] if options.no_plugins else plugin_bench()
     if os.path.exists(options.mcp):
-        mcp_bench(options.mcp)
+        mcp_bench(options.mcp, plugins=bool(plugins))
     if options.edits:
         edit_bench(options.edits)

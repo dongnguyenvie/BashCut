@@ -153,7 +153,7 @@ private struct PluginRow: View {
                 if availability == .untrusted || availability == .changed {
                     Button("Trust") { model.trustPlugin(plugin) }
                         .help("Allow this plugin to run. Its manifest and entrypoint are pinned; a change asks again.")
-                } else if !model.trust.isBundled(plugin), model.trust.grant(for: plugin.id) != nil {
+                } else if !model.trust.isBundled(plugin), model.trust.grant(for: plugin) != nil {
                     Button("Revoke Trust") { model.revokeTrust(plugin) }
                 }
                 Toggle("Enabled", isOn: Binding(
@@ -163,7 +163,7 @@ private struct PluginRow: View {
                     }))
                 if !plugin.manifest.hooks.isEmpty {
                     Toggle("Hooks", isOn: Binding(
-                        get: { model.trust.hooksEnabled(plugin.id) },
+                        get: { model.trust.hooksEnabled(plugin) },
                         set: { value in
                             do { try model.setEnabled(plugin, hooks: value) } catch { model.message = error.localizedDescription }
                         }))
@@ -173,7 +173,9 @@ private struct PluginRow: View {
                 }
                 Spacer()
                 if needsSetup {
-                    Button("Install Dependencies…") { model.requestSetup(plugin) }.disabled(model.installing)
+                    Button("Install Dependencies…") {
+                        do { try model.requestSetup(plugin) } catch { model.message = error.localizedDescription }
+                    }.disabled(model.installing)
                         .help("Run this plugin's install recipes again (after a failed or cancelled setup)")
                 }
                 if model.isRemovable(plugin) {
@@ -236,7 +238,7 @@ private struct PluginRow: View {
                                 try document.setPluginOption(plugin, option: option.id, value: value, author: .user)
                             } catch { model.message = error.localizedDescription }
                         }))
-                    Text(option.effectiveScope == .project ? "project" : "this Mac")
+                    Text(PluginOptionPolicy.scope(of: option, in: plugin.manifest.options ?? []) == .project ? "project" : "this Mac")
                         .font(.caption2).foregroundStyle(.secondary)
                 }
             }
@@ -284,6 +286,8 @@ private struct PluginInstallApprovalView: View {
                             PluginDependencyBadge(state: state, installable: dependency.install != nil,
                                                   checking: pending.preflight == nil)
                         }
+                        Text(([dependency.probe.executable] + dependency.probe.arguments).joined(separator: " "))
+                            .font(.caption.monospaced()).textSelection(.enabled)
                         if state != .available, let install = dependency.install {
                             Text(install.summary)
                             Text(([install.command.executable] + install.command.arguments).joined(separator: " "))
@@ -367,6 +371,8 @@ private struct PluginDependencyBadge: View {
             Label("Checking…", systemImage: "hourglass").font(.caption2).foregroundStyle(.secondary)
         } else {
             switch state {
+            case .notChecked?:
+                Label("Checked after approval", systemImage: "lock").font(.caption2).foregroundStyle(.secondary)
             case .available?:
                 Label("Available on this Mac", systemImage: "checkmark.circle.fill").font(.caption2).foregroundStyle(.green)
             case .missing?, nil where installable:

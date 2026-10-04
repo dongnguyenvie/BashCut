@@ -8,7 +8,7 @@ import Testing
 struct CompositionStructureTests {
     @Test("Look edits keep the composition structure; timing edits change it")
     func structure() async throws {
-        let video = try TestFixtures.requireVideo()
+        let video = try await TestFixtures.requireVideo()
         let media = Media(fields: [
             "id": .string("clip"), "path": .string(video.lastPathComponent), "fps": FrameRate().json, "frames": .integer(59),
         ])

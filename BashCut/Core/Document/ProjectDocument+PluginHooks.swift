@@ -180,7 +180,7 @@ extension ProjectDocument {
                         "plugin": .string(plugin.id), "event": .string(hook.event),
                         "edits": .bool(hook.proposesEdits),
                         "debounceMs": .integer(hook.debounceMs ?? hook.kind?.defaultDebounceMs ?? 0),
-                        "active": .bool(plugins.availability[plugin.id] == .ready && plugins.trust.hooksEnabled(plugin.id)),
+                        "active": .bool(plugins.availability[plugin.id] == .ready && plugins.trust.hooksEnabled(plugin)),
                     ])
                 }
             }),

@@ -140,9 +140,10 @@ struct CommandSpecTests {
         let ops = directory.appendingPathComponent("ops.json")
         try Data(#"[{"op":"split","item":"c","atFrame":30}]"#.utf8).write(to: ops)
 
-        let apply = try CommandLineParser.parse(["timeline", "apply", ops.path, "--base-rev", "4"])
+        let apply = try CommandLineParser.parse(["timeline", "apply", ops.path, "--base-rev", "4", "--dry-run"])
         #expect(apply.spec.name == "timeline.apply")
         #expect(apply.params["baseRev"] == .integer(4))
+        #expect(apply.params["dryRun"] == .bool(true))
         #expect(apply.params["label"] == .string("Agent edit"))
         #expect(apply.params["ops"]?.array.count == 1)
         #expect(apply.format == "json")
