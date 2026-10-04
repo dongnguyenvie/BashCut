@@ -28,7 +28,7 @@ actor BlockingStdioTransport: Transport {
         let intercept = self.intercept
         let reader = Thread {
             var pending = Data()
-            var awaitingInitialize = true
+            var initialized = false
             var buffer = [UInt8](repeating: 0, count: 64 * 1024)
             while true {
                 let count = buffer.withUnsafeMutableBytes { read(STDIN_FILENO, $0.baseAddress, $0.count) }
@@ -40,9 +40,8 @@ actor BlockingStdioTransport: Transport {
                 if count == 0 { break }
                 pending.append(contentsOf: buffer[..<count])
                 for var line in Self.takeLines(&pending) {
-                    if awaitingInitialize, let initialize = Self.compatibleInitialize(line) {
-                        line = initialize
-                        awaitingInitialize = false
+                    if !initialized {
+                        (line, initialized) = Self.handshakeLine(line)
                     }
                     if let reply = intercept?(line) {
                         try? Self.writeLine(reply)
@@ -86,22 +85,29 @@ actor BlockingStdioTransport: Transport {
 
     nonisolated func receive() -> AsyncThrowingStream<Data, Swift.Error> { messages }
 
-    /// For an `initialize` request, the request without `params.capabilities.experimental`; nil for any other
-    /// line. Workaround for swift-sdk 0.12.1, which decodes that field as `[String: String]` although the MCP schema
-    /// allows objects: Codex 0.160 sends `{"codex/auth-change": {}}` and the handshake failed with -32603. BashCut
-    /// never reads client capabilities. Remove this once the SDK decodes the field as JSON values.
-    /// Lines are parsed only until `initialize` arrives, so every spelling of the key is handled at no later cost.
-    static func compatibleInitialize(_ line: Data) -> Data? {
-        guard var message = (try? JSONSerialization.jsonObject(with: line)) as? [String: Any],
-              message["method"] as? String == "initialize"
-        else { return nil }
-        guard var params = message["params"] as? [String: Any],
-              var capabilities = params["capabilities"] as? [String: Any],
-              capabilities.removeValue(forKey: "experimental") != nil
-        else { return line }
-        params["capabilities"] = capabilities
-        message["params"] = params
-        return (try? JSONSerialization.data(withJSONObject: message)) ?? line
+    /// A line received before the handshake completes, made compatible with the SDK, and whether it is the client's
+    /// `notifications/initialized` (sent only after a successful `initialize`, so later lines are never parsed).
+    /// Every `initialize` until then, including a retry after a rejected one, loses `params.capabilities.experimental`.
+    /// Workaround for swift-sdk 0.12.1, which decodes that field as `[String: String]` although the MCP schema allows
+    /// objects: Codex 0.160 sends `{"codex/auth-change": {}}` and the handshake failed with -32603. BashCut never
+    /// reads client capabilities. Remove this once the SDK decodes the field as JSON values. Parsing (rather than
+    /// searching the bytes) handles every spelling of the keys.
+    static func handshakeLine(_ line: Data) -> (line: Data, initialized: Bool) {
+        guard var message = (try? JSONSerialization.jsonObject(with: line)) as? [String: Any] else { return (line, false) }
+        switch message["method"] as? String {
+        case "notifications/initialized":
+            return (line, true)
+        case "initialize":
+            guard var params = message["params"] as? [String: Any],
+                  var capabilities = params["capabilities"] as? [String: Any],
+                  capabilities.removeValue(forKey: "experimental") != nil
+            else { return (line, false) }
+            params["capabilities"] = capabilities
+            message["params"] = params
+            return ((try? JSONSerialization.data(withJSONObject: message)) ?? line, false)
+        default:
+            return (line, false)
+        }
     }
 
     /// Removes every complete newline-terminated line from `pending` (empty lines are skipped).

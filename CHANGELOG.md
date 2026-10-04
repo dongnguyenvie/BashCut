@@ -9,7 +9,8 @@
 - `bashcut-mcp` accepts the `initialize` request of Codex 0.160 (tested with the CLI that ships in the ChatGPT app).
   Codex sends objects in `capabilities.experimental`, which the MCP SDK decodes as strings, so the handshake failed
   with -32603 and Codex had no BashCut tools although `agent setup codex` reported success. The server now ignores
-  the client's experimental capabilities, which it never used. `scripts/test-mcp-process.py` replays Codex's request.
+  the client's experimental capabilities, which it never used, in every `initialize` until the client confirms the
+  handshake, so a retry after a rejected `initialize` works too. `scripts/test-mcp-process.py` replays Codex's request.
 - **Plugins** is a labelled toolbar button next to Review and Export instead of an item in ☰. Its dot shows plugin
   updates (cyan) or plugin edits to review (orange), and clicking it opens what needs attention.
 - The agent dock asks to set up the agent kit when Claude Code or Codex is installed without it (or with an older
