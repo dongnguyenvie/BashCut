@@ -18,7 +18,7 @@ check() {
 # Each case runs in a fresh bash with a scrubbed BASHCUT_* environment, against a throwaway .env.
 in_lib() {
     env -i PATH="$PATH" HOME="$HOME" BASHCUT_ENV_FILE="$scratch/.env" ${extra_env[@]+"${extra_env[@]}"} \
-        /bin/bash -c "set -euo pipefail; source '$scripts/lib/common.sh'; source '$scripts/lib/signing.sh'; $1"
+        /bin/bash -c "set -euo pipefail; source '$scripts/lib/common.sh'; source '$scripts/lib/signing.sh'; source '$scripts/lib/homebrew.sh'; $1"
 }
 extra_env=()
 
@@ -84,6 +84,20 @@ EOF")"
 extra_env=(BASHCUT_RELEASE_IDENTITY=Chosen)
 check "explicit release identity wins" "Chosen" "$(in_lib 'developer_id_identity')"
 extra_env=()
+
+check "repo from SSH remote" "owner/BashCut" "$(in_lib 'github_repo_from_remote git@github.com:owner/BashCut.git')"
+check "repo from HTTPS remote" "owner/BashCut" "$(in_lib 'github_repo_from_remote https://github.com/owner/BashCut')"
+check "non-GitHub remote" "" "$(in_lib 'github_repo_from_remote git@gitlab.com:owner/BashCut.git')"
+check "macOS cask symbol" ":sonoma" "$(in_lib 'macos_cask_symbol 14.0')"
+check "unknown macOS version" "error: no Homebrew macOS symbol for minimum system version '99.0'" \
+    "$(in_lib 'macos_cask_symbol 99.0' 2>&1 || true)"
+check "cask rejects a bad checksum" "error: invalid sha256 'abc'" \
+    "$(in_lib 'render_cask 1.0 abc owner/BashCut 14.0' 2>&1 || true)"
+sha="$(printf '0%.0s' {1..64})"
+in_lib "render_cask 1.2.3 $sha owner/BashCut 14.0" >"$scratch/bashcut.rb"
+ruby -c "$scratch/bashcut.rb" >/dev/null || { echo "FAIL cask is not valid Ruby" >&2; failures=$((failures + 1)); }
+check "cask version and checksum" "  version \"1.2.3\"|  sha256 \"$sha\"" "$(sed -n '2,3p' "$scratch/bashcut.rb" | paste -sd '|' -)"
+check "cask links the CLI and MCP server" "2" "$(grep -c '^  binary "#{appdir}/BashCut.app/Contents/MacOS/bashcut' "$scratch/bashcut.rb")"
 
 for script in "$scripts"/*.sh "$scripts"/lib/*.sh "$scripts"/ci/*.sh; do
     /bin/bash -n "$script" || { echo "FAIL syntax: $script" >&2; failures=$((failures + 1)); }

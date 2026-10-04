@@ -5,6 +5,16 @@
 
 ## [Unreleased]
 
+- Developer ID builds (`scripts/build-release.sh`) are no longer sandboxed: they sign with
+  `Configs/DeveloperID.entitlements` (microphone only, hardened runtime), so the bundled `bashcut` and `bashcut-mcp`
+  run from any terminal; sandboxed helpers that inherit the app's sandbox were killed (SIGTRAP) there. The build
+  fails if any Mach-O is sandboxed or the CLI dies on launch. App Store builds keep `BashCut.entitlements`. The
+  release summary no longer prints the team ID.
+- `scripts/publish-homebrew.sh` publishes a release from `scripts/build-release.sh` to Homebrew. It checks the
+  zip (version, build, signature, Gatekeeper and stapled ticket), uploads the zip, dmg and `SHA256SUMS` to a GitHub
+  release `v<version>`, and pushes `Casks/bashcut.rb` to the tap (`<owner>/homebrew-tap` by default). The cask
+  installs the app and links `bashcut` and `bashcut-mcp`. `--dry-run` prints the cask without publishing; it is
+  rendered by `scripts/lib/homebrew.sh`, tested in `scripts/ci/test-script-lib.sh`, and passes `brew style`.
 - README (English and Vietnamese) links the public TestFlight beta: https://testflight.apple.com/join/XwsNZxre.
 - Recent projects on the Welcome screen are named by their project folder, with the folder's location below,
   instead of all reading `project.bashcut`.
