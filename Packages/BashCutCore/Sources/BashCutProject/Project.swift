@@ -373,6 +373,8 @@ public struct Project: JSONObject {
     /// Whether clips fill the frame (cropping) by default instead of fitting inside it; a clip's `fill` overrides it.
     /// Projects from before the setting existed fill.
     public var clipsFill: Bool { storage["clipFill"] != .bool(false) }
+    /// The canvas shape is still the New Project default, waiting for the first picture clip to set it.
+    public var canvasFromFirstClip: Bool { storage["canvasFromFirstClip"] == .bool(true) }
     public func fills(_ item: Item) -> Bool {
         if case .bool(let fill)? = item["fill"] { return fill }
         return clipsFill

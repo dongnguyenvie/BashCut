@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+- The first clip sets the canvas. New Project's Frame starts at **Auto · from the first clip**: the first video or
+  image placed on the timeline (drag, Append, Insert/Overwrite, import, or an agent's edit) sets portrait, landscape
+  or square to match it, keeping the short side, in the same undo step as the clip, and the status bar says so.
+  Picking a shape in New Project or changing it later (format menu, `project format`, `setFormat`) makes it final,
+  and projects made before this keep their canvas. Projects store this as `canvasFromFirstClip`;
+  `project create --canvas` defaults to `auto`.
 - The viewer says which picture it shows. Its header is a **Timeline | Source** switch instead of "VIEWER" and
   "SOURCE" labels; Source names the Media clip, gets a cyan frame and a one-line hint (Mark In/Out, then E or Q;
   Esc to go back). Clicking, dragging, seeking or selecting on the timeline (and `ui seek` / `ui select`) returns

@@ -39,7 +39,7 @@ Create a project folder (media, footage, render…) like the New Project wizard 
 - `name`: string, required. Project name
 - `directory`: string, path. Absolute parent folder for the new project folder; defaults to the projects folder (see project folder)
 - `footage`: string, path. Footage folder to link (never modified)
-- `canvas`: string, one of portrait, landscape, square, default "portrait". Canvas
+- `canvas`: string, one of auto, portrait, landscape, square, default "auto". Canvas; auto starts portrait and lets the first video or image clip set the shape
 - `resolution`: string, one of 720, 1080, 2160, default "1080". Short-side resolution
 - `fps`: string, one of 29.97, 30, 24, 60, default "29.97". Frame rate
 - `language`: string, default "vi". Content language tag

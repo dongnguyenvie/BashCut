@@ -260,6 +260,7 @@ extension ProjectDocument {
         coalescingKey: String? = nil
     ) throws -> Int {
         let before = project
+        let (operation, firstClipCanvas) = withFirstClipCanvas(operation, label: label, author: author)
         do {
             try ensureEditable(author: author)
             try history.apply(
@@ -271,11 +272,32 @@ extension ProjectDocument {
             throw error
         }
         didCommit(from: before, author: author, label: label, coalescing: coalescingKey != nil)
+        if let firstClipCanvas {
+            let name = switch firstClipCanvas {
+            case .portrait: String(localized: "Portrait · 9:16")
+            case .landscape: String(localized: "Landscape · 16:9")
+            case .square: String(localized: "Square · 1:1")
+            }
+            message = String(format: String(localized: "Canvas set to %@ to match the first clip"), name)
+        }
         emitPluginEvent(.editCommitted, editEventPayload(label: label, author: author, before: before))
         DebugLog.write(
             "edit", "edit by \(author) rev \(before.revision)→\(project.revision) op=\(Self.describe(operation))"
                 + (before.tracks.map(\.id) == project.tracks.map(\.id) ? "" : " layers: \(layoutSummary())"))
         return project.revision
+    }
+
+    /// The first picture clip on an empty timeline sets the canvas shape, in the same undo step as the clip.
+    private func withFirstClipCanvas(
+        _ operation: EditOperation, label: String, author: Author
+    ) -> (EditOperation, ProjectSetup.Canvas?) {
+        guard author != .external, project.canvasFromFirstClip, !project.hasPictureClip,
+            let next = try? project.applying(operation).project,
+            let format = project.formatForFirstClip(in: next)
+        else { return (operation, nil) }
+        DebugLog.write("edit", "first clip sets the canvas to \(format.canvas.rawValue) \(format.width)x\(format.height)")
+        let ops: [EditOperation] = [operation, .setFormat(width: format.width, height: format.height)]
+        return (.group(label: label, author: author, ops: ops), format.canvas)
     }
 
     func dryRunEdit(_ operation: EditOperation, author: Author, baseRevision: Int) throws -> JSONValue {

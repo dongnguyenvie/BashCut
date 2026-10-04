@@ -1017,6 +1017,10 @@
       ],
       "type" : "object"
     },
+    "canvasFromFirstClip" : {
+      "description" : "The first video or image clip placed on the timeline sets the canvas shape (portrait, landscape or square, keeping the short side). Cleared by any canvas change, so a canvas set on purpose stays; absent in projects made before it existed",
+      "type" : "boolean"
+    },
     "clipFill" : {
       "description" : "Clips fill the frame, cropping what does not fit, instead of fitting inside it. New projects fit (false); a project without it fills, as projects did before it existed",
       "type" : "boolean"
