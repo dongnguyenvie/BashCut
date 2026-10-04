@@ -10,7 +10,7 @@ import Testing
 
 struct EngineTests {
     private func fixture(count: Int = 2, picture: Bool = true) async throws -> (Project, CompositionSnapshot) {
-        _ = try TestFixtures.requireVideo()
+        _ = try await TestFixtures.requireVideo()
         var project = Project(name: "Synthetic engine fixture")
         let asset = Media(fields: [
             "id": .string("source"), "path": .string("test.mp4"),

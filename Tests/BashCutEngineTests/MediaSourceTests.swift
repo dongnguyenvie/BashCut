@@ -9,7 +9,8 @@ import Testing
 struct MediaSourceTests {
     private let fixture = TestFixtures.videoURL
 
-    private func projectFolder() throws -> URL {
+    private func projectFolder() async throws -> URL {
+        _ = try await TestFixtures.requireVideo()
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         try FileManager.default.copyItem(at: fixture, to: root.appendingPathComponent("clip.mp4"))
@@ -31,8 +32,8 @@ struct MediaSourceTests {
     }
 
     @Test("Previews read a proxy when one exists; exports always read the original")
-    func proxySelection() throws {
-        let root = try projectFolder()
+    func proxySelection() async throws {
+        let root = try await projectFolder()
         defer { try? FileManager.default.removeItem(at: root) }
         let source = ProxyMediaSource()
         let original = root.appendingPathComponent("clip.mp4").standardizedFileURL
@@ -49,7 +50,7 @@ struct MediaSourceTests {
 
     @Test("Builds reuse opened assets until the file changes on disk")
     func assetCache() async throws {
-        let root = try projectFolder()
+        let root = try await projectFolder()
         defer { try? FileManager.default.removeItem(at: root) }
         let builder = CompositionBuilder(source: OriginalMediaSource())
         let value = try project()
@@ -67,7 +68,7 @@ struct MediaSourceTests {
 
     @Test("A heavily cut source is resolved once per build, with fresh proxy selection on the next build")
     func repeatedSource() async throws {
-        let root = try projectFolder()
+        let root = try await projectFolder()
         defer { try? FileManager.default.removeItem(at: root) }
         let source = CountingMediaSource()
         let builder = CompositionBuilder(source: source)
@@ -93,7 +94,7 @@ struct MediaSourceTests {
 
     @Test("Large projects retain every active asset across warm builds")
     func largeAssetCache() async throws {
-        let root = try projectFolder()
+        let root = try await projectFolder()
         defer { try? FileManager.default.removeItem(at: root) }
         var operations: [EditOperation] = []
         for index in 0..<80 {
@@ -120,7 +121,7 @@ struct MediaSourceTests {
 
     @Test("The purpose cache evicts the least recently used asset and shrinks for smaller projects")
     func leastRecentlyUsed() async throws {
-        let root = try projectFolder()
+        let root = try await projectFolder()
         defer { try? FileManager.default.removeItem(at: root) }
         let urls = (0..<3).map { root.appendingPathComponent("copy-\($0).mp4") }
         for url in urls { try FileManager.default.linkItem(at: root.appendingPathComponent("clip.mp4"), to: url) }
@@ -143,7 +144,7 @@ struct MediaSourceTests {
 
     @Test("Export assets cannot evict preview proxies")
     func cacheLimit() async throws {
-        let root = try projectFolder()
+        let root = try await projectFolder()
         defer { try? FileManager.default.removeItem(at: root) }
         let proxies = root.appendingPathComponent(ProxyMediaSource.folder, isDirectory: true)
         try FileManager.default.createDirectory(at: proxies, withIntermediateDirectories: true)

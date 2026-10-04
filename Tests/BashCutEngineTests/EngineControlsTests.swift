@@ -9,7 +9,7 @@ import Testing
 struct EngineControlsTests {
     @Test("Composition resolves shared workspace media")
     func sharedWorkspaceMedia() async throws {
-        let fixture = TestFixtures.videoURL
+        let fixture = try await TestFixtures.requireVideo()
         let workspace = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
         let assets = workspace.appendingPathComponent("assets", isDirectory: true)
@@ -223,7 +223,7 @@ struct EngineControlsTests {
         #expect(parsed.dimension == 2)
         #expect(parsed.cubeData.count == 2 * 2 * 2 * 4 * MemoryLayout<Float>.size)
 
-        let fixture = TestFixtures.videoURL
+        let fixture = try await TestFixtures.requireVideo()
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: root.appendingPathComponent("luts"), withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }

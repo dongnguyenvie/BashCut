@@ -8,7 +8,7 @@ import Testing
 struct ExportEncodingTests {
     @Test("H264 exports put metadata before media, retain rational FPS and bound keyframe spacing")
     func encoding() async throws {
-        _ = try TestFixtures.requireVideo()
+        _ = try await TestFixtures.requireVideo()
         let root = try TestFixtures.temporaryDirectory("encoding")
         defer { try? FileManager.default.removeItem(at: root) }
         let media = Media(fields: ["id": .string("m"), "path": .string("test.mp4"),

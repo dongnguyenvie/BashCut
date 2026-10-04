@@ -9,7 +9,7 @@ import Testing
 struct ProxyManagerTests {
     @Test("The policy flags large, high-rate or HEVC footage and leaves light footage alone")
     func policy() async throws {
-        let video = try TestFixtures.requireVideo()
+        let video = try await TestFixtures.requireVideo()
         let light = try #require(try await ProxyManager().probe(video))
         #expect(light.codec == "avc1" && light.width == 320 && light.height == 180)
         #expect(!light.needsProxy)
@@ -23,7 +23,7 @@ struct ProxyManagerTests {
 
     @Test("A proxy keeps every frame time, has short GOPs and sound, and previews read it")
     func generate() async throws {
-        let video = try TestFixtures.requireVideo()
+        let video = try await TestFixtures.requireVideo()
         let root = try TestFixtures.temporaryDirectory("proxy")
         defer { try? FileManager.default.removeItem(at: root) }
         let media = Media(fields: ["id": .string("clip"), "path": .string(video.path)])

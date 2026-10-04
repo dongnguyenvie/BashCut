@@ -31,7 +31,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install verification tools
-        run: brew install swiftlint xcodegen ffmpeg
+        run: brew install swiftlint xcodegen
       - name: Record toolchain
         run: |
           xcodebuild -version
@@ -47,8 +47,6 @@ jobs:
           key: spm-${{ runner.os }}-${{ runner.arch }}-xcode26.3-${{ hashFiles('Package.resolved', 'Packages/BashCutCore/Package.resolved') }}-${{ github.sha }}
           restore-keys: |
             spm-${{ runner.os }}-${{ runner.arch }}-xcode26.3-${{ hashFiles('Package.resolved', 'Packages/BashCutCore/Package.resolved') }}-
-      - name: Generate synthetic media
-        run: Fixtures/make-media.sh
       - name: Check whitespace
         env:
           PR_BASE: ${{ github.event.pull_request.base.sha }}

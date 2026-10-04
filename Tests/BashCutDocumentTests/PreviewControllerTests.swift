@@ -118,7 +118,7 @@ struct PreviewControllerTests {
 
     @Test("Scrubbing keeps one exact seek in flight and lands on the newest frame")
     func scrubChases() async throws {
-        let video = try TestFixtures.requireVideo()
+        let video = try await TestFixtures.requireVideo()
         let media = Media(fields: [
             "id": .string("clip"), "path": .string(video.lastPathComponent), "fps": FrameRate().json, "frames": .integer(59),
         ])
@@ -140,7 +140,7 @@ struct PreviewControllerTests {
 
     @Test("An edit keeps the previous picture until the new composition is ready")
     func rebuildKeepsPicture() async throws {
-        let video = try TestFixtures.requireVideo()
+        let video = try await TestFixtures.requireVideo()
         let media = Media(fields: [
             "id": .string("clip"), "path": .string(video.lastPathComponent), "fps": FrameRate().json, "frames": .integer(59),
         ])
@@ -170,7 +170,7 @@ struct PreviewControllerTests {
 
     @Test("A failed player item is replaced even when composition structure has not changed", arguments: [false, true])
     func failedItemRecovery(comparison: Bool) async throws {
-        let video = try TestFixtures.requireVideo()
+        let video = try await TestFixtures.requireVideo()
         let media = Media(fields: [
             "id": .string("clip"), "path": .string(video.lastPathComponent), "fps": FrameRate().json, "frames": .integer(59)
         ])
@@ -210,7 +210,7 @@ struct PreviewControllerTests {
 
     @Test("A look-only edit updates the shown players in place")
     func lookEditInPlace() async throws {
-        let video = try TestFixtures.requireVideo()
+        let video = try await TestFixtures.requireVideo()
         let media = Media(fields: [
             "id": .string("clip"), "path": .string(video.lastPathComponent), "fps": FrameRate().json, "frames": .integer(59),
         ])
@@ -243,7 +243,7 @@ struct PreviewControllerTests {
 
     @Test("The shown picture follows an in-place update")
     func inPlacePicture() async throws {
-        let video = try TestFixtures.requireVideo()
+        let video = try await TestFixtures.requireVideo()
         let media = Media(fields: [
             "id": .string("clip"), "path": .string(video.lastPathComponent), "fps": FrameRate().json, "frames": .integer(59),
         ])

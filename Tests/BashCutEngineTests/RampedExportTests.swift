@@ -10,7 +10,7 @@ import Testing
 struct RampedExportTests {
     @Test("Ramped picture and continuous audio play and export through native AVFoundation", arguments: [true, false])
     func playerAndExport(preservesPitch: Bool) async throws {
-        let video = try TestFixtures.requireVideo()
+        let video = try await TestFixtures.requireVideo()
         let root = try TestFixtures.temporaryDirectory("ramp-export")
         defer { try? FileManager.default.removeItem(at: root) }
         try FileManager.default.copyItem(at: video, to: root.appendingPathComponent("video.mp4"))

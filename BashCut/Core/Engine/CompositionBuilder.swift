@@ -185,7 +185,9 @@ public actor CompositionBuilder {
                 // Main sound remains attached in the spike until separate linked dialogue editing lands.
                 if track.kind == "audio" || (track.role == "main" && item["linkedAudio"] == nil) {
                     if let source = asset.audio {
-                        let lane = try audioLanes.take(for: item, sourceTrack: track.id, composition: composition)
+                        let gain = AudioGainPlanner.points(
+                            for: item, on: track, speech: speechRanges, mixGainDb: project.mixGainDb)
+                        let lane = try audioLanes.take(for: item, sourceTrack: track.id, gain: gain, composition: composition)
                         let target = lane.track
                         if ramp != nil {
                             let url = try await rampedAudio.render(asset: asset, item: item, mediaFPS: media.fps, fps: project.fps, root: root)
@@ -199,9 +201,7 @@ public actor CompositionBuilder {
                                 CMTimeRange(start: destination, duration: normalSourceRange.duration),
                                 toDuration: project.fps.time(item.duration))
                         }
-                        applyAudioMixParameters(
-                            item: item, sourceTrack: track, parameters: lane.parameters, fps: project.fps,
-                            envelope: (speechRanges, project.mixGainDb))
+                        applyAudioMixParameters(gain, parameters: lane.parameters, fps: project.fps)
                     }
                 }
             }
@@ -294,11 +294,8 @@ public actor CompositionBuilder {
         return hasher.finalize()
     }
     private func applyAudioMixParameters(
-        item: Item, sourceTrack: Track, parameters: AVMutableAudioMixInputParameters, fps: FrameRate,
-        envelope: (speech: [Range<Int>], mixGainDb: Double)
+        _ points: [AudioGainPoint], parameters: AVMutableAudioMixInputParameters, fps: FrameRate
     ) {
-        let points = AudioGainPlanner.points(
-            for: item, on: sourceTrack, speech: envelope.speech, mixGainDb: envelope.mixGainDb)
         if let first = points.first { parameters.setVolume(first.volume, at: fps.time(first.frame)) }
         for (start, end) in zip(points, points.dropFirst()) where end.frame > start.frame {
             parameters.setVolumeRamp(

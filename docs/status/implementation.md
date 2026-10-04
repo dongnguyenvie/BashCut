@@ -499,3 +499,30 @@ Document action validation now uses `canUndo`/`canRedo` instead of materializing
 array path versus 2.753 ms for the direct accessors (M1 Max, Debug). This is a small per-call saving, not an
 overall edit-latency claim. The test also verifies availability and the top label before editing, after undo,
 redo, exhausting the stack and branching after undo.
+
+### Hosted verification (2026-10-04)
+
+The macOS 15 arm64 / Xcode 26.3 workflow runs SwiftPM build, full app/core tests and CLI/MCP subprocess
+tests, strict lint, and Xcode build/test on every pull request. Logs and failed snapshot images are retained.
+[Run 37181160682](https://github.com/dongnguyenvie/BashCut/actions/runs/37181160682) at `1b9e228` passed all
+steps. Its first predecessor exposed device-dependent RGB fixtures and H.264 source variation in a caption
+golden. Explicit sRGB fixtures and a black compositor background fixed those dependencies without relaxing
+image thresholds. Local Xcode verification also passed 245 tests in 77 suites.
+
+
+### Native fixtures and discontinuous audio gain (2026-10-04)
+
+Tests generate a shared, per-process temporary H.264/AAC fixture with AVFoundation: 60 moving 320×180
+frames at 30000/1001 and a 48 kHz mono sine tone. The video input explicitly uses a 30000 timescale;
+default writer rounding otherwise changes fractional frame timestamps. The standalone `bashcut-fixtures`
+executable uses the same generator. CI needs neither ffmpeg nor a manual fixture step. Tests check every
+frame timestamp, codecs, dimensions, duration, audible PCM, concurrent requests, cancellation before
+publication and preservation of an existing destination.
+
+The new fixture exposed a native audio-mix regression at adjacent clips with different gain. A -20 dB
+cut decoded at a 0.7385 amplitude ratio instead of 0.1, despite correct `getVolumeRamp` metadata. The
+failure also reproduces with generated PCM, so it is not confined to AAC priming. Touching discontinuous
+envelopes now use different composition lanes; a lane becomes reusable after a gap or at a continuous
+gain boundary. Four adjacent 0/-20/-6/-14 dB clips use two lanes and decode within the existing 0.005
+amplitude tolerance on both AAC and PCM, with spectral and varispeed pitch modes. The 240-cut constant-gain
+fixture still uses one lane. No ramp timestamps or correctness thresholds were relaxed.

@@ -28,7 +28,7 @@ struct MediaReverserTests {
 
     @Test("The reversed copy starts on the range's last frame and ends on its first, with sound")
     func reverse() async throws {
-        let video = try TestFixtures.requireVideo()
+        let video = try await TestFixtures.requireVideo()
         let root = try TestFixtures.temporaryDirectory("reverse")
         defer { try? FileManager.default.removeItem(at: root) }
         let fps = 30_000.0 / 1_001

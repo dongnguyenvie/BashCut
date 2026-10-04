@@ -86,7 +86,7 @@ bash-cut/
 │   └── BashCutTestSupport/        # shared fixtures: generated media, scratch folders, synthetic audio
 │
 ├── Fixtures/
-│   ├── make-media.sh              # generates media/test.mp4 with ffmpeg
+│   ├── make-media.sh              # optional native AVFoundation sample in media/test.mp4
 │   └── media/                     # generated, gitignored
 │
 ├── scripts/

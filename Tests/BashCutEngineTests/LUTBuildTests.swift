@@ -11,7 +11,7 @@ struct LUTBuildTests {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
         try FileManager.default.createDirectory(at: root.appendingPathComponent("luts"), withIntermediateDirectories: true)
-        try FileManager.default.copyItem(at: TestFixtures.requireVideo(), to: root.appendingPathComponent("clip.mp4"))
+        try await FileManager.default.copyItem(at: TestFixtures.requireVideo(), to: root.appendingPathComponent("clip.mp4"))
         let cube = "LUT_3D_SIZE 64\n" + String(repeating: "0 0 0\n", count: 64 * 64 * 64)
         try Data(cube.utf8).write(to: root.appendingPathComponent("luts/test.cube"))
         let media = Media(fields: [

@@ -145,7 +145,7 @@ struct ExportPublicationTests {
     }
 
     private func snapshot() async throws -> CompositionSnapshot {
-        _ = try TestFixtures.requireVideo()
+        _ = try await TestFixtures.requireVideo()
         let media = Media(fields: ["id": .string("m"), "path": .string("test.mp4"),
                                    "fps": FrameRate().json, "frames": .integer(59)])
         let project = try Project(name: "Publication").applying(

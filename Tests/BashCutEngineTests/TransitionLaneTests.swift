@@ -24,7 +24,7 @@ struct TransitionLaneTests {
 
     @Test("Sequential transition holds share two video lanes with no overlapping source requests")
     func laneCount() async throws {
-        _ = try TestFixtures.requireVideo()
+        _ = try await TestFixtures.requireVideo()
         let value = try project(clips: 80)
         let built = try await CompositionBuilder().build(value, root: TestFixtures.mediaRoot)
         #expect(try await built.composition.loadTracks(withMediaType: .video).count == 2)
@@ -40,7 +40,7 @@ struct TransitionLaneTests {
 
     @Test("Reused lanes render the same dissolve pictures as an isolated transition")
     func renderedPictures() async throws {
-        _ = try TestFixtures.requireVideo()
+        _ = try await TestFixtures.requireVideo()
         let builder = CompositionBuilder()
         let reference = try await builder.build(project(clips: 2), root: TestFixtures.mediaRoot)
         let sequence = try await builder.build(project(clips: 12), root: TestFixtures.mediaRoot)

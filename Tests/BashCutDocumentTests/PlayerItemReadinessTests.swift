@@ -27,7 +27,7 @@ struct PlayerItemReadinessTests {
 
     @Test("Readiness timeout keeps the old picture and reports the new preview as stale")
     func retainedPicture() async throws {
-        let video = try TestFixtures.requireVideo()
+        let video = try await TestFixtures.requireVideo()
         let media = Media(fields: [
             "id": .string("clip"), "path": .string(video.lastPathComponent), "fps": FrameRate().json, "frames": .integer(59)
         ])

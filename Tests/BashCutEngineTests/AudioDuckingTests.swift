@@ -73,6 +73,7 @@ struct AudioDuckingTests {
 
     @Test("Composition applies track ducking to music parameters")
     func composition() async throws {
+        _ = try await TestFixtures.requireVideo()
         let root = TestFixtures.mediaRoot
         let media = Media(fields: [
             "id": .string("m"), "path": .string("test.mp4"),

@@ -12,7 +12,7 @@ struct PreviewCacheMaintenanceTests {
 
     @Test("Cache maintenance releases both players, defers edits, and restores the latest preview even on failure", arguments: [false, true])
     func maintenance(comparison: Bool) async throws {
-        let video = try TestFixtures.requireVideo()
+        let video = try await TestFixtures.requireVideo()
         let media = Media(fields: ["id": .string("m"), "path": .string(video.lastPathComponent),
                                    "fps": FrameRate().json, "frames": .integer(59)])
         let first = try Project(name: "Maintenance").applying(.group(label: "Fixture", author: .user, ops: [

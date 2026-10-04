@@ -7,9 +7,10 @@ import Testing
 @testable import BashCutEngine
 
 struct AudioLaneTests {
-    private func project(_ items: [Item]) throws -> Project {
+    private func project(_ items: [Item], mediaPath: String = "test.mp4") async throws -> Project {
+        _ = try await TestFixtures.requireVideo()
         let media = Media(fields: [
-            "id": .string("audio"), "path": .string("test.mp4"), "fps": FrameRate().json, "frames": .integer(59)
+            "id": .string("audio"), "path": .string(mediaPath), "fps": FrameRate().json, "frames": .integer(59)
         ])
         return try Project(name: "Audio lanes").applying(.group(label: "Fixture", author: .user, ops:
             [.addMedia(media)] + items.map { .insert(track: "a3", item: $0) })).project
@@ -25,9 +26,9 @@ struct AudioLaneTests {
         third["preservePitch"] = .bool(false)
         var fourth = Item(id: "fourth", media: "audio", at: 60, duration: 15)
         fourth["volumeDb"] = .integer(-6)
-        let project = try project([first, second, third, fourth])
+        let project = try await project([first, second, third, fourth])
         let snapshot = try await CompositionBuilder().build(project, root: TestFixtures.mediaRoot)
-        #expect(snapshot.audioMix.inputParameters.count == 2)
+        #expect(snapshot.audioMix.inputParameters.count == 3)
         let parameters = try #require(snapshot.audioMix.inputParameters.first)
         #expect(parameters.audioTimePitchAlgorithm == .spectral)
         #expect(snapshot.audioMix.inputParameters.last?.audioTimePitchAlgorithm == .varispeed)
@@ -35,31 +36,63 @@ struct AudioLaneTests {
         var range = CMTimeRange.invalid
         #expect(parameters.getVolumeRamp(for: project.fps.time(12), startVolume: &start, endVolume: &end, timeRange: &range))
         #expect(start == 1 && end == 0)
-        #expect(parameters.getVolumeRamp(for: project.fps.time(15), startVolume: &start, endVolume: &end, timeRange: &range))
+        let secondParameters = snapshot.audioMix.inputParameters[1]
+        #expect(secondParameters.getVolumeRamp(for: project.fps.time(15), startVolume: &start, endVolume: &end, timeRange: &range))
         #expect(abs(start - 0.1) < 0.0001 && abs(end - 0.1) < 0.0001)
         #expect(range.start == project.fps.time(15))
         #expect(parameters.getVolumeRamp(for: project.fps.time(60), startVolume: &start, endVolume: &end, timeRange: &range))
         #expect(abs(start - 0.501_187) < 0.0001 && abs(end - 0.501_187) < 0.0001)
         let lane = try #require(snapshot.composition.track(withTrackID: parameters.trackID))
-        let gap = CMTimeRange(start: project.fps.time(30), duration: project.fps.time(30))
+        let gap = CMTimeRange(start: project.fps.time(15), duration: project.fps.time(45))
         #expect(lane.segments.contains { $0.isEmpty && $0.timeMapping.target == gap })
     }
 
     @Test("Overlapping project layers retain independent audio tracks")
     func overlappingLayers() async throws {
-        let base = try project([Item(id: "music", media: "audio", at: 0, duration: 30)])
+        let base = try await project([Item(id: "music", media: "audio", at: 0, duration: 30)])
         let overlapping = try base.applying(.insert(track: "a2", item: Item(id: "voice", media: "audio", at: 0, duration: 30))).project
         let snapshot = try await CompositionBuilder().build(overlapping, root: TestFixtures.mediaRoot)
         #expect(snapshot.audioMix.inputParameters.count == 2)
         #expect(snapshot.composition.tracks.filter { $0.mediaType == .audio }.count == 2)
     }
 
-    @Test("Decoded PCM retains a -20 dB gain step across a reused lane boundary")
-    func renderedGain() async throws {
-        let first = Item(id: "first", media: "audio", at: 0, duration: 15)
-        var second = Item(id: "second", media: "audio", at: 15, duration: 15)
-        second["volumeDb"] = .integer(-20)
-        let snapshot = try await CompositionBuilder().build(project([first, second]), root: TestFixtures.mediaRoot)
+    @Test("Decoded gain steps survive lane reuse with AAC/PCM and both pitch algorithms", arguments: [false, true], [false, true])
+    func renderedGain(pcm: Bool, preservesPitch: Bool) async throws {
+        try await expectRenderedGains(pcm: pcm, preservesPitch: preservesPitch, gap: 0, lanes: 2)
+    }
+
+    @Test("A lane reused after a one-frame gap starts at the next cut's gain", arguments: [false, true])
+    func renderedGainAfterGap(pcm: Bool) async throws {
+        try await expectRenderedGains(pcm: pcm, preservesPitch: true, gap: 1, lanes: 1)
+    }
+
+    /// Four 15-frame cuts with different gains, `gap` frames apart; compares each cut's RMS with the first.
+    private func expectRenderedGains(pcm: Bool, preservesPitch: Bool, gap: Int, lanes: Int) async throws {
+        _ = try await TestFixtures.requireVideo()
+        let source = TestFixtures.mediaRoot.appendingPathComponent("gain-\(UUID().uuidString).caf")
+        defer { try? FileManager.default.removeItem(at: source) }
+        if pcm { try TestFixtures.writeTone(to: source, seconds: 2.002) }
+        let gains = [0.0, -20.0, -6.0, -14.0]
+        let items = gains.enumerated().map { index, gain in
+            var item = Item(id: "cut-\(index)", media: "audio", at: index * (15 + gap), duration: 15)
+            item["volumeDb"] = .number(gain)
+            item["preservePitch"] = .bool(preservesPitch)
+            return item
+        }
+        let timeline = try await project(items, mediaPath: pcm ? source.lastPathComponent : "test.mp4")
+        let snapshot = try await CompositionBuilder().build(timeline, root: TestFixtures.mediaRoot)
+        #expect(snapshot.audioMix.inputParameters.count == lanes)
+        let starts = items.map { Double($0.at) / timeline.fps.value }
+        let (energy, counts) = try decodedEnergy(snapshot, windows: starts.map { ($0 + 0.05)..<($0 + 0.25) })
+        #expect(counts.allSatisfy { $0 > 9_000 })
+        for bin in gains.indices.dropFirst() {
+            let ratio = sqrt((energy[bin] / Double(counts[bin])) / (energy[0] / Double(counts[0])))
+            #expect(abs(ratio - pow(10, gains[bin] / 20)) < 0.005, "cut \(bin)")
+        }
+    }
+
+    /// Mixed mono PCM energy and sample count inside each time window (seconds).
+    private func decodedEnergy(_ snapshot: CompositionSnapshot, windows: [Range<Double>]) throws -> ([Double], [Int]) {
         let reader = try AVAssetReader(asset: snapshot.composition)
         let output = AVAssetReaderAudioMixOutput(audioTracks: snapshot.composition.tracks.filter { $0.mediaType == .audio }, audioSettings: [
             AVFormatIDKey: kAudioFormatLinearPCM, AVSampleRateKey: 48_000, AVNumberOfChannelsKey: 1,
@@ -68,8 +101,8 @@ struct AudioLaneTests {
         output.audioMix = snapshot.audioMix
         reader.add(output)
         #expect(reader.startReading())
-        var energy = [Double](repeating: 0, count: 2)
-        var counts = [Int](repeating: 0, count: 2)
+        var energy = [Double](repeating: 0, count: windows.count)
+        var counts = [Int](repeating: 0, count: windows.count)
         while let buffer = output.copyNextSampleBuffer() {
             let block = try #require(CMSampleBufferGetDataBuffer(buffer))
             var samples = [Float](repeating: 0, count: CMBlockBufferGetDataLength(block) / MemoryLayout<Float>.size)
@@ -81,19 +114,19 @@ struct AudioLaneTests {
             let start = CMSampleBufferGetPresentationTimeStamp(buffer).seconds
             for (index, value) in samples.enumerated() {
                 let time = start + Double(index) / 48_000
-                let bin = (0.05..<0.25).contains(time) ? 0 : (0.55..<0.75).contains(time) ? 1 : -1
-                if bin >= 0 { energy[bin] += Double(value * value); counts[bin] += 1 }
+                for (bin, window) in windows.enumerated() where window.contains(time) {
+                    energy[bin] += Double(value * value)
+                    counts[bin] += 1
+                }
             }
         }
         #expect(reader.status == .completed)
-        #expect(counts.allSatisfy { $0 > 9_000 })
-        let ratio = sqrt((energy[1] / Double(counts[1])) / (energy[0] / Double(counts[0])))
-        #expect(abs(ratio - 0.1) < 0.005)
+        return (energy, counts)
     }
 
     @Test("Sequential audio cuts share a lane")
     @MainActor func sequential() async throws {
-        let project = try project((0..<240).map { Item(id: "a-\($0)", media: "audio", at: $0, duration: 1) })
+        let project = try await project((0..<240).map { Item(id: "a-\($0)", media: "audio", at: $0, duration: 1) })
         let builder = CompositionBuilder()
         var times: [Double] = []
         var tracks = 0

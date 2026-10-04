@@ -32,7 +32,7 @@ struct LoudnessExportTests {
     func nativePipeline() async throws {
         let root = try TestFixtures.temporaryDirectory("loudness-pipeline")
         defer { try? FileManager.default.removeItem(at: root) }
-        let request = try request(root: root), analyzer = NativeLoudnessProbe()
+        let request = try await request(root: root), analyzer = NativeLoudnessProbe()
         let pipeline = ExportPipeline(engine: AVFoundationRenderEngine(), loudness: analyzer)
         let result = try await pipeline.run(request) { _, _ in }
         #expect(result.verified)
@@ -54,15 +54,15 @@ struct LoudnessExportTests {
     func failedMeasurement() async throws {
         let root = try TestFixtures.temporaryDirectory("loudness-failure")
         defer { try? FileManager.default.removeItem(at: root) }
-        let request = try request(root: root), analyzer = NativeLoudnessProbe(reject: true)
+        let request = try await request(root: root), analyzer = NativeLoudnessProbe(reject: true)
         let pipeline = ExportPipeline(engine: AVFoundationRenderEngine(), loudness: analyzer)
         await #expect(throws: (any Error).self) { _ = try await pipeline.run(request) { _, _ in } }
         #expect(!FileManager.default.fileExists(atPath: request.output.path))
         #expect(try FileManager.default.contentsOfDirectory(atPath: root.appendingPathComponent(".bashcut/loudness").path).isEmpty)
     }
 
-    private func request(root: URL) throws -> ExportRequest {
-        try FileManager.default.copyItem(at: TestFixtures.requireVideo(), to: root.appendingPathComponent("test.mp4"))
+    private func request(root: URL) async throws -> ExportRequest {
+        try await FileManager.default.copyItem(at: TestFixtures.requireVideo(), to: root.appendingPathComponent("test.mp4"))
         let media = Media(fields: ["id": .string("m"), "path": .string("test.mp4"),
                                    "fps": FrameRate().json, "frames": .integer(59)])
         var clip = Item(id: "clip", media: "m", at: 0, duration: 45)

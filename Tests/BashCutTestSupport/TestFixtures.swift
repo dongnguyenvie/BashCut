@@ -1,4 +1,5 @@
 import AVFoundation
+import Darwin
 import Foundation
 
 /// Shared fixtures for every app-module test target: the generated media folder, scratch folders and
@@ -12,19 +13,22 @@ public enum TestFixtures {
     public static let repositoryRoot = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
 
-    /// `Fixtures/media`, filled by `Fixtures/make-media.sh`.
-    public static let mediaRoot = repositoryRoot.appendingPathComponent("Fixtures/media", isDirectory: true)
+    /// Isolated per test process; a clean checkout generates its own media on the first request.
+    public static let mediaRoot = FileManager.default.temporaryDirectory
+        .appendingPathComponent("bashcut-fixtures-\(UUID().uuidString)", isDirectory: true)
 
-    /// The generated 2 s, 320×180, 29.97 fps H.264/AAC clip (`test.mp4`, 59 frames).
+    /// The generated 2.002 s, 320×180, 29.97 fps H.264/AAC clip (`test.mp4`, 60 frames).
     public static let videoURL = mediaRoot.appendingPathComponent("test.mp4")
 
-    /// `videoURL`, or a clear error when `Fixtures/make-media.sh` has not been run.
-    public static func requireVideo() throws -> URL {
-        guard FileManager.default.fileExists(atPath: videoURL.path) else {
-            throw Missing(description: "Run Fixtures/make-media.sh before engine integration tests")
-        }
+    // Swift initializes static storage once. Concurrent callers share the same in-flight generation task.
+    private static let generatedVideo = Task {
+        try await SyntheticMovie.write(to: videoURL)
+        atexit { try? FileManager.default.removeItem(at: TestFixtures.mediaRoot) }
         return videoURL
     }
+
+    /// Await the native fixture without blocking a Swift executor or invoking an external process.
+    public static func requireVideo() async throws -> URL { try await generatedVideo.value }
 
     /// A new, empty folder under the temporary directory. Callers remove it when they care about cleanup.
     public static func temporaryDirectory(_ prefix: String = "bashcut") throws -> URL {

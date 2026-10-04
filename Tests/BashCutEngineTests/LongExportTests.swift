@@ -9,7 +9,7 @@ struct LongExportTests {
     @Test("Five-minute synthetic export benchmark with encoded frame and audio verification",
            .enabled(if: ProcessInfo.processInfo.environment["BASHCUT_LONG_EXPORT_BENCH"] == "1"))
     func benchmark() async throws {
-        _ = try TestFixtures.requireVideo()
+        _ = try await TestFixtures.requireVideo()
         let root = try TestFixtures.temporaryDirectory("long-export")
         defer { try? FileManager.default.removeItem(at: root) }
         let media = Media(fields: ["id": .string("m"), "path": .string("test.mp4"),

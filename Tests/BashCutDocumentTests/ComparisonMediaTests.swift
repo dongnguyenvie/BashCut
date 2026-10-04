@@ -10,7 +10,7 @@ import Testing
 struct ComparisonMediaTests {
     @Test("Color edits reuse comparison; fresh proxies and same-metadata file replacements invalidate it")
     func mediaFreshness() async throws {
-        let video = try TestFixtures.requireVideo()
+        let video = try await TestFixtures.requireVideo()
         let root = try TestFixtures.temporaryDirectory("comparison")
         defer { try? FileManager.default.removeItem(at: root) }
         try FileManager.default.copyItem(at: video, to: root.appendingPathComponent("source.mp4"))

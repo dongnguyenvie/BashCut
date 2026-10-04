@@ -9,7 +9,7 @@ import Testing
 struct SpeedRampEngineTests {
     @Test("A ramped clip fills exactly its timeline length with many scaled pieces of its source")
     func rampComposition() async throws {
-        _ = try TestFixtures.requireVideo()
+        _ = try await TestFixtures.requireVideo()
         let media = Media(fields: [
             "id": .string("m"), "path": .string("test.mp4"), "fps": FrameRate().json, "frames": .integer(59),
             "hasAudio": .bool(true),

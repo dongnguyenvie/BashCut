@@ -125,7 +125,9 @@ future UI and performance targets, which do not exist yet.
 
 **Engine golden tests:** render fixed frames from a fixture project and compare them with reference images within
 a tolerance (swift-snapshot-testing, `Tests/BashCutEngineTests/__Snapshots__`). Captions in golden images use
-Vietnamese diacritics (ă, ơ, ư, ỹ…). Test media comes from `Fixtures/make-media.sh` and is not committed.
+Vietnamese diacritics (ă, ơ, ư, ỹ…). `TestFixtures.requireVideo()` asynchronously generates native H.264/AAC
+media in a private temporary folder on first use. Concurrent calls share generation; normal process exit
+removes it. No ffmpeg or manual fixture step is required. Generated media is not committed.
 
 **Tests never touch** the real workspace, the real `claude` or `codex`, real ML venvs or the network:
 
@@ -142,7 +144,7 @@ scripts/verify.sh lint [files…]      # swiftlint lint --strict; fails if Swift
 scripts/verify.sh xcode [build|test] # regenerate BashCut.xcodeproj (XcodeGen) and build or test it
 scripts/verify.sh perf               # engine tests at full size (BASHCUT_PERF=1)
 scripts/run.sh                       # build, sign and open build/BashCut.app
-Fixtures/make-media.sh               # once: generate Fixtures/media/test.mp4 for engine tests
+Fixtures/make-media.sh               # optional: generate a standalone AVFoundation sample, not needed by tests
 ```
 
 `verify.sh` writes the full log to `build/logs/` and prints one `PASS` or `FAIL` line with the log path, plus the
