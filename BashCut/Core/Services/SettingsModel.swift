@@ -58,6 +58,18 @@ public final class SettingsModel {
     public var checkPluginUpdatesDaily: Bool {
         didSet { defaults.set(checkPluginUpdatesDaily, forKey: Keys.checkPluginUpdatesDaily) }
     }
+    /// Look for a newer BashCut release once a day when a project opens. Only tells; updating stays a user decision.
+    public var checkAppUpdatesDaily: Bool {
+        didSet { defaults.set(checkAppUpdatesDaily, forKey: Keys.checkAppUpdatesDaily) }
+    }
+    /// The release the user skipped (Skip This Version): no prompt or ☰ dot for it; a newer release shows again.
+    public var appUpdateDismissed: String? {
+        didSet { defaults.set(appUpdateDismissed, forKey: Keys.appUpdateDismissed) }
+    }
+    /// Remind Me Later: the update prompt does not open by itself before this time. The ☰ dot stays.
+    public var appUpdateRemindAfter: Date? {
+        didSet { defaults.set(appUpdateRemindAfter, forKey: Keys.appUpdateRemindAfter) }
+    }
     /// `ExportPreset` raw value the Export sheet starts with.
     public var defaultExportPresetRaw: String {
         didSet { defaults.set(defaultExportPresetRaw, forKey: Keys.defaultExportPreset) }
@@ -94,6 +106,9 @@ public final class SettingsModel {
         static let runPluginHooks = "runPluginHooks"
         static let autoApplyPluginHookEdits = "autoApplyPluginHookEdits"
         static let checkPluginUpdatesDaily = "checkPluginUpdatesDaily"
+        static let checkAppUpdatesDaily = "checkAppUpdatesDaily"
+        static let appUpdateDismissed = "appUpdateDismissed"
+        static let appUpdateRemindAfter = "appUpdateRemindAfter"
         static let interfaceLanguage = "interfaceLanguage"
         static let appleLanguages = "AppleLanguages"
         static let recentProjects = "recentProjectPaths"
@@ -115,6 +130,9 @@ public final class SettingsModel {
         runPluginHooks = defaults.object(forKey: Keys.runPluginHooks) as? Bool ?? true
         autoApplyPluginHookEdits = defaults.bool(forKey: Keys.autoApplyPluginHookEdits)
         checkPluginUpdatesDaily = defaults.object(forKey: Keys.checkPluginUpdatesDaily) as? Bool ?? true
+        checkAppUpdatesDaily = defaults.object(forKey: Keys.checkAppUpdatesDaily) as? Bool ?? true
+        appUpdateDismissed = defaults.string(forKey: Keys.appUpdateDismissed)
+        appUpdateRemindAfter = defaults.object(forKey: Keys.appUpdateRemindAfter) as? Date
         defaultExportPresetRaw = defaults.string(forKey: Keys.defaultExportPreset) ?? ExportPreset.tiktok.rawValue
         interfaceLanguage = defaults.string(forKey: Keys.interfaceLanguage) ?? "system"
         recentProjects = defaults.stringArray(forKey: Keys.recentProjects)?.map { URL(fileURLWithPath: $0) } ?? []

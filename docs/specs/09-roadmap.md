@@ -175,4 +175,7 @@ The defaults below apply unless Nolan says otherwise.
 1. **Keyframes and speed ramps.** Default: M6. The reference videos mostly use hard cuts and reframes.
 2. **Default transcription provider.** Default: prefer an installed local WhisperKit provider, pending the M3
    accuracy check against an mlx-whisper provider.
-3. **Distribution.** Default: Nolan's machine only, so no signing, notarization or Sparkle until that changes.
+3. **Distribution.** Decided: Developer ID signed and notarized releases on GitHub and the Homebrew tap
+   `dongnguyenvie/homebrew-tap`, plus TestFlight. No Sparkle: BashCut checks the latest GitHub release once a day
+   and on demand (BashCut › Check for Updates…, `app update-check`) and tells the user how to update (`brew upgrade
+   --cask bashcut` or the release page). It never installs updates itself.

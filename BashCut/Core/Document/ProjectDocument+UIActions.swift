@@ -39,11 +39,12 @@ extension ProjectDocument {
         case .undoAgentChange: return canUndoAgentChange
         case .openChatAgent: return !chatAgents.available.isEmpty
         case .dismissAgentKitPrompt: return agents.showsKitPrompt
+        case .skipAppUpdate, .remindAppUpdateLater: return showsAppUpdateNotice
         case .openExportOutput, .revealExportOutput:
             return exports.report.map { FileManager.default.fileExists(atPath: $0.receipt.url.path) } ?? false
         case .clearRecentProjects: return !settings.recentProjects.isEmpty
         case .showHistory, .showReview, .showPlugins, .showDoctor, .showSettings, .showAgentKit, .showSections,
-            .showCommands, .showShortcuts, .toggleAgentDock,
+            .showCommands, .showShortcuts, .showUpdates, .showAbout, .toggleAgentDock,
             .askAgent, .openClaudeTerminal, .openCodexTerminal, .openShellTerminal,
             .toggleSafeArea, .toggleSnap, .addVideoLayer, .addAdjustmentLayer, .addTextLayer,
             .addAudioLayer:
@@ -68,7 +69,7 @@ extension ProjectDocument {
         case .saveProject: save()
         case .importMedia: importMedia()
         case .showHistory, .showReview, .showPlugins, .showDoctor, .showSettings, .showExport, .showSections,
-            .showCommands, .showShortcuts:
+            .showCommands, .showShortcuts, .showUpdates:
             try openDialog(String(action.id.dropFirst("show.".count)))
         case .toggleAgentDock:
             if agents.isDetached { agents.attach() } else { ui.showAgentDock.toggle() }
@@ -141,6 +142,13 @@ extension ProjectDocument {
             ui.settingsSection = "agents"
             try openDialog("settings")
         case .dismissAgentKitPrompt: agents.dismissKitPrompt()
+        case .skipAppUpdate:
+            settings.appUpdateDismissed = appUpdate.available?.version
+            ui.showUpdates = false
+        case .remindAppUpdateLater:
+            settings.appUpdateRemindAfter = Date().addingTimeInterval(AppUpdateModel.checkInterval)
+            ui.showUpdates = false
+        case .showAbout: MainMenu.showAbout()
         case .undoAgentChange: undoAgentChange()
         case .dismissAgentChange: clearAgentChange()
         case .openExportOutput: if let url = exports.report?.receipt.url { NSWorkspace.shared.open(url) }

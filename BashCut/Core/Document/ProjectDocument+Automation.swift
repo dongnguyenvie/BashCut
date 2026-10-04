@@ -27,6 +27,7 @@ extension ProjectDocument {
         registerProxyCommands()
         registerStorageCommands()
         registerAgentKitCommands()
+        registerAppCommands()
         registerChatAgentCommands()
         registerPrivilegedCommands()
         registerUICommands()
@@ -39,6 +40,8 @@ extension ProjectDocument {
         }
         plugins.refresh(projectRoot: nil)
         emitPluginEvent(.appLaunched)
+        // At launch, also with no project open: a new release opens Software Update once.
+        if settings.checkAppUpdatesDaily { checkAppUpdateIfDue() }
         assert(registry.unhandledCommands.isEmpty, "Unhandled commands: \(registry.unhandledCommands)")
         Task { _ = await agentConfigFolders() }
         Task {

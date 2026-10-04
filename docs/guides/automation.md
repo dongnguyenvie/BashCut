@@ -129,6 +129,28 @@ read it whenever `BASHCUT_SESSION_TOKEN` is not set.
   token.
 - Exports still wait for your approval in the app.
 
+## Version and updates
+
+`app version` returns this copy's version, build, plugin API and how it was installed: `homebrew`, `direct` (a zip
+or dmg), `app-store` (App Store or TestFlight) or `development` (`scripts/run.sh`). `app update-check` asks GitHub
+for the latest release (`api.github.com/repos/<owner>/<repo>/releases/latest`, from `BCRepositoryURL`) and returns
+`updateAvailable`, the `latest` release and `update`: the Homebrew command or the release page. It never installs
+anything, and App Store copies are not checked.
+
+The UI does the same in **BashCut › Check for Updates…** (`ui action show.updates`, also ☰ and Settings ›
+General). Homebrew and downloaded copies also check once a day when a project opens (**Settings › General ›
+Check for BashCut updates daily**). A newer release then opens Software Update by itself, once per launch, as the
+`updates` sheet with the options `skip` (**Skip This Version**, `ui action app.update-skip`: no reminders until a
+newer release), `later` (**Remind Me Later**, `ui action app.update-later`: not before the next day) and `close`.
+Until a release is skipped, ☰ shows a dot and an **Update to BashCut …** item. The last answer is remembered, so the
+prompt and the dot work without asking GitHub at every launch. `ui action show.about` opens About BashCut.
+
+Development builds (`scripts/run.sh`) check only on demand. To try the prompt, start one with
+`BASHCUT_UPDATE_FEED=<release.json>` (a file shaped like GitHub's release JSON: `tag_name`, `html_url`,
+`published_at`, `body`; read instead of GitHub) and `BASHCUT_UPDATE_INSTALL=homebrew` or `direct`, for example
+`open --env BASHCUT_UPDATE_FEED=/tmp/release.json --env BASHCUT_UPDATE_INSTALL=homebrew build/BashCut.app`.
+Release builds ignore both.
+
 ## Commands
 
 Every command is declared once as a `CommandSpec` in `BashCut/Core/Automation/CommandCatalog.swift`: its name,
