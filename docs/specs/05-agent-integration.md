@@ -86,6 +86,7 @@ arguments.
 | Command | Mode | UI equivalent |
 |---|---|---|
 | `project create` / `project open` / `project save` | edit | New Project, Open, Save |
+| `project folder [<path>] [--reset]` | edit | Settings › General › Projects folder (New Project's default Save in) |
 | `edl import <edl.json>` | edit | Welcome screen, Import from edl.json… |
 | `timeline apply <ops.json> --base-rev N --label "…"` | edit | Every cut, trim, drag and property change |
 | `timeline undo` / `timeline redo` | edit | Undo, Redo |

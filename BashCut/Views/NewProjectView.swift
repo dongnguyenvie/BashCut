@@ -63,14 +63,17 @@ struct NewProjectView: View {
         }.padding(24).frame(width: 540)
             .disabled(document.creatingProject)
             .interactiveDismissDisabled(document.creatingProject)
-            .onAppear { nameFocused = true }
+            .onAppear {
+                nameFocused = true
+                parent = parent ?? document.settings.defaultProjectsFolder
+            }
     }
 
     private func folderRow(_ title: LocalizedStringKey, url: URL?, action: @escaping () -> Void) -> some View {
         LabeledContent(title) {
             HStack {
                 if let url {
-                    Text(url.lastPathComponent).lineLimit(1).help(url.path)
+                    Text(Self.displayPath(url)).lineLimit(1).truncationMode(.middle).help(url.path)
                 } else {
                     Text("Not selected").foregroundStyle(.secondary)
                 }
@@ -79,6 +82,11 @@ struct NewProjectView: View {
                     .accessibilityLabel(title)
             }.accessibilityElement(children: .contain)
         }.accessibilityElement(children: .contain)
+    }
+
+    /// "~/Movies/BashCut" rather than only "BashCut", so the default folder is recognizable.
+    static func displayPath(_ url: URL) -> String {
+        (url.resolvingSymlinksInPath().path as NSString).abbreviatingWithTildeInPath
     }
 
     private func chooseFolder() -> URL? {
@@ -104,6 +112,7 @@ struct NewProjectView: View {
             }
             do {
                 _ = try await document.createProject(setup, in: parent, footage: footage)
+                document.settings.rememberProjectsFolder(parent)
                 dismiss()
             } catch {
                 self.error = error.localizedDescription

@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 88 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 89 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -31,13 +31,13 @@ Open a project.bashcut.json (or its folder). Fails if the open project has unsav
 - `saveCurrent`: boolean, default false. Save the open project first when it has unsaved changes
 - `discardCurrent`: boolean, default false. Drop unsaved changes of the open project
 
-### `bashcut project create --name <name> --dir <directory> [--footage <footage>] [--canvas <canvas>] [--resolution <resolution>] [--fps <fps>] [--language <language>] [--save-current] [--discard-current]`
+### `bashcut project create --name <name> [--dir <directory>] [--footage <footage>] [--canvas <canvas>] [--resolution <resolution>] [--fps <fps>] [--language <language>] [--save-current] [--discard-current]`
 
 Create a project folder (media, footage, render…) like the New Project wizard and open it.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_project_create`
 - `name`: string, required. Project name
-- `directory`: string, required, path. Absolute parent folder for the new project folder
+- `directory`: string, path. Absolute parent folder for the new project folder; defaults to the projects folder (see project folder)
 - `footage`: string, path. Footage folder to link (never modified)
 - `canvas`: string, one of portrait, landscape, square, default "portrait". Canvas
 - `resolution`: string, one of 720, 1080, 2160, default "1080". Short-side resolution
@@ -45,6 +45,14 @@ Create a project folder (media, footage, render…) like the New Project wizard 
 - `language`: string, default "vi". Content language tag
 - `saveCurrent`: boolean, default false. Save the open project first when it has unsaved changes
 - `discardCurrent`: boolean, default false. Drop unsaved changes of the open project
+
+### `bashcut project folder [<path>] [--reset]`
+
+Show the projects folder that New Project and project create use by default (Settings › General), or change it: a path sets it, --reset returns to ~/Movies/BashCut.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_project_folder`
+- `path`: string, path. Absolute path of an existing folder
+- `reset`: boolean, default false. Use ~/Movies/BashCut again
 
 ### `bashcut project save`
 

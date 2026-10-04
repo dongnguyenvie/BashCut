@@ -1,3 +1,4 @@
+import AppKit
 import BashCutAgent
 import BashCutAutomation
 import BashCutDocument
@@ -72,6 +73,17 @@ struct SettingsView: View {
                     Button("Change…", action: model.chooseWorkspace)
                 }
             }
+            LabeledContent("Projects folder") {
+                HStack {
+                    Text(NewProjectView.displayPath(settings.defaultProjectsFolder)).lineLimit(1).truncationMode(.middle)
+                        .help(settings.defaultProjectsFolder.path)
+                    Button("Change…", action: chooseProjectsFolder)
+                    if settings.projectsFolder != nil {
+                        Button("Reset") { settings.projectsFolder = nil }
+                            .help("Use ~/Movies/BashCut again")
+                    }
+                }
+            }
             Picker("Default export preset", selection: $settings.defaultExportPresetRaw) {
                 ForEach(ExportPreset.allCases) { preset in
                     Text(LocalizedStringKey(preset.title)).tag(preset.rawValue)
@@ -111,6 +123,16 @@ struct SettingsView: View {
             }.font(.caption).foregroundStyle(.secondary)
         }
         AgentSettingsView(document: document, settings: settings)
+    }
+
+    private func chooseProjectsFolder() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.canCreateDirectories = true
+        panel.directoryURL = settings.defaultProjectsFolder
+        guard let url = ModalCenter.shared.open(panel, name: "choose-projects-folder")?.first else { return }
+        settings.rememberProjectsFolder(url)
     }
 
     static func title(_ section: String) -> String {

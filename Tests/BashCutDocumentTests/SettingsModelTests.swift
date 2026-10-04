@@ -48,6 +48,25 @@ struct SettingsModelTests {
         #expect(defaults.string(forKey: "agentWorkspace") == nil)
     }
 
+    @Test("New projects go to ~/Movies/BashCut until another folder is remembered")
+    func projectsFolder() throws {
+        let defaults = try defaults()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = SettingsModel(defaults: defaults)
+        let standard = SettingsModel.standardProjectsFolder
+        #expect(standard.lastPathComponent == "BashCut")
+        #expect(standard.deletingLastPathComponent().lastPathComponent == "Movies")
+        #expect(settings.projectsFolder == nil && settings.defaultProjectsFolder == standard)
+
+        settings.rememberProjectsFolder(URL(fileURLWithPath: "/tmp/films/./cuts"))
+        #expect(defaults.string(forKey: "projectsFolder") == "/tmp/films/cuts")
+        #expect(SettingsModel(defaults: defaults).defaultProjectsFolder.path == "/tmp/films/cuts")
+
+        settings.rememberProjectsFolder(standard)
+        #expect(settings.projectsFolder == nil)
+        #expect(defaults.string(forKey: "projectsFolder") == nil)
+    }
+
     @Test("Recent projects keep the newest first, without duplicates, up to the limit")
     func recentProjects() throws {
         let defaults = try defaults()

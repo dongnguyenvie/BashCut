@@ -172,6 +172,7 @@ tool name and parameters (types, ranges, choices, defaults). It is generated fro
 | `project create --resolution` | `720`, `1080` (default), `2160` (short side) |
 | `project create --fps` | `29.97` (default), `30`, `24`, `60` |
 | `project create --language` | A language tag; defaults to `vi` |
+| `project create --dir` | An existing absolute folder; defaults to the projects folder (`project folder`, `~/Movies/BashCut` unless changed), made on first use |
 | `layers add --kind` | `video`, `adjustment`, `text`, `audio` |
 | `adjustment add --look`, `style save --look` | Built-in `original` (default), `vivid`, `muted-film`, `black-white`, or a custom look ID from `timeline get` |
 | `style apply <kit>` | Built-in `food-review` (vivid, Bold Outline), `cinematic` (muted film, Cinematic Serif), or a custom kit ID |

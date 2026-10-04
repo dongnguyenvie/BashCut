@@ -1,6 +1,9 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Projects folder": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Projects folder" } }, "vi": { "stringUnit": { "state": "translated", "value": "Thư mục dự án" } } } },
+    "Reset": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Reset" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đặt lại" } } } },
+    "Use ~/Movies/BashCut again": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Use ~/Movies/BashCut again" } }, "vi": { "stringUnit": { "state": "translated", "value": "Dùng lại ~/Movies/BashCut" } } } },
     "Show license texts…": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Show license texts…" } }, "vi": { "stringUnit": { "state": "translated", "value": "Xem nội dung giấy phép…" } } } },
     "Acknowledgements": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Acknowledgements" } }, "vi": { "stringUnit": { "state": "translated", "value": "Lời cảm ơn" } } } },
     "Kit updates": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Kit updates" } }, "vi": { "stringUnit": { "state": "translated", "value": "Cập nhật kit" } } } },

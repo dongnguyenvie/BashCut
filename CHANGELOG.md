@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+- New projects have a default folder, `~/Movies/BashCut` (made on first use; visible in Finder and not behind a
+  macOS privacy prompt like Desktop or Documents). New Project's Save in starts there instead of "Not selected", so
+  Create works after typing a name, and shows paths like `~/Movies/BashCut` instead of only the last folder name.
+  The folder a project is created in becomes the next default; Settings › General › Projects folder changes or
+  resets it. Agents: `project create` no longer needs `--dir`, and `project folder [<path>] [--reset]` shows or
+  changes the default. Sandboxed builds get the Movies folder entitlement.
 - README (English and Vietnamese) Install covers Homebrew (`brew install --cask dongnguyenvie/tap/bashcut`), the
   notarized dmg/zip from GitHub Releases (with checksums and linking the CLI), and TestFlight; the header links the
   latest release.
