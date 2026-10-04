@@ -21,9 +21,12 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
     let launchedAt = Date()
     let view = LocalProcessTerminalView(frame: .zero)
     var title: String
-    init(provider: any AgentProvider, token: String, launch: AgentLaunch) {
+    /// SF Symbol for the tab.
+    let icon: String
+    init(provider: any AgentProvider, token: String, launch: AgentLaunch, icon: String) {
         self.provider = provider
         self.token = token
+        self.icon = icon
         title = provider.title
         view.menu = EditMenus.terminalContextMenu(for: view)
         view.startProcess(
@@ -119,24 +122,46 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
         }
     }
     func openDefault() { open(defaultProvider) }
+    /// Opens a terminal tab: a built-in provider at once, a plugin's terminal after its plugin answers `launch`.
     func open(_ id: AgentProviderID) {
-        guard let provider = AgentProviders.provider(id) else { return }
+        guard let provider = AgentProviders.provider(id) else {
+            Task {
+                do { try await openPluginTerminal(id.rawValue) } catch { self.error = error.localizedDescription }
+            }
+            return
+        }
+        do { try startBuiltIn(provider) } catch { self.error = error.localizedDescription }
+    }
+
+    @discardableResult
+    func startBuiltIn(_ provider: any AgentProvider) throws -> TerminalSession {
         knowledge.load(from: directory)
         let canEdit = !provider.isAgent || settings.allowAgentEdits
+        return try start(
+            provider, canEdit: canEdit, prompt: sessionPrompt(canEdit: canEdit), icon: Self.icon(for: provider.id))
+    }
+
+    /// BashCut's instructions and the project context, for a new terminal's system prompt.
+    func sessionPrompt(canEdit: Bool) -> String {
+        CommandCatalog.instructions
+            + (canEdit ? "" : "\nTimeline edits are disabled in BashCut Settings for this session.")
+            + "\n" + document.contextText() + "\n" + knowledge.context
+    }
+
+    /// Issues the tab's token, launches `provider` in a new tab and looks for its session to resume next time.
+    @discardableResult
+    func start(_ provider: any AgentProvider, canEdit: Bool, prompt: String, icon: String) throws -> TerminalSession {
         let token = canEdit ? document.registry.issueToken(author: provider.author) : ""
         do {
             let launchedAt = Date()
             let context = AgentSessionContext(
                 project: document.fileURL, token: token, socket: AutomationPaths.socket,
-                toolsDirectory: toolsDirectory,
-                prompt: CommandCatalog.instructions
-                    + (canEdit ? "" : "\nTimeline edits are disabled in BashCut Settings for this session.")
-                    + "\n" + document.contextText() + "\n" + knowledge.context)
+                toolsDirectory: toolsDirectory, prompt: prompt)
             let launch = try AgentLaunch.make(
                 provider: provider, workspace: directory, context: context,
                 resumeID: resumeID(for: provider), kit: document.agentKitLaunch(),
                 environment: document.currentAgentEnvironment)
-            let session = TerminalSession(provider: provider, token: token, launch: launch)
+            let session = TerminalSession(provider: provider, token: token, launch: launch, icon: icon)
             sessions.append(session)
             selectedSession = session.id
             chatPluginID = nil
@@ -150,9 +175,18 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
                     saveSessionBookmarks()
                 }
             }
+            return session
         } catch {
             document.registry.revoke(token)
-            self.error = error.localizedDescription
+            throw error
+        }
+    }
+
+    static func icon(for provider: AgentProviderID) -> String {
+        switch provider {
+        case .claude: "sparkle"
+        case .codex: "chevron.left.forwardslash.chevron.right"
+        default: "terminal"
         }
     }
     /// Bookmarks of the agents with an open tab, taken before the project switches so the new project continues
@@ -203,24 +237,30 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
         } catch { self.error = error.localizedDescription }
     }
     func handoff(to provider: AgentProviderID) {
-        guard AgentProviders.provider(provider)?.isAgent == true else { return }
+        guard terminalChoices.contains(where: { $0.id == provider && $0.isAgent }) else { return }
         let source = current?.provider.title ?? "BashCut"
-        let launchesTarget = !sessions.contains(where: { $0.provider.id == provider })
-        if launchesTarget { open(provider) }
-        guard let target = sessions.last(where: { $0.provider.id == provider }) else { return }
-        selectedSession = target.id
-        chatPluginID = nil
         knowledge.load(from: directory)
         let handoff =
             "Continue this editing task handed off from \(source).\n"
                 + document.contextText() + "\n" + TimelineSummary.text(document.project) + "\n" + knowledge.context
-        if launchesTarget {
-            Task {
-                do { try await Task.sleep(for: .milliseconds(700)) } catch { return }
-                guard sessions.contains(where: { $0.id == target.id }) else { return }
-                target.paste(handoff)
+        if let target = sessions.last(where: { $0.provider.id == provider }) {
+            selectedSession = target.id
+            chatPluginID = nil
+            target.paste(handoff)
+            return
+        }
+        Task {
+            do {
+                if AgentProviders.provider(provider) != nil { open(provider) } else {
+                    try await openPluginTerminal(provider.rawValue)
+                }
+            } catch {
+                self.error = error.localizedDescription
+                return
             }
-        } else {
+            guard let target = sessions.last(where: { $0.provider.id == provider }) else { return }
+            do { try await Task.sleep(for: .milliseconds(700)) } catch { return }
+            guard sessions.contains(where: { $0.id == target.id }) else { return }
             target.paste(handoff)
         }
     }
@@ -251,7 +291,7 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
         sessions.removeAll()
         selectedSession = nil
     }
-    private func resumeID(for provider: any AgentProvider) -> String {
+    func resumeID(for provider: any AgentProvider) -> String {
         provider.isAgent ? sessionBookmarks[provider.id].trimmingCharacters(in: .whitespacesAndNewlines) : ""
     }
     func sendContext(_ request: String = "", imageURL: URL? = nil) {
@@ -276,18 +316,24 @@ extension AgentDockModel {
         let workspace = directory
         let documentSession = document.sessionID
         let discovery = sessionDiscovery
+        let plugins = terminalPlugins
         sessionDiscoveryTask = Task {
-            let found = await Task.detached(priority: .utility) {
+            var found = await Task.detached(priority: .utility) {
                 AgentProviders.agents.compactMap { provider in
                     discovery.latest(provider: provider, project: project, workspace: workspace)
-                        .map { (provider: provider, id: $0) }
+                        .map { (provider: provider.id, title: provider.title, id: $0) }
                 }
             }.value
+            for plugin in plugins {
+                if let id = await pluginSession(plugin, project: project, workspace: workspace, notBefore: nil) {
+                    found.append((AgentProviderID(rawValue: plugin.id), plugin.manifest.displayName, id))
+                }
+            }
             guard !Task.isCancelled, document.sessionID == documentSession else { return }
             var names: [String] = []
-            for match in found where sessionBookmarks[match.provider.id].isEmpty {
-                sessionBookmarks[match.provider.id] = match.id
-                names.append(match.provider.title)
+            for match in found where sessionBookmarks[match.provider].isEmpty {
+                sessionBookmarks[match.provider] = match.id
+                names.append(match.title)
             }
             guard !names.isEmpty else { return }
             saveSessionBookmarks()
@@ -306,11 +352,17 @@ extension AgentDockModel {
         Task {
             for delay in [300, 700, 1_500, 3_000] {
                 do { try await Task.sleep(for: .milliseconds(delay)) } catch { return }
-                let identifier = await Task.detached(priority: .utility) {
-                    discovery.latest(
-                        provider: provider, project: project, workspace: workspace,
-                        notBefore: launchedAt)
-                }.value
+                let identifier: String?
+                if let plugin = terminalPlugins.first(where: { $0.id == provider.id.rawValue }) {
+                    identifier = await pluginSession(
+                        plugin, project: project, workspace: directory, notBefore: launchedAt)
+                } else {
+                    identifier = await Task.detached(priority: .utility) {
+                        discovery.latest(
+                            provider: provider, project: project, workspace: workspace,
+                            notBefore: launchedAt)
+                    }.value
+                }
                 guard document.sessionID == documentSession,
                     sessions.contains(where: { $0.id == session })
                 else { return }

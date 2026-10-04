@@ -22,15 +22,15 @@ struct AgentDockView: View {
                     model.showKnowledge = true
                 }
                 Menu {
-                    ForEach(AgentProviders.all, id: \.id) { provider in
-                        Button("\(provider.title) terminal") { model.open(provider.id) }
+                    ForEach(model.terminalChoices) { choice in
+                        Button("\(choice.title) terminal") { model.open(choice.id) }
                     }
                     ForEach(model.document.chatAgents.available, id: \.pluginID) { agent in
                         Button(agent.title) { model.openChat(agent.pluginID) }
                     }
                     Divider()
-                    ForEach(AgentProviders.agents, id: \.id) { provider in
-                        Button("Handoff to \(provider.title)") { model.handoff(to: provider.id) }
+                    ForEach(model.agentChoices) { choice in
+                        Button("Handoff to \(choice.title)") { model.handoff(to: choice.id) }
                     }
                 } label: {
                     Image(systemName: "plus")
@@ -60,16 +60,16 @@ struct AgentDockView: View {
                     ForEach(model.document.chatAgents.available, id: \.pluginID) { agent in
                         Button(String(format: String(localized: "Start %@"), agent.title)) { model.openChat(agent.pluginID) }
                     }
-                    ForEach(AgentProviders.agents, id: \.id) { provider in
-                        if model.canContinue(provider.id) {
+                    ForEach(model.agentChoices) { choice in
+                        if model.canContinue(choice.id) {
                             HStack {
-                                Button("Continue \(provider.title)") { model.open(provider.id) }
+                                Button("Continue \(choice.title)") { model.open(choice.id) }
                                     .help("Pick up your last conversation in this project")
-                                Button("New conversation") { model.startNewConversation(provider.id) }
+                                Button("New conversation") { model.startNewConversation(choice.id) }
                                     .help("Start without the earlier conversation")
                             }
                         } else {
-                            Button("Start \(provider.title)") { model.open(provider.id) }
+                            Button("Start \(choice.title)") { model.open(choice.id) }
                         }
                     }
                     if !model.sessionDiscoveryMessage.isEmpty {
@@ -119,7 +119,7 @@ struct AgentDockView: View {
             HStack(spacing: 4) {
                 ForEach(model.sessions) { session in
                     DockTab(
-                        title: session.title, systemImage: Self.icon(for: session.provider.id),
+                        title: session.title, systemImage: session.icon,
                         selected: model.selectedSession == session.id && model.chatPluginID == nil,
                         select: {
                             model.selectedSession = session.id
@@ -135,14 +135,6 @@ struct AgentDockView: View {
                 }
             }.padding(.horizontal, 8).padding(.vertical, 6)
         }.background(Color.white.opacity(0.03))
-    }
-
-    private static func icon(for provider: AgentProviderID) -> String {
-        switch provider {
-        case .claude: "sparkle"
-        case .codex: "chevron.left.forwardslash.chevron.right"
-        default: "terminal"
-        }
     }
 }
 

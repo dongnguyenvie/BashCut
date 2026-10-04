@@ -35,6 +35,21 @@ extension CommandCatalog {
             "Download and install the newest signed agent kit release (Settings › Agents › Download & Update), then "
                 + "refresh Claude Code and Codex where the kit is set up.",
             execution: .approval),
+        CommandSpec(
+            "agent.terminals", .read,
+            "The terminals the agent dock can open: built-in (claude, codex, shell) and agent CLIs from plugins with the "
+                + "agent.terminal capability, whether each can continue its last conversation in this project, and the "
+                + "open terminal tabs."),
+        CommandSpec(
+            "agent.open", .ui,
+            "Open a terminal tab in the agent dock like its + menu: claude, codex, shell or a terminal plugin's ID. "
+                + "Returns once it started; a plugin's launch error is this command's error.",
+            parameters: [
+                CommandParameter("terminal", .string, "claude, codex, shell or a plugin ID (agent terminals)",
+                                 required: true, cli: .positional),
+                CommandParameter("new", .boolean, "Start a new conversation instead of continuing the last one",
+                                 default: .bool(false), cli: .flag("new")),
+            ]),
     ]
 
     /// Chat-agent tabs: plugins with the `agent.chat` capability (docs/specs/11-chat-agents.md), such as Director.

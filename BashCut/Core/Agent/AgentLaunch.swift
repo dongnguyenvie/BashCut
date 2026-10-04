@@ -29,6 +29,7 @@ public struct AgentLaunch: Sendable {
         environment: [String: String] = ProcessInfo.processInfo.environment
     ) throws -> AgentLaunch {
         var env = AgentEnvironment.filtered(environment, allowing: provider.environmentAllowlist)
+        env.merge(provider.environment) { _, set in set }
         env["PATH"] = searchPath(toolsDirectory: context.toolsDirectory, environment: environment)
         env["BASHCUT_SESSION_TOKEN"] = context.token
         env["BASHCUT_SOCKET"] = context.socket
@@ -62,9 +63,10 @@ public struct AgentLaunch: Sendable {
         ].joined(separator: ":")
     }
 
-    /// The first executable named `command` on `path`.
+    /// The first executable named `command` on `path`; a command with a slash is a path.
     public static func find(_ command: String, path: String) -> String? {
-        path.components(separatedBy: ":")
+        if command.contains("/") { return FileManager.default.isExecutableFile(atPath: command) ? command : nil }
+        return path.components(separatedBy: ":")
             .map { URL(fileURLWithPath: $0).appendingPathComponent(command).path }
             .first { FileManager.default.isExecutableFile(atPath: $0) }
     }

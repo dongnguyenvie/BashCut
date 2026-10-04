@@ -106,4 +106,17 @@ extension CapabilityService {
             plugin: resolved.plugin, method: PluginAPI.agentChat, provider: resolved.provider.id,
             params: .object(fields))
     }
+
+    /// Sends one `agent.terminal` request (plugin API 5) with the plugin's option values: op `launch` builds a dock
+    /// terminal's command line, op `session` finds the session to resume (docs/specs/12-terminal-agents.md).
+    public func terminal(_ params: [String: JSONValue], using resolved: ResolvedPluginProvider) async throws -> JSONValue {
+        if preparesPluginFolders { PluginFolders.prepare(resolved.plugin.id) }
+        var fields = params
+        if fields["options"] == nil, let optionValues {
+            fields["options"] = .object(await optionValues(resolved.plugin))
+        }
+        return try await transport.call(
+            plugin: resolved.plugin, method: PluginAPI.agentTerminal, provider: resolved.provider.id,
+            params: .object(fields))
+    }
 }

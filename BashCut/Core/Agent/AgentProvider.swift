@@ -51,7 +51,8 @@ public struct AgentCommandLine: Sendable {
 }
 
 /// A terminal program the agent dock can launch: an agent CLI or a plain shell.
-/// Adding a provider means one conforming type registered in `AgentProviders.all`, plus a test.
+/// Adding a built-in provider means one conforming type registered in `AgentProviders.all`, plus a test. Plugins
+/// with `agent.terminal` add `PluginTerminalProvider`s without changing the app.
 public protocol AgentProvider: Sendable {
     var id: AgentProviderID { get }
     var title: String { get }
@@ -64,6 +65,8 @@ public protocol AgentProvider: Sendable {
     /// Variables this provider may inherit beyond `AgentEnvironment.common`.
     /// A trailing `*` matches a prefix.
     var environmentAllowlist: [String] { get }
+    /// Variables the provider sets in the terminal; BashCut's own session variables still win.
+    var environment: [String: String] { get }
     /// Folder of the provider's `.jsonl` session transcripts, relative to the home folder.
     var sessionFolder: String? { get }
     /// A session started in the workspace counts as the project's even without naming the project.
@@ -74,6 +77,7 @@ public protocol AgentProvider: Sendable {
 extension AgentProvider {
     public var isAgent: Bool { true }
     public var environmentAllowlist: [String] { [] }
+    public var environment: [String: String] { [:] }
     public var sessionFolder: String? { nil }
     public var matchesWorkspaceSessions: Bool { false }
 }

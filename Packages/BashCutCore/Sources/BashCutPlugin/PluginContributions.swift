@@ -5,12 +5,44 @@ import Foundation
 /// Version 2 adds `options`, `contributes` (actions and hooks) and the `session` transport. Version 3 adds option
 /// `choiceLabels` and the `file` option type, the `BASHCUT_PLUGIN_DATA`/`BASHCUT_PLUGIN_CACHE` folders and
 /// `::progress` lines from install recipes. Version 4 adds the `secret` option type and the session host channel
-/// (`event` and `call` lines during a request), used by the `agent.chat` capability.
+/// (`event` and `call` lines during a request), used by the `agent.chat` capability. Version 5 adds the
+/// `agent.terminal` capability and the manifest's `terminal` object.
 public enum PluginAPI {
     public static let minimum = 1
-    public static let current = 4
+    public static let current = 5
     /// The chat-agent capability; its requests carry a host channel (API 4).
     public static let agentChat = "agent.chat"
+    /// An agent CLI in a dock terminal tab (API 5); its manifest has a `terminal` object.
+    public static let agentTerminal = "agent.terminal"
+}
+
+/// How the dock shows a terminal agent (`agent.terminal`, API 5) and what its CLI may inherit.
+public struct PluginTerminal: Codable, Sendable, Equatable {
+    /// SF Symbol name for the tab.
+    public let icon: String?
+    /// Variable names the CLI inherits from the app's environment; a trailing `*` matches a prefix.
+    public let environment: [String]?
+
+    public init(icon: String? = nil, environment: [String]? = nil) {
+        self.icon = icon
+        self.environment = environment
+    }
+
+    public var symbol: String { icon ?? "terminal" }
+
+    func validate() throws {
+        if let icon {
+            guard icon.range(of: "^[a-z0-9]+(?:\\.[a-z0-9]+)*$", options: .regularExpression) != nil, icon.count <= 64
+            else { throw PluginError.invalid("terminal.icon must be an SF Symbol name") }
+        }
+        let environment = environment ?? []
+        guard environment.count <= 32 else { throw PluginError.invalid("terminal.environment lists at most 32 names") }
+        for name in environment {
+            guard name.range(of: "^[A-Za-z_][A-Za-z0-9_]*\\*?$", options: .regularExpression) != nil,
+                !name.hasPrefix("BASHCUT_"), name != "PATH"
+            else { throw PluginError.invalid("terminal.environment cannot include \(name)") }
+        }
+    }
 }
 
 /// How the app reaches a plugin. `oneshot` starts one process per request; `session` keeps one process
