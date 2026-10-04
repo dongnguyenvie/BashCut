@@ -173,6 +173,8 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
     dependencies:
       - package: BashCut
+        product: BashCutAudioAnalysis
+      - package: BashCut
         product: BashCutEngine
       - package: BashCut
         product: BashCutStorage
