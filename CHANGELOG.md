@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+- Make the caption golden independent of lossy fixture backgrounds and use explicit sRGB in still-image
+  test fixtures. CI retains failed snapshot images along with test logs.
+
 - Check Undo/Redo availability through constant-time history accessors instead of copying both stacks.
 
 - Include MCPBridge, Tools and the core benchmarks in strict SwiftLint verification.

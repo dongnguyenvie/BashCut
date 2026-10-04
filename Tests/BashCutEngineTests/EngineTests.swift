@@ -9,7 +9,7 @@ import Testing
 @testable import BashCutEngine
 
 struct EngineTests {
-    private func fixture(count: Int = 2) async throws -> (Project, CompositionSnapshot) {
+    private func fixture(count: Int = 2, picture: Bool = true) async throws -> (Project, CompositionSnapshot) {
         _ = try TestFixtures.requireVideo()
         var project = Project(name: "Synthetic engine fixture")
         let asset = Media(fields: [
@@ -19,6 +19,7 @@ struct EngineTests {
         var operations: [EditOperation] = [.addMedia(asset)]
         for index in 0..<count {
             var item = Item(id: "clip-\(index)", media: "source", at: index * 45, duration: 45)
+            if !picture { item["opacity"] = .number(0) }
             item["transform"] = .object(["zoom": .number(index.isMultiple(of: 2) ? 1 : 1.25)])
             operations.append(.insert(track: "v1", item: item))
         }
@@ -32,7 +33,9 @@ struct EngineTests {
 
     @Test("Vietnamese captions match the compositor output before lossy encoding")
     func captionFrame() async throws {
-        let (project, snapshot) = try await fixture()
+        // Keep the golden independent of ffmpeg versions and H.264 decoder variation in the source fixture.
+        // The real compositor still places the caption; video appearance is covered by export/still tests.
+        let (project, snapshot) = try await fixture(picture: false)
         let generator = AVAssetImageGenerator(asset: snapshot.composition)
         generator.videoComposition = snapshot.videoComposition
         generator.requestedTimeToleranceBefore = .zero

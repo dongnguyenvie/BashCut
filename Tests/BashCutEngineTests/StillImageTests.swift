@@ -10,12 +10,13 @@ import UniformTypeIdentifiers
 
 struct StillImageTests {
     /// A 200×100 PNG: the left half opaque red, the right half transparent.
-    private func writePNG(to url: URL, color: CGColor = CGColor(red: 1, green: 0, blue: 0, alpha: 1)) throws {
+    private func writePNG(to url: URL) throws {
+        let space = try #require(CGColorSpace(name: CGColorSpace.sRGB))
         let context = try #require(CGContext(
             data: nil, width: 200, height: 100, bitsPerComponent: 8, bytesPerRow: 0,
-            space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+            space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
         context.clear(CGRect(x: 0, y: 0, width: 200, height: 100))
-        context.setFillColor(color)
+        context.setFillColor(try #require(CGColor(colorSpace: space, components: [1, 0, 0, 1])))
         context.fill(CGRect(x: 0, y: 0, width: 100, height: 100))
         let image = try #require(context.makeImage())
         let destination = try #require(CGImageDestinationCreateWithURL(url as CFURL, UTType.png.identifier as CFString, 1, nil))
@@ -25,10 +26,12 @@ struct StillImageTests {
 
     private func pixel(_ image: CGImage, x: Int, y: Int) throws -> [UInt8] {
         var result = [UInt8](repeating: 0, count: 4)
+        let space = try #require(CGColorSpace(name: CGColorSpace.sRGB))
         try result.withUnsafeMutableBytes { bytes in
             let context = try #require(CGContext(
                 data: bytes.baseAddress, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
-                space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+                space: space,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
             // Draw the image so that pixel (x, y), counted from the top, lands on the 1×1 context.
             context.draw(image, in: CGRect(
                 x: -x, y: -(image.height - 1 - y), width: image.width, height: image.height))
