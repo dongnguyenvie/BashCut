@@ -6,8 +6,9 @@
 ## [Unreleased]
 
 - BashCut is released under the MIT License (`LICENSE`).
-- **Close Project** (File menu, the project name menu at the top left, ⇧⌘W) returns to the Welcome screen with its
-  recent projects, as CapCut's editor returns to Home. Unsaved changes are saved first, without asking; if the save
+- **Close Project** (the window's close button or ⌘W, File menu, the project name menu at the top left, ⇧⌘W) returns
+  to the Welcome screen with its recent projects, as CapCut's editor returns to Home. Closing the window again on the
+  Welcome screen quits BashCut; ⌘Q always quits. Unsaved changes are saved first, without asking; if the save
   fails (the file changed on disk) the project stays open. Agents use `project close` (with `--save-current` or
   `--discard-current` when there are unsaved changes) or `ui action project.close`; agent tabs stay open.
 - BashCut tells you when a new release is out. Homebrew and downloaded copies check GitHub once a day when a project
