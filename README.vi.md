@@ -26,7 +26,7 @@
 ---
 
 <p align="center">
-  <img alt="BashCut mở project mẫu: thư viện media, viewer có picture in picture và phụ đề, Inspector, timeline nhiều layer và agent dock" src=".github/assets/app.png" width="800">
+  <img alt="Demo BashCut: terminal Codex, timeline nhiều layer, phụ đề, chuyển cảnh, màu và plugin" src=".github/assets/app.gif" width="800">
 </p>
 
 ## Giới thiệu

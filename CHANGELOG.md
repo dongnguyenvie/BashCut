@@ -5,6 +5,8 @@
 
 ## [Unreleased]
 
+- Add an animated demo to the Vietnamese README, starting with the embedded Codex terminal.
+
 - Use Nolan in the BashCut copyright notice to match the App Store listing.
 
 - Add a public privacy policy covering local editing, optional integrations, network requests, and support.
