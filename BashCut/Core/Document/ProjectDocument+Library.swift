@@ -1,4 +1,5 @@
 import AVFoundation
+import BashCutAutomation
 import BashCutProject
 import Foundation
 
@@ -14,6 +15,13 @@ extension ProjectDocument {
         }
         preview.pause()
         sourceViewer.open(media, url: url)
+    }
+    /// Working on the timeline (a click, a drag, a seek or a selection) shows the timeline again, so the viewer never
+    /// keeps showing a Media clip while the timeline is being edited.
+    func showTimelineViewer() {
+        guard sourceViewer.visible else { return }
+        sourceViewer.close()
+        DebugLog.write("ui", "viewer back to the timeline")
     }
     func resolvedMediaURL(_ media: Media) -> URL? {
         guard let root = fileURL?.deletingLastPathComponent() else { return nil }

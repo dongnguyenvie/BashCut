@@ -716,3 +716,10 @@
 "Projects folder" = "Thư mục dự án";
 "Reset" = "Đặt lại";
 "Use ~/Movies/BashCut again" = "Dùng lại ~/Movies/BashCut";
+"Back to the timeline (Esc)" = "Quay về dòng thời gian (Esc)";
+"Showing the timeline" = "Đang xem dòng thời gian";
+"Click a clip in Media to preview it here before adding it to the timeline" = "Bấm một clip trong Media để xem trước ở đây, trước khi thêm vào dòng thời gian";
+"Preview the Media clip last opened, before adding it to the timeline" = "Xem lại clip Media vừa mở, trước khi thêm vào dòng thời gian";
+"Viewer mode" = "Chế độ xem";
+"Show Source Viewer" = "Hiện trình xem Source";
+"A Media clip, not on the timeline yet. Mark In and Out, then Insert (E) or Overwrite (Q) at the playhead. Esc: back to the timeline." = "Clip trong Media, chưa có trên dòng thời gian. Đánh dấu In và Out, rồi Insert (E) hoặc Overwrite (Q) tại playhead. Esc: quay về dòng thời gian.";

@@ -158,6 +158,7 @@ import BashCutPlugin
         menu.addItem(item(.sourceInsert, String(localized: "Insert at Playhead")))
         menu.addItem(item(.sourceOverwrite, String(localized: "Overwrite at Playhead")))
         menu.addItem(item(.sourceClose, String(localized: "Close Source Viewer")))
+        menu.addItem(item(.sourceShow, String(localized: "Show Source Viewer")))
         return wrap(menu)
     }
 
@@ -400,7 +401,7 @@ import BashCutPlugin
 
     func bind(_ shortcut: UIShortcut) {
         let keys: [String: Int] = [
-            "space": 0x20, "delete": NSBackspaceCharacter, "left": NSLeftArrowFunctionKey,
+            "space": 0x20, "delete": NSBackspaceCharacter, "escape": 0x1b, "left": NSLeftArrowFunctionKey,
             "right": NSRightArrowFunctionKey, "up": NSUpArrowFunctionKey, "down": NSDownArrowFunctionKey,
         ]
         if let code = keys[shortcut.key], let scalar = Unicode.Scalar(code) {

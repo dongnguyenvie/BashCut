@@ -99,6 +99,7 @@ extension TimelineCanvas {
     override func mouseDown(with event: NSEvent) {
         guard !document.busy, !document.conflict else { return }
         window?.makeFirstResponder(self)
+        document.showTimelineViewer()
         let point = convert(event.locationInWindow, from: nil)
         dragRevision = document.project.revision
         if grabsPlayhead(point) {

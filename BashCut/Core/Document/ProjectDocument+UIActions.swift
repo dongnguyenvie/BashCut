@@ -34,6 +34,7 @@ extension ProjectDocument {
         case .sourceTogglePlayback, .sourcePreviousFrame, .sourceNextFrame, .markIn, .markOut, .sourceInsert,
             .sourceOverwrite, .sourceClose:
             return source
+        case .sourceShow: return !source && sourceViewer.media != nil
         case .showAgentChanges, .dismissAgentChange: return agentChange != nil
         case .undoAgentChange: return canUndoAgentChange
         case .openChatAgent: return !chatAgents.available.isEmpty
@@ -124,6 +125,9 @@ extension ProjectDocument {
         case .sourceInsert: try placeSource(.insert, author: author)
         case .sourceOverwrite: try placeSource(.overwrite, author: author)
         case .sourceClose: sourceViewer.close()
+        case .sourceShow:
+            preview.pause()
+            sourceViewer.reopen()
         default: try performOtherAction(action)
         }
     }

@@ -716,3 +716,10 @@
 "Projects folder" = "Projects folder";
 "Reset" = "Reset";
 "Use ~/Movies/BashCut again" = "Use ~/Movies/BashCut again";
+"Back to the timeline (Esc)" = "Back to the timeline (Esc)";
+"Showing the timeline" = "Showing the timeline";
+"Click a clip in Media to preview it here before adding it to the timeline" = "Click a clip in Media to preview it here before adding it to the timeline";
+"Preview the Media clip last opened, before adding it to the timeline" = "Preview the Media clip last opened, before adding it to the timeline";
+"Viewer mode" = "Viewer mode";
+"Show Source Viewer" = "Show Source Viewer";
+"A Media clip, not on the timeline yet. Mark In and Out, then Insert (E) or Overwrite (Q) at the playhead. Esc: back to the timeline." = "A Media clip, not on the timeline yet. Mark In and Out, then Insert (E) or Overwrite (Q) at the playhead. Esc: back to the timeline.";
