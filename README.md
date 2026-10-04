@@ -17,6 +17,10 @@
   <a href="https://github.com/dongnguyenvie/BashCut/issues">Issues</a>
 </p>
 
+<p align="center">
+  <a href="README.vi.md">Tiếng Việt</a>
+</p>
+
 ---
 
 <p align="center">
