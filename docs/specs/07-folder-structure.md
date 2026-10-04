@@ -99,7 +99,13 @@ bash-cut/
 ├── scripts/
 │   ├── generate-project.sh        # checks for XcodeGen, generates BashCut.xcodeproj
 │   ├── verify.sh                  # build | test | lint | xcode [build|test] | perf
-│   └── run.sh                     # builds, signs and opens build/BashCut.app
+│   ├── run.sh                     # builds, signs and opens build/BashCut.app
+│   ├── deploy-testflight.sh       # Mac App Store archive, uploaded to TestFlight
+│   ├── build-release.sh           # Developer ID: archive, verify, notarize; zip + dmg (+ pkg) in build/release/
+│   ├── create-dmg.sh              # dmg from a signed app (a build-release.sh step, also runnable alone)
+│   ├── create-pkg.sh              # pkg from a signed app (likewise)
+│   ├── lib/                       # sourced helpers: common.sh (.env, version), signing.sh, notarize.sh
+│   └── ci/                        # checks of the scripts themselves (test-script-lib.sh)
 │
 ├── mockups/bashcut-ui.html        # interactive UI mockup (reference only)
 │
@@ -124,7 +130,7 @@ These appear in earlier drafts of this spec and are not in the repository yet:
   broken project files).
 - A UI test target and a dedicated performance test target. Today `scripts/verify.sh perf` runs the engine tests
   with `BASHCUT_PERF=1`, and real-footage numbers come from `bashcut-bench`.
-- `scripts/install-cli.sh` (a `bashcut` shim on `PATH`), `build-release.sh` and `create-dmg.sh`.
+- `scripts/install-cli.sh` (a `bashcut` shim on `PATH`).
 - Finer folders inside `Core/Engine` and `Views/` once those areas grow.
 
 ## Targets

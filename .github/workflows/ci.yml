@@ -1,10 +1,14 @@
 name: Build and verify
 
+# Manual only (Actions › Build and verify › Run workflow): pull requests and pushes are verified locally with
+# scripts/verify.sh, and hosted macOS minutes are spent only when someone asks for them.
 on:
-  pull_request:
-  push:
-    branches: [main]
   workflow_dispatch:
+    inputs:
+      xcode-tests:
+        description: Run the Xcode test plan (otherwise only build the Xcode app and test targets)
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -48,10 +52,12 @@ jobs:
           key: spm-${{ runner.os }}-${{ runner.arch }}-xcode26.3-${{ hashFiles('Package.resolved', 'Packages/BashCutCore/Package.resolved') }}
       - name: Check whitespace
         env:
-          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        # A branch is checked against where it left the default branch; the default branch itself, its last commit.
         run: |
-          if [[ -n "$PR_BASE" ]]; then
-            git diff --check "$PR_BASE" HEAD
+          base="$(git merge-base "origin/$DEFAULT_BRANCH" HEAD)"
+          if [[ "$base" != "$(git rev-parse HEAD)" ]]; then
+            git diff --check "$base" HEAD
           else
             git show --check --oneline HEAD
           fi
@@ -61,13 +67,13 @@ jobs:
         run: scripts/verify.sh test
       - name: Lint strictly
         run: scripts/verify.sh lint
-      # SwiftPM already ran every suite. Pull requests prove the Xcode app and test targets compile;
-      # a manual run also executes the Xcode test plan.
+      # SwiftPM already ran every suite. Without xcode-tests the run only proves the Xcode app and test targets
+      # compile.
       - name: Build Xcode app and tests
-        if: github.event_name != 'workflow_dispatch'
+        if: ${{ !inputs.xcode-tests }}
         run: scripts/verify.sh xcode build-for-testing
       - name: Build and test Xcode
-        if: github.event_name == 'workflow_dispatch'
+        if: ${{ inputs.xcode-tests }}
         run: scripts/verify.sh xcode test -parallel-testing-enabled NO
       - name: Preserve verification logs
         if: always()

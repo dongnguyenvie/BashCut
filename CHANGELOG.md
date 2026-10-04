@@ -5,6 +5,19 @@
 
 ## [Unreleased]
 
+- CI (`Build and verify`) runs only when triggered by hand, not on pull requests or pushes; the `xcode-tests`
+  input chooses between running the Xcode test plan and only building its targets.
+- Add release scripts. `scripts/build-release.sh` builds for distribution outside the Mac App Store: it archives
+  with a Developer ID identity, checks every Mach-O for a secure timestamp (executables also for the hardened
+  runtime), notarizes, staples and validates the ticket, then writes `BashCut-<version>.zip`, `.dmg` (and `.pkg`
+  with `--pkg`) and `SHA256SUMS` to `build/release/`. `create-dmg.sh` and `create-pkg.sh` are its steps and also run
+  alone. `scripts/deploy-testflight.sh` uploads a Mac App Store build to TestFlight.
+- Shared shell helpers in `scripts/lib/` (`common.sh`, `signing.sh`, `notarize.sh`), tested under bash 3.2 by
+  `scripts/ci/test-script-lib.sh` in `verify.sh test`. Account details (team ID, Apple ID, app-specific password)
+  come only from the git-ignored `.env`; `.env.example` lists the keys.
+- Split the ramp window envelope expression: Release (`-O`) archives failed with "unable to type-check this
+  expression in reasonable time".
+
 - Update the agent kit in the app: Settings › Agents checks bashcut-agent-kit's signed `releases.json` and offers
   **Download & Update** (`agent kit-check`, `agent kit-update`). Releases are verified (HTTPS from GitHub,
   first-party signature, SHA-256, one kit folder without escaping links) before they replace the built-in kit, and
