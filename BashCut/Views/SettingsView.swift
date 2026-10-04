@@ -99,6 +99,26 @@ struct SettingsView: View {
         } footer: {
             Text("Language changes apply after restarting BashCut.").font(.caption).foregroundStyle(.secondary)
         }
+        Section {
+            LabeledContent("Version") {
+                HStack {
+                    Text(verbatim: "\(document.appUpdate.version) (\(document.appUpdate.build))").textSelection(.enabled)
+                    Button("Check for Updates…") {
+                        done()
+                        // Present Software Update once Settings has closed.
+                        Task { @MainActor in
+                            try? await Task.sleep(for: .milliseconds(350))
+                            document.run(.showUpdates)
+                        }
+                    }
+                }
+            }
+            if document.appUpdate.install.checksForUpdates {
+                Toggle("Check for BashCut updates daily", isOn: $settings.checkAppUpdatesDaily)
+            }
+        } header: {
+            Text("Updates")
+        }
     }
 
     @ViewBuilder private var agents: some View {

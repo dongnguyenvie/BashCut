@@ -152,6 +152,19 @@ struct EditorView: View {
                 done: { document.ui.showDoctor = false })
         }
         .onChange(of: document.ui.showDoctor) { if document.ui.showDoctor { runDoctor() } }
+        .sheet(isPresented: Bindable(document.ui).showUpdates) {
+            AppUpdateView(
+                model: document.appUpdate, settings: document.settings,
+                check: { Task { await document.appUpdate.check() } },
+                skip: { document.run(.skipAppUpdate) },
+                later: { document.run(.remindAppUpdateLater) },
+                done: { document.ui.showUpdates = false })
+        }
+        .onChange(of: document.ui.showUpdates) {
+            // Opened by hand: ask GitHub now. Opened by itself: it already knows the release.
+            if document.ui.showUpdates, !document.ui.updatesPrompt { Task { await document.appUpdate.check() } }
+            if !document.ui.showUpdates { document.ui.updatesPrompt = false }
+        }
         .task {
             while !Task.isCancelled {
                 do { try await Task.sleep(for: .seconds(30)) } catch { return }

@@ -6,6 +6,15 @@
 ## [Unreleased]
 
 - BashCut is released under the MIT License (`LICENSE`).
+- BashCut tells you when a new release is out. Homebrew and downloaded copies check GitHub once a day when a project
+  opens (Settings › General, on by default), and a newer release opens **Software Update** by itself, once per launch:
+  the new version, its release notes and how to update (copy `brew upgrade --cask bashcut`, or **Download…** for a
+  dmg copy), with **Skip This Version** (no reminders until a newer release) and **Remind Me Later** (ask again the
+  next day). Until it is skipped, ☰ shows a dot and an **Update to BashCut …** item. **BashCut › Check for Updates…**
+  (also ☰ and Settings › General) checks on demand. Nothing is installed automatically, App Store and TestFlight
+  copies are not checked, and `scripts/run.sh` builds check only on demand (`BASHCUT_UPDATE_FEED` and
+  `BASHCUT_UPDATE_INSTALL` let them try the prompt). New commands `app version` and `app update-check`, and UI
+  actions `show.updates`, `show.about`, `app.update-skip` and `app.update-later`.
 - `bashcut-mcp` accepts the `initialize` request of Codex 0.160 (tested with the CLI that ships in the ChatGPT app).
   Codex sends objects in `capabilities.experimental`, which the MCP SDK decodes as strings, so the handshake failed
   with -32603 and Codex had no BashCut tools although `agent setup codex` reported success. The server now ignores

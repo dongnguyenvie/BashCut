@@ -133,10 +133,23 @@ extension EditorView {
                 if let issues = AppLinks.current.issues {
                     Button("Report an Issue…") { NSWorkspace.shared.open(issues) }
                 }
-                Button("About BashCut") { MainMenu.showAbout() }
+                if document.showsAppUpdateNotice, let release = document.appUpdate.available {
+                    Button(String(format: String(localized: "Update to BashCut %@…"), release.version)) {
+                        document.run(.showUpdates)
+                    }
+                } else {
+                    Button("Check for Updates…") { document.run(.showUpdates) }
+                }
+                Button("About BashCut") { document.run(.showAbout) }
             }
         } label: {
             Image(systemName: "line.3.horizontal")
+        }
+        .overlay(alignment: .topTrailing) {
+            // A newer BashCut is out; ☰ › Update to … opens Software Update.
+            if document.showsAppUpdateNotice {
+                Circle().fill(Color.cyan).frame(width: 7, height: 7).offset(x: 3, y: -3).allowsHitTesting(false)
+            }
         }
         .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
         .accessibilityLabel("More")

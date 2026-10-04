@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 89 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 91 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -587,6 +587,20 @@ Check bashcut-agent-kit's signed releases for a newer agent kit than the one Bas
 Download and install the newest signed agent kit release (Settings › Agents › Download & Update), then refresh Claude Code and Codex where the kit is set up.
 
 - Mode: privileged · Runs: after the user approves in the app · MCP: `bashcut_agent_kit-update`
+
+## app
+
+### `bashcut app version`
+
+This BashCut's version and build, how it was installed (homebrew, direct, app-store, development) and the plugin API it offers, like About BashCut.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_app_version`
+
+### `bashcut app update-check`
+
+Ask GitHub for the latest BashCut release, like BashCut › Check for Updates…. Returns this version, the latest release (version, page, notes) when it is newer, and how to update: the Homebrew command or the release page. Never installs anything; App Store and TestFlight copies are not checked.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_app_update-check`
 
 ## chat
 

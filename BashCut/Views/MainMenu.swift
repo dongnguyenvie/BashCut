@@ -34,7 +34,8 @@ import BashCutPlugin
 
     private func appMenu() -> NSMenuItem {
         let menu = NSMenu(title: "BashCut")
-        menu.addItem(ActionMenuItem(String(localized: "About BashCut"), target: self) { MainMenu.showAbout() })
+        menu.addItem(item(.showAbout, String(localized: "About BashCut"), shortcut: false))
+        menu.addItem(item(.showUpdates, String(localized: "Check for Updates…"), shortcut: false))
         menu.addItem(.separator())
         menu.addItem(item(.showSettings, String(localized: "Settings…")))
         menu.addItem(item(.showDoctor, String(localized: "Check Setup (Doctor)…")))

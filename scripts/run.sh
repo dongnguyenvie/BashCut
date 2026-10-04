@@ -46,6 +46,8 @@ cp BashCut/Assets.xcassets/AppIcon.appiconset/icon_*.png "$iconset/"
 iconutil -c icns -o "$bundle/Resources/AppIcon.icns" "$iconset"
 rm -rf "$(dirname "$iconset")"
 plutil -replace CFBundleIconFile -string AppIcon "$bundle/Info.plist"
+# Not a release: BashCut does not look for updates by itself (Check for Updates… still works).
+plutil -replace BCDevelopmentBuild -bool YES "$bundle/Info.plist"
 if pgrep -qf "build/BashCut.app/Contents/MacOS/BashCutApp"; then
     echo "BashCut is already running the previous build. Quit it (⌘Q), then run scripts/run.sh again." >&2
     exit 1

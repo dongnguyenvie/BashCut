@@ -5520,6 +5520,168 @@
         "en": { "stringUnit": { "state": "translated", "value": "Clear File" } },
         "vi": { "stringUnit": { "state": "translated", "value": "Bỏ chọn file" } }
       }
+    },
+    "Check for Updates…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Check for Updates…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Kiểm tra cập nhật…" } }
+      }
+    },
+    "Software Update": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Software Update" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Cập nhật phần mềm" } }
+      }
+    },
+    "Check Again": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Check Again" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Kiểm tra lại" } }
+      }
+    },
+    "This version": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "This version" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Phiên bản này" } }
+      }
+    },
+    "Checking for updates…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Checking for updates…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đang kiểm tra cập nhật…" } }
+      }
+    },
+    "BashCut is up to date.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "BashCut is up to date." } },
+        "vi": { "stringUnit": { "state": "translated", "value": "BashCut đã là bản mới nhất." } }
+      }
+    },
+    "Checked %@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Checked %@" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đã kiểm tra lúc %@" } }
+      }
+    },
+    "Quit BashCut, then run in Terminal:": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Quit BashCut, then run in Terminal:" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Thoát BashCut rồi chạy lệnh này trong Terminal:" } }
+      }
+    },
+    "Copied": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Copied" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đã sao chép" } }
+      }
+    },
+    "Copy Command": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Copy Command" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Sao chép lệnh" } }
+      }
+    },
+    "Download…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Download…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Tải về…" } }
+      }
+    },
+    "Release Notes…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Release Notes…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Ghi chú phát hành…" } }
+      }
+    },
+    "Homebrew": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Homebrew" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Homebrew" } }
+      }
+    },
+    "App Store": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "App Store" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "App Store" } }
+      }
+    },
+    "Development build": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Development build" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Bản build phát triển" } }
+      }
+    },
+    "Check for BashCut updates daily": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Check for BashCut updates daily" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Kiểm tra bản cập nhật BashCut mỗi ngày" } }
+      }
+    },
+    "Version": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Version" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Phiên bản" } }
+      }
+    },
+    "Update to BashCut %@…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Update to BashCut %@…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Cập nhật lên BashCut %@…" } }
+      }
+    },
+    "The App Store and TestFlight update this copy of BashCut": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "The App Store and TestFlight update this copy of BashCut" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Bản BashCut này được cập nhật qua App Store hoặc TestFlight" } }
+      }
+    },
+    "This build does not name its GitHub repository": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "This build does not name its GitHub repository" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Bản build này không khai báo repository GitHub" } }
+      }
+    },
+    "Skip This Version": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Skip This Version" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Bỏ qua phiên bản này" } }
+      }
+    },
+    "Remind Me Later": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Remind Me Later" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Nhắc tôi sau" } }
+      }
+    },
+    "A new version of BashCut is available!": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "A new version of BashCut is available!" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đã có phiên bản BashCut mới!" } }
+      }
+    },
+    "BashCut %@ is now available. You have %@.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "BashCut %@ is now available. You have %@." } },
+        "vi": { "stringUnit": { "state": "translated", "value": "BashCut %1$@ đã có. Bạn đang dùng %2$@." } }
+      }
+    },
+    "Release notes:": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Release notes:" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Ghi chú phát hành:" } }
+      }
+    },
+    "No reminders for this version; a newer release shows again": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "No reminders for this version; a newer release shows again" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Không nhắc lại phiên bản này; khi có bản mới hơn sẽ nhắc lại" } }
+      }
+    },
+    "Ask again tomorrow": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Ask again tomorrow" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Hỏi lại vào ngày mai" } }
+      }
     }
   },
   "version": "1.0"

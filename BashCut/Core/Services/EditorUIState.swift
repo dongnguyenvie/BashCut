@@ -44,6 +44,10 @@ public final class EditorUIState {
     public var showPlugins = false
     public var showSettings = false
     public var showDoctor = false
+    /// Software Update: this version and whether a newer release is out (BashCut › Check for Updates…).
+    public var showUpdates = false
+    /// Software Update opened by itself for a new release: it shows what is known without checking again.
+    public var updatesPrompt = false
     public var showAsk = false
     public var showSections = false
     /// The command palette (⇧⌘P) and the keyboard-shortcuts sheet (⌘/), both built from the menu bar.
@@ -116,7 +120,7 @@ public final class EditorUIState {
     public static let toggledDialogs: [String: ReferenceWritableKeyPath<EditorUIState, Bool>] = [
         "review": \.showReview, "history": \.showHistory, "plugins": \.showPlugins, "settings": \.showSettings,
         "doctor": \.showDoctor, "ask": \.showAsk, "sections": \.showSections, "commands": \.showCommands,
-        "shortcuts": \.showShortcuts,
+        "shortcuts": \.showShortcuts, "updates": \.showUpdates,
     ]
 }
 

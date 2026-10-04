@@ -38,6 +38,7 @@ extension ProjectDocument {
         closing("plugins", "Plugins", when: ui.showPlugins) { [weak self] in self?.ui.showPlugins = false }
         closing("settings", "Settings", when: ui.showSettings) { [weak self] in self?.ui.showSettings = false }
         closing("doctor", "Doctor", when: ui.showDoctor) { [weak self] in self?.ui.showDoctor = false }
+        if let updates = appUpdateSheet() { sheets.append(updates) }
         closing("knowledge", "Skills and project memory", when: agents.showKnowledge) { [weak self] in
             self?.agents.showKnowledge = false
         }

@@ -36,6 +36,7 @@ final class ProjectDocument {
     var agentChangedIDs = Set<String>()
     var agentChange: AgentChangeRecord?
     let doctor = DoctorModel()
+    let appUpdate = AppUpdateModel.shared
     /// A timeline drag is in progress; only guards autosave and agent edits, so views do not observe it.
     @ObservationIgnored var timelineGestureActive = false
     /// Preferences and recent projects.
@@ -222,6 +223,7 @@ final class ProjectDocument {
         agents.keepSessions(after: liveBookmarks)
         plugins.refresh(projectRoot: url.deletingLastPathComponent())
         if settings.checkPluginUpdatesDaily { Task { await plugins.checkForUpdatesIfDue() } }
+        if settings.checkAppUpdatesDaily { checkAppUpdateIfDue() }
     }
 
     func addCaption() {
