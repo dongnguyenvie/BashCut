@@ -23,6 +23,8 @@ Not everything lives here:
 embedded `bashcut` / `bashcut-mcp` tools and one test bundle, and links the package's library products.
 A new source file in an existing module needs no build change; a new module is a target (and, if the app
 uses it, a library product) in `Package.swift` plus a `package: BashCut` dependency in `project.yml`.
+A new or upgraded third-party package also needs `scripts/update-acknowledgements.py`, which regenerates the
+license texts in the About panel (see [third-party dependencies](docs/reference/third-party.md)).
 
 ```bash
 scripts/verify.sh build          # swift build

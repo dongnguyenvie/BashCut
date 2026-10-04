@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+- The About panel lists the third-party packages in the shipped app, CLI and MCP server with their verbatim
+  license texts, as their MIT and Apache-2.0 licenses require for any distributed build, free or paid.
+  `scripts/update-acknowledgements.py` generates them from the resolved packages; `verify.sh test` checks they
+  are current and that every resolved package is classified as shipped or not.
 - One BashCut mark everywhere: `BashCutLogo` draws the shell prompt over a timeline as vectors, and
   `scripts/render-app-icon.sh` renders the app icon (now on the macOS icon grid: a rounded 824-point tile with a
   shadow, not a full square) and the README logo from it. The Welcome screen shows the mark beside the name with a

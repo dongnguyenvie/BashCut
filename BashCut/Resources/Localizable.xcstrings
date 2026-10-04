@@ -1,6 +1,8 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Show license texts…": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Show license texts…" } }, "vi": { "stringUnit": { "state": "translated", "value": "Xem nội dung giấy phép…" } } } },
+    "Acknowledgements": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Acknowledgements" } }, "vi": { "stringUnit": { "state": "translated", "value": "Lời cảm ơn" } } } },
     "Kit updates": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Kit updates" } }, "vi": { "stringUnit": { "state": "translated", "value": "Cập nhật kit" } } } },
     "Up to date": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Up to date" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đã là bản mới nhất" } } } },
     "Version %@ available": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Version %@ available" } }, "vi": { "stringUnit": { "state": "translated", "value": "Có phiên bản %@" } } } },

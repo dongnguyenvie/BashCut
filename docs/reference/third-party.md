@@ -37,6 +37,10 @@ measured.
   contributions are Apache-2.0, earlier contributions stay MIT until their authors consent, and documentation is
   CC-BY-4.0. Both licenses are permissive; ship both texts with any distributed build.
 - Licenses were read from the checked-out package sources. Recheck them when a package is upgraded.
+- **Shipping the texts.** The About panel lists every package linked into the app, `bashcut` or `bashcut-mcp`
+  with its license text, from `BashCut/Models/Acknowledgements.swift`. After adding, removing or upgrading a
+  package, run `scripts/update-acknowledgements.py`; it refuses a resolved package it has not been told is shipped
+  or not, and `scripts/verify.sh test` fails while the file is stale.
 
 ## Not bundled
 
