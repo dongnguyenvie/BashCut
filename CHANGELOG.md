@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+- Name internal types after their role: `TimelineDryRun`, `DebugLogWriter`, the `SpeedRamp*` audio types,
+  `ExportSampleTransfer` and `FileSignature`. Bound plugin secrets use `…/binding/<hash>` Keychain accounts.
+
 - Render speed-ramp audio on a private queue instead of Swift's cooperative executor, publish cache files
   with an atomic rename, check reader outputs before adding them and decode sources with more than two
   channels as stereo. The cache folder is now `.bashcut/ramp-audio`, matching its storage entry.
