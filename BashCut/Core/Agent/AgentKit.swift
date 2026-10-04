@@ -1,12 +1,14 @@
+import BashCutPlugin
 import CryptoKit
 import Foundation
 
 /// The BashCut agent kit (`bashcut-agent-kit`): editing skills for Claude Code and Codex. BashCut ships a copy in
-/// `Contents/Resources/AgentKit`; Settings › Agents can point at another folder (a checkout being worked on).
+/// `Contents/Resources/AgentKit`, can download newer releases (`AgentKitUpdater`), and Settings › Agents can point
+/// at another folder (a checkout being worked on).
 ///
 /// A kit is a folder with `.claude-plugin/plugin.json` and `skills/<name>/SKILL.md`.
 public struct AgentKit: Sendable, Equatable {
-    public enum Source: String, Sendable { case bundled, folder }
+    public enum Source: String, Sendable { case bundled, downloaded, folder }
 
     public let root: URL
     public let source: Source
@@ -65,11 +67,17 @@ public struct AgentKit: Sendable, Equatable {
         return hash.finalize().map { String(format: "%02x", $0) }.joined()
     }
 
-    /// The chosen folder when it holds a kit, else the copy inside the app.
-    public static func locate(folder: URL?, resources: URL? = Bundle.main.resourceURL) -> AgentKit? {
+    /// The chosen folder when it holds a kit, else the newer of the copy inside the app and the newest downloaded
+    /// release (the app's copy on a tie, since it shipped with this build).
+    public static func locate(folder: URL?, resources: URL? = Bundle.main.resourceURL, support: URL? = nil) -> AgentKit? {
         if let folder, let kit = AgentKit(root: folder, source: .folder) { return kit }
-        guard let resources else { return nil }
-        return AgentKit(root: resources.appendingPathComponent("AgentKit", isDirectory: true), source: .bundled)
+        let bundled = resources.flatMap {
+            AgentKit(root: $0.appendingPathComponent("AgentKit", isDirectory: true), source: .bundled)
+        }
+        guard let downloaded = support.flatMap({ AgentKitUpdater.downloaded(in: $0).first }) else { return bundled }
+        guard let bundled else { return downloaded }
+        return (SemanticVersion(downloaded.version) ?? .zero) > (SemanticVersion(bundled.version) ?? .zero)
+            ? downloaded : bundled
     }
 }
 
@@ -81,13 +89,13 @@ public struct AgentKitInstall: Sendable {
 
     public init(support: URL) { self.support = support }
 
-    /// The kit agents read: a folder kit as it is (edits show up at once), a bundled kit copied to
-    /// `agent-kit/` (refreshed whenever distributed content changes).
+    /// The kit agents read: a folder kit as it is (edits show up at once), a bundled or downloaded kit copied to
+    /// `agent-kit/` (refreshed whenever distributed content changes), so agents keep one path across updates.
     public func stableRoot(for kit: AgentKit) throws -> AgentKit {
-        guard kit.source == .bundled else { return kit }
+        guard kit.source != .folder else { return kit }
         let destination = support.appendingPathComponent("agent-kit", isDirectory: true)
         let contentHash = try kit.contentHash()
-        if let installed = AgentKit(root: destination, source: .bundled), installed.version == kit.version,
+        if let installed = AgentKit(root: destination, source: kit.source), installed.version == kit.version,
             installed.skills == kit.skills, (try? installed.contentHash()) == contentHash
         {
             return installed
@@ -97,15 +105,15 @@ public struct AgentKitInstall: Sendable {
         let staging = support.appendingPathComponent(".agent-kit-\(UUID().uuidString)", isDirectory: true)
         defer { try? manager.removeItem(at: staging) }
         try manager.copyItem(at: kit.root, to: staging)
-        guard let staged = AgentKit(root: staging, source: .bundled), try staged.contentHash() == contentHash else {
-            throw AgentKitError("The bundled agent kit changed while it was being copied; retry setup")
+        guard let staged = AgentKit(root: staging, source: kit.source), try staged.contentHash() == contentHash else {
+            throw AgentKitError("The agent kit changed while it was being copied; retry setup")
         }
         if manager.fileExists(atPath: destination.path) {
             _ = try manager.replaceItemAt(destination, withItemAt: staging)
         } else {
             try manager.moveItem(at: staging, to: destination)
         }
-        guard let installed = AgentKit(root: destination, source: .bundled) else {
+        guard let installed = AgentKit(root: destination, source: kit.source) else {
             throw AgentKitError("The agent kit could not be installed in \(destination.path)")
         }
         return installed

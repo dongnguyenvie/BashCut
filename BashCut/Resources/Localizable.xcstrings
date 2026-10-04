@@ -1,6 +1,13 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Kit updates": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Kit updates" } }, "vi": { "stringUnit": { "state": "translated", "value": "Cập nhật kit" } } } },
+    "Up to date": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Up to date" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đã là bản mới nhất" } } } },
+    "Version %@ available": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Version %@ available" } }, "vi": { "stringUnit": { "state": "translated", "value": "Có phiên bản %@" } } } },
+    "Download & Update": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Download & Update" } }, "vi": { "stringUnit": { "state": "translated", "value": "Tải về và cập nhật" } } } },
+    "Check for Updates": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Check for Updates" } }, "vi": { "stringUnit": { "state": "translated", "value": "Kiểm tra cập nhật" } } } },
+    "Downloaded": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Downloaded" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đã tải về" } } } },
+    "Older kit set up: update it": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Older kit set up: update it" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đang dùng kit cũ: hãy cập nhật" } } } },
     "Wait for exports to finish before clearing ramp audio": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Wait for exports to finish before clearing ramp audio" } }, "vi": { "stringUnit": { "state": "translated", "value": "Hãy đợi xuất video xong rồi mới xoá âm thanh speed ramp" } } } },
     "Preview cache maintenance is already in progress": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Preview cache maintenance is already in progress" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đang dọn bộ nhớ đệm xem trước" } } } },
     "Checked after approval": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Checked after approval" } }, "vi": { "stringUnit": { "state": "translated", "value": "Kiểm tra sau khi phê duyệt" } } } },

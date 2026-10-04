@@ -81,8 +81,17 @@ token, so they can read and point at things but cannot edit.
 
 The [agent kit](https://github.com/dongnguyenvie/bashcut-agent-kit) is a set of editing skills (footage survey,
 beat cuts, audio mix, captions, colour, effects, voiceover…) for Claude Code and Codex. BashCut ships a copy in
-`Contents/Resources/AgentKit` (`scripts/run.sh` copies a `bashcut-agent-kit` checkout next to the repo, or
-`$BASHCUT_AGENT_KIT`). **Settings → Agents** and `agent status` / `agent setup` manage it.
+`Contents/Resources/AgentKit` (`scripts/bundle-agent-kit.sh`, run by `scripts/run.sh` and the Xcode build, copies
+the tracked files of a `bashcut-agent-kit` checkout next to the repo, or `$BASHCUT_AGENT_KIT`). **Settings → Agents**
+and `agent status` / `agent setup` manage it.
+
+- **Kit updates.** Settings → Agents checks the kit's signed releases (`releases.json` on bashcut-agent-kit's
+  `main`) and offers **Download & Update** (`agent kit-check`, `agent kit-update`; the update asks for approval).
+  BashCut installs a release only over HTTPS from GitHub, with a first-party ed25519 signature checked before the
+  download and the SHA-256 after it, into `~/Library/Application Support/BashCut/agent-kits/<version>`. The newer
+  of that download and the built-in kit is used; a chosen folder is never updated. After installing, Claude Code
+  and Codex are refreshed where the kit is set up. Claude Code caches the plugin per version, so its row shows
+  "Older kit set up" until **Update** runs.
 
 - **BashCut's tabs** load it by default (`agent setup in-app`, `--remove` to stop). The built-in kit is copied to
   `~/Library/Application Support/BashCut/agent-kit`. Claude tabs get a skills-only plugin

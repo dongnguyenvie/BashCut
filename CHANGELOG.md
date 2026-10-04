@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+- Update the agent kit in the app: Settings › Agents checks bashcut-agent-kit's signed `releases.json` and offers
+  **Download & Update** (`agent kit-check`, `agent kit-update`). Releases are verified (HTTPS from GitHub,
+  first-party signature, SHA-256, one kit folder without escaping links) before they replace the built-in kit, and
+  Claude Code and Codex are refreshed afterwards. Claude Code's row flags an older cached plugin version.
+- Bundle the agent kit's tracked files in Xcode builds too (`scripts/bundle-agent-kit.sh`, shared with `run.sh`).
+
 - Check plugin trust with an fts(3) walk that hashes raw lstat fields: a dev-linked plugin with node_modules
   (~13k files) answered option reads in ~150 ms and now ~45 ms. Every check still walks the whole tree.
 

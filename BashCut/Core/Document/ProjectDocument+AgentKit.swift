@@ -40,7 +40,7 @@ extension ProjectDocument {
 
     /// The kit agents use, installed in BashCut's support folder; nil when there is none.
     func installedAgentKit() throws -> AgentKit? {
-        guard let kit = AgentKit.locate(folder: settings.agentKitFolder) else { return nil }
+        guard let kit = AgentKit.locate(folder: settings.agentKitFolder, support: StorageUsage.supportFolder) else { return nil }
         return try agentKitInstall.stableRoot(for: kit)
     }
 
@@ -84,6 +84,7 @@ extension ProjectDocument {
             let folder = target == .claude ? folders.claude : folders.codex
             agents[target.rawValue] = .object([
                 "cli": status.executable.map(JSONValue.string) ?? .null, "installed": .bool(status.installed),
+                "outdated": .bool(status.outdated),
                 "detail": .string(status.detail), "configFolder": .string(folder.url.path),
                 "configFrom": .string(folder.origin.rawValue),
                 "configFolders": .array(
@@ -94,7 +95,7 @@ extension ProjectDocument {
             "kit": kit.map { kit in
                 .object([
                     "path": .string(kit.root.path), "version": .string(kit.version),
-                    "source": .string(settings.agentKitFolder == nil ? "built-in" : "folder"),
+                    "source": .string(agentKitSourceName(kit)),
                     "skills": .array(kit.skills.map(JSONValue.string)),
                 ])
             } ?? .null,
@@ -127,6 +128,57 @@ extension ProjectDocument {
         return result
     }
 
+    private func agentKitSourceName(_ kit: AgentKit) -> String {
+        guard settings.agentKitFolder == nil else { return "folder" }
+        // The stable copy hides where it came from; the newest located kit tells.
+        return AgentKit.locate(folder: nil, support: StorageUsage.supportFolder)?.source == .downloaded ? "downloaded" : "built-in"
+    }
+
+    private var agentKitUpdater: AgentKitUpdater { AgentKitUpdater(support: StorageUsage.supportFolder) }
+
+    /// The newest kit release this app can install, compared with the kit in use. A chosen folder is never updated.
+    func checkAgentKitUpdate() async throws -> (kit: AgentKit?, release: AgentKitRelease?) {
+        let kit = AgentKit.locate(folder: settings.agentKitFolder, support: StorageUsage.supportFolder)
+        guard settings.agentKitFolder == nil else { return (kit, nil) }
+        let catalog = try await agentKitUpdater.catalog()
+        return (kit, catalog.update(from: kit?.version ?? "0.0.0", appVersion: Self.appVersion))
+    }
+
+    static var appVersion: String { Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "" }
+
+    func agentKitUpdateStatus() async throws -> JSONValue {
+        let (kit, release) = try await checkAgentKitUpdate()
+        var fields: [String: JSONValue] = [
+            "current": kit.map { .string($0.version) } ?? .null, "updateAvailable": .bool(release != nil),
+            "source": kit.map { .string(settings.agentKitFolder == nil ? $0.source.rawValue : "folder") } ?? .null,
+        ]
+        if settings.agentKitFolder != nil { fields["note"] = .string("A chosen kit folder is used as it is; it is not updated") }
+        if let release {
+            fields["latest"] = .object([
+                "version": .string(release.version), "releasedAt": release.releasedAt.map(JSONValue.string) ?? .null,
+                "notes": release.notes?["en"].map(JSONValue.string) ?? .null, "url": .string(release.url),
+            ])
+        }
+        return .object(fields)
+    }
+
+    /// Installs the newest release, then refreshes Claude Code and Codex where the kit was set up. Returns what was done.
+    func updateAgentKit() async throws -> String {
+        let (current, release) = try await checkAgentKitUpdate()
+        guard let release else {
+            return settings.agentKitFolder == nil
+                ? "The agent kit \(current?.version ?? "") is up to date" : "A chosen kit folder is not updated"
+        }
+        let installed = try await agentKitUpdater.install(release)
+        DebugLog.write("agent-kit", "downloaded \(installed.version)")
+        var done = ["Agent kit \(installed.version) installed"]
+        for (target, status) in await agentSetupStatuses().sorted(by: { $0.key.rawValue < $1.key.rawValue })
+        where status.installed {
+            done.append(try await setUpAgent(target.rawValue, remove: false))
+        }
+        return done.joined(separator: "; ")
+    }
+
     /// Uses the kit in `path`, or the built-in kit for `built-in`.
     func chooseAgentKit(_ path: String) throws {
         if path == "built-in" {
@@ -142,6 +194,22 @@ extension ProjectDocument {
 
     func registerAgentKitCommands() {
         handle("agent.status") { document, _, _ in await document.agentStatus() }
+        handle("agent.kit-check") { document, _, _ in try await document.agentKitUpdateStatus() }
+        handleAuthored("agent.kit-update") { document, _, author in
+            // Downloads code that Claude Code and Codex run, so it asks first like agent setup.
+            let request = try document.queuePrivilegedApproval(method: "agent.kit-update", author: author, arguments: [:]) {
+                Task { @MainActor in
+                    do { document.message = try await document.updateAgentKit() } catch {
+                        document.message = error.localizedDescription
+                    }
+                }
+            }
+            return .object([
+                "approval": .string(request.autoApproved ? "approved" : "pending"),
+                "requestId": .string(request.id.uuidString),
+                "next": .string("Run agent kit-check or agent status to see the result once it is approved"),
+            ])
+        }
         handleAuthored("agent.setup") { document, arguments, author in
             let target = try arguments.string("target")
             let remove = arguments.bool("remove")

@@ -696,3 +696,17 @@
 "Wait for exports to finish before clearing ramp audio" = "Wait for exports to finish before clearing ramp audio";
 
 "Preview cache maintenance is already in progress" = "Preview cache maintenance is already in progress";
+
+"Kit updates" = "Kit updates";
+
+"Up to date" = "Up to date";
+
+"Version %@ available" = "Version %@ available";
+
+"Download & Update" = "Download & Update";
+
+"Check for Updates" = "Check for Updates";
+
+"Downloaded" = "Downloaded";
+
+"Older kit set up: update it" = "Older kit set up: update it";

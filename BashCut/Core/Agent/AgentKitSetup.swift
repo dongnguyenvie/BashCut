@@ -14,6 +14,15 @@ public enum AgentKitSetup {
         public let executable: String?
         public let installed: Bool
         public let detail: String
+        /// Set up, but with an older kit than BashCut has: Update refreshes it. Claude Code caches per version.
+        public let outdated: Bool
+
+        public init(executable: String?, installed: Bool, detail: String, outdated: Bool = false) {
+            self.executable = executable
+            self.installed = installed
+            self.detail = detail
+            self.outdated = outdated
+        }
     }
 
     /// Where the agent CLIs and their configuration are found.
@@ -42,10 +51,14 @@ public enum AgentKitSetup {
             let entry = plugins.first { $0["id"] as? String == claudePlugin }
             let enabled = entry?["enabled"] as? Bool ?? false
             let version = entry?["version"] as? String
+            let outdated = entry != nil && kit != nil && version != kit?.version
             return Status(
                 executable: executable, installed: entry != nil && enabled,
                 detail: entry == nil ? "Plugin not installed"
-                    : enabled ? "Plugin \(version ?? "") installed" : "Plugin installed but turned off")
+                    : !enabled ? "Plugin installed but turned off"
+                    : outdated ? "Plugin \(version ?? "?") installed; the kit is \(kit?.version ?? "?")"
+                    : "Plugin \(version ?? "") installed",
+                outdated: outdated)
         case .codex:
             let linked = kit.map { AgentKitInstall.linkedSkills(of: $0, in: environment.codexSkills).count } ?? 0
             let total = kit?.skills.count ?? 0

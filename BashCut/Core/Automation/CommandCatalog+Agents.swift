@@ -26,6 +26,15 @@ extension CommandCatalog {
                                  cli: .option("codex-home")),
             ],
             execution: .approval),
+        CommandSpec(
+            "agent.kit-check", .read,
+            "Check bashcut-agent-kit's signed releases for a newer agent kit than the one BashCut uses (built-in or "
+                + "downloaded). A chosen kit folder is never updated."),
+        CommandSpec(
+            "agent.kit-update", .privileged,
+            "Download and install the newest signed agent kit release (Settings › Agents › Download & Update), then "
+                + "refresh Claude Code and Codex where the kit is set up.",
+            execution: .approval),
     ]
 
     /// Chat-agent tabs: plugins with the `agent.chat` capability (docs/specs/11-chat-agents.md), such as Director.

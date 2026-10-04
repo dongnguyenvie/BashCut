@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 86 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 88 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -567,6 +567,18 @@ Set up the agent kit like Settings › Agents: in-app (load it in BashCut's tabs
 - `kit`: string. Kit folder to use, or built-in
 - `claudeConfigDir`: string. Claude Code's configuration folder (CLAUDE_CONFIG_DIR), or default to detect it
 - `codexHome`: string. Codex's home folder (CODEX_HOME), or default to detect it
+
+### `bashcut agent kit-check`
+
+Check bashcut-agent-kit's signed releases for a newer agent kit than the one BashCut uses (built-in or downloaded). A chosen kit folder is never updated.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_agent_kit-check`
+
+### `bashcut agent kit-update`
+
+Download and install the newest signed agent kit release (Settings › Agents › Download & Update), then refresh Claude Code and Codex where the kit is set up.
+
+- Mode: privileged · Runs: after the user approves in the app · MCP: `bashcut_agent_kit-update`
 
 ## chat
 
