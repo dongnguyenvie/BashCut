@@ -8,12 +8,14 @@ struct SourceViewer: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("SOURCE").font(.caption.bold()).foregroundStyle(.cyan)
-                Text(source.media.map { URL(fileURLWithPath: $0.path).lastPathComponent } ?? "")
-                    .font(.caption).lineLimit(1)
+                ViewerModeSwitch(document: document)
                 Spacer()
-                Button("Timeline") { document.run(.sourceClose) }.font(.caption)
             }.padding(8)
+            Text(
+                "A Media clip, not on the timeline yet. Mark In and Out, then Insert (E) or Overwrite (Q) at the playhead. Esc: back to the timeline."
+            )
+                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 8).padding(.bottom, 4)
             if let media = source.media {
                 HStack(spacing: 10) {
                     if let width = media.width, let height = media.height {
@@ -27,6 +29,7 @@ struct SourceViewer: View {
                 .font(.caption.monospacedDigit()).foregroundStyle(.secondary).padding(.horizontal, 8)
             }
             PlayerView(player: source.player).background(.black)
+                .overlay(Rectangle().strokeBorder(Color.cyan.opacity(0.8), lineWidth: 2))
             HStack(spacing: 8) {
                 Button {
                     document.run(.sourcePreviousFrame)

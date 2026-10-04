@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+- The viewer says which picture it shows. Its header is a **Timeline | Source** switch instead of "VIEWER" and
+  "SOURCE" labels; Source names the Media clip, gets a cyan frame and a one-line hint (Mark In/Out, then E or Q;
+  Esc to go back). Clicking, dragging, seeking or selecting on the timeline (and `ui seek` / `ui select`) returns
+  to the timeline, so the viewer no longer keeps playing a Media clip while the timeline is edited, and Space plays
+  the timeline again. Esc closes the source viewer; the new `source.show` action (Playback › Show Source Viewer,
+  the Source segment) reopens the last clip.
 - New projects have a default folder, `~/Movies/BashCut` (made on first use; visible in Finder and not behind a
   macOS privacy prompt like Desktop or Documents). New Project's Save in starts there instead of "Not selected", so
   Create works after typing a name, and shows paths like `~/Movies/BashCut` instead of only the last folder name.

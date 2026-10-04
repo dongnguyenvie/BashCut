@@ -24,6 +24,7 @@ extension UIShortcut {
         switch self.key {
         case "space": key = .space
         case "delete": key = .delete
+        case "escape": key = .escape
         case "left": key = .leftArrow
         case "right": key = .rightArrow
         default:

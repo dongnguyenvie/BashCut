@@ -95,7 +95,7 @@ import BashCutAutomation
         if shortcut.modifiers.contains(.option) { text += "⌥" }
         if shortcut.modifiers.contains(.shift) { text += "⇧" }
         if shortcut.modifiers.contains(.command) { text += "⌘" }
-        let names = ["space": "Space", "delete": "⌫", "left": "←", "right": "→", "up": "↑", "down": "↓"]
+        let names = ["space": "Space", "delete": "⌫", "escape": "Esc", "left": "←", "right": "→", "up": "↑", "down": "↓"]
         return text + (names[shortcut.key] ?? shortcut.key.uppercased())
     }
 
@@ -103,6 +103,7 @@ import BashCutAutomation
         guard let scalar = key.unicodeScalars.first else { return key }
         switch Int(scalar.value) {
         case 0x20: return "Space"
+        case 0x1b: return "Esc"
         case NSBackspaceCharacter, NSDeleteCharacter: return "⌫"
         case NSLeftArrowFunctionKey: return "←"
         case NSRightArrowFunctionKey: return "→"

@@ -65,7 +65,7 @@ extension EditorView {
     var viewer: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("VIEWER").font(.caption.bold()).foregroundStyle(.secondary)
+                ViewerModeSwitch(document: document)
                 Spacer()
                 viewerZoomMenu
                 Toggle(

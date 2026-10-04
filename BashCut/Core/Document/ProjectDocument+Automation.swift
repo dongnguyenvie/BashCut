@@ -197,6 +197,7 @@ extension ProjectDocument {
             } else {
                 document.selectedID = id
             }
+            document.showTimelineViewer()
             return .bool(true)
         }
         handle("ui.seek") { document, arguments, _ in
@@ -204,6 +205,7 @@ extension ProjectDocument {
             guard frame <= document.project.duration else {
                 throw RPCFailure(-32602, "frame must be within the timeline")
             }
+            document.showTimelineViewer()
             document.preview.seek(frame)
             return .bool(true)
         }

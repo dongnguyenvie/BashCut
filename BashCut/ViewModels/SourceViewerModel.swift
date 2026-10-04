@@ -29,6 +29,11 @@ import Observation
         playing = false
         visible = false
     }
+    /// Shows the clip last opened again, where it was left.
+    func reopen() {
+        guard media != nil else { return }
+        visible = true
+    }
     func reset() {
         close()
         media = nil

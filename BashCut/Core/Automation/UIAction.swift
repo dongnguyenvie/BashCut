@@ -10,7 +10,7 @@ public struct UIShortcut: Sendable, Hashable, CustomStringConvertible {
         }
     }
 
-    /// One character, or a named key: `space`, `delete`, `left`, `right`.
+    /// One character, or a named key: `space`, `delete`, `escape`, `left`, `right`.
     public let key: String
     public let modifiers: Set<Modifier>
 
@@ -103,6 +103,7 @@ public enum UIAction: String, CaseIterable, Sendable {
     case sourceInsert = "source.insert"
     case sourceOverwrite = "source.overwrite"
     case sourceClose = "source.close"
+    case sourceShow = "source.show"
     case showAgentChanges = "agent.show-changes"
     case undoAgentChange = "agent.undo-changes"
     case dismissAgentChange = "agent.dismiss-changes"
@@ -185,6 +186,7 @@ public enum UIAction: String, CaseIterable, Sendable {
         case .sourceInsert: "Insert source range at the playhead"
         case .sourceOverwrite: "Overwrite with source range at the playhead"
         case .sourceClose: "Close the source viewer (back to the timeline viewer)"
+        case .sourceShow: "Show the source viewer again with the clip last opened from Media"
         case .showAgentChanges: "Show the latest agent changes"
         case .undoAgentChange: "Undo the latest agent change"
         case .dismissAgentChange: "Dismiss the agent change notice"
@@ -246,6 +248,7 @@ public enum UIAction: String, CaseIterable, Sendable {
         case .markOut: UIShortcut("o")
         case .sourceInsert: UIShortcut("e")
         case .sourceOverwrite: UIShortcut("q")
+        case .sourceClose: UIShortcut("escape")
         default: nil
         }
     }

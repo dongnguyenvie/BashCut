@@ -155,6 +155,11 @@ Heavy footage gets a preview proxy automatically; **Create Preview Proxy** in th
 Open a clip in the source viewer, set In/Out with I and O, then press E to insert at the playhead or Q to
 overwrite.
 
+The viewer header is a **Timeline | Source** switch, so it always says which picture is on screen. Source names
+the Media clip, gets a cyan frame and a one-line hint, and is disabled until a clip has been opened. Esc, the
+Timeline segment, or any click, drag, seek or selection on the timeline returns to the timeline; the Source
+segment (`source.show`) shows the last clip again where it was left.
+
 **Planned:**
 
 - **List** view (duration, resolution, fps, codec) and **contact sheet** view (one row of N frames per clip, like
@@ -444,6 +449,7 @@ Shortcuts belong to editor actions; `bashcut ui actions` lists every action with
 | ← → (⇧) | Step 1 frame (1 s) | Planned (frame step exists as an action without a key) |
 | I / O | Mark source in / out | Implemented |
 | E / Q | Insert / overwrite from the source viewer | Implemented |
+| Esc | Back to the timeline from the source viewer | Implemented |
 | S, ⌘B | Split | Implemented |
 | ⌫ / ⇧⌫ | Ripple delete / lift | Implemented |
 | ⌘= / ⌘− | Zoom the timeline in / out around the playhead | Implemented |
