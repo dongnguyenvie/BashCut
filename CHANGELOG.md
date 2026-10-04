@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+- Reuse one synchronized color-cube filter per LUT, precompute custom-domain normalization and skip it for
+  the standard 0–1 domain. Zero strength bypasses the graph. A 64³ LUT Debug graph benchmark drops from
+  872.335 ms to 1.653 ms per 1,000 frames; domain/blend pixel parity and concurrent frame isolation pass.
+
 - Skip neutral exposure and color-control filters, including LUT-only color dictionaries. A 1,000-frame
   Debug graph-construction benchmark drops from 10.004 ms to 0.361 ms; non-neutral pixel parity is tested.
 

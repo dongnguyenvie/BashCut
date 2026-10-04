@@ -8,6 +8,15 @@ public struct CubeLUT: @unchecked Sendable {
     public let cubeData: Data
     public let domainMin: [Float]
     public let domainMax: [Float]
+    private let processor: CubeFilter
+
+    init(dimension: Int, cubeData: Data, domainMin: [Float], domainMax: [Float]) throws {
+        self.dimension = dimension
+        self.cubeData = cubeData
+        self.domainMin = domainMin
+        self.domainMax = domainMax
+        processor = try CubeFilter(dimension: dimension, data: cubeData, minimum: domainMin, maximum: domainMax)
+    }
 
     public static func load(_ url: URL) throws -> CubeLUT {
         let handle = try FileHandle(forReadingFrom: url)
@@ -50,27 +59,16 @@ public struct CubeLUT: @unchecked Sendable {
         guard let dimension, texels.count == dimension * dimension * dimension * 4,
             zip(domainMin, domainMax).allSatisfy({ $0 < $1 })
         else { throw ProjectError.invalid("The .cube LUT has incomplete data or an invalid domain") }
-        return texels.withUnsafeBufferPointer {
-            CubeLUT(
+        return try texels.withUnsafeBufferPointer {
+            try CubeLUT(
                 dimension: dimension, cubeData: Data(buffer: $0),
                 domainMin: domainMin, domainMax: domainMax)
         }
     }
 
     func apply(to image: CIImage, strength: Double) -> CIImage {
-        let range = zip(domainMin, domainMax).map { Double($1 - $0) }
-        let offset = zip(domainMin, range).map { -Double($0) / $1 }
-        let normalized = image.applyingFilter(
-            "CIColorMatrix",
-            parameters: [
-                "inputRVector": CIVector(x: 1 / range[0], y: 0, z: 0, w: 0),
-                "inputGVector": CIVector(x: 0, y: 1 / range[1], z: 0, w: 0),
-                "inputBVector": CIVector(x: 0, y: 0, z: 1 / range[2], w: 0),
-                "inputBiasVector": CIVector(x: offset[0], y: offset[1], z: offset[2], w: 0),
-            ])
-        let graded = normalized.applyingFilter(
-            "CIColorCube",
-            parameters: ["inputCubeDimension": dimension, "inputCubeData": cubeData])
+        guard strength > 0 else { return image }
+        let graded = processor.apply(to: image)
         guard strength < 1 else { return graded }
         return image.applyingFilter(
             "CIDissolveTransition",
@@ -85,5 +83,41 @@ public struct CubeLUT: @unchecked Sendable {
             throw ProjectError.invalid("\(label) contains an invalid number")
         }
         return values
+    }
+}
+
+/// CIFilter is mutable. Configure its cube once, serialize input/output access, and release each input
+/// after taking the immutable CIImage recipe so preview/export callers never share mutable frame state.
+private final class CubeFilter: @unchecked Sendable {
+    private let lock = NSLock()
+    private let filter: CIFilter
+    private let normalization: [String: Any]?
+
+    init(dimension: Int, data: Data, minimum: [Float], maximum: [Float]) throws {
+        guard let filter = CIFilter(name: "CIColorCube") else { throw ProjectError.invalid("Color cube filter is unavailable") }
+        filter.setValue(dimension, forKey: "inputCubeDimension")
+        filter.setValue(data, forKey: "inputCubeData")
+        self.filter = filter
+        if minimum == [0, 0, 0], maximum == [1, 1, 1] {
+            normalization = nil
+        } else {
+            let range = zip(minimum, maximum).map { Double($1 - $0) }
+            let offset = zip(minimum, range).map { -Double($0) / $1 }
+            normalization = [
+                "inputRVector": CIVector(x: 1 / range[0], y: 0, z: 0, w: 0),
+                "inputGVector": CIVector(x: 0, y: 1 / range[1], z: 0, w: 0),
+                "inputBVector": CIVector(x: 0, y: 0, z: 1 / range[2], w: 0),
+                "inputBiasVector": CIVector(x: offset[0], y: offset[1], z: offset[2], w: 0)
+            ]
+        }
+    }
+
+    func apply(to image: CIImage) -> CIImage {
+        let input = normalization.map { image.applyingFilter("CIColorMatrix", parameters: $0) } ?? image
+        return lock.withLock {
+            filter.setValue(input, forKey: kCIInputImageKey)
+            defer { filter.setValue(nil, forKey: kCIInputImageKey) }
+            return filter.outputImage ?? image
+        }
     }
 }
