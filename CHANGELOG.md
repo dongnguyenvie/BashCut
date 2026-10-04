@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+- Export to a hidden partial file beside the destination, then publish the completed movie with an exclusive
+  atomic rename. Cancellation and failures clean up only the partial; a destination created during rendering
+  is preserved. MP4/ProRes publication, cancellation and destination-race tests cover the native writer.
+
 - Prepare keyframe interpolation segments once per layer and binary-search them during arbitrary seeks.
   Sample all five picture properties together, preserving easing and hold boundaries while avoiding per-frame
   property dictionary lookups and repeated time conversion.

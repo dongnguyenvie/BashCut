@@ -19,17 +19,16 @@ public actor Exporter {
         _ snapshot: CompositionSnapshot, to url: URL, settings: ExportSettings?,
         progress: @escaping @Sendable (Double) -> Void
     ) async throws -> ExportReceipt {
-        guard !FileManager.default.fileExists(atPath: url.path) else {
-            throw ProjectError.invalid("Export destination already exists")
-        }
+        try Task.checkCancellation()
+        let destination = try ExportDestination(url)
+        defer { destination.discard() }
         let reader = try AVAssetReader(asset: snapshot.composition)
-        let writer = try AVAssetWriter(outputURL: url, fileType: settings?.preset.fileType ?? .mp4)
+        let writer = try AVAssetWriter(outputURL: destination.partial, fileType: settings?.preset.fileType ?? .mp4)
         var completed = false
         defer {
             if !completed {
                 reader.cancelReading()
                 writer.cancelWriting()
-                try? FileManager.default.removeItem(at: url)
             }
         }
         let tracks = try await snapshot.composition.loadTracks(withMediaType: .video)
@@ -88,9 +87,11 @@ public actor Exporter {
         guard writer.status == .completed else {
             throw writer.error ?? ProjectError.invalid("Export failed")
         }
+        try Task.checkCancellation()
+        let attributes = try FileManager.default.attributesOfItem(atPath: destination.partial.path)
+        try destination.publish()
         completed = true
         progress(1)
-        let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
         return ExportReceipt(
             url: url, duration: snapshot.composition.duration.seconds,
             bytes: (attributes[.size] as? NSNumber)?.int64Value ?? 0)
