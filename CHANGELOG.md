@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+- README follows a landing-page layout: logo, tagline and links, a screenshot of the sample project, About,
+  What's inside, Install, How to Build, Verify, Related repositories and Documentation. Images live in
+  `.github/assets/`. A Vietnamese README (`README.vi.md`) mirrors it.
 - CI (`Build and verify`) runs only when triggered by hand, not on pull requests or pushes; the `xcode-tests`
   input chooses between running the Xcode test plan and only building its targets.
 - Add release scripts. `scripts/build-release.sh` builds for distribution outside the Mac App Store: it archives
