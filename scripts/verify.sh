@@ -14,7 +14,8 @@ run() {
         # Filtered runs (`verify.sh test --filter X`) stay sequential.
         test) if [ "$#" -eq 0 ]; then
                   swift test --skip "$socket_suites" && swift test --skip-build --no-parallel --filter "$socket_suites" \
-                      && (cd Packages/BashCutCore && swift test) && python3 scripts/test-mcp-process.py
+                      && (cd Packages/BashCutCore && swift test) && python3 scripts/test-mcp-process.py \
+                      && scripts/ci/test-script-lib.sh
               else
                   swift test --no-parallel "$@" && (cd Packages/BashCutCore && swift test "$@")
               fi ;;

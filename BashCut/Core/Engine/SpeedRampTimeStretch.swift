@@ -21,7 +21,10 @@ enum SpeedRampTimeStretch {
         let channels = Int(source.format.channelCount)
         var accumulation = Array(repeating: [Float](repeating: 0, count: window), count: channels)
         var weights = [Float](repeating: 0, count: window)
-        let envelope = (0..<window).map { Float(0.5 - 0.5 * cos(2 * .pi * Double($0) / Double(window))) }
+        let envelope = (0..<window).map { (index: Int) -> Float in
+            let phase: Double = 2 * Double.pi * Double(index) / Double(window)
+            return Float(0.5 - 0.5 * cos(phase))
+        }
         var previous: [[Float]]?
         for start in stride(from: -window + hop, to: total, by: hop) {
             try check()
