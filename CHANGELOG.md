@@ -5,6 +5,7 @@
 
 ## [Unreleased]
 
+- README (English and Vietnamese) links the public TestFlight beta: https://testflight.apple.com/join/XwsNZxre.
 - Recent projects on the Welcome screen are named by their project folder, with the folder's location below,
   instead of all reading `project.bashcut`.
 - The About panel lists the third-party packages in the shipped app, CLI and MCP server with their verbatim

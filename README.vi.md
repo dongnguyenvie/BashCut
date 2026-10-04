@@ -10,6 +10,7 @@
 </p>
 
 <p align="center">
+  <a href="https://testflight.apple.com/join/XwsNZxre">Beta TestFlight</a> ·
   <a href="docs/README.md">Tài liệu</a> ·
   <a href="docs/guides/automation.md">Tự động hóa</a> ·
   <a href="docs/guides/plugins.md">Plugin</a> ·
@@ -56,7 +57,8 @@ chứng và phần nào còn lại.
 
 ## Cài đặt
 
-Chưa có bản phát hành công khai. Bản beta được phát qua TestFlight; muốn dùng thử ngay thì build từ mã nguồn.
+Chưa có bản trên App Store. Tham gia bản beta công khai qua [TestFlight](https://testflight.apple.com/join/XwsNZxre) (macOS 14+, cần app TestFlight),
+hoặc build BashCut từ mã nguồn.
 
 ## Build
 
