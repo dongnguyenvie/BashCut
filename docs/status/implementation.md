@@ -434,3 +434,13 @@ The audio lane benchmark now waits for paused readiness instead of starting/stop
 samples. On this host, immediate playback left later items at `.unknown`; paused readiness passed all
 three iterations (27.773 ms median build-to-ready in the isolated check). No timeout or correctness
 assertion was loosened. Native ramp playback/export coverage remains separate.
+
+### Long export baseline (2026-10-04)
+
+Run `BASHCUT_LONG_EXPORT_BENCH=1 BASHCUT_BENCH_SHA="$(git rev-parse HEAD)" scripts/verify.sh test --filter LongExportTests`.
+The opt-in benchmark exports 200 generated-media cuts, 9,000 frames / 300.3 seconds, at 160×90 with AAC,
+then reads the encoded video to verify every frame, the audio track and duration. It prints a JSON report
+with Git SHA, OS, dimensions, duration, bytes, elapsed export seconds and throughput. It is intentionally
+small in pixel dimensions to expose sample-transfer overhead; it is not a 1080p/4K export claim.
+Baseline `e760321` on this M1 Max / macOS 15.7.7 Debug run: 22.811 seconds, 394.545 frames/s,
+43,566,760 bytes. C1's callback-driven sample pump is still pending.
