@@ -19,7 +19,7 @@ struct StorageUsageTests {
         let proxies = StorageUsage.proxiesFolder(projectRoot: project)
         try FileManager.default.createDirectory(at: proxies, withIntermediateDirectories: true)
         try Data(count: 5_000).write(to: proxies.appendingPathComponent("m1.mov"))
-        let rampAudio = project.appendingPathComponent(".bashcut/ramped-audio")
+        let rampAudio = project.appendingPathComponent(".bashcut/ramp-audio")
         try FileManager.default.createDirectory(at: rampAudio, withIntermediateDirectories: true)
         try Data(count: 12_000).write(to: rampAudio.appendingPathComponent("ramp.caf"))
         let plugins = root.appendingPathComponent("Plugins")

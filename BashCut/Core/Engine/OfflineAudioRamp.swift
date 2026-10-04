@@ -3,9 +3,17 @@ import BashCutProject
 
 /// Render one continuous stream. Pitch preservation uses WSOLA; varispeed keeps native resampling state across the curve.
 enum OfflineAudioRamp {
-    static func render(input url: URL, output: URL, curve: SpeedCurve, seconds: Double, preservesPitch: Bool) throws {
-        if preservesPitch {
-            try WaveformAudioRamp.render(input: url, output: output, curve: curve, seconds: seconds)
+    /// The output duration and the speed curve that maps it onto source time.
+    struct Shape: Sendable {
+        let curve: SpeedCurve
+        let seconds: Double
+        let preservesPitch: Bool
+    }
+
+    static func render(input url: URL, output: URL, shape: Shape, check: () throws -> Void) throws {
+        let curve = shape.curve, seconds = shape.seconds
+        if shape.preservesPitch {
+            try WaveformAudioRamp.render(input: url, output: output, curve: curve, seconds: seconds, check: check)
             return
         }
         let input = try AVAudioFile(forReading: url)
@@ -30,7 +38,7 @@ enum OfflineAudioRamp {
         let count = Int(ceil(seconds * input.processingFormat.sampleRate))
         var written = 0, retries = 0
         while written < count {
-            try Task.checkCancellation()
+            try check()
             let frames = min(256, count - written)
             let fraction = (Double(written) + Double(frames) / 2) / (seconds * input.processingFormat.sampleRate)
             let rate = Float(curve.speed(at: fraction))

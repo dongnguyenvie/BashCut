@@ -10,7 +10,7 @@ enum WaveformAudioRamp {
     private static let hop = 256
     private static let search = 480
 
-    static func render(input url: URL, output: URL, curve: SpeedCurve, seconds: Double) throws {
+    static func render(input url: URL, output: URL, curve: SpeedCurve, seconds: Double, check: () throws -> Void) throws {
         let source = try SampleWindow(url)
         let file = try AVAudioFile(forWriting: output, settings: source.format.settings)
         guard let buffer = AVAudioPCMBuffer(pcmFormat: source.format, frameCapacity: AVAudioFrameCount(hop)),
@@ -22,7 +22,7 @@ enum WaveformAudioRamp {
         let envelope = (0..<window).map { Float(0.5 - 0.5 * cos(2 * .pi * Double($0) / Double(window))) }
         var previous: [[Float]]?
         for start in stride(from: -window + hop, to: total, by: hop) {
-            try Task.checkCancellation()
+            try check()
             let center = Double(start + window / 2)
             let fraction = center / (seconds * source.format.sampleRate)
             let position: Double

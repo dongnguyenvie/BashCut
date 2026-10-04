@@ -67,7 +67,7 @@ public enum StorageUsage {
             entries.append(StorageEntry(kind: .proxies, pluginID: nil, url: proxies, bytes: size(of: proxies)))
         }
         if let projectRoot {
-            let audio = projectRoot.appendingPathComponent(".bashcut/ramped-audio", isDirectory: true)
+            let audio = projectRoot.appendingPathComponent(".bashcut/ramp-audio", isDirectory: true)
             entries.append(StorageEntry(kind: .rampAudio, pluginID: nil, url: audio, bytes: size(of: audio)))
         }
         let audit = supportRoot.appendingPathComponent("audit.jsonl")
