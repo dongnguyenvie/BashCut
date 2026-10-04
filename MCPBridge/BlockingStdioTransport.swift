@@ -28,6 +28,7 @@ actor BlockingStdioTransport: Transport {
         let intercept = self.intercept
         let reader = Thread {
             var pending = Data()
+            var awaitingInitialize = true
             var buffer = [UInt8](repeating: 0, count: 64 * 1024)
             while true {
                 let count = buffer.withUnsafeMutableBytes { read(STDIN_FILENO, $0.baseAddress, $0.count) }
@@ -38,7 +39,11 @@ actor BlockingStdioTransport: Transport {
                 }
                 if count == 0 { break }
                 pending.append(contentsOf: buffer[..<count])
-                for line in Self.takeLines(&pending) {
+                for var line in Self.takeLines(&pending) {
+                    if awaitingInitialize, let initialize = Self.compatibleInitialize(line) {
+                        line = initialize
+                        awaitingInitialize = false
+                    }
                     if let reply = intercept?(line) {
                         try? Self.writeLine(reply)
                     } else {
@@ -80,6 +85,24 @@ actor BlockingStdioTransport: Transport {
     }
 
     nonisolated func receive() -> AsyncThrowingStream<Data, Swift.Error> { messages }
+
+    /// For an `initialize` request, the request without `params.capabilities.experimental`; nil for any other
+    /// line. Workaround for swift-sdk 0.12.1, which decodes that field as `[String: String]` although the MCP schema
+    /// allows objects: Codex 0.160 sends `{"codex/auth-change": {}}` and the handshake failed with -32603. BashCut
+    /// never reads client capabilities. Remove this once the SDK decodes the field as JSON values.
+    /// Lines are parsed only until `initialize` arrives, so every spelling of the key is handled at no later cost.
+    static func compatibleInitialize(_ line: Data) -> Data? {
+        guard var message = (try? JSONSerialization.jsonObject(with: line)) as? [String: Any],
+              message["method"] as? String == "initialize"
+        else { return nil }
+        guard var params = message["params"] as? [String: Any],
+              var capabilities = params["capabilities"] as? [String: Any],
+              capabilities.removeValue(forKey: "experimental") != nil
+        else { return line }
+        params["capabilities"] = capabilities
+        message["params"] = params
+        return (try? JSONSerialization.data(withJSONObject: message)) ?? line
+    }
 
     /// Removes every complete newline-terminated line from `pending` (empty lines are skipped).
     static func takeLines(_ pending: inout Data) -> [Data] {
