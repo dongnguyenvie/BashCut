@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+- README follows a landing-page layout: logo, tagline and links, a screenshot of the sample project, About,
+  What's inside, Install, How to Build, Verify, Related repositories and Documentation. Images live in
+  `.github/assets/`.
 - Update the agent kit in the app: Settings › Agents checks bashcut-agent-kit's signed `releases.json` and offers
   **Download & Update** (`agent kit-check`, `agent kit-update`). Releases are verified (HTTPS from GitHub,
   first-party signature, SHA-256, one kit folder without escaping links) before they replace the built-in kit, and
