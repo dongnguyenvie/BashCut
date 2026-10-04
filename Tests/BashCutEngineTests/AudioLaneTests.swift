@@ -153,6 +153,6 @@ struct AudioLaneTests {
             readyTimes.append(Double(ready.seconds) * 1000 + Double(ready.attoseconds) / 1e15)
         }
         #expect(tracks == 1)
-        print("AUDIO_LANES median_ms=\(times.sorted()[1]) tracks=\(tracks) build_to_ready_ms=\(readyTimes.sorted()[1])")
+        TestMeasurement.report("AUDIO_LANES median_ms=\(times.sorted()[1]) tracks=\(tracks) build_to_ready_ms=\(readyTimes.sorted()[1])")
     }
 }

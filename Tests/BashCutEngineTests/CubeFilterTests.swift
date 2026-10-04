@@ -1,4 +1,5 @@
 import CoreImage
+import BashCutTestSupport
 import Foundation
 import Testing
 @testable import BashCutEngine
@@ -31,7 +32,7 @@ struct CubeFilterTests {
             let elapsed = start.duration(to: .now).components
             times.append(Double(elapsed.seconds) * 1_000 + Double(elapsed.attoseconds) / 1e15)
         }
-        print("CUBE_FILTER 1000_frames_median_ms=\(times.sorted()[2])")
+        TestMeasurement.report("CUBE_FILTER 1000_frames_median_ms=\(times.sorted()[2])")
     }
 
     @Test("LUT domains, blend strengths and bypass preserve reference pixels")

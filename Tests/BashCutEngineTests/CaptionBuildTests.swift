@@ -1,5 +1,6 @@
 import AVFoundation
 import BashCutProject
+import BashCutTestSupport
 import Foundation
 import Testing
 
@@ -32,6 +33,6 @@ struct CaptionBuildTests {
                 #expect(layer.item.id == "caption-\(index)")
             }
         }
-        print("CAPTION_BUILD median_ms=\(times.sorted()[1])")
+        TestMeasurement.report("CAPTION_BUILD median_ms=\(times.sorted()[1])")
     }
 }

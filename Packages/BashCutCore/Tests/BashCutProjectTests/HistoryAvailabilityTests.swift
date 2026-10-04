@@ -1,3 +1,4 @@
+import BashCutProjectFixtures
 import Foundation
 import Testing
 @testable import BashCutProject
@@ -30,7 +31,7 @@ struct HistoryAvailabilityTests {
         }
         let direct = directStart.duration(to: .now)
         #expect(oldCount == iterations * 2 && newCount == oldCount)
-        print("History availability \(iterations) pairs: arrays \(copies), direct \(direct)")
+        TestMeasurement.report("History availability \(iterations) pairs: arrays \(copies), direct \(direct)")
 
         try history.redo()
         #expect(history.canUndo && !history.canRedo && history.lastUndo?.label == "Step 199")

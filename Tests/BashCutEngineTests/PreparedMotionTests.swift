@@ -1,5 +1,6 @@
 import BashCutProject
 import CoreGraphics
+import BashCutTestSupport
 import Foundation
 import Testing
 @testable import BashCutEngine
@@ -72,7 +73,7 @@ struct PreparedMotionTests {
         }
         let end = CFAbsoluteTimeGetCurrent()
         #expect(abs(oldSum - newSum) < 1e-7)
-        print("PREPARED_MOTION keys=\(keyCount) frames=\(count) old_ms=\((middle - start) * 1000) new_ms=\((end - middle) * 1000)")
+        TestMeasurement.report("PREPARED_MOTION keys=\(keyCount) frames=\(count) old_ms=\((middle - start) * 1000) new_ms=\((end - middle) * 1000)")
     }
 
     private func placement() -> ClipPlacement {

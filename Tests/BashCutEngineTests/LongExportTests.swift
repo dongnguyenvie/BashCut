@@ -57,6 +57,6 @@ struct LongExportTests {
             "os": ProcessInfo.processInfo.operatingSystemVersionString
         ]
         let json = try JSONSerialization.data(withJSONObject: report, options: [.sortedKeys])
-        print("LONG_EXPORT " + (try #require(String(data: json, encoding: .utf8))))
+        TestMeasurement.report("LONG_EXPORT " + (try #require(String(data: json, encoding: .utf8))))
     }
 }

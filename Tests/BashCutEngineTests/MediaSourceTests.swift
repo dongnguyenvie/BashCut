@@ -82,7 +82,7 @@ struct MediaSourceTests {
             let elapsed = start.duration(to: .now).components
             times.append(Double(elapsed.seconds) * 1000 + Double(elapsed.attoseconds) / 1e15)
         }
-        print("REPEATED_MEDIA_BUILD median_ms=\(times.sorted()[2]) resolutions=\(source.count)")
+        TestMeasurement.report("REPEATED_MEDIA_BUILD median_ms=\(times.sorted()[2]) resolutions=\(source.count)")
         #expect(source.count == 6, "Each build resolves the source once regardless of clip count")
         let proxies = root.appendingPathComponent(ProxyMediaSource.folder)
         try FileManager.default.createDirectory(at: proxies, withIntermediateDirectories: true)
@@ -114,7 +114,7 @@ struct MediaSourceTests {
             let duration = start.duration(to: .now).components
             times.append(Double(duration.seconds) * 1000 + Double(duration.attoseconds) / 1e15)
         }
-        print("LARGE_ASSET_CACHE median_ms=\(times.sorted()[1]) opens=\(await builder.assetLoads)")
+        TestMeasurement.report("LARGE_ASSET_CACHE median_ms=\(times.sorted()[1]) opens=\(await builder.assetLoads)")
         #expect(await builder.assetLoads == 80)
         #expect(await builder.cachedAssetCount == 80)
     }

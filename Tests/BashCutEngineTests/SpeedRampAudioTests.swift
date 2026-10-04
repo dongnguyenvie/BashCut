@@ -39,7 +39,6 @@ struct SpeedRampAudioTests {
             }
             minimumRMS = min(minimumRMS, sqrt(energy / Double(upper - lower)))
         }
-        print("RAMP_PCM preset=\(preset) pitch=\(preservesPitch) pieces=\(track.segments.count) jump=\(maximumJump) min_rms=\(minimumRMS)")
         // A 0.2-amplitude tone at the fastest 5x preset has at most a 0.029 sample-to-sample slope.
         // Allow resampling/phase-vocoder transients, but reject clicks and 20ms boundary dropouts.
         #expect(maximumJump < 0.08)
@@ -80,7 +79,6 @@ struct SpeedRampAudioTests {
             let rms = sqrt(window.reduce(0.0) { $0 + Double($1 * $1) } / 480)
             if rms > 0.04 { lastSound = Double(start + 240) / 48_000 }
         }
-        print("RAMP_ALIGNMENT pitch=\(preservesPitch) expected=\(expected) observed=\(lastSound)")
         #expect(abs(lastSound - expected) < 0.025)
     }
 

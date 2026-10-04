@@ -1,5 +1,6 @@
 import BashCutProject
 import CoreImage
+import BashCutTestSupport
 import Foundation
 import Testing
 @testable import BashCutEngine
@@ -17,7 +18,7 @@ struct ColorFilterTests {
             let elapsed = start.duration(to: .now).components
             times.append(Double(elapsed.seconds) * 1_000 + Double(elapsed.attoseconds) / 1e15)
         }
-        print("NEUTRAL_FILTERS 1000_frames_median_ms=\(times.sorted()[2])")
+        TestMeasurement.report("NEUTRAL_FILTERS 1000_frames_median_ms=\(times.sorted()[2])")
     }
 
     @Test("Neutral color dictionaries retain the original image without filter nodes")

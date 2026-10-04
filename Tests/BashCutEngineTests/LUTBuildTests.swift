@@ -33,6 +33,6 @@ struct LUTBuildTests {
             times.append(Double(elapsed.seconds) * 1000 + Double(elapsed.attoseconds) / 1e15)
         }
         #expect(await builder.lutLoads == 1, "Parameter edits must reuse the parsed LUT")
-        print("LUT_BUILD_MS median=\(times.sorted()[2]) samples=\(times)")
+        TestMeasurement.report("LUT_BUILD_MS median=\(times.sorted()[2]) samples=\(times)")
     }
 }

@@ -1,5 +1,6 @@
 import BashCutProject
 import CoreImage
+import BashCutTestSupport
 import Foundation
 import Testing
 @testable import BashCutEngine
@@ -60,7 +61,7 @@ struct CaptionRasterTests {
         #expect(raster.bytes < Int(size.width * size.height * 4) / 10)
         #expect(TextRenderer.overlay(item, size: size) === raster.image)
         #expect(TextRenderer.overlay(item, size: size) === raster.image)
-        print("CAPTION_RASTER 4K_bytes=\(raster.bytes) full_canvas_bytes=\(Int(size.width * size.height * 4))")
+        TestMeasurement.report("CAPTION_RASTER 4K_bytes=\(raster.bytes) full_canvas_bytes=\(Int(size.width * size.height * 4))")
     }
 
     private func pixels(_ image: CIImage, size: CGSize, context: CIContext) -> [UInt8] {
