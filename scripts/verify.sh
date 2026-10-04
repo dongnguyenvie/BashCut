@@ -8,7 +8,9 @@ log="build/logs/${mode}-$(date +%Y%m%d-%H%M%S).log"
 run() {
     case "$mode" in
         build) swift build "$@" ;;
-        test) swift test "$@" && (cd Packages/BashCutCore && swift test "$@") && {
+        # AVPlayer, encoders and render contexts compete for native resources across suites. Keep these
+        # suites sequential; concurrency regressions still exercise parallel work explicitly inside tests.
+        test) swift test --no-parallel "$@" && (cd Packages/BashCutCore && swift test "$@") && {
                   if [ "$#" -eq 0 ]; then python3 scripts/test-mcp-process.py; fi
               } ;;
         lint) command -v swiftlint >/dev/null || { echo "error: SwiftLint is not installed"; return 1; }

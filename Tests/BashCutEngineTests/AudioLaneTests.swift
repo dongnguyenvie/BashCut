@@ -108,7 +108,8 @@ struct AudioLaneTests {
             item.audioMix = snapshot.audioMix
             let player = AVPlayer(playerItem: item)
             player.isMuted = true
-            player.play()
+            // Measure paused readiness, as preview preparation does. Starting/stopping the audio device
+            // here can leave subsequent items evaluating their buffer instead of measuring construction.
             let deadline = ContinuousClock.now + .seconds(5)
             while item.status == .unknown, ContinuousClock.now < deadline {
                 try await Task.sleep(for: .milliseconds(1))
