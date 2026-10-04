@@ -11,6 +11,8 @@ included:
 excluded:
   - .build
   - Packages/BashCutCore/.build
+  # Generated: verbatim license texts (scripts/update-acknowledgements.py).
+  - BashCut/Models/Acknowledgements.swift
 disabled_rules:
   - identifier_name
   - trailing_comma

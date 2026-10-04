@@ -15,7 +15,7 @@ run() {
         test) if [ "$#" -eq 0 ]; then
                   swift test --skip "$socket_suites" && swift test --skip-build --no-parallel --filter "$socket_suites" \
                       && (cd Packages/BashCutCore && swift test) && python3 scripts/test-mcp-process.py \
-                      && scripts/ci/test-script-lib.sh
+                      && scripts/ci/test-script-lib.sh && scripts/update-acknowledgements.py --check
               else
                   swift test --no-parallel "$@" && (cd Packages/BashCutCore && swift test "$@")
               fi ;;

@@ -279,7 +279,8 @@ import BashCutPlugin
         menu.addItem(item(.openShellTerminal, String(localized: "Shell")))
     }
 
-    /// The standard About panel with the plugin API version and the project links.
+    /// The standard About panel with the plugin API version, the project links and the third-party licenses that
+    /// a distributed build must carry.
     static func showAbout() {
         var options: [NSApplication.AboutPanelOptionKey: Any] = [:]
         let links = AppLinks.current
@@ -303,6 +304,7 @@ import BashCutPlugin
         let paragraph = NSMutableParagraphStyle()
         paragraph.alignment = .center
         credits.addAttribute(.paragraphStyle, value: paragraph, range: NSRange(location: 0, length: credits.length))
+        credits.append(Acknowledgements.aboutPanelText())
         options[.credits] = credits
         NSApp.orderFrontStandardAboutPanel(options: options)
         NSApp.activate(ignoringOtherApps: true)
