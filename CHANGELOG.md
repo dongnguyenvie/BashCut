@@ -5,6 +5,8 @@
 
 ## [Unreleased]
 
+- Use Nolan in the BashCut copyright notice to match the App Store listing.
+
 - Add a public privacy policy covering local editing, optional integrations, network requests, and support.
 
 - **Terminal agents from plugins** (plugin API 5). A plugin with the new `agent.terminal` capability adds an agent CLI
