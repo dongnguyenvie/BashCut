@@ -25,9 +25,9 @@ struct PluginOptionPolicyTests {
     @Test("A key never follows a changed provider or endpoint, nor falls back to a legacy key")
     func binding() throws {
         let store = PluginSecretStore(keychain: false)
-        let original = PluginOptionPolicy.endpointBinding(options: options, userValues: [:])
-        let provider = PluginOptionPolicy.endpointBinding(options: options, userValues: ["provider": .string("compatible")])
-        let endpoint = PluginOptionPolicy.endpointBinding(options: options, userValues: [
+        let original = PluginOptionPolicy.secretBinding(options: options, userValues: [:])
+        let provider = PluginOptionPolicy.secretBinding(options: options, userValues: ["provider": .string("compatible")])
+        let endpoint = PluginOptionPolicy.secretBinding(options: options, userValues: [
             "provider": .string("compatible"), "baseUrl": .string("https://example.com/v1")
         ])
         try store.write("legacy-key", plugin: "example", option: "apiKey")
@@ -38,7 +38,7 @@ struct PluginOptionPolicyTests {
         try store.write("endpoint-key", plugin: "example", option: "apiKey", binding: endpoint)
         #expect(store.read(plugin: "example", option: "apiKey", binding: original) == "provider-key")
         #expect(store.read(plugin: "example", option: "apiKey", binding: endpoint) == "endpoint-key")
-        #expect(PluginOptionPolicy.endpointBinding(options: options, userValues: ["model": .string("other")]) == original)
+        #expect(PluginOptionPolicy.secretBinding(options: options, userValues: ["model": .string("other")]) == original)
         try store.write("", plugin: "example", option: "apiKey", binding: endpoint)
         #expect(store.read(plugin: "example", option: "apiKey", binding: endpoint).isEmpty)
     }
@@ -50,14 +50,14 @@ struct PluginOptionPolicyTests {
             PluginOption(id: "baseUrl", title: "Endpoint", type: .string),
             PluginOption(id: "apiKey", title: "API key", type: .secret)
         ]
-        #expect(PluginOptionPolicy.endpointBinding(options: undeclared, userValues: [:]) == nil)
+        #expect(PluginOptionPolicy.secretBinding(options: undeclared, userValues: [:]) == nil)
         let region = [
             PluginOption(id: "region", title: "Region", type: .enumeration, choices: ["eu", "us"], bindsSecrets: true),
             PluginOption(id: "token", title: "Token", type: .secret)
         ]
-        let eu = PluginOptionPolicy.endpointBinding(options: region, userValues: [:])
+        let eu = PluginOptionPolicy.secretBinding(options: region, userValues: [:])
         #expect(eu != nil)
-        #expect(PluginOptionPolicy.endpointBinding(options: region, userValues: ["region": .string("us")]) != eu)
+        #expect(PluginOptionPolicy.secretBinding(options: region, userValues: ["region": .string("us")]) != eu)
     }
 
     @Test("Saving a key for new code removes only that installation's older-code keys")

@@ -117,7 +117,7 @@ extension ProjectDocument {
                 let identity = try? plugins.trust.credentialIdentity(for: plugin)
                 let secret = identity.map {
                     plugins.secrets.read(plugin: $0, option: option.id,
-                                         binding: PluginOptionPolicy.endpointBinding(options: options, userValues: user))
+                                         binding: PluginOptionPolicy.secretBinding(options: options, userValues: user))
                 } ?? ""
                 values[option.id] = revealSecrets ? .string(secret) : .object(["set": .bool(!secret.isEmpty)])
                 continue
@@ -145,7 +145,7 @@ extension ProjectDocument {
             let identity = try plugins.trust.credentialIdentity(for: plugin)
             try plugins.secrets.write(
                 text, plugin: identity, option: id,
-                binding: PluginOptionPolicy.endpointBinding(options: options, userValues: plugins.trust.userOptions(plugin)))
+                binding: PluginOptionPolicy.secretBinding(options: options, userValues: plugins.trust.userOptions(plugin)))
             plugins.secrets.removeStale(option: id, prefix: plugin.installationID + "@", keeping: identity)
             return
         }

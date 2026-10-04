@@ -2,8 +2,8 @@ import Foundation
 import Security
 
 /// Values of `secret` plugin options (API keys), kept in the Keychain under service `app.bashcut.plugin-secret`
-/// and account `<plugin id>/<option id>/endpoint/<binding>` for endpoint-bound keys. They are never shown, listed
-/// or logged. Tests use an in-memory store.
+/// and account `<credential identity>/<option id>`, plus `/binding/<hash>` when the manifest marks options
+/// `bindsSecrets`. They are never shown, listed or logged. Tests use an in-memory store.
 public final class PluginSecretStore: @unchecked Sendable {
     public static let service = "app.bashcut.plugin-secret"
     private let keychain: Bool
@@ -77,7 +77,7 @@ public final class PluginSecretStore: @unchecked Sendable {
     }
 
     private static func account(_ plugin: String, _ option: String, binding: String?) -> String {
-        plugin + "/" + option + (binding.map { "/endpoint/" + $0 } ?? "")
+        plugin + "/" + option + (binding.map { "/binding/" + $0 } ?? "")
     }
 
     private static func query(_ account: String) -> [String: Any] {

@@ -19,7 +19,7 @@ public enum PluginOptionPolicy {
 
     /// The options a manifest marks `bindsSecrets` identify where its keys go. Preserve keys for separate
     /// destinations, but never fall back to an old, unbound Keychain entry after an upgrade. Nil when none bind.
-    public static func endpointBinding(options: [PluginOption], userValues: [String: JSONValue]) -> String? {
+    public static func secretBinding(options: [PluginOption], userValues: [String: JSONValue]) -> String? {
         let binding = options.filter { $0.bindsSecrets == true && $0.type != .secret }
         guard !binding.isEmpty else { return nil }
         let fields = binding.map { option -> String in
