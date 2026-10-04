@@ -35,7 +35,7 @@ struct EngineControlsTests {
 
     @Test("Freeze frame holds one source image across the clip")
     func freezeFrame() async throws {
-        let root = TestFixtures.mediaRoot
+        let root = try await TestFixtures.requireMediaRoot()
         let media = Media(fields: [
             "id": .string("m"), "path": .string("test.mp4"),
             "fps": FrameRate().json, "frames": .integer(59),
@@ -58,7 +58,7 @@ struct EngineControlsTests {
 
     @Test("Color, opacity and audio controls reach the shared composition")
     func controls() async throws {
-        let root = TestFixtures.mediaRoot
+        let root = try await TestFixtures.requireMediaRoot()
         let media = Media(fields: [
             "id": .string("m"), "path": .string("test.mp4"),
             "fps": FrameRate().json, "frames": .integer(59),
@@ -116,7 +116,7 @@ struct EngineControlsTests {
                 .insert(track: "t1", item: caption), .setTrackProperties(track: "v1", patch: ["hidden": .bool(true)]),
             ])
         ).project
-        let snapshot = try await CompositionBuilder().build(project, root: TestFixtures.mediaRoot)
+        let snapshot = try await CompositionBuilder().build(project, root: try await TestFixtures.requireMediaRoot())
         let layers = snapshot.videoComposition.instructions.compactMap { $0 as? FrameInstruction }.flatMap(\.layers)
         #expect(!layers.isEmpty)
         #expect(layers.allSatisfy { if case .text = $0 { true } else { false } })
@@ -137,7 +137,7 @@ struct EngineControlsTests {
         ).project)
         try planner.placeAdjustment(.adjustment(id: "g", at: 0, duration: 20, color: ["saturation": .integer(0)]))
         let project = planner.project
-        let snapshot = try await CompositionBuilder().build(project, root: TestFixtures.mediaRoot)
+        let snapshot = try await CompositionBuilder().build(project, root: try await TestFixtures.requireMediaRoot())
         let first = try #require(snapshot.videoComposition.instructions.first as? FrameInstruction)
         #expect(first.layers.map(Self.kind) == ["video", "adjustment", "text"])
         let generator = AVAssetImageGenerator(asset: snapshot.composition)
@@ -173,7 +173,7 @@ struct EngineControlsTests {
 
     @Test("Transitions add a tweened outgoing hold and incoming layer")
     func transitions() async throws {
-        let root = TestFixtures.mediaRoot
+        let root = try await TestFixtures.requireMediaRoot()
         let media = Media(fields: [
             "id": .string("m"), "path": .string("test.mp4"),
             "fps": FrameRate().json, "frames": .integer(59),

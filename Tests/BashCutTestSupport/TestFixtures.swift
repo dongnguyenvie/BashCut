@@ -14,6 +14,8 @@ public enum TestFixtures {
         .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
 
     /// Isolated per test process; a clean checkout generates its own media on the first request.
+    /// Per-process folder holding generated media. Its files exist only after `requireVideo()` returns, so a
+    /// test that reads from it must await that first; ordering between tests is not guaranteed.
     public static let mediaRoot = FileManager.default.temporaryDirectory
         .appendingPathComponent("bashcut-fixtures-\(UUID().uuidString)", isDirectory: true)
 
@@ -29,6 +31,9 @@ public enum TestFixtures {
 
     /// Await the native fixture without blocking a Swift executor or invoking an external process.
     public static func requireVideo() async throws -> URL { try await generatedVideo.value }
+
+    /// `mediaRoot` once its generated files exist.
+    public static func requireMediaRoot() async throws -> URL { try await requireVideo().deletingLastPathComponent() }
 
     /// A new, empty folder under the temporary directory. Callers remove it when they care about cleanup.
     public static func temporaryDirectory(_ prefix: String = "bashcut") throws -> URL {

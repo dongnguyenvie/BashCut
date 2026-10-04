@@ -427,9 +427,12 @@ and transition holds. The compositor clamps local time once and samples typed ch
 
 ### Native test isolation (2026-10-04)
 
-`verify.sh test` runs the app suites explicitly with `--no-parallel`; core model tests remain parallel and
-concurrency tests still create their own concurrent tasks. Running all native players, audio engines and
-encoders at once reproduced socket/readiness timeouts on the B1 baseline as well as the B4 worktree.
+`verify.sh test` runs app suites in parallel again, then the two Unix-socket suites (`AutomationTests`,
+`AutomationControllerTests`) in a quiet sequential pass; core model tests remain parallel. The earlier global
+`--no-parallel` hid five `EngineControlsTests` that read generated media without awaiting its generation
+(AVFoundation -11800/-17913 when run first); they now await `TestFixtures.requireMediaRoot()`. The socket
+suites' latency assertions and client timeouts fail only while CPU-bound render suites saturate the machine.
+App suites take ~29 s instead of ~65 s on this host.
 The audio lane benchmark now waits for paused readiness instead of starting/stopping playback between
 samples. On this host, immediate playback left later items at `.unknown`; paused readiness passed all
 three iterations (27.773 ms median build-to-ready in the isolated check). No timeout or correctness

@@ -5,14 +5,19 @@ mode="${1:-build}"
 shift || true
 mkdir -p build/logs
 log="build/logs/${mode}-$(date +%Y%m%d-%H%M%S).log"
+socket_suites='\.(AutomationTests|AutomationControllerTests)/'
 run() {
     case "$mode" in
         build) swift build "$@" ;;
-        # AVPlayer, encoders and render contexts compete for native resources across suites. Keep these
-        # suites sequential; concurrency regressions still exercise parallel work explicitly inside tests.
-        test) swift test --no-parallel "$@" && (cd Packages/BashCutCore && swift test "$@") && {
-                  if [ "$#" -eq 0 ]; then python3 scripts/test-mcp-process.py; fi
-              } ;;
+        # Suites run in parallel, except the Unix-socket suites: their latency assertions and client timeouts
+        # do not hold while CPU-bound render suites saturate the machine, so they get a quiet second pass.
+        # Filtered runs (`verify.sh test --filter X`) stay sequential.
+        test) if [ "$#" -eq 0 ]; then
+                  swift test --skip "$socket_suites" && swift test --skip-build --no-parallel --filter "$socket_suites" \
+                      && (cd Packages/BashCutCore && swift test) && python3 scripts/test-mcp-process.py
+              else
+                  swift test --no-parallel "$@" && (cd Packages/BashCutCore && swift test "$@")
+              fi ;;
         lint) command -v swiftlint >/dev/null || { echo "error: SwiftLint is not installed"; return 1; }
               swiftlint lint --strict "$@" ;;
         # Builds the Xcode project generated from project.yml (which links the Package.swift products), so a
