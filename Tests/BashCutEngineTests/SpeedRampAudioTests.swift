@@ -105,6 +105,30 @@ struct SpeedRampAudioTests {
         }
     }
 
+    @Test("Supported speed extremes retain duration and usable PCM", arguments: [0.1, 16.0], [true, false])
+    func speedExtremes(speed: Double, preservesPitch: Bool) async throws {
+        let root = try TestFixtures.temporaryDirectory("ramp-extreme")
+        defer { try? FileManager.default.removeItem(at: root) }
+        try TestFixtures.writeTone(to: root.appendingPathComponent("tone.caf"), seconds: 20,
+                                   tone: .init(frequency: 100, amplitude: 0.2))
+        let media = Media(fields: ["id": .string("m"), "kind": .string("audio"), "path": .string("tone.caf"),
+                                   "fps": FrameRate().json, "frames": .integer(599)])
+        var item = Item(id: "a", media: "m", at: 0, duration: 30)
+        item["preservePitch"] = .bool(preservesPitch)
+        let curve = try SpeedCurve([.init(t: 0, speed: speed), .init(t: 1, speed: speed)])
+        let project = try Project(name: "Extreme").applying(.group(label: "Fixture", author: .user, ops: [
+            .addMedia(media), .insert(track: "a3", item: item), .setSpeedCurve(item: "a", curve: curve, keepDuration: true)
+        ])).project
+        let samples = try decode(try await CompositionBuilder().build(project, root: root))
+        #expect(abs(Double(samples.count) / 48_000 - project.fps.time(30).seconds) < 2 / 48_000.0)
+        #expect(samples.allSatisfy { $0.isFinite && abs($0) < 0.3 })
+        let window = samples[9_600..<38_400]
+        let crossings = zip(window, window.dropFirst()).filter { $0 < 0 && $1 >= 0 }.count
+        let expected = preservesPitch ? 100 : 100 * speed
+        #expect(abs(Double(crossings) / 0.6 - expected) < max(4, expected * 0.02))
+        #expect(sqrt(window.reduce(0.0) { $0 + Double($1 * $1) } / Double(window.count)) > 0.08)
+    }
+
     private func decode(_ snapshot: CompositionSnapshot) throws -> [Float] {
         let reader = try AVAssetReader(asset: snapshot.composition)
         let output = AVAssetReaderAudioMixOutput(audioTracks: snapshot.composition.tracks(withMediaType: .audio), audioSettings: [

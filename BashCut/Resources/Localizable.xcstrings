@@ -5380,6 +5380,12 @@
         "vi": { "stringUnit": { "state": "translated", "value": "Bản lưu danh mục plugin" } }
       }
     },
+    "Speed ramp audio (this project)": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Speed ramp audio (this project)" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Âm thanh speed ramp (dự án này)" } }
+      }
+    },
     "Preview proxies (this project)": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Preview proxies (this project)" } },

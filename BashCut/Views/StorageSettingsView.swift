@@ -76,6 +76,7 @@ struct StorageSettingsView: View {
         case .pluginCache: return String(format: String(localized: "%@ — downloads"), plugin)
         case .registry: return String(localized: "Plugin catalog copy")
         case .proxies: return String(localized: "Preview proxies (this project)")
+        case .rampAudio: return String(localized: "Speed ramp audio (this project)")
         case .audit: return String(localized: "Automation audit log")
         }
     }

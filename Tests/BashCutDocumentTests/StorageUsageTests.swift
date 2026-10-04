@@ -18,6 +18,9 @@ struct StorageUsageTests {
         let proxies = StorageUsage.proxiesFolder(projectRoot: project)
         try FileManager.default.createDirectory(at: proxies, withIntermediateDirectories: true)
         try Data(count: 5_000).write(to: proxies.appendingPathComponent("m1.mov"))
+        let rampAudio = project.appendingPathComponent(".bashcut/ramped-audio")
+        try FileManager.default.createDirectory(at: rampAudio, withIntermediateDirectories: true)
+        try Data(count: 12_000).write(to: rampAudio.appendingPathComponent("ramp.caf"))
         let plugins = root.appendingPathComponent("Plugins")
 
         let entries = StorageUsage.measure(projectRoot: project, pluginsFolder: plugins)
@@ -26,15 +29,19 @@ struct StorageUsageTests {
         #expect(entries.contains { $0.kind == .pluginData && $0.pluginID == "acme.voice" && $0.bytes >= 2_000 })
         let proxyEntry = try #require(entries.first { $0.kind == .proxies })
         #expect(proxyEntry.bytes >= 5_000 && proxyEntry.clearable)
+        let rampEntry = try #require(entries.first { $0.kind == .rampAudio })
+        #expect(rampEntry.bytes >= 12_000 && rampEntry.clearable)
         let audit = try #require(entries.first { $0.kind == .audit })
         #expect(!audit.clearable)
         #expect(throws: StorageUsageError.self) { try StorageUsage.clear(audit) }
 
         try StorageUsage.clear(cache)
         try StorageUsage.clear(proxyEntry)
+        try StorageUsage.clear(rampEntry)
         let after = StorageUsage.measure(projectRoot: project, pluginsFolder: plugins)
         #expect(!after.contains { $0.kind == .pluginCache })
         #expect(after.first { $0.kind == .proxies }?.bytes == 0)
+        #expect(after.first { $0.kind == .rampAudio }?.bytes == 0)
         #expect(after.contains { $0.kind == .pluginData })
     }
 }

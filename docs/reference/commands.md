@@ -537,16 +537,16 @@ Synthesize voice takes and insert the best take on the Voiceover track; with kee
 
 ### `bashcut storage get`
 
-What BashCut keeps on disk (Settings › Storage): plugin folders, each plugin's data and cache, the saved plugin registry, this project's preview proxies and the audit log, with sizes and paths.
+What BashCut keeps on disk (Settings › Storage): plugin folders, each plugin's data and cache, the saved plugin registry, this project's preview proxies, ramp audio and the audit log, with sizes and paths.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_storage_get`
 
 ### `bashcut storage clear <target> [--plugin <plugin>]`
 
-Delete what can be made or downloaded again: plugin-cache (all plugins, or --plugin), registry, proxies (made again on demand), or plugin-data --plugin ID (the plugin must be set up again).
+Delete what can be made or downloaded again: plugin-cache (all plugins, or --plugin), registry, proxies or ramp-audio (made again on demand), or plugin-data --plugin ID (the plugin must be set up again).
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_storage_clear`
-- `target`: string, required, one of plugin-cache, plugin-data, registry, proxies. What to clear
+- `target`: string, required, one of plugin-cache, plugin-data, registry, proxies, ramp-audio. What to clear
 - `plugin`: string. Only this plugin's data or cache
 
 ## agent

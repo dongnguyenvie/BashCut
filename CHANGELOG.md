@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+- Show speed-ramp PCM cache usage in Settings and CLI/MCP storage commands. Clearing ramp audio drains
+  preview builds and releases both players before deletion, then restores the latest edit; exports wait until
+  clearing ends. Supported 0.1× and 16× rates now have duration, pitch and PCM regression coverage.
+
 - Prerender speed-ramped audio as one continuous PCM segment: bounded WSOLA alignment preserves pitch and
   native varispeed preserves resampler state when pitch follows speed. Source-signature/curve/trim/pitch caches
   avoid rerendering gain edits; cancelled renders remove staging files. Synthetic PCM tests cover preset

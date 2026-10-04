@@ -21,7 +21,14 @@ extension ProjectDocument {
         if entry.kind == .proxies, !proxies.active.isEmpty {
             throw StorageUsageError("Wait for the preview proxies being made to finish")
         }
-        try await Task.detached { try StorageUsage.clear(entry) }.value
+        if entry.kind == .rampAudio {
+            guard !exports.isRunning else { throw StorageUsageError("Wait for exports to finish before clearing ramp audio") }
+            try await preview.maintainCache {
+                try await Task.detached { try StorageUsage.clear(entry) }.value
+            }
+        } else {
+            try await Task.detached { try StorageUsage.clear(entry) }.value
+        }
         if entry.kind == .proxies { rebuild() }
         DebugLog.write("storage", "cleared \(entry.id) (\(entry.bytes) bytes)")
     }

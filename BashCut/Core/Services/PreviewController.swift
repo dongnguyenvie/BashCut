@@ -20,6 +20,7 @@ public final class PreviewController {
     public private(set) var playhead = 0
     /// Whether the viewer shows the ungraded original beside the graded program.
     public private(set) var showColorComparison = false
+    public private(set) var isMaintainingCache = false
     /// The composition the program player is playing, for frame grabs. After an edit it is the previous
     /// composition until the new one is shown; `isCurrent` tells them apart.
     @ObservationIgnored public private(set) var snapshot: CompositionSnapshot?
@@ -86,6 +87,23 @@ public final class PreviewController {
         playhead = 0
     }
 
+    /// Drain the old build and release file-backed players before cache removal. Edits arriving while the
+    /// operation awaits update the pending project; only its latest version rebuilds when maintenance ends.
+    public func maintainCache(_ operation: @MainActor () async throws -> Void) async throws {
+        guard !isMaintainingCache else { throw ProjectError.invalid("Preview cache maintenance is already in progress") }
+        isMaintainingCache = true
+        let previous = rebuildTask
+        previous?.cancel()
+        request += 1
+        await previous?.value
+        clearPlayers()
+        defer {
+            isMaintainingCache = false
+            rebuild(project, root: root, workspace: workspace)
+        }
+        try await operation()
+    }
+
     /// Discrete edits build immediately; coalesced slider/drag edits debounce. Newer calls cancel older ones.
     public func rebuild(_ project: Project, root: URL?, workspace: URL?, coalescing: Bool = false) {
         self.project = project
@@ -96,6 +114,7 @@ public final class PreviewController {
         // The previous picture stays up while the new composition builds; only playback stops.
         pause()
         if playhead > project.duration { playhead = project.duration }
+        guard !isMaintainingCache else { return }
         guard let root, project.duration > 0 else {
             clearPlayers()
             return

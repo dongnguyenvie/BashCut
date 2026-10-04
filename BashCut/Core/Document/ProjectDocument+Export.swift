@@ -42,6 +42,7 @@ extension ProjectDocument {
         name: String, preset: ExportPreset, directory: URL, includeSubRip: Bool,
         normalizeAudio: Bool = false, author: Author = .user
     ) throws -> String {
+        guard !preview.isMaintainingCache else { throw AutomationBusy() }
         guard let root = fileURL?.deletingLastPathComponent() else {
             throw ProjectError.invalid("Save the project before exporting")
         }
