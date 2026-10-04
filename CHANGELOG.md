@@ -5,6 +5,8 @@
 
 ## [Unreleased]
 
+- Check Undo/Redo availability through constant-time history accessors instead of copying both stacks.
+
 - Include MCPBridge, Tools and the core benchmarks in strict SwiftLint verification.
 
 - Add macOS CI for SwiftPM build/tests, CLI/MCP process tests, strict lint and Xcode tests on every PR.

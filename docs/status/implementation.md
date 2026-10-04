@@ -491,3 +491,11 @@ throughput is effectively unchanged at this scale. No broader speedup is claimed
 the long benchmark/lint passed 120222/120225/120412. Fast-start creates an encoder sidecar on some failures,
 so each export now owns a private 0700 staging directory and removes that entire directory after publication
 or failure. The final path is still published with an exclusive same-filesystem rename.
+
+### History availability (2026-10-04)
+
+Document action validation now uses `canUndo`/`canRedo` instead of materializing arrays of snapshot entries.
+`HistoryAvailabilityTests` checks 10,000 pairs at 199 undo entries and one redo entry: 28.583 ms for the old
+array path versus 2.753 ms for the direct accessors (M1 Max, Debug). This is a small per-call saving, not an
+overall edit-latency claim. The test also verifies availability and the top label before editing, after undo,
+redo, exhausting the stack and branching after undo.

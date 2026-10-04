@@ -14,8 +14,8 @@ extension ProjectDocument {
         let hasProject = fileURL != nil
         let source = sourceViewer.visible && sourceViewer.media != nil
         switch action {
-        case .undo: return !history.undoEntries.isEmpty
-        case .redo: return !history.redoEntries.isEmpty
+        case .undo: return history.canUndo
+        case .redo: return history.canRedo
         case .newProject, .openProject: return !saving
         case .saveProject: return hasProject && !saving && !conflict
         case .importMedia, .refreshWaveforms: return hasProject && !(action == .refreshWaveforms && waveforms.loading)
