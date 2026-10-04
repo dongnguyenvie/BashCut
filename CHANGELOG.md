@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+- Verify ramped media through native AVPlayer readiness/seeking and H.264/AAC export for both pitch modes,
+  including exported duration, audio/video tracks and visible picture.
+
 - Show speed-ramp PCM cache usage in Settings and CLI/MCP storage commands. Clearing ramp audio drains
   preview builds and releases both players before deletion, then restores the latest edit; exports wait until
   clearing ends. Supported 0.1× and 16× rates now have duration, pitch and PCM regression coverage.
