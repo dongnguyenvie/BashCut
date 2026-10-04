@@ -5,6 +5,16 @@
 
 ## [Unreleased]
 
+- Stopping an export lets in-flight sample reads return before the reader is cancelled; only a read still
+  blocked after 500 ms is interrupted. Cancelling a reader under a waiting read crashed AVFoundation under load.
+
+- Run app test suites in parallel again, with only the Unix-socket suites in a separate sequential pass (~29 s
+  instead of ~65 s). Five engine tests that depended on another test generating the fixture now await it.
+- Pull-request CI compiles the Xcode app and tests without re-running the suites SwiftPM already ran; a
+  manual run still executes the Xcode test plan. The SwiftPM cache is no longer re-uploaded on every commit.
+- Localize the new ramp-audio clearing and preview-cache messages in Vietnamese. Tests report benchmark
+  numbers through one `TestMeasurement` helper instead of scattered `print` calls.
+
 - Name internal types after their role: `TimelineDryRun`, `DebugLogWriter`, the `SpeedRamp*` audio types,
   `ExportSampleTransfer` and `FileSignature`. Bound plugin secrets use `…/binding/<hash>` Keychain accounts.
 

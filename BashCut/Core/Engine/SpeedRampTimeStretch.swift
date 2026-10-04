@@ -5,6 +5,8 @@ import BashCutProject
 /// Waveform-similarity overlap-add with bounded source-position search, shared across all channels.
 /// See Driedger/Müller, A Review of Time-Scale Modification of Music Signals (2016), §4.
 /// A 2048-sample window, 256-sample hop and ±480-sample alignment search keep transients local at 48 kHz.
+/// AVAudioUnitTimePitch (overlap 32) was measured as a replacement: it renders ~5x faster but ends a sound
+/// 37 ms early on the "hero" ramp, beyond the 25 ms alignment SpeedRampAudioTests requires.
 enum SpeedRampTimeStretch {
     private static let window = 2048
     private static let hop = 256
