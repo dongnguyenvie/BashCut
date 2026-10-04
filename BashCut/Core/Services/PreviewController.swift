@@ -49,6 +49,9 @@ public final class PreviewController {
     @ObservationIgnored private var root: URL?
     @ObservationIgnored private var workspace: URL?
     @ObservationIgnored private var comparisonSnapshot: CompositionSnapshot?
+    @ObservationIgnored private var comparisonCache: ComparisonBuildCache?
+    @ObservationIgnored public private(set) var comparisonBuildCount = 0
+    @ObservationIgnored public private(set) var comparisonReuseCount = 0
     @ObservationIgnored private var rebuildTask: Task<Void, Never>?
     /// Number of compositions built; tests use it to see that a rebuild ran.
     @ObservationIgnored public private(set) var buildCount = 0
@@ -128,14 +131,13 @@ public final class PreviewController {
                 if coalescing { try await coalescingDelay() }
                 try Task.checkCancellation()
                 timing.begin("build")
-                let built = try await engine.build(project, root: root, workspace: workspace, purpose: .preview)
-                let comparisonBuilt = compare
-                    ? try await engine.build(
-                        project.withoutColorEffects(), root: root, workspace: workspace, purpose: .preview)
-                    : nil
+                let pair = try await PreviewBuildPair.build(
+                    engine: engine, project: project, location: (root, workspace), compare: compare, cached: comparisonCache)
+                let built = pair.program, comparisonBuilt = pair.comparison
                 timing.end()
                 try Task.checkCancellation()
                 guard request == self.request, compare == showColorComparison else { return }
+                recordComparison(pair)
                 self.built = built
                 builtRequest = request
                 buildCount += 1
@@ -153,6 +155,12 @@ public final class PreviewController {
                 onMessage?(error.localizedDescription)
             }
         }
+    }
+
+    private func recordComparison(_ pair: PreviewBuildPair) {
+        comparisonCache = pair.cache
+        guard pair.comparison != nil else { return }
+        if pair.reusedComparison { comparisonReuseCount += 1 } else { comparisonBuildCount += 1 }
     }
 
     /// Moves the playhead and shows that exact frame. While a seek is still decoding, further calls only
@@ -226,6 +234,7 @@ public final class PreviewController {
         comparisonSeeks.reset()
         snapshot = nil
         comparisonSnapshot = nil
+        comparisonCache = nil
         built = nil
         pause()
         player.replaceCurrentItem(with: nil)

@@ -281,6 +281,7 @@ public actor CompositionBuilder {
                     files[url] = signature
                     hasher.combine(signature.modified)
                     hasher.combine(signature.size)
+                    hasher.combine(signature.inode)
                 }
                 hasher.combine(segment.sourceTrackID)
                 let mapping = segment.timeMapping

@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+- Reuse the ungraded comparison build for color-only edits when its drawing inputs and current media
+  structure match. Build both variants concurrently on a cache miss; changed proxies/files and non-color
+  edits invalidate reuse. File replacement identity is included in composition structure checks.
+
 - Verify ramped media through native AVPlayer readiness/seeking and H.264/AAC export for both pitch modes,
   including exported duration, audio/video tracks and visible picture.
 
