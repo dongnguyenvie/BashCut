@@ -692,3 +692,7 @@
 "Checked after approval" = "Checked after approval";
 
 "Speed ramp audio (this project)" = "Speed ramp audio (this project)";
+
+"Wait for exports to finish before clearing ramp audio" = "Wait for exports to finish before clearing ramp audio";
+
+"Preview cache maintenance is already in progress" = "Preview cache maintenance is already in progress";

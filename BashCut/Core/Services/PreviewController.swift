@@ -93,7 +93,7 @@ public final class PreviewController {
     /// Drain the old build and release file-backed players before cache removal. Edits arriving while the
     /// operation awaits update the pending project; only its latest version rebuilds when maintenance ends.
     public func maintainCache(_ operation: @MainActor () async throws -> Void) async throws {
-        guard !isMaintainingCache else { throw ProjectError.invalid("Preview cache maintenance is already in progress") }
+        guard !isMaintainingCache else { throw ProjectError.invalid(String(localized: "Preview cache maintenance is already in progress")) }
         isMaintainingCache = true
         let previous = rebuildTask
         previous?.cancel()

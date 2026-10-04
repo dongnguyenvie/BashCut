@@ -22,7 +22,7 @@ extension ProjectDocument {
             throw StorageUsageError("Wait for the preview proxies being made to finish")
         }
         if entry.kind == .rampAudio {
-            guard !exports.isRunning else { throw StorageUsageError("Wait for exports to finish before clearing ramp audio") }
+            guard !exports.isRunning else { throw StorageUsageError(String(localized: "Wait for exports to finish before clearing ramp audio")) }
             try await preview.maintainCache {
                 try await Task.detached { try StorageUsage.clear(entry) }.value
             }

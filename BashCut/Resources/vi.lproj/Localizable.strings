@@ -692,3 +692,7 @@
 "Checked after approval" = "Kiểm tra sau khi phê duyệt";
 
 "Speed ramp audio (this project)" = "Âm thanh speed ramp (dự án này)";
+
+"Wait for exports to finish before clearing ramp audio" = "Hãy đợi xuất video xong rồi mới xoá âm thanh speed ramp";
+
+"Preview cache maintenance is already in progress" = "Đang dọn bộ nhớ đệm xem trước";
