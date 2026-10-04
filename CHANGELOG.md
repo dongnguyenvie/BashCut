@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+- Add `scripts/build-release.sh` for releases outside the Mac App Store: archives with a Developer ID identity,
+  checks every Mach-O for the hardened runtime and a secure timestamp, notarizes and staples, then writes
+  `BashCut-<version>.dmg`, `.zip` (and `.pkg` with `--pkg`) and `SHA256SUMS` to `build/release/`. Account details
+  come only from the git-ignored `.env` (`scripts/load-env.sh`, template in `.env.example`).
+- Split the ramp window envelope expression: Release (`-O`) archives failed with "unable to type-check this
+  expression in reasonable time".
+
 - Update the agent kit in the app: Settings › Agents checks bashcut-agent-kit's signed `releases.json` and offers
   **Download & Update** (`agent kit-check`, `agent kit-update`). Releases are verified (HTTPS from GitHub,
   first-party signature, SHA-256, one kit folder without escaping links) before they replace the built-in kit, and
