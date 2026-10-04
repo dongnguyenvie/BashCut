@@ -8,6 +8,10 @@ extension ProjectDocument {
     /// Creates a project folder like the New Project wizard and shows it.
     func createProject(_ setup: ProjectSetup, in parent: URL, footage: URL? = nil) async throws -> URL {
         let previousURL = fileURL
+        // The default folder is made on first use; any other parent must already exist, so a mistyped path fails.
+        if parent.standardizedFileURL == settings.defaultProjectsFolder.standardizedFileURL {
+            try FileManager.default.createDirectory(at: parent, withIntermediateDirectories: true)
+        }
         let created = try await storage.create(setup, in: parent, footage: footage)
         if let previousURL { try? await storage.discardRecovery(at: previousURL) }
         reset(created.project, url: created.url)
@@ -107,13 +111,33 @@ extension ProjectDocument {
             setup.resolution = Int(try arguments.string("resolution")).flatMap(ProjectSetup.Resolution.init) ?? .fullHD
             setup.rate = ProjectSetup.Rate(rawValue: try arguments.string("fps")) ?? .ntsc
             setup.contentLanguage = try arguments.string("language")
-            let parent = URL(fileURLWithPath: try arguments.string("directory"), isDirectory: true).standardizedFileURL
+            let parent = arguments.optionalString("directory")
+                .map { URL(fileURLWithPath: $0, isDirectory: true).standardizedFileURL }
+                ?? document.settings.defaultProjectsFolder
             let footage = arguments.optionalString("footage").map { URL(fileURLWithPath: $0, isDirectory: true) }
             try await document.leaveCurrentProject(arguments)
             document.busy = true
             defer { document.busy = false }
             _ = try await document.createProject(setup, in: parent, footage: footage)
             return document.projectResult()
+        }
+        handleAuthored("project.folder") { document, arguments, _ in
+            let path = arguments.optionalString("path")
+            if arguments.bool("reset") {
+                guard path == nil else { throw RPCFailure(-32602, "Give a path or --reset, not both") }
+                document.settings.projectsFolder = nil
+            } else if let path {
+                let url = URL(fileURLWithPath: path, isDirectory: true).standardizedFileURL
+                var isDirectory: ObjCBool = false
+                guard url.path.hasPrefix("/"), FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory),
+                    isDirectory.boolValue
+                else { throw RPCFailure(-32602, "No folder at \(path)") }
+                document.settings.rememberProjectsFolder(url)
+            }
+            return .object([
+                "folder": .string(document.settings.defaultProjectsFolder.path),
+                "standard": .bool(document.settings.projectsFolder == nil),
+            ])
         }
         handleAuthored("project.save") { document, _, _ in
             try await document.saveNow()

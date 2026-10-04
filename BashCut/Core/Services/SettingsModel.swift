@@ -16,6 +16,8 @@ public final class SettingsModel {
             }
         }
     }
+    /// Folder New Project and `project create` put new projects in; nil uses `standardProjectsFolder`.
+    public var projectsFolder: URL? { didSet { store(projectsFolder, Keys.projectsFolder) } }
     /// Load the agent kit's editing skills in BashCut's Claude and Codex tabs. On by default.
     public var loadAgentKit: Bool { didSet { defaults.set(loadAgentKit, forKey: Keys.loadAgentKit) } }
     /// A kit folder to use instead of the one inside BashCut (a checkout being worked on); nil uses the built-in kit.
@@ -74,6 +76,7 @@ public final class SettingsModel {
 
     private enum Keys {
         static let workspace = "agentWorkspace"
+        static let projectsFolder = "projectsFolder"
         static let defaultAgent = "defaultAgent"
         static let loadAgentKit = "loadAgentKit"
         static let agentKitFolder = "agentKitFolder"
@@ -94,6 +97,7 @@ public final class SettingsModel {
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         workspace = defaults.string(forKey: Keys.workspace).map { URL(fileURLWithPath: $0) }
+        projectsFolder = defaults.string(forKey: Keys.projectsFolder).map { URL(fileURLWithPath: $0) }
         defaultProviderRaw = defaults.string(forKey: Keys.defaultAgent) ?? "codex"
         loadAgentKit = defaults.object(forKey: Keys.loadAgentKit) as? Bool ?? true
         agentKitFolder = defaults.string(forKey: Keys.agentKitFolder).map { URL(fileURLWithPath: $0) }
@@ -108,6 +112,23 @@ public final class SettingsModel {
         defaultExportPresetRaw = defaults.string(forKey: Keys.defaultExportPreset) ?? ExportPreset.tiktok.rawValue
         interfaceLanguage = defaults.string(forKey: Keys.interfaceLanguage) ?? "system"
         recentProjects = defaults.stringArray(forKey: Keys.recentProjects)?.map { URL(fileURLWithPath: $0) } ?? []
+    }
+
+    /// ~/Movies/BashCut: visible in Finder and, unlike Desktop or Documents, not behind a macOS privacy prompt.
+    /// Sandboxed builds reach it through the Movies folder entitlement.
+    public static var standardProjectsFolder: URL {
+        let movies = FileManager.default.urls(for: .moviesDirectory, in: .userDomainMask).first
+            ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Movies", isDirectory: true)
+        return movies.appendingPathComponent("BashCut", isDirectory: true)
+    }
+
+    /// Where a new project goes when no other folder is chosen.
+    public var defaultProjectsFolder: URL { projectsFolder ?? Self.standardProjectsFolder }
+
+    /// Remembers the folder a project was just created in as the next default; the standard folder clears it.
+    public func rememberProjectsFolder(_ url: URL) {
+        let folder = url.standardizedFileURL
+        projectsFolder = folder == Self.standardProjectsFolder.standardizedFileURL ? nil : folder
     }
 
     /// The export preset chosen in Settings, or nil when the user never picked one.
