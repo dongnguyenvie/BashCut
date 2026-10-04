@@ -405,3 +405,13 @@ necessarily make construction faster, but the player readiness improvement is su
 Tests verify independent overlapping project layers, pitch-mode separation, ramp reset after fades and gaps,
 and decoded PCM RMS retaining a -20 dB step at a shared-track clip boundary. Readiness is polled every 1 ms;
 these timings are local observations, not portable thresholds.
+
+### Bounded caption rasters (2026-10-04)
+
+`CaptionRasterTests` compares cropped and full-canvas reference drawing for six presets at landscape and
+portrait sizes, three vertical positions, Vietnamese accents, emoji and thick outlines. Every RGBA channel
+stays within one 8-bit level (integer-translated CoreText antialias quantization); animated word variants
+also match within one level. The existing pre-encode caption golden remains unchanged. A 3840×2160
+“Xin chào” raster occupies 303,104 bytes versus 33,177,600 bytes for a full canvas, about 109× smaller.
+This is CPU bitmap storage, not a measurement of GPU upload time. The cache retains the positioned CIImage,
+and the compositor reuses it without constructing a wrapper on each frame.

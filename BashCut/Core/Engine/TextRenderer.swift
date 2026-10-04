@@ -1,15 +1,24 @@
 import BashCutProject
 import CoreGraphics
+import CoreImage
 import CoreText
 import CryptoKit
 import Foundation
 
-private final class CaptionImage: @unchecked Sendable {
-    let image: CGImage
-    init(_ image: CGImage) { self.image = image }
+final class CaptionRaster: @unchecked Sendable {
+    let bitmap: CGImage
+    let image: CIImage
+    let bounds: CGRect
+    var bytes: Int { bitmap.bytesPerRow * bitmap.height }
+
+    init(bitmap: CGImage, bounds: CGRect) {
+        self.bitmap = bitmap
+        self.bounds = bounds
+        image = CIImage(cgImage: bitmap).transformed(by: CGAffineTransform(translationX: bounds.minX, y: bounds.minY))
+    }
 }
 private final class CaptionCache: @unchecked Sendable {
-    let images = NSCache<NSString, CaptionImage>()
+    let images = NSCache<NSString, CaptionRaster>()
     init() {
         images.countLimit = 100
         images.totalCostLimit = 128 * 1024 * 1024
@@ -66,6 +75,12 @@ private enum CaptionPreset: String {
     var leftAligned: Bool { self == .placeCard }
 }
 
+private struct CaptionDecoration {
+    let rect: CGRect
+    let color: CGColor
+    var radius: CGFloat = 0
+}
+
 private struct CaptionLineLayout {
     let line: CTLine
     let width: CGFloat
@@ -74,20 +89,21 @@ private struct CaptionLineLayout {
 
 enum TextRenderer {
     private static let cache = CaptionCache()
-    /// The item's text drawn over a transparent frame. `spoken` is the index of the word being spoken, for items
-    /// with a `wordStyle`.
-    /// `itemKey` is `cacheKey(item)`, passed by callers that draw the same item many times (the compositor makes
-    /// it once per layer, not once per frame).
+    /// The cropped raster; consumers needing canvas placement use `overlay` instead.
     static func image(_ item: Item, size: CGSize, spoken: Int? = nil, itemKey: String? = nil) -> CGImage? {
+        raster(item, size: size, spoken: spoken, itemKey: itemKey)?.bitmap
+    }
+
+    /// Cached CIImage with canvas placement already applied, reused directly by every compositor frame.
+    static func overlay(_ item: Item, size: CGSize, spoken: Int? = nil, itemKey: String? = nil) -> CIImage? {
+        raster(item, size: size, spoken: spoken, itemKey: itemKey)?.image
+    }
+
+    /// `fullCanvas` keeps a reference rendering path for pixel-parity tests; production draws only the visible bounds.
+    static func raster(_ item: Item, size: CGSize, spoken: Int? = nil, itemKey: String? = nil, fullCanvas: Bool = false) -> CaptionRaster? {
         let key = (itemKey ?? cacheKey(item))
-            + "\(size.width)x\(size.height)" + (item.wordStyle == nil ? "" : "#\(spoken ?? -1)")
-        if let cached = cache.images.object(forKey: key as NSString) { return cached.image }
-        guard
-            let context = CGContext(
-                data: nil, width: Int(size.width), height: Int(size.height),
-                bitsPerComponent: 8, bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(),
-                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
-        else { return nil }
+            + "\(size.width)x\(size.height)" + (item.wordStyle == nil ? "" : "#\(spoken ?? -1)") + (fullCanvas ? ":full" : "")
+        if let cached = cache.images.object(forKey: key as NSString) { return cached }
         let preset = CaptionPreset(item.textPreset)
         let style = item["textStyle"]?.object ?? [:]
         let relativeSize = style["size"]?.double ?? preset.size
@@ -126,7 +142,19 @@ enum TextRenderer {
                 y: size.height * baseline + Double(index) * lineHeight)
             return CaptionLineLayout(line: line, width: width, position: position)
         }
-        decorate(preset, lines: lines, lineHeight: lineHeight, context: context, canvas: size)
+        let decorations = decorations(preset, lines: lines, lineHeight: lineHeight, canvas: size)
+        let canvas = CGRect(origin: .zero, size: size)
+        let bounds = fullCanvas ? canvas : rasterBounds(lines: lines, decorations: decorations,
+            padding: abs(stroke) * points / 100 + (preset == .hookTitle ? 32 : 2), canvas: canvas)
+        guard let context = CGContext(data: nil, width: Int(bounds.width), height: Int(bounds.height), bitsPerComponent: 8,
+            bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+        else { return nil }
+        context.translateBy(x: -bounds.minX, y: -bounds.minY)
+        for decoration in decorations {
+            context.setFillColor(decoration.color)
+            context.addPath(CGPath(roundedRect: decoration.rect, cornerWidth: decoration.radius, cornerHeight: decoration.radius, transform: nil))
+            context.fillPath()
+        }
         for layout in lines {
             context.saveGState()
             if preset == .hookTitle {
@@ -137,9 +165,9 @@ enum TextRenderer {
             context.restoreGState()
         }
         guard let image = context.makeImage() else { return nil }
-        cache.images.setObject(
-            CaptionImage(image), forKey: key as NSString, cost: Int(size.width * size.height * 4))
-        return image
+        let raster = CaptionRaster(bitmap: image, bounds: bounds)
+        cache.images.setObject(raster, forKey: key as NSString, cost: raster.bytes)
+        return raster
     }
     /// Hash only raster drawing inputs, once per TextLayer. Timing, identity and compositor transforms
     /// do not change these pixels; canvas size and the spoken word are appended by `image`.
@@ -195,48 +223,45 @@ enum TextRenderer {
         return CTFontCreateWithName(name as CFString, size * maximumWidth / widest, nil)
     }
 
-    private static func decorate(
-        _ preset: CaptionPreset, lines: [CaptionLineLayout], lineHeight: CGFloat,
-        context: CGContext, canvas: CGSize
-    ) {
-        guard !lines.isEmpty else { return }
+    private static func rasterBounds(lines: [CaptionLineLayout], decorations: [CaptionDecoration], padding: CGFloat, canvas: CGRect) -> CGRect {
+        var bounds = CGRect.null
+        for line in lines {
+            var ascent: CGFloat = 0, descent: CGFloat = 0
+            CTLineGetTypographicBounds(line.line, &ascent, &descent, nil)
+            let typographic = CGRect(x: line.position.x, y: line.position.y - descent, width: line.width, height: ascent + descent)
+            let glyphs = CTLineGetBoundsWithOptions(line.line, .useGlyphPathBounds).offsetBy(dx: line.position.x, dy: line.position.y)
+            bounds = bounds.union(typographic.union(glyphs).insetBy(dx: -padding, dy: -padding))
+        }
+        for decoration in decorations { bounds = bounds.union(decoration.rect.insetBy(dx: -1, dy: -1)) }
+        let visible = bounds.integral.intersection(canvas)
+        return visible.isNull || visible.isEmpty ? CGRect(x: 0, y: 0, width: 1, height: 1) : visible
+    }
+
+    private static func decorations(
+        _ preset: CaptionPreset, lines: [CaptionLineLayout], lineHeight: CGFloat, canvas: CGSize
+    ) -> [CaptionDecoration] {
+        guard let first = lines.first else { return [] }
         switch preset {
         case .keywordSticker:
-            context.setFillColor(color("#FACC15"))
-            for line in lines {
-                context.fill(
-                    CGRect(
-                        x: line.position.x - 12, y: line.position.y - 12,
-                        width: line.width + 24, height: lineHeight + 12))
-            }
+            return lines.map { CaptionDecoration(rect: CGRect(x: $0.position.x - 12, y: $0.position.y - 12,
+                width: $0.width + 24, height: lineHeight + 12), color: color("#FACC15")) }
         case .placeCard:
             let width = min(canvas.width * 0.8, (lines.map(\.width).max() ?? 0) + 52)
-            let rect = CGRect(
-                x: canvas.width * 0.075, y: lines[0].position.y - 18, width: width,
-                height: lineHeight * CGFloat(lines.count) + 30)
-            context.setFillColor(CGColor(gray: 0.03, alpha: 0.86))
-            context.addPath(CGPath(roundedRect: rect, cornerWidth: 14, cornerHeight: 14, transform: nil))
-            context.fillPath()
-            context.setFillColor(color("#FACC15"))
-            context.fill(CGRect(x: rect.minX, y: rect.minY, width: 8, height: rect.height))
+            let rect = CGRect(x: canvas.width * 0.075, y: first.position.y - 18, width: width,
+                              height: lineHeight * CGFloat(lines.count) + 30)
+            return [CaptionDecoration(rect: rect, color: CGColor(gray: 0.03, alpha: 0.86), radius: 14),
+                    CaptionDecoration(rect: CGRect(x: rect.minX, y: rect.minY, width: 8, height: rect.height), color: color("#FACC15"))]
         case .hookTitle:
-            let widest = lines.max(by: { $0.width < $1.width })
-            if let widest {
-                context.setFillColor(color("#FF3B30"))
-                context.fill(
-                    CGRect(
-                        x: widest.position.x, y: lines[0].position.y - 18,
-                        width: widest.width, height: 9))
-            }
+            guard let widest = lines.max(by: { $0.width < $1.width }) else { return [] }
+            return [CaptionDecoration(rect: CGRect(x: widest.position.x, y: first.position.y - 18, width: widest.width, height: 9),
+                                      color: color("#FF3B30"))]
         case .chapterCard:
-            let centerY = lines[0].position.y - 18
-            context.setFillColor(color("#E0B43A"))
-            context.fill(
-                CGRect(x: canvas.width * 0.25, y: centerY, width: canvas.width * 0.5, height: 3))
-            let top = lines.last?.position.y ?? centerY
-            context.fill(
-                CGRect(x: canvas.width * 0.38, y: top + lineHeight + 12, width: canvas.width * 0.24, height: 2))
-        default: break
+            let top = lines.last?.position.y ?? first.position.y - 18
+            return [CaptionDecoration(rect: CGRect(x: canvas.width * 0.25, y: first.position.y - 18, width: canvas.width * 0.5, height: 3),
+                                      color: color("#E0B43A")),
+                    CaptionDecoration(rect: CGRect(x: canvas.width * 0.38, y: top + lineHeight + 12, width: canvas.width * 0.24, height: 2),
+                                      color: color("#E0B43A"))]
+        default: return []
         }
     }
     private static func color(_ hex: String) -> CGColor {

@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+- Rasterize captions into their visible text/decorations bounds and cache the positioned CIImage across frames.
+  A short 4K caption uses 303,104 bytes instead of 33,177,600; pixel tests cover all presets, outlines,
+  shadows, Vietnamese/emoji, canvas edges and animated word variants.
+
 - Reuse one synchronized color-cube filter per LUT, precompute custom-domain normalization and skip it for
   the standard 0–1 domain. Zero strength bypasses the graph. A 64³ LUT Debug graph benchmark drops from
   872.335 ms to 1.653 ms per 1,000 frames; domain/blend pixel parity and concurrent frame isolation pass.

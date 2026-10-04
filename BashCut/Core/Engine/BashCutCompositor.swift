@@ -176,8 +176,8 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
                 image = Self.graded(image, properties: adjustment.properties, lut: adjustment.lut).cropped(to: bounds)
             case .text(let text):
                 let spoken = text.spokenWord(at: request.compositionTime.seconds)
-                if let overlay = TextRenderer.image(text.item, size: size, spoken: spoken, itemKey: text.cacheKey) {
-                    image = Self.animated(CIImage(cgImage: overlay), text: text, size: size,
+                if let overlay = TextRenderer.overlay(text.item, size: size, spoken: spoken, itemKey: text.cacheKey) {
+                    image = Self.animated(overlay, text: text, size: size,
                                           time: request.compositionTime.seconds).composited(over: image)
                 }
             }
