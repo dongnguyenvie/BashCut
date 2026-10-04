@@ -71,6 +71,7 @@ import BashCutPlugin
         menu.addItem(.separator())
         menu.addItem(
             withTitle: String(localized: "Close Window"), action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
+        menu.addItem(item(.closeProject, String(localized: "Close Project")))
         menu.addItem(item(.saveProject, String(localized: "Save")))
         menu.addItem(item(.importMedia, String(localized: "Import Footage…")))
         menu.addItem(.separator())

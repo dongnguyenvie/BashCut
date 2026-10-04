@@ -17,7 +17,7 @@ public struct AuditEvent: Codable, Sendable {
     /// Reads that show an agent the open project; any one of them ends the gate after a switch.
     static let projectReads: Set<String> = ["context.get", "timeline.get", "project.get"]
     /// Commands that switch the project; their result shows the new project to the caller.
-    static let projectSwitches: Set<String> = ["project.open", "project.create", "edl.import"]
+    static let projectSwitches: Set<String> = ["project.open", "project.create", "project.close", "edl.import"]
     private let audit: @Sendable (AuditEvent) -> Void
     private let logger: (@Sendable (String, String) -> Void)?
     public init(audit: @escaping @Sendable (AuditEvent) -> Void = { _ in }) {

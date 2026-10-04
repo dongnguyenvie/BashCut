@@ -679,7 +679,6 @@
 "No matching command" = "Không có lệnh phù hợp";
 "No project" = "Chưa có dự án";
 "Plugins…" = "Plugin…";
-"Project: reveal in Finder, open another" = "Dự án: hiện trong Finder, mở dự án khác";
 "Redo (⇧⌘Z)" = "Làm lại (⇧⌘Z)";
 "Review before export (⇧⌘R)" = "Duyệt trước khi xuất (⇧⌘R)";
 "Search commands" = "Tìm lệnh";
@@ -761,3 +760,7 @@
 "Release notes:" = "Ghi chú phát hành:";
 "No reminders for this version; a newer release shows again" = "Không nhắc lại phiên bản này; khi có bản mới hơn sẽ nhắc lại";
 "Ask again tomorrow" = "Hỏi lại vào ngày mai";
+"Close Project" = "Đóng dự án";
+"Project closed" = "Đã đóng dự án";
+"The project changed on disk; resolve it before closing" = "Dự án đã thay đổi trên ổ đĩa; hãy xử lý trước khi đóng";
+"Project: reveal in Finder, open another, close it" = "Dự án: hiện trong Finder, mở dự án khác, đóng dự án";

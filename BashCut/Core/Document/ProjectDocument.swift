@@ -106,6 +106,32 @@ final class ProjectDocument {
         return true
     }
 
+    /// Close Project (⇧⌘W): saves unsaved changes, like the autosave would, then shows the Welcome screen. A failed
+    /// save (such as a disk conflict) keeps the project open.
+    func closeProject() {
+        guard fileURL != nil, !busy, !saving else { return }
+        busy = true
+        Task {
+            defer { busy = false }
+            do {
+                if dirty { try await saveNow() }
+                closeToWelcome()
+            } catch is StorageError {
+                message = String(localized: "The project changed on disk; resolve it before closing")
+            } catch {
+                message = error.localizedDescription
+            }
+        }
+    }
+
+    /// The project is saved or its changes are dropped: forget it and show the Welcome screen.
+    func closeToWelcome() {
+        guard let closed = fileURL else { return }
+        DebugLog.write("project", "closed \(closed.path)")
+        reset(Project(name: "Untitled"), url: nil)
+        message = String(localized: "Project closed")
+    }
+
     func newProject() {
         guard !busy, !saving else { return }
         ui.showNewProject = true
@@ -181,7 +207,8 @@ final class ProjectDocument {
         }
     }
 
-    func reset(_ project: Project, url: URL) {
+    /// Shows `project` from `url`, or the Welcome screen with no project when `url` is nil (Close Project).
+    func reset(_ project: Project, url: URL?) {
         // Drop deliveries still waiting for the old project, then tell plugins it closed.
         pluginHooks.reset()
         if let previous = fileURL {
@@ -209,8 +236,10 @@ final class ProjectDocument {
         replaceHistory(ProjectHistory(project: project))
         preview.reset(project)
         fileURL = url
-        exports.restoreReport(projectRoot: url.deletingLastPathComponent())
-        settings.rememberRecentProject(url)
+        if let url {
+            exports.restoreReport(projectRoot: url.deletingLastPathComponent())
+            settings.rememberRecentProject(url)
+        }
         selectedID = nil
         selectedTrackID = nil
         timelineGestureActive = false
@@ -219,9 +248,9 @@ final class ProjectDocument {
         startExternalFileMonitor()
         agents.projectChanged()
         chatAgents.projectChanged()
-        registry.projectSwitched(to: project.name)
+        registry.projectSwitched(to: url == nil ? "no project" : project.name)
         agents.keepSessions(after: liveBookmarks)
-        plugins.refresh(projectRoot: url.deletingLastPathComponent())
+        plugins.refresh(projectRoot: url?.deletingLastPathComponent())
         if settings.checkPluginUpdatesDaily { Task { await plugins.checkForUpdatesIfDue() } }
         if settings.checkAppUpdatesDaily { checkAppUpdateIfDue() }
     }

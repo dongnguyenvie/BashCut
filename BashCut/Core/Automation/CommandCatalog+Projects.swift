@@ -13,6 +13,12 @@ extension CommandCatalog {
                                  isPath: true, cli: .positional)
             ] + leaveCurrent),
         CommandSpec(
+            "project.close", .edit,
+            "Close the open project and show the Welcome screen, like File › Close Project. Fails if it has unsaved "
+                + "changes unless saveCurrent or discardCurrent is set. Agent tabs stay open; edits fail until a "
+                + "project is opened or created.",
+            parameters: leaveCurrent),
+        CommandSpec(
             "project.create", .edit,
             "Create a project folder (media, footage, render…) like the New Project wizard and open it.",
             parameters: [

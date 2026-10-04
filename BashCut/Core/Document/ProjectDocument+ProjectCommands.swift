@@ -107,6 +107,12 @@ extension ProjectDocument {
             try await document.loadProject(at: url, offerRecovery: false)
             return document.projectResult()
         }
+        handleAuthored("project.close") { document, arguments, _ in
+            guard document.fileURL != nil else { throw RPCFailure(-32602, "No project is open") }
+            try await document.leaveCurrentProject(arguments)
+            document.closeToWelcome()
+            return document.projectResult()
+        }
         handleAuthored("project.create") { document, arguments, _ in
             var setup = ProjectSetup()
             setup.name = try arguments.string("name")
