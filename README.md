@@ -40,6 +40,20 @@ BashCut is under active development: the M0 foundation is accepted on real foota
 agent features (M1–M3, M5) are in place. See [implementation status](docs/status/implementation.md) for what is
 verified and what is left.
 
+## Use the AI you already pay for
+
+No extra AI bill: BashCut works with the subscriptions and apps you already have.
+
+| You have | How BashCut uses it |
+|---|---|
+| **Claude subscription** (Pro / Max) | The **Claude** tab in the agent dock runs the real Claude Code CLI with your login. BashCut never passes `ANTHROPIC_API_KEY`, so your plan is used, not API credits |
+| **ChatGPT subscription** (Plus / Pro) | The **Codex** tab runs the real Codex CLI with your ChatGPT login |
+| **Claude Desktop / Codex app** | Point them at BashCut: `bashcut agent setup claude` or `bashcut agent setup codex` installs the editing skills and the `bashcut` MCP server, so they edit the open project from outside the app |
+| **Any other model** (Gemini, GPT, Grok, Mistral, Groq, OpenRouter, a local or OpenAI-compatible server) | Install the **[Director](https://github.com/dongnguyenvie/bashcut-plugins/tree/main/plugins/director)** plugin: a chat agent inside BashCut with your own API key, with thinking levels (`off` / `low` / `medium` / `high`) for reasoning models |
+
+Whichever you pick, the agent edits through the same undoable commands as the UI: every change lands in History,
+shows in Show Changes and can be undone. See [Automation](docs/guides/automation.md).
+
 ## What's inside
 
 - Layered timeline: linked audio, sections, snapping, beat grid, split/trim/move, gaps, freeze frames, constant

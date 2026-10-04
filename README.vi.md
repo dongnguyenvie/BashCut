@@ -40,6 +40,20 @@ BashCut đang được phát triển tích cực: nền tảng M0 đã được 
 và agent (M1–M3, M5) đã có. Xem [trạng thái triển khai](docs/status/implementation.md) để biết phần nào đã kiểm
 chứng và phần nào còn lại.
 
+## Dùng AI bạn đang trả tiền sẵn
+
+Không tốn thêm tiền AI: BashCut chạy được với gói đăng ký và ứng dụng bạn đã có.
+
+| Bạn đang có | BashCut dùng nó thế nào |
+|---|---|
+| **Gói Claude** (Pro / Max) | Tab **Claude** trong agent dock chạy Claude Code CLI thật bằng tài khoản đã đăng nhập. BashCut không truyền `ANTHROPIC_API_KEY`, nên dùng gói đăng ký chứ không trừ credit API |
+| **Gói ChatGPT** (Plus / Pro) | Tab **Codex** chạy Codex CLI thật bằng tài khoản ChatGPT của bạn |
+| **Claude Desktop / Codex app** | Kết nối với BashCut: `bashcut agent setup claude` hoặc `bashcut agent setup codex` cài skill dựng video và MCP server `bashcut`, để chúng sửa project đang mở từ bên ngoài app |
+| **Model khác** (Gemini, GPT, Grok, Mistral, Groq, OpenRouter, server local hoặc tương thích OpenAI) | Cài plugin **[Director](https://github.com/dongnguyenvie/bashcut-plugins/tree/main/plugins/director)**: agent chat ngay trong BashCut bằng API key của bạn, có mức thinking (`off` / `low` / `medium` / `high`) cho model suy luận |
+
+Dù chọn cách nào, agent cũng sửa qua đúng các lệnh có undo mà giao diện dùng: mọi thay đổi vào Lịch sử, hiện trong
+Show Changes và hoàn tác được. Xem [Tự động hóa](docs/guides/automation.md).
+
 ## Có gì bên trong
 
 - Timeline nhiều layer: audio liên kết, section, snap, beat grid, cắt/trim/di chuyển, khoảng trống, freeze frame,
