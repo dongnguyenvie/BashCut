@@ -212,16 +212,16 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
     static func graded(_ input: CIImage, properties: [String: JSONValue], lut: CubeLUT?) -> CIImage {
         var image = input
         let color = properties["color"]?.object ?? [:]
-        if !color.isEmpty {
-            image = image.applyingFilter(
-                "CIExposureAdjust", parameters: [kCIInputEVKey: color["exposure"]?.double ?? 0]
-            )
-            .applyingFilter(
-                "CIColorControls",
-                parameters: [
-                    kCIInputSaturationKey: color["saturation"]?.double ?? 1,
-                    kCIInputContrastKey: color["contrast"]?.double ?? 1,
-                ])
+        let exposure = color["exposure"]?.double ?? 0
+        let saturation = color["saturation"]?.double ?? 1
+        let contrast = color["contrast"]?.double ?? 1
+        if exposure != 0 {
+            image = image.applyingFilter("CIExposureAdjust", parameters: [kCIInputEVKey: exposure])
+        }
+        if saturation != 1 || contrast != 1 {
+            image = image.applyingFilter("CIColorControls", parameters: [
+                kCIInputSaturationKey: saturation, kCIInputContrastKey: contrast
+            ])
         }
         if let lut { image = lut.apply(to: image, strength: color["lutStrength"]?.double ?? 1) }
         return image

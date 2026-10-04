@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+- Skip neutral exposure and color-control filters, including LUT-only color dictionaries. A 1,000-frame
+  Debug graph-construction benchmark drops from 10.004 ms to 0.361 ms; non-neutral pixel parity is tested.
+
 - Reuse the ungraded comparison build for color-only edits when its drawing inputs and current media
   structure match. Build both variants concurrently on a cache miss; changed proxies/files and non-color
   edits invalidate reuse. File replacement identity is included in composition structure checks.
