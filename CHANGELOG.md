@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+- **Plugins are grouped by category** (#63). Plugins › Browse has a chip bar (All, Agents, Captions, Voice, Audio…,
+  each with a count) and, without a search, one section per category; each row shows its category with an icon.
+  Plugins › Installed puts Updates Available and Needs Attention (not trusted, changed, outdated or missing a
+  dependency) first, then the rest by category. Settings › Plugins groups plugin options by category, one collapsible
+  plugin at a time, with a filter. A plugin's category comes from its registry listing, then the new optional
+  `category` field in `plugin.json`, then its capabilities. Agents: `plugins search --category`, `plugins list
+  --category` (each plugin now has `category`), and `ui view --plugins-tab --plugins-category`.
 - Writing plugins links to `scripts/new-plugin.py` in `bashcut-plugins` (#84), which generates a working plugin
   (capability, action, hook, options or chat agent; Swift, shell, Node.js or Python) to start from.
 - **Export progress is easy to see** (#62). While an export runs, the Export… button shows a progress ring and

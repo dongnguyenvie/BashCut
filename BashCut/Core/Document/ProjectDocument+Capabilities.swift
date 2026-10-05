@@ -215,7 +215,11 @@ extension ProjectDocument {
     // MARK: Automation
 
     func registerCapabilityCommands() {
-        handle("plugins.list") { document, _, _ in document.pluginCatalogJSON() }
+        handle("plugins.list") { document, arguments, _ in
+            await document.plugins.loadCachedRegistry()
+            let category = arguments.optionalString("category").flatMap(PluginCategory.init(rawValue:))
+            return document.pluginCatalogJSON(category: category)
+        }
         handle("jobs.status") { document, arguments, _ in
             if let id = arguments.optionalString("job") {
                 guard let job = document.jobs.job(id) else { throw RPCFailure(-32602, "Unknown job") }
@@ -329,12 +333,14 @@ extension ProjectDocument {
         ])
     }
 
-    private func pluginCatalogJSON() -> JSONValue {
+    private func pluginCatalogJSON(category: PluginCategory? = nil) -> JSONValue {
         let result = plugins.service.catalog(projectRoot: fileURL?.deletingLastPathComponent())
+        let listed = result.plugins.filter { category == nil || plugins.category(of: $0) == category }
         return .object([
-            "plugins": .array(result.plugins.map { plugin in
+            "plugins": .array(listed.map { plugin in
                 .object([
                     "id": .string(plugin.id), "name": .string(plugin.manifest.displayName),
+                    "category": .string(plugins.category(of: plugin).rawValue),
                     "version": .string(plugin.manifest.version), "apiVersion": .integer(plugin.manifest.apiVersion),
                     "availability": .string(plugins.service.availability(plugin).name),
                     "detail": .string(plugins.service.availability(plugin).detail),

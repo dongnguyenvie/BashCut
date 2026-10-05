@@ -23,6 +23,7 @@ struct PluginListing: Identifiable {
     /// Why the installed version was withdrawn from the registry, when it was.
     var installedYanked: String?
     var id: String { entry.id }
+    var category: PluginCategory { entry.pluginCategory }
 
     var json: JSONValue {
         var statusText: String
@@ -37,7 +38,7 @@ struct PluginListing: Identifiable {
             "id": .string(entry.id), "name": .string(entry.name.text), "status": .string(statusText),
             "summary": entry.summary.map { .string($0.text) } ?? .null,
             "publisher": entry.publisher.map(JSONValue.string) ?? .null,
-            "category": entry.category.map(JSONValue.string) ?? .null,
+            "category": .string(category.rawValue),
             "capabilities": .array((entry.capabilities ?? []).map(JSONValue.string)),
             "version": version.map { .string($0.version) } ?? .null,
             "installedVersion": installed.map { .string($0.manifest.version) } ?? .null,
@@ -85,10 +86,16 @@ extension PluginManagerModel {
         if now.timeIntervalSince(last) >= Self.updateCheckInterval {
             await refreshRegistry()
             if registryError == nil { defaults.set(now, forKey: Self.updateCheckKey) }
-        } else if registry == nil, let cached = await registryClient.cached() {
-            registry = cached.document
-            registryFetchedAt = cached.fetchedAt
+        } else {
+            await loadCachedRegistry()
         }
+    }
+
+    /// Reads the saved copy of the registry, without fetching, when none is loaded yet.
+    func loadCachedRegistry() async {
+        guard PluginChannel.current.allowsUserPlugins, registry == nil, let cached = await registryClient.cached() else { return }
+        registry = cached.document
+        registryFetchedAt = cached.fetchedAt
     }
 
     /// Why the registry withdrew this installed version, if it did.
@@ -97,10 +104,11 @@ extension PluginManagerModel {
         return registry?.entry(plugin.id)?.version(plugin.manifest.version)?.yanked
     }
 
-    /// Registry plugins matching `query` and `capability`, with what installing would do.
-    func listings(query: String = "", capability: String? = nil) -> [PluginListing] {
+    /// Registry plugins matching `query`, `capability` and `category`, with what installing would do.
+    func listings(query: String = "", capability: String? = nil, category: PluginCategory? = nil) -> [PluginListing] {
         (registry?.plugins ?? []).filter { entry in
             entry.matches(query) && (capability.map { (entry.capabilities ?? []).contains($0) } ?? true)
+                && (category.map { entry.pluginCategory == $0 } ?? true)
         }.map(listing).sorted { $0.entry.name.text.localizedCaseInsensitiveCompare($1.entry.name.text) == .orderedAscending }
     }
 

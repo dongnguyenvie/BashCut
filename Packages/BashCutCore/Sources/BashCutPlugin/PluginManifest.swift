@@ -22,13 +22,15 @@ public struct PluginManifest: Codable, Sendable, Equatable {
     public let contributes: PluginContributions?
     /// The dock tab of an `agent.terminal` plugin (API 5).
     public let terminal: PluginTerminal?
+    /// One of `PluginCategory`'s ids, for grouping in Plugins and Settings; the registry listing's wins.
+    public let category: String?
 
     public init(
         id: String, name: LocalizedText, version: String, apiVersion: Int = 1,
         entrypoint: String, capabilities: [String], providers: [PluginProvider]? = nil,
         dependencies: [PluginDependency] = [], minApiVersion: Int? = nil, maxApiVersion: Int? = nil,
         transport: PluginTransportKind? = nil, options: [PluginOption]? = nil,
-        contributes: PluginContributions? = nil, terminal: PluginTerminal? = nil
+        contributes: PluginContributions? = nil, terminal: PluginTerminal? = nil, category: String? = nil
     ) {
         schema = Self.schema
         self.id = id
@@ -45,6 +47,7 @@ public struct PluginManifest: Codable, Sendable, Equatable {
         self.options = options
         self.contributes = contributes
         self.terminal = terminal
+        self.category = category
     }
 
     public init(from decoder: any Decoder) throws {
@@ -64,6 +67,7 @@ public struct PluginManifest: Codable, Sendable, Equatable {
         options = try container.decodeIfPresent([PluginOption].self, forKey: .options)
         contributes = try container.decodeIfPresent(PluginContributions.self, forKey: .contributes)
         terminal = try container.decodeIfPresent(PluginTerminal.self, forKey: .terminal)
+        category = try container.decodeIfPresent(String.self, forKey: .category)
     }
 
     public var transportKind: PluginTransportKind { transport ?? .oneshot }

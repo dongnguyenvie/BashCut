@@ -2,6 +2,9 @@ import BashCutProject
 
 extension CommandCatalog {
     private static let pluginID = CommandParameter("plugin", .string, "Plugin ID", required: true, cli: .positional)
+    static let pluginCategory = CommandParameter(
+        "category", .string, "Only plugins in this category", choices: UIAction.pluginCategories,
+        cli: .option("category"))
 
     /// Plugin contributions (actions, hooks, options) and the per-plugin switches, mirroring the Plugins sheet,
     /// the Plugins menu and every place a plugin action appears.
@@ -44,12 +47,13 @@ extension CommandCatalog {
             ]),
         CommandSpec(
             "plugins.search", .read,
-            "Search the plugin registry (Plugins › Browse): name, summary, capability, the version this BashCut would "
+            "Search the plugin registry (Plugins › Browse): name, summary, category, capability, the version this BashCut would "
                 + "install and whether it is installed, has an update or is incompatible.",
             parameters: [
                 CommandParameter("query", .string, "Search text", cli: .positional),
                 CommandParameter("capability", .string, "Only providers of this capability, such as captions.transcribe",
                                  cli: .option("capability")),
+                pluginCategory,
                 CommandParameter("refresh", .boolean, "Fetch the registry again instead of using the 5-minute cache",
                                  default: .bool(false), cli: .flag("refresh")),
             ]),

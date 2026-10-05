@@ -136,6 +136,10 @@ public enum UIAction: String, CaseIterable, Sendable {
     public static let inspectorTabs = ["video", "audio", "text", "color", "speed"]
     /// Settings sections, for `ui.view --settings-section`.
     public static let settingsSections = ["general", "agents", "plugins", "storage"]
+    /// Plugins sheet tabs, for `ui.view --plugins-tab`.
+    public static let pluginsTabs = ["installed", "browse", "updates", "activity"]
+    /// Plugin category ids, matching `PluginCategory` (checked by `PluginCategoryTests`).
+    public static let pluginCategories = ["agents", "captions", "voice", "audio", "color", "effects", "export", "utilities"]
 
     public var title: String {
         switch self {

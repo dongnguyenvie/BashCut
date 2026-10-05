@@ -22,7 +22,8 @@ extension ProjectDocument {
                 throw RPCFailure(-32003, document.plugins.registryError ?? "The plugin registry is unavailable")
             }
             let listings = document.plugins.listings(
-                query: arguments.optionalString("query") ?? "", capability: arguments.optionalString("capability"))
+                query: arguments.optionalString("query") ?? "", capability: arguments.optionalString("capability"),
+                category: arguments.optionalString("category").flatMap(PluginCategory.init(rawValue:)))
             return .object([
                 "plugins": .array(listings.map(\.json)),
                 "registry": .string(PluginManagerModel.registryURL.absoluteString),

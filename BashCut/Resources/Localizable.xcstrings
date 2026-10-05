@@ -1,6 +1,14 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Captions": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Captions" } }, "vi": { "stringUnit": { "state": "translated", "value": "Phụ đề" } } } },
+    "Export": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Export" } }, "vi": { "stringUnit": { "state": "translated", "value": "Xuất video" } } } },
+    "Utilities": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Utilities" } }, "vi": { "stringUnit": { "state": "translated", "value": "Tiện ích" } } } },
+    "All": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "All" } }, "vi": { "stringUnit": { "state": "translated", "value": "Tất cả" } } } },
+    "Updates Available": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Updates Available" } }, "vi": { "stringUnit": { "state": "translated", "value": "Có bản cập nhật" } } } },
+    "Needs Attention": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Needs Attention" } }, "vi": { "stringUnit": { "state": "translated", "value": "Cần xử lý" } } } },
+    "No published plugin is in %@ yet.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "No published plugin is in %@ yet." } }, "vi": { "stringUnit": { "state": "translated", "value": "Chưa có plugin nào thuộc nhóm %@." } } } },
+    "Filter plugins": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Filter plugins" } }, "vi": { "stringUnit": { "state": "translated", "value": "Lọc plugin" } } } },
     "%@ is already exported or queued": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%@ is already exported or queued" } }, "vi": { "stringUnit": { "state": "translated", "value": "%@ đã được xuất hoặc đang chờ xuất" } } } },
     "Use %@": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Use %@" } }, "vi": { "stringUnit": { "state": "translated", "value": "Dùng %@" } } } },
     "Cancel Export": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Cancel Export" } }, "vi": { "stringUnit": { "state": "translated", "value": "Huỷ xuất" } } } },
