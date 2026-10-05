@@ -93,7 +93,7 @@ public struct LessonPatch: Sendable {
         self.status = status
     }
 
-    var isEmpty: Bool {
+    public var isEmpty: Bool {
         [title, symptom, cause, fix, evidence].allSatisfy { $0 == nil } && tags == nil && status == nil
     }
 }

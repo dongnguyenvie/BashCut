@@ -66,18 +66,12 @@ extension ProjectDocument {
 
     private func registerLessonCommands() {
         handle("knowledge.lessons") { document, arguments, _ in
-            let query = arguments.optionalString("query")?.lowercased()
-            let tag = arguments.optionalString("tag")?.lowercased()
-            let status = arguments.optionalString("status")
-            let lessons = try document.agents.knowledgeStore.lessons(Self.knowledgeScope(arguments.optionalString("scope")))
-                .filter { lesson in
-                    (status == nil || lesson.status.rawValue == status) && (tag.map(lesson.tags.contains) ?? true)
-                        && (query.map { query in
-                            ([lesson.title, lesson.symptom, lesson.cause, lesson.fix] + lesson.tags)
-                                .contains { $0.lowercased().contains(query) }
-                        } ?? true)
-                }
-            return try .array(lessons.map(Self.json))
+            let filter = KnowledgeFilter(
+                query: arguments.optionalString("query") ?? "",
+                scope: try Self.knowledgeScope(arguments.optionalString("scope")),
+                status: try Self.lessonStatus(arguments.optionalString("status")), tag: arguments.optionalString("tag"),
+                sort: arguments.optionalString("sort").flatMap(KnowledgeFilter.Sort.init(rawValue:)) ?? .newest)
+            return try .array(filter.apply(document.agents.knowledgeStore.lessons(filter.scope)).map(Self.json))
         }
         handleAuthored("knowledge.add-lesson") { document, arguments, author in
             let scope = try Self.knowledgeScope(arguments.optionalString("scope")) ?? .project

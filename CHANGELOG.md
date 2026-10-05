@@ -5,6 +5,15 @@
 
 ## [Unreleased]
 
+- **Knowledge window** (#68). The book button in the agent dock now opens a resizable **Knowledge** window instead
+  of the small sheet, so it can stay open while agents work; it reloads when agents or people change the files.
+  Sections: **Lessons** (search, filter by scope, status and tag, newest or oldest first; edit every field,
+  approve or reject a proposal, enable, disable or delete; shows which agent and session added it and when),
+  **Preferences** and **Project facts** (edit values inline, add and remove), **Notes** (the two memos) and
+  **Skills**. Entries changed since the last visit carry a "New" badge, with counts in the sidebar. Changes made
+  here are recorded as the user's. `ui view --knowledge-section` picks the section, and `knowledge lessons` takes
+  `--sort newest|oldest` (newest first by default) and also searches the evidence.
+
 - **Agents start every session with what they learned** (#73). New terminals, chat agents and handoffs get a
   short summary of the structured knowledge: active lessons with their fix, preferences (a project value wins over
   the one for every project), project facts, and the number of proposals waiting for review. It is bounded (20

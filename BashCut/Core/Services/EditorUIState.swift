@@ -31,6 +31,8 @@ public final class EditorUIState {
     public var inspectorTab = "video"
     /// One of `UIAction.settingsSections`: the section the Settings sheet shows.
     public var settingsSection = "general"
+    /// One of `UIAction.knowledgeSections`: the section the Knowledge window shows.
+    public var knowledgeSection = "lessons"
 
     // Editor sheets and popovers; `ModalCenter` reports them to automation.
     public var showNewProject = false

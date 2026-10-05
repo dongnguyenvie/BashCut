@@ -62,15 +62,17 @@ extension CommandCatalog {
     private static let lessonSpecs: [CommandSpec] = [
         CommandSpec(
             "knowledge.lessons", .read,
-            "List lessons the agent learned (symptom, cause, fix), from this project and for every project. Read the "
-                + "active ones before editing; proposed ones wait for the user's review.",
+            "List lessons the agent learned (symptom, cause, fix), from this project and for every project, newest "
+                + "first. Read the active ones before editing; proposed ones wait for the user's review.",
             parameters: [
                 readScope,
                 CommandParameter("status", .string, "Only this status", choices: lessonStatuses,
                                  cli: .option("status")),
                 CommandParameter("tag", .string, "Only lessons with this tag", cli: .option("tag")),
-                CommandParameter("query", .string, "Text to find in the title, symptom, cause, fix or tags",
+                CommandParameter("query", .string, "Text to find in the title, symptom, cause, fix, evidence or tags",
                                  cli: .option("query")),
+                CommandParameter("sort", .string, "Order by last change; newest first by default",
+                                 default: .string("newest"), choices: ["newest", "oldest"], cli: .option("sort")),
             ]),
         CommandSpec(
             "knowledge.add-lesson", .edit,

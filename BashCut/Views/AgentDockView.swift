@@ -17,9 +17,8 @@ struct AgentDockView: View {
                 ) {
                     detached ? model.attach() : model.detach()
                 }
-                DockIconButton(systemImage: "books.vertical", help: "Skills and project memory") {
-                    model.loadKnowledge()
-                    model.showKnowledge = true
+                DockIconButton(systemImage: "books.vertical", help: "Knowledge: lessons, preferences, facts and skills") {
+                    model.openKnowledge()
                 }
                 Menu {
                     ForEach(model.terminalChoices) { choice in
@@ -110,9 +109,6 @@ struct AgentDockView: View {
             }.padding(10)
         }.background(Color(red: 0.045, green: 0.05, blue: 0.06))
             .task { await model.refreshKitPrompt() }
-            .sheet(isPresented: $model.showKnowledge) {
-                AgentKnowledgeView(model: model.knowledge, done: { model.showKnowledge = false })
-            }
     }
     private var tabs: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -135,80 +131,6 @@ struct AgentDockView: View {
                 }
             }.padding(.horizontal, 8).padding(.vertical, 6)
         }.background(Color.white.opacity(0.03))
-    }
-}
-
-private struct AgentKnowledgeView: View {
-    @Bindable var model: AgentKnowledgeModel
-    let done: () -> Void
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Agent Knowledge").font(.title2)
-                Spacer()
-                Button("Done", action: done)
-            }
-            if let legacy = model.legacy {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Older memo found at \(legacy.url.path). BashCut now keeps knowledge in the project.")
-                        .font(.caption)
-                    HStack {
-                        Button("Move to notes for every project") { model.migrate(to: .user) }
-                        Button("Move to this project") { model.migrate(to: .project) }.disabled(!model.hasProject)
-                    }
-                }.padding(8).background(RoundedRectangle(cornerRadius: 6).fill(Color.yellow.opacity(0.12)))
-            }
-            HStack(alignment: .top, spacing: 16) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Project memory").font(.headline)
-                    if model.hasProject {
-                        TextEditor(text: $model.memo).font(.body).frame(height: 110).border(.gray.opacity(0.3))
-                        Button("Save memo", action: model.saveMemo)
-                    } else {
-                        Text("Save the project to keep a memo and skills in its folder.")
-                            .font(.caption).foregroundStyle(.secondary).frame(height: 110, alignment: .topLeading)
-                    }
-                }
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Notes for every project").font(.headline)
-                    TextEditor(text: $model.userMemo).font(.body).frame(height: 110).border(.gray.opacity(0.3))
-                    Button("Save notes", action: model.saveUserMemo)
-                }
-            }
-            Divider()
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Project skills").font(.headline)
-                    List(model.skills, id: \.name, selection: $model.selectedSkill) { skill in
-                        Button {
-                            model.select(skill.name)
-                        } label: {
-                            HStack {
-                                Text(skill.name)
-                                Spacer()
-                                if skill.claude { Text("Claude").font(.caption2).foregroundStyle(.purple) }
-                                if skill.codex { Text("Codex").font(.caption2).foregroundStyle(.cyan) }
-                            }
-                        }.buttonStyle(.plain)
-                    }.frame(width: 250)
-                    HStack {
-                        TextField("new-skill-name", text: $model.newSkillName)
-                        Button("Add", action: model.createSkill)
-                    }.disabled(!model.hasProject)
-                }
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(model.selectedSkill ?? "Select a skill").font(.headline)
-                    TextEditor(text: $model.skillText).font(.system(size: 12, design: .monospaced))
-                        .border(.gray.opacity(0.3))
-                    HStack {
-                        Button("Save skill", action: model.saveSkill).disabled(model.selectedSkill == nil)
-                        Button("Share with Claude + Codex", action: model.shareSelectedWithBoth)
-                            .disabled(model.selectedSkill == nil)
-                    }
-                }
-            }
-            Text(model.message).font(.caption).foregroundStyle(.secondary)
-        }.padding(20).frame(width: 820, height: 680, alignment: .top).preferredColorScheme(.dark)
     }
 }
 

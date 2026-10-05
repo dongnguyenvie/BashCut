@@ -41,8 +41,8 @@ extension ProjectDocument {
         closing("settings", "Settings", when: ui.showSettings) { [weak self] in self?.ui.showSettings = false }
         closing("doctor", "Doctor", when: ui.showDoctor) { [weak self] in self?.ui.showDoctor = false }
         if let updates = appUpdateSheet() { sheets.append(updates) }
-        closing("knowledge", "Skills and project memory", when: agents.showKnowledge) { [weak self] in
-            self?.agents.showKnowledge = false
+        closing("knowledge", "Knowledge", when: agents.showKnowledge) { [weak self] in
+            self?.agents.closeKnowledge()
         }
         if ui.showAgentChanges {
             sheets.append(ModalSheet(
@@ -199,8 +199,7 @@ extension ProjectDocument {
             ui.showPlugins = true
             plugins.addPlugin()
         } else if name == "knowledge" {
-            agents.loadKnowledge()
-            agents.showKnowledge = true
+            agents.openKnowledge()
         } else {
             throw RPCFailure(-32602, "Unknown dialog \(name)")
         }
