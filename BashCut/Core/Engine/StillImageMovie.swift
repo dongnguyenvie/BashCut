@@ -7,10 +7,10 @@ import UniformTypeIdentifiers
 
 /// Still images (photos, PNG stickers, illustrations) on the timeline. AVFoundation compositions only take
 /// movie tracks, so the engine reads each image through a one-frame ProRes 4444 movie (alpha kept) at
-/// `.bashcut/stills/<media id>.mov`, made on first use and again whenever the image file changes. Items hold that
+/// `.bashcut/cache/stills/<media id>.mov`, made on first use and again whenever the image file changes. Items hold that
 /// frame for their whole length, like a freeze frame; the project keeps referencing the image itself.
 public enum StillImageMovie {
-    public static let folder = ".bashcut/stills"
+    public static let folder = ProjectCache.folder + "/" + ProjectCache.Kind.stills.rawValue
     /// The single sample's length in the movie; items scale it to their duration.
     public static let sampleDuration = CMTime(value: 1, timescale: 30)
     /// Longer side of the movie frame. Larger photos are scaled down; enough for a 4K export and a 1.5× zoom on 1080p.

@@ -18,7 +18,7 @@ actor SpeedRampAudioCache {
             asset: asset, track: track, sourceStart: mediaFPS.time(item.sourceIn),
             shape: SpeedRampAudioRenderer.Shape(curve: curve, seconds: fps.time(item.duration).seconds,
                                           preservesPitch: item["preservePitch"] != .bool(false)),
-            directory: root.appendingPathComponent(".bashcut/ramp-audio", isDirectory: true), key: key)
+            directory: ProjectCache.url(.rampAudio, projectRoot: root), key: key)
         let flag = CancellationFlag()
         let (url, rendered) = try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<(URL, Bool), any Error>) in

@@ -22,10 +22,10 @@ public struct OriginalMediaSource: MediaSource {
     }
 }
 
-/// Previews read `.bashcut/proxies/<media id>.mov` (or `.mp4`) when one exists next to the project;
+/// Previews read `.bashcut/cache/proxies/<media id>.mov` (or `.mp4`) when one exists next to the project;
 /// exports and media without a proxy read the original. Proxies must keep the original's frame timing.
 public struct ProxyMediaSource: MediaSource {
-    public static let folder = ".bashcut/proxies"
+    public static let folder = ProjectCache.folder + "/" + ProjectCache.Kind.proxies.rawValue
     public static let extensions = ["mov", "mp4"]
     private let original = OriginalMediaSource()
 

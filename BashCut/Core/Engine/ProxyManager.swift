@@ -2,7 +2,7 @@
 import BashCutProject
 import Foundation
 
-/// Creates the preview proxies `ProxyMediaSource` reads: `.bashcut/proxies/<media id>.mov`, H.264 with a
+/// Creates the preview proxies `ProxyMediaSource` reads: `.bashcut/cache/proxies/<media id>.mov`, H.264 with a
 /// keyframe every 10 frames and no reordering at most 960 px on the long side, with AAC sound. Every frame
 /// keeps its original presentation time, so items need no change and export keeps reading the original.
 public struct ProxyManager: Sendable {

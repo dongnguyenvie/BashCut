@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+- **One cache folder per project.** Preview proxies, waveforms, speed-ramp audio, still-image movies, loudness
+  scratch files and agent frames now all live in `.bashcut/cache/`, which is excluded from Time Machine. Opening a
+  project moves caches from their old `.bashcut/` folders (a quick rename, nothing is made again). The project's
+  own data (history, autosave, library, plugins, skills, memo, chat) stays in `.bashcut/`.
 - **Project caches are marked for git, and the plugin catalog copy moved to Caches** (#101). New and saved projects
   get a `.bashcut/.gitignore` listing what BashCut can make again (proxies, waveforms, ramp audio, stills, loudness
   scratch files and agent frames), so a project kept in git no longer picks up gigabytes of proxies; an existing file

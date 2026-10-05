@@ -39,7 +39,7 @@ struct ProxyQueueTests {
         let queue = ProxyQueue(jobs: jobs, generate: encoder.generate)
         var written: [String] = []
         queue.onFinished = { written.append($0.lastPathComponent) }
-        let root = URL(fileURLWithPath: "/tmp/project/.bashcut/proxies")
+        let root = URL(fileURLWithPath: "/tmp/project/.bashcut/cache/proxies")
         let first = queue.request(
             source: URL(fileURLWithPath: "/footage/a.mp4"), destination: root.appendingPathComponent("a.mov"),
             label: "a.mp4", author: .user)
@@ -72,7 +72,7 @@ struct ProxyQueueTests {
         let encoder = FakeEncoder()
         let jobs = JobCenter()
         let queue = ProxyQueue(jobs: jobs, generate: encoder.generate)
-        let root = URL(fileURLWithPath: "/tmp/project/.bashcut/proxies")
+        let root = URL(fileURLWithPath: "/tmp/project/.bashcut/cache/proxies")
         _ = queue.request(
             source: URL(fileURLWithPath: "/footage/a.mp4"), destination: root.appendingPathComponent("a.mov"),
             label: "a", author: .user)

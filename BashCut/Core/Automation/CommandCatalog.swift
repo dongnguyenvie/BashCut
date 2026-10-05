@@ -111,7 +111,7 @@ public enum CommandCatalog {
             ]),
         CommandSpec(
             "media.proxy", .edit,
-            "Queue preview proxies (smaller, quick-to-seek copies in .bashcut/proxies; export keeps the originals) "
+            "Queue preview proxies (smaller, quick-to-seek copies in .bashcut/cache/proxies; export keeps the originals) "
                 + "for heavy video media, or one media item. Imports queue them automatically. Returns a status per "
                 + "media: queued with its job ID, exists, not-needed or skipped.",
             parameters: [

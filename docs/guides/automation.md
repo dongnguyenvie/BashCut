@@ -64,7 +64,7 @@ SwiftTerm terminal. Claude and Codex use your installed CLI and its existing log
   get a broad socket allowlist.
 - **Context.** Context and quick actions paste text into the terminal for you to review before pressing
   Enter. The ⌘K popover can attach the current viewer frame: BashCut renders a bounded PNG into
-  `.bashcut/agent-context`, keeps the ten newest frames and passes the absolute path to the terminal.
+  `.bashcut/cache/agent-context`, keeps the ten newest frames and passes the absolute path to the terminal.
 - **Switching projects.** Tabs stay open when the project changes, also when their own agent creates or opens
   one (before, the switch closed the tab mid-task). Every token, in-app or external, must then read the new
   project (`context get`, `timeline get` or `project get`) before its next edit; until then edits fail with
@@ -365,7 +365,7 @@ the project scope follows the normal edit rules.
 
 Heavy footage (HEVC, a long side above 1920 px, or above 20 Mbit/s) gets a preview proxy when it is imported:
 an H.264 copy at most 960 px on the long side, with a keyframe every 10 frames and the original frame times,
-written to `.bashcut/proxies/<media id>.mov`. The viewer reads proxies; exports always read the originals.
+written to `.bashcut/cache/proxies/<media id>.mov`. The viewer reads proxies; exports always read the originals.
 
 Proxies are made one at a time as `media.proxy` jobs, and the preview switches to each one as it lands.
 

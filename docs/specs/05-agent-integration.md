@@ -217,7 +217,7 @@ playhead: 1144 frames
 trim to 4 s, keep the "so much topping" line
 ```
 
-When the user attaches the viewer frame, its PNG is written to `.bashcut/agent-context` and the absolute path
+When the user attaches the viewer frame, its PNG is written to `.bashcut/cache/agent-context` and the absolute path
 is included. Agents capture the same PNG themselves with `ui frame [frame]`. The target form also carries the selection's track, media, tag, section, time range and caption
 text.
 

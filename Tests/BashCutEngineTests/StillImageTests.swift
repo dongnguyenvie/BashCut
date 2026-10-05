@@ -63,7 +63,7 @@ struct StillImageTests {
         ])).project
 
         let snapshot = try await CompositionBuilder().build(project, root: root)
-        let movie = root.appendingPathComponent(".bashcut/stills/still.mov")
+        let movie = root.appendingPathComponent(".bashcut/cache/stills/still.mov")
         #expect(FileManager.default.fileExists(atPath: movie.path))
         let generator = AVAssetImageGenerator(asset: snapshot.composition)
         generator.videoComposition = snapshot.videoComposition
