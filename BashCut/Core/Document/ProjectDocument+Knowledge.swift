@@ -136,6 +136,7 @@ extension ProjectDocument {
                     if document.settings.autoApprovePrivileged {
                         document.registry.recordApproval(
                             method: Self.setMethod(kind), author: author, approved: true, automatic: true)
+                        DebugLog.write("approval", "auto-approved \(Self.setMethod(kind)) from \(author) key \(key)")
                     } else {
                         let proposal = try store.proposeValue(kind, key: key, value: value, scope: scope, source: source)
                         document.message = String(format: String(localized: "%@ proposes a preference: %@"),

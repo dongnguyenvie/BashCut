@@ -212,6 +212,7 @@ extension AgentKnowledgeModel {
     }
 
     func reject(_ id: String) {
+        if selectedLessonID == id { selectLesson(nil) }
         perform(String(localized: "Lesson rejected")) { try $0.reject(id, source: source) }
     }
 
@@ -223,6 +224,7 @@ extension AgentKnowledgeModel {
             message: String(localized: "Agents stop following it. History keeps a copy."),
             buttons: [ModalOption("delete", String(localized: "Delete")), ModalOption("cancel", String(localized: "Cancel"))])
         guard choice == "delete" else { return }
+        if selectedLessonID == id { selectLesson(nil) }
         perform(String(localized: "Lesson deleted")) { try $0.removeLesson(id, source: source) }
     }
 

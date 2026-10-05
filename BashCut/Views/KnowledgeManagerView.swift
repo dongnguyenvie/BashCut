@@ -250,14 +250,25 @@ private struct KnowledgeLessonEditor: View {
     @Bindable var model: AgentKnowledgeModel
 
     var body: some View {
-        if let draft = Binding($model.draft) {
+        // Not `Binding($model.draft)`: that force-unwraps, and fields read it once more after a reject or delete
+        // clears the draft.
+        if let current = model.draft {
+            let draft = Binding(get: { model.draft ?? current }, set: { model.draft = $0 })
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     header(draft.wrappedValue)
                     TextField("Title", text: draft.title).textFieldStyle(.roundedBorder).font(.title3)
                     field("Symptom", "What went wrong or what was noticed", draft.symptom)
                     field("Cause", "Why it happened", draft.cause)
-                    field("What to do next time", "The rule agents follow", draft.fix)
+                    if draft.wrappedValue.tagList.contains(where: { $0.trimmingCharacters(in: .whitespaces) == "kit" }) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Proposed change").font(.caption.bold()).foregroundStyle(.secondary)
+                            TextEditor(text: draft.fix).font(.system(size: 11, design: .monospaced))
+                                .frame(minHeight: 120).border(.gray.opacity(0.3))
+                        }
+                    } else {
+                        field("What to do next time", "The rule agents follow", draft.fix)
+                    }
                     field("Evidence", "Frames, files, the user's words", draft.evidence)
                     LabeledContent("Tags") {
                         TextField("captions, audio, pacing", text: draft.tags).textFieldStyle(.roundedBorder)
