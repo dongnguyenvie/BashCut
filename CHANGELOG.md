@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+- **Agent knowledge stays in the project** (#100). The project memo and project skills are now always stored in
+  the open project's folder, not in the agent workspace (where every project shared one memo) or the home folder
+  (where a shared skill became global for Claude Code and Codex). Skills are linked only into the project's
+  `.claude/skills` and `.agents/skills`. To reuse knowledge across projects, Agent Knowledge has **Notes for every
+  project**, stored on this Mac; an older workspace or home memo is offered once to move there or into the project.
+  Agents: `knowledge memo FILE --scope user` (asks for approval), `knowledge migrate [--to project]`, and
+  `knowledge get` returns `userMemo`, skill paths and any `legacy` memo.
 - **Text, Stickers and Effects come from the library** (#75). Their built-in items (6 text styles, 8 emoji stickers,
   Punch in and Reset framing) are now built-in library packs, so the panels render from data and also show text
   presets, stickers and effect presets saved in the project or on this Mac. Nothing else changes for users; agents

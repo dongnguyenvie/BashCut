@@ -348,7 +348,7 @@ stored in English; the agent replies in the language you write in.
 | Lessons | "Run nolan-self-learn for this session" | Planned |
 
 The dock also has a **Knowledge** sheet for the
-project memo and project skills shared with Claude and Codex. See the [automation guide](../guides/automation.md).
+project memo and project skills (kept in the project folder) and the notes every project reads. See the [automation guide](../guides/automation.md).
 
 ### 4.2 How the agent edits the timeline
 

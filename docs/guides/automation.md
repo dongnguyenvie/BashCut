@@ -49,6 +49,14 @@ SwiftTerm terminal. Claude and Codex use your installed CLI and its existing log
 - **Workspace.** Choose a workspace before opening a tab. Claude runs in the workspace folder. Codex runs in
   `~/Library/Application Support/BashCut/agent-workspace`; the project path and project knowledge reach it
   through the session context.
+- **Knowledge.** The book button opens **Agent Knowledge**. The project memo and project skills live in the
+  project folder (`.bashcut/agent-memory.md`, `.bashcut/skills`, linked into the project's `.claude/skills` and
+  `.agents/skills`), never in the workspace or home folder, so each project keeps its own. **Notes for every
+  project** (`~/Library/Application Support/BashCut/Knowledge/agent-memory.md`) hold your taste and rules that
+  every project reads. Without a saved project only those notes are available. A memo that older versions kept in
+  the workspace or home folder is offered once: move it to the notes for every project (`knowledge migrate`) or to
+  this project (`knowledge migrate --to project`). Agents write the notes with `knowledge memo FILE --scope user`,
+  which asks for your approval.
 - **Resuming.** When BashCut has found the last Claude or Codex conversation for the project, the dock offers
   **Continue Claude/Codex** or **New conversation**. You never see or type session IDs.
 - **Codex defaults.** Codex starts idle on `gpt-5.6-luna` with low reasoning effort, under a named permission

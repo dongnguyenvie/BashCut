@@ -18,7 +18,7 @@ struct AgentDockView: View {
                     detached ? model.attach() : model.detach()
                 }
                 DockIconButton(systemImage: "books.vertical", help: "Skills and project memory") {
-                    model.knowledge.load(from: model.directory)
+                    model.loadKnowledge()
                     model.showKnowledge = true
                 }
                 Menu {
@@ -148,14 +148,38 @@ private struct AgentKnowledgeView: View {
                 Spacer()
                 Button("Done", action: done)
             }
-            Text("Project memory") .font(.headline)
-            TextEditor(text: $model.memo).font(.body).frame(height: 110).border(.gray.opacity(0.3))
-            Button("Save memo", action: model.saveMemo)
+            if let legacy = model.legacy {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Older memo found at \(legacy.url.path). BashCut now keeps knowledge in the project.")
+                        .font(.caption)
+                    HStack {
+                        Button("Move to notes for every project") { model.migrate(to: .user) }
+                        Button("Move to this project") { model.migrate(to: .project) }.disabled(!model.hasProject)
+                    }
+                }.padding(8).background(RoundedRectangle(cornerRadius: 6).fill(Color.yellow.opacity(0.12)))
+            }
+            HStack(alignment: .top, spacing: 16) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Project memory").font(.headline)
+                    if model.hasProject {
+                        TextEditor(text: $model.memo).font(.body).frame(height: 110).border(.gray.opacity(0.3))
+                        Button("Save memo", action: model.saveMemo)
+                    } else {
+                        Text("Save the project to keep a memo and skills in its folder.")
+                            .font(.caption).foregroundStyle(.secondary).frame(height: 110, alignment: .topLeading)
+                    }
+                }
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Notes for every project").font(.headline)
+                    TextEditor(text: $model.userMemo).font(.body).frame(height: 110).border(.gray.opacity(0.3))
+                    Button("Save notes", action: model.saveUserMemo)
+                }
+            }
             Divider()
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Project skills").font(.headline)
-                    List(model.skills, selection: $model.selectedSkill) { skill in
+                    List(model.skills, id: \.name, selection: $model.selectedSkill) { skill in
                         Button {
                             model.select(skill.name)
                         } label: {
@@ -170,7 +194,7 @@ private struct AgentKnowledgeView: View {
                     HStack {
                         TextField("new-skill-name", text: $model.newSkillName)
                         Button("Add", action: model.createSkill)
-                    }
+                    }.disabled(!model.hasProject)
                 }
                 VStack(alignment: .leading, spacing: 8) {
                     Text(model.selectedSkill ?? "Select a skill").font(.headline)
@@ -184,7 +208,7 @@ private struct AgentKnowledgeView: View {
                 }
             }
             Text(model.message).font(.caption).foregroundStyle(.secondary)
-        }.padding(20).frame(width: 820, height: 620, alignment: .top).preferredColorScheme(.dark)
+        }.padding(20).frame(width: 820, height: 680, alignment: .top).preferredColorScheme(.dark)
     }
 }
 

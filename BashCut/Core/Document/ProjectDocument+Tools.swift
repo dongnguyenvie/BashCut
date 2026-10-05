@@ -1,3 +1,4 @@
+import BashCutAgent
 import BashCutAutomation
 import BashCutImport
 import BashCutPlugin
@@ -66,31 +67,74 @@ extension ProjectDocument {
 
     private func registerKnowledgeCommands() {
         handle("knowledge.get") { document, _, _ in
+            document.agents.loadKnowledge()
             let knowledge = document.agents.knowledge
-            knowledge.load(from: document.agents.directory)
-            return .object([
+            var result: [String: JSONValue] = [
                 "memo": .string(knowledge.memo),
+                "userMemo": .string(knowledge.userMemo),
+                "project": knowledge.store?.project.map { .string($0.path) } ?? .null,
                 "skills": .array(knowledge.skills.map { skill in
                     .object([
                         "name": .string(skill.name), "claude": .bool(skill.claude), "codex": .bool(skill.codex),
+                        "path": .string(skill.url.appendingPathComponent("SKILL.md").path),
                         "text": .string((try? String(
                             contentsOf: skill.url.appendingPathComponent("SKILL.md"), encoding: .utf8)) ?? ""),
                     ])
                 }),
-            ])
+            ]
+            if let legacy = knowledge.legacy {
+                result["legacy"] = .object(["path": .string(legacy.url.path), "text": .string(legacy.text)])
+            }
+            return .object(result)
         }
-        handleAuthored("knowledge.memo") { document, arguments, _ in
-            let knowledge = document.agents.knowledge
-            knowledge.load(from: document.agents.directory)
-            try knowledge.writeMemo(arguments.string("text"))
-            return .bool(true)
+        handleAuthored("knowledge.memo") { document, arguments, author in
+            let scope = try Self.knowledgeScope(arguments.optionalString("scope"))
+            let text = try arguments.string("text")
+            document.agents.loadKnowledge()
+            return try document.knowledgeChange("knowledge.memo", scope: scope, author: author,
+                                                arguments: ["scope": scope.rawValue]) {
+                try document.agents.knowledge.writeMemo(text, scope: scope)
+            }
         }
         handleAuthored("knowledge.skill") { document, arguments, _ in
-            let knowledge = document.agents.knowledge
-            knowledge.load(from: document.agents.directory)
-            try knowledge.writeSkill(named: arguments.string("name"), text: arguments.string("text"))
+            document.agents.loadKnowledge()
+            try document.agents.knowledge.writeSkill(named: arguments.string("name"), text: arguments.string("text"))
             return .bool(true)
         }
+        handleAuthored("knowledge.migrate") { document, arguments, author in
+            let scope = try Self.knowledgeScope(arguments.optionalString("to") ?? "user")
+            document.agents.loadKnowledge()
+            guard let legacy = document.agents.knowledge.legacy else {
+                throw RPCFailure(-32602, "No older memo in the agent workspace or home folder")
+            }
+            return try document.knowledgeChange("knowledge.migrate", scope: scope, author: author,
+                                                arguments: ["from": legacy.url.path, "to": scope.rawValue]) {
+                try document.agents.knowledge.migrateLegacy(to: scope)
+            }
+        }
+    }
+
+    private static func knowledgeScope(_ value: String?) throws -> KnowledgeScope {
+        guard let scope = KnowledgeScope(rawValue: value ?? "project") else {
+            throw RPCFailure(-32602, "scope must be project or user")
+        }
+        return scope
+    }
+
+    /// Agents writing the notes every project reads need the user's approval, like the user library.
+    private func knowledgeChange(
+        _ method: String, scope: KnowledgeScope, author: Author, arguments: [String: String],
+        action: @escaping @MainActor () throws -> Void
+    ) throws -> JSONValue {
+        guard scope == .user, author != .user else {
+            try action()
+            return .bool(true)
+        }
+        let request = try queuePrivilegedApproval(method: method, author: author, arguments: arguments, action: action)
+        if !request.autoApproved { message = String(localized: "Waiting for approval: \(method)") }
+        return request.autoApproved
+            ? .bool(true)
+            : .object(["approval": .string("pending"), "requestId": .string(request.id.uuidString)])
     }
 
     private static func healthJSON(_ health: PluginHealth) -> JSONValue {

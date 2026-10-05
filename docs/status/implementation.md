@@ -177,8 +177,10 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
 - The model-API tab (Responses, Chat Completions, Anthropic Messages; one script or timeline proposal per request)
   was removed on 2026-10-04: without tools or the agent kit it could not finish a video. API keys work through the
   Claude Code and Codex tabs.
-- Agent Knowledge manages a shared project memo and project skills exposed to `.claude/skills` and
-  `.agents/skills`.
+- Agent Knowledge (#100) keeps the project memo and project skills in the open project's folder (skills linked
+  into the project's `.claude/skills` and `.agents/skills`), plus notes for every project in Application Support;
+  never the agent workspace or home folder. A memo older builds left there is offered for migration
+  (`knowledge migrate`); agent writes to the user notes need approval.
 - A shared debug log (`~/Library/Logs/BashCut/debug.log`) written by the app, CLI and MCP bridge.
 
 ### Plugins
