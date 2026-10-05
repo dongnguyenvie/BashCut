@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 97 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 99 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -338,7 +338,7 @@ Check a plugin that is not in the registry (a folder, its plugin.json, a .zip or
 - `ref`: string. Tag, branch or commit for a GitHub repo link (release tag for a release link)
 - `sha256`: string. Expected SHA-256 of the downloaded archive
 
-### `bashcut plugins install [<plugin>] [--version <version>] [--path <path>] [--url <url>] [--ref <ref>] [--sha256 <sha256>] [--scope <scope>]`
+### `bashcut plugins install [<plugin>] [--version <version>] [--path <path>] [--url <url>] [--ref <ref>] [--sha256 <sha256>] [--scope <scope>] [--link]`
 
 Download a registry plugin (or its update), check its SHA-256 and manifest, and show the install approval in the Plugins sheet. With path or url instead, add a plugin that is not in the registry (Add Plugin…): a folder, its plugin.json or a .zip / .bashcutplugin file on this Mac, or a link, checked like plugins validate. Only the user can approve; the job ends when the approval is shown.
 
@@ -350,6 +350,22 @@ Download a registry plugin (or its update), check its SHA-256 and manifest, and 
 - `ref`: string. Tag, branch or commit for a GitHub repo link (release tag for a release link)
 - `sha256`: string. Expected SHA-256 of the downloaded archive
 - `scope`: string, one of user, project. Where a plugin from path or url goes: user (this Mac, every project; the default) or project (the open project)
+- `link`: boolean. Link (developer mode): install a link to the plugin folder at path instead of a copy; use plugins reload after editing it
+
+### `bashcut plugins replace <plugin> --path <path>`
+
+Replace… an installed plugin with a new version from a folder, its plugin.json or a .zip / .bashcutplugin file, in the same scope. The new files must have the same plugin ID; only the user can approve, like plugins install.
+
+- Mode: edit · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_plugins_replace`
+- `plugin`: string, required. Plugin ID
+- `path`: string, required, path. Folder, plugin.json, or .zip / .bashcutplugin file with the new version
+
+### `bashcut plugins reload <plugin>`
+
+Reload a plugin after editing it (for linked plugins in developer mode): stop its session and check its files again. Changed files make it changed until the user chooses Trust; reload never trusts it.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_plugins_reload`
+- `plugin`: string, required. Plugin ID
 
 ### `bashcut plugins remove <plugin> [--data]`
 

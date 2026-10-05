@@ -112,4 +112,28 @@ struct PluginLocalSourceTests {
         let leftovers = try FileManager.default.contentsOfDirectory(atPath: parent.path)
         #expect(leftovers.isEmpty)
     }
+
+    @Test("Link (developer mode) points at the developer's folder only while it holds the reviewed files")
+    func linkMode() throws {
+        defer { try? FileManager.default.removeItem(at: root) }
+        let source = try folder()
+        let parent = root.appendingPathComponent("Plugins")
+        let staged = try PluginLocalSource.stage(source.appendingPathComponent("plugin.json"), stagingParent: parent)
+        #expect(staged.sourceFolder?.standardizedFileURL == source.standardizedFileURL)
+        try staged.checkSourceUnchanged()
+        let link = parent.appendingPathComponent(staged.plugin.id)
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: source)
+        #expect(PluginLocalSource.linkTarget(of: link)?.path == source.resolvingSymlinksInPath().path)
+        #expect(PluginLocalSource.linkTarget(of: staged.plugin.directory) == nil)
+        try Data("#!/bin/sh\necho changed\n".utf8).write(to: source.appendingPathComponent("bin/provider"))
+        #expect(throws: PluginError.self) { try staged.checkSourceUnchanged() }
+        // Removing the link keeps the developer's folder.
+        try FileManager.default.removeItem(at: link)
+        #expect(FileManager.default.fileExists(atPath: source.appendingPathComponent("plugin.json").path))
+        staged.discard()
+
+        let fromZip = try PluginLocalSource.stage(try zip(try folder()), stagingParent: parent)
+        #expect(fromZip.sourceFolder == nil)
+        fromZip.discard()
+    }
 }

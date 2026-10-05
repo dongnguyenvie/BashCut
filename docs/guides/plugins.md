@@ -229,6 +229,22 @@ When the same `id` is installed elsewhere, the approval says which copy runs (se
 updates it. Trust works as for any unsigned plugin: installing pins the exact files, a later change needs approval
 again, and only the user can approve. Remove works as for registry plugins.
 
+**Replace…** on a copied plugin that is not from the registry (Plugins › Installed) updates it from a new folder, `plugin.json` or zip, in the
+same scope; the new files must have the same `id`, and the approval says **Update**.
+
+### Link (developer mode)
+
+For a plugin you are writing, choose **Install as: Link (developer mode)** in the approval (a folder or its
+`plugin.json` only; a zip or a download is always copied). BashCut then installs a symbolic link to your folder
+instead of a copy, once your folder still holds the files that were checked; Installed shows **Linked to <path>
+(developer mode)**.
+
+After you edit the plugin, choose **Reload** on its row: it stops the plugin's session process, so the next call
+starts your new code, and checks its files again. Any change to the pinned files makes the plugin **changed** until
+you choose **Trust** again; Reload never trusts it. (Development builds of BashCut check a linked folder on its
+manifest and entrypoint only, see [Trust and availability](#trust-and-availability).) Removing a linked plugin
+removes only the link; your folder is kept.
+
 Agents and scripts:
 
 - `bashcut plugins validate <path>` or `--url <link> [--ref …] [--sha256 …]` reports `valid`, `id`, `version`,
@@ -236,7 +252,10 @@ Agents and scripts:
   commit or release tag). It installs and runs nothing.
 - `bashcut plugins install --path <path>` or `--url <link> [--ref …] [--sha256 …]`, with `[--scope user|project]`,
   checks (and downloads) the plugin, then shows the same approval in the Plugins sheet. A private link uses the token
-  saved in Add Plugin…; there is no token parameter.
+  saved in Add Plugin…; there is no token parameter. `--link` installs a plugin folder as a link (developer mode).
+- `bashcut plugins replace <id> --path <path>` shows the approval to update a plugin from a new folder or zip.
+- `bashcut plugins reload <id>` restarts a plugin and checks its files again; it reports `availability` (`changed`
+  until the user trusts the new files). `plugins list` reports a linked plugin's folder as `linked`.
 - `bashcut ui open add-plugin` opens the Add Plugin sheet.
 
 To share a private plugin with a team, push it to a private GitHub repo and share the link (each person adds a

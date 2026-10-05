@@ -18,6 +18,9 @@ struct PendingPluginInstall: Identifiable {
     /// Where it goes: the user folder, or the open project for a plugin from this Mac or a link. Chosen in the
     /// approval (`PluginManagerModel.installScope`) and fixed when the user approves.
     var scope: PluginInstallScope = .user
+    /// Link (developer mode): install a link to the developer's folder instead of a copy. Chosen in the approval
+    /// (`PluginManagerModel.installMode`) like the scope.
+    var mode: PluginInstallMode = .copy
     /// Re-runs the dependency recipes of an installed plugin (Install dependencies…) instead of installing it.
     var repair = false
     /// Dependency probes run on the unpacked plugin before the approval, so the sheet can say what this Mac has,
@@ -153,6 +156,8 @@ enum PluginText {
     /// Where the pending plugin from this Mac or a link goes. Kept apart from `pendingInstall` so changing it does not
     /// re-present the approval sheet.
     var installScope: PluginInstallScope = .user
+    /// Copy or Link (developer mode) for the pending plugin folder, kept apart from `pendingInstall` like the scope.
+    var installMode: PluginInstallMode = .copy
     /// Narrows Browse to one category (the chips above the list, `ui view --plugins-category`).
     var browseCategory: PluginCategory?
     @ObservationIgnored private var cachedRegistryClient: PluginRegistryClient?
@@ -352,6 +357,7 @@ enum PluginText {
         guard var pending = pendingInstall, !installing else { return }
         if pending.local != nil {
             pending.scope = installScope
+            pending.mode = mode(of: pending)
             pending.replacing = replaces(pending)
         }
         if let blocker = installBlocker(pending) {
@@ -378,6 +384,7 @@ enum PluginText {
             switch outcome {
             case .success:
                 message = pending.repair ? String(format: String(localized: "%@ is set up"), name)
+                    : pending.mode == .link ? String(format: String(localized: "%@ is linked; use Reload after you edit it"), name)
                     : pending.replacing ? String(localized: "Plugin updated") : String(localized: "Plugin installed")
             case .failure(let error) where JobCenter.isCancellation(error):
                 message = String(localized: "Plugin installation cancelled")
@@ -428,6 +435,8 @@ enum PluginText {
         let stagingRoot = installRoot.appendingPathComponent(".staging-\(UUID().uuidString)")
         let staged = stagingRoot.appendingPathComponent(manifest.id, isDirectory: true)
         defer { try? FileManager.default.removeItem(at: stagingRoot) }
+        // Link (developer mode) places a link to the developer's folder, once it still holds the reviewed files.
+        let linkTarget = pending.mode == .link ? pending.local : nil
         try await Task.detached {
             let manager = FileManager.default
             try manager.createDirectory(at: installRoot, withIntermediateDirectories: true)
@@ -435,7 +444,12 @@ enum PluginText {
                 throw PluginError.invalid("Plugin \(manifest.id) is already installed")
             }
             try manager.createDirectory(at: stagingRoot, withIntermediateDirectories: true)
-            try manager.copyItem(at: source, to: staged)
+            if let linkTarget, let folder = linkTarget.sourceFolder {
+                try linkTarget.checkSourceUnchanged()
+                try manager.createSymbolicLink(at: staged, withDestinationURL: folder.resolvingSymlinksInPath())
+            } else {
+                try manager.copyItem(at: source, to: staged)
+            }
             _ = try InstalledPlugin(manifest: manifest, directory: staged).entrypointURL()
         }.value
         let stagedPlugin = InstalledPlugin(manifest: manifest, directory: staged)
@@ -467,24 +481,6 @@ enum PluginText {
             installLog.append(text)
             if installLog.count > 500 { installLog.removeFirst(installLog.count - 500) }
             reporter?.detail(text)
-        }
-    }
-
-    /// Moves a staged plugin into place. An existing copy is kept in `.previous/` until the move succeeds, and
-    /// put back if it fails.
-    nonisolated static func place(_ staged: URL, at destination: URL, root: URL) throws {
-        let manager = FileManager.default
-        let previous = root.appendingPathComponent(".previous/\(destination.lastPathComponent)", isDirectory: true)
-        guard manager.fileExists(atPath: destination.path) else { return try manager.moveItem(at: staged, to: destination) }
-        try? manager.removeItem(at: previous)
-        try manager.createDirectory(at: previous.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try manager.moveItem(at: destination, to: previous)
-        do {
-            try manager.moveItem(at: staged, to: destination)
-            try? manager.removeItem(at: previous)
-        } catch {
-            try? manager.moveItem(at: previous, to: destination)
-            throw error
         }
     }
 }

@@ -39,6 +39,25 @@ public struct StagedLocalPlugin: Sendable {
     public var origin: PluginLinkOrigin?
 
     public func discard() { try? FileManager.default.removeItem(at: stagingRoot) }
+
+    /// The developer's own folder, which Link (developer mode) installs point at; nil for an archive or a download.
+    public var sourceFolder: URL? {
+        guard origin == nil else { return nil }
+        switch kind {
+        case .folder: return source
+        case .manifest: return source.deletingLastPathComponent()
+        case .archive: return nil
+        }
+    }
+
+    /// Throws when the developer's folder no longer holds the files that were checked and shown in the approval, so
+    /// a link never pins files the user did not review.
+    public func checkSourceUnchanged() throws {
+        guard let sourceFolder else { throw PluginError.invalid("Only a plugin folder can be linked") }
+        guard try PluginTree.digest(sourceFolder) == PluginTree.digest(plugin.directory) else {
+            throw PluginError.invalid("\(sourceFolder.lastPathComponent) changed after it was checked; add it again")
+        }
+    }
 }
 
 /// Plugins added from this Mac instead of the registry (#83): validates them with clear messages and stages a copy.
@@ -58,6 +77,12 @@ public enum PluginLocalSource {
         if url.lastPathComponent == "plugin.json" { return .manifest }
         if archiveExtensions.contains(url.pathExtension.lowercased()) { return .archive }
         return nil
+    }
+
+    /// The folder a plugin installed with Link (developer mode) points at, or nil for a copied plugin.
+    public static func linkTarget(of directory: URL) -> URL? {
+        guard (try? directory.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink) == true else { return nil }
+        return directory.resolvingSymlinksInPath()
     }
 
     /// Checks `url` without installing anything. Zips are unpacked into a temporary folder that is removed again.

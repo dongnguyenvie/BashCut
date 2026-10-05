@@ -349,6 +349,7 @@ extension ProjectDocument {
                         .object(["url": .string(origin.url), "resolved": origin.resolved.map(JSONValue.string) ?? .null,
                                  "sha256": .string(origin.sha256)])
                     } ?? .null,
+                    "linked": plugins.linkTarget(of: plugin).map { .string($0.path) } ?? .null,
                     "hooksEnabled": .bool(plugins.trust.hooksEnabled(plugin)),
                     "actions": .array(plugin.manifest.actions.map { .string($0.id) }),
                     "hooks": .array(plugin.manifest.hooks.map { .string($0.event) }),

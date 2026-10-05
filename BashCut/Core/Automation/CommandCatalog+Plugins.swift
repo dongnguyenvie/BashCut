@@ -92,8 +92,27 @@ extension CommandCatalog {
                 CommandParameter("scope", .string,
                                  "Where a plugin from path or url goes: user (this Mac, every project; the default) or project (the open project)",
                                  choices: ["user", "project"], cli: .option("scope")),
+                CommandParameter("link", .boolean,
+                                 "Link (developer mode): install a link to the plugin folder at path instead of a copy; "
+                                    + "use plugins reload after editing it",
+                                 cli: .flag("link")),
             ],
             execution: .job),
+        CommandSpec(
+            "plugins.replace", .edit,
+            "Replace… an installed plugin with a new version from a folder, its plugin.json or a .zip / .bashcutplugin file, in the "
+                + "same scope. The new files must have the same plugin ID; only the user can approve, like plugins install.",
+            parameters: [
+                pluginID,
+                CommandParameter("path", .string, "Folder, plugin.json, or .zip / .bashcutplugin file with the new version",
+                                 required: true, isPath: true, cli: .option("path")),
+            ],
+            execution: .job),
+        CommandSpec(
+            "plugins.reload", .edit,
+            "Reload a plugin after editing it (for linked plugins in developer mode): stop its session and check its files "
+                + "again. Changed files make it changed until the user chooses Trust; reload never trusts it.",
+            parameters: [pluginID]),
         CommandSpec(
             "plugins.remove", .edit, "Uninstall a plugin from the user or project plugin folder, with its trust and options (plugins that come with "
                 + "BashCut can only be turned off). With data, also delete its downloaded environments and models.",
