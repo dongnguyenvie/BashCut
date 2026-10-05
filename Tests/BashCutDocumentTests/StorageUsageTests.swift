@@ -52,4 +52,35 @@ struct StorageUsageTests {
         #expect(after.first { $0.kind == .rampAudio }?.bytes == 0)
         #expect(after.contains { $0.kind == .pluginData })
     }
+
+    @Test("Groups each plugin's code, data and cache into one total, largest first")
+    func pluginTotals() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("storage-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let plugins = root.appendingPathComponent("Plugins"), data = root.appendingPathComponent("data")
+        let cacheRoot = root.appendingPathComponent("cache")
+        func write(_ folder: URL, _ id: String, _ bytes: Int) throws {
+            let url = folder.appendingPathComponent(id)
+            try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+            try Data(count: bytes).write(to: url.appendingPathComponent("file.bin"))
+        }
+        // small: 1 KB code only. big: 4 KB code + 20 KB data + 30 KB cache. mid: 40 KB cache left after removal.
+        try write(plugins, "acme.small", 1_000)
+        try write(plugins, "acme.big", 4_000)
+        try write(data, "acme.big", 20_000)
+        try write(cacheRoot, "acme.big", 30_000)
+        try write(cacheRoot, "acme.mid", 40_000)
+        try write(plugins, ".previous", 90_000)
+        let entries = StorageUsage.measure(projectRoot: nil, pluginsFolder: plugins,
+                                           pluginDataRoot: data, pluginCacheRoot: cacheRoot, supportRoot: root,
+                                           registryRoot: root.appendingPathComponent("registry"))
+        #expect(!entries.contains { $0.url.lastPathComponent == ".previous" })
+        let grouped = StorageUsage.byPlugin(entries)
+        #expect(grouped.map(\.pluginID) == ["acme.big", "acme.mid", "acme.small"])
+        let big = try #require(grouped.first)
+        #expect(big.entries.map(\.kind) == [.plugins, .pluginData, .pluginCache])
+        #expect(big.bytes == big.entries.reduce(0) { $0 + $1.bytes } && big.bytes >= 54_000)
+        #expect(big.installed && !grouped[1].installed && grouped[2].installed)
+        #expect(!(big.entries.first?.clearable ?? true))
+    }
 }

@@ -6,7 +6,7 @@ import Foundation
 /// `storage get`. Measuring walks folders, so call `measure` off the main actor.
 public struct StorageEntry: Sendable, Identifiable, Equatable {
     public enum Kind: String, Sendable {
-        /// Installed plugin folders (code).
+        /// One installed plugin's folder (code); a dev link counts as the link only.
         case plugins
         /// One plugin's `BASHCUT_PLUGIN_DATA` (environments, settings): deleting it means setting the plugin up again.
         case pluginData = "plugin-data"
@@ -30,6 +30,17 @@ public struct StorageEntry: Sendable, Identifiable, Equatable {
     public var clearable: Bool { kind != .plugins && kind != .audit }
 }
 
+/// Everything one plugin keeps on disk: its code, data and cache entries, for one row per plugin.
+public struct PluginStorage: Sendable, Identifiable, Equatable {
+    public let pluginID: String
+    /// Code first, then data, then cache.
+    public let entries: [StorageEntry]
+    public var id: String { pluginID }
+    public var bytes: Int64 { entries.reduce(0) { $0 + $1.bytes } }
+    /// False when only data or a cache is left behind by a removed plugin.
+    public var installed: Bool { entries.contains { $0.kind == .plugins } }
+}
+
 public enum StorageUsage {
     public static var supportFolder: URL {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -42,16 +53,21 @@ public enum StorageUsage {
         projectRoot.appendingPathComponent(ProxyMediaSource.folder, isDirectory: true)
     }
 
-    /// Every entry that exists, plugin data and caches for each plugin that has some.
+    /// Every entry that exists: each installed plugin's folder, and data and caches for each plugin that has some.
     public static func measure(projectRoot: URL?, pluginsFolder: URL,
                                pluginDataRoot: URL = PluginFolders.dataRoot, pluginCacheRoot: URL = PluginFolders.cacheRoot,
                                supportRoot: URL = supportFolder, registryRoot: URL = registryFolder) -> [StorageEntry] {
-        var entries = [StorageEntry(kind: .plugins, pluginID: nil, url: pluginsFolder, bytes: size(of: pluginsFolder))]
+        var entries: [StorageEntry] = []
         let manager = FileManager.default
-        let ids = Set([pluginDataRoot, pluginCacheRoot].flatMap { root in
+        func children(_ root: URL) -> [String] {
             ((try? manager.contentsOfDirectory(atPath: root.path)) ?? []).filter { !$0.hasPrefix(".") }
-        })
-        for id in ids.sorted() {
+        }
+        let installed = Set(children(pluginsFolder))
+        for id in installed.union(children(pluginDataRoot)).union(children(pluginCacheRoot)).sorted() {
+            if installed.contains(id) {
+                let url = pluginsFolder.appendingPathComponent(id)
+                entries.append(StorageEntry(kind: .plugins, pluginID: id, url: url, bytes: size(of: url)))
+            }
             for (kind, url) in [(StorageEntry.Kind.pluginData, pluginDataRoot.appendingPathComponent(id)),
                                (.pluginCache, pluginCacheRoot.appendingPathComponent(id))]
             where manager.fileExists(atPath: url.path) {
@@ -72,6 +88,18 @@ public enum StorageUsage {
         let audit = supportRoot.appendingPathComponent("audit.jsonl")
         entries.append(StorageEntry(kind: .audit, pluginID: nil, url: audit, bytes: size(of: audit)))
         return entries
+    }
+
+    /// The plugin entries grouped by plugin, largest total first (ties by ID).
+    public static func byPlugin(_ entries: [StorageEntry]) -> [PluginStorage] {
+        let order: [StorageEntry.Kind] = [.plugins, .pluginData, .pluginCache]
+        return Dictionary(grouping: entries.filter { $0.pluginID != nil }) { $0.pluginID ?? "" }
+            .map { id, group in
+                PluginStorage(pluginID: id, entries: group.sorted {
+                    (order.firstIndex(of: $0.kind) ?? order.count) < (order.firstIndex(of: $1.kind) ?? order.count)
+                })
+            }
+            .sorted { $0.bytes != $1.bytes ? $0.bytes > $1.bytes : $0.pluginID < $1.pluginID }
     }
 
     /// Allocated bytes of a file or folder (links not followed); 0 when it does not exist.

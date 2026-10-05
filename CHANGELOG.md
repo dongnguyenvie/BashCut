@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+- **Settings › Storage shows one row per plugin, largest first** (#114). Each plugin's folder, data and downloads
+  add up to one total, so a Python ML plugin of 1.5–3 GB is no longer split across two rows in plugin-ID order.
+  Expand a row to see its parts and the same Delete and Free Up buttons as before. Data left over from a removed
+  plugin is marked as such. `storage get` adds `plugins`, each plugin's total sorted by size, lists plugin entries
+  in that order, and has one `plugins` entry per installed plugin instead of one for the whole folder.
 - **Plugin hooks run at most 4 at a time** (#99). One edit heard by hundreds of plugins used to start a plugin
   process for each of them at once. Hook deliveries now share a limit of 4 (fewer on a Mac with fewer cores), and
   plugins take turns, so a busy plugin cannot hold up the others. A newer event still replaces a waiting one of the

@@ -5,8 +5,9 @@ extension CommandCatalog {
     static let storageSpecs: [CommandSpec] = [
         CommandSpec(
             "storage.get", .read,
-            "What BashCut keeps on disk (Settings › Storage): plugin folders, each plugin's data and cache, the saved "
-                + "plugin registry, this project's preview proxies, ramp audio and the audit log, with sizes and paths."),
+            "What BashCut keeps on disk (Settings › Storage): each plugin's folder, data and cache, the saved "
+                + "plugin registry, this project's preview proxies, ramp audio and the audit log, with sizes and paths. "
+                + "plugins lists each plugin's total, largest first."),
         CommandSpec(
             "storage.clear", .edit,
             "Delete what can be made or downloaded again: plugin-cache (all plugins, or --plugin), registry, proxies or ramp-audio "

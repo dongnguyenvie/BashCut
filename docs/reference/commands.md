@@ -613,7 +613,7 @@ Measure a media file's sound with an audio.loudness provider: integrated loudnes
 
 ### `bashcut storage get`
 
-What BashCut keeps on disk (Settings › Storage): plugin folders, each plugin's data and cache, the saved plugin registry, this project's preview proxies, ramp audio and the audit log, with sizes and paths.
+What BashCut keeps on disk (Settings › Storage): each plugin's folder, data and cache, the saved plugin registry, this project's preview proxies, ramp audio and the audit log, with sizes and paths. plugins lists each plugin's total, largest first.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_storage_get`
 

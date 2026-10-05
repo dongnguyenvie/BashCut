@@ -2,8 +2,8 @@ import AppKit
 import BashCutDocument
 import SwiftUI
 
-/// Settings › Storage: sizes of plugin folders, plugin data and caches, the registry copy and preview proxies,
-/// with Clear for what can be made or downloaded again.
+/// Settings › Storage: one row per plugin with its total (largest first; expand for code, data and downloads),
+/// then the registry copy, preview proxies and the rest, with Clear for what can be made or downloaded again.
 struct StorageSettingsView: View {
     let document: ProjectDocument
     @State private var entries: [StorageEntry]?
@@ -14,7 +14,14 @@ struct StorageSettingsView: View {
     var body: some View {
         Section {
             if let entries {
-                ForEach(entries) { entry in row(entry) }
+                ForEach(StorageUsage.byPlugin(entries)) { plugin in
+                    DisclosureGroup {
+                        ForEach(plugin.entries) { entry in row(entry) }
+                    } label: {
+                        pluginLabel(plugin)
+                    }
+                }
+                ForEach(entries.filter { $0.pluginID == nil }) { entry in row(entry) }
                 LabeledContent("Total") {
                     Text(Self.bytes(entries.reduce(0) { $0 + $1.bytes })).monospacedDigit().bold()
                 }
@@ -68,10 +75,25 @@ struct StorageSettingsView: View {
         }
     }
 
+    private func pluginLabel(_ plugin: PluginStorage) -> some View {
+        LabeledContent {
+            Text(Self.bytes(plugin.bytes)).monospacedDigit()
+        } label: {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(pluginName(plugin.pluginID))
+                if !plugin.installed {
+                    Text("Not installed — left over from a removed plugin").font(.caption2).foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    private func pluginName(_ id: String) -> String { document.plugins.plugin(id)?.manifest.displayName ?? id }
+
     private func title(_ entry: StorageEntry) -> String {
-        let plugin = entry.pluginID.map { id in document.plugins.plugin(id)?.manifest.displayName ?? id } ?? ""
+        let plugin = entry.pluginID.map(pluginName) ?? ""
         switch entry.kind {
-        case .plugins: return String(localized: "Installed plugins")
+        case .plugins: return String(format: String(localized: "%@ — plugin"), plugin)
         case .pluginData: return String(format: String(localized: "%@ — data"), plugin)
         case .pluginCache: return String(format: String(localized: "%@ — downloads"), plugin)
         case .registry: return String(localized: "Plugin catalog copy")
