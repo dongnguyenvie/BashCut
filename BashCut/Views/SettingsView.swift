@@ -225,7 +225,7 @@ private struct SettingsPluginsSection: View {
                 Text(filter.isEmpty ? LocalizedStringKey("No installed plugin has options.") : "No plugins match").foregroundStyle(.secondary)
             }
         }
-        ForEach(PluginGroup.byCategory(configurable, category: document.plugins.category(of:))) { group in
+        ForEach(PluginSection.byCategory(configurable, category: document.plugins.category(of:))) { group in
             Section {
                 ForEach(group.items) { plugin in
                     DisclosureGroup(isExpanded: isExpanded(plugin)) {

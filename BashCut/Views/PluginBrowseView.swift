@@ -51,7 +51,7 @@ struct PluginBrowseView: View {
                     if let detail = emptyDetail { Text(detail) }
                 }.frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if grouped {
-                List(PluginGroup.byCategory(listings, category: \.category)) { group in
+                List(PluginSection.byCategory(listings, category: \.category)) { group in
                     Section {
                         ForEach(group.items) { listing in PluginListingRow(model: model, listing: listing) }
                     } header: {
