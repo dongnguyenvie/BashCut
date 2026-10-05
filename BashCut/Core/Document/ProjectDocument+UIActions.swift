@@ -20,6 +20,7 @@ extension ProjectDocument {
         case .newProject, .openProject: return !saving
         case .saveProject: return hasProject && !saving && !conflict
         case .closeProject: return hasProject && !saving
+        case .importStickers: return hasProject
         case .importMedia, .refreshWaveforms: return hasProject && !(action == .refreshWaveforms && waveforms.loading)
         case .showExport, .toggleCompare: return project.duration > 0
         case .togglePlayback, .previousFrame, .nextFrame, .backSecond, .forwardSecond: return project.duration > 0 && !sourceViewer.visible
@@ -73,6 +74,7 @@ extension ProjectDocument {
         case .saveProject: save()
         case .closeProject: closeProject()
         case .importMedia: importMedia()
+        case .importStickers: importStickers()
         case .showHistory, .showReview, .showPlugins, .showDoctor, .showSettings, .showExport, .showExportProgress,
             .showSections, .showCommands, .showShortcuts, .showUpdates:
             try openDialog(String(action.id.dropFirst("show.".count)))

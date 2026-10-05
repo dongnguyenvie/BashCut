@@ -6,10 +6,10 @@ import Foundation
 /// `choiceLabels` and the `file` option type, the `BASHCUT_PLUGIN_DATA`/`BASHCUT_PLUGIN_CACHE` folders and
 /// `::progress` lines from install recipes. Version 4 adds the `secret` option type and the session host channel
 /// (`event` and `call` lines during a request), used by the `agent.chat` capability. Version 5 adds the
-/// `agent.terminal` capability and the manifest's `terminal` object.
+/// `agent.terminal` capability and the manifest's `terminal` object. Version 6 adds `contributes.stickers`.
 public enum PluginAPI {
     public static let minimum = 1
-    public static let current = 5
+    public static let current = 6
     /// The chat-agent capability; its requests carry a host channel (API 4).
     public static let agentChat = "agent.chat"
     /// An agent CLI in a dock terminal tab (API 5); its manifest has a `terminal` object.
@@ -262,13 +262,47 @@ extension Array where Element == PluginOption {
 public struct PluginContributions: Codable, Sendable, Equatable {
     public let actions: [PluginActionContribution]?
     public let hooks: [PluginHookContribution]?
+    /// Folders of sticker images the Stickers panel lists (API 6).
+    public let stickers: [PluginStickerPack]?
 
-    public init(actions: [PluginActionContribution]? = nil, hooks: [PluginHookContribution]? = nil) {
+    public init(
+        actions: [PluginActionContribution]? = nil, hooks: [PluginHookContribution]? = nil,
+        stickers: [PluginStickerPack]? = nil
+    ) {
         self.actions = actions
         self.hooks = hooks
+        self.stickers = stickers
     }
 
-    public var isEmpty: Bool { (actions ?? []).isEmpty && (hooks ?? []).isEmpty }
+    public var isEmpty: Bool { (actions ?? []).isEmpty && (hooks ?? []).isEmpty && (stickers ?? []).isEmpty }
+}
+
+/// A folder of sticker images in the plugin bundle (API 6). The app lists the images in the Stickers panel and
+/// places the one clicked like a sticker from the user's library; no plugin code runs for it.
+public struct PluginStickerPack: Codable, Sendable, Equatable, Identifiable {
+    public let id: String
+    public let title: LocalizedText
+    /// Folder inside the bundle; the images directly in it are the stickers, in name order.
+    public let path: String
+
+    public init(id: String, title: LocalizedText, path: String) {
+        self.id = id
+        self.title = title
+        self.path = path
+    }
+
+    func validate(pluginID: String) throws {
+        guard id.hasPrefix(pluginID + "."), PluginIdentifier.isStable(id) else {
+            throw PluginError.invalid("Sticker pack id \(id) must start with the plugin id \(pluginID).")
+        }
+        guard title.isValid(limit: 80) else {
+            throw PluginError.invalid("Sticker pack \(id) needs a title of at most 80 characters per language, English included")
+        }
+        let components = NSString(string: path).pathComponents
+        guard !path.isEmpty, !path.hasPrefix("/"), !components.contains("..") else {
+            throw PluginError.invalid("Sticker pack \(id) path must stay inside the plugin bundle")
+        }
+    }
 }
 
 /// A command the plugin adds: a menu item, toolbar button, context-menu entry or panel button.

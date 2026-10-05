@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 99 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 103 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -606,6 +606,37 @@ Measure a media file's sound with an audio.loudness provider: integrated loudnes
 - Mode: read · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_audio_measure`
 - `media`: string, required. Project media ID
 - `provider`: string. Provider ID overriding the project preference for one request
+
+## stickers
+
+### `bashcut stickers list`
+
+List image stickers: the library shared by every project (My stickers) and each plugin sticker pack, with the path to give stickers.add.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_stickers_list`
+
+### `bashcut stickers add <path> [--at-frame <atFrame>] --base-rev <baseRev>`
+
+Place an image sticker like a click in the Stickers panel: copied into the project's stickers folder (an animated GIF, APNG or WebP becomes a movie with alpha) and put on a free overlay layer at 35 % zoom.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_stickers_add`
+- `path`: string, required, path. Image path, from stickers.list or any image file
+- `atFrame`: integer, ≥ 0. Timeline frame; defaults to the playhead
+- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
+
+### `bashcut stickers import <path>`
+
+Copy an image file into the sticker library (My stickers); a name already there is kept as it is.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_stickers_import`
+- `path`: string, required, path. Image file path
+
+### `bashcut stickers remove <name>`
+
+Remove a sticker from the library by file name; projects that used it keep their own copy.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_stickers_remove`
+- `name`: string, required. File name in the library, from stickers.list
 
 ## storage
 

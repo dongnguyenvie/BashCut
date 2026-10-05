@@ -59,7 +59,10 @@ extension ProjectDocument {
         item["text"] = .string(text)
         item["textPreset"] = .string(style)
         do {
-            try commit(.insert(track: project.requireTrack(role: TrackRole.captions).id, item: item), label: "Add text")
+            // Text at an occupied range goes to the next free text layer, or a new one, like dropped media.
+            var planner = LayerPlanner(project)
+            try planner.place(item, on: project.requireTrack(role: TrackRole.captions).id)
+            try commitPlan(planner, label: "Add text", author: .user, baseRevision: nil)
             selectedID = item.id
         } catch { message = error.localizedDescription }
     }

@@ -122,10 +122,26 @@ extension ProjectDocument {
         return (media, media.placementFrames(in: projectFPS))
     }
 
-    private static func importedMedia(
+    /// An animated image (GIF, APNG, WebP) becomes a movie with alpha in the project's `stickers` folder, made
+    /// again when the image is newer, and is imported as that video.
+    static func importedMedia(
         url: URL, kind: String, projectFPS: FrameRate, root: URL
     ) async throws -> (media: Media, frames: Int) {
-        if kind == "image" { return try importedImage(url: url, projectFPS: projectFPS, root: root) }
+        if kind == "image" {
+            guard AnimatedImageMovie.isAnimated(url) else {
+                return try importedImage(url: url, projectFPS: projectFPS, root: root)
+            }
+            let movie = root.appendingPathComponent(AnimatedImageMovie.folder, isDirectory: true)
+                .appendingPathComponent(url.deletingPathExtension().lastPathComponent).appendingPathExtension("mov")
+            let made = (try? FileManager.default.attributesOfItem(atPath: movie.path))?[.modificationDate] as? Date
+            let source = (try? FileManager.default.attributesOfItem(atPath: url.path))?[.modificationDate] as? Date
+            if let made, let source, made >= source {
+                // The movie is current.
+            } else {
+                try await AnimatedImageMovie.write(image: url, to: movie)
+            }
+            return try await importedMedia(url: movie, kind: "video", projectFPS: projectFPS, root: root)
+        }
         let asset = AVURLAsset(url: url)
         let video = try await asset.loadTracks(withMediaType: .video).first
         let audio = try await asset.loadTracks(withMediaType: .audio)

@@ -24,6 +24,7 @@ extension ProjectDocument {
         registerCaptionWordCommands()
         registerAdjustmentCommands()
         registerImportCommands()
+        registerStickerCommands()
         registerProxyCommands()
         registerStorageCommands()
         registerAgentKitCommands()

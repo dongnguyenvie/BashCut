@@ -31,7 +31,7 @@ struct LibraryView: View {
                     case .media: media
                     case .audio: audio
                     case .text: text
-                    case .stickers: stickers
+                    case .stickers: StickerLibraryView(document: document)
                     case .effects: effects
                     case .filters: FilterLibraryView(document: document)
                     case .transitions:
@@ -284,14 +284,6 @@ struct LibraryView: View {
                     wordStyle: captionWordStyle == "none" ? nil : captionWordStyle)
                 captionMessage = String(localized: "Captions generated")
             } catch { captionMessage = error.localizedDescription }
-        }
-    }
-    private var stickers: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 55))]) {
-            ForEach(["🔥", "😋", "👍", "💯", "⭐", "📍", "🍲", "😂"], id: \.self) { symbol in
-                Button(symbol) { document.addText(style: "bold-outline", text: symbol) }
-                    .font(.largeTitle).buttonStyle(.bordered).disabled(document.fileURL == nil)
-            }
         }
     }
     private var effects: some View {

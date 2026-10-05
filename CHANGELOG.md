@@ -5,6 +5,21 @@
 
 ## [Unreleased]
 
+- The Stickers panel has 180 emoji stickers in eight categories (reactions, gestures, hearts and highlights, food and
+  drink, travel and places, celebration, animals and nature, signs and arrows) instead of eight.
+- **Image stickers.** Stickers › **My stickers** keeps a library of PNG, GIF and other images for every project
+  (**Import stickers…**; right-click a sticker to remove it). Clicking one copies it into the project's `stickers`
+  folder and places it at the playhead on the frontmost free overlay layer (a new one when needed) at 35 % zoom.
+  Agents: `stickers list`, `stickers add <path> [--at-frame]`, `stickers import <path>`, `stickers remove <name>` and
+  `ui action stickers.import`.
+- **Sticker packs from plugins** (plugin API 6). `contributes.stickers` names folders of images in a plugin; the
+  Stickers panel lists each pack as a grid under its title and places a clicked image like a library sticker. No
+  plugin code runs for a pack. The first one is **BashCut Stickers** (`bashcut.stickers`) in the plugin registry.
+- **Animated GIF, APNG and WebP.** Importing one (Stickers, Import footage, a drop on the timeline or
+  `media import`) no longer keeps only its first frame: it is written once as a ProRes 4444 movie with alpha in the
+  project's `stickers` folder, the animation repeated to at least 6 s, and used like any other clip.
+- Adding an emoji sticker or text preset where the text layer already has an item no longer fails with "overlaps … place it
+  on another layer": it goes to the next free text layer, or a new one, like dropped media.
 - **Link (developer mode), Reload and Replace…** (#83). When you add a plugin folder, the approval can install it as
   a link to your folder instead of a copy, so you can keep editing it; Installed shows the folder, and **Reload**
   restarts the plugin and checks its files again (changed files still need Trust; removing it keeps your folder).

@@ -24,6 +24,18 @@ public struct InstalledPlugin: Sendable, Equatable, Identifiable {
         }
         return entrypoint
     }
+
+    /// The folder of a sticker pack, or nil when it is missing or resolves outside the plugin (a symlink out).
+    public func stickerFolder(_ pack: PluginStickerPack) -> URL? {
+        let root = directory.resolvingSymlinksInPath().standardizedFileURL.path
+        let folder = directory.appendingPathComponent(pack.path, isDirectory: true).resolvingSymlinksInPath()
+            .standardizedFileURL
+        var isDirectory: ObjCBool = false
+        guard folder.path.hasPrefix(root + "/"), FileManager.default.fileExists(atPath: folder.path, isDirectory: &isDirectory),
+            isDirectory.boolValue
+        else { return nil }
+        return folder
+    }
 }
 
 public struct PluginCatalogResult: Sendable {
