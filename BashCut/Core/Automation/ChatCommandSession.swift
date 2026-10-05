@@ -13,7 +13,10 @@ import Foundation
         "clip.speed", "clip.speed-curve", "clip.motion", "clip.keyframe", "clip.reverse", "beats.detect", "voice.speak",
         "audio.measure", "media.sync",
         "storage.get", "ui.select", "ui.view", "ui.source", "ui.seek", "ui.frame", "ui.panel", "luts.import",
-        "knowledge.get", "knowledge.memo", "library.list", "library.get", "library.stats", "library.add", "library.update",
+        "knowledge.get", "knowledge.memo", "knowledge.lessons", "knowledge.add-lesson", "knowledge.update-lesson",
+        "knowledge.remove-lesson", "knowledge.prefs", "knowledge.set-pref", "knowledge.facts",
+        "knowledge.set-fact", "knowledge.proposals", "knowledge.history", "library.list", "library.get", "library.stats",
+        "library.add", "library.update",
         "library.remove", "library.apply", "library.place",
     ]
     private var token: String?
