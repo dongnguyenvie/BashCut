@@ -367,24 +367,29 @@ Two guards protect your own edits:
 - If the agent read an older revision of the timeline, its edit is rejected and it has to read the timeline again
   (optimistic revision).
 
-### 4.3 ⌘K: ask the agent in place
+### 4.3 ⌘K: ask the agent
 
-Select a clip, a time range or a caption line, then press ⌘K. A small popover opens next to the selection:
+⌘K, **Ask agent** in the timeline bar or **Ask agent…** in the dock opens the Ask agent sheet:
 
 ```text
-┌ Ask the agent… ──────────────────────────┐
-│ c-25 · 0474 · hotpot · 38.1–44.6 s  [📷 frame]│
-│ ┌──────────────────────────────────────┐ │
-│ │ trim to 4 s, keep the "so much        │ │
-│ │ topping" line                         │ │
-│ └──────────────────────────────────────┘ │
-│            [Send to Claude ⏎] [Codex ⌥⏎] │
-└──────────────────────────────────────────┘
+┌ Ask agent ─────────────────────────────────────────────┐
+│ To Codex · about c-25 · ⌘↩ sends                       │
+│ Templates        ┌──────────────────────────────────┐  │
+│  Vlog            │ I want a vlog about [topic],     │  │
+│  Short video     │ about [length] long, with a      │  │
+│  Product review  │ [fun / chill / cinematic] feel.  │  │
+│  Music montage   └──────────────────────────────────┘  │
+│  Tutorial        Fill in the parts in [brackets].      │
+│  Captions                                              │
+│  Fix a part                                            │
+│ [ ] Attach current frame       [Clear] [Cancel] [Send] │
+└────────────────────────────────────────────────────────┘
 ```
 
-The popover sends a `[BashCut context]…` block and your sentence to the active agent tab, optionally with the
-current viewer frame attached. It also opens the dock if the dock is hidden. Separate **Send to Claude** and
-**Codex** buttons are **Planned**; today there is one **Send context** button.
+A template fills the editor with a request to complete; **Clear** empties it. **Send** (⌘↩) sends the request to
+the shown agent: a terminal tab gets it pasted and Return pressed, a chat tab starts a turn. Only the request and
+the attached frame's path are sent; the agent reads the selection and playhead with `context get`. The draft is
+kept when the sheet is closed. Agents can answer the sheet with `ui respond send|clear|close`.
 
 ## 5. Review
 

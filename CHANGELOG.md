@@ -5,12 +5,14 @@
 
 ## [Unreleased]
 
-- **Readable requests in agent terminals.** Claude Code and Codex fold a long paste into a placeholder
-  (`[Pasted text #1 +23 lines]`, `[Pasted Content 1801 chars]`), so **Project context**, the quick prompts, **Ask
-  agent**, review fixes and **Ask the agent to split it** hid the request behind the context. The dock now writes the
-  context to `.bashcut/cache/agent-context/context.md` (a temporary folder before the project is saved) and pastes
-  only the request with a line pointing at that file, so it can be read and edited before sending. Chat tabs are
-  unchanged.
+- **Ask agent sheet with templates; short requests in agent terminals.** Claude Code and Codex fold a long paste
+  into a placeholder (`[Pasted text #1 +23 lines]`, `[Pasted Content 1801 chars]`), which hid the request behind
+  the context block. Survey, Write VO, Review, review fixes and **Ask the agent to split it** now paste only the
+  request; agents read the selection and playhead with `context get` (their instructions say so). The dock's
+  **Project context** button became **Ask agent…**, and ⌘K opens the same sheet instead of a small popover: pick a
+  template (vlog, short video, product review, music montage, tutorial, captions, fix a part), fill in the parts in
+  [brackets], **Clear** to start over and **Send** (⌘↩), which pastes the request and presses Return (a chat tab
+  starts a turn). The draft is kept when the sheet is closed; `ui respond send|clear|close` drives it.
 - **Split the memo into lessons, preferences and facts** (#72). When the project memo or the notes for every project
   have text, the Knowledge window's **Notes** section offers a one-time split: **Ask the agent to split it** puts a
   request in the open agent's input, and **Keep as notes** stops offering it. The agent reads the memo and runs the

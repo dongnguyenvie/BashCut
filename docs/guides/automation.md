@@ -120,8 +120,10 @@ SwiftTerm terminal. Claude and Codex use your installed CLI and its existing log
 - **Codex defaults.** Codex starts idle on `gpt-5.6-luna` with low reasoning effort, under a named permission
   profile that extends its workspace profile with the BashCut folder and the exact BashCut socket. It does not
   get a broad socket allowlist.
-- **Context.** Context and quick actions paste text into the terminal for you to review before pressing
-  Enter. The ⌘K popover can attach the current viewer frame: BashCut renders a bounded PNG into
+- **Requests.** Survey, Write VO and Review paste a short request into the terminal for you to review before
+  pressing Enter; agents read the selection and playhead themselves with `context get`. **Ask agent…** (⌘K) opens
+  a sheet with request templates, Clear and Send, which pastes the request and presses Enter. It can attach the
+  current viewer frame: BashCut renders a bounded PNG into
   `.bashcut/cache/agent-context`, keeps the ten newest frames and passes the absolute path to the terminal.
 - **Switching projects.** Tabs stay open when the project changes, also when their own agent creates or opens
   one (before, the switch closed the tab mid-task). Every token, in-app or external, must then read the new

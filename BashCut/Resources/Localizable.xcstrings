@@ -1,6 +1,26 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Ask agent…": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Ask agent…" } }, "vi": { "stringUnit": { "state": "translated", "value": "Hỏi agent…" } } } },
+    "Write a request from a template and send it to the agent": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Write a request from a template and send it to the agent" } }, "vi": { "stringUnit": { "state": "translated", "value": "Soạn yêu cầu từ mẫu rồi gửi cho agent" } } } },
+    "Whole project": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Whole project" } }, "vi": { "stringUnit": { "state": "translated", "value": "Cả project" } } } },
+    "To %@ · about %@ · ⌘↩ sends": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "To %@ · about %@ · ⌘↩ sends" } }, "vi": { "stringUnit": { "state": "translated", "value": "Gửi %1$@ · về %2$@ · ⌘↩ để gửi" } } } },
+    "Templates": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Templates" } }, "vi": { "stringUnit": { "state": "translated", "value": "Mẫu" } } } },
+    "What should the agent do? Pick a template or write your own.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "What should the agent do? Pick a template or write your own." } }, "vi": { "stringUnit": { "state": "translated", "value": "Bạn muốn agent làm gì? Chọn một mẫu hoặc tự viết." } } } },
+    "Fill in the parts in [brackets], then send.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Fill in the parts in [brackets], then send." } }, "vi": { "stringUnit": { "state": "translated", "value": "Điền vào các chỗ trong [ngoặc vuông] rồi gửi." } } } },
+    "Vlog": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Vlog" } }, "vi": { "stringUnit": { "state": "translated", "value": "Vlog" } } } },
+    "Short video": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Short video" } }, "vi": { "stringUnit": { "state": "translated", "value": "Video ngắn" } } } },
+    "Product review": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Product review" } }, "vi": { "stringUnit": { "state": "translated", "value": "Review sản phẩm" } } } },
+    "Music montage": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Music montage" } }, "vi": { "stringUnit": { "state": "translated", "value": "Montage theo nhạc" } } } },
+    "Tutorial": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Tutorial" } }, "vi": { "stringUnit": { "state": "translated", "value": "Hướng dẫn" } } } },
+    "Fix a part": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Fix a part" } }, "vi": { "stringUnit": { "state": "translated", "value": "Sửa một đoạn" } } } },
+    "I want a vlog about [topic], about [length] long, with a [fun / chill / cinematic] feel.\nThe footage shows [what was filmed]. Music: [style, or none].": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "I want a vlog about [topic], about [length] long, with a [fun / chill / cinematic] feel.\nThe footage shows [what was filmed]. Music: [style, or none]." } }, "vi": { "stringUnit": { "state": "translated", "value": "Tôi muốn dựng một vlog về [chủ đề], dài khoảng [thời lượng], cảm giác [vui / chill / cinematic].\nFootage có [những gì đã quay]. Nhạc: [thể loại, hoặc không cần]." } } } },
+    "Make a [15–60] second vertical video about [topic] for [TikTok / Reels / Shorts], with a strong hook in the first 2 seconds and large captions.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Make a [15–60] second vertical video about [topic] for [TikTok / Reels / Shorts], with a strong hook in the first 2 seconds and large captions." } }, "vi": { "stringUnit": { "state": "translated", "value": "Dựng một video dọc [15–60] giây về [chủ đề] cho [TikTok / Reels / Shorts], có hook mạnh trong 2 giây đầu và phụ đề chữ to." } } } },
+    "Edit a review of [product]: an intro, [3] main points and a verdict, under [length]. Put a short title on screen for each point.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Edit a review of [product]: an intro, [3] main points and a verdict, under [length]. Put a short title on screen for each point." } }, "vi": { "stringUnit": { "state": "translated", "value": "Dựng video review [sản phẩm]: mở đầu, [3] ý chính và kết luận, dưới [thời lượng]. Mỗi ý có một tiêu đề ngắn trên màn hình." } } } },
+    "Make a montage cut to the beat of [song or music style] from the best shots of [subject], about [length] long.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Make a montage cut to the beat of [song or music style] from the best shots of [subject], about [length] long." } }, "vi": { "stringUnit": { "state": "translated", "value": "Dựng montage cắt theo nhịp [bài hát hoặc thể loại nhạc] từ những cảnh đẹp nhất về [chủ thể], dài khoảng [thời lượng]." } } } },
+    "Make a tutorial from the screen recording of [tool], with me in a corner, about [length] long. Zoom in on [the important steps].": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Make a tutorial from the screen recording of [tool], with me in a corner, about [length] long. Zoom in on [the important steps]." } }, "vi": { "stringUnit": { "state": "translated", "value": "Dựng video hướng dẫn từ bản quay màn hình [công cụ], có hình tôi ở góc, dài khoảng [thời lượng]. Zoom vào [các bước quan trọng]." } } } },
+    "Add [Vietnamese / English] captions for the speech, [white with a shadow / bold yellow], at the [bottom / middle] of the frame.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Add [Vietnamese / English] captions for the speech, [white with a shadow / bold yellow], at the [bottom / middle] of the frame." } }, "vi": { "stringUnit": { "state": "translated", "value": "Thêm phụ đề [tiếng Việt / tiếng Anh] cho lời nói, kiểu [trắng có bóng / vàng đậm], đặt ở [dưới / giữa] khung hình." } } } },
+    "Fix [the selected clip / the part at mm:ss]: [what is wrong]. I want it to [how it should be].": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Fix [the selected clip / the part at mm:ss]: [what is wrong]. I want it to [how it should be]." } }, "vi": { "stringUnit": { "state": "translated", "value": "Sửa [clip đang chọn / đoạn ở phút mm:ss]: [đang bị gì]. Tôi muốn [nó sẽ như thế nào]." } } } },
     "%@ split the memo: %d entries wait for review": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%@ split the memo: %d entries wait for review" } }, "vi": { "stringUnit": { "state": "translated", "value": "%@ đã tách memo: %d mục chờ duyệt" } } } },
     "The request is in the agent's input: send it there": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "The request is in the agent's input: send it there" } }, "vi": { "stringUnit": { "state": "translated", "value": "Yêu cầu đã nằm trong ô nhập của agent: gửi nó ở đó" } } } },
     "Open an agent in the dock first, then ask again": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Open an agent in the dock first, then ask again" } }, "vi": { "stringUnit": { "state": "translated", "value": "Hãy mở một agent trong dock trước rồi thử lại" } } } },
@@ -3846,38 +3866,6 @@
         }
       }
     },
-    "What should the agent do?": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "What should the agent do?"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bạn muốn trợ lý làm gì?"
-          }
-        }
-      }
-    },
-    "Send context": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Send context"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Gửi ngữ cảnh"
-          }
-        }
-      }
-    },
     "Done": {
       "localizations": {
         "en": {
@@ -4054,22 +4042,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Thư mục làm việc…"
-          }
-        }
-      }
-    },
-    "Project context": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Project context"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ngữ cảnh dự án"
           }
         }
       }

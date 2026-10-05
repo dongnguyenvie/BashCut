@@ -8,9 +8,6 @@ import SwiftUI
 // The editor keeps its major panels together so AppKit timeline and SwiftUI sheets share one document.
 struct EditorView: View {
     @Bindable var document: ProjectDocument
-    @State private var ask = ""
-    @State private var attachAskFrame = false
-    @State private var sendingAsk = false
     @State private var newSectionLabel = ""
     var body: some View {
         VStack(spacing: 0) {
@@ -103,6 +100,7 @@ struct EditorView: View {
         .onChange(of: document.exports.isRunning ? Int(document.exports.progress * 100) : nil) { _, percent in
             ExportDockTile.show(percent.map { Double($0) / 100 })
         }
+        .sheet(isPresented: Bindable(document.ui).showAsk) { AskAgentView(document: document) }
         .sheet(isPresented: Bindable(document.ui).showNewProject) { NewProjectView(document: document) }
         .sheet(isPresented: Bindable(document.ui).showExport) { ExportView(document: document) }
         .sheet(isPresented: Bindable(document.ui).showExportReport) {
@@ -261,16 +259,6 @@ struct EditorView: View {
                     .help(document.waveforms.errors.values.sorted().joined(separator: "\n"))
             }
             Button("Ask agent") { document.run(.askAgent) }.shortcut(.askAgent)
-                .popover(isPresented: Bindable(document.ui).showAsk) {
-                    VStack(alignment: .leading) {
-                        Text(document.selectedID ?? "Project").font(.caption)
-                        TextField("What should the agent do?", text: $ask).frame(width: 300)
-                        Toggle("Attach current frame", isOn: $attachAskFrame)
-                        Button(sendingAsk ? "Preparing frame…" : "Send context", action: sendAsk)
-                            .disabled(
-                                sendingAsk || (document.agents.current == nil && document.agents.chatPluginID == nil))
-                    }.padding()
-                }
             Spacer()
             Button {
                 document.run(.zoomOut)
@@ -291,18 +279,6 @@ struct EditorView: View {
             } label: { Image(systemName: "arrow.left.and.right.square") }
                 .buttonStyle(.borderless).help("Zoom timeline to fit (⇧Z)").disabled(!document.canPerform(.zoomFit))
         }.font(.caption).controlSize(.small).padding(8).disabled(document.busy)
-    }
-    private func sendAsk() {
-        sendingAsk = true
-        Task {
-            defer { sendingAsk = false }
-            do {
-                let image = attachAskFrame ? try await document.captureAgentFrame() : nil
-                document.ui.showAgentDock = true
-                document.agents.sendContext(ask, imageURL: image)
-                document.ui.showAsk = false
-            } catch { document.message = error.localizedDescription }
-        }
     }
     private var review: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -327,7 +303,7 @@ struct EditorView: View {
                         }
                         Button("Ask agent to fix") {
                             document.ui.showAgentDock = true
-                            document.agents.sendContext("Fix this review issue: " + issue.detail)
+                            document.agents.fillInput("Fix this review issue: " + issue.detail)
                             document.ui.showReview = false
                         }.disabled(document.agents.current == nil && document.agents.chatPluginID == nil)
                     }

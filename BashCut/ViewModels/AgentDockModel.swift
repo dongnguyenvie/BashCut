@@ -39,6 +39,8 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
         let safe = text.replacingOccurrences(of: "\u{1b}", with: "")
         view.send(source: view, data: Array(("\u{1b}[200~" + safe + "\u{1b}[201~").utf8)[...])
     }
+    /// Presses Return in the terminal, sending what is in the agent's input.
+    func submit() { view.send(source: view, data: [13][...]) }
     func runCommand(_ text: String) { view.send(source: view, data: Array((text + "\n").utf8)[...]) }
     func close() {
         view.send(source: view, data: [3][...])
@@ -59,6 +61,7 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
     private(set) var showKnowledge = false
     var error = ""
     let knowledge = AgentKnowledgeModel()
+    let askModel = AgentAskModel()
     private let sessionStore = AgentSessionStore()
     /// Session transcripts live in the agents' configuration folders, which users may move.
     private var sessionDiscovery: AgentSessionDiscovery {
