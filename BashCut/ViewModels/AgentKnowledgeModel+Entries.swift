@@ -93,7 +93,7 @@ extension AgentKnowledgeModel {
         case "lessons": lessons.count
         case "prefs": prefs.count
         case "facts": facts.count
-        case "skills": skills.count
+        case "skills": skills.count + userSkills.count + (kit?.skills.count ?? 0)
         default: nil
         }
     }
@@ -133,14 +133,7 @@ extension AgentKnowledgeModel {
     /// when skills were added or removed. Memo text is not reloaded here, so an unsaved edit is kept.
     func refreshIfChanged() {
         guard let store else { return }
-        let skills = store.skills()
-        if skills != self.skills {
-            self.skills = skills
-            if let selectedSkill, !skills.contains(where: { $0.name == selectedSkill }) {
-                self.selectedSkill = nil
-                skillText = ""
-            }
-        }
+        if store.skills() != skills || store.skills(.user) != userSkills { refreshSkills() }
         guard store.signature() != signature else { return }
         loadEntries()
     }

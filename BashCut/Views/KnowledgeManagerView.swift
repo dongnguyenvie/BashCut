@@ -4,7 +4,7 @@ import BashCutDocument
 import SwiftUI
 
 /// The Knowledge window (#68): the inbox of proposals (#69), lessons, preferences and project facts the agents
-/// recorded, the memos, the project skills and the history of changes with revert (#70). The section is
+/// recorded, the memos, the skills (#71) and the history of changes with revert (#70). The section is
 /// `ui.knowledgeSection`, so agents can show one with `ui view --knowledge-section`; every change here also has a
 /// `knowledge` command.
 struct KnowledgeManagerView: View {
@@ -340,7 +340,7 @@ private struct KnowledgeLessonEditor: View {
     }
 }
 
-// MARK: Notes and skills
+// MARK: Notes
 
 private struct KnowledgeNotesSection: View {
     @Bindable var model: AgentKnowledgeModel
@@ -374,44 +374,6 @@ private struct KnowledgeNotesSection: View {
                     Text("Notes for every project").font(.headline)
                     TextEditor(text: $model.userMemo).font(.body).border(.gray.opacity(0.3))
                     Button("Save notes", action: model.saveUserMemo)
-                }
-            }
-        }.padding(16)
-    }
-}
-
-private struct KnowledgeSkillsSection: View {
-    @Bindable var model: AgentKnowledgeModel
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 16) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Project skills").font(.headline)
-                List(model.skills, id: \.name, selection: $model.selectedSkill) { skill in
-                    Button {
-                        model.select(skill.name)
-                    } label: {
-                        HStack {
-                            Text(skill.name)
-                            Spacer()
-                            if skill.claude { Text("Claude").font(.caption2).foregroundStyle(.purple) }
-                            if skill.codex { Text("Codex").font(.caption2).foregroundStyle(.cyan) }
-                        }
-                    }.buttonStyle(.plain)
-                }.frame(width: 250).scrollContentBackground(.hidden)
-                HStack {
-                    TextField("new-skill-name", text: $model.newSkillName)
-                    Button("Add", action: model.createSkill)
-                }.disabled(!model.hasProject)
-            }
-            VStack(alignment: .leading, spacing: 8) {
-                Text(model.selectedSkill ?? "Select a skill").font(.headline)
-                TextEditor(text: $model.skillText).font(.system(size: 12, design: .monospaced))
-                    .border(.gray.opacity(0.3))
-                HStack {
-                    Button("Save skill", action: model.saveSkill).disabled(model.selectedSkill == nil)
-                    Button("Share with Claude + Codex", action: model.shareSelectedWithBoth)
-                        .disabled(model.selectedSkill == nil)
                 }
             }
         }.padding(16)

@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+- **Skills in the Knowledge window** (#71). The **Skills** section now lists this project's skills, skills for every
+  project (new: kept in `Application Support/BashCut/Knowledge/skills`) and the agent kit's skills with their
+  descriptions. Project and user skills open in an editor with a Markdown **Preview**, can be turned off without
+  deleting them (**On for agents**), shared with Claude + Codex and deleted (history keeps the text). Kit skills are
+  read-only: **Propose change…** edits a copy and sends the diff to the Inbox as a kit proposal. New commands
+  `skills list|get|save|enable|disable|remove|propose`; agents need approval to change skills for every project.
+  Turned-off skills are left out of the agents' knowledge. Chips on a selected Lessons or History row are now white
+  instead of blue on blue.
 - **Knowledge history with diff and revert** (#70). A new **History** section in the Knowledge window lists every
   change to lessons, preferences, facts, memos and project skills, newest first, with who made it and a line diff.
   **Revert…** puts the entry back to how it was before the change (a removed entry comes back, an added one goes)

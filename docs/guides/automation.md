@@ -84,8 +84,18 @@ SwiftTerm terminal. Claude and Codex use your installed CLI and its existing log
     (`history.jsonl`). The Knowledge window's **History** section shows the diff; **Revert…** or `knowledge revert
     <change-id>` puts the entry back to how it was before that change, undoing later changes to it too, and is
     recorded as a change of its own. Rejecting a preference proposal changed nothing, so it has nothing to revert.
+  - **Skills** (`skills list [--scope kit|user|project]`, `get`, `save`, `enable`, `disable`, `remove`, `propose`):
+    the agent kit's skills are read-only; `skills propose <name> <file> --summary TEXT` sends the line diff against
+    the kit's SKILL.md to the Inbox as a lesson for every project tagged `kit`. Skills you or agents write live in the
+    project (`.bashcut/skills/<name>`, linked into the project's `.claude/skills` and `.agents/skills`) or, with
+    `--scope user`, for every project (`Application Support/BashCut/Knowledge/skills/<name>`, listed with its path in
+    BashCut agents' knowledge). `disable` turns one off without deleting it: a project skill is unlinked, a skill for
+    every project gets a `.disabled` marker and is left out of the agents' knowledge. Saves and removals are in
+    History, so `knowledge revert` brings a deleted skill back. The Knowledge window's **Skills** section lists all
+    three groups with an editor and Markdown preview.
 
-  An agent's request that otherwise changes knowledge for every project (memo, lesson edits and removals, reverts),
+  An agent's request that otherwise changes knowledge for every project (memo, lesson edits and removals, skills for
+  every project, reverts),
   or approves or rejects a proposal, asks for your approval. Changes to this project's lessons and facts do not.
 
   The book button in the agent dock shows an orange count while proposals wait (clicking it opens the Inbox) and a

@@ -150,10 +150,14 @@ struct KnowledgeSourceLine: View {
 struct KnowledgeChip: View {
     let text: String
     let color: Color
+    /// Increased on a selected list row: the accent background would swallow a coloured chip, so it turns white.
+    @Environment(\.backgroundProminence) private var prominence
 
     var body: some View {
+        let onSelection = prominence == .increased
         Text(LocalizedStringKey(text)).font(.caption2.bold()).padding(.horizontal, 6).padding(.vertical, 1)
-            .background(Capsule().fill(color.opacity(0.2))).foregroundStyle(color)
+            .background(Capsule().fill(onSelection ? Color.white.opacity(0.25) : color.opacity(0.2)))
+            .foregroundStyle(onSelection ? Color.white : color)
     }
 }
 

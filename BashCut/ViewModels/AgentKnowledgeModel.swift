@@ -7,10 +7,22 @@ import Observation
 @MainActor @Observable final class AgentKnowledgeModel {
     var memo = ""
     var userMemo = ""
+    // Skills (#71); see AgentKnowledgeModel+Skills.swift.
     var skills: [AgentKnowledgeSkill] = []
-    var selectedSkill: String?
+    var userSkills: [AgentKnowledgeSkill] = []
+    /// The agent kit BashCut's agents load, shown read-only; nil when none is found.
+    var kit: AgentKit?
+    /// Each listed skill's description without its trigger list.
+    var skillSummaries: [KnowledgeSkillRef: String] = [:]
+    var selectedSkill: KnowledgeSkillRef?
+    /// The selected skill's text while it is edited, and as it is on disk.
     var skillText = ""
+    var savedSkillText = ""
+    var skillPreview = false
+    /// A change to the selected kit skill being written; the kit's text is editable only while this is set.
+    var kitProposal: KitProposalDraft?
     var newSkillName = ""
+    var newSkillScope: KnowledgeScope = .project
     var message = ""
     /// A memo an older build left in the agent workspace or home folder, offered for migration.
     var legacy: LegacyKnowledgeMemo?
@@ -47,12 +59,18 @@ import Observation
     var context: String {
         let user = userMemo.trimmingCharacters(in: .whitespacesAndNewlines)
         let project = memo.trimmingCharacters(in: .whitespacesAndNewlines)
-        // Agents may run in a workspace outside the project, so skills are listed with their paths.
-        let names = skills.map { "\($0.name) (\($0.url.appendingPathComponent("SKILL.md").path))" }
-        var lines = ["[Notes for every project]", user.isEmpty ? "None." : user, "[/Notes for every project]"]
+        // Agents may run in a workspace outside the project, so skills are listed with their paths; turned-off ones
+        // are left out.
+        let names = { (skills: [AgentKnowledgeSkill]) -> String in
+            let on = skills.filter(\.enabled).map { "\($0.name) (\($0.file.path))" }
+            return on.isEmpty ? "none" : on.joined(separator: ", ")
+        }
+        var lines = ["[Notes for every project]", user.isEmpty ? "None." : user]
+        if !userSkills.isEmpty { lines.append("Skills: \(names(userSkills))") }
+        lines.append("[/Notes for every project]")
         if hasProject {
             lines += ["[Project memory]", project.isEmpty ? "No memo." : project,
-                      "Skills: \(names.isEmpty ? "none" : names.joined(separator: ", "))", "[/Project memory]"]
+                      "Skills: \(names(skills))", "[/Project memory]"]
         } else {
             lines.append("[Project memory] No saved project is open. [/Project memory]")
         }
@@ -60,27 +78,20 @@ import Observation
         return lines.joined(separator: "\n")
     }
 
-    func load(_ store: AgentKnowledgeStore) {
+    func load(_ store: AgentKnowledgeStore, kit: AgentKit? = nil) {
         self.store = store
+        if let kit { self.kit = kit }
         memo = store.memo(.project)
         userMemo = store.memo(.user)
-        skills = store.skills()
         legacy = store.legacyMemo()
         if !visiting { lastVisit = UserDefaults.standard.object(forKey: visitKey) as? Date }
         loadEntries()
-        if let selectedSkill, skills.contains(where: { $0.name == selectedSkill }) {
-            select(selectedSkill)
-        } else if let first = skills.first {
-            select(first.name)
-        } else {
-            selectedSkill = nil
-            skillText = ""
-        }
+        loadSkills()
     }
 
-    private func reload() { if let store { load(store) } }
+    func reload() { if let store { load(store) } }
 
-    private func requireStore() throws -> AgentKnowledgeStore {
+    func requireStore() throws -> AgentKnowledgeStore {
         guard let store else { throw KnowledgeError("Open the Knowledge window first") }
         return store
     }
@@ -117,44 +128,6 @@ import Observation
         do {
             try migrateLegacy(to: scope)
             message = String(localized: "Older memo moved")
-        } catch { message = error.localizedDescription }
-    }
-
-    func select(_ name: String) {
-        guard let skill = skills.first(where: { $0.name == name }) else { return }
-        selectedSkill = name
-        skillText = (try? String(contentsOf: skill.url.appendingPathComponent("SKILL.md"), encoding: .utf8)) ?? ""
-    }
-
-    func createSkill() {
-        do {
-            try writeSkill(named: newSkillName, text: nil)
-            newSkillName = ""
-            message = String(localized: "Skill shared with Claude and Codex")
-        } catch { message = error.localizedDescription }
-    }
-
-    /// Replaces a skill's SKILL.md, or creates the skill and shares it with Claude and Codex.
-    func writeSkill(named name: String, text: String?, source: KnowledgeSource = KnowledgeSource(agent: "user")) throws {
-        try requireStore().writeSkill(named: name, text: text, source: source)
-        reload()
-        select(name.lowercased().trimmingCharacters(in: .whitespacesAndNewlines))
-    }
-
-    func saveSkill() {
-        guard let selectedSkill else { return }
-        do {
-            try writeSkill(named: selectedSkill, text: skillText)
-            message = String(localized: "Skill saved")
-        } catch { message = error.localizedDescription }
-    }
-
-    func shareSelectedWithBoth() {
-        guard let selectedSkill else { return }
-        do {
-            try requireStore().share(selectedSkill)
-            reload()
-            message = String(localized: "Skill available to both agents")
         } catch { message = error.localizedDescription }
     }
 }

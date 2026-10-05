@@ -11,6 +11,7 @@ extension ProjectDocument {
         registerLessonCommands()
         registerValueCommands()
         registerReviewCommands()
+        registerSkillCommands()
     }
 
     private func registerMemoCommands() {
@@ -244,7 +245,7 @@ extension ProjectDocument {
         arguments.values["tags"]?.string.map { $0.split(separator: ",").map(String.init) }
     }
 
-    private static func knowledgeSource(_ author: Author, _ arguments: CommandArguments) -> KnowledgeSource {
+    static func knowledgeSource(_ author: Author, _ arguments: CommandArguments) -> KnowledgeSource {
         KnowledgeSource(agent: author.rawValue, session: arguments.optionalString("session"))
     }
 
@@ -296,7 +297,7 @@ extension ProjectDocument {
     }
 
     /// Runs `action` now, or, when `approval` is set and an agent asked, after the user approves it.
-    private func knowledgeChange(
+    func knowledgeChange(
         _ method: String, approval: Bool, author: Author, arguments: [String: String],
         action: @escaping @MainActor () throws -> JSONValue
     ) throws -> JSONValue {

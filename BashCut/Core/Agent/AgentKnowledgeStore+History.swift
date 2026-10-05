@@ -1,6 +1,6 @@
 import Foundation
 
-/// Knowledge history (#70): every change to lessons, preferences, facts, memos and project skills is one line of the
+/// Knowledge history (#70): every change to lessons, preferences, facts, memos and skills is one line of the
 /// scope's `history.jsonl`, with who made it and the entry before and after. `revert` puts an entry back to how it
 /// was before a change and records that as a change of its own, so a revert can be reverted too.
 extension AgentKnowledgeStore {
@@ -70,9 +70,9 @@ extension AgentKnowledgeStore {
             try writeMemo(change.before?.text ?? "", scope: change.scope, source: source, action: .revert)
         case .skill:
             if let text = change.before?.text {
-                try writeSkill(named: change.target, text: text, source: source, action: .revert)
+                try writeSkill(named: change.target, text: text, scope: change.scope, source: source, action: .revert)
             } else {
-                try removeSkill(named: change.target, source: source, action: .revert)
+                try removeSkill(named: change.target, scope: change.scope, source: source, action: .revert)
             }
         }
         guard let reverted = history(change.scope, limit: 1).first, reverted.action == .revert else {
@@ -94,7 +94,7 @@ extension AgentKnowledgeStore {
             guard case .value(let value)? = entry else { return current == nil }
             return current?.value == value.value
         case .memo: return memo(change.scope) == entry?.text ?? ""
-        case .skill: return skillText(change.target) == entry?.text
+        case .skill: return skillText(change.target, scope: change.scope) == entry?.text
         }
     }
 
