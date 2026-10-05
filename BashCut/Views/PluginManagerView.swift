@@ -20,8 +20,8 @@ struct PluginManagerView: View {
                     }
                 }.pickerStyle(.segmented).labelsHidden().frame(width: 360)
                 if PluginChannel.current.allowsUserPlugins {
-                    Button("Install Plugin…", action: model.choosePlugin).disabled(model.installing)
-                        .help("Install a plugin folder from this Mac")
+                    Button("Add Plugin…", action: model.addPlugin).disabled(model.installing)
+                        .help("Add a plugin that is not in the registry: a folder, its plugin.json, or a .zip file")
                 }
                 Button("Done", action: done)
             }
@@ -44,11 +44,16 @@ struct PluginManagerView: View {
             Text(model.message).font(.caption).foregroundStyle(.secondary)
         }
         .padding(20).frame(width: 760, height: 620, alignment: .top).preferredColorScheme(.dark)
-        .sheet(item: $model.pendingInstall) { pending in
+        .sheet(item: $model.pendingInstall) { presented in
+            // The scope can change while the sheet is open.
+            let pending = model.pendingInstall ?? presented
             PluginInstallApprovalView(
                 pending: pending, registry: model.registry, required: model.requiredBytes(pending),
-                blocker: model.installBlocker(pending), approve: model.installPendingPlugin,
-                cancel: model.cancelPendingInstall)
+                blocker: model.installBlocker(pending), replaces: pending.local == nil ? pending.replacing : model.replaces(pending),
+                shadowNote: model.shadowNote(pending),
+                scope: pending.local == nil || model.currentProjectRoot == nil ? nil : Binding(
+                    get: { model.pendingInstall?.scope ?? .user }, set: { model.pendingInstall?.scope = $0 }),
+                approve: model.installPendingPlugin, cancel: model.cancelPendingInstall)
         }
         .task(id: model.tab) {
             if model.tab == .browse || model.tab == .updates { await model.refreshRegistry() }
@@ -60,8 +65,12 @@ struct PluginManagerView: View {
             ContentUnavailableView {
                 Label("No plugins installed", systemImage: "puzzlepiece.extension")
             } actions: {
-                if PluginChannel.current.allowsUserPlugins { Button("Browse Plugins") { model.tab = .browse } }
+                if PluginChannel.current.allowsUserPlugins {
+                    Button("Browse Plugins") { model.tab = .browse }
+                    Button("Add Plugin…", action: model.addPlugin)
+                }
             }.frame(maxWidth: .infinity, maxHeight: .infinity)
+            .dropDestination(for: URL.self) { urls, _ in addDropped(urls) }
         } else {
             List(model.installedSections) { group in
                 Section {
@@ -70,6 +79,7 @@ struct PluginManagerView: View {
                     Label(group.title, systemImage: group.symbol)
                 }
             }
+            .dropDestination(for: URL.self) { urls, _ in addDropped(urls) }
             .task {
                 // The saved registry names categories and updates without fetching.
                 await model.loadCachedRegistry()
@@ -79,6 +89,15 @@ struct PluginManagerView: View {
                 }
             }
         }
+    }
+
+    /// A plugin folder, plugin.json or zip dropped on Installed starts Add Plugin….
+    private func addDropped(_ urls: [URL]) -> Bool {
+        guard PluginChannel.current.allowsUserPlugins, !model.installing, let url = urls.first, url.isFileURL else {
+            return false
+        }
+        Task { await model.addPlugin(from: url) }
+        return true
     }
 
     private var hookLog: some View {
@@ -257,6 +276,11 @@ private struct PluginInstallApprovalView: View {
     let registry: PluginRegistryDocument?
     let required: Int64
     let blocker: String?
+    let replaces: Bool
+    /// Which copy runs when the same plugin is installed elsewhere.
+    let shadowNote: String?
+    /// Where an install from this Mac goes; nil when there is no choice.
+    let scope: Binding<PluginInstallScope>?
     let approve: () -> Void
     let cancel: () -> Void
     private var plugin: InstalledPlugin { pending.plugin }
@@ -265,11 +289,12 @@ private struct PluginInstallApprovalView: View {
         VStack(alignment: .leading, spacing: 14) {
             Label(
                 String(
-                    format: String(localized: pending.repair ? "Set up %@?" : pending.replacing ? "Update %@?" : "Install %@?"),
+                    format: String(localized: pending.repair ? "Set up %@?" : replaces ? "Update %@?" : "Install %@?"),
                     plugin.manifest.displayName),
                 systemImage: "puzzlepiece.extension"
             ).font(.title2)
             if let archive = pending.archive { download(archive) }
+            if let local = pending.local { localSource(local) }
             if !plugin.manifest.capabilities.isEmpty {
                 Text("Capabilities: " + plugin.manifest.capabilities.joined(separator: ", "))
             }
@@ -317,10 +342,32 @@ private struct PluginInstallApprovalView: View {
             HStack {
                 Spacer()
                 Button("Cancel", action: cancel).keyboardShortcut(.cancelAction)
-                Button(pending.repair ? "Set Up" : pending.replacing ? "Update" : "Install", action: approve)
+                Button(pending.repair ? "Set Up" : replaces ? "Update" : "Install", action: approve)
                     .buttonStyle(.borderedProminent).disabled(blocker != nil)
             }
         }.padding(20).frame(width: 560).preferredColorScheme(.dark)
+    }
+
+    private func localSource(_ local: StagedLocalPlugin) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("From this Mac").font(.headline)
+            Text("Version \(plugin.manifest.version) · \(plugin.id)")
+            Label("Not from the BashCut registry · unsigned. Install it only if you trust where it comes from.",
+                  systemImage: "exclamationmark.shield").font(.caption).foregroundStyle(.orange)
+            Text(local.source.path).font(.caption.monospaced()).lineLimit(1).truncationMode(.middle).textSelection(.enabled)
+            if let sha256 = local.sha256 {
+                Text("SHA-256 " + sha256).font(.caption2.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
+            }
+            ForEach(local.warnings, id: \.self) { warning in
+                Label(warning, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.secondary)
+            }
+            if let scope {
+                Picker("Install for", selection: scope) {
+                    ForEach(PluginInstallScope.allCases) { Text($0.title).tag($0) }
+                }.pickerStyle(.segmented).frame(width: 300)
+            }
+            if let shadowNote { Text(shadowNote).font(.caption).foregroundStyle(.secondary) }
+        }.padding(8).frame(maxWidth: .infinity, alignment: .leading).background(.white.opacity(0.04)).cornerRadius(6)
     }
 
     private func download(_ archive: StagedPluginArchive) -> some View {

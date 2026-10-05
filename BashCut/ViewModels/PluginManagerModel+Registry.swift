@@ -200,6 +200,7 @@ extension PluginManagerModel {
     /// Drops the install waiting for approval and its download.
     func cancelPendingInstall() {
         pendingInstall?.archive?.discard()
+        pendingInstall?.local?.discard()
         pendingInstall = nil
     }
 

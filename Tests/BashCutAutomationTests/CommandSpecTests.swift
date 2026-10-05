@@ -127,6 +127,15 @@ struct CommandSpecTests {
         let install = try CommandLineParser.parse(["plugins", "install", "bashcut.silence-markers", "--version", "0.2.0"])
         #expect(install.spec.execution == .job && install.spec.mode == .edit)
         #expect(install.params == ["plugin": .string("bashcut.silence-markers"), "version": .string("0.2.0")])
+        // Add Plugin… from this Mac (#83): paths become absolute; validate only reads.
+        let local = try CommandLineParser.parse(["plugins", "install", "--path", "~/my-plugin.zip", "--scope", "project"])
+        #expect(local.params["path"] == .string(NSHomeDirectory() + "/my-plugin.zip"))
+        #expect(local.params["scope"] == .string("project") && local.params["plugin"] == nil)
+        #expect(throws: CommandLineParser.Failure.self) {
+            try CommandLineParser.parse(["plugins", "install", "--path", "/tmp/p", "--scope", "everywhere"])
+        }
+        let validate = try CommandLineParser.parse(["plugins", "validate", "/tmp/my-plugin"])
+        #expect(validate.spec.mode == .read && validate.params == ["path": .string("/tmp/my-plugin")])
         let remove = try CommandLineParser.parse(["plugins", "remove", "bashcut.vieneu-tts", "--data"])
         #expect(remove.spec.mode == .edit && remove.params["data"] == .bool(true))
         #expect(try CommandLineParser.parse(["plugins", "setup", "bashcut.vieneu-tts"]).params == ["plugin": .string("bashcut.vieneu-tts")])

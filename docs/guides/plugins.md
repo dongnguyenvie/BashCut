@@ -170,10 +170,47 @@ Release assets. Publishing, the archive layout and the registry format are descr
   plugin updates daily*) and shows the count on the Plugins button and in the Plugins menu. It never installs on
   its own.
 - **App Store channel:** a sandboxed build (the Mac App Store and TestFlight build, or one compiled with
-  `BASHCUT_APP_STORE`) only runs plugins inside the app: no Browse or Updates, no Install Plugin…, and the user and
+  `BASHCUT_APP_STORE`) only runs plugins inside the app: no Browse or Updates, no Add Plugin…, and the user and
   project plugin folders are not searched (App Store Review Guideline 2.5.2; the sandbox would block most
   downloaded tools anyway). Developer ID and `scripts/run.sh` builds have every source. `BASHCUT_PLUGIN_CHANNEL=
   app-store` simulates it in a development build.
+
+## Private and local plugins
+
+A plugin does not have to be in the registry. **Add Plugin…** (Plugins › Installed, the empty Installed view, or
+Settings › Plugins) or dropping onto Plugins › Installed takes:
+
+- a plugin **folder** with `plugin.json` at its top level;
+- the folder's **`plugin.json`** (its folder is used);
+- a **`.zip`** or **`.bashcutplugin`** archive holding exactly one plugin folder, the same layout as a registry
+  release.
+
+BashCut checks the plugin before copying anything: a manifest that decodes and validates, an API window this
+BashCut supports, an entrypoint that exists and is executable, and no symbolic links leaving the folder. Problems name
+the field or file and the fix (`"apiVersion" must be an integer`, `entrypoint bin/provider is not executable (chmod
++x bin/provider)`). An unknown `category` is only a warning; the plugin is shown under Utilities.
+
+The checked copy, not your folder, is what gets installed, so edits made while the approval is open do not slip in.
+The approval says **Not from the BashCut registry · unsigned**, shows the source path (and an archive's SHA-256),
+and, with a saved project open, lets you choose where it goes:
+
+- **This Mac:** `~/Library/Application Support/BashCut/Plugins/<id>/`, for every project;
+- **This project:** `<project>/.bashcut/plugins/<id>/`, which travels with the project folder.
+
+When the same `id` is installed elsewhere, the approval says which copy runs (see
+[Discovery and precedence](#discovery-and-precedence)). Installing an id that is already in the chosen folder
+updates it. Trust works as for any unsigned plugin: installing pins the exact files, a later change needs approval
+again, and only the user can approve. Remove works as for registry plugins.
+
+Agents and scripts:
+
+- `bashcut plugins validate <path>` reports `valid`, `id`, `version`, `capabilities`, `category`, `problems`,
+  `warnings` and, for archives, `sha256`. It installs and runs nothing.
+- `bashcut plugins install --path <path> [--scope user|project]` checks and copies the plugin, then shows the same
+  approval in the Plugins sheet.
+
+To share a private plugin with a team, send the zip (`ditto -c -k --keepParent my-plugin my-plugin.zip`) or commit
+it under the project's `.bashcut/plugins/`. Each person approves it on their own Mac.
 
 ## Discovery and precedence
 

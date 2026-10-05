@@ -12,6 +12,10 @@ struct PendingPluginInstall: Identifiable {
     let plugin: InstalledPlugin
     /// Set when the plugin came from the registry: the verified download, removed after install or cancel.
     var archive: StagedPluginArchive?
+    /// Set when the plugin came from a folder, zip or plugin.json on this Mac ("Add Plugin…"): the checked copy,
+    /// removed after install or cancel.
+    var local: StagedLocalPlugin?
+    var scope: PluginInstallScope = .user
     /// Re-runs the dependency recipes of an installed plugin (Install dependencies…) instead of installing it.
     var repair = false
     /// Dependency probes run on the unpacked plugin before the approval, so the sheet can say what this Mac has,
@@ -297,27 +301,6 @@ enum PluginText {
         return try await body()
     }
 
-    func choosePlugin() {
-        guard PluginChannel.current.allowsUserPlugins else {
-            message = Self.channelRefusal
-            return
-        }
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.allowsMultipleSelection = false
-        panel.message = String(localized: "Choose a BashCut plugin folder containing plugin.json")
-        guard let directory = ModalCenter.shared.open(panel, name: "choose-plugin")?.first else { return }
-        let result = PluginCatalog.discover(in: [directory.deletingLastPathComponent()])
-        guard let plugin = result.plugins.first(where: { $0.directory.standardizedFileURL == directory.standardizedFileURL })
-        else {
-            message = result.diagnostics.first ?? String(localized: "This folder is not a valid BashCut plugin.")
-            return
-        }
-        pendingInstall = PendingPluginInstall(plugin: plugin)
-        runPreflight()
-    }
-
     /// Bytes the pending install needs: the archive plus the downloads its recipes declare.
     func requiredBytes(_ pending: PendingPluginInstall) -> Int64 {
         // Dependencies the preflight found already available download nothing.
@@ -357,7 +340,8 @@ enum PluginText {
     /// Installs (or, with `repair`, re-runs the dependency recipes of) the plugin the user approved, as a job with
     /// progress and Cancel. Recipes run in the plugin's filtered environment and process group.
     func installPendingPlugin() {
-        guard let pending = pendingInstall, !installing else { return }
+        guard var pending = pendingInstall, !installing else { return }
+        if pending.local != nil { pending.replacing = replaces(pending) }
         if let blocker = installBlocker(pending) {
             message = blocker
             return
@@ -378,6 +362,7 @@ enum PluginText {
             installing = false
             installJob = nil
             pending.archive?.discard()
+            pending.local?.discard()
             switch outcome {
             case .success:
                 message = pending.repair ? String(format: String(localized: "%@ is set up"), name)
@@ -423,7 +408,9 @@ enum PluginText {
         }
         let source = plugin.directory
         let manifest = plugin.manifest
-        let installRoot = userRoot
+        guard let installRoot = installRoot(for: pending.scope) else {
+            throw PluginError.invalid("Open or save a project to add a plugin to it")
+        }
         let destination = installRoot.appendingPathComponent(manifest.id, isDirectory: true)
         let replacing = pending.replacing
         let stagingRoot = installRoot.appendingPathComponent(".staging-\(UUID().uuidString)")

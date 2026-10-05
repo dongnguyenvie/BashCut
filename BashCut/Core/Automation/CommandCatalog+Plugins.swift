@@ -59,13 +59,29 @@ extension CommandCatalog {
             ]),
         CommandSpec("plugins.updates", .read, "List installed plugins with a newer compatible version in the registry."),
         CommandSpec(
+            "plugins.validate", .read,
+            "Check a plugin that is not in the registry (a folder, its plugin.json, or a .zip or .bashcutplugin archive) "
+                + "without installing or running it: its id, version and capabilities, and every problem with the field "
+                + "and the fix.",
+            parameters: [
+                CommandParameter("path", .string, "Plugin folder, plugin.json, or .zip / .bashcutplugin file", required: true,
+                                 isPath: true, cli: .positional),
+            ]),
+        CommandSpec(
             "plugins.install", .edit,
             "Download a registry plugin (or its update), check its SHA-256 and manifest, and show the install approval in "
-                + "the Plugins sheet. Only the user can approve; the job ends when the approval is shown.",
+                + "the Plugins sheet. With path instead, add a plugin from this Mac (Add Plugin…): a folder, its plugin.json, "
+                + "or a .zip / .bashcutplugin file, checked like plugins validate. Only the user can approve; the job "
+                + "ends when the approval is shown.",
             parameters: [
-                CommandParameter("plugin", .string, "Plugin ID from plugins search", required: true, cli: .positional),
+                CommandParameter("plugin", .string, "Plugin ID from plugins search (or use path)", cli: .positional),
                 CommandParameter("version", .string, "A specific registry version; the newest compatible by default",
                                  cli: .option("version")),
+                CommandParameter("path", .string, "Plugin folder, plugin.json, or .zip / .bashcutplugin file on this Mac",
+                                 isPath: true, cli: .option("path")),
+                CommandParameter("scope", .string,
+                                 "Where a plugin from path goes: user (this Mac, every project; the default) or project (the open project)",
+                                 choices: ["user", "project"], cli: .option("scope")),
             ],
             execution: .job),
         CommandSpec(

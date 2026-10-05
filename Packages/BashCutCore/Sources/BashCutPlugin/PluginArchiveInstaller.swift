@@ -112,14 +112,8 @@ public struct PluginArchiveInstaller: Sendable {
         _ archive: URL, into stagingRoot: URL, entry: PluginRegistryEntry, version: PluginRegistryVersion
     ) throws -> InstalledPlugin {
         let unpacked = stagingRoot.appendingPathComponent("unpacked", isDirectory: true)
-        try Self.run("/usr/bin/ditto", ["-x", "-k", archive.path, unpacked.path])
+        let folder = try Self.unpackSingleFolder(archive, into: unpacked)
         let manager = FileManager.default
-        let items = try manager.contentsOfDirectory(at: unpacked, includingPropertiesForKeys: [.isDirectoryKey])
-            .filter { !$0.lastPathComponent.hasPrefix(".") && $0.lastPathComponent != "__MACOSX" }
-        guard items.count == 1, let folder = items.first,
-            (try? folder.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true
-        else { throw PluginError.invalid("The archive must contain exactly one plugin folder") }
-        try Self.checkLinks(in: folder)
         let manifest: PluginManifest
         do {
             manifest = try JSONDecoder().decode(
@@ -142,6 +136,18 @@ public struct PluginArchiveInstaller: Sendable {
         return plugin
     }
 
+    /// Unpacks a zip into `unpacked` and returns its one plugin folder, after checking it has no links leaving it.
+    static func unpackSingleFolder(_ archive: URL, into unpacked: URL) throws -> URL {
+        try run("/usr/bin/ditto", ["-x", "-k", archive.path, unpacked.path])
+        let items = try FileManager.default.contentsOfDirectory(at: unpacked, includingPropertiesForKeys: [.isDirectoryKey])
+            .filter { !$0.lastPathComponent.hasPrefix(".") && $0.lastPathComponent != "__MACOSX" }
+        guard items.count == 1, let folder = items.first,
+            (try? folder.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true
+        else { throw PluginError.invalid("The archive must contain exactly one plugin folder") }
+        try checkLinks(in: folder)
+        return folder
+    }
+
     /// Rejects symbolic links that point outside the plugin folder.
     static func checkLinks(in folder: URL) throws {
         let root = folder.resolvingSymlinksInPath().standardizedFileURL.path + "/"
@@ -150,7 +156,7 @@ public struct PluginArchiveInstaller: Sendable {
             guard (try? item.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink) == true else { continue }
             let target = item.resolvingSymlinksInPath().standardizedFileURL.path
             guard target.hasPrefix(root) else {
-                throw PluginError.invalid("The archive links outside the plugin folder: \(item.lastPathComponent)")
+                throw PluginError.invalid("The plugin links outside its folder: \(item.lastPathComponent)")
             }
         }
     }
@@ -163,7 +169,7 @@ public struct PluginArchiveInstaller: Sendable {
         return hasher.finalize().map { String(format: "%02x", $0) }.joined()
     }
 
-    private static func run(_ executable: String, _ arguments: [String]) throws {
+    static func run(_ executable: String, _ arguments: [String]) throws {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: executable)
         process.arguments = arguments
