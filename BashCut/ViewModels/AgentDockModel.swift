@@ -102,6 +102,12 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
             legacyFolders: [settings.workspace, FileManager.default.homeDirectoryForCurrentUser].compactMap { $0 })
     }
     func loadKnowledge() { knowledge.load(knowledgeStore) }
+
+    /// Keeps the dock's Knowledge badge current: loads the open project's knowledge, then reloads when files change.
+    func refreshKnowledgeBadge() {
+        guard knowledge.store?.project == knowledgeStore.project, knowledge.store != nil else { return loadKnowledge() }
+        knowledge.refreshIfChanged()
+    }
     var toolsDirectory: String { Bundle.main.executableURL?.deletingLastPathComponent().path ?? "" }
     /// Whether starting this agent continues its last conversation for the project.
     func canContinue(_ provider: AgentProviderID) -> Bool { !sessionBookmarks[provider].isEmpty }

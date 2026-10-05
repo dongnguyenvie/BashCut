@@ -5,6 +5,16 @@
 
 ## [Unreleased]
 
+- **Knowledge inbox** (#69). The Knowledge window opens on a new **Inbox** section when something waits for
+  review: proposed lessons, kit change proposals (lessons tagged `kit`, with their diff coloured) and an agent's
+  preference changes for every project, each with **Approve**, **Edit…** and **Reject**. An agent's `set-pref` for
+  every project no longer blocks on an approval sheet: it waits in the inbox (`{"approval": "proposed"}`), unless
+  Settings lets agents act without confirmation. `knowledge proposals` lists both kinds (`type` `lesson` or
+  `value`), and `knowledge approve p-… --value TEXT` applies an edited value. The book button in the agent dock
+  shows the number of proposals, or a dot when agents changed knowledge since your last visit. The session summary
+  counts preference proposals too. Fixed: rejecting or deleting the lesson open in the Lessons editor crashed the
+  app; a kit change's diff is edited in a multi-line monospaced editor.
+
 - **Knowledge window** (#68). The book button in the agent dock now opens a resizable **Knowledge** window instead
   of the small sheet, so it can stay open while agents work; it reloads when agents or people change the files.
   Sections: **Lessons** (search, filter by scope, status and tag, newest or oldest first; edit every field,

@@ -50,7 +50,13 @@ extension AgentKnowledgeModel {
     var filteredLessons: [KnowledgeLesson] { filter.apply(lessons) }
     var lessonTags: [String] { KnowledgeFilter.tags(lessons) }
     var selectedLesson: KnowledgeLesson? { lessons.first { $0.id == selectedLessonID } }
-    var proposalCount: Int { lessons.filter { $0.status == .proposed }.count }
+    var lessonProposals: [KnowledgeLesson] {
+        KnowledgeFilter(status: .proposed, sort: .oldest).apply(lessons)
+    }
+    /// Everything in the inbox: proposed lessons and preference changes.
+    var proposalCount: Int { lessons.filter { $0.status == .proposed }.count + valueProposals.count }
+    /// Lessons, preferences and facts changed since the last visit, for the dock badge.
+    var newTotal: Int { ["lessons", "prefs", "facts"].map(newCount).reduce(0, +) }
 
     func filteredValues(_ kind: KnowledgeValueKind) -> [KnowledgeValue] {
         KnowledgeFilter(query: valueQuery, scope: kind == .facts ? nil : filter.scope).apply(values(kind))
@@ -83,6 +89,7 @@ extension AgentKnowledgeModel {
 
     func count(_ section: String) -> Int? {
         switch section {
+        case "inbox": proposalCount
         case "lessons": lessons.count
         case "prefs": prefs.count
         case "facts": facts.count
@@ -106,6 +113,7 @@ extension AgentKnowledgeModel {
         lessons = read { try store.lessons() }
         prefs = read { try store.values(.prefs) }
         facts = read { try store.values(.facts) }
+        valueProposals = read { try store.valueProposals() }
         entryErrors = errors
         if let selectedLessonID, !lessons.contains(where: { $0.id == selectedLessonID }) {
             self.selectedLessonID = nil
@@ -130,15 +138,19 @@ extension AgentKnowledgeModel {
     func beginVisit() {
         lastVisit = UserDefaults.standard.object(forKey: visitKey) as? Date
         changedHere = []
+        visiting = true
     }
 
     /// Ends a visit when the window closes: what changed while it was open, the user's own changes included, is not
     /// new next time.
     func endVisit() {
-        UserDefaults.standard.set(Date(), forKey: visitKey)
+        let now = Date()
+        UserDefaults.standard.set(now, forKey: visitKey)
+        lastVisit = now
+        visiting = false
     }
 
-    private var visitKey: String { "knowledgeVisit." + (store?.project?.path ?? "-") }
+    var visitKey: String { "knowledgeVisit." + (store?.project?.path ?? "-") }
 
     // MARK: Lessons
 
@@ -200,6 +212,7 @@ extension AgentKnowledgeModel {
     }
 
     func reject(_ id: String) {
+        if selectedLessonID == id { selectLesson(nil) }
         perform(String(localized: "Lesson rejected")) { try $0.reject(id, source: source) }
     }
 
@@ -211,7 +224,27 @@ extension AgentKnowledgeModel {
             message: String(localized: "Agents stop following it. History keeps a copy."),
             buttons: [ModalOption("delete", String(localized: "Delete")), ModalOption("cancel", String(localized: "Cancel"))])
         guard choice == "delete" else { return }
+        if selectedLessonID == id { selectLesson(nil) }
         perform(String(localized: "Lesson deleted")) { try $0.removeLesson(id, source: source) }
+    }
+
+    // MARK: Proposals
+
+    /// Applies an agent's preference change, with the user's edit when `value` is given.
+    func approveValue(_ id: String, value: String? = nil) {
+        if let proposal = valueProposals.first(where: { $0.id == id }) {
+            changedHere.insert(Self.valueID(proposal.scope, proposal.key))
+        }
+        perform(String(localized: "Preference applied")) { try $0.approveValue(id, value: value, source: source) }
+    }
+
+    func rejectValue(_ id: String) {
+        perform(String(localized: "Proposal rejected")) { try $0.rejectValue(id, source: source) }
+    }
+
+    /// The value a preference proposal would replace, if any.
+    func currentValue(_ proposal: KnowledgeValueProposal) -> KnowledgeValue? {
+        values(proposal.kind).first { $0.scope == proposal.scope && $0.key == proposal.key }
     }
 
     // MARK: Values

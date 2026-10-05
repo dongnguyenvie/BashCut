@@ -797,7 +797,7 @@ Read the editor view state, or change it: timeline zoom (pixels per second), vie
 - `reveal`: integer, ≥ 0. Scroll the timeline so this frame is visible
 - `inspector`: string, one of video, audio, text, color, speed. Inspector tab
 - `settingsSection`: string, one of general, agents, plugins, storage. Settings section (open Settings with ui.open settings)
-- `knowledgeSection`: string, one of lessons, prefs, facts, notes, skills. Knowledge window section (open it with ui.open knowledge)
+- `knowledgeSection`: string, one of inbox, lessons, prefs, facts, notes, skills. Knowledge window section (open it with ui.open knowledge)
 - `pluginsTab`: string, one of installed, browse, updates, activity. Plugins sheet tab (open it with ui.open plugins)
 - `pluginsCategory`: string, one of all, agents, captions, voice, audio, color, effects, export, utilities. Category Plugins › Browse shows; all shows every one
 
@@ -958,7 +958,7 @@ Read the user's preferences (taste: length, pace, voice, caption style, music…
 
 ### `bashcut knowledge set-pref <key> [<value>] [--remove] [--scope <scope>] [--session <session>]`
 
-Set or remove a preference: for every project (default; agents need approval) or only this project.
+Set or remove a preference: for every project (default) or only this project. An agent's change for every project waits in the Knowledge inbox (approval proposed) unless the user lets agents act without confirmation.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_knowledge_set-pref`
 - `key`: string, required. Key
@@ -986,24 +986,27 @@ Set or remove a fact about this project. Needs a saved project.
 
 ### `bashcut knowledge proposals [--scope <scope>]`
 
-List proposed lessons waiting for the user's review.
+List what waits for the user's review in the Knowledge inbox: proposed lessons (type lesson, id l-…) and agents' preference changes for every project (type value, id p-…; value null removes the key).
 
 - Mode: read · Runs: immediately · MCP: `bashcut_knowledge_proposals`
 - `scope`: string, one of project, user. Only this scope; both by default
 
-### `bashcut knowledge approve <id>`
+### `bashcut knowledge approve <id> [--value <value>] [--session <session>]`
 
-Approve a proposed lesson so agents follow it. The user decides: an agent's request asks for approval.
+Approve a proposal: a proposed lesson becomes active, a preference change is applied. The user decides: an agent's request asks for approval.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_knowledge_approve`
-- `id`: string, required. Lesson ID (l-…) from knowledge lessons
+- `id`: string, required. Proposal ID (l-… or p-…) from knowledge proposals
+- `value`: string. For a preference proposal: apply this value instead (edit)
+- `session`: string. Your agent session ID, recorded as the source
 
-### `bashcut knowledge reject <id>`
+### `bashcut knowledge reject <id> [--session <session>]`
 
-Reject a proposed lesson; it is removed and history keeps it. An agent's request asks for approval.
+Reject a proposal: a proposed lesson is removed, a preference change is dropped; history keeps both. An agent's request asks for approval.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_knowledge_reject`
-- `id`: string, required. Lesson ID (l-…) from knowledge lessons
+- `id`: string, required. Proposal ID (l-… or p-…) from knowledge proposals
+- `session`: string. Your agent session ID, recorded as the source
 
 ### `bashcut knowledge history [--scope <scope>] [--limit <limit>]`
 

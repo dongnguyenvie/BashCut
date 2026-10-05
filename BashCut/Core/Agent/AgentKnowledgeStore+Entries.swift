@@ -144,9 +144,12 @@ extension AgentKnowledgeStore {
     }
 
     /// Sets a value, or removes it when `value` is nil. Returns the stored value (nil after a removal).
+    /// `recordedBy` is who history credits when it is not `source` (the user approving an agent's proposal), and
+    /// `action` replaces `set`/`unset` in history.
     @discardableResult
     public func setValue(
-        _ kind: KnowledgeValueKind, key: String, value: String?, scope: KnowledgeScope, source: KnowledgeSource
+        _ kind: KnowledgeValueKind, key: String, value: String?, scope: KnowledgeScope, source: KnowledgeSource,
+        recordedBy: KnowledgeSource? = nil, action: KnowledgeChange.Action? = nil
     ) throws -> KnowledgeValue? {
         guard kind == .prefs || scope == .project else { throw KnowledgeError("Facts belong to one project") }
         let key = key.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -160,7 +163,8 @@ extension AgentKnowledgeStore {
             all.remove(at: index)
             try writeValues(all, kind: kind, scope: scope)
             try record(KnowledgeChange(
-                action: .unset, kind: historyKind, target: key, source: source, before: .value(before),
+                action: action ?? .unset, kind: historyKind, target: key, source: recordedBy ?? source,
+                before: .value(before),
                 after: nil), scope: scope)
             return nil
         }
@@ -168,7 +172,8 @@ extension AgentKnowledgeStore {
         if let index { all[index] = entry } else { all.append(entry) }
         try writeValues(all, kind: kind, scope: scope)
         try record(KnowledgeChange(
-            action: .set, kind: historyKind, target: key, source: source, before: before.map(KnowledgeEntry.value),
+            action: action ?? .set, kind: historyKind, target: key, source: recordedBy ?? source,
+            before: before.map(KnowledgeEntry.value),
             after: .value(entry)), scope: scope)
         return entry
     }
@@ -195,7 +200,7 @@ extension AgentKnowledgeStore {
         }.prefix(limit).map(\.change))
     }
 
-    private func record(_ change: KnowledgeChange, scope: KnowledgeScope) throws {
+    func record(_ change: KnowledgeChange, scope: KnowledgeScope) throws {
         let url = try folder(scope).appendingPathComponent("history.jsonl")
         let encoder = Self.encoder
         encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
@@ -222,14 +227,14 @@ extension AgentKnowledgeStore {
         var values: [KnowledgeValue]
     }
 
-    private static var encoder: JSONEncoder {
+    static var encoder: JSONEncoder {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
         encoder.dateEncodingStrategy = .iso8601
         return encoder
     }
 
-    private static var decoder: JSONDecoder {
+    static var decoder: JSONDecoder {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         return decoder
@@ -242,7 +247,7 @@ extension AgentKnowledgeStore {
     }
 
     /// The scope's folder, created on first write.
-    private func folder(_ scope: KnowledgeScope) throws -> URL {
+    func folder(_ scope: KnowledgeScope) throws -> URL {
         guard let folder = entriesFolder(scope) else { throw Self.noProject }
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         return folder
@@ -250,7 +255,7 @@ extension AgentKnowledgeStore {
 
     /// A missing file is empty; a file that cannot be read fails, so a write never replaces entries it could not
     /// parse.
-    private func read<File: Decodable>(_ name: String, scope: KnowledgeScope, writable: Bool) throws -> File? {
+    func read<File: Decodable>(_ name: String, scope: KnowledgeScope, writable: Bool) throws -> File? {
         guard let folder = entriesFolder(scope) else {
             if writable { throw Self.noProject }
             return nil

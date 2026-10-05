@@ -17,8 +17,17 @@ struct AgentDockView: View {
                 ) {
                     detached ? model.attach() : model.detach()
                 }
-                DockIconButton(systemImage: "books.vertical", help: "Knowledge: lessons, preferences, facts and skills") {
+                DockIconButton(systemImage: "books.vertical", help: knowledgeHelp) {
+                    if model.knowledge.proposalCount > 0 { model.document.ui.knowledgeSection = "inbox" }
                     model.openKnowledge()
+                }
+                .overlay(alignment: .topTrailing) { knowledgeBadge }
+                .task(id: model.document.fileURL) {
+                    // The badge follows agents' writes while the Knowledge window is closed.
+                    while !Task.isCancelled {
+                        model.refreshKnowledgeBadge()
+                        try? await Task.sleep(for: .seconds(3))
+                    }
                 }
                 Menu {
                     ForEach(model.terminalChoices) { choice in
@@ -177,6 +186,28 @@ private struct DockTab: View {
 }
 
 /// A 22 pt icon button with a hover highlight for the dock header.
+extension AgentDockView {
+    /// Proposals waiting for review (orange count), or a dot when agents changed knowledge since the last visit.
+    @ViewBuilder var knowledgeBadge: some View {
+        let knowledge = model.knowledge
+        if knowledge.proposalCount > 0 {
+            Text("\(min(knowledge.proposalCount, 99))").font(.system(size: 8, weight: .bold).monospacedDigit())
+                .padding(.horizontal, 3).frame(minWidth: 12, minHeight: 12)
+                .background(Capsule().fill(Color.orange)).foregroundStyle(.black)
+                .offset(x: 3, y: -2).allowsHitTesting(false)
+        } else if knowledge.newTotal > 0 {
+            Circle().fill(Color.cyan).frame(width: 6, height: 6).offset(x: -2, y: 2).allowsHitTesting(false)
+        }
+    }
+
+    var knowledgeHelp: LocalizedStringKey {
+        let knowledge = model.knowledge
+        if knowledge.proposalCount > 0 { return "Knowledge: \(knowledge.proposalCount) waiting for review" }
+        if knowledge.newTotal > 0 { return "Knowledge: \(knowledge.newTotal) new since your last visit" }
+        return "Knowledge: lessons, preferences, facts and skills"
+    }
+}
+
 private struct DockIconButton: View {
     let systemImage: String
     let help: LocalizedStringKey
