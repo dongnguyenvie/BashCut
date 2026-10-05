@@ -91,10 +91,14 @@ struct KnowledgeValueRow: View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
-                    Text(value.key).font(.callout.monospaced()).textSelection(.enabled)
+                    Text(value.key).font(.callout.monospaced()).textSelection(.enabled).lineLimit(1)
+                    // On the key's line, so the narrow column never truncates it.
+                    if kind == .prefs {
+                        KnowledgeChip(text: KnowledgeSourceLine.scopeTitle(value.scope), color: .gray).fixedSize()
+                    }
                     if model.isNew(value) { KnowledgeNewBadge(text: String(localized: "New")) }
                 }
-                KnowledgeSourceLine(source: value.source, scope: kind == .prefs ? value.scope : nil, updated: nil)
+                KnowledgeSourceLine(source: value.source, scope: nil, updated: nil)
             }.frame(width: 240, alignment: .leading)
             TextField("Value", text: $text, axis: .vertical).lineLimit(1...4).textFieldStyle(.roundedBorder)
                 .onSubmit(save)
@@ -124,7 +128,7 @@ struct KnowledgeSourceLine: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            if let scope { KnowledgeChip(text: Self.scopeTitle(scope), color: .gray) }
+            if let scope { KnowledgeChip(text: Self.scopeTitle(scope), color: .gray).fixedSize() }
             Text(source.agent).bold()
             if let session = source.session, !session.isEmpty {
                 Text("· \(String(session.prefix(12)))").help(session)
