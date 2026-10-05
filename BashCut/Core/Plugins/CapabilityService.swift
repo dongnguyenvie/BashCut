@@ -48,6 +48,8 @@ public struct CapabilityService: Sendable {
     public var optionValues: (@Sendable (InstalledPlugin) async -> [String: JSONValue])?
     /// Creates each plugin's data and cache folders (`PluginFolders`) before calling it. Off in tests.
     public var preparesPluginFolders = false
+    /// Manifests already read, so a catalog refresh reads only plugins that changed (#103).
+    let catalogCache = PluginCatalogCache()
 
     public init(
         roots: PluginRoots = .standard, transport: any PluginTransport = PluginRouter(),
@@ -61,13 +63,21 @@ public struct CapabilityService: Sendable {
     }
 
     public func catalog(projectRoot: URL?) -> PluginCatalogResult {
-        PluginCatalog.discover(in: roots.ordered(projectRoot: projectRoot), bundled: roots.bundled)
+        PluginCatalog.discover(in: roots.ordered(projectRoot: projectRoot), bundled: roots.bundled, cache: catalogCache)
     }
 
-    /// Whether the plugin may run now: approved, unchanged, turned on and API-compatible.
+    /// Whether the plugin may run now: approved, unchanged, turned on and API-compatible. Checks every file in
+    /// the plugin's folder; call it right before running the plugin, off the main actor when listing many.
     public func availability(_ plugin: InstalledPlugin) -> PluginAvailability {
         if let trust { return trust.availability(of: plugin) }
         return plugin.manifest.incompatibility.map(PluginAvailability.outdated) ?? .ready
+    }
+
+    /// `availability` from the last file check, or nil when the files have to be checked again
+    /// (`PluginTrustStore.knownAvailability`).
+    public func knownAvailability(_ plugin: InstalledPlugin) -> PluginAvailability? {
+        if let trust { return trust.knownAvailability(of: plugin) }
+        return availability(plugin)
     }
 
     /// Plugins in the catalog that may run now.

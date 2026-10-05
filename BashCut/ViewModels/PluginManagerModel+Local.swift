@@ -131,7 +131,13 @@ extension PluginManagerModel {
             message = String(format: String(localized: "%@ is no longer installed"), plugin.manifest.displayName)
             return .untrusted
         }
-        let state = availability[current.id] ?? .untrusted
+        // Reload is how the user says files changed: check every file, not the last known answer.
+        let service = self.service
+        let state = await Task.detached(priority: .userInitiated) { service.availability(current) }.value
+        if self.plugin(current.id)?.installationID == current.installationID, availability[current.id] != state {
+            availability[current.id] = state
+            rebuildActions()
+        }
         if state == .ready { await checkHealthNow(current) }
         message = state == .changed
             ? String(format: String(localized: "%@ changed: review it and choose Trust to run the new files"), current.manifest.displayName)

@@ -122,8 +122,14 @@ enum PluginText {
     var health: [String: PluginHealth] = [:]
     var checking: Set<String> = []
     var calling: Set<String> = []
-    /// Why each plugin may or may not run.
+    /// Why each plugin may or may not run, as last checked. Running a plugin checks its files again.
     var availability: [String: PluginAvailability] = [:]
+    /// Plugins whose files are being checked off the main actor (#103). Until the check ends they keep their last
+    /// known availability, or count as not approved when there is none, so their actions and hooks wait.
+    var checkingFiles: Set<String> = []
+    @ObservationIgnored var fileCheckQueue: [InstalledPlugin] = []
+    @ObservationIgnored var fileCheckBatch: Set<String> = []
+    @ObservationIgnored private var catalogDiagnostics: [String] = []
     /// Actions of runnable plugins, in catalog order.
     var actions: [ContributedAction] = []
     /// Most recent hook deliveries, newest last.
@@ -192,17 +198,23 @@ enum PluginText {
 
     private var userRoot: URL { service.roots.user }
 
-    func refresh(projectRoot: URL?) {
+    /// Reads the catalog and what is already known about each plugin, without walking plugin folders, so it is
+    /// cheap enough to call whenever a panel appears (#103). Plugins not checked yet in this session, or whose
+    /// plugin.json or entrypoint changed, are checked in the background; `checkFiles` checks every plugin again.
+    func refresh(projectRoot: URL?, checkFiles: Bool = false) {
         self.projectRoot = projectRoot
         let result = service.catalog(projectRoot: projectRoot)
         plugins = result.plugins
-        diagnostics = result.diagnostics
-        health = health.filter { id, _ in plugins.contains(where: { $0.id == id }) }
-        availability = Dictionary(uniqueKeysWithValues: plugins.map { ($0.id, service.availability($0)) })
+        catalogDiagnostics = result.diagnostics
+        let ids = Set(plugins.map(\.id))
+        health = health.filter { ids.contains($0.key) }
+        let unchecked = applyKnownAvailability(checkFiles: checkFiles)
         rebuildActions()
+        if !unchecked.isEmpty || !fileCheckQueue.isEmpty { queueFileChecks(unchecked) }
     }
 
-    private func rebuildActions() {
+    func rebuildActions() {
+        diagnostics = catalogDiagnostics
         var taken = Set(UIAction.allCases.flatMap(\.shortcuts))
         var list: [ContributedAction] = []
         for plugin in plugins where availability[plugin.id] == .ready {

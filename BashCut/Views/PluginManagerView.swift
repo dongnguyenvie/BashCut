@@ -126,6 +126,8 @@ private struct PluginRow: View {
     @State private var showOptions = false
 
     private var availability: PluginAvailability { model.availability[plugin.id] ?? .untrusted }
+    /// Its files are being checked; the availability shown is the last known one.
+    private var checkingFiles: Bool { model.checkingFiles.contains(plugin.id) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
@@ -180,11 +182,14 @@ private struct PluginRow: View {
                     }.help(dependency.detail)
                 }
             }
-            if availability != .ready {
+            if checkingFiles {
+                Text("Checking the plugin's files…").font(.caption).foregroundStyle(.secondary)
+            } else if availability != .ready {
                 Text(availability.detail).font(.caption).foregroundStyle(.orange)
             }
             HStack {
-                if availability == .untrusted || availability == .changed {
+                if checkingFiles { // Trust and Revoke wait until the files are checked.
+                } else if availability == .untrusted || availability == .changed {
                     Button("Trust") { model.trustPlugin(plugin) }
                         .help("Allow this plugin to run. Its manifest and entrypoint are pinned; a change asks again.")
                 } else if !model.trust.isBundled(plugin), model.trust.grant(for: plugin) != nil {
@@ -262,11 +267,12 @@ private struct PluginRow: View {
 
     private var stateBadge: some View {
         let ready = availability == .ready && model.health[plugin.id].map { $0.state == .ready } ?? true
-        let text = availability == .ready
+        let text = checkingFiles ? String(localized: "Checking…") : availability == .ready
             ? (model.health[plugin.id].map { $0.state == .ready ? "Ready" : "Needs setup" } ?? "Enabled")
             : availability.name.capitalized
-        return Label(text, systemImage: ready ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-            .font(.caption).foregroundStyle(ready ? Color.green : Color.orange)
+        let icon = checkingFiles ? "hourglass" : ready ? "checkmark.circle.fill" : "exclamationmark.triangle.fill"
+        return Label(text, systemImage: icon).font(.caption)
+            .foregroundStyle(checkingFiles ? Color.secondary : ready ? Color.green : Color.orange)
     }
 
     private var options: some View {

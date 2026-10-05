@@ -103,17 +103,21 @@ public final class PluginTrustStore: @unchecked Sendable {
     public let url: URL
     /// Plugins under these folders (the app bundle) are trusted without approval.
     public let trustedRoots: [URL]
+    private let trustedPaths: [String]
     /// Development builds: a plugin folder that is a symbolic link (`dev-link.sh`) is checked on its manifest and
     /// entrypoint only, so its other files can change while it is being written.
     public var relaxesLinkedPlugins = false
     private let lock = NSLock()
     private var contents: Contents
-    /// Fingerprints by plugin folder, reused while both files keep their size and modification date.
-    private var fingerprints: [String: (stamp: String, value: PluginFingerprint)] = [:]
+    /// Fingerprints by plugin folder, reused while the folder's stamp (`PluginTree.stamp`) is unchanged. `files`
+    /// are plugin.json and the entrypoint when it was taken: `knownAvailability` trusts the last result only while
+    /// they are unchanged.
+    private var fingerprints: [String: (stamp: String, files: [PluginFileSignature?], value: PluginFingerprint)] = [:]
 
     public init(url: URL, trustedRoots: [URL] = []) {
         self.url = url
         self.trustedRoots = trustedRoots.map(\.standardizedFileURL)
+        trustedPaths = self.trustedRoots.map { $0.path + "/" }
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         contents = (try? decoder.decode(Contents.self, from: Data(contentsOf: url))) ?? Contents()
@@ -129,8 +133,7 @@ public final class PluginTrustStore: @unchecked Sendable {
     public func grant(for plugin: InstalledPlugin) -> PluginGrant? { locked { contents.grants[plugin.installationID] } }
 
     public func isBundled(_ plugin: InstalledPlugin) -> Bool {
-        let path = plugin.directory.standardizedFileURL.path
-        return trustedRoots.contains { path.hasPrefix($0.path + "/") }
+        trustedPaths.contains { plugin.directoryPath.hasPrefix($0) }
     }
 
     /// Repair may execute recipes only from the approved bundle. Check the full pin independently of enabled
@@ -143,13 +146,35 @@ public final class PluginTrustStore: @unchecked Sendable {
         }
     }
 
+    /// Whether the plugin may run, checking every file in its folder. Call it right before running the plugin.
     public func availability(of plugin: InstalledPlugin) -> PluginAvailability {
+        availability(of: plugin, pinning: true) { try? self.fingerprint(plugin) } ?? .changed
+    }
+
+    /// The same answer without walking the plugin's folder, for listing many plugins (#103): the result of the last
+    /// file check while plugin.json and the entrypoint are unchanged since. Nil when the files were not checked
+    /// yet in this session or those two changed; then `availability(of:)` has to run. Running a plugin always
+    /// checks every file again, so a stale `.ready` here cannot run changed code.
+    public func knownAvailability(of plugin: InstalledPlugin) -> PluginAvailability? {
+        availability(of: plugin, pinning: false) {
+            let key = plugin.directoryPath
+            guard let cached = self.locked({ self.fingerprints[key] }),
+                cached.files == PluginFileSignature.manifestAndEntrypoint(of: plugin)
+            else { return nil }
+            return cached.value
+        }
+    }
+
+    /// `current` is the folder's fingerprint, or nil when it is unknown (`knownAvailability`) or cannot be read.
+    private func availability(
+        of plugin: InstalledPlugin, pinning: Bool, current: () -> PluginFingerprint?
+    ) -> PluginAvailability? {
         if let reason = plugin.manifest.incompatibility { return .outdated(reason) }
         let grant = grant(for: plugin)
         if let grant, !grant.enabled { return .disabled }
         if isBundled(plugin) { return .ready }
         guard let grant, !grant.fingerprint.manifestSHA256.isEmpty else { return .untrusted }
-        guard let current = try? fingerprint(plugin) else { return .changed }
+        guard let current = current() else { return nil }
         let linked = relaxesLinkedPlugins
             && (try? plugin.directory.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink) == true
         if linked {
@@ -157,7 +182,7 @@ public final class PluginTrustStore: @unchecked Sendable {
                 && current.entrypointSHA256 == grant.fingerprint.entrypointSHA256 ? .ready : .changed
         }
         guard current.matches(grant.fingerprint) else { return .changed }
-        if grant.fingerprint.treeSHA256 == nil {
+        if pinning, grant.fingerprint.treeSHA256 == nil {
             // An older grant: pin the folder as it is now, since manifest and entrypoint still match.
             try? update { $0.grants[plugin.installationID]?.fingerprint = current }
         }
@@ -167,11 +192,16 @@ public final class PluginTrustStore: @unchecked Sendable {
     /// The plugin's fingerprint, hashed again only when a file in its folder was added, removed or changed size or
     /// date, inode, mode or ctime.
     func fingerprint(_ plugin: InstalledPlugin) throws -> PluginFingerprint {
+        // Taken before the walk, so a write during it leaves them stale and the next listing checks again.
+        let files = PluginFileSignature.manifestAndEntrypoint(of: plugin)
         let stamp = try PluginTree.stamp(plugin.directory)
-        let key = plugin.directory.standardizedFileURL.path
-        if let cached = locked({ fingerprints[key] }), cached.stamp == stamp { return cached.value }
+        let key = plugin.directoryPath
+        if let cached = locked({ fingerprints[key] }), cached.stamp == stamp {
+            locked { fingerprints[key]?.files = files }
+            return cached.value
+        }
         let value = try PluginFingerprint(plugin: plugin)
-        locked { fingerprints[key] = (stamp, value) }
+        locked { fingerprints[key] = (stamp, files, value) }
         return value
     }
 
@@ -185,8 +215,9 @@ public final class PluginTrustStore: @unchecked Sendable {
 
     /// Pins the plugin's current files. Only the user may call this (Plugins sheet, install approval).
     public func trust(_ plugin: InstalledPlugin) throws {
-        let fingerprint = try PluginFingerprint(plugin: plugin)
-        locked { fingerprints[plugin.directory.standardizedFileURL.path] = nil }
+        // Hashed from scratch, then kept, so listing the plugin right after shows it ready without another walk.
+        locked { fingerprints[plugin.directoryPath] = nil }
+        let fingerprint = try self.fingerprint(plugin)
         try update { contents in
             var grant = contents.grants[plugin.installationID]
                 ?? PluginGrant(fingerprint: fingerprint, version: plugin.manifest.version)

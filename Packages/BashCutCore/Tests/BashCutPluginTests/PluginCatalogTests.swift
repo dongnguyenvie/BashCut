@@ -232,4 +232,41 @@ struct PluginCatalogTests {
         try JSONEncoder().encode(manifest).write(to: directory.appendingPathComponent("plugin.json"))
         return InstalledPlugin(manifest: manifest, directory: directory)
     }
+
+    @Test("A catalog cache reuses unchanged plugins and reads changed, new and removed ones again")
+    func catalogCache() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        func write(_ id: String, name: String) throws {
+            let directory = root.appendingPathComponent(id)
+            try FileManager.default.createDirectory(
+                at: directory.appendingPathComponent("bin"), withIntermediateDirectories: true)
+            let manifest = PluginManifest(
+                id: id, name: LocalizedText(["en": name]), version: "1.0.0", entrypoint: "bin/provider",
+                capabilities: ["audio.beats"])
+            try JSONEncoder().encode(manifest).write(to: directory.appendingPathComponent("plugin.json"))
+            let entrypoint = directory.appendingPathComponent("bin/provider")
+            try Data("#!/bin/sh\n".utf8).write(to: entrypoint)
+            try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: entrypoint.path)
+        }
+        try write("example.a", name: "A")
+        try write("example.b", name: "B")
+        let cache = PluginCatalogCache()
+        func names() -> [String] {
+            PluginCatalog.discover(in: [root], cache: cache).plugins.map(\.manifest.displayName)
+        }
+        #expect(names() == ["A", "B"])
+        #expect(names() == ["A", "B"])
+        try write("example.a", name: "A renamed")
+        try write("example.c", name: "C")
+        #expect(names() == ["A renamed", "B", "C"])
+        try FileManager.default.removeItem(at: root.appendingPathComponent("example.b"))
+        #expect(names() == ["A renamed", "C"])
+        // An entrypoint that is no longer executable is reported again, not served from the cache.
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o644], ofItemAtPath: root.appendingPathComponent("example.c/bin/provider").path)
+        let result = PluginCatalog.discover(in: [root], cache: cache)
+        #expect(result.plugins.map(\.id) == ["example.a"])
+        #expect(result.diagnostics.contains { $0.contains("example.c") })
+    }
 }

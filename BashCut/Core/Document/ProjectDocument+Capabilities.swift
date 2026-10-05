@@ -338,12 +338,13 @@ extension ProjectDocument {
         let listed = result.plugins.filter { category == nil || plugins.category(of: $0) == category }
         return .object([
             "plugins": .array(listed.map { plugin in
-                .object([
+                let availability = plugins.currentAvailability(plugin)
+                return .object([
                     "id": .string(plugin.id), "name": .string(plugin.manifest.displayName),
                     "category": .string(plugins.category(of: plugin).rawValue),
                     "version": .string(plugin.manifest.version), "apiVersion": .integer(plugin.manifest.apiVersion),
-                    "availability": .string(plugins.service.availability(plugin).name),
-                    "detail": .string(plugins.service.availability(plugin).detail),
+                    "availability": .string(availability.name),
+                    "detail": .string(availability.detail),
                     "transport": .string(plugin.manifest.transportKind.rawValue),
                     "source": plugins.origin(of: plugin).map { origin in
                         .object(["url": .string(origin.url), "resolved": origin.resolved.map(JSONValue.string) ?? .null,
