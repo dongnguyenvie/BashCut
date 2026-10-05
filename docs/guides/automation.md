@@ -311,6 +311,42 @@ kind and role, or to a new layer next to the target, and linked sound follows on
 return the layer actually used. Raw `timeline apply` insert and move operations that would overlap are
 rejected.
 
+## Library items
+
+The library panels (Audio, Text, Stickers, Effects, Transitions, Filters, Voice) are collections of items with one
+model (#66). An item has an `id`, a `kind` (`audio`, `text-preset`, `sticker`, `effect-preset`, `transition-preset`,
+`look`, `voice`), a `name`, `tags`, a `pack`, `source` and `license`, `createdBy` (user, agent or plugin),
+`version`, usage, an optional copied `file` and `preview`, and `params` with what the kind needs.
+
+Items come from four scopes; when the same ID is in several, the first wins, and `scope:id` picks one:
+
+| Scope | Where | Writable |
+|---|---|---|
+| `project` | `.bashcut/library/library.json` and `files/` in the project folder; travels with the project | yes |
+| `user` | `~/Library/Application Support/BashCut/Library` (this Mac) | yes; agents need approval |
+| `plugin` | Shipped by a plugin | no |
+| `built-in` | Shipped with BashCut | no |
+
+- `bashcut library list [--panel text] [--kind sticker] [--tag food] [--scope user] [--created-by agent] [--pack X]
+  [--query word]` lists items with their usage; `library get <id>` adds the earlier versions and the file path.
+- `bashcut library add --kind sticker --name Fire --params '{"emoji":"🔥"}' [--tags food,hot] [--pack Food]
+  [--file f.png] [--scope project|user]` saves a new item (the ID comes from the name unless `--id` is given).
+- `bashcut library update <id> [--name] [--tags] [--params] [--file] …` saves a new version; the old one stays in
+  `history`. Built-in and plugin items are read-only: `--as <new-id> [--into user]` saves an improved copy with
+  `basedOn` pointing at the original. Nothing is overwritten silently.
+- `bashcut library remove <id>` removes a project or user item and its files.
+- `bashcut library place <id> [--at-frame] [--duration] [--track] [--text] --base-rev N` adds a text preset or emoji
+  sticker as a text item, or a look as an adjustment. `library apply <id> [--item] --base-rev N` sets a text preset,
+  an effect preset's properties (`params.patch`) or a look's grade on an existing item. Both count a use.
+- `bashcut library stats [--panel]` reports usage, the saved items nobody used, and duplicates (same kind, params
+  and file), to prune or merge.
+- `bashcut library export-pack --pack Food --output ~/Food` writes a pack folder (`pack.json` and `files/`);
+  `library import-pack <folder|zip> [--scope user] [--replace]` adds one. IDs already there are refused unless
+  `--replace` saves them as new versions.
+
+Agents' `add`, `update`, `remove` and `import-pack` in the `user` scope wait for the user's approval, like exports;
+the project scope follows the normal edit rules.
+
 ## Media proxies
 
 Heavy footage (HEVC, a long side above 1920 px, or above 20 Mbit/s) gets a preview proxy when it is imported:

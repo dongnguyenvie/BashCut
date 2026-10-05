@@ -160,6 +160,40 @@ struct CommandSpecTests {
         #expect(try CommandLineParser.parse(["plugins", "setup", "bashcut.vieneu-tts"]).params == ["plugin": .string("bashcut.vieneu-tts")])
     }
 
+    @Test("Library commands (#74) parse kinds, scopes, JSON params and paths; every kind maps to a panel")
+    func libraryCommands() throws {
+        for kind in LibraryKind.allCases { #expect(CommandCatalog.libraryPanels.contains(kind.panel)) }
+        let add = try CommandLineParser.parse([
+            "library", "add", "--kind", "sticker", "--name", "Fire", "--tags", "food,hot", "--params", #"{"emoji":"🔥"}"#,
+            "--file", "~/fire.png", "--scope", "user",
+        ])
+        #expect(add.spec.mode == .edit)
+        #expect(add.params == [
+            "kind": .string("sticker"), "name": .string("Fire"), "tags": .string("food,hot"),
+            "params": .object(["emoji": .string("🔥")]), "file": .string(NSHomeDirectory() + "/fire.png"),
+            "scope": .string("user"),
+        ])
+        #expect(try add.spec.validate(["kind": .string("look"), "name": .string("Warm")])["scope"] == .string("project"))
+        #expect(throws: CommandLineParser.Failure.self) {
+            try CommandLineParser.parse(["library", "add", "--kind", "gif", "--name", "x"])
+        }
+        #expect(throws: CommandLineParser.Failure.self) {
+            try CommandLineParser.parse(["library", "add", "--kind", "look", "--name", "x", "--scope", "built-in"])
+        }
+        let list = try CommandLineParser.parse(["library", "list", "--panel", "text", "--created-by", "agent"])
+        #expect(list.spec.mode == .read && list.params == ["panel": .string("text"), "createdBy": .string("agent")])
+        #expect(throws: CommandLineParser.Failure.self) { try CommandLineParser.parse(["library", "list", "--panel", "media"]) }
+        let update = try CommandLineParser.parse(["library", "update", "built-in:bold", "--as", "bold-2", "--into", "user"])
+        #expect(update.params == ["id": .string("built-in:bold"), "as": .string("bold-2"), "into": .string("user")])
+        let place = try CommandLineParser.parse(["library", "place", "fire", "--at-frame", "30", "--base-rev", "4"])
+        #expect(place.params == ["id": .string("fire"), "atFrame": .integer(30), "baseRev": .integer(4)])
+        let pack = try CommandLineParser.parse(["library", "import-pack", "/tmp/Food.zip", "--replace"])
+        #expect(pack.params == ["path": .string("/tmp/Food.zip"), "replace": .bool(true), "scope": .string("project")])
+        let export = try CommandLineParser.parse(["library", "export-pack", "--pack", "Food", "--output", "/tmp/out"])
+        #expect(export.params == ["pack": .string("Food"), "output": .string("/tmp/out")])
+        for name in ["library.list", "library.get", "library.stats"] { #expect(CommandCatalog.spec(named: name)?.mode == .read) }
+    }
+
     @Test("The CLI parses positionals, options, flags, files and the global format from specs")
     func commandLine() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("bashcut-cli-" + UUID().uuidString)

@@ -126,6 +126,14 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
 - Undoable transitions (dissolve, whip, blink, zoom, spin, shutter, wipe) with adjustable duration; preview and
   export share the same tweening, and transitions are removed when edits separate their clips.
 
+### Library
+
+- One item model for every library panel (#74): kind, tags, pack, source and license, created by, version
+  history, usage and params, in project (`.bashcut/library`), user (Application Support), plugin and built-in
+  scopes. `library list|get|stats|add|update|remove|apply|place|import-pack|export-pack`; agents' user-scope writes
+  need approval. Panels do not read it yet (#75, #80); placing audio, image stickers and transitions comes with
+  #78, #64 and #77.
+
 ### Export
 
 - One AVFoundation custom compositor for preview and export, including captions and the audio mix.

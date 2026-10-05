@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+- **Library items for agents** (#74). Every library panel now has one item model: text presets, stickers, effect and
+  transition presets, looks, audio and voices, each with tags, a pack, source and license, who made it, a version
+  history and usage. Items live in the project (`.bashcut/library`, so they travel with it), on this Mac, in plugins
+  or built in; built-in and plugin items are read-only, and improving one saves a new version or a copy. Agents:
+  `library list|get|stats|add|update|remove|apply|place|import-pack|export-pack`; saving to this Mac's library
+  asks for approval.
 - **Link (developer mode), Reload and Replace…** (#83). When you add a plugin folder, the approval can install it as
   a link to your folder instead of a copy, so you can keep editing it; Installed shows the folder, and **Reload**
   restarts the plugin and checks its files again (changed files still need Trust; removing it keeps your folder).

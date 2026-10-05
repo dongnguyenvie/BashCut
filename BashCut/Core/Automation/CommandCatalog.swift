@@ -15,7 +15,7 @@ public enum CommandCatalog {
 
     public static let specs: [CommandSpec] = readSpecs + projectSpecs + editSpecs + captionSpecs + layerSpecs + styleSpecs
         + formatSpecs + clipSpecs + capabilitySpecs + analysisSpecs + pluginSpecs + storageSpecs + agentSpecs + appSpecs + chatSpecs
-        + privilegedSpecs + uiSpecs + toolSpecs
+        + privilegedSpecs + uiSpecs + toolSpecs + librarySpecs
 
     public static let modes: [String: CommandMode] = Dictionary(uniqueKeysWithValues: specs.map { ($0.name, $0.mode) })
 
