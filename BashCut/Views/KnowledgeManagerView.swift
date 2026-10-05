@@ -26,6 +26,8 @@ struct KnowledgeManagerView: View {
             }
         }
         .frame(minWidth: 860, minHeight: 540)
+        // A status message belongs to the section it came from.
+        .onChange(of: section) { model.message = "" }
         .task {
             // Agents change knowledge with commands or by editing the files; show their changes while open.
             while !Task.isCancelled {

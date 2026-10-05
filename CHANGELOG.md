@@ -12,6 +12,8 @@
   author. `knowledge history` takes `--kind` and `--target` and returns `diff` and `revertible`; the new
   `knowledge revert <id>` does the same as the button (an agent's revert of a change for every project asks for
   approval). Rejecting a preference proposal changed nothing, so it cannot be reverted.
+- Knowledge window: the empty Inbox message is centred, the Skills count follows skills added or removed on disk,
+  and a status message such as "Change reverted" clears when you switch sections.
 - **Knowledge inbox** (#69). The Knowledge window opens on a new **Inbox** section when something waits for
   review: proposed lessons, kit change proposals (lessons tagged `kit`, with their diff coloured) and an agent's
   preference changes for every project, each with **Approve**, **Edit…** and **Reject**. An agent's `set-pref` for
