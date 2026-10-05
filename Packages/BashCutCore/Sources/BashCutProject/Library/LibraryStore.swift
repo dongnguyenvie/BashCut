@@ -1,9 +1,11 @@
+import CryptoKit
 import Foundation
 
 /// The library items of one writable scope, in `<root>/library.json`, with their files under `<root>/files/<id>/v<N>/`.
 /// The user scope lives in `~/Library/Application Support/BashCut/Library`, the project scope in
-/// `<project>/.bashcut/library`. `usage` counts uses: the project store counts its own items, the user store
-/// counts everything else.
+/// `<project>/.bashcut/library`. Use counts are in `<root>/usage.json`, so counting a use never rewrites the items:
+/// the project store counts its own items, the user store counts everything else. Each stored file's SHA-256 is
+/// kept in `fileSHA256` when the file is copied in.
 public struct LibraryStore: Sendable {
     public static let format = 1
     public static let maximumItems = 5_000
@@ -29,6 +31,7 @@ public struct LibraryStore: Sendable {
     }
 
     public var file: URL { root.appendingPathComponent("library.json") }
+    public var usageFile: URL { root.appendingPathComponent("usage.json") }
 
     /// The stored document; unknown top-level fields round-trip.
     public struct Contents: Sendable, Equatable {
@@ -39,6 +42,7 @@ public struct LibraryStore: Sendable {
             set { fields["items"] = .array(newValue.map { .object($0.fields) }) }
         }
 
+        /// Use counts that older versions kept in `library.json`; moved to `usage.json` on the next save.
         public var usage: [String: LibraryUsage] {
             get { (fields["usage"]?.object ?? [:]).mapValues(LibraryUsage.init(json:)) }
             set { fields["usage"] = .object(newValue.mapValues(\.json)) }
@@ -73,10 +77,18 @@ public struct LibraryStore: Sendable {
         guard contents.items.count <= Self.maximumItems else {
             throw ProjectError.invalid("A library holds at most \(Self.maximumItems) items")
         }
+        if contents.fields["usage"] != nil {
+            if !FileManager.default.fileExists(atPath: usageFile.path) { try saveUsage(contents.usage) }
+            contents.fields["usage"] = nil
+        }
+        try write(.object(contents.fields), to: file)
+    }
+
+    private func write(_ value: JSONValue, to url: URL) throws {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        try encoder.encode(JSONValue.object(contents.fields)).write(to: file, options: .atomic)
+        try encoder.encode(value).write(to: url, options: .atomic)
     }
 
     // MARK: Changes
@@ -93,6 +105,7 @@ public struct LibraryStore: Sendable {
         item.scope = scope
         item["version"] = .integer(1)
         item["history"] = nil
+        item["fileSHA256"] = nil
         item["createdAt"] = .string(Self.timestamp(now))
         item["updatedAt"] = .string(Self.timestamp(now))
         let copied = try copyFiles(into: &item, file: file, preview: preview)
@@ -153,30 +166,47 @@ public struct LibraryStore: Sendable {
         }
         let removed = LibraryItem(fields: items.remove(at: index).fields, scope: scope)
         contents.items = items
-        contents.usage[removed.reference] = nil
         try save(contents)
+        var usage = try usage()
+        if usage.removeValue(forKey: removed.reference) != nil { try saveUsage(usage) }
         try? FileManager.default.removeItem(at: filesFolder(removed.id))
         return removed
     }
 
-    /// Counts one use of the item `reference` (`scope:id`).
+    // MARK: Usage
+
+    /// Counts one use of the item `reference` (`scope:id`). Only `usage.json` is rewritten.
     public func recordUse(_ reference: String, now: Date = Date()) throws {
-        var contents = try load()
-        var usage = contents.usage
+        var usage = try usage()
         var entry = usage[reference] ?? LibraryUsage()
         entry.count += 1
         entry.lastUsed = Self.timestamp(now)
         usage[reference] = entry
-        contents.usage = usage
-        try save(contents)
+        try saveUsage(usage)
     }
 
-    public func usage() throws -> [String: LibraryUsage] { try load().usage }
+    /// Use counts by reference, from `usage.json`, or from `library.json` for a library older versions wrote.
+    public func usage() throws -> [String: LibraryUsage] {
+        guard FileManager.default.fileExists(atPath: usageFile.path) else { return try load().usage }
+        let value: JSONValue
+        do {
+            value = try JSONDecoder().decode(JSONValue.self, from: Data(contentsOf: usageFile))
+        } catch {
+            throw ProjectError.invalid("\(usageFile.path) is not valid JSON: \(error.localizedDescription)")
+        }
+        return (value.object["usage"]?.object ?? [:]).mapValues(LibraryUsage.init(json:))
+    }
+
+    private func saveUsage(_ usage: [String: LibraryUsage]) throws {
+        try write(.object(["format": .integer(Self.format), "usage": .object(usage.mapValues(\.json))]), to: usageFile)
+    }
 
     // MARK: Files
 
     /// Fields the store sets itself; changes cannot write them.
-    static let managedKeys: Set<String> = ["id", "version", "history", "createdAt", "updatedAt", "file", "preview"]
+    static let managedKeys: Set<String> = [
+        "id", "version", "history", "createdAt", "updatedAt", "file", "preview", "fileSHA256",
+    ]
 
     public func url(of path: String) -> URL { root.appendingPathComponent(path) }
 
@@ -197,8 +227,25 @@ public struct LibraryStore: Sendable {
             }
             copied.append(destination)
             item[key] = .string("files/\(item.id)/v\(item.version)/\(source.lastPathComponent)")
+            if key == "file" {
+                do {
+                    item["fileSHA256"] = .string(try Self.sha256(of: destination))
+                } catch {
+                    copied.forEach { try? FileManager.default.removeItem(at: $0) }
+                    throw error
+                }
+            }
         }
         return copied
+    }
+
+    /// The SHA-256 of a file as lowercase hex, read in 1 MB chunks.
+    static func sha256(of url: URL) throws -> String {
+        let handle = try FileHandle(forReadingFrom: url)
+        defer { try? handle.close() }
+        var hasher = SHA256()
+        while let chunk = try handle.read(upToCount: 1 << 20), !chunk.isEmpty { hasher.update(data: chunk) }
+        return hasher.finalize().map { String(format: "%02x", $0) }.joined()
     }
 
     /// Copies a regular file up to `maximumFileBytes`, replacing an earlier copy at `destination`.

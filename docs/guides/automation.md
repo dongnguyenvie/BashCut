@@ -330,7 +330,7 @@ Items come from four scopes; when the same ID is in several, the first wins, and
 
 | Scope | Where | Writable |
 |---|---|---|
-| `project` | `.bashcut/library/library.json` and `files/` in the project folder; travels with the project | yes |
+| `project` | `.bashcut/library/library.json`, `usage.json` and `files/` in the project folder; travels with the project | yes |
 | `user` | `~/Library/Application Support/BashCut/Library` (this Mac) | yes; agents need approval |
 | `plugin` | Shipped by a plugin | no |
 | `built-in` | Shipped with BashCut | no |
@@ -350,9 +350,10 @@ them first, then the items saved in the project or on this Mac.
 - `bashcut library remove <id>` removes a project or user item and its files.
 - `bashcut library place <id> [--at-frame] [--duration] [--track] [--text] --base-rev N` adds a text preset or emoji
   sticker as a text item, or a look as an adjustment. `library apply <id> [--item] --base-rev N` sets a text preset,
-  an effect preset's properties (`params.patch`) or a look's grade on an existing item. Both count a use.
+  an effect preset's properties (`params.patch`) or a look's grade on an existing item. Both count a use (in
+  `usage.json` next to `library.json`; the item list is not rewritten).
 - `bashcut library stats [--panel]` reports usage, the saved items nobody used, and duplicates (same kind, params
-  and file), to prune or merge.
+  and file), to prune or merge. Saved items compare the `fileSHA256` stored when their file was copied in.
 - `bashcut library export-pack --pack Food --output ~/Food` writes a pack folder (`pack.json` and `files/`);
   `library import-pack <folder|zip> [--scope user] [--replace]` adds one. IDs already there are refused unless
   `--replace` saves them as new versions.
