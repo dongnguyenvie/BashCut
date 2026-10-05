@@ -20,7 +20,13 @@ extension CommandCatalog {
         CommandSpec(
             "plugins.actions", .read,
             "List actions plugins add to the editor (Plugins menu, toolbar, context menus, panels) with their "
-                + "parameters as JSON Schema, placements and whether each is available now."),
+                + "parameters as JSON Schema, placements, whether each is available now and when it last ran. MCP lists at "
+                + "most \(PluginActionTools.budget) of them as their own tools; find any other action here and run it with "
+                + "plugins run.",
+            parameters: [
+                CommandParameter("query", .string, "Only actions whose ID, title or plugin contains this text", cli: .positional),
+                CommandParameter("plugin", .string, "Only actions of this plugin ID", cli: .option("plugin")),
+            ]),
         CommandSpec(
             "plugins.run", .edit,
             "Run a plugin action like clicking it, with parameters (CLI: --params '{\"mode\":\"vivid\"}'). The plugin's "

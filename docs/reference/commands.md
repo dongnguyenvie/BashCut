@@ -268,11 +268,13 @@ List installed plugins with their category, providers and project provider prefe
 - Mode: read · Runs: immediately · MCP: `bashcut_plugins_list`
 - `category`: string, one of agents, captions, voice, audio, color, effects, export, utilities. Only plugins in this category
 
-### `bashcut plugins actions`
+### `bashcut plugins actions [<query>] [--plugin <plugin>]`
 
-List actions plugins add to the editor (Plugins menu, toolbar, context menus, panels) with their parameters as JSON Schema, placements and whether each is available now.
+List actions plugins add to the editor (Plugins menu, toolbar, context menus, panels) with their parameters as JSON Schema, placements, whether each is available now and when it last ran. MCP lists at most 40 of them as their own tools; find any other action here and run it with plugins run.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_plugins_actions`
+- `query`: string. Only actions whose ID, title or plugin contains this text
+- `plugin`: string. Only actions of this plugin ID
 
 ### `bashcut plugins run <action> [--params <params>]`
 

@@ -813,7 +813,7 @@ Everything above is available to agents through the CLI and MCP (`bashcut_plugin
 |---|---|---|
 | `plugins list` | read | Plugins sheet: availability, transport, actions, hooks, options |
 | `plugins health [plugin]` | read | Check Health |
-| `plugins actions` | read | Every contributed action with placements, `when`, shortcut, a JSON Schema for its params and whether it is enabled now |
+| `plugins actions [text] [--plugin id]` | read | Every contributed action (or those matching the text or plugin) with placements, `when`, shortcut, a JSON Schema for its params, whether it is enabled now and when it last ran |
 | `plugins run <action> [--params '{…}']` | edit, job | Clicking the action and filling its sheet |
 | `plugins hooks` | read | Hook Activity: subscriptions, recent runs, waiting proposals |
 | `plugins proposal <id> --decision apply\|discard` | edit | The review sheet |

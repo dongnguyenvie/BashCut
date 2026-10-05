@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+- **Plugin actions no longer flood the MCP tool list** (#98). MCP lists at most 40 `bashcut_action_…` tools, with
+  actions that can run on the current selection first, then the most recently run. Any other action is still found
+  with `plugins actions` and run with `plugins run`, and an action's tool name keeps working when it is not listed.
+  `plugins actions` takes a search text and `--plugin`, and reports when each action last ran.
 - **One cache folder per project.** Preview proxies, waveforms, speed-ramp audio, still-image movies, loudness
   scratch files and agent frames now all live in `.bashcut/cache/`, which is excluded from Time Machine. Opening a
   project moves caches from their old `.bashcut/` folders (a quick rename, nothing is made again). The project's

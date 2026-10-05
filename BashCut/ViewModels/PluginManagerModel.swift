@@ -132,6 +132,8 @@ enum PluginText {
     @ObservationIgnored private var catalogDiagnostics: [String] = []
     /// Actions of runnable plugins, in catalog order.
     var actions: [ContributedAction] = []
+    /// When each action last started, so MCP lists recently used actions first (#98).
+    @ObservationIgnored var lastRun: [String: Date] = [:]
     /// Most recent hook deliveries, newest last.
     var hookLog: [PluginHookRun] = []
     var proposals: [PluginProposal] = []
