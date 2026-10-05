@@ -9,6 +9,7 @@ import Foundation
 ///
 /// - each (plugin, event) pair is debounced and coalesced, so only the latest payload is delivered;
 /// - one hook runs per plugin at a time, later events wait in a small per-plugin queue;
+/// - at most `PluginHookScheduler.defaultLimit` hooks run at once across plugins, which take turns (#99);
 /// - a plugin gets at most `rateLimit` deliveries a minute, extra events are dropped and logged;
 /// - an edit a hook caused never re-triggers that plugin's own hooks;
 /// - failures go to the hook log and debug log, never to the editor's status bar.
@@ -28,8 +29,7 @@ import Foundation
     weak var document: ProjectDocument?
     private var waiting: [Key: Delivery] = [:]
     private var debounces: [Key: Task<Void, Never>] = [:]
-    private var queues: [String: [Key]] = [:]
-    private var running: Set<String> = []
+    private var scheduler = PluginHookScheduler<Key>()
     private var recent: [String: [Date]] = [:]
 
     init(document: ProjectDocument) { self.document = document }
@@ -59,36 +59,43 @@ import Foundation
         for task in debounces.values { task.cancel() }
         debounces.removeAll()
         waiting.removeAll()
-        queues.removeAll()
+        scheduler.removeQueued()
     }
 
-    var pendingCount: Int { waiting.count }
+    /// The backlog for `plugins hooks`.
+    var queueJSON: JSONValue {
+        .object([
+            "limit": .integer(scheduler.limit), "running": .array(scheduler.running.sorted().map(JSONValue.string)),
+            "queued": .integer(scheduler.queued), "debouncing": .integer(debounces.count),
+        ])
+    }
 
     private func enqueue(_ key: Key) {
-        var queue = queues[key.plugin] ?? []
-        if !queue.contains(key) { queue.append(key) }
-        queues[key.plugin] = queue
-        runNext(key.plugin)
+        scheduler.enqueue(key, plugin: key.plugin)
+        startReady()
     }
 
-    private func runNext(_ pluginID: String) {
-        guard !running.contains(pluginID), var queue = queues[pluginID], !queue.isEmpty else { return }
-        let key = queue.removeFirst()
-        queues[pluginID] = queue.isEmpty ? nil : queue
-        guard let delivery = waiting.removeValue(forKey: key), let document else { return runNext(pluginID) }
-        let now = Date()
-        let window = (recent[pluginID] ?? []).filter { now.timeIntervalSince($0) < 60 }
-        guard window.count < Self.rateLimit else {
-            recent[pluginID] = window
-            document.plugins.log(pluginID, key.event.rawValue, .dropped, "rate limit \(Self.rateLimit)/min")
-            return runNext(pluginID)
-        }
-        recent[pluginID] = window + [now]
-        running.insert(pluginID)
-        Task { [weak self] in
-            await document.deliverHook(delivery.plugin, hook: delivery.hook, payload: delivery.payload)
-            self?.running.remove(pluginID)
-            self?.runNext(pluginID)
+    /// Starts deliveries until the global limit is reached or nothing waits.
+    private func startReady() {
+        while let (pluginID, key) = scheduler.next() {
+            guard let delivery = waiting.removeValue(forKey: key), let document else {
+                scheduler.finish(pluginID)
+                continue
+            }
+            let now = Date()
+            let window = (recent[pluginID] ?? []).filter { now.timeIntervalSince($0) < 60 }
+            guard window.count < Self.rateLimit else {
+                recent[pluginID] = window
+                document.plugins.log(pluginID, key.event.rawValue, .dropped, "rate limit \(Self.rateLimit)/min")
+                scheduler.finish(pluginID)
+                continue
+            }
+            recent[pluginID] = window + [now]
+            Task { [weak self] in
+                await document.deliverHook(delivery.plugin, hook: delivery.hook, payload: delivery.payload)
+                self?.scheduler.finish(pluginID)
+                self?.startReady()
+            }
         }
     }
 }
@@ -185,6 +192,7 @@ extension ProjectDocument {
                 }
             }),
             "events": .array(PluginEvent.allCases.map { .string($0.rawValue) }),
+            "queue": pluginHooks.queueJSON,
             "recent": .array(plugins.hookLog.suffix(50).map(\.json)),
             "proposals": .array(plugins.proposals.map(\.json)),
         ])

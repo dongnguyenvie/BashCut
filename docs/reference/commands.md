@@ -286,7 +286,7 @@ Run a plugin action like clicking it, with parameters (CLI: --params '{"mode":"v
 
 ### `bashcut plugins hooks`
 
-List plugin hook subscriptions, the recent hook runs and hook edits waiting for review.
+List plugin hook subscriptions, the delivery queue (limit, running, queued, debouncing), the recent hook runs and hook edits waiting for review.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_plugins_hooks`
 
