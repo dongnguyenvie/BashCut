@@ -90,6 +90,15 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
         settings.workspace ?? document.fileURL?.deletingLastPathComponent()
             ?? FileManager.default.homeDirectoryForCurrentUser
     }
+    /// Knowledge lives in the open project and the user's folder, not in the workspace (#100); the workspace and
+    /// home folder are only searched for memos older builds left there.
+    var knowledgeStore: AgentKnowledgeStore {
+        AgentKnowledgeStore(
+            project: document.fileURL?.deletingLastPathComponent(),
+            user: AgentKnowledgeStore.userFolder(applicationSupport: ProjectDocument.libraryApplicationSupport),
+            legacyFolders: [settings.workspace, FileManager.default.homeDirectoryForCurrentUser].compactMap { $0 })
+    }
+    func loadKnowledge() { knowledge.load(knowledgeStore) }
     var toolsDirectory: String { Bundle.main.executableURL?.deletingLastPathComponent().path ?? "" }
     /// Whether starting this agent continues its last conversation for the project.
     func canContinue(_ provider: AgentProviderID) -> Bool { !sessionBookmarks[provider].isEmpty }
@@ -135,7 +144,7 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
 
     @discardableResult
     func startBuiltIn(_ provider: any AgentProvider) throws -> TerminalSession {
-        knowledge.load(from: directory)
+        loadKnowledge()
         let canEdit = !provider.isAgent || settings.allowAgentEdits
         return try start(
             provider, canEdit: canEdit, prompt: sessionPrompt(canEdit: canEdit), icon: Self.icon(for: provider.id))
@@ -239,7 +248,7 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
     func handoff(to provider: AgentProviderID) {
         guard terminalChoices.contains(where: { $0.id == provider && $0.isAgent }) else { return }
         let source = current?.provider.title ?? "BashCut"
-        knowledge.load(from: directory)
+        loadKnowledge()
         let handoff =
             "Continue this editing task handed off from \(source).\n"
                 + document.contextText() + "\n" + TimelineSummary.text(document.project) + "\n" + knowledge.context
@@ -295,7 +304,7 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
         provider.isAgent ? sessionBookmarks[provider.id].trimmingCharacters(in: .whitespacesAndNewlines) : ""
     }
     func sendContext(_ request: String = "", imageURL: URL? = nil) {
-        knowledge.load(from: directory)
+        loadKnowledge()
         var text = document.contextText() + "\n" + knowledge.context + "\n" + request
         if let imageURL {
             text += "\nCurrent viewer frame: " + imageURL.path

@@ -1,52 +1,43 @@
+import BashCutAgent
 import Foundation
 import Observation
 
-struct ProjectSkill: Identifiable, Hashable {
-    let name: String
-    let url: URL
-    let claude: Bool
-    let codex: Bool
-    var id: String { name }
-}
-
+/// The Agent Knowledge sheet: the project memo and skills, and the user's notes for every project (#100).
 @MainActor @Observable final class AgentKnowledgeModel {
     var memo = ""
-    var skills: [ProjectSkill] = []
+    var userMemo = ""
+    var skills: [AgentKnowledgeSkill] = []
     var selectedSkill: String?
     var skillText = ""
     var newSkillName = ""
     var message = ""
-    private var root: URL?
+    /// A memo an older build left in the agent workspace or home folder, offered for migration.
+    var legacy: LegacyKnowledgeMemo?
+    private(set) var store: AgentKnowledgeStore?
+
+    var hasProject: Bool { store?.project != nil }
 
     var context: String {
-        let trimmed = memo.trimmingCharacters(in: .whitespacesAndNewlines)
-        let names = skills.map(\.name).joined(separator: ", ")
-        return "[Project memory]\n\(trimmed.isEmpty ? "No memo." : trimmed)\nSkills: \(names.isEmpty ? "none" : names)\n[/Project memory]"
+        let user = userMemo.trimmingCharacters(in: .whitespacesAndNewlines)
+        let project = memo.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Agents may run in a workspace outside the project, so skills are listed with their paths.
+        let names = skills.map { "\($0.name) (\($0.url.appendingPathComponent("SKILL.md").path))" }
+        var lines = ["[Notes for every project]", user.isEmpty ? "None." : user, "[/Notes for every project]"]
+        if hasProject {
+            lines += ["[Project memory]", project.isEmpty ? "No memo." : project,
+                      "Skills: \(names.isEmpty ? "none" : names.joined(separator: ", "))", "[/Project memory]"]
+        } else {
+            lines.append("[Project memory] No saved project is open. [/Project memory]")
+        }
+        return lines.joined(separator: "\n")
     }
 
-    func load(from root: URL) {
-        self.root = root
-        let manager = FileManager.default
-        let memoURL = root.appendingPathComponent(".bashcut/agent-memory.md")
-        memo = (try? String(contentsOf: memoURL, encoding: .utf8)) ?? ""
-        let canonical = root.appendingPathComponent(".bashcut/skills", isDirectory: true)
-        let claude = root.appendingPathComponent(".claude/skills", isDirectory: true)
-        let codex = root.appendingPathComponent(".agents/skills", isDirectory: true)
-        let names = Set([canonical, claude, codex].flatMap { directory in
-            ((try? manager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)) ?? [])
-                .filter { manager.fileExists(atPath: $0.appendingPathComponent("SKILL.md").path) }
-                .map(\.lastPathComponent)
-        })
-        skills = names.sorted().compactMap { name in
-            let candidates = [canonical, codex, claude].map { $0.appendingPathComponent(name) }
-            guard let url = candidates.first(where: {
-                manager.fileExists(atPath: $0.appendingPathComponent("SKILL.md").path)
-            }) else { return nil }
-            return ProjectSkill(
-                name: name, url: url,
-                claude: manager.fileExists(atPath: claude.appendingPathComponent(name).path),
-                codex: manager.fileExists(atPath: codex.appendingPathComponent(name).path))
-        }
+    func load(_ store: AgentKnowledgeStore) {
+        self.store = store
+        memo = store.memo(.project)
+        userMemo = store.memo(.user)
+        skills = store.skills()
+        legacy = store.legacyMemo()
         if let selectedSkill, skills.contains(where: { $0.name == selectedSkill }) {
             select(selectedSkill)
         } else if let first = skills.first {
@@ -57,19 +48,46 @@ struct ProjectSkill: Identifiable, Hashable {
         }
     }
 
+    private func reload() { if let store { load(store) } }
+
+    private func requireStore() throws -> AgentKnowledgeStore {
+        guard let store else { throw KnowledgeError("Open the Agent Knowledge sheet first") }
+        return store
+    }
+
     func saveMemo() {
         do {
-            try writeMemo(memo)
-            message = "Project memo saved"
+            try writeMemo(memo, scope: .project)
+            message = String(localized: "Project memo saved")
         } catch { message = error.localizedDescription }
     }
 
-    func writeMemo(_ text: String) throws {
-        guard let root else { throw KnowledgeError("Open the agent workspace first") }
-        let url = root.appendingPathComponent(".bashcut/agent-memory.md")
-        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try text.write(to: url, atomically: true, encoding: .utf8)
-        memo = text
+    func saveUserMemo() {
+        do {
+            try writeMemo(userMemo, scope: .user)
+            message = String(localized: "Notes for every project saved")
+        } catch { message = error.localizedDescription }
+    }
+
+    func writeMemo(_ text: String, scope: KnowledgeScope) throws {
+        try requireStore().writeMemo(text, scope: scope)
+        switch scope {
+        case .project: memo = text
+        case .user: userMemo = text
+        }
+    }
+
+    func migrateLegacy(to scope: KnowledgeScope) throws {
+        guard let legacy else { throw KnowledgeError("No older memo to move") }
+        try requireStore().migrate(legacy, to: scope)
+        reload()
+    }
+
+    func migrate(to scope: KnowledgeScope) {
+        do {
+            try migrateLegacy(to: scope)
+            message = String(localized: "Older memo moved")
+        } catch { message = error.localizedDescription }
     }
 
     func select(_ name: String) {
@@ -80,76 +98,33 @@ struct ProjectSkill: Identifiable, Hashable {
 
     func createSkill() {
         do {
-            try createSkill(named: newSkillName)
+            try writeSkill(named: newSkillName, text: nil)
             newSkillName = ""
-            message = "Skill shared with Claude and Codex"
+            message = String(localized: "Skill shared with Claude and Codex")
         } catch { message = error.localizedDescription }
     }
 
-    /// Creates `.bashcut/skills/<name>/SKILL.md` (with a starter text unless `text` is given) and links
-    /// it for Claude and Codex.
-    func createSkill(named name: String, text: String? = nil) throws {
-        guard let root else { throw KnowledgeError("Open the agent workspace first") }
-        let slug = name.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
-        guard slug.range(of: "^[a-z0-9]+(?:-[a-z0-9]+)*$", options: .regularExpression) != nil else {
-            throw KnowledgeError("Use a lowercase hyphenated skill name")
-        }
-        let directory = root.appendingPathComponent(".bashcut/skills/\(slug)", isDirectory: true)
-        guard !FileManager.default.fileExists(atPath: directory.path) else { throw KnowledgeError("Skill already exists") }
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let title = slug.split(separator: "-").map { $0.capitalized }.joined(separator: " ")
-        let source = text ?? "# \(title)\n\nDescribe when and how the agent should use this project skill.\n"
-        try source.write(to: directory.appendingPathComponent("SKILL.md"), atomically: true, encoding: .utf8)
-        try link(directory: directory, into: root.appendingPathComponent(".claude/skills"))
-        try link(directory: directory, into: root.appendingPathComponent(".agents/skills"))
-        load(from: root)
-        select(slug)
-    }
-
-    /// Replaces an existing skill's SKILL.md, or creates the skill.
-    func writeSkill(named name: String, text: String) throws {
-        guard let skill = skills.first(where: { $0.name == name }) else { return try createSkill(named: name, text: text) }
-        try text.write(to: skill.url.appendingPathComponent("SKILL.md"), atomically: true, encoding: .utf8)
-        if selectedSkill == name { skillText = text }
+    /// Replaces a skill's SKILL.md, or creates the skill and shares it with Claude and Codex.
+    func writeSkill(named name: String, text: String?) throws {
+        try requireStore().writeSkill(named: name, text: text)
+        reload()
+        select(name.lowercased().trimmingCharacters(in: .whitespacesAndNewlines))
     }
 
     func saveSkill() {
-        guard let skill = skills.first(where: { $0.name == selectedSkill }) else { return }
+        guard let selectedSkill else { return }
         do {
-            try skillText.write(
-                to: skill.url.appendingPathComponent("SKILL.md"), atomically: true, encoding: .utf8)
-            message = "Skill saved"
+            try writeSkill(named: selectedSkill, text: skillText)
+            message = String(localized: "Skill saved")
         } catch { message = error.localizedDescription }
     }
 
     func shareSelectedWithBoth() {
-        guard let root, let skill = skills.first(where: { $0.name == selectedSkill }) else { return }
+        guard let selectedSkill else { return }
         do {
-            let canonical = root.appendingPathComponent(".bashcut/skills/\(skill.name)", isDirectory: true)
-            if !FileManager.default.fileExists(atPath: canonical.path) {
-                try FileManager.default.createDirectory(at: canonical, withIntermediateDirectories: true)
-                try skillText.write(
-                    to: canonical.appendingPathComponent("SKILL.md"), atomically: true, encoding: .utf8)
-            }
-            try link(directory: canonical, into: root.appendingPathComponent(".claude/skills"))
-            try link(directory: canonical, into: root.appendingPathComponent(".agents/skills"))
-            load(from: root)
-            message = "Skill available to both agents"
+            try requireStore().share(selectedSkill)
+            reload()
+            message = String(localized: "Skill available to both agents")
         } catch { message = error.localizedDescription }
     }
-
-    private func link(directory: URL, into parent: URL) throws {
-        let manager = FileManager.default
-        try manager.createDirectory(at: parent, withIntermediateDirectories: true)
-        let link = parent.appendingPathComponent(directory.lastPathComponent)
-        guard !manager.fileExists(atPath: link.path) else { return }
-        try manager.createSymbolicLink(
-            atPath: link.path,
-            withDestinationPath: "../../.bashcut/skills/\(directory.lastPathComponent)")
-    }
-}
-
-struct KnowledgeError: LocalizedError {
-    let errorDescription: String?
-    init(_ message: String) { errorDescription = message }
 }

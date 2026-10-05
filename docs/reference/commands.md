@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 109 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 110 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -869,20 +869,28 @@ Run the Doctor checks (workspace, tools, plugins) and return the results.
 
 ### `bashcut knowledge get`
 
-Read the project memo and project skills shared with the agents.
+Read the project memo and skills (stored in the project folder), the notes for every project, and any older memo left in the agent workspace or home folder (legacy).
 
 - Mode: read · Runs: immediately · MCP: `bashcut_knowledge_get`
 
-### `bashcut knowledge memo <text-file>`
+### `bashcut knowledge memo <text-file> [--scope <scope>]`
 
-Replace the project memo (.bashcut/agent-memory.md).
+Replace a memo: the project memo (.bashcut/agent-memory.md in the project) or, with scope user, the notes every project reads (Application Support/BashCut/Knowledge). Agents need approval for scope user.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_knowledge_memo`
 - `text`: string, required. Memo text (CLI: path to a text file)
+- `scope`: string, one of project, user. project (default) or user
+
+### `bashcut knowledge migrate [--to <to>]`
+
+Move the older memo that earlier versions kept in the agent workspace or home folder into the notes for every project (default) or this project's memo; the old file is renamed agent-memory.migrated.md.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_knowledge_migrate`
+- `to`: string, one of user, project. user (default) or project
 
 ### `bashcut knowledge skill <name> <text-file>`
 
-Write a project skill's SKILL.md, creating the skill and sharing it with Claude and Codex if needed.
+Write a project skill's SKILL.md in the project folder, creating the skill and linking it into the project's .claude/skills and .agents/skills if needed. Needs a saved project.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_knowledge_skill`
 - `name`: string, required. Lowercase hyphenated skill name

@@ -1,6 +1,18 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Older memo found at %@. BashCut now keeps knowledge in the project.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Older memo found at %@. BashCut now keeps knowledge in the project." } }, "vi": { "stringUnit": { "state": "translated", "value": "Tìm thấy memo cũ ở %@. BashCut giờ lưu knowledge trong project." } } } },
+    "Move to notes for every project": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Move to notes for every project" } }, "vi": { "stringUnit": { "state": "translated", "value": "Chuyển vào ghi chú cho mọi project" } } } },
+    "Move to this project": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Move to this project" } }, "vi": { "stringUnit": { "state": "translated", "value": "Chuyển vào project này" } } } },
+    "Save the project to keep a memo and skills in its folder.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Save the project to keep a memo and skills in its folder." } }, "vi": { "stringUnit": { "state": "translated", "value": "Lưu project để giữ memo và skill trong thư mục của nó." } } } },
+    "Notes for every project": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Notes for every project" } }, "vi": { "stringUnit": { "state": "translated", "value": "Ghi chú cho mọi project" } } } },
+    "Save notes": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Save notes" } }, "vi": { "stringUnit": { "state": "translated", "value": "Lưu ghi chú" } } } },
+    "Notes for every project saved": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Notes for every project saved" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đã lưu ghi chú cho mọi project" } } } },
+    "Older memo moved": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Older memo moved" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đã chuyển memo cũ" } } } },
+    "Project memo saved": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Project memo saved" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đã lưu memo của project" } } } },
+    "Skill shared with Claude and Codex": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Skill shared with Claude and Codex" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đã chia sẻ skill với Claude và Codex" } } } },
+    "Skill saved": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Skill saved" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đã lưu skill" } } } },
+    "Skill available to both agents": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Skill available to both agents" } }, "vi": { "stringUnit": { "state": "translated", "value": "Skill đã dùng được cho cả hai agent" } } } },
     "Waiting for approval: %@": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Waiting for approval: %@" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đang chờ phê duyệt: %@" } } } },
     "Link (developer mode)": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Link (developer mode)" } }, "vi": { "stringUnit": { "state": "translated", "value": "Liên kết (chế độ nhà phát triển)" } } } },
     "Install as": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Install as" } }, "vi": { "stringUnit": { "state": "translated", "value": "Cài dạng" } } } },

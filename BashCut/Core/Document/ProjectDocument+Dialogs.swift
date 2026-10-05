@@ -199,7 +199,7 @@ extension ProjectDocument {
             ui.showPlugins = true
             plugins.addPlugin()
         } else if name == "knowledge" {
-            agents.knowledge.load(from: agents.directory)
+            agents.loadKnowledge()
             agents.showKnowledge = true
         } else {
             throw RPCFailure(-32602, "Unknown dialog \(name)")

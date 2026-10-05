@@ -337,14 +337,30 @@ public enum CommandCatalog {
         CommandSpec(
             "plugins.health", .read, "Run plugin health checks (Plugins sheet, Check Health); all plugins by default.",
             parameters: [CommandParameter("plugin", .string, "Plugin ID", cli: .positional)]),
-        CommandSpec("knowledge.get", .read, "Read the project memo and project skills shared with the agents."),
         CommandSpec(
-            "knowledge.memo", .edit, "Replace the project memo (.bashcut/agent-memory.md).",
-            parameters: [CommandParameter("text", .string, "Memo text (CLI: path to a text file)", required: true,
-                                          sensitive: true, cli: .positionalTextFile(maximumBytes: 256 * 1024))]),
+            "knowledge.get", .read,
+            "Read the project memo and skills (stored in the project folder), the notes for every project, and any "
+                + "older memo left in the agent workspace or home folder (legacy)."),
+        CommandSpec(
+            "knowledge.memo", .edit,
+            "Replace a memo: the project memo (.bashcut/agent-memory.md in the project) or, with scope user, the notes "
+                + "every project reads (Application Support/BashCut/Knowledge). Agents need approval for scope user.",
+            parameters: [
+                CommandParameter("text", .string, "Memo text (CLI: path to a text file)", required: true,
+                                 sensitive: true, cli: .positionalTextFile(maximumBytes: 256 * 1024)),
+                CommandParameter("scope", .string, "project (default) or user", choices: ["project", "user"],
+                                 cli: .option("scope")),
+            ]),
+        CommandSpec(
+            "knowledge.migrate", .edit,
+            "Move the older memo that earlier versions kept in the agent workspace or home folder into the notes for "
+                + "every project (default) or this project's memo; the old file is renamed agent-memory.migrated.md.",
+            parameters: [CommandParameter("to", .string, "user (default) or project", choices: ["user", "project"],
+                                          cli: .option("to"))]),
         CommandSpec(
             "knowledge.skill", .edit,
-            "Write a project skill's SKILL.md, creating the skill and sharing it with Claude and Codex if needed.",
+            "Write a project skill's SKILL.md in the project folder, creating the skill and linking it into the project's "
+                + ".claude/skills and .agents/skills if needed. Needs a saved project.",
             parameters: [
                 CommandParameter("name", .string, "Lowercase hyphenated skill name", required: true, cli: .positional),
                 CommandParameter("text", .string, "SKILL.md text (CLI: path to a text file)", required: true,

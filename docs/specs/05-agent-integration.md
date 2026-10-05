@@ -103,7 +103,7 @@ arguments.
 | `plugins option <plugin> --option <id> [--value]` / `plugins set <plugin> [--enabled off] [--hooks off]` | edit | Plugins sheet: Options…, Enabled and Hooks switches (agents can only turn them off) |
 | `plugins install <plugin> [--version]` / `plugins remove <plugin>` | edit | Browse › Install/Update (the approval stays with the user) and Installed › Remove |
 | `luts import <file.cube> [--name]` | edit | Filters panel, Import .cube… |
-| `knowledge memo <file>` / `knowledge skill <name> <file>` | edit | Skills and project memory sheet, Save |
+| `knowledge memo <file> [--scope user]` / `knowledge skill <name> <file>` / `knowledge migrate [--to project]` | edit | Skills and project memory sheet: Save memo, Save notes, Save skill, Move older memo |
 | `ui action <id\|shortcut>` | edit | Any editor button or shortcut, run by the same code: `timeline.split` / `cmd+b`, `timeline.zoom-in` / `cmd+=`, `playback.toggle` / `space`, `source.mark-in` / `i`; plugin action IDs and shortcuts too |
 
 ### Privileged commands
@@ -225,7 +225,7 @@ text.
 
 Claude receives the instructions through `--append-system-prompt`; Codex through `developer_instructions`.
 They are rendered from the command specs (`BashCut/Core/Automation/AgentInstructions.swift`), followed by the
-context block and the project knowledge (memo and skills), and say:
+context block and the knowledge (notes for every project, the project memo and skills with their paths), and say:
 
 - Prefer the `bashcut_*` MCP tools; the `bashcut` CLI on `PATH` is the fallback.
 - Read `context get` and `timeline get` before editing. Track IDs and roles are dynamic; never assume them.
@@ -268,12 +268,13 @@ The two CLIs don't share transcripts. When the user hands a task from one agent 
 
 - the context block (§3);
 - the timeline text form;
-- the project knowledge: the memo (`.bashcut/agent-memory.md`) and project skills.
+- the knowledge: notes for every project, the project memo (`<project>/.bashcut/agent-memory.md`) and project
+  skills.
 
 Planned additions: the last 5 user requests, the last 5 labeled undo steps and the latest review result.
 
 Codex reaches parity with Claude only once the workspace has `AGENTS.md` and `.agents/skills/`
-([02 — Project format](02-project-format.md) §6). `knowledge skill` writes project skills to both locations.
+([02 — Project format](02-project-format.md) §6). `knowledge skill` writes project skills to both locations inside the project folder.
 
 ## 6. Later (P2): structured chat mode
 
