@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+- **Python plugins can share one Python and one package cache** (#115). Plugin processes get
+  `BASHCUT_SHARED_DATA` (`PluginData/_shared` in Application Support) and `BASHCUT_SHARED_CACHE`
+  (`PluginData/_shared` in Caches). A plugin built with uv points `UV_PYTHON_INSTALL_DIR` and `UV_CACHE_DIR` there,
+  so a second ML plugin reuses the same Python and clones the same wheels instead of downloading and storing them
+  again. Settings › Storage shows them as "Shared plugin runtimes" and "Shared plugin downloads", and
+  `storage clear` takes `shared-data` and `shared-cache`. Removing a plugin leaves them alone.
 - **Settings › Storage shows one row per plugin, largest first** (#114). Each plugin's folder, data and downloads
   add up to one total, so a Python ML plugin of 1.5–3 GB is no longer split across two rows in plugin-ID order.
   Expand a row to see its parts and the same Delete and Free Up buttons as before. Data left over from a removed

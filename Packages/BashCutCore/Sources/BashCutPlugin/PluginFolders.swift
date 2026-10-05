@@ -8,6 +8,10 @@ import Foundation
 ///
 /// The app passes them as `BASHCUT_PLUGIN_DATA` and `BASHCUT_PLUGIN_CACHE`, creates them, shows their size and
 /// offers to delete them when the plugin is removed. `BASHCUT_PLUGIN_STATE_ROOT` relocates both (tests).
+///
+/// Every plugin also gets two shared folders, `_shared` under each root (`BASHCUT_SHARED_DATA`,
+/// `BASHCUT_SHARED_CACHE`), so plugins built on the same runtime keep one copy of it: a shared Python install and
+/// uv's package cache, for example. `_` cannot start a plugin ID, so the name never clashes with one.
 public enum PluginFolders {
     private static var overrideRoot: URL? {
         ProcessInfo.processInfo.environment["BASHCUT_PLUGIN_STATE_ROOT"].map { URL(fileURLWithPath: $0) }
@@ -40,9 +44,16 @@ public enum PluginFolders {
     public static func data(_ pluginID: String) -> URL { dataRoot.appendingPathComponent(pluginID, isDirectory: true) }
     public static func cache(_ pluginID: String) -> URL { cacheRoot.appendingPathComponent(pluginID, isDirectory: true) }
 
-    /// Creates the plugin's data and cache folders.
+    /// The folder name of the shared data and cache under each root.
+    public static let sharedName = "_shared"
+    /// Runtimes several plugins use (Python installs): deleting it means setting those plugins up again.
+    public static var sharedData: URL { dataRoot.appendingPathComponent(sharedName, isDirectory: true) }
+    /// Downloads several plugins use (package caches): safe to clear, fetched again when needed.
+    public static var sharedCache: URL { cacheRoot.appendingPathComponent(sharedName, isDirectory: true) }
+
+    /// Creates the plugin's data and cache folders, and the shared ones.
     public static func prepare(_ pluginID: String) {
-        for folder in [data(pluginID), cache(pluginID)] {
+        for folder in [data(pluginID), cache(pluginID), sharedData, sharedCache] {
             try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         }
     }

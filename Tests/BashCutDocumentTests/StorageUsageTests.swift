@@ -53,7 +53,7 @@ struct StorageUsageTests {
         #expect(after.contains { $0.kind == .pluginData })
     }
 
-    @Test("Groups each plugin's code, data and cache into one total, largest first")
+    @Test("Groups each plugin's code, data and cache into one total, largest first; shared runtimes stand apart")
     func pluginTotals() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("storage-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: root) }
@@ -71,6 +71,8 @@ struct StorageUsageTests {
         try write(cacheRoot, "acme.big", 30_000)
         try write(cacheRoot, "acme.mid", 40_000)
         try write(plugins, ".previous", 90_000)
+        try write(data, PluginFolders.sharedName, 50_000)
+        try write(cacheRoot, PluginFolders.sharedName, 60_000)
         let entries = StorageUsage.measure(projectRoot: nil, pluginsFolder: plugins,
                                            pluginDataRoot: data, pluginCacheRoot: cacheRoot, supportRoot: root,
                                            registryRoot: root.appendingPathComponent("registry"))
@@ -82,5 +84,10 @@ struct StorageUsageTests {
         #expect(big.bytes == big.entries.reduce(0) { $0 + $1.bytes } && big.bytes >= 54_000)
         #expect(big.installed && !grouped[1].installed && grouped[2].installed)
         #expect(!(big.entries.first?.clearable ?? true))
+        // The shared folders are their own clearable rows, never a plugin.
+        #expect(!grouped.contains { $0.pluginID == PluginFolders.sharedName })
+        let shared = entries.filter { $0.kind == .sharedData || $0.kind == .sharedCache }
+        #expect(shared.map(\.kind) == [.sharedData, .sharedCache])
+        #expect(shared.allSatisfy { $0.pluginID == nil && $0.clearable && $0.bytes >= 50_000 })
     }
 }

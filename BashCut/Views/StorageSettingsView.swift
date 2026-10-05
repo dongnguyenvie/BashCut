@@ -3,7 +3,7 @@ import BashCutDocument
 import SwiftUI
 
 /// Settings › Storage: one row per plugin with its total (largest first; expand for code, data and downloads),
-/// then the registry copy, preview proxies and the rest, with Clear for what can be made or downloaded again.
+/// then the shared plugin runtimes, the registry copy, preview proxies and the rest, with Clear for what can be made or downloaded again.
 struct StorageSettingsView: View {
     let document: ProjectDocument
     @State private var entries: [StorageEntry]?
@@ -47,9 +47,14 @@ struct StorageSettingsView: View {
         ) { entry in
             Button("Delete", role: .destructive) { clear(entry) }
         } message: { entry in
-            Text(entry.kind == .pluginData
-                ? LocalizedStringKey("The plugin's environments and settings are deleted. Use Install Dependencies… in Plugins to set it up again.")
-                : LocalizedStringKey("This is downloaded or made again when needed."))
+            switch entry.kind {
+            case .pluginData:
+                Text("The plugin's environments and settings are deleted. Use Install Dependencies… in Plugins to set it up again.")
+            case .sharedData:
+                Text("Runtimes shared by plugins are deleted. Plugins that use them must be set up again with Install Dependencies… in Plugins.")
+            default:
+                Text("This is downloaded or made again when needed.")
+            }
         }
     }
 
@@ -61,8 +66,8 @@ struct StorageSettingsView: View {
                     if clearing == entry.id {
                         ProgressView().controlSize(.small)
                     } else {
-                        Button(entry.kind == .pluginData ? LocalizedStringKey("Delete…") : LocalizedStringKey("Free Up")) {
-                            if entry.kind == .pluginData || entry.kind == .pluginCache { confirm = entry } else { clear(entry) }
+                        Button(Self.setsUpAgain(entry) ? LocalizedStringKey("Delete…") : LocalizedStringKey("Free Up")) {
+                            if Self.confirms(entry) { confirm = entry } else { clear(entry) }
                         }.disabled(entry.bytes == 0 || clearing != nil)
                     }
                 }
@@ -96,11 +101,20 @@ struct StorageSettingsView: View {
         case .plugins: return String(format: String(localized: "%@ — plugin"), plugin)
         case .pluginData: return String(format: String(localized: "%@ — data"), plugin)
         case .pluginCache: return String(format: String(localized: "%@ — downloads"), plugin)
+        case .sharedData: return String(localized: "Shared plugin runtimes")
+        case .sharedCache: return String(localized: "Shared plugin downloads")
         case .registry: return String(localized: "Plugin catalog copy")
         case .proxies: return String(localized: "Preview proxies (this project)")
         case .rampAudio: return String(localized: "Speed ramp audio (this project)")
         case .audit: return String(localized: "Automation audit log")
         }
+    }
+
+    /// Deleting it means setting plugins up again.
+    private static func setsUpAgain(_ entry: StorageEntry) -> Bool { entry.kind == .pluginData || entry.kind == .sharedData }
+
+    private static func confirms(_ entry: StorageEntry) -> Bool {
+        [.pluginData, .pluginCache, .sharedData, .sharedCache].contains(entry.kind)
     }
 
     private func confirmTitle(_ entry: StorageEntry) -> String {

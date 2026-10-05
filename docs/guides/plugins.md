@@ -362,8 +362,28 @@ Plugin processes receive only `HOME`, `PATH`, `TMPDIR`, `LANG` and `LC_ALL` (whe
   rebuild (environments, settings); kept across updates.
 - `BASHCUT_PLUGIN_CACHE`: `~/Library/Caches/BashCut/PluginData/<id>/`, for downloads that can be fetched again
   (models).
+- `BASHCUT_SHARED_DATA`: `~/Library/Application Support/BashCut/PluginData/_shared/`, for runtimes several plugins
+  can use, such as Python installs (`UV_PYTHON_INSTALL_DIR`).
+- `BASHCUT_SHARED_CACHE`: `~/Library/Caches/BashCut/PluginData/_shared/`, for downloads several plugins can use,
+  such as uv's package cache (`UV_CACHE_DIR`).
 
-BashCut creates both folders, shows their size when the plugin is removed and offers to delete them. `PATH`
+BashCut creates these folders, shows a plugin's own folders' size when the plugin is removed and offers to delete
+them. Removing a plugin never touches the shared folders. Settings › Storage lists them as "Shared plugin runtimes"
+and "Shared plugin downloads" (`storage clear shared-data` / `shared-cache`).
+
+Rules for the shared folders:
+
+- Keep only content-addressed, versioned things there (a Python per version, a package cache), never a venv,
+  settings or anything one plugin owns. Environments go in `BASHCUT_PLUGIN_DATA`.
+- They may be cleared at any time. After the shared cache is cleared, environments built from it must still work:
+  uv clones files into each venv on APFS, so a venv keeps its own copy. After the shared data is cleared, the
+  plugin's `check` should report the runtime as missing, so Installed offers **Install Dependencies…**.
+- Never run `uv cache clean` or otherwise empty them from a setup script: other plugins use them.
+- Fall back to your own folders when the variables are not set (an older BashCut).
+
+Plugin processes run as the user, without a sandbox, so the shared folders are a convention, not a boundary: any
+plugin a user trusts can already write anywhere the user can. One plugin's venv lives in its own data folder, which
+other plugins are not told about. `PATH`
 gains `/opt/homebrew/bin` and `/usr/local/bin`, since an app opened from Finder starts with only
 `/usr/bin:/bin:/usr/sbin:/sbin`. Probes and install recipes get the same environment. They never receive other app environment variables, credentials, the automation socket or a session token.
 Provider credentials will need an explicit permission and credential contract rather than ambient
@@ -882,7 +902,8 @@ Agents can open that panel but can never approve an install or run a recipe.
   Installed shows **Install Dependencies…**, which asks for approval and runs the recipes again
   (`plugins setup <plugin>` opens the same approval).
 - Recipes should not depend on the Mac's own tools beyond `/usr/bin`: macOS ships Python 3.9 and no Homebrew.
-  `bashcut.vieneu-tts` downloads `uv` and a private Python into `BASHCUT_PLUGIN_DATA`, for example.
+  `bashcut.vieneu-tts` downloads `uv` into `BASHCUT_PLUGIN_DATA` and a Python into `BASHCUT_SHARED_DATA`, for
+  example.
 
 ## Adding a capability to the app
 

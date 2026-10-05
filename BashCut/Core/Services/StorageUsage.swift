@@ -12,6 +12,12 @@ public struct StorageEntry: Sendable, Identifiable, Equatable {
         case pluginData = "plugin-data"
         /// One plugin's `BASHCUT_PLUGIN_CACHE` (downloaded models): fetched again when needed.
         case pluginCache = "plugin-cache"
+        /// `BASHCUT_SHARED_DATA`, runtimes several plugins use (Python installs): deleting it means setting those
+        /// plugins up again.
+        case sharedData = "shared-data"
+        /// `BASHCUT_SHARED_CACHE`, downloads several plugins use (uv's package cache). Environments made from it
+        /// keep their own copy (APFS clones), so clearing it is safe.
+        case sharedCache = "shared-cache"
         /// The saved copy of the plugin registry.
         case registry
         /// The open project's preview proxies (`.bashcut/cache/proxies`), made again on demand.
@@ -53,14 +59,16 @@ public enum StorageUsage {
         projectRoot.appendingPathComponent(ProxyMediaSource.folder, isDirectory: true)
     }
 
-    /// Every entry that exists: each installed plugin's folder, and data and caches for each plugin that has some.
+    /// Every entry that exists: each installed plugin's folder, data and caches for each plugin that has some, and the
+    /// shared plugin runtimes when they hold something.
     public static func measure(projectRoot: URL?, pluginsFolder: URL,
                                pluginDataRoot: URL = PluginFolders.dataRoot, pluginCacheRoot: URL = PluginFolders.cacheRoot,
                                supportRoot: URL = supportFolder, registryRoot: URL = registryFolder) -> [StorageEntry] {
         var entries: [StorageEntry] = []
         let manager = FileManager.default
         func children(_ root: URL) -> [String] {
-            ((try? manager.contentsOfDirectory(atPath: root.path)) ?? []).filter { !$0.hasPrefix(".") }
+            // Hidden items (`.previous`) and the shared folders (`_shared`) are not plugins.
+            ((try? manager.contentsOfDirectory(atPath: root.path)) ?? []).filter { !$0.hasPrefix(".") && !$0.hasPrefix("_") }
         }
         let installed = Set(children(pluginsFolder))
         for id in installed.union(children(pluginDataRoot)).union(children(pluginCacheRoot)).sorted() {
@@ -75,6 +83,11 @@ public enum StorageUsage {
                 let bytes = size(of: url)
                 if bytes > 0 { entries.append(StorageEntry(kind: kind, pluginID: id, url: url, bytes: bytes)) }
             }
+        }
+        for (kind, url) in [(StorageEntry.Kind.sharedData, pluginDataRoot.appendingPathComponent(PluginFolders.sharedName)),
+                           (.sharedCache, pluginCacheRoot.appendingPathComponent(PluginFolders.sharedName))] {
+            let bytes = size(of: url)
+            if bytes > 0 { entries.append(StorageEntry(kind: kind, pluginID: nil, url: url, bytes: bytes)) }
         }
         entries.append(StorageEntry(kind: .registry, pluginID: nil, url: registryRoot, bytes: size(of: registryRoot)))
         if let projectRoot {
