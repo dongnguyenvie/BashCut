@@ -193,6 +193,19 @@ private struct SettingsPluginsSection: View {
         }
     }
 
+    /// Presents the Plugins sheet once Settings has closed; with `thenAdd`, Add Plugin… opens over it.
+    private func openPlugins(thenAdd: Bool) {
+        done()
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(350))
+            document.plugins.tab = .installed
+            document.ui.showPlugins = true
+            guard thenAdd else { return }
+            try? await Task.sleep(for: .milliseconds(350))
+            document.plugins.addPlugin()
+        }
+    }
+
     var body: some View {
         Section {
             Toggle("Run plugin hooks", isOn: $settings.runPluginHooks)
@@ -205,14 +218,10 @@ private struct SettingsPluginsSection: View {
             HStack {
                 Text("Plugins")
                 Spacer()
-                Button("Manage Plugins…") {
-                    done()
-                    // Present the Plugins sheet once Settings has closed.
-                    Task { @MainActor in
-                        try? await Task.sleep(for: .milliseconds(350))
-                        document.ui.showPlugins = true
-                    }
-                }.buttonStyle(.link)
+                if PluginChannel.current.allowsUserPlugins {
+                    Button("Add Plugin…") { openPlugins(thenAdd: true) }.buttonStyle(.link)
+                }
+                Button("Manage Plugins…") { openPlugins(thenAdd: false) }.buttonStyle(.link)
             }
         }
         if document.plugins.plugins.filter({ !($0.manifest.options ?? []).isEmpty }).count > 1 {

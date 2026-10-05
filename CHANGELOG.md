@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+- **Add plugins that are not in the registry** (#83). Plugins › Installed (and Settings › Plugins) has **Add
+  Plugin…**, which takes a plugin folder, its `plugin.json`, or a `.zip` / `.bashcutplugin` archive; dropping one on
+  Installed works too. BashCut checks it first and names each problem with the field and the fix, installs a checked
+  copy, marks it "Not from the BashCut registry · unsigned", and lets you install it for this Mac or only the open
+  project, saying which copy runs when the same plugin is installed elsewhere. Agents: `plugins validate <path>` and
+  `plugins install --path <path> [--scope user|project]`; only the user approves the install.
 - **Plugins are grouped by category** (#63). Plugins › Browse has a chip bar (All, Agents, Captions, Voice, Audio…,
   each with a count) and, without a search, one section per category; each row shows its category with an icon.
   Plugins › Installed puts Updates Available and Needs Attention (not trusted, changed, outdated or missing a

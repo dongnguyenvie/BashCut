@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 96 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 97 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -328,13 +328,22 @@ List installed plugins with a newer compatible version in the registry.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_plugins_updates`
 
-### `bashcut plugins install <plugin> [--version <version>]`
+### `bashcut plugins validate <path>`
 
-Download a registry plugin (or its update), check its SHA-256 and manifest, and show the install approval in the Plugins sheet. Only the user can approve; the job ends when the approval is shown.
+Check a plugin that is not in the registry (a folder, its plugin.json, or a .zip or .bashcutplugin archive) without installing or running it: its id, version and capabilities, and every problem with the field and the fix.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_plugins_validate`
+- `path`: string, required, path. Plugin folder, plugin.json, or .zip / .bashcutplugin file
+
+### `bashcut plugins install [<plugin>] [--version <version>] [--path <path>] [--scope <scope>]`
+
+Download a registry plugin (or its update), check its SHA-256 and manifest, and show the install approval in the Plugins sheet. With path instead, add a plugin from this Mac (Add Plugin…): a folder, its plugin.json, or a .zip / .bashcutplugin file, checked like plugins validate. Only the user can approve; the job ends when the approval is shown.
 
 - Mode: edit · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_plugins_install`
-- `plugin`: string, required. Plugin ID from plugins search
+- `plugin`: string. Plugin ID from plugins search (or use path)
 - `version`: string. A specific registry version; the newest compatible by default
+- `path`: string, path. Plugin folder, plugin.json, or .zip / .bashcutplugin file on this Mac
+- `scope`: string, one of user, project. Where a plugin from path goes: user (this Mac, every project; the default) or project (the open project)
 
 ### `bashcut plugins remove <plugin> [--data]`
 
