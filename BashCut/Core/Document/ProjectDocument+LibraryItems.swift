@@ -14,6 +14,20 @@ struct LibraryPlacement {
     var baseRevision: Int?
 }
 
+/// Library file work: off the main actor, one job at a time, so two changes never interleave their reads and
+/// writes of `library.json` and `usage.json`. Copying and hashing a file of up to 1 GB, packs and stats run here.
+actor LibraryWorker {
+    static let shared = LibraryWorker()
+
+    func run<T: Sendable>(_ work: @Sendable () throws -> T) throws -> T { try work() }
+}
+
+/// Whether `queuePrivilegedApproval` is still running: an auto-approved action is called inside it.
+@MainActor
+private final class ApprovalCall {
+    var inProgress = true
+}
+
 /// Library panel items (#74): the catalog of project, user, plugin and built-in items, and the `library` commands.
 extension ProjectDocument {
     /// The user library lives in `BashCut/Library` here.
@@ -114,32 +128,45 @@ extension ProjectDocument {
         return "\(action) from the library is not supported yet" + (file ?? "")
     }
 
-    /// Usage counts are best effort: a failed write never fails the edit.
+    /// Usage counts are best effort and written in the background: a failed write never fails the edit.
     private func recordLibraryUse(_ item: LibraryItem) {
-        do { try libraryCatalog.recordUse(item) } catch { DebugLog.write("library", "usage not saved: \(error)") }
+        let catalog = libraryCatalog
+        Task {
+            do { try await LibraryWorker.shared.run { try catalog.recordUse(item) } } catch {
+                DebugLog.write("library", "usage not saved: \(error)")
+            }
+        }
     }
 
     // MARK: Automation
 
-    /// Runs a change to the library now, or after approval when an agent writes to the user scope.
+    /// Runs a change to the library on the `LibraryWorker` now, or after approval when an agent writes to the user
+    /// scope.
     private func libraryChange(
         _ method: String, scope: LibraryScope, author: Author, arguments: [String: String],
-        action: @escaping @MainActor () throws -> JSONValue
-    ) throws -> JSONValue {
-        let action = { [weak self] () throws -> JSONValue in
-            let result = try action()
-            self?.libraryRevision += 1
-            return result
+        action: @escaping @Sendable () throws -> JSONValue
+    ) async throws -> JSONValue {
+        guard scope == .user, author != .user else { return try await runLibraryChange(action) }
+        let call = ApprovalCall()
+        let request = try queuePrivilegedApproval(method: method, author: author, arguments: arguments) { [weak self] in
+            // Auto-approved, the change runs below. Approved later, it starts here; errors show like other actions'.
+            guard !call.inProgress, let self else { return }
+            Task {
+                do { _ = try await self.runLibraryChange(action) } catch { self.message = error.localizedDescription }
+            }
         }
-        guard scope == .user, author != .user else { return try action() }
-        var result: JSONValue = .null
-        let request = try queuePrivilegedApproval(method: method, author: author, arguments: arguments) {
-            result = try action()
+        call.inProgress = false
+        guard request.autoApproved else {
+            message = String(localized: "Waiting for approval: \(method)")
+            return .object(["approval": .string("pending"), "requestId": .string(request.id.uuidString)])
         }
-        if !request.autoApproved { message = String(localized: "Waiting for approval: \(method)") }
-        return request.autoApproved
-            ? result
-            : .object(["approval": .string("pending"), "requestId": .string(request.id.uuidString)])
+        return try await runLibraryChange(action)
+    }
+
+    private func runLibraryChange(_ action: @escaping @Sendable () throws -> JSONValue) async throws -> JSONValue {
+        let result = try await LibraryWorker.shared.run(action)
+        libraryRevision += 1
+        return result
     }
 
     private static func filter(_ arguments: CommandArguments) -> LibraryCatalog.Filter {
@@ -205,7 +232,9 @@ extension ProjectDocument {
             return .object(result)
         }
         handle("library.stats") { document, arguments, _ in
-            try document.libraryCatalog.stats(kinds: Self.filter(arguments).kinds)
+            let catalog = document.libraryCatalog
+            let kinds = Self.filter(arguments).kinds
+            return try await LibraryWorker.shared.run { try catalog.stats(kinds: kinds) }
         }
     }
 
@@ -223,10 +252,11 @@ extension ProjectDocument {
             let file = Self.url(arguments, "file")
             let preview = Self.url(arguments, "preview")
             _ = try catalog.store(scope)
-            return try document.libraryChange(
+            let added = item
+            return try await document.libraryChange(
                 "library.add", scope: scope, author: author, arguments: ["id": id, "kind": kind.rawValue, "name": name]
             ) {
-                try catalog.add(item, into: scope, file: file, preview: preview).json()
+                try catalog.add(added, into: scope, file: file, preview: preview).json()
             }
         }
         handleAuthored("library.update") { document, arguments, author in
@@ -238,12 +268,12 @@ extension ProjectDocument {
             if let newID = arguments.optionalString("as") {
                 let scope = arguments.optionalString("into").flatMap(LibraryScope.init(rawValue:)) ?? .project
                 _ = try catalog.store(scope)
-                return try document.libraryChange(
+                let createdBy = LibraryItem.creator(author: author)
+                return try await document.libraryChange(
                     "library.update", scope: scope, author: author, arguments: ["id": item.reference, "as": newID]
                 ) {
                     try catalog.copy(
-                        item, as: newID, into: scope, changes: changes, createdBy: LibraryItem.creator(author: author),
-                        file: file, preview: preview
+                        item, as: newID, into: scope, changes: changes, createdBy: createdBy, file: file, preview: preview
                     ).json()
                 }
             }
@@ -252,7 +282,7 @@ extension ProjectDocument {
                     -32602, "\(item.reference) is read-only; pass --as <new-id> to save an improved copy")
             }
             let store = try catalog.store(item.scope)
-            return try document.libraryChange(
+            return try await document.libraryChange(
                 "library.update", scope: item.scope, author: author, arguments: ["id": item.reference]
             ) {
                 try store.update(item.id, changes: changes, file: file, preview: preview).json()
@@ -265,7 +295,7 @@ extension ProjectDocument {
                 throw RPCFailure(-32602, "\(item.reference) is \(item.scope.rawValue) and cannot be removed")
             }
             let store = try catalog.store(item.scope)
-            return try document.libraryChange(
+            return try await document.libraryChange(
                 "library.remove", scope: item.scope, author: author, arguments: ["id": item.reference, "name": item.name]
             ) {
                 .object(["removed": .string(try store.remove(item.id).reference)])
@@ -302,22 +332,22 @@ extension ProjectDocument {
             _ = try catalog.store(scope)
             let scratch = FileManager.default.temporaryDirectory
                 .appendingPathComponent("bashcut-pack-\(UUID().uuidString)", isDirectory: true)
-            let folder = try LibraryPack.folder(
-                at: URL(fileURLWithPath: try arguments.string("path")).standardizedFileURL, scratch: scratch)
-            let pack: LibraryPack.Contents
-            do { pack = try LibraryPack.read(folder) } catch {
-                try? FileManager.default.removeItem(at: scratch)
-                throw error
+            let source = URL(fileURLWithPath: try arguments.string("path")).standardizedFileURL
+            let pack = try await LibraryWorker.shared.run {
+                do { return try LibraryPack.read(try LibraryPack.folder(at: source, scratch: scratch)) } catch {
+                    try? FileManager.default.removeItem(at: scratch)
+                    throw error
+                }
             }
             let replace = arguments.bool("replace")
-            return try document.libraryChange(
+            let createdBy = LibraryItem.creator(author: author)
+            return try await document.libraryChange(
                 "library.import-pack", scope: scope, author: author,
                 arguments: ["pack": pack.name, "items": pack.items.map(\.id).joined(separator: ", ")]
             ) {
                 defer { try? FileManager.default.removeItem(at: scratch) }
                 let items = try LibraryPack.importItems(
-                    pack, into: scope, catalog: catalog, replace: replace,
-                    createdBy: LibraryItem.creator(author: author))
+                    pack, into: scope, catalog: catalog, replace: replace, createdBy: createdBy)
                 return .object(["pack": .string(pack.name), "items": .array(items.map { $0.json() })])
             }
         }
@@ -328,9 +358,12 @@ extension ProjectDocument {
             guard filter.pack != nil || filter.kinds != nil || filter.scope != nil else {
                 throw RPCFailure(-32602, "Choose what to export with --pack, --kind or --scope")
             }
-            let items = try catalog.items(matching: filter)
             let name = arguments.optionalString("name") ?? filter.pack ?? output.lastPathComponent
-            try LibraryPack.export(items, name: name, catalog: catalog, to: output)
+            let items = try await LibraryWorker.shared.run {
+                let items = try catalog.items(matching: filter)
+                try LibraryPack.export(items, name: name, catalog: catalog, to: output)
+                return items
+            }
             return .object([
                 "output": .string(output.path), "name": .string(name), "items": .array(items.map { .string($0.reference) }),
             ])

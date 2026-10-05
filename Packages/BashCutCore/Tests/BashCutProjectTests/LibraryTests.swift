@@ -114,6 +114,57 @@ struct LibraryTests {
         #expect(try catalog.project!.usage().isEmpty)
     }
 
+    @Test("Counting a use writes only usage.json; counts older versions kept in library.json move there")
+    func usageFile() throws {
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let store = try catalog().store(.user)
+        try store.add(Self.fire)
+        let items = try Data(contentsOf: store.file)
+        try store.recordUse("user:fire")
+        try store.recordUse("plugin:x")
+        #expect(try Data(contentsOf: store.file) == items)
+        #expect(try store.usage()["user:fire"]?.count == 1)
+        #expect(try store.usage()["plugin:x"]?.count == 1)
+
+        // A library an older version wrote: usage inside library.json, no usage.json.
+        try FileManager.default.removeItem(at: store.usageFile)
+        var old = try store.load()
+        old.usage = ["user:fire": LibraryUsage(count: 3, lastUsed: "2026-01-01T00:00:00Z")]
+        try JSONEncoder().encode(JSONValue.object(old.fields)).write(to: store.file)
+        #expect(try store.usage()["user:fire"]?.count == 3)
+        try store.update("fire", changes: ["name": .string("Fire!")])
+        #expect(try store.load().fields["usage"] == nil)
+        #expect(try store.usage()["user:fire"]?.count == 3)
+        try store.recordUse("user:fire")
+        #expect(try store.usage()["user:fire"]?.count == 4)
+        try store.remove("fire")
+        #expect(try store.usage()["user:fire"] == nil)
+    }
+
+    @Test("A stored file's SHA-256 is saved when it is copied in and stats use it")
+    func fileHash() throws {
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let catalog = catalog()
+        let audio = LibraryItem(id: "whoosh", kind: .audio, name: "Whoosh")
+        let source = try file("whoosh.wav", "audio")
+        let added = try catalog.add(audio, into: .user, file: source)
+        let digest = try #require(added["fileSHA256"]?.string)
+        #expect(digest == (try LibraryStore.sha256(of: source)))
+        #expect(digest.count == 64)
+        // Changes cannot write it; a new file replaces it.
+        let renamed = try catalog.store(.user).update("whoosh", changes: ["fileSHA256": .string("x")])
+        #expect(renamed["fileSHA256"]?.string == digest)
+        let replaced = try catalog.store(.user).update("whoosh", changes: [:], file: try file("other.wav", "other"))
+        #expect(replaced["fileSHA256"]?.string != digest)
+        // A copy hashes its own copied file.
+        let copy = try catalog.copy(replaced, as: "whoosh-2", into: .project, changes: [:], createdBy: .null)
+        #expect(copy["fileSHA256"] == replaced["fileSHA256"])
+        // Stats trust the stored hash instead of reading the file again.
+        try Data("changed".utf8).write(to: try #require(catalog.fileURL(of: copy)))
+        let stats = try catalog.stats().object
+        #expect(stats["duplicates"] == .array([.array([.string("project:whoosh-2"), .string("user:whoosh")])]))
+    }
+
     @Test("Packs export with their files and import into another scope")
     func packs() throws {
         defer { try? FileManager.default.removeItem(at: folder) }

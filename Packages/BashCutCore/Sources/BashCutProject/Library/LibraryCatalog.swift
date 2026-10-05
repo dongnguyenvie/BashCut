@@ -1,4 +1,3 @@
-import CryptoKit
 import Foundation
 
 /// Every library item the editor can use: the open project's, this Mac's, the plugins' and the built-in ones, in
@@ -153,7 +152,7 @@ public struct LibraryCatalog: Sendable {
         let store = try store(scope)
         try checkNotBuiltIn(newID)
         var copy = LibraryItem(fields: item.fields, scope: scope)
-        for key in ["history", "createdAt", "updatedAt", "file", "preview"] { copy[key] = nil }
+        for key in ["history", "createdAt", "updatedAt", "file", "preview", "fileSHA256"] { copy[key] = nil }
         copy["id"] = .string(newID)
         copy["basedOn"] = .string("\(item.reference)@v\(item.version)")
         copy["createdBy"] = createdBy
@@ -192,13 +191,14 @@ public struct LibraryCatalog: Sendable {
         ])
     }
 
-    /// Kind, params and the file's SHA-256: equal keys mean the same content under different names.
+    /// Kind, params and the file's SHA-256: equal keys mean the same content under different names. Stored items
+    /// use the hash saved when their file was copied in; plugin files and items older versions stored are hashed.
     private func contentKey(_ item: LibraryItem) -> String {
         let encoder = JSONEncoder()
         encoder.outputFormatting = .sortedKeys
         let params = (try? encoder.encode(JSONValue.object(item.params))).flatMap { String(bytes: $0, encoding: .utf8) } ?? ""
-        let digest = fileURL(of: item).flatMap { try? Data(contentsOf: $0, options: .mappedIfSafe) }
-            .map { SHA256.hash(data: $0).map { String(format: "%02x", $0) }.joined() } ?? ""
+        let stored = item.scope.isWritable ? item["fileSHA256"]?.string : nil
+        let digest = stored ?? fileURL(of: item).flatMap { try? LibraryStore.sha256(of: $0) } ?? ""
         return [item.kind?.rawValue ?? "", params, digest].joined(separator: "\u{1F}")
     }
 }

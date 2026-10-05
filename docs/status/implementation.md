@@ -132,6 +132,9 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   history, usage and params, in project (`.bashcut/library`), user (Application Support), plugin and built-in
   scopes. `library list|get|stats|add|update|remove|apply|place|import-pack|export-pack`; agents' user-scope writes
   need approval. Placing audio, image stickers and transitions comes with #78, #64 and #77.
+- Library performance: use counts live in `usage.json` (an older `usage` field in `library.json` is read until the
+  next save moves it), stored files keep their `fileSHA256`, and changes, packs, stats and use counting run on the
+  `LibraryWorker` actor, off the main actor and one at a time.
 - Built-in packs (#75): Text styles (the 6 caption presets), Emoji (8 stickers) and Framing (Punch in 1.3×, Reset
   framing). The Text, Stickers and Effects panels render these and saved items from the library; the panel UI for
   packs, search and editing is #80.

@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+- **Faster library on large libraries.** Placing or applying a library item no longer rewrites the whole
+  `library.json` on the main thread: use counts are kept in `usage.json` and written in the background (older counts
+  move there on the next change). Each stored file's SHA-256 is saved when it is copied in, so `library stats` no
+  longer reads every file to find duplicates, and stats, adding or updating items with files, removing items and
+  importing or exporting packs run off the main thread.
+- **Approval prompt wording.** Approving an agent's library, knowledge or agent setup change no longer says it
+  starts an export; the button reads **Approve** (exports keep **Approve and export**).
 - **Agent knowledge stays in the project** (#100). The project memo and project skills are now always stored in
   the open project's folder, not in the agent workspace (where every project shared one memo) or the home folder
   (where a shared skill became global for Claude Code and Codex). Skills are linked only into the project's
