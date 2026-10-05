@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+- **Project caches are marked for git, and the plugin catalog copy moved to Caches** (#101). New and saved projects
+  get a `.bashcut/.gitignore` listing what BashCut can make again (proxies, waveforms, ramp audio, stills, loudness
+  scratch files and agent frames), so a project kept in git no longer picks up gigabytes of proxies; an existing file
+  is never rewritten. The saved copy of the plugin registry is now in `~/Library/Caches/BashCut/Registry` instead of
+  Application Support, which Time Machine backs up; an old copy is moved there once. Where everything lives is now
+  documented in [Storage on disk](docs/reference/project-format.md#storage-on-disk).
 - **Faster plugin catalog with many plugins** (#103). Opening the Text or Audio panel, the Plugins sheet or a
   project no longer reads every plugin's manifest and walks every file in every plugin folder on the main thread.
   Manifests are read again only when they change, and each plugin shows the result of its last file check;

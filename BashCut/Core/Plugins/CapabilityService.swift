@@ -9,18 +9,25 @@ public struct PluginRoots: Sendable, Equatable {
     public let bundled: URL?
     /// Project and user plugins are found (false in the App Store build).
     public let includesUserPlugins: Bool
+    /// The saved copy of the plugin registry; next to `user` unless given (tests keep everything in one folder).
+    public let registryCache: URL
 
-    public init(user: URL, bundled: URL?, includesUserPlugins: Bool = true) {
+    public init(user: URL, bundled: URL?, includesUserPlugins: Bool = true, registryCache: URL? = nil) {
         self.user = user
         self.bundled = bundled
         self.includesUserPlugins = includesUserPlugins
+        self.registryCache = registryCache ?? legacyRegistryCacheFor(user)
     }
+
+    /// Where the registry cache was before #101: `Registry/` next to the user plugins folder.
+    public var legacyRegistryCache: URL { legacyRegistryCacheFor(user) }
 
     public static var standard: PluginRoots {
         PluginRoots(
             user: FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
                 .appendingPathComponent("BashCut/Plugins", isDirectory: true),
-            bundled: PluginFolders.bundled, includesUserPlugins: PluginChannel.current.allowsUserPlugins)
+            bundled: PluginFolders.bundled, includesUserPlugins: PluginChannel.current.allowsUserPlugins,
+            registryCache: PluginFolders.registryCache)
     }
 
     public func ordered(projectRoot: URL?) -> [URL] {
@@ -32,6 +39,10 @@ public struct PluginRoots: Sendable, Equatable {
         if let bundled { roots.append(bundled) }
         return roots
     }
+}
+
+private func legacyRegistryCacheFor(_ user: URL) -> URL {
+    user.deletingLastPathComponent().appendingPathComponent("Registry", isDirectory: true)
 }
 
 /// The one path from a capability request to a validated, provenance-tagged result. Native panels,

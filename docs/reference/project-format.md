@@ -13,6 +13,7 @@ full field sketch are in [02 — Project format](../specs/02-project-format.md);
 | `.bashcut/autosave/latest.json` | Unsaved history plus the disk bytes it was based on |
 | `.bashcut/proxies/<media id>.mov` | Preview proxies (see [Media paths](#media-paths)) |
 | `.bashcut/plugins/` | Project-scoped plugins, which override user and bundled ones |
+| `.bashcut/.gitignore` | Lists the folders BashCut can make again (see [Storage on disk](#storage-on-disk)) |
 
 A project file with another name (for example a test fixture) gets its own cache folder, `.bashcut-<file name>/`.
 
@@ -29,6 +30,24 @@ A project file with another name (for example a test fixture) gets its own cache
   delta against the next newer state: changed project fields, and for each changed layer its fields plus runs of
   unchanged items (`[start, count]`) and the changed items in full. Journals written with full `restore`
   snapshots still load.
+
+## Storage on disk
+
+What BashCut keeps where, by how safe it is to delete. Settings › Storage and `bashcut storage get` show the sizes
+of the clearable parts.
+
+| Kind | Where | Contents |
+|---|---|---|
+| Project data | `<project>/project.bashcut.json`, `.bashcut/history.jsonl`, `.bashcut/autosave/`, `.bashcut/library/`, `.bashcut/plugins/`, `.bashcut/skills/`, `.bashcut/agent-memory.md`, `.bashcut/chat/`, `.bashcut/export-history.json` | The edit and what belongs to this project; keep and sync it |
+| Project cache | `.bashcut/proxies/`, `.bashcut/cache/` (waveforms), `.bashcut/ramp-audio/`, `.bashcut/stills/`, `.bashcut/loudness/`, `.bashcut/agent-context/` | Made again on demand; listed in `.bashcut/.gitignore` |
+| User config | `~/Library/Application Support/BashCut/`: `Plugins/`, `PluginData/<id>/`, `plugin-trust.json`, `Library/`, `Knowledge/`, `agent-workspace*/`, `audit.jsonl`, `automation.sock` | Installed plugins, their settings and environments, trust grants, the user library and notes for every project |
+| User cache | `~/Library/Caches/BashCut/`: `PluginData/<id>/` (downloaded models), `Registry/` (the plugin catalog copy) | Fetched again when missing; not backed up by Time Machine |
+| Logs | `~/Library/Logs/BashCut/debug.log` | Shared by the app, CLI and MCP bridge |
+
+- **`.bashcut/.gitignore`** is written when a project is created or saved and has none, so a project folder in git
+  leaves the project cache out. BashCut never rewrites an existing one, so edits stay.
+- **The plugin registry copy moved to Caches** (#101). Before, it was `Application Support/BashCut/Registry/`; the
+  first time the Plugins sheet needs the registry, an old copy is moved over and the old folder is removed.
 
 ## Timing and IDs
 

@@ -171,9 +171,9 @@ enum PluginText {
     var registryClient: PluginRegistryClient {
         let url = Self.registryURL
         if let client = cachedRegistryClient, client.url == url { return client }
-        let client = PluginRegistryClient(
-            url: url, cacheDirectory: service.roots.user.deletingLastPathComponent()
-                .appendingPathComponent("Registry", isDirectory: true))
+        let roots = service.roots
+        PluginRegistryClient.migrateCache(from: roots.legacyRegistryCache, to: roots.registryCache)
+        let client = PluginRegistryClient(url: url, cacheDirectory: roots.registryCache)
         cachedRegistryClient = client
         registry = nil
         return client

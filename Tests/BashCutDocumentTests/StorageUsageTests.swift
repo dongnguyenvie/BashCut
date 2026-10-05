@@ -26,7 +26,8 @@ struct StorageUsageTests {
 
         func measure() -> [StorageEntry] {
             StorageUsage.measure(projectRoot: project, pluginsFolder: plugins,
-                                 pluginDataRoot: data, pluginCacheRoot: cacheRoot, supportRoot: root)
+                                 pluginDataRoot: data, pluginCacheRoot: cacheRoot, supportRoot: root,
+                                 registryRoot: root.appendingPathComponent("registry"))
         }
         let entries = measure()
         #expect(entries.allSatisfy { $0.url.path.hasPrefix(root.path + "/") })

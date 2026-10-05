@@ -27,6 +27,7 @@ extension ProjectStorage {
         for name in ["media", "voiceover", "khao-sat", "subtitles", "render", ".bashcut"] {
             try manager.createDirectory(at: stage.appendingPathComponent(name), withIntermediateDirectories: false)
         }
+        ProjectCacheIgnore.ensure(in: stage.appendingPathComponent(".bashcut"))
         if let footage {
             // This is a reference only. Never change permissions or contents of the original shoot.
             try manager.createSymbolicLink(

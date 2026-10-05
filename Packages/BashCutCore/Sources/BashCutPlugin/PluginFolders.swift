@@ -25,6 +25,14 @@ public enum PluginFolders {
             .appendingPathComponent("BashCut/PluginData", isDirectory: true)
     }
 
+    /// The saved copy of the plugin registry: `~/Library/Caches/BashCut/Registry/`. It is fetched again when
+    /// missing, so it lives in Caches (not backed up) rather than Application Support, where it was before #101.
+    public static var registryCache: URL {
+        if let overrideRoot { return overrideRoot.appendingPathComponent("registry", isDirectory: true) }
+        return FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("BashCut/Registry", isDirectory: true)
+    }
+
     /// Plugins that come with the app: `Contents/Resources/Plugins/`. Not `Contents/PlugIns`, which codesign
     /// reserves for code bundles; each core plugin's executable is signed on its own before the app.
     public static var bundled: URL? { Bundle.main.resourceURL?.appendingPathComponent("Plugins", isDirectory: true) }
