@@ -45,6 +45,11 @@ BashCut runs `bin/provider rpc`, writes one JSON request to its standard input, 
 from its standard output. Put the folder in one of the [plugin folders](#discovery-and-precedence), open
 **Plugins** in the app, and run **Check Health**.
 
+To start from a working plugin instead, run `scripts/new-plugin.py` in
+[`bashcut-plugins`](https://github.com/dongnguyenvie/bashcut-plugins#writing-a-plugin). It generates a capability
+provider, an action, hooks, options or a chat agent in Swift, shell, Node.js or Python. Each one comes with a
+checked manifest, an entrypoint that already speaks the protocol and smoke tests.
+
 ## Manifest
 
 | Field | Required | Rules |
