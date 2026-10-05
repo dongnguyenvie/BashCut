@@ -25,10 +25,13 @@ struct AgentContextFileTests {
         let asked = AgentContextFile.prompt(request: "  \(request)\n", context: context, image: frame)
         #expect(asked.hasPrefix(request.trimmingCharacters(in: .whitespaces) + "\n"))
         #expect(asked.contains("`\(context.path)`"))
-        #expect(asked.hasSuffix("Current viewer frame: `\(frame.path)`"))
+        #expect(asked.hasSuffix("Current viewer frame: `\(frame.path)`\n"))
         #expect(asked.count < 400)
 
         #expect(AgentContextFile.prompt(request: "", context: context)
-            == "Read the BashCut context in `\(context.path)`.")
+            == "Read the BashCut context in `\(context.path)`.\n")
+
+        let home = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Videos/p/context.md")
+        #expect(AgentContextFile.prompt(request: "", context: home) == "Read the BashCut context in `~/Videos/p/context.md`.\n")
     }
 }

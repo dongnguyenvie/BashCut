@@ -18,14 +18,18 @@ public enum AgentContextFile {
     }
 
     /// What goes in the agent's input: the request, a line pointing at the context file and the attached frame.
+    /// Paths start with `~` to stay short; it ends with a newline so a second paste starts on its own line.
     public static func prompt(request: String, context: URL, image: URL? = nil) -> String {
         let request = request.trimmingCharacters(in: .whitespacesAndNewlines)
+        let path = short(context)
         var lines = [
             request.isEmpty
-                ? "Read the BashCut context in `\(context.path)`."
-                : request + "\n(BashCut context: `\(context.path)`, read it first.)"
+                ? "Read the BashCut context in `\(path)`."
+                : request + "\n(BashCut context: `\(path)`, read it first.)"
         ]
-        if let image { lines.append("Current viewer frame: `\(image.path)`") }
-        return lines.joined(separator: "\n")
+        if let image { lines.append("Current viewer frame: `\(short(image))`") }
+        return lines.joined(separator: "\n") + "\n"
     }
+
+    private static func short(_ url: URL) -> String { (url.path as NSString).abbreviatingWithTildeInPath }
 }
