@@ -14,6 +14,7 @@ struct KnowledgeInboxSection: View {
             ContentUnavailableView(
                 "Nothing waiting for review", systemImage: "tray",
                 description: Text("Lessons agents are unsure about, lessons and preferences for every project, and kit changes wait here."))
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 12) {

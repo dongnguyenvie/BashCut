@@ -129,9 +129,19 @@ extension AgentKnowledgeModel {
         }
     }
 
-    /// Reloads when a knowledge file changed on disk (an agent's command, or an edit by hand).
+    /// Reloads when a knowledge file changed on disk (an agent's command, or an edit by hand), and the skill list
+    /// when skills were added or removed. Memo text is not reloaded here, so an unsaved edit is kept.
     func refreshIfChanged() {
-        guard let store, store.signature() != signature else { return }
+        guard let store else { return }
+        let skills = store.skills()
+        if skills != self.skills {
+            self.skills = skills
+            if let selectedSkill, !skills.contains(where: { $0.name == selectedSkill }) {
+                self.selectedSkill = nil
+                skillText = ""
+            }
+        }
+        guard store.signature() != signature else { return }
         loadEntries()
     }
 
