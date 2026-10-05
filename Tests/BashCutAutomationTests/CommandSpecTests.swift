@@ -304,6 +304,25 @@ struct CommandSpecTests {
         }
     }
 
+    @Test("Skills commands parse their scope and SKILL.md file; kit skills are not writable")
+    func skillsCommands() throws {
+        let skillFile = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".md")
+        try "# Hook\n".write(to: skillFile, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: skillFile) }
+        let saveSkill = try CommandLineParser.parse(["skills", "save", "hook-first", skillFile.path, "--scope", "user"])
+        #expect(saveSkill.spec.mode == .edit && saveSkill.params == [
+            "name": .string("hook-first"), "text": .string("# Hook\n"), "scope": .string("user"),
+        ])
+        #expect(try CommandLineParser.parse(["skills", "disable", "hook-first"]).params == [
+            "name": .string("hook-first"), "scope": .string("project"),
+        ])
+        #expect(throws: (any Error).self) { try CommandLineParser.parse(["skills", "save", "x", skillFile.path, "--scope", "kit"]) }
+        #expect(try CommandLineParser.parse(["skills", "list", "--scope", "kit"]).spec.mode == .read)
+        let propose = try CommandLineParser.parse(
+            ["skills", "propose", "bashcut-beat-cut", skillFile.path, "--summary", "Cut on the downbeat"])
+        #expect(propose.params["summary"] == .string("Cut on the downbeat") && propose.spec.mode == .edit)
+    }
+
     @Test("The SubRip import reads the file named on the command line")
     func subRipFile() throws {
         let file = FileManager.default.temporaryDirectory.appendingPathComponent("bashcut-\(UUID().uuidString).srt")

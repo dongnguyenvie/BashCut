@@ -74,6 +74,7 @@ arguments.
 | `doctor run` | read | Doctor sheet |
 | `knowledge get` | read | Knowledge window: Notes and Skills |
 | `knowledge lessons [--scope] [--status] [--tag] [--query] [--sort]` / `knowledge prefs` / `knowledge facts` / `knowledge proposals` / `knowledge history [--kind] [--target]` | read | Knowledge window: Lessons (search, filters, sort), Preferences, Project facts, Inbox, History; dock badge |
+| `skills list [--scope kit\|user\|project]` / `skills get <name> [--scope]` | read | Knowledge window › Skills: the project's, every project's and the agent kit's skills with their descriptions, Edit and Preview |
 | `ui frame [frame]` | read | Ask's attach viewer frame: the viewer picture at a frame as a PNG path |
 | `ui actions` | read | Every toolbar button, menu item and shortcut, with its enabled state |
 | `ui dialog` | read | Every open alert, file panel, sheet and popover |
@@ -107,6 +108,7 @@ arguments.
 | `knowledge memo <file> [--scope user]` / `knowledge skill <name> <file>` / `knowledge migrate [--to project]` | edit | Knowledge window › Notes and Skills: Save memo, Save notes, Save skill, Move older memo |
 | `knowledge add-lesson` / `update-lesson` / `remove-lesson` / `approve [--value]` / `reject` / `set-pref` / `set-fact` | edit | Knowledge window: New lesson, Save, Enable/Disable, Delete…, Approve, Reject; Inbox Approve, Edit…, Reject; Preferences and facts Add, Save, Remove |
 | `knowledge revert <change-id>` | edit | Knowledge window › History: Revert… |
+| `skills save <name> <file> [--scope user]` / `skills enable` / `skills disable` / `skills remove` / `skills propose <name> <file> --summary` | edit | Knowledge window › Skills: Add, Save skill, On for agents, Share with Claude + Codex, Delete…, Propose change… (kit skills) |
 | `ui action <id\|shortcut>` | edit | Any editor button or shortcut, run by the same code: `timeline.split` / `cmd+b`, `timeline.zoom-in` / `cmd+=`, `playback.toggle` / `space`, `source.mark-in` / `i`; plugin action IDs and shortcuts too |
 
 ### Privileged commands
@@ -281,7 +283,8 @@ The two CLIs don't share transcripts. When the user hands a task from one agent 
 Planned additions: the last 5 user requests, the last 5 labeled undo steps and the latest review result.
 
 Codex reaches parity with Claude only once the workspace has `AGENTS.md` and `.agents/skills/`
-([02 — Project format](02-project-format.md) §6). `knowledge skill` writes project skills to both locations inside the project folder.
+([02 — Project format](02-project-format.md) §6). `knowledge skill` and `skills save` write project skills to both locations inside the project folder; skills for
+every project stay in BashCut's Knowledge folder and reach BashCut's agents through the paths in their knowledge.
 
 ## 6. Later (P2): structured chat mode
 

@@ -37,6 +37,12 @@ public struct AgentKit: Sendable, Equatable {
 
     public var skillsFolder: URL { root.appendingPathComponent("skills", isDirectory: true) }
 
+    /// The text of a skill's SKILL.md; nil when the kit has no such skill.
+    public func skillText(_ skill: String) -> String? {
+        guard skills.contains(skill) else { return nil }
+        return try? String(contentsOf: skillsFolder.appendingPathComponent("\(skill)/SKILL.md"), encoding: .utf8)
+    }
+
     /// The `description:` line of a skill's front matter.
     public func description(of skill: String) -> String {
         let url = skillsFolder.appendingPathComponent("\(skill)/SKILL.md")

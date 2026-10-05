@@ -101,7 +101,10 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
             user: AgentKnowledgeStore.userFolder(applicationSupport: ProjectDocument.libraryApplicationSupport),
             legacyFolders: [settings.workspace, FileManager.default.homeDirectoryForCurrentUser].compactMap { $0 })
     }
-    func loadKnowledge() { knowledge.load(knowledgeStore) }
+    /// Loads the knowledge, with the agent kit's skills shown read-only (found, not installed: that copies files).
+    func loadKnowledge() {
+        knowledge.load(knowledgeStore, kit: AgentKit.locate(folder: settings.agentKitFolder, support: StorageUsage.supportFolder))
+    }
 
     /// Keeps the dock's Knowledge badge current: loads the open project's knowledge, then reloads when files change.
     func refreshKnowledgeBadge() {
