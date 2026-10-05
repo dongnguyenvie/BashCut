@@ -120,4 +120,41 @@ struct KnowledgeEntriesTests {
         try store.updateLesson("l-hand", LessonPatch(tags: ["audio"]), source: source())
         #expect(try store.lesson("l-hand").tags == ["audio"])
     }
+
+    @Test("The session summary lists active lessons, winning preferences and facts, bounded and one line each")
+    func summary() throws {
+        let (store, root) = try store()
+        defer { try? FileManager.default.removeItem(at: root) }
+        #expect(store.summary().isEmpty && store.summary().text.contains("No lessons, preferences or facts yet."))
+
+        let old = try store.addLesson(title: "Trim breaths", scope: .project, source: source())
+        let new = try store.addLesson(
+            title: "Captions\ncover the face", fix: String(repeating: "x", count: 500), scope: .project,
+            source: source("claude", 5))
+        let user = try store.addLesson(title: "Sentence case", scope: .user, source: source())
+        try store.addLesson(title: "Maybe", status: .proposed, scope: .user, source: source())
+        let off = try store.addLesson(title: "Old rule", scope: .project, source: source())
+        try store.updateLesson(off.id, LessonPatch(status: .disabled), source: source())
+        try store.setValue(.prefs, key: "pace", value: "fast", scope: .user, source: source())
+        try store.setValue(.prefs, key: "pace", value: "calm", scope: .project, source: source())
+        try store.setValue(.prefs, key: "music", value: "lofi", scope: .user, source: source())
+        try store.setValue(.facts, key: "host", value: "Lan", scope: .project, source: source())
+
+        let summary = store.summary()
+        #expect(summary.lessons.map(\.id) == [new.id, old.id, user.id])
+        #expect(summary.prefs.map { "\($0.key)=\($0.value)" } == ["pace=calm", "music=lofi"])
+        #expect(summary.facts.map(\.key) == ["host"] && summary.proposals == 1 && summary.errors.isEmpty)
+        let text = summary.text
+        #expect(text.contains("- \(new.id) (project) Captions cover the face → " + String(repeating: "x", count: 239) + "…"))
+        #expect(text.contains("- pace = calm (project)") && text.contains("1 proposed lesson(s)"))
+        #expect(!text.contains("Old rule") && !text.contains("Maybe"))
+
+        for index in 0..<KnowledgeSummary.lessonLimit {
+            try store.addLesson(title: "Rule \(index)", scope: .user, source: source())
+        }
+        try Data("{ not json".utf8).write(to: root.appendingPathComponent("project/.bashcut/knowledge/facts.json"))
+        let bounded = store.summary()
+        #expect(bounded.lessons.count == KnowledgeSummary.lessonLimit && bounded.omittedLessons == 3)
+        #expect(bounded.facts.isEmpty && bounded.errors.count == 1 && bounded.text.contains("… 3 more"))
+    }
 }

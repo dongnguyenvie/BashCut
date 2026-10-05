@@ -29,6 +29,7 @@ import Observation
         } else {
             lines.append("[Project memory] No saved project is open. [/Project memory]")
         }
+        if let store { lines.append(store.summary().text) }
         return lines.joined(separator: "\n")
     }
 

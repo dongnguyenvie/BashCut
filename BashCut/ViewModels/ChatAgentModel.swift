@@ -163,7 +163,8 @@ enum ChatEntryKind: String, Codable { case user, assistant, tool, notice, error 
         [
             "op": .string("turn"), "conversation": .string(conversation), "text": .string(text),
             "images": .array(imageURL.map { [.string($0.path)] } ?? []),
-            "context": .string(document.contextText() + "\n" + TimelineSummary.text(document.project)),
+            "context": .string(document.contextText() + "\n" + TimelineSummary.text(document.project) + "\n"
+                + document.agents.knowledgeStore.summary().text),
             "instructions": .string(Self.preamble + "\n" + CommandCatalog.instructions),
             "tools": .array(Self.tools), "kit": kitJSON(),
         ]

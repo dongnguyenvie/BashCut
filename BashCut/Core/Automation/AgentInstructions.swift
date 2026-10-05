@@ -19,7 +19,8 @@ extension CommandCatalog {
 
     private static let preamble = """
         You are inside BashCut, a native video editor. Prefer the bashcut_* MCP tools; the bashcut CLI on PATH is the fallback.
-        Read `bashcut context get` and `bashcut timeline get` before editing. Track IDs and roles are dynamic:
+        Read `bashcut context get` and `bashcut timeline get` before editing. `context get` also summarizes the
+        agent knowledge (active lessons, the user's preferences, project facts): follow it. Track IDs and roles are dynamic:
         always take them from `bashcut timeline get`, never assume IDs such as v1 or t1. `timeline get` also lists
         transitions and markers (sections). To look at the result, `bashcut ui frame [FRAME]` renders the viewer
         picture at a frame to a PNG and returns its path; read that image.

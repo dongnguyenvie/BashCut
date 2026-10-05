@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+- **Agents start every session with what they learned** (#73). New terminals, chat agents and handoffs get a
+  short summary of the structured knowledge: active lessons with their fix, preferences (a project value wins over
+  the one for every project), project facts, and the number of proposals waiting for review. It is bounded (20
+  lessons, 30 preferences, 30 facts, one line of at most 240 characters each) and skips a file it cannot read.
+  `context get` returns it as `knowledge`.
+
 - **Structured agent knowledge** (#67). Besides the free-text memos, the agent can now keep lessons (title,
   symptom, cause, fix, evidence, tags, status `proposed`/`active`/`disabled`, and who wrote it in which session),
   the user's preferences and facts about the project. They are plain JSON files that Claude Code and Codex can read:

@@ -33,7 +33,10 @@ public enum CommandCatalog {
         cli: .option("output-dir"))
 
     private static let readSpecs: [CommandSpec] = [
-        CommandSpec("context.get", .read, "Read the project path, revision, playhead and selection."),
+        CommandSpec(
+            "context.get", .read,
+            "Read the project path, revision, playhead and selection, and a summary of the agent knowledge: active "
+                + "lessons, preferences, project facts and the number of proposals."),
         CommandSpec("project.get", .read, "Read the whole open project document."),
         CommandSpec(
             "timeline.get", .read, "Read the revision, format and tracks, including track IDs and roles.",
