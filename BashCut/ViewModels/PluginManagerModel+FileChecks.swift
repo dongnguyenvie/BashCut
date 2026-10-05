@@ -1,6 +1,7 @@
 import BashCutPlugin
 import BashCutPlugins
 import Foundation
+import os
 
 /// Background file checks for the plugin catalog (#103): `refresh` lists plugins from what is already known, and
 /// plugins whose files were not checked yet are checked here, off the main actor.
@@ -58,14 +59,13 @@ extension PluginManagerModel {
     private nonisolated static func checkFiles(
         of batch: [InstalledPlugin], service: CapabilityService
     ) -> [PluginAvailability] {
-        let lock = NSLock()
-        var results = [PluginAvailability](repeating: .untrusted, count: batch.count)
+        let results = OSAllocatedUnfairLock(
+            initialState: [PluginAvailability](repeating: .untrusted, count: batch.count)
+        )
         DispatchQueue.concurrentPerform(iterations: batch.count) { index in
             let state = service.availability(batch[index])
-            lock.lock()
-            results[index] = state
-            lock.unlock()
+            results.withLock { $0[index] = state }
         }
-        return results
+        return results.withLock { $0 }
     }
 }
