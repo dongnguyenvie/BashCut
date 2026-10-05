@@ -104,6 +104,15 @@ public struct LibraryCatalog: Sendable {
 
     public func items(matching filter: Filter) throws -> [LibraryItem] { try items().filter(filter.matches) }
 
+    /// What a panel shows for `kinds`: each ID once (the scope in use), built-in items first in their order, then
+    /// plugin, user and project ones.
+    public func panelItems(_ kinds: [LibraryKind]) throws -> [LibraryItem] {
+        var seen: Set<String> = []
+        let inUse = try items(matching: Filter(kinds: kinds)).filter { seen.insert($0.id).inserted }
+        let order: [LibraryScope] = [.builtIn, .plugin, .user, .project]
+        return order.flatMap { scope in inUse.filter { $0.scope == scope } }
+    }
+
     // MARK: Usage
 
     /// The store that counts uses of `item`: the project for its own items, the user library for the rest.
@@ -194,7 +203,42 @@ public struct LibraryCatalog: Sendable {
     }
 }
 
-/// The built-in packs. Panels move their hard-coded items here in #75.
+/// The built-in packs the Text, Stickers and Effects panels show (#75). Names are English UI strings to localize;
+/// IDs are stable.
 public enum LibraryBuiltIns {
-    public static let items: [LibraryItem] = []
+    public static let items: [LibraryItem] = textPresets + stickers + effects
+
+    /// One per caption renderer preset (`TextPreset.all`), with the sample text the panel shows.
+    public static let textPresets: [LibraryItem] = [
+        ("bold-outline", "Bold Outline", "Quá là ngon!"),
+        ("cinematic-serif", "Cinematic Serif", "a moment to remember"),
+        ("keyword-sticker", "Keyword Sticker", "BEST BITE"),
+        ("place-card", "Place Card", "BẾN THÀNH · QUẬN 1"),
+        ("hook-title", "Hook Title", "ĂN GÌ HÔM NAY?"),
+        ("chapter-card", "Chapter Card", "CHAPTER 01"),
+    ].map { id, name, sample in
+        LibraryItem(
+            id: id, kind: .textPreset, name: name, pack: "Text styles",
+            params: ["textPreset": .string(id), "text": .string(sample)])
+    }
+
+    /// Emoji stickers, placed as Bold Outline text.
+    public static let stickers: [LibraryItem] = [
+        ("fire", "Fire", "🔥"), ("yum", "Yum", "😋"), ("thumbs-up", "Thumbs up", "👍"), ("hundred", "Hundred", "💯"),
+        ("star", "Star", "⭐"), ("pin", "Pin", "📍"), ("hot-pot", "Hot pot", "🍲"), ("laughing", "Laughing", "😂"),
+    ].map { id, name, emoji in
+        LibraryItem(
+            id: id, kind: .sticker, name: name, pack: "Emoji",
+            params: ["emoji": .string(emoji), "textPreset": .string("bold-outline")])
+    }
+
+    /// Framing presets for the selected clip.
+    public static let effects: [LibraryItem] = [
+        LibraryItem(
+            id: "punch-in", kind: .effectPreset, name: "Punch in 1.3×", pack: "Framing",
+            params: ["patch": .object(["transform": .object(["zoom": .number(1.3)])])]),
+        LibraryItem(
+            id: "reset-framing", kind: .effectPreset, name: "Reset framing", pack: "Framing",
+            params: ["patch": .object(["transform": .object(["zoom": .number(1), "pan": .integer(0), "tilt": .integer(0)])])]),
+    ]
 }

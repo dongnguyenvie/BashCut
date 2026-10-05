@@ -131,8 +131,10 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
 - One item model for every library panel (#74): kind, tags, pack, source and license, created by, version
   history, usage and params, in project (`.bashcut/library`), user (Application Support), plugin and built-in
   scopes. `library list|get|stats|add|update|remove|apply|place|import-pack|export-pack`; agents' user-scope writes
-  need approval. Panels do not read it yet (#75, #80); placing audio, image stickers and transitions comes with
-  #78, #64 and #77.
+  need approval. Placing audio, image stickers and transitions comes with #78, #64 and #77.
+- Built-in packs (#75): Text styles (the 6 caption presets), Emoji (8 stickers) and Framing (Punch in 1.3×, Reset
+  framing). The Text, Stickers and Effects panels render these and saved items from the library; the panel UI for
+  packs, search and editing is #80.
 
 ### Export
 

@@ -327,6 +327,11 @@ Items come from four scopes; when the same ID is in several, the first wins, and
 | `plugin` | Shipped by a plugin | no |
 | `built-in` | Shipped with BashCut | no |
 
+Built-in packs: **Text styles** (`bold-outline`, `cinematic-serif`, `keyword-sticker`, `place-card`, `hook-title`,
+`chapter-card`), **Emoji** stickers (`fire`, `yum`, `thumbs-up`, `hundred`, `star`, `pin`, `hot-pot`, `laughing`) and
+**Framing** effects (`punch-in`, `reset-framing`). Their IDs are reserved. The Text, Stickers and Effects panels show
+them first, then the items saved in the project or on this Mac.
+
 - `bashcut library list [--panel text] [--kind sticker] [--tag food] [--scope user] [--created-by agent] [--pack X]
   [--query word]` lists items with their usage; `library get <id>` adds the earlier versions and the file path.
 - `bashcut library add --kind sticker --name Fire --params '{"emoji":"🔥"}' [--tags food,hot] [--pack Food]
