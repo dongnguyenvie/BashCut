@@ -328,22 +328,28 @@ List installed plugins with a newer compatible version in the registry.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_plugins_updates`
 
-### `bashcut plugins validate <path>`
+### `bashcut plugins validate [<path>] [--url <url>] [--ref <ref>] [--sha256 <sha256>]`
 
-Check a plugin that is not in the registry (a folder, its plugin.json, or a .zip or .bashcutplugin archive) without installing or running it: its id, version and capabilities, and every problem with the field and the fix.
+Check a plugin that is not in the registry (a folder, its plugin.json, a .zip or .bashcutplugin archive, or a link) without installing or running it: its id, version and capabilities, every problem with the field and the fix, and for a link the commit or release it resolved to.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_plugins_validate`
-- `path`: string, required, path. Plugin folder, plugin.json, or .zip / .bashcutplugin file
+- `path`: string, path. Plugin folder, plugin.json, or .zip / .bashcutplugin file (or use url)
+- `url`: string. Link to a .zip / .bashcutplugin file, a GitHub repo (or /tree/<ref>/<folder>, or its plugin.json) or a GitHub release; #sha256=<hex> pins it. A private link uses the access token saved in Add Plugin…
+- `ref`: string. Tag, branch or commit for a GitHub repo link (release tag for a release link)
+- `sha256`: string. Expected SHA-256 of the downloaded archive
 
-### `bashcut plugins install [<plugin>] [--version <version>] [--path <path>] [--scope <scope>]`
+### `bashcut plugins install [<plugin>] [--version <version>] [--path <path>] [--url <url>] [--ref <ref>] [--sha256 <sha256>] [--scope <scope>]`
 
-Download a registry plugin (or its update), check its SHA-256 and manifest, and show the install approval in the Plugins sheet. With path instead, add a plugin from this Mac (Add Plugin…): a folder, its plugin.json, or a .zip / .bashcutplugin file, checked like plugins validate. Only the user can approve; the job ends when the approval is shown.
+Download a registry plugin (or its update), check its SHA-256 and manifest, and show the install approval in the Plugins sheet. With path or url instead, add a plugin that is not in the registry (Add Plugin…): a folder, its plugin.json or a .zip / .bashcutplugin file on this Mac, or a link, checked like plugins validate. Only the user can approve; the job ends when the approval is shown.
 
 - Mode: edit · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_plugins_install`
 - `plugin`: string. Plugin ID from plugins search (or use path)
 - `version`: string. A specific registry version; the newest compatible by default
 - `path`: string, path. Plugin folder, plugin.json, or .zip / .bashcutplugin file on this Mac
-- `scope`: string, one of user, project. Where a plugin from path goes: user (this Mac, every project; the default) or project (the open project)
+- `url`: string. Link to a .zip / .bashcutplugin file, a GitHub repo (or /tree/<ref>/<folder>, or its plugin.json) or a GitHub release; #sha256=<hex> pins it. A private link uses the access token saved in Add Plugin…
+- `ref`: string. Tag, branch or commit for a GitHub repo link (release tag for a release link)
+- `sha256`: string. Expected SHA-256 of the downloaded archive
+- `scope`: string, one of user, project. Where a plugin from path or url goes: user (this Mac, every project; the default) or project (the open project)
 
 ### `bashcut plugins remove <plugin> [--data]`
 
@@ -735,7 +741,7 @@ Answer the topmost dialog like the user: choose an option ID or title, or give a
 Open a sheet or popover in the app.
 
 - Mode: ui · Runs: immediately · MCP: `bashcut_ui_open`
-- `dialog`: string, required, one of new-project, export, export-report, agent-changes, review, history, plugins, settings, doctor, knowledge, ask, sections, external-changes, plugin-proposals, commands, shortcuts. Dialog
+- `dialog`: string, required, one of new-project, export, export-report, agent-changes, review, history, plugins, settings, doctor, knowledge, ask, sections, external-changes, plugin-proposals, commands, shortcuts, add-plugin. Dialog
 
 ### `bashcut ui select [<item>] [--track <track>]`
 

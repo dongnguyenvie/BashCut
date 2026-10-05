@@ -136,6 +136,17 @@ struct CommandSpecTests {
         }
         let validate = try CommandLineParser.parse(["plugins", "validate", "/tmp/my-plugin"])
         #expect(validate.spec.mode == .read && validate.params == ["path": .string("/tmp/my-plugin")])
+        // From a link: the URL stays as typed (not made a path).
+        let link = try CommandLineParser.parse([
+            "plugins", "install", "--url", "https://github.com/nolan/plugs", "--ref", "v1", "--sha256", "ab", "--scope", "project",
+        ])
+        #expect(link.params == [
+            "url": .string("https://github.com/nolan/plugs"), "ref": .string("v1"), "sha256": .string("ab"),
+            "scope": .string("project"),
+        ])
+        let validateLink = try CommandLineParser.parse(["plugins", "validate", "--url", "https://example.com/p.zip"])
+        #expect(validateLink.params == ["url": .string("https://example.com/p.zip")])
+        #expect(CommandCatalog.dialogs.contains("add-plugin"))
         let remove = try CommandLineParser.parse(["plugins", "remove", "bashcut.vieneu-tts", "--data"])
         #expect(remove.spec.mode == .edit && remove.params["data"] == .bool(true))
         #expect(try CommandLineParser.parse(["plugins", "setup", "bashcut.vieneu-tts"]).params == ["plugin": .string("bashcut.vieneu-tts")])

@@ -2,6 +2,14 @@ import BashCutProject
 
 extension CommandCatalog {
     private static let pluginID = CommandParameter("plugin", .string, "Plugin ID", required: true, cli: .positional)
+    private static let pluginURL = CommandParameter(
+        "url", .string, "Link to a .zip / .bashcutplugin file, a GitHub repo (or /tree/<ref>/<folder>, or its plugin.json) or a "
+            + "GitHub release; #sha256=<hex> pins it. A private link uses the access token saved in Add Plugin…",
+        cli: .option("url"))
+    private static let pluginRef = CommandParameter(
+        "ref", .string, "Tag, branch or commit for a GitHub repo link (release tag for a release link)", cli: .option("ref"))
+    private static let pluginSHA256 = CommandParameter(
+        "sha256", .string, "Expected SHA-256 of the downloaded archive", cli: .option("sha256"))
     static let pluginCategory = CommandParameter(
         "category", .string, "Only plugins in this category", choices: UIAction.pluginCategories,
         cli: .option("category"))
@@ -60,27 +68,29 @@ extension CommandCatalog {
         CommandSpec("plugins.updates", .read, "List installed plugins with a newer compatible version in the registry."),
         CommandSpec(
             "plugins.validate", .read,
-            "Check a plugin that is not in the registry (a folder, its plugin.json, or a .zip or .bashcutplugin archive) "
-                + "without installing or running it: its id, version and capabilities, and every problem with the field "
-                + "and the fix.",
+            "Check a plugin that is not in the registry (a folder, its plugin.json, a .zip or .bashcutplugin archive, or a "
+                + "link) without installing or running it: its id, version and capabilities, every problem with the field "
+                + "and the fix, and for a link the commit or release it resolved to.",
             parameters: [
-                CommandParameter("path", .string, "Plugin folder, plugin.json, or .zip / .bashcutplugin file", required: true,
+                CommandParameter("path", .string, "Plugin folder, plugin.json, or .zip / .bashcutplugin file (or use url)",
                                  isPath: true, cli: .positional),
+                pluginURL, pluginRef, pluginSHA256,
             ]),
         CommandSpec(
             "plugins.install", .edit,
             "Download a registry plugin (or its update), check its SHA-256 and manifest, and show the install approval in "
-                + "the Plugins sheet. With path instead, add a plugin from this Mac (Add Plugin…): a folder, its plugin.json, "
-                + "or a .zip / .bashcutplugin file, checked like plugins validate. Only the user can approve; the job "
-                + "ends when the approval is shown.",
+                + "the Plugins sheet. With path or url instead, add a plugin that is not in the registry (Add Plugin…): a "
+                + "folder, its plugin.json or a .zip / .bashcutplugin file on this Mac, or a link, checked like plugins "
+                + "validate. Only the user can approve; the job ends when the approval is shown.",
             parameters: [
                 CommandParameter("plugin", .string, "Plugin ID from plugins search (or use path)", cli: .positional),
                 CommandParameter("version", .string, "A specific registry version; the newest compatible by default",
                                  cli: .option("version")),
                 CommandParameter("path", .string, "Plugin folder, plugin.json, or .zip / .bashcutplugin file on this Mac",
                                  isPath: true, cli: .option("path")),
+                pluginURL, pluginRef, pluginSHA256,
                 CommandParameter("scope", .string,
-                                 "Where a plugin from path goes: user (this Mac, every project; the default) or project (the open project)",
+                                 "Where a plugin from path or url goes: user (this Mac, every project; the default) or project (the open project)",
                                  choices: ["user", "project"], cli: .option("scope")),
             ],
             execution: .job),

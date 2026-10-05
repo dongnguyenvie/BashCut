@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+- **Add plugins from a link** (#83). Add Plugin… now opens a sheet where you can paste a link: a `.zip` /
+  `.bashcutplugin` file, a GitHub repo (`#tag`, `/tree/<ref>/<folder>`, or its `plugin.json`), or a GitHub release
+  (its one plugin archive). Repo links are pinned to the commit they point at. `#sha256=<hex>` (or the SHA-256
+  field) requires that exact archive. For private repos and servers, an access token per host is kept in the
+  Keychain and sent only to that host. The approval shows the link and the commit or release it resolved to;
+  Installed and `plugins list` (`source`) remember it. Agents: `plugins validate --url` and `plugins install --url
+  [--ref] [--sha256] [--scope]`, and `ui open add-plugin`.
 - **Add plugins that are not in the registry** (#83). Plugins › Installed (and Settings › Plugins) has **Add
   Plugin…**, which takes a plugin folder, its `plugin.json`, or a `.zip` / `.bashcutplugin` archive; dropping one on
   Installed works too. BashCut checks it first and names each problem with the field and the fix, installs a checked

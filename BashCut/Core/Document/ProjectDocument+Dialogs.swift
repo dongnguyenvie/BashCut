@@ -1,5 +1,6 @@
 import BashCutAutomation
 import BashCutDocument
+import BashCutPlugins
 import BashCutProject
 import Foundation
 
@@ -69,7 +70,8 @@ extension ProjectDocument {
             // Installing runs the plugin's dependency recipes; only the user can approve it.
             sheets.append(ModalSheet(
                 name: "plugin-install",
-                title: (pending.repair ? "Set up " : pending.replacing ? "Update " : "Install ")
+                title: (pending.repair ? "Set up " : (pending.local == nil ? pending.replacing : plugins.replaces(pending))
+                    ? "Update " : "Install ")
                     + pending.plugin.manifest.displayName + "?",
                 message: "Only the user can approve a plugin install.",
                 options: [ModalOption("cancel", String(localized: "Cancel"))]
@@ -91,6 +93,13 @@ extension ProjectDocument {
     /// The plugin parameter sheet and the hook-edit review sheet.
     private func pluginSheets() -> [ModalSheet] {
         var sheets: [ModalSheet] = []
+        if ui.showPlugins, plugins.showAddPlugin {
+            sheets.append(ModalSheet(
+                name: "add-plugin", title: "Add Plugin",
+                message: "Paste a link or choose a plugin on this Mac (plugins install --url or --path does the same).",
+                options: [ModalOption("cancel", String(localized: "Cancel"))]
+            ) { [weak self] _ in self?.plugins.showAddPlugin = false })
+        }
         if let pending = plugins.pendingAction {
             sheets.append(ModalSheet(
                 name: "plugin-action", title: pending.action.title,
@@ -183,6 +192,11 @@ extension ProjectDocument {
             ui[keyPath: dialog.flag] = true
         } else if name == "new-project" {
             newProject()
+        } else if name == "add-plugin" {
+            guard PluginChannel.current.allowsUserPlugins else { throw RPCFailure(-32602, PluginManagerModel.channelRefusal) }
+            plugins.refresh(projectRoot: fileURL?.deletingLastPathComponent())
+            ui.showPlugins = true
+            plugins.addPlugin()
         } else if name == "knowledge" {
             agents.knowledge.load(from: agents.directory)
             agents.showKnowledge = true

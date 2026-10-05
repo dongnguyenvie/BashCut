@@ -21,7 +21,8 @@ struct PluginManagerView: View {
                 }.pickerStyle(.segmented).labelsHidden().frame(width: 360)
                 if PluginChannel.current.allowsUserPlugins {
                     Button("Add Plugin…", action: model.addPlugin).disabled(model.installing)
-                        .help("Add a plugin that is not in the registry: a folder, its plugin.json, or a .zip file")
+                        .help("Add a plugin that is not in the registry: a link, a folder, its plugin.json, or a .zip file")
+                        .sheet(isPresented: $model.showAddPlugin) { PluginAddView(model: model) }
                 }
                 Button("Done", action: done)
             }
@@ -44,15 +45,12 @@ struct PluginManagerView: View {
             Text(model.message).font(.caption).foregroundStyle(.secondary)
         }
         .padding(20).frame(width: 760, height: 620, alignment: .top).preferredColorScheme(.dark)
-        .sheet(item: $model.pendingInstall) { presented in
-            // The scope can change while the sheet is open.
-            let pending = model.pendingInstall ?? presented
+        .sheet(item: $model.pendingInstall) { pending in
             PluginInstallApprovalView(
                 pending: pending, registry: model.registry, required: model.requiredBytes(pending),
                 blocker: model.installBlocker(pending), replaces: pending.local == nil ? pending.replacing : model.replaces(pending),
                 shadowNote: model.shadowNote(pending),
-                scope: pending.local == nil || model.currentProjectRoot == nil ? nil : Binding(
-                    get: { model.pendingInstall?.scope ?? .user }, set: { model.pendingInstall?.scope = $0 }),
+                scope: pending.local == nil || model.currentProjectRoot == nil ? nil : $model.installScope,
                 approve: model.installPendingPlugin, cancel: model.cancelPendingInstall)
         }
         .task(id: model.tab) {
@@ -141,6 +139,11 @@ private struct PluginRow: View {
                 stateBadge
             }
             Text(plugin.id).font(.caption2.monospaced()).foregroundStyle(.secondary)
+            if let origin = model.origin(of: plugin) {
+                Label(origin.url + (origin.resolved.map { " @ " + $0.prefix(12) } ?? ""), systemImage: "link")
+                    .font(.caption2).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle).textSelection(.enabled)
+                    .help("Installed from this link; it is not in the BashCut registry")
+            }
             if let reason = model.yankedReason(plugin) {
                 Label(String(format: String(localized: "Your version was withdrawn: %@"), reason),
                       systemImage: "exclamationmark.triangle.fill").font(.caption).foregroundStyle(.orange)
@@ -350,11 +353,15 @@ private struct PluginInstallApprovalView: View {
 
     private func localSource(_ local: StagedLocalPlugin) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("From this Mac").font(.headline)
+            Text(local.origin == nil ? "From this Mac" : "From a link").font(.headline)
             Text("Version \(plugin.manifest.version) · \(plugin.id)")
             Label("Not from the BashCut registry · unsigned. Install it only if you trust where it comes from.",
                   systemImage: "exclamationmark.shield").font(.caption).foregroundStyle(.orange)
-            Text(local.source.path).font(.caption.monospaced()).lineLimit(1).truncationMode(.middle).textSelection(.enabled)
+            Text(local.origin?.url ?? local.source.path).font(.caption.monospaced()).lineLimit(1).truncationMode(.middle)
+                .textSelection(.enabled)
+            if let resolved = local.origin?.resolved {
+                Text("Resolved to \(resolved)").font(.caption2.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
+            }
             if let sha256 = local.sha256 {
                 Text("SHA-256 " + sha256).font(.caption2.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
             }
