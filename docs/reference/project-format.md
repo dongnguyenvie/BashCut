@@ -34,14 +34,15 @@ A project file with another name (for example a test fixture) gets its own cache
 ## Storage on disk
 
 What BashCut keeps where, by how safe it is to delete. Settings › Storage and `bashcut storage get` show the sizes
-of the clearable parts, with each plugin's folder, data and cache added up to one total, largest first.
+of the clearable parts, with each plugin's folder, data and cache added up to one total, largest first, and the
+shared plugin runtimes and downloads as their own rows.
 
 | Kind | Where | Contents |
 |---|---|---|
 | Project data | `<project>/project.bashcut.json`, `.bashcut/history.jsonl`, `.bashcut/autosave/`, `.bashcut/library/`, `.bashcut/plugins/`, `.bashcut/skills/`, `.bashcut/agent-memory.md`, `.bashcut/chat/`, `.bashcut/export-history.json` | The edit and what belongs to this project; keep and sync it |
 | Project cache | `.bashcut/cache/`: `proxies/`, `waveforms/`, `ramp-audio/`, `stills/`, `loudness/`, `agent-context/` | Made again on demand; listed in `.bashcut/.gitignore` and excluded from Time Machine |
-| User config | `~/Library/Application Support/BashCut/`: `Plugins/`, `PluginData/<id>/`, `plugin-trust.json`, `Library/`, `Knowledge/`, `agent-workspace*/`, `audit.jsonl`, `automation.sock` | Installed plugins, their settings and environments, trust grants, the user library and notes for every project |
-| User cache | `~/Library/Caches/BashCut/`: `PluginData/<id>/` (downloaded models), `Registry/` (the plugin catalog copy) | Fetched again when missing; not backed up by Time Machine |
+| User config | `~/Library/Application Support/BashCut/`: `Plugins/`, `PluginData/<id>/`, `PluginData/_shared/` (runtimes such as Python, shared by plugins), `plugin-trust.json`, `Library/`, `Knowledge/`, `agent-workspace*/`, `audit.jsonl`, `automation.sock` | Installed plugins, their settings and environments, trust grants, the user library and notes for every project |
+| User cache | `~/Library/Caches/BashCut/`: `PluginData/<id>/` (downloaded models), `PluginData/_shared/` (package caches shared by plugins), `Registry/` (the plugin catalog copy) | Fetched again when missing; not backed up by Time Machine |
 | Logs | `~/Library/Logs/BashCut/debug.log` | Shared by the app, CLI and MCP bridge |
 
 - **One cache folder.** Everything BashCut can make again is under `.bashcut/cache/`. Before, each cache had its own

@@ -1,6 +1,9 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Shared plugin runtimes": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Shared plugin runtimes" } }, "vi": { "stringUnit": { "state": "translated", "value": "Runtime dùng chung của plugin" } } } },
+    "Shared plugin downloads": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Shared plugin downloads" } }, "vi": { "stringUnit": { "state": "translated", "value": "Tệp tải về dùng chung của plugin" } } } },
+    "Runtimes shared by plugins are deleted. Plugins that use them must be set up again with Install Dependencies… in Plugins.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Runtimes shared by plugins are deleted. Plugins that use them must be set up again with Install Dependencies… in Plugins." } }, "vi": { "stringUnit": { "state": "translated", "value": "Runtime dùng chung của các plugin sẽ bị xóa. Các plugin dùng chúng phải cài lại bằng Cài dependency… trong Plugin." } } } },
     "%@ — plugin": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%@ — plugin" } }, "vi": { "stringUnit": { "state": "translated", "value": "%@ — plugin" } } } },
     "Not installed — left over from a removed plugin": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Not installed — left over from a removed plugin" } }, "vi": { "stringUnit": { "state": "translated", "value": "Chưa cài — còn sót lại từ plugin đã gỡ" } } } },
     "Checking the plugin's files…": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Checking the plugin's files…" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đang kiểm tra các tệp của plugin…" } } } },

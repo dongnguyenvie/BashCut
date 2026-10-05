@@ -613,16 +613,16 @@ Measure a media file's sound with an audio.loudness provider: integrated loudnes
 
 ### `bashcut storage get`
 
-What BashCut keeps on disk (Settings › Storage): each plugin's folder, data and cache, the saved plugin registry, this project's preview proxies, ramp audio and the audit log, with sizes and paths. plugins lists each plugin's total, largest first.
+What BashCut keeps on disk (Settings › Storage): each plugin's folder, data and cache, the saved plugin registry, the shared plugin runtimes, this project's preview proxies, ramp audio and the audit log, with sizes and paths. plugins lists each plugin's total, largest first.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_storage_get`
 
 ### `bashcut storage clear <target> [--plugin <plugin>]`
 
-Delete what can be made or downloaded again: plugin-cache (all plugins, or --plugin), registry, proxies or ramp-audio (made again on demand), or plugin-data --plugin ID (the plugin must be set up again).
+Delete what can be made or downloaded again: plugin-cache (all plugins, or --plugin), shared-cache, registry, proxies or ramp-audio (made again on demand), plugin-data --plugin ID (the plugin must be set up again), or shared-data (plugins using the shared runtimes must be set up again).
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_storage_clear`
-- `target`: string, required, one of plugin-cache, plugin-data, registry, proxies, ramp-audio. What to clear
+- `target`: string, required, one of plugin-cache, plugin-data, shared-cache, shared-data, registry, proxies, ramp-audio. What to clear
 - `plugin`: string. Only this plugin's data or cache
 
 ## agent

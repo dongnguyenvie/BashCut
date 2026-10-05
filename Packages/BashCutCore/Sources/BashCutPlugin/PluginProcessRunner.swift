@@ -247,6 +247,8 @@ public struct PluginProcessRunner: Sendable {
         environment["BASHCUT_PLUGIN_API_VERSION"] = String(min(plugin.manifest.apiVersion, PluginAPI.current))
         environment["BASHCUT_PLUGIN_DATA"] = data.path
         environment["BASHCUT_PLUGIN_CACHE"] = cache.path
+        environment["BASHCUT_SHARED_DATA"] = PluginFolders.sharedData.path
+        environment["BASHCUT_SHARED_CACHE"] = PluginFolders.sharedCache.path
         // Bytecode written beside plugin sources would change the pinned file tree after the first run.
         environment["PYTHONDONTWRITEBYTECODE"] = "1"
         return environment

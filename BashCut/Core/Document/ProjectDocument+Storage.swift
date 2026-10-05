@@ -12,11 +12,16 @@ extension ProjectDocument {
         return await Task.detached { StorageUsage.measure(projectRoot: root, pluginsFolder: plugins) }.value
     }
 
-    /// Clears one entry: stops the plugin's session first for plugin data, and rebuilds the preview after proxies.
+    /// Clears one entry: stops the plugin's session first for plugin data (every plugin's for the shared runtimes),
+    /// and rebuilds the preview after proxies.
     func clearStorage(_ entry: StorageEntry) async throws {
         if let pluginID = entry.pluginID {
             plugins.stopSession(pluginID)
             plugins.health[pluginID] = nil
+        }
+        if entry.kind == .sharedData {
+            for plugin in plugins.plugins { plugins.stopSession(plugin.id) }
+            plugins.health = [:]
         }
         if entry.kind == .proxies, !proxies.active.isEmpty {
             throw StorageUsageError("Wait for the preview proxies being made to finish")

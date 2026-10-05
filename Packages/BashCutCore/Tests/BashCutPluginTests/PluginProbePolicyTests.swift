@@ -30,4 +30,17 @@ struct PluginProbePolicyTests {
             directory: FileManager.default.temporaryDirectory)
         #expect(PluginProcessRunner.environment(for: plugin, inheriting: [:])["PYTHONDONTWRITEBYTECODE"] == "1")
     }
+
+    @Test("Plugin processes get the shared runtime folders beside their own")
+    func sharedFolders() {
+        let plugin = InstalledPlugin(
+            manifest: PluginManifest(id: "test.env", name: "Env", version: "0.0.1", entrypoint: "run", capabilities: ["audio.beats"]),
+            directory: FileManager.default.temporaryDirectory)
+        let environment = PluginProcessRunner.environment(for: plugin, inheriting: [:])
+        #expect(environment["BASHCUT_SHARED_DATA"] == PluginFolders.sharedData.path)
+        #expect(environment["BASHCUT_SHARED_CACHE"] == PluginFolders.sharedCache.path)
+        #expect(PluginFolders.sharedData.deletingLastPathComponent() == PluginFolders.dataRoot)
+        #expect(PluginFolders.sharedCache.deletingLastPathComponent() == PluginFolders.cacheRoot)
+        #expect(environment["BASHCUT_SHARED_DATA"] != environment["BASHCUT_PLUGIN_DATA"])
+    }
 }
