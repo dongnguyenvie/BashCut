@@ -141,7 +141,8 @@ calls back with `method`.
   - each tab has the transcript with tool rows, an input box, Send and Stop, a new-conversation button, and a
     status line (model and key state) with a link to Settings › Plugins.
 
-  Project context, Survey, Write VO, Review and ⌘K Ask fill the shown agent's input box.
+  Survey, Write VO and Review fill the shown agent's input box; **Ask agent…** (⌘K) sends the request written in
+  the Ask agent sheet as a turn.
 - **CLI/MCP:**
   - `chat status` lists every chat agent;
   - `chat send <text> [--plugin <id>] [--image <path>]` starts a turn and returns at once;

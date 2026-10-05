@@ -211,7 +211,9 @@ per item, `ROLE id at-end media=<id> in=<frame> <text>`, in frames.
 
 ### Context block
 
-⌘K and the context chip paste a block like this before the user's request:
+Agents read this block with `context get` (the session prompt has it when a tab starts). Requests sent from the
+dock (Survey, Write VO, Review, ⌘K) are pasted alone, because agent CLIs fold a long paste into a placeholder that
+hides the request. The block:
 
 ```text
 [BashCut context]
@@ -220,7 +222,6 @@ rev: 142
 selection: c-25
 playhead: 1144 frames
 [/BashCut context]
-trim to 4 s, keep the "so much topping" line
 ```
 
 When the user attaches the viewer frame, its PNG is written to `.bashcut/cache/agent-context` and the absolute path

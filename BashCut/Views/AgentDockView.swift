@@ -97,24 +97,23 @@ struct AgentDockView: View {
                     Button("Workspace…", action: model.chooseWorkspace).font(.caption)
                 }
                 Button {
-                    model.sendContext()
+                    model.document.run(.askAgent)
                 } label: {
-                    Label(
-                        model.document.selectedID ?? String(localized: "Project context"), systemImage: "at"
-                    )
-                    .font(.caption).lineLimit(1)
-                }.disabled(model.current == nil && model.chatPluginID == nil)
+                    Label("Ask agent…", systemImage: "square.and.pencil").font(.caption).lineLimit(1)
+                }
+                .help("Write a request from a template and send it to the agent")
+                .disabled(!model.hasOpenAgent)
                 HStack {
                     Button("Survey") {
-                        model.sendContext("Survey the project footage and summarize missing coverage.")
+                        model.fillInput("Survey the project footage and summarize missing coverage.")
                     }
                     Button("Write VO") {
-                        model.sendContext("Draft voiceover without overlapping real speech.")
+                        model.fillInput("Draft voiceover without overlapping real speech.")
                     }
                     Button("Review") {
-                        model.sendContext("Review the timeline for gaps, pacing and repeated framing.")
+                        model.fillInput("Review the timeline for gaps, pacing and repeated framing.")
                     }
-                }.font(.caption).disabled(model.current == nil && model.chatPluginID == nil)
+                }.font(.caption).disabled(!model.hasOpenAgent)
             }.padding(10)
         }.background(Color(red: 0.045, green: 0.05, blue: 0.06))
             .task { await model.refreshKitPrompt() }

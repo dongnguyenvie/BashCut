@@ -14,13 +14,30 @@ extension ProjectDocument {
     }
 
     /// Open sheets and popovers, bottom to top.
+    /// The Ask agent sheet: `send` sends the draft to the open agent, `clear` empties it.
+    private func askSheet() -> ModalSheet? {
+        guard ui.showAsk else { return nil }
+        let draft = agents.askModel.draft
+        return ModalSheet(
+            name: "ask", title: "Ask agent", message: draft.isEmpty ? nil : draft,
+            options: [ModalOption("send", String(localized: "Send")), ModalOption("clear", String(localized: "Clear")), Self.close]
+        ) { [weak self] option in
+            guard let self else { return }
+            switch option {
+            case "send": Task { await self.agents.sendAsk() }
+            case "clear": agents.askModel.draft = ""
+            default: ui.showAsk = false
+            }
+        }
+    }
+
     func openSheets() -> [ModalSheet] {
         var sheets: [ModalSheet] = []
         func closing(_ name: String, _ title: String, when open: Bool, _ close: @escaping @MainActor () -> Void) {
             guard open else { return }
             sheets.append(ModalSheet(name: name, title: title, options: [Self.close]) { _ in close() })
         }
-        closing("ask", "Ask agent", when: ui.showAsk) { [weak self] in self?.ui.showAsk = false }
+        sheets.append(contentsOf: [askSheet()].compactMap { $0 })
         closing("sections", "Sections", when: ui.showSections) { [weak self] in self?.ui.showSections = false }
         closing("commands", "Command palette", when: ui.showCommands) { [weak self] in self?.ui.showCommands = false }
         closing("shortcuts", "Keyboard shortcuts", when: ui.showShortcuts) { [weak self] in
