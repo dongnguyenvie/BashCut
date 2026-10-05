@@ -247,6 +247,24 @@ struct CommandSpecTests {
         defer { try? FileManager.default.removeItem(at: skillFile) }
         let skill = try CommandLineParser.parse(["knowledge", "skill", "hook-first", skillFile.path])
         #expect(skill.params == ["name": .string("hook-first"), "text": .string("# Hook\n")])
+        let lesson = try CommandLineParser.parse(
+            ["knowledge", "add-lesson", "Captions cover the face", "--fix", "Move them up", "--tags", "captions,framing"])
+        #expect(lesson.spec.name == "knowledge.add-lesson" && lesson.spec.mcpToolName == "bashcut_knowledge_add-lesson")
+        #expect(lesson.params == [
+            "title": .string("Captions cover the face"), "fix": .string("Move them up"),
+            "tags": .string("captions,framing"), "scope": .string("project"), "status": .string("active"),
+        ])
+        #expect(throws: CommandLineParser.Failure.self) {
+            try CommandLineParser.parse(["knowledge", "add-lesson", "x", "--status", "disabled"])
+        }
+        #expect(try CommandLineParser.parse(["knowledge", "set-pref", "pace", "fast"]).params == [
+            "key": .string("pace"), "value": .string("fast"), "scope": .string("user"),
+        ])
+        #expect(try CommandLineParser.parse(["knowledge", "set-fact", "host", "--remove"]).params == [
+            "key": .string("host"), "remove": .bool(true),
+        ])
+        #expect(try CommandLineParser.parse(["knowledge", "history"]).params == ["limit": .integer(50)])
+        #expect(try CommandLineParser.parse(["knowledge", "approve", "l-1a2b3c4d"]).spec.mode == .edit)
         let speakKept = try CommandLineParser.parse(["voice", "speak", "Xin chào", "--keep-takes"])
         #expect(speakKept.params["keepTakes"] == .bool(true))
         let inspector = try CommandLineParser.parse(["ui", "view", "--inspector", "color"])

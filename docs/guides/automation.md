@@ -60,6 +60,22 @@ SwiftTerm terminal. Claude and Codex use your installed CLI and its existing log
   the workspace or home folder is offered once: move it to the notes for every project (`knowledge migrate`) or to
   this project (`knowledge migrate --to project`). Agents write the notes with `knowledge memo FILE --scope user`,
   which asks for your approval.
+- **Lessons, preferences and facts.** Next to the memos, agents keep structured knowledge as JSON files in the
+  same two places (`.bashcut/knowledge/` in the project, `Knowledge/` for every project):
+  - **Lessons** (`knowledge lessons`, `add-lesson`, `update-lesson`, `remove-lesson`): a title, the symptom, its
+    cause, what to do next time, evidence and tags. Each has a status: `active` lessons are followed, `proposed`
+    ones wait for your review, `disabled` ones are kept for the record. The source records which agent wrote it,
+    in which session and when.
+  - **Preferences** (`knowledge prefs`, `set-pref`): your taste as key/value pairs, for every project by default. A
+    value set for one project wins over the one for every project.
+  - **Facts** (`knowledge facts`, `set-fact`): people, places, footage notes and what was approved, for this project.
+  - **Proposals** (`knowledge proposals`, `approve`, `reject`): a lesson an agent records for every project always
+    starts as a proposal. Approving makes it active; rejecting removes it.
+  - **History** (`knowledge history`): every change, newest first, with who made it and the entry before and after
+    (`history.jsonl`).
+
+  An agent's request that changes knowledge for every project, or approves or rejects a proposal, asks for your
+  approval. Changes to this project's lessons and facts do not.
 - **Resuming.** When BashCut has found the last Claude or Codex conversation for the project, the dock offers
   **Continue Claude/Codex** or **New conversation**. You never see or type session IDs.
 - **Codex defaults.** Codex starts idle on `gpt-5.6-luna` with low reasoning effort, under a named permission

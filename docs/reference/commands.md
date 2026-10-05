@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 110 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 122 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -897,6 +897,119 @@ Write a project skill's SKILL.md in the project folder, creating the skill and l
 - Mode: edit · Runs: immediately · MCP: `bashcut_knowledge_skill`
 - `name`: string, required. Lowercase hyphenated skill name
 - `text`: string, required. SKILL.md text (CLI: path to a text file)
+
+### `bashcut knowledge lessons [--scope <scope>] [--status <status>] [--tag <tag>] [--query <query>]`
+
+List lessons the agent learned (symptom, cause, fix), from this project and for every project. Read the active ones before editing; proposed ones wait for the user's review.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_knowledge_lessons`
+- `scope`: string, one of project, user. Only this scope; both by default
+- `status`: string, one of proposed, active, disabled. Only this status
+- `tag`: string. Only lessons with this tag
+- `query`: string. Text to find in the title, symptom, cause, fix or tags
+
+### `bashcut knowledge add-lesson <title> [--symptom <symptom>] [--cause <cause>] [--fix <fix>] [--evidence <evidence>] [--tags <tags>] [--scope <scope>] [--status <status>] [--session <session>]`
+
+Record a lesson: in this project (default) or, with scope user, for every project. Use status proposed when unsure. Agents' lessons for every project are always proposed until the user approves them.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_knowledge_add-lesson`
+- `title`: string, required. Short title
+- `symptom`: string. What went wrong or what was noticed
+- `cause`: string. Why it happened
+- `fix`: string. What to do next time
+- `evidence`: string. What shows it (frames, files, the user's words)
+- `tags`: string. Comma-separated tags (captions, audio, pacing…)
+- `scope`: string, one of project, user, default "project". project (default) or user
+- `status`: string, one of active, proposed, default "active". active (default) or proposed
+- `session`: string. Your agent session ID, recorded as the source
+
+### `bashcut knowledge update-lesson <id> [--title <title>] [--symptom <symptom>] [--cause <cause>] [--fix <fix>] [--evidence <evidence>] [--tags <tags>] [--status <status>] [--session <session>]`
+
+Change a lesson's fields or status (proposed, active, disabled). Agents changing a lesson for every project need approval.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_knowledge_update-lesson`
+- `id`: string, required. Lesson ID (l-…) from knowledge lessons
+- `title`: string. Short title
+- `symptom`: string. What went wrong or what was noticed
+- `cause`: string. Why it happened
+- `fix`: string. What to do next time
+- `evidence`: string. What shows it (frames, files, the user's words)
+- `tags`: string. Comma-separated tags (captions, audio, pacing…)
+- `status`: string, one of proposed, active, disabled. New status
+- `session`: string. Your agent session ID, recorded as the source
+
+### `bashcut knowledge remove-lesson <id> [--session <session>]`
+
+Remove a lesson (history keeps it). Agents removing a lesson for every project need approval.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_knowledge_remove-lesson`
+- `id`: string, required. Lesson ID (l-…) from knowledge lessons
+- `session`: string. Your agent session ID, recorded as the source
+
+### `bashcut knowledge prefs [<key>] [--scope <scope>]`
+
+Read the user's preferences (taste: length, pace, voice, caption style, music…). A project value wins over the one for every project.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_knowledge_prefs`
+- `key`: string. Only this key
+- `scope`: string, one of project, user. Only this scope; both by default
+
+### `bashcut knowledge set-pref <key> [<value>] [--remove] [--scope <scope>] [--session <session>]`
+
+Set or remove a preference: for every project (default; agents need approval) or only this project.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_knowledge_set-pref`
+- `key`: string, required. Key
+- `value`: string. Value; required unless remove is set
+- `remove`: boolean. Remove the key instead of setting it
+- `scope`: string, one of project, user, default "user". user (default) or project
+- `session`: string. Your agent session ID, recorded as the source
+
+### `bashcut knowledge facts [<key>]`
+
+Read this project's facts (people, places, footage notes, what was approved).
+
+- Mode: read · Runs: immediately · MCP: `bashcut_knowledge_facts`
+- `key`: string. Only this key
+
+### `bashcut knowledge set-fact <key> [<value>] [--remove] [--session <session>]`
+
+Set or remove a fact about this project. Needs a saved project.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_knowledge_set-fact`
+- `key`: string, required. Key
+- `value`: string. Value; required unless remove is set
+- `remove`: boolean. Remove the key instead of setting it
+- `session`: string. Your agent session ID, recorded as the source
+
+### `bashcut knowledge proposals [--scope <scope>]`
+
+List proposed lessons waiting for the user's review.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_knowledge_proposals`
+- `scope`: string, one of project, user. Only this scope; both by default
+
+### `bashcut knowledge approve <id>`
+
+Approve a proposed lesson so agents follow it. The user decides: an agent's request asks for approval.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_knowledge_approve`
+- `id`: string, required. Lesson ID (l-…) from knowledge lessons
+
+### `bashcut knowledge reject <id>`
+
+Reject a proposed lesson; it is removed and history keeps it. An agent's request asks for approval.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_knowledge_reject`
+- `id`: string, required. Lesson ID (l-…) from knowledge lessons
+
+### `bashcut knowledge history [--scope <scope>] [--limit <limit>]`
+
+List changes to lessons, preferences and facts, newest first, with who made them and the entry before and after.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_knowledge_history`
+- `scope`: string, one of project, user. Only this scope; both by default
+- `limit`: integer, 1…500, default 50. Number of changes
 
 ## library
 

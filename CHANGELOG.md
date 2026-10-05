@@ -5,6 +5,15 @@
 
 ## [Unreleased]
 
+- **Structured agent knowledge** (#67). Besides the free-text memos, the agent can now keep lessons (title,
+  symptom, cause, fix, evidence, tags, status `proposed`/`active`/`disabled`, and who wrote it in which session),
+  the user's preferences and facts about the project. They are plain JSON files that Claude Code and Codex can read:
+  `.bashcut/knowledge/` in the project, and `Application Support/BashCut/Knowledge/` for every project. Every change
+  is appended to `history.jsonl` with the entry before and after. New commands: `knowledge lessons`, `add-lesson`,
+  `update-lesson`, `remove-lesson`, `prefs`, `set-pref`, `facts`, `set-fact`, `proposals`, `approve`, `reject`
+  and `history`. An agent's lesson for every project always starts as a proposal. Changing or removing knowledge
+  for every project, and approving or rejecting a proposal, waits for the user's approval when an agent asks.
+
 - **Python plugins can share one Python and one package cache** (#115). Plugin processes get
   `BASHCUT_SHARED_DATA` (`PluginData/_shared` in Application Support) and `BASHCUT_SHARED_CACHE`
   (`PluginData/_shared` in Caches). A plugin built with uv points `UV_PYTHON_INSTALL_DIR` and `UV_CACHE_DIR` there,
