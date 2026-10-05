@@ -32,7 +32,7 @@ import Testing
         }
         for method in ["plugins.option", "plugins.run", "plugins.set", "plugins.remove", "plugins.install",
                        "plugins.setup", "plugins.proposal", "knowledge.skill", "knowledge.approve",
-                       "knowledge.reject", "storage.clear", "project.open",
+                       "knowledge.reject", "knowledge.revert", "storage.clear", "project.open",
                        "project.create", "edl.import", "ui.action", "ui.respond", "ui.open", "chat.send", "future.command"] {
             #expect(await session.perform(method, params: [:], allowEdits: true, registry: registry).error?.code == -32601)
         }

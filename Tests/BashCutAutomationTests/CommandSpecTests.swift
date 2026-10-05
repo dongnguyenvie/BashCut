@@ -264,6 +264,11 @@ struct CommandSpecTests {
             "key": .string("host"), "remove": .bool(true),
         ])
         #expect(try CommandLineParser.parse(["knowledge", "history"]).params == ["limit": .integer(50)])
+        #expect(try CommandLineParser.parse(["knowledge", "history", "--kind", "skill", "--target", "hook-first"]).params
+            == ["kind": .string("skill"), "target": .string("hook-first"), "limit": .integer(50)])
+        #expect(throws: (any Error).self) { try CommandLineParser.parse(["knowledge", "history", "--kind", "notes"]) }
+        let revert = try CommandLineParser.parse(["knowledge", "revert", "0f1e2d3c"])
+        #expect(revert.spec.mode == .edit && revert.params == ["id": .string("0f1e2d3c")])
         #expect(try CommandLineParser.parse(["knowledge", "approve", "l-1a2b3c4d"]).spec.mode == .edit)
         let speakKept = try CommandLineParser.parse(["voice", "speak", "Xin chào", "--keep-takes"])
         #expect(speakKept.params["keepTakes"] == .bool(true))

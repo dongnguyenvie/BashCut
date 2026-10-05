@@ -5,7 +5,7 @@ import Foundation
 /// the user folder (`Application Support/BashCut/Knowledge/`):
 ///
 /// - `lessons.json`, `prefs.json`, `facts.json` (project only): `{"version": 1, "lessons" | "values": [...]}`;
-/// - `history.jsonl`: one `KnowledgeChange` per line, newest last.
+/// - `history.jsonl`: one `KnowledgeChange` per line, newest last (see AgentKnowledgeStore+History.swift).
 extension AgentKnowledgeStore {
     static let entriesPath = ".bashcut/knowledge"
 
@@ -17,7 +17,7 @@ extension AgentKnowledgeStore {
         }
     }
 
-    private var scopes: [KnowledgeScope] { project == nil ? [.user] : [.project, .user] }
+    var scopes: [KnowledgeScope] { project == nil ? [.user] : [.project, .user] }
 
     // MARK: Lessons
 
@@ -178,43 +178,6 @@ extension AgentKnowledgeStore {
         return entry
     }
 
-    // MARK: History
-
-    /// Changes, newest first, of one scope or both.
-    public func history(_ scope: KnowledgeScope? = nil, limit: Int = 50) -> [KnowledgeChange] {
-        let changes = (scope.map { [$0] } ?? scopes).flatMap { scope -> [(change: KnowledgeChange, line: Int)] in
-            guard let url = entriesFolder(scope)?.appendingPathComponent("history.jsonl"),
-                  let text = try? String(contentsOf: url, encoding: .utf8) else { return [] }
-            return text.split(separator: "\n").enumerated().compactMap { line, text in
-                guard var change = try? Self.decoder.decode(KnowledgeChange.self, from: Data(text.utf8)) else {
-                    return nil
-                }
-                change.scope = scope
-                return (change, line)
-            }
-        }
-        // Dates have whole seconds, so later lines of the same file win ties.
-        return Array(changes.sorted {
-            $0.change.source.date != $1.change.source.date
-                ? $0.change.source.date > $1.change.source.date : $0.line > $1.line
-        }.prefix(limit).map(\.change))
-    }
-
-    func record(_ change: KnowledgeChange, scope: KnowledgeScope) throws {
-        let url = try folder(scope).appendingPathComponent("history.jsonl")
-        let encoder = Self.encoder
-        encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
-        var line = try encoder.encode(change)
-        line.append(UInt8(ascii: "\n"))
-        if let handle = try? FileHandle(forWritingTo: url) {
-            defer { try? handle.close() }
-            try handle.seekToEnd()
-            try handle.write(contentsOf: line)
-        } else {
-            try line.write(to: url, options: .atomic)
-        }
-    }
-
     // MARK: Files
 
     private struct LessonFile: Codable {
@@ -269,24 +232,24 @@ extension AgentKnowledgeStore {
         }
     }
 
-    private func readLessons(_ scope: KnowledgeScope, writable: Bool = false) throws -> [KnowledgeLesson] {
+    func readLessons(_ scope: KnowledgeScope, writable: Bool = false) throws -> [KnowledgeLesson] {
         let file: LessonFile? = try read("lessons.json", scope: scope, writable: writable)
         return file?.lessons ?? []
     }
 
-    private func writeLessons(_ lessons: [KnowledgeLesson], scope: KnowledgeScope) throws {
+    func writeLessons(_ lessons: [KnowledgeLesson], scope: KnowledgeScope) throws {
         try Self.encoder.encode(LessonFile(lessons: lessons))
             .write(to: try folder(scope).appendingPathComponent("lessons.json"), options: .atomic)
     }
 
-    private func readValues(
+    func readValues(
         _ kind: KnowledgeValueKind, _ scope: KnowledgeScope, writable: Bool = false
     ) throws -> [KnowledgeValue] {
         let file: ValueFile? = try read("\(kind.rawValue).json", scope: scope, writable: writable)
         return file?.values ?? []
     }
 
-    private func writeValues(_ values: [KnowledgeValue], kind: KnowledgeValueKind, scope: KnowledgeScope) throws {
+    func writeValues(_ values: [KnowledgeValue], kind: KnowledgeValueKind, scope: KnowledgeScope) throws {
         try Self.encoder.encode(ValueFile(values: values))
             .write(to: try folder(scope).appendingPathComponent("\(kind.rawValue).json"), options: .atomic)
     }

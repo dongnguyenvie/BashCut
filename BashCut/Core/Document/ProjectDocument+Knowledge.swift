@@ -38,16 +38,19 @@ extension ProjectDocument {
         handleAuthored("knowledge.memo") { document, arguments, author in
             let scope = try Self.knowledgeScope(arguments.optionalString("scope")) ?? .project
             let text = try arguments.string("text")
+            let source = Self.knowledgeSource(author, arguments)
             document.agents.loadKnowledge()
             return try document.knowledgeChange("knowledge.memo", approval: scope == .user, author: author,
                                                 arguments: ["scope": scope.rawValue]) {
-                try document.agents.knowledge.writeMemo(text, scope: scope)
+                try document.agents.knowledge.writeMemo(text, scope: scope, source: source)
                 return .bool(true)
             }
         }
-        handleAuthored("knowledge.skill") { document, arguments, _ in
+        handleAuthored("knowledge.skill") { document, arguments, author in
             document.agents.loadKnowledge()
-            try document.agents.knowledge.writeSkill(named: arguments.string("name"), text: arguments.string("text"))
+            try document.agents.knowledge.writeSkill(
+                named: arguments.string("name"), text: arguments.string("text"),
+                source: Self.knowledgeSource(author, arguments))
             return .bool(true)
         }
         handleAuthored("knowledge.migrate") { document, arguments, author in
@@ -56,9 +59,10 @@ extension ProjectDocument {
             guard let legacy = document.agents.knowledge.legacy else {
                 throw RPCFailure(-32602, "No older memo in the agent workspace or home folder")
             }
+            let source = Self.knowledgeSource(author, arguments)
             return try document.knowledgeChange("knowledge.migrate", approval: scope == .user, author: author,
                                                 arguments: ["from": legacy.url.path, "to": scope.rawValue]) {
-                try document.agents.knowledge.migrateLegacy(to: scope)
+                try document.agents.knowledge.migrateLegacy(to: scope, source: source)
                 return .bool(true)
             }
         }
@@ -187,9 +191,30 @@ extension ProjectDocument {
             }
         }
         handle("knowledge.history") { document, arguments, _ in
-            try .array(document.agents.knowledgeStore.history(
-                Self.knowledgeScope(arguments.optionalString("scope")), limit: arguments.optionalInt("limit") ?? 50)
+            let kind = try arguments.optionalString("kind").map { name in
+                guard let kind = KnowledgeChange.Kind(rawValue: name) else {
+                    throw RPCFailure(-32602, "kind must be lesson, prefs, facts, memo or skill")
+                }
+                return kind
+            }
+            return try .array(document.agents.knowledgeStore.history(
+                Self.knowledgeScope(arguments.optionalString("scope")), kind: kind,
+                target: arguments.optionalString("target"), limit: arguments.optionalInt("limit") ?? 50)
                 .map(Self.json))
+        }
+        handleAuthored("knowledge.revert") { document, arguments, author in
+            let store = document.agents.knowledgeStore
+            let change = try store.change(arguments.string("id"))
+            let source = Self.knowledgeSource(author, arguments)
+            var shown = ["id": change.id, "kind": change.kind.rawValue, "target": change.target,
+                         "scope": change.scope.rawValue, "change": change.action.rawValue]
+            if let session = arguments.optionalString("session") { shown["session"] = session }
+            return try document.knowledgeChange(
+                "knowledge.revert", approval: change.scope == .user, author: author, arguments: shown) {
+                let reverted = try store.revert(change.id, source: source)
+                document.agents.loadKnowledge()
+                return try Self.json(reverted)
+            }
         }
     }
 
@@ -262,7 +287,13 @@ extension ProjectDocument {
         return .object(fields)
     }
     private static func json(_ value: KnowledgeValue) throws -> JSONValue { try json(value, scope: value.scope) }
-    private static func json(_ change: KnowledgeChange) throws -> JSONValue { try json(change, scope: change.scope) }
+    /// A history change: its stored fields, its scope, and `diff` (a unified line diff of before and after).
+    private static func json(_ change: KnowledgeChange) throws -> JSONValue {
+        guard case .object(var fields) = try json(change, scope: change.scope) else { return .null }
+        fields["diff"] = .string(change.diff)
+        fields["revertible"] = .bool(change.isRevertible)
+        return .object(fields)
+    }
 
     /// Runs `action` now, or, when `approval` is set and an agent asked, after the user approves it.
     private func knowledgeChange(

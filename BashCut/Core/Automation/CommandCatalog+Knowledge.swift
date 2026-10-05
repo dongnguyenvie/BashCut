@@ -23,7 +23,7 @@ extension CommandCatalog {
         "remove", .boolean, "Remove the key instead of setting it", cli: .flag("remove"))
 
     /// Agent knowledge (Agent Knowledge sheet): memos and project skills, and the structured lessons, preferences,
-    /// project facts, proposals and history (#67) stored as JSON in `.bashcut/knowledge/` and
+    /// project facts, proposals and history with revert (#67, #70) stored as JSON in `.bashcut/knowledge/` and
     /// `Application Support/BashCut/Knowledge/`.
     static let knowledgeSpecs: [CommandSpec] = memoSpecs + lessonSpecs + valueSpecs + reviewSpecs
 
@@ -156,12 +156,25 @@ extension CommandCatalog {
             ]),
         CommandSpec(
             "knowledge.history", .read,
-            "List changes to lessons, preferences and facts, newest first, with who made them and the entry before "
-                + "and after.",
+            "List changes to lessons, preferences, facts, memos and project skills, newest first: who made them, the "
+                + "entry before and after, and a line diff. Undo one with knowledge revert.",
             parameters: [
                 readScope,
+                CommandParameter("kind", .string, "Only changes to this kind of entry",
+                                 choices: ["lesson", "prefs", "facts", "memo", "skill"], cli: .option("kind")),
+                CommandParameter("target", .string, "Only changes to this lesson ID, key or skill name",
+                                 cli: .option("target")),
                 CommandParameter("limit", .integer, "Number of changes", default: .integer(50), minimum: 1,
                                  maximum: 500, cli: .option("limit")),
+            ]),
+        CommandSpec(
+            "knowledge.revert", .edit,
+            "Put an entry back to how it was before a change from knowledge history: a removed entry comes back, an "
+                + "added one goes, an edit is undone (later changes to the same entry too). History records the revert. "
+                + "Agents reverting a change for every project need approval.",
+            parameters: [
+                CommandParameter("id", .string, "Change ID from knowledge history", required: true, cli: .positional),
+                session,
             ]),
     ]
 }

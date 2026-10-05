@@ -137,7 +137,7 @@ public enum UIAction: String, CaseIterable, Sendable {
     /// Settings sections, for `ui.view --settings-section`.
     public static let settingsSections = ["general", "agents", "plugins", "storage"]
     /// Knowledge window sections, for `ui.view --knowledge-section`.
-    public static let knowledgeSections = ["inbox", "lessons", "prefs", "facts", "notes", "skills"]
+    public static let knowledgeSections = ["inbox", "lessons", "prefs", "facts", "notes", "skills", "history"]
     /// Plugins sheet tabs, for `ui.view --plugins-tab`.
     public static let pluginsTabs = ["installed", "browse", "updates", "activity"]
     /// Plugin category ids, matching `PluginCategory` (checked by `PluginCategoryTests`).

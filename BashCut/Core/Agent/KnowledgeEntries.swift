@@ -130,15 +130,15 @@ public struct KnowledgeValue: Codable, Hashable, Sendable {
 }
 
 /// One line of `history.jsonl`: what changed, who changed it and the entry before and after (nil when it was added
-/// or removed), so a later version can show diffs and revert (#70).
-public struct KnowledgeChange: Codable, Hashable, Sendable {
-    public enum Action: String, Codable, Sendable { case add, update, remove, approve, reject, set, unset }
-    public enum Kind: String, Codable, Sendable { case lesson, prefs, facts }
+/// or removed), so the Knowledge window can show a diff and revert it (#70).
+public struct KnowledgeChange: Codable, Hashable, Sendable, Identifiable {
+    public enum Action: String, Codable, Sendable { case add, update, remove, approve, reject, set, unset, revert }
+    public enum Kind: String, Codable, Sendable { case lesson, prefs, facts, memo, skill }
 
     public var id = UUID().uuidString.lowercased()
     public var action: Action
     public var kind: Kind
-    /// The lesson ID or the key.
+    /// The lesson ID, the key, the skill name, or `memo`.
     public var target: String
     public var source: KnowledgeSource
     public var before: KnowledgeEntry?
@@ -147,18 +147,27 @@ public struct KnowledgeChange: Codable, Hashable, Sendable {
     public var scope: KnowledgeScope = .project
 
     enum CodingKeys: String, CodingKey { case id, action, kind, target, source, before, after }
+
+    /// Whether `revert` can undo it. Rejecting a preference proposal changed no stored value, so there is nothing to
+    /// put back.
+    public var isRevertible: Bool { !(action == .reject && (kind == .prefs || kind == .facts)) }
 }
 
-/// A lesson or a value, as history stores it.
+/// A lesson, a value, or the text of a memo or skill (`{"text": …}`), as history stores it.
 public enum KnowledgeEntry: Codable, Hashable, Sendable {
     case lesson(KnowledgeLesson)
     case value(KnowledgeValue)
+    case text(String)
+
+    private enum TextKeys: String, CodingKey { case text }
 
     public init(from decoder: Decoder) throws {
         if let lesson = try? KnowledgeLesson(from: decoder) {
             self = .lesson(lesson)
+        } else if let value = try? KnowledgeValue(from: decoder) {
+            self = .value(value)
         } else {
-            self = .value(try KnowledgeValue(from: decoder))
+            self = .text(try decoder.container(keyedBy: TextKeys.self).decode(String.self, forKey: .text))
         }
     }
 
@@ -166,6 +175,23 @@ public enum KnowledgeEntry: Codable, Hashable, Sendable {
         switch self {
         case .lesson(let lesson): try lesson.encode(to: encoder)
         case .value(let value): try value.encode(to: encoder)
+        case .text(let text):
+            var container = encoder.container(keyedBy: TextKeys.self)
+            try container.encode(text, forKey: .text)
+        }
+    }
+
+    /// The entry as lines a diff compares: a lesson's fields one per line, a value, or the text.
+    public var diffText: String {
+        switch self {
+        case .lesson(let lesson):
+            [("Title", lesson.title), ("Symptom", lesson.symptom), ("Cause", lesson.cause), ("Fix", lesson.fix),
+             ("Evidence", lesson.evidence), ("Tags", lesson.tags.joined(separator: ", ")),
+             ("Status", lesson.status.rawValue)]
+                .filter { !$0.1.isEmpty }
+                .map { "\($0.0): \($0.1)" }.joined(separator: "\n")
+        case .value(let value): value.value
+        case .text(let text): text
         }
     }
 }

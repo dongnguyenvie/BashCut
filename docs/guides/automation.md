@@ -79,11 +79,14 @@ SwiftTerm terminal. Claude and Codex use your installed CLI and its existing log
     p-… --value TEXT` applies your edited value instead. Kit change proposals (lessons tagged `kit`, written by the
     `bashcut-self-learn` skill) show their diff. When Settings lets agents act without confirmation, preferences are
     applied at once as before.
-  - **History** (`knowledge history`): every change, newest first, with who made it and the entry before and after
-    (`history.jsonl`).
+  - **History** (`knowledge history [--kind] [--target]`, `revert`): every change to lessons, preferences, facts,
+    memos and project skills, newest first, with who made it, the entry before and after and a line `diff`
+    (`history.jsonl`). The Knowledge window's **History** section shows the diff; **Revert…** or `knowledge revert
+    <change-id>` puts the entry back to how it was before that change, undoing later changes to it too, and is
+    recorded as a change of its own. Rejecting a preference proposal changed nothing, so it has nothing to revert.
 
-  An agent's request that otherwise changes knowledge for every project (memo, lesson edits and removals), or
-  approves or rejects a proposal, asks for your approval. Changes to this project's lessons and facts do not.
+  An agent's request that otherwise changes knowledge for every project (memo, lesson edits and removals, reverts),
+  or approves or rejects a proposal, asks for your approval. Changes to this project's lessons and facts do not.
 
   The book button in the agent dock shows an orange count while proposals wait (clicking it opens the Inbox) and a
   dot when agents changed knowledge since you last closed the window.

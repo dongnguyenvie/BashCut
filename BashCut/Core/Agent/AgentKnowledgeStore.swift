@@ -61,10 +61,19 @@ public struct AgentKnowledgeStore: Sendable {
         memoURL(scope).flatMap { try? String(contentsOf: $0, encoding: .utf8) } ?? ""
     }
 
-    public func writeMemo(_ text: String, scope: KnowledgeScope) throws {
+    /// Replaces a memo; history records the text before and after (#70).
+    public func writeMemo(
+        _ text: String, scope: KnowledgeScope, source: KnowledgeSource = KnowledgeSource(agent: "user"),
+        action: KnowledgeChange.Action = .update
+    ) throws {
         let url = try writableMemoURL(scope)
+        let before = memo(scope)
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         try text.write(to: url, atomically: true, encoding: .utf8)
+        guard text != before else { return }
+        try record(KnowledgeChange(
+            action: action, kind: .memo, target: "memo", source: source, before: .text(before), after: .text(text)),
+            scope: scope)
     }
 
     private func writableMemoURL(_ scope: KnowledgeScope) throws -> URL {
@@ -103,9 +112,18 @@ public struct AgentKnowledgeStore: Sendable {
         }
     }
 
+    /// The text of a skill's SKILL.md; nil when there is no such skill.
+    public func skillText(_ name: String) -> String? {
+        skills().first { $0.name == name }
+            .flatMap { try? String(contentsOf: $0.url.appendingPathComponent("SKILL.md"), encoding: .utf8) }
+    }
+
     /// Replaces a skill's SKILL.md, or creates `.bashcut/skills/<name>/SKILL.md` (with a starter text unless
-    /// `text` is given) and links it for Claude and Codex.
-    public func writeSkill(named name: String, text: String? = nil) throws {
+    /// `text` is given) and links it for Claude and Codex. History records the text before and after (#70).
+    public func writeSkill(
+        named name: String, text: String? = nil, source: KnowledgeSource = KnowledgeSource(agent: "user"),
+        action: KnowledgeChange.Action? = nil
+    ) throws {
         guard skillFolders != nil else { throw Self.noProject }
         let slug = name.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         guard slug.range(of: "^[a-z0-9]+(?:-[a-z0-9]+)*$", options: .regularExpression) != nil else {
@@ -113,12 +131,46 @@ public struct AgentKnowledgeStore: Sendable {
         }
         if let existing = skills().first(where: { $0.name == slug }) {
             guard let text else { throw KnowledgeError("Skill already exists") }
+            let before = skillText(slug)
             try text.write(to: existing.url.appendingPathComponent("SKILL.md"), atomically: true, encoding: .utf8)
+            guard text != before else { return }
+            try record(KnowledgeChange(
+                action: action ?? .update, kind: .skill, target: slug, source: source, before: before.map { .text($0) },
+                after: .text(text)), scope: .project)
             return
         }
         let title = slug.split(separator: "-").map { $0.capitalized }.joined(separator: " ")
-        try createCanonical(slug, text: text ?? "# \(title)\n\nDescribe when and how the agent should use this project skill.\n")
+        let text = text ?? "# \(title)\n\nDescribe when and how the agent should use this project skill.\n"
+        try createCanonical(slug, text: text)
         try share(slug)
+        try record(KnowledgeChange(
+            action: action ?? .add, kind: .skill, target: slug, source: source, before: nil, after: .text(text)),
+            scope: .project)
+    }
+
+    /// Removes a skill: its `.bashcut/skills` folder and the links to it. A copy only in one agent's folder is not
+    /// BashCut's to remove and stays. History keeps the text.
+    public func removeSkill(
+        named name: String, source: KnowledgeSource = KnowledgeSource(agent: "user"),
+        action: KnowledgeChange.Action = .remove
+    ) throws {
+        guard let (canonical, claude, codex) = skillFolders else { throw Self.noProject }
+        let folder = canonical.appendingPathComponent(name, isDirectory: true)
+        guard let text = skillText(name), FileManager.default.fileExists(atPath: folder.path) else {
+            throw KnowledgeError("No skill named \(name) in .bashcut/skills")
+        }
+        let manager = FileManager.default
+        for parent in [claude, codex] {
+            let link = parent.appendingPathComponent(name)
+            if let target = try? manager.destinationOfSymbolicLink(atPath: link.path),
+               target.hasSuffix(".bashcut/skills/\(name)") {
+                try manager.removeItem(at: link)
+            }
+        }
+        try manager.removeItem(at: folder)
+        try record(KnowledgeChange(
+            action: action, kind: .skill, target: name, source: source, before: .text(text), after: nil),
+            scope: .project)
     }
 
     /// Links a skill for both agents, first copying it into `.bashcut/skills` when it only exists in one agent's
@@ -169,11 +221,13 @@ public struct AgentKnowledgeStore: Sendable {
     /// Adds the legacy memo to the end of the chosen memo, then renames it to `agent-memory.migrated.md` so it is
     /// not offered again. Returns the new memo text.
     @discardableResult
-    public func migrate(_ legacy: LegacyKnowledgeMemo, to scope: KnowledgeScope) throws -> String {
+    public func migrate(
+        _ legacy: LegacyKnowledgeMemo, to scope: KnowledgeScope, source: KnowledgeSource = KnowledgeSource(agent: "user")
+    ) throws -> String {
         let current = memo(scope).trimmingCharacters(in: .whitespacesAndNewlines)
         let moved = legacy.text.trimmingCharacters(in: .whitespacesAndNewlines)
         let text = current.isEmpty ? moved + "\n" : current + "\n\n" + moved + "\n"
-        try writeMemo(text, scope: scope)
+        try writeMemo(text, scope: scope, source: source)
         let manager = FileManager.default
         let target = legacy.url.deletingLastPathComponent().appendingPathComponent("agent-memory.migrated.md")
         try? manager.removeItem(at: target)

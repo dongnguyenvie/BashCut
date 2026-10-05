@@ -114,6 +114,7 @@ extension AgentKnowledgeModel {
         prefs = read { try store.values(.prefs) }
         facts = read { try store.values(.facts) }
         valueProposals = read { try store.valueProposals() }
+        loadHistory()
         entryErrors = errors
         if let selectedLessonID, !lessons.contains(where: { $0.id == selectedLessonID }) {
             self.selectedLessonID = nil
@@ -263,7 +264,7 @@ extension AgentKnowledgeModel {
 
     /// Runs a change, shows the outcome and reloads; false when it failed.
     @discardableResult
-    private func perform<T>(_ success: String, _ change: (AgentKnowledgeStore) throws -> T) -> Bool {
+    func perform<T>(_ success: String, _ change: (AgentKnowledgeStore) throws -> T) -> Bool {
         guard let store else { return false }
         defer { loadEntries() }
         do {
