@@ -1,4 +1,5 @@
 import BashCutAgent
+import BashCutProject
 import Foundation
 import Testing
 
@@ -81,5 +82,45 @@ struct KnowledgeMemoSplitTests {
             MemoSplit(prefs: [.init(key: "music", value: "calm")]), scope: .user, source: source())
         #expect(result.values.map(\.scope) == [.user])
         #expect(store.memoSplitRecord(.user)?.prefs == ["music"])
+    }
+
+    @Test("knowledge get reports the split state of each memo")
+    func state() throws {
+        let (store, root) = try store()
+        defer { try? FileManager.default.removeItem(at: root) }
+        #expect(store.memoSplitState(.project) == "none")
+        try store.writeMemo("Host: An", scope: .project)
+        try store.writeMemo("Calm music", scope: .user)
+        #expect(store.memoSplitState(.project) == "pending" && store.memoSplitState(.user) == "pending")
+        try store.splitMemo(MemoSplit(facts: [.init(key: "host", value: "An")]), scope: .project, source: source())
+        try store.keepMemo(.user, source: source("user"))
+        #expect(store.memoSplitState(.project) == "split" && store.memoSplitState(.user) == "kept")
+    }
+
+    @Test("Command entries decode from JSON; anything else fails with the expected shape")
+    func json() throws {
+        let split = try MemoSplit(json: .object([
+            "lessons": .array([.object(["title": .string("Hook first"), "tags": .array([.string("pacing")])])]),
+            "prefs": .array([.object(["key": .string("pace"), "value": .string("calm")])]),
+        ]))
+        #expect(split == MemoSplit(lessons: [.init(title: "Hook first", tags: ["pacing"])],
+                                   prefs: [.init(key: "pace", value: "calm")]))
+        #expect(try MemoSplit(json: .object([:])).isEmpty)
+        for bad: JSONValue in [.array([]), .object(["lessons": .array([.object(["fix": .string("x")])])]),
+                               .object(["prefs": .array([.object(["key": .string("pace")])])])] {
+            #expect(throws: KnowledgeError.self, "\(bad)") { try MemoSplit(json: bad) }
+        }
+    }
+
+    @Test("The hint and the request name the command, and the scope for notes for every project")
+    func agentText() {
+        #expect(AgentKnowledgeStore.splitHint(.project).contains("`bashcut knowledge split-memo <entries.json>`"))
+        #expect(AgentKnowledgeStore.splitHint(.user).contains("split-memo <entries.json> --scope user`"))
+        let project = AgentKnowledgeStore.splitRequest(.project)
+        #expect(project.contains("the project memo") && project.contains("project facts")
+            && project.contains("split-memo <file.json>`"))
+        let user = AgentKnowledgeStore.splitRequest(.user)
+        #expect(user.contains("the notes for every project") && !user.contains("project facts")
+            && user.contains("--scope user"))
     }
 }

@@ -1,3 +1,4 @@
+import BashCutProject
 import Foundation
 
 /// What an agent found in a memo (#72): lessons, preferences and facts, as `knowledge split-memo` reads them from a
@@ -51,6 +52,16 @@ public struct MemoSplit: Codable, Sendable, Equatable {
     }
 
     public var isEmpty: Bool { lessons.isEmpty && prefs.isEmpty && facts.isEmpty }
+
+    /// The entries a command received as JSON.
+    public init(json: JSONValue) throws {
+        do {
+            self = try JSONDecoder().decode(Self.self, from: JSONEncoder().encode(json))
+        } catch {
+            throw KnowledgeError(#"entries must be {"lessons": [{"title", …}], "prefs": [{"key", "value"}], "#
+                + #""facts": [{"key", "value"}]}"#)
+        }
+    }
 }
 
 /// The one-time split of a memo, recorded in the scope's `memo-split.json` so it is not offered again. `kept` means
@@ -133,6 +144,30 @@ extension AgentKnowledgeStore {
             prefs: result.values.filter { $0.kind == .prefs }.map(\.key),
             facts: result.values.filter { $0.kind == .facts }.map(\.key)), scope: scope)
         return result
+    }
+
+    /// `pending` (offered), `split`, `kept`, or `none` (an empty memo, or no saved project).
+    public func memoSplitState(_ scope: KnowledgeScope) -> String {
+        if let record = memoSplitRecord(scope) { return record.outcome.rawValue }
+        return memoNeedsSplit(scope) ? "pending" : "none"
+    }
+
+    /// The line agents see under a memo that was not split yet.
+    public static func splitHint(_ scope: KnowledgeScope) -> String {
+        "Not split into lessons, preferences and facts yet: when the user asks, queue what it says for review with "
+            + "`bashcut knowledge split-memo <entries.json>\(scope == .user ? " --scope user" : "")`."
+    }
+
+    /// What an agent is asked to do when the user asks for the split.
+    public static func splitRequest(_ scope: KnowledgeScope) -> String {
+        let memo = scope == .project ? "the project memo" : "the notes for every project"
+        let flag = scope == .project ? "" : " --scope user"
+        return "Split \(memo) into structured knowledge, once. Read it with `bashcut knowledge get`, write what it "
+            + "says to a JSON file as lessons (title, symptom, cause, fix, tags), preferences (my taste: key, value)"
+            + (scope == .project ? " and project facts (key, value)" : "")
+            + ", then run `bashcut knowledge split-memo <file.json>\(flag)`. Keep each entry short and leave long "
+            + "notes, such as style measurements, in the memo; do not change the memo. Everything waits in the "
+            + "Knowledge inbox for my review."
     }
 
     /// Keeps the memo as notes only: the split is not offered again.
