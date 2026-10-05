@@ -8,8 +8,12 @@ struct PluginBrowseView: View {
     @State private var query = ""
 
     private var listings: [PluginListing] {
-        updatesOnly ? model.updates : model.listings(query: query, capability: model.browseCapability)
+        updatesOnly ? model.updates
+            : model.listings(query: query, capability: model.browseCapability, category: model.browseCategory)
     }
+
+    /// Without a search or a category, the catalog reads as one section per category.
+    private var grouped: Bool { !updatesOnly && query.isEmpty && model.browseCategory == nil }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -39,12 +43,21 @@ struct PluginBrowseView: View {
                 Label(model.registry == nil ? error : "Showing the saved catalog: \(error)",
                       systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.orange)
             }
+            if !updatesOnly, model.registry?.plugins.isEmpty == false { PluginCategoryBar(model: model, query: query) }
             if listings.isEmpty {
                 ContentUnavailableView {
                     Label(emptyTitle, systemImage: updatesOnly ? "checkmark.circle" : "puzzlepiece.extension")
                 } description: {
                     if let detail = emptyDetail { Text(detail) }
                 }.frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if grouped {
+                List(PluginGroup.byCategory(listings, category: \.category)) { group in
+                    Section {
+                        ForEach(group.items) { listing in PluginListingRow(model: model, listing: listing) }
+                    } header: {
+                        Label(group.title, systemImage: group.symbol)
+                    }
+                }
             } else {
                 List(listings) { listing in PluginListingRow(model: model, listing: listing) }
             }
@@ -70,7 +83,42 @@ extension PluginBrowseView {
         if let capability = model.browseCapability, query.isEmpty {
             return String(format: String(localized: "No published plugin provides %@ yet."), capability)
         }
+        if let category = model.browseCategory, query.isEmpty {
+            return String(format: String(localized: "No published plugin is in %@ yet."), category.title)
+        }
         return String(localized: "Try another search, or clear the filter.")
+    }
+}
+
+/// All plus one chip per category that has plugins, each with how many match the search.
+private struct PluginCategoryBar: View {
+    @Bindable var model: PluginManagerModel
+    let query: String
+
+    var body: some View {
+        let matching = model.listings(query: query, capability: model.browseCapability)
+        let counts = Dictionary(grouping: matching, by: \.category).mapValues(\.count)
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                chip(nil, title: String(localized: "All"), symbol: "square.grid.2x2", count: matching.count)
+                ForEach(PluginCategory.allCases.filter { counts[$0] != nil || $0 == model.browseCategory }) { category in
+                    chip(category, title: category.title, symbol: category.symbol, count: counts[category] ?? 0)
+                }
+            }
+        }
+    }
+
+    private func chip(_ category: PluginCategory?, title: String, symbol: String, count: Int) -> some View {
+        let selected = model.browseCategory == category
+        return Button {
+            model.browseCategory = category
+        } label: {
+            Label(title + " " + String(count), systemImage: symbol).font(.caption)
+                .padding(.horizontal, 8).padding(.vertical, 4)
+                .background(Capsule().fill(selected ? Color.accentColor.opacity(0.35) : Color.white.opacity(0.06)))
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain).foregroundStyle(selected ? Color.primary : Color.secondary)
     }
 }
 
@@ -95,7 +143,7 @@ private struct PluginListingRow: View {
                 if let summary = listing.entry.summary { Text(summary.text).font(.caption) }
                 HStack(spacing: 8) {
                     Text(listing.entry.id).font(.caption2.monospaced())
-                    if let category = listing.entry.category { Text(category).font(.caption2) }
+                    Label(listing.category.title, systemImage: listing.category.symbol).font(.caption2)
                     if let size = listing.version?.size {
                         Text(ByteCountFormatter.string(fromByteCount: Int64(size), countStyle: .file)).font(.caption2)
                     }

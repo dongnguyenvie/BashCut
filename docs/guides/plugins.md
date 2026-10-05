@@ -67,6 +67,7 @@ checked manifest, an entrypoint that already speaks the protocol and smoke tests
 | `transport` | No | `oneshot` (default) or `session`; see [Session transport](#session-transport). API 2 |
 | `options` | No | Up to 64 settings; see [Options](#options). API 2 |
 | `contributes` | No | `actions` and `hooks`; see [Actions](#actions) and [Hooks](#hooks). API 2 |
+| `category` | No | Where Plugins and Settings group it: `agents`, `captions`, `voice`, `audio`, `color`, `effects`, `export` or `utilities`. A registry listing's category wins; without either, BashCut guesses from the capabilities (`agent.*`, `captions.*`, `voice.*`, `audio.*`) and falls back to Utilities. Older BashCut versions ignore it |
 
 BashCut resolves features by capability and provider ID, never by vendor SDK. A plugin is only chosen for a
 capability when it declares a provider for it.

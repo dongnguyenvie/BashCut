@@ -175,15 +175,22 @@ struct SettingsView: View {
 }
 
 /// Settings › Plugins: hook and update preferences, then the options of every installed plugin that declares
-/// some (the same values as Plugins › Options… and `plugins option`).
+/// some (the same values as Plugins › Options… and `plugins option`), grouped by category, one collapsible plugin
+/// at a time.
 private struct SettingsPluginsSection: View {
     let document: ProjectDocument
     @Bindable var settings: SettingsModel
     let done: () -> Void
     @State private var error = ""
+    @State private var filter = ""
+    @State private var expanded: Set<String> = []
 
     private var configurable: [InstalledPlugin] {
-        document.plugins.plugins.filter { !($0.manifest.options ?? []).isEmpty }
+        document.plugins.plugins.filter { plugin in
+            !(plugin.manifest.options ?? []).isEmpty
+                && (filter.isEmpty || plugin.manifest.displayName.localizedCaseInsensitiveContains(filter)
+                    || plugin.id.localizedCaseInsensitiveContains(filter))
+        }
     }
 
     var body: some View {
@@ -208,37 +215,61 @@ private struct SettingsPluginsSection: View {
                 }.buttonStyle(.link)
             }
         }
-        if configurable.isEmpty {
+        if document.plugins.plugins.filter({ !($0.manifest.options ?? []).isEmpty }).count > 1 {
             Section {
-                Text("No installed plugin has options.").foregroundStyle(.secondary)
+                TextField("Filter plugins", text: $filter, prompt: Text("Filter plugins")).labelsHidden()
             }
         }
-        ForEach(configurable) { plugin in
-            let values = document.pluginOptionValues(plugin)
+        if configurable.isEmpty {
             Section {
-                ForEach(plugin.manifest.options ?? []) { option in
-                    HStack(alignment: .top) {
-                        PluginOptionField(option: option, value: Binding(
-                            get: { values[option.id] ?? option.fallback },
-                            set: { value in
-                                do {
-                                    try document.setPluginOption(plugin, option: option.id, value: value, author: .user)
-                                    error = ""
-                                } catch { self.error = error.localizedDescription }
-                            }))
-                        Text(PluginOptionPolicy.scope(of: option, in: plugin.manifest.options ?? []) == .project ? "project" : "this Mac")
-                            .font(.caption2).foregroundStyle(.secondary)
+                Text(filter.isEmpty ? LocalizedStringKey("No installed plugin has options.") : "No plugins match").foregroundStyle(.secondary)
+            }
+        }
+        ForEach(PluginGroup.byCategory(configurable, category: document.plugins.category(of:))) { group in
+            Section {
+                ForEach(group.items) { plugin in
+                    DisclosureGroup(isExpanded: isExpanded(plugin)) {
+                        options(plugin)
+                    } label: {
+                        HStack {
+                            Text(plugin.manifest.displayName)
+                            Text("v" + plugin.manifest.version).foregroundStyle(.secondary)
+                        }
                     }
                 }
             } header: {
-                HStack {
-                    Text(plugin.manifest.displayName)
-                    Text("v" + plugin.manifest.version).foregroundStyle(.secondary)
-                }
+                Label(group.title, systemImage: group.symbol)
             }
         }
         if !error.isEmpty {
             Section { Text(error).font(.caption).foregroundStyle(.orange) }
+        }
+    }
+
+    /// Collapsed by default, unless it is the only plugin shown.
+    private func isExpanded(_ plugin: InstalledPlugin) -> Binding<Bool> {
+        Binding(
+            get: { configurable.count == 1 || expanded.contains(plugin.id) },
+            set: { open in
+                if open { expanded.insert(plugin.id) } else { expanded.remove(plugin.id) }
+            })
+    }
+
+    private func options(_ plugin: InstalledPlugin) -> some View {
+        let values = document.pluginOptionValues(plugin)
+        return ForEach(plugin.manifest.options ?? []) { option in
+            HStack(alignment: .top) {
+                PluginOptionField(option: option, value: Binding(
+                    get: { values[option.id] ?? option.fallback },
+                    set: { value in
+                        do {
+                            try document.setPluginOption(plugin, option: option.id, value: value, author: .user)
+                            error = ""
+                        } catch { self.error = error.localizedDescription }
+                    }))
+                Text(PluginOptionPolicy.scope(of: option, in: plugin.manifest.options ?? []) == .project ? "project" : "this Mac")
+                    .font(.caption2).foregroundStyle(.secondary)
+            }
         }
     }
 }

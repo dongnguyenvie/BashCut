@@ -140,6 +140,8 @@ enum PluginText {
     var downloading: Set<String> = []
     /// Narrows Browse to providers of one capability (a panel's "Find a plugin…").
     var browseCapability: String?
+    /// Narrows Browse to one category (the chips above the list, `ui view --plugins-category`).
+    var browseCategory: PluginCategory?
     @ObservationIgnored private var cachedRegistryClient: PluginRegistryClient?
     /// The client for the current `pluginRegistryURL`; a changed URL takes effect without restarting.
     var registryClient: PluginRegistryClient {

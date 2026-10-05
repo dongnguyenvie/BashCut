@@ -2,6 +2,7 @@ import AppKit
 import BashCutAgent
 import BashCutAutomation
 import BashCutDocument
+import BashCutPlugin
 import BashCutProject
 import Foundation
 
@@ -262,6 +263,10 @@ extension ProjectDocument {
     private func updatePanels(_ arguments: CommandArguments) {
         if let tab = arguments.optionalString("inspector") { ui.inspectorTab = tab }
         if let section = arguments.optionalString("settingsSection") { ui.settingsSection = section }
+        if let tab = arguments.optionalString("pluginsTab").flatMap(PluginSheetTab.init(rawValue:)) { plugins.tab = tab }
+        if let category = arguments.optionalString("pluginsCategory") {
+            plugins.browseCategory = PluginCategory(rawValue: category)
+        }
     }
 
     func viewStateJSON() -> JSONValue {
@@ -286,6 +291,8 @@ extension ProjectDocument {
             "selectedTrack": selectedTrackID.map(JSONValue.string) ?? .null,
             "libraryPanel": .string(ui.libraryTab.panelName), "inspector": .string(ui.inspectorTab),
             "settingsSection": .string(ui.settingsSection),
+            "pluginsTab": .string(plugins.tab.rawValue),
+            "pluginsCategory": .string(plugins.browseCategory?.rawValue ?? "all"),
             "source": source,
         ])
     }

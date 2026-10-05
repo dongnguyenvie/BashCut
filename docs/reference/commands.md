@@ -261,11 +261,12 @@ Request an OpenTimelineIO export; the user approves it in the app first.
 
 ## plugins
 
-### `bashcut plugins list`
+### `bashcut plugins list [--category <category>]`
 
-List installed plugins, their providers and project provider preferences.
+List installed plugins with their category, providers and project provider preferences.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_plugins_list`
+- `category`: string, one of agents, captions, voice, audio, color, effects, export, utilities. Only plugins in this category
 
 ### `bashcut plugins actions`
 
@@ -311,13 +312,14 @@ Set one plugin option like the Plugins sheet: project-scope values are an undoab
 - `option`: string, required. Option ID
 - `value`: string. New value as text (on/off, numbers, choices)
 
-### `bashcut plugins search [<query>] [--capability <capability>] [--refresh]`
+### `bashcut plugins search [<query>] [--capability <capability>] [--category <category>] [--refresh]`
 
-Search the plugin registry (Plugins › Browse): name, summary, capability, the version this BashCut would install and whether it is installed, has an update or is incompatible.
+Search the plugin registry (Plugins › Browse): name, summary, category, capability, the version this BashCut would install and whether it is installed, has an update or is incompatible.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_plugins_search`
 - `query`: string. Search text
 - `capability`: string. Only providers of this capability, such as captions.transcribe
+- `category`: string, one of agents, captions, voice, audio, color, effects, export, utilities. Only plugins in this category
 - `refresh`: boolean, default false. Fetch the registry again instead of using the 5-minute cache
 
 ### `bashcut plugins updates`
@@ -747,9 +749,9 @@ Run an editor action like the user: by ID (timeline.split, timeline.zoom-in, pla
 - Mode: edit · Runs: immediately · MCP: `bashcut_ui_action`
 - `action`: string, required. Action ID or shortcut
 
-### `bashcut ui view [--zoom <zoom>] [--zoom-anchor <zoomAnchor>] [--snap <snap>] [--safe-area <safeArea>] [--viewer-zoom <viewerZoom>] [--compare <compare>] [--agent-dock <agentDock>] [--reveal <reveal>] [--inspector <inspector>] [--settings-section <settingsSection>]`
+### `bashcut ui view [--zoom <zoom>] [--zoom-anchor <zoomAnchor>] [--snap <snap>] [--safe-area <safeArea>] [--viewer-zoom <viewerZoom>] [--compare <compare>] [--agent-dock <agentDock>] [--reveal <reveal>] [--inspector <inspector>] [--settings-section <settingsSection>] [--plugins-tab <pluginsTab>] [--plugins-category <pluginsCategory>]`
 
-Read the editor view state, or change it: timeline zoom (pixels per second), viewer zoom, snapping, safe area, color compare, agent dock, inspector tab, Settings section, and scroll the timeline to a frame.
+Read the editor view state, or change it: timeline zoom (pixels per second), viewer zoom, snapping, safe area, color compare, agent dock, inspector tab, Settings section, Plugins tab and Browse category, and scroll the timeline to a frame.
 
 - Mode: ui · Runs: immediately · MCP: `bashcut_ui_view`
 - `zoom`: integer, 1…600. Timeline zoom in pixels per second
@@ -762,6 +764,8 @@ Read the editor view state, or change it: timeline zoom (pixels per second), vie
 - `reveal`: integer, ≥ 0. Scroll the timeline so this frame is visible
 - `inspector`: string, one of video, audio, text, color, speed. Inspector tab
 - `settingsSection`: string, one of general, agents, plugins, storage. Settings section (open Settings with ui.open settings)
+- `pluginsTab`: string, one of installed, browse, updates, activity. Plugins sheet tab (open it with ui.open plugins)
+- `pluginsCategory`: string, one of all, agents, captions, voice, audio, color, effects, export, utilities. Category Plugins › Browse shows; all shows every one
 
 ### `bashcut ui source <media> [--in <in>] [--out <out>]`
 

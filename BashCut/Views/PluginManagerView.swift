@@ -63,10 +63,16 @@ struct PluginManagerView: View {
                 if PluginChannel.current.allowsUserPlugins { Button("Browse Plugins") { model.tab = .browse } }
             }.frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
-            List(model.plugins) { plugin in
-                PluginRow(model: model, document: document, plugin: plugin)
+            List(model.installedGroups) { group in
+                Section {
+                    ForEach(group.items) { plugin in PluginRow(model: model, document: document, plugin: plugin) }
+                } header: {
+                    Label(group.title, systemImage: group.symbol)
+                }
             }
             .task {
+                // The saved registry names categories and updates without fetching.
+                await model.loadCachedRegistry()
                 // Probe dependencies once so missing ones offer Install Dependencies….
                 for plugin in model.plugins where model.health[plugin.id] == nil && !plugin.manifest.dependencies.isEmpty {
                     await model.checkHealthNow(plugin)

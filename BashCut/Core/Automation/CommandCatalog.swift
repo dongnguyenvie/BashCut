@@ -48,7 +48,10 @@ public enum CommandCatalog {
             "export.status", .read,
             "Read the export state: while one runs, its job, step, preset and path (last receipt under lastExport); "
                 + "otherwise the most recent receipt. Includes the queue (job IDs for jobs.cancel)."),
-        CommandSpec("plugins.list", .read, "List installed plugins, their providers and project provider preferences."),
+        CommandSpec(
+            "plugins.list", .read,
+            "List installed plugins with their category, providers and project provider preferences.",
+            parameters: [pluginCategory]),
         CommandSpec(
             "jobs.status", .read, "Read one job (plugin call or export), or all recent jobs when job is omitted.",
             parameters: [CommandParameter("job", .string, "Job ID", cli: .positional)]),
@@ -262,7 +265,8 @@ public enum CommandCatalog {
         CommandSpec(
             "ui.view", .ui,
             "Read the editor view state, or change it: timeline zoom (pixels per second), viewer zoom, snapping, safe area, "
-                + "color compare, agent dock, inspector tab, Settings section, and scroll the timeline to a frame.",
+                + "color compare, agent dock, inspector tab, Settings section, Plugins tab and Browse category, and scroll "
+                + "the timeline to a frame.",
             parameters: [
                 CommandParameter("zoom", .integer, "Timeline zoom in pixels per second", minimum: 1, maximum: 600,
                                  cli: .option("zoom")),
@@ -280,6 +284,11 @@ public enum CommandCatalog {
                                  cli: .option("inspector")),
                 CommandParameter("settingsSection", .string, "Settings section (open Settings with ui.open settings)",
                                  choices: UIAction.settingsSections, cli: .option("settings-section")),
+                CommandParameter("pluginsTab", .string, "Plugins sheet tab (open it with ui.open plugins)",
+                                 choices: UIAction.pluginsTabs, cli: .option("plugins-tab")),
+                CommandParameter("pluginsCategory", .string, "Category Plugins › Browse shows; all shows every one",
+                                 choices: ["all"] + UIAction.pluginCategories,
+                                 cli: .option("plugins-category")),
             ]),
         CommandSpec(
             "ui.source", .ui, "Open project media in the source viewer, optionally with in/out frames marked.",
