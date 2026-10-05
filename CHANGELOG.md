@@ -5,6 +5,8 @@
 
 ## [Unreleased]
 
+- Writing plugins links to `scripts/new-plugin.py` in `bashcut-plugins` (#84), which generates a working plugin
+  (capability, action, hook, options or chat agent; Swift, shell, Node.js or Python) to start from.
 - **Export progress is easy to see** (#62). While an export runs, the Export… button shows a progress ring and
   percent; clicking it opens the running export's details (file, step, queue) with Cancel and New Export… (⌘E still
   opens the Export sheet). A toast at the bottom right says when an export starts, is queued, finishes (Open,
