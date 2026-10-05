@@ -176,6 +176,39 @@ struct LibraryTests {
         }
     }
 
+    @Test("Built-in packs hold the panels' former hard-coded items, valid and in their order")
+    func builtInPacks() throws {
+        let items = LibraryBuiltIns.items
+        for item in items { try item.validate() }
+        #expect(Set(items.map(\.id)).count == items.count)
+        // One text preset per caption renderer preset, in the panel's order.
+        #expect(LibraryBuiltIns.textPresets.map(\.id) == TextPreset.all)
+        #expect(LibraryBuiltIns.textPresets.map { $0.params["textPreset"]?.string } == TextPreset.all)
+        #expect(LibraryBuiltIns.textPresets[0].params["text"] == .string("Quá là ngon!"))
+        #expect(LibraryBuiltIns.stickers.compactMap { $0.params["emoji"]?.string } == ["🔥", "😋", "👍", "💯", "⭐", "📍", "🍲", "😂"])
+        #expect(LibraryBuiltIns.effects.map(\.name) == ["Punch in 1.3×", "Reset framing"])
+        #expect(LibraryBuiltIns.effects[0].params["patch"] == .object(["transform": .object(["zoom": .number(1.3)])]))
+        #expect(Set(items.compactMap(\.kind)) == [.textPreset, .sticker, .effectPreset])
+    }
+
+    @Test("Panels list built-in items first, then saved ones, each ID once")
+    func panelItems() throws {
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let catalog = LibraryCatalog(
+            user: .user(applicationSupport: folder.appendingPathComponent("support")),
+            project: .project(root: folder.appendingPathComponent("project")))
+        #expect(throws: ProjectError.self) { try catalog.add(Self.fire, into: .project) }
+        var mine = Self.fire
+        mine["id"] = .string("my-fire")
+        try catalog.add(mine, into: .project)
+        try catalog.add(mine, into: .user)
+        let stickers = try catalog.panelItems([.sticker])
+        #expect(stickers.prefix(8).map(\.scope) == Array(repeating: .builtIn, count: 8))
+        #expect(stickers.dropFirst(8).map(\.reference) == ["project:my-fire"])
+        #expect(try catalog.panelItems([.effectPreset]).map(\.id) == ["punch-in", "reset-framing"])
+        #expect(try catalog.item("fire").scope == .builtIn)
+    }
+
     @Test("Unknown fields round-trip through the store")
     func unknownFields() throws {
         defer { try? FileManager.default.removeItem(at: folder) }

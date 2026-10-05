@@ -18,6 +18,8 @@ struct LibraryView: View {
     @State private var beatSource = ""
     @State private var beatProvider = ""
     @State private var beatMessage = ""
+    /// Library items of the Text, Stickers and Effects panels (#75), read again when the library changes.
+    @State private var libraryItems: [LibraryItem] = []
     var body: some View {
         VStack(spacing: 0) {
             HStack {
@@ -43,6 +45,23 @@ struct LibraryView: View {
                 }.padding(10)
             }
         }.background(Color.white.opacity(0.025))
+            .task(id: "\(document.libraryRevision):\(document.fileURL?.path ?? "")") { loadLibraryItems() }
+    }
+
+    private func loadLibraryItems() {
+        do {
+            libraryItems = try document.libraryCatalog.panelItems([.textPreset, .sticker, .effectPreset])
+        } catch {
+            libraryItems = LibraryBuiltIns.items
+            document.message = error.localizedDescription
+        }
+    }
+
+    private func libraryItems(_ kind: LibraryKind) -> [LibraryItem] { libraryItems.filter { $0.kind == kind } }
+
+    /// Built-in names are UI strings to localize; saved names are user content.
+    private func title(_ item: LibraryItem) -> Text {
+        item.scope == .builtIn ? Text(LocalizedStringKey(item.name)) : Text(verbatim: item.name)
     }
     private var media: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -241,27 +260,19 @@ struct LibraryView: View {
                 Button("Replace captions…") { document.importCaptions(replace: true) }
             }.disabled(document.fileURL == nil)
             Button("Export SRT…", action: document.exportCaptions).disabled(document.fileURL == nil)
-            ForEach(
-                [
-                    ("Bold Outline", "bold-outline", "Quá là ngon!"),
-                    ("Cinematic Serif", "cinematic-serif", "a moment to remember"),
-                    ("Keyword Sticker", "keyword-sticker", "BEST BITE"),
-                    ("Place Card", "place-card", "BẾN THÀNH · QUẬN 1"),
-                    ("Hook Title", "hook-title", "ĂN GÌ HÔM NAY?"),
-                    ("Chapter Card", "chapter-card", "CHAPTER 01"),
-                ], id: \.1
-            ) { title, style, sample in
+            ForEach(libraryItems(.textPreset), id: \.reference) { item in
+                let style = item.params["textPreset"]?.string ?? ""
                 Button {
-                    document.addText(style: style, text: sample)
+                    document.placeFromLibrary(item)
                 } label: {
                     VStack {
-                        Text(sample)
+                        Text(verbatim: item.params["text"]?.string ?? item.name)
                             .font(
                                 style == "cinematic-serif" || style == "chapter-card"
                                     ? .system(.body, design: .serif) : .headline)
                             .foregroundStyle(style == "keyword-sticker" ? .black : .white)
                             .frame(maxWidth: .infinity, minHeight: 55).background(.black.opacity(0.3))
-                        Text(LocalizedStringKey(title)).font(.caption)
+                        title(item).font(.caption)
                     }.padding(8)
                 }.buttonStyle(.bordered).disabled(document.fileURL == nil)
             }
@@ -288,21 +299,16 @@ struct LibraryView: View {
     }
     private var stickers: some View {
         LazyVGrid(columns: [GridItem(.adaptive(minimum: 55))]) {
-            ForEach(["🔥", "😋", "👍", "💯", "⭐", "📍", "🍲", "😂"], id: \.self) { symbol in
-                Button(symbol) { document.addText(style: "bold-outline", text: symbol) }
+            ForEach(libraryItems(.sticker), id: \.reference) { item in
+                Button(item.params["emoji"]?.string ?? item.name) { document.placeFromLibrary(item) }
                     .font(.largeTitle).buttonStyle(.bordered).disabled(document.fileURL == nil)
             }
         }
     }
     private var effects: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Button("Punch in 1.3×") {
-                document.patchSelected(["transform": .object(["zoom": .number(1.3)])], label: "Punch in")
-            }
-            Button("Reset framing") {
-                document.patchSelected(
-                    ["transform": .object(["zoom": .number(1), "pan": .integer(0), "tilt": .integer(0)])],
-                    label: "Reset framing")
+            ForEach(libraryItems(.effectPreset), id: \.reference) { item in
+                Button { document.applyFromLibrary(item) } label: { title(item) }
             }
             Text("Select a clip. Animated effects and speed ramps are still in development.").font(
                 .caption

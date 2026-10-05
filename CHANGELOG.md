@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+- **Text, Stickers and Effects come from the library** (#75). Their built-in items (6 text styles, 8 emoji stickers,
+  Punch in and Reset framing) are now built-in library packs, so the panels render from data and also show text
+  presets, stickers and effect presets saved in the project or on this Mac. Nothing else changes for users; agents
+  can use them by ID (`library place fire`, `library apply punch-in`) and save improved copies with `library update
+  <id> --as <new-id>`.
 - **Library items for agents** (#74). Every library panel now has one item model: text presets, stickers, effect and
   transition presets, looks, audio and voices, each with tags, a pack, source and license, who made it, a version
   history and usage. Items live in the project (`.bashcut/library`, so they travel with it), on this Mac, in plugins

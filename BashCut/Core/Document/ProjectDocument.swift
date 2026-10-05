@@ -19,6 +19,8 @@ final class ProjectDocument {
         didSet { if selectedTrackID != oldValue { selectionDidChange() } }
     }
     var message = ""
+    /// Bumped when library items are saved or removed, so the library panels read them again.
+    var libraryRevision = 0
     var busy = false
     var dirty = false
     var creatingProject = false

@@ -2,6 +2,9 @@ import BashCutAutomation
 import BashCutProject
 import Foundation
 
+/// SwiftUI also declares a `LibraryItem` (for the Xcode library); in the app it means BashCut's.
+typealias LibraryItem = BashCutProject.LibraryItem
+
 /// Where `library place` puts a new item: the playhead, a default length and layer unless given.
 struct LibraryPlacement {
     var frame: Int?
@@ -35,13 +38,13 @@ extension ProjectDocument {
         case .textPreset:
             result = try placeText(
                 text ?? item.params["text"]?.string ?? item.name, preset: item.params["textPreset"]?.string ?? "",
-                label: "Add \(item.name)", placement)
+                label: "Add text", placement)
         case .sticker:
             guard let emoji = item.params["emoji"]?.string else {
                 throw RPCFailure(-32602, unsupported("Placing image stickers", item))
             }
             result = try placeText(
-                emoji, preset: item.params["textPreset"]?.string ?? "bold-outline", label: "Add sticker", placement)
+                emoji, preset: item.params["textPreset"]?.string ?? "bold-outline", label: "Add text", placement)
         case .look:
             let added = try addAdjustment(
                 color: item.params["color"]?.object ?? [:], at: placement.frame, duration: placement.duration,
@@ -80,6 +83,17 @@ extension ProjectDocument {
         return revision
     }
 
+    /// Library panels: places an item at the playhead.
+    func placeFromLibrary(_ item: LibraryItem) {
+        do { try placeLibraryItem(item) } catch { message = error.localizedDescription }
+    }
+
+    /// Library panels: uses an item on the selected timeline item.
+    func applyFromLibrary(_ item: LibraryItem) {
+        guard let selectedID else { return }
+        do { try applyLibraryItem(item, to: selectedID) } catch { message = error.localizedDescription }
+    }
+
     private func placeText(
         _ text: String, preset: String, label: String, _ placement: LibraryPlacement
     ) throws -> (revision: Int, itemID: String) {
@@ -112,6 +126,11 @@ extension ProjectDocument {
         _ method: String, scope: LibraryScope, author: Author, arguments: [String: String],
         action: @escaping @MainActor () throws -> JSONValue
     ) throws -> JSONValue {
+        let action = { [weak self] () throws -> JSONValue in
+            let result = try action()
+            self?.libraryRevision += 1
+            return result
+        }
         guard scope == .user, author != .user else { return try action() }
         var result: JSONValue = .null
         let request = try queuePrivilegedApproval(method: method, author: author, arguments: arguments) {

@@ -54,15 +54,6 @@ extension ProjectDocument {
     private func applyCoalescing(_ operation: EditOperation, label: String, key: String?) {
         do { try commit(operation, label: label, coalescingKey: key) } catch { message = error.localizedDescription }
     }
-    func addText(style: String, text: String = "Your caption") {
-        var item = Item(at: playhead, duration: max(1, min(90, project.duration - playhead)))
-        item["text"] = .string(text)
-        item["textPreset"] = .string(style)
-        do {
-            try commit(.insert(track: project.requireTrack(role: TrackRole.captions).id, item: item), label: "Add text")
-            selectedID = item.id
-        } catch { message = error.localizedDescription }
-    }
     /// Places media on `track`, or on the main video track when nil.
     func appendMedia(_ media: Media, track: String? = nil) {
         let itemID = UUID().uuidString
