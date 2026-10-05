@@ -2,7 +2,8 @@ import BashCutAgent
 import Foundation
 import Observation
 
-/// The Agent Knowledge sheet: the project memo and skills, and the user's notes for every project (#100).
+/// The Knowledge window: lessons, preferences and project facts (#68), the project memo and skills, and the user's
+/// notes for every project (#100).
 @MainActor @Observable final class AgentKnowledgeModel {
     var memo = ""
     var userMemo = ""
@@ -14,6 +15,24 @@ import Observation
     /// A memo an older build left in the agent workspace or home folder, offered for migration.
     var legacy: LegacyKnowledgeMemo?
     private(set) var store: AgentKnowledgeStore?
+
+    // Structured entries (#68); see AgentKnowledgeModel+Entries.swift.
+    var lessons: [KnowledgeLesson] = []
+    var prefs: [KnowledgeValue] = []
+    var facts: [KnowledgeValue] = []
+    /// Files that could not be read.
+    var entryErrors: [String] = []
+    var filter = KnowledgeFilter()
+    /// Text to find in preference and fact keys and values.
+    var valueQuery = ""
+    var selectedLessonID: String?
+    /// The selected lesson's fields while they are edited, or a new lesson before it is saved.
+    var draft: LessonDraft?
+    /// When the user opened the window before this visit; entries changed after it are marked new.
+    var lastVisit: Date?
+    /// Entries the user changed in the window during this visit; their own changes are not new to them.
+    var changedHere: Set<String> = []
+    @ObservationIgnored var signature = ""
 
     var hasProject: Bool { store?.project != nil }
 
@@ -39,6 +58,7 @@ import Observation
         userMemo = store.memo(.user)
         skills = store.skills()
         legacy = store.legacyMemo()
+        loadEntries()
         if let selectedSkill, skills.contains(where: { $0.name == selectedSkill }) {
             select(selectedSkill)
         } else if let first = skills.first {
@@ -52,7 +72,7 @@ import Observation
     private func reload() { if let store { load(store) } }
 
     private func requireStore() throws -> AgentKnowledgeStore {
-        guard let store else { throw KnowledgeError("Open the Agent Knowledge sheet first") }
+        guard let store else { throw KnowledgeError("Open the Knowledge window first") }
         return store
     }
 

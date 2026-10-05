@@ -55,7 +55,8 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
     var sessionBookmarks = AgentSessionBookmarks()
     var sessionDiscoveryMessage = ""
     var settings: SettingsModel { document.settings }
-    var showKnowledge = false
+    /// Whether the Knowledge window is open.
+    private(set) var showKnowledge = false
     var error = ""
     let knowledge = AgentKnowledgeModel()
     private let sessionStore = AgentSessionStore()
@@ -74,6 +75,8 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
     @ObservationIgnored var kitPromptChecked: Date?
     @ObservationIgnored private var detachedWindow: NSWindow?
     @ObservationIgnored private var detachedDelegate: AgentDockWindowDelegate?
+    @ObservationIgnored private var knowledgeWindow: NSWindow?
+    @ObservationIgnored private var knowledgeDelegate: AgentDockWindowDelegate?
 
     init(document: ProjectDocument) {
         self.document = document
@@ -288,6 +291,7 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
     /// Ends what belongs to the open project: pending session lookups.
     func resetProjectState() {
         sessionDiscoveryTask?.cancel()
+        closeKnowledge()
     }
 
     func closeAll() {
@@ -418,6 +422,47 @@ extension AgentDockModel {
         detachedWindow = window
         window.center()
         window.makeKeyAndOrderFront(nil)
+    }
+
+    /// Opens the Knowledge window (#68): what agents learned, the memos and the project skills. It is a window, not a
+    /// sheet, so the user can keep it open while agents work; it reloads when the files change.
+    func openKnowledge() {
+        loadKnowledge()
+        if let knowledgeWindow {
+            knowledgeWindow.makeKeyAndOrderFront(nil)
+            return
+        }
+        knowledge.beginVisit()
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 1060, height: 720),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            backing: .buffered, defer: false)
+        window.title = String(localized: "Knowledge")
+        window.minSize = NSSize(width: 860, height: 540)
+        window.isReleasedWhenClosed = false
+        window.appearance = NSAppearance(named: .darkAqua)
+        window.backgroundColor = NSColor(red: 0.065, green: 0.07, blue: 0.08, alpha: 1)
+        let hosting = NSHostingView(rootView: KnowledgeManagerView(model: knowledge, ui: document.ui)
+            .background(Color(red: 0.065, green: 0.07, blue: 0.08))
+            .preferredColorScheme(.dark).tint(.cyan))
+        hosting.sizingOptions = []
+        window.contentView = hosting
+        let delegate = AgentDockWindowDelegate { [weak self] in
+            self?.knowledge.endVisit()
+            self?.knowledgeWindow = nil
+            self?.knowledgeDelegate = nil
+            self?.showKnowledge = false
+        }
+        knowledgeDelegate = delegate
+        window.delegate = delegate
+        knowledgeWindow = window
+        showKnowledge = true
+        window.center()
+        window.makeKeyAndOrderFront(nil)
+    }
+
+    func closeKnowledge() {
+        knowledgeWindow?.close()
     }
 
     func attach() {

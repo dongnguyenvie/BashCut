@@ -259,10 +259,11 @@ extension ProjectDocument {
         updatePanels(arguments)
     }
 
-    /// Which tab the Inspector and section the Settings sheet show.
+    /// Which tab the Inspector and section the Settings sheet and Knowledge window show.
     private func updatePanels(_ arguments: CommandArguments) {
         if let tab = arguments.optionalString("inspector") { ui.inspectorTab = tab }
         if let section = arguments.optionalString("settingsSection") { ui.settingsSection = section }
+        if let section = arguments.optionalString("knowledgeSection") { ui.knowledgeSection = section }
         if let tab = arguments.optionalString("pluginsTab").flatMap(PluginSheetTab.init(rawValue:)) { plugins.tab = tab }
         if let category = arguments.optionalString("pluginsCategory") {
             plugins.browseCategory = PluginCategory(rawValue: category)
@@ -290,7 +291,7 @@ extension ProjectDocument {
             "selection": selectedID.map(JSONValue.string) ?? .null,
             "selectedTrack": selectedTrackID.map(JSONValue.string) ?? .null,
             "libraryPanel": .string(ui.libraryTab.panelName), "inspector": .string(ui.inspectorTab),
-            "settingsSection": .string(ui.settingsSection),
+            "settingsSection": .string(ui.settingsSection), "knowledgeSection": .string(ui.knowledgeSection),
             "pluginsTab": .string(plugins.tab.rawValue),
             "pluginsCategory": .string(plugins.browseCategory?.rawValue ?? "all"),
             "source": source,

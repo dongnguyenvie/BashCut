@@ -52,7 +52,9 @@ SwiftTerm terminal. Claude and Codex use your installed CLI and its existing log
 - **Workspace.** Choose a workspace before opening a tab. Claude runs in the workspace folder. Codex runs in
   `~/Library/Application Support/BashCut/agent-workspace`; the project path and project knowledge reach it
   through the session context.
-- **Knowledge.** The book button opens **Agent Knowledge**. The project memo and project skills live in the
+- **Knowledge.** The book button opens the **Knowledge** window, which can stay open while agents work and shows
+  their changes as they happen. Its sections are Lessons, Preferences, Project facts, Notes (the memos) and Skills;
+  `ui view --knowledge-section <section>` switches between them. The project memo and project skills live in the
   project folder (`.bashcut/agent-memory.md`, `.bashcut/skills`, linked into the project's `.claude/skills` and
   `.agents/skills`), never in the workspace or home folder, so each project keeps its own. **Notes for every
   project** (`~/Library/Application Support/BashCut/Knowledge/agent-memory.md`) hold your taste and rules that
@@ -76,6 +78,12 @@ SwiftTerm terminal. Claude and Codex use your installed CLI and its existing log
 
   An agent's request that changes knowledge for every project, or approves or rejects a proposal, asks for your
   approval. Changes to this project's lessons and facts do not.
+
+  In the Knowledge window, Lessons can be searched, filtered by scope, status and tag, and sorted newest or oldest
+  first (`knowledge lessons --query --scope --status --tag --sort`). Select a lesson to edit its fields, approve or
+  reject a proposal, enable or disable it, or delete it (history keeps it). Preferences and facts are edited in
+  place. Each entry shows which agent and session added it and when, and entries changed since you last opened the
+  window carry a **New** badge. Your changes are recorded with the source `user`.
 
   Every agent session starts with a short summary: the active lessons (at most 20, this project's first), the
   preferences and the project facts (at most 30 each), and how many proposals wait for you. Proposed and disabled

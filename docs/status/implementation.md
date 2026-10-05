@@ -188,6 +188,9 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   into the project's `.claude/skills` and `.agents/skills`), plus notes for every project in Application Support;
   never the agent workspace or home folder. A memo older builds left there is offered for migration
   (`knowledge migrate`); agent writes to the user notes need approval.
+- The Knowledge window (#68) replaced the Agent Knowledge sheet: Lessons (search, scope/status/tag filters, sort,
+  inline edit, approve/reject, enable/disable, delete, source and "New since last visit"), Preferences, Project
+  facts, Notes and Skills. It polls the knowledge files' signature and reloads on change.
 - A shared debug log (`~/Library/Logs/BashCut/debug.log`) written by the app, CLI and MCP bridge.
 
 ### Plugins

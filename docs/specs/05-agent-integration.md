@@ -72,13 +72,14 @@ arguments.
 | `plugins search` / `plugins updates` | read | Plugins › Browse and Updates |
 | `plugins actions` / `plugins hooks` / `plugins options <plugin>` | read | Plugin actions wherever they appear, Hook Activity, Options… |
 | `doctor run` | read | Doctor sheet |
-| `knowledge get` | read | Skills and project memory sheet |
+| `knowledge get` | read | Knowledge window: Notes and Skills |
+| `knowledge lessons [--scope] [--status] [--tag] [--query] [--sort]` / `knowledge prefs` / `knowledge facts` / `knowledge history` | read | Knowledge window: Lessons (search, filters, sort), Preferences, Project facts |
 | `ui frame [frame]` | read | Ask's attach viewer frame: the viewer picture at a frame as a PNG path |
 | `ui actions` | read | Every toolbar button, menu item and shortcut, with its enabled state |
 | `ui dialog` | read | Every open alert, file panel, sheet and popover |
 | `ui respond <option> [--path]` / `ui open <dialog>` | ui | Answering or opening a dialog |
 | `ui select` / `ui seek` / `ui panel` / `ui notify` | ui | Pointing something out to the user |
-| `ui view [--zoom 10…140] [--snap] [--safe-area] [--compare] [--agent-dock] [--inspector <tab>] [--reveal <frame>]` | ui | Zoom slider and ⌘=/⌘−, Snap, Safe area, Compare, Agent button, Inspector tabs, scrolling |
+| `ui view [--zoom 10…140] [--snap] [--safe-area] [--compare] [--agent-dock] [--inspector <tab>] [--knowledge-section <section>] [--reveal <frame>]` | ui | Zoom slider and ⌘=/⌘−, Snap, Safe area, Compare, Agent button, Inspector tabs, Knowledge window sidebar, scrolling |
 | `ui source <media> [--in N] [--out N]` | ui | Clicking a Library thumbnail (source viewer) |
 
 ### Edit commands
@@ -103,7 +104,8 @@ arguments.
 | `plugins option <plugin> --option <id> [--value]` / `plugins set <plugin> [--enabled off] [--hooks off]` | edit | Plugins sheet: Options…, Enabled and Hooks switches (agents can only turn them off) |
 | `plugins install <plugin> [--version]` / `plugins remove <plugin>` | edit | Browse › Install/Update (the approval stays with the user) and Installed › Remove |
 | `luts import <file.cube> [--name]` | edit | Filters panel, Import .cube… |
-| `knowledge memo <file> [--scope user]` / `knowledge skill <name> <file>` / `knowledge migrate [--to project]` | edit | Skills and project memory sheet: Save memo, Save notes, Save skill, Move older memo |
+| `knowledge memo <file> [--scope user]` / `knowledge skill <name> <file>` / `knowledge migrate [--to project]` | edit | Knowledge window › Notes and Skills: Save memo, Save notes, Save skill, Move older memo |
+| `knowledge add-lesson` / `update-lesson` / `remove-lesson` / `approve` / `reject` / `set-pref` / `set-fact` | edit | Knowledge window: New lesson, Save, Enable/Disable, Delete…, Approve, Reject; Preferences and facts Add, Save, Remove |
 | `ui action <id\|shortcut>` | edit | Any editor button or shortcut, run by the same code: `timeline.split` / `cmd+b`, `timeline.zoom-in` / `cmd+=`, `playback.toggle` / `space`, `source.mark-in` / `i`; plugin action IDs and shortcuts too |
 
 ### Privileged commands
