@@ -43,8 +43,16 @@ extension ProjectDocument {
     func registerStorageCommands() {
         handle("storage.get") { document, _, _ in
             let entries = await document.storageEntries()
+            let plugins = StorageUsage.byPlugin(entries)
             return .object([
-                "entries": .array(entries.map(Self.storageJSON)),
+                // Plugin entries in the same largest-first order as `plugins`, then the rest.
+                "entries": .array((plugins.flatMap(\.entries) + entries.filter { $0.pluginID == nil }).map(Self.storageJSON)),
+                "plugins": .array(plugins.map { plugin in
+                    .object([
+                        "plugin": .string(plugin.pluginID), "bytes": .integer(Int(plugin.bytes)),
+                        "installed": .bool(plugin.installed),
+                    ])
+                }),
                 "totalBytes": .integer(Int(entries.reduce(0) { $0 + $1.bytes })),
             ])
         }

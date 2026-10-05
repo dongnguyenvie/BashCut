@@ -34,7 +34,7 @@ A project file with another name (for example a test fixture) gets its own cache
 ## Storage on disk
 
 What BashCut keeps where, by how safe it is to delete. Settings › Storage and `bashcut storage get` show the sizes
-of the clearable parts.
+of the clearable parts, with each plugin's folder, data and cache added up to one total, largest first.
 
 | Kind | Where | Contents |
 |---|---|---|

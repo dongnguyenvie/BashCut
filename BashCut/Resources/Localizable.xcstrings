@@ -1,6 +1,8 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "%@ — plugin": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%@ — plugin" } }, "vi": { "stringUnit": { "state": "translated", "value": "%@ — plugin" } } } },
+    "Not installed — left over from a removed plugin": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Not installed — left over from a removed plugin" } }, "vi": { "stringUnit": { "state": "translated", "value": "Chưa cài — còn sót lại từ plugin đã gỡ" } } } },
     "Checking the plugin's files…": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Checking the plugin's files…" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đang kiểm tra các tệp của plugin…" } } } },
     "Older memo found at %@. BashCut now keeps knowledge in the project.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Older memo found at %@. BashCut now keeps knowledge in the project." } }, "vi": { "stringUnit": { "state": "translated", "value": "Tìm thấy memo cũ ở %@. BashCut giờ lưu knowledge trong project." } } } },
     "Move to notes for every project": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Move to notes for every project" } }, "vi": { "stringUnit": { "state": "translated", "value": "Chuyển vào ghi chú cho mọi project" } } } },
@@ -5471,12 +5473,6 @@
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "This is downloaded or made again when needed." } },
         "vi": { "stringUnit": { "state": "translated", "value": "Phần này sẽ được tải hoặc tạo lại khi cần." } }
-      }
-    },
-    "Installed plugins": {
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Installed plugins" } },
-        "vi": { "stringUnit": { "state": "translated", "value": "Plugin đã cài" } }
       }
     },
     "%@ — data": {
