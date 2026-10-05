@@ -269,8 +269,11 @@ The two CLIs don't share transcripts. When the user hands a task from one agent 
 - the context block (§3);
 - the timeline text form;
 - the knowledge: notes for every project, the project memo (`<project>/.bashcut/agent-memory.md`) and project
-  skills. Structured lessons, preferences and facts (`.bashcut/knowledge/`, #67) are read with the `knowledge`
-  commands; adding a summary of them to the context is planned (#73).
+  skills;
+- a bounded summary of the structured knowledge (`.bashcut/knowledge/`, #67, #73): up to 20 active lessons
+  (project first, newest first) with their fix, up to 30 preferences (a project value wins) and 30 project facts,
+  each one line of at most 240 characters, and the number of proposals waiting for review. The same summary is in
+  every new terminal's session prompt, in chat agents' context and in `context get` (`knowledge`).
 
 Planned additions: the last 5 user requests, the last 5 labeled undo steps and the latest review result.
 

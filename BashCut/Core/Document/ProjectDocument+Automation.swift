@@ -79,6 +79,7 @@ extension ProjectDocument {
                 "selectedTrack": document.selectedTrackID.map(JSONValue.string) ?? .null,
                 "dirty": .bool(document.dirty), "conflict": .bool(document.conflict),
                 "busy": .bool(document.busy), "saving": .bool(document.saving),
+                "knowledge": document.agents.knowledgeStore.summary().json,
             ])
         }
         handle("project.get") { document, _, _ in .object(document.project.fields) }

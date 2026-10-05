@@ -10,7 +10,7 @@ approval are explained in the [automation guide](../guides/automation.md#permiss
 
 ### `bashcut context get`
 
-Read the project path, revision, playhead and selection.
+Read the project path, revision, playhead and selection, and a summary of the agent knowledge: active lessons, preferences, project facts and the number of proposals.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_context_get`
 

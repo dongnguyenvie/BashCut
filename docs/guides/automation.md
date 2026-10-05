@@ -76,6 +76,11 @@ SwiftTerm terminal. Claude and Codex use your installed CLI and its existing log
 
   An agent's request that changes knowledge for every project, or approves or rejects a proposal, asks for your
   approval. Changes to this project's lessons and facts do not.
+
+  Every agent session starts with a short summary: the active lessons (at most 20, this project's first), the
+  preferences and the project facts (at most 30 each), and how many proposals wait for you. Proposed and disabled
+  lessons are not in it. `context get` returns the same summary as `knowledge`, so an agent outside BashCut's
+  terminals sees it too.
 - **Resuming.** When BashCut has found the last Claude or Codex conversation for the project, the dock offers
   **Continue Claude/Codex** or **New conversation**. You never see or type session IDs.
 - **Codex defaults.** Codex starts idle on `gpt-5.6-luna` with low reasoning effort, under a named permission
