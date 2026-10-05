@@ -675,6 +675,8 @@ Delivery rules:
 - Hooks are **notify-only**: the event has already happened and the plugin cannot block or change it.
 - Each (plugin, event) pair is debounced and coalesced; a plugin handles one hook at a time and later events wait
   in its queue.
+- At most 4 hooks run at once across all plugins (fewer on a Mac with fewer cores). Plugins take turns, so one
+  edit heard by hundreds of plugins never starts hundreds of processes; `plugins hooks` shows the `queue`.
 - At most 60 deliveries per plugin per minute; extra events are dropped and logged.
 - An edit a plugin made never triggers that plugin's own hooks.
 - Failures go to the hook log (Plugins › **Hook Activity**, `plugins hooks`) and the debug log, never to the
@@ -815,7 +817,7 @@ Everything above is available to agents through the CLI and MCP (`bashcut_plugin
 | `plugins health [plugin]` | read | Check Health |
 | `plugins actions [text] [--plugin id]` | read | Every contributed action (or those matching the text or plugin) with placements, `when`, shortcut, a JSON Schema for its params, whether it is enabled now and when it last ran |
 | `plugins run <action> [--params '{…}']` | edit, job | Clicking the action and filling its sheet |
-| `plugins hooks` | read | Hook Activity: subscriptions, recent runs, waiting proposals |
+| `plugins hooks` | read | Hook Activity: subscriptions, the delivery queue (limit, running, queued, debouncing), recent runs, waiting proposals |
 | `plugins proposal <id> --decision apply\|discard` | edit | The review sheet |
 | `plugins options <plugin>` | read | Options… |
 | `plugins option <plugin> --option <id> [--value <text>]` | edit | Editing an option; no value resets it |

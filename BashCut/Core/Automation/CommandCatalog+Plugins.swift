@@ -38,7 +38,8 @@ extension CommandCatalog {
             execution: .job),
         CommandSpec(
             "plugins.hooks", .read,
-            "List plugin hook subscriptions, the recent hook runs and hook edits waiting for review."),
+            "List plugin hook subscriptions, the delivery queue (limit, running, queued, debouncing), the recent hook runs "
+                + "and hook edits waiting for review."),
         CommandSpec(
             "plugins.proposal", .edit,
             "Apply or discard an edit a plugin hook proposed (Settings decides whether hook edits wait for review).",

@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+- **Plugin hooks run at most 4 at a time** (#99). One edit heard by hundreds of plugins used to start a plugin
+  process for each of them at once. Hook deliveries now share a limit of 4 (fewer on a Mac with fewer cores), and
+  plugins take turns, so a busy plugin cannot hold up the others. A newer event still replaces a waiting one of the
+  same kind. `plugins hooks` shows the queue: the limit, the plugins running, and how many deliveries are queued or
+  debouncing.
 - **Plugin actions no longer flood the MCP tool list** (#98). MCP lists at most 40 `bashcut_action_…` tools, with
   actions that can run on the current selection first, then the most recently run. Any other action is still found
   with `plugins actions` and run with `plugins run`, and an action's tool name keeps working when it is not listed.
