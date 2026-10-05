@@ -108,6 +108,7 @@ arguments.
 | `knowledge memo <file> [--scope user]` / `knowledge skill <name> <file>` / `knowledge migrate [--to project]` | edit | Knowledge window › Notes and Skills: Save memo, Save notes, Save skill, Move older memo |
 | `knowledge add-lesson` / `update-lesson` / `remove-lesson` / `approve [--value]` / `reject` / `set-pref` / `set-fact` | edit | Knowledge window: New lesson, Save, Enable/Disable, Delete…, Approve, Reject; Inbox Approve, Edit…, Reject; Preferences and facts Add, Save, Remove |
 | `knowledge revert <change-id>` | edit | Knowledge window › History: Revert… |
+| `knowledge split-memo <entries.json> [--scope user]` / `knowledge split-memo --keep` | edit | Knowledge window › Notes: Ask the agent to split it, Keep as notes (#72) |
 | `skills save <name> <file> [--scope user]` / `skills enable` / `skills disable` / `skills remove` / `skills propose <name> <file> --summary` | edit | Knowledge window › Skills: Add, Save skill, On for agents, Share with Claude + Codex, Delete…, Propose change… (kit skills) |
 | `ui action <id\|shortcut>` | edit | Any editor button or shortcut, run by the same code: `timeline.split` / `cmd+b`, `timeline.zoom-in` / `cmd+=`, `playback.toggle` / `space`, `source.mark-in` / `i`; plugin action IDs and shortcuts too |
 
@@ -274,7 +275,7 @@ The two CLIs don't share transcripts. When the user hands a task from one agent 
 - the context block (§3);
 - the timeline text form;
 - the knowledge: notes for every project, the project memo (`<project>/.bashcut/agent-memory.md`) and project
-  skills;
+  skills, with a hint under a memo not yet split into structured entries (`knowledge split-memo`, #72);
 - a bounded summary of the structured knowledge (`.bashcut/knowledge/`, #67, #73): up to 20 active lessons
   (project first, newest first) with their fix, up to 30 preferences (a project value wins) and 30 project facts,
   each one line of at most 240 characters, and the number of proposals waiting for review. The same summary is in

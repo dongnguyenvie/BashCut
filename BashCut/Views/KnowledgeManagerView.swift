@@ -363,6 +363,7 @@ private struct KnowledgeNotesSection: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Project memory").font(.headline)
                     if model.hasProject {
+                        splitOffer(.project)
                         TextEditor(text: $model.memo).font(.body).border(.gray.opacity(0.3))
                         Button("Save memo", action: model.saveMemo)
                     } else {
@@ -372,10 +373,26 @@ private struct KnowledgeNotesSection: View {
                 }
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Notes for every project").font(.headline)
+                    splitOffer(.user)
                     TextEditor(text: $model.userMemo).font(.body).border(.gray.opacity(0.3))
                     Button("Save notes", action: model.saveUserMemo)
                 }
             }
         }.padding(16)
+    }
+
+    /// The one-time offer to split a memo into lessons, preferences and facts (#72).
+    @ViewBuilder private func splitOffer(_ scope: KnowledgeScope) -> some View {
+        if model.memoSplitOffers.contains(scope) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Split this memo into lessons, preferences and facts? The memo stays; what the agent finds waits in the inbox for your review.")
+                    .font(.caption).fixedSize(horizontal: false, vertical: true)
+                HStack {
+                    Button("Ask the agent to split it") { model.askAgentToSplit(scope) }
+                    Button("Keep as notes") { model.keepMemoAsNotes(scope) }
+                }.controlSize(.small)
+            }.padding(8).frame(maxWidth: .infinity, alignment: .leading)
+                .background(RoundedRectangle(cornerRadius: 6).fill(Color.cyan.opacity(0.10)))
+        }
     }
 }

@@ -323,6 +323,19 @@ struct CommandSpecTests {
         #expect(propose.params["summary"] == .string("Cut on the downbeat") && propose.spec.mode == .edit)
     }
 
+    @Test("The memo split reads its entries from a JSON file, or keeps the memo")
+    func splitMemoCommand() throws {
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".json")
+        try Data(#"{"facts": [{"key": "host", "value": "An"}]}"#.utf8).write(to: file)
+        defer { try? FileManager.default.removeItem(at: file) }
+        let split = try CommandLineParser.parse(["knowledge", "split-memo", file.path, "--scope", "user"])
+        #expect(split.spec.mode == .edit && split.params == [
+            "entries": .object(["facts": .array([.object(["key": .string("host"), "value": .string("An")])])]),
+            "scope": .string("user"),
+        ])
+        #expect(try CommandLineParser.parse(["knowledge", "split-memo", "--keep"]).params == ["keep": .bool(true)])
+    }
+
     @Test("The SubRip import reads the file named on the command line")
     func subRipFile() throws {
         let file = FileManager.default.temporaryDirectory.appendingPathComponent("bashcut-\(UUID().uuidString).srt")

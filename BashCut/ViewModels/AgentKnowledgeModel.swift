@@ -26,6 +26,10 @@ import Observation
     var message = ""
     /// A memo an older build left in the agent workspace or home folder, offered for migration.
     var legacy: LegacyKnowledgeMemo?
+    /// Memos with text that were neither split into entries nor kept as notes (#72); see AgentKnowledgeModel+MemoSplit.
+    var memoSplitOffers: Set<KnowledgeScope> = []
+    /// Puts a request in the agent's input (a terminal or chat agent in the dock); false when none is open.
+    @ObservationIgnored var askAgent: ((String) -> Bool)?
     private(set) var store: AgentKnowledgeStore?
 
     // Structured entries (#68); see AgentKnowledgeModel+Entries.swift.
@@ -68,9 +72,11 @@ import Observation
         var lines = ["[Notes for every project]", user.isEmpty ? "None." : user]
         if !userSkills.isEmpty { lines.append("Skills: \(names(userSkills))") }
         lines.append("[/Notes for every project]")
+        if memoSplitOffers.contains(.user) { lines.append(Self.splitHint(.user)) }
         if hasProject {
-            lines += ["[Project memory]", project.isEmpty ? "No memo." : project,
-                      "Skills: \(names(skills))", "[/Project memory]"]
+            lines += ["[Project memory]", project.isEmpty ? "No memo." : project]
+            if memoSplitOffers.contains(.project) { lines.append(Self.splitHint(.project)) }
+            lines += ["Skills: \(names(skills))", "[/Project memory]"]
         } else {
             lines.append("[Project memory] No saved project is open. [/Project memory]")
         }
@@ -116,6 +122,7 @@ import Observation
         case .project: memo = text
         case .user: userMemo = text
         }
+        loadMemoSplitOffers()
     }
 
     func migrateLegacy(to scope: KnowledgeScope, source: KnowledgeSource = KnowledgeSource(agent: "user")) throws {

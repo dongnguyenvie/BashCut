@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+- **Split the memo into lessons, preferences and facts** (#72). When the project memo or the notes for every project
+  have text, the Knowledge window's **Notes** section offers a one-time split: **Ask the agent to split it** puts a
+  request in the open agent's input, and **Keep as notes** stops offering it. The agent reads the memo and runs the
+  new `knowledge split-memo <entries.json> [--scope user]`; the lessons, preferences and facts it finds wait in the
+  **Inbox** for review (lessons tagged `memo`), entries that already exist are skipped, and the memo itself stays as
+  notes. The outcome is kept in `memo-split.json`, `knowledge get` returns `memoSplit` (`pending`, `split`, `kept`
+  or `none`) and agents see a hint under a memo that was not split yet. `knowledge memo` works as before.
 - **Skills in the Knowledge window** (#71). The **Skills** section now lists this project's skills, skills for every
   project (new: kept in `Application Support/BashCut/Knowledge/skills`) and the agent kit's skills with their
   descriptions. Project and user skills open in an editor with a Markdown **Preview**, can be turned off without
