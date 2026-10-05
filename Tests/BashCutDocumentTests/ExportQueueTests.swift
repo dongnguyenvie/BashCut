@@ -218,6 +218,23 @@ struct ExportQueueTests {
         #expect(reopened.report == nil)
     }
 
+    @Test("The export toast shows the newest notice until dismissed; failures stay and a project switch clears it")
+    func controllerNotice() {
+        let log = ExportLog()
+        let exports = ExportController(jobs: JobCenter()) { ExportPipeline(engine: FakeEngine(log: log), loudness: nil) }
+        #expect(exports.notice == nil)
+        exports.post(ExportNotice(.started, name: "one.mp4", author: .claude))
+        #expect(exports.notice?.kind == .started)
+        #expect(exports.notice?.author == .claude)
+        exports.post(ExportNotice(.failed("Disk full"), name: "one.mp4", author: .claude))
+        #expect(exports.notice?.kind == .failed("Disk full"))
+        exports.dismissNotice()
+        #expect(exports.notice == nil)
+        exports.post(ExportNotice(.finished, name: "two.mp4", author: .user))
+        exports.reset()
+        #expect(exports.notice == nil)
+    }
+
     @Test("OTIO exports refuse to replace a file unless asked")
     func otioReplace() throws {
         let root = try folder()

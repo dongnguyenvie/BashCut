@@ -58,14 +58,20 @@ extension ProjectDocument {
             reserved: exports.queue.reservedOutputs)
         let queued = exports.isRunning
         let session = sessionID
+        let name = request.output.lastPathComponent
         let job = try exports.enqueue(request, author: author) { [weak self] result in
             guard let self, session == sessionID else { return }
+            if !exports.isRunning { ui.showExportProgress = false }
             switch result {
-            case .success(let outcome): finishExport(request, outcome: outcome)
+            case .success(let outcome):
+                finishExport(request, outcome: outcome)
+                exports.post(ExportNotice(.finished, name: name, author: author))
             case .failure(let error) where JobCenter.isCancellation(error):
                 message = String(localized: "Export cancelled")
+                exports.post(ExportNotice(.cancelled, name: name, author: author))
             case .failure(let error):
                 message = error.localizedDescription
+                exports.post(ExportNotice(.failed(error.localizedDescription), name: name, author: author))
                 emitPluginEvent(.exportFailed, [
                     "output": .string(request.output.path), "preset": .string(preset.rawValue),
                     "error": .string(error.localizedDescription),
@@ -74,6 +80,7 @@ extension ProjectDocument {
         }
         ui.showExport = false
         message = queued ? String(localized: "Export queued") : String(localized: "Preparing export…")
+        exports.post(ExportNotice(queued ? .queued : .started, name: name, author: author))
         DebugLog.write("export", "queued \(job) \(preset.rawValue) → \(request.output.path)")
         emitPluginEvent(.exportStarted, [
             "job": .string(job), "output": .string(request.output.path), "preset": .string(preset.rawValue),
