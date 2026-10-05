@@ -316,28 +316,6 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
     func resumeID(for provider: any AgentProvider) -> String {
         provider.isAgent ? sessionBookmarks[provider.id].trimmingCharacters(in: .whitespacesAndNewlines) : ""
     }
-    /// Puts a request with the context in the open agent's input and shows the dock; false when no agent is open.
-    func ask(_ request: String) -> Bool {
-        guard chatPluginID != nil || current != nil else { return false }
-        sendContext(request)
-        if !isDetached { document.ui.showAgentDock = true }
-        return true
-    }
-
-    func sendContext(_ request: String = "", imageURL: URL? = nil) {
-        loadKnowledge()
-        var text = document.contextText() + "\n" + knowledge.context + "\n" + request
-        if let imageURL {
-            text += "\nCurrent viewer frame: " + imageURL.path
-        }
-        if let chatPluginID {
-            let agent = document.chatAgents.model(for: chatPluginID)
-            agent.draft = request.isEmpty ? text : request
-            agent.draftImage = imageURL
-        } else {
-            current?.paste(text)
-        }
-    }
 }
 
 extension AgentDockModel {
