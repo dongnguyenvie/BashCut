@@ -16,6 +16,25 @@ struct ProjectStorageTests {
         try history.apply(.insert(track: "t1", item: caption), label: "Caption")
     }
 
+    @Test("Saving writes .bashcut/.gitignore for regenerable folders once and keeps the user's edits")
+    func cacheIgnore() async throws {
+        let folder = try directory()
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let store = ProjectStorage()
+        let url = folder.appendingPathComponent(ProjectStorage.projectFileName)
+        let data = try await store.save(ProjectHistory(project: Project(name: "Test")), to: url, expectedDisk: nil)
+        let ignore = folder.appendingPathComponent(".bashcut/.gitignore")
+        let written = try String(contentsOf: ignore, encoding: .utf8)
+        #expect(ProjectCacheIgnore.regenerable.allSatisfy { written.contains("\n" + $0 + "\n") })
+        try Data("proxies/\n".utf8).write(to: ignore)
+        try await store.save(ProjectHistory(project: Project(name: "Test")), to: url, expectedDisk: data)
+        #expect(try String(contentsOf: ignore, encoding: .utf8) == "proxies/\n")
+        // Other project files get their own cache folder and no .gitignore.
+        let fixture = folder.appendingPathComponent("fixture.json")
+        try await store.save(ProjectHistory(project: Project(name: "Test")), to: fixture, expectedDisk: nil)
+        #expect(!FileManager.default.fileExists(atPath: folder.appendingPathComponent(".bashcut-fixture.json/.gitignore").path))
+    }
+
     @Test("A project path may name the file or its folder; anything else has no project")
     func projectFileForPath() throws {
         let folder = try directory()

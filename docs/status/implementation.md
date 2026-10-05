@@ -36,6 +36,9 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
 - Atomic save, autosave every 30 seconds and on deactivation, recovery choice, restored history, and
   external-change handling with a reload/conflict sheet listing project, media, track and item differences.
 - Project folders are watched with filesystem events, with an activation check as a fallback.
+- `.bashcut/.gitignore` lists the regenerable project caches (written once on create or save); the plugin
+  registry copy lives in `~/Library/Caches/BashCut/Registry` and an old Application Support copy is moved there
+  once. The full layout is in [Storage on disk](../reference/project-format.md#storage-on-disk).
 - Open projects from Finder (double-click or **Open With**) or by dropping a `project.bashcut.json` or its folder
   on the Dock icon. BashCut registers as an alternate app for JSON and folders, never the default.
 - Media picked from the linked `footage` folder is stored as `footage/<file>`; older `../../…` paths into it are

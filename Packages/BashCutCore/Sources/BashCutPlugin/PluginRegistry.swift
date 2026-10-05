@@ -244,6 +244,22 @@ public actor PluginRegistryClient {
         }
     }
 
+    /// Moves a registry cache left in `legacy` (Application Support before #101) to `destination`, once: files the
+    /// destination already has win, and the legacy folder is removed. Errors are ignored; the cache is refetched.
+    public nonisolated static func migrateCache(from legacy: URL, to destination: URL) {
+        let manager = FileManager.default
+        guard legacy.standardizedFileURL != destination.standardizedFileURL, manager.fileExists(atPath: legacy.path)
+        else { return }
+        try? manager.createDirectory(at: destination, withIntermediateDirectories: true)
+        for name in ["registry.json", "registry.meta.json"] {
+            let target = destination.appendingPathComponent(name)
+            if !manager.fileExists(atPath: target.path) {
+                try? manager.moveItem(at: legacy.appendingPathComponent(name), to: target)
+            }
+        }
+        try? manager.removeItem(at: legacy)
+    }
+
     /// The last good copy, without touching the network; nil when there is none for this URL.
     public func cached() -> Snapshot? {
         loadCache().map { Snapshot(document: $0.document, fetchedAt: $0.meta.fetchedAt, staleReason: nil) }

@@ -78,6 +78,7 @@ public actor ProjectStorage {
             throw StorageError.changedOnDisk
         }
         try FileManager.default.createDirectory(at: cache(url), withIntermediateDirectories: true)
+        if url.lastPathComponent == Self.projectFileName { ProjectCacheIgnore.ensure(in: cache(url)) }
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
         var journal = try encoder.encode(history)

@@ -41,6 +41,7 @@ struct ProjectCreationTests {
         for name in ["media", "voiceover", "khao-sat", "subtitles", "render", ".bashcut"] {
             #expect(try folder.appendingPathComponent(name).resourceValues(forKeys: [.isDirectoryKey]).isDirectory == true)
         }
+        #expect(FileManager.default.fileExists(atPath: folder.appendingPathComponent(".bashcut/.gitignore").path))
         #expect(try FileManager.default.destinationOfSymbolicLink(atPath: folder.appendingPathComponent("footage").path) == shoot.path)
         #expect(try String(contentsOf: original, encoding: .utf8) == "untouched")
     }

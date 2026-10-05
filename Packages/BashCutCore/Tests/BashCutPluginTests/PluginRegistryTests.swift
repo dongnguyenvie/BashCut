@@ -216,4 +216,23 @@ struct PluginRegistryTests {
         let leftovers = (try? FileManager.default.contentsOfDirectory(atPath: root.appendingPathComponent("Plugins").path)) ?? []
         #expect(leftovers.isEmpty)
     }
+
+    @Test("The registry cache moves out of Application Support once; a newer copy in Caches wins")
+    func migrateLegacyCache() throws {
+        defer { try? FileManager.default.removeItem(at: root) }
+        let legacy = root.appendingPathComponent("Support/Registry"), caches = root.appendingPathComponent("Caches/Registry")
+        try FileManager.default.createDirectory(at: legacy, withIntermediateDirectories: true)
+        try Data("old".utf8).write(to: legacy.appendingPathComponent("registry.json"))
+        try Data("old-meta".utf8).write(to: legacy.appendingPathComponent("registry.meta.json"))
+        try FileManager.default.createDirectory(at: caches, withIntermediateDirectories: true)
+        try Data("new-meta".utf8).write(to: caches.appendingPathComponent("registry.meta.json"))
+
+        PluginRegistryClient.migrateCache(from: legacy, to: caches)
+        #expect(try String(contentsOf: caches.appendingPathComponent("registry.json"), encoding: .utf8) == "old")
+        #expect(try String(contentsOf: caches.appendingPathComponent("registry.meta.json"), encoding: .utf8) == "new-meta")
+        #expect(!FileManager.default.fileExists(atPath: legacy.path))
+        // Same folder (tests, custom roots): nothing is removed.
+        PluginRegistryClient.migrateCache(from: caches, to: caches)
+        #expect(FileManager.default.fileExists(atPath: caches.appendingPathComponent("registry.json").path))
+    }
 }
