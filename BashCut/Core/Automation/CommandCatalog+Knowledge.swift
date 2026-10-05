@@ -110,7 +110,9 @@ extension CommandCatalog {
             parameters: [CommandParameter("key", .string, "Only this key", cli: .positional), readScope]),
         CommandSpec(
             "knowledge.set-pref", .edit,
-            "Set or remove a preference: for every project (default; agents need approval) or only this project.",
+            "Set or remove a preference: for every project (default) or only this project. An agent's change for every "
+                + "project waits in the Knowledge inbox (approval proposed) unless the user lets agents act without "
+                + "confirmation.",
             parameters: [
                 valueKey, valueText, removeValue,
                 CommandParameter("scope", .string, "user (default) or project", default: .string("user"),
@@ -128,16 +130,30 @@ extension CommandCatalog {
 
     private static let reviewSpecs: [CommandSpec] = [
         CommandSpec(
-            "knowledge.proposals", .read, "List proposed lessons waiting for the user's review.",
+            "knowledge.proposals", .read,
+            "List what waits for the user's review in the Knowledge inbox: proposed lessons (type lesson, id l-…) and "
+                + "agents' preference changes for every project (type value, id p-…; value null removes the key).",
             parameters: [readScope]),
         CommandSpec(
             "knowledge.approve", .edit,
-            "Approve a proposed lesson so agents follow it. The user decides: an agent's request asks for approval.",
-            parameters: [lessonID]),
+            "Approve a proposal: a proposed lesson becomes active, a preference change is applied. The user decides: "
+                + "an agent's request asks for approval.",
+            parameters: [
+                CommandParameter("id", .string, "Proposal ID (l-… or p-…) from knowledge proposals", required: true,
+                                 cli: .positional),
+                CommandParameter("value", .string, "For a preference proposal: apply this value instead (edit)",
+                                 cli: .option("value")),
+                session,
+            ]),
         CommandSpec(
             "knowledge.reject", .edit,
-            "Reject a proposed lesson; it is removed and history keeps it. An agent's request asks for approval.",
-            parameters: [lessonID]),
+            "Reject a proposal: a proposed lesson is removed, a preference change is dropped; history keeps both. An "
+                + "agent's request asks for approval.",
+            parameters: [
+                CommandParameter("id", .string, "Proposal ID (l-… or p-…) from knowledge proposals", required: true,
+                                 cli: .positional),
+                session,
+            ]),
         CommandSpec(
             "knowledge.history", .read,
             "List changes to lessons, preferences and facts, newest first, with who made them and the entry before "

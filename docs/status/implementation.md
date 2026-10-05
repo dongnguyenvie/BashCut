@@ -191,6 +191,10 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
 - The Knowledge window (#68) replaced the Agent Knowledge sheet: Lessons (search, scope/status/tag filters, sort,
   inline edit, approve/reject, enable/disable, delete, source and "New since last visit"), Preferences, Project
   facts, Notes and Skills. It polls the knowledge files' signature and reloads on change.
+- The Knowledge inbox (#69): proposed lessons (kit changes tagged `kit` show their diff) and agents' preference
+  changes for every project (`proposals.json`, applied on approval, editable first) with Approve / Edit / Reject;
+  `knowledge proposals` lists both, `approve`/`reject` take `l-…` or `p-…` IDs. The dock's book button shows the
+  proposal count, or a dot for entries changed since the last visit.
 - A shared debug log (`~/Library/Logs/BashCut/debug.log`) written by the app, CLI and MCP bridge.
 
 ### Plugins

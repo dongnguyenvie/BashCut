@@ -71,13 +71,22 @@ SwiftTerm terminal. Claude and Codex use your installed CLI and its existing log
   - **Preferences** (`knowledge prefs`, `set-pref`): your taste as key/value pairs, for every project by default. A
     value set for one project wins over the one for every project.
   - **Facts** (`knowledge facts`, `set-fact`): people, places, footage notes and what was approved, for this project.
-  - **Proposals** (`knowledge proposals`, `approve`, `reject`): a lesson an agent records for every project always
-    starts as a proposal. Approving makes it active; rejecting removes it.
+  - **Proposals** (`knowledge proposals`, `approve`, `reject`): what waits in the Knowledge window's **Inbox**. A
+    lesson an agent records for every project always starts as a proposal (ID `l-…`); approving makes it active,
+    rejecting removes it. An agent's preference change for every project (`set-pref`) is not applied at once: it
+    waits as a value proposal (ID `p-…`, kept in that scope's `proposals.json`) and `set-pref` returns
+    `{"approval": "proposed", "proposal": …}`. A newer proposal for the same key replaces the older one. `approve
+    p-… --value TEXT` applies your edited value instead. Kit change proposals (lessons tagged `kit`, written by the
+    `bashcut-self-learn` skill) show their diff. When Settings lets agents act without confirmation, preferences are
+    applied at once as before.
   - **History** (`knowledge history`): every change, newest first, with who made it and the entry before and after
     (`history.jsonl`).
 
-  An agent's request that changes knowledge for every project, or approves or rejects a proposal, asks for your
-  approval. Changes to this project's lessons and facts do not.
+  An agent's request that otherwise changes knowledge for every project (memo, lesson edits and removals), or
+  approves or rejects a proposal, asks for your approval. Changes to this project's lessons and facts do not.
+
+  The book button in the agent dock shows an orange count while proposals wait (clicking it opens the Inbox) and a
+  dot when agents changed knowledge since you last closed the window.
 
   In the Knowledge window, Lessons can be searched, filtered by scope, status and tag, and sorted newest or oldest
   first (`knowledge lessons --query --scope --status --tag --sort`). Select a lesson to edit its fields, approve or

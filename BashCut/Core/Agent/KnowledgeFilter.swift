@@ -73,7 +73,7 @@ extension AgentKnowledgeStore {
     /// Changes whenever a knowledge file of either scope is written, so an open window can reload what agents or
     /// people changed on disk.
     public func signature() -> String {
-        let names = ["lessons.json", "prefs.json", "facts.json", "history.jsonl"]
+        let names = ["lessons.json", "prefs.json", "facts.json", "proposals.json", "history.jsonl"]
         var parts: [String] = []
         for scope in KnowledgeScope.allCases {
             guard let folder = entriesFolder(scope) else { continue }

@@ -146,7 +146,7 @@ struct KnowledgeEntriesTests {
         #expect(summary.facts.map(\.key) == ["host"] && summary.proposals == 1 && summary.errors.isEmpty)
         let text = summary.text
         #expect(text.contains("- \(new.id) (project) Captions cover the face → " + String(repeating: "x", count: 239) + "…"))
-        #expect(text.contains("- pace = calm (project)") && text.contains("1 proposed lesson(s)"))
+        #expect(text.contains("- pace = calm (project)") && text.contains("1 proposal(s)"))
         #expect(!text.contains("Old rule") && !text.contains("Maybe"))
 
         for index in 0..<KnowledgeSummary.lessonLimit {

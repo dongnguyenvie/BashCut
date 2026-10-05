@@ -73,7 +73,7 @@ arguments.
 | `plugins actions` / `plugins hooks` / `plugins options <plugin>` | read | Plugin actions wherever they appear, Hook Activity, Options… |
 | `doctor run` | read | Doctor sheet |
 | `knowledge get` | read | Knowledge window: Notes and Skills |
-| `knowledge lessons [--scope] [--status] [--tag] [--query] [--sort]` / `knowledge prefs` / `knowledge facts` / `knowledge history` | read | Knowledge window: Lessons (search, filters, sort), Preferences, Project facts |
+| `knowledge lessons [--scope] [--status] [--tag] [--query] [--sort]` / `knowledge prefs` / `knowledge facts` / `knowledge proposals` / `knowledge history` | read | Knowledge window: Lessons (search, filters, sort), Preferences, Project facts, Inbox; dock badge |
 | `ui frame [frame]` | read | Ask's attach viewer frame: the viewer picture at a frame as a PNG path |
 | `ui actions` | read | Every toolbar button, menu item and shortcut, with its enabled state |
 | `ui dialog` | read | Every open alert, file panel, sheet and popover |
@@ -105,7 +105,7 @@ arguments.
 | `plugins install <plugin> [--version]` / `plugins remove <plugin>` | edit | Browse › Install/Update (the approval stays with the user) and Installed › Remove |
 | `luts import <file.cube> [--name]` | edit | Filters panel, Import .cube… |
 | `knowledge memo <file> [--scope user]` / `knowledge skill <name> <file>` / `knowledge migrate [--to project]` | edit | Knowledge window › Notes and Skills: Save memo, Save notes, Save skill, Move older memo |
-| `knowledge add-lesson` / `update-lesson` / `remove-lesson` / `approve` / `reject` / `set-pref` / `set-fact` | edit | Knowledge window: New lesson, Save, Enable/Disable, Delete…, Approve, Reject; Preferences and facts Add, Save, Remove |
+| `knowledge add-lesson` / `update-lesson` / `remove-lesson` / `approve [--value]` / `reject` / `set-pref` / `set-fact` | edit | Knowledge window: New lesson, Save, Enable/Disable, Delete…, Approve, Reject; Inbox Approve, Edit…, Reject; Preferences and facts Add, Save, Remove |
 | `ui action <id\|shortcut>` | edit | Any editor button or shortcut, run by the same code: `timeline.split` / `cmd+b`, `timeline.zoom-in` / `cmd+=`, `playback.toggle` / `space`, `source.mark-in` / `i`; plugin action IDs and shortcuts too |
 
 ### Privileged commands

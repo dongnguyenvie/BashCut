@@ -3,7 +3,7 @@ import BashCutAutomation
 import BashCutDocument
 import SwiftUI
 
-/// The Knowledge window (#68): lessons, preferences and project facts the agents recorded, the memos and the project
+/// The Knowledge window (#68): the inbox of proposals (#69), lessons, preferences and project facts the agents recorded, the memos and the project
 /// skills. The section is `ui.knowledgeSection`, so agents can show one with `ui view --knowledge-section`; every
 /// change here also has a `knowledge` command.
 struct KnowledgeManagerView: View {
@@ -47,7 +47,11 @@ struct KnowledgeManagerView: View {
                         Spacer()
                         let new = model.newCount(name)
                         if new > 0 { KnowledgeNewBadge(text: "\(new)") }
-                        if let count = model.count(name) {
+                        if name == "inbox", model.proposalCount > 0 {
+                            Text("\(model.proposalCount)").font(.caption2.bold().monospacedDigit())
+                                .padding(.horizontal, 6).padding(.vertical, 1)
+                                .background(Capsule().fill(Color.orange)).foregroundStyle(.black)
+                        } else if let count = model.count(name) {
                             Text("\(count)").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
                         }
                     }
@@ -60,10 +64,9 @@ struct KnowledgeManagerView: View {
                 .foregroundStyle(section == name ? Color.primary : Color.secondary)
             }
             Spacer()
-            if model.proposalCount > 0 {
+            if model.proposalCount > 0, section != "inbox" {
                 Button {
-                    ui.knowledgeSection = "lessons"
-                    model.filter.status = .proposed
+                    ui.knowledgeSection = "inbox"
                 } label: {
                     Label(String(format: String(localized: "%d waiting for review"), model.proposalCount),
                           systemImage: "tray.full")
@@ -77,6 +80,12 @@ struct KnowledgeManagerView: View {
 
     @ViewBuilder private var detail: some View {
         switch section {
+        case "inbox":
+            KnowledgeInboxSection(model: model) { id in
+                model.filter.status = .proposed
+                ui.knowledgeSection = "lessons"
+                model.selectLesson(id)
+            }
         case "prefs": KnowledgeValuesSection(model: model, kind: .prefs)
         case "facts": KnowledgeValuesSection(model: model, kind: .facts)
         case "notes": KnowledgeNotesSection(model: model)
@@ -96,6 +105,7 @@ struct KnowledgeManagerView: View {
 
     static func title(_ section: String) -> String {
         switch section {
+        case "inbox": "Inbox"
         case "prefs": "Preferences"
         case "facts": "Project facts"
         case "notes": "Notes"
@@ -106,6 +116,7 @@ struct KnowledgeManagerView: View {
 
     static func icon(_ section: String) -> String {
         switch section {
+        case "inbox": "tray"
         case "prefs": "slider.horizontal.3"
         case "facts": "list.bullet.rectangle"
         case "notes": "note.text"

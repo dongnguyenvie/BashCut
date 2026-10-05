@@ -69,7 +69,8 @@ public struct KnowledgeSummary: Sendable, Equatable {
             if omittedFacts > 0 { lines.append("- … \(omittedFacts) more (`bashcut knowledge facts`)") }
         }
         if proposals > 0 {
-            lines.append("\(proposals) proposed lesson(s) wait for the user's review; do not follow them yet.")
+            lines.append("\(proposals) proposal(s) (lessons, preference changes) wait for the user's review in the "
+                + "Knowledge inbox; do not follow them yet.")
         }
         lines += errors.map { "Unreadable: \($0)" }
         lines.append(
@@ -101,6 +102,7 @@ extension AgentKnowledgeStore {
                 summary.proposals += all.filter { $0.status == .proposed }.count
             } catch { summary.errors.append(error.localizedDescription) }
         }
+        do { summary.proposals += try valueProposals().count } catch { summary.errors.append(error.localizedDescription) }
         summary.lessons = Array(lessons.prefix(KnowledgeSummary.lessonLimit))
         summary.omittedLessons = lessons.count - summary.lessons.count
 

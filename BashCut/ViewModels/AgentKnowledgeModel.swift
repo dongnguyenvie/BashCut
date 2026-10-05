@@ -20,6 +20,8 @@ import Observation
     var lessons: [KnowledgeLesson] = []
     var prefs: [KnowledgeValue] = []
     var facts: [KnowledgeValue] = []
+    /// Agents' preference changes waiting for review (#69).
+    var valueProposals: [KnowledgeValueProposal] = []
     /// Files that could not be read.
     var entryErrors: [String] = []
     var filter = KnowledgeFilter()
@@ -32,6 +34,8 @@ import Observation
     var lastVisit: Date?
     /// Entries the user changed in the window during this visit; their own changes are not new to them.
     var changedHere: Set<String> = []
+    /// Whether the Knowledge window is open; otherwise `lastVisit` follows the stored visit date for the dock badge.
+    var visiting = false
     @ObservationIgnored var signature = ""
 
     var hasProject: Bool { store?.project != nil }
@@ -58,6 +62,7 @@ import Observation
         userMemo = store.memo(.user)
         skills = store.skills()
         legacy = store.legacyMemo()
+        if !visiting { lastVisit = UserDefaults.standard.object(forKey: visitKey) as? Date }
         loadEntries()
         if let selectedSkill, skills.contains(where: { $0.name == selectedSkill }) {
             select(selectedSkill)

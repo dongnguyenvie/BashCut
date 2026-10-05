@@ -130,27 +130,55 @@ extension ProjectDocument {
                 guard arguments.bool("remove") || value != nil else { throw RPCFailure(-32602, "Missing value") }
                 let store = document.agents.knowledgeStore
                 let source = Self.knowledgeSource(author, arguments)
-                return try document.knowledgeChange(
-                    Self.setMethod(kind), approval: scope == .user, author: author,
-                    arguments: ["key": key, "value": value ?? "(remove)", "scope": scope.rawValue]) {
-                    try store.setValue(kind, key: key, value: value, scope: scope, source: source).map(Self.json) ?? .null
+                // An agent's preference for every project waits in the proposals inbox (#69), unless the user lets
+                // agents act without confirmation.
+                if scope == .user, author != .user {
+                    if document.settings.autoApprovePrivileged {
+                        document.registry.recordApproval(
+                            method: Self.setMethod(kind), author: author, approved: true, automatic: true)
+                    } else {
+                        let proposal = try store.proposeValue(kind, key: key, value: value, scope: scope, source: source)
+                        document.message = String(format: String(localized: "%@ proposes a preference: %@"),
+                                                  author.rawValue.capitalized, key)
+                        return .object(["approval": .string("proposed"), "proposal": try Self.json(proposal)])
+                    }
                 }
+                return try store.setValue(kind, key: key, value: value, scope: scope, source: source)
+                    .map(Self.json) ?? .null
             }
         }
     }
 
     private func registerReviewCommands() {
         handle("knowledge.proposals") { document, arguments, _ in
-            try .array(document.agents.knowledgeStore.proposals(Self.knowledgeScope(arguments.optionalString("scope")))
-                .map(Self.json))
+            let store = document.agents.knowledgeStore
+            let scope = try Self.knowledgeScope(arguments.optionalString("scope"))
+            return try .array(store.proposals(scope).map { try Self.json($0, type: "lesson") }
+                + store.valueProposals(scope).map(Self.json))
         }
         for approve in [true, false] {
             let method = approve ? "knowledge.approve" : "knowledge.reject"
             handleAuthored(method) { document, arguments, author in
                 let store = document.agents.knowledgeStore
-                let lesson = try store.lesson(arguments.string("id"))
-                guard lesson.status == .proposed else { throw RPCFailure(-32602, "Lesson \(lesson.id) is not a proposal") }
+                let id = try arguments.string("id")
                 let source = Self.knowledgeSource(author, arguments)
+                if id.hasPrefix("p-") {
+                    let proposal = try store.valueProposal(id)
+                    let edited = approve ? arguments.optionalString("value") : nil
+                    var shown = ["id": id, "key": proposal.key, "scope": proposal.scope.rawValue,
+                                 "value": edited ?? proposal.value ?? "(remove)"]
+                    if let session = arguments.optionalString("session") { shown["session"] = session }
+                    return try document.knowledgeChange(method, approval: true, author: author, arguments: shown) {
+                        approve
+                            ? try store.approveValue(id, value: edited, source: source).map(Self.json) ?? .null
+                            : try Self.json(store.rejectValue(id, source: source))
+                    }
+                }
+                let lesson = try store.lesson(id)
+                guard lesson.status == .proposed else { throw RPCFailure(-32602, "Lesson \(lesson.id) is not a proposal") }
+                guard arguments.values["value"] == nil else {
+                    throw RPCFailure(-32602, "value is for preference proposals (p-…); edit a lesson with update-lesson")
+                }
                 return try document.knowledgeChange(
                     method, approval: true, author: author, arguments: Self.approvalArguments(lesson, arguments)) {
                     try Self.json(approve ? store.approve(lesson.id, source: source) : store.reject(lesson.id, source: source))
@@ -218,6 +246,20 @@ extension ProjectDocument {
     }
 
     private static func json(_ lesson: KnowledgeLesson) throws -> JSONValue { try json(lesson, scope: lesson.scope) }
+    private static func json(_ proposal: KnowledgeValueProposal) throws -> JSONValue {
+        try json(proposal, type: "value", scope: proposal.scope)
+    }
+
+    /// A proposal in `knowledge proposals`: the entry plus `type` (`lesson` or `value`).
+    private static func json(_ lesson: KnowledgeLesson, type: String) throws -> JSONValue {
+        try json(lesson, type: type, scope: lesson.scope)
+    }
+
+    private static func json<Entry: Encodable>(_ entry: Entry, type: String, scope: KnowledgeScope) throws -> JSONValue {
+        guard case .object(var fields) = try json(entry, scope: scope) else { return .null }
+        fields["type"] = .string(type)
+        return .object(fields)
+    }
     private static func json(_ value: KnowledgeValue) throws -> JSONValue { try json(value, scope: value.scope) }
     private static func json(_ change: KnowledgeChange) throws -> JSONValue { try json(change, scope: change.scope) }
 
