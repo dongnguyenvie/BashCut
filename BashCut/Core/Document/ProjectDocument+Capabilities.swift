@@ -345,6 +345,10 @@ extension ProjectDocument {
                     "availability": .string(plugins.service.availability(plugin).name),
                     "detail": .string(plugins.service.availability(plugin).detail),
                     "transport": .string(plugin.manifest.transportKind.rawValue),
+                    "source": plugins.origin(of: plugin).map { origin in
+                        .object(["url": .string(origin.url), "resolved": origin.resolved.map(JSONValue.string) ?? .null,
+                                 "sha256": .string(origin.sha256)])
+                    } ?? .null,
                     "hooksEnabled": .bool(plugins.trust.hooksEnabled(plugin)),
                     "actions": .array(plugin.manifest.actions.map { .string($0.id) }),
                     "hooks": .array(plugin.manifest.hooks.map { .string($0.event) }),

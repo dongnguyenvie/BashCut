@@ -178,12 +178,39 @@ Release assets. Publishing, the archive layout and the registry format are descr
 ## Private and local plugins
 
 A plugin does not have to be in the registry. **Add Plugin…** (Plugins › Installed, the empty Installed view, or
-Settings › Plugins) or dropping onto Plugins › Installed takes:
+Settings › Plugins) takes a link or, with *Choose File or Folder…* or a drop onto Plugins › Installed, a plugin on
+this Mac:
 
 - a plugin **folder** with `plugin.json` at its top level;
 - the folder's **`plugin.json`** (its folder is used);
 - a **`.zip`** or **`.bashcutplugin`** archive holding exactly one plugin folder, the same layout as a registry
   release.
+
+### From a link
+
+Paste the link the plugin's author shares (HTTPS only):
+
+| Link | What is downloaded |
+|---|---|
+| `https://example.com/my-plugin.zip` (or `.bashcutplugin`) | that archive |
+| `https://github.com/user/repo` (optionally `#v1.2`, a tag, branch or commit) | the repo at that ref (default branch otherwise); the plugin is the repo root |
+| `https://github.com/user/repo/tree/<ref>/<folder>` | the repo at `<ref>`; the plugin is `<folder>` |
+| `https://github.com/user/repo/blob/<ref>/<folder>/plugin.json`, or its `raw.githubusercontent.com` link | the same as the folder link |
+| `https://github.com/user/repo/releases/tag/<tag>` (or `/releases/latest`) | the release's one `.zip` / `.bashcutplugin` asset (`.bashcutplugin` wins when there are both) |
+| `https://github.com/user/repo/releases/download/<tag>/<asset>.zip` | that asset |
+
+A repo link is pinned to the commit its ref points at when you download it, so the approval and the install are the
+same files; the approval shows the commit (or the release tag). Add `#sha256=<hex>` to the link (or
+`#<ref>&sha256=<hex>`, or fill *SHA-256* in the sheet) to require that exact archive; a different download is
+refused.
+
+**Private repos and servers:** *Add Token…* in the sheet saves an access token for the link's host (one for
+`github.com` covers GitHub's API and downloads; use a fine-grained token with read access to the repo's contents).
+It is kept in the Keychain on this Mac, sent only to that host, dropped when a download redirects to another host,
+and never written to project files, logs or command parameters.
+
+BashCut remembers where a plugin from a link came from: Plugins › Installed shows the link and commit, and
+`plugins list` reports it as `source`. Checking those links for updates is planned.
 
 BashCut checks the plugin before copying anything: a manifest that decodes and validates, an API window this
 BashCut supports, an entrypoint that exists and is executable, and no symbolic links leaving the folder. Problems name
@@ -204,12 +231,16 @@ again, and only the user can approve. Remove works as for registry plugins.
 
 Agents and scripts:
 
-- `bashcut plugins validate <path>` reports `valid`, `id`, `version`, `capabilities`, `category`, `problems`,
-  `warnings` and, for archives, `sha256`. It installs and runs nothing.
-- `bashcut plugins install --path <path> [--scope user|project]` checks and copies the plugin, then shows the same
-  approval in the Plugins sheet.
+- `bashcut plugins validate <path>` or `--url <link> [--ref …] [--sha256 …]` reports `valid`, `id`, `version`,
+  `capabilities`, `category`, `problems`, `warnings`, for archives and links `sha256`, and for links `source` (the
+  commit or release tag). It installs and runs nothing.
+- `bashcut plugins install --path <path>` or `--url <link> [--ref …] [--sha256 …]`, with `[--scope user|project]`,
+  checks (and downloads) the plugin, then shows the same approval in the Plugins sheet. A private link uses the token
+  saved in Add Plugin…; there is no token parameter.
+- `bashcut ui open add-plugin` opens the Add Plugin sheet.
 
-To share a private plugin with a team, send the zip (`ditto -c -k --keepParent my-plugin my-plugin.zip`) or commit
+To share a private plugin with a team, push it to a private GitHub repo and share the link (each person adds a
+token once), send the zip (`ditto -c -k --keepParent my-plugin my-plugin.zip`) or commit
 it under the project's `.bashcut/plugins/`. Each person approves it on their own Mac.
 
 ## Discovery and precedence

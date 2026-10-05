@@ -17,6 +17,8 @@ public struct PluginValidation: Sendable {
     public var warnings: [String] = []
     /// SHA-256 of the archive, for zips.
     public var sha256: String?
+    /// Where a plugin checked from a link came from.
+    public var origin: PluginLinkOrigin?
     public var isValid: Bool { manifest != nil && problems.isEmpty }
 
     public init() {}
@@ -33,6 +35,8 @@ public struct StagedLocalPlugin: Sendable {
     public let warnings: [String]
     /// Folder that holds the copy; remove it with `discard()` once installed or cancelled.
     public let stagingRoot: URL
+    /// Set when the plugin was downloaded from a link.
+    public var origin: PluginLinkOrigin?
 
     public func discard() { try? FileManager.default.removeItem(at: stagingRoot) }
 }

@@ -34,37 +34,15 @@ extension ProjectDocument {
             await document.plugins.refreshRegistry()
             return .array(document.plugins.updates.map(\.json))
         }
-        handle("plugins.validate") { _, arguments, _ in
-            let url = URL(fileURLWithPath: try arguments.string("path"))
-            return await Task.detached { PluginLocalSource.validate(url).json }.value
+        handle("plugins.validate") { document, arguments, _ in
+            switch try PluginSourceArgument(arguments) {
+            case .path(let url): return await Task.detached { PluginLocalSource.validate(url).json }.value
+            case .link(let link): return await document.plugins.validateLink(link).json
+            case nil: throw RPCFailure(-32602, "Give a path or a url")
+            }
         }
         handleAuthored("plugins.install") { document, arguments, author in
-            if let path = arguments.optionalString("path") {
-                guard arguments.optionalString("plugin") == nil, arguments.optionalString("version") == nil else {
-                    throw RPCFailure(-32602, "Give either a registry plugin or path, not both")
-                }
-                return try document.requestLocalPluginInstall(
-                    URL(fileURLWithPath: path), scope: PluginInstallScope(rawValue: arguments.optionalString("scope") ?? "user")
-                        ?? .user, author: author)
-            }
-            guard let id = arguments.optionalString("plugin") else {
-                throw RPCFailure(-32602, "Give a registry plugin ID or a path")
-            }
-            guard arguments.optionalString("scope") == nil else {
-                throw RPCFailure(-32602, "scope is only for path; registry plugins install for this Mac")
-            }
-            let version = arguments.optionalString("version")
-            let job = document.jobs.start("plugins.install", author: author, detail: id, work: { [weak document] reporter in
-                guard let document else { throw CancellationError() }
-                reporter.detail("Downloading \(id)")
-                try await document.plugins.requestInstall(id, version: version)
-                document.ui.showPlugins = true
-                return .object(["plugin": .string(id), "approval": .string("pending")])
-            }, finished: { [weak document] outcome in
-                guard case .failure(let error) = outcome, !JobCenter.isCancellation(error) else { return }
-                document?.message = id + ": " + error.localizedDescription
-            })
-            return .object(["job": .string(job), "state": .string("running")])
+            try document.installPluginCommand(arguments, author: author)
         }
         handleAuthored("plugins.remove") { document, arguments, _ in
             let plugin = try document.requirePlugin(arguments.string("plugin"))
@@ -84,17 +62,53 @@ extension ProjectDocument {
         }
     }
 
-    /// `plugins install --path`: checks and copies the plugin as a job, then shows the approval only the user can give.
-    private func requestLocalPluginInstall(_ url: URL, scope: PluginInstallScope, author: Author) throws -> JSONValue {
-        let name = url.lastPathComponent
+    /// `plugins install`: a registry plugin by ID, or a plugin from a path or link.
+    private func installPluginCommand(_ arguments: CommandArguments, author: Author) throws -> JSONValue {
+        if let source = try PluginSourceArgument(arguments) {
+            guard arguments.optionalString("plugin") == nil, arguments.optionalString("version") == nil else {
+                throw RPCFailure(-32602, "Give either a registry plugin or a path/url, not both")
+            }
+            let scope = PluginInstallScope(rawValue: arguments.optionalString("scope") ?? "user") ?? .user
+            return requestAddedPluginInstall(source, scope: scope, author: author)
+        }
+        guard let id = arguments.optionalString("plugin") else {
+            throw RPCFailure(-32602, "Give a registry plugin ID, a path or a url")
+        }
+        guard arguments.optionalString("scope") == nil else {
+            throw RPCFailure(-32602, "scope is only for path or url; registry plugins install for this Mac")
+        }
+        let version = arguments.optionalString("version")
+        let job = jobs.start("plugins.install", author: author, detail: id, work: { [weak self] reporter in
+            guard let self else { throw CancellationError() }
+            reporter.detail("Downloading \(id)")
+            try await plugins.requestInstall(id, version: version)
+            ui.showPlugins = true
+            return .object(["plugin": .string(id), "approval": .string("pending")])
+        }, finished: { [weak self] outcome in
+            guard case .failure(let error) = outcome, !JobCenter.isCancellation(error) else { return }
+            self?.message = id + ": " + error.localizedDescription
+        })
+        return .object(["job": .string(job), "state": .string("running")])
+    }
+
+    /// `plugins install --path/--url`: checks (and downloads) the plugin as a job, then shows the approval only the user
+    /// can give.
+    private func requestAddedPluginInstall(_ source: PluginSourceArgument, scope: PluginInstallScope, author: Author) -> JSONValue {
+        let name = source.name
         let job = jobs.start("plugins.install", author: author, detail: name, work: { [weak self] reporter in
             guard let self else { throw CancellationError() }
-            reporter.detail("Checking \(name)")
-            try await plugins.requestLocalInstall(from: url, scope: scope)
+            let plugin: InstalledPlugin
+            switch source {
+            case .path(let url):
+                reporter.detail("Checking \(name)")
+                plugin = try await plugins.requestLocalInstall(from: url, scope: scope)
+            case .link(let link):
+                reporter.detail("Downloading \(name)")
+                plugin = try await plugins.requestLinkInstall(link, scope: scope)
+            }
             ui.showPlugins = true
-            let plugin = plugins.pendingInstall?.plugin
             return .object([
-                "plugin": plugin.map { .string($0.id) } ?? .null, "version": plugin.map { .string($0.manifest.version) } ?? .null,
+                "plugin": .string(plugin.id), "version": .string(plugin.manifest.version),
                 "scope": .string(scope.rawValue), "approval": .string("pending"),
             ])
         }, finished: { [weak self] outcome in
@@ -102,6 +116,38 @@ extension ProjectDocument {
             self?.message = name + ": " + error.localizedDescription
         })
         return .object(["job": .string(job), "state": .string("running")])
+    }
+}
+
+/// A plugin outside the registry named by `path` or `url` (with `ref` and `sha256`), or nil when neither is given.
+enum PluginSourceArgument {
+    case path(URL)
+    case link(PluginLink)
+
+    init?(_ arguments: CommandArguments) throws {
+        let path = arguments.optionalString("path"), url = arguments.optionalString("url")
+        let ref = arguments.optionalString("ref"), sha256 = arguments.optionalString("sha256")
+        switch (path, url) {
+        case (nil, nil):
+            guard ref == nil, sha256 == nil else { throw RPCFailure(-32602, "ref and sha256 are for url") }
+            return nil
+        case (let path?, nil):
+            guard ref == nil, sha256 == nil else { throw RPCFailure(-32602, "ref and sha256 are for url") }
+            self = .path(URL(fileURLWithPath: path))
+        case (nil, let url?):
+            do { self = .link(try PluginLink(parsing: url, ref: ref, sha256: sha256)) } catch {
+                throw RPCFailure(-32602, error.localizedDescription)
+            }
+        default:
+            throw RPCFailure(-32602, "Give either a path or a url, not both")
+        }
+    }
+
+    var name: String {
+        switch self {
+        case .path(let url): url.lastPathComponent
+        case .link(let link): link.url.absoluteString
+        }
     }
 }
 
@@ -115,6 +161,8 @@ extension PluginValidation {
             "category": manifest.map { .string(PluginCategory.of($0).rawValue) } ?? .null,
             "problems": .array(problems.map(JSONValue.string)), "warnings": .array(warnings.map(JSONValue.string)),
             "sha256": sha256.map(JSONValue.string) ?? .null,
+            "source": origin.map { .object(["url": .string($0.url), "resolved": $0.resolved.map(JSONValue.string) ?? .null]) }
+                ?? .null,
         ])
     }
 }

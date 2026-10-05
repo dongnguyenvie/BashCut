@@ -15,6 +15,8 @@ struct PendingPluginInstall: Identifiable {
     /// Set when the plugin came from a folder, zip or plugin.json on this Mac ("Add Plugin…"): the checked copy,
     /// removed after install or cancel.
     var local: StagedLocalPlugin?
+    /// Where it goes: the user folder, or the open project for a plugin from this Mac or a link. Chosen in the
+    /// approval (`PluginManagerModel.installScope`) and fixed when the user approves.
     var scope: PluginInstallScope = .user
     /// Re-runs the dependency recipes of an installed plugin (Install dependencies…) instead of installing it.
     var repair = false
@@ -144,6 +146,13 @@ enum PluginText {
     var downloading: Set<String> = []
     /// Narrows Browse to providers of one capability (a panel's "Find a plugin…").
     var browseCapability: String?
+    /// The Add Plugin… sheet (paste a link, or choose a file or folder).
+    var showAddPlugin = false
+    /// A plugin link is downloading.
+    var addingLink = false
+    /// Where the pending plugin from this Mac or a link goes. Kept apart from `pendingInstall` so changing it does not
+    /// re-present the approval sheet.
+    var installScope: PluginInstallScope = .user
     /// Narrows Browse to one category (the chips above the list, `ui view --plugins-category`).
     var browseCategory: PluginCategory?
     @ObservationIgnored private var cachedRegistryClient: PluginRegistryClient?
@@ -341,7 +350,10 @@ enum PluginText {
     /// progress and Cancel. Recipes run in the plugin's filtered environment and process group.
     func installPendingPlugin() {
         guard var pending = pendingInstall, !installing else { return }
-        if pending.local != nil { pending.replacing = replaces(pending) }
+        if pending.local != nil {
+            pending.scope = installScope
+            pending.replacing = replaces(pending)
+        }
         if let blocker = installBlocker(pending) {
             message = blocker
             return
@@ -436,6 +448,9 @@ enum PluginText {
         try await Task.detached { try Self.place(staged, at: destination, root: installRoot) }.value
         // The user approved these exact files: pin them so later changes need approval again.
         if let installed = PluginCatalog.discover(in: [installRoot]).plugins.first(where: { $0.id == manifest.id }) {
+            var origin = pending.local?.origin
+            origin?.installedAt = Date()
+            try? sources.set(origin, for: installed.directory)
             try trust.trust(installed)
             await checkHealthNow(installed)
         }
