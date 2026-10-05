@@ -395,7 +395,7 @@ extension ProjectDocument {
             }
             try document.plugins.setEnabled(plugin, enabled: enabled, hooks: hooks)
             return .object([
-                "plugin": .string(plugin.id), "availability": .string(document.plugins.service.availability(plugin).name),
+                "plugin": .string(plugin.id), "availability": .string(document.plugins.currentAvailability(plugin).name),
                 "hooks": .bool(document.plugins.trust.hooksEnabled(plugin)),
             ])
         }

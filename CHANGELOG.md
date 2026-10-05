@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+- **Faster plugin catalog with many plugins** (#103). Opening the Text or Audio panel, the Plugins sheet or a
+  project no longer reads every plugin's manifest and walks every file in every plugin folder on the main thread.
+  Manifests are read again only when they change, and each plugin shows the result of its last file check;
+  plugins not checked yet since launch are checked in the background and show **Checking…** meanwhile. Running a
+  plugin still checks all its files first, and **Reload** checks them at once. With 1000 plugins a refresh takes
+  ~33 ms instead of ~400 ms. `scripts/verify.sh perf` now also times the catalog with generated plugins.
 - **Faster library on large libraries.** Placing or applying a library item no longer rewrites the whole
   `library.json` on the main thread: use counts are kept in `usage.json` and written in the background (older counts
   move there on the next change). Each stored file's SHA-256 is saved when it is copied in, so `library stats` no

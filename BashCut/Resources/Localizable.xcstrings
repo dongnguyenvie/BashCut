@@ -1,6 +1,7 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Checking the plugin's files…": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Checking the plugin's files…" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đang kiểm tra các tệp của plugin…" } } } },
     "Older memo found at %@. BashCut now keeps knowledge in the project.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Older memo found at %@. BashCut now keeps knowledge in the project." } }, "vi": { "stringUnit": { "state": "translated", "value": "Tìm thấy memo cũ ở %@. BashCut giờ lưu knowledge trong project." } } } },
     "Move to notes for every project": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Move to notes for every project" } }, "vi": { "stringUnit": { "state": "translated", "value": "Chuyển vào ghi chú cho mọi project" } } } },
     "Move to this project": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Move to this project" } }, "vi": { "stringUnit": { "state": "translated", "value": "Chuyển vào project này" } } } },

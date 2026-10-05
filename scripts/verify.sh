@@ -28,7 +28,9 @@ run() {
                    -skipPackagePluginValidation "${@:-build}" ;;
         # Only the EngineTests suite, alone: a bare "EngineTests" filter also matched the whole
         # BashCutEngineTests module and timed the 20-clip export against ~100 concurrent tests.
-        perf) BASHCUT_PERF=1 swift test --no-parallel --filter 'BashCutEngineTests\.EngineTests/' "$@" ;;
+        # Then the plugin catalog refresh with 1000 generated plugins (#103), in release like the shipped app.
+        perf) BASHCUT_PERF=1 swift test --no-parallel --filter 'BashCutEngineTests\.EngineTests/' "$@" \
+                  && (cd Packages/BashCutCore && BASHCUT_PERF=1 swift test -c release --filter PluginCatalogPerfTests) ;;
         uitest) echo "error: UI automation tests are not implemented in M0"; return 1 ;;
         *) echo "error: usage: scripts/verify.sh build|test|lint|xcode [build|test]|perf|uitest"; return 1 ;;
     esac

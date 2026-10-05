@@ -206,6 +206,13 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   `PluginSessionTransport` (handshake, NDJSON, progress, cancel, idle shutdown, crash restart) runs plugins that
   ask for it. Commands: `plugins actions|run|hooks|proposal|options|option|set`; plugin actions also go through
   `ui actions`/`ui action`. Worked example: `Fixtures/plugins/example.toolkit`.
+- Catalog refresh performance (#103): discovery keeps manifests in a `PluginCatalogCache` and reads a plugin again
+  only when its `plugin.json` or entrypoint changes (stat identity, mode, size, mtime, ctime). A refresh shows each
+  plugin's availability from the last file check (`PluginTrustStore.knownAvailability`); plugins not checked yet in
+  the session, or whose manifest or entrypoint changed, are checked off the main actor in parallel and show
+  "Checking…" until then. Running a plugin, Reload and `plugins list` for an unchecked plugin still walk every
+  file. Measured in release (`scripts/verify.sh perf`, M1 Max): 1000 plugins × 5 files refresh in ~33 ms
+  (was ~400 ms on the main actor); 100 plugins × 2000 files in ~3 ms (was ~360 ms, and ~11 s after a relaunch).
 
 ### Settings & diagnostics
 
@@ -355,7 +362,8 @@ Swift 6 build and strict SwiftLint pass.
   settings, modal center and automation controllers with fakes.
 
 `scripts/verify.sh perf` repeats the engine test at 20 synthetic clips; it is not a substitute for the real-footage
-bench above.
+bench above. It then times a plugin catalog refresh with 1000 generated plugins (and 100 with 2000 files each)
+and fails above 50 ms.
 
 ### Native smoke tests
 

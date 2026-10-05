@@ -244,4 +244,34 @@ struct PluginTrustTests {
         try sandbox.store().setUserOption(plugin, key: "voice", value: nil)
         #expect(sandbox.store().userOptions(plugin).isEmpty)
     }
+
+    @Test("Known availability reuses the last file check until plugin.json or the entrypoint changes")
+    func knownAvailability() throws {
+        let sandbox = Sandbox()
+        defer { try? FileManager.default.removeItem(at: sandbox.root) }
+        let plugin = try sandbox.plugin()
+        let store = sandbox.store()
+        // Answers that need no files.
+        #expect(store.knownAvailability(of: plugin) == .untrusted)
+        try store.trust(plugin)
+        #expect(store.knownAvailability(of: plugin) == .ready)
+        // A new store (a relaunch) has not checked the files yet.
+        let relaunched = sandbox.store()
+        #expect(relaunched.knownAvailability(of: plugin) == nil)
+        #expect(relaunched.availability(of: plugin) == .ready)
+        #expect(relaunched.knownAvailability(of: plugin) == .ready)
+        // Another file is noticed by the full check (which every run does), then remembered.
+        try Data("print('a')".utf8).write(to: plugin.directory.appendingPathComponent("bin/helper.py"))
+        #expect(store.knownAvailability(of: plugin) == .ready)
+        #expect(store.availability(of: plugin) == .changed)
+        #expect(store.knownAvailability(of: plugin) == .changed)
+        try store.trust(plugin)
+        #expect(store.knownAvailability(of: plugin) == .ready)
+        // The entrypoint or manifest changing makes the last answer unknown.
+        try Data("#!/bin/sh\necho v2\n".utf8).write(to: plugin.directory.appendingPathComponent("bin/provider"))
+        #expect(store.knownAvailability(of: plugin) == nil)
+        #expect(store.availability(of: plugin) == .changed)
+        try store.setEnabled(plugin, enabled: false)
+        #expect(store.knownAvailability(of: plugin) == .disabled)
+    }
 }
