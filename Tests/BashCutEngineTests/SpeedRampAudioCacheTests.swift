@@ -12,7 +12,7 @@ struct SpeedRampAudioCacheTests {
                                    "fps": FrameRate().json, "frames": .integer(179)])
         return try Project(name: "Cache").applying(.group(label: "Fixture", author: .user, ops: [
             .addMedia(media), .insert(track: "a3", item: Item(id: "a", media: "m", at: 0, duration: 30)),
-            .setSpeedCurve(item: "a", curve: try #require(SpeedCurve.preset("hero")), keepDuration: true)
+            .setSpeedCurve(item: "a", curve: SpeedCurve.preset("hero"), keepDuration: true)
         ])).project
     }
 
@@ -33,7 +33,7 @@ struct SpeedRampAudioCacheTests {
         value = try value.applying(.setProperties(item: "a", patch: ["volumeDb": .number(-6)])).project
         _ = try await builder.build(value, root: root)
         #expect(await builder.rampAudioRenders == 1)
-        value = try value.applying(.setSpeedCurve(item: "a", curve: try #require(SpeedCurve.preset("bullet")), keepDuration: true)).project
+        value = try value.applying(.setSpeedCurve(item: "a", curve: SpeedCurve.preset("bullet"), keepDuration: true)).project
         _ = try await builder.build(value, root: root)
         #expect(await builder.rampAudioRenders == 2)
         value = try value.applying(.setProperties(item: "a", patch: ["preservePitch": .bool(false)])).project

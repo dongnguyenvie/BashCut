@@ -230,6 +230,7 @@ public final class AppUpdateModel {
 
     /// Checks when the last successful check is a day old. Development builds and App Store copies are skipped.
     /// Returns a release that became available with this check.
+    @discardableResult
     public func checkIfDue(now: Date = Date()) async -> AppRelease? {
         guard install == .homebrew || install == .direct else { return nil }
         if let checkedAt, now.timeIntervalSince(checkedAt) < Self.checkInterval { return nil }
