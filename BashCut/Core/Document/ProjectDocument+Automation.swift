@@ -147,6 +147,15 @@ extension ProjectDocument {
             let includeSubRip = arguments.bool("includeSRT")
             let normalizeAudio = arguments.bool("normalizeAudio")
             let output = directory.appendingPathComponent(name).appendingPathExtension(preset.fileExtension)
+            // Fail before asking the user to approve an export that cannot start.
+            let reserved = document.exports.queue.reservedOutputs
+            if ExportRequest.nameIsTaken(
+                name, preset: preset, directory: directory, includeSubRip: includeSubRip, reserved: reserved)
+            {
+                let free = ExportRequest.availableName(
+                    name, preset: preset, directory: directory, includeSubRip: includeSubRip, reserved: reserved)
+                throw RPCFailure(-32602, "\(name) is already exported or queued; use another name such as \(free)")
+            }
             let approval = try document.queuePrivilegedApproval(
                 method: "export.start", author: author,
                 arguments: [

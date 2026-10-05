@@ -1,6 +1,8 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "%@ is already exported or queued": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%@ is already exported or queued" } }, "vi": { "stringUnit": { "state": "translated", "value": "%@ đã được xuất hoặc đang chờ xuất" } } } },
+    "Use %@": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Use %@" } }, "vi": { "stringUnit": { "state": "translated", "value": "Dùng %@" } } } },
     "Cancel Export": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Cancel Export" } }, "vi": { "stringUnit": { "state": "translated", "value": "Huỷ xuất" } } } },
     "%d more exports queued": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%d more exports queued" } }, "vi": { "stringUnit": { "state": "translated", "value": "Còn %d bản xuất đang chờ" } } } },
     "New Export…": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "New Export…" } }, "vi": { "stringUnit": { "state": "translated", "value": "Xuất mới…" } } } },

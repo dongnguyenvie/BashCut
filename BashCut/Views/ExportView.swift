@@ -29,6 +29,15 @@ struct ExportView: View {
             Text("Export").font(.title2.bold())
             Form {
                 TextField("Name", text: $name)
+                if let free = suggestedName {
+                    HStack(spacing: 8) {
+                        Label(
+                            String(format: String(localized: "%@ is already exported or queued"), name),
+                            systemImage: "exclamationmark.triangle"
+                        ).foregroundStyle(.orange)
+                        Button(String(format: String(localized: "Use %@"), free)) { name = free }
+                    }.font(.caption)
+                }
                 Picker("Preset", selection: $preset) {
                     ForEach(ExportPreset.allCases) { value in
                         Text(LocalizedStringKey(value.title)).tag(value)
@@ -90,14 +99,20 @@ struct ExportView: View {
                 Spacer()
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
                 Button("Export", action: start).keyboardShortcut(.defaultAction)
-                    .buttonStyle(.borderedProminent).disabled(name.isEmpty || directory == nil)
+                    .buttonStyle(.borderedProminent)
+                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || directory == nil || suggestedName != nil)
             }
         }.padding(24).frame(width: 620)
             .onAppear {
-                name = defaultName
                 directory = document.fileURL?.deletingLastPathComponent().appendingPathComponent("render")
                 preset = document.settings.savedExportPreset
                     ?? (document.project.width > document.project.height ? .youtube1080 : .tiktok)
+                // The project name, numbered when an earlier export already took it.
+                name = directory.map {
+                    ExportRequest.availableName(
+                        defaultName, preset: preset, directory: $0, includeSubRip: includeSubRip,
+                        reserved: document.exports.queue.reservedOutputs)
+                } ?? defaultName
                 document.plugins.refresh(projectRoot: document.fileURL?.deletingLastPathComponent())
                 normalizeAudio = document.project["audio"]?.object["normalizeEnabled"] == .bool(true)
                     && !loudnessProviders.isEmpty
@@ -106,6 +121,18 @@ struct ExportView: View {
                 loudnessProvider = loudnessProviders.first(where: { $0.provider.id == preferred })?
                     .provider.id ?? loudnessProviders.first?.provider.id ?? ""
             }
+    }
+
+    /// A free name to offer when the typed one would overwrite an export on disk or in the queue.
+    private var suggestedName: String? {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let directory, !trimmed.isEmpty else { return nil }
+        let reserved = document.exports.queue.reservedOutputs
+        guard ExportRequest.nameIsTaken(
+            trimmed, preset: preset, directory: directory, includeSubRip: includeSubRip, reserved: reserved)
+        else { return nil }
+        return ExportRequest.availableName(
+            trimmed, preset: preset, directory: directory, includeSubRip: includeSubRip, reserved: reserved)
     }
 
     private var defaultName: String {
