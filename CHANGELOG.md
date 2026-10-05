@@ -9,7 +9,9 @@
   drink, travel and places, celebration, animals and nature, signs and arrows) instead of eight.
 - **Image stickers.** Stickers › **My stickers** keeps a library of PNG, GIF and other images for every project
   (**Import stickers…**; right-click a sticker to remove it). Clicking one copies it into the project's `stickers`
-  folder and places it at the playhead on a free overlay layer (a new one when needed) at 35 % zoom.
+  folder and places it at the playhead on the frontmost free overlay layer (a new one when needed) at 35 % zoom.
+  Agents: `stickers list`, `stickers add <path> [--at-frame]`, `stickers import <path>`, `stickers remove <name>` and
+  `ui action stickers.import`.
 - **Sticker packs from plugins** (plugin API 6). `contributes.stickers` names folders of images in a plugin; the
   Stickers panel lists each pack as a grid under its title and places a clicked image like a library sticker. No
   plugin code runs for a pack. The first one is **BashCut Stickers** (`bashcut.stickers`) in the plugin registry.

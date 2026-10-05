@@ -305,6 +305,12 @@ bashcut media place --media MEDIA_ID --track TRACK_ID --at-frame 90 --base-rev 1
 bashcut timeline move ITEM_ID --track TRACK_ID --at-frame 120 --base-rev 14
 ```
 
+Image stickers have their own commands, which do what a click in the Stickers panel does: `stickers list` returns
+the library (My stickers) and every plugin sticker pack with image paths, and `stickers add <path> [--at-frame N]
+--base-rev R` copies the image into the project's `stickers` folder (an animated GIF, APNG or WebP becomes a movie
+with alpha) and places it on the frontmost free overlay layer at 35 % zoom. `stickers import <path>` and
+`stickers remove <name>` change the library.
+
 Track IDs and roles are dynamic: always take them from `timeline get`. `media place` and `timeline move` use
 the same planner as the timeline UI. When the range is taken, the clip goes to the next free layer of the same
 kind and role, or to a new layer next to the target, and linked sound follows onto a dialogue layer. Both

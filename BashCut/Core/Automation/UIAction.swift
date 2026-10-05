@@ -53,6 +53,7 @@ public enum UIAction: String, CaseIterable, Sendable {
     case saveProject = "project.save"
     case closeProject = "project.close"
     case importMedia = "project.import-media"
+    case importStickers = "stickers.import"
     case showHistory = "show.history"
     case showReview = "show.review"
     case showPlugins = "show.plugins"
@@ -150,6 +151,7 @@ public enum UIAction: String, CaseIterable, Sendable {
         case .saveProject: "Save"
         case .closeProject: "Close project (save, then show the Welcome screen)"
         case .importMedia: "Import footage…"
+        case .importStickers: "Import stickers…"
         case .showHistory: "History"
         case .showReview: "Review"
         case .showPlugins: "Plugins"
@@ -280,7 +282,7 @@ public enum UIAction: String, CaseIterable, Sendable {
 
     /// Actions that may show an alert or file panel; `ui.action` starts them and returns at once,
     /// and the agent answers the dialog with `ui.dialog` / `ui.respond`.
-    public var mayShowModal: Bool { [.newProject, .openProject, .importMedia].contains(self) }
+    public var mayShowModal: Bool { [.newProject, .openProject, .importMedia, .importStickers].contains(self) }
 
     /// The action with this ID, or every action bound to this shortcut. One shortcut can mean
     /// different actions in different places (`space` plays the source viewer when it is shown);

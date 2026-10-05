@@ -73,10 +73,8 @@ struct StickerLibraryView: View {
             HStack {
                 Text("My stickers").font(.headline)
                 Spacer()
-                Button("Import stickers…", systemImage: "plus") {
-                    document.importStickers()
-                    images = ProjectDocument.stickerLibrary()
-                }
+                Button("Import stickers…", systemImage: "plus") { document.run(.importStickers) }
+                    .disabled(!document.canPerform(.importStickers))
             }
             if images.isEmpty {
                 Text("Import PNG or GIF images to use them as stickers in any project.")
@@ -85,10 +83,7 @@ struct StickerLibraryView: View {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 55))]) {
                 ForEach(images, id: \.self) { url in
                     stickerButton(url).contextMenu {
-                        Button("Remove sticker", role: .destructive) {
-                            document.removeSticker(url)
-                            images = ProjectDocument.stickerLibrary()
-                        }
+                        Button("Remove sticker", role: .destructive) { document.removeSticker(url) }
                     }
                 }
             }
@@ -110,7 +105,7 @@ struct StickerLibraryView: View {
             }
         }
         .disabled(document.fileURL == nil)
-        .onAppear { images = ProjectDocument.stickerLibrary() }
+        .task(id: document.stickerLibraryRevision) { images = ProjectDocument.stickerLibrary() }
         .task(id: document.plugins.plugins.map { $0.installationID + String(describing: document.plugins.availability[$0.id]) }) {
             packs = document.plugins.stickerPacks
         }

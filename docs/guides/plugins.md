@@ -711,7 +711,7 @@ or WebP is written as a movie with alpha first. No plugin code runs for a pack.
 - A manifest still needs an `entrypoint`; a plugin that only ships packs uses a stub that exits nonzero, as
   [BashCut Stickers](https://github.com/dongnguyenvie/bashcut-plugins/tree/main/plugins/stickers)
   (`bashcut.stickers`) in the plugin registry does.
-- Agents place a pack's image with `media import <path> --place --track <overlay layer>`.
+- Agents list packs with `stickers list` and place an image with `stickers add <path>`.
 
 ## Context
 

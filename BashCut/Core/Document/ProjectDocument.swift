@@ -46,6 +46,8 @@ final class ProjectDocument {
     @ObservationIgnored lazy var agents = AgentDockModel(document: self)
     @ObservationIgnored lazy var chatAgents = ChatAgents(document: self)
     @ObservationIgnored lazy var plugins = PluginManagerModel()
+    /// Counts changes to the sticker library, so the Stickers panel lists it again.
+    var stickerLibraryRevision = 0
     @ObservationIgnored lazy var pluginHooks = PluginHookDispatcher(document: self)
     /// The plugin whose proposal is being committed, so its own hooks do not hear about it.
     @ObservationIgnored var pluginEditSource: String?
