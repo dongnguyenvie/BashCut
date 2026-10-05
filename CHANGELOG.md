@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+- **Readable requests in agent terminals.** Claude Code and Codex fold a long paste into a placeholder
+  (`[Pasted text #1 +23 lines]`, `[Pasted Content 1801 chars]`), so **Project context**, the quick prompts, **Ask
+  agent**, review fixes and **Ask the agent to split it** hid the request behind the context. The dock now writes the
+  context to `.bashcut/cache/agent-context/context.md` (a temporary folder before the project is saved) and pastes
+  only the request with a line pointing at that file, so it can be read and edited before sending. Chat tabs are
+  unchanged.
 - **Split the memo into lessons, preferences and facts** (#72). When the project memo or the notes for every project
   have text, the Knowledge window's **Notes** section offers a one-time split: **Ask the agent to split it** puts a
   request in the open agent's input, and **Keep as notes** stops offering it. The agent reads the memo and runs the
