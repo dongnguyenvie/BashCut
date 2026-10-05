@@ -33,7 +33,7 @@ extension ProjectDocument {
             ]
             if let store = knowledge.store {
                 result["memoSplit"] = .object(Dictionary(uniqueKeysWithValues: KnowledgeScope.allCases.map { scope in
-                    (scope.rawValue, JSONValue.string(Self.memoSplitState(store, scope)))
+                    (scope.rawValue, JSONValue.string(store.memoSplitState(scope)))
                 }))
             }
             if let legacy = knowledge.legacy {
@@ -59,18 +59,12 @@ extension ProjectDocument {
             defer { document.agents.loadKnowledge() }
             if arguments.bool("keep") {
                 try store.keepMemo(scope, source: source)
-                return .object(["memoSplit": .string(Self.memoSplitState(store, scope))])
+                return .object(["memoSplit": .string(store.memoSplitState(scope))])
             }
             guard let entries = arguments.values["entries"] else {
                 throw RPCFailure(-32602, "Missing entries (or set keep)")
             }
-            let split: MemoSplit
-            do {
-                split = try JSONDecoder().decode(MemoSplit.self, from: JSONEncoder().encode(entries))
-            } catch {
-                throw RPCFailure(-32602, "entries must be {\"lessons\": [{\"title\", …}], \"prefs\": [{\"key\", "
-                    + "\"value\"}], \"facts\": [{\"key\", \"value\"}]}")
-            }
+            let split = try MemoSplit(json: entries)
             guard !split.isEmpty else { throw RPCFailure(-32602, "Nothing to split; use keep to keep the memo as notes") }
             let result = try store.splitMemo(split, scope: scope, source: source)
             if author != .user {
@@ -256,12 +250,6 @@ extension ProjectDocument {
     }
 
     // MARK: Helpers
-
-    /// `pending` (offered), `split`, `kept`, or `none` (empty memo, or no saved project).
-    static func memoSplitState(_ store: AgentKnowledgeStore, _ scope: KnowledgeScope) -> String {
-        if let record = store.memoSplitRecord(scope) { return record.outcome.rawValue }
-        return store.memoNeedsSplit(scope) ? "pending" : "none"
-    }
 
     private static func setMethod(_ kind: KnowledgeValueKind) -> String {
         kind == .prefs ? "knowledge.set-pref" : "knowledge.set-fact"

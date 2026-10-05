@@ -72,10 +72,10 @@ import Observation
         var lines = ["[Notes for every project]", user.isEmpty ? "None." : user]
         if !userSkills.isEmpty { lines.append("Skills: \(names(userSkills))") }
         lines.append("[/Notes for every project]")
-        if memoSplitOffers.contains(.user) { lines.append(Self.splitHint(.user)) }
+        if memoSplitOffers.contains(.user) { lines.append(AgentKnowledgeStore.splitHint(.user)) }
         if hasProject {
             lines += ["[Project memory]", project.isEmpty ? "No memo." : project]
-            if memoSplitOffers.contains(.project) { lines.append(Self.splitHint(.project)) }
+            if memoSplitOffers.contains(.project) { lines.append(AgentKnowledgeStore.splitHint(.project)) }
             lines += ["Skills: \(names(skills))", "[/Project memory]"]
         } else {
             lines.append("[Project memory] No saved project is open. [/Project memory]")
