@@ -162,6 +162,37 @@ struct ExportQueueTests {
         }
     }
 
+    @Test("A taken export name gets the next free number, and the error suggests it")
+    func availableNames() throws {
+        let root = try folder()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let render = root.appendingPathComponent("render")
+        try FileManager.default.createDirectory(at: render, withIntermediateDirectories: true)
+        func free(_ name: String, srt: Bool = false, reserved: Set<URL> = []) -> String {
+            ExportRequest.availableName(name, preset: .quickDraft, directory: render, includeSubRip: srt, reserved: reserved)
+        }
+        #expect(free("long1") == "long1")
+        try Data().write(to: render.appendingPathComponent("long1.mp4"))
+        #expect(ExportRequest.nameIsTaken("long1", preset: .quickDraft, directory: render, includeSubRip: false))
+        #expect(!ExportRequest.nameIsTaken("long1", preset: .proRes422HQ, directory: render, includeSubRip: false))
+        #expect(free("long1") == "long1-2")
+        try Data().write(to: render.appendingPathComponent("long1-2.mp4"))
+        #expect(free("long1") == "long1-3")
+        #expect(free("long1-2") == "long1-3")
+        try Data().write(to: render.appendingPathComponent("trip-2026.mp4"))
+        #expect(free("trip-2026") == "trip-2026-2")
+        try Data().write(to: render.appendingPathComponent("clip.srt"))
+        #expect(free("clip") == "clip")
+        #expect(free("clip", srt: true) == "clip-2")
+        #expect(free("queued", reserved: [render.appendingPathComponent("queued.mp4")]) == "queued-2")
+        do {
+            _ = try request("long1", in: root)
+            Issue.record("Expected a taken name to fail")
+        } catch {
+            #expect(error.localizedDescription.contains("long1-3"))
+        }
+    }
+
     @Test("The job center records results, failures and drops everything on cancelAll")
     func jobCenter() async throws {
         struct Failure: LocalizedError { var errorDescription: String? { "boom" } }
@@ -216,6 +247,23 @@ struct ExportQueueTests {
         #expect(reopened.report?.receipt.url.lastPathComponent == "two.mp4")
         reopened.reset()
         #expect(reopened.report == nil)
+    }
+
+    @Test("The export toast shows the newest notice until dismissed; failures stay and a project switch clears it")
+    func controllerNotice() {
+        let log = ExportLog()
+        let exports = ExportController(jobs: JobCenter()) { ExportPipeline(engine: FakeEngine(log: log), loudness: nil) }
+        #expect(exports.notice == nil)
+        exports.post(ExportNotice(.started, name: "one.mp4", author: .claude))
+        #expect(exports.notice?.kind == .started)
+        #expect(exports.notice?.author == .claude)
+        exports.post(ExportNotice(.failed("Disk full"), name: "one.mp4", author: .claude))
+        #expect(exports.notice?.kind == .failed("Disk full"))
+        exports.dismissNotice()
+        #expect(exports.notice == nil)
+        exports.post(ExportNotice(.finished, name: "two.mp4", author: .user))
+        exports.reset()
+        #expect(exports.notice == nil)
     }
 
     @Test("OTIO exports refuse to replace a file unless asked")

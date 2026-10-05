@@ -12,6 +12,8 @@ public final class ExportController {
     public let queue: ExportQueue
     /// The last finished export of the open project, restored from its export history on open.
     public private(set) var report: ExportReport?
+    /// The toast about the latest export starting, finishing or failing; nil once dismissed or timed out.
+    public private(set) var notice: ExportNotice?
     @ObservationIgnored private let history: ExportHistoryStore
 
     public init(
@@ -45,7 +47,20 @@ public final class ExportController {
     public func reset() {
         queue.cancelAll()
         report = nil
+        notice = nil
     }
+
+    /// Shows `notice`; it hides by itself after its kind's delay unless a newer notice replaced it.
+    public func post(_ notice: ExportNotice) {
+        self.notice = notice
+        guard let delay = notice.kind.hideAfter else { return }
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(delay))
+            if self?.notice?.id == notice.id { self?.notice = nil }
+        }
+    }
+
+    public func dismissNotice() { notice = nil }
 
     /// Shows the last export recorded in the project's export history, if any.
     public func restoreReport(projectRoot: URL) {
@@ -106,5 +121,34 @@ public final class ExportController {
         result["state"] = .string(report == nil ? "idle" : "completed")
         result["progress"] = .number(report == nil ? 0 : 1)
         return .object(result.merging(last ?? [:]) { current, _ in current })
+    }
+}
+
+/// What the export toast says: an export started or was queued, finished, failed or was cancelled.
+public struct ExportNotice: Identifiable, Equatable, Sendable {
+    public enum Kind: Equatable, Sendable {
+        case started, queued, finished, cancelled
+        case failed(String)
+
+        /// Seconds before the toast hides by itself; failures stay until dismissed.
+        var hideAfter: Double? {
+            switch self {
+            case .started, .queued, .cancelled: 6
+            case .finished: 12
+            case .failed: nil
+            }
+        }
+    }
+
+    public let id = UUID()
+    public let kind: Kind
+    /// The output file name, such as `long1.mp4`.
+    public let name: String
+    public let author: Author
+
+    public init(_ kind: Kind, name: String, author: Author) {
+        self.kind = kind
+        self.name = name
+        self.author = author
     }
 }

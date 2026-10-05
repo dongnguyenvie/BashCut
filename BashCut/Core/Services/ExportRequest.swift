@@ -20,7 +20,7 @@ public struct ExportRequest: Sendable {
     public var includesSubRip: Bool { subRip != nil }
 
     /// Validates the name and destination and snapshots `project`. Fails when an output file
-    /// exists or one of `reserved` (outputs of queued exports) would be overwritten.
+    /// exists or one of `reserved` (outputs of queued exports) would be overwritten; the error suggests a free name.
     public init(
         project source: Project, root: URL, workspace: URL?, name: String, preset: ExportPreset,
         directory: URL, includeSubRip: Bool, normalizeAudio: Bool, reserved: Set<URL> = []
@@ -36,10 +36,11 @@ public struct ExportRequest: Sendable {
         let captionText = includeSubRip ? try SubRip.encode(source) : nil
         let hasCaptions = captionText.map { !$0.isEmpty } ?? false
         let subRip = hasCaptions ? base.appendingPathExtension("srt") : nil
-        for url in [output, subRip].compactMap({ $0 }) {
-            guard !FileManager.default.fileExists(atPath: url.path), !reserved.contains(url) else {
-                throw ProjectError.invalid("Choose a new export name; an output already exists or is queued")
-            }
+        for url in [output, subRip].compactMap({ $0 }) where Self.isTaken(url, reserved: reserved) {
+            let free = Self.availableName(
+                baseName, preset: preset, directory: directory, includeSubRip: hasCaptions, reserved: reserved)
+            throw ProjectError.invalid(
+                "\(url.lastPathComponent) already exists or is queued; choose a new export name such as \(free)")
         }
         let dimensions = preset.dimensions(projectWidth: source.width, projectHeight: source.height)
         var sized = source
@@ -60,4 +61,41 @@ public struct ExportRequest: Sendable {
 
     /// Files this export will write, for duplicate checks against the queue.
     public var outputs: Set<URL> { Set([output, subRip].compactMap { $0 }) }
+
+    /// Whether an export named `name` would hit a file on disk or an output of a queued export.
+    public static func nameIsTaken(
+        _ name: String, preset: ExportPreset, directory: URL, includeSubRip: Bool, reserved: Set<URL> = []
+    ) -> Bool {
+        let base = directory.appendingPathComponent(name.trimmingCharacters(in: .whitespacesAndNewlines))
+            .standardizedFileURL
+        var outputs = [base.appendingPathExtension(preset.fileExtension)]
+        if includeSubRip { outputs.append(base.appendingPathExtension("srt")) }
+        return outputs.contains { isTaken($0, reserved: reserved) }
+    }
+
+    /// `name` when it is free, otherwise the first free `name-2`, `name-3`… (`long1-2` continues as `long1-3`; a
+    /// suffix of 1000 or more, such as a year, is kept: `trip-2026` becomes `trip-2026-2`).
+    public static func availableName(
+        _ name: String, preset: ExportPreset, directory: URL, includeSubRip: Bool, reserved: Set<URL> = []
+    ) -> String {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        func taken(_ candidate: String) -> Bool {
+            nameIsTaken(candidate, preset: preset, directory: directory, includeSubRip: includeSubRip, reserved: reserved)
+        }
+        guard taken(trimmed) else { return trimmed }
+        var stem = trimmed
+        var number = 2
+        if let dash = trimmed.lastIndex(of: "-"), dash > trimmed.startIndex,
+            let value = Int(trimmed[trimmed.index(after: dash)...]), (1..<1000).contains(value)
+        {
+            stem = String(trimmed[..<dash])
+            number = value + 1
+        }
+        while taken("\(stem)-\(number)") { number += 1 }
+        return "\(stem)-\(number)"
+    }
+
+    private static func isTaken(_ url: URL, reserved: Set<URL>) -> Bool {
+        FileManager.default.fileExists(atPath: url.path) || reserved.contains(url)
+    }
 }

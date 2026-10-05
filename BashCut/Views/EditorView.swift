@@ -84,13 +84,24 @@ struct EditorView: View {
             ShortcutsView { document.ui.showShortcuts = false }
         }
         .overlay(alignment: .bottomTrailing) {
-            if let change = document.agentChange {
-                AgentChangeToast(
-                    change: change, canUndo: document.canUndoAgentChange,
-                    show: { document.run(.showAgentChanges) },
-                    undo: { document.run(.undoAgentChange) },
-                    dismiss: { document.run(.dismissAgentChange) })
+            VStack(alignment: .trailing, spacing: 0) {
+                if let notice = document.exports.notice {
+                    ExportToast(notice: notice, document: document)
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
+                }
+                if let change = document.agentChange {
+                    AgentChangeToast(
+                        change: change, canUndo: document.canUndoAgentChange,
+                        show: { document.run(.showAgentChanges) },
+                        undo: { document.run(.undoAgentChange) },
+                        dismiss: { document.run(.dismissAgentChange) })
+                }
             }
+            .animation(.easeOut(duration: 0.2), value: document.exports.notice?.id)
+        }
+        // Whole percents, so the Dock icon redraws at most 100 times per export.
+        .onChange(of: document.exports.isRunning ? Int(document.exports.progress * 100) : nil) { _, percent in
+            ExportDockTile.show(percent.map { Double($0) / 100 })
         }
         .sheet(isPresented: Bindable(document.ui).showNewProject) { NewProjectView(document: document) }
         .sheet(isPresented: Bindable(document.ui).showExport) { ExportView(document: document) }

@@ -25,8 +25,7 @@ extension EditorView {
             Button("Review") { document.run(.showReview) }.help("Review before export (⇧⌘R)")
                 .action(.showReview, in: document)
             Divider().frame(height: 18)
-            Button("Export…") { document.run(.showExport) }.help("Export (⌘E)")
-                .action(.showExport, in: document).buttonStyle(.borderedProminent)
+            exportButton
             moreMenu
             Button { document.run(.toggleAgentDock) } label: { Image(systemName: "sidebar.right") }
                 .help("Show or hide the agent dock (⌘J)").accessibilityLabel("Agent dock")
@@ -113,6 +112,32 @@ extension EditorView {
             : updates > 0 ? String(localized: "Plugin updates are available") : String(localized: "Plugins: install, update and manage"))
     }
 
+    /// Export…, or the running export's progress; then a click shows its details and Cancel. ⌘E always opens
+    /// the Export sheet, so another export can be queued.
+    private var exportButton: some View {
+        let exports = document.exports
+        return Button {
+            document.run(exports.isRunning ? .showExportProgress : .showExport)
+        } label: {
+            if exports.isRunning {
+                HStack(spacing: 5) {
+                    ExportProgressRing(progress: exports.progress)
+                    Text(exports.progress, format: .percent.precision(.fractionLength(0))).monospacedDigit()
+                }
+            } else {
+                Text("Export…")
+            }
+        }
+        .help(exports.isRunning ? String(localized: "Export progress: details and cancel") : String(localized: "Export (⌘E)"))
+        .accessibilityLabel(exports.isRunning ? String(localized: "Export progress") : String(localized: "Export…"))
+        .shortcut(.showExport)
+        .disabled(!document.canPerform(exports.isRunning ? .showExportProgress : .showExport))
+        .buttonStyle(.borderedProminent)
+        .popover(isPresented: Bindable(document.ui).showExportProgress, arrowEdge: .bottom) {
+            ExportProgressPopover(document: document)
+        }
+    }
+
     /// ☰: project, history and app commands that do not need a toolbar button of their own.
     private var moreMenu: some View {
         Menu {
@@ -164,13 +189,13 @@ extension EditorView {
     private var activity: some View {
         HStack(spacing: 6) {
             if document.exports.isRunning {
-                ProgressView(value: document.exports.progress).frame(width: 80)
+                ProgressView(value: document.exports.progress).frame(width: 140)
                 Text(document.exports.queue.detail ?? String(localized: "Exporting")).lineLimit(1)
                 Text(document.exports.progress, format: .percent.precision(.fractionLength(0))).monospacedDigit()
                 if document.exports.queue.queuedCount > 0 {
                     Text("\(document.exports.queue.queuedCount) queued").foregroundStyle(.secondary)
                 }
-                Button(action: document.exports.cancelActive) { Image(systemName: "xmark.circle.fill") }
+                Button { document.run(.cancelExport) } label: { Image(systemName: "xmark.circle.fill") }
                     .buttonStyle(.plain).foregroundStyle(.secondary).help("Cancel export")
             } else if document.busy {
                 ProgressView().controlSize(.mini)
@@ -195,8 +220,11 @@ extension EditorView {
         }
         .font(.caption)
         .padding(.horizontal, 10).frame(minWidth: 220).frame(height: 24)
-        .background(RoundedRectangle(cornerRadius: 7).fill(Color.black.opacity(0.25)))
-        .overlay(RoundedRectangle(cornerRadius: 7).stroke(Color.white.opacity(0.08)))
+        // Tinted while an export runs, so it stands out from the usual save state.
+        .background(RoundedRectangle(cornerRadius: 7).fill(
+            document.exports.isRunning ? Color.cyan.opacity(0.18) : Color.black.opacity(0.25)))
+        .overlay(RoundedRectangle(cornerRadius: 7).stroke(
+            document.exports.isRunning ? Color.cyan.opacity(0.45) : Color.white.opacity(0.08)))
     }
 }
 

@@ -60,6 +60,7 @@ public enum UIAction: String, CaseIterable, Sendable {
     case showSettings = "show.settings"
     case showAgentKit = "show.agent-kit"
     case showExport = "show.export"
+    case showExportProgress = "show.export-progress"
     case showSections = "show.sections"
     case showCommands = "show.commands"
     case showShortcuts = "show.shortcuts"
@@ -116,6 +117,8 @@ public enum UIAction: String, CaseIterable, Sendable {
     case dismissAgentChange = "agent.dismiss-changes"
     case openExportOutput = "export.open-output"
     case revealExportOutput = "export.reveal-output"
+    case cancelExport = "export.cancel"
+    case dismissExportNotice = "export.dismiss-notice"
     case clearRecentProjects = "project.clear-recents"
 
     public var id: String { rawValue }
@@ -150,6 +153,7 @@ public enum UIAction: String, CaseIterable, Sendable {
         case .showSettings: "Settings"
         case .showAgentKit: "Agent skills (Settings › Agents)"
         case .showExport: "Export…"
+        case .showExportProgress: "Show the running export: progress, queue and cancel"
         case .showSections: "Sections"
         case .showCommands: "Command palette"
         case .showShortcuts: "Keyboard shortcuts"
@@ -206,6 +210,8 @@ public enum UIAction: String, CaseIterable, Sendable {
         case .dismissAgentChange: "Dismiss the agent change notice"
         case .openExportOutput: "Open the last exported video"
         case .revealExportOutput: "Reveal the last exported video in Finder"
+        case .cancelExport: "Cancel the running export (queued exports start next)"
+        case .dismissExportNotice: "Dismiss the export notice"
         case .clearRecentProjects: "Clear recent projects"
         }
     }

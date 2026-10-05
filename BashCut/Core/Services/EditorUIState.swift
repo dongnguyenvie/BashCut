@@ -36,6 +36,8 @@ public final class EditorUIState {
     public var showNewProject = false
     public var showExport = false
     public var showExportReport = false
+    /// The Export button's popover while an export runs.
+    public var showExportProgress = false
     public var showAgentChanges = false
     public var showExternalChanges = false
     public var showLegacyImportReport = false
@@ -110,6 +112,7 @@ public final class EditorUIState {
     /// Closes the sheets that describe the previous project when another one opens.
     public func closeProjectSheets() {
         showExportReport = false
+        showExportProgress = false
         showAgentChanges = false
         showExternalChanges = false
         showLegacyImportReport = false

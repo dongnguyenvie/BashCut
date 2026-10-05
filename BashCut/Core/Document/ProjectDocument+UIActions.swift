@@ -43,6 +43,8 @@ extension ProjectDocument {
         case .skipAppUpdate, .remindAppUpdateLater: return showsAppUpdateNotice
         case .openExportOutput, .revealExportOutput:
             return exports.report.map { FileManager.default.fileExists(atPath: $0.receipt.url.path) } ?? false
+        case .showExportProgress, .cancelExport: return exports.isRunning
+        case .dismissExportNotice: return exports.notice != nil
         case .clearRecentProjects: return !settings.recentProjects.isEmpty
         case .showHistory, .showReview, .showPlugins, .showDoctor, .showSettings, .showAgentKit, .showSections,
             .showCommands, .showShortcuts, .showUpdates, .showAbout, .toggleAgentDock,
@@ -70,8 +72,8 @@ extension ProjectDocument {
         case .saveProject: save()
         case .closeProject: closeProject()
         case .importMedia: importMedia()
-        case .showHistory, .showReview, .showPlugins, .showDoctor, .showSettings, .showExport, .showSections,
-            .showCommands, .showShortcuts, .showUpdates:
+        case .showHistory, .showReview, .showPlugins, .showDoctor, .showSettings, .showExport, .showExportProgress,
+            .showSections, .showCommands, .showShortcuts, .showUpdates:
             try openDialog(String(action.id.dropFirst("show.".count)))
         case .toggleAgentDock:
             if agents.isDetached { agents.attach() } else { ui.showAgentDock.toggle() }
@@ -156,6 +158,8 @@ extension ProjectDocument {
         case .openExportOutput: if let url = exports.report?.receipt.url { NSWorkspace.shared.open(url) }
         case .revealExportOutput:
             if let url = exports.report?.receipt.url { NSWorkspace.shared.activateFileViewerSelecting([url]) }
+        case .cancelExport: exports.cancelActive()
+        case .dismissExportNotice: exports.dismissNotice()
         case .clearRecentProjects: settings.clearRecentProjects()
         default: assertionFailure("Unhandled UI action \(action.id)")
         }

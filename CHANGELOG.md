@@ -5,6 +5,16 @@
 
 ## [Unreleased]
 
+- **Export progress is easy to see** (#62). While an export runs, the Export… button shows a progress ring and
+  percent; clicking it opens the running export's details (file, step, queue) with Cancel and New Export… (⌘E still
+  opens the Export sheet). A toast at the bottom right says when an export starts, is queued, finishes (Open,
+  Reveal), fails or is cancelled, and names the agent that started it. The activity capsule is wider and tinted
+  while exporting, and the Dock icon shows a progress bar. New UI actions for agents: `show.export-progress`
+  (also `ui.open export-progress`), `export.cancel`, `export.dismiss-notice`.
+- **A second export no longer fails on a taken name.** The Export sheet proposes the next free name (`long1-2`,
+  `long1-3`…) when the project name was exported before, warns under Name when the typed name is already exported
+  or queued (with a "Use long1-2" button) and disables Export until it is free. `export start` refuses a taken name
+  before asking for approval, and every such error suggests a free name.
 - **Sound analysis for agents, no ffmpeg needed.** `audio measure --media ID` returns a file's loudness (LUFS),
   true peak, loudness range and its energy share in the speech and presence bands (1–4 kHz), to choose music that
   sits under a voice. `media sync --media CAMERA --to SCREEN [--item ITEM]` finds the offset between two recordings

@@ -27,6 +27,7 @@ extension ProjectDocument {
         }
         closing("new-project", "New project", when: ui.showNewProject) { [weak self] in self?.ui.showNewProject = false }
         closing("export", "Export", when: ui.showExport) { [weak self] in self?.ui.showExport = false }
+        if let progress = exportProgressSheet() { sheets.append(progress) }
         closing("export-report", "Export report", when: ui.showExportReport) { [weak self] in
             self?.ui.showExportReport = false
         }
@@ -146,6 +147,19 @@ extension ProjectDocument {
         }
     }
 
+    /// The Export button's popover while an export runs; Cancel Export stops it.
+    private func exportProgressSheet() -> ModalSheet? {
+        guard ui.showExportProgress else { return nil }
+        return ModalSheet(
+            name: "export-progress", title: "Export progress",
+            options: [ModalOption("cancel-export", String(localized: "Cancel Export")), Self.close]
+        ) { [weak self] option in
+            guard let self else { return }
+            if option == "cancel-export" { exports.cancelActive() }
+            ui.showExportProgress = false
+        }
+    }
+
     /// Sheets that only make sense in some states: (available, reason when not, flag).
     private static var conditionalDialogs:
         [String: (available: (ProjectDocument) -> Bool, reason: String, flag: ReferenceWritableKeyPath<EditorUIState, Bool>)]
@@ -153,6 +167,7 @@ extension ProjectDocument {
         [
             "export": ({ $0.project.duration > 0 }, "The timeline is empty", \.showExport),
             "export-report": ({ $0.exports.report != nil }, "No export report yet", \.showExportReport),
+            "export-progress": ({ $0.exports.isRunning }, "No export is running", \.showExportProgress),
             "agent-changes": ({ $0.agentChange != nil }, "No agent change to show", \.showAgentChanges),
             "external-changes": ({ $0.conflict }, "The project file has no conflicting change", \.showExternalChanges),
             "plugin-proposals": ({ !$0.plugins.proposals.isEmpty }, "No plugin edits to review", \.showPluginProposals),
