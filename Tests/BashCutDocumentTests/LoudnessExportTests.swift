@@ -47,7 +47,7 @@ struct LoudnessExportTests {
         #expect(paths.count == 2 && paths.last == request.output)
         #expect(!FileManager.default.fileExists(atPath: paths[0].path))
         #expect(try await AVURLAsset(url: request.output).loadTracks(withMediaType: .video).count == 1)
-        #expect(try FileManager.default.contentsOfDirectory(atPath: root.appendingPathComponent(".bashcut/loudness").path).isEmpty)
+        #expect(try FileManager.default.contentsOfDirectory(atPath: ProjectCache.url(.loudness, projectRoot: root).path).isEmpty)
     }
 
     @Test("Measurement failures remove temporary PCM and never create the final movie")
@@ -58,7 +58,7 @@ struct LoudnessExportTests {
         let pipeline = ExportPipeline(engine: AVFoundationRenderEngine(), loudness: analyzer)
         await #expect(throws: (any Error).self) { _ = try await pipeline.run(request) { _, _ in } }
         #expect(!FileManager.default.fileExists(atPath: request.output.path))
-        #expect(try FileManager.default.contentsOfDirectory(atPath: root.appendingPathComponent(".bashcut/loudness").path).isEmpty)
+        #expect(try FileManager.default.contentsOfDirectory(atPath: ProjectCache.url(.loudness, projectRoot: root).path).isEmpty)
     }
 
     private func request(root: URL) async throws -> ExportRequest {

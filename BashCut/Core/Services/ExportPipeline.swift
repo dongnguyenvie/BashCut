@@ -62,7 +62,7 @@ public struct ExportPipeline: Sendable {
                 mixGainDb: nil, appliedGainDb: nil)
         }
         guard let loudness else { throw ProjectError.invalid("Install a plugin that provides audio.loudness") }
-        let temporaryDirectory = request.root.appendingPathComponent(".bashcut/loudness", isDirectory: true)
+        let temporaryDirectory = ProjectCache.url(.loudness, projectRoot: request.root)
         try FileManager.default.createDirectory(at: temporaryDirectory, withIntermediateDirectories: true)
         let temporary = temporaryDirectory.appendingPathComponent(UUID().uuidString)
             .appendingPathExtension("caf")

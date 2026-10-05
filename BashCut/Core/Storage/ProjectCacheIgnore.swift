@@ -6,13 +6,15 @@ import Foundation
 public enum ProjectCacheIgnore {
     public static let fileName = ".gitignore"
 
-    /// Folders under `.bashcut/` that are rebuilt on demand.
-    public static let regenerable = ["proxies/", "cache/", "ramp-audio/", "stills/", "loudness/", "agent-context/"]
+    /// Folders under `.bashcut/` that are rebuilt on demand: `cache/`, plus the folders older builds used before
+    /// caches moved into it (a project opened in an older build still writes there).
+    public static let regenerable = ["cache/", "proxies/", "ramp-audio/", "stills/", "loudness/", "agent-context/"]
 
     public static var contents: String {
         """
-        # Written by BashCut. Everything listed here is made again when needed (preview proxies, waveforms,
-        # speed-ramp audio, still-image movies, loudness scratch files, viewer frames for agents).
+        # Written by BashCut. Everything listed here is made again when needed: cache/ holds preview proxies,
+        # waveforms, speed-ramp audio, still-image movies, loudness scratch files and viewer frames for agents;
+        # the other folders are where older BashCut builds kept them.
         # BashCut writes this file only when it is missing; edit it freely.
         \(regenerable.joined(separator: "\n"))
 

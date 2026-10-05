@@ -170,6 +170,10 @@ final class ProjectDocument {
     /// keeps the saved project and leaves the recovery file for the next interactive open.
     func loadProject(at url: URL, offerRecovery: Bool) async throws {
         let loaded = try await storage.load(url)
+        let movedCaches = ProjectCache.prepare(projectRoot: url.deletingLastPathComponent())
+        if !movedCaches.isEmpty {
+            DebugLog.write("project", "moved caches into .bashcut/cache: \(movedCaches.joined(separator: ", "))")
+        }
         reset(loaded.history.project, url: url)
         replaceHistory(loaded.history)
         fileSync.accept(loaded.diskData)

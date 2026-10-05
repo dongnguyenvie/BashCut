@@ -1,5 +1,6 @@
 import AVFoundation
 import AppKit
+import BashCutEngine
 import BashCutProject
 import Foundation
 
@@ -11,7 +12,7 @@ extension ProjectDocument {
         let height: Int
     }
 
-    /// The viewer frame for agents (Ask's attach button and `ui frame`) as a bounded PNG in `.bashcut/agent-context`.
+    /// The viewer frame for agents (Ask's attach button and `ui frame`) as a bounded PNG in `.bashcut/cache/agent-context`.
     func captureAgentFrame() async throws -> URL { try await captureAgentFrame(at: nil).url }
 
     func captureAgentFrame(at requested: Int?) async throws -> AgentFrame {
@@ -36,7 +37,7 @@ extension ProjectDocument {
         guard let data = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]) else {
             throw ProjectError.invalid("The current frame could not be encoded")
         }
-        let directory = root.appendingPathComponent(".bashcut/agent-context", isDirectory: true)
+        let directory = ProjectCache.url(.agentContext, projectRoot: root)
         try FileManager.default.createDirectory(
             at: directory, withIntermediateDirectories: true,
             attributes: [.posixPermissions: 0o700])

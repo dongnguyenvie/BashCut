@@ -11,7 +11,7 @@ full field sketch are in [02 — Project format](../specs/02-project-format.md);
 | `project.bashcut.json` | The project: indented JSON, sorted keys, schema `bashcut.project/1`; the full field list is [project.schema.json](project.schema.json) |
 | `.bashcut/history.jsonl` | Undo/redo checkpoint written on every save |
 | `.bashcut/autosave/latest.json` | Unsaved history plus the disk bytes it was based on |
-| `.bashcut/proxies/<media id>.mov` | Preview proxies (see [Media paths](#media-paths)) |
+| `.bashcut/cache/proxies/<media id>.mov` | Preview proxies (see [Media paths](#media-paths)) |
 | `.bashcut/plugins/` | Project-scoped plugins, which override user and bundled ones |
 | `.bashcut/.gitignore` | Lists the folders BashCut can make again (see [Storage on disk](#storage-on-disk)) |
 
@@ -39,11 +39,14 @@ of the clearable parts.
 | Kind | Where | Contents |
 |---|---|---|
 | Project data | `<project>/project.bashcut.json`, `.bashcut/history.jsonl`, `.bashcut/autosave/`, `.bashcut/library/`, `.bashcut/plugins/`, `.bashcut/skills/`, `.bashcut/agent-memory.md`, `.bashcut/chat/`, `.bashcut/export-history.json` | The edit and what belongs to this project; keep and sync it |
-| Project cache | `.bashcut/proxies/`, `.bashcut/cache/` (waveforms), `.bashcut/ramp-audio/`, `.bashcut/stills/`, `.bashcut/loudness/`, `.bashcut/agent-context/` | Made again on demand; listed in `.bashcut/.gitignore` |
+| Project cache | `.bashcut/cache/`: `proxies/`, `waveforms/`, `ramp-audio/`, `stills/`, `loudness/`, `agent-context/` | Made again on demand; listed in `.bashcut/.gitignore` and excluded from Time Machine |
 | User config | `~/Library/Application Support/BashCut/`: `Plugins/`, `PluginData/<id>/`, `plugin-trust.json`, `Library/`, `Knowledge/`, `agent-workspace*/`, `audit.jsonl`, `automation.sock` | Installed plugins, their settings and environments, trust grants, the user library and notes for every project |
 | User cache | `~/Library/Caches/BashCut/`: `PluginData/<id>/` (downloaded models), `Registry/` (the plugin catalog copy) | Fetched again when missing; not backed up by Time Machine |
 | Logs | `~/Library/Logs/BashCut/debug.log` | Shared by the app, CLI and MCP bridge |
 
+- **One cache folder.** Everything BashCut can make again is under `.bashcut/cache/`. Before, each cache had its own
+  folder in `.bashcut/` (`proxies/`, `ramp-audio/`, `stills/`, `loudness/`, `agent-context/`); opening a project moves
+  them in (a rename, so gigabytes of proxies move at once) and marks `.bashcut/cache/` as excluded from backups.
 - **`.bashcut/.gitignore`** is written when a project is created or saved and has none, so a project folder in git
   leaves the project cache out. BashCut never rewrites an existing one, so edits stay.
 - **The plugin registry copy moved to Caches** (#101). Before, it was `Application Support/BashCut/Registry/`; the
@@ -216,7 +219,7 @@ Media paths are relative to the project folder; absolute paths are rejected.
   workspace, an unknown `@` namespace, `.`/`..` components and symlinks that escape `assets` are rejected before
   composition.
 - **Proxies.** Items always reference the original file. For preview, `ProxyMediaSource` reads
-  `.bashcut/proxies/<media id>.mov` (or `.mp4`) when it exists; export always reads the original. Proxies keep
+  `.bashcut/cache/proxies/<media id>.mov` (or `.mp4`) when it exists; export always reads the original. Proxies keep
   the original frame timing, so no item changes.
 - **LUTs.** The project catalog `luts` lists `.cube` files under `luts/` with an ID, name and size; an item's
   `color.lut` must name a catalog entry.

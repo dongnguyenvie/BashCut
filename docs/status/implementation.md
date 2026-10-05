@@ -36,7 +36,8 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
 - Atomic save, autosave every 30 seconds and on deactivation, recovery choice, restored history, and
   external-change handling with a reload/conflict sheet listing project, media, track and item differences.
 - Project folders are watched with filesystem events, with an activation check as a fallback.
-- `.bashcut/.gitignore` lists the regenerable project caches (written once on create or save); the plugin
+- Regenerable project caches live in `.bashcut/cache/` (excluded from Time Machine; older per-cache folders are
+  moved in on open), and `.bashcut/.gitignore` lists them (written once on create or save); the plugin
   registry copy lives in `~/Library/Caches/BashCut/Registry` and an old Application Support copy is moved there
   once. The full layout is in [Storage on disk](../reference/project-format.md#storage-on-disk).
 - Open projects from Finder (double-click or **Open With**) or by dropping a `project.bashcut.json` or its folder
@@ -62,7 +63,7 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
 - Freeze Frame, tags, transform and opacity, constant speed with optional pitch preservation.
 - Still images (media kind `image`): import, drag in or `media import` a JPEG, PNG (transparency kept), HEIC or other
   image; it is placed for 3 s and trims to any length up to an hour. The engine reads it through a one-frame
-  ProRes 4444 movie in `.bashcut/stills/`, remade when the image changes.
+  ProRes 4444 movie in `.bashcut/cache/stills/`, remade when the image changes.
 - Keyframes (item field `keyframes`) animate zoom, pan, tilt, rotation and opacity of clips, images and text, with
   linear, ease-in/out/in-out and hold keys. Presets: slow zoom in/out and pans (Ken Burns), and fade, pop, slide-up
   and zoom-punch for text. Inspector › Animation, the diamond key at the playhead, and sliders that set keys once a
@@ -86,7 +87,7 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
 - Cached stereo waveforms read off the UI actor with cancellation and bounded peak data; refresh, progress and
   errors show in the timeline toolbar.
 - Preview proxies (M-5): `ProxyManager` flags HEVC, larger-than-1920 px or above-20 Mbit/s video and writes
-  `.bashcut/proxies/<media id>.mov` (H.264, at most 960 px, keyframe every 10 frames, AAC, original frame times).
+  `.bashcut/cache/proxies/<media id>.mov` (H.264, at most 960 px, keyframe every 10 frames, AAC, original frame times).
   `ProxyQueue` encodes one at a time as `media.proxy` jobs; the preview switches to each proxy as it lands and
   exports always read originals. `media proxy [--force]` and **Create Preview Proxy** make them by hand.
 - The viewer scrubs with chase-time seeking: one exact seek in flight, newest target next.

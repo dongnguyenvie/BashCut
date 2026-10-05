@@ -44,7 +44,7 @@ import Observation
                     try Task.checkCancellation()
                     let waveform = try await analyzer.waveform(
                         url: root.appendingPathComponent(asset.path),
-                        cacheDirectory: root.appendingPathComponent(".bashcut/cache/waveforms"))
+                        cacheDirectory: ProjectCache.url(.waveforms, projectRoot: root))
                     try Task.checkCancellation()
                     guard generation == id else { return }
                     values[asset.id] = waveform

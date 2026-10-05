@@ -57,7 +57,7 @@ struct SpeedRampAudioCacheTests {
             curve: SpeedCurve([.init(t: 0, speed: 0.1), .init(t: 1, speed: 0.1)]), keepDuration: false)).project
         let builder = CompositionBuilder()
         let task = Task { try await builder.build(value, root: root) }
-        let directory = root.appendingPathComponent(".bashcut/ramp-audio")
+        let directory = ProjectCache.url(.rampAudio, projectRoot: root)
         var began = false
         for _ in 0..<500 {
             let entries = (try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)) ?? []
