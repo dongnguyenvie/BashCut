@@ -15,6 +15,9 @@
   counts preference proposals too. Fixed: rejecting or deleting the lesson open in the Lessons editor crashed the
   app; a kit change's diff is edited in a multi-line monospaced editor.
 
+- Knowledge window: the scope of a preference ("This project" / "Every project") sits next to its key and is no
+  longer cut off.
+
 - **Knowledge window** (#68). The book button in the agent dock now opens a resizable **Knowledge** window instead
   of the small sheet, so it can stay open while agents work; it reloads when agents or people change the files.
   Sections: **Lessons** (search, filter by scope, status and tag, newest or oldest first; edit every field,
