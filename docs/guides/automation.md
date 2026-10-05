@@ -14,7 +14,10 @@ The app runs one local JSON-RPC server on a Unix socket. Two thin clients talk t
   Every result is the tool's text: string results as they are, everything else as compact JSON. There is no
   `structuredContent` (the SDK re-decodes it slowly, and compact text is also fewer tokens for the agent).
   While BashCut runs, the tool list also has one `bashcut_action_<action id>` tool per installed plugin action,
-  with the action's parameters as its input schema; calling it is `plugins run <action> --params …`.
+  with the action's parameters as its input schema; calling it is `plugins run <action> --params …`. At most 40
+  are listed, so hundreds of plugins do not crowd out the built-in tools: actions available with the current
+  selection come first, then the most recently run. Every other action is still found with
+  `plugins actions <text>` and run with `bashcut_plugins_run`, and its `bashcut_action_…` name still works.
 
 Both clients forward to the same handlers the UI uses. Edits go through the validated `EditOperation` and
 history path, so permissions, revision checks, audit records and undo behave the same whether a change comes

@@ -191,6 +191,7 @@ extension ProjectDocument {
         _ id: String, params: [String: JSONValue], mediaID: String? = nil, author: Author
     ) -> String {
         let title = plugins.action(id)?.title ?? id
+        plugins.lastRun[id] = Date()
         message = String(format: String(localized: "Running %@…"), title)
         return jobs.start("plugins.run", author: author, detail: id, work: { [weak self] reporter in
             guard let self else { throw CancellationError() }
@@ -314,8 +315,14 @@ extension ProjectDocument {
 
     // MARK: Automation
 
-    func pluginActionsJSON() -> JSONValue {
-        .array(plugins.actions.map { action in
+    /// Actions whose id, title or plugin contain `query` (any case), optionally of one plugin.
+    func pluginActionsJSON(query: String? = nil, plugin: String? = nil) -> JSONValue {
+        let formatter = ISO8601DateFormatter()
+        let matching = plugins.actions.filter { action in
+            (plugin == nil || action.plugin.id == plugin)
+                && PluginActionTools.matches(query, [action.id, action.title, action.plugin.id, action.plugin.manifest.name.text])
+        }
+        return .array(matching.map { action in
             .object([
                 "id": .string(action.id), "title": .string(action.title), "plugin": .string(action.plugin.id),
                 "placements": .array(action.spec.placements.map(JSONValue.string)),
@@ -327,12 +334,15 @@ extension ProjectDocument {
                     "additionalProperties": .bool(false),
                 ]),
                 "enabled": .bool(canRunPluginAction(action)),
+                "lastRun": plugins.lastRun[action.id].map { .string(formatter.string(from: $0)) } ?? .null,
             ])
         })
     }
 
     func registerPluginCommands() {
-        handle("plugins.actions") { document, _, _ in document.pluginActionsJSON() }
+        handle("plugins.actions") { document, arguments, _ in
+            document.pluginActionsJSON(query: arguments.optionalString("query"), plugin: arguments.optionalString("plugin"))
+        }
         handleAuthored("plugins.run") { document, arguments, author in
             let id = try arguments.string("action")
             guard let action = document.plugins.action(id) else {

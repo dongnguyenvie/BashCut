@@ -13,13 +13,14 @@ private func value<T: Encodable>(_ encodable: T) -> Value? {
 }
 
 /// Installed plugin actions as tools (`bashcut_action_<id>`), read from the running app; none when it is not
-/// running or has no plugins.
-private func actionTools() -> [PluginActionTools.Tool] {
+/// running or has no plugins. `listed` keeps the tool list within `PluginActionTools.budget`; calls look up every
+/// action, so a tool name an agent learned earlier still works.
+private func actionTools(listed: Bool = false) -> [PluginActionTools.Tool] {
     guard let response = try? MCPBridgeClient.call(
         method: "plugins.actions", arguments: Data("{}".utf8), token: AutomationPaths.sessionToken()),
         let actions = try? JSONDecoder().decode(JSONValue.self, from: response.data)
     else { return [] }
-    return PluginActionTools.tools(from: actions)
+    return listed ? PluginActionTools.listed(from: actions) : PluginActionTools.tools(from: actions)
 }
 
 /// Results go out as text only. The SDK re-decodes every result into a `Value` tree through Codable, which costs
@@ -59,7 +60,7 @@ enum ToolList {
             let idJSON = try? JSONSerialization.data(withJSONObject: id, options: .fragmentsAllowed)
         else { return nil }
         var tools = catalog
-        let plugins = actionTools().map { tool($0.name, $0.description, $0.inputSchema) }
+        let plugins = actionTools(listed: true).map { tool($0.name, $0.description, $0.inputSchema) }
         if !plugins.isEmpty {
             // Splices `[catalog…]` and `[plugins…]` into one array.
             tools.removeLast()
@@ -82,7 +83,7 @@ enum ToolList {
             name: "bashcut-mcp", version: "0.1.0",
             capabilities: .init(tools: .init()))
         await server.withMethodHandler(ListTools.self) { _ in
-            let plugins = actionTools().map {
+            let plugins = actionTools(listed: true).map {
                 Tool(name: $0.name, description: $0.description, inputSchema: value($0.inputSchema) ?? .object([:]))
             }
             return .init(tools: tools + plugins)

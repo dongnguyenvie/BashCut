@@ -50,8 +50,10 @@ extension CommandCatalog {
     /// session context (`ProjectDocument.pluginActionsText()`) and by `plugins actions`.
     private static let plugins = """
         Plugin actions: installed plugins add actions (Plugins menu, clip and timeline menus, panels). To use one:
-        1. `bashcut plugins actions` lists each action's id, title, plugin, `when` condition, params as JSON Schema
-           and `enabled` (whether it can run with the current selection).
+        1. `bashcut plugins actions [TEXT] [--plugin ID]` lists each action's id, title, plugin, `when` condition,
+           params as JSON Schema, `enabled` (whether it can run with the current selection) and `lastRun`. MCP lists
+           at most \(PluginActionTools.budget) actions as their own tools (available and recently run first); search
+           here for any other and run it with `plugins run`.
         2. Make it runnable: most actions work on the selection, so `bashcut ui select ITEM_ID` first.
         3. `bashcut plugins run ACTION_ID --params '{"name":value}'` (MCP: `bashcut_plugins_run`, or the per-action
            tool `\(PluginActionTools.prefix)<id>`); omitted params use their defaults. It returns a job ID.
