@@ -18,6 +18,19 @@ enum PluginInstallScope: String, CaseIterable, Identifiable {
     }
 }
 
+/// How a plugin folder from this Mac is installed: a copy (the default), or a link to the developer's folder
+/// (developer mode) so edits are picked up with Reload. Every edit still needs Trust again.
+enum PluginInstallMode: String, CaseIterable, Identifiable {
+    case copy, link
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .copy: String(localized: "Copy")
+        case .link: String(localized: "Link (developer mode)")
+        }
+    }
+}
+
 /// Add Plugin…: plugins from a folder, plugin.json or zip on this Mac, or from a link, instead of the registry (#83).
 extension PluginManagerModel {
     /// Account under which link access tokens are kept in the Keychain, one per host.
@@ -54,12 +67,76 @@ extension PluginManagerModel {
     /// Checks and copies a plugin from this Mac, then shows the install approval. Nothing runs before the user
     /// approves it, and only the user can.
     @discardableResult
-    func requestLocalInstall(from url: URL, scope: PluginInstallScope = .user) async throws -> InstalledPlugin {
+    func requestLocalInstall(
+        from url: URL, scope: PluginInstallScope = .user, mode: PluginInstallMode = .copy, replacing: InstalledPlugin? = nil
+    ) async throws -> InstalledPlugin {
         try checkCanAdd(scope: scope)
         let parent = service.roots.user
         let staged = try await Task.detached { try PluginLocalSource.stage(url, stagingParent: parent) }.value
-        present(staged, scope: scope)
+        if mode == .link, staged.sourceFolder == nil {
+            staged.discard()
+            throw PluginError.invalid("Only a plugin folder (or its plugin.json) can be linked; a zip is always copied")
+        }
+        if let replacing, staged.plugin.id != replacing.id {
+            staged.discard()
+            throw PluginError.invalid(
+                "\(url.lastPathComponent) is \(staged.plugin.id), not \(replacing.id); use Add Plugin… to add another plugin")
+        }
+        present(staged, scope: scope, mode: mode)
         return staged.plugin
+    }
+
+    /// Replace…: updates a copied plugin from a new folder, plugin.json or zip, in the same scope.
+    func chooseReplacement(for plugin: InstalledPlugin) {
+        guard let scope = installScope(of: plugin) else { return }
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = true
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [.zip, .json] + [UTType(filenameExtension: "bashcutplugin")].compactMap { $0 }
+        panel.message = String(format: String(localized: "Choose the new version of %@: a folder, its plugin.json, or a .zip file"),
+                               plugin.manifest.displayName)
+        guard let url = ModalCenter.shared.open(panel, name: "choose-plugin")?.first else { return }
+        Task {
+            do { try await requestLocalInstall(from: url, scope: scope, replacing: plugin) } catch {
+                message = error.localizedDescription
+            }
+        }
+    }
+
+    /// Replace… is for copied plugins from outside the registry; registry plugins update through Updates.
+    func canReplace(_ plugin: InstalledPlugin) -> Bool {
+        PluginChannel.current.allowsUserPlugins && isRemovable(plugin) && linkTarget(of: plugin) == nil
+            && (registry?.entry(plugin.id) == nil || origin(of: plugin) != nil)
+    }
+
+    /// The folder a linked plugin (developer mode) points at, or nil for a copy.
+    func linkTarget(of plugin: InstalledPlugin) -> URL? {
+        trust.isBundled(plugin) ? nil : PluginLocalSource.linkTarget(of: plugin.directory)
+    }
+
+    /// Which scope folder holds an installed plugin, or nil for one that comes with BashCut.
+    func installScope(of plugin: InstalledPlugin) -> PluginInstallScope? {
+        let parent = plugin.directory.deletingLastPathComponent().standardizedFileURL
+        return PluginInstallScope.allCases.first { installRoot(for: $0)?.standardizedFileURL == parent }
+    }
+
+    /// Reload: stops the plugin's session so its next call starts the current code, and checks its files again. A
+    /// changed plugin waits for Trust again; Reload never trusts it.
+    @discardableResult
+    func reload(_ plugin: InstalledPlugin) async -> PluginAvailability {
+        stopSession(plugin.id)
+        refresh(projectRoot: currentProjectRoot)
+        guard let current = self.plugin(plugin.id) else {
+            message = String(format: String(localized: "%@ is no longer installed"), plugin.manifest.displayName)
+            return .untrusted
+        }
+        let state = availability[current.id] ?? .untrusted
+        if state == .ready { await checkHealthNow(current) }
+        message = state == .changed
+            ? String(format: String(localized: "%@ changed: review it and choose Trust to run the new files"), current.manifest.displayName)
+            : String(format: String(localized: "Reloaded %@"), current.manifest.displayName)
+        return state
     }
 
     /// Downloads a plugin from a link, checks it, then shows the install approval. The access token for the link's
@@ -72,7 +149,7 @@ extension PluginManagerModel {
         defer { addingLink = false }
         let parent = service.roots.user
         let staged = try await linkResolver.stage(link, stagingParent: parent)
-        present(staged, scope: scope)
+        present(staged, scope: scope, mode: .copy)
         return staged.plugin
     }
 
@@ -101,10 +178,11 @@ extension PluginManagerModel {
         }
     }
 
-    private func present(_ staged: StagedLocalPlugin, scope: PluginInstallScope) {
+    private func present(_ staged: StagedLocalPlugin, scope: PluginInstallScope, mode: PluginInstallMode) {
         cancelPendingInstall()
         installScope = scope
-        var pending = PendingPluginInstall(plugin: staged.plugin, local: staged, scope: scope)
+        installMode = mode
+        var pending = PendingPluginInstall(plugin: staged.plugin, local: staged, scope: scope, mode: mode)
         pending.replacing = replaces(pending)
         if !staged.plugin.manifest.dependencies.isEmpty {
             pending.preflight = .notChecked(staged.plugin, reason: "Checked after installation approval")
@@ -144,6 +222,11 @@ extension PluginManagerModel {
         pending.local == nil ? pending.scope : installScope
     }
 
+    /// Copy or link for `pending`: the mode chosen in the approval for a plugin folder, otherwise a copy.
+    func mode(of pending: PendingPluginInstall) -> PluginInstallMode {
+        pending.local?.sourceFolder == nil ? .copy : installMode
+    }
+
     /// Whether installing replaces a copy already in the chosen folder.
     func replaces(_ pending: PendingPluginInstall) -> Bool {
         guard let root = installRoot(for: scope(of: pending)) else { return false }
@@ -168,5 +251,23 @@ extension PluginManagerModel {
             return String(format: String(localized: "Used in this project instead of the copy on this Mac (%@)"), version)
         }
         return String(format: String(localized: "This project has its own copy (%@), which is used while it is open"), version)
+    }
+
+    /// Moves a staged plugin into place. An existing copy is kept in `.previous/` until the move succeeds, and
+    /// put back if it fails.
+    nonisolated static func place(_ staged: URL, at destination: URL, root: URL) throws {
+        let manager = FileManager.default
+        let previous = root.appendingPathComponent(".previous/\(destination.lastPathComponent)", isDirectory: true)
+        guard manager.fileExists(atPath: destination.path) else { return try manager.moveItem(at: staged, to: destination) }
+        try? manager.removeItem(at: previous)
+        try manager.createDirectory(at: previous.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try manager.moveItem(at: destination, to: previous)
+        do {
+            try manager.moveItem(at: staged, to: destination)
+            try? manager.removeItem(at: previous)
+        } catch {
+            try? manager.moveItem(at: previous, to: destination)
+            throw error
+        }
     }
 }

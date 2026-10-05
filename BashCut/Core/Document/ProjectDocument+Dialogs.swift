@@ -73,7 +73,8 @@ extension ProjectDocument {
                 title: (pending.repair ? "Set up " : (pending.local == nil ? pending.replacing : plugins.replaces(pending))
                     ? "Update " : "Install ")
                     + pending.plugin.manifest.displayName + "?",
-                message: "Only the user can approve a plugin install.",
+                message: "Only the user can approve a plugin install."
+                    + (plugins.mode(of: pending) == .link ? " It is installed as a link (developer mode)." : ""),
                 options: [ModalOption("cancel", String(localized: "Cancel"))]
             ) { [weak self] _ in self?.plugins.cancelPendingInstall() })
         }

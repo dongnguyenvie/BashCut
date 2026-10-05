@@ -51,6 +51,7 @@ struct PluginManagerView: View {
                 blocker: model.installBlocker(pending), replaces: pending.local == nil ? pending.replacing : model.replaces(pending),
                 shadowNote: model.shadowNote(pending),
                 scope: pending.local == nil || model.currentProjectRoot == nil ? nil : $model.installScope,
+                mode: pending.local?.sourceFolder == nil ? nil : $model.installMode,
                 approve: model.installPendingPlugin, cancel: model.cancelPendingInstall)
         }
         .task(id: model.tab) {
@@ -144,6 +145,11 @@ private struct PluginRow: View {
                     .font(.caption2).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle).textSelection(.enabled)
                     .help("Installed from this link; it is not in the BashCut registry")
             }
+            if let target = model.linkTarget(of: plugin) {
+                Label(String(format: String(localized: "Linked to %@ (developer mode)"), target.path), systemImage: "link.badge.plus")
+                    .font(.caption2).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle).textSelection(.enabled)
+                    .help("Runs from your own folder. After you edit it, choose Reload; changed files need Trust again.")
+            }
             if let reason = model.yankedReason(plugin) {
                 Label(String(format: String(localized: "Your version was withdrawn: %@"), reason),
                       systemImage: "exclamationmark.triangle.fill").font(.caption).foregroundStyle(.orange)
@@ -206,6 +212,13 @@ private struct PluginRow: View {
                     }.disabled(model.installing)
                         .help("Run this plugin's install recipes again (after a failed or cancelled setup)")
                 }
+                if model.linkTarget(of: plugin) != nil {
+                    Button("Reload") { Task { await model.reload(plugin) } }
+                        .help("Pick up your edits: restart the plugin and check its files again")
+                } else if model.canReplace(plugin) {
+                    Button("Replace…") { model.chooseReplacement(for: plugin) }.disabled(model.installing)
+                        .help("Update this plugin from a new folder, plugin.json or .zip file")
+                }
                 if model.isRemovable(plugin) {
                     Button("Remove", role: .destructive, action: remove).disabled(model.installing)
                 }
@@ -233,7 +246,9 @@ private struct PluginRow: View {
                 format: String(localized: "Remove with Data (%@)"),
                 ByteCountFormatter.string(fromByteCount: usage, countStyle: .file))))
         }
-        var text = String(localized: "Its files, trust and settings on this Mac are removed. Projects keep their plugin data.")
+        var text = model.linkTarget(of: plugin) == nil
+            ? String(localized: "Its files, trust and settings on this Mac are removed. Projects keep their plugin data.")
+            : String(localized: "The link, trust and settings on this Mac are removed. Your plugin folder is kept.")
         if usage > 0 {
             text += "\n\n" + String(
                 localized: "Its downloaded data (environments, models) can be kept for a later reinstall or removed too.")
@@ -284,6 +299,8 @@ private struct PluginInstallApprovalView: View {
     let shadowNote: String?
     /// Where an install from this Mac goes; nil when there is no choice.
     let scope: Binding<PluginInstallScope>?
+    /// Copy or Link (developer mode) for a plugin folder; nil for an archive or a download.
+    let mode: Binding<PluginInstallMode>?
     let approve: () -> Void
     let cancel: () -> Void
     private var plugin: InstalledPlugin { pending.plugin }
@@ -372,6 +389,15 @@ private struct PluginInstallApprovalView: View {
                 Picker("Install for", selection: scope) {
                     ForEach(PluginInstallScope.allCases) { Text($0.title).tag($0) }
                 }.pickerStyle(.segmented).frame(width: 300)
+            }
+            if let mode {
+                Picker("Install as", selection: mode) {
+                    ForEach(PluginInstallMode.allCases) { Text($0.title).tag($0) }
+                }.pickerStyle(.segmented).frame(width: 360)
+                if mode.wrappedValue == .link {
+                    Text("Runs from your folder instead of a copy. After an edit, choose Reload in Plugins; changed files need Trust again.")
+                        .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                }
             }
             if let shadowNote { Text(shadowNote).font(.caption).foregroundStyle(.secondary) }
         }.padding(8).frame(maxWidth: .infinity, alignment: .leading).background(.white.opacity(0.04)).cornerRadius(6)

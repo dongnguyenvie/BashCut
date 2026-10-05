@@ -147,6 +147,14 @@ struct CommandSpecTests {
         let validateLink = try CommandLineParser.parse(["plugins", "validate", "--url", "https://example.com/p.zip"])
         #expect(validateLink.params == ["url": .string("https://example.com/p.zip")])
         #expect(CommandCatalog.dialogs.contains("add-plugin"))
+        // Link (developer mode), Replace… and Reload.
+        let linked = try CommandLineParser.parse(["plugins", "install", "--path", "/tmp/my-plugin", "--link"])
+        #expect(linked.params == ["path": .string("/tmp/my-plugin"), "link": .bool(true)])
+        let replace = try CommandLineParser.parse(["plugins", "replace", "nolan.demo", "--path", "/tmp/demo.zip"])
+        #expect(replace.spec.execution == .job && replace.params == ["plugin": .string("nolan.demo"), "path": .string("/tmp/demo.zip")])
+        #expect(throws: CommandLineParser.Failure.self) { try CommandLineParser.parse(["plugins", "replace", "nolan.demo"]) }
+        let reload = try CommandLineParser.parse(["plugins", "reload", "nolan.demo"])
+        #expect(reload.spec.mode == .edit && reload.params == ["plugin": .string("nolan.demo")])
         let remove = try CommandLineParser.parse(["plugins", "remove", "bashcut.vieneu-tts", "--data"])
         #expect(remove.spec.mode == .edit && remove.params["data"] == .bool(true))
         #expect(try CommandLineParser.parse(["plugins", "setup", "bashcut.vieneu-tts"]).params == ["plugin": .string("bashcut.vieneu-tts")])

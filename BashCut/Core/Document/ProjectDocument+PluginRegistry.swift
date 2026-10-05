@@ -44,6 +44,22 @@ extension ProjectDocument {
         handleAuthored("plugins.install") { document, arguments, author in
             try document.installPluginCommand(arguments, author: author)
         }
+        handleAuthored("plugins.reload") { document, arguments, _ in
+            let plugin = try document.requirePlugin(arguments.string("plugin"))
+            let state = await document.plugins.reload(plugin)
+            return .object([
+                "plugin": .string(plugin.id), "availability": .string(state.name), "detail": .string(state.detail),
+                "linked": document.plugins.linkTarget(of: plugin).map { .string($0.path) } ?? .null,
+            ])
+        }
+        handleAuthored("plugins.replace") { document, arguments, author in
+            let plugin = try document.requirePlugin(arguments.string("plugin"))
+            guard let scope = document.plugins.installScope(of: plugin) else {
+                throw RPCFailure(-32602, "Plugins that come with BashCut cannot be replaced")
+            }
+            let url = URL(fileURLWithPath: try arguments.string("path"))
+            return document.requestAddedPluginInstall(.path(url), scope: scope, replacing: plugin, author: author)
+        }
         handleAuthored("plugins.remove") { document, arguments, _ in
             let plugin = try document.requirePlugin(arguments.string("plugin"))
             do {
@@ -69,8 +85,11 @@ extension ProjectDocument {
                 throw RPCFailure(-32602, "Give either a registry plugin or a path/url, not both")
             }
             let scope = PluginInstallScope(rawValue: arguments.optionalString("scope") ?? "user") ?? .user
-            return requestAddedPluginInstall(source, scope: scope, author: author)
+            let mode: PluginInstallMode = arguments.bool("link") ? .link : .copy
+            if mode == .link, case .link = source { throw RPCFailure(-32602, "link is for a plugin folder at path") }
+            return requestAddedPluginInstall(source, scope: scope, mode: mode, author: author)
         }
+        guard !arguments.bool("link") else { throw RPCFailure(-32602, "link is for a plugin folder at path") }
         guard let id = arguments.optionalString("plugin") else {
             throw RPCFailure(-32602, "Give a registry plugin ID, a path or a url")
         }
@@ -93,7 +112,10 @@ extension ProjectDocument {
 
     /// `plugins install --path/--url`: checks (and downloads) the plugin as a job, then shows the approval only the user
     /// can give.
-    private func requestAddedPluginInstall(_ source: PluginSourceArgument, scope: PluginInstallScope, author: Author) -> JSONValue {
+    private func requestAddedPluginInstall(
+        _ source: PluginSourceArgument, scope: PluginInstallScope, mode: PluginInstallMode = .copy,
+        replacing: InstalledPlugin? = nil, author: Author
+    ) -> JSONValue {
         let name = source.name
         let job = jobs.start("plugins.install", author: author, detail: name, work: { [weak self] reporter in
             guard let self else { throw CancellationError() }
@@ -101,7 +123,7 @@ extension ProjectDocument {
             switch source {
             case .path(let url):
                 reporter.detail("Checking \(name)")
-                plugin = try await plugins.requestLocalInstall(from: url, scope: scope)
+                plugin = try await plugins.requestLocalInstall(from: url, scope: scope, mode: mode, replacing: replacing)
             case .link(let link):
                 reporter.detail("Downloading \(name)")
                 plugin = try await plugins.requestLinkInstall(link, scope: scope)
@@ -109,7 +131,7 @@ extension ProjectDocument {
             ui.showPlugins = true
             return .object([
                 "plugin": .string(plugin.id), "version": .string(plugin.manifest.version),
-                "scope": .string(scope.rawValue), "approval": .string("pending"),
+                "scope": .string(scope.rawValue), "mode": .string(mode.rawValue), "approval": .string("pending"),
             ])
         }, finished: { [weak self] outcome in
             guard case .failure(let error) = outcome, !JobCenter.isCancellation(error) else { return }

@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+- **Link (developer mode), Reload and Replace…** (#83). When you add a plugin folder, the approval can install it as
+  a link to your folder instead of a copy, so you can keep editing it; Installed shows the folder, and **Reload**
+  restarts the plugin and checks its files again (changed files still need Trust; removing it keeps your folder).
+  Copied plugins get **Replace…** to update them from a new folder or zip with the same id. Agents: `plugins install
+  --path <folder> --link`, `plugins replace <id> --path <path>`, `plugins reload <id>`, and `linked` in `plugins
+  list`.
 - **Add plugins from a link** (#83). Add Plugin… now opens a sheet where you can paste a link: a `.zip` /
   `.bashcutplugin` file, a GitHub repo (`#tag`, `/tree/<ref>/<folder>`, or its `plugin.json`), or a GitHub release
   (its one plugin archive). Repo links are pinned to the commit they point at. `#sha256=<hex>` (or the SHA-256

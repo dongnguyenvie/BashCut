@@ -291,6 +291,8 @@ replaceable providers and run outside the editor process.
   `plugin.json` or release; optional `#sha256=`; a per-host token in the Keychain) or a plugin folder, its
   `plugin.json`, or a `.zip` / `.bashcutplugin` archive. It validates and stages a copy, shows an unsigned badge, the source and every
   dependency recipe, and installs into this Mac's or the open project's plugin folder.
+  A folder can instead be installed as a link (developer mode), which Installed shows with **Reload**; copied
+  plugins have **Replace…** to update from a new folder or zip with the same id.
 - Discovery order is project (`.bashcut/plugins`), user (`Application Support/BashCut/Plugins`), then bundled.
 - A project can pick a provider per capability. An unavailable preference falls back to a healthy provider by
   priority.
