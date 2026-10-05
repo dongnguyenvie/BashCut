@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 122 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 123 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -797,7 +797,7 @@ Read the editor view state, or change it: timeline zoom (pixels per second), vie
 - `reveal`: integer, ≥ 0. Scroll the timeline so this frame is visible
 - `inspector`: string, one of video, audio, text, color, speed. Inspector tab
 - `settingsSection`: string, one of general, agents, plugins, storage. Settings section (open Settings with ui.open settings)
-- `knowledgeSection`: string, one of inbox, lessons, prefs, facts, notes, skills. Knowledge window section (open it with ui.open knowledge)
+- `knowledgeSection`: string, one of inbox, lessons, prefs, facts, notes, skills, history. Knowledge window section (open it with ui.open knowledge)
 - `pluginsTab`: string, one of installed, browse, updates, activity. Plugins sheet tab (open it with ui.open plugins)
 - `pluginsCategory`: string, one of all, agents, captions, voice, audio, color, effects, export, utilities. Category Plugins › Browse shows; all shows every one
 
@@ -1008,13 +1008,23 @@ Reject a proposal: a proposed lesson is removed, a preference change is dropped;
 - `id`: string, required. Proposal ID (l-… or p-…) from knowledge proposals
 - `session`: string. Your agent session ID, recorded as the source
 
-### `bashcut knowledge history [--scope <scope>] [--limit <limit>]`
+### `bashcut knowledge history [--scope <scope>] [--kind <kind>] [--target <target>] [--limit <limit>]`
 
-List changes to lessons, preferences and facts, newest first, with who made them and the entry before and after.
+List changes to lessons, preferences, facts, memos and project skills, newest first: who made them, the entry before and after, and a line diff. Undo one with knowledge revert.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_knowledge_history`
 - `scope`: string, one of project, user. Only this scope; both by default
+- `kind`: string, one of lesson, prefs, facts, memo, skill. Only changes to this kind of entry
+- `target`: string. Only changes to this lesson ID, key or skill name
 - `limit`: integer, 1…500, default 50. Number of changes
+
+### `bashcut knowledge revert <id> [--session <session>]`
+
+Put an entry back to how it was before a change from knowledge history: a removed entry comes back, an added one goes, an edit is undone (later changes to the same entry too). History records the revert. Agents reverting a change for every project need approval.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_knowledge_revert`
+- `id`: string, required. Change ID from knowledge history
+- `session`: string. Your agent session ID, recorded as the source
 
 ## library
 

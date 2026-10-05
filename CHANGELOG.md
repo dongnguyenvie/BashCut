@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+- **Knowledge history with diff and revert** (#70). A new **History** section in the Knowledge window lists every
+  change to lessons, preferences, facts, memos and project skills, newest first, with who made it and a line diff.
+  **Revert…** puts the entry back to how it was before the change (a removed entry comes back, an added one goes)
+  and is recorded too, so a revert can be undone. Memo and skill edits are now recorded with their text and
+  author. `knowledge history` takes `--kind` and `--target` and returns `diff` and `revertible`; the new
+  `knowledge revert <id>` does the same as the button (an agent's revert of a change for every project asks for
+  approval). Rejecting a preference proposal changed nothing, so it cannot be reverted.
 - **Knowledge inbox** (#69). The Knowledge window opens on a new **Inbox** section when something waits for
   review: proposed lessons, kit change proposals (lessons tagged `kit`, with their diff coloured) and an agent's
   preference changes for every project, each with **Approve**, **Edit…** and **Reject**. An agent's `set-pref` for

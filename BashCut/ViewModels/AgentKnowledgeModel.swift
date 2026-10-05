@@ -36,6 +36,10 @@ import Observation
     var changedHere: Set<String> = []
     /// Whether the Knowledge window is open; otherwise `lastVisit` follows the stored visit date for the dock badge.
     var visiting = false
+    // History (#70); see AgentKnowledgeModel+History.swift.
+    var history: [KnowledgeChange] = []
+    var historyKind: KnowledgeChange.Kind?
+    var selectedChangeID: String?
     @ObservationIgnored var signature = ""
 
     var hasProject: Bool { store?.project != nil }
@@ -95,17 +99,17 @@ import Observation
         } catch { message = error.localizedDescription }
     }
 
-    func writeMemo(_ text: String, scope: KnowledgeScope) throws {
-        try requireStore().writeMemo(text, scope: scope)
+    func writeMemo(_ text: String, scope: KnowledgeScope, source: KnowledgeSource = KnowledgeSource(agent: "user")) throws {
+        try requireStore().writeMemo(text, scope: scope, source: source)
         switch scope {
         case .project: memo = text
         case .user: userMemo = text
         }
     }
 
-    func migrateLegacy(to scope: KnowledgeScope) throws {
+    func migrateLegacy(to scope: KnowledgeScope, source: KnowledgeSource = KnowledgeSource(agent: "user")) throws {
         guard let legacy else { throw KnowledgeError("No older memo to move") }
-        try requireStore().migrate(legacy, to: scope)
+        try requireStore().migrate(legacy, to: scope, source: source)
         reload()
     }
 
@@ -131,8 +135,8 @@ import Observation
     }
 
     /// Replaces a skill's SKILL.md, or creates the skill and shares it with Claude and Codex.
-    func writeSkill(named name: String, text: String?) throws {
-        try requireStore().writeSkill(named: name, text: text)
+    func writeSkill(named name: String, text: String?, source: KnowledgeSource = KnowledgeSource(agent: "user")) throws {
+        try requireStore().writeSkill(named: name, text: text, source: source)
         reload()
         select(name.lowercased().trimmingCharacters(in: .whitespacesAndNewlines))
     }

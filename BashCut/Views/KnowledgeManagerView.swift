@@ -3,9 +3,10 @@ import BashCutAutomation
 import BashCutDocument
 import SwiftUI
 
-/// The Knowledge window (#68): the inbox of proposals (#69), lessons, preferences and project facts the agents recorded, the memos and the project
-/// skills. The section is `ui.knowledgeSection`, so agents can show one with `ui view --knowledge-section`; every
-/// change here also has a `knowledge` command.
+/// The Knowledge window (#68): the inbox of proposals (#69), lessons, preferences and project facts the agents
+/// recorded, the memos, the project skills and the history of changes with revert (#70). The section is
+/// `ui.knowledgeSection`, so agents can show one with `ui view --knowledge-section`; every change here also has a
+/// `knowledge` command.
 struct KnowledgeManagerView: View {
     @Bindable var model: AgentKnowledgeModel
     let ui: EditorUIState
@@ -90,6 +91,7 @@ struct KnowledgeManagerView: View {
         case "facts": KnowledgeValuesSection(model: model, kind: .facts)
         case "notes": KnowledgeNotesSection(model: model)
         case "skills": KnowledgeSkillsSection(model: model)
+        case "history": KnowledgeHistorySection(model: model)
         default: KnowledgeLessonsSection(model: model)
         }
     }
@@ -110,6 +112,7 @@ struct KnowledgeManagerView: View {
         case "facts": "Project facts"
         case "notes": "Notes"
         case "skills": "Skills"
+        case "history": "History"
         default: "Lessons"
         }
     }
@@ -121,6 +124,7 @@ struct KnowledgeManagerView: View {
         case "facts": "list.bullet.rectangle"
         case "notes": "note.text"
         case "skills": "wand.and.stars"
+        case "history": "clock.arrow.circlepath"
         default: "lightbulb"
         }
     }
