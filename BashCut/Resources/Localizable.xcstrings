@@ -1,6 +1,7 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Waiting for approval: %@": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Waiting for approval: %@" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đang chờ phê duyệt: %@" } } } },
     "Link (developer mode)": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Link (developer mode)" } }, "vi": { "stringUnit": { "state": "translated", "value": "Liên kết (chế độ nhà phát triển)" } } } },
     "Install as": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Install as" } }, "vi": { "stringUnit": { "state": "translated", "value": "Cài dạng" } } } },
     "Reload": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Reload" } }, "vi": { "stringUnit": { "state": "translated", "value": "Tải lại" } } } },

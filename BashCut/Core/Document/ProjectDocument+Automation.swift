@@ -26,6 +26,7 @@ extension ProjectDocument {
         registerImportCommands()
         registerProxyCommands()
         registerStorageCommands()
+        registerLibraryCommands()
         registerAgentKitCommands()
         registerAppCommands()
         registerChatAgentCommands()
