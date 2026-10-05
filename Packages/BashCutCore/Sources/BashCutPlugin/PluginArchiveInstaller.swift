@@ -1,4 +1,4 @@
-import CryptoKit
+import Crypto
 import Foundation
 
 /// A downloaded, verified and unpacked plugin waiting for the user's approval. Nothing from it has run.

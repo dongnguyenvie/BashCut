@@ -30,7 +30,7 @@ external tools, and the options that were rejected. Exact versions and licenses 
 | Core Text, Core Graphics | Captions and text overlays | **Implemented** |
 | VideoToolbox (through AVFoundation) | Hardware H.264/HEVC/ProRes encode and decode | **Implemented** |
 | AVFAudio | Direct voiceover recording with an input level meter | **Implemented** |
-| Security, CryptoKit | Hashing for cache keys | **Implemented** |
+| Security | macOS credential storage | **Implemented** |
 | Dispatch file-system sources | Watching the project folder for outside edits | **Implemented** |
 | UniformTypeIdentifiers | Drag and drop, open and import panels | **Implemented** |
 | OSLog | Unified-log mirror of the debug log | **Implemented** |
@@ -44,13 +44,14 @@ external tools, and the options that were rejected. Exact versions and licenses 
 
 | Package | Purpose | License | Linked into | Needed from |
 |---|---|---|---|---|
+| [swift-crypto](https://github.com/apple/swift-crypto) | Portable SHA-256 and Ed25519; delegates to CryptoKit on Apple platforms | Apache-2.0 | Project, Plugin, Engine, Agent, Plugins | Windows port |
 | [swift-collections](https://github.com/apple/swift-collections) | `Deque` for the bounded undo/redo stacks (only `DequeModule` is linked). Stable JSON key order comes from sorted-key encoding, not `OrderedDictionary` | Apache-2.0 | `BashCutProject` | M0 |
 | [swift-snapshot-testing](https://github.com/pointfreeco/swift-snapshot-testing) | Golden-frame tests for the compositor. **Planned:** snapshot tests for the timeline text form and the OTIO/Resolve plans | MIT | Tests only | M0 |
 | [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm) | Terminal emulator + PTY (`LocalProcessTerminalView`) for the agent dock | MIT | `BashCut` | M2 |
 | [MCP Swift SDK](https://github.com/modelcontextprotocol/swift-sdk) (official) | stdio MCP server inside `bashcut-mcp`, so Claude and Codex can call BashCut tools | MIT, moving to Apache-2.0 | `bashcut-mcp` | M2 |
 | [swift-argument-parser](https://github.com/apple/swift-argument-parser) | The `bashcut` CLI | Apache-2.0 | `bashcut` | M2 |
 
-The base app therefore links four runtime Swift packages; snapshot testing is test-only. WhisperKit, libebur128
+The base app therefore links five direct runtime Swift packages; snapshot testing is test-only. WhisperKit, libebur128
 and other provider-specific libraries are not linked into the base app.
 
 ## Optional plugin dependencies

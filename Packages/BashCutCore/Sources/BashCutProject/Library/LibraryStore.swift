@@ -1,4 +1,4 @@
-import CryptoKit
+import Crypto
 import Foundation
 
 /// The library items of one writable scope, in `<root>/library.json`, with their files under `<root>/files/<id>/v<N>/`.

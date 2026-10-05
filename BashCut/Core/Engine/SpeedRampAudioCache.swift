@@ -1,6 +1,6 @@
 @preconcurrency import AVFoundation
 import BashCutProject
-import CryptoKit
+import Crypto
 import Foundation
 import os
 

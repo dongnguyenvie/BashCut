@@ -5,6 +5,8 @@
 
 ## [Unreleased]
 
+- Use swift-crypto's `Crypto` module for SHA-256 cache/library hashes and Ed25519 plugin signatures (W02-02).
+  Apple platforms continue using CryptoKit through Swift Crypto; shared code can compile the same APIs on Windows.
 - **Readable requests in agent terminals.** Claude Code and Codex fold a long paste into a placeholder
   (`[Pasted text #1 +23 lines]`, `[Pasted Content 1801 chars]`), so **Project context**, the quick prompts, **Ask
   agent**, review fixes and **Ask the agent to split it** hid the request behind the context. The dock now writes the

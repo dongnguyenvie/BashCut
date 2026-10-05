@@ -8,15 +8,20 @@ considered for later are in [04 — Dependencies](../specs/04-dependencies.md). 
 
 | Package | Version | License | Linked into | Why |
 |---|---|---|---|---|
+| [swift-crypto](https://github.com/apple/swift-crypto) | 3.15.1 | Apache-2.0 | Project, Plugin, Engine, Agent, Plugins | SHA-256 and Ed25519 on Windows; CryptoKit on Apple platforms |
 | [swift-collections](https://github.com/apple/swift-collections) | 1.7.1 | Apache-2.0 with Runtime Library Exception | `BashCutProject` (core package) | `Deque` for the bounded undo/redo stacks; only `DequeModule` is linked |
 | [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm) | 1.20.0 | MIT | `BashCut` app | Embedded PTY terminal for the Claude, Codex and Shell tabs; AppKit has no terminal emulator |
 | [swift-argument-parser](https://github.com/apple/swift-argument-parser) | 1.8.2 | Apache-2.0 with Runtime Library Exception | `bashcut` CLI | Typed argument parsing and help |
 | [MCP Swift SDK](https://github.com/modelcontextprotocol/swift-sdk) | 0.12.1 (exact) | MIT, moving to Apache-2.0 (see below) | `bashcut-mcp` | Official stdio MCP server for Claude and Codex |
 | [swift-snapshot-testing](https://github.com/pointfreeco/swift-snapshot-testing) | 1.19.6 | MIT | `BashCutEngineTests` only | Golden-image regression tests for the compositor; no app size contribution |
 
-The root `Package.swift` declares SwiftTerm, swift-argument-parser, the MCP SDK and swift-snapshot-testing;
-`Packages/BashCutCore/Package.swift` declares only swift-collections. Binary size contributions have not been
-measured.
+The root `Package.swift` declares SwiftTerm, swift-argument-parser, the MCP SDK, swift-snapshot-testing and
+swift-crypto; `Packages/BashCutCore/Package.swift` declares swift-collections and swift-crypto. Swift Crypto
+3.x was chosen because 3.15.1 declares Swift tools 5.10 and supplies the existing APIs without raising our
+manifest's Swift 6.0 declaration. CryptoKit alone cannot build on Windows. Apple builds delegate to CryptoKit;
+Windows builds compile the vendored BoringSSL implementation. Binary size contributions have not been measured.
+The complete resolved graph was checked with Swift 6.4 on Windows; compatibility of all dependencies with
+older compilers is not established by the manifest declaration.
 
 ## Transitive dependencies
 
@@ -28,7 +33,8 @@ measured.
 | [swift-nio](https://github.com/apple/swift-nio) | 2.103.0 | Apache-2.0 | MCP SDK conformance tools | Not linked; resolved only |
 | [swift-atomics](https://github.com/apple/swift-atomics) | 1.3.1 | Apache-2.0 with Runtime Library Exception | swift-nio | Not linked; resolved only |
 | [swift-custom-dump](https://github.com/pointfreeco/swift-custom-dump) | 1.7.3 | MIT | swift-snapshot-testing | Tests only |
-| [xctest-dynamic-overlay](https://github.com/pointfreeco/xctest-dynamic-overlay) | 1.13.1 | MIT | swift-custom-dump | Tests only |
+| [swift-issue-reporting](https://github.com/pointfreeco/swift-issue-reporting) | 2.1.1 | MIT | swift-custom-dump's Swift 6.4 manifest | Tests only |
+| [swift-asn1](https://github.com/apple/swift-asn1) | 1.7.3 | Apache-2.0 | Swift Crypto extras | Not linked; resolved only |
 | [swift-syntax](https://github.com/swiftlang/swift-syntax) | 604.0.0 | Apache-2.0 with Runtime Library Exception | swift-snapshot-testing | Tests only |
 
 ## License notes

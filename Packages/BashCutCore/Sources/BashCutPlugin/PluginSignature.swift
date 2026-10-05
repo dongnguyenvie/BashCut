@@ -1,4 +1,4 @@
-import CryptoKit
+import Crypto
 import Foundation
 
 /// Who vouches for a registry archive, from its ed25519 signature over the archive's SHA-256 digest.

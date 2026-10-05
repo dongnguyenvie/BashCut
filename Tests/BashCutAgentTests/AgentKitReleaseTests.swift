@@ -1,5 +1,5 @@
 import BashCutPlugin
-import CryptoKit
+import Crypto
 import Foundation
 import Testing
 

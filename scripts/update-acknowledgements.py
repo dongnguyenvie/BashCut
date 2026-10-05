@@ -28,6 +28,7 @@ SHIPPED = {
     "swift-system": ("Swift System", "Apache-2.0 with Runtime Library Exception"),
     "swift-argument-parser": ("Swift Argument Parser", "Apache-2.0 with Runtime Library Exception"),
     "swift-collections": ("Swift Collections", "Apache-2.0 with Runtime Library Exception"),
+    "swift-crypto": ("Swift Crypto", "Apache-2.0"),
 }
 NOT_SHIPPED = {
     "swift-nio": "resolved for the MCP SDK's conformance tools, not linked",
@@ -35,7 +36,9 @@ NOT_SHIPPED = {
     "swift-snapshot-testing": "tests only",
     "swift-custom-dump": "tests only",
     "xctest-dynamic-overlay": "tests only",
+    "swift-issue-reporting": "tests only (Swift 6.4 dependency manifest)",
     "swift-syntax": "tests only",
+    "swift-asn1": "resolved for Swift Crypto's unused extras, not linked",
 }
 NOTICE_NAMES = ("LICENSE", "LICENSE.txt", "LICENSE.md", "NOTICE", "NOTICE.txt", "NOTICE.md")
 

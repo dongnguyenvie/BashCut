@@ -1,6 +1,6 @@
 import BashCutPlugin
 import BashCutProject
-import CryptoKit
+import Crypto
 import Foundation
 
 /// A project or agent must not redirect a plugin that holds user credentials.

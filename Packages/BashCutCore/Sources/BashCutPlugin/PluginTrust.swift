@@ -1,5 +1,5 @@
 import BashCutProject
-import CryptoKit
+import Crypto
 import Foundation
 
 /// SHA-256 of a plugin's manifest, entrypoint and every other file in its folder, pinned when the user approves

@@ -11,13 +11,15 @@ let package = Package(
         .library(name: "BashCutInterchange", targets: ["BashCutInterchange"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-collections", from: "1.1.4")
+        .package(url: "https://github.com/apple/swift-collections", from: "1.1.4"),
+        .package(url: "https://github.com/apple/swift-crypto.git", from: "3.15.1")
     ],
     targets: [
         .target(name: "BashCutProject", dependencies: [
-            .product(name: "DequeModule", package: "swift-collections")
+            .product(name: "DequeModule", package: "swift-collections"),
+            .product(name: "Crypto", package: "swift-crypto")
         ]),
-        .target(name: "BashCutPlugin", dependencies: ["BashCutProject"]),
+        .target(name: "BashCutPlugin", dependencies: ["BashCutProject", .product(name: "Crypto", package: "swift-crypto")]),
         .target(name: "BashCutImport", dependencies: ["BashCutProject"]),
         .target(name: "BashCutInterchange", dependencies: ["BashCutProject"]),
         // Tests: one target per module; shared project fixtures live in BashCutProjectFixtures.

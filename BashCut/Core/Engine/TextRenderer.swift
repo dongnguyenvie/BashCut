@@ -2,7 +2,7 @@ import BashCutProject
 import CoreGraphics
 import CoreImage
 import CoreText
-import CryptoKit
+import Crypto
 import Foundation
 
 final class CaptionRaster: @unchecked Sendable {

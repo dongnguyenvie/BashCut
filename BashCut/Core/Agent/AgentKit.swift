@@ -1,5 +1,5 @@
 import BashCutPlugin
-import CryptoKit
+import Crypto
 import Foundation
 
 /// The BashCut agent kit (`bashcut-agent-kit`): editing skills for Claude Code and Codex. BashCut ships a copy in
