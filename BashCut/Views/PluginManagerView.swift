@@ -63,7 +63,7 @@ struct PluginManagerView: View {
                 if PluginChannel.current.allowsUserPlugins { Button("Browse Plugins") { model.tab = .browse } }
             }.frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
-            List(model.installedGroups) { group in
+            List(model.installedSections) { group in
                 Section {
                     ForEach(group.items) { plugin in PluginRow(model: model, document: document, plugin: plugin) }
                 } header: {
