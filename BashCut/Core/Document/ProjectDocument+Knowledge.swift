@@ -31,6 +31,11 @@ extension ProjectDocument {
                     ])
                 }),
             ]
+            if let store = knowledge.store {
+                result["memoSplit"] = .object(Dictionary(uniqueKeysWithValues: KnowledgeScope.allCases.map { scope in
+                    (scope.rawValue, JSONValue.string(Self.memoSplitState(store, scope)))
+                }))
+            }
             if let legacy = knowledge.legacy {
                 result["legacy"] = .object(["path": .string(legacy.url.path), "text": .string(legacy.text)])
             }
@@ -46,6 +51,37 @@ extension ProjectDocument {
                 try document.agents.knowledge.writeMemo(text, scope: scope, source: source)
                 return .bool(true)
             }
+        }
+        handleAuthored("knowledge.split-memo") { document, arguments, author in
+            let scope = try Self.knowledgeScope(arguments.optionalString("scope")) ?? .project
+            let store = document.agents.knowledgeStore
+            let source = Self.knowledgeSource(author, arguments)
+            defer { document.agents.loadKnowledge() }
+            if arguments.bool("keep") {
+                try store.keepMemo(scope, source: source)
+                return .object(["memoSplit": .string(Self.memoSplitState(store, scope))])
+            }
+            guard let entries = arguments.values["entries"] else {
+                throw RPCFailure(-32602, "Missing entries (or set keep)")
+            }
+            let split: MemoSplit
+            do {
+                split = try JSONDecoder().decode(MemoSplit.self, from: JSONEncoder().encode(entries))
+            } catch {
+                throw RPCFailure(-32602, "entries must be {\"lessons\": [{\"title\", …}], \"prefs\": [{\"key\", "
+                    + "\"value\"}], \"facts\": [{\"key\", \"value\"}]}")
+            }
+            guard !split.isEmpty else { throw RPCFailure(-32602, "Nothing to split; use keep to keep the memo as notes") }
+            let result = try store.splitMemo(split, scope: scope, source: source)
+            if author != .user {
+                document.message = String(format: String(localized: "%@ split the memo: %d entries wait for review"),
+                                          author.rawValue.capitalized, result.lessons.count + result.values.count)
+            }
+            return .object([
+                "lessons": .array(try result.lessons.map(Self.json)),
+                "values": .array(try result.values.map(Self.json)),
+                "skipped": .array(result.skipped.map(JSONValue.string)),
+            ])
         }
         handleAuthored("knowledge.skill") { document, arguments, author in
             document.agents.loadKnowledge()
@@ -220,6 +256,12 @@ extension ProjectDocument {
     }
 
     // MARK: Helpers
+
+    /// `pending` (offered), `split`, `kept`, or `none` (empty memo, or no saved project).
+    static func memoSplitState(_ store: AgentKnowledgeStore, _ scope: KnowledgeScope) -> String {
+        if let record = store.memoSplitRecord(scope) { return record.outcome.rawValue }
+        return store.memoNeedsSplit(scope) ? "pending" : "none"
+    }
 
     private static func setMethod(_ kind: KnowledgeValueKind) -> String {
         kind == .prefs ? "knowledge.set-pref" : "knowledge.set-fact"

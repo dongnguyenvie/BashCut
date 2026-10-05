@@ -114,6 +114,7 @@ extension AgentKnowledgeModel {
         prefs = read { try store.values(.prefs) }
         facts = read { try store.values(.facts) }
         valueProposals = read { try store.valueProposals() }
+        loadMemoSplitOffers()
         loadHistory()
         entryErrors = errors
         if let selectedLessonID, !lessons.contains(where: { $0.id == selectedLessonID }) {

@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 130 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 131 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -890,6 +890,16 @@ Move the older memo that earlier versions kept in the agent workspace or home fo
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_knowledge_migrate`
 - `to`: string, one of user, project. user (default) or project
+
+### `bashcut knowledge split-memo [<entries.json>] [--scope <scope>] [--keep] [--session <session>]`
+
+Split a memo into structured entries, once (#72): read it with knowledge get, then pass a JSON object {"lessons": [{"title", "symptom", "cause", "fix", "evidence", "tags"}], "prefs": [{"key", "value"}], "facts": [{"key", "value"}]} of what it says. Everything waits in the Knowledge inbox for the user's review; entries that already exist are skipped. The memo stays as notes. With keep, nothing is split and the split is not offered again.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_knowledge_split-memo`
+- `entries`: object. What the memo says (CLI: path to a JSON file); required unless keep is set
+- `scope`: string, one of project, user. The memo to split: project (default) or user (notes for every project; no facts)
+- `keep`: boolean. Keep the memo as notes only and stop offering the split
+- `session`: string. Your agent session ID, recorded as the source
 
 ### `bashcut knowledge skill <name> <text-file>`
 

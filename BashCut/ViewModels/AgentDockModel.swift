@@ -316,6 +316,14 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
     func resumeID(for provider: any AgentProvider) -> String {
         provider.isAgent ? sessionBookmarks[provider.id].trimmingCharacters(in: .whitespacesAndNewlines) : ""
     }
+    /// Puts a request with the context in the open agent's input and shows the dock; false when no agent is open.
+    func ask(_ request: String) -> Bool {
+        guard chatPluginID != nil || current != nil else { return false }
+        sendContext(request)
+        if !isDetached { document.ui.showAgentDock = true }
+        return true
+    }
+
     func sendContext(_ request: String = "", imageURL: URL? = nil) {
         loadKnowledge()
         var text = document.contextText() + "\n" + knowledge.context + "\n" + request
@@ -442,6 +450,7 @@ extension AgentDockModel {
             return
         }
         knowledge.beginVisit()
+        knowledge.askAgent = { [weak self] request in self?.ask(request) ?? false }
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 1060, height: 720),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],

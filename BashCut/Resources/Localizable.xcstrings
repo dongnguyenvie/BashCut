@@ -1,6 +1,13 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "%@ split the memo: %d entries wait for review": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%@ split the memo: %d entries wait for review" } }, "vi": { "stringUnit": { "state": "translated", "value": "%@ đã tách memo: %d mục chờ duyệt" } } } },
+    "The request is in the agent's input: send it there": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "The request is in the agent's input: send it there" } }, "vi": { "stringUnit": { "state": "translated", "value": "Yêu cầu đã nằm trong ô nhập của agent: gửi nó ở đó" } } } },
+    "Open an agent in the dock first, then ask again": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Open an agent in the dock first, then ask again" } }, "vi": { "stringUnit": { "state": "translated", "value": "Hãy mở một agent trong dock trước rồi thử lại" } } } },
+    "Kept as notes": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Kept as notes" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đã giữ làm ghi chú" } } } },
+    "Split this memo into lessons, preferences and facts? The memo stays; what the agent finds waits in the inbox for your review.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Split this memo into lessons, preferences and facts? The memo stays; what the agent finds waits in the inbox for your review." } }, "vi": { "stringUnit": { "state": "translated", "value": "Tách memo này thành bài học, sở thích và dữ kiện? Memo vẫn giữ nguyên; những gì agent tìm được sẽ chờ bạn duyệt trong Hộp duyệt." } } } },
+    "Ask the agent to split it": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Ask the agent to split it" } }, "vi": { "stringUnit": { "state": "translated", "value": "Nhờ agent tách" } } } },
+    "Keep as notes": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Keep as notes" } }, "vi": { "stringUnit": { "state": "translated", "value": "Giữ làm ghi chú" } } } },
     "Agent kit %@": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Agent kit %@" } }, "vi": { "stringUnit": { "state": "translated", "value": "Bộ kỹ năng agent %@" } } } },
     "None yet": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "None yet" } }, "vi": { "stringUnit": { "state": "translated", "value": "Chưa có" } } } },
     "Turn off": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Turn off" } }, "vi": { "stringUnit": { "state": "translated", "value": "Tắt" } } } },

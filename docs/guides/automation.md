@@ -61,7 +61,11 @@ SwiftTerm terminal. Claude and Codex use your installed CLI and its existing log
   every project reads. Without a saved project only those notes are available. A memo that older versions kept in
   the workspace or home folder is offered once: move it to the notes for every project (`knowledge migrate`) or to
   this project (`knowledge migrate --to project`). Agents write the notes with `knowledge memo FILE --scope user`,
-  which asks for your approval.
+  which asks for your approval. A memo with text is offered once for a split into lessons, preferences and facts:
+  **Ask the agent to split it** puts the request in the open agent's input, and the agent runs `knowledge
+  split-memo ENTRIES.json [--scope user]` (`{"lessons": [{"title", "symptom", "cause", "fix", "tags"}], "prefs":
+  [{"key", "value"}], "facts": [{"key", "value"}]}`). What it finds waits in the **Inbox**; the memo stays as notes.
+  **Keep as notes** (`knowledge split-memo --keep`) stops the offer.
 - **Lessons, preferences and facts.** Next to the memos, agents keep structured knowledge as JSON files in the
   same two places (`.bashcut/knowledge/` in the project, `Knowledge/` for every project):
   - **Lessons** (`knowledge lessons`, `add-lesson`, `update-lesson`, `remove-lesson`): a title, the symptom, its

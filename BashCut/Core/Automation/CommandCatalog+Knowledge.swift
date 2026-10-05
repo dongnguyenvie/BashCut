@@ -49,6 +49,22 @@ extension CommandCatalog {
             parameters: [CommandParameter("to", .string, "user (default) or project", choices: ["user", "project"],
                                           cli: .option("to"))]),
         CommandSpec(
+            "knowledge.split-memo", .edit,
+            "Split a memo into structured entries, once (#72): read it with knowledge get, then pass a JSON object "
+                + "{\"lessons\": [{\"title\", \"symptom\", \"cause\", \"fix\", \"evidence\", \"tags\"}], \"prefs\": "
+                + "[{\"key\", \"value\"}], \"facts\": [{\"key\", \"value\"}]} of what it says. Everything waits in the "
+                + "Knowledge inbox for the user's review; entries that already exist are skipped. The memo stays as "
+                + "notes. With keep, nothing is split and the split is not offered again.",
+            parameters: [
+                CommandParameter("entries", .object, "What the memo says (CLI: path to a JSON file); required unless "
+                                 + "keep is set", sensitive: true, cli: .positionalJSONFile),
+                CommandParameter("scope", .string, "The memo to split: project (default) or user (notes for every "
+                                 + "project; no facts)", choices: knowledgeScopes, cli: .option("scope")),
+                CommandParameter("keep", .boolean, "Keep the memo as notes only and stop offering the split",
+                                 cli: .flag("keep")),
+                session,
+            ]),
+        CommandSpec(
             "knowledge.skill", .edit,
             "Write a project skill's SKILL.md in the project folder, creating the skill and linking it into the project's "
                 + ".claude/skills and .agents/skills if needed. Needs a saved project.",
