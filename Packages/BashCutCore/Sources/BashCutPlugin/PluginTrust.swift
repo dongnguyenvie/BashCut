@@ -68,6 +68,8 @@ public enum PluginAvailability: Sendable, Equatable {
     case changed
     /// Its API window does not include this BashCut.
     case outdated(String)
+    /// A plugin it `requires` is missing, out of range or not ready (API 8).
+    case needsPlugin(String)
 
     public var name: String {
         switch self {
@@ -76,6 +78,7 @@ public enum PluginAvailability: Sendable, Equatable {
         case .untrusted: "untrusted"
         case .changed: "changed"
         case .outdated: "outdated"
+        case .needsPlugin: "needs-plugin"
         }
     }
 
@@ -86,6 +89,7 @@ public enum PluginAvailability: Sendable, Equatable {
         case .untrusted: "Not approved yet: review it in Plugins and choose Trust"
         case .changed: "Changed since it was approved: review it in Plugins and choose Trust again"
         case .outdated(let reason): reason
+        case .needsPlugin(let reason): reason
         }
     }
 }

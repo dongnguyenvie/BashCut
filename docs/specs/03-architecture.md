@@ -245,8 +245,10 @@ process would take down the editor. The platform grows in these steps (contract 
 
 Candidate capabilities after these steps are `media.analyze` (measured silence and speech coverage),
 `audio.separate` (Demucs), `voice.enroll`, `media.transcode` (optional ffmpeg) and `interchange.export` (FCPXML,
-Resolve plans). A signed remote catalog, per-capability permissions and plugin-owned panels wait until BashCut is
-distributed.
+Resolve plans). Per-capability permissions wait until BashCut is distributed. Plugin API 8 gives plugins a rail panel with
+declarative views (JSON components drawn natively; no plugin code in the app), requirements on other plugins
+(`requires`), raw capability calls (`uses`, `plugins.invoke`) and the host channel for views and session actions;
+webviews and free drawing stay out.
 
 ## 6. Automation server
 

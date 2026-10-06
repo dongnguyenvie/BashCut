@@ -24,13 +24,20 @@ public struct PluginManifest: Codable, Sendable, Equatable {
     public let terminal: PluginTerminal?
     /// One of `PluginCategory`'s ids, for grouping in Plugins and Settings; the registry listing's wins.
     public let category: String?
+    /// Other plugins this one needs (API 8).
+    public let requires: [PluginRequirement]?
+    /// Capabilities of other plugins this one calls with `plugins.invoke` (API 8).
+    public let uses: [String]?
+    /// Host features the plugin cannot work without (API 8, `PluginFeature`).
+    public let features: [String]?
 
     public init(
         id: String, name: LocalizedText, version: String, apiVersion: Int = 1,
         entrypoint: String, capabilities: [String], providers: [PluginProvider]? = nil,
         dependencies: [PluginDependency] = [], minApiVersion: Int? = nil, maxApiVersion: Int? = nil,
         transport: PluginTransportKind? = nil, options: [PluginOption]? = nil,
-        contributes: PluginContributions? = nil, terminal: PluginTerminal? = nil, category: String? = nil
+        contributes: PluginContributions? = nil, terminal: PluginTerminal? = nil, category: String? = nil,
+        requires: [PluginRequirement]? = nil, uses: [String]? = nil, features: [String]? = nil
     ) {
         schema = Self.schema
         self.id = id
@@ -48,6 +55,9 @@ public struct PluginManifest: Codable, Sendable, Equatable {
         self.contributes = contributes
         self.terminal = terminal
         self.category = category
+        self.requires = requires
+        self.uses = uses
+        self.features = features
     }
 
     public init(from decoder: any Decoder) throws {
@@ -68,6 +78,9 @@ public struct PluginManifest: Codable, Sendable, Equatable {
         contributes = try container.decodeIfPresent(PluginContributions.self, forKey: .contributes)
         terminal = try container.decodeIfPresent(PluginTerminal.self, forKey: .terminal)
         category = try container.decodeIfPresent(String.self, forKey: .category)
+        requires = try container.decodeIfPresent([PluginRequirement].self, forKey: .requires)
+        uses = try container.decodeIfPresent([String].self, forKey: .uses)
+        features = try container.decodeIfPresent([String].self, forKey: .features)
     }
 
     public var transportKind: PluginTransportKind { transport ?? .oneshot }
@@ -79,12 +92,26 @@ public struct PluginManifest: Codable, Sendable, Equatable {
     public var libraryPacks: [PluginLibraryContribution] { contributes?.library ?? [] }
     /// Agent skills the plugin ships (API 7).
     public var skills: [PluginSkillContribution] { contributes?.skills ?? [] }
+    /// The rail container (API 8).
+    public var container: PluginContainerContribution? { contributes?.container }
+    /// Declarative views (API 8).
+    public var views: [PluginViewContribution] { contributes?.views ?? [] }
+    /// Other plugins this one needs (API 8).
+    public var requirements: [PluginRequirement] { requires ?? [] }
+    /// Capabilities this plugin may invoke (API 8).
+    public var usedCapabilities: [String] { uses ?? [] }
+    /// The panel title: the container's title or the plugin name.
+    public var containerTitle: String { container?.title?.text ?? displayName }
 
     /// Why this host cannot run the plugin, or nil when its API window includes the host.
     public var incompatibility: String? {
         let needed = minApiVersion ?? apiVersion
         if needed > PluginAPI.current {
             return "Needs plugin API \(needed); this BashCut provides \(PluginAPI.current). Update BashCut."
+        }
+        let host = Set(PluginFeature.all)
+        if let missing = (features ?? []).first(where: { !host.contains($0) }) {
+            return "Needs the BashCut feature \(missing), which this BashCut does not have. Update BashCut."
         }
         if let maxApiVersion, maxApiVersion < PluginAPI.minimum {
             return "Built for plugin API \(maxApiVersion); this BashCut needs at least \(PluginAPI.minimum). Update the plugin."
@@ -147,6 +174,7 @@ public struct PluginManifest: Codable, Sendable, Equatable {
         try validateTerminal()
         try validateLibrary()
         try validateSkills()
+        try validateComposition()
         guard Set(options.map(\.id)).count == options.count, options.count <= 64 else {
             throw PluginError.invalid("Option ids must be unique (at most 64)")
         }
@@ -208,6 +236,48 @@ public struct PluginManifest: Codable, Sendable, Equatable {
                 "contributes.skills lists at most \(PluginSkillContribution.maximumSkills) different skill folders")
         }
         for skill in skills { try skill.validate() }
+    }
+
+    /// Container, views, requirements, uses and features (plugin API 8).
+    private func validateComposition() throws {
+        let usesAPI8 = container != nil || !views.isEmpty || requires != nil || uses != nil || features != nil
+        guard usesAPI8 else { return }
+        guard apiVersion >= 8 else {
+            throw PluginError.invalid(
+                "contributes.container, contributes.views, requires, uses and features need apiVersion 8")
+        }
+        try validatePanel()
+        guard requirements.count <= PluginRequirement.maximumRequirements,
+            Set(requirements.map(\.id)).count == requirements.count
+        else {
+            throw PluginError.invalid("requires lists at most \(PluginRequirement.maximumRequirements) different plugins")
+        }
+        for requirement in requirements { try requirement.validate(pluginID: id) }
+        let used = usedCapabilities
+        guard used.count <= 32, Set(used).count == used.count,
+            used.allSatisfy({ $0.range(of: "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$", options: .regularExpression) != nil })
+        else { throw PluginError.invalid("uses lists at most 32 different capability ids") }
+        guard !used.contains(PluginAPI.agentChat), !used.contains(PluginAPI.agentTerminal) else {
+            throw PluginError.invalid("uses cannot name agent.chat or agent.terminal")
+        }
+        let wanted = features ?? []
+        guard wanted.count <= 32, Set(wanted).count == wanted.count, wanted.allSatisfy(PluginFeature.isName) else {
+            throw PluginError.invalid("features lists at most 32 different feature names")
+        }
+    }
+
+    private func validatePanel() throws {
+        try container?.validate()
+        if !views.isEmpty {
+            guard container != nil else { throw PluginError.invalid("contributes.views needs contributes.container") }
+            guard transportKind == .session else {
+                throw PluginError.invalid("contributes.views needs \"transport\": \"session\"")
+            }
+        }
+        guard views.count <= PluginViewContribution.maximumViews, Set(views.map(\.id)).count == views.count else {
+            throw PluginError.invalid("View ids must be unique (at most \(PluginViewContribution.maximumViews))")
+        }
+        for view in views { try view.validate() }
     }
 
     private func validateHooks() throws {

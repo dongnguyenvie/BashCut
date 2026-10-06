@@ -5,6 +5,19 @@
 
 ## [Unreleased]
 
+- **Plugin API 8: plugin panels, declarative views and plugins using other plugins (#390–#397, #399).**
+  `contributes.container` adds the plugin's icon to the left rail; it opens a panel BashCut draws from the manifest
+  (header, view picker, Tools, Skills, Requires, Uses with Find…) around the plugin's `contributes.views`. A view is
+  JSON components the plugin returns from `view.render` / `view.event` (section, row, text with markdown, badge,
+  keyValue, progress, image, imageCompare, audio, list, button, textField, textArea, toggle, picker, slider; unknown
+  types draw a placeholder), drawn natively: only while visible, one request at a time with coalesced changes,
+  debounced search, sliders on release, lazy lists, cached downsampled images, at most 2000 components. View requests
+  and session actions of API 8 plugins get the host channel and call app commands as author `plugin` (for example
+  `voice.speak`, so a plugin speaks with whichever voice plugin the user chose). `uses` + `plugins.invoke` call
+  another plugin's capability raw; `requires` (semver ranges) keeps a plugin `needs-plugin` until the plugins it needs
+  are installed, in range and ready, and installing it from the registry offers them next. `features` and the
+  hello's host feature list replace one API bump per feature. New commands: `plugins views`, `plugins view`,
+  `plugins view-event`, `plugins invoke`; `plugins list` reports container, views, requires and uses.
 - **Plugins can ship agent skills (#375, #376, #377).** Plugin API 7 adds `contributes.skills`: `SKILL.md` folders
   inside the plugin (front matter `name` equal to the folder, a `description`; at most 16 skills, 64 KB per
   `SKILL.md`, 2 MB per folder, nothing linking out of the plugin). A bad skill is reported by `plugins validate` and

@@ -37,7 +37,14 @@ struct EditorView: View {
                     HStack(spacing: 0) {
                         rail.frame(width: 54)
                         Divider()
-                        LibraryView(document: document, pluginManager: document.plugins).frame(width: 225)
+                        Group {
+                            if let id = document.ui.pluginPanel,
+                                let plugin = document.pluginViews.containers.first(where: { $0.id == id }) {
+                                PluginPanelView(document: document, plugin: plugin)
+                            } else {
+                                LibraryView(document: document, pluginManager: document.plugins)
+                            }
+                        }.frame(width: 225)
                         Divider()
                         Group {
                             if document.sourceViewer.visible {
@@ -205,13 +212,14 @@ struct EditorView: View {
                         Text(LocalizedStringKey(tab.rawValue)).font(.system(size: 8))
                     }
                     .frame(width: 48, height: 42)
-                    .background(document.ui.libraryTab == tab ? Color.cyan.opacity(0.12) : .clear)
+                    .background(libraryTabSelected(tab) ? Color.cyan.opacity(0.12) : .clear)
                     .clipShape(RoundedRectangle(cornerRadius: 6))
                     // Plain buttons only hit-test drawn pixels; make the whole tile clickable.
                     .contentShape(RoundedRectangle(cornerRadius: 6))
-                }.buttonStyle(.plain).foregroundStyle(document.ui.libraryTab == tab ? .cyan : .secondary)
+                }.buttonStyle(.plain).foregroundStyle(libraryTabSelected(tab) ? .cyan : .secondary)
                     .help(LocalizedStringKey(tab.rawValue))
             }
+            pluginRail
             Spacer()
         }.padding(.top, 8)
     }

@@ -167,7 +167,7 @@ extension CapabilityService {
     /// Runs an action or hook on one named plugin (no provider resolution: contributions belong to their plugin).
     public func runContribution<Adapter: CapabilityAdapter>(
         _ adapter: Adapter, plugin: InstalledPlugin, contributionID: String,
-        progress: PluginProgressHandler? = nil
+        progress: PluginProgressHandler? = nil, host: PluginHostChannel? = nil
     ) async throws -> Adapter.Output {
         guard availability(plugin) == .ready else {
             throw PluginError.invalid("\(plugin.manifest.displayName): \(availability(plugin).detail)")
@@ -177,9 +177,16 @@ extension CapabilityService {
         let directory = try adapter.outputRoot.map(Self.makeRequestDirectory)
         var succeeded = false
         defer { if !succeeded, let directory { try? FileManager.default.removeItem(at: directory) } }
-        let result = try await transport.call(
-            plugin: plugin, method: Adapter.capability, provider: nil,
-            params: adapter.params(outputDirectory: directory), progress: progress)
+        // Session plugins' actions may call app commands while they run (API 8, #399); one-shot plugins cannot.
+        let result = if let host, plugin.manifest.transportKind == .session, plugin.manifest.apiVersion >= 8 {
+            try await transport.call(
+                plugin: plugin, method: Adapter.capability, provider: nil,
+                params: adapter.params(outputDirectory: directory), progress: progress, host: host)
+        } else {
+            try await transport.call(
+                plugin: plugin, method: Adapter.capability, provider: nil,
+                params: adapter.params(outputDirectory: directory), progress: progress)
+        }
         let provenance = PluginProvenance(
             pluginID: plugin.id, pluginVersion: plugin.manifest.version, providerID: contributionID)
         let output = try await adapter.output(

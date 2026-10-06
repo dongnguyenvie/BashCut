@@ -121,6 +121,11 @@ extension PluginManagerModel {
         return PluginInstallScope.allCases.first { installRoot(for: $0)?.standardizedFileURL == parent }
     }
 
+    /// Stops the plugin's session process; its next request starts it again.
+    func stopSession(_ pluginID: String) {
+        Task { await PluginSessionTransport.shared.stop(pluginID: pluginID) }
+    }
+
     /// Reload: stops the plugin's session so its next call starts the current code, and checks its files again. A
     /// changed plugin waits for Trust again; Reload never trusts it.
     @discardableResult

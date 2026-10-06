@@ -8,7 +8,8 @@ import os
 extension PluginManagerModel {
     /// Availability for one listing: the last check when it still holds, otherwise a full check now.
     func currentAvailability(_ plugin: InstalledPlugin) -> PluginAvailability {
-        service.knownAvailability(plugin) ?? service.availability(plugin)
+        if let state = availability[plugin.id], case .needsPlugin = state { return state }
+        return service.knownAvailability(plugin) ?? service.availability(plugin)
     }
 
     /// Sets each plugin's last known availability and returns the plugins whose files need a check: those not

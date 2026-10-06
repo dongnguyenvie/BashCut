@@ -62,6 +62,7 @@ final class ProjectDocument {
     @ObservationIgnored lazy var agents = AgentDockModel(document: self)
     @ObservationIgnored lazy var chatAgents = ChatAgents(document: self)
     @ObservationIgnored lazy var plugins = PluginManagerModel()
+    @ObservationIgnored lazy var pluginViews = PluginViews(document: self)
     @ObservationIgnored lazy var pluginHooks = PluginHookDispatcher(document: self)
     /// The plugin whose proposal is being committed, so its own hooks do not hear about it.
     @ObservationIgnored var pluginEditSource: String?
@@ -270,6 +271,7 @@ final class ProjectDocument {
         startExternalFileMonitor()
         agents.projectChanged()
         chatAgents.projectChanged()
+        pluginViews.reset()
         registry.projectSwitched(to: url == nil ? "no project" : project.name)
         agents.keepSessions(after: liveBookmarks)
         plugins.refresh(projectRoot: url?.deletingLastPathComponent())

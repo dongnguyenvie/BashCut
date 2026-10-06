@@ -8,10 +8,11 @@ import Foundation
 /// (`event` and `call` lines during a request), used by the `agent.chat` capability. Version 5 adds the
 /// `agent.terminal` capability and the manifest's `terminal` object. Version 6 adds `contributes.library` (library
 /// packs), the `library.search` and `library.generate` capabilities and provider `kinds`. Version 7 adds
-/// `contributes.skills` (agent skills).
+/// `contributes.skills` (agent skills). Version 8 adds `contributes.container`/`views`, `requires`, `uses` and `features`
+/// (`PluginComposition.swift`); from then on it goes up at most once per release, and smaller additions are features.
 public enum PluginAPI {
     public static let minimum = 1
-    public static let current = 7
+    public static let current = 8
     /// The chat-agent capability; its requests carry a host channel (API 4).
     public static let agentChat = "agent.chat"
     /// An agent CLI in a dock terminal tab (API 5); its manifest has a `terminal` object.
@@ -274,19 +275,25 @@ public struct PluginContributions: Codable, Sendable, Equatable {
     public let library: [PluginLibraryContribution]?
     /// Agent skills the plugin ships (API 7): read-only `SKILL.md` folders agents get while the plugin is ready.
     public let skills: [PluginSkillContribution]?
+    /// The plugin's rail icon and panel, and the declarative views in it (API 8).
+    public let container: PluginContainerContribution?
+    public let views: [PluginViewContribution]?
 
     public init(
         actions: [PluginActionContribution]? = nil, hooks: [PluginHookContribution]? = nil,
-        library: [PluginLibraryContribution]? = nil, skills: [PluginSkillContribution]? = nil
+        library: [PluginLibraryContribution]? = nil, skills: [PluginSkillContribution]? = nil,
+        container: PluginContainerContribution? = nil, views: [PluginViewContribution]? = nil
     ) {
         self.actions = actions
         self.hooks = hooks
         self.library = library
         self.skills = skills
+        self.container = container
+        self.views = views
     }
 
     public var isEmpty: Bool {
-        (actions ?? []).isEmpty && (hooks ?? []).isEmpty && (library ?? []).isEmpty && (skills ?? []).isEmpty
+        [actions?.count, hooks?.count, library?.count, skills?.count, views?.count].allSatisfy { ($0 ?? 0) == 0 } && container == nil
     }
 }
 

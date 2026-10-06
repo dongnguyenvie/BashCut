@@ -282,8 +282,11 @@ This tab is the manual counterpart of the `nolan-voice-clone` skill.
 
 ### 3.8 Plugins sheet 🧩
 
-Plugins are not a rail tab; the sheet opens from the toolbar and from linked panels. They hold optional,
-replaceable providers and run outside the editor process.
+The Plugins sheet opens from the toolbar and from linked panels. Plugins hold optional, replaceable providers and
+run outside the editor process. A ready plugin with `contributes.container` (plugin API 8) also adds an icon to the
+left rail, under the built-in panels; it opens the plugin's panel in the library column: a header with its settings
+button, its declarative views (drawn natively from the components the plugin sends; only while on screen), and its
+Tools, Skills, Requires and Uses ([plugin guide](../guides/plugins.md#plugin-panels-and-views)).
 
 - The sheet lists each plugin's name and version, capability IDs, provider choices, dependency health and manifest
   diagnostics.

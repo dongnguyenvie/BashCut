@@ -476,7 +476,9 @@ and fails above 50 ms.
 - **Xcode:** the generated project builds with signing disabled and package-plugin validation skipped for the
   locked SwiftTerm build plugin.
 - **Automation:** voice-enrollment approval; analysis and interchange providers still need wiring to their panels.
-- **Plugin platform:** plugin-owned panels and a credential contract ([03-architecture.md](../specs/03-architecture.md) §5).
+- **Plugin platform:** a credential contract ([03-architecture.md](../specs/03-architecture.md) §5). Plugin panels
+  (API 8) have declarative views only; webviews, free drawing, video in views, overlays and inspector tabs are
+  deferred (#390).
 - **M3–M6:** bundled transcription provider and real-engine acceptance, music/SFX library with BPM and license
   badges, voice cloning, expanded legacy effect/overlay/SFX import, effect recipes, keyframes,
   Demucs, and more interchange validation. Resolve remains reserved.

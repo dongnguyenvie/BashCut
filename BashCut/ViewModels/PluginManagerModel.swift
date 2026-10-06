@@ -226,6 +226,7 @@ enum PluginText {
     }
 
     func rebuildActions() {
+        applyRequirements()
         diagnostics = catalogDiagnostics
         var taken = Set(UIAction.allCases.flatMap(\.shortcuts))
         var list: [ContributedAction] = []
@@ -292,10 +293,6 @@ enum PluginText {
     }
 
     func isEnabled(_ plugin: InstalledPlugin) -> Bool { trust.grant(for: plugin)?.enabled ?? true }
-
-    func stopSession(_ pluginID: String) {
-        Task { await PluginSessionTransport.shared.stop(pluginID: pluginID) }
-    }
 
     // MARK: Hook log
 
@@ -406,6 +403,7 @@ enum PluginText {
                 message = error.localizedDescription
             }
             refresh(projectRoot: projectRoot)
+            offerMissingRequirements(after: outcome, installing: pending)
         }
         if let jobs {
             installJob = jobs.start(

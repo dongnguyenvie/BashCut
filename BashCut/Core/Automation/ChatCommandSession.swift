@@ -19,7 +19,7 @@ import Foundation
         "skills.get", "skills.propose",
         "library.list", "library.get", "library.stats", "library.add", "library.update",
         "library.remove", "library.apply", "library.place", "library.save-selection", "library.move", "library.analyze",
-        "library.preview", "library.search", "library.generate",
+        "library.preview", "library.search", "library.generate", "plugins.views", "plugins.view", "plugins.view-event",
     ]
     private var token: String?
 

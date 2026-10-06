@@ -1,6 +1,17 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Tools": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Tools" } }, "vi": { "stringUnit": { "state": "translated", "value": "Công cụ" } } } },
+    "Requires": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Requires" } }, "vi": { "stringUnit": { "state": "translated", "value": "Cần plugin" } } } },
+    "Uses": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Uses" } }, "vi": { "stringUnit": { "state": "translated", "value": "Dùng capability" } } } },
+    "Plugin settings": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Plugin settings" } }, "vi": { "stringUnit": { "state": "translated", "value": "Cài đặt plugin" } } } },
+    "Find…": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Find…" } }, "vi": { "stringUnit": { "state": "translated", "value": "Tìm…" } } } },
+    "Try Again": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Try Again" } }, "vi": { "stringUnit": { "state": "translated", "value": "Thử lại" } } } },
+    "Needs a newer BashCut: %@": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Needs a newer BashCut: %@" } }, "vi": { "stringUnit": { "state": "translated", "value": "Cần BashCut mới hơn: %@" } } } },
+    "Continue": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Continue" } }, "vi": { "stringUnit": { "state": "translated", "value": "Tiếp tục" } } } },
+    "%@ also needs %@, which is not in the registry": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%@ also needs %@, which is not in the registry" } }, "vi": { "stringUnit": { "state": "translated", "value": "%1$@ còn cần %2$@, plugin này không có trong registry" } } } },
+    "%@ needs %@: review its installation": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%@ needs %@: review its installation" } }, "vi": { "stringUnit": { "state": "translated", "value": "%1$@ cần %2$@: hãy xem lại bản cài đặt" } } } },
+    "%@ needs %@: %@": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%@ needs %@: %@" } }, "vi": { "stringUnit": { "state": "translated", "value": "%1$@ cần %2$@: %3$@" } } } },
     "Requested by %@": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Requested by %@" } }, "vi": { "stringUnit": { "state": "translated", "value": "Yêu cầu bởi %@" } } } },
     "Copy…": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Copy…" } }, "vi": { "stringUnit": { "state": "translated", "value": "Sao chép…" } } } },
     "Copy to This Project": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Copy to This Project" } }, "vi": { "stringUnit": { "state": "translated", "value": "Sao chép vào project này" } } } },

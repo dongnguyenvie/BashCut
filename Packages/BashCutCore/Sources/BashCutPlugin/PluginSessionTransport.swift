@@ -208,7 +208,7 @@ actor PluginSession {
 
         try send(.object([
             "type": .string("hello"), "apiVersion": .integer(PluginAPI.current), "host": .string("BashCut"),
-            "pluginId": .string(plugin.id),
+            "pluginId": .string(plugin.id), "features": .array(PluginFeature.all.map(JSONValue.string)),
         ]))
         let timer = Task { [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(handshakeTimeout * 1_000_000_000))
