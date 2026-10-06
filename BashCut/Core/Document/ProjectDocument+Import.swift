@@ -145,8 +145,7 @@ extension ProjectDocument {
         guard kind == "audio" || video != nil else { throw ProjectError.invalid("No video track") }
         let nominal = try await video?.load(.nominalFrameRate) ?? Float(projectFPS.value)
         let fps = normalizedFrameRate(nominal)
-        let duration = try await asset.load(.duration)
-        let sourceFrames = Int((duration.seconds * fps.value).rounded(.down))
+        let sourceFrames = try await MediaFrames.sourceFrames(of: asset, fps: fps)
         let frames = Int((Double(sourceFrames) / fps.value * projectFPS.value).rounded(.down))
         guard frames > 0 else { throw ProjectError.invalid("Video is too short") }
         let id = UUID().uuidString

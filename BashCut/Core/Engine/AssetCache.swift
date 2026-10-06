@@ -29,7 +29,7 @@ actor AssetCache {
         let asset = AVURLAsset(url: url)
         let video = try await asset.loadTracks(withMediaType: .video).first
         let audio = try await asset.loadTracks(withMediaType: .audio).first
-        let videoRange: CMTimeRange? = if let video { try await Self.pictureRange(video) } else { nil }
+        let videoRange: CMTimeRange? = if let video { try await MediaFrames.pictureRange(video) } else { nil }
         let loaded = LoadedAsset(
             asset: asset, signature: signature, video: video, audio: audio,
             videoRange: videoRange,
@@ -40,13 +40,6 @@ actor AssetCache {
         touch(url)
         evict()
         return loaded
-    }
-
-    /// From the first to the last picture: an empty edit (sound before the first picture) is part of `timeRange`.
-    private static func pictureRange(_ track: AVAssetTrack) async throws -> CMTimeRange {
-        let pictures = try await track.load(.segments).filter { !$0.isEmpty }.map(\.timeMapping.target)
-        guard let first = pictures.first, let last = pictures.last else { return try await track.load(.timeRange) }
-        return CMTimeRange(start: first.start, end: last.end)
     }
 
     private func touch(_ url: URL) {
@@ -65,7 +58,8 @@ struct LoadedAsset: @unchecked Sendable {
     let signature: FileSignature
     let video: AVAssetTrack?
     let audio: AVAssetTrack?
-    /// Where the video track has pictures; the file's duration (and so `Media.frames`) can run past its end.
+    /// Where the video track has pictures; the file's duration, and so `Media.frames` of media imported before #437,
+    /// can run past its end.
     let videoRange: CMTimeRange?
     let naturalSize: CGSize
     let preferredTransform: CGAffineTransform

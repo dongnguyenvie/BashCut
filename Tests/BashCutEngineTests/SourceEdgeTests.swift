@@ -22,6 +22,22 @@ struct SourceEdgeTests {
         ("30 fps", .init(pictures: 60, frame: CMTime(value: 1, timescale: 30), audioSeconds: 2.1)),
     ]
 
+    @Test("Media frames end at the last picture, not at the sound", arguments: 0..<shapes.count)
+    func pictureFrames(shapeIndex: Int) async throws {
+        let (name, shape) = Self.shapes[shapeIndex]
+        let root = try TestFixtures.temporaryDirectory("source-edge-frames")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let file = root.appendingPathComponent("camera.mov")
+        try await SourceEdgeMovie.write(shape, to: file)
+        let legacy = try await SourceEdgeMovie.media(file, count: .duration)
+        let media = try await SourceEdgeMovie.media(file, count: .pictures)
+        let end = shape.videoStart + CMTimeMultiply(shape.frame, multiplier: Int32(shape.pictures))
+        #expect(media.frames == Int((end.seconds * media.fps.value + 0.001).rounded(.down)), "\(name)")
+        if shape.videoStart == .zero { #expect(media.frames == shape.pictures, "\(name)") }
+        #expect(media.frames < legacy.frames, "\(name): the sound runs past the last picture")
+    }
+
+    /// Both media records: old projects keep frames from the duration, new imports end at the last picture.
     @Test("Edge-to-edge clips export with picture on every frame", arguments: 0..<shapes.count, Clip.allCases)
     func export(shapeIndex: Int, clip: Clip) async throws {
         let (name, shape) = Self.shapes[shapeIndex]
@@ -29,7 +45,13 @@ struct SourceEdgeTests {
         defer { try? FileManager.default.removeItem(at: root) }
         let file = root.appendingPathComponent("camera.mov")
         try await SourceEdgeMovie.write(shape, to: file)
-        let media = try await SourceEdgeMovie.media(file)
+        for count in SourceEdgeMovie.Count.allCases {
+            try await export(file, root: root, name: "\(name) / \(clip.rawValue) / \(count.rawValue)", clip: clip,
+                             media: try await SourceEdgeMovie.media(file, count: count))
+        }
+    }
+
+    private func export(_ file: URL, root: URL, name: String, clip: Clip, media: Media) async throws {
         var project = Project(name: "Source edge")
         var format = project["format"]?.object ?? [:]
         format["fps"] = FrameRate(30, 1).json
@@ -64,23 +86,23 @@ struct SourceEdgeTests {
         }
         project = try project.applying(.group(label: "Fixture", author: .user, ops: ops)).project
         let snapshot = try await CompositionBuilder().build(project, root: root)
-        let output = root.appendingPathComponent("export.mp4")
+        let output = root.appendingPathComponent("export-\(UUID().uuidString).mp4")
         do {
             try await Exporter().export(snapshot, to: output, settings: ExportSettings(preset: .quickDraft))
         } catch {
-            Issue.record("\(name) / \(clip.rawValue): \(error) (media frames \(media.frames), timeline \(project.duration))")
+            Issue.record("\(name): \(error) (media frames \(media.frames), timeline \(project.duration))")
             return
         }
         let rendered = AVURLAsset(url: output)
         let picture = try #require(try await rendered.loadTracks(withMediaType: .video).first)
         #expect(try await picture.load(.timeRange).end == project.fps.time(project.duration),
-                "\(name) / \(clip.rawValue): the video track ends before the timeline")
+                "\(name): the video track ends before the timeline")
         let generator = AVAssetImageGenerator(asset: rendered)
         generator.requestedTimeToleranceBefore = .zero
         generator.requestedTimeToleranceAfter = .zero
         for frame in [0, project.duration - 1] {
             let image = try await generator.image(at: project.fps.time(frame)).image
-            #expect(Self.isPicture(image), "\(name) / \(clip.rawValue): frame \(frame) is black")
+            #expect(Self.isPicture(image), "\(name): frame \(frame) is black")
         }
     }
 

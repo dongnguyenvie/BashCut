@@ -80,7 +80,8 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
 
 ### Media & proxies
 
-- Original-media import with probing, offline badges and metadata; thumbnails with debounced, quantized
+- Original-media import with probing, offline badges and metadata (a video's frames end at its last picture, not
+  at sound running past it); thumbnails with debounced, quantized
   hover-scrub and source-time feedback.
 - `@assets/...` media resolves through the configured workspace everywhere (thumbnails, source viewer, plugin
   inputs, preview, export); validation rejects unknown namespaces and traversal.

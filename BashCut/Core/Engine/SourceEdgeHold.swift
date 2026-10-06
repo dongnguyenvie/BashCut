@@ -1,9 +1,9 @@
 @preconcurrency import AVFoundation
 
 extension AVMutableCompositionTrack {
-    /// Inserts `range` of `source` stretched over `target`. `Media.frames` comes from the file's duration, and camera
-    /// files often have sound before the first picture or after the last one; the share of `range` outside
-    /// `available` holds the first or last picture (`frame` long) instead of leaving the compositor without a frame.
+    /// Inserts `range` of `source` stretched over `target`. `Media.frames` of media imported before #437 comes from
+    /// the file's duration, and camera files often have sound before the first picture or after the last one; the
+    /// share of `range` outside `available` holds the first or last picture (`frame` long) instead of leaving the compositor without a frame.
     func insertHoldingEdges(
         _ range: CMTimeRange, of source: AVAssetTrack, available: CMTimeRange?, frame: CMTime, over target: CMTimeRange
     ) throws {
