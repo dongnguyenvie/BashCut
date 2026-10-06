@@ -298,7 +298,7 @@ struct LibraryItemEditorSheet: View {
                 if request.textPreset != nil {
                     TextPresetFields(style: Binding(
                         get: { request.textPreset ?? LibraryTextPreset(textPreset: "bold-outline") },
-                        set: { request.textPreset = $0 }))
+                        set: { request.textPreset = $0 }), projectRoot: document.fileURL?.deletingLastPathComponent())
                 }
                 if !isRename {
                     Picker("Save in", selection: $request.scope) {

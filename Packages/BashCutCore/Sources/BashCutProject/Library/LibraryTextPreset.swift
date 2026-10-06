@@ -1,8 +1,8 @@
 import Foundation
 
 /// A text preset item's params (#380): `textPreset` (a renderer preset, `TextPreset.all`) and `text` (the sample the
-/// panel shows and the text placed by default), with an optional `textStyle` (the item's own size, position and
-/// outline over the preset's: the `textStyle` fields of `ItemProperty.all`, with the same ranges) and `animation` (a
+/// panel shows and the text placed by default), with an optional `textStyle` (the item's own size, position,
+/// outline, font and colours over the preset's: the `textStyle` fields of `ItemProperty.all`, with the same rules) and `animation` (a
 /// `MotionPreset` id). Items without `textStyle` or `animation` behave as before. Other keys round-trip.
 public struct LibraryTextPreset: Sendable, Equatable {
     /// The `textStyle` fields an item may store: every declared item `textStyle` property.
@@ -66,9 +66,11 @@ public struct LibraryTextPreset: Sendable, Equatable {
     public init(item: Item, project: Project?) {
         self.init(textPreset: item.textPreset ?? "bold-outline", text: item["text"]?.string)
         let style = item["textStyle"]?.object ?? [:]
-        for key in Self.styleKeys {
-            guard let value = style[key], let number = value.double else { continue }
-            textStyle[key] = LibrarySticker.rounded(number)
+        for property in ItemProperty.all where property.group == "textStyle" {
+            guard let value = style[property.key], property.rule.mismatch(value) == nil else { continue }
+            if case .string = value { textStyle[property.key] = value } else if let number = value.double {
+                textStyle[property.key] = LibrarySticker.rounded(number)
+            }
         }
         if let motion = item.motion, let project {
             animation = MotionPreset.all.first { preset in

@@ -259,6 +259,7 @@ final class ProjectDocument {
         replaceHistory(ProjectHistory(project: project))
         preview.reset(project)
         fileURL = url
+        ProjectFonts.activate(projectRoot: url?.deletingLastPathComponent())
         if let url {
             exports.restoreReport(projectRoot: url.deletingLastPathComponent())
             settings.rememberRecentProject(url)

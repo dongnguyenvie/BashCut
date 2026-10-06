@@ -1,6 +1,17 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Font": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Font" } }, "vi": { "stringUnit": { "state": "translated", "value": "Phông chữ" } } } },
+    "Preset (%@)": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Preset (%@)" } }, "vi": { "stringUnit": { "state": "translated", "value": "Mặc định (%@)" } } } },
+    "Add Font…": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Add Font…" } }, "vi": { "stringUnit": { "state": "translated", "value": "Thêm phông chữ…" } } } },
+    "%@ is not available and draws as Helvetica": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%@ is not available and draws as Helvetica" } }, "vi": { "stringUnit": { "state": "translated", "value": "Không có %@ nên chữ hiện bằng Helvetica" } } } },
+    "Text colour": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Text colour" } }, "vi": { "stringUnit": { "state": "translated", "value": "Màu chữ" } } } },
+    "Outline colour": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Outline colour" } }, "vi": { "stringUnit": { "state": "translated", "value": "Màu viền" } } } },
+    "%@ (no Vietnamese)": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%@ (no Vietnamese)" } }, "vi": { "stringUnit": { "state": "translated", "value": "%@ (thiếu tiếng Việt)" } } } },
+    "Use the preset's colour": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Use the preset's colour" } }, "vi": { "stringUnit": { "state": "translated", "value": "Dùng màu mặc định" } } } },
+    "Save the project before adding a font": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Save the project before adding a font" } }, "vi": { "stringUnit": { "state": "translated", "value": "Hãy lưu dự án trước khi thêm phông chữ" } } } },
+    "Font added: %@": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Font added: %@" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đã thêm phông chữ: %@" } } } },
+    "Clears the stored size, position, outline, font and colours": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Clears the stored size, position, outline, font and colours" } }, "vi": { "stringUnit": { "state": "translated", "value": "Xoá cỡ chữ, vị trí, viền, phông chữ và màu đã lưu" } } } },
     "Tools": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Tools" } }, "vi": { "stringUnit": { "state": "translated", "value": "Công cụ" } } } },
     "Requires": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Requires" } }, "vi": { "stringUnit": { "state": "translated", "value": "Cần plugin" } } } },
     "Uses": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Uses" } }, "vi": { "stringUnit": { "state": "translated", "value": "Dùng capability" } } } },

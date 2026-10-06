@@ -1,4 +1,5 @@
 import BashCutAutomation
+import BashCutEngine
 import BashCutImport
 import BashCutPlugin
 import BashCutProject
@@ -22,6 +23,21 @@ extension ProjectDocument {
                 from: URL(fileURLWithPath: arguments.string("path")), name: arguments.optionalString("name"),
                 author: author, baseRevision: arguments.int("baseRev"))
             return .object(["rev": .integer(result.revision), "lut": .object(result.lut.fields)])
+        }
+        handle("fonts.list") { document, arguments, _ in
+            let query = arguments.optionalString("query")?.lowercased()
+            let vietnamese = arguments.optionalBool("vietnamese") ?? false
+            let fonts = ProjectFonts.list(
+                projectRoot: document.fileURL?.deletingLastPathComponent(), installed: !(arguments.optionalBool("project") ?? false))
+                .filter { font in
+                    (!vietnamese || font.vietnamese)
+                        && query.map { font.postScriptName.lowercased().contains($0) || font.family.lowercased().contains($0) }
+                            ?? true
+                }
+            return .array(fonts.map(\.json))
+        }
+        handle("fonts.import") { document, arguments, _ in
+            .array(try document.importFont(from: URL(fileURLWithPath: arguments.string("path"))).map(\.json))
         }
         handleAuthored("edl.import") { document, arguments, _ in
             let source = URL(fileURLWithPath: try arguments.string("path")).standardizedFileURL

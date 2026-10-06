@@ -12,7 +12,7 @@ import Foundation
         "adjustment.add", "style.apply", "style.save", "style.delete", "looks.save", "looks.delete", "schema.get",
         "clip.speed", "clip.speed-curve", "clip.motion", "clip.keyframe", "clip.reverse", "beats.detect", "voice.speak",
         "audio.measure", "media.sync",
-        "storage.get", "ui.select", "ui.view", "ui.source", "ui.seek", "ui.frame", "ui.panel", "luts.import",
+        "storage.get", "ui.select", "ui.view", "ui.source", "ui.seek", "ui.frame", "ui.panel", "luts.import", "fonts.list", "fonts.import",
         "knowledge.get", "knowledge.memo", "knowledge.lessons", "knowledge.add-lesson", "knowledge.update-lesson",
         "knowledge.remove-lesson", "knowledge.prefs", "knowledge.set-pref", "knowledge.facts",
         "knowledge.set-fact", "knowledge.split-memo", "knowledge.proposals", "knowledge.history", "skills.list",

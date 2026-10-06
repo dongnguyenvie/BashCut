@@ -102,7 +102,7 @@ extension ProjectDocument {
         }
         handle("review.run") { document, _, _ in
             .array(
-                TimelineReview.run(document.project).map { issue in
+                TimelineReview.run(document.project, fontAvailable: ProjectFonts.isAvailable).map { issue in
                     .object([
                         "id": .string(issue.id), "title": .string(issue.title),
                         "detail": .string(issue.detail), "frame": .integer(issue.frame),

@@ -11,6 +11,10 @@ public struct ItemProperty: Sendable {
         case number(ClosedRange<Double>)
         case integer(ClosedRange<Int>)
         case boolean
+        /// Text of 1…`maxLength` characters.
+        case text(maxLength: Int)
+        /// A `#RRGGBB` colour.
+        case color
     }
 
     /// `nil` for a top-level item field, else the object it lives in (`transform`, `color`, `textStyle`).
@@ -52,6 +56,10 @@ public struct ItemProperty: Sendable {
         .init("textStyle", "size", .number(0.005...1), "Font size as a fraction of the frame's short side (shrunk to fit 90% of the width)"),
         .init("textStyle", "positionY", .number(0...1), "Baseline position from the bottom, as a fraction"),
         .init("textStyle", "strokeWidth", .number(0...50), "Outline width in points"),
+        .init("textStyle", "font", .text(maxLength: 128), "Font PostScript name (fonts list); missing fonts draw as Helvetica"),
+        .init("textStyle", "fill", .color, "Text colour, #RRGGBB (the preset's by default)"),
+        .init("textStyle", "stroke", .color, "Outline colour, #RRGGBB (default black)"),
+        .init("textStyle", "highlight", .color, "Word-by-word highlight colour, #RRGGBB (default #FFD400)"),
     ] + ColorGrade.ranges.map { .init("color", $0.key, .number($0.range), ColorGrade.summaries[$0.key] ?? "") }
 }
 
@@ -115,7 +123,17 @@ extension ItemProperty.Rule {
             value.int.map(range.contains) == true ? nil : "an integer in \(range)"
         case .boolean:
             if case .bool = value { nil } else { "a boolean" }
+        case .text(let maxLength):
+            value.string.map { !$0.isEmpty && $0.count <= maxLength } == true ? nil : "text of 1…\(maxLength) characters"
+        case .color:
+            value.string.map(Self.isColor) == true ? nil : "a colour #RRGGBB"
         }
+    }
+
+    public static let colorPattern = "^#[0-9A-Fa-f]{6}$"
+
+    static func isColor(_ text: String) -> Bool {
+        text.count == 7 && text.first == "#" && text.dropFirst().allSatisfy(\.isHexDigit)
     }
 }
 
@@ -412,6 +430,8 @@ public enum ProjectSchema {
         case .number(let range): number(property.summary, range)
         case .integer(let range): integer(property.summary, minimum: range.lowerBound, maximum: range.upperBound)
         case .boolean: boolean(property.summary)
+        case .text(let maxLength): string(property.summary, minLength: 1, maxLength: maxLength)
+        case .color: string(property.summary, pattern: ItemProperty.Rule.colorPattern)
         }
     }
 

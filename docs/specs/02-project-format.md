@@ -18,6 +18,7 @@ projects/<video-name>/
 ├── project.bashcut.json                     # timeline + settings (the app's source of truth)
 ├── footage/ -> ../../viddeo-sources/<shoot> # symlink, read-only
 ├── luts/                                    # imported .cube files listed in the project's LUT catalog
+├── fonts/                                   # .ttf/.otf/.ttc for textStyle.font, registered for the app while open
 ├── media/                                   # project-only files (images, downloaded clips, stickers)
 ├── voiceover/                               # generated/ (TTS takes), recordings/ (microphone)
 ├── khao-sat/                                # survey: thong_so.json, transcript.json, contact sheets (unchanged)

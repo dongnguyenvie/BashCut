@@ -25,7 +25,9 @@ public enum TimelineReview {
         return Double(covered) / Double(project.duration)
     }
 
-    public static func run(_ project: Project) -> [ReviewIssue] {
+    /// `fontAvailable` says whether a `textStyle.font` name draws on this Mac (the app passes
+    /// `ProjectFonts.isAvailable`); a missing font is flagged once, at its first item.
+    public static func run(_ project: Project, fontAvailable: (String) -> Bool = { _ in true }) -> [ReviewIssue] {
         var issues: [ReviewIssue] = []
         let main = project.tracks.first { $0.role == "main" }?.items.sorted { $0.at < $1.at } ?? []
         let voiceover = project.tracks.filter { $0.role == "voiceover" }.flatMap(\.items)
@@ -67,6 +69,7 @@ public enum TimelineReview {
                     id: "caption-" + text.id, title: "Long caption line",
                     detail: "Consider splitting lines longer than 42 characters.", frame: text.at))
         }
+        issues += missingFonts(project, fontAvailable: fontAvailable)
         for caption in project.tracks.filter({ $0.kind == "text" && $0.role == "captions" }).flatMap(\.items)
         where isRecognitionLoop(caption, fps: project.fps.value) {
             issues.append(
@@ -88,6 +91,24 @@ public enum TimelineReview {
                                 "%.0f%% from clip roles and voiceover timing. Audio has not been transcribed or measured.",
                             coverage * 100), frame: 0))
             }
+        }
+        return issues
+    }
+
+    /// One issue per `textStyle.font` that does not draw on this Mac, at its first text item.
+    static func missingFonts(_ project: Project, fontAvailable: (String) -> Bool) -> [ReviewIssue] {
+        var issues: [ReviewIssue] = []
+        var checkedFonts: Set<String> = []
+        for text in project.tracks.filter({ $0.kind == "text" }).flatMap(\.items).sorted(by: { $0.at < $1.at }) {
+            guard let font = text["textStyle"]?.object["font"]?.string, checkedFonts.insert(font).inserted,
+                !fontAvailable(font)
+            else { continue }
+            issues.append(
+                ReviewIssue(
+                    id: "font-" + text.id, title: "Missing font",
+                    detail: "\(font) is not installed and not in the project's fonts folder, so it draws as Helvetica. "
+                        + "Add it with fonts import, or pick another (fonts list).",
+                    frame: text.at))
         }
         return issues
     }

@@ -2,6 +2,7 @@ import AVKit
 import AppKit
 import BashCutAutomation
 import BashCutDocument
+import BashCutEngine
 import BashCutProject
 import SwiftUI
 
@@ -305,7 +306,7 @@ struct EditorView: View {
             Text("Review checks the timeline. Loudness is measured during normalized export; silence analysis is not available yet.").font(
                 .caption
             ).foregroundStyle(.secondary)
-            let issues = TimelineReview.run(document.project)
+            let issues = TimelineReview.run(document.project, fontAvailable: ProjectFonts.isAvailable)
             if issues.isEmpty { Label("No timeline issues found", systemImage: "checkmark.circle") }
             ForEach(issues) { issue in
                 VStack(alignment: .leading, spacing: 5) {

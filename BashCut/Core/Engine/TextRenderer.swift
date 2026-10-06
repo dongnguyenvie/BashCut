@@ -95,10 +95,19 @@ public enum TextPresetStyle {
         let preset = CaptionPreset(preset)
         return ["size": preset.size, "positionY": preset.baseline, "strokeWidth": preset.strokeWidth]
     }
+
+    /// The PostScript name of `preset`'s font.
+    public static func font(_ preset: String?) -> String { CaptionPreset(preset).font }
+
+    /// `preset`'s text colour, `#RRGGBB`.
+    public static func fill(_ preset: String?) -> String { CaptionPreset(preset).fill }
 }
 
 enum TextRenderer {
     private static let cache = CaptionCache()
+
+    /// Drops every cached raster (a font was registered or removed, so names may draw differently).
+    static func clearCache() { cache.images.removeAllObjects() }
     /// The cropped raster; consumers needing canvas placement use `overlay` instead.
     static func image(_ item: Item, size: CGSize, spoken: Int? = nil, itemKey: String? = nil) -> CGImage? {
         raster(item, size: size, spoken: spoken, itemKey: itemKey)?.bitmap

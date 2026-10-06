@@ -235,7 +235,7 @@ extension TimelineCanvas {
         guard project.revision != reviewRevision else { return }
         reviewRevision = project.revision
         voiceoverWarningIDs = Set(
-            TimelineReview.run(project).compactMap { issue in
+            TimelineReview.run(project, fontAvailable: ProjectFonts.isAvailable).compactMap { issue in
                 issue.id.hasPrefix("overlap-") ? String(issue.id.dropFirst("overlap-".count)) : nil
             })
     }

@@ -25,6 +25,39 @@ struct ReviewTests {
         #expect(Set(issues.map(\.id)) == ["gap-clip", "caption-caption", "coverage"])
     }
 
+    @Test("Review flags each missing font once, at its first text item (#415)")
+    func missingFont() throws {
+        var project = Project(name: "Fonts")
+        var ops: [EditOperation] = []
+        for (index, font) in ["Gone-Bold", "Gone-Bold", "Here-Regular"].enumerated() {
+            var text = Item(id: "t\(index)", at: index * 30, duration: 30)
+            text["text"] = .string("Xin chào")
+            text["textStyle"] = .object(["font": .string(font)])
+            ops.append(.insert(track: "t1", item: text))
+        }
+        project = try project.applying(.group(label: "fixture", author: .user, ops: ops)).project
+        let issues = TimelineReview.run(project, fontAvailable: { $0 == "Here-Regular" })
+        #expect(issues.filter { $0.title == "Missing font" }.map(\.id) == ["font-t0"])
+        #expect(!TimelineReview.run(project).contains { $0.title == "Missing font" })
+    }
+
+    @Test("textStyle font and colours are validated (#413)")
+    func textStyleRules() throws {
+        let project = Project(name: "Style")
+        for (style, valid) in [
+            (["font": JSONValue.string("Montserrat-ExtraBold"), "fill": .string("#FFD400"), "stroke": .string("#000000")], true),
+            (["fill": JSONValue.string("yellow")], false),
+            (["stroke": JSONValue.string("#00000")], false),
+            (["font": JSONValue.string("")], false),
+        ] {
+            var text = Item(id: "t", at: 0, duration: 30)
+            text["text"] = .string("A")
+            text["textStyle"] = .object(style)
+            let result = Result { try project.applying(.insert(track: "t1", item: text)) }
+            #expect(((try? result.get()) != nil) == valid, "\(style)")
+        }
+    }
+
     @Test("Review flags voiceover closer than 0.3 seconds to tagged speech across layers")
     func voiceoverProximity() throws {
         var project = Project(name: "Voice review", fps: FrameRate(30, 1))
