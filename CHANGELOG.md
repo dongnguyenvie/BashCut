@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+- **Allow all agent actions by default.** **Dangerously allow all agent actions** is now on unless you turned it off:
+  agents edit, export and run plugin actions without asking, and the scope guard is off. Turn it off in Settings ›
+  Agents › Agent permissions to get the separate switches back.
 - **Scope guard fixes (#356).** An agent edit with a stale base revision now fails with `-32002` instead of being
   held, and a held edit the user allows keeps its base revision. Items made by an edit the user allowed (Allow Once
   or Allow for This Request) join the scope, so later edits to them are not asked again. Return no longer allows a

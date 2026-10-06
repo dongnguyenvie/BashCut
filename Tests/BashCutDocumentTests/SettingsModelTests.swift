@@ -48,23 +48,23 @@ struct SettingsModelTests {
         #expect(defaults.string(forKey: "agentWorkspace") == nil)
     }
 
-    @Test("Dangerously allow all agent actions overrides the agent switches and is stored")
+    @Test("Dangerously allow all agent actions is on by default, overrides the agent switches and is stored")
     func allowAllAgents() throws {
         let defaults = try defaults()
         defer { defaults.removePersistentDomain(forName: suite) }
         let settings = SettingsModel(defaults: defaults)
-        #expect(!settings.dangerouslyAllowAgents && settings.agentScopeModeRaw == "ask")
+        #expect(settings.dangerouslyAllowAgents && settings.agentScopeModeRaw == "ask")
         settings.allowAgentEdits = false
-        #expect(!settings.agentsCanEdit && !settings.agentActionsAutoApproved)
-
-        settings.dangerouslyAllowAgents = true
         #expect(settings.agentsCanEdit && settings.agentActionsAutoApproved)
         // The switches underneath keep their own values for when it is turned off.
         #expect(!settings.allowAgentEdits && !settings.autoApprovePrivileged)
-        #expect(SettingsModel(defaults: defaults).dangerouslyAllowAgents)
 
         settings.dangerouslyAllowAgents = false
-        #expect(!settings.agentsCanEdit && !SettingsModel(defaults: defaults).dangerouslyAllowAgents)
+        #expect(!settings.agentsCanEdit && !settings.agentActionsAutoApproved)
+        #expect(!SettingsModel(defaults: defaults).dangerouslyAllowAgents)
+
+        settings.dangerouslyAllowAgents = true
+        #expect(SettingsModel(defaults: defaults).dangerouslyAllowAgents)
     }
 
     @Test("New projects go to ~/Movies/BashCut until another folder is remembered")
