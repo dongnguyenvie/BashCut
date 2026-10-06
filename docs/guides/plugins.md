@@ -5,7 +5,9 @@ transcription, beat detection and loudness analysis. Since plugin API 2 they can
 (menus, toolbar, context menus, panel buttons), listen to editor events through hooks and declare options the
 app renders natively. Since plugin API 6 they can ship library packs for any library panel and search or generate
 library items (see [Library packs](#library-packs) and [Library search and generate](#library-search-and-generate)),
-and since API 7 agent skills that teach agents to use them ([Agent skills](#agent-skills)). A plugin is a separate
+since API 7 agent skills that teach agents to use them ([Agent skills](#agent-skills)), and since API 8 their own
+panel in the left rail, dock tabs and sheets with declarative views, and the use of other plugins
+([Plugin panels and views](#plugin-panels-and-views), [Using other plugins](#using-other-plugins)). A plugin is a separate
 executable that BashCut starts for
 each request; no third-party code is loaded into the app process. Project data, timeline validation, undo
 history and rendering stay in the app, so a missing plugin never prevents a project from opening. The design
