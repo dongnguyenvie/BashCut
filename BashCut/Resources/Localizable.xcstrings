@@ -5846,6 +5846,12 @@
         "vi": { "stringUnit": { "state": "translated", "value": "Đo hình ảnh" } }
       }
     },
+    "From plugin %@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "From plugin %@" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Từ plugin %@" } }
+      }
+    },
     "Measure again": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Measure again" } },

@@ -7,8 +7,8 @@ extension CommandCatalog {
         "Review the timeline before export. Each issue has a severity (error: spoils the export, warning: hurts "
             + "it, info: a note) and, when one exists, a fix: a command with arguments, or a hint. Errors come first. "
             + "With summary, the result is {issues, summary: {errors, warnings, infos, passed}}; passed means no "
-            + "error. Loudness is checked from the last normalized export of this revision, black and frozen picture "
-            + "and jump cuts from the last review.measure of this revision. Issues over a stretch carry endFrame. "
+            + "error. Loudness is checked from the last normalized export of this revision, black and frozen picture, "
+            + "jump cuts and plugin checks from the last review.measure of this revision. Issues over a stretch carry endFrame. "
             + "Pacing (shot length, still picture) follows the project's review object (minShotSeconds, "
             + "maxShotSeconds, maxStillSeconds) when set.",
         parameters: [
@@ -20,10 +20,18 @@ extension CommandCatalog {
 
     static let reviewMeasureSpec = CommandSpec(
         "review.measure", .read,
-        "Render the timeline small (two frames a second and both sides of every hard cut on Main, proxies "
-            + "allowed) and keep the picture measurement for this revision, so review.run checks black or empty "
-            + "picture, frozen picture, long static shots and jump cuts. The job's result has the sample count and "
-            + "the picture issues found; measure again after an edit.",
+        "Run the measured review for this revision and keep it, so review.run includes it: render the timeline "
+            + "small (two frames a second and both sides of every hard cut on Main, proxies allowed) for black or "
+            + "empty picture, frozen picture, long static shots and jump cuts, and run every enabled plugin "
+            + "review.check side by side (each at most 30 s; a failing or slow check becomes an info issue). Plugin "
+            + "issues carry source (the plugin ID) and IDs prefixed with the provider. A project turns checks off "
+            + "with review.disabledChecks (plugin or provider IDs; timeline apply setProjectProperties). The job's "
+            + "result has the sample count, the plugin checks that ran and the measured issues; measure again after "
+            + "an edit.",
+        parameters: [
+            CommandParameter("picture", .boolean, "Measure the picture (default true)", cli: .option("picture")),
+            CommandParameter("plugins", .boolean, "Run plugin review checks (default true)", cli: .option("plugins")),
+        ],
         execution: .job)
 
     /// Read-only sound analysis through plugin providers; each runs as a job whose result holds the values.

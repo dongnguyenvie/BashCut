@@ -175,6 +175,9 @@ public struct PluginManifest: Codable, Sendable, Equatable {
         guard !usesAPI4 || apiVersion >= 4 else {
             throw PluginError.invalid("secret options and agent.chat need apiVersion 4")
         }
+        guard !capabilities.contains(PluginAPI.reviewCheck) || apiVersion >= 9 else {
+            throw PluginError.invalid("review.check needs apiVersion 9")
+        }
         guard !capabilities.contains(PluginAPI.agentChat) || transport == .session else {
             throw PluginError.invalid("agent.chat needs the session transport")
         }

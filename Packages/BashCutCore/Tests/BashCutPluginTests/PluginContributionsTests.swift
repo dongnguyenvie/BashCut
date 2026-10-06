@@ -87,6 +87,15 @@ struct PluginContributionsTests {
         try manifest(base("", apiVersion: 1, capabilities: #"["audio.beats"]"#)).validate()
     }
 
+    @Test("review.check needs apiVersion 9 (#451)")
+    func reviewCheckVersion() throws {
+        #expect(PluginAPI.current >= 9)
+        #expect(throws: PluginError.self) {
+            try manifest(base("", apiVersion: 8, capabilities: #"["review.check"]"#)).validate()
+        }
+        try manifest(base("", apiVersion: 9, capabilities: #"["review.check"]"#)).validate()
+    }
+
     @Test("The API window reports plugins this BashCut cannot run")
     func apiWindow() throws {
         let future = try manifest(base("", apiVersion: PluginAPI.current + 1, capabilities: #"["audio.beats"]"#))

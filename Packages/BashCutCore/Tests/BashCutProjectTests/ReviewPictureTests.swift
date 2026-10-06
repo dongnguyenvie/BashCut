@@ -115,4 +115,20 @@ struct ReviewPictureTests {
         let landscape = try self.project([("long", "m", 300)], width: 1920, height: 1080)
         #expect(!TimelineReview.run(landscape).contains { $0.id.hasPrefix("shot-") })
     }
+
+    @Test("Plugin check issues join the review of their revision, sorted with the built-in ones (#451)")
+    func pluginIssues() throws {
+        let project = try project([("a", "m", 90)])
+        let reported = [
+            ReviewIssue(id: "x.hook:weak", title: "Weak hook", detail: "", frame: 0, severity: .error, source: "x"),
+            ReviewIssue(id: "x.hook:note", title: "Note", detail: "", frame: 0, severity: .info, source: "x"),
+        ]
+        let current = ReviewPluginIssues(revision: project.revision, issues: reported)
+        let issues = TimelineReview.run(project, context: ReviewContext(pluginIssues: current))
+        #expect(issues.first?.id == "x.hook:weak")
+        #expect(issues.contains { $0.id == "x.hook:note" })
+        #expect(issues.first?.json.object["source"] == .string("x"))
+        let stale = ReviewPluginIssues(revision: project.revision + 1, issues: reported)
+        #expect(!TimelineReview.run(project, context: ReviewContext(pluginIssues: stale)).contains { $0.source != nil })
+    }
 }

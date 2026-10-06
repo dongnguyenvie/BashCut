@@ -15,6 +15,17 @@ public struct ReviewLoudness: Sendable, Equatable {
     }
 }
 
+/// Issues plugin `review.check` providers reported for `revision` (#451), merged into the review of that revision.
+public struct ReviewPluginIssues: Sendable {
+    public let revision: Int
+    public let issues: [ReviewIssue]
+
+    public init(revision: Int, issues: [ReviewIssue]) {
+        self.revision = revision
+        self.issues = issues
+    }
+}
+
 /// The targets measured checks compare against. The defaults fit short-form social video (TikTok, Reels, Shorts,
 /// YouTube): -14 LUFS within 2 LU, true peak at most -1 dBTP; the Reelcrew study (#431) found every finished
 /// reference within 0.3 LU of -14.
@@ -69,7 +80,7 @@ public struct ReviewTargets: Sendable, Equatable {
 }
 
 /// What the review knows beyond the project: installed fonts, the text presets' defaults, the last loudness and
-/// picture measurements and the targets.
+/// picture measurements, plugin check results and the targets.
 public struct ReviewContext {
     /// Whether a `textStyle.font` name draws on this Mac (the app passes `ProjectFonts.isAvailable`).
     public var fontAvailable: (String) -> Bool
@@ -79,17 +90,21 @@ public struct ReviewContext {
     public var loudness: ReviewLoudness?
     /// The last picture measurement (`review.measure`); checks use it only for the project's revision.
     public var picture: ReviewPicture?
+    /// What plugin checks reported on the last `review.measure`; used only for the project's revision.
+    public var pluginIssues: ReviewPluginIssues?
     public var targets: ReviewTargets
 
     public init(
         fontAvailable: @escaping (String) -> Bool = { _ in true },
         textDefaults: @escaping (String?) -> (size: Double, positionY: Double) = { _ in (0.055, 0.18) },
-        loudness: ReviewLoudness? = nil, picture: ReviewPicture? = nil, targets: ReviewTargets = ReviewTargets()
+        loudness: ReviewLoudness? = nil, picture: ReviewPicture? = nil, pluginIssues: ReviewPluginIssues? = nil,
+        targets: ReviewTargets = ReviewTargets()
     ) {
         self.fontAvailable = fontAvailable
         self.textDefaults = textDefaults
         self.loudness = loudness
         self.picture = picture
+        self.pluginIssues = pluginIssues
         self.targets = targets
     }
 }

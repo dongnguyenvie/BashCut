@@ -5,6 +5,15 @@
 
 ## [Unreleased]
 
+- **Plugins can contribute review checks (plugin API 9, #451).** A provider of the new `review.check` capability gets
+  the project and returns issues in the review's shape (severity, frame/endFrame, optional fix). `review measure`
+  runs every enabled check side by side with the picture measurement, each for at most 30 s; a check that fails,
+  returns a malformed result or times out becomes one info issue and never stops the others. `review run` merges the
+  issues of the current revision with `source` (the plugin ID) and IDs prefixed with the provider; the Review sheet
+  shows *From plugin …*. A project turns checks off with `review.disabledChecks` (plugin or provider IDs), and
+  `plugins hooks` lists them under `reviewChecks`. `review measure` takes `--picture` and `--plugins` (both default
+  true).
+
 - **Review checks the rendered picture (#432).** `review measure` (a job; **Measure picture** in the Review sheet)
   renders the timeline small, two frames a second plus both sides of every hard cut on Main, with proxies, and keeps
   the measurement for that revision (a 3-minute 1080p edit takes about 9 s in a debug build). `review run` then

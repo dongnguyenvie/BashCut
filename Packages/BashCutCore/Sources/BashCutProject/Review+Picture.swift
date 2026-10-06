@@ -11,9 +11,9 @@ extension TimelineReview {
             issues.append(
                 ReviewIssue(
                     id: "picture-unmeasured", title: "Picture not measured",
-                    detail: "Black frames, frozen picture and jump cuts are checked on rendered frames of this revision.",
+                    detail: "Black frames, frozen picture, jump cuts and plugin checks run on review.measure of this revision.",
                     frame: 0, severity: .info,
-                    fix: ReviewFix(command: "review.measure", hint: "Measure the picture, then run the review again.")))
+                    fix: ReviewFix(command: "review.measure", hint: "Measure, then run the review again.")))
         }
         issues += shotIssues(project, context: context, picture: measured)
         if let measured {
