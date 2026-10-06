@@ -31,6 +31,12 @@ struct TransitionLibraryView: View {
                     document.removeSelectedTransition()
                 }
             }
+            Divider()
+            LibraryItemsSection(document: document, kinds: [.transitionPreset], saveKinds: [.transitionPreset]) { item in
+                Button { document.applyFromLibrary(item) } label: {
+                    LibraryView.title(item).frame(maxWidth: .infinity, alignment: .leading)
+                }.disabled(document.selected == nil)
+            }
         }
     }
 

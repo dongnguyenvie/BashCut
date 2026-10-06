@@ -42,11 +42,13 @@ extension ProjectDocument {
             label: "Change transition duration")
     }
 
-    private func selectedVideoCut() -> (from: Item, to: Item)? {
-        guard let selectedID else { return nil }
+    private func selectedVideoCut() -> (from: Item, to: Item)? { selectedID.flatMap(videoCut(at:)) }
+
+    /// The cut beside the video clip `itemID`: before it, or else after it.
+    func videoCut(at itemID: String) -> (from: Item, to: Item)? {
         for track in project.tracks where track.kind == "video" {
             let items = track.items.sorted { ($0.at, $0.id) < ($1.at, $1.id) }
-            guard let index = items.firstIndex(where: { $0.id == selectedID }) else { continue }
+            guard let index = items.firstIndex(where: { $0.id == itemID }) else { continue }
             if index > 0, items[index - 1].end == items[index].at {
                 return (items[index - 1], items[index])
             }

@@ -83,9 +83,32 @@ extension CommandCatalog {
                 + "Agents removing from the user scope wait for approval.",
             parameters: [libraryID, libraryScope]),
         CommandSpec(
+            "library.save-selection", .edit,
+            "Save what is selected on the timeline as a new library item (the panels' Save selection as…): a text "
+                + "item's style, a clip's framing and keyframes, the transition at the selected clip, or a grade.",
+            parameters: [
+                CommandParameter("kind", .string, "What to save", required: true,
+                                 choices: LibrarySelection.kinds.map(\.rawValue), cli: .option("kind")),
+                CommandParameter("name", .string, "Display name", required: true, cli: .option("name")),
+                CommandParameter("id", .string, "Item ID; from the name by default", cli: .option("id")),
+                CommandParameter("item", .string, "Timeline item ID; the selection by default", cli: .option("item")),
+                writableScope,
+                itemFields[0], itemFields[1],
+            ]),
+        CommandSpec(
+            "library.move", .edit,
+            "Move a saved item between the project and this Mac, with its versions, files and use count. Agents "
+                + "moving into or out of the user scope wait for approval.",
+            parameters: [
+                libraryID, libraryScope,
+                CommandParameter("to", .string, "Destination", required: true, choices: ["project", "user"],
+                                 cli: .option("to")),
+            ]),
+        CommandSpec(
             "library.apply", .edit,
             "Use a library item on an existing timeline item: a text preset on a text item, an effect preset's "
-                + "properties, or a look's grade. Defaults to the selected item.",
+                + "properties, a look's grade, or a transition preset at the cut beside a video clip. Defaults to the "
+                + "selected item.",
             parameters: [
                 libraryID, libraryScope,
                 CommandParameter("item", .string, "Timeline item ID; the selection by default", cli: .option("item")),

@@ -165,6 +165,27 @@ public struct LibraryCatalog: Sendable {
             preview: preview ?? item.preview.flatMap { path in root.map { $0.appendingPathComponent(path) } }, now: now)
     }
 
+    /// Moves a stored item to the other writable scope with its versions, files and use count.
+    @discardableResult
+    public func move(_ item: LibraryItem, to scope: LibraryScope) throws -> LibraryItem {
+        guard item.scope.isWritable else {
+            throw ProjectError.invalid("\(item.reference) is read-only; save a copy with library update --as")
+        }
+        guard scope != item.scope else { throw ProjectError.invalid("\(item.reference) is already in that library") }
+        let source = try store(item.scope)
+        let target = try store(scope)
+        let use = try usageStore(for: item)?.usage()[item.reference]
+        let moved = try target.adopt(item, from: source)
+        do {
+            try source.remove(item.id)
+        } catch {
+            _ = try? target.remove(item.id)
+            throw error
+        }
+        if let use { try usageStore(for: moved)?.setUsage(moved.reference, use) }
+        return moved
+    }
+
     // MARK: Stats
 
     /// Usage per item, the stored items nobody used, and groups of items with the same kind and content.

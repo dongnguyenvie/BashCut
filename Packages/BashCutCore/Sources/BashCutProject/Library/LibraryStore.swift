@@ -173,6 +173,34 @@ public struct LibraryStore: Sendable {
         return removed
     }
 
+    /// Adds an item another scope stored, as it is (versions, dates and creator kept), with its files folder.
+    @discardableResult
+    func adopt(_ item: LibraryItem, from source: LibraryStore) throws -> LibraryItem {
+        var contents = try load()
+        guard !contents.items.contains(where: { $0.id == item.id }) else {
+            throw ProjectError.invalid("The \(scope.rawValue) library already has \(item.id)")
+        }
+        let manager = FileManager.default
+        let from = source.filesFolder(item.id)
+        let to = filesFolder(item.id)
+        let copied = manager.fileExists(atPath: from.path)
+        if copied {
+            try manager.createDirectory(at: to.deletingLastPathComponent(), withIntermediateDirectories: true)
+            if manager.fileExists(atPath: to.path) { try manager.removeItem(at: to) }
+            try manager.copyItem(at: from, to: to)
+        }
+        let adopted = LibraryItem(fields: item.fields, scope: scope)
+        do {
+            try adopted.validate(root: root)
+            contents.items.append(adopted)
+            try save(contents)
+        } catch {
+            if copied { try? manager.removeItem(at: to) }
+            throw error
+        }
+        return adopted
+    }
+
     // MARK: Usage
 
     /// Counts one use of the item `reference` (`scope:id`). Only `usage.json` is rewritten.
@@ -195,6 +223,13 @@ public struct LibraryStore: Sendable {
             throw ProjectError.invalid("\(usageFile.path) is not valid JSON: \(error.localizedDescription)")
         }
         return (value.object["usage"]?.object ?? [:]).mapValues(LibraryUsage.init(json:))
+    }
+
+    /// Sets the use count of `reference`, as when an item moves here from another scope.
+    func setUsage(_ reference: String, _ entry: LibraryUsage) throws {
+        var usage = try usage()
+        usage[reference] = entry
+        try saveUsage(usage)
     }
 
     private func saveUsage(_ usage: [String: LibraryUsage]) throws {

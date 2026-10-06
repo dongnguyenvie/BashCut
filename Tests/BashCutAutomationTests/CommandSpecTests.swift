@@ -193,6 +193,19 @@ struct CommandSpecTests {
         #expect(pack.params == ["path": .string("/tmp/Food.zip"), "replace": .bool(true), "scope": .string("project")])
         let export = try CommandLineParser.parse(["library", "export-pack", "--pack", "Food", "--output", "/tmp/out"])
         #expect(export.params == ["pack": .string("Food"), "output": .string("/tmp/out")])
+        let save = try CommandLineParser.parse(["library", "save-selection", "--kind", "look", "--name", "Warm", "--tags", "warm"])
+        #expect(save.spec.mode == .edit)
+        #expect(save.params == [
+            "kind": .string("look"), "name": .string("Warm"), "tags": .string("warm"), "scope": .string("project"),
+        ])
+        #expect(throws: CommandLineParser.Failure.self) {
+            try CommandLineParser.parse(["library", "save-selection", "--kind", "audio", "--name", "x"])
+        }
+        let move = try CommandLineParser.parse(["library", "move", "project:fire", "--to", "user"])
+        #expect(move.params == ["id": .string("project:fire"), "to": .string("user")])
+        #expect(throws: CommandLineParser.Failure.self) { try CommandLineParser.parse(["library", "move", "fire", "--to", "plugin"]) }
+        let view = try CommandLineParser.parse(["ui", "view", "--library-query", "fire", "--library-scope", "user"])
+        #expect(view.params == ["libraryQuery": .string("fire"), "libraryScope": .string("user")])
         for name in ["library.list", "library.get", "library.stats"] { #expect(CommandCatalog.spec(named: name)?.mode == .read) }
     }
 

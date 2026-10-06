@@ -270,7 +270,7 @@ public enum CommandCatalog {
             "ui.view", .ui,
             "Read the editor view state, or change it: timeline zoom (pixels per second), viewer zoom, snapping, safe area, "
                 + "color compare, agent dock, inspector tab, Settings section, Knowledge section, Plugins tab and Browse "
-                + "category, and scroll the timeline to a frame.",
+                + "category, the open library panel's search and filters, and scroll the timeline to a frame.",
             parameters: [
                 CommandParameter("zoom", .integer, "Timeline zoom in pixels per second", minimum: 1, maximum: 600,
                                  cli: .option("zoom")),
@@ -295,6 +295,14 @@ public enum CommandCatalog {
                 CommandParameter("pluginsCategory", .string, "Category Plugins › Browse shows; all shows every one",
                                  choices: ["all"] + UIAction.pluginCategories,
                                  cli: .option("plugins-category")),
+                CommandParameter("libraryQuery", .string, "Search text of the open library panel; empty clears it",
+                                 cli: .option("library-query")),
+                CommandParameter("libraryPack", .string, "Pack the open library panel shows; empty shows all",
+                                 cli: .option("library-pack")),
+                CommandParameter("libraryTag", .string, "Tag the open library panel shows; empty shows all",
+                                 cli: .option("library-tag")),
+                CommandParameter("libraryScope", .string, "Scope the open library panel shows",
+                                 choices: ["all"] + LibraryScope.allCases.map(\.rawValue), cli: .option("library-scope")),
             ]),
         CommandSpec(
             "ui.source", .ui, "Open project media in the source viewer, optionally with in/out frames marked.",
