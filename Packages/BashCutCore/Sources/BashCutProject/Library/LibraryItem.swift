@@ -211,9 +211,8 @@ extension LibraryItem {
                     "\(label): params.textPreset must be one of \(TextPreset.all.joined(separator: ", "))")
             }
         case .effectPreset:
-            guard case .object(let patch) = params["patch"] ?? .null, !patch.isEmpty else {
-                throw ProjectError.invalid("\(label): an effect preset needs params.patch, the item properties it sets")
-            }
+            // A recipe (#76): params.steps with params.parameters, or an old params.patch. Its file is its own sound.
+            _ = try EffectRecipe(params: params, label: label)
         case .transitionPreset:
             // params.sfx wins over the preset's own file.
             _ = try TransitionPreset(params: params, label: label)

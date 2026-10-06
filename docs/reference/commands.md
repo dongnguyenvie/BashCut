@@ -1164,7 +1164,7 @@ Save a new library item in the project or on this Mac. Files are copied in. Agen
 - `scope`: string, one of project, user, default "project". project (the open project's .bashcut/library; the default) or user (this Mac; agents need approval)
 - `tags`: string. Comma-separated tags (mood, use, genre…)
 - `pack`: string. Pack or collection name the panel groups it under
-- `params`: object. What the kind needs (JSON): text-preset {textPreset, text}; sticker {emoji, textPreset} or a file; effect-preset {patch: item properties}; transition-preset {kind, duration, easing: linear|in|out|inOut, sfx: audio item ID} (or its own sound as file); look (a filter stack) {color: {exposure, contrast, saturation, lutStrength}, lutName} with an optional .cube LUT as file
+- `params`: object. What the kind needs (JSON): text-preset {textPreset, text}; sticker {emoji, textPreset} or a file; effect-preset (a recipe) {steps: [{op: motion|keyframes|speed|speedCurve|reverse|freeze|patch|sfx|text, …}], parameters: {name: {default, min, max}}} or the older {patch: item properties}, with its own sound as file; transition-preset {kind, duration, easing: linear|in|out|inOut, sfx: audio item ID} (or its own sound as file); look (a filter stack) {color: {exposure, contrast, saturation, lutStrength}, lutName} with an optional .cube LUT as file
 - `file`: string, path. File to copy in (audio, image sticker, a look's .cube LUT…)
 - `preview`: string, path. Preview image, GIF or audio snippet to copy in
 - `source`: string. Where it came from (URL or note)
@@ -1180,7 +1180,7 @@ Improve a library item: saves a new version (the old one stays in its history). 
 - `name`: string. New display name
 - `tags`: string. Comma-separated tags (mood, use, genre…)
 - `pack`: string. Pack or collection name the panel groups it under
-- `params`: object. What the kind needs (JSON): text-preset {textPreset, text}; sticker {emoji, textPreset} or a file; effect-preset {patch: item properties}; transition-preset {kind, duration, easing: linear|in|out|inOut, sfx: audio item ID} (or its own sound as file); look (a filter stack) {color: {exposure, contrast, saturation, lutStrength}, lutName} with an optional .cube LUT as file
+- `params`: object. What the kind needs (JSON): text-preset {textPreset, text}; sticker {emoji, textPreset} or a file; effect-preset (a recipe) {steps: [{op: motion|keyframes|speed|speedCurve|reverse|freeze|patch|sfx|text, …}], parameters: {name: {default, min, max}}} or the older {patch: item properties}, with its own sound as file; transition-preset {kind, duration, easing: linear|in|out|inOut, sfx: audio item ID} (or its own sound as file); look (a filter stack) {color: {exposure, contrast, saturation, lutStrength}, lutName} with an optional .cube LUT as file
 - `file`: string, path. File to copy in (audio, image sticker, a look's .cube LUT…)
 - `preview`: string, path. Preview image, GIF or audio snippet to copy in
 - `source`: string. Where it came from (URL or note)
@@ -1198,7 +1198,7 @@ Remove a project or user library item and its files. Built-in and plugin items c
 
 ### `bashcut library save-selection --kind <kind> --name <name> [--id <id>] [--item <item>] [--scope <scope>] [--tags <tags>] [--pack <pack>]`
 
-Save what is selected on the timeline as a new library item (the panels' Save selection as…): a text item's style, a clip's framing and keyframes, the transition at the selected clip (kind, duration, easing and the sound a preset placed there), or a grade as a look: the full filter stack, with the project LUT it uses copied in as the look's file.
+Save what is selected on the timeline as a new library item (the panels' Save selection as…): a text item's style, a clip's effect as a recipe (reverse, speed or speed ramp, framing, keyframes scaled to the clip's length, and the sound effect at its start; a still of the clip as its preview), the transition at the selected clip (kind, duration, easing and the sound a preset placed there), or a grade as a look: the full filter stack, with the project LUT it uses copied in as the look's file.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_library_save-selection`
 - `kind`: string, required, one of text-preset, effect-preset, transition-preset, look. What to save
@@ -1218,14 +1218,17 @@ Move a saved item between the project and this Mac, with its versions, files and
 - `scope`: string, one of built-in, user, project, plugin. Look only in this scope; without it project, user, plugin, then built-in
 - `to`: string, required, one of project, user. Destination
 
-### `bashcut library apply <id> [--scope <scope>] [--item <item>] --base-rev <baseRev>`
+### `bashcut library apply <id> [--scope <scope>] [--item <item>] [--set <set>] [--from <from>] [--to <to>] --base-rev <baseRev>`
 
-Use a library item on an existing timeline item: a text preset on a text item, an effect preset's properties, a look's grade (adding its LUT to the project when it has one, in the same undo step), or a transition preset at the cut beside a video clip (its kind, duration and easing, plus its sound on an SFX layer, as one undo step). Defaults to the selected item.
+Use a library item on an existing timeline item: a text preset on a text item, an effect preset's recipe on a clip (every step, its sounds and text, and a split for a from/to range, as one undo step; set overrides its parameters; when a reverse step needs a new reversed copy it runs as a job), a look's grade (adding its LUT to the project when it has one, in the same undo step), or a transition preset at the cut beside a video clip (its kind, duration and easing, plus its sound on an SFX layer, as one undo step). Defaults to the selected item.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_library_apply`
 - `id`: string, required. Item ID, or scope:id to pick one scope
 - `scope`: string, one of built-in, user, project, plugin. Look only in this scope; without it project, user, plugin, then built-in
 - `item`: string. Timeline item ID; the selection by default
+- `set`: string. Effect preset parameters: name=value pairs (strength=1.5,frames=12) or a JSON object
+- `from`: integer, ≥ 0. Effect preset: first timeline frame of the part of the clip to change
+- `to`: integer, ≥ 1. Effect preset: timeline frame after that part (the clip's end by default)
 - `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
 
 ### `bashcut library place <id> [--scope <scope>] [--at-frame <atFrame>] [--duration <duration>] [--track <track>] [--text <text>] --base-rev <baseRev>`

@@ -5,6 +5,19 @@
 
 ## [Unreleased]
 
+- **Effect presets as recipes (#76).** An effect preset's `params.steps` is a recipe of clip edits BashCut already
+  has: `motion` (a motion preset, or `focus` as fractions of the picture), `keyframes` (positions `t` 0–1 that scale
+  with the clip, or integer `frame`s), `speed`, `speedCurve`, `reverse`, `freeze`, `patch` (item properties), `sfx`
+  (an audio library item or the preset's own file on an SFX layer) and `text` (a text item over the clip), with named
+  `params.parameters` (`default`, `min`, `max`) that steps use as `"$name"`. `library apply` runs every step as one
+  undo step; `--set zoom=1.5,frames=12` overrides parameters and `--from`/`--to` applies it to part of the clip,
+  split off in the same edit. A `reverse` step whose reversed copy is not rendered yet runs as a job and then
+  commits. Sounds and text a preset placed are replaced when it is applied again. `library save-selection --kind
+  effect-preset` builds a recipe from the clip's reverse, speed or speed ramp, framing, keyframes and the sound
+  effect at its start, with a still of the clip as its preview. Old presets with `params.patch` work as before.
+  The Effects panel shows previews and has **Apply with…** (parameter sliders and a frame range; the
+  `effect-apply` dialog). New built-ins: Ken Burns zoom in/out, Zoom punch-in (Motion), Speed ramp and Slow motion
+  (Speed).
 - **Filter stacks (#79).** A look library item is now a filter stack: its grade (`params.color`: exposure, contrast,
   saturation, `lutStrength`), and optionally its own .cube LUT as the item's `file` (named by `params.lutName`), so
   it travels across projects. `library place` adds it as an adjustment and `library apply` grades a clip or

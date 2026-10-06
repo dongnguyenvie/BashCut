@@ -83,13 +83,17 @@ extension ProjectDocument {
             recordLibraryUse(item)
             return revision
         }
+        if item.kind == .effectPreset {
+            switch try await applyEffectPreset(item, to: itemID, author: author, baseRevision: baseRevision) {
+            case .applied(let revision, _): return revision
+            case .rendering: return project.revision
+            }
+        }
         let patch: [String: JSONValue]
         switch item.kind {
         case .textPreset:
             guard target["text"] != nil else { throw RPCFailure(-32602, "\(itemID) is not a text item") }
             patch = ["textPreset": item.params["textPreset"] ?? .null]
-        case .effectPreset:
-            patch = item.params["patch"]?.object ?? [:]
         default:
             throw RPCFailure(-32602, unsupported("Applying \(item.kind?.rawValue ?? "these") items", item))
         }
@@ -133,7 +137,7 @@ extension ProjectDocument {
     }
 
     /// Usage counts are best effort and written in the background: a failed write never fails the edit.
-    private func recordLibraryUse(_ item: LibraryItem) {
+    func recordLibraryUse(_ item: LibraryItem) {
         let catalog = libraryCatalog
         Task {
             do { try await LibraryWorker.shared.run { try catalog.recordUse(item) } } catch {
@@ -237,8 +241,8 @@ extension ProjectDocument {
     }
 
     /// The params of a new item made from the timeline item `itemID` (the selection by default), and the file to
-    /// copy in: the sound a transition preset placed at the selected cut, unless it came from an audio library item
-    /// (then `params.sfx` names that item), or the .cube LUT a look's grade uses (#79).
+    /// copy in: the sound a transition preset placed at the selected cut or an effect's sound at the clip (#76), unless
+    /// it came from an audio library item (then `sfx` names that item), or the .cube LUT a look's grade uses (#79).
     func selectionParams(_ kind: LibraryKind, itemID: String? = nil) throws -> (params: [String: JSONValue], file: URL?) {
         let id = itemID ?? selectedID
         let item = id.flatMap { id in project.tracks.flatMap(\.items).first { $0.id == id } }
@@ -246,12 +250,20 @@ extension ProjectDocument {
         let transition = id.flatMap { id in project.transitions.first { $0.fromItemID == id || $0.toItemID == id } }
         let sound = kind == .transitionPreset ? transition.flatMap { project.transitionSound(for: $0.id)?.media } : nil
         let grade = kind == .look ? gradeLUT(of: item) : nil
+        let effectSound = kind == .effectPreset ? item.flatMap(effectSound(of:)) : nil
         let params: [String: JSONValue]
         do {
-            params = try LibrarySelection.params(kind, item: item, transition: transition, sound: sound, lut: grade?.lut)
+            params = try LibrarySelection.params(
+                kind, item: item, transition: transition, sound: sound ?? effectSound?.media, lut: grade?.lut,
+                soundItem: effectSound?.item)
         } catch { throw RPCFailure(-32602, error.localizedDescription) }
         if let grade { return (params, grade.file) }
-        guard let sound, params["sfx"] == nil, let root = fileURL?.deletingLastPathComponent() else { return (params, nil) }
+        let ownSound = kind == .effectPreset
+            ? params["steps"]?.array.contains { $0.object["op"]?.string == "sfx" && $0.object["sfx"] == nil } == true
+            : params["sfx"] == nil
+        guard let sound = sound ?? effectSound?.media, ownSound, let root = fileURL?.deletingLastPathComponent() else {
+            return (params, nil)
+        }
         return (params, try MediaPathResolver.resolve(sound.path, projectRoot: root, workspaceRoot: settings.workspace))
     }
 
@@ -338,10 +350,11 @@ extension ProjectDocument {
             var changes = Self.itemChanges(arguments)
             let selection = try document.selectionParams(kind, itemID: arguments.optionalString("item"))
             changes["params"] = .object(selection.params)
+            let preview = kind == .effectPreset ? await document.effectPreview(itemID: arguments.optionalString("item")) : nil
             return try await document.addLibraryItem(
                 kind: kind, name: try arguments.string("name"), id: arguments.optionalString("id"),
                 scope: LibraryScope(rawValue: try arguments.string("scope")) ?? .project, changes: changes,
-                file: selection.file, author: author, method: "library.save-selection")
+                file: selection.file, preview: preview, author: author, method: "library.save-selection")
         }
         handleAuthored("library.move") { document, arguments, author in
             let item = try document.libraryCatalog.item(try arguments.string("id"), scope: Self.scope(arguments))
@@ -398,6 +411,12 @@ extension ProjectDocument {
             guard let target = arguments.optionalString("item") ?? document.selectedID else {
                 throw RPCFailure(-32602, "Select an item or pass --item")
             }
+            if item.kind == .effectPreset {
+                return try await document.applyEffect(item, to: target, arguments: arguments, author: author)
+            }
+            guard arguments.optionalString("set") == nil, arguments.optionalInt("from") == nil,
+                arguments.optionalInt("to") == nil
+            else { throw RPCFailure(-32602, "set, from and to are for effect presets") }
             let revision = try await document.applyLibraryItem(
                 item, to: target, author: author, baseRevision: arguments.int("baseRev"))
             return .object(["rev": .integer(revision), "item": .string(target), "library": .string(item.reference)])

@@ -32,6 +32,8 @@ public final class EditorUIState {
     public var libraryFilters: [String: LibraryPanelFilter] = [:]
     /// The library item sheet: Save selection as…, Duplicate & Edit… or Rename….
     public var libraryEditor: LibraryEditorRequest?
+    /// The Effects panel's Apply with… sheet: an effect recipe's parameters and the part of the clip (#76).
+    public var effectApply: EffectApplyRequest?
     /// One of `UIAction.inspectorTabs`.
     public var inspectorTab = "video"
     /// One of `UIAction.settingsSections`: the section the Settings sheet shows.
@@ -205,6 +207,45 @@ public struct LibraryEditorRequest: Identifiable {
         self.transition = transition
         self.look = look
         self.keepsLUT = keepsLUT
+    }
+}
+
+/// What the Effects panel's Apply with… sheet applies (#76): an effect preset with parameter values, on the whole
+/// clip or the frames `from..<to` of it.
+public struct EffectApplyRequest: Identifiable {
+    public let id = UUID()
+    public var item: LibraryItem
+    public var itemID: String
+    public var parameters: [EffectRecipe.Parameter]
+    public var values: [String: Double]
+    public var useRange: Bool
+    /// Timeline frames; `clip` bounds them.
+    public var from: Int
+    public var to: Int
+    public var clip: Range<Int>
+
+    public init(item: LibraryItem, itemID: String, parameters: [EffectRecipe.Parameter], clip: Range<Int>, playhead: Int) {
+        self.item = item
+        self.itemID = itemID
+        self.parameters = parameters
+        values = Dictionary(uniqueKeysWithValues: parameters.map { ($0.name, $0.value) })
+        self.clip = clip
+        let start = clip.contains(playhead) && playhead < clip.upperBound - 1 ? playhead : clip.lowerBound
+        useRange = false
+        from = start
+        to = clip.upperBound
+    }
+
+    /// The overrides that differ from the defaults.
+    public var overrides: [String: Double] {
+        values.filter { name, value in parameters.first { $0.name == name }?.value != value }
+    }
+
+    /// The range to apply to, or nil for the whole clip.
+    public var range: Range<Int>? {
+        guard useRange else { return nil }
+        let lower = min(max(from, clip.lowerBound), clip.upperBound - 1)
+        return lower..<min(max(to, lower + 1), clip.upperBound)
     }
 }
 

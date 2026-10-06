@@ -64,6 +64,12 @@ public struct LibraryCatalog: Sendable {
         return root.appendingPathComponent(path)
     }
 
+    /// The item's preview image, GIF or snippet, if it has one.
+    public func previewURL(of item: LibraryItem) -> URL? {
+        guard let path = item.preview, let root = root(of: item) else { return nil }
+        return root.appendingPathComponent(path)
+    }
+
     // MARK: Search
 
     /// Filters for `library list`. Every given filter must match.
@@ -262,7 +268,53 @@ public enum LibraryBuiltIns {
         LibraryItem(
             id: "reset-framing", kind: .effectPreset, name: "Reset framing", pack: "Framing",
             params: ["patch": .object(["transform": .object(["zoom": .number(1), "pan": .integer(0), "tilt": .integer(0)])])]),
-    ]
+    ] + recipes
+
+    /// Effect recipes (#76) with parameters the panel's Apply with… and `library apply --set` change.
+    public static let recipes: [LibraryItem] = {
+        func key(_ position: (String, JSONValue), _ value: JSONValue, ease: String? = nil) -> JSONValue {
+            var fields: [String: JSONValue] = [position.0: position.1, "value": value]
+            if let ease { fields["ease"] = .string(ease) }
+            return .object(fields)
+        }
+        func zoom(_ keys: [JSONValue]) -> [String: JSONValue] {
+            ["op": .string("keyframes"), "keys": .object(["zoom": .array(keys)])]
+        }
+        let start = ("t", JSONValue.integer(0)), end = ("t", JSONValue.integer(1))
+        let zoomIn = EffectRecipe(
+            parameters: [.init("zoom", value: 1.15, minimum: 1, maximum: 2, label: "Zoom")],
+            steps: [zoom([key(start, .integer(1), ease: "linear"), key(end, .string("$zoom"))])])
+        let zoomOut = EffectRecipe(
+            parameters: [.init("zoom", value: 1.15, minimum: 1, maximum: 2, label: "Zoom")],
+            steps: [zoom([key(start, .string("$zoom"), ease: "linear"), key(end, .integer(1))])])
+        let punch = EffectRecipe(
+            parameters: [
+                .init("zoom", value: 1.3, minimum: 1.05, maximum: 3, label: "Zoom"),
+                .init("frames", value: 8, minimum: 1, maximum: 60, label: "Frames"),
+            ],
+            steps: [zoom([key(("frame", .integer(0)), .string("$zoom"), ease: "out"), key(("frame", .string("$frames")), .integer(1))])])
+        let ramp = EffectRecipe(
+            parameters: [.init("peak", value: 3, minimum: 1.2, maximum: 8, label: "Peak speed")],
+            steps: [[
+                "op": .string("speedCurve"),
+                "points": .array([
+                    .array([.integer(0), .integer(1)]), .array([.number(0.3), .string("$peak")]),
+                    .array([.number(0.7), .string("$peak")]), .array([.integer(1), .integer(1)]),
+                ]),
+            ]])
+        let slow = EffectRecipe(
+            parameters: [.init("speed", value: 0.5, minimum: 0.1, maximum: 0.95, label: "Speed")],
+            steps: [["op": .string("speed"), "speed": .string("$speed")]])
+        return [
+            ("ken-burns-in", "Ken Burns zoom in", "Motion", zoomIn),
+            ("ken-burns-out", "Ken Burns zoom out", "Motion", zoomOut),
+            ("zoom-punch-in", "Zoom punch-in", "Motion", punch),
+            ("speed-ramp", "Speed ramp", "Speed", ramp),
+            ("slow-motion", "Slow motion", "Speed", slow),
+        ].map { id, name, pack, recipe in
+            LibraryItem(id: id, kind: .effectPreset, name: name, pack: pack, params: recipe.params)
+        }
+    }()
 
     /// Transition presets (#77): a kind with a length and easing that suit it.
     public static let transitions: [LibraryItem] = [

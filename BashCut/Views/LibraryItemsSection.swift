@@ -16,6 +16,8 @@ struct LibraryItemsSection<Tile: View>: View {
     /// Filters panel's style kits and project looks); their context menu is `extraActions`.
     var extraItems: [LibraryItem] = []
     var extraActions: (LibraryItem) -> [LibraryPanelAction] = { _ in [] }
+    /// Commands first in a library item's context menu (the Effects panel's Apply with…).
+    var itemActions: (LibraryItem) -> [LibraryPanelAction] = { _ in [] }
     @ViewBuilder let tile: (LibraryItem) -> Tile
 
     @State private var items: [LibraryItem] = []
@@ -126,6 +128,11 @@ struct LibraryItemsSection<Tile: View>: View {
     }
 
     @ViewBuilder private func libraryMenu(_ item: LibraryItem) -> some View {
+        let actions = itemActions(item)
+        if !actions.isEmpty {
+            ForEach(Array(actions.enumerated()), id: \.offset) { _, action in Button(action.title, action: action.run) }
+            Divider()
+        }
         Button("Duplicate & Edit…") { document.beginDuplicate(item) }
         if item.scope.isWritable {
             if item.kind == .transitionPreset || item.kind == .look {

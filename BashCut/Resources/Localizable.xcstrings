@@ -1,6 +1,25 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Select a clip, then click an effect. Apply with… changes its settings or applies it to part of the clip.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Select a clip, then click an effect. Apply with… changes its settings or applies it to part of the clip." } }, "vi": { "stringUnit": { "state": "translated", "value": "Chọn một clip rồi bấm vào hiệu ứng. Áp dụng với… để đổi thiết lập hoặc chỉ áp dụng cho một đoạn của clip." } } } },
+    "Apply with…": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Apply with…" } }, "vi": { "stringUnit": { "state": "translated", "value": "Áp dụng với…" } } } },
+    "Apply with other settings, or to part of the clip": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Apply with other settings, or to part of the clip" } }, "vi": { "stringUnit": { "state": "translated", "value": "Áp dụng với thiết lập khác, hoặc cho một đoạn của clip" } } } },
+    "Apply %@": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Apply %@" } }, "vi": { "stringUnit": { "state": "translated", "value": "Áp dụng %@" } } } },
+    "This effect has no settings.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "This effect has no settings." } }, "vi": { "stringUnit": { "state": "translated", "value": "Hiệu ứng này không có thiết lập." } } } },
+    "Only part of the clip": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Only part of the clip" } }, "vi": { "stringUnit": { "state": "translated", "value": "Chỉ một đoạn của clip" } } } },
+    "From frame": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "From frame" } }, "vi": { "stringUnit": { "state": "translated", "value": "Từ khung hình" } } } },
+    "To frame": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "To frame" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đến khung hình" } } } },
+    "Frames %lld–%lld are in the clip. The clip is split there.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Frames %lld–%lld are in the clip. The clip is split there." } }, "vi": { "stringUnit": { "state": "translated", "value": "Clip gồm khung hình %lld–%lld. Clip sẽ được cắt tại đó." } } } },
+    "Playhead": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Playhead" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đầu phát" } } } },
+    "Use the playhead's frame": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Use the playhead's frame" } }, "vi": { "stringUnit": { "state": "translated", "value": "Dùng khung hình tại đầu phát" } } } },
+    "Rendering the reversed clip…": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Rendering the reversed clip…" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đang dựng clip phát ngược…" } } } },
+    "Frames": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Frames" } }, "vi": { "stringUnit": { "state": "translated", "value": "Số khung hình" } } } },
+    "Peak speed": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Peak speed" } }, "vi": { "stringUnit": { "state": "translated", "value": "Tốc độ đỉnh" } } } },
+    "Ken Burns zoom in": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Ken Burns zoom in" } }, "vi": { "stringUnit": { "state": "translated", "value": "Ken Burns phóng to" } } } },
+    "Ken Burns zoom out": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Ken Burns zoom out" } }, "vi": { "stringUnit": { "state": "translated", "value": "Ken Burns thu nhỏ" } } } },
+    "Zoom punch-in": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Zoom punch-in" } }, "vi": { "stringUnit": { "state": "translated", "value": "Phóng nhanh vào" } } } },
+    "Speed ramp": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Speed ramp" } }, "vi": { "stringUnit": { "state": "translated", "value": "Tăng giảm tốc" } } } },
+    "Slow motion": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Slow motion" } }, "vi": { "stringUnit": { "state": "translated", "value": "Chuyển động chậm" } } } },
     "Bright & airy": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Bright & airy" } }, "vi": { "stringUnit": { "state": "translated", "value": "Sáng & trong" } } } },
     "Moody": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Moody" } }, "vi": { "stringUnit": { "state": "translated", "value": "Trầm" } } } },
     "Style kit": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Style kit" } }, "vi": { "stringUnit": { "state": "translated", "value": "Bộ phong cách" } } } },
@@ -4327,22 +4346,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tạo và nhân bản giọng sẽ kết nối công cụ giọng đọc trong thư mục làm việc. Hiện có thể nhập WAV đã thu hoặc đã tạo."
-          }
-        }
-      }
-    },
-    "Select a clip. Animated effects and speed ramps are still in development.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Select a clip. Animated effects and speed ramps are still in development."
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Chọn một clip. Hiệu ứng động và chuyển tốc độ đang được phát triển."
           }
         }
       }

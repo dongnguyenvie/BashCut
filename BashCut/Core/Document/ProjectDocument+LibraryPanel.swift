@@ -123,9 +123,10 @@ extension ProjectDocument {
                 var fields = changes
                 let selection = try document.selectionParams(kind)
                 fields["params"] = .object(selection.params)
+                let preview = kind == .effectPreset ? await document.effectPreview(itemID: nil) : nil
                 return try await document.addLibraryItem(
-                    kind: kind, name: name, scope: request.scope, changes: fields, file: selection.file, author: .user,
-                    method: "library.save-selection")
+                    kind: kind, name: name, scope: request.scope, changes: fields, file: selection.file, preview: preview,
+                    author: .user, method: "library.save-selection")
             case .duplicate(let item):
                 return try await document.duplicateLibraryItem(item, into: request.scope, changes: changes, author: .user)
             case .rename(let item):
