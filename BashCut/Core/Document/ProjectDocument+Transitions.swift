@@ -87,9 +87,7 @@ extension ProjectDocument {
         return try commitPlan(planner, label: item.name, author: author, baseRevision: baseRevision)
     }
 
-    /// The project media for a transition preset's sound: its `sfx` audio item's file, or its own file. A file from
-    /// outside the project is copied into the project's `sfx` folder first, and a file already in use reuses its
-    /// media.
+    /// The project media for a transition preset's sound: its `sfx` audio item's file, or its own file.
     private func transitionSoundMedia(_ item: LibraryItem, _ preset: TransitionPreset) async throws -> Media? {
         let catalog = libraryCatalog
         let source: LibraryItem
@@ -101,8 +99,16 @@ extension ProjectDocument {
         } else {
             return nil
         }
+        return try await librarySoundMedia(source)
+    }
+
+    /// Project media for the sound file of the library item `source` (an audio item, or a preset with its own
+    /// sound). A file from outside the project is copied into the project's `sfx` folder first, and a file already in
+    /// use reuses its media.
+    func librarySoundMedia(_ source: LibraryItem) async throws -> Media {
+        let catalog = libraryCatalog
         guard let root = fileURL?.deletingLastPathComponent() else {
-            throw RPCFailure(-32602, "Save the project before adding a transition sound")
+            throw RPCFailure(-32602, "Save the project before adding a sound effect")
         }
         guard let file = catalog.fileURL(of: source) else { throw RPCFailure(-32602, "\(source.reference) has no file") }
         let url = try await LibraryWorker.shared.run { try Self.projectCopy(of: file, item: source, root: root) }

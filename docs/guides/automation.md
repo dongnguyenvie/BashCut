@@ -418,7 +418,8 @@ Items come from four scopes; when the same ID is in several, the first wins, and
 
 Built-in packs: **Text styles** (`bold-outline`, `cinematic-serif`, `keyword-sticker`, `place-card`, `hook-title`,
 `chapter-card`), **Emoji** stickers (`fire`, `yum`, `thumbs-up`, `hundred`, `star`, `pin`, `hot-pot`, `laughing`) and
-**Framing** effects (`punch-in`, `reset-framing`), **Transitions** presets (`soft-dissolve`, `quick-whip`,
+**Framing** effects (`punch-in`, `reset-framing`), **Motion** effects (`ken-burns-in`, `ken-burns-out`,
+`zoom-punch-in`), **Speed** effects (`speed-ramp`, `slow-motion`), **Transitions** presets (`soft-dissolve`, `quick-whip`,
 `zoom-punch`) and **Looks** (`original`, `vivid`, `muted-film`, `black-white`, `bright-airy`, `moody`). Their IDs are
 reserved. The Text, Stickers, Effects, Transitions and Filters panels show them first, then the items saved in the
 project or on this Mac. The Filters panel also lists the style kits and the project's own looks (`style save`,
@@ -434,11 +435,11 @@ project or on this Mac. The Filters panel also lists the style kits and the proj
 - `bashcut library remove <id>` removes a project or user item and its files.
 - `bashcut library place <id> [--at-frame] [--duration] [--track] [--text] --base-rev N` adds a text preset or emoji
   sticker as a text item, or a look as an adjustment. `library apply <id> [--item] --base-rev N` sets a text preset,
-  an effect preset's properties (`params.patch`) or a look's grade on an existing item. Both count a use (in
-  `usage.json` next to `library.json`; the item list is not rewritten).
+  an effect preset's recipe or a look's grade on an existing item. Both count a use (in `usage.json` next to
+  `library.json`; the item list is not rewritten).
 - `bashcut library save-selection --kind text-preset|effect-preset|transition-preset|look --name X [--item]
   [--scope] [--tags] [--pack]` saves what is selected: a text item's style and text, a clip's `transform` and
-  `keyframes`, the transition at the selected clip (kind, duration, easing and the sound a preset placed at that cut),
+  `keyframes` as an effect recipe (see below), the transition at the selected clip (kind, duration, easing and the sound a preset placed at that cut),
   or a grade as a look: the whole filter stack, with the project LUT it uses copied in as the look's file.
 - `bashcut library move <id> --to project|user` moves a saved item with its versions, files and use count.
 - Transition presets (#77) are `params` `{kind, duration, easing, sfx}`: `sfx` names an audio library item, or the
@@ -448,6 +449,34 @@ project or on this Mac. The Filters panel also lists the style kits and the proj
   folder; applying a preset with a sound again at that cut replaces the sound the last one placed (items marked
   `transitionSFX`). Edit a saved preset with `library update <id> --params '{...}'` (the Transitions panel's
   Edit…).
+- Effect presets are recipes (#76): `params` `{steps: [...], parameters: {name: {default, min, max, label?}}}`.
+  Steps run in order on the clip, each on the clip as the steps before left it, and all of them are one undo step:
+
+  | `op` | Fields | Same as |
+  |---|---|---|
+  | `motion` | `preset` (`zoom-in`, `pan-left`, …), or `focus` `[x, y, w, h]` as fractions 0–1 of the picture with `focusTo`, `ease` | `clip motion --preset`, `--focus` |
+  | `keyframes` | `keys` `{zoom: [{t, value, ease?}, {frame, value}]}`; replaces those properties' keys, keeps the others | `clip motion --keyframes` |
+  | `speed` | `speed`, `keepDuration` | `clip speed` |
+  | `speedCurve` | `preset` or `points` `[[t, speed], …]`, `keepDuration` | `clip speed-curve` |
+  | `reverse` | — (a reversed clip stays reversed) | `clip reverse` |
+  | `freeze` | `t` or `frame`: the frame held over the clip (the first by default) | Freeze frame |
+  | `patch` | `patch`: item properties (`transform`, `opacity`, …) | the older `params.patch` |
+  | `sfx` | `sfx` (audio item ID; the preset's own `file` without it), `t` or `frame`, `volumeDb` | a sound on the SFX layer |
+  | `text` | `text`, `textPreset`, `t` or `frame`, `duration` (frames; to the clip's end by default) | `library place` of a text preset |
+
+  `t` runs from 0 (first frame) to 1 (last frame), so positions scale with the clip; `frame` counts integer frames
+  from the start (negative from the end). A value written `"$name"` takes the parameter (frames must stay whole).
+  `library apply <id> --set zoom=1.5,frames=12` (or `--set '{"zoom":1.5}'`) overrides parameters within their
+  range, and `--from F --to T` (timeline frames inside the clip) splits that part off in the same undo step and
+  applies the recipe only there; the result's `item` is the clip that got the effect. Sounds and text are marked
+  `effectSFX` / `effectText` with that clip's ID and replaced when the preset is applied to it again; a sound from
+  outside the project is copied into `sfx/`. A `reverse` step whose reversed copy is not in `reversed/` yet returns
+  `{job}` instead: the job renders the copy, then commits the whole recipe. A preset with only `params.patch` (made
+  before recipes) is one `patch` step and works as before. `save-selection --kind effect-preset` writes a recipe of
+  the clip's reverse, speed or speed ramp, `transform`, keyframes (as `t`) and the sound effect at its start (one a
+  preset placed, or one on an SFX layer starting with the clip), and a 320-pixel still of the clip's middle as the
+  preview. The Effects panel's **Apply with…** (the slider button, or the context menu) shows the parameters and an
+  optional frame range; it is the `effect-apply` dialog (`ui respond apply|cancel`).
 - Looks are filter stacks (#79): `params` `{color: {exposure, contrast, saturation, lutStrength}, lutName}` plus an
   optional .cube LUT as the item's `file` (`library add --kind look --name X --file look.cube`; without `--params`
   the look is just that LUT). `library place` adds one as an adjustment and `library apply` replaces a clip's or

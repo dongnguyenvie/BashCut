@@ -140,6 +140,13 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   honored by preview and export) and an optional sound (`params.sfx`, an audio item, or the preset's own file),
   applied as one undo step with the sound on an SFX layer; saved from the selected cut, edited from the Transitions
   panel (Edit…, easing on the active transition) or `library update --params`.
+- Effect presets as recipes (#76): `params.steps` (`motion`/`focus`, `keyframes` scaled by `t`, `speed`,
+  `speedCurve`, `reverse`, `freeze`, `patch`, `sfx`, `text`) with named `params.parameters`; `library apply` runs
+  them as one undo step with `--set` overrides and a `--from`/`--to` range split off in the same step (a reverse step
+  that needs a new copy renders it in a job first). Save selection builds a recipe (reverse, speed or ramp, framing,
+  keyframes, the SFX at the clip's start) with a still preview; the Effects panel has Apply with… and built-in
+  Motion and Speed packs. Old `params.patch` presets behave as before. Not yet: an animated (GIF) preview, a
+  recipe editor in the UI (edit with `library update --params`), and freeze frames in Save selection.
 - Filter stacks (#79): a look is a grade plus an optional .cube LUT carried as the item's file (`params.color`,
   `params.lutName`); place (as an adjustment) and apply (to a clip or adjustment) are one undo step that also adds
   the LUT to the project, reusing one copied from the same file. Save selection keeps the whole stack with its LUT.

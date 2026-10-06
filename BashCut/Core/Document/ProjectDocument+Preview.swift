@@ -15,7 +15,7 @@ extension ProjectDocument {
     /// The viewer frame for agents (Ask's attach button and `ui frame`) as a bounded PNG in `.bashcut/cache/agent-context`.
     func captureAgentFrame() async throws -> URL { try await captureAgentFrame(at: nil).url }
 
-    func captureAgentFrame(at requested: Int?) async throws -> AgentFrame {
+    func captureAgentFrame(at requested: Int?, maximumDimension: Int = 1_280) async throws -> AgentFrame {
         // Right after an edit the preview still shows the previous composition; wait for the new one to be built
         // (not shown: the grab needs no player), up to 5 seconds.
         for _ in 0..<500 where preview.currentBuild == nil && project.duration > 0 && fileURL != nil {
@@ -33,7 +33,7 @@ extension ProjectDocument {
         generator.requestedTimeToleranceBefore = .zero
         generator.requestedTimeToleranceAfter = .zero
         let captured = try await generator.image(at: project.fps.time(frame)).image
-        let image = Self.scaledAgentImage(captured, maximumDimension: 1_280)
+        let image = Self.scaledAgentImage(captured, maximumDimension: maximumDimension)
         guard let data = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]) else {
             throw ProjectError.invalid("The current frame could not be encoded")
         }
@@ -41,7 +41,7 @@ extension ProjectDocument {
         try FileManager.default.createDirectory(
             at: directory, withIntermediateDirectories: true,
             attributes: [.posixPermissions: 0o700])
-        let url = directory.appendingPathComponent("frame-r\(project.revision)-f\(frame).png")
+        let url = directory.appendingPathComponent("frame-r\(project.revision)-f\(frame)-\(maximumDimension).png")
         try data.write(to: url, options: .atomic)
         try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
         Self.pruneAgentFrames(in: directory, keeping: 10)

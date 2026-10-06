@@ -139,7 +139,9 @@ struct LibraryTests {
         clip["transform"] = .object(["zoom": .number(1.3)])
         clip["color"] = .object(["contrast": .number(1.1), "lut": .string("lut-1"), "lutStrength": .number(0.5)])
         let effect = try LibrarySelection.params(.effectPreset, item: clip)
-        #expect(effect == ["patch": .object(["transform": .object(["zoom": .number(1.3)])])])
+        #expect(effect == ["steps": .array([.object([
+            "op": .string("patch"), "patch": .object(["transform": .object(["zoom": .number(1.3)])]),
+        ])])])
         #expect(try LibrarySelection.params(.look, item: clip) == ["color": .object(["contrast": .number(1.1)])])
         #expect(throws: ProjectError.self) { try LibrarySelection.params(.transitionPreset, item: clip) }
         let transition = TimelineTransition(kind: "whip", from: "a", to: "b", duration: 9)
@@ -294,7 +296,7 @@ struct LibraryTests {
         #expect(LibraryBuiltIns.textPresets.map { $0.params["textPreset"]?.string } == TextPreset.all)
         #expect(LibraryBuiltIns.textPresets[0].params["text"] == .string("Quá là ngon!"))
         #expect(LibraryBuiltIns.stickers.compactMap { $0.params["emoji"]?.string } == ["🔥", "😋", "👍", "💯", "⭐", "📍", "🍲", "😂"])
-        #expect(LibraryBuiltIns.effects.map(\.name) == ["Punch in 1.3×", "Reset framing"])
+        #expect(LibraryBuiltIns.effects.map(\.name).prefix(2) == ["Punch in 1.3×", "Reset framing"])
         #expect(LibraryBuiltIns.effects[0].params["patch"] == .object(["transform": .object(["zoom": .number(1.3)])]))
         #expect(LibraryBuiltIns.transitions.map(\.id) == ["soft-dissolve", "quick-whip", "zoom-punch"])
         #expect(LibraryBuiltIns.looks.map(\.id) == ColorLook.builtIn.map(\.id) + ["bright-airy", "moody"])
@@ -315,7 +317,7 @@ struct LibraryTests {
         let stickers = try catalog.panelItems([.sticker])
         #expect(stickers.prefix(8).map(\.scope) == Array(repeating: .builtIn, count: 8))
         #expect(stickers.dropFirst(8).map(\.reference) == ["project:my-fire"])
-        #expect(try catalog.panelItems([.effectPreset]).map(\.id) == ["punch-in", "reset-framing"])
+        #expect(try catalog.panelItems([.effectPreset]).map(\.id) == LibraryBuiltIns.effects.map(\.id))
         #expect(try catalog.item("fire").scope == .builtIn)
     }
 

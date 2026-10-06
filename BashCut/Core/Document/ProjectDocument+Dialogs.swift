@@ -43,7 +43,7 @@ extension ProjectDocument {
             guard open else { return }
             sheets.append(ModalSheet(name: name, title: title, options: [Self.close]) { _ in close() })
         }
-        sheets.append(contentsOf: [askSheet(), libraryEditorSheet()].compactMap { $0 })
+        sheets.append(contentsOf: [askSheet(), libraryEditorSheet(), effectApplySheet()].compactMap { $0 })
         closing("sections", "Sections", when: ui.showSections) { [weak self] in self?.ui.showSections = false }
         closing("commands", "Command palette", when: ui.showCommands) { [weak self] in self?.ui.showCommands = false }
         closing("shortcuts", "Keyboard shortcuts", when: ui.showShortcuts) { [weak self] in

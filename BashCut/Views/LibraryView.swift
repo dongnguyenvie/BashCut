@@ -32,7 +32,7 @@ struct LibraryView: View {
                     case .audio: audio
                     case .text: text
                     case .stickers: stickers
-                    case .effects: effects
+                    case .effects: EffectLibraryView(document: document)
                     case .filters: FilterLibraryView(document: document)
                     case .transitions:
                         TransitionLibraryView(document: document)
@@ -311,18 +311,6 @@ struct LibraryView: View {
             }
             .buttonStyle(.bordered).disabled(document.fileURL == nil)
             .help(Self.title(item))
-        }
-    }
-    private var effects: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            LibraryItemsSection(document: document, kinds: [.effectPreset], saveKinds: [.effectPreset]) { item in
-                Button { document.applyFromLibrary(item) } label: {
-                    Self.title(item).frame(maxWidth: .infinity, alignment: .leading)
-                }.disabled(document.selected == nil)
-            }
-            Text("Select a clip. Animated effects and speed ramps are still in development.").font(
-                .caption
-            ).foregroundStyle(.secondary)
         }
     }
 }

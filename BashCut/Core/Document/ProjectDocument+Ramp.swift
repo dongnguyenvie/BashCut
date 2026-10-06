@@ -30,9 +30,27 @@ extension ProjectDocument {
     /// Where a reversed copy of `media`'s frames `[sourceIn, sourceIn + frames)` goes: `<project>/reversed/`, named
     /// after the original file so the clip still reads as it.
     static func reversedPath(media: Media, sourceIn: Int, frames: Int) -> String {
-        let stem = URL(fileURLWithPath: media.path).deletingPathExtension().lastPathComponent
-        let safe = String(stem.map { $0.isLetter || $0.isNumber || $0 == "-" || $0 == "_" ? $0 : "-" }.prefix(60))
-        return "reversed/\(safe.isEmpty ? media.id : safe)-reversed-\(sourceIn)-\(frames).mov"
+        media.reversedPath(sourceIn: sourceIn, frames: frames)
+    }
+
+    /// Renders the reversed copy a clip or an effect's `reverse` step needs to `need.path`, and returns its media
+    /// (reusing the ID of project media already at that path).
+    func renderReversedCopy(_ need: EffectReverseNeeded, reporter: JobReporter) async throws -> Media {
+        guard let root = fileURL?.deletingLastPathComponent() else { throw ProjectError.invalid("Save the project first") }
+        let media = need.media
+        let source = try MediaPathResolver.resolve(media.path, projectRoot: root, workspaceRoot: settings.workspace)
+        let range = Double(need.sourceIn) / media.fps.value...Double(need.sourceIn + need.frames) / media.fps.value
+        reporter.detail("Reversing")
+        let output = try await MediaReverser.reverse(
+            source: source, range: range, to: root.appendingPathComponent(need.path), fps: media.fps.value,
+            progress: { value in Task { @MainActor in reporter.progress(value, detail: nil) } })
+        var fields = media.fields
+        fields["id"] = .string(project.media.first { $0.path == need.path }?.id ?? UUID().uuidString)
+        fields["path"] = .string(need.path)
+        fields["frames"] = .integer(output.frames)
+        fields["hasAudio"] = .bool(output.hasAudio)
+        fields["reverseOf"] = .string(media.id)
+        return Media(fields: fields)
     }
 
     /// Plays a clip (and its linked sound) backwards: renders a reversed copy of the source it uses, then points the
@@ -58,30 +76,21 @@ extension ProjectDocument {
                 .setSource(item: id, media: originalID, sourceIn: back, reversed: nil), label: "Reverse clip", author: author)
             return ""
         }
-        let source = try MediaPathResolver.resolve(media.path, projectRoot: root, workspaceRoot: settings.workspace)
+        _ = try MediaPathResolver.resolve(media.path, projectRoot: root, workspaceRoot: settings.workspace)
         let relative = Self.reversedPath(media: media, sourceIn: item.sourceIn, frames: consumed)
         let destination = root.appendingPathComponent(relative)
-        let range = Double(item.sourceIn) / media.fps.value...Double(item.sourceIn + consumed) / media.fps.value
-        let fps = media.fps
         let session = sessionID
         return jobs.start("clip.reverse", author: author, detail: URL(fileURLWithPath: media.path).lastPathComponent,
             work: { [weak self] reporter in
-                let existing = self?.project.media.first { $0.path == relative }
-                var reversedMedia = existing
-                if existing == nil || !FileManager.default.fileExists(atPath: destination.path) {
-                    reporter.detail("Reversing")
-                    let output = try await MediaReverser.reverse(
-                        source: source, range: range, to: destination, fps: fps.value,
-                        progress: { value in Task { @MainActor in reporter.progress(value, detail: nil) } })
-                    var fields = media.fields
-                    fields["id"] = .string(existing?.id ?? UUID().uuidString)
-                    fields["path"] = .string(relative)
-                    fields["frames"] = .integer(output.frames)
-                    fields["hasAudio"] = .bool(output.hasAudio)
-                    fields["reverseOf"] = .string(media.id)
-                    reversedMedia = Media(fields: fields)
+                guard let self else { throw CancellationError() }
+                var reversedMedia = self.project.media.first { $0.path == relative }
+                let existing = reversedMedia
+                if reversedMedia == nil || !FileManager.default.fileExists(atPath: destination.path) {
+                    reversedMedia = try await self.renderReversedCopy(
+                        EffectReverseNeeded(media: media, sourceIn: item.sourceIn, frames: consumed, path: relative),
+                        reporter: reporter)
                 }
-                guard let self, let reversedMedia else { throw CancellationError() }
+                guard let reversedMedia else { throw CancellationError() }
                 try self.ensureSession(session)
                 let frames = reversedMedia.frames
                 // The clip's last used frame becomes the copy's first.

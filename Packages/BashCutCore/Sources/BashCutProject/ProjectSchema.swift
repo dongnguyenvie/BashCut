@@ -310,6 +310,8 @@ public enum ProjectSchema {
             "reframePreset": string("Framing preset ID, or custom"),
             "linkedAudio": string("Video: ID of its linked sound item"),
             "linkedVideo": string("Audio: ID of its linked picture item"),
+            EffectRecipe.soundField: string("Audio: the clip whose effect preset placed this sound; applying it again replaces it"),
+            EffectRecipe.textField: string("Text: the clip whose effect preset placed this text; applying it again replaces it"),
             "speedCurve": .object([
                 "type": .string("array"), "minItems": .integer(2), "maxItems": .integer(SpeedCurve.maximumPoints),
                 "description": .string(

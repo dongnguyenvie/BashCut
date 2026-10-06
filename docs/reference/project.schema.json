@@ -133,6 +133,14 @@
           "minimum" : 1,
           "type" : "integer"
         },
+        "effectSFX" : {
+          "description" : "Audio: the clip whose effect preset placed this sound; applying it again replaces it",
+          "type" : "string"
+        },
+        "effectText" : {
+          "description" : "Text: the clip whose effect preset placed this text; applying it again replaces it",
+          "type" : "string"
+        },
         "fadeIn" : {
           "description" : "Audio fade-in in timeline frames",
           "maximum" : 2000000000,

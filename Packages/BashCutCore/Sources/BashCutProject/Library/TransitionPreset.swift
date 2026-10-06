@@ -113,18 +113,21 @@ extension Project {
         guard length > 0 else { throw ProjectError.invalid("The transition sound is too short") }
         if let earlier = transitionSound(for: id) { try planner.add([.delete(item: earlier.item.id, ripple: false)]) }
         if !media.contains(where: { $0.id == sound.id }) { try planner.add([.addMedia(sound)]) }
-        let layer: String
-        if let track = planner.project.track(role: TrackRole.sfx, kind: "audio") {
-            layer = track.id
-        } else {
-            var track = Track(id: planner.project.newTrackID(kind: "audio"), kind: "audio", role: TrackRole.sfx)
-            track.name = "SFX"
-            try planner.add([.addTrack(track: track, atIndex: planner.project.defaultTrackIndex(kind: "audio"))])
-            layer = track.id
-        }
+        let layer = try planner.sfxTrack()
         var item = Item(media: sound.id, at: cut.to.at, duration: length)
         item[TransitionPreset.soundField] = .string(id)
         try planner.place(item, on: layer)
         return planner
+    }
+}
+
+extension LayerPlanner {
+    /// The first SFX layer, added (named SFX) when the project has none.
+    mutating func sfxTrack() throws -> String {
+        if let track = project.track(role: TrackRole.sfx, kind: "audio") { return track.id }
+        var track = Track(id: project.newTrackID(kind: "audio"), kind: "audio", role: TrackRole.sfx)
+        track.name = "SFX"
+        try add([.addTrack(track: track, atIndex: project.defaultTrackIndex(kind: "audio"))])
+        return track.id
     }
 }
