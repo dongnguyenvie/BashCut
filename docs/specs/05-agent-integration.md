@@ -156,7 +156,11 @@ A new UI feature is not finished until it has a `UIAction`, a `ui view` field, a
 |---|---|
 | **read**, **ui** | Always allowed to local processes under the same OS account; no token needed. |
 | **edit** | Allowed with a live session token, because every change is undoable and visible. Settings → **Allow agent timeline edits** (on by default) withholds tokens from Claude and Codex tabs when turned off. |
-| **privileged** | Shows a confirmation sheet in the app with the author and arguments. Settings → **Run agent exports without confirmation** (off by default; no automation command can change it) skips the sheet: such requests return `approval: "approved"` and are audited as `<method>.auto-approved`. Export is slow and writes large files; planned privileged commands include voice enrollment, which changes the shared `voices.json`, and file deletion, which is destructive. |
+| **privileged** | Shows a confirmation sheet in the app with the author and arguments. Settings → **Approve agent actions without asking** (off by default; no automation command can change it) skips the sheet: such requests return `approval: "approved"` and are audited as `<method>.auto-approved`. Export is slow and writes large files; planned privileged commands include voice enrollment, which changes the shared `voices.json`, and file deletion, which is destructive. |
+
+Settings → **Dangerously allow all agent actions** (off by default, user-only) turns all of the above on at once,
+turns the scope guard (#356) off and skips plugin action confirmations for agents; `context get` reports it in
+`agentPermissions`.
 
 Plugin trust, turning a plugin or its hooks on, and Settings → **Apply plugin hook edits without review** are
 user-only; agents may turn plugins or hooks off (`plugins set`) and apply or discard hook proposals. Plugins never

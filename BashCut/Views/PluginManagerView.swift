@@ -38,7 +38,7 @@ struct PluginManagerView: View {
             case .installed: installed
             }
             if !model.diagnostics.isEmpty {
-                DisclosureGroup("Diagnostics (\(model.diagnostics.count))") {
+                RowDisclosureGroup("Diagnostics (\(model.diagnostics.count))") {
                     Text(model.diagnostics.joined(separator: "\n")).font(.caption.monospaced())
                         .textSelection(.enabled)
                 }
@@ -451,7 +451,7 @@ private struct PluginInstallProgressView: View {
                 Text(last).font(.caption2.monospaced()).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
             }
             if !model.installLog.isEmpty {
-                DisclosureGroup("Output", isExpanded: $showLog) {
+                RowDisclosureGroup("Output", isExpanded: $showLog) {
                     ScrollView {
                         Text(model.installLog.suffix(200).joined(separator: "\n")).font(.caption2.monospaced())
                             .frame(maxWidth: .infinity, alignment: .leading).textSelection(.enabled)

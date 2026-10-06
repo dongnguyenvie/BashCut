@@ -198,7 +198,7 @@ enum ChatEntryKind: String, Codable { case user, assistant, tool, notice, error 
     /// Runs one command the model called, as an agent with this conversation's token.
     private func perform(_ method: String, _ params: JSONValue) async -> Result<JSONValue, PluginCallFailure> {
         let response = await commandSession.perform(
-            method, params: params.object, allowEdits: document.settings.allowAgentEdits, registry: document.registry)
+            method, params: params.object, allowEdits: document.settings.agentsCanEdit, registry: document.registry)
         if let failure = response.error { return .failure(PluginCallFailure(code: failure.code, message: failure.message)) }
         return .success(response.result ?? .null)
     }

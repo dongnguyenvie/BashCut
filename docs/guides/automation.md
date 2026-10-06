@@ -143,8 +143,15 @@ Claude does not inherit `ANTHROPIC_API_KEY`, so it uses your CLI login. Shell ta
 Codex tabs have their own authors. Closing a tab revokes its token. Keep tokens out of scripts, logs and
 project files.
 
-**Settings → Allow agent timeline edits** is on by default. When it is off, Claude and Codex tabs get no
-token, so they can read and point at things but cannot edit.
+**Settings → Agents → Agent permissions → Allow agent timeline edits** is on by default. When it is off, Claude
+and Codex tabs get no token, so they can read and point at things but cannot edit.
+
+**Settings → Agents → Agent permissions → Dangerously allow all agent actions** (off by default; it asks once when
+turned on, and no command can change it) overrides the switches above it: agents get edit tokens, privileged
+requests are approved at once, the scope guard is off, and plugin actions that declare `confirm` run without the
+dialog when an agent starts them (audited as `plugin.action.<id>.auto-approved`). Installing and trusting plugins
+still needs the user. `context get` reports what agents may do as `agentPermissions`
+(`{edits, autoApprove, scopeGuard, allowAll}`).
 
 ## Agent kit
 
@@ -714,8 +721,8 @@ and the app shows a sheet with the author, preset, output path, caption behavior
 Denying writes nothing. Approving starts the same background pipeline as the Export sheet. Only one privileged
 request can wait for approval at a time.
 
-**Settings → Run agent exports without confirmation** is off by default, and no command can change it. When
-you turn it on, requests run at once, return `approval: "approved"` and are audited as
+**Settings → Approve agent actions without asking** (or Dangerously allow all agent actions) is off by default, and
+no command can change it. When you turn it on, requests run at once, return `approval: "approved"` and are audited as
 `<method>.auto-approved`.
 
 - **Output.** Files go to the project's `render/` folder unless you pass `--output-dir`.

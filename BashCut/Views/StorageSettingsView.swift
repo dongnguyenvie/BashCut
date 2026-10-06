@@ -15,7 +15,7 @@ struct StorageSettingsView: View {
         Section {
             if let entries {
                 ForEach(StorageUsage.byPlugin(entries)) { plugin in
-                    DisclosureGroup {
+                    RowDisclosureGroup {
                         ForEach(plugin.entries) { entry in row(entry) }
                     } label: {
                         pluginLabel(plugin)

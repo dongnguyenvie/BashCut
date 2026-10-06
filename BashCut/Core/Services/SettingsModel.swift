@@ -41,6 +41,16 @@ public final class SettingsModel {
     public var allowExternalAgents: Bool {
         didSet { defaults.set(allowExternalAgents, forKey: Keys.allowExternalAgents) }
     }
+    /// Dangerously allow all agent actions: timeline edits, privileged actions (exports, kit setup, library items for
+    /// every project, preferences), edits outside an attached scope and plugin action confirmations all run without
+    /// asking. Installing and trusting plugins stays with the user. Off by default; only the user can change it.
+    public var dangerouslyAllowAgents: Bool {
+        didSet { defaults.set(dangerouslyAllowAgents, forKey: Keys.dangerouslyAllowAgents) }
+    }
+    /// Whether agents may edit: their own switch, or everything allowed.
+    public var agentsCanEdit: Bool { dangerouslyAllowAgents || allowAgentEdits }
+    /// Whether privileged agent actions run without the approval sheet.
+    public var agentActionsAutoApproved: Bool { dangerouslyAllowAgents || autoApprovePrivileged }
     /// What happens when an agent with an attached scope edits outside it (#356): `ask`, `block` or `off`
     /// (`AgentScopeMode`). Like export approval, only the user can change it in Settings.
     public var agentScopeModeRaw: String {
@@ -108,6 +118,7 @@ public final class SettingsModel {
         static let allowExternalAgents = "allowExternalAgents"
         static let autoApprovePrivileged = "autoApprovePrivileged"
         static let agentScopeMode = "agentScopeMode"
+        static let dangerouslyAllowAgents = "dangerouslyAllowAgents"
         static let defaultExportPreset = "defaultExportPreset"
         static let runPluginHooks = "runPluginHooks"
         static let autoApplyPluginHookEdits = "autoApplyPluginHookEdits"
@@ -134,6 +145,7 @@ public final class SettingsModel {
         allowExternalAgents = defaults.object(forKey: Keys.allowExternalAgents) as? Bool ?? true
         autoApprovePrivileged = defaults.bool(forKey: Keys.autoApprovePrivileged)
         agentScopeModeRaw = defaults.string(forKey: Keys.agentScopeMode) ?? "ask"
+        dangerouslyAllowAgents = defaults.bool(forKey: Keys.dangerouslyAllowAgents)
         runPluginHooks = defaults.object(forKey: Keys.runPluginHooks) as? Bool ?? true
         autoApplyPluginHookEdits = defaults.bool(forKey: Keys.autoApplyPluginHookEdits)
         checkPluginUpdatesDaily = defaults.object(forKey: Keys.checkPluginUpdatesDaily) as? Bool ?? true

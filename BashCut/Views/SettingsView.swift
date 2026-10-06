@@ -17,6 +17,14 @@ struct SettingsView: View {
 
     private var section: String { document.ui.settingsSection }
 
+    /// Large like an editor tab: the main window less a margin, measured when Settings opens.
+    @State private var size = Self.preferredSize()
+
+    static func preferredSize() -> CGSize {
+        let window = NSApp.mainWindow?.contentLayoutRect.size ?? CGSize(width: 1280, height: 800)
+        return CGSize(width: min(max(window.width - 80, 820), 1400), height: min(max(window.height - 80, 600), 1000))
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
@@ -31,8 +39,8 @@ struct SettingsView: View {
                 Form { detail }.formStyle(.grouped).frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .frame(width: 820, height: 600)
-        .onChange(of: settings.allowAgentEdits) { model.applyAgentEditPreference() }
+        .frame(width: size.width, height: size.height)
+        .onChange(of: settings.agentsCanEdit) { model.applyAgentEditPreference() }
         .onChange(of: settings.allowExternalAgents) { model.applyExternalAgentPreference() }
     }
 
@@ -126,7 +134,6 @@ struct SettingsView: View {
             Picker("Default agent", selection: $settings.defaultProviderRaw) {
                 ForEach(AgentProviders.agents, id: \.id) { Text($0.title).tag($0.id.rawValue) }
             }
-            Toggle("Allow agent timeline edits", isOn: $settings.allowAgentEdits)
             LabeledContent("Agents outside BashCut") {
                 HStack {
                     Toggle("Allow", isOn: $settings.allowExternalAgents).labelsHidden()
@@ -134,21 +141,70 @@ struct SettingsView: View {
                         .disabled(!settings.allowExternalAgents)
                 }
             }
-            Toggle("Run agent exports without confirmation", isOn: $settings.autoApprovePrivileged)
-            Picker("Edits outside the attached clips", selection: $settings.agentScopeModeRaw) {
+        } footer: {
+            Text("Agents outside BashCut use the bashcut CLI or MCP with a token file only your user account can read.")
+                .font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
+        }
+        agentPermissions
+        AgentSettingsView(document: document, settings: settings)
+    }
+
+    /// What agents may do without asking. Allow everything overrides the rest while it is on.
+    @ViewBuilder private var agentPermissions: some View {
+        let all = settings.dangerouslyAllowAgents
+        Section {
+            Toggle("Allow agent timeline edits", isOn: all ? .constant(true) : $settings.allowAgentEdits)
+                .disabled(all)
+            Toggle("Approve agent actions without asking", isOn: all ? .constant(true) : $settings.autoApprovePrivileged)
+                .disabled(all)
+            Picker(
+                "Edits outside the attached clips",
+                selection: all ? .constant(AgentScopeMode.off.rawValue) : $settings.agentScopeModeRaw
+            ) {
                 Text("Ask first").tag(AgentScopeMode.ask.rawValue)
                 Text("Block").tag(AgentScopeMode.block.rawValue)
                 Text("Allow").tag(AgentScopeMode.off.rawValue)
             }
+            .disabled(all)
+            Toggle(isOn: Binding(get: { all }, set: { setDangerouslyAllowAgents($0) })) {
+                Label("Dangerously allow all agent actions", systemImage: "exclamationmark.triangle.fill")
+                    .foregroundStyle(all ? .red : .primary)
+            }
+        } header: {
+            Text("Agent permissions")
         } footer: {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Re-enable agent edits by starting a new Claude or Codex session.")
+                // swiftlint:disable:next line_length
+                Text("Agent actions that ask first: exports, agent kit setup and updates, library items and preferences for every project. Every request is still logged.")
                 Text("When you send clips to an agent, its edits to other clips or to the whole project ask you first, are blocked, or are allowed.")
-                Text("With confirmation off, agents can export and write files without asking. Every request is still logged.")
-                Text("Agents outside BashCut use the bashcut CLI or MCP with a token file only your user account can read.")
-            }.font(.caption).foregroundStyle(.secondary)
+                if all {
+                    // swiftlint:disable:next line_length
+                    Text("All agent actions run without asking, including plugin actions that normally ask first. Only installing and trusting plugins still needs you.")
+                        .foregroundStyle(.red)
+                }
+            }
+            .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        AgentSettingsView(document: document, settings: settings)
+    }
+
+    /// Turning Allow everything on asks once; turning it off does not.
+    private func setDangerouslyAllowAgents(_ on: Bool) {
+        guard on else {
+            settings.dangerouslyAllowAgents = false
+            return
+        }
+        let choice = ModalCenter.shared.alert(
+            "dangerously-allow-agents", title: String(localized: "Let agents do everything without asking?"),
+            // swiftlint:disable:next line_length
+            message: String(localized: "Agents can edit any clip, export, change the agent kit, save library items and preferences for every project, and run plugin actions without asking you. Every request is still logged."),
+            buttons: [
+                ModalOption("cancel", String(localized: "Cancel")),
+                ModalOption("allow", String(localized: "Allow Everything")),
+            ],
+            style: .critical, userOnly: true)
+        settings.dangerouslyAllowAgents = choice == "allow"
     }
 
     private func chooseProjectsFolder() {
@@ -243,7 +299,7 @@ private struct SettingsPluginsSection: View {
         ForEach(PluginSection.byCategory(configurable, category: document.plugins.category(of:))) { group in
             Section {
                 ForEach(group.items) { plugin in
-                    DisclosureGroup(isExpanded: isExpanded(plugin)) {
+                    RowDisclosureGroup(isExpanded: isExpanded(plugin)) {
                         options(plugin)
                     } label: {
                         HStack {

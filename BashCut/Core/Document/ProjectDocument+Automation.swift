@@ -83,6 +83,7 @@ extension ProjectDocument {
                 "busy": .bool(document.busy), "saving": .bool(document.saving),
                 "knowledge": document.agents.knowledgeStore.summary().json,
                 "scope": document.agentScopeJSON,
+                "agentPermissions": document.agentPermissionsJSON,
             ])
         }
         handle("project.get") { document, _, _ in .object(document.project.fields) }

@@ -172,7 +172,7 @@ extension ProjectDocument {
                 // An agent's preference for every project waits in the proposals inbox (#69), unless the user lets
                 // agents act without confirmation.
                 if scope == .user, author != .user {
-                    if document.settings.autoApprovePrivileged {
+                    if document.settings.agentActionsAutoApproved {
                         document.registry.recordApproval(
                             method: Self.setMethod(kind), author: author, approved: true, automatic: true)
                         DebugLog.write("approval", "auto-approved \(Self.setMethod(kind)) from \(author) key \(key)")
