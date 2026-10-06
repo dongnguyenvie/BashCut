@@ -113,7 +113,7 @@ extension TimelineCanvas {
         var x = rect.minX + 5
         let y = compact ? rect.midY - 6 : rect.minY + 2
         var icons: [String] = []
-        if document.agentChangedIDs.contains(item.id) { icons.append("sparkle") }
+        if drawnAgentChanges.contains(item.id) { icons.append("sparkle") }
         if item.linkedItemID != nil { icons.append("link") }
         if item.fields["freezeFrame"] != nil { icons.append("snowflake") }
         if item["muted"] == .bool(true) { icons.append("speaker.slash.fill") }
@@ -201,7 +201,9 @@ extension TimelineCanvas {
         let sourceStart = Double(item.sourceIn) / media.fps.value
         let secondsPerPoint = item.speed / (project.fps.value * scale)
         let amplitude = rect.height / 2 - 2
-        for x in stride(from: visible.minX, through: visible.maxX, by: 2) {
+        // Bars sit on a grid from the clip's start, so repainting part of a clip draws the same bars.
+        let first = rect.minX + ((visible.minX - rect.minX) / 2).rounded(.down) * 2
+        for x in stride(from: first, through: visible.maxX, by: 2) {
             let start = sourceStart + (x - rect.minX) * secondsPerPoint
             let peak = waveform.peak(from: start, to: start + 2 * secondsPerPoint)
             let height = max(0.5, Double(peak) * amplitude)

@@ -42,6 +42,14 @@ import Foundation
         self.rows = rows
     }
 
+    /// True when both layouts have the same layers at the same places with the same names and switches; the
+    /// clips on them may differ.
+    func sameRows(as other: TimelineLayout) -> Bool {
+        rows.count == other.rows.count && zip(rows, other.rows).allSatisfy { row, otherRow in
+            row.y == otherRow.y && row.height == otherRow.height && row.track.sameSettings(as: otherRow.track)
+        }
+    }
+
     var contentHeight: Double { (rows.last?.maxY ?? Self.firstRowY) + Self.rowSpacing }
 
     func x(_ frame: Int) -> Double { Self.leading + Double(frame) * scale }
@@ -55,6 +63,10 @@ import Foundation
 
     func rect(of item: Item, in row: Row) -> CGRect {
         CGRect(x: x(item.at), y: row.y, width: max(3, Double(item.duration) * scale - 2), height: row.height)
+    }
+
+    func rect(ofGap gap: Range<Int>, in row: Row) -> CGRect {
+        CGRect(x: x(gap.lowerBound), y: row.y, width: Double(gap.count) * scale - 2, height: row.height)
     }
 }
 

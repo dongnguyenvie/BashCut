@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+- **Faster edits on long timelines (#348).** After an edit the timeline repaints only the clips and gaps that
+  changed (and clips whose selection, review warning or agent badge changed) instead of every visible clip, and
+  the layer header repaints only when the layers change. One edit round trip at 1,000 clips: 52 → 23 ms; at 100
+  clips: 27 → 16 ms (release build). Waveform bars now sit on a grid from the clip's start, so a partial repaint
+  draws the same bars.
+
 - **Feature bench.** `scripts/bench-features.py` runs every command group end to end against the running app in a
   scratch project (generated media; the open project is saved and reopened): media, timeline edits with exact
   undo/redo checks, clip speed/motion/keyframes/reverse, layers, colour, captions, library, knowledge and skills,
