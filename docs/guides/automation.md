@@ -309,6 +309,12 @@ bashcut timeline undo --base-rev 13
 bashcut timeline redo --base-rev 14
 ```
 
+`context get` and `ui view` return the primary selected item as `selection` (the one last clicked, which
+single-clip actions use) and every selected item as `selectedItems`. `ui select a --items b,c` selects several
+items (`--add` keeps the current selection). Delete, Lift, Copy, Cut, Paste and Mute (`ui action timeline.delete`,
+`clip.copy`, `clip.cut`, `clip.paste`, `clip.mute`) act on the whole selection as one undo step;
+`timeline.select-all` and `timeline.deselect` change it.
+
 Use `timeline apply ... --dry-run` (MCP parameter `dryRun: true`) to validate the same batch on a copy.
 It checks the base revision, locks and project invariants, but changes no revision, undo history, files,
 preview or plugin hooks. The response has `dryRun: true`, current `rev`, `projectedRev`, predicted `duration`

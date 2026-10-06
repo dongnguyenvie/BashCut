@@ -120,6 +120,12 @@ public enum UIAction: String, CaseIterable, Sendable {
     case cancelExport = "export.cancel"
     case dismissExportNotice = "export.dismiss-notice"
     case clearRecentProjects = "project.clear-recents"
+    case selectAll = "timeline.select-all"
+    case deselect = "timeline.deselect"
+    case copyClips = "clip.copy"
+    case cutClips = "clip.cut"
+    case pasteClips = "clip.paste"
+    case muteClips = "clip.mute"
 
     public var id: String { rawValue }
 
@@ -219,6 +225,12 @@ public enum UIAction: String, CaseIterable, Sendable {
         case .cancelExport: "Cancel the running export (queued exports start next)"
         case .dismissExportNotice: "Dismiss the export notice"
         case .clearRecentProjects: "Clear recent projects"
+        case .selectAll: "Select every clip on the timeline"
+        case .deselect: "Clear the clip selection"
+        case .copyClips: "Copy selected clips"
+        case .cutClips: "Cut selected clips (leave gaps)"
+        case .pasteClips: "Paste copied clips at the playhead"
+        case .muteClips: "Mute or unmute selected clips"
         }
     }
 
@@ -240,6 +252,13 @@ public enum UIAction: String, CaseIterable, Sendable {
         case .nextFrame: [UIShortcut("right")]
         case .backSecond: [UIShortcut("left", [.shift])]
         case .forwardSecond: [UIShortcut("right", [.shift])]
+        // Timeline-only: the Edit menu's Copy, Cut, Paste and Select All reach the timeline while it has focus, and
+        // text fields everywhere else.
+        case .selectAll: [UIShortcut("a", [.command])]
+        case .copyClips: [UIShortcut("c", [.command])]
+        case .cutClips: [UIShortcut("x", [.command])]
+        case .pasteClips: [UIShortcut("v", [.command])]
+        case .deselect: [UIShortcut("escape")]
         default: primaryShortcut.map { [$0] } ?? []
         }
     }

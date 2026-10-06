@@ -47,6 +47,11 @@ extension ProjectDocument {
         case .showExportProgress, .cancelExport: return exports.isRunning
         case .dismissExportNotice: return exports.notice != nil
         case .clearRecentProjects: return !settings.recentProjects.isEmpty
+        case .selectAll: return project.tracks.contains { !$0.items.isEmpty }
+        case .deselect: return !selectedIDs.isEmpty
+        case .copyClips, .cutClips: return !selectedItems.isEmpty
+        case .pasteClips: return hasProject && clipboard != nil
+        case .muteClips: return selectedItems.contains { $0.mediaID != nil }
         case .showHistory, .showReview, .showPlugins, .showDoctor, .showSettings, .showAgentKit, .showSections,
             .showCommands, .showShortcuts, .showUpdates, .showAbout, .toggleAgentDock,
             .askAgent, .openClaudeTerminal, .openCodexTerminal, .openShellTerminal,
@@ -135,6 +140,12 @@ extension ProjectDocument {
         case .sourceShow:
             preview.pause()
             sourceViewer.reopen()
+        case .selectAll: selectAll()
+        case .deselect: clearSelection()
+        case .copyClips: copySelection()
+        case .cutClips: try cutSelection(author: author)
+        case .pasteClips: try pasteClipboard(author: author)
+        case .muteClips: try toggleMuteSelection(author: author)
         default: try performOtherAction(action)
         }
     }
@@ -296,6 +307,7 @@ extension ProjectDocument {
             "chatTab": agents.chatPluginID.map(JSONValue.string) ?? .null,
             "playing": .bool(preview.isPlaying), "playhead": .integer(playhead),
             "selection": selectedID.map(JSONValue.string) ?? .null,
+            "selectedItems": .array(selectedIDs.map(JSONValue.string)),
             "selectedTrack": selectedTrackID.map(JSONValue.string) ?? .null,
             "libraryPanel": .string(ui.libraryTab.panelName), "libraryFilter": libraryFilterJSON(),
             "inspector": .string(ui.inspectorTab),

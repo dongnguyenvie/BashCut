@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+- **Timeline multi-select (#357).** ⌘-click toggles a clip, ⇧-click selects a run of clips on a layer, dragging
+  over empty space draws a selection rectangle, ⌘A selects every clip and Esc clears the selection. Delete, Lift,
+  Mute, Copy, Cut and Paste act on every selected clip as one undo step, and dragging a selected clip moves them all
+  by the same amount (clips on the magnetic main layer stay in place). The Inspector shows the count and the shared
+  actions. `context get` and `ui view` add `selectedItems`, `ui select` takes `--items a,b,c` and `--add`, and the
+  `selection.changed` hook adds `items`. New actions: `timeline.select-all`, `timeline.deselect`, `clip.copy`,
+  `clip.cut`, `clip.paste`, `clip.mute`.
 - **Edits that change nothing are not edits (#347).** `timeline apply` with a batch that leaves the project as it
   was keeps the revision, adds no undo step, no agent ◆ marks and no plugin hook, and returns `changed: false`.
   Repeated agent edits no longer fill History or make other clients' `baseRev` stale.

@@ -28,6 +28,8 @@ struct UIActionTests {
         #expect(UIAction.matching("shift+right") == [.forwardSecond])
         // `space` plays whichever viewer is shown; the document picks the available one.
         #expect(Set(UIAction.matching("space")) == [.togglePlayback, .sourceTogglePlayback])
+        #expect(UIAction.matching("cmd+a") == [.selectAll])
+        #expect(Set(UIAction.matching("escape")) == [.sourceClose, .deselect])
         #expect(UIAction.matching("nope").isEmpty)
     }
 
@@ -39,7 +41,10 @@ struct UIActionTests {
             for shortcut in action.shortcuts {
                 if let other = seen[shortcut] {
                     let pair: Set<UIAction> = [other, action]
-                    #expect(pair == [.togglePlayback, .sourceTogglePlayback], "\(shortcut) on \(other.id) and \(action.id)")
+                    // Escape closes the source viewer while it is shown, and clears the clip selection otherwise.
+                    #expect(
+                        pair == [.togglePlayback, .sourceTogglePlayback] || pair == [.sourceClose, .deselect],
+                        "\(shortcut) on \(other.id) and \(action.id)")
                 }
                 seen[shortcut] = action
             }

@@ -117,6 +117,7 @@ import BashCutPlugin
         speed.addItem(item(.resetSpeed, String(localized: "Normal Speed")))
         menu.addItem(submenu(speed))
         menu.addItem(item(.unlinkAudio, String(localized: "Unlink Audio")))
+        menu.addItem(item(.muteClips, String(localized: "Mute or Unmute Clips")))
         menu.addItem(.separator())
         menu.addItem(item(.askAgent, String(localized: "Ask Agent About Selection…")))
         return wrap(menu)

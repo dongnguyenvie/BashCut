@@ -76,6 +76,7 @@ extension ProjectDocument {
                 "project": document.fileURL.map { .string($0.path) } ?? .null,
                 "rev": .integer(document.project.revision), "playhead": .integer(document.playhead),
                 "selection": document.selectedID.map(JSONValue.string) ?? .null,
+                "selectedItems": .array(document.selectedIDs.map(JSONValue.string)),
                 "selectedTrack": document.selectedTrackID.map(JSONValue.string) ?? .null,
                 "dirty": .bool(document.dirty), "conflict": .bool(document.conflict),
                 "busy": .bool(document.busy), "saving": .bool(document.saving),
@@ -200,18 +201,22 @@ extension ProjectDocument {
 
     private func registerUICommands() {
         handle("ui.select") { document, arguments, _ in
-            let id = arguments.optionalString("item")
-            if let id, !document.project.tracks.flatMap(\.items).contains(where: { $0.id == id }) {
-                throw RPCFailure(-32602, "Unknown item")
+            var ids = arguments.optionalString("item").map { [$0] } ?? []
+            ids += (arguments.optionalString("items") ?? "").split(separator: ",")
+                .map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+            let existing = Set(document.project.tracks.flatMap(\.items).map(\.id))
+            if let unknown = ids.first(where: { !existing.contains($0) }) {
+                throw RPCFailure(-32602, "Unknown item \(unknown)")
             }
+            if arguments.bool("add") { ids = document.selectedIDs + ids }
             if let track = arguments.optionalString("track") {
                 guard document.project.tracks.contains(where: { $0.id == track }) else {
                     throw RPCFailure(-32602, "Unknown layer \(track)")
                 }
                 document.selectedTrackID = track
-                if id != nil { document.selectedID = id }
+                if !ids.isEmpty { document.select(ids) }
             } else {
-                document.selectedID = id
+                document.select(ids)
             }
             document.showTimelineViewer()
             return .bool(true)
@@ -250,6 +255,13 @@ extension ProjectDocument {
         }
     }
 
+    /// `a`, or `a (3 items: a, b, c)` when several are selected.
+    private var selectionText: String {
+        guard let selectedID else { return "none" }
+        guard selectedIDs.count > 1 else { return selectedID }
+        return "\(selectedID) (\(selectedIDs.count) items: \(selectedIDs.joined(separator: ", ")))"
+    }
+
     func showLibraryTab(_ tab: LibraryTab) {
         DebugLog.write("ui", "library panel \(ui.libraryTab.rawValue) → \(tab.rawValue)")
         ui.libraryTab = tab
@@ -260,7 +272,7 @@ extension ProjectDocument {
         [BashCut context]
         project: \(fileURL?.path ?? "none open yet (use project create or project open)")
         rev: \(project.revision)
-        selection: \(selectedID ?? "none")
+        selection: \(selectionText)
         playhead: \(playhead) frames
         \(pluginActionsText())
         [/BashCut context]

@@ -24,7 +24,9 @@ struct InspectorView: View {
             Divider()
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    if let item = document.selected {
+                    if document.selectedItems.count > 1 {
+                        MultiSelectionInspector(document: document)
+                    } else if let item = document.selected {
                         Text(item.id).font(.caption.monospaced()).lineLimit(1).textSelection(.enabled)
                         Text(String(format: "%d–%d frames", item.at, item.end)).font(.caption).foregroundStyle(
                             .secondary)
@@ -442,4 +444,36 @@ private struct SpeedControls: View {
 
     /// Slider values snap to 0.05× steps.
     static func rounded(_ value: Double) -> Double { (value * 20).rounded() / 20 }
+}
+
+/// Several clips selected: their count and extent, a shared Mute switch and the bulk actions.
+struct MultiSelectionInspector: View {
+    let document: ProjectDocument
+
+    var body: some View {
+        let items = document.selectedItems
+        VStack(alignment: .leading, spacing: 12) {
+            Text(String(format: String(localized: "%d clips selected"), items.count)).font(.callout.bold())
+            if let start = items.map(\.at).min(), let end = items.map(\.end).max() {
+                Text(String(format: "%d–%d frames", start, end)).foregroundStyle(.secondary)
+            }
+            if items.contains(where: { $0.mediaID != nil }) {
+                Toggle(
+                    "Mute",
+                    isOn: Binding(
+                        get: { SelectionEdits.allMuted(document.selectedIDs, in: document.project) },
+                        set: { _ in document.run(.muteClips) }))
+            }
+            Divider()
+            HStack {
+                Button("Copy") { document.run(.copyClips) }
+                Button("Cut") { document.run(.cutClips) }
+            }
+            HStack {
+                Button("Delete") { document.run(.delete) }
+                Button("Lift") { document.run(.lift) }
+            }
+            Text("Drag any selected clip to move them all. Esc clears the selection.").foregroundStyle(.secondary)
+        }
+    }
 }

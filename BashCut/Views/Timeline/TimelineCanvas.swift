@@ -17,6 +17,8 @@ import BashCutProject
     var layout: TimelineLayout
     var waveforms: [String: AudioWaveform] = [:]
     var selectedID: String?
+    /// Every selected item, the primary `selectedID` included.
+    var selectedIDs: Set<String> = []
     var playhead = 0
     var lastReveal: TimelineReveal?
     var lastZoomAnchor: TimelineZoomAnchor?
@@ -40,6 +42,8 @@ import BashCutProject
         case playhead
         case section(TimelineMarker)
         case clip(ClipDrag)
+        /// A selection rectangle dragged over empty space; `base` is the selection kept with ⌘ or ⇧ held.
+        case marquee(origin: CGPoint, base: [String])
     }
     struct ClipDrag {
         let item: Item
@@ -48,7 +52,13 @@ import BashCutProject
         let edge: BashCutProject.Edge?
         let rolling: Bool
         let slipping: Bool
+        /// Moves every selected clip by the same amount.
+        var group = false
+        /// What a click without a drag does to the selection on release: ⌘-click toggles the clip, a plain click
+        /// on a clip that is part of a multi-selection selects it alone.
+        var clickSelection: ClickSelection?
     }
+    enum ClickSelection { case toggle, only }
     var gesture: Gesture?
     var isScrubbing: Bool {
         if case .playhead = gesture { return true }
@@ -66,6 +76,7 @@ import BashCutProject
     let snapGuide = GuideLineView(color: .systemYellow)
     let badge = TimelineBadgeView(frame: .zero)
     let ghost = ClipGhostView(frame: .zero)
+    let marquee = MarqueeView(frame: .zero)
     let filmstrips = FilmstripCache()
 
     override var isFlipped: Bool { true }
@@ -80,7 +91,7 @@ import BashCutProject
         mediaByID = Self.index(document.project.media)
         super.init(frame: .zero)
         wantsLayer = true
-        for overlay in [ghost, dropGuide, snapGuide, playheadView, badge] as [NSView] { addSubview(overlay) }
+        for overlay in [ghost, marquee, dropGuide, snapGuide, playheadView, badge] as [NSView] { addSubview(overlay) }
         filmstrips.onUpdate = { [weak self] in self?.redrawFilmstrips() }
         registerForDraggedTypes([.string, .fileURL])
     }
@@ -118,6 +129,12 @@ import BashCutProject
             }
         }
         return nil
+    }
+
+    /// Items whose clip rectangle touches `rect` (the marquee).
+    func items(in rect: CGRect) -> [String] {
+        layout.rows.filter { CGRect(x: 0, y: $0.y, width: bounds.width, height: $0.height).intersects(rect) }
+            .flatMap { row in row.track.items.filter { layout.rect(of: $0, in: row).intersects(rect) }.map(\.id) }
     }
 
     func hit(at point: CGPoint) -> (CGRect, Item, Track)? {

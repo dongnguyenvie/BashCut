@@ -175,3 +175,26 @@ final class ClipGhostView: NSView {
         path.stroke()
     }
 }
+
+/// The selection rectangle dragged over empty timeline space.
+final class MarqueeView: NSView {
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        wantsLayer = true
+        isHidden = true
+        layer?.backgroundColor = NSColor.systemCyan.withAlphaComponent(0.12).cgColor
+        layer?.borderColor = NSColor.systemCyan.withAlphaComponent(0.8).cgColor
+        layer?.borderWidth = 1
+    }
+    required init?(coder: NSCoder) { nil }
+
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+    func show(_ rect: NSRect?) {
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        if let rect { frame = rect }
+        isHidden = rect == nil
+        CATransaction.commit()
+    }
+}

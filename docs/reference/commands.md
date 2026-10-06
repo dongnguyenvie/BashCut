@@ -761,12 +761,14 @@ Open a sheet or popover in the app.
 - Mode: ui · Runs: immediately · MCP: `bashcut_ui_open`
 - `dialog`: string, required, one of new-project, export, export-report, agent-changes, review, history, plugins, settings, doctor, knowledge, ask, sections, external-changes, plugin-proposals, commands, shortcuts, add-plugin. Dialog
 
-### `bashcut ui select [<item>] [--track <track>]`
+### `bashcut ui select [<item>] [--items <items>] [--add] [--track <track>]`
 
-Select a timeline item in the app (omit item to clear the selection), or a layer with --track.
+Select timeline items in the app (omit them to clear the selection), or a layer with --track. Several items: --items a,b,c; --add keeps the current selection.
 
 - Mode: ui · Runs: immediately · MCP: `bashcut_ui_select`
 - `item`: string. Stable item ID
+- `items`: string. More item IDs, comma-separated
+- `add`: boolean. Add to the current selection
 - `track`: string. Layer (track) ID to select
 
 ### `bashcut ui actions`

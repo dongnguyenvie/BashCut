@@ -1,6 +1,13 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Mute or Unmute Clips": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Mute or Unmute Clips" } }, "vi": { "stringUnit": { "state": "translated", "value": "Tắt/bật tiếng clip" } } } },
+    "Unmute": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Unmute" } }, "vi": { "stringUnit": { "state": "translated", "value": "Bật tiếng" } } } },
+    "Lift": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Lift" } }, "vi": { "stringUnit": { "state": "translated", "value": "Nhấc ra" } } } },
+    "%d clips": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%d clips" } }, "vi": { "stringUnit": { "state": "translated", "value": "%d clip" } } } },
+    "%d clips selected": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%d clips selected" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đã chọn %d clip" } } } },
+    "Copied %d clips": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Copied %d clips" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đã sao chép %d clip" } } } },
+    "Drag any selected clip to move them all. Esc clears the selection.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Drag any selected clip to move them all. Esc clears the selection." } }, "vi": { "stringUnit": { "state": "translated", "value": "Kéo một clip đã chọn để di chuyển tất cả. Esc để bỏ chọn." } } } },
     "%1$@ requested %2$@.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%1$@ requested %2$@." } }, "vi": { "stringUnit": { "state": "translated", "value": "%1$@ yêu cầu %2$@." } } } },
     "%lld review issues still open": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%lld review issues still open" } }, "vi": { "stringUnit": { "state": "translated", "value": "Còn %lld vấn đề cần xem lại" } } } },
     "Add a main video track first": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Add a main video track first" } }, "vi": { "stringUnit": { "state": "translated", "value": "Hãy thêm một layer video chính trước" } } } },

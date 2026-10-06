@@ -14,6 +14,7 @@ struct TimelineView: NSViewRepresentable {
         let revision: Int
         let scale: Double
         let selectedID: String?
+        let selectedIDs: [String]
         let selectedTrackID: String?
         let waveforms: Int
         let agentChanges: Int
@@ -56,7 +57,7 @@ struct TimelineView: NSViewRepresentable {
             height: max(view.contentSize.height, layout.contentHeight))
         let key = ContentKey(
             session: document.sessionID, revision: project.revision, scale: scale, selectedID: document.selectedID,
-            selectedTrackID: document.selectedTrackID, waveforms: document.waveforms.values.count,
+            selectedIDs: document.selectedIDs, selectedTrackID: document.selectedTrackID, waveforms: document.waveforms.values.count,
             agentChanges: document.agentChangedIDs.count, size: size)
         if key != canvas.lastContent {
             if key.session != canvas.lastContent?.session || key.revision != canvas.lastContent?.revision {
@@ -66,6 +67,7 @@ struct TimelineView: NSViewRepresentable {
             let previous = canvas.lastContent
             let drawn = TimelineDrawnState(
                 project: canvas.project, layout: canvas.layout, selectedID: canvas.selectedID,
+                selectedIDs: canvas.selectedIDs,
                 warnings: canvas.voiceoverWarningIDs, agentChanges: canvas.drawnAgentChanges)
             canvas.lastContent = key
             canvas.project = project
@@ -73,6 +75,7 @@ struct TimelineView: NSViewRepresentable {
             canvas.updateReviewWarnings(for: project)
             canvas.waveforms = document.waveforms.values
             canvas.selectedID = document.selectedID
+            canvas.selectedIDs = Set(document.selectedIDs)
             canvas.drawnAgentChanges = document.agentChangedIDs
             canvas.setFrameSize(size)
             // An edit or a selection change repaints only the clips it touched.

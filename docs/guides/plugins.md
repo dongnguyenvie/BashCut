@@ -676,7 +676,7 @@ Hooks call the plugin with method `plugin.hook` and params `event`, `payload`, `
 | `project.closed` | `path`, `name` (sent when another project replaces it) | |
 | `edit.committed` | `label`, `author`, `rev`, `previousRev`, `changedItems` (up to 200 IDs), `changedCount` | Yes |
 | `edit.undone`, `edit.redone` | Same as `edit.committed` | Yes |
-| `selection.changed` | `item`, `track` | Yes |
+| `selection.changed` | `item` (primary), `items` (every selected item), `track` | Yes |
 | `playback.stopped` | `playhead` | Yes |
 | `media.imported` | `author`, `media` (the new media objects) | |
 | `captions.generated` | `media`, `provider` (provenance), `rev` | |
