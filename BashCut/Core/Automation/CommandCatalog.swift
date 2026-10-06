@@ -256,9 +256,12 @@ public enum CommandCatalog {
                                           cli: .positional)]),
         CommandSpec(
             "ui.select", .ui,
-            "Select a timeline item in the app (omit item to clear the selection), or a layer with --track.",
+            "Select timeline items in the app (omit them to clear the selection), or a layer with --track. "
+                + "Several items: --items a,b,c; --add keeps the current selection.",
             parameters: [
                 CommandParameter("item", .string, "Stable item ID", cli: .positional),
+                CommandParameter("items", .string, "More item IDs, comma-separated", cli: .option("items")),
+                CommandParameter("add", .boolean, "Add to the current selection", cli: .flag("add")),
                 CommandParameter("track", .string, "Layer (track) ID to select", cli: .option("track")),
             ]),
         CommandSpec(

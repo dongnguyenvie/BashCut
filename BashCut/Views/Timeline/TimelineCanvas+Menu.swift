@@ -10,9 +10,13 @@ extension TimelineCanvas {
     override func menu(for event: NSEvent) -> NSMenu? {
         let point = convert(event.locationInWindow, from: nil)
         if let (_, item, track) = hit(at: point) {
-            document.selectedID = item.id
             document.selectedTrackID = track.id
             selectedGap = nil
+            if document.selectedIDs.count > 1, document.selectedIDs.contains(item.id) {
+                document.select(document.selectedIDs, primary: item.id)
+                return selectionMenu()
+            }
+            document.selectedID = item.id
             return clipMenu(item: item, track: track)
         }
         if let gap = gapHit(at: point) {
@@ -23,9 +27,42 @@ extension TimelineCanvas {
             return menu
         }
         let menu = NSMenu()
+        if document.canPerform(.pasteClips) { menu.addItem(actionItem(.pasteClips)) }
         PluginMenus.append(to: menu, document, placement: "timeline.context")
         return menu.items.isEmpty ? nil : menu
     }
+
+    /// The menu for a right-click on a clip that is part of a multi-selection: actions on every selected clip.
+    private func selectionMenu() -> NSMenu {
+        let menu = NSMenu()
+        let count = document.selectedIDs.count
+        let header = NSMenuItem(title: String(format: String(localized: "%d clips selected"), count), action: nil, keyEquivalent: "")
+        header.isEnabled = false
+        menu.addItem(header)
+        menu.addItem(.separator())
+        for action in [UIAction.delete, .lift] { menu.addItem(actionItem(action)) }
+        menu.addItem(.separator())
+        for action in [UIAction.copyClips, .cutClips, .pasteClips, .muteClips] { menu.addItem(actionItem(action)) }
+        return menu
+    }
+
+    /// A menu entry that runs `action`, with its shortcut shown when it has ⌘ or no modifier.
+    private func actionItem(_ action: UIAction) -> NSMenuItem {
+        let title = action == .muteClips && SelectionEdits.allMuted(document.selectedIDs, in: document.project)
+            ? String(localized: "Unmute") : NSLocalizedString(Self.menuTitles[action] ?? action.title, comment: "")
+        let entry = ClosureMenuItem(title) { [weak self] in self?.document.run(action) }
+        entry.isEnabled = document.canPerform(action)
+        if let shortcut = action.shortcuts.first, shortcut.modifiers.isEmpty || shortcut.modifiers == [.command] {
+            entry.keyEquivalent = shortcut.key == "delete" ? "\u{8}" : shortcut.key
+            entry.keyEquivalentModifierMask = shortcut.modifiers.isEmpty ? [] : .command
+        }
+        return entry
+    }
+
+    /// Short titles for the clip menus; `UIAction.title` describes the action for agents.
+    private static let menuTitles: [UIAction: String] = [
+        .copyClips: "Copy", .cutClips: "Cut", .pasteClips: "Paste", .muteClips: "Mute",
+    ]
 
     private func clipMenu(item: Item, track: Track) -> NSMenu {
         let menu = NSMenu()
@@ -34,16 +71,15 @@ extension TimelineCanvas {
         if item.linkedItemID != nil { actions.append(.unlinkAudio) }
         for (index, action) in actions.enumerated() {
             if index == 3 { menu.addItem(.separator()) }
-            let title = action == .freezeFrame && item.fields["freezeFrame"] != nil
-                ? String(localized: "Remove freeze frame") : NSLocalizedString(action.title, comment: "")
-            let entry = ClosureMenuItem(title) { [weak self] in self?.document.run(action) }
-            entry.isEnabled = document.canPerform(action)
-            if let shortcut = action.shortcuts.first, shortcut.modifiers.isEmpty || shortcut.modifiers == [.command] {
-                entry.keyEquivalent = shortcut.key == "delete" ? "\u{8}" : shortcut.key
-                entry.keyEquivalentModifierMask = shortcut.modifiers.isEmpty ? [] : .command
+            let entry = actionItem(action)
+            if action == .freezeFrame && item.fields["freezeFrame"] != nil {
+                entry.title = String(localized: "Remove freeze frame")
             }
             menu.addItem(entry)
         }
+        menu.addItem(.separator())
+        let clipboard: [UIAction] = [.copyClips, .cutClips, .pasteClips] + (item.mediaID == nil ? [] : [.muteClips])
+        clipboard.map(actionItem).forEach(menu.addItem)
         if item.mediaID != nil, item.fields["freezeFrame"] == nil {
             menu.addItem(speedMenu(item))
             if track.kind == "video" {

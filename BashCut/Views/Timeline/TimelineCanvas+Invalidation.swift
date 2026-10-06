@@ -6,6 +6,7 @@ struct TimelineDrawnState {
     let project: Project
     let layout: TimelineLayout
     let selectedID: String?
+    let selectedIDs: Set<String>
     let warnings: Set<String>
     let agentChanges: Set<String>
 }
@@ -32,6 +33,7 @@ extension TimelineCanvas {
         }
         var decorated = old.warnings.symmetricDifference(voiceoverWarningIDs)
             .union(old.agentChanges.symmetricDifference(drawnAgentChanges))
+        decorated.formUnion(old.selectedIDs.symmetricDifference(selectedIDs))
         if old.selectedID != selectedID { decorated.formUnion([old.selectedID, selectedID].compactMap { $0 }) }
         guard decorated.count <= Self.rectLimit else { return nil }
         rects += decorated.compactMap { locate($0)?.0 }

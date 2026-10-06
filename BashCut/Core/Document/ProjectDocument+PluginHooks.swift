@@ -201,6 +201,7 @@ extension ProjectDocument {
     func selectionDidChange() {
         emitPluginEvent(.selectionChanged, [
             "item": selectedID.map(JSONValue.string) ?? .null, "track": selectedTrackID.map(JSONValue.string) ?? .null,
+            "items": .array(selectedIDs.map(JSONValue.string)),
         ])
     }
 

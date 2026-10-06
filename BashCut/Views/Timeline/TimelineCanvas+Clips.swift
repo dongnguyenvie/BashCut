@@ -69,7 +69,8 @@ extension TimelineCanvas {
         let base = ClipStyle.color(track: track, item: item)
         let fade = track.isHidden ? 0.35 : track.isMuted ? 0.5 : 1
         let hovered = item.id == hoveredItemID
-        let selected = item.id == selectedID
+        let primary = item.id == selectedID
+        let selected = primary || selectedIDs.contains(item.id)
         let path = NSBezierPath(roundedRect: rect, xRadius: 5, yRadius: 5)
         NSGraphicsContext.saveGraphicsState()
         path.addClip()
@@ -105,8 +106,8 @@ extension TimelineCanvas {
         }
         path.stroke()
         drawVoiceoverWarning(track: track, item: item, path: path, rect: rect)
-        if hovered || selected, !track.isLocked, rect.width > 16 { drawTrimHandles(rect) }
-        drawKeyframes(item, in: rect, selected: selected, dirtyRect: dirtyRect)
+        if hovered || primary, !track.isLocked, rect.width > 16 { drawTrimHandles(rect) }
+        drawKeyframes(item, in: rect, selected: primary, dirtyRect: dirtyRect)
     }
 
     private func drawTitle(_ item: Item, track: Track, in rect: CGRect, compact: Bool) {

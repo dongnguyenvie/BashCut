@@ -12,9 +12,21 @@ import UniformTypeIdentifiers
 final class ProjectDocument {
     /// Mutated only through `commit`, `commitUndo`/`commitRedo` and `replaceHistory` below.
     private(set) var history = ProjectHistory(project: Project(name: "Untitled"))
+    /// The primary selected item: the one last clicked, which single-item actions and the Inspector use. Setting it
+    /// selects that item alone; `select(_:primary:)` selects several.
     var selectedID: String? {
-        didSet { if selectedID != oldValue { selectionDidChange() } }
+        didSet {
+            guard !settingSelection else { return }
+            let previous = selectedIDs
+            selectedIDs = selectedID.map { [$0] } ?? []
+            if selectedID != oldValue || selectedIDs != previous { selectionDidChange() }
+        }
     }
+    /// Every selected item, in the order they were selected; contains `selectedID`. Set it through `select(_:primary:)`.
+    var selectedIDs: [String] = []
+    @ObservationIgnored var settingSelection = false
+    /// Clips copied or cut from the timeline, pasted at the playhead.
+    @ObservationIgnored var clipboard: TimelineClipboard?
     var selectedTrackID: String? {
         didSet { if selectedTrackID != oldValue { selectionDidChange() } }
     }
@@ -276,7 +288,13 @@ final class ProjectDocument {
     }
     func delete(ripple: Bool = true, author: Author = .user) throws {
         guard let selectedID else { throw ProjectError.invalid("Select a clip to delete") }
-        try commit(.delete(item: selectedID, ripple: ripple), label: ripple ? "Ripple delete" : "Lift clip", author: author)
+        if selectedIDs.count > 1 {
+            try commitSelection(
+                SelectionEdits.delete(selectedIDs, ripple: ripple, in: project),
+                label: ripple ? "Ripple delete clips" : "Lift clips", author: author)
+        } else {
+            try commit(.delete(item: selectedID, ripple: ripple), label: ripple ? "Ripple delete" : "Lift clip", author: author)
+        }
         self.selectedID = nil
     }
     func rebuild(coalescing: Bool = false) {

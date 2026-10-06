@@ -115,25 +115,38 @@ extension TimelineCanvas {
             return
         }
         if let row = layout.row(at: point.y) { document.selectedTrackID = row.track.id }
+        let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         if let (rect, item, track) = hit(at: point) {
-            document.selectedID = item.id
             selectedGap = nil
+            if modifiers.contains(.shift) {
+                document.extendSelection(to: item.id)
+                return
+            }
+            let toggling = modifiers.contains(.command)
+            let inGroup = document.selectedIDs.count > 1 && document.selectedIDs.contains(item.id)
+            if !toggling && !inGroup { document.selectedID = item.id }
             guard !track.isLocked else {
+                if toggling { document.toggleSelection(item.id) }
                 document.message = String(format: String(localized: "%@ is locked"), track.name)
                 return
             }
             let edge = edge(at: point, of: rect)
-            gesture = .clip(ClipDrag(
+            var drag = ClipDrag(
                 item: item, track: track, origin: point, edge: edge,
                 rolling: edge != nil && event.modifierFlags.contains(.option),
-                slipping: edge == nil && event.modifierFlags.contains(.command) && track.kind != "text"))
+                slipping: edge == nil && toggling && track.kind != "text")
+            drag.group = inGroup && edge == nil && !toggling && !track.magnetic
+            drag.clickSelection = toggling ? .toggle : inGroup ? .only : nil
+            gesture = .clip(drag)
             (edge == nil ? NSCursor.closedHand : NSCursor.resizeLeftRight).set()
             ghost.begin(image: edge == nil ? capture(rect) : nil, outlineOnly: edge != nil)
             document.timelineGestureActive = true
             return
         }
-        document.selectedID = nil
+        let keep = modifiers.contains(.command) || modifiers.contains(.shift)
+        if !keep { document.clearSelection() }
         selectedGap = gapHit(at: point)
+        gesture = .marquee(origin: point, base: keep ? document.selectedIDs : [])
         document.preview.seek(min(project.duration, layout.frame(at: point.x)))
     }
 
@@ -149,6 +162,14 @@ extension TimelineCanvas {
             showBadge(Timecode.string(target.frame, fps: project.fps), at: point)
         case .clip(let drag):
             dragClip(drag, to: point, event: event)
+        case .marquee(let origin, let base):
+            let rect = CGRect(
+                x: min(origin.x, point.x), y: min(origin.y, point.y),
+                width: abs(point.x - origin.x), height: abs(point.y - origin.y))
+            // A few points of travel before a click becomes a rectangle, so clicking empty space still just seeks.
+            guard rect.width > 3 || rect.height > 3 else { return }
+            marquee.show(rect)
+            document.select(base + items(in: rect))
         case nil:
             return
         }
@@ -183,6 +204,9 @@ extension TimelineCanvas {
         case .end:
             showBadge(Timecode.duration(target.frame - drag.item.at, fps: project.fps)
                 + "  " + Timecode.delta(target.frame - drag.item.end, fps: project.fps), at: point)
+        case nil where drag.group:
+            let count = String(format: String(localized: "%d clips"), document.selectedIDs.count)
+            showBadge(Timecode.delta(target.frame - drag.item.at, fps: project.fps) + "  " + count, at: point)
         case nil:
             let row = layout.row(at: point.y)?.track.name ?? drag.track.name
             showBadge(Timecode.string(target.frame, fps: project.fps) + "  " + row, at: point)
@@ -193,7 +217,8 @@ extension TimelineCanvas {
     /// layer (trims and rolls).
     private func showGhost(_ drag: ClipDrag, frame: Int, pointer: CGPoint) {
         let home = layout.row(for: drag.track.id)
-        let row = drag.edge == nil ? (layout.row(at: pointer.y) ?? home) : home
+        // A group move keeps every clip on its own layer.
+        let row = drag.edge == nil && !drag.group ? (layout.row(at: pointer.y) ?? home) : home
         guard let row else { return ghost.show(nil) }
         let (start, end): (Int, Int) = switch drag.edge {
         case .start: (min(frame, drag.item.end - 1), drag.item.end)
@@ -226,6 +251,7 @@ extension TimelineCanvas {
             document.timelineGestureActive = false
             showGuides(at: nil, snapped: false)
             ghost.show(nil)
+            marquee.show(nil)
             badge.show(nil, nearX: 0, y: 0, within: visibleRect)
             mouseMoved(with: event)
         }
@@ -235,8 +261,9 @@ extension TimelineCanvas {
             guard document.project.revision == dragRevision else { return gestureDropped() }
             document.apply(.upsertSection(id: section.id, label: section.label, atFrame: frame), label: "Move section")
         case .clip(let drag):
+            guard dragFrame != nil else { return clicked(drag) }
             commitClipDrag(drag, event: event)
-        case .playhead, nil:
+        case .playhead, .marquee, nil:
             return
         }
     }
@@ -246,13 +273,24 @@ extension TimelineCanvas {
         document.message = String(localized: "Timeline changed during the gesture; try again.")
     }
 
+    /// A clip was clicked without dragging.
+    private func clicked(_ drag: ClipDrag) {
+        switch drag.clickSelection {
+        case .toggle: document.toggleSelection(drag.item.id)
+        case .only: document.selectedID = drag.item.id
+        case nil: return
+        }
+    }
+
     private func commitClipDrag(_ drag: ClipDrag, event: NSEvent) {
         guard let frame = dragFrame else { return }
         let point = convert(event.locationInWindow, from: nil)
         let name = drag.slipping ? "slip" : drag.rolling ? "roll" : drag.edge.map { "trim-\($0)" } ?? "move"
         DebugLog.write("timeline", "\(name) \(drag.item.id) from \(drag.track.id)@\(drag.item.at) to frame \(frame)")
         guard document.project.revision == dragRevision else { return gestureDropped() }
-        if drag.slipping, let slipSourceIn {
+        if drag.group {
+            do { try document.moveSelection(by: frame - drag.item.at) } catch { document.message = error.localizedDescription }
+        } else if drag.slipping, let slipSourceIn {
             document.apply(.slip(item: drag.item.id, sourceIn: slipSourceIn), label: "Slip clip")
         } else if drag.rolling, let edge = drag.edge {
             document.apply(.roll(item: drag.item.id, edge: edge, toFrame: frame), label: "Roll cut")
@@ -295,7 +333,9 @@ extension TimelineCanvas {
             document.timelineGestureActive = false
             showGuides(at: nil, snapped: false)
             ghost.show(nil)
+            marquee.show(nil)
             selectedGap = nil
+            document.run(.deselect)
         case (51, _), (117, _):
             if let gap = selectedGap {
                 deleteGap(gap)
@@ -323,5 +363,24 @@ extension TimelineCanvas {
             try document.closeGap(at: gap.range.lowerBound, trackID: gap.trackID)
             selectedGap = nil
         } catch { document.message = error.localizedDescription }
+    }
+}
+
+/// The Edit menu's Copy, Cut, Paste and Select All are nil-targeted: they reach the timeline while it has focus.
+extension TimelineCanvas: NSMenuItemValidation {
+    @objc func copy(_ sender: Any?) { document.run(.copyClips) }
+    @objc func cut(_ sender: Any?) { document.run(.cutClips) }
+    @objc func paste(_ sender: Any?) { document.run(.pasteClips) }
+    override func selectAll(_ sender: Any?) { document.run(.selectAll) }
+
+    func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        let action: UIAction? = switch menuItem.action {
+        case #selector(copy(_:)): .copyClips
+        case #selector(cut(_:)): .cutClips
+        case #selector(paste(_:)): .pasteClips
+        case #selector(selectAll(_:)): .selectAll
+        default: nil
+        }
+        return action.map(document.canPerform) ?? true
     }
 }
