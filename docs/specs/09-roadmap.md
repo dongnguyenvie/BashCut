@@ -125,6 +125,10 @@ Follows [03-architecture.md](03-architecture.md) §5 "Plugin platform roadmap".
 - **Then:** an optional long-lived `session` transport with progress and cancel, needed by Whisper and VieNeu
   wrappers.
 - **Then:** hash-pinned plugin trust and manifest-declared provider options.
+- **Done (plugin API 8, #390):** plugin panels in the left rail, dock tabs and sheets with declarative views; plugins
+  calling app commands from views and actions; `requires`, `uses` + `plugins.invoke`; host feature flags.
+- **Later:** webview views, free drawing, video in views, timeline and viewer overlays, plugin inspector sections,
+  drag and drop from views, updates pushed outside a request; a `views` template in `bashcut-plugins/scripts/new-plugin.py`.
 
 ## Reserved: Apply to DaVinci Resolve (no date)
 

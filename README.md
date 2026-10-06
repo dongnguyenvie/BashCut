@@ -131,6 +131,9 @@ shows in Show Changes and can be undone. See [Automation](docs/guides/automation
 - Out-of-process plugins in any language: capabilities (transcription, voice, beats, loudness, sync, library search
   and generate), actions in menus and context menus, hooks on editor events, options, chat and terminal agents,
   library packs and **agent skills** that teach agents how to use them
+- **Plugin UI**: a plugin can have its own panel in the left rail, tabs in the agent dock and sheets, with views
+  BashCut draws natively from the components the plugin sends (lists, forms, buttons, images, audio previews); plugins
+  can build on each other (generate speech through your voice plugin, require another plugin)
 - A signed [plugin registry](https://github.com/dongnguyenvie/bashcut-plugins) with Browse, one-click install, daily
   update checks, Trust per plugin and dependency setup that never needs Terminal; plugins from a link or a folder
   too. See [Writing plugins](docs/guides/plugins.md)

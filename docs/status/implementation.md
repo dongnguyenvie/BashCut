@@ -275,6 +275,14 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   `.claude/skills` and `.agents/skills` as `<plugin-id>--<name>` (ledger `.bashcut/plugin-skills.json`), into the
   Codex workspace and terminal plugins' `skillsFolder`, and shown in Knowledge › Skills with Copy. Example:
   `Fixtures/plugins/example.skills`.
+- Plugin API 8 (#390): `contributes.container` (rail icon, panel with Tools/Skills/Requires/Uses drawn from the
+  manifest) and `contributes.views` with `location` panel, dock or sheet (`PluginViewTree`, `PluginViewModel`,
+  `PluginPanelView`): 18 native components, lazy column, rendered only while visible, one request per view with
+  coalesced changes, streamed renders at most every 60 ms, answers parsed off the main actor. View and session
+  action requests get the host channel (`PluginCommandSession`, author `plugin`). `requires` with semver ranges
+  (`needs-plugin`, registry install offers requirements), `uses` + `plugins.invoke`, `features`. Commands
+  `plugins views|view|view-event|show-view|invoke`. Session lines are read with `JSONValue(parsing:)`. Example:
+  `bashcut-plugins/samples/views-example`; perf: `PluginViewPerfTests`, `PluginViewSessionPerfTests`.
 - Plugin actions with `confirm` wait in their job for a non-blocking `plugin-confirm` sheet (agents can only cancel)
   instead of a modal alert that stopped command handling.
 - Catalog refresh performance (#103): discovery keeps manifests in a `PluginCatalogCache` and reads a plugin again
