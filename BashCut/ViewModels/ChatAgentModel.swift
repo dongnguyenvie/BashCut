@@ -107,15 +107,17 @@ enum ChatEntryKind: String, Codable { case user, assistant, tool, notice, error 
         save()
     }
 
-    /// Asks the provider whether it is ready (key set, model known).
-    func refreshStatus() async {
+    /// Asks the provider whether it is ready (key set, model known), and with `commands` also for its slash commands;
+    /// the two requests run together. `chat status` skips the commands.
+    func refreshStatus(commands: Bool = true) async {
         guard isAvailable, let resolved = try? await resolve() else {
             status = nil
             return
         }
+        async let loaded: Void = commands ? loadPluginCommands(resolved) : ()
         status = try? await document.plugins.service.chat(
             ["op": .string("status"), "conversation": .string(conversation)], using: resolved, host: nil)
-        await loadPluginCommands(resolved)
+        await loaded
     }
 
     /// The open project changed: stop, and show that project's conversation.

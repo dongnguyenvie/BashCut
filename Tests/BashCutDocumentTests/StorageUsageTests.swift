@@ -90,4 +90,23 @@ struct StorageUsageTests {
         #expect(shared.map(\.kind) == [.sharedData, .sharedCache])
         #expect(shared.allSatisfy { $0.pluginID == nil && $0.clearable && $0.bytes >= 50_000 })
     }
+
+    @Test("Sizes count nested and hidden files, skip links and are 0 for a missing path")
+    func sizes() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("storage-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let nested = root.appendingPathComponent("a/b", isDirectory: true)
+        try FileManager.default.createDirectory(at: nested, withIntermediateDirectories: true)
+        try Data(count: 8_192).write(to: nested.appendingPathComponent("one.bin"))
+        try Data(count: 8_192).write(to: root.appendingPathComponent(".hidden"))
+        let outside = FileManager.default.temporaryDirectory.appendingPathComponent("storage-\(UUID().uuidString).bin")
+        defer { try? FileManager.default.removeItem(at: outside) }
+        try Data(count: 1_000_000).write(to: outside)
+        try FileManager.default.createSymbolicLink(at: root.appendingPathComponent("link"), withDestinationURL: outside)
+
+        let total = StorageUsage.size(of: root)
+        #expect(total >= 16_384 && total < 1_000_000)
+        #expect(StorageUsage.size(of: nested.appendingPathComponent("one.bin")) >= 8_192)
+        #expect(StorageUsage.size(of: root.appendingPathComponent("missing")) == 0)
+    }
 }

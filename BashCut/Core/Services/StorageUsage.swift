@@ -115,19 +115,24 @@ public enum StorageUsage {
             .sorted { $0.bytes != $1.bytes ? $0.bytes > $1.bytes : $0.pluginID < $1.pluginID }
     }
 
-    /// Allocated bytes of a file or folder (links not followed); 0 when it does not exist.
+    /// Allocated bytes of a file or folder (links not followed); 0 when it does not exist. It walks with `fts`, like
+    /// `du`: plugin runtimes hold tens of thousands of files, and a `FileManager` enumerator with resource values took
+    /// over a second for them (#349).
     public static func size(of url: URL) -> Int64 {
-        let keys: Set<URLResourceKey> = [.totalFileAllocatedSizeKey, .isSymbolicLinkKey, .isDirectoryKey]
-        guard let values = try? url.resourceValues(forKeys: keys) else { return 0 }
-        if values.isDirectory != true { return Int64(values.totalFileAllocatedSize ?? 0) }
-        guard let enumerator = FileManager.default.enumerator(at: url, includingPropertiesForKeys: Array(keys)) else { return 0 }
-        var total: Int64 = 0
-        for case let item as URL in enumerator {
-            let itemValues = try? item.resourceValues(forKeys: keys)
-            if itemValues?.isSymbolicLink == true { continue }
-            total += Int64(itemValues?.totalFileAllocatedSize ?? 0)
+        url.withUnsafeFileSystemRepresentation { path -> Int64 in
+            guard let path else { return 0 }
+            let root = UnsafeMutablePointer(mutating: path)
+            var paths: [UnsafeMutablePointer<CChar>?] = [root, nil]
+            guard let stream = fts_open(&paths, FTS_PHYSICAL | FTS_NOCHDIR, nil) else { return 0 }
+            defer { fts_close(stream) }
+            var total: Int64 = 0
+            while let entry = fts_read(stream) {
+                // Files and their allocated blocks; links are not followed and not counted, like before.
+                guard Int32(entry.pointee.fts_info) == FTS_F, let stat = entry.pointee.fts_statp else { continue }
+                total += Int64(stat.pointee.st_blocks) * 512
+            }
+            return total
         }
-        return total
     }
 
     /// Deletes an entry's folder contents (the folder itself is recreated empty when it is a root BashCut expects).

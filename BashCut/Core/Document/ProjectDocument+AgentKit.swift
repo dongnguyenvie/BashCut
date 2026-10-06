@@ -63,16 +63,37 @@ extension ProjectDocument {
             variables: environment)
     }
 
-    /// Whether Claude Code and Codex outside BashCut have the kit.
-    func agentSetupStatuses() async -> [AgentKitSetup.Target: AgentKitSetup.Status] {
+    /// Whether Claude Code and Codex outside BashCut have the kit. Each check runs their CLIs, so both run at once and
+    /// the answer is kept for `setupStatusLifetime` (#349): agents call `agent status` often. A different kit, search
+    /// path or configuration folder asks again, as do `fresh` (Settings › Agents) and setting an agent up.
+    func agentSetupStatuses(fresh: Bool = false) async -> [AgentKitSetup.Target: AgentKitSetup.Status] {
         let kit = try? installedAgentKit()
         let environment = await setupEnvironment()
-        var statuses: [AgentKitSetup.Target: AgentKitSetup.Status] = [:]
-        for target in AgentKitSetup.Target.allCases {
-            statuses[target] = await AgentKitSetup.status(target, kit: kit, environment: environment)
+        let key = [kit?.root.path ?? "", kit?.version ?? "", environment.path,
+                   environment.variables[AgentConfigFolders.claudeVariable] ?? "",
+                   environment.variables[AgentConfigFolders.codexVariable] ?? ""].joined(separator: "\n")
+        if !fresh, let cached = Self.setupStatusCache, cached.key == key,
+            Date().timeIntervalSince(cached.date) < Self.setupStatusLifetime
+        {
+            return cached.statuses
         }
+        let statuses = await withTaskGroup(of: (AgentKitSetup.Target, AgentKitSetup.Status).self) { group in
+            for target in AgentKitSetup.Target.allCases {
+                group.addTask { (target, await AgentKitSetup.status(target, kit: kit, environment: environment)) }
+            }
+            var statuses: [AgentKitSetup.Target: AgentKitSetup.Status] = [:]
+            for await (target, status) in group { statuses[target] = status }
+            return statuses
+        }
+        Self.setupStatusCache = (key, Date(), statuses)
         return statuses
     }
+
+    /// The last `agentSetupStatuses` answer and what it was for.
+    @MainActor private static var setupStatusCache: (
+        key: String, date: Date, statuses: [AgentKitSetup.Target: AgentKitSetup.Status]
+    )?
+    static let setupStatusLifetime: TimeInterval = 30
 
     func agentStatus() async -> JSONValue {
         let kit = try? installedAgentKit()
@@ -107,6 +128,8 @@ extension ProjectDocument {
     /// Sets up (or with `remove`, undoes) one target: `in-app` turns loading in BashCut's tabs on or off, `claude`
     /// and `codex` change those agents' own configuration. Returns what was done.
     func setUpAgent(_ target: String, remove: Bool) async throws -> String {
+        Self.setupStatusCache = nil
+        defer { Self.setupStatusCache = nil }
         if target == "in-app" {
             settings.loadAgentKit = !remove
             return remove ? "BashCut's Claude and Codex tabs start without the kit"

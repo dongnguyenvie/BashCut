@@ -202,7 +202,7 @@ struct AgentSettingsView: View {
     private func load() async {
         kit = try? document.installedAgentKit()
         folders = await document.agentConfigFolders()
-        statuses = await document.agentSetupStatuses()
+        statuses = await document.agentSetupStatuses(fresh: true)
         document.agents.updateKitPrompt(kit: kit, statuses: statuses)
     }
 }
