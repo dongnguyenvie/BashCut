@@ -8,15 +8,17 @@ extension ProjectDocument {
     /// CLI and MCP. `--plugin` picks the agent; by default the one whose tab is shown, else the first ready one.
     func registerChatAgentCommands() {
         handle("chat.status") { document, _, _ in
-            var agents: [JSONValue] = []
-            for agent in document.chatAgents.available {
-                await agent.refreshStatus()
-                agents.append(.object([
+            // Each agent's plugin answers on its own, so ask them all at once.
+            let available = document.chatAgents.available
+            await withTaskGroup(of: Void.self) { group in
+                for agent in available { group.addTask { await agent.refreshStatus(commands: false) } }
+            }
+            return .object(["agents": .array(available.map { agent in
+                .object([
                     "plugin": .string(agent.pluginID), "name": .string(agent.title),
                     "running": .bool(agent.running), "status": agent.status ?? .null,
-                ]))
-            }
-            return .object(["agents": .array(agents)])
+                ])
+            })])
         }
         handle("chat.send") { document, arguments, _ in
             let agent = try document.chatAgents.target(arguments.optionalString("plugin"))

@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+- **Faster status commands (#349).** `storage get` measures folders the way `du` does (about 0.1 s instead of
+  1.8 s with large plugin runtimes). `agent status` checks Claude Code and Codex at the same time and keeps the
+  answer for 30 seconds; a different kit, search path or configuration folder, setting an agent up and Settings ›
+  Agents check again. `chat status` asks every chat agent at once and no longer reloads their slash commands.
 - **Director is now AI Editor.** The chat-agent plugin's name in docs and the command catalog; the plugin itself was
   renamed in `bashcut-plugins` (ID still `bashcut.director`). Agent instructions now say what a `[Scope]` block or
   `scope` in `context get` means: change only those items, and ask before changing anything else.
