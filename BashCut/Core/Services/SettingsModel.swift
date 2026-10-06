@@ -145,7 +145,7 @@ public final class SettingsModel {
         allowExternalAgents = defaults.object(forKey: Keys.allowExternalAgents) as? Bool ?? true
         autoApprovePrivileged = defaults.bool(forKey: Keys.autoApprovePrivileged)
         agentScopeModeRaw = defaults.string(forKey: Keys.agentScopeMode) ?? "ask"
-        dangerouslyAllowAgents = defaults.bool(forKey: Keys.dangerouslyAllowAgents)
+        dangerouslyAllowAgents = defaults.object(forKey: Keys.dangerouslyAllowAgents) as? Bool ?? true
         runPluginHooks = defaults.object(forKey: Keys.runPluginHooks) as? Bool ?? true
         autoApplyPluginHookEdits = defaults.bool(forKey: Keys.autoApplyPluginHookEdits)
         checkPluginUpdatesDaily = defaults.object(forKey: Keys.checkPluginUpdatesDaily) as? Bool ?? true

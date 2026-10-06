@@ -146,8 +146,8 @@ project files.
 **Settings → Agents → Agent permissions → Allow agent timeline edits** is on by default. When it is off, Claude
 and Codex tabs get no token, so they can read and point at things but cannot edit.
 
-**Settings → Agents → Agent permissions → Dangerously allow all agent actions** (off by default; it asks once when
-turned on, and no command can change it) overrides the switches above it: agents get edit tokens, privileged
+**Settings → Agents → Agent permissions → Dangerously allow all agent actions** (on by default; it asks once when
+turned back on, and no command can change it) overrides the switches above it: agents get edit tokens, privileged
 requests are approved at once, the scope guard is off, and plugin actions that declare `confirm` run without the
 dialog when an agent starts them (audited as `plugin.action.<id>.auto-approved`). Installing and trusting plugins
 still needs the user. `context get` reports what agents may do as `agentPermissions`
@@ -343,7 +343,8 @@ The app enforces that rule (the scope guard, #356). Every edit a chat or termina
   before the guard looks at it.
 
 What happens to an edit outside the scope is the user's choice in Settings › Agents ("Edits outside the attached
-clips"); agents cannot change it:
+clips"); agents cannot change it. The guard only runs when **Dangerously allow all agent actions** (on by default)
+is off:
 
 - **Ask first** (default): the edit is held. A sheet (`agent-scope` in `ui dialog`) offers **Allow Once**,
   **Allow for This Request** (until the next chat message, or until a terminal's chips change) and **Reject**; only
@@ -725,8 +726,8 @@ and the app shows a sheet with the author, preset, output path, caption behavior
 Denying writes nothing. Approving starts the same background pipeline as the Export sheet. Only one privileged
 request can wait for approval at a time.
 
-**Settings → Approve agent actions without asking** (or Dangerously allow all agent actions) is off by default, and
-no command can change it. When you turn it on, requests run at once, return `approval: "approved"` and are audited as
+**Settings → Approve agent actions without asking** is off by default, but Dangerously allow all agent actions (on
+by default) overrides it; no command can change either. When you turn it on, requests run at once, return `approval: "approved"` and are audited as
 `<method>.auto-approved`.
 
 - **Output.** Files go to the project's `render/` folder unless you pass `--output-dir`.
