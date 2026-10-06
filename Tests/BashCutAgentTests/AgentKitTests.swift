@@ -12,12 +12,12 @@ struct AgentKitTests {
 
     /// A kit with `skills` at `root`.
     @discardableResult
-    private func makeKit(at root: URL, version: String = "0.0.1", skills: [String] = ["bashcut-one", "bashcut-two"])
-        throws -> URL
-    {
+    private func makeKit(
+        at root: URL, name: String = "bashcut", version: String = "0.0.1", skills: [String] = ["bashcut-one", "bashcut-two"]
+    ) throws -> URL {
         let manager = FileManager.default
         try manager.createDirectory(at: root.appendingPathComponent(".claude-plugin"), withIntermediateDirectories: true)
-        try Data(#"{"name":"bashcut","version":"\#(version)"}"#.utf8)
+        try Data(#"{"name":"\#(name)","version":"\#(version)"}"#.utf8)
             .write(to: root.appendingPathComponent(".claude-plugin/plugin.json"))
         try Data("{}".utf8).write(to: root.appendingPathComponent(".mcp.json"))
         for name in skills {
@@ -164,6 +164,41 @@ struct AgentKitTests {
         #expect(AgentKitInstall.linkedSkills(of: kit, in: skills) == ["bashcut-one"])
         #expect(AgentKitInstall.unlinkSkills(named: kit.skills, in: skills) == ["bashcut-one"])
         #expect(FileManager.default.fileExists(atPath: skills.appendingPathComponent("bashcut-two").path))
+    }
+
+    @Test("A kit named bc links skills as bc-<skill> and replaces links left by the old bashcut kit")
+    func shortNames() throws {
+        let root = try temporaryFolder()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let manager = FileManager.default
+        let old = try #require(AgentKit(root: makeKit(at: root.appendingPathComponent("old")), source: .downloaded))
+        let kit = try #require(
+            AgentKit(root: makeKit(at: root.appendingPathComponent("kit"), name: "bc", skills: ["one", "two"]), source: .folder))
+        #expect(kit.name == "bc" && kit.claudePluginID == "bc@bashcut-agent-kit")
+        #expect(kit.linkName("one") == "bc-one" && old.linkName("bashcut-one") == "bashcut-one")
+        #expect(AgentKitSetup.claudePlugin(for: old) == AgentKitSetup.legacyClaudePlugin)
+
+        let skills = root.appendingPathComponent("home/.agents/skills", isDirectory: true)
+        try AgentKitInstall.linkSkills(of: old, into: skills)
+        try manager.createSymbolicLink(
+            at: skills.appendingPathComponent("bashcut-gone"), withDestinationURL: root.appendingPathComponent("missing"))
+        let mine = root.appendingPathComponent("mine", isDirectory: true)
+        try manager.createDirectory(at: mine, withIntermediateDirectories: true)
+        try manager.createSymbolicLink(at: skills.appendingPathComponent("bashcut-mine"), withDestinationURL: mine)
+
+        #expect(try AgentKitInstall.linkSkills(of: kit, into: skills) == ["bc-one", "bc-two"])
+        #expect(AgentKitInstall.linkedSkills(of: kit, in: skills) == ["bc-one", "bc-two"])
+        #expect(try manager.contentsOfDirectory(atPath: skills.path).sorted() == ["bashcut-mine", "bc-one", "bc-two"])
+
+        let plugin = try AgentKitInstall(support: root).claudePlugin(for: kit)
+        let manifest = try JSONSerialization.jsonObject(
+            with: Data(contentsOf: plugin.appendingPathComponent(".claude-plugin/plugin.json"))) as? [String: Any]
+        #expect(manifest?["name"] as? String == "bc")
+
+        let owned = root.appendingPathComponent("tab/.agents/skills", isDirectory: true)
+        try AgentKitInstall.syncSkills(of: old, into: owned)
+        try AgentKitInstall.syncSkills(of: kit, into: owned)
+        #expect(try manager.contentsOfDirectory(atPath: owned.path).sorted() == ["bc-one", "bc-two"])
     }
 
     @Test("Agent configuration folders come from Settings, then the environment, then the login shell")
