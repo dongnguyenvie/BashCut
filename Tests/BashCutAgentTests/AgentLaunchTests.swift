@@ -79,6 +79,37 @@ struct AgentLaunchTests {
         #expect(discovery.latest(provider: ShellAgentProvider(), project: project, workspace: workspace) == nil)
     }
 
+    @Test("Session discovery reads only new or changed files on the next scan")
+    func sessionDiscoveryCache() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let claudeRoot = root.appendingPathComponent("claude", isDirectory: true)
+        let workspace = root.appendingPathComponent("workspace", isDirectory: true)
+        let project = root.appendingPathComponent("films/trip/project.bashcut.json")
+        try FileManager.default.createDirectory(at: claudeRoot, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let other = "6f1c1f0e-5d3a-4c55-9d5b-0a4b8a3c2e11"
+        let matching = "9b7e3c2a-1d4f-4e6a-8b9c-2f3e4d5a6b7c"
+        try jsonLines([["type": "user", "sessionId": other, "cwd": "/somewhere/else"]])
+            .write(to: claudeRoot.appendingPathComponent(other + ".jsonl"))
+        let cache = AgentSessionDiscovery.Cache()
+        let discovery = AgentSessionDiscovery(roots: [.claude: claudeRoot], cache: cache)
+        let provider = ClaudeAgentProvider()
+
+        #expect(discovery.latest(provider: provider, project: project, workspace: workspace) == nil)
+        #expect(cache.reads == 1)
+        #expect(discovery.latest(provider: provider, project: project, workspace: workspace) == nil)
+        #expect(cache.reads == 1)
+
+        let file = claudeRoot.appendingPathComponent(matching + ".jsonl")
+        try jsonLines([["type": "user", "sessionId": matching, "text": "Open " + project.path]]).write(to: file)
+        try FileManager.default.setAttributes([.modificationDate: Date().addingTimeInterval(60)], ofItemAtPath: file.path)
+        #expect(discovery.latest(provider: provider, project: project, workspace: workspace) == matching)
+        #expect(cache.reads == 2)
+        #expect(discovery.latest(provider: provider, project: project, workspace: workspace) == matching)
+        #expect(cache.reads == 2)
+    }
+
     @Test("Codex uses the low-cost model and a socket-scoped permission profile")
     func codexLaunchPolicy() throws {
         let root = FileManager.default.temporaryDirectory

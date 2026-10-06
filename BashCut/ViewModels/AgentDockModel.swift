@@ -329,12 +329,19 @@ extension AgentDockModel {
         let discovery = sessionDiscovery
         let plugins = terminalPlugins
         sessionDiscoveryTask = Task {
-            var found = await Task.detached(priority: .utility) {
+            let started = Date()
+            let reads = AgentSessionDiscovery.Cache.shared.reads
+            let scan = Task.detached(priority: .utility) {
                 AgentProviders.agents.compactMap { provider in
                     discovery.latest(provider: provider, project: project, workspace: workspace)
                         .map { (provider: provider.id, title: provider.title, id: $0) }
                 }
-            }.value
+            }
+            // Closing or switching the project cancels this task; the scan stops with it.
+            var found = await withTaskCancellationHandler { await scan.value } onCancel: { scan.cancel() }
+            DebugLog.write(
+                "agents", "session scan read \(AgentSessionDiscovery.Cache.shared.reads - reads) file(s) in "
+                    + "\(Int(Date().timeIntervalSince(started) * 1000)) ms")
             for plugin in plugins {
                 if let id = await pluginSession(plugin, project: project, workspace: workspace, notBefore: nil) {
                     found.append((AgentProviderID(rawValue: plugin.id), plugin.manifest.displayName, id))
