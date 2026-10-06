@@ -31,7 +31,7 @@ struct ExternalChangesView: View {
                             Text(trackDescription(item)).font(.caption).foregroundStyle(.secondary)
                         }
                         if !item.changedKeys.isEmpty {
-                            Text("Changed: " + item.changedKeys.joined(separator: ", "))
+                            Text("Changed: \(item.changedKeys.joined(separator: ", "))")
                                 .font(.caption.monospaced()).textSelection(.enabled)
                         }
                         HStack {
@@ -55,10 +55,10 @@ struct ExternalChangesView: View {
     private var summary: some View {
         VStack(alignment: .leading, spacing: 4) {
             if !changes.projectKeys.isEmpty {
-                Text("Project: " + changes.projectKeys.joined(separator: ", "))
+                Text("Project: \(changes.projectKeys.joined(separator: ", "))")
             }
-            if !changes.mediaIDs.isEmpty { Text("Media: " + changes.mediaIDs.joined(separator: ", ")) }
-            if !changes.trackIDs.isEmpty { Text("Tracks: " + changes.trackIDs.joined(separator: ", ")) }
+            if !changes.mediaIDs.isEmpty { Text("Media: \(changes.mediaIDs.joined(separator: ", "))") }
+            if !changes.trackIDs.isEmpty { Text("Tracks: \(changes.trackIDs.joined(separator: ", "))") }
             Text("Timeline items: \(changes.items.count)")
         }.font(.caption.monospaced()).textSelection(.enabled)
     }

@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+- **Translate joined labels.** Labels built with `+` (`"Changed: " + keys`, plugin **Actions**, **Hooks**,
+  **Dependencies**, the install sheet's **Capabilities**/**Adds**/**Listens to**, the external-changes summary, and
+  the two long plugin notes) were plain strings, so they stayed in English even where the catalog had a
+  translation. They are now interpolated localized keys with Vietnamese text.
+- A missing plugin dependency that has no install recipe now shows **Not available on this Mac** instead of
+  **Installed during setup** (`where installable` applied only to the unchecked case).
+
 - **One source for UI translations.** Release builds read `Localizable.xcstrings`, but `scripts/run.sh` copied
   older `en.lproj`/`vi.lproj` `Localizable.strings` files, so the two drifted: dev builds showed new screens (Ask
   agent, Knowledge) in English, and release builds missed 106 Vietnamese strings that only the old files had
