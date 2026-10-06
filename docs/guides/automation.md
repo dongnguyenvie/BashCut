@@ -413,7 +413,7 @@ Items come from four scopes; when the same ID is in several, the first wins, and
 |---|---|---|
 | `project` | `.bashcut/library/library.json`, `usage.json` and `files/` in the project folder; travels with the project | yes |
 | `user` | `~/Library/Application Support/BashCut/Library` (this Mac) | yes; agents need approval |
-| `plugin` | Shipped by a plugin | no |
+| `plugin` | A pack in a plugin's `contributes.library` (#81), while the plugin is installed, trusted and on | no |
 | `built-in` | Shipped with BashCut | no |
 
 Built-in packs: **Text styles** (`bold-outline`, `cinematic-serif`, `keyword-sticker`, `place-card`, `hook-title`,
@@ -545,6 +545,26 @@ project or on this Mac. The Filters panel also lists the style kits and the proj
     at the playhead on click (context menu **Place at Playhead**), takes dropped or chosen images and alpha movies
     (Add…), and its item sheet (Duplicate & Edit…, Edit…, Save selection as sticker) sets size, position and
     animation.
+- Plugin items (#81) come from the packs plugins ship (`contributes.library`, plugin API 6; see the
+  [plugin guide](plugins.md#library-packs)). They list in the `plugin` scope with `createdBy` `{by: plugin, plugin,
+  pluginName, pluginVersion}` and paths under the plugin folder (`library get` gives `fileURL`), are read-only (`library
+  update <id> --as <new-id>` saves an editable copy with the files) and go away when the plugin is removed, turned off
+  or changed and not trusted again. `library place` and `library apply` copy any file they use into the project first
+  (`music/`, `sfx/`, `stickers/`, `luts/`), even for a plugin installed in the project's `.bashcut/plugins`, so the
+  timeline never points into a plugin. An item whose ID is built in or came from an earlier plugin is left out and
+  `plugins list` reports it under `diagnostics`.
+- `bashcut library search "<text>" --kind audio [--provider <plugin or provider id>] [--limit 12] [--page 1]` and
+  `bashcut library generate "<prompt>" --kind sticker [--provider P] [--limit 4] [--params '{"seconds":30}']` ask a plugin
+  that provides `library.search` or `library.generate` (Freesound or Giphy search, AI music or stickers…) for
+  candidates. Each runs as a job; `jobs status --job J` gives `{kind, provider: {plugin, provider, version,
+  capability}, directory, candidates: [{index, id, name, kind, tags, params, source, license, fileURL, previewURL,
+  …}]}`, with the files in a request folder under `~/Library/Caches/BashCut/LibraryCandidates` (removed after a day).
+  Nothing is saved until `library add --from-result <job>:<index> [--scope user] [--name] [--tags] [--id]` copies one
+  in with its files, source, license and the provider as `provenance` (`createdBy.plugin` names the plugin), or the
+  search itself is given `--save <index> [--scope project|user]` (a failed save is reported as `saveError`, and the
+  candidates stay). Agents saving to the user scope wait for approval as with `library add`. A named `--provider`
+  must be available and serve the kind; without one, the highest-priority provider that serves it is used. Network
+  use is the plugin's own; BashCut only starts the plugin.
 - `bashcut library stats [--panel]` reports usage, the saved items nobody used, and duplicates (same kind, params
   and file), to prune or merge. Saved items compare the `fileSHA256` stored when their file was copied in.
 - `bashcut library export-pack --pack Food --output ~/Food` writes a pack folder (`pack.json` and `files/`);
@@ -555,8 +575,11 @@ Agents' `add`, `save-selection`, `update`, `analyze`, `remove` and `import-pack`
 the user's approval, like exports; the project scope follows the normal edit rules.
 
 Each panel (Audio, Text, Stickers, Effects, Transitions, Filters) shows its items with search, pack, tag and scope
-filters, badges for agent-made and project or Mac items, **Add…** (and drops) for files and packs, **Save selection
-as…**, and a context menu: Duplicate & Edit (`update --as`), Rename (`update --name`), Move (`move`), Show Source &
+filters, badges for agent-made and project or Mac items, plugin packs grouped under the plugin's name, **Add…** (and
+drops) for files and packs, **Save selection as…**, **Search…** and **Generate…** when a plugin provides them for the
+panel's kinds (the sheet runs `library search`/`library generate`, previews each candidate and saves it with **Save**;
+`ui open library-search|library-generate` opens it for the open panel and `ui respond run|save-<index>|close` answers
+it), and a context menu: Duplicate & Edit (`update --as`), Rename (`update --name`), Move (`move`), Show Source &
 License (`get`), Show in Finder and Remove (`remove`). `ui view --library-query X --library-pack P --library-tag T
 --library-scope user` sets the open panel's search and filters (`libraryFilter` in the view state); the item sheet
 is the `library-item` dialog (`ui respond save|cancel`).

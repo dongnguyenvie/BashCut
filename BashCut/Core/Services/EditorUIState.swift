@@ -1,3 +1,5 @@
+import BashCutPlugin
+import BashCutPlugins
 import BashCutProject
 import Foundation
 import Observation
@@ -34,6 +36,8 @@ public final class EditorUIState {
     public var libraryEditor: LibraryEditorRequest?
     /// The Effects panel's Apply with… sheet: an effect recipe's parameters and the part of the clip (#76).
     public var effectApply: EffectApplyRequest?
+    /// A library panel's Search… or Generate… sheet: a plugin's candidates to preview and save (#81).
+    public var librarySearch: LibrarySearchRequest?
     /// One of `UIAction.inspectorTabs`.
     public var inspectorTab = "video"
     /// One of `UIAction.settingsSections`: the section the Settings sheet shows.
@@ -214,6 +218,40 @@ public struct LibraryEditorRequest: Identifiable {
         self.look = look
         self.keepsLUT = keepsLUT
     }
+}
+
+/// A library panel's Search… or Generate… sheet (#81): what to ask a `library.search` or `library.generate` provider
+/// for, and the candidates it returned. `library search`, `library generate` and `library add --from-result` do the
+/// same.
+public struct LibrarySearchRequest: Identifiable {
+    public let id = UUID()
+    /// `library.search` or `library.generate`.
+    public var capability: String
+    /// The kinds the panel shows; `kind` is one of them.
+    public var kinds: [LibraryKind]
+    public var kind: LibraryKind
+    /// Provider ID; nil uses the first one that serves the kind.
+    public var provider: String?
+    /// The search text or prompt.
+    public var text = ""
+    /// Where Save puts a candidate.
+    public var scope: LibraryScope
+    /// The running or last job.
+    public var jobID: String?
+    public var running = false
+    public var candidates: [LibraryCandidate] = []
+    public var error: String?
+    /// Indexes of the candidates saved from this sheet.
+    public var saved: Set<Int> = []
+
+    public init(capability: String, kinds: [LibraryKind], scope: LibraryScope) {
+        self.capability = capability
+        self.kinds = kinds
+        kind = kinds.first ?? .audio
+        self.scope = scope
+    }
+
+    public var isGenerate: Bool { capability == PluginAPI.libraryGenerate }
 }
 
 /// What the Effects panel's Apply with… sheet applies (#76): an effect preset with parameter values, on the whole

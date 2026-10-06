@@ -1,0 +1,37 @@
+#!/usr/bin/env python3
+"""Example BashCut plugin (plugin API 6): a library pack and an offline `library.search` provider.
+
+`contributes.library` ships the Party pack (packs/party/pack.json); BashCut lists its items in the plugin scope.
+`library.search` answers sticker searches from a small built-in emoji table, so it needs no network. A real
+provider would download files into params["outputDirectory"] and return their paths with source and license.
+"""
+import json
+import sys
+
+EMOJI = {
+    "cat": "🐱", "dog": "🐶", "fire": "🔥", "heart": "❤️", "rain": "🌧️", "star": "⭐", "sun": "☀️",
+    "party": "🥳", "music": "🎵", "coffee": "☕", "rocket": "🚀", "pizza": "🍕",
+}
+
+
+def search(params):
+    query, limit = params.get("query", "").lower(), params.get("limit", 12)
+    found = [(name, emoji) for name, emoji in EMOJI.items() if query in name or name in query]
+    return {"items": [
+        {"id": f"emoji-{name}", "name": name.capitalize(), "tags": [name], "params": {"emoji": emoji},
+         "source": "example.library built-in table", "license": "CC0"}
+        for name, emoji in found[:limit]
+    ]}
+
+
+def handle(request):
+    try:
+        if request.get("method") == "library.search":
+            return {"id": request["id"], "result": search(request.get("params", {}))}
+        return {"id": request["id"], "error": {"code": "unknown_method", "message": str(request.get("method"))}}
+    except Exception as error:  # noqa: BLE001 - report every failure to the app
+        return {"id": request["id"], "error": {"code": "failed", "message": str(error)}}
+
+
+if __name__ == "__main__":
+    sys.stdout.write(json.dumps(handle(json.loads(sys.stdin.readline()))) + "\n")

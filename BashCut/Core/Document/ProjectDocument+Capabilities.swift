@@ -355,16 +355,18 @@ extension ProjectDocument {
                     "actions": .array(plugin.manifest.actions.map { .string($0.id) }),
                     "hooks": .array(plugin.manifest.hooks.map { .string($0.event) }),
                     "options": .array((plugin.manifest.options ?? []).map { .string($0.id) }),
+                    "library": .array(plugin.manifest.libraryPacks.map { .string($0.path) }),
                     "providers": .array((plugin.manifest.providers ?? []).map { provider in
                         .object([
                             "id": .string(provider.id), "capability": .string(provider.capability),
                             "name": .string(provider.name), "priority": .integer(provider.priority),
+                            "kinds": provider.kinds.map { .array($0.map(JSONValue.string)) } ?? .null,
                         ])
                     }),
                 ])
             }),
             "preferences": project["providers"] ?? .object([:]),
-            "diagnostics": .array(result.diagnostics.map(JSONValue.string)),
+            "diagnostics": .array((result.diagnostics + plugins.library.problems).map(JSONValue.string)),
             "running": .array(plugins.calling.sorted().map(JSONValue.string)),
             "hostApiVersion": .integer(PluginAPI.current),
         ])

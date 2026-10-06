@@ -95,4 +95,41 @@ struct LibraryCommandTests {
         let list = try CommandLineParser.parse(["library", "list", "--panel", "stickers", "--pack", "Arrows"])
         #expect(list.params == ["panel": .string("stickers"), "pack": .string("Arrows")])
     }
+
+    @Test("Plugin library commands (#81): search and generate run as jobs, add saves a candidate, the sheets open")
+    @MainActor func pluginLibraryCommands() throws {
+        let search = try CommandLineParser.parse([
+            "library", "search", "rain on a window", "--kind", "audio", "--provider", "example.sounds", "--limit", "5",
+            "--page", "2", "--save", "0", "--scope", "user",
+        ])
+        #expect(search.spec.name == "library.search" && search.spec.execution == .job)
+        #expect(search.params == [
+            "query": .string("rain on a window"), "kind": .string("audio"), "provider": .string("example.sounds"),
+            "limit": .integer(5), "page": .integer(2), "save": .integer(0), "scope": .string("user"),
+        ])
+        #expect(throws: (any Error).self) { try CommandLineParser.parse(["library", "search", "rain", "--kind", "audio", "--limit", "99"]) }
+        let searchSchema = try #require(CommandCatalog.spec(named: "library.search")).inputSchema.object
+        #expect(searchSchema["required"] == .array([.string("query"), .string("kind")]))
+
+        let generate = try CommandLineParser.parse([
+            "library", "generate", "calm piano", "--kind", "audio", "--params", #"{"seconds":30}"#,
+        ])
+        #expect(generate.spec.name == "library.generate" && generate.spec.execution == .job)
+        #expect(generate.params["prompt"] == .string("calm piano"))
+        #expect(generate.params["params"]?.object["seconds"] == .integer(30))
+        #expect(try #require(CommandCatalog.spec(named: "library.generate")).parameters.first?.sensitive == true)
+
+        // A candidate is saved with library add; kind and name come from it.
+        let add = try CommandLineParser.parse(["library", "add", "--from-result", "job-1:2", "--scope", "user", "--tags", "rain"])
+        #expect(add.params == ["fromResult": .string("job-1:2"), "scope": .string("user"), "tags": .string("rain")])
+        let addSchema = try #require(CommandCatalog.spec(named: "library.add")).inputSchema.object
+        #expect(addSchema["required"] == nil || addSchema["required"] == .array([]))
+
+        for method in ["library.search", "library.generate"] {
+            #expect(ChatCommandSession.allowedMethods.contains(method))
+        }
+        #expect(CommandCatalog.dialogs.contains("library-search") && CommandCatalog.dialogs.contains("library-generate"))
+        let open = try CommandLineParser.parse(["ui", "open", "library-search"])
+        #expect(open.params["dialog"] == .string("library-search"))
+    }
 }

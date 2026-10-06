@@ -43,6 +43,23 @@ extension CommandCatalog {
         CommandParameter("license", .string, "License or terms of use", cli: .option("license")),
     ]
 
+    /// The provider, count and saving options of library search and library generate (#81).
+    private static func libraryProviderParameters(limit: Int) -> [CommandParameter] {
+        [
+            CommandParameter(
+                "provider", .string, "Plugin or provider ID; the first available provider that serves the kind by default",
+                cli: .option("provider")),
+            CommandParameter("limit", .integer, "Most candidates to return", default: .integer(limit), minimum: 1,
+                             maximum: 50, cli: .option("limit")),
+            CommandParameter(
+                "save", .integer, "Also save the candidate with this index (from 0) when the job finishes", minimum: 0,
+                cli: .option("save")),
+            CommandParameter(
+                "scope", .string, "Where save puts it: project (the default) or user (agents need approval)",
+                default: .string("project"), choices: ["project", "user"], cli: .option("scope")),
+        ]
+    }
+
     /// The library panels' items (#74): list, save, improve, remove, use, packs and usage.
     static let librarySpecs: [CommandSpec] = [
         CommandSpec(
@@ -69,10 +86,17 @@ extension CommandCatalog {
         CommandSpec(
             "library.add", .edit,
             "Save a new library item in the project or on this Mac. Files are copied in. Agents saving to the user "
-                + "scope wait for approval. To improve an existing item, use library update.",
+                + "scope wait for approval. To improve an existing item, use library update. fromResult saves a "
+                + "candidate of a finished library search or library generate job instead (its kind, name, files, "
+                + "source and license; the other fields here override them).",
             parameters: [
-                CommandParameter("kind", .string, "Item kind", required: true, choices: libraryKinds, cli: .option("kind")),
-                CommandParameter("name", .string, "Display name", required: true, cli: .option("name")),
+                CommandParameter("kind", .string, "Item kind (required unless fromResult)", choices: libraryKinds,
+                                 cli: .option("kind")),
+                CommandParameter("name", .string, "Display name (required unless fromResult)", cli: .option("name")),
+                CommandParameter(
+                    "fromResult", .string,
+                    "A library search or generate candidate as <job>:<index> (index from 0, as the job result lists it)",
+                    cli: .option("from-result")),
                 CommandParameter("id", .string, "Item ID: lowercase letters, digits and hyphens; from the name by default",
                                  cli: .option("id")),
                 writableScope,
@@ -193,6 +217,33 @@ extension CommandCatalog {
                 libraryScope,
                 CommandParameter("stop", .boolean, "Stop the sound playing", default: .bool(false), cli: .flag("stop")),
             ]),
+        CommandSpec(
+            "library.search", .edit,
+            "Ask an installed plugin that provides library.search (sounds, stickers, GIFs… from Freesound, Giphy or "
+                + "another source) for candidate items of a kind. Runs as a job; its result lists candidates with their "
+                + "fields, downloaded file and preview paths, source and license. Nothing is saved until library add "
+                + "--from-result <job>:<index> (or save here) copies one into the library. Network use is the plugin's.",
+            parameters: [
+                CommandParameter("query", .string, "What to look for", required: true, cli: .positional),
+                CommandParameter("kind", .string, "Item kind", required: true, choices: libraryKinds, cli: .option("kind")),
+            ] + libraryProviderParameters(limit: 12) + [
+                CommandParameter("page", .integer, "Result page, from 1", default: .integer(1), minimum: 1, maximum: 1_000,
+                                 cli: .option("page")),
+            ],
+            execution: .job),
+        CommandSpec(
+            "library.generate", .edit,
+            "Ask an installed plugin that provides library.generate (AI music, stickers…) to make candidate items of a "
+                + "kind from a prompt. Runs as a job; its result lists candidates like library search. Nothing is saved "
+                + "until library add --from-result <job>:<index> (or save here) copies one into the library.",
+            parameters: [
+                CommandParameter("prompt", .string, "What to make", required: true, sensitive: true, cli: .positional),
+                CommandParameter("kind", .string, "Item kind", required: true, choices: libraryKinds, cli: .option("kind")),
+            ] + libraryProviderParameters(limit: 4) + [
+                CommandParameter("params", .object, "Hints for the provider (JSON), such as {\"seconds\": 30}",
+                                 cli: .option("params")),
+            ],
+            execution: .job),
         CommandSpec(
             "library.import-pack", .edit,
             "Add a pack (a folder with pack.json and files, or a .zip of one) to the project or user library. IDs "

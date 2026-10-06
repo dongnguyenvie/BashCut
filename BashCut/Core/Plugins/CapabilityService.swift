@@ -184,14 +184,19 @@ public struct CapabilityService: Sendable {
     // MARK: Resolution
 
     /// Probes every candidate's dependencies, then applies the project preference or the highest priority.
+    /// With `kind` (library providers, API 6), only providers that serve that library kind count.
     public func resolve(
-        _ capability: String, preferredProvider: String?, projectRoot: URL?
+        _ capability: String, preferredProvider: String?, projectRoot: URL?, kind: LibraryKind? = nil
     ) async throws -> ResolvedPluginProvider {
+        func matches(_ provider: PluginProvider) -> Bool {
+            provider.capability == capability && (kind.map(provider.serves) ?? true)
+        }
         let declaring = catalog(projectRoot: projectRoot).plugins.filter { plugin in
-            (plugin.manifest.providers ?? []).contains { $0.capability == capability }
+            (plugin.manifest.providers ?? []).contains(where: matches)
         }
         guard !declaring.isEmpty else {
-            throw PluginError.invalid("Install a plugin that provides \(capability)")
+            throw PluginError.invalid(
+                "Install a plugin that provides \(capability)" + (kind.map { " for \($0.rawValue) items" } ?? ""))
         }
         let candidates = declaring.filter { availability($0) == .ready }
         guard !candidates.isEmpty else {
@@ -206,7 +211,7 @@ public struct CapabilityService: Sendable {
             for await value in group { if let value { values.append(value) } }
             return values
         }
-        let available = Set(ready.flatMap { $0.manifest.providers ?? [] }.map(\.id))
+        let available = Set(ready.flatMap { $0.manifest.providers ?? [] }.filter(matches).map(\.id))
         guard let resolved = PluginProviderResolver.resolve(
             capability: capability, projectPreference: preferredProvider,
             userPreference: nil, plugins: candidates, availableProviderIDs: available)

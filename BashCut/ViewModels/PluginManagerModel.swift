@@ -132,6 +132,8 @@ enum PluginText {
     @ObservationIgnored private var catalogDiagnostics: [String] = []
     /// Actions of runnable plugins, in catalog order.
     var actions: [ContributedAction] = []
+    /// The library packs ready plugins ship (`contributes.library`, API 6; `rebuildLibrary`).
+    var library = PluginLibraryState()
     /// When each action last started, so MCP lists recently used actions first (#98).
     @ObservationIgnored var lastRun: [String: Date] = [:]
     /// Most recent hook deliveries, newest last.
@@ -236,6 +238,7 @@ enum PluginText {
             }
         }
         actions = list
+        rebuildLibrary()
     }
 
     func action(_ id: String) -> ContributedAction? { actions.first { $0.id == id } }
@@ -306,18 +309,6 @@ enum PluginText {
         let result = await service.health(plugin)
         health[plugin.id] = result
         return result
-    }
-
-    func providers(for capability: String) -> [PluginProviderChoice] {
-        plugins.flatMap { plugin in
-            (plugin.manifest.providers ?? []).compactMap { provider in
-                guard provider.capability == capability else { return nil }
-                return PluginProviderChoice(
-                    pluginID: plugin.id, pluginName: plugin.manifest.displayName, provider: provider)
-            }
-        }.sorted {
-            ($0.provider.priority, $0.provider.name) > ($1.provider.priority, $1.provider.name)
-        }
     }
 
     /// Marks a capability busy for the UI while `body` runs. A capability runs one request at a time.

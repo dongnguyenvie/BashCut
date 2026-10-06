@@ -144,7 +144,7 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   item. Library files placed from a project library are copied too, and `library remove` keeps files project media
   still points at. The Stickers panel has thumbnails, kind badges, drops of images and alpha movies, Place at
   Playhead and an Edit… sheet for size, position and animation. Not yet: animated stickers move (they show their
-  first frame), Lottie, plugin sticker packs (`contributes`, #81), and size/position for emoji stickers.
+  first frame), Lottie, and size/position for emoji stickers.
 - Audio library (#78): audio items with a role (music, sfx, ambience), length, BPM, loudness (LUFS, true peak) and a
   loop flag, mood and genre as tags. `library add` measures the length; `library analyze` (a job) measures loudness
   and tempo on the library file with the `audio.loudness` and `audio.beats` providers and saves a new version.
@@ -170,6 +170,17 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   the LUT to the project, reusing one copied from the same file. Save selection keeps the whole stack with its LUT.
   The Filters panel shows looks, style kits and project looks in the shared library UI, with Edit… for a look's
   grade and LUT; looks saved before stay valid and behave the same.
+- Plugin library (#81, plugin API 6): `contributes.library` lists pack folders (the `pack.json` format of
+  `library import-pack`) inside the plugin, checked by `plugins validate` and confined after symlinks. Their items
+  list in the read-only `plugin` scope while the plugin is ready, grouped under the plugin's name in the panels; built-in
+  or earlier plugin IDs are left out with a diagnostic. Placing or applying one copies its file into the project
+  first, so removing the plugin never breaks the timeline; `library update --as` saves an editable copy. The
+  `library.search` and `library.generate` capabilities (providers may list the `kinds` they serve) return candidate
+  items with files in a request folder (`~/Library/Caches/BashCut/LibraryCandidates`, pruned after a day):
+  `library search|generate` run as jobs, `library add --from-result <job>:<index>` (or `--save`) saves one with its
+  source, license and provenance. Panels show Search…/Generate… when a plugin provides them for their kinds (the
+  `library-search` dialog: preview, play and Save). Not yet: a provider-side paging UI, and a scaffold template in
+  `bashcut-plugins`.
 - Library performance: use counts live in `usage.json` (an older `usage` field in `library.json` is read until the
   next save moves it), stored files keep their `fileSHA256`, and changes, packs, stats and use counting run on the
   `LibraryWorker` actor, off the main actor and one at a time.
@@ -256,6 +267,8 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   `PluginSessionTransport` (handshake, NDJSON, progress, cancel, idle shutdown, crash restart) runs plugins that
   ask for it. Commands: `plugins actions|run|hooks|proposal|options|option|set`; plugin actions also go through
   `ui actions`/`ui action`. Worked example: `Fixtures/plugins/example.toolkit`.
+- Plugin API 6 (#81): `contributes.library` packs, the `library.search` and `library.generate` capabilities and
+  provider `kinds`; manifests that use them need `apiVersion` 6, and older manifests stay valid.
 - Catalog refresh performance (#103): discovery keeps manifests in a `PluginCatalogCache` and reads a plugin again
   only when its `plugin.json` or entrypoint changes (stat identity, mode, size, mtime, ctime). A refresh shows each
   plugin's availability from the last file check (`PluginTrustStore.knownAvailability`); plugins not checked yet in

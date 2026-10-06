@@ -1,4 +1,5 @@
 import BashCutDocument
+import BashCutPlugin
 import BashCutProject
 import SwiftUI
 
@@ -38,11 +39,18 @@ struct LibraryItemsSection<Tile: View>: View {
                 TextField("Search library…", text: filter.query).textFieldStyle(.roundedBorder)
                 filterMenu
             }
-            LazyVGrid(columns: columns, spacing: 8) {
-                ForEach(visibleItems, id: \.reference) { item in
-                    tile(item)
-                        .overlay(alignment: .topTrailing) { LibraryItemBadges(item: item) }
-                        .contextMenu { contextMenu(item) }
+            grid(visibleItems.filter { $0.scope != .plugin })
+            // Plugin packs (#81), under the name of the plugin that ships them.
+            ForEach(pluginGroups(visibleItems), id: \.plugin) { group in
+                VStack(alignment: .leading, spacing: 4) {
+                    Label {
+                        Text(verbatim: ([group.name] + group.packs).joined(separator: " · ")).lineLimit(1)
+                    } icon: {
+                        Image(systemName: "puzzlepiece.extension")
+                    }
+                    .font(.caption).foregroundStyle(.secondary)
+                    .help("From a plugin: read-only; Duplicate & Edit… saves your own copy")
+                    grid(group.items)
                 }
             }
             if visibleItems.isEmpty {
@@ -60,7 +68,53 @@ struct LibraryItemsSection<Tile: View>: View {
             document.addFilesToLibrary(urls, kind: fileKind)
             return !urls.isEmpty
         } isTargeted: { dropTargeted = $0 }
-        .task(id: "\(document.libraryRevision):\(document.fileURL?.path ?? "")") { load() }
+        .task(id: "\(document.libraryRevision):\(document.plugins.library.revision):\(document.fileURL?.path ?? "")") {
+            load()
+        }
+    }
+
+    private func grid(_ items: [LibraryItem]) -> some View {
+        LazyVGrid(columns: columns, spacing: 8) {
+            ForEach(items, id: \.reference) { item in
+                tile(item)
+                    .overlay(alignment: .topTrailing) { LibraryItemBadges(item: item) }
+                    .contextMenu { contextMenu(item) }
+            }
+        }
+    }
+
+    /// Plugin items by plugin, in the order they come, with the plugin's name and its packs' names.
+    private func pluginGroups(_ items: [LibraryItem]) -> [(plugin: String, name: String, packs: [String], items: [LibraryItem])] {
+        var groups: [(plugin: String, name: String, packs: [String], items: [LibraryItem])] = []
+        for item in items where item.scope == .plugin {
+            let plugin = item.createdBy["plugin"]?.string ?? ""
+            if let index = groups.firstIndex(where: { $0.plugin == plugin }) {
+                groups[index].items.append(item)
+                if let pack = item.pack, !groups[index].packs.contains(pack) { groups[index].packs.append(pack) }
+            } else {
+                let name = item.createdBy["pluginName"]?.string ?? plugin
+                groups.append((plugin, name, item.pack.map { [$0] } ?? [], [item]))
+            }
+        }
+        return groups
+    }
+
+    /// Search… and Generate…, when a plugin that may run provides them for this panel's kinds (#81).
+    @ViewBuilder private var providerButtons: some View {
+        if !document.libraryProviders(PluginAPI.librarySearch, kinds: kinds).isEmpty {
+            Button("Search…", systemImage: "magnifyingglass.circle") {
+                document.beginLibrarySearch(PluginAPI.librarySearch, kinds: kinds)
+            }
+            .labelStyle(.iconOnly).buttonStyle(.borderless)
+            .help("Search a plugin's source for items to add to the library")
+        }
+        if !document.libraryProviders(PluginAPI.libraryGenerate, kinds: kinds).isEmpty {
+            Button("Generate…", systemImage: "wand.and.stars") {
+                document.beginLibrarySearch(PluginAPI.libraryGenerate, kinds: kinds)
+            }
+            .labelStyle(.iconOnly).buttonStyle(.borderless)
+            .help("Make new items with a plugin from a prompt")
+        }
     }
 
     private var header: some View {
@@ -83,6 +137,7 @@ struct LibraryItemsSection<Tile: View>: View {
                 .disabled(document.selectedID == nil)
                 .help("Save the selected item's style, framing, transition, grade or sound as a library item.")
             }
+            providerButtons
             Button("Add…", systemImage: "plus") { document.chooseLibraryFiles(kind: fileKind) }
                 .labelStyle(.iconOnly).buttonStyle(.borderless)
                 .help(fileKind == nil ? "Import a library pack" : "Add files or import a library pack. You can also drop them here.")

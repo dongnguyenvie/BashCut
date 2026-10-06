@@ -5,6 +5,22 @@
 
 ## [Unreleased]
 
+- **Plugin library (#81), plugin API 6.** `contributes.library` lists library pack folders inside a plugin (the
+  `pack.json` format of `library import-pack`); `plugins validate` checks each pack and its files, which must stay inside
+  the plugin after symlinks. While the plugin is ready, its items are listed in the read-only `plugin` scope
+  (`createdBy` names the plugin) and the panels group them under the plugin's name; an ID that is built in or already
+  used by another plugin is left out with a diagnostic in `plugins list`. Placing or applying a plugin item copies its
+  file into the project by content first (also for plugins in the project's `.bashcut/plugins`), so removing the plugin
+  never breaks the timeline; `library update --as` saves an editable copy. New capabilities `library.search` and
+  `library.generate` (providers may list the `kinds` they serve) return candidate items with files in a request folder
+  under `~/Library/Caches/BashCut/LibraryCandidates` (pruned after a day); `library search <text> --kind K` and
+  `library generate <prompt> --kind K [--params]` run them as jobs (`--provider` takes a plugin or provider ID), and
+  `library add --from-result <job>:<index>` (or `--save <index> --scope project|user`) saves one with its source, license
+  and the provider as `provenance`; agents saving to the user scope wait for approval. Library panels show Search… and
+  Generate… when a plugin provides them for their kinds: a sheet (`ui open library-search|library-generate`, dialog
+  `library-search`) that previews and plays candidates and saves them. `plugins list` reports each plugin's packs and
+  provider kinds. Manifests using any of this need `apiVersion` 6; older plugins stay valid.
+  `Fixtures/plugins/example.library` is a worked example.
 - **Sticker library (#64).** Stickers are library items of four kinds, `params.stickerKind`: `emoji` (as before),
   `image` (PNG, JPEG, HEIC, WebP…, transparency kept), `animated` (GIF, APNG, animated WebP) and `video-alpha` (a
   .mov/.mp4 with an alpha channel: HEVC with alpha or ProRes 4444). `library add --kind sticker --file` reads the kind,

@@ -1,0 +1,14 @@
+{
+  "format": 1,
+  "name": "Party",
+  "items": [
+    {"id": "party-popper", "kind": "sticker", "name": "Party popper", "tags": ["party"], "params": {"emoji": "🎉"}},
+    {"id": "party-balloon", "kind": "sticker", "name": "Balloon", "tags": ["party"], "params": {"emoji": "🎈"}},
+    {"id": "party-title", "kind": "text-preset", "name": "Party title", "tags": ["party"],
+     "params": {"textPreset": "hook-title", "text": "LET'S PARTY"}},
+    {"id": "party-warm", "kind": "look", "name": "Party warm", "tags": ["party"],
+     "params": {"color": {"exposure": 0.1, "saturation": 1.2}}},
+    {"id": "party-zoom", "kind": "transition-preset", "name": "Party zoom", "tags": ["party"],
+     "params": {"kind": "zoom", "duration": 8, "easing": "out"}}
+  ]
+}

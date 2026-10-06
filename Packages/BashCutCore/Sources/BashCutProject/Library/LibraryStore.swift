@@ -270,7 +270,7 @@ public struct LibraryStore: Sendable {
     // MARK: Files
 
     /// Fields the store sets itself; changes cannot write them.
-    static let managedKeys: Set<String> = [
+    public static let managedKeys: Set<String> = [
         "id", "version", "history", "createdAt", "updatedAt", "file", "preview", "fileSHA256",
     ]
 

@@ -50,6 +50,12 @@ struct LibraryView: View {
                     request: Binding(
                         get: { document.ui.libraryEditor ?? request }, set: { document.ui.libraryEditor = $0 }))
             }
+            .sheet(item: Bindable(document.ui).librarySearch) { request in
+                LibrarySearchSheet(
+                    document: document,
+                    request: Binding(
+                        get: { document.ui.librarySearch ?? request }, set: { document.ui.librarySearch = $0 }))
+            }
     }
 
     /// Built-in names are UI strings to localize; saved names are user content.

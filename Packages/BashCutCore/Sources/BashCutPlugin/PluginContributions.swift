@@ -6,14 +6,21 @@ import Foundation
 /// `choiceLabels` and the `file` option type, the `BASHCUT_PLUGIN_DATA`/`BASHCUT_PLUGIN_CACHE` folders and
 /// `::progress` lines from install recipes. Version 4 adds the `secret` option type and the session host channel
 /// (`event` and `call` lines during a request), used by the `agent.chat` capability. Version 5 adds the
-/// `agent.terminal` capability and the manifest's `terminal` object.
+/// `agent.terminal` capability and the manifest's `terminal` object. Version 6 adds `contributes.library` (library
+/// packs), the `library.search` and `library.generate` capabilities and provider `kinds`.
 public enum PluginAPI {
     public static let minimum = 1
-    public static let current = 5
+    public static let current = 6
     /// The chat-agent capability; its requests carry a host channel (API 4).
     public static let agentChat = "agent.chat"
     /// An agent CLI in a dock terminal tab (API 5); its manifest has a `terminal` object.
     public static let agentTerminal = "agent.terminal"
+    /// Finds library items online or elsewhere for a panel (API 6); providers may list the `kinds` they serve.
+    public static let librarySearch = "library.search"
+    /// Makes new library items from a prompt (API 6); providers may list the `kinds` they serve.
+    public static let libraryGenerate = "library.generate"
+    /// The capabilities whose providers return library item candidates.
+    public static let libraryCapabilities = [librarySearch, libraryGenerate]
 }
 
 /// How the dock shows a terminal agent (`agent.terminal`, API 5) and what its CLI may inherit.
@@ -262,13 +269,19 @@ extension Array where Element == PluginOption {
 public struct PluginContributions: Codable, Sendable, Equatable {
     public let actions: [PluginActionContribution]?
     public let hooks: [PluginHookContribution]?
+    /// Library packs the plugin ships (API 6): read-only items in the panels while the plugin is installed.
+    public let library: [PluginLibraryContribution]?
 
-    public init(actions: [PluginActionContribution]? = nil, hooks: [PluginHookContribution]? = nil) {
+    public init(
+        actions: [PluginActionContribution]? = nil, hooks: [PluginHookContribution]? = nil,
+        library: [PluginLibraryContribution]? = nil
+    ) {
         self.actions = actions
         self.hooks = hooks
+        self.library = library
     }
 
-    public var isEmpty: Bool { (actions ?? []).isEmpty && (hooks ?? []).isEmpty }
+    public var isEmpty: Bool { (actions ?? []).isEmpty && (hooks ?? []).isEmpty && (library ?? []).isEmpty }
 }
 
 /// A command the plugin adds: a menu item, toolbar button, context-menu entry or panel button.

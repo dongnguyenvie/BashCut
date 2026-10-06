@@ -3,6 +3,11 @@ import Foundation
 public struct ResolvedPluginProvider: Sendable, Equatable {
     public let plugin: InstalledPlugin
     public let provider: PluginProvider
+
+    public init(plugin: InstalledPlugin, provider: PluginProvider) {
+        self.plugin = plugin
+        self.provider = provider
+    }
 }
 
 public enum PluginProviderResolver {
