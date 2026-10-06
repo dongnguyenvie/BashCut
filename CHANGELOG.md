@@ -5,10 +5,12 @@
 
 ## [Unreleased]
 
-- **Export no longer fails with `BashCutCompositor.MissingFrame 2` when a clip ends at its media's last frame.**
-  `Media.frames` comes from the file's duration, which can run a few frames past the video track's last picture
-  (audio longer than video, common in phone MOV/MP4). Clips, transition holds and speed ramps that reach past the
-  last picture now hold it for the missing frames instead of leaving the compositor without a source frame.
+- **Export no longer fails with `BashCutCompositor.MissingFrame 2` when a clip reaches its media's first or last
+  frame.** `Media.frames` comes from the file's duration, and camera MOV/MP4 files often have sound before the first
+  picture or after the last one. Clips, freeze frames, transition holds and speed ramps that reach past the pictures
+  now hold the first or last picture, split on the timeline's own time scale (a nanosecond-rounded split made the
+  composition longer than its instructions, AVError -11841). Exports that end on a held picture (freeze frame, still,
+  last source picture) repeat it on the last frame, so the video track no longer ends before the sound.
 
 - **Plugin authors.** A manifest may name its author: `"author": {"name": "…", "url": "https://…"}` (url
   optional, http or https). Plugins › Installed and Browse show *By <name>* (a link with a url), Browse search
