@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+- **Scope guard fixes (#356).** An agent edit with a stale base revision now fails with `-32002` instead of being
+  held, and a held edit the user allows keeps its base revision. Items made by an edit the user allowed (Allow Once
+  or Allow for This Request) join the scope, so later edits to them are not asked again. Return no longer allows a
+  held edit. Closing the agent's terminal tab, or turning agent edits off, rejects its held edit.
 - **Dangerously allow all agent actions.** Settings › Agents has a new **Agent permissions** section: Allow agent
   timeline edits, **Approve agent actions without asking** (was "Run agent exports without confirmation"; it always
   covered kit setup, library items and preferences for every project too), Edits outside the attached clips, and a

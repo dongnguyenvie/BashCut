@@ -150,6 +150,7 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
     }
     func applyAgentEditPreference() {
         if !settings.agentsCanEdit {
+            document.rejectScopeHold()
             document.chatAgents.revokeTokens()
             for session in sessions where session.provider.isAgent {
                 document.registry.revoke(session.token)
@@ -306,6 +307,7 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
         Task { await agent.refreshStatus() }
     }
     func close(_ session: TerminalSession) {
+        document.rejectScopeHold(from: session.token)
         session.close()
         document.registry.revoke(session.token)
         sessions.removeAll { $0.id == session.id }

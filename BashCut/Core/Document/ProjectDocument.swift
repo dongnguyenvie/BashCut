@@ -328,7 +328,8 @@ extension ProjectDocument {
         _ operation: EditOperation, label: String, author: Author = .user, baseRevision: Int? = nil,
         coalescingKey: String? = nil
     ) throws -> (revision: Int, changed: Bool) {
-        let scope = try checkAgentScope(operation, label: label, author: author, coalescingKey: coalescingKey)
+        let scope = try checkAgentScope(
+            operation, label: label, author: author, baseRevision: baseRevision, coalescingKey: coalescingKey)
         let before = project
         let (operation, firstClipCanvas) = withFirstClipCanvas(operation, label: label, author: author)
         let changed: Bool

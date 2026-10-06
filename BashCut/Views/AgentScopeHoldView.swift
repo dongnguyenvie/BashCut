@@ -17,8 +17,8 @@ struct AgentScopeHoldView: View {
                 Button("Reject") { resolve(.reject) }.keyboardShortcut(.cancelAction)
                 Spacer()
                 Button("Allow for This Request") { resolve(.allowRequest) }
-                Button("Allow Once") { resolve(.allowOnce) }.keyboardShortcut(.defaultAction)
-                    .buttonStyle(.borderedProminent)
+                // No Return shortcut: a keystroke meant for the terminal must not allow the edit.
+                Button("Allow Once") { resolve(.allowOnce) }.buttonStyle(.borderedProminent)
             }
         }.padding(24).frame(width: 520).interactiveDismissDisabled()
     }
