@@ -10,17 +10,27 @@ extension CommandCatalog {
     static let pluginViewSpecs: [CommandSpec] = [
         CommandSpec(
             "plugins.views", .read,
-            "List ready plugins that have a panel in the left rail (plugin API 8): its title and icon, its views, its "
-                + "tools (actions), skills, required plugins with their state, the capabilities it uses and whether a "
-                + "ready plugin provides each, and which panel is open. Also lists the host's plugin features."),
+            "List ready plugins with a panel in the left rail or views (plugin API 8): title and icon, each view with "
+                + "where it lives (panel, dock tab or sheet) and whether it is shown, tools (actions), skills, required "
+                + "plugins with their state, the capabilities it uses and whether a ready plugin provides each, the open "
+                + "panel and sheet. Also lists the host's plugin features."),
+        CommandSpec(
+            "plugins.show-view", .ui,
+            "Show a plugin view where it lives: its plugin's panel in the left rail, its tab in the agent dock, or a "
+                + "sheet. Plugins call this for their own views (an action opening a form sheet).",
+            parameters: [
+                viewPlugin,
+                CommandParameter("view", .string, "View ID from plugins views", required: true, cli: .option("view")),
+            ]),
         CommandSpec(
             "plugins.view", .ui,
-            "Render a plugin view and return its components as JSON (what the panel draws: text, lists, inputs with "
-                + "their current values, buttons by id). With open, also show the plugin's panel in the left rail on "
-                + "this view.",
+            "Render a plugin view and return its components as JSON (what the app draws: text, lists, inputs with "
+                + "their current values, buttons by id). With open, also show the view where it lives (panel, dock tab "
+                + "or sheet).",
+
             parameters: [
                 viewPlugin, viewID,
-                CommandParameter("open", .boolean, "Show the plugin's panel in the left rail", default: .bool(false),
+                CommandParameter("open", .boolean, "Show the view where it lives", default: .bool(false),
                                  cli: .flag("open")),
             ]),
         CommandSpec(

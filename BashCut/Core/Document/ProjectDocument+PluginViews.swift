@@ -16,7 +16,7 @@ extension ProjectDocument {
 
     /// The view a plugin's panel shows: the chosen one while the plugin still has it, else its first view.
     func pluginPanelView(_ plugin: InstalledPlugin) -> PluginViewContribution? {
-        let views = plugin.manifest.views
+        let views = plugin.manifest.views.filter { $0.place == .panel }
         return views.first { $0.id == ui.pluginPanelViews[plugin.id] } ?? views.first
     }
 
@@ -44,13 +44,26 @@ extension ProjectDocument {
         }
     }
 
+    /// Whether a view is on screen where it lives.
+    func isShowing(_ key: String, _ place: PluginViewLocation, plugin: InstalledPlugin) -> Bool {
+        switch place {
+        case .panel: ui.pluginPanel == plugin.id && pluginPanelView(plugin).map { plugin.id + "/" + $0.id } == key
+        case .dock: ui.showAgentDock && agents.pluginViewKey == key
+        case .sheet: ui.pluginSheet == key
+        }
+    }
+
     func pluginPanelJSON(_ plugin: InstalledPlugin) -> JSONValue {
         let unprovided = Set(unprovidedCapabilities(plugin))
         return .object([
             "plugin": .string(plugin.id), "name": .string(plugin.manifest.displayName),
-            "title": .string(plugin.manifest.containerTitle), "icon": .string(plugin.manifest.container?.icon ?? ""),
+            "title": .string(plugin.manifest.containerTitle),
+            "icon": plugin.manifest.container.map { .string($0.icon) } ?? .null,
             "version": .string(plugin.manifest.version),
-            "views": .array(plugin.manifest.views.map { .object(["id": .string($0.id), "title": .string($0.title.text)]) }),
+            "views": .array(plugin.manifest.views.map { view in
+                .object(["id": .string(view.id), "title": .string(view.title.text), "location": .string(view.place.rawValue),
+                         "shown": .bool(isShowing(plugin.id + "/" + view.id, view.place, plugin: plugin))])
+            }),
             "tools": .array(plugins.actions.filter { $0.plugin.id == plugin.id }.map { action in
                 .object(["id": .string(action.id), "title": .string(action.title), "available": .bool(canRunPluginAction(action))])
             }),
@@ -64,10 +77,12 @@ extension ProjectDocument {
         ])
     }
 
-    /// A ready plugin with a panel, or a clear error.
+    /// A ready plugin with views or a panel, or a clear error.
     private func panelPlugin(_ id: String) throws -> InstalledPlugin {
         let plugin = try requirePlugin(id)
-        guard plugin.manifest.container != nil else { throw RPCFailure(-32602, "\(id) has no panel; see plugins views") }
+        guard plugin.manifest.container != nil || !plugin.manifest.views.isEmpty else {
+            throw RPCFailure(-32602, "\(id) has no views; see plugins views")
+        }
         guard plugins.isReady(plugin) else {
             throw RPCFailure(-32003, "\(plugin.manifest.displayName): \(plugins.currentAvailability(plugin).detail)")
         }
@@ -101,7 +116,8 @@ extension ProjectDocument {
     func registerPluginViewCommands() {
         handle("plugins.views") { document, _, _ in
             .object([
-                "panels": .array(document.pluginViews.containers.map(document.pluginPanelJSON)),
+                "panels": .array(document.pluginViews.viewPlugins.map(document.pluginPanelJSON)),
+                "sheet": document.ui.pluginSheet.map(JSONValue.string) ?? .null,
                 "open": document.ui.pluginPanel.map(JSONValue.string) ?? .null,
                 "features": .array(PluginFeature.all.map(JSONValue.string)),
                 "apiVersion": .integer(PluginAPI.current),
@@ -110,10 +126,21 @@ extension ProjectDocument {
         handleAuthored("plugins.view") { document, arguments, _ in
             let plugin = try document.panelPlugin(arguments.string("plugin"))
             let model = try document.viewModel(plugin, arguments)
-            if arguments.bool("open") { document.showPluginPanel(plugin.id, view: model.viewID) }
+            if arguments.bool("open"), let view = plugin.manifest.views.first(where: { $0.id == model.viewID }) {
+                document.pluginViews.show(plugin, view: view)
+            }
             do {
                 return Self.viewJSON(plugin, model, try await model.perform(nil))
             } catch { throw RPCFailure(-32603, error.localizedDescription) }
+        }
+        handleAuthored("plugins.show-view") { document, arguments, _ in
+            let plugin = try document.panelPlugin(arguments.string("plugin"))
+            let id = try arguments.string("view")
+            guard let view = plugin.manifest.views.first(where: { $0.id == id }) else {
+                throw RPCFailure(-32602, "\(plugin.id) has no view \(id)")
+            }
+            document.pluginViews.show(plugin, view: view)
+            return .object(["plugin": .string(plugin.id), "view": .string(id), "location": .string(view.place.rawValue)])
         }
         handleAuthored("plugins.view-event") { document, arguments, _ in
             let plugin = try document.panelPlugin(arguments.string("plugin"))

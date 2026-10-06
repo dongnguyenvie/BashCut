@@ -57,9 +57,15 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
 @MainActor @Observable final class AgentDockModel {
     unowned let document: ProjectDocument
     var sessions: [TerminalSession] = []
-    var selectedSession: UUID?
+    var selectedSession: UUID? {
+        didSet { if selectedSession != nil, selectedSession != oldValue { pluginViewKey = nil } }
+    }
     /// The chat agent (plugin ID) whose tab is shown instead of a terminal.
-    var chatPluginID: String?
+    var chatPluginID: String? {
+        didSet { if chatPluginID != nil { pluginViewKey = nil } }
+    }
+    /// The plugin view (`<plugin>/<view>`, plugin API 8 `location: dock`) whose tab is shown instead of a terminal or chat.
+    var pluginViewKey: String?
     var sessionBookmarks = AgentSessionBookmarks()
     var sessionDiscoveryMessage = ""
     var settings: SettingsModel { document.settings }

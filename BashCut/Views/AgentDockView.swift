@@ -53,7 +53,9 @@ struct AgentDockView: View {
                 AgentKitBanner(model: model, prompt: prompt)
                 Divider()
             }
-            if let pluginID = model.chatPluginID {
+            if let key = model.pluginViewKey, let model = model.document.pluginViews.model(key: key) {
+                PluginViewColumn(model: model)
+            } else if let pluginID = model.chatPluginID {
                 ChatAgentPanel(agent: model.document.chatAgents.model(for: pluginID), document: model.document)
             } else if let session = model.current {
                 if !session.scope.isEmpty {
@@ -129,18 +131,28 @@ struct AgentDockView: View {
                 ForEach(model.sessions) { session in
                     DockTab(
                         title: session.title, systemImage: session.icon,
-                        selected: model.selectedSession == session.id && model.chatPluginID == nil,
+                        selected: model.selectedSession == session.id && model.chatPluginID == nil
+                            && model.pluginViewKey == nil,
                         select: {
                             model.selectedSession = session.id
                             model.chatPluginID = nil
+                            model.pluginViewKey = nil
                         },
                         close: { model.close(session) })
                 }
                 ForEach(model.document.chatAgents.available, id: \.pluginID) { agent in
                     DockTab(
                         title: agent.title, systemImage: "bubble.left.and.text.bubble.right",
-                        selected: model.chatPluginID == agent.pluginID,
+                        selected: model.chatPluginID == agent.pluginID && model.pluginViewKey == nil,
                         select: { model.openChat(agent.pluginID) }, close: nil)
+                }
+                // Plugin views that live in the dock (plugin API 8).
+                ForEach(model.document.pluginViews.dockViews, id: \.key) { entry in
+                    DockTab(
+                        title: entry.view.title.text,
+                        systemImage: entry.view.icon ?? entry.plugin.manifest.container?.icon ?? "puzzlepiece.extension",
+                        selected: model.pluginViewKey == entry.key,
+                        select: { model.pluginViewKey = entry.key }, close: nil)
                 }
             }.padding(.horizontal, 8).padding(.vertical, 6)
         }.background(Color.white.opacity(0.03))

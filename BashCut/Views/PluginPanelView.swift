@@ -18,7 +18,7 @@ struct PluginPanelView: View {
                 // One lazy column for the whole panel: only the components on screen are built, so a view with
                 // thousands of components costs what its visible part costs.
                 LazyVStack(alignment: .leading, spacing: 8) {
-                    let views = plugin.manifest.views
+                    let views = plugin.manifest.views.filter { $0.place == .panel }
                     if views.count > 1 {
                         Picker("View", selection: Binding(
                             get: { document.pluginPanelView(plugin)?.id ?? "" },
@@ -76,9 +76,22 @@ private struct PluginPanelManager: View {
         let skills = document.plugins.skills(of: plugin)
         let requirements = document.plugins.requirementsJSON(plugin).array
         let unprovided = document.unprovidedCapabilities(plugin)
-        if !tools.isEmpty || !skills.isEmpty || !requirements.isEmpty || !plugin.manifest.usedCapabilities.isEmpty {
+        let elsewhere = plugin.manifest.views.filter { $0.place != .panel }
+        if !tools.isEmpty || !skills.isEmpty || !requirements.isEmpty || !plugin.manifest.usedCapabilities.isEmpty
+            || !elsewhere.isEmpty {
             DisclosureGroup(isExpanded: $expanded) {
                 VStack(alignment: .leading, spacing: 8) {
+                    if !elsewhere.isEmpty {
+                        label("Views", "rectangle.on.rectangle")
+                        ForEach(elsewhere) { view in
+                            Button {
+                                document.pluginViews.show(plugin, view: view)
+                            } label: {
+                                Label(view.title.text, systemImage: view.place == .dock ? "sidebar.right" : "macwindow")
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                        }
+                    }
                     if !tools.isEmpty {
                         label("Tools", "hammer")
                         ForEach(tools) { action in
@@ -132,33 +145,6 @@ private struct PluginPanelManager: View {
 
     private func label(_ title: LocalizedStringKey, _ icon: String) -> some View {
         Label(title, systemImage: icon).font(.caption.bold()).foregroundStyle(.secondary)
-    }
-}
-
-/// A plugin view as rows of the panel's lazy column: its title, an error, then its top-level components.
-struct PluginViewRows: View {
-    @Bindable var model: PluginViewModel
-
-    var body: some View {
-        if let title = model.tree?.title {
-            HStack {
-                Text(verbatim: title).font(.subheadline.bold())
-                Spacer()
-                if model.busy { ProgressView().controlSize(.small) }
-            }
-        } else if model.busy {
-            ProgressView().controlSize(.small)
-        }
-        if let error = model.error {
-            VStack(alignment: .leading, spacing: 4) {
-                Label(error, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.orange)
-                    .textSelection(.enabled)
-                Button("Try Again") { model.load() }.controlSize(.small)
-            }
-        }
-        if let tree = model.tree {
-            ForEach(tree.body) { node in PluginNodeView(node: node, model: model) }
-        }
     }
 }
 

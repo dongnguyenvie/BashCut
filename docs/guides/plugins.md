@@ -782,8 +782,24 @@ the panel's frame from the manifest, so every plugin gets the same parts:
 | `container.title` | Optional [localized text](#localized-text), at most 24 characters; the plugin name by default |
 | `views[].id` | A short key, unique; at most 8 views |
 | `views[].title` | Localized text, at most 40 characters |
+| `views[].location` | Where the view lives: `panel` (default), `dock` or `sheet` |
+| `views[].icon` | Optional SF Symbol for a dock tab or sheet; the container's icon by default |
 
 A container alone (no views) is a panel of the plugin's tools and skills. Views need the `session` transport.
+
+### Where views live
+
+| `location` | Where | Opens | Good for |
+|---|---|---|---|
+| `panel` | The plugin's panel in the left rail (225 pt wide); a picker switches between several | The rail icon | Browsing, tools next to the timeline |
+| `dock` | A tab in the agent dock on the right, next to the agent tabs (330–500 pt wide) | The tab, always there while the plugin is ready | Wider work: libraries, take lists, long forms |
+| `sheet` | A sheet over the editor with a Close button (Esc) | `plugins show-view`, the panel's **Views** list, or the plugin itself | A short task: a form, a confirmation with choices |
+
+Only `panel` views need `contributes.container`; a plugin may have dock or sheet views without a rail icon. The panel's
+**Plugin** section lists the plugin's dock and sheet views with a button that opens each. A plugin opens its own views
+from a view or action request with the host call `plugins.show-view` (`{"plugin": "<its id>", "view": "<id>"}`); it
+cannot open another plugin's. A view answer with `"close": true` closes its sheet (a finished form).
+`location.panel`, `location.dock` and `location.sheet` are [host features](#host-features).
 
 ### View requests
 
@@ -814,6 +830,7 @@ The answer:
 ```
 
 - `body` (required): the components. `state`: kept and sent back (at most 64 KiB; left out, the last one is kept).
+  `close: true` closes the view's sheet.
   `refreshSeconds` (2–3600): render again after that long, only while the view is on screen. `notify`: a status
   message shown once.
 - While working, send `{"type":"event","id","event":{"kind":"render","body":[…],"title"?}}` to redraw before the answer
@@ -870,9 +887,11 @@ overlays, inspector tabs, drag and drop from a view, and updates the plugin send
 
 ### Commands
 
-`plugins views` lists the panels, their views, tools, skills, requirements, uses and the host features.
+`plugins views` lists the plugins with panels or views, each view's location and whether it is shown, tools, skills,
+requirements, uses and the host features. `plugins show-view <plugin> --view id` shows a view where it lives (the
+sheet is dialog `plugin-view` in `ui dialog`; `ui respond close` closes it).
 `plugins view <plugin> [--view id] [--open]` renders a view and returns its components with the input values;
-`--open` shows the panel. `plugins view-event <plugin> --node go [--type click|change|submit|select|action]
+`--open` also shows it. `plugins view-event <plugin> --node go [--type click|change|submit|select|action]
 [--value …]` does what a user does and returns the new components, so agents and tests can drive a plugin's UI.
 
 ## Using other plugins
@@ -1165,7 +1184,8 @@ Everything above is available to agents through the CLI and MCP (`bashcut_plugin
 |---|---|---|
 | `plugins list` | read | Plugins sheet: availability, transport, actions, hooks, options, library packs, skills, provider kinds, container, views, requires (with state), uses |
 | `plugins views` | read | The plugin icons in the left rail and their panels: views, tools, skills, requirements, uses; the host features |
-| `plugins view <plugin> [--view id] [--open]` | ui | Opening the panel on a view; returns its components and input values |
+| `plugins show-view <plugin> --view <id>` | ui | Opening a view where it lives: the rail panel, its dock tab or its sheet |
+| `plugins view <plugin> [--view id] [--open]` | ui | Opening a view; returns its components and input values |
 | `plugins view-event <plugin> --node <id> [--type …] [--value …]` | ui | Clicking, typing or selecting in a plugin view |
 | `plugins invoke <capability> [--provider P] [--params '{…}']` | edit, job | None: a capability's raw result, for capabilities without a command |
 | `plugins health [plugin]` | read | Check Health |
@@ -1263,8 +1283,8 @@ are two more adapters, `PluginActionCapability` and `PluginHookCapability`, run 
   hooks and the session transport are implemented.
 - Voice, Text, Audio and Export use `voice.synthesize`, `captions.transcribe`, `audio.beats` and
   `audio.loudness`. Other analysis and interchange panels are not connected yet.
-- Plugins own one panel each in the left rail (API 8) with declarative views the app draws; they cannot own
-  windows, webviews, inspector tabs or viewer overlays, or draw freely. Library packs and library search/generate
+- Plugins own one panel each in the left rail (API 8), dock tabs and sheets, all with declarative views the app
+  draws; they cannot own windows, webviews, inspector tabs or viewer overlays, or draw freely. Library packs and library search/generate
   (API 6) fill the existing library panels. Agent skills (API 7) join the agents' skills.
 - The plugin registry (browse, install, update, remove, signatures, yanked versions, daily update check) is
   implemented.

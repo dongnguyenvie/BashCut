@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 144 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 145 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -395,18 +395,26 @@ Turn a plugin or its hooks off (agents can only turn them off; turning on and tr
 
 ### `bashcut plugins views`
 
-List ready plugins that have a panel in the left rail (plugin API 8): its title and icon, its views, its tools (actions), skills, required plugins with their state, the capabilities it uses and whether a ready plugin provides each, and which panel is open. Also lists the host's plugin features.
+List ready plugins with a panel in the left rail or views (plugin API 8): title and icon, each view with where it lives (panel, dock tab or sheet) and whether it is shown, tools (actions), skills, required plugins with their state, the capabilities it uses and whether a ready plugin provides each, the open panel and sheet. Also lists the host's plugin features.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_plugins_views`
 
+### `bashcut plugins show-view <plugin> --view <view>`
+
+Show a plugin view where it lives: its plugin's panel in the left rail, its tab in the agent dock, or a sheet. Plugins call this for their own views (an action opening a form sheet).
+
+- Mode: ui · Runs: immediately · MCP: `bashcut_plugins_show-view`
+- `plugin`: string, required. Plugin ID
+- `view`: string, required. View ID from plugins views
+
 ### `bashcut plugins view <plugin> [--view <view>] [--open]`
 
-Render a plugin view and return its components as JSON (what the panel draws: text, lists, inputs with their current values, buttons by id). With open, also show the plugin's panel in the left rail on this view.
+Render a plugin view and return its components as JSON (what the app draws: text, lists, inputs with their current values, buttons by id). With open, also show the view where it lives (panel, dock tab or sheet).
 
 - Mode: ui · Runs: immediately · MCP: `bashcut_plugins_view`
 - `plugin`: string, required. Plugin ID
 - `view`: string. View ID from plugins views; the plugin's first view by default
-- `open`: boolean, default false. Show the plugin's panel in the left rail
+- `open`: boolean, default false. Show the view where it lives
 
 ### `bashcut plugins view-event <plugin> [--view <view>] --node <node> [--type <type>] [--value <value>]`
 

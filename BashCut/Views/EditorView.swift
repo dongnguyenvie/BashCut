@@ -84,6 +84,7 @@ struct EditorView: View {
                 }
             }
         }
+        .modifier(PluginSheetPresenter(document: document))
         .sheet(isPresented: Bindable(document.ui).showShortcuts) {
             ShortcutsView { document.ui.showShortcuts = false }
         }

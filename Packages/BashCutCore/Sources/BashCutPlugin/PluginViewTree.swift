@@ -77,16 +77,19 @@ public struct PluginViewTree: Sendable, Equatable {
     public let refreshSeconds: Int?
     /// A short status message to show once.
     public let notify: String?
+    /// Closes the view when it is in a sheet (a finished form).
+    public let close: Bool
 
     public init(
         title: String? = nil, body: [PluginViewNode], state: JSONValue? = nil, refreshSeconds: Int? = nil,
-        notify: String? = nil
+        notify: String? = nil, close: Bool = false
     ) {
         self.title = title
         self.body = body
         self.state = state
         self.refreshSeconds = refreshSeconds
         self.notify = notify
+        self.close = close
     }
 
     public init(parsing result: JSONValue) throws {
@@ -110,6 +113,7 @@ public struct PluginViewTree: Sendable, Equatable {
         }
         refreshSeconds = fields["refreshSeconds"]?.int.map { min(max($0, 2), 3600) }
         notify = fields["notify"]?.string.map { String($0.prefix(300)) }
+        close = fields["close"]?.bool ?? false
     }
 
     private static func node(

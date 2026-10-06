@@ -1,6 +1,19 @@
 import BashCutDocument
 import SwiftUI
 
+/// Presents plugin views that live in a sheet (plugin API 8 `location: sheet`).
+struct PluginSheetPresenter: ViewModifier {
+    @Bindable var document: ProjectDocument
+
+    func body(content: Content) -> some View {
+        content.sheet(isPresented: Binding(
+            get: { document.ui.pluginSheet != nil }, set: { if !$0 { document.ui.pluginSheet = nil } }
+        )) {
+            if let key = document.ui.pluginSheet { PluginSheetView(document: document, key: key) }
+        }
+    }
+}
+
 /// The plugin part of the left rail (plugin API 8): one icon per ready plugin with a panel.
 extension EditorView {
     func libraryTabSelected(_ tab: LibraryTab) -> Bool {

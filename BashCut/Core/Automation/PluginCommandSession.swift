@@ -7,7 +7,7 @@ import Foundation
 /// caller before it gets here, since it needs the calling plugin's `uses`.
 @MainActor public final class PluginCommandSession {
     public static let allowedMethods: Set<String> = ChatCommandSession.allowedMethods.union([
-        "plugins.run", "plugins.invoke", "plugins.views", "ui.notify",
+        "plugins.run", "plugins.invoke", "plugins.views", "plugins.show-view", "ui.notify",
     ]).subtracting(["plugins.view", "plugins.view-event"])
     private var token: String?
 

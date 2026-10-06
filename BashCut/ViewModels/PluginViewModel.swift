@@ -22,6 +22,53 @@ import Foundation
         document.plugins.plugins.filter { $0.manifest.container != nil && document.plugins.isReady($0) }
     }
 
+    /// Ready plugins with a rail container or any view, for `plugins views`.
+    var viewPlugins: [InstalledPlugin] {
+        document.plugins.plugins.filter {
+            ($0.manifest.container != nil || !$0.manifest.views.isEmpty) && document.plugins.isReady($0)
+        }
+    }
+
+    /// Views of ready plugins that live in the agent dock, as `(key, plugin, view)`.
+    var dockViews: [(key: String, plugin: InstalledPlugin, view: PluginViewContribution)] {
+        document.plugins.plugins.filter { document.plugins.isReady($0) }.flatMap { plugin in
+            plugin.manifest.views.filter { $0.place == .dock }.map { (plugin.id + "/" + $0.id, plugin, $0) }
+        }
+    }
+
+    /// The model for `<plugin>/<view>` while that plugin is ready and has the view.
+    func model(key: String) -> PluginViewModel? {
+        guard let (plugin, view) = resolve(key) else { return nil }
+        return model(plugin: plugin.id, view: view.id)
+    }
+
+    /// The ready plugin and view a `<plugin>/<view>` key names.
+    func resolve(_ key: String) -> (InstalledPlugin, PluginViewContribution)? {
+        let parts = key.split(separator: "/", maxSplits: 1).map(String.init)
+        guard parts.count == 2, let plugin = document.plugins.plugin(parts[0]), document.plugins.isReady(plugin),
+            let view = plugin.manifest.views.first(where: { $0.id == parts[1] })
+        else { return nil }
+        return (plugin, view)
+    }
+
+    /// Shows a view where it lives: the plugin's rail panel, its dock tab (opening the dock) or a sheet.
+    func show(_ plugin: InstalledPlugin, view: PluginViewContribution) {
+        let key = plugin.id + "/" + view.id
+        DebugLog.write("ui", "plugin view \(key) in \(view.place.rawValue)")
+        switch view.place {
+        case .panel: document.showPluginPanel(plugin.id, view: view.id)
+        case .dock:
+            document.ui.showAgentDock = true
+            document.agents.pluginViewKey = key
+        case .sheet: document.ui.pluginSheet = key
+        }
+    }
+
+    /// Closes the sheet when it shows `model`'s view.
+    func closeSheet(of model: PluginViewModel) {
+        if document.ui.pluginSheet == model.pluginID + "/" + model.viewID { document.ui.pluginSheet = nil }
+    }
+
     func model(plugin: String, view: String) -> PluginViewModel {
         let key = plugin + "/" + view
         if let model = models[key] { return model }
@@ -65,6 +112,9 @@ import Foundation
         _ method: String, _ params: JSONValue, plugin: InstalledPlugin
     ) async -> Result<JSONValue, PluginCallFailure> {
         if method == "plugins.invoke" { return await invoke(params.object, plugin: plugin) }
+        if method == "plugins.show-view", params.object["plugin"]?.string != plugin.id {
+            return .failure(PluginCallFailure(code: -32601, message: "A plugin can only show its own views"))
+        }
         let session = sessions[plugin.id] ?? PluginCommandSession()
         sessions[plugin.id] = session
         let response = await session.perform(method, params: params.object, registry: document.registry)
@@ -236,6 +286,7 @@ import Foundation
         tree = next
         error = nil
         if let notify = next.notify { document.message = notify }
+        if next.close { document.pluginViews.closeSheet(of: self) }
     }
 
     private func dropStreamedRender() {
