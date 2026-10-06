@@ -41,6 +41,7 @@ Common error codes:
 | `-32001` | The command needs a live session token |
 | `-32002` | Stale revision: re-read the timeline and retry |
 | `-32003` | Busy: a dialog is open, another approval is pending, or the action is not available now |
+| `-32004` | The edit is outside the attached scope, and the user rejected it or the scope guard blocks it |
 | `-32601` | Unknown command |
 | `-32602` | Invalid or missing parameters, or a rejected edit |
 
@@ -316,9 +317,36 @@ items (`--add` keeps the current selection). Delete, Lift, Copy, Cut, Paste and 
 `timeline.select-all` and `timeline.deselect` change it.
 
 `ui action clip.send-to-agent` (Send to Agent) attaches the selected items to the open agent's request, and
-`chat attach --items a,b` / `chat detach [--items a]` do the same for a chat agent. While items are attached,
-`context get` lists them as `scope` (`{plugin, scope: [{id, linked, track, layer, name, start, end}]}`) and every
-chat message starts with a `[Scope]` block: edit only those items and ask before changing anything else.
+`chat attach --items a,b` / `chat detach [--items a]` do the same for a chat agent; `agent detach [--items a]`
+removes them from the shown terminal tab. While items are attached, `context get` lists the caller's own tab's items
+as `scope` (`{plugin | terminal, scope: [{id, linked, track, layer, name, start, end}], mode, allowedForRequest}`;
+without a session of its own, the shown tab's) and every chat message starts with a `[Scope]` block: edit only those
+items and ask before changing anything else.
+
+The app enforces that rule (the scope guard, #356). Every edit a chat or terminal session with attached items makes
+(`timeline apply`, `clip *`, `layers *`, `library apply`, and any other authored edit) is checked first:
+
+- Edits to scope items, their linked partners, and items made by in-scope edits (a split's second half) run.
+- `insert` runs when the new item lies inside the scope's span (first start to last end, where the items are now).
+  A transition runs when either of its clips is in scope.
+- Media and LUT imports, beat grids and new layers run. Changes to existing layers, project settings (looks, style
+  kits), format, sections, LUT deletes and `restore` are project-wide and always count as outside.
+- Ripple shifts, undo/redo and dry runs are not checked.
+
+What happens to an edit outside the scope is the user's choice in Settings › Agents ("Edits outside the attached
+clips"); agents cannot change it:
+
+- **Ask first** (default): the edit is held. A sheet (`agent-scope` in `ui dialog`) offers **Allow Once**,
+  **Allow for This Request** (until the next chat message, or until a terminal's chips change) and **Reject**; only
+  the user can allow, agents can only reject.
+- **Block**: the edit is rejected at once.
+- **Allow**: every edit runs; the scope only tells the agent what the request is about.
+
+The command fails at once with `-32004` and `data: {outOfScope: [item IDs], projectWide: [changes]}`; a held edit
+also has `held: true` and `request`. Do not retry it. While it is held, `context get` shows it as `scope.held`;
+afterwards `scope.last` is `{request, label, outcome: applied | rejected | failed, rev?, error?}`. A held edit that
+the user allows is applied to the timeline as it is then, without the base revision. While one edit is held, another
+one outside the scope fails with `-32003`.
 
 Use `timeline apply ... --dry-run` (MCP parameter `dryRun: true`) to validate the same batch on a copy.
 It checks the base revision, locks and project invariants, but changes no revision, undo history, files,
@@ -753,6 +781,7 @@ with `isError: true`. Error messages are intended for the requesting client and 
 | Editor busy | -32003 | 69 |
 | App/socket unavailable | -32000 | 69 |
 | Missing or revoked token | -32001 | 77 |
+| Edit outside the attached scope, rejected or blocked | -32004 | 77 |
 | Invalid request, command or arguments | -32600 / -32601 / -32602 | 64 |
 | Malformed response | -32700 | 65 |
 | Internal / other failure | -32603 / other | 70 |

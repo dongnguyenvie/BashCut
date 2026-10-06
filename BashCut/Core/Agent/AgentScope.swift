@@ -90,7 +90,8 @@ public enum AgentScope {
             ? String(format: "%d:%02d:%02d", hours, minutes, rest) : String(format: "%02d:%02d", minutes, rest)
     }
 
-    private static func name(_ item: Item, track: Track, in project: Project) -> String {
+    /// What a chip and a held edit call an item: its title, text, file name, or ID.
+    static func name(_ item: Item, track: Track, in project: Project) -> String {
         if track.isAdjustment { return item.adjustmentTitle(in: project) }
         if !item.text.isEmpty {
             let text = item.text.replacingOccurrences(of: "\n", with: " ")

@@ -34,7 +34,8 @@ extension AgentDockModel {
     }
 
     /// Send to Agent: attaches timeline items to the open agent's request. A chat tab shows them as chips that every
-    /// message carries; a terminal gets the scope pasted in its input, before the request the user types. With no
+    /// message carries; a terminal shows them as chips too and gets the scope pasted in its input, before the request
+    /// the user types. With no
     /// agent open it opens the first chat agent, or shows the dock when there is none. Returns the chat agent the
     /// items went to, or nil for a terminal or when nothing was attached.
     @discardableResult
@@ -51,6 +52,7 @@ extension AgentDockModel {
             return agent
         }
         if let session = current {
+            session.scope = AgentScope.merge(session.scope, items)
             session.paste(AgentScope.text(items, fps: document.project.fps) + "\n")
         } else {
             document.message = String(localized: "Open an agent in the dock, then send the clips to it again.")

@@ -37,6 +37,8 @@ final class ProjectDocument {
     var dirty = false
     var creatingProject = false
     var privilegedApproval: PrivilegedApprovalPrompt?
+    /// An agent edit outside its attached scope, waiting for the user (#356).
+    var scopeHold: AgentScopeHold?
     var fileURL: URL?
     let sourceViewer = SourceViewerModel()
     let waveforms = WaveformModel()
@@ -235,6 +237,7 @@ final class ProjectDocument {
         plugins.proposals.removeAll()
         plugins.pendingAction = nil
         if privilegedApproval != nil { resolvePrivilegedApproval(false) }
+        resolveScopeHold(.reject)
         // Terminals stay open; pending session lookups end with the old project.
         let liveBookmarks = agents.liveBookmarks()
         agents.resetProjectState()
@@ -325,6 +328,7 @@ extension ProjectDocument {
         _ operation: EditOperation, label: String, author: Author = .user, baseRevision: Int? = nil,
         coalescingKey: String? = nil
     ) throws -> (revision: Int, changed: Bool) {
+        let scope = try checkAgentScope(operation, label: label, author: author, coalescingKey: coalescingKey)
         let before = project
         let (operation, firstClipCanvas) = withFirstClipCanvas(operation, label: label, author: author)
         let changed: Bool
@@ -343,6 +347,7 @@ extension ProjectDocument {
             return (project.revision, false)
         }
         didCommit(from: before, author: author, label: label, coalescing: coalescingKey != nil)
+        recordScopeEdit(scope, before: before)
         if let firstClipCanvas {
             let name = switch firstClipCanvas {
             case .portrait: String(localized: "Portrait · 9:16")

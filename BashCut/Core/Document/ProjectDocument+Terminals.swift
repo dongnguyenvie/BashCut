@@ -5,7 +5,7 @@ import BashCutProject
 import Foundation
 
 extension ProjectDocument {
-    /// `agent terminals|open`: the dock's terminal tabs, built-in and from `agent.terminal` plugins
+    /// `agent terminals|open|detach`: the dock's terminal tabs, built-in and from `agent.terminal` plugins
     /// (docs/specs/12-terminal-agents.md), from the CLI and MCP.
     func registerTerminalCommands() {
         handle("agent.terminals") { document, _, _ in
@@ -32,10 +32,22 @@ extension ProjectDocument {
                 .object([
                     "terminal": .string(session.provider.id.rawValue), "title": .string(session.title),
                     "selected": .bool(agents.selectedSession == session.id && agents.chatPluginID == nil),
+                    "scope": .array(session.scope.map(\.json)),
                 ])
             }
             return .object([
                 "terminals": .array(terminals), "unavailable": .array(unavailable), "tabs": .array(tabs),
+            ])
+        }
+        handle("agent.detach") { document, arguments, _ in
+            guard let session = document.agents.current, document.agents.chatPluginID == nil else {
+                throw RPCFailure(-32602, "No terminal tab is shown; chat tabs use chat detach")
+            }
+            let ids = Set((arguments.optionalString("items") ?? "").split(separator: ",")
+                .map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty })
+            session.scope.removeAll { ids.isEmpty || ids.contains($0.id) || $0.linked.map(ids.contains) == true }
+            return .object([
+                "terminal": .string(session.provider.id.rawValue), "scope": .array(session.scope.map(\.json)),
             ])
         }
         handle("agent.open") { document, arguments, _ in

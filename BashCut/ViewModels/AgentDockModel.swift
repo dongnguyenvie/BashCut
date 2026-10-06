@@ -14,10 +14,21 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
     func windowWillClose(_ notification: Notification) { closed() }
 }
 
-@MainActor @Observable final class TerminalSession: Identifiable {
+@MainActor @Observable final class TerminalSession: Identifiable, AgentScopeOwner {
     let id = UUID()
     let provider: any AgentProvider
     let token: String
+    /// Items sent with Send to Agent (#356), shown as chips over the terminal until removed. Allow for this
+    /// request lasts until the scope changes.
+    var scope: [AgentScopeItem] = [] {
+        didSet {
+            scopeAllowed = false
+            if scope.isEmpty { scopeExtra = [] }
+        }
+    }
+    var scopeAllowed = false
+    var scopeExtra: Set<String> = []
+    var scopeLast: JSONValue?
     let launchedAt = Date()
     let view = LocalProcessTerminalView(frame: .zero)
     var title: String

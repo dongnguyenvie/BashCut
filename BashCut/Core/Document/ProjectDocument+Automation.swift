@@ -82,7 +82,7 @@ extension ProjectDocument {
                 "dirty": .bool(document.dirty), "conflict": .bool(document.conflict),
                 "busy": .bool(document.busy), "saving": .bool(document.saving),
                 "knowledge": document.agents.knowledgeStore.summary().json,
-                "scope": document.chatScopeJSON,
+                "scope": document.agentScopeJSON,
             ])
         }
         handle("project.get") { document, _, _ in .object(document.project.fields) }

@@ -149,14 +149,23 @@ calls back with `method`.
   selection changes and until the user removes them or starts a new conversation; every message carries them
   as a `[Scope]` block (item IDs, layer, frames and the rule "Edit only these items; ask before changing anything
   else") and as `scope`. The transcript keeps each message's scope. A terminal tab gets the block pasted in its
-  input instead. With no agent open it opens the first chat agent, or shows the dock when there is none.
+  input and shows the same chips over the terminal, with × and Clear. With no agent open it opens the first chat
+  agent, or shows the dock when there is none.
+
+  **Scope guard (#356).** The app checks every edit a tab with chips makes (docs/guides/automation.md, "scope
+  guard"). Settings › Agents › Edits outside the attached clips chooses Ask first (default: the edit is held and a
+  sheet offers Allow Once, Allow for This Request and Reject; only the user can allow), Block, or Allow. The command
+  fails at once with `-32004` naming the items (`held: true` when it waits for the user); `context get` reports the
+  answer as `scope.last`. Allow for This Request lasts until the next chat message, or until a terminal's chips
+  change. Edits from a Shell tab are the user's own and are not checked.
 - **CLI/MCP:**
   - `chat status` lists every chat agent;
   - `chat send <text> [--plugin <id>] [--image <path>]` starts a turn and returns at once;
   - `chat transcript [--plugin]` shows the conversation; poll it until `running` is false;
   - `chat stop` and `chat reset`;
   - `chat attach --items a,b [--plugin]` and `chat detach [--items a] [--plugin]` change the chips;
-    `context get` reports the shown chat tab's as `scope`;
+    `agent detach [--items a]` does the same for the shown terminal tab, and `agent terminals` lists each tab's
+    `scope`; `context get` reports the caller's own tab's as `scope` (else the shown tab's), with the guard `mode`;
   - `ui action agent.open-chat` opens the first chat agent's tab;
   - `ui view` reports `chatTab`.
 

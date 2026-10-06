@@ -46,7 +46,7 @@ public struct RPCFailure: Error, Codable, Sendable, LocalizedError {
         switch code {
         case -32002: 75 // stale revision: temporary failure
         case -32000, -32003: 69 // transport unavailable or editor busy
-        case -32001: 77 // permission denied
+        case -32001, -32004: 77 // permission denied, or an edit outside the attached scope
         case -32600, -32601, -32602: 64 // invalid request or arguments
         case -32700: 65 // malformed response data
         default: 70 // internal error

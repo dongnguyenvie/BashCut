@@ -12,7 +12,7 @@ enum ChatEntryKind: String, Codable { case user, assistant, tool, notice, error 
 /// AI Editor. Any plugin can provide one; each gets its own tab. This model owns one plugin's conversation for the
 /// open project: the transcript shown in the dock, the running turn, and the session token its command calls run
 /// with.
-@MainActor @Observable final class ChatAgentModel {
+@MainActor @Observable final class ChatAgentModel: AgentScopeOwner {
     struct Entry: Identifiable, Codable, Equatable {
         var id = UUID()
         var kind: ChatEntryKind
@@ -47,7 +47,13 @@ enum ChatEntryKind: String, Codable { case user, assistant, tool, notice, error 
     var draftImage: URL?
     /// Timeline items attached with Send to Agent, shown as chips over the input. Every message carries them until
     /// the user removes them.
-    var scope: [AgentScopeItem] = []
+    var scope: [AgentScopeItem] = [] {
+        didSet { if scope.isEmpty { scopeExtra = [] } }
+    }
+    /// Scope guard (#356): Allow for this request lasts until the next message.
+    var scopeAllowed = false
+    var scopeExtra: Set<String> = []
+    var scopeLast: JSONValue?
     private(set) var conversation = UUID().uuidString
     private var turn: Task<Void, Never>?
     private let commandSession = ChatCommandSession()
@@ -73,6 +79,7 @@ enum ChatEntryKind: String, Codable { case user, assistant, tool, notice, error 
         let message = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !message.isEmpty, !running else { return }
         let scope = scope
+        scopeAllowed = false
         append(Entry(
             kind: .user, text: message + (imageURL.map { "\n[\($0.lastPathComponent)]" } ?? ""),
             scope: scope.isEmpty ? nil : scope))
@@ -103,6 +110,7 @@ enum ChatEntryKind: String, Codable { case user, assistant, tool, notice, error 
         conversation = UUID().uuidString
         entries = []
         scope = []
+        scopeAllowed = false
         error = ""
         save()
     }
@@ -126,6 +134,7 @@ enum ChatEntryKind: String, Codable { case user, assistant, tool, notice, error 
         revokeToken()
         entries = []
         scope = []
+        scopeAllowed = false
         conversation = UUID().uuidString
         error = ""
         guard let url = stateURL, let data = try? Data(contentsOf: url),
@@ -259,6 +268,9 @@ enum ChatEntryKind: String, Codable { case user, assistant, tool, notice, error 
         commandSession.revoke(in: document.registry)
     }
 
+    /// Whether this conversation's commands run with `token`.
+    func owns(_ token: String) -> Bool { commandSession.owns(token) }
+
     private var stateURL: URL? {
         document.fileURL?.deletingLastPathComponent().appendingPathComponent(".bashcut/chat/\(pluginID).json")
     }
@@ -321,6 +333,9 @@ enum ChatEntryKind: String, Codable { case user, assistant, tool, notice, error 
     }
 
     var available: [ChatAgentModel] { Self.ready(in: document).map { model(for: $0.id) } }
+
+    /// The agent whose commands run with `token`.
+    func owner(of token: String) -> ChatAgentModel? { models.values.first { $0.owns(token) } }
 
     func model(for pluginID: String) -> ChatAgentModel {
         if let model = models[pluginID] { return model }

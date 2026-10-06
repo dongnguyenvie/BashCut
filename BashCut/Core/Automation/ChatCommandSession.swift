@@ -25,6 +25,9 @@ import Foundation
 
     public init() {}
 
+    /// Whether this session's commands run with `token`.
+    public func owns(_ token: String) -> Bool { self.token == token }
+
     public func revoke(in registry: CommandRegistry) {
         if let token { registry.revoke(token) }
         token = nil

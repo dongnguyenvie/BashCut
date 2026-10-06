@@ -1,5 +1,6 @@
 import AppKit
 import BashCutAgent
+import BashCutProject
 import SwiftTerm
 import SwiftUI
 
@@ -55,6 +56,10 @@ struct AgentDockView: View {
             if let pluginID = model.chatPluginID {
                 ChatAgentPanel(agent: model.document.chatAgents.model(for: pluginID), document: model.document)
             } else if let session = model.current {
+                if !session.scope.isEmpty {
+                    TerminalScopeBar(session: session, fps: model.document.project.fps)
+                    Divider()
+                }
                 TerminalPanel(session: session).id(session.id)
                     .padding(.leading, 6).padding(.top, 4)
                     .background(Color(nsColor: session.view.nativeBackgroundColor))
@@ -229,4 +234,22 @@ private struct TerminalPanel: NSViewRepresentable {
     let session: TerminalSession
     func makeNSView(context: Context) -> LocalProcessTerminalView { session.view }
     func updateNSView(_ view: LocalProcessTerminalView, context: Context) {}
+}
+
+/// The clips sent to a terminal agent (#356): the scope guard checks its edits against them until they are removed.
+private struct TerminalScopeBar: View {
+    let session: TerminalSession
+    let fps: FrameRate
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 6) {
+            ScopeChipsView(items: session.scope, fps: fps) { removed in
+                session.scope.removeAll { $0.id == removed.id }
+            }
+            Spacer(minLength: 0)
+            Button("Clear") { session.scope = [] }.buttonStyle(.link).font(.caption)
+        }
+        .padding(.horizontal, 10).padding(.vertical, 6)
+        .help("The agent edits only these clips and asks before changing anything else.")
+    }
 }
