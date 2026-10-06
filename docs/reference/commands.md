@@ -1164,7 +1164,7 @@ Save a new library item in the project or on this Mac. Files are copied in. Agen
 - `scope`: string, one of project, user, default "project". project (the open project's .bashcut/library; the default) or user (this Mac; agents need approval)
 - `tags`: string. Comma-separated tags (mood, use, genre…)
 - `pack`: string. Pack or collection name the panel groups it under
-- `params`: object. What the kind needs (JSON): text-preset {textPreset, text}; sticker {emoji, textPreset} or a file; effect-preset {patch: item properties}; transition-preset {kind, duration}; look {color}
+- `params`: object. What the kind needs (JSON): text-preset {textPreset, text}; sticker {emoji, textPreset} or a file; effect-preset {patch: item properties}; transition-preset {kind, duration, easing: linear|in|out|inOut, sfx: audio item ID} (or its own sound as file); look {color}
 - `file`: string, path. File to copy in (audio, image sticker…)
 - `preview`: string, path. Preview image, GIF or audio snippet to copy in
 - `source`: string. Where it came from (URL or note)
@@ -1180,7 +1180,7 @@ Improve a library item: saves a new version (the old one stays in its history). 
 - `name`: string. New display name
 - `tags`: string. Comma-separated tags (mood, use, genre…)
 - `pack`: string. Pack or collection name the panel groups it under
-- `params`: object. What the kind needs (JSON): text-preset {textPreset, text}; sticker {emoji, textPreset} or a file; effect-preset {patch: item properties}; transition-preset {kind, duration}; look {color}
+- `params`: object. What the kind needs (JSON): text-preset {textPreset, text}; sticker {emoji, textPreset} or a file; effect-preset {patch: item properties}; transition-preset {kind, duration, easing: linear|in|out|inOut, sfx: audio item ID} (or its own sound as file); look {color}
 - `file`: string, path. File to copy in (audio, image sticker…)
 - `preview`: string, path. Preview image, GIF or audio snippet to copy in
 - `source`: string. Where it came from (URL or note)
@@ -1198,7 +1198,7 @@ Remove a project or user library item and its files. Built-in and plugin items c
 
 ### `bashcut library save-selection --kind <kind> --name <name> [--id <id>] [--item <item>] [--scope <scope>] [--tags <tags>] [--pack <pack>]`
 
-Save what is selected on the timeline as a new library item (the panels' Save selection as…): a text item's style, a clip's framing and keyframes, the transition at the selected clip, or a grade.
+Save what is selected on the timeline as a new library item (the panels' Save selection as…): a text item's style, a clip's framing and keyframes, the transition at the selected clip (kind, duration, easing and the sound a preset placed there), or a grade.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_library_save-selection`
 - `kind`: string, required, one of text-preset, effect-preset, transition-preset, look. What to save
@@ -1220,7 +1220,7 @@ Move a saved item between the project and this Mac, with its versions, files and
 
 ### `bashcut library apply <id> [--scope <scope>] [--item <item>] --base-rev <baseRev>`
 
-Use a library item on an existing timeline item: a text preset on a text item, an effect preset's properties, a look's grade, or a transition preset at the cut beside a video clip. Defaults to the selected item.
+Use a library item on an existing timeline item: a text preset on a text item, an effect preset's properties, a look's grade, or a transition preset at the cut beside a video clip (its kind, duration and easing, plus its sound on an SFX layer, as one undo step). Defaults to the selected item.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_library_apply`
 - `id`: string, required. Item ID, or scope:id to pick one scope

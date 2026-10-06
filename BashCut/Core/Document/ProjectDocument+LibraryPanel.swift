@@ -30,12 +30,42 @@ extension ProjectDocument {
         let name = item.scope == .builtIn ? String(localized: String.LocalizationValue(item.name)) : item.name
         ui.libraryEditor = LibraryEditorRequest(
             mode: .duplicate(item), name: String(localized: "\(name) copy"), tags: item.tags, pack: item.pack,
-            scope: defaultLibraryScope)
+            scope: defaultLibraryScope, transition: editableTransition(item))
     }
 
+    /// Rename…, and Edit… for a transition preset, whose kind, duration, easing and sound the sheet also shows.
     func beginRename(_ item: LibraryItem) {
         ui.libraryEditor = LibraryEditorRequest(
-            mode: .rename(item), name: item.name, tags: item.tags, pack: item.pack, scope: item.scope)
+            mode: .rename(item), name: item.name, tags: item.tags, pack: item.pack, scope: item.scope,
+            transition: editableTransition(item))
+    }
+
+    /// A transition preset's params for the sheet, with `sfx` written `scope:id` so the sound picker finds it, and
+    /// `file` standing for the preset's own sound.
+    private func editableTransition(_ item: LibraryItem) -> TransitionPreset? {
+        guard item.kind == .transitionPreset, var preset = try? TransitionPreset(params: item.params) else { return nil }
+        if let sfx = preset.sfx {
+            preset.sfx = (try? libraryCatalog.item(sfx).reference) ?? sfx
+        } else if item.file != nil {
+            preset.sfx = Self.ownTransitionSound
+        }
+        return preset
+    }
+
+    /// The sheet's sound choice for a transition preset's own file.
+    static let ownTransitionSound = "file"
+
+    /// The changes that save the sheet's transition fields on `item`: its params (keeping any others) and, when
+    /// the preset no longer uses its own sound, no file.
+    static func transitionChanges(_ edited: TransitionPreset, item: LibraryItem) -> [String: JSONValue] {
+        var preset = edited
+        if preset.sfx == ownTransitionSound { preset.sfx = nil }
+        var params = item.params
+        for key in ["kind", "duration", "easing", "sfx"] { params[key] = nil }
+        params.merge(preset.params) { $1 }
+        var changes: [String: JSONValue] = ["params": .object(params)]
+        if item.file != nil, edited.sfx != ownTransitionSound { changes["file"] = .null }
+        return changes
     }
 
     /// Saves what the item sheet shows and closes it.
@@ -49,17 +79,25 @@ extension ProjectDocument {
         ui.libraryEditor = nil
         let tags = request.tags.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
         let pack = request.pack.trimmingCharacters(in: .whitespacesAndNewlines)
-        let changes: [String: JSONValue] = [
+        var edited: [String: JSONValue] = [
             "name": .string(name), "tags": tags.isEmpty ? .null : .array(tags.map(JSONValue.string)),
             "pack": pack.isEmpty ? .null : .string(pack),
         ]
+        switch request.mode {
+        case .duplicate(let item), .rename(let item):
+            if let transition = request.transition { edited.merge(Self.transitionChanges(transition, item: item)) { $1 } }
+        case .saveSelection:
+            break
+        }
+        let changes = edited
         runLibraryPanelChange(done: String(localized: "Saved “\(name)” in the library")) { document in
             switch request.mode {
             case .saveSelection(let kind):
                 var fields = changes
-                fields["params"] = .object(try document.selectionParams(kind))
+                let selection = try document.selectionParams(kind)
+                fields["params"] = .object(selection.params)
                 return try await document.addLibraryItem(
-                    kind: kind, name: name, scope: request.scope, changes: fields, author: .user,
+                    kind: kind, name: name, scope: request.scope, changes: fields, file: selection.file, author: .user,
                     method: "library.save-selection")
             case .duplicate(let item):
                 return try await document.duplicateLibraryItem(item, into: request.scope, changes: changes, author: .user)

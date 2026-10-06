@@ -160,8 +160,9 @@ public struct LibraryCatalog: Sendable {
             copy[key] = value == .null ? nil : value
         }
         let root = root(of: item)
+        let keepsFile = changes["file"] != .null
         return try store.add(
-            copy, file: file ?? item.file.flatMap { path in root.map { $0.appendingPathComponent(path) } },
+            copy, file: file ?? item.file.flatMap { path in keepsFile ? root.map { $0.appendingPathComponent(path) } : nil },
             preview: preview ?? item.preview.flatMap { path in root.map { $0.appendingPathComponent(path) } }, now: now)
     }
 
@@ -227,7 +228,7 @@ public struct LibraryCatalog: Sendable {
 /// The built-in packs the Text, Stickers and Effects panels show (#75). Names are English UI strings to localize;
 /// IDs are stable.
 public enum LibraryBuiltIns {
-    public static let items: [LibraryItem] = textPresets + stickers + effects
+    public static let items: [LibraryItem] = textPresets + stickers + effects + transitions
 
     /// One per caption renderer preset (`TextPreset.all`), with the sample text the panel shows.
     public static let textPresets: [LibraryItem] = [
@@ -262,4 +263,13 @@ public enum LibraryBuiltIns {
             id: "reset-framing", kind: .effectPreset, name: "Reset framing", pack: "Framing",
             params: ["patch": .object(["transform": .object(["zoom": .number(1), "pan": .integer(0), "tilt": .integer(0)])])]),
     ]
+
+    /// Transition presets (#77): a kind with a length and easing that suit it.
+    public static let transitions: [LibraryItem] = [
+        ("soft-dissolve", "Soft dissolve", TransitionPreset(kind: "dissolve", duration: 15, easing: "inOut")),
+        ("quick-whip", "Quick whip", TransitionPreset(kind: "whip", duration: 8, easing: "out")),
+        ("zoom-punch", "Zoom punch", TransitionPreset(kind: "zoom", duration: 10, easing: "in")),
+    ].map { id, name, preset in
+        LibraryItem(id: id, kind: .transitionPreset, name: name, pack: "Transitions", params: preset.params)
+    }
 }

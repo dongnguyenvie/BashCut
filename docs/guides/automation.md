@@ -353,7 +353,8 @@ The preview does not reserve a revision; apply the batch with the same base revi
   size from 2 through 64. Apply it with `setProperties` on `color.lut`, with optional `color.lutStrength` from 0
   through 1.
 - **Transitions.** `upsertTransition` takes stable `from`/`to` clip IDs, a kind (`dissolve`, `whip`, `blink`,
-  `zoom`, `spin`, `shutter` or `wipe`) and an integer-frame `duration`. The clips must be adjacent on one video
+  `zoom`, `spin`, `shutter` or `wipe`), an integer-frame `duration` and an optional `easing` (`linear`, the default,
+  `in`, `out` or `inOut`; preview and export shape the tween the same way). The clips must be adjacent on one video
   track. `deleteTransition` restores a hard cut; moving or deleting either clip removes a transition that no
   longer describes a valid cut.
 - **Roll.** `{"op": "roll", "item": "ID", "edge": "end", "toFrame": 75}` moves the shared cut with exactly one
@@ -417,8 +418,9 @@ Items come from four scopes; when the same ID is in several, the first wins, and
 
 Built-in packs: **Text styles** (`bold-outline`, `cinematic-serif`, `keyword-sticker`, `place-card`, `hook-title`,
 `chapter-card`), **Emoji** stickers (`fire`, `yum`, `thumbs-up`, `hundred`, `star`, `pin`, `hot-pot`, `laughing`) and
-**Framing** effects (`punch-in`, `reset-framing`). Their IDs are reserved. The Text, Stickers and Effects panels show
-them first, then the items saved in the project or on this Mac.
+**Framing** effects (`punch-in`, `reset-framing`) and **Transitions** presets (`soft-dissolve`, `quick-whip`,
+`zoom-punch`). Their IDs are reserved. The Text, Stickers, Effects and Transitions panels show them first, then the
+items saved in the project or on this Mac.
 
 - `bashcut library list [--panel text] [--kind sticker] [--tag food] [--scope user] [--created-by agent] [--pack X]
   [--query word]` lists items with their usage; `library get <id>` adds the earlier versions and the file path.
@@ -434,9 +436,16 @@ them first, then the items saved in the project or on this Mac.
   `usage.json` next to `library.json`; the item list is not rewritten).
 - `bashcut library save-selection --kind text-preset|effect-preset|transition-preset|look --name X [--item]
   [--scope] [--tags] [--pack]` saves what is selected: a text item's style and text, a clip's `transform` and
-  `keyframes`, the transition at the selected clip (kind and duration), or a grade (without its project LUT).
+  `keyframes`, the transition at the selected clip (kind, duration, easing and the sound a preset placed at that cut),
+  or a grade (without its project LUT).
 - `bashcut library move <id> --to project|user` moves a saved item with its versions, files and use count.
-- `library apply` on a transition preset sets the transition at the cut beside the video clip.
+- Transition presets (#77) are `params` `{kind, duration, easing, sfx}`: `sfx` names an audio library item, or the
+  preset carries its own sound as its `file` (`sfx` wins when both are set). `library apply` on one sets the transition
+  at the cut beside the video clip (the duration at most the shorter clip) and places the sound from the cut on an
+  SFX layer (added when missing), as one undo step. A sound from outside the project is copied into its `sfx/`
+  folder; applying a preset with a sound again at that cut replaces the sound the last one placed (items marked
+  `transitionSFX`). Edit a saved preset with `library update <id> --params '{...}'` (the Transitions panel's
+  Edit…).
 - `bashcut library stats [--panel]` reports usage, the saved items nobody used, and duplicates (same kind, params
   and file), to prune or merge. Saved items compare the `fileSHA256` stored when their file was copied in.
 - `bashcut library export-pack --pack Food --output ~/Food` writes a pack folder (`pack.json` and `files/`);

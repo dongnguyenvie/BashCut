@@ -6,7 +6,7 @@ import Testing
 @testable import BashCutEngine
 
 struct TransitionLaneTests {
-    private func project(clips: Int) throws -> Project {
+    private func project(clips: Int, easing: String? = nil) throws -> Project {
         let media = Media(fields: [
             "id": .string("m"), "path": .string("test.mp4"), "fps": FrameRate().json, "frames": .integer(59)
         ])
@@ -16,7 +16,8 @@ struct TransitionLaneTests {
                 id: "c\(index)", media: "m", at: index * 20, duration: 20, sourceIn: index % 2 * 20)))
             if index > 0 {
                 operations.append(.upsertTransition(
-                    id: "t\(index)", kind: "dissolve", from: "c\(index - 1)", to: "c\(index)", duration: 8))
+                    id: "t\(index)", kind: "dissolve", from: "c\(index - 1)", to: "c\(index)", duration: 8,
+                    easing: easing))
             }
         }
         return try Project(name: "Transitions").applying(.group(label: "Fixture", author: .user, ops: operations)).project
@@ -59,6 +60,28 @@ struct TransitionLaneTests {
                 #expect(zip(referencePixels, actualPixels).allSatisfy { abs(Int($0) - Int($1)) <= 2 })
             }
         }
+    }
+
+    @Test("Both sides of an eased transition carry its easing, so preview and export tween the same (#77)")
+    func easing() async throws {
+        _ = try await TestFixtures.requireVideo()
+        let built = try await CompositionBuilder().build(project(clips: 2, easing: "in"), root: TestFixtures.mediaRoot)
+        let transitions = built.videoComposition.instructions.compactMap { $0 as? FrameInstruction }.flatMap { frame in
+            frame.layers.compactMap { layer -> RenderTransition? in
+                guard case .video(let video) = layer else { return nil }
+                return video.transition
+            }
+        }
+        #expect(Set(transitions.map(\.incoming)) == [true, false])
+        #expect(transitions.allSatisfy { $0.easing == "in" })
+        let eased = try #require(transitions.first)
+        let linear = RenderTransition(
+            kind: eased.kind, startFrame: eased.startFrame, duration: eased.duration, incoming: eased.incoming, fps: eased.fps)
+        let middle = (Double(eased.startFrame) + Double(eased.duration) / 2) / eased.fps
+        #expect(abs(linear.progress(at: middle) - 0.5) < 1e-9)
+        #expect(abs(eased.progress(at: middle) - 0.125) < 1e-9)
+        #expect(eased.progress(at: Double(eased.startFrame + eased.duration) / eased.fps) == 1)
+        #expect(eased.progress(at: 0) == 0)
     }
 
     private func pixels(_ image: CGImage) throws -> [UInt8] {

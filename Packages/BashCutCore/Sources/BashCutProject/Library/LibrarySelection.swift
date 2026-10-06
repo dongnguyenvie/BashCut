@@ -10,9 +10,10 @@ public enum LibrarySelection {
     /// Grade fields that point into one project, so a look cannot carry them.
     static let projectColorFields = ["lut", "lutStrength"]
 
-    /// The params for a `kind` item made from the timeline `item`, or from `transition` (the selected clip's).
+    /// The params for a `kind` item made from the timeline `item`, or from `transition` (the selected clip's) and
+    /// the media of the sound a preset placed at its cut: one copied from an audio library item is kept as `sfx`.
     public static func params(
-        _ kind: LibraryKind, item: Item?, transition: TimelineTransition? = nil
+        _ kind: LibraryKind, item: Item?, transition: TimelineTransition? = nil, sound: Media? = nil
     ) throws -> [String: JSONValue] {
         switch kind {
         case .textPreset:
@@ -26,7 +27,10 @@ public enum LibrarySelection {
             guard let transition else {
                 throw ProjectError.invalid("Select a clip that has a transition to save it")
             }
-            return ["kind": .string(transition.kind), "duration": .integer(transition.duration)]
+            let sfx = sound?[TransitionPreset.soundLibraryField]?.string
+            return TransitionPreset(
+                kind: transition.kind, duration: transition.duration, easing: transition.easing, sfx: sfx
+            ).params
         case .look:
             return try look(item)
         case .audio, .sticker, .voice:

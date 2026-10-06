@@ -1,6 +1,18 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Soft dissolve": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Soft dissolve" } }, "vi": { "stringUnit": { "state": "translated", "value": "Hòa tan mềm" } } } },
+    "Quick whip": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Quick whip" } }, "vi": { "stringUnit": { "state": "translated", "value": "Quét nhanh gọn" } } } },
+    "Easing": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Easing" } }, "vi": { "stringUnit": { "state": "translated", "value": "Gia tốc" } } } },
+    "Ease in": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Ease in" } }, "vi": { "stringUnit": { "state": "translated", "value": "Chậm vào" } } } },
+    "Ease out": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Ease out" } }, "vi": { "stringUnit": { "state": "translated", "value": "Chậm ra" } } } },
+    "Ease in and out": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Ease in and out" } }, "vi": { "stringUnit": { "state": "translated", "value": "Chậm vào và ra" } } } },
+    "Linear": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Linear" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đều" } } } },
+    "Edit transition": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Edit transition" } }, "vi": { "stringUnit": { "state": "translated", "value": "Sửa chuyển cảnh" } } } },
+    "Transition": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Transition" } }, "vi": { "stringUnit": { "state": "translated", "value": "Chuyển cảnh" } } } },
+    "Sound": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Sound" } }, "vi": { "stringUnit": { "state": "translated", "value": "Âm thanh" } } } },
+    "Its own sound": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Its own sound" } }, "vi": { "stringUnit": { "state": "translated", "value": "Âm thanh riêng" } } } },
+    "%lld frames": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%lld frames" } }, "vi": { "stringUnit": { "state": "translated", "value": "%lld frame" } } } },
     "Send to Agent": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Send to Agent" } }, "vi": { "stringUnit": { "state": "translated", "value": "Gửi cho agent" } } } },
     "%d selected clips": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%d selected clips" } }, "vi": { "stringUnit": { "state": "translated", "value": "%d clip đã chọn" } } } },
     "Open an agent in the dock, then send the clips to it again.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Open an agent in the dock, then send the clips to it again." } }, "vi": { "stringUnit": { "state": "translated", "value": "Hãy mở một agent trong dock rồi gửi lại các clip." } } } },

@@ -215,9 +215,8 @@ extension LibraryItem {
                 throw ProjectError.invalid("\(label): an effect preset needs params.patch, the item properties it sets")
             }
         case .transitionPreset:
-            guard params["kind"]?.string?.isEmpty == false else {
-                throw ProjectError.invalid("\(label): a transition preset needs params.kind")
-            }
+            // params.sfx wins over the preset's own file.
+            _ = try TransitionPreset(params: params, label: label)
         case .look:
             guard case .object(let color) = params["color"] ?? .null else {
                 throw ProjectError.invalid("\(label): a look needs params.color")

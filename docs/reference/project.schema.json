@@ -978,6 +978,16 @@
           "minimum" : 1,
           "type" : "integer"
         },
+        "easing" : {
+          "description" : "How the tween runs; linear when absent",
+          "enum" : [
+            "linear",
+            "in",
+            "out",
+            "inOut"
+          ],
+          "type" : "string"
+        },
         "from" : {
           "description" : "Outgoing item ID",
           "type" : "string"

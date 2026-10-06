@@ -74,7 +74,7 @@ extension EditOperation {
         case "upsertTransition":
             self = .upsertTransition(
                 id: try read.string("id"), kind: try read.string("kind"), from: try read.string("from"),
-                to: try read.string("to"), duration: try read.frame("duration"))
+                to: try read.string("to"), duration: try read.frame("duration"), easing: fields["easing"]?.string)
         case "deleteTransition": self = .deleteTransition(id: try read.string("id"))
         case "addColorLUT": self = .addColorLUT(ColorLUT(fields: try read.object("lut")))
         case "deleteColorLUT": self = .deleteColorLUT(id: try read.string("id"))
@@ -148,11 +148,13 @@ extension EditOperation {
         case .upsertSection(let id, let label, let frame):
             return op("upsertSection", ["id": .string(id), "label": .string(label), "atFrame": .integer(frame)])
         case .deleteSection(let id): return op("deleteSection", ["id": .string(id)])
-        case .upsertTransition(let id, let kind, let from, let to, let duration):
-            return op("upsertTransition", [
+        case .upsertTransition(let id, let kind, let from, let to, let duration, let easing):
+            var fields: [String: JSONValue] = [
                 "id": .string(id), "kind": .string(kind), "from": .string(from), "to": .string(to),
                 "duration": .integer(duration),
-            ])
+            ]
+            if let easing { fields["easing"] = .string(easing) }
+            return op("upsertTransition", fields)
         case .deleteTransition(let id): return op("deleteTransition", ["id": .string(id)])
         case .addColorLUT(let lut): return op("addColorLUT", ["lut": .object(lut.fields)])
         case .deleteColorLUT(let id): return op("deleteColorLUT", ["id": .string(id)])

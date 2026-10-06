@@ -186,13 +186,19 @@ public struct LibraryEditorRequest: Identifiable {
     public var tags: String
     public var pack: String
     public var scope: LibraryScope
+    /// A transition preset's kind, duration, easing and sound, edited in the sheet (#77); nil for other kinds.
+    public var transition: TransitionPreset?
 
-    public init(mode: Mode, name: String, tags: [String] = [], pack: String? = nil, scope: LibraryScope) {
+    public init(
+        mode: Mode, name: String, tags: [String] = [], pack: String? = nil, scope: LibraryScope,
+        transition: TransitionPreset? = nil
+    ) {
         self.mode = mode
         self.name = name
         self.tags = tags.joined(separator: ", ")
         self.pack = pack ?? ""
         self.scope = scope
+        self.transition = transition
     }
 }
 
