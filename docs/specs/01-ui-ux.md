@@ -401,8 +401,9 @@ kept when the sheet is closed. Agents can answer the sheet with `ui respond send
 The toolbar button shows how many issues are open, for example **[Review ⚠3]**. Clicking an issue jumps the
 timeline to that spot, and **[Ask agent to fix]** sends the issue to the active agent.
 
-The checks come from the playbook and the workspace's lessons. Implemented checks work from timeline structure,
-clip roles and voiceover timing; they do not measure audio.
+The checks come from the playbook and the workspace's lessons. Most work from timeline structure, clip roles and
+voiceover timing; loudness comes from the last normalized export of the revision, and picture checks from
+`review measure` (rendered frames of the revision, two a second).
 
 | Check | Threshold | Source | Status |
 |---|---|---|---|
@@ -417,6 +418,10 @@ clip roles and voiceover timing; they do not measure audio.
 | Special effects | used more than 2 times | playbook §3 | Planned |
 | Outro | the last 5 s contain speech or a call to action | playbook §2 | Planned |
 | Loudness | −14 LUFS ± 1 | `nolan-audio-mix` | Planned (measured only during normalized export) |
+| Black or empty picture | ≥ 0.5 s (a fade out of ≤ 1 s at the end passes) | #432 | Implemented (`review measure`) |
+| Frozen picture | > 4 s vertical, 8 s landscape, outside freeze frames | Reelcrew study | Implemented (`review measure`) |
+| Jump cut | < 6 % change across a hard cut on Main | #432 | Implemented (`review measure`) |
+| Shot length | < 0.4 s, or > 8 s (15 s landscape) without motion; project `review` overrides | Reelcrew study | Implemented |
 | Offline media, or TikTok-ripped music in a public export | any | | Planned |
 
 ## 6. Export

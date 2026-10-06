@@ -48,6 +48,8 @@ final class ProjectDocument {
     var importReport: TimelineImport?
     /// The loudness the last export of this session measured, for review (#431); not saved.
     var reviewLoudness: ReviewLoudness?
+    /// The last picture measurement (`review.measure`, #432), for review; not saved.
+    var reviewPicture: ReviewPicture?
     var sessionID = UUID()
     /// Socket server, command registry and the external-agent token file.
     let automation: AutomationController

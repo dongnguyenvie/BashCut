@@ -65,7 +65,7 @@ arguments.
 | `project get` / `project recents` | read | Welcome screen, Recent projects |
 | `timeline get [--format text\|json]` | read | Looking at the timeline, its transitions and section markers |
 | `media list` | read | Library |
-| `review run` | read | Review |
+| `review run` / `review measure` | read | Review, Measure picture |
 | `captions export` | read | Text panel, Export SRT |
 | `export status` / `jobs status` | read | Export queue, job progress |
 | `plugins list` / `plugins health` | read | Plugins sheet, Check Health |

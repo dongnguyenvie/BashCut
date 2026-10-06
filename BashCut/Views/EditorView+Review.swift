@@ -20,7 +20,11 @@ extension EditorView {
                     document.ui.showReview = false
                 }
                 if let fix = issue.fix, document.canApply(fix) {
-                    Button("Fix") { document.apply(fix, label: issue.title) }
+                    if fix.command == "review.measure" {
+                        Button("Measure picture") { document.apply(fix, label: issue.title) }
+                    } else {
+                        Button("Fix") { document.apply(fix, label: issue.title) }
+                    }
                 }
                 Button("Ask agent to fix") {
                     document.ui.showAgentDock = true

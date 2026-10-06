@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 147 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 148 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -188,11 +188,17 @@ Find the time offset between two recordings of the same moment (a camera and a s
 
 ### `bashcut review run [--min-severity <minSeverity>] [--summary]`
 
-Review the timeline before export. Each issue has a severity (error: spoils the export, warning: hurts it, info: a note) and, when one exists, a fix: a command with arguments, or a hint. Errors come first. With summary, the result is {issues, summary: {errors, warnings, infos, passed}}; passed means no error. Loudness is checked from the last normalized export of this revision.
+Review the timeline before export. Each issue has a severity (error: spoils the export, warning: hurts it, info: a note) and, when one exists, a fix: a command with arguments, or a hint. Errors come first. With summary, the result is {issues, summary: {errors, warnings, infos, passed}}; passed means no error. Loudness is checked from the last normalized export of this revision, black and frozen picture and jump cuts from the last review.measure of this revision. Issues over a stretch carry endFrame. Pacing (shot length, still picture) follows the project's review object (minShotSeconds, maxShotSeconds, maxStillSeconds) when set.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_review_run`
 - `minSeverity`: string, one of error, warning, info. Leave out issues less severe than this
 - `summary`: boolean. Wrap the issues with counts and a pass flag
+
+### `bashcut review measure`
+
+Render the timeline small (two frames a second and both sides of every hard cut on Main, proxies allowed) and keep the picture measurement for this revision, so review.run checks black or empty picture, frozen picture, long static shots and jump cuts. The job's result has the sample count and the picture issues found; measure again after an edit.
+
+- Mode: read · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_review_measure`
 
 ## captions
 
