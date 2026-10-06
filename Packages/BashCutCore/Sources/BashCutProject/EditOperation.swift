@@ -31,7 +31,8 @@ public indirect enum EditOperation: Codable, Sendable, Equatable {
         media: String, bpm: Double, frames: [Int], provenance: [String: JSONValue]?)
     case upsertSection(id: String, label: String, atFrame: Int)
     case deleteSection(id: String)
-    case upsertTransition(id: String, kind: String, from: String, to: String, duration: Int)
+    /// `easing` nil or `linear` is the default straight tween (see `TimelineTransition.easings`).
+    case upsertTransition(id: String, kind: String, from: String, to: String, duration: Int, easing: String? = nil)
     case deleteTransition(id: String)
     case addColorLUT(ColorLUT)
     case deleteColorLUT(id: String)
@@ -122,8 +123,9 @@ extension Project {
             try upsertSection(id: id, label: label, frame: frame)
         case .deleteSection(let id):
             try deleteSection(id: id)
-        case .upsertTransition(let id, let kind, let from, let to, let duration):
-            try upsertTransition(id: id, kind: kind, from: from, to: to, duration: duration)
+        case .upsertTransition(let id, let kind, let from, let to, let duration, let easing):
+            try upsertTransition(
+                TimelineTransition(id: id, kind: kind, from: from, to: to, duration: duration, easing: easing))
         case .deleteTransition(let id):
             try deleteTransition(id: id)
         case .addColorLUT(let lut):
@@ -287,29 +289,6 @@ extension Project {
         }
         values.remove(at: index)
         markers = values
-    }
-
-    private mutating func upsertTransition(
-        id: String, kind: String, from: String, to: String, duration: Int
-    ) throws {
-        guard TimelineTransition.renderedKinds.contains(kind) else {
-            throw ProjectError.invalid("Unsupported transition kind")
-        }
-        let value = TimelineTransition(id: id, kind: kind, from: from, to: to, duration: duration)
-        guard transitionIsValid(value) else { throw ProjectError.invalid("Transition requires an adjacent video cut") }
-        var values = transitions
-        values.removeAll { $0.id == id || $0.fromItemID == from || $0.toItemID == to }
-        values.append(value)
-        transitions = values
-    }
-
-    private mutating func deleteTransition(id: String) throws {
-        var values = transitions
-        guard let index = values.firstIndex(where: { $0.id == id }) else {
-            throw ProjectError.invalid("Unknown transition: \(id)")
-        }
-        values.remove(at: index)
-        transitions = values
     }
 
     private mutating func addTrack(_ track: Track, at index: Int) throws {

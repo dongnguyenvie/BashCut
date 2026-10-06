@@ -145,7 +145,7 @@ public actor CompositionBuilder {
                     let incoming = transitionTo[item.id].map {
                         RenderTransition(
                             kind: $0.kind, startFrame: item.at, duration: $0.duration,
-                            incoming: true, fps: project.fps.value)
+                            incoming: true, fps: project.fps.value, easing: $0.easing)
                     }
                     let lut = try loadLUT(for: item)
                     let crop = SourceCrop(
@@ -180,7 +180,7 @@ public actor CompositionBuilder {
                                     transition: RenderTransition(
                                         kind: transition.kind, startFrame: item.end,
                                         duration: transition.duration, incoming: false,
-                                        fps: project.fps.value), lut: lut,
+                                        fps: project.fps.value, easing: transition.easing), lut: lut,
                                     motion: motion.map { ($0, placement) }, crop: crop)))
                     }
                 }

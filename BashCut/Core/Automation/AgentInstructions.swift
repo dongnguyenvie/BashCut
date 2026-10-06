@@ -106,7 +106,8 @@ extension CommandCatalog {
         {"op":"setBeatGrid","media":"MEDIA_ID","bpm":120,"frames":[0,15,30]}.
         {"op":"upsertSection","id":"section-hook","label":"Hook","atFrame":0},
         {"op":"deleteSection","id":"section-hook"}.
-        {"op":"upsertTransition","id":"cut-a-b","kind":"dissolve","from":"CLIP_A","to":"CLIP_B","duration":12},
+        {"op":"upsertTransition","id":"cut-a-b","kind":"dissolve","from":"CLIP_A","to":"CLIP_B","duration":12,
+         "easing":"inOut"} (easing: linear, the default, in, out or inOut),
         {"op":"deleteTransition","id":"cut-a-b"}.
         {"op":"insert","track":"ADJUSTMENT_TRACK_ID","item":{"id":"grade-1","at":0,"dur":90,"color":{"saturation":0.8,"lut":"LUT_ID"}}},
         {"op":"addColorLUT","lut":{"id":"look","name":"Look","path":"luts/look.cube","size":33}},

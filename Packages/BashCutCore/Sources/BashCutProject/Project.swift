@@ -218,19 +218,36 @@ public struct TimelineMarker: JSONObject, Identifiable {
 
 public struct TimelineTransition: JSONObject, Identifiable {
     public static let renderedKinds = ["dissolve", "whip", "blink", "zoom", "spin", "shutter", "wipe"]
+    /// How the tween runs over the transition (#77): `linear` (the default, stored as no field), or the keyframe
+    /// curves `in`, `out` and `inOut`.
+    public static let easings = ["linear", "in", "out", "inOut"]
+    public static let defaultEasing = "linear"
     public var fields: [String: JSONValue]
     public init(fields: [String: JSONValue]) { self.fields = fields }
-    public init(id: String = UUID().uuidString, kind: String, from: String, to: String, duration: Int) {
+    public init(
+        id: String = UUID().uuidString, kind: String, from: String, to: String, duration: Int, easing: String? = nil
+    ) {
         fields = [
             "id": .string(id), "kind": .string(kind), "from": .string(from),
             "to": .string(to), "duration": .integer(duration),
         ]
+        if let easing, easing != Self.defaultEasing { fields["easing"] = .string(easing) }
     }
     public var id: String { fields["id"]?.string ?? "" }
     public var kind: String { fields["kind"]?.string ?? "" }
     public var fromItemID: String { fields["from"]?.string ?? "" }
     public var toItemID: String { fields["to"]?.string ?? "" }
     public var duration: Int { fields["duration"]?.int ?? 0 }
+    public var easing: String { fields["easing"]?.string ?? Self.defaultEasing }
+
+    /// `linear` (0...1, clamped) shaped by `easing`; an unknown easing stays linear. Preview and export share it.
+    public static func eased(_ linear: Double, easing: String) -> Double {
+        let t = min(1, max(0, linear))
+        guard easing != defaultEasing, easings.contains(easing), let ease = ItemMotion.Ease(rawValue: easing) else {
+            return t
+        }
+        return ease.apply(t)
+    }
 }
 
 public struct ColorLUT: JSONObject, Identifiable {

@@ -27,6 +27,11 @@ struct TransitionLibraryView: View {
                     "Duration: \(active.duration) frames",
                     onIncrement: { document.adjustSelectedTransitionDuration(by: 3) },
                     onDecrement: { document.adjustSelectedTransitionDuration(by: -3) })
+                Picker("Easing", selection: Binding(
+                    get: { active.easing }, set: { document.setSelectedTransitionEasing($0) }
+                )) {
+                    ForEach(TimelineTransition.easings, id: \.self) { Text(Self.easingTitle($0)).tag($0) }
+                }
                 Button("Remove transition", role: .destructive) {
                     document.removeSelectedTransition()
                 }
@@ -34,7 +39,11 @@ struct TransitionLibraryView: View {
             Divider()
             LibraryItemsSection(document: document, kinds: [.transitionPreset], saveKinds: [.transitionPreset]) { item in
                 Button { document.applyFromLibrary(item) } label: {
-                    LibraryView.title(item).frame(maxWidth: .infinity, alignment: .leading)
+                    VStack(alignment: .leading, spacing: 2) {
+                        LibraryView.title(item)
+                        Text(Self.summary(item)).font(.caption2).foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }.disabled(document.selected == nil)
             }
         }
@@ -42,6 +51,36 @@ struct TransitionLibraryView: View {
 
     private func title(_ kind: String) -> LocalizedStringKey {
         LocalizedStringKey(kind.capitalized)
+    }
+
+    static func easingTitle(_ easing: String) -> LocalizedStringKey {
+        switch easing {
+        case "in": "Ease in"
+        case "out": "Ease out"
+        case "inOut": "Ease in and out"
+        default: "Linear"
+        }
+    }
+
+    /// Kind, length, easing and whether the preset has a sound, under its name.
+    private static func summary(_ item: LibraryItem) -> String {
+        guard let preset = try? TransitionPreset(params: item.params) else { return "" }
+        var parts = [String(localized: String.LocalizationValue(preset.kind.capitalized))]
+        if let duration = preset.duration { parts.append(String(localized: "\(duration) frames")) }
+        if let easing = preset.easing, easing != TimelineTransition.defaultEasing {
+            parts.append(String(localized: easingValue(easing)))
+        }
+        if preset.sfx != nil || item.file != nil { parts.append(String(localized: "Sound")) }
+        return parts.joined(separator: " · ")
+    }
+
+    private static func easingValue(_ easing: String) -> String.LocalizationValue {
+        switch easing {
+        case "in": "Ease in"
+        case "out": "Ease out"
+        case "inOut": "Ease in and out"
+        default: "Linear"
+        }
     }
 
     private func icon(_ kind: String) -> String {
@@ -54,5 +93,45 @@ struct TransitionLibraryView: View {
         case "shutter": "camera.aperture"
         default: "rectangle.split.2x1"
         }
+    }
+}
+
+/// A transition preset's kind, duration, easing and sound in the library item sheet (#77); `library update --params`
+/// sets the same fields.
+struct TransitionPresetFields: View {
+    @Bindable var document: ProjectDocument
+    @Binding var preset: TransitionPreset
+
+    @State private var sounds: [LibraryItem] = []
+
+    var body: some View {
+        Picker("Transition", selection: $preset.kind) {
+            ForEach(kinds, id: \.self) { Text(LocalizedStringKey($0.capitalized)).tag($0) }
+        }
+        Stepper(
+            "Duration: \(preset.duration ?? 15) frames",
+            value: Binding(get: { preset.duration ?? 15 }, set: { preset.duration = $0 }),
+            in: 1...TransitionPreset.maximumDuration)
+        Picker("Easing", selection: Binding(
+            get: { preset.easing ?? TimelineTransition.defaultEasing }, set: { preset.easing = $0 }
+        )) {
+            ForEach(TimelineTransition.easings, id: \.self) { Text(TransitionLibraryView.easingTitle($0)).tag($0) }
+        }
+        Picker("Sound", selection: Binding(get: { preset.sfx ?? "" }, set: { preset.sfx = $0.isEmpty ? nil : $0 })) {
+            Text("None").tag("")
+            if preset.sfx == ProjectDocument.ownTransitionSound {
+                Text("Its own sound").tag(ProjectDocument.ownTransitionSound)
+            }
+            ForEach(sounds, id: \.reference) { LibraryView.title($0).tag($0.reference) }
+            if let sfx = preset.sfx, sfx != ProjectDocument.ownTransitionSound, !sounds.contains(where: { $0.reference == sfx }) {
+                Text(verbatim: sfx).tag(sfx)
+            }
+        }
+        .task { sounds = (try? document.libraryCatalog.panelItems([.audio])) ?? [] }
+    }
+
+    private var kinds: [String] {
+        TimelineTransition.renderedKinds.contains(preset.kind)
+            ? TimelineTransition.renderedKinds : TimelineTransition.renderedKinds + [preset.kind]
     }
 }

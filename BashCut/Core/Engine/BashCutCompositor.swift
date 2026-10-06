@@ -125,6 +125,14 @@ public struct RenderTransition: Sendable, Equatable {
     public let duration: Int
     public let incoming: Bool
     public let fps: Double
+    /// `TimelineTransition.easing`; linear is the straight tween.
+    public var easing = TimelineTransition.defaultEasing
+
+    /// How far the tween is at `time` seconds, from 0 to 1, shaped by the easing.
+    public func progress(at time: Double) -> Double {
+        let linear = (time * fps - Double(startFrame)) / Double(duration)
+        return TimelineTransition.eased(linear, easing: easing)
+    }
 }
 
 /// The compositor owns no UI state. Each request carries an immutable instruction snapshot.
@@ -239,9 +247,7 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
     private func applyTransition(
         to input: CIImage, transition: RenderTransition, time: Double, bounds: CGRect
     ) -> (CIImage, Double) {
-        let frame = time * transition.fps
-        let progress = ((frame - Double(transition.startFrame)) / Double(transition.duration))
-            .clamped(to: 0...1)
+        let progress = transition.progress(at: time)
         let center = CGPoint(x: bounds.midX, y: bounds.midY)
         var image = input
         var opacity = 1.0
@@ -281,11 +287,5 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
             if transition.incoming { opacity = progress }
         }
         return (image, opacity)
-    }
-}
-
-private extension Comparable {
-    func clamped(to range: ClosedRange<Self>) -> Self {
-        min(range.upperBound, max(range.lowerBound, self))
     }
 }

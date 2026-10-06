@@ -30,7 +30,8 @@ public enum TimelineSummary {
         for transition in project.transitions {
             lines.append(
                 "TRANSITION \(transition.id) \(transition.kind) \(transition.fromItemID)->\(transition.toItemID) "
-                    + "dur=\(transition.duration)")
+                    + "dur=\(transition.duration)"
+                    + (transition.easing == TimelineTransition.defaultEasing ? "" : " easing=\(transition.easing)"))
         }
         for marker in project.markers.sorted(by: { $0.at < $1.at }) {
             lines.append("MARKER \(marker.id) \(marker.kind) at=\(marker.at) \(marker.label)")

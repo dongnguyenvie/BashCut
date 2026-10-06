@@ -217,6 +217,7 @@ public enum ProjectSchema {
                     "kind": enumeration("Transition kind", TimelineTransition.renderedKinds),
                     "from": string("Outgoing item ID"), "to": string("Incoming item ID"),
                     "duration": integer("Timeline frames", minimum: 1),
+                    "easing": enumeration("How the tween runs; linear when absent", TimelineTransition.easings),
                 ])),
             "lut": .object(fields(
                 "A .cube file in the project luts folder", required: ["id", "name", "path", "size"],

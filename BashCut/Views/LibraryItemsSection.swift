@@ -114,7 +114,11 @@ struct LibraryItemsSection<Tile: View>: View {
     @ViewBuilder private func contextMenu(_ item: LibraryItem) -> some View {
         Button("Duplicate & Edit…") { document.beginDuplicate(item) }
         if item.scope.isWritable {
-            Button("Rename…") { document.beginRename(item) }
+            if item.kind == .transitionPreset {
+                Button("Edit…") { document.beginRename(item) }
+            } else {
+                Button("Rename…") { document.beginRename(item) }
+            }
             if item.scope == .project {
                 Button("Move to This Mac") { document.moveFromLibraryPanel(item, to: .user) }
             } else {
@@ -189,6 +193,11 @@ struct LibraryItemEditorSheet: View {
                 TextField("Name", text: $request.name)
                 TextField("Tags", text: $request.tags, prompt: Text("food, warm, hook"))
                 TextField("Pack", text: $request.pack)
+                if request.transition != nil {
+                    TransitionPresetFields(document: document, preset: Binding(
+                        get: { request.transition ?? TransitionPreset(kind: "dissolve") },
+                        set: { request.transition = $0 }))
+                }
                 if !isRename {
                     Picker("Save in", selection: $request.scope) {
                         Text("Project").tag(LibraryScope.project)
@@ -216,7 +225,7 @@ struct LibraryItemEditorSheet: View {
         switch request.mode {
         case .saveSelection(let kind): "Save selection as \(ProjectDocument.kindTitle(kind))"
         case .duplicate: "Duplicate & Edit"
-        case .rename: "Rename"
+        case .rename: request.transition == nil ? "Rename" : "Edit transition"
         }
     }
 }

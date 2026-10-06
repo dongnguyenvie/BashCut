@@ -75,12 +75,12 @@ extension ProjectDocument {
     @discardableResult
     func applyLibraryItem(
         _ item: LibraryItem, to itemID: String, author: Author = .user, baseRevision: Int? = nil
-    ) throws -> Int {
+    ) async throws -> Int {
         guard let target = project.tracks.flatMap(\.items).first(where: { $0.id == itemID }) else {
             throw RPCFailure(-32602, "Unknown item \(itemID)")
         }
         if item.kind == .transitionPreset {
-            let revision = try applyTransitionPreset(item, at: itemID, author: author, baseRevision: baseRevision)
+            let revision = try await applyTransitionPreset(item, at: itemID, author: author, baseRevision: baseRevision)
             recordLibraryUse(item)
             return revision
         }
@@ -102,25 +102,6 @@ extension ProjectDocument {
         return revision
     }
 
-    /// Sets the transition at the cut beside the video clip `itemID` to the preset's kind and duration (at most the
-    /// shorter clip).
-    private func applyTransitionPreset(
-        _ item: LibraryItem, at itemID: String, author: Author, baseRevision: Int?
-    ) throws -> Int {
-        guard let kind = item.params["kind"]?.string, TimelineTransition.renderedKinds.contains(kind) else {
-            throw RPCFailure(-32602, "\(item.reference) has no transition kind BashCut can render")
-        }
-        guard let cut = videoCut(at: itemID) else { throw RPCFailure(-32602, "\(itemID) is not a video clip beside a cut") }
-        let existing = project.transitions.first { $0.fromItemID == cut.from.id && $0.toItemID == cut.to.id }
-        let longest = min(cut.from.duration, cut.to.duration)
-        let duration = min(longest, max(1, item.params["duration"]?.int ?? existing?.duration ?? min(15, longest / 3)))
-        return try commit(
-            .upsertTransition(
-                id: existing?.id ?? "transition-\(cut.from.id)-\(cut.to.id)", kind: kind, from: cut.from.id,
-                to: cut.to.id, duration: duration),
-            label: item.name, author: author, baseRevision: baseRevision)
-    }
-
     /// Library panels: places an item at the playhead.
     func placeFromLibrary(_ item: LibraryItem) {
         do { try placeLibraryItem(item) } catch { message = error.localizedDescription }
@@ -129,7 +110,9 @@ extension ProjectDocument {
     /// Library panels: uses an item on the selected timeline item.
     func applyFromLibrary(_ item: LibraryItem) {
         guard let selectedID else { return }
-        do { try applyLibraryItem(item, to: selectedID) } catch { message = error.localizedDescription }
+        Task {
+            do { try await applyLibraryItem(item, to: selectedID) } catch { message = error.localizedDescription }
+        }
     }
 
     private func placeText(
@@ -252,15 +235,21 @@ extension ProjectDocument {
         }
     }
 
-    /// The params of a new item made from the timeline item `itemID` (the selection by default).
-    func selectionParams(_ kind: LibraryKind, itemID: String? = nil) throws -> [String: JSONValue] {
+    /// The params of a new item made from the timeline item `itemID` (the selection by default), and the file to
+    /// copy in: the sound a transition preset placed at the selected cut, unless it came from an audio library item
+    /// (then `params.sfx` names that item).
+    func selectionParams(_ kind: LibraryKind, itemID: String? = nil) throws -> (params: [String: JSONValue], file: URL?) {
         let id = itemID ?? selectedID
         let item = id.flatMap { id in project.tracks.flatMap(\.items).first { $0.id == id } }
         if let id, item == nil { throw RPCFailure(-32602, "Unknown item \(id)") }
         let transition = id.flatMap { id in project.transitions.first { $0.fromItemID == id || $0.toItemID == id } }
+        let sound = kind == .transitionPreset ? transition.flatMap { project.transitionSound(for: $0.id)?.media } : nil
+        let params: [String: JSONValue]
         do {
-            return try LibrarySelection.params(kind, item: item, transition: transition)
+            params = try LibrarySelection.params(kind, item: item, transition: transition, sound: sound)
         } catch { throw RPCFailure(-32602, error.localizedDescription) }
+        guard let sound, params["sfx"] == nil, let root = fileURL?.deletingLastPathComponent() else { return (params, nil) }
+        return (params, try MediaPathResolver.resolve(sound.path, projectRoot: root, workspaceRoot: settings.workspace))
     }
 
     private static func filter(_ arguments: CommandArguments) -> LibraryCatalog.Filter {
@@ -344,11 +333,12 @@ extension ProjectDocument {
         handleAuthored("library.save-selection") { document, arguments, author in
             let kind = LibraryKind(rawValue: try arguments.string("kind")) ?? .look
             var changes = Self.itemChanges(arguments)
-            changes["params"] = .object(try document.selectionParams(kind, itemID: arguments.optionalString("item")))
+            let selection = try document.selectionParams(kind, itemID: arguments.optionalString("item"))
+            changes["params"] = .object(selection.params)
             return try await document.addLibraryItem(
                 kind: kind, name: try arguments.string("name"), id: arguments.optionalString("id"),
                 scope: LibraryScope(rawValue: try arguments.string("scope")) ?? .project, changes: changes,
-                author: author, method: "library.save-selection")
+                file: selection.file, author: author, method: "library.save-selection")
         }
         handleAuthored("library.move") { document, arguments, author in
             let item = try document.libraryCatalog.item(try arguments.string("id"), scope: Self.scope(arguments))
@@ -405,7 +395,7 @@ extension ProjectDocument {
             guard let target = arguments.optionalString("item") ?? document.selectedID else {
                 throw RPCFailure(-32602, "Select an item or pass --item")
             }
-            let revision = try document.applyLibraryItem(
+            let revision = try await document.applyLibraryItem(
                 item, to: target, author: author, baseRevision: arguments.int("baseRev"))
             return .object(["rev": .integer(revision), "item": .string(target), "library": .string(item.reference)])
         }

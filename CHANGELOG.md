@@ -5,6 +5,15 @@
 
 ## [Unreleased]
 
+- **Transition presets (#77).** A transition preset is a kind, duration, easing and an optional sound effect.
+  Transitions get an `easing` (`linear`, the default, `in`, `out` or `inOut`) that preview and export apply the same
+  way: `upsertTransition` takes it, and the Transitions panel has an Easing picker for the active transition.
+  `library apply` (or a click in the panel) sets the transition at the cut and places the preset's sound (`params.sfx`,
+  an audio library item, or its own `file`) from the cut on an SFX layer as one undo step, copying a sound from
+  outside the project into `sfx/`; applying again at that cut replaces the sound. `library save-selection --kind
+  transition-preset` keeps the easing and the sound a preset placed. Writable presets have **Edit…** (kind, duration,
+  easing, sound; `library update --params`), and Duplicate & Edit shows the same fields. New built-in Transitions
+  pack: Soft dissolve, Quick whip, Zoom punch.
 - **Opening a project looks for earlier agent conversations faster (#351).** The scan parses a session file only
   when its bytes hold the project's or workspace's path, remembers what each file held, and on the next open reads
   only files that are new or changed. Closing or switching the project stops a running scan.

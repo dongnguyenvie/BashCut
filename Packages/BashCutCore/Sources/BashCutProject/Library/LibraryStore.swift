@@ -121,7 +121,8 @@ public struct LibraryStore: Sendable {
     }
 
     /// Saves a new version of a stored item: the current one moves to `history` (the newest
-    /// `LibraryItem.maximumHistory` are kept). `changes` replaces fields; a null value removes one.
+    /// `LibraryItem.maximumHistory` are kept). `changes` replaces fields; a null value removes one, and a null `file`
+    /// drops the file from the new version (earlier versions keep theirs).
     @discardableResult
     public func update(
         _ id: String, changes: [String: JSONValue], file: URL? = nil, preview: URL? = nil, now: Date = Date()
@@ -136,6 +137,10 @@ public struct LibraryStore: Sendable {
         item.scope = scope
         for (key, value) in changes where !Self.managedKeys.contains(key) {
             item[key] = value == .null ? nil : value
+        }
+        if changes["file"] == .null, file == nil {
+            item["file"] = nil
+            item["fileSHA256"] = nil
         }
         var previous = current.fields
         previous["history"] = nil
