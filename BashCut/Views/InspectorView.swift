@@ -237,7 +237,7 @@ struct InspectorView: View {
                 "Vertical position", group: "textStyle", key: "positionY", defaultValue: 0.18,
                 range: 0.05...0.9)
             TextFontFields(
-                preset: item.textPreset, projectRoot: document.fileURL?.deletingLastPathComponent(),
+                preset: item.textPreset,
                 style: Binding(
                     get: { document.selected?["textStyle"]?.object ?? [:] },
                     set: { document.patchSelected(["textStyle": .object($0)], label: "Text style", coalescing: true) }),
