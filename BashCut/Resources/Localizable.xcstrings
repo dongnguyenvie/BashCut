@@ -1,6 +1,13 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Bright & airy": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Bright & airy" } }, "vi": { "stringUnit": { "state": "translated", "value": "Sáng & trong" } } } },
+    "Moody": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Moody" } }, "vi": { "stringUnit": { "state": "translated", "value": "Trầm" } } } },
+    "Style kit": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Style kit" } }, "vi": { "stringUnit": { "state": "translated", "value": "Bộ phong cách" } } } },
+    "With LUT": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "With LUT" } }, "vi": { "stringUnit": { "state": "translated", "value": "Kèm LUT" } } } },
+    "Keep its LUT": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Keep its LUT" } }, "vi": { "stringUnit": { "state": "translated", "value": "Giữ LUT của nó" } } } },
+    "LUT strength": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "LUT strength" } }, "vi": { "stringUnit": { "state": "translated", "value": "Độ mạnh LUT" } } } },
+    "Edit look": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Edit look" } }, "vi": { "stringUnit": { "state": "translated", "value": "Sửa tông màu" } } } },
     "Soft dissolve": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Soft dissolve" } }, "vi": { "stringUnit": { "state": "translated", "value": "Hòa tan mềm" } } } },
     "Quick whip": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Quick whip" } }, "vi": { "stringUnit": { "state": "translated", "value": "Quét nhanh gọn" } } } },
     "Easing": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Easing" } }, "vi": { "stringUnit": { "state": "translated", "value": "Gia tốc" } } } },

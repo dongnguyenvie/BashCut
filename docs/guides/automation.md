@@ -418,9 +418,11 @@ Items come from four scopes; when the same ID is in several, the first wins, and
 
 Built-in packs: **Text styles** (`bold-outline`, `cinematic-serif`, `keyword-sticker`, `place-card`, `hook-title`,
 `chapter-card`), **Emoji** stickers (`fire`, `yum`, `thumbs-up`, `hundred`, `star`, `pin`, `hot-pot`, `laughing`) and
-**Framing** effects (`punch-in`, `reset-framing`) and **Transitions** presets (`soft-dissolve`, `quick-whip`,
-`zoom-punch`). Their IDs are reserved. The Text, Stickers, Effects and Transitions panels show them first, then the
-items saved in the project or on this Mac.
+**Framing** effects (`punch-in`, `reset-framing`), **Transitions** presets (`soft-dissolve`, `quick-whip`,
+`zoom-punch`) and **Looks** (`original`, `vivid`, `muted-film`, `black-white`, `bright-airy`, `moody`). Their IDs are
+reserved. The Text, Stickers, Effects, Transitions and Filters panels show them first, then the items saved in the
+project or on this Mac. The Filters panel also lists the style kits and the project's own looks (`style save`,
+`looks save`) among its items; clicking a kit runs `style apply`.
 
 - `bashcut library list [--panel text] [--kind sticker] [--tag food] [--scope user] [--created-by agent] [--pack X]
   [--query word]` lists items with their usage; `library get <id>` adds the earlier versions and the file path.
@@ -437,7 +439,7 @@ items saved in the project or on this Mac.
 - `bashcut library save-selection --kind text-preset|effect-preset|transition-preset|look --name X [--item]
   [--scope] [--tags] [--pack]` saves what is selected: a text item's style and text, a clip's `transform` and
   `keyframes`, the transition at the selected clip (kind, duration, easing and the sound a preset placed at that cut),
-  or a grade (without its project LUT).
+  or a grade as a look: the whole filter stack, with the project LUT it uses copied in as the look's file.
 - `bashcut library move <id> --to project|user` moves a saved item with its versions, files and use count.
 - Transition presets (#77) are `params` `{kind, duration, easing, sfx}`: `sfx` names an audio library item, or the
   preset carries its own sound as its `file` (`sfx` wins when both are set). `library apply` on one sets the transition
@@ -446,6 +448,13 @@ items saved in the project or on this Mac.
   folder; applying a preset with a sound again at that cut replaces the sound the last one placed (items marked
   `transitionSFX`). Edit a saved preset with `library update <id> --params '{...}'` (the Transitions panel's
   Edit…).
+- Looks are filter stacks (#79): `params` `{color: {exposure, contrast, saturation, lutStrength}, lutName}` plus an
+  optional .cube LUT as the item's `file` (`library add --kind look --name X --file look.cube`; without `--params`
+  the look is just that LUT). `library place` adds one as an adjustment and `library apply` replaces a clip's or
+  adjustment's grade with it; when it has a LUT, the .cube is copied into the project's `luts/` folder
+  (`luts/library-<hash>.cube`, its project LUT keeps `sha256` and `libraryItem`) and added in the same undo step, and
+  using a look with the same file again reuses that LUT. Looks without a file apply their grade exactly as before.
+  Edit one with `library update <id> --params '{...}'` (the Filters panel's Edit…).
 - `bashcut library stats [--panel]` reports usage, the saved items nobody used, and duplicates (same kind, params
   and file), to prune or merge. Saved items compare the `fileSHA256` stored when their file was copied in.
 - `bashcut library export-pack --pack Food --output ~/Food` writes a pack folder (`pack.json` and `files/`);

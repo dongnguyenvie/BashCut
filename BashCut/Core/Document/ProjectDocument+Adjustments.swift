@@ -5,7 +5,7 @@ import Foundation
 /// Adjustment items, looks and style kits, shared by the Filters library and automation.
 extension ProjectDocument {
     /// The range a new adjustment covers when none is given: the selected clip, else 3 seconds at the playhead.
-    private var defaultAdjustmentRange: Range<Int> {
+    var defaultAdjustmentRange: Range<Int> {
         if let item = selected, selectedItemTrack?.isAdjustment == false { return item.at..<item.end }
         return playhead..<(playhead + max(1, Int((3 * project.fps.value).rounded())))
     }

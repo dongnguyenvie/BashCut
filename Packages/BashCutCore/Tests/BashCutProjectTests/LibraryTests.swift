@@ -297,7 +297,8 @@ struct LibraryTests {
         #expect(LibraryBuiltIns.effects.map(\.name) == ["Punch in 1.3×", "Reset framing"])
         #expect(LibraryBuiltIns.effects[0].params["patch"] == .object(["transform": .object(["zoom": .number(1.3)])]))
         #expect(LibraryBuiltIns.transitions.map(\.id) == ["soft-dissolve", "quick-whip", "zoom-punch"])
-        #expect(Set(items.compactMap(\.kind)) == [.textPreset, .sticker, .effectPreset, .transitionPreset])
+        #expect(LibraryBuiltIns.looks.map(\.id) == ColorLook.builtIn.map(\.id) + ["bright-airy", "moody"])
+        #expect(Set(items.compactMap(\.kind)) == [.textPreset, .sticker, .effectPreset, .transitionPreset, .look])
     }
 
     @Test("Panels list built-in items first, then saved ones, each ID once")

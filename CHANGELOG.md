@@ -5,6 +5,15 @@
 
 ## [Unreleased]
 
+- **Filter stacks (#79).** A look library item is now a filter stack: its grade (`params.color`: exposure, contrast,
+  saturation, `lutStrength`), and optionally its own .cube LUT as the item's `file` (named by `params.lutName`), so
+  it travels across projects. `library place` adds it as an adjustment and `library apply` grades a clip or
+  adjustment with it; either is one undo step that also adds the LUT to the project (copied to
+  `luts/library-<hash>.cube`, reused when the same file was added before). `library save-selection --kind look`
+  keeps the whole stack, the LUT's strength and its file included. Looks saved before keep working unchanged. The
+  Filters panel lists looks, style kits and the project's own looks (`looks save`, `style save`) in the shared
+  library UI, with a built-in Looks pack (Original, Vivid, Muted film, Black & white, Bright & airy, Moody), Edit…
+  for a look's grade and LUT, and .cube files accepted by Add… and drops.
 - **Transition presets (#77).** A transition preset is a kind, duration, easing and an optional sound effect.
   Transitions get an `easing` (`linear`, the default, `in`, `out` or `inOut`) that preview and export apply the same
   way: `upsertTransition` takes it, and the Transitions panel has an Easing picker for the active transition.

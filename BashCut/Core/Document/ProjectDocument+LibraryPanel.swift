@@ -30,14 +30,38 @@ extension ProjectDocument {
         let name = item.scope == .builtIn ? String(localized: String.LocalizationValue(item.name)) : item.name
         ui.libraryEditor = LibraryEditorRequest(
             mode: .duplicate(item), name: String(localized: "\(name) copy"), tags: item.tags, pack: item.pack,
-            scope: defaultLibraryScope, transition: editableTransition(item))
+            scope: defaultLibraryScope, transition: editableTransition(item), look: editableLook(item),
+            keepsLUT: editableLook(item) != nil && item.file != nil ? true : nil)
     }
 
-    /// Rename…, and Edit… for a transition preset, whose kind, duration, easing and sound the sheet also shows.
+    /// Rename…, and Edit… for a transition preset, whose kind, duration, easing and sound the sheet also shows, or
+    /// for a look, whose grade and LUT it shows.
     func beginRename(_ item: LibraryItem) {
         ui.libraryEditor = LibraryEditorRequest(
             mode: .rename(item), name: item.name, tags: item.tags, pack: item.pack, scope: item.scope,
-            transition: editableTransition(item))
+            transition: editableTransition(item), look: editableLook(item),
+            keepsLUT: editableLook(item) != nil && item.file != nil ? true : nil)
+    }
+
+    private func editableLook(_ item: LibraryItem) -> FilterStack? {
+        item.kind == .look ? try? FilterStack(params: item.params) : nil
+    }
+
+    /// The changes that save the sheet's look fields on `item`: its grade and LUT name (keeping other params), and
+    /// without its LUT when the sheet dropped it.
+    static func lookChanges(_ edited: FilterStack, keepsLUT: Bool?, item: LibraryItem) -> [String: JSONValue] {
+        var stack = edited
+        var changes: [String: JSONValue] = [:]
+        if keepsLUT == false {
+            stack.lutName = nil
+            stack.color["lutStrength"] = nil
+            changes["file"] = .null
+        }
+        var params = item.params
+        for key in ["color", "lutName"] { params[key] = nil }
+        params.merge(stack.params) { $1 }
+        changes["params"] = .object(params)
+        return changes
     }
 
     /// A transition preset's params for the sheet, with `sfx` written `scope:id` so the sound picker finds it, and
@@ -86,6 +110,9 @@ extension ProjectDocument {
         switch request.mode {
         case .duplicate(let item), .rename(let item):
             if let transition = request.transition { edited.merge(Self.transitionChanges(transition, item: item)) { $1 } }
+            if let look = request.look {
+                edited.merge(Self.lookChanges(look, keepsLUT: request.keepsLUT, item: item)) { $1 }
+            }
         case .saveSelection:
             break
         }
@@ -264,6 +291,7 @@ extension ProjectDocument {
         switch kind {
         case .audio: [.audio]
         case .sticker: [.image]
+        case .look: [UTType(filenameExtension: "cube")].compactMap { $0 }
         default: []
         }
     }

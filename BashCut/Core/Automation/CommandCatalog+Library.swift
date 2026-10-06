@@ -23,9 +23,10 @@ extension CommandCatalog {
             "params", .object,
             "What the kind needs (JSON): text-preset {textPreset, text}; sticker {emoji, textPreset} or a file; "
                 + "effect-preset {patch: item properties}; transition-preset {kind, duration, easing: linear|in|out|"
-                + "inOut, sfx: audio item ID} (or its own sound as file); look {color}",
+                + "inOut, sfx: audio item ID} (or its own sound as file); look (a filter stack) {color: {exposure, contrast, "
+                + "saturation, lutStrength}, lutName} with an optional .cube LUT as file",
             cli: .option("params")),
-        CommandParameter("file", .string, "File to copy in (audio, image sticker…)", isPath: true, cli: .option("file")),
+        CommandParameter("file", .string, "File to copy in (audio, image sticker, a look's .cube LUT…)", isPath: true, cli: .option("file")),
         CommandParameter("preview", .string, "Preview image, GIF or audio snippet to copy in", isPath: true,
                          cli: .option("preview")),
         CommandParameter("source", .string, "Where it came from (URL or note)", cli: .option("source")),
@@ -87,7 +88,8 @@ extension CommandCatalog {
             "library.save-selection", .edit,
             "Save what is selected on the timeline as a new library item (the panels' Save selection as…): a text "
                 + "item's style, a clip's framing and keyframes, the transition at the selected clip (kind, duration, "
-                + "easing and the sound a preset placed there), or a grade.",
+                + "easing and the sound a preset placed there), or a grade as a look: the full filter stack, with the "
+                + "project LUT it uses copied in as the look's file.",
             parameters: [
                 CommandParameter("kind", .string, "What to save", required: true,
                                  choices: LibrarySelection.kinds.map(\.rawValue), cli: .option("kind")),
@@ -109,7 +111,8 @@ extension CommandCatalog {
         CommandSpec(
             "library.apply", .edit,
             "Use a library item on an existing timeline item: a text preset on a text item, an effect preset's "
-                + "properties, a look's grade, or a transition preset at the cut beside a video clip (its kind, "
+                + "properties, a look's grade (adding its LUT to the project when it has one, in the same undo step), or a "
+                + "transition preset at the cut beside a video clip (its kind, "
                 + "duration and easing, plus its sound on an SFX layer, as one undo step). Defaults to the selected item.",
             parameters: [
                 libraryID, libraryScope,
@@ -119,7 +122,7 @@ extension CommandCatalog {
         CommandSpec(
             "library.place", .edit,
             "Add a library item to the timeline as a new item: a text preset or emoji sticker as text, a look as an "
-                + "adjustment. At the playhead by default.",
+                + "adjustment (with its LUT added to the project in the same undo step). At the playhead by default.",
             parameters: [
                 libraryID, libraryScope,
                 CommandParameter("atFrame", .integer, "First timeline frame", minimum: 0, cli: .option("at-frame")),
