@@ -49,7 +49,7 @@ Không tốn thêm tiền AI: BashCut chạy được với gói đăng ký và 
 | **Gói Claude** (Pro / Max) | Tab **Claude** trong agent dock chạy Claude Code CLI thật bằng tài khoản đã đăng nhập. BashCut không truyền `ANTHROPIC_API_KEY`, nên dùng gói đăng ký chứ không trừ credit API |
 | **Gói ChatGPT** (Plus / Pro) | Tab **Codex** chạy Codex CLI thật bằng tài khoản ChatGPT của bạn |
 | **Claude Desktop / Codex app** | Kết nối với BashCut: `bashcut agent setup claude` hoặc `bashcut agent setup codex` cài skill dựng video và MCP server `bashcut`, để chúng sửa project đang mở từ bên ngoài app |
-| **Model khác** (Gemini, GPT, Grok, Mistral, Groq, OpenRouter, server local hoặc tương thích OpenAI) | Cài plugin **[Director](https://github.com/dongnguyenvie/bashcut-plugins/tree/main/plugins/director)**: agent chat ngay trong BashCut bằng API key của bạn, có mức thinking (`off` / `low` / `medium` / `high`) cho model suy luận |
+| **Model khác** (Gemini, GPT, Grok, Mistral, Groq, OpenRouter, server local hoặc tương thích OpenAI) | Cài plugin **[AI Editor](https://github.com/dongnguyenvie/bashcut-plugins/tree/main/plugins/director)**: agent chat ngay trong BashCut bằng API key của bạn, có mức thinking (`off` / `low` / `medium` / `high`) cho model suy luận |
 
 Dù chọn cách nào, agent cũng sửa qua đúng các lệnh có undo mà giao diện dùng: mọi thay đổi vào Lịch sử, hiện trong
 Show Changes và hoàn tác được. Xem [Tự động hóa](docs/guides/automation.md).

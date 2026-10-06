@@ -726,7 +726,7 @@ Stop a chat agent's running turn.
 
 ### `bashcut chat commands [--plugin <plugin>]`
 
-The slash commands a chat agent's tab offers: the app's (new, clear, stop, settings, copy, export), the agent kit's skills (skill:<name>) and the plugin's own (for Director: compact, model, thinking, session), with their arguments and choices.
+The slash commands a chat agent's tab offers: the app's (new, clear, stop, settings, copy, export), the agent kit's skills (skill:<name>) and the plugin's own (for AI Editor: compact, model, thinking, session), with their arguments and choices.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_chat_commands`
 - `plugin`: string. Chat agent plugin ID; by default the one shown in the dock, else the first

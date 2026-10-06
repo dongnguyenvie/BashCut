@@ -8,7 +8,7 @@ project, edits through the same commands as Claude Code and Codex, looks at the 
 follows the agent kit's skills.
 
 The app side is generic. Nothing in `bash-cut` names a particular agent, so anyone can contribute another chat
-agent as a plugin. The first one is **Director** (`bashcut.director` in `bashcut-plugins`). Its model runtime is
+agent as a plugin. The first one is **AI Editor** (`bashcut.director` in `bashcut-plugins`). Its model runtime is
 the MIT-licensed [pi](https://github.com/earendil-works/pi) libraries (`@earendil-works/pi-agent-core` and
 `pi-ai`); pi is an implementation detail of that plugin.
 
@@ -29,7 +29,7 @@ bash/write tools), several parallel conversations per project, image generation.
 
 ```
 ┌──────── BashCut (Swift) ────────┐        session transport (NDJSON)        ┌──── e.g. bashcut.director ──────┐
-│ Agent dock › chat-agent tab     │  request agent.chat {op:"turn", …} ─────▶ │ agent loop (Director: pi)        │
+│ Agent dock › chat-agent tab     │  request agent.chat {op:"turn", …} ─────▶ │ agent loop (AI Editor: pi)       │
 │ ChatAgentModel (per plugin)     │  ◀──── event {text delta, tool start…}   │ models + API key option          │
 │   └ host channel                │  ◀──── call {method:"timeline.get", …}   │ tools = BashCut command catalog  │
 │       └ CommandRegistry.handle  │  callResult {result | error} ──────────▶ │   + read_skill (agent kit)       │
@@ -100,7 +100,7 @@ that starts with a known command runs the command instead of going to the model.
   | `/export [path]` | Save the conversation as Markdown |
   | `/skill:<name> [task]` | Ask the agent to follow that agent-kit skill |
 
-- **Plugin commands:** those that op `commands` lists, for example Director's `/compact`, `/model`, `/thinking` and
+- **Plugin commands:** those that op `commands` lists, for example AI Editor's `/compact`, `/model`, `/thinking` and
   `/session`. App commands win when a name clashes.
 - **Input:** Enter sends, and Shift+Enter or Option+Enter inserts a new line. While an input method is composing
   (Vietnamese Telex, for example), Enter only commits the text.
@@ -162,9 +162,10 @@ calls back with `method`.
 
   `--plugin` defaults to the agent whose tab is shown, else the first one.
 
-## 5. Director, the first chat agent (`plugins/director` in `bashcut-plugins`)
+## 5. AI Editor, the first chat agent (`plugins/director` in `bashcut-plugins`)
 
-- **Manifest:** `bashcut.director`, name Director, `apiVersion` 4, `transport: session`, capability `agent.chat`,
+- **Name:** AI Editor, called Director before 2026-10-06; the ID did not change, so settings and conversations carry over.
+- **Manifest:** `bashcut.director`, name AI Editor, `apiVersion` 4, `transport: session`, capability `agent.chat`,
   provider `bashcut.director.agent` (`timeoutSeconds` 300).
 - **Options:**
   - `provider` (enum: anthropic, openai, google, openrouter, groq, xai, mistral);

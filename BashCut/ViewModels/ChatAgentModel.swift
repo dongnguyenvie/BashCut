@@ -9,7 +9,7 @@ import Foundation
 enum ChatEntryKind: String, Codable { case user, assistant, tool, notice, error }
 
 /// A chat agent in the dock: a plugin with the `agent.chat` capability (docs/specs/11-chat-agents.md), such as
-/// Director. Any plugin can provide one; each gets its own tab. This model owns one plugin's conversation for the
+/// AI Editor. Any plugin can provide one; each gets its own tab. This model owns one plugin's conversation for the
 /// open project: the transcript shown in the dock, the running turn, and the session token its command calls run
 /// with.
 @MainActor @Observable final class ChatAgentModel {
