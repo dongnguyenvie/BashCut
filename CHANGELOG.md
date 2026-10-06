@@ -18,7 +18,8 @@
   renders the timeline small, two frames a second plus both sides of every hard cut on Main, with proxies, and keeps
   the measurement for that revision (a 3-minute 1080p edit takes about 9 s in a debug build). `review run` then
   reports black or empty picture of 0.5 s or more (error; a fade out of up to 1 s at the end passes), frozen picture
-  longer than 4 s on vertical or 8 s on landscape outside freeze frames, and jump cuts (under 6 % change across a cut
+  longer than 4 s on vertical or 8 s on landscape outside freeze frames (no part of the picture moves: a mouth or a
+  ticker keeps it alive), and jump cuts (under 6 % change across a cut
   that is not already "Repeated framing", with a punch-in fix). Shot length is checked from the timeline: under 0.4 s
   is a note, over 8 s (15 s landscape) warns when the picture barely moves and passes when it keeps moving. A
   project's `review` object (`minShotSeconds`, `maxShotSeconds`, `maxStillSeconds`) overrides the pacing. Issues over

@@ -106,7 +106,8 @@ extension ProjectDocument {
         let enabled = Set(plugins.service.reviewCheckProviders(projectRoot: root, disabled: reviewDisabledChecks)
             .map(\.provider.id))
         let disabled = reviewDisabledChecks
-        return .array(plugins.plugins.flatMap { plugin in
+        // The catalog itself, not the Plugins sheet's last refresh, so a plugin linked a moment ago is listed.
+        return .array(plugins.service.catalog(projectRoot: root).plugins.flatMap { plugin in
             (plugin.manifest.providers ?? []).filter { $0.capability == PluginAPI.reviewCheck }.map { provider in
                 .object([
                     "plugin": .string(plugin.id), "provider": .string(provider.id), "name": .string(provider.name),
