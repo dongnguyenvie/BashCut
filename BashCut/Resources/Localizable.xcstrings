@@ -1811,22 +1811,22 @@
         "vi": { "stringUnit": { "state": "translated", "value": "Không có khác biệt" } }
       }
     },
-    "Project:": {
+    "Project: %@": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Project:" } },
-        "vi": { "stringUnit": { "state": "translated", "value": "Dự án:" } }
+        "en": { "stringUnit": { "state": "translated", "value": "Project: %@" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Dự án: %@" } }
       }
     },
-    "Media:": {
+    "Media: %@": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Media:" } },
-        "vi": { "stringUnit": { "state": "translated", "value": "Media:" } }
+        "en": { "stringUnit": { "state": "translated", "value": "Media: %@" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Media: %@" } }
       }
     },
-    "Tracks:": {
+    "Tracks: %@": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Tracks:" } },
-        "vi": { "stringUnit": { "state": "translated", "value": "Track:" } }
+        "en": { "stringUnit": { "state": "translated", "value": "Tracks: %@" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Track: %@" } }
       }
     },
     "Timeline items: %lld": {
@@ -6023,6 +6023,60 @@
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Project: reveal in Finder, open another, close it" } },
         "vi": { "stringUnit": { "state": "translated", "value": "Dự án: hiện trong Finder, mở dự án khác, đóng dự án" } }
+      }
+    },
+    "Changed: %@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Changed: %@" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đã đổi: %@" } }
+      }
+    },
+    "Actions: %@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Actions: %@" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Tác vụ: %@" } }
+      }
+    },
+    "Hooks: %@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Hooks: %@" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Hook: %@" } }
+      }
+    },
+    "%@ (edits)": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "%@ (edits)" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "%@ (chỉnh sửa)" } }
+      }
+    },
+    "Dependencies: %@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Dependencies: %@" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Dependency: %@" } }
+      }
+    },
+    "Capabilities: %@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Capabilities: %@" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Quyền: %@" } }
+      }
+    },
+    "Adds: %@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Adds: %@" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Thêm: %@" } }
+      }
+    },
+    "Listens to: %@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Listens to: %@" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Lắng nghe: %@" } }
+      }
+    },
+    "Version %@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Version %@" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Phiên bản %@" } }
       }
     }
   },

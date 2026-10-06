@@ -61,7 +61,7 @@ struct AgentChangesView: View {
                         }
                         Text(trackDescription(item)).font(.caption).foregroundStyle(.secondary)
                         if !item.changedKeys.isEmpty {
-                            Text("Changed: " + item.changedKeys.joined(separator: ", "))
+                            Text("Changed: \(item.changedKeys.joined(separator: ", "))")
                                 .font(.caption.monospaced()).textSelection(.enabled)
                         }
                         HStack(alignment: .top) {

@@ -26,8 +26,10 @@ struct PluginManagerView: View {
                 }
                 Button("Done", action: done)
             }
-            Text("Optional tools run outside the editor. A plugin runs only after you trust its exact files; "
-                + "dependencies are installed only after you approve the exact plan.")
+            Text("""
+                Optional tools run outside the editor. A plugin runs only after you trust its exact files; \
+                dependencies are installed only after you approve the exact plan.
+                """)
                 .font(.caption).foregroundStyle(.secondary)
             switch model.tab {
             case .activity: hookLog
@@ -160,15 +162,13 @@ private struct PluginRow: View {
                 Text(plugin.manifest.capabilities.joined(separator: " · ")).font(.caption.monospaced())
             }
             if !plugin.manifest.actions.isEmpty {
-                Text("Actions: " + plugin.manifest.actions.map { $0.title.text }
-                    .joined(separator: ", ")).font(.caption)
+                Text("Actions: \(plugin.manifest.actions.map { $0.title.text }.joined(separator: ", "))").font(.caption)
             }
             if !plugin.manifest.hooks.isEmpty {
-                Text("Hooks: " + plugin.manifest.hooks.map { $0.event + ($0.proposesEdits ? " (edits)" : "") }
-                    .joined(separator: ", ")).font(.caption)
+                Text("Hooks: \(plugin.manifest.hooks.map(hookDescription).joined(separator: ", "))").font(.caption)
             }
             if !plugin.manifest.dependencies.isEmpty {
-                Text("Dependencies: " + plugin.manifest.dependencies.map(\.name).joined(separator: ", "))
+                Text("Dependencies: \(plugin.manifest.dependencies.map(\.name).joined(separator: ", "))")
                     .font(.caption).foregroundStyle(.secondary)
             }
             if let health = model.health[plugin.id], !health.dependencies.isEmpty {
@@ -241,6 +241,10 @@ private struct PluginRow: View {
         return health.dependencies.contains { status in
             status.state != .available && plugin.manifest.dependencies.contains { $0.id == status.id && $0.install != nil }
         }
+    }
+
+    private func hookDescription(_ hook: PluginHookContribution) -> String {
+        hook.proposesEdits ? String(format: String(localized: "%@ (edits)"), hook.event) : hook.event
     }
 
     private func remove() {
@@ -322,13 +326,13 @@ private struct PluginInstallApprovalView: View {
             if let archive = pending.archive { download(archive) }
             if let local = pending.local { localSource(local) }
             if !plugin.manifest.capabilities.isEmpty {
-                Text("Capabilities: " + plugin.manifest.capabilities.joined(separator: ", "))
+                Text("Capabilities: \(plugin.manifest.capabilities.joined(separator: ", "))")
             }
             if !plugin.manifest.actions.isEmpty {
-                Text("Adds: " + plugin.manifest.actions.map { $0.title.text }.joined(separator: ", "))
+                Text("Adds: \(plugin.manifest.actions.map { $0.title.text }.joined(separator: ", "))")
             }
             if !plugin.manifest.hooks.isEmpty {
-                Text("Listens to: " + plugin.manifest.hooks.map(\.event).joined(separator: ", "))
+                Text("Listens to: \(plugin.manifest.hooks.map(\.event).joined(separator: ", "))")
             }
             if plugin.manifest.dependencies.isEmpty {
                 Text("This plugin has no external dependencies.")
@@ -362,8 +366,10 @@ private struct PluginInstallApprovalView: View {
                     .font(.caption)
             }
             if let blocker { Label(blocker, systemImage: "externaldrive.badge.exclamationmark").foregroundStyle(.orange) }
-            Text("Installing trusts these exact files. The plugin and listed dependency commands run with your user "
-                + "permissions; plugin edits are validated and undoable.")
+            Text("""
+                Installing trusts these exact files. The plugin and listed dependency commands run with your user \
+                permissions; plugin edits are validated and undoable.
+                """)
                 .font(.caption).foregroundStyle(.secondary)
             HStack {
                 Spacer()
@@ -413,7 +419,11 @@ private struct PluginInstallApprovalView: View {
         let publisher = archive.entry.publisher.flatMap { registry?.publishers[$0] }
         return VStack(alignment: .leading, spacing: 3) {
             Text("From the plugin registry").font(.headline)
-            Text("Version \(archive.version.version)" + (publisher.map { " · " + $0.name.text } ?? ""))
+            if let publisher {
+                Text("Version \(archive.version.version) · \(publisher.name.text)")
+            } else {
+                Text("Version \(archive.version.version)")
+            }
             PluginSignatureBadge(trust: archive.publisherTrust)
             Text(archive.version.url).font(.caption.monospaced()).lineLimit(1).truncationMode(.middle).textSelection(.enabled)
             Text("SHA-256 " + archive.version.sha256).font(.caption2.monospaced()).foregroundStyle(.secondary)
@@ -449,48 +459,5 @@ private struct PluginInstallProgressView: View {
                 }.font(.caption)
             }
         }.padding(8).background(.white.opacity(0.04)).cornerRadius(6)
-    }
-}
-
-/// A dependency's state in words people understand: available, installed by setup, or not possible on this Mac.
-private struct PluginDependencyBadge: View {
-    let state: PluginDependencyStatus.State?
-    let installable: Bool
-    let checking: Bool
-
-    var body: some View {
-        if checking {
-            Label("Checking…", systemImage: "hourglass").font(.caption2).foregroundStyle(.secondary)
-        } else {
-            switch state {
-            case .notChecked?:
-                Label("Checked after approval", systemImage: "lock").font(.caption2).foregroundStyle(.secondary)
-            case .available?:
-                Label("Available on this Mac", systemImage: "checkmark.circle.fill").font(.caption2).foregroundStyle(.green)
-            case .missing?, nil where installable:
-                Label("Installed during setup", systemImage: "arrow.down.circle").font(.caption2).foregroundStyle(.secondary)
-            default:
-                Label("Not available on this Mac", systemImage: "xmark.octagon.fill").font(.caption2).foregroundStyle(.orange)
-                    .help("The plugin needs it but cannot install it; ask the plugin's author.")
-            }
-        }
-    }
-}
-
-/// Who signed a registry archive: BashCut, a publisher the registry lists, or nobody.
-struct PluginSignatureBadge: View {
-    let trust: PluginPublisherTrust
-
-    var body: some View {
-        switch trust {
-        case .firstParty:
-            Label("Signed by BashCut", systemImage: "checkmark.seal.fill").font(.caption).foregroundStyle(.cyan)
-        case .verifiedPublisher(let publisher):
-            Label(String(format: String(localized: "Signed by %@"), publisher), systemImage: "checkmark.seal")
-                .font(.caption).foregroundStyle(.green)
-        case .unsigned:
-            Label("Not signed: only the checksum is verified. Install it only if you trust where it comes from.",
-                  systemImage: "exclamationmark.shield").font(.caption).foregroundStyle(.orange)
-        }
     }
 }
