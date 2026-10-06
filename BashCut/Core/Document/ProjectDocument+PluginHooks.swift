@@ -195,6 +195,7 @@ extension ProjectDocument {
             "queue": pluginHooks.queueJSON,
             "recent": .array(plugins.hookLog.suffix(50).map(\.json)),
             "proposals": .array(plugins.proposals.map(\.json)),
+            "reviewChecks": reviewChecksJSON(),
         ])
     }
 

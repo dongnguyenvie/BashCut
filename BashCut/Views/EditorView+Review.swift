@@ -13,6 +13,9 @@ extension EditorView {
             Label(issue.title, systemImage: issue.severity == .info ? "info.circle" : "exclamationmark.triangle.fill")
                 .font(.headline).foregroundStyle(tint)
             Text(issue.detail).font(.caption)
+            if let source = issue.source {
+                Text("From plugin \(source)").font(.caption2).foregroundStyle(.secondary)
+            }
             if let hint = issue.fix?.hint { Text(hint).font(.caption).foregroundStyle(.secondary) }
             HStack {
                 Button("Jump") {

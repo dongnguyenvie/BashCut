@@ -50,6 +50,8 @@ final class ProjectDocument {
     var reviewLoudness: ReviewLoudness?
     /// The last picture measurement (`review.measure`, #432), for review; not saved.
     var reviewPicture: ReviewPicture?
+    /// What plugin review checks reported on the last `review.measure` (#451); not saved.
+    var reviewPluginIssues: ReviewPluginIssues?
     var sessionID = UUID()
     /// Socket server, command registry and the external-agent token file.
     let automation: AutomationController

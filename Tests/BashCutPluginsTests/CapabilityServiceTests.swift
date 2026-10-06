@@ -9,7 +9,7 @@ import Testing
 @testable import BashCutPlugins
 
 /// A temporary project with fake shell plugins. Nothing touches the user's catalog, models or network.
-private struct PluginSandbox {
+struct PluginSandbox {
     let root = FileManager.default.temporaryDirectory.appendingPathComponent("capability-\(UUID().uuidString)")
     var project: URL { root.appendingPathComponent("project", isDirectory: true) }
     var service: CapabilityService {
@@ -26,7 +26,8 @@ private struct PluginSandbox {
 
     /// `body` runs after `$id`, `$out` (request output directory) and `$provider` are parsed from the request.
     func addPlugin(
-        _ id: String, providers: [PluginProvider], body: String, healthy: Bool = true, userScope: Bool = false
+        _ id: String, providers: [PluginProvider], body: String, healthy: Bool = true, userScope: Bool = false,
+        apiVersion: Int = 1
     ) throws {
         let directory = (userScope ? root.appendingPathComponent("user") : project.appendingPathComponent(".bashcut/plugins"))
             .appendingPathComponent(id, isDirectory: true)
@@ -48,7 +49,7 @@ private struct PluginSandbox {
                 probe: PluginCommand(executable: "bashcut-test-missing-binary")),
         ]
         let manifest = PluginManifest(
-            id: id, name: LocalizedText(["en": id]), version: "2.1.0", entrypoint: "provider.sh",
+            id: id, name: LocalizedText(["en": id]), version: "2.1.0", apiVersion: apiVersion, entrypoint: "provider.sh",
             capabilities: Array(Set(providers.map(\.capability))), providers: providers,
             dependencies: dependencies)
         try JSONEncoder().encode(manifest).write(to: directory.appendingPathComponent("plugin.json"))

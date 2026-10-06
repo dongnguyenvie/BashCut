@@ -7,7 +7,8 @@ app renders natively. Since plugin API 6 they can ship library packs for any lib
 library items (see [Library packs](#library-packs) and [Library search and generate](#library-search-and-generate)),
 since API 7 agent skills that teach agents to use them ([Agent skills](#agent-skills)), and since API 8 their own
 panel in the left rail, dock tabs and sheets with declarative views, and the use of other plugins
-([Plugin panels and views](#plugin-panels-and-views), [Using other plugins](#using-other-plugins)). A plugin is a separate
+([Plugin panels and views](#plugin-panels-and-views), [Using other plugins](#using-other-plugins)), and since API 9
+their own review checks ([`review.check`](#reviewcheck)). A plugin is a separate
 executable that BashCut starts for
 each request; no third-party code is loaded into the app process. Project data, timeline validation, undo
 history and rendering stay in the app, so a missing plugin never prevents a project from opening. The design
@@ -63,7 +64,7 @@ checked manifest, an entrypoint that already speaks the protocol and smoke tests
 | `id` | Yes | Reverse-domain style: lowercase letters and digits in at least two parts separated by `.` or `-` (`example.voice`) |
 | `name` | Yes | Display name, up to 80 characters; [localized text](#localized-text) |
 | `version` | Yes | Semantic version, such as `1.2.0` or `1.2.0-beta.1` |
-| `apiVersion` | Yes | `1` to `8`; see [API versions](#api-versions) |
+| `apiVersion` | Yes | `1` to `9`; see [API versions](#api-versions) |
 | `minApiVersion` / `maxApiVersion` | No | The host API window the plugin works with; `minApiVersion` defaults to `apiVersion` |
 | `entrypoint` | Yes | Relative path inside the bundle to an executable file; no leading `/` and no `..` |
 | `capabilities` | Yes | List of unique capability IDs (lowercase, segments separated by `.` or `-`); may be empty only when `contributes` is not |
@@ -96,7 +97,7 @@ and dependency names stay plain strings.
 
 ## API versions
 
-The host serves every plugin API version from `PluginAPI.minimum` (1) to `PluginAPI.current` (8); changes are
+The host serves every plugin API version from `PluginAPI.minimum` (1) to `PluginAPI.current` (9); changes are
 additive, so older manifests keep working. Version 2 adds `options`, `contributes` and the `session` transport.
 Version 3 adds option `choiceLabels` and the `file` option type, the `BASHCUT_PLUGIN_DATA`/`BASHCUT_PLUGIN_CACHE`
 folders and `::progress` lines from install recipes. Version 4 adds the `secret` option type, the session host
@@ -104,7 +105,8 @@ channel (`event` and `call` lines) and the `agent.chat` capability. Version 5 ad
 and the manifest's `terminal` object. Version 6 adds `contributes.library` (library packs), the `library.search` and
 `library.generate` capabilities and provider `kinds`. Version 7 adds `contributes.skills` (agent skills). Version 8 adds plugin UI and composition:
 `contributes.container` and `contributes.views` (a panel in the left rail with declarative views), `requires`, `uses`
-with the `plugins.invoke` host call, the host channel for views and session actions, and `features`. From version 8
+with the `plugins.invoke` host call, the host channel for views and session actions, and `features`. Version 9 adds
+the `review.check` capability. From version 8
 on, the API version goes up at most once per BashCut release; smaller differences between hosts are
 [host features](#host-features). A manifest
 that uses a feature with an older `apiVersion` is
@@ -428,6 +430,7 @@ builds the request parameters and validates the result.
 | `audio.sync` | `media sync` | `mediaPath`, `otherPath` | `offsetSeconds`, `correlation`, optional `halves`, `overlapStartSeconds`, `overlapEndSeconds` |
 | `library.search` (API 6) | A library panel's Search…, `library search` | `kind`, `query`, `limit`, `page`, `language`, `outputDirectory` | `items`: up to `limit` library item objects; see [Library search and generate](#library-search-and-generate) |
 | `library.generate` (API 6) | A library panel's Generate…, `library generate` | `kind`, `prompt`, `limit`, `params` (hints), `language`, `outputDirectory` | `items`, as for `library.search` |
+| `review.check` (API 9) | `review measure`, the Review sheet's Measure | `project`, `revision`, `fps`, `duration`, `width`, `height`, `projectRoot` | `issues`; see [`review.check`](#reviewcheck) |
 
 ### Output files
 
@@ -507,6 +510,30 @@ still answers `audio measure` without them.
 time in `mediaPath` + offset, finite, under a day) and `correlation` (−1 to 1). Optionally return `halves`, up to two
 `{offsetSeconds, correlation}` matches of the first and second half of the overlap (BashCut reports them as steady
 when they agree within 0.02 s), and the overlap in the first file's seconds.
+
+### `review.check`
+
+A plugin's own review of the timeline: a model-scored hook, contrast, brand rules. Every ready provider of every
+enabled plugin runs, side by side, when the user or an agent measures the review (`review measure`); `review run`
+then lists its issues with the built-in ones for that revision. The request has the whole project (`project`, the
+same JSON as `project get`; requests over 1 MB fail, as for any request), its `revision`, `fps`, `duration` in
+frames, `width`, `height` and `projectRoot`. Return at most 50 issues:
+
+```json
+{"issues": [{"id": "hook", "title": "Weak hook", "detail": "No face or number in the first 2 s",
+             "frame": 0, "endFrame": 60, "severity": "warning",
+             "fix": {"command": "timeline.apply", "arguments": {"label": "…", "ops": []}, "hint": "Open on a face"}}]}
+```
+
+`id` (1–64 characters), `title` (1–120) and `frame` are required; `detail` (up to 1000 characters), `endFrame`,
+`severity` (`error`, `warning` — the default — or `info`) and `fix` (a command with arguments, a hint, or both) are
+optional. Frames are clamped to the timeline. BashCut prefixes each ID with the provider ID (`<provider>:<id>`) and
+adds `source` (the plugin ID), which the Review sheet shows as *From plugin …*. A check has 30 seconds (less when its
+provider sets a lower `timeoutSeconds`); a check that fails, returns a malformed result or runs out of time becomes
+one info issue, "Plugin check failed", and never stops the others or the built-in checks. A project turns checks off
+with `review.disabledChecks`, a list of plugin or provider IDs (`timeline apply` with `setProjectProperties`);
+`plugins hooks` lists the checks under `reviewChecks` with `enabled` (for this project) and `active` (can run now).
+Declaring `review.check` needs `apiVersion` 9.
 
 ### Provenance
 

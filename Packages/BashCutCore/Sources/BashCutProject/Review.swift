@@ -39,10 +39,12 @@ public struct ReviewIssue: Identifiable, Sendable {
     public let endFrame: Int?
     public let severity: ReviewSeverity
     public let fix: ReviewFix?
+    /// The plugin whose `review.check` reported the issue; nil for built-in checks.
+    public let source: String?
 
     public init(
         id: String, title: String, detail: String, frame: Int, endFrame: Int? = nil, severity: ReviewSeverity = .warning,
-        fix: ReviewFix? = nil
+        fix: ReviewFix? = nil, source: String? = nil
     ) {
         self.id = id
         self.title = title
@@ -51,6 +53,7 @@ public struct ReviewIssue: Identifiable, Sendable {
         self.endFrame = endFrame
         self.severity = severity
         self.fix = fix
+        self.source = source
     }
 
     public var json: JSONValue {
@@ -60,6 +63,7 @@ public struct ReviewIssue: Identifiable, Sendable {
         ]
         if let endFrame { fields["endFrame"] = .integer(endFrame) }
         if let fix { fields["fix"] = fix.json }
+        if let source { fields["source"] = .string(source) }
         return .object(fields)
     }
 }
@@ -162,6 +166,7 @@ public enum TimelineReview {
         issues += hookIssues(project, context: context)
         issues += audioIssues(project, context: context)
         issues += pictureIssues(project, context: context)
+        if let plugins = context.pluginIssues, plugins.revision == project.revision { issues += plugins.issues }
         for caption in project.tracks.filter({ $0.kind == "text" && $0.role == "captions" }).flatMap(\.items)
         where isRecognitionLoop(caption, fps: project.fps.value) {
             issues.append(

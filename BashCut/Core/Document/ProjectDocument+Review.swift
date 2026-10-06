@@ -16,7 +16,7 @@ extension ProjectDocument {
                 let defaults = TextPresetStyle.defaults(preset)
                 return (defaults["size"] ?? 0.055, defaults["positionY"] ?? 0.18)
             },
-            loudness: reviewLoudness, picture: reviewPicture,
+            loudness: reviewLoudness, picture: reviewPicture, pluginIssues: reviewPluginIssues,
             targets: ReviewTargets(
                 integratedLUFS: project["audio"]?.object["targetLUFS"]?.double ?? -14,
                 measureArguments: ["preset": .string(vertical ? ExportPreset.tiktok.rawValue : ExportPreset.youtube1080.rawValue)],
@@ -43,7 +43,7 @@ extension ProjectDocument {
                 ui.showReview = false
                 ui.showExport = true
             case "review.measure":
-                _ = try startPictureMeasure(author: .user)
+                _ = try startReviewMeasure(author: .user)
             default:
                 break
             }
@@ -52,9 +52,10 @@ extension ProjectDocument {
         }
     }
 
-    /// Renders the timeline small (proxies allowed) and keeps its picture measurement for this revision; the job's
-    /// result has the sample count and how many picture issues the review now finds.
-    func startPictureMeasure(author: Author) throws -> JSONValue {
+    /// The measured part of the review, as a job: renders the timeline small (proxies allowed) for the picture checks
+    /// and runs every enabled plugin `review.check` side by side, and keeps both for this revision. The job's result
+    /// has the sample count, the plugin checks that ran and the issues they and the picture checks now find.
+    func startReviewMeasure(author: Author, picture: Bool = true, plugins usePlugins: Bool = true) throws -> JSONValue {
         guard let root = fileURL?.deletingLastPathComponent() else {
             throw RPCFailure(-32602, "Open a saved project first")
         }
@@ -65,22 +66,55 @@ extension ProjectDocument {
         let project = project
         let engine = engine
         let workspace = settings.workspace
+        let service = plugins.service
+        let checks = usePlugins ? service.reviewCheckProviders(projectRoot: root, disabled: reviewDisabledChecks) : []
         let id = jobs.start("review.measure", author: author, work: { [weak self] _ in
-            let snapshot = try await engine.build(project, root: root, workspace: workspace, purpose: .preview)
-            let picture = try await PictureSampler.measure(snapshot, project: project)
+            async let pluginIssues = service.runReviewChecks(checks, project: project, projectRoot: root)
+            var measured: ReviewPicture?
+            if picture {
+                let snapshot = try await engine.build(project, root: root, workspace: workspace, purpose: .preview)
+                measured = try await PictureSampler.measure(snapshot, project: project)
+            }
+            let reported = await pluginIssues
             guard let self else { throw CancellationError() }
-            self.reviewPicture = picture
-            let found = self.reviewIssues().filter { Self.pictureIssuePrefixes.contains(where: $0.id.hasPrefix) }
+            if let measured { self.reviewPicture = measured }
+            if usePlugins { self.reviewPluginIssues = ReviewPluginIssues(revision: project.revision, issues: reported) }
+            let found = self.reviewIssues().filter { issue in
+                issue.source != nil || Self.pictureIssuePrefixes.contains(where: issue.id.hasPrefix)
+            }
             return .object([
-                "revision": .integer(picture.revision), "samples": .integer(picture.samples.count),
-                "cuts": .integer(picture.cuts.count), "issues": .array(found.map(\.json)),
-                "current": .bool(picture.revision == self.project.revision),
+                "revision": .integer(project.revision), "samples": .integer(measured?.samples.count ?? 0),
+                "cuts": .integer(measured?.cuts.count ?? 0),
+                "pluginChecks": .array(checks.map { .object(["plugin": .string($0.plugin.id), "provider": .string($0.provider.id)]) }),
+                "issues": .array(found.map(\.json)), "current": .bool(project.revision == self.project.revision),
             ])
         }, finished: { [weak self] outcome in
             guard case .failure(let error) = outcome, !JobCenter.isCancellation(error) else { return }
             self?.message = "review.measure: " + error.localizedDescription
         })
         return .object(["job": .string(id), "state": .string("running")])
+    }
+
+    /// Plugin and provider IDs whose review checks this project turns off (`review.disabledChecks`).
+    var reviewDisabledChecks: Set<String> {
+        Set(project["review"]?.object["disabledChecks"]?.array.compactMap(\.string) ?? [])
+    }
+
+    /// The `review.check` providers for `plugins.hooks`, with whether this project runs them.
+    func reviewChecksJSON() -> JSONValue {
+        let root = fileURL?.deletingLastPathComponent()
+        let enabled = Set(plugins.service.reviewCheckProviders(projectRoot: root, disabled: reviewDisabledChecks)
+            .map(\.provider.id))
+        let disabled = reviewDisabledChecks
+        return .array(plugins.plugins.flatMap { plugin in
+            (plugin.manifest.providers ?? []).filter { $0.capability == PluginAPI.reviewCheck }.map { provider in
+                .object([
+                    "plugin": .string(plugin.id), "provider": .string(provider.id), "name": .string(provider.name),
+                    "enabled": .bool(!disabled.contains(plugin.id) && !disabled.contains(provider.id)),
+                    "active": .bool(enabled.contains(provider.id)),
+                ])
+            }
+        })
     }
 
     /// Issue IDs the picture checks make (`Review+Picture.swift`).

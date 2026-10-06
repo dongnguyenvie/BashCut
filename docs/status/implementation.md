@@ -288,6 +288,9 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   (`needs-plugin`, registry install offers requirements), `uses` + `plugins.invoke`, `features`. Commands
   `plugins views|view|view-event|show-view|invoke`. Session lines are read with `JSONValue(parsing:)`. Example:
   `bashcut-plugins/samples/views-example`; perf: `PluginViewPerfTests`, `PluginViewSessionPerfTests`.
+- Plugin API 9 (#451): `review.check` (`ReviewCheckCapability`): every ready provider runs on `review.measure`,
+  side by side, 30 s each; failures become info issues with `source`; `review.disabledChecks` per project;
+  `plugins hooks` lists `reviewChecks`. Tests: `ReviewCheckTests`.
 - Plugin actions with `confirm` wait in their job for a non-blocking `plugin-confirm` sheet (agents can only cancel)
   instead of a modal alert that stopped command handling.
 - Catalog refresh performance (#103): discovery keeps manifests in a `PluginCatalogCache` and reads a plugin again
@@ -496,7 +499,7 @@ and fails above 50 ms.
   badges, voice cloning, expanded legacy effect/overlay/SFX import, effect recipes, keyframes,
   Demucs, and more interchange validation. Resolve remains reserved.
 - **Review and loudness:** coverage uses explicit speech tags and voiceover timing; dead air is found from layer
-  coverage, not measured audio, and untagged audio is not transcribed. Picture checks sample the rendered timeline only on `review.measure` (two frames a second, small grey thumbnails), kept for the session. Export loudness is measured only when normalization is on (the core `bashcut.audio-analysis` plugin provides it).
+  coverage, not measured audio, and untagged audio is not transcribed. Picture checks sample the rendered timeline only on `review.measure` (two frames a second, small grey thumbnails), kept for the session; plugin `review.check` providers (API 9) also run only there, each for at most 30 s. Export loudness is measured only when normalization is on (the core `bashcut.audio-analysis` plugin provides it).
 - **Editing scope:** ripple affects the edited track and its linked counterpart only. Source insert/overwrite
   targets Main. Unknown future effects round-trip but are not rendered.
 - **History:** full-snapshot undo is capped at 200 steps; `history.jsonl` stores one atomic checkpoint, and an
