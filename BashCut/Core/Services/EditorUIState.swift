@@ -42,6 +42,8 @@ public final class EditorUIState {
     public var inspectorTab = "video"
     /// One of `UIAction.settingsSections`: the section the Settings sheet shows.
     public var settingsSection = "general"
+    /// The Settings search box: while it has text, Settings lists the matching settings of every section.
+    public var settingsSearch = ""
     /// One of `UIAction.knowledgeSections`: the section the Knowledge window shows.
     public var knowledgeSection = "lessons"
 

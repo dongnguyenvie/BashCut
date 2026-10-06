@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+- **Settings like VS Code (#384).** Settings no longer uses grouped forms, which macOS caps at about 600 pt: its
+  section cards stretch with the sheet up to 1000 pt. A search box above them lists the matching settings of every
+  section (title, description and keywords, in English or the interface language, ignoring case and accents, so
+  "clip da gui" finds "Sửa ngoài các clip đã gửi"); the sidebar shows each section's matches, and a search for a
+  plugin option opens its plugin. Agents drive it with `ui view --settings-search <text>`, and `ui view` reports
+  `settingsSearch`.
 - **Allow all agent actions by default.** **Dangerously allow all agent actions** is now on unless you turned it off:
   agents edit, export and run plugin actions without asking, and the scope guard is off. Turn it off in Settings ›
   Agents › Agent permissions to get the separate switches back.

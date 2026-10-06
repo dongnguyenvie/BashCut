@@ -5713,6 +5713,9 @@
         "vi": { "stringUnit": { "state": "translated", "value": "Không có plugin phù hợp" } }
       }
     },
+    "Search settings": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Search settings" } }, "vi": { "stringUnit": { "state": "translated", "value": "Tìm trong cài đặt" } } } },
+    "Clear search": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Clear search" } }, "vi": { "stringUnit": { "state": "translated", "value": "Xoá tìm kiếm" } } } },
+    "No settings match “%@”": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "No settings match “%@”" } }, "vi": { "stringUnit": { "state": "translated", "value": "Không có cài đặt nào khớp “%@”" } } } },
     "The registry at %@ lists no plugins.": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "The registry at %@ lists no plugins." } },

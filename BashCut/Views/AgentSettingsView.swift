@@ -24,38 +24,39 @@ struct AgentSettingsView: View {
     }
 
     var body: some View {
-        Section {
-            Toggle("Load the agent kit in Claude and Codex tabs", isOn: $settings.loadAgentKit)
-            LabeledContent("Agent kit") {
-                HStack {
-                    Text(kitSummary).lineLimit(1).truncationMode(.middle).foregroundStyle(.secondary)
-                    Button("Choose…", action: chooseKit)
-                    if settings.agentKitFolder != nil {
-                        Button("Use Built-in") {
-                            settings.agentKitFolder = nil
-                            Task { await load() }
-                        }
+        SettingsSection("Agents") {
+            SettingsRow("Load the agent kit in Claude and Codex tabs", keywords: ["kit", "skills"]) {
+                SettingsSwitch(isOn: $settings.loadAgentKit)
+            }
+            SettingsRow("Agent kit", keywords: ["kit", "skills", "folder", "version"]) {
+                Text(kitSummary).lineLimit(1).truncationMode(.middle).foregroundStyle(.secondary)
+                Button("Choose…", action: chooseKit)
+                if settings.agentKitFolder != nil {
+                    Button("Use Built-in") {
+                        settings.agentKitFolder = nil
+                        Task { await load() }
                     }
                 }
             }
             if settings.agentKitFolder == nil { updateRow }
             ForEach(AgentKitSetup.Target.allCases, id: \.self) { target in agentRow(target) }
             if let folders {
-                folderRow("Claude Code settings folder", folders.claude, claude: true) { settings.claudeConfigFolder = $0 }
-                folderRow("Codex home folder", folders.codex, claude: false) { settings.codexHomeFolder = $0 }
+                folderRow("Claude Code settings folder", folders.claude, claude: true, keyword: "CLAUDE_CONFIG_DIR") {
+                    settings.claudeConfigFolder = $0
+                }
+                folderRow("Codex home folder", folders.codex, claude: false, keyword: "CODEX_HOME") {
+                    settings.codexHomeFolder = $0
+                }
             }
-            if !result.isEmpty { Text(result).font(.caption).foregroundStyle(.secondary) }
-        } header: {
-            HStack {
-                Text("Agents")
-                Spacer()
-                Button {
-                    Task { await load() }
-                } label: { Image(systemName: "arrow.clockwise") }.buttonStyle(.borderless).help("Check again")
+            if !result.isEmpty {
+                SettingsPlainRow { Text(result).font(.caption).foregroundStyle(.secondary) }.settingsHiddenWhileSearching()
             }
+        } accessory: {
+            Button {
+                Task { await load() }
+            } label: { Image(systemName: "arrow.clockwise") }.buttonStyle(.borderless).help("Check again")
         } footer: {
             Text("New tabs pick up changes. Claude Code and Codex outside BashCut get the skills and the BashCut MCP server.")
-                .font(.caption).foregroundStyle(.secondary)
         }
         .task {
             await load()
@@ -64,7 +65,7 @@ struct AgentSettingsView: View {
     }
 
     private var updateRow: some View {
-        LabeledContent("Kit updates") {
+        SettingsRow("Kit updates", keywords: ["kit", "update", "version", "skills"]) {
             HStack {
                 switch update {
                 case .unknown: EmptyView()
@@ -110,7 +111,7 @@ struct AgentSettingsView: View {
 
     private func agentRow(_ target: AgentKitSetup.Target) -> some View {
         let status = statuses[target]
-        return LabeledContent(target == .claude ? "Claude Code" : "Codex") {
+        return SettingsRow(target == .claude ? "Claude Code" : "Codex", keywords: ["kit", "skills", "set up", "MCP"]) {
             HStack {
                 Text(summary(status)).foregroundStyle(.secondary).lineLimit(1).help(status?.detail ?? "")
                 if working == target {
@@ -136,10 +137,10 @@ struct AgentSettingsView: View {
 
     /// A menu of the folders found in the home folder, Other… and, once chosen here, Detect.
     private func folderRow(
-        _ title: LocalizedStringKey, _ folder: AgentConfigFolders.Folder, claude: Bool,
+        _ title: LocalizedStringResource, _ folder: AgentConfigFolders.Folder, claude: Bool, keyword: String,
         set: @escaping (URL?) -> Void
     ) -> some View {
-        LabeledContent(title) {
+        SettingsRow(title, keywords: [keyword, "folder", "config"]) {
             HStack {
                 Menu {
                     ForEach(AgentConfigFolders.candidates(claude: claude), id: \.self) { url in

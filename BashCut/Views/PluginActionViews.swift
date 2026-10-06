@@ -99,6 +99,8 @@ struct PluginActionParamsSheet: View {
 /// One option rendered natively: text field, picker, number field, toggle or file chooser.
 struct PluginOptionField: View {
     let option: PluginOption
+    /// False when the caller shows the title and help itself (a Settings row); then pass `.labelsHidden()`.
+    var showsTitle = true
     @Binding var value: JSONValue
     @State private var text = ""
     @State private var invalid = false
@@ -115,7 +117,7 @@ struct PluginOptionField: View {
                 }
             case .file:
                 // Stacked, so narrow panels (Voice, Text, Audio) keep the file name and both buttons readable.
-                Text(title)
+                if showsTitle { Text(title) }
                 Text(value.string.flatMap { $0.isEmpty ? nil : URL(fileURLWithPath: $0).lastPathComponent }
                     ?? String(localized: "None"))
                     .lineLimit(1).truncationMode(.middle).foregroundStyle(.secondary)
@@ -128,7 +130,7 @@ struct PluginOptionField: View {
                     }
                 }.controlSize(.small)
             case .secret:
-                Text(title)
+                if showsTitle { Text(title) }
                 HStack(spacing: 6) {
                     SecureField(value.object["set"] == .bool(true) ? "Saved" : "Not set", text: $text)
                     Button("Save") {
@@ -152,7 +154,7 @@ struct PluginOptionField: View {
                     }
                     .foregroundStyle(invalid ? Color.orange : Color.primary)
             }
-            if let help = option.help { Text(help.text).font(.caption2).foregroundStyle(.secondary) }
+            if showsTitle, let help = option.help { Text(help.text).font(.caption2).foregroundStyle(.secondary) }
         }
     }
 

@@ -3,12 +3,11 @@ import BashCutAgent
 import BashCutAutomation
 import BashCutDocument
 import BashCutEngine
-import BashCutPlugin
-import BashCutPlugins
 import SwiftUI
 
-/// Settings, one section at a time from the sidebar. The section is `document.ui.settingsSection`, so agents can
-/// open it with `ui view --settings-section`.
+/// Settings, one section at a time from the sidebar, or every matching setting while the search box has text.
+/// The section is `document.ui.settingsSection` and the search `document.ui.settingsSearch`, so agents can drive
+/// both with `ui view --settings-section` and `--settings-search`.
 struct SettingsView: View {
     let model: AgentDockModel
     let document: ProjectDocument
@@ -16,9 +15,15 @@ struct SettingsView: View {
     let done: () -> Void
 
     private var section: String { document.ui.settingsSection }
+    private var query: String { document.ui.settingsSearch.trimmingCharacters(in: .whitespaces) }
 
     /// Large like an editor tab: the main window less a margin, measured when Settings opens.
     @State private var size = Self.preferredSize()
+    /// Matching rows per section while searching.
+    @State private var hits: [String: Int] = [:]
+
+    /// Content stops widening here, so lines stay readable on a large window.
+    static let maxContentWidth: CGFloat = 1000
 
     static func preferredSize() -> CGSize {
         let window = NSApp.mainWindow?.contentLayoutRect.size ?? CGSize(width: 1280, height: 800)
@@ -36,7 +41,17 @@ struct SettingsView: View {
             HStack(spacing: 0) {
                 sidebar
                 Divider()
-                Form { detail }.formStyle(.grouped).frame(maxWidth: .infinity, maxHeight: .infinity)
+                VStack(spacing: 0) {
+                    searchField
+                    ScrollView {
+                        content
+                            .environment(\.settingsQuery, query)
+                            .frame(maxWidth: Self.maxContentWidth, alignment: .leading)
+                            .padding(.horizontal, 24).padding(.vertical, 16)
+                            .frame(maxWidth: .infinity)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .frame(width: size.width, height: size.height)
@@ -44,28 +59,81 @@ struct SettingsView: View {
         .onChange(of: settings.allowExternalAgents) { model.applyExternalAgentPreference() }
     }
 
+    private var searchField: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+            TextField("Search settings", text: Binding(
+                get: { document.ui.settingsSearch }, set: { document.ui.settingsSearch = $0 }
+            ))
+            .textFieldStyle(.plain)
+            if !document.ui.settingsSearch.isEmpty {
+                Button {
+                    document.ui.settingsSearch = ""
+                } label: { Image(systemName: "xmark.circle.fill") }
+                    .buttonStyle(.borderless).foregroundStyle(.secondary).help("Clear search")
+            }
+        }
+        .padding(.horizontal, 10).padding(.vertical, 7)
+        .background(RoundedRectangle(cornerRadius: 7).fill(Color.primary.opacity(0.06)))
+        .frame(maxWidth: Self.maxContentWidth)
+        .padding(.horizontal, 24).padding(.top, 16).padding(.bottom, 4)
+        .frame(maxWidth: .infinity)
+    }
+
+    /// One section, or while searching every section with matches under its title.
+    @ViewBuilder private var content: some View {
+        if query.isEmpty {
+            VStack(alignment: .leading, spacing: 0) { page(section) }
+        } else {
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(UIAction.settingsSections, id: \.self) { name in
+                    SettingsSearchPage(id: name, title: Self.title(name), icon: Self.icon(name)) { page(name) }
+                }
+                if hits.values.reduce(0, +) == 0 {
+                    Text("No settings match “\(query)”").foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity).padding(.top, 40)
+                }
+            }
+            .onPreferenceChange(SettingsPageHits.self) { hits = $0 }
+        }
+    }
+
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 2) {
             ForEach(UIAction.settingsSections, id: \.self) { name in
-                Button {
-                    document.ui.settingsSection = name
-                } label: {
-                    Label(LocalizedStringKey(Self.title(name)), systemImage: Self.icon(name))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 10).padding(.vertical, 6)
-                        .background(RoundedRectangle(cornerRadius: 6)
-                            .fill(section == name ? Color.accentColor.opacity(0.25) : .clear))
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(section == name ? Color.primary : Color.secondary)
+                sidebarItem(name)
             }
             Spacer()
         }.padding(10).frame(width: 180)
     }
 
-    @ViewBuilder private var detail: some View {
-        switch section {
+    /// While searching, sections with matches show their count and the rest are dimmed; a click leaves the search.
+    private func sidebarItem(_ name: String) -> some View {
+        let searching = !query.isEmpty
+        let count = hits[name] ?? 0
+        let current = searching ? count > 0 : section == name
+        return Button {
+            document.ui.settingsSearch = ""
+            document.ui.settingsSection = name
+        } label: {
+            HStack {
+                Label(LocalizedStringKey(Self.title(name)), systemImage: Self.icon(name))
+                Spacer()
+                if searching, count > 0 {
+                    Text(verbatim: "\(count)").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                }
+            }
+            .padding(.horizontal, 10).padding(.vertical, 6)
+            .background(RoundedRectangle(cornerRadius: 6)
+                .fill(current ? Color.accentColor.opacity(searching ? 0.15 : 0.25) : .clear))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(current ? Color.primary : Color.secondary)
+    }
+
+    @ViewBuilder private func page(_ name: String) -> some View {
+        switch name {
         case "agents": agents
         case "plugins": SettingsPluginsSection(document: document, settings: settings, done: done)
         case "storage": StorageSettingsView(document: document)
@@ -74,76 +142,74 @@ struct SettingsView: View {
     }
 
     @ViewBuilder private var general: some View {
-        Section {
-            LabeledContent("Workspace") {
-                HStack {
-                    Text(model.directory.path).lineLimit(1).truncationMode(.middle)
-                    Button("Change…", action: model.chooseWorkspace)
+        SettingsSection {
+            SettingsRow("Workspace", keywords: ["folder", "agent", "terminal"]) {
+                Text(model.directory.path).lineLimit(1).truncationMode(.middle).foregroundStyle(.secondary)
+                Button("Change…", action: model.chooseWorkspace)
+            }
+            SettingsRow("Projects folder", keywords: ["folder", "new project", "Movies"]) {
+                Text(NewProjectView.displayPath(settings.defaultProjectsFolder)).lineLimit(1).truncationMode(.middle)
+                    .foregroundStyle(.secondary).help(settings.defaultProjectsFolder.path)
+                Button("Change…", action: chooseProjectsFolder)
+                if settings.projectsFolder != nil {
+                    Button("Reset") { settings.projectsFolder = nil }
+                        .help("Use ~/Movies/BashCut again")
                 }
             }
-            LabeledContent("Projects folder") {
-                HStack {
-                    Text(NewProjectView.displayPath(settings.defaultProjectsFolder)).lineLimit(1).truncationMode(.middle)
-                        .help(settings.defaultProjectsFolder.path)
-                    Button("Change…", action: chooseProjectsFolder)
-                    if settings.projectsFolder != nil {
-                        Button("Reset") { settings.projectsFolder = nil }
-                            .help("Use ~/Movies/BashCut again")
+            SettingsRow("Default export preset", keywords: ["export", "TikTok", "YouTube"]) {
+                Picker("Default export preset", selection: $settings.defaultExportPresetRaw) {
+                    ForEach(ExportPreset.allCases) { preset in
+                        Text(LocalizedStringKey(preset.title)).tag(preset.rawValue)
                     }
-                }
-            }
-            Picker("Default export preset", selection: $settings.defaultExportPresetRaw) {
-                ForEach(ExportPreset.allCases) { preset in
-                    Text(LocalizedStringKey(preset.title)).tag(preset.rawValue)
-                }
+                }.labelsHidden().fixedSize()
             }
         }
-        Section {
-            Picker("Interface language", selection: $settings.interfaceLanguage) {
-                Text("System").tag("system")
-                Text("English").tag("en")
-                Text("Tiếng Việt").tag("vi")
+        SettingsSection {
+            SettingsRow("Interface language", keywords: ["English", "Tiếng Việt", "Vietnamese"]) {
+                Picker("Interface language", selection: $settings.interfaceLanguage) {
+                    Text("System").tag("system")
+                    Text("English").tag("en")
+                    Text("Tiếng Việt").tag("vi")
+                }.labelsHidden().fixedSize()
             }
         } footer: {
-            Text("Language changes apply after restarting BashCut.").font(.caption).foregroundStyle(.secondary)
+            Text("Language changes apply after restarting BashCut.")
         }
-        Section {
-            LabeledContent("Version") {
-                HStack {
-                    Text(verbatim: "\(document.appUpdate.version) (\(document.appUpdate.build))").textSelection(.enabled)
-                    Button("Check for Updates…") {
-                        done()
-                        // Present Software Update once Settings has closed.
-                        Task { @MainActor in
-                            try? await Task.sleep(for: .milliseconds(350))
-                            document.run(.showUpdates)
-                        }
+        SettingsSection("Updates") {
+            SettingsRow("Version", keywords: ["update", "BashCut"]) {
+                Text(verbatim: "\(document.appUpdate.version) (\(document.appUpdate.build))").textSelection(.enabled)
+                    .foregroundStyle(.secondary)
+                Button("Check for Updates…") {
+                    done()
+                    // Present Software Update once Settings has closed.
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(350))
+                        document.run(.showUpdates)
                     }
                 }
             }
             if document.appUpdate.install.checksForUpdates {
-                Toggle("Check for BashCut updates daily", isOn: $settings.checkAppUpdatesDaily)
+                SettingsRow("Check for BashCut updates daily", keywords: ["update"]) {
+                    SettingsSwitch(isOn: $settings.checkAppUpdatesDaily)
+                }
             }
-        } header: {
-            Text("Updates")
         }
     }
 
     @ViewBuilder private var agents: some View {
-        Section {
-            Picker("Default agent", selection: $settings.defaultProviderRaw) {
-                ForEach(AgentProviders.agents, id: \.id) { Text($0.title).tag($0.id.rawValue) }
+        SettingsSection {
+            SettingsRow("Default agent", keywords: ["Claude", "Codex"]) {
+                Picker("Default agent", selection: $settings.defaultProviderRaw) {
+                    ForEach(AgentProviders.agents, id: \.id) { Text($0.title).tag($0.id.rawValue) }
+                }.labelsHidden().fixedSize()
             }
-            LabeledContent("Agents outside BashCut") {
-                HStack {
-                    Toggle("Allow", isOn: $settings.allowExternalAgents).labelsHidden()
-                    Button("New token", action: model.applyExternalAgentPreference)
-                        .disabled(!settings.allowExternalAgents)
-                }
+            SettingsRow("Agents outside BashCut", keywords: ["token", "CLI", "MCP", "external"]) {
+                Button("New token", action: model.applyExternalAgentPreference)
+                    .disabled(!settings.allowExternalAgents)
+                SettingsSwitch(isOn: $settings.allowExternalAgents)
             }
         } footer: {
             Text("Agents outside BashCut use the bashcut CLI or MCP with a token file only your user account can read.")
-                .font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
         }
         agentPermissions
         AgentSettingsView(document: document, settings: settings)
@@ -152,26 +218,30 @@ struct SettingsView: View {
     /// What agents may do without asking. Allow everything overrides the rest while it is on.
     @ViewBuilder private var agentPermissions: some View {
         let all = settings.dangerouslyAllowAgents
-        Section {
-            Toggle("Allow agent timeline edits", isOn: all ? .constant(true) : $settings.allowAgentEdits)
-                .disabled(all)
-            Toggle("Approve agent actions without asking", isOn: all ? .constant(true) : $settings.autoApprovePrivileged)
-                .disabled(all)
-            Picker(
-                "Edits outside the attached clips",
-                selection: all ? .constant(AgentScopeMode.off.rawValue) : $settings.agentScopeModeRaw
+        SettingsSection("Agent permissions") {
+            SettingsRow("Allow agent timeline edits", keywords: ["edit", "token", "permission"]) {
+                SettingsSwitch(isOn: all ? .constant(true) : $settings.allowAgentEdits).disabled(all)
+            }
+            SettingsRow("Approve agent actions without asking", keywords: ["approval", "export", "kit", "permission"]) {
+                SettingsSwitch(isOn: all ? .constant(true) : $settings.autoApprovePrivileged).disabled(all)
+            }
+            SettingsRow("Edits outside the attached clips", keywords: ["scope", "guard", "Send to Agent", "permission"]) {
+                Picker(
+                    "Edits outside the attached clips",
+                    selection: all ? .constant(AgentScopeMode.off.rawValue) : $settings.agentScopeModeRaw
+                ) {
+                    Text("Ask first").tag(AgentScopeMode.ask.rawValue)
+                    Text("Block").tag(AgentScopeMode.block.rawValue)
+                    Text("Allow").tag(AgentScopeMode.off.rawValue)
+                }
+                .labelsHidden().fixedSize().disabled(all)
+            }
+            SettingsRow(
+                "Dangerously allow all agent actions", keywords: ["allow all", "scope", "permission"],
+                symbol: "exclamationmark.triangle.fill", tint: all ? .red : nil
             ) {
-                Text("Ask first").tag(AgentScopeMode.ask.rawValue)
-                Text("Block").tag(AgentScopeMode.block.rawValue)
-                Text("Allow").tag(AgentScopeMode.off.rawValue)
+                SettingsSwitch(isOn: Binding(get: { all }, set: { setDangerouslyAllowAgents($0) }))
             }
-            .disabled(all)
-            Toggle(isOn: Binding(get: { all }, set: { setDangerouslyAllowAgents($0) })) {
-                Label("Dangerously allow all agent actions", systemImage: "exclamationmark.triangle.fill")
-                    .foregroundStyle(all ? .red : .primary)
-            }
-        } header: {
-            Text("Agent permissions")
         } footer: {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Re-enable agent edits by starting a new Claude or Codex session.")
@@ -184,8 +254,6 @@ struct SettingsView: View {
                         .foregroundStyle(.red)
                 }
             }
-            .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.leading)
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -232,115 +300,6 @@ struct SettingsView: View {
         case "plugins": "puzzlepiece.extension"
         case "storage": "internaldrive"
         default: "gearshape"
-        }
-    }
-}
-
-/// Settings › Plugins: hook and update preferences, then the options of every installed plugin that declares
-/// some (the same values as Plugins › Options… and `plugins option`), grouped by category, one collapsible plugin
-/// at a time.
-private struct SettingsPluginsSection: View {
-    let document: ProjectDocument
-    @Bindable var settings: SettingsModel
-    let done: () -> Void
-    @State private var error = ""
-    @State private var filter = ""
-    @State private var expanded: Set<String> = []
-
-    private var configurable: [InstalledPlugin] {
-        document.plugins.plugins.filter { plugin in
-            !(plugin.manifest.options ?? []).isEmpty
-                && (filter.isEmpty || plugin.manifest.displayName.localizedCaseInsensitiveContains(filter)
-                    || plugin.id.localizedCaseInsensitiveContains(filter))
-        }
-    }
-
-    /// Presents the Plugins sheet once Settings has closed; with `thenAdd`, Add Plugin… opens over it.
-    private func openPlugins(thenAdd: Bool) {
-        done()
-        Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(350))
-            document.plugins.tab = .installed
-            document.ui.showPlugins = true
-            guard thenAdd else { return }
-            try? await Task.sleep(for: .milliseconds(350))
-            document.plugins.addPlugin()
-        }
-    }
-
-    var body: some View {
-        Section {
-            Toggle("Run plugin hooks", isOn: $settings.runPluginHooks)
-            Toggle("Apply plugin hook edits without review", isOn: $settings.autoApplyPluginHookEdits)
-                .disabled(!settings.runPluginHooks)
-            if PluginChannel.current.allowsUserPlugins {
-                Toggle("Check for plugin updates daily", isOn: $settings.checkPluginUpdatesDaily)
-            }
-        } header: {
-            HStack {
-                Text("Plugins")
-                Spacer()
-                if PluginChannel.current.allowsUserPlugins {
-                    Button("Add Plugin…") { openPlugins(thenAdd: true) }.buttonStyle(.link)
-                }
-                Button("Manage Plugins…") { openPlugins(thenAdd: false) }.buttonStyle(.link)
-            }
-        }
-        if document.plugins.plugins.filter({ !($0.manifest.options ?? []).isEmpty }).count > 1 {
-            Section {
-                TextField("Filter plugins", text: $filter, prompt: Text("Filter plugins")).labelsHidden()
-            }
-        }
-        if configurable.isEmpty {
-            Section {
-                Text(filter.isEmpty ? LocalizedStringKey("No installed plugin has options.") : "No plugins match").foregroundStyle(.secondary)
-            }
-        }
-        ForEach(PluginSection.byCategory(configurable, category: document.plugins.category(of:))) { group in
-            Section {
-                ForEach(group.items) { plugin in
-                    RowDisclosureGroup(isExpanded: isExpanded(plugin)) {
-                        options(plugin)
-                    } label: {
-                        HStack {
-                            Text(plugin.manifest.displayName)
-                            Text("v" + plugin.manifest.version).foregroundStyle(.secondary)
-                        }
-                    }
-                }
-            } header: {
-                Label(group.title, systemImage: group.symbol)
-            }
-        }
-        if !error.isEmpty {
-            Section { Text(error).font(.caption).foregroundStyle(.orange) }
-        }
-    }
-
-    /// Collapsed by default, unless it is the only plugin shown.
-    private func isExpanded(_ plugin: InstalledPlugin) -> Binding<Bool> {
-        Binding(
-            get: { configurable.count == 1 || expanded.contains(plugin.id) },
-            set: { open in
-                if open { expanded.insert(plugin.id) } else { expanded.remove(plugin.id) }
-            })
-    }
-
-    private func options(_ plugin: InstalledPlugin) -> some View {
-        let values = document.pluginOptionValues(plugin)
-        return ForEach(plugin.manifest.options ?? []) { option in
-            HStack(alignment: .top) {
-                PluginOptionField(option: option, value: Binding(
-                    get: { values[option.id] ?? option.fallback },
-                    set: { value in
-                        do {
-                            try document.setPluginOption(plugin, option: option.id, value: value, author: .user)
-                            error = ""
-                        } catch { self.error = error.localizedDescription }
-                    }))
-                Text(PluginOptionPolicy.scope(of: option, in: plugin.manifest.options ?? []) == .project ? "project" : "this Mac")
-                    .font(.caption2).foregroundStyle(.secondary)
-            }
         }
     }
 }
