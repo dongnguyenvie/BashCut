@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+- **Text presets keep their style (#380).** A `text-preset` library item can store `textStyle` (`size`, `positionY`,
+  `strokeWidth`, with the item property ranges) and `animation` (a `clip motion` preset) next to `textPreset` and
+  `text`. `library save-selection --kind text-preset` keeps the selected text item's style and its motion preset
+  (when its keyframes are exactly one); `library place` and `library apply` set them back, apply as one undo step with
+  the stored style over the item's own. `library add|update --params` validate them. Items without a style behave as
+  before, and `library stats` tells styles apart when looking for duplicates. The Text panel's cards show the stored
+  size, position and outline, and Edit… on a saved text style changes them and the animation.
 - **Plugin library (#81), plugin API 6.** `contributes.library` lists library pack folders inside a plugin (the
   `pack.json` format of `library import-pack`); `plugins validate` checks each pack and its files, which must stay inside
   the plugin after symlinks. While the plugin is ready, its items are listed in the read-only `plugin` scope

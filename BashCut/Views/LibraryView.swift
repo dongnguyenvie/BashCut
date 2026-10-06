@@ -274,17 +274,11 @@ struct LibraryView: View {
             Button("Export SRT…", action: document.exportCaptions).disabled(document.fileURL == nil)
             Divider()
             LibraryItemsSection(document: document, kinds: [.textPreset], saveKinds: [.textPreset]) { item in
-                let style = item.params["textPreset"]?.string ?? ""
                 Button {
                     document.placeFromLibrary(item)
                 } label: {
                     VStack {
-                        Text(verbatim: item.params["text"]?.string ?? item.name)
-                            .font(
-                                style == "cinematic-serif" || style == "chapter-card"
-                                    ? .system(.body, design: .serif) : .headline)
-                            .foregroundStyle(style == "keyword-sticker" ? .black : .white)
-                            .frame(maxWidth: .infinity, minHeight: 55).background(.black.opacity(0.3))
+                        TextPresetTile(item: item)
                         Self.title(item).font(.caption)
                     }.padding(8)
                 }.buttonStyle(.bordered).disabled(document.fileURL == nil)

@@ -55,9 +55,10 @@ extension ProjectDocument {
         let result: (revision: Int, itemID: String)
         switch item.kind {
         case .textPreset:
-            result = try placeText(
-                text ?? item.params["text"]?.string ?? item.name, preset: item.params["textPreset"]?.string ?? "",
-                label: "Add text", placement)
+            let style = try textPreset(item)
+            result = try placeText(text ?? style.text ?? item.name, preset: style.textPreset, label: "Add text", placement) {
+                try style.patch(for: $0, project: $1)
+            }
         case .sticker:
             guard let emoji = item.params["emoji"]?.string, !isMediaSticker(item) else {
                 // Counts its own use.
@@ -105,7 +106,10 @@ extension ProjectDocument {
         switch item.kind {
         case .textPreset:
             guard target["text"] != nil else { throw RPCFailure(-32602, "\(itemID) is not a text item") }
-            patch = ["textPreset": item.params["textPreset"] ?? .null]
+            // The preset, the stored style and animation in one undo step (#380).
+            do { patch = try textPreset(item).patch(for: target, project: project) } catch {
+                throw RPCFailure(-32602, error.localizedDescription)
+            }
         default:
             throw RPCFailure(-32602, unsupported("Applying \(item.kind?.rawValue ?? "these") items", item))
         }
@@ -126,21 +130,6 @@ extension ProjectDocument {
         Task {
             do { try await applyLibraryItem(item, to: selectedID) } catch { message = error.localizedDescription }
         }
-    }
-
-    private func placeText(
-        _ text: String, preset: String, label: String, _ placement: LibraryPlacement
-    ) throws -> (revision: Int, itemID: String) {
-        let start = placement.frame ?? playhead
-        var item = Item(at: start, duration: placement.duration ?? max(1, min(90, project.duration - start)))
-        item["text"] = .string(text)
-        item["textPreset"] = .string(preset)
-        var planner = LayerPlanner(project)
-        let track = try planner.place(item, on: placement.trackID ?? project.requireTrack(role: TrackRole.captions).id)
-        let revision = try commitPlan(planner, label: label, author: placement.author, baseRevision: placement.baseRevision)
-        selectedTrackID = track
-        selectedID = item.id
-        return (revision, item.id)
     }
 
     private func unsupported(_ action: String, _ item: LibraryItem) -> String {
@@ -278,7 +267,7 @@ extension ProjectDocument {
         do {
             params = try LibrarySelection.params(
                 kind, item: item, transition: transition, sound: sound ?? effectSound?.media, lut: grade?.lut,
-                soundItem: effectSound?.item)
+                soundItem: effectSound?.item, project: project)
         } catch { throw RPCFailure(-32602, error.localizedDescription) }
         if let grade { return (params, grade.file) }
         let ownSound = kind == .effectPreset

@@ -87,6 +87,16 @@ private struct CaptionLineLayout {
     let position: CGPoint
 }
 
+/// The `textStyle` values a renderer preset uses when an item does not set them (#380, the library's text style sheet
+/// and cards).
+public enum TextPresetStyle {
+    /// `size`, `positionY` and `strokeWidth` of `preset`.
+    public static func defaults(_ preset: String?) -> [String: Double] {
+        let preset = CaptionPreset(preset)
+        return ["size": preset.size, "positionY": preset.baseline, "strokeWidth": preset.strokeWidth]
+    }
+}
+
 enum TextRenderer {
     private static let cache = CaptionCache()
     /// The cropped raster; consumers needing canvas placement use `overlay` instead.

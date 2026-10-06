@@ -12,16 +12,17 @@ public enum LibrarySelection {
     /// An effect preset (#76) becomes a recipe of what is on the clip: reverse, speed or speed ramp, framing,
     /// keyframes (as positions 0–1 so they scale with the next clip) and the sound effect at its start, given as
     /// `soundItem` (the SFX item) and `sound` (its media; one copied from an audio library item is kept as `sfx`).
+    /// A text preset keeps the item's preset, text, `textStyle` and its motion preset (#380), told on `project`'s frame.
     public static func params(
         _ kind: LibraryKind, item: Item?, transition: TimelineTransition? = nil, sound: Media? = nil,
-        lut: ColorLUT? = nil, soundItem: Item? = nil
+        lut: ColorLUT? = nil, soundItem: Item? = nil, project: Project? = nil
     ) throws -> [String: JSONValue] {
         switch kind {
         case .textPreset:
-            guard let item, let text = item["text"]?.string else {
+            guard let item, item["text"]?.string != nil else {
                 throw ProjectError.invalid("Select a text item to save its style")
             }
-            return ["textPreset": .string(item["textPreset"]?.string ?? "bold-outline"), "text": .string(text)]
+            return LibraryTextPreset(item: item, project: project).params()
         case .effectPreset:
             return try effect(item, soundItem: soundItem, sound: sound)
         case .transitionPreset:
