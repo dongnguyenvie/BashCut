@@ -22,7 +22,7 @@ extension ProjectDocument {
         method: String, author: Author, arguments: [String: String],
         action: @escaping @MainActor () throws -> Void
     ) throws -> PrivilegedRequest {
-        if settings.autoApprovePrivileged {
+        if settings.agentActionsAutoApproved {
             registry.recordApproval(method: method, author: author, approved: true, automatic: true)
             DebugLog.write("approval", "auto-approved \(method) from \(author) \(arguments)")
             try action()

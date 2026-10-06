@@ -5,6 +5,17 @@
 
 ## [Unreleased]
 
+- **Dangerously allow all agent actions.** Settings › Agents has a new **Agent permissions** section: Allow agent
+  timeline edits, **Approve agent actions without asking** (was "Run agent exports without confirmation"; it always
+  covered kit setup, library items and preferences for every project too), Edits outside the attached clips, and a
+  new master switch **Dangerously allow all agent actions**. Turning it on asks once; while on, the other three are
+  shown on and locked, agents edit and run privileged actions without asking, the scope guard is off, and plugin
+  actions with `confirm` run without the dialog when an agent starts them. Installing and trusting plugins still needs
+  the user, and no command can change the switch. `context get` reports `agentPermissions`
+  (`edits`, `autoApprove`, `scopeGuard`, `allowAll`).
+- **Larger Settings.** The Settings sheet now takes the main window less a margin (820×600 up to 1400×1000), like an
+  editor tab. Collapsible rows (plugin options, storage per plugin, plugin diagnostics and install output) open and
+  close when any part of their title row is clicked, not only the chevron.
 - **Scope guard (#356).** While a chat or terminal tab has clips attached with Send to Agent, the app checks each
   edit that tab's agent makes. Edits to the attached clips, their linked partners, items those edits make, and new
   items inside the attached range run as before. An edit that changes other clips or the whole project (layers,

@@ -223,7 +223,9 @@ extension ProjectDocument {
         let values: [String: JSONValue]
         do { values = try action.params.resolve(params) } catch { throw ProjectError.invalid(error.localizedDescription) }
         let session = sessionID
-        if let confirm = action.spec.confirm {
+        if action.spec.confirm != nil, author != .user, settings.dangerouslyAllowAgents {
+            registry.recordApproval(method: "plugin.action." + id, author: author, approved: true, automatic: true)
+        } else if let confirm = action.spec.confirm {
             let choice = ModalCenter.shared.alert(
                 "plugin-confirm", title: action.title, message: confirm.text,
                 buttons: [ModalOption("cancel", String(localized: "Cancel")), ModalOption("run", String(localized: "Run"))],

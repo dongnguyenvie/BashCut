@@ -49,7 +49,7 @@ extension AgentDockModel {
             throw ProjectError.invalid("\(pluginID) is not a ready terminal agent (plugins list)")
         }
         loadKnowledge()
-        let canEdit = settings.allowAgentEdits
+        let canEdit = settings.agentsCanEdit
         let prompt = sessionPrompt(canEdit: canEdit)
         let kit = document.agentKitLaunch()?.kit
         let folder = PluginTerminals.agentFolder(support: StorageUsage.supportFolder, pluginID: pluginID)

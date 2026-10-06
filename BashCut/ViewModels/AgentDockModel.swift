@@ -149,7 +149,7 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
         document.applyExternalAgentAccess(enabled: settings.allowExternalAgents)
     }
     func applyAgentEditPreference() {
-        if !settings.allowAgentEdits {
+        if !settings.agentsCanEdit {
             document.chatAgents.revokeTokens()
             for session in sessions where session.provider.isAgent {
                 document.registry.revoke(session.token)
@@ -171,7 +171,7 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
     @discardableResult
     func startBuiltIn(_ provider: any AgentProvider) throws -> TerminalSession {
         loadKnowledge()
-        let canEdit = !provider.isAgent || settings.allowAgentEdits
+        let canEdit = !provider.isAgent || settings.agentsCanEdit
         return try start(
             provider, canEdit: canEdit, prompt: sessionPrompt(canEdit: canEdit), icon: Self.icon(for: provider.id))
     }

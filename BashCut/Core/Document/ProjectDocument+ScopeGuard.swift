@@ -48,7 +48,10 @@ struct AgentScopeDecision {
 }
 
 extension ProjectDocument {
-    var agentScopeMode: AgentScopeMode { AgentScopeMode(rawValue: settings.agentScopeModeRaw) ?? .ask }
+    /// The guard's mode; off while all agent actions are allowed.
+    var agentScopeMode: AgentScopeMode {
+        settings.dangerouslyAllowAgents ? .off : AgentScopeMode(rawValue: settings.agentScopeModeRaw) ?? .ask
+    }
 
     /// The chat or terminal tab a live session token belongs to.
     func scopeOwner(for token: String) -> (any AgentScopeOwner)? {
@@ -133,6 +136,14 @@ extension ProjectDocument {
         guard decision.inScope, let owner = decision.owner else { return }
         let old = Set(before.tracks.flatMap(\.items).map(\.id))
         owner.scopeExtra.formUnion(project.tracks.flatMap(\.items).map(\.id).filter { !old.contains($0) })
+    }
+
+    /// `context get`'s `agentPermissions`: what agents may do without asking, as the user set it in Settings › Agents.
+    var agentPermissionsJSON: JSONValue {
+        .object([
+            "edits": .bool(settings.agentsCanEdit), "autoApprove": .bool(settings.agentActionsAutoApproved),
+            "scopeGuard": .string(agentScopeMode.rawValue), "allowAll": .bool(settings.dangerouslyAllowAgents),
+        ])
     }
 
     /// `context get`'s `scope`: the caller's own tab, else the shown chat or terminal tab; null without one.
