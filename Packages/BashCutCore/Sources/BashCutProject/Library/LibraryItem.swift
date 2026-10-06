@@ -193,7 +193,6 @@ extension LibraryItem {
         }
     }
 
-    // swiftlint:disable:next cyclomatic_complexity
     private func validateParams(_ kind: LibraryKind, label: String) throws {
         switch kind {
         case .audio:
@@ -207,10 +206,8 @@ extension LibraryItem {
             // Emoji, image, animated or video-alpha, with optional size, position, animation and length (#64).
             _ = try LibrarySticker(params: params, file: file, label: label)
         case .textPreset:
-            guard params["textPreset"]?.string.map(TextPreset.all.contains) == true else {
-                throw ProjectError.invalid(
-                    "\(label): params.textPreset must be one of \(TextPreset.all.joined(separator: ", "))")
-            }
+            // A preset and sample text, with an optional textStyle and animation (#380).
+            _ = try LibraryTextPreset(params: params, label: label)
         case .effectPreset:
             // A recipe (#76): params.steps with params.parameters, or an old params.patch. Its file is its own sound.
             _ = try EffectRecipe(params: params, label: label)

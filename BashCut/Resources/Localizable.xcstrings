@@ -1,6 +1,12 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Edit text style": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Edit text style" } }, "vi": { "stringUnit": { "state": "translated", "value": "Sửa kiểu chữ" } } } },
+    "Outline": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Outline" } }, "vi": { "stringUnit": { "state": "translated", "value": "Viền chữ" } } } },
+    "Use preset style": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Use preset style" } }, "vi": { "stringUnit": { "state": "translated", "value": "Dùng kiểu mặc định" } } } },
+    "Font size as a share of the frame's short side": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Font size as a share of the frame's short side" } }, "vi": { "stringUnit": { "state": "translated", "value": "Cỡ chữ theo tỉ lệ cạnh ngắn của khung hình" } } } },
+    "Baseline height from the bottom of the frame": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Baseline height from the bottom of the frame" } }, "vi": { "stringUnit": { "state": "translated", "value": "Độ cao dòng chữ tính từ đáy khung hình" } } } },
+    "Clears the stored size, position and outline": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Clears the stored size, position and outline" } }, "vi": { "stringUnit": { "state": "translated", "value": "Xoá cỡ chữ, vị trí và viền đã lưu" } } } },
     "Generate library items": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Generate library items" } }, "vi": { "stringUnit": { "state": "translated", "value": "Tạo mục thư viện" } } } },
     "Search library items": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Search library items" } }, "vi": { "stringUnit": { "state": "translated", "value": "Tìm mục thư viện" } } } },
     "Prompt": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Prompt" } }, "vi": { "stringUnit": { "state": "translated", "value": "Mô tả" } } } },

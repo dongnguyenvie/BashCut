@@ -21,7 +21,8 @@ extension CommandCatalog {
         CommandParameter("pack", .string, "Pack or collection name the panel groups it under", cli: .option("pack")),
         CommandParameter(
             "params", .object,
-            "What the kind needs (JSON): text-preset {textPreset, text}; sticker {emoji, textPreset} or a file (PNG, "
+            "What the kind needs (JSON): text-preset {textPreset, text, textStyle: {size, positionY, strokeWidth} (the "
+                + "item property ranges), animation: a clip motion preset}, the last two optional; sticker {emoji, textPreset} or a file (PNG, "
                 + "JPEG, HEIC, WebP, GIF, APNG, or a .mov/.mp4 with alpha; not Lottie) with {stickerKind: "
                 + "emoji|image|animated|video-alpha (from the file by default), size: width as 0.01–1 of the frame, "
                 + "position: center|top|bottom|left|right|top-left|top-right|bottom-left|bottom-right or {x, y} in 0–1, "
@@ -121,7 +122,8 @@ extension CommandCatalog {
         CommandSpec(
             "library.save-selection", .edit,
             "Save what is selected on the timeline as a new library item (the panels' Save selection as…): a text "
-                + "item's style, a clip's effect as a recipe (reverse, speed or speed ramp, framing, keyframes scaled to the "
+                + "item's preset, text, textStyle (size, position, outline) and motion preset when its keyframes are one, "
+                + "a clip's effect as a recipe (reverse, speed or speed ramp, framing, keyframes scaled to the "
                 + "clip's length, and the sound effect at its start; a still of the clip as its preview), the transition "
                 + "at the selected clip (kind, duration, easing and the sound a preset placed there), or a grade as a look: "
                 + "the full filter stack, with the project LUT it uses copied in as the look's file, or an audio clip (or "
@@ -150,7 +152,8 @@ extension CommandCatalog {
             ]),
         CommandSpec(
             "library.apply", .edit,
-            "Use a library item on an existing timeline item: a text preset on a text item, an effect preset's "
+            "Use a library item on an existing timeline item: a text preset on a text item (its preset, then its stored "
+                + "textStyle over the item's and its animation, as one undo step), an effect preset's "
                 + "recipe on a clip (every step, its sounds and text, and a split for a from/to range, as one undo step; set "
                 + "overrides its parameters; when a reverse step needs a new reversed copy it runs as a job), a look's grade "
                 + "(adding its LUT to the project when it has one, in the same undo step), or a transition preset at the cut "
@@ -170,7 +173,8 @@ extension CommandCatalog {
             ]),
         CommandSpec(
             "library.place", .edit,
-            "Add a library item to the timeline as a new item: a text preset or emoji sticker as text, an image, "
+            "Add a library item to the timeline as a new item: a text preset (with its stored textStyle and animation) "
+                + "or emoji sticker as text, an image, "
                 + "animated or video-alpha sticker (its file copied into the project's stickers/ folder once per content, "
                 + "imported and placed on the Overlay layer, added when missing, at size and position, as one undo step; "
                 + "an animated sticker shows its first frame for now and the result says so), a look as an "

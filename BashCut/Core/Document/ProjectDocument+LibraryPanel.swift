@@ -29,6 +29,7 @@ extension ProjectDocument {
         if kind == .sticker {
             request.sticker = try? LibrarySticker(params: params, file: params["emoji"] == nil ? "sticker.png" : nil)
         }
+        if kind == .textPreset { request.textPreset = try? LibraryTextPreset(params: params) }
         ui.libraryEditor = request
     }
 
@@ -40,11 +41,12 @@ extension ProjectDocument {
             keepsLUT: editableLook(item) != nil && item.file != nil ? true : nil)
         request.audio = editableAudio(item)
         request.sticker = editableSticker(item)
+        request.textPreset = editableTextPreset(item)
         ui.libraryEditor = request
     }
 
-    /// Rename…, and Edit… for a transition preset, whose kind, duration, easing and sound the sheet also shows, or
-    /// for a look, whose grade and LUT it shows.
+    /// Rename…, and Edit… for a transition preset, whose kind, duration, easing and sound the sheet also shows, for
+    /// a look, whose grade and LUT it shows, or for a text preset, whose size, position, outline and animation it shows.
     func beginRename(_ item: LibraryItem) {
         var request = LibraryEditorRequest(
             mode: .rename(item), name: item.name, tags: item.tags, pack: item.pack, scope: item.scope,
@@ -52,7 +54,13 @@ extension ProjectDocument {
             keepsLUT: editableLook(item) != nil && item.file != nil ? true : nil)
         request.audio = editableAudio(item)
         request.sticker = editableSticker(item)
+        request.textPreset = editableTextPreset(item)
         ui.libraryEditor = request
+    }
+
+    /// A text preset's style and animation for the sheet (#380).
+    private func editableTextPreset(_ item: LibraryItem) -> LibraryTextPreset? {
+        item.kind == .textPreset ? try? LibraryTextPreset(params: item.params) : nil
     }
 
     /// An image, animated or video sticker's size, position and animation for the sheet (#64); emoji stickers have
@@ -118,13 +126,14 @@ extension ProjectDocument {
         return changes
     }
 
-    /// The changes the sheet's kind fields (a transition, look, audio or sticker) make to `item`.
+    /// The changes the sheet's kind fields (a transition, look, audio, sticker or text preset) make to `item`.
     private static func kindChanges(_ request: LibraryEditorRequest, item: LibraryItem) -> [String: JSONValue] {
         var changes: [String: JSONValue] = [:]
         if let transition = request.transition { changes.merge(transitionChanges(transition, item: item)) { $1 } }
         if let look = request.look { changes.merge(lookChanges(look, keepsLUT: request.keepsLUT, item: item)) { $1 } }
         if let audio = request.audio { changes["params"] = .object(audio.params(merging: item.params)) }
         if let sticker = request.sticker { changes["params"] = .object(sticker.params(merging: item.params)) }
+        if let text = request.textPreset { changes["params"] = .object(text.params(merging: item.params)) }
         return changes
     }
 
@@ -155,7 +164,8 @@ extension ProjectDocument {
                 let selection = try document.selectionParams(kind, mediaID: request.mediaID)
                 fields["params"] = .object(
                     request.audio.map { $0.params(merging: selection.params) }
-                        ?? request.sticker.map { $0.params(merging: selection.params) } ?? selection.params)
+                        ?? request.sticker.map { $0.params(merging: selection.params) }
+                        ?? request.textPreset.map { $0.params(merging: selection.params) } ?? selection.params)
                 let preview = kind == .effectPreset ? await document.effectPreview(itemID: nil) : nil
                 return try await document.addLibraryItem(
                     kind: kind, name: name, scope: request.scope, changes: fields, file: selection.file, preview: preview,

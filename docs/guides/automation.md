@@ -441,12 +441,22 @@ project or on this Mac. The Filters panel also lists the style kits and the proj
   an effect preset's recipe or a look's grade on an existing item. Both count a use (in `usage.json` next to
   `library.json`; the item list is not rewritten).
 - `bashcut library save-selection --kind text-preset|effect-preset|transition-preset|look|audio|sticker --name X [--item]
-  [--media] [--scope] [--tags] [--pack]` saves what is selected: a text item's style and text, a clip's `transform` and
+  [--media] [--scope] [--tags] [--pack]` saves what is selected: a text item's style and text (see Text presets
+  below), a clip's `transform` and
   `keyframes` as an effect recipe (see below), the transition at the selected clip (kind, duration, easing and the sound a preset placed at that cut),
   a grade as a look: the whole filter stack, with the project LUT it uses copied in as the look's file, or an audio
   clip (or, with `--media`, any project audio media) as an audio item (see Audio below), or an overlay item as a
   sticker (see Stickers below).
 - `bashcut library move <id> --to project|user` moves a saved item with its versions, files and use count.
+- Text presets (#380) are `params` `{textPreset, text, textStyle, animation}`: `textPreset` is a renderer preset and
+  `text` the sample (placed unless `library place --text` gives another). The optional `textStyle` holds the item's
+  own `size`, `positionY` and `strokeWidth` (the item property ranges of `schema get`; other fields are refused) and
+  `animation` a `clip motion` preset. `library save-selection --kind text-preset` keeps the item's preset, text,
+  those `textStyle` fields and its motion preset when its keyframes are exactly one at the item's length (hand-made
+  keys are not saved). `library place` sets them on the new item; `library apply` sets the preset, then the stored
+  `textStyle` over the item's own (a caption's highlight stays) and the animation at the item's length, as one undo
+  step. Items without `textStyle` or `animation` behave as before: apply changes only the preset. The Text panel's
+  cards show the stored size, position and outline, and Edit… changes them and the animation.
 - Transition presets (#77) are `params` `{kind, duration, easing, sfx}`: `sfx` names an audio library item, or the
   preset carries its own sound as its `file` (`sfx` wins when both are set). `library apply` on one sets the transition
   at the cut beside the video clip (the duration at most the shorter clip) and places the sound from the cut on an
