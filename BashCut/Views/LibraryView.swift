@@ -31,7 +31,7 @@ struct LibraryView: View {
                     case .media: media
                     case .audio: audio
                     case .text: text
-                    case .stickers: stickers
+                    case .stickers: StickerLibraryView(document: document)
                     case .effects: EffectLibraryView(document: document)
                     case .filters: FilterLibraryView(document: document)
                     case .transitions:
@@ -303,34 +303,6 @@ struct LibraryView: View {
                 captionMessage = String(localized: "Captions generated")
             } catch { captionMessage = error.localizedDescription }
         }
-    }
-    private var stickers: some View {
-        LibraryItemsSection(
-            document: document, kinds: [.sticker], fileKind: .sticker, columns: [GridItem(.adaptive(minimum: 55))]
-        ) { item in
-            Button { document.placeFromLibrary(item) } label: {
-                if let emoji = item.params["emoji"]?.string {
-                    Text(verbatim: emoji).font(.largeTitle)
-                } else {
-                    LibraryImage(url: document.libraryCatalog.fileURL(of: item)).frame(width: 40, height: 40)
-                }
-            }
-            .buttonStyle(.bordered).disabled(document.fileURL == nil)
-            .help(Self.title(item))
-        }
-    }
-}
-
-/// An image item's picture (a sticker), read once per file.
-struct LibraryImage: View {
-    let url: URL?
-    @State private var image: NSImage?
-
-    var body: some View {
-        Group {
-            if let image { Image(nsImage: image).resizable().scaledToFit() } else { Image(systemName: "photo") }
-        }
-        .task(id: url) { image = url.flatMap(NSImage.init(contentsOf:)) }
     }
 }
 

@@ -135,7 +135,7 @@ struct LibraryItemsSection<Tile: View>: View {
         }
         Button("Duplicate & Edit…") { document.beginDuplicate(item) }
         if item.scope.isWritable {
-            if item.kind == .transitionPreset || item.kind == .look || item.kind == .audio {
+            if [.transitionPreset, .look, .audio].contains(item.kind) || document.isMediaSticker(item) {
                 Button("Edit…") { document.beginRename(item) }
             } else {
                 Button("Rename…") { document.beginRename(item) }
@@ -236,6 +236,10 @@ struct LibraryItemEditorSheet: View {
                 if request.audio != nil {
                     LibraryAudioFields(audio: Binding(get: { request.audio ?? LibraryAudio() }, set: { request.audio = $0 }))
                 }
+                if request.sticker != nil {
+                    LibraryStickerFields(sticker: Binding(
+                        get: { request.sticker ?? LibrarySticker(stickerKind: "image") }, set: { request.sticker = $0 }))
+                }
                 if !isRename {
                     Picker("Save in", selection: $request.scope) {
                         Text("Project").tag(LibraryScope.project)
@@ -265,7 +269,7 @@ struct LibraryItemEditorSheet: View {
         case .duplicate: "Duplicate & Edit"
         case .rename:
             request.transition != nil ? "Edit transition" : request.look != nil ? "Edit look"
-                : request.audio != nil ? "Edit audio" : "Rename"
+                : request.audio != nil ? "Edit audio" : request.sticker?.isMedia == true ? "Edit sticker" : "Rename"
         }
     }
 }

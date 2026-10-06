@@ -163,7 +163,34 @@ public struct LibraryStore: Sendable {
 
     /// Removes an item, its files and its usage.
     @discardableResult
-    public func remove(_ id: String) throws -> LibraryItem {
+    public func remove(_ id: String) throws -> LibraryItem { try remove(id, keeping: []).item }
+
+    /// Removes an item, keeping those of its files that are in `used` (files the open project's media still points
+    /// at, such as a project library file placed before placing copied files into the project, #64). Returns the
+    /// kept files' paths relative to this library's folder.
+    public func remove(_ id: String, keeping used: [URL]) throws -> (item: LibraryItem, kept: [String]) {
+        let folder = filesFolder(id).standardizedFileURL.resolvingSymlinksInPath().path
+        let kept = Set(used.map { $0.standardizedFileURL.resolvingSymlinksInPath().path })
+            .filter { $0.hasPrefix(folder + "/") && FileManager.default.fileExists(atPath: $0) }
+        let removed = try removeEntry(id)
+        if kept.isEmpty {
+            try? FileManager.default.removeItem(at: filesFolder(removed.id))
+        } else {
+            let manager = FileManager.default
+            let files = manager.enumerator(at: filesFolder(removed.id), includingPropertiesForKeys: [.isRegularFileKey])
+            while let file = files?.nextObject() as? URL {
+                let path = file.standardizedFileURL.resolvingSymlinksInPath().path
+                guard (try? file.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true,
+                    !kept.contains(path)
+                else { continue }
+                try? manager.removeItem(at: file)
+            }
+        }
+        let base = root.standardizedFileURL.resolvingSymlinksInPath().path + "/"
+        return (removed, kept.map { String($0.dropFirst(base.count)) }.sorted())
+    }
+
+    private func removeEntry(_ id: String) throws -> LibraryItem {
         var contents = try load()
         var items = contents.items
         guard let index = items.firstIndex(where: { $0.id == id }) else {
@@ -174,7 +201,6 @@ public struct LibraryStore: Sendable {
         try save(contents)
         var usage = try usage()
         if usage.removeValue(forKey: removed.reference) != nil { try saveUsage(usage) }
-        try? FileManager.default.removeItem(at: filesFolder(removed.id))
         return removed
     }
 
@@ -286,6 +312,29 @@ public struct LibraryStore: Sendable {
         var hasher = SHA256()
         while let chunk = try handle.read(upToCount: 1 << 20), !chunk.isEmpty { hasher.update(data: chunk) }
         return hasher.finalize().map { String(format: "%02x", $0) }.joined()
+    }
+
+    /// The project copy of a library file placed on the timeline (#64, #78): `file` itself when it is already project
+    /// media (inside the project folder `root`, but not in its `.bashcut` folder, where the project library keeps its
+    /// files), else `<folder>/library-<hash>.<ext>`, named by its content (`sha256`, or hashed here). A copy already in
+    /// `folder` or any of `reusing` is used again, so the same file placed from any item is copied once. The copy belongs
+    /// to the project: removing or changing the library item never touches it.
+    public static func projectCopy(
+        of file: URL, root: URL, folder: String, sha256: String? = nil, reusing folders: [String] = []
+    ) throws -> URL {
+        let resolved = file.standardizedFileURL.resolvingSymlinksInPath().path
+        let project = root.standardizedFileURL.resolvingSymlinksInPath().path
+        if resolved.hasPrefix(project + "/"), !resolved.hasPrefix(project + "/.bashcut/") { return file }
+        let digest = try sha256 ?? Self.sha256(of: file)
+        let suffix = file.pathExtension.isEmpty ? "" : ".\(file.pathExtension.lowercased())"
+        let name = "library-\(digest.prefix(16))\(suffix)"
+        for existing in [folder] + folders.filter({ $0 != folder }) {
+            let candidate = root.appendingPathComponent(existing, isDirectory: true).appendingPathComponent(name)
+            if FileManager.default.fileExists(atPath: candidate.path) { return candidate }
+        }
+        let target = root.appendingPathComponent(folder, isDirectory: true).appendingPathComponent(name)
+        try copy(file, to: target)
+        return target
     }
 
     /// Copies a regular file up to `maximumFileBytes`, replacing an earlier copy at `destination`.

@@ -198,6 +198,8 @@ public struct LibraryEditorRequest: Identifiable {
     public var audio: LibraryAudio?
     /// Save to Library… on project audio: the media saved instead of the timeline selection.
     public var mediaID: String?
+    /// A sticker's size, position and animation, edited in the sheet (#64); nil for other kinds.
+    public var sticker: LibrarySticker?
 
     public init(
         mode: Mode, name: String, tags: [String] = [], pack: String? = nil, scope: LibraryScope,

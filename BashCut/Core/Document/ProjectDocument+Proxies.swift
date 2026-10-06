@@ -27,7 +27,10 @@ extension ProjectDocument {
         guard let root = fileURL?.deletingLastPathComponent() else {
             throw ProjectError.invalid("Open a saved project first")
         }
-        var selected = project.media.filter { !["audio", "image"].contains($0["kind"]?.string ?? "video") }
+        // A sticker movie with alpha (#64) is previewed from its original: proxies have no alpha channel.
+        var selected = project.media.filter {
+            !["audio", "image"].contains($0["kind"]?.string ?? "video") && $0["alpha"]?.bool != true
+        }
         if let mediaIDs {
             for id in mediaIDs where !project.media.contains(where: { $0.id == id }) {
                 throw ProjectError.invalid("Unknown media \(id)")

@@ -197,6 +197,8 @@ public enum ProjectSchema {
                     "width": integer("Pixels", minimum: 1, maximum: 16384),
                     "height": integer("Pixels", minimum: 1, maximum: 16384),
                     "hasAudio": boolean("Whether the file has sound"),
+                    "alpha": boolean("A movie with an alpha channel (a video sticker); previewed without a proxy"),
+                    TransitionPreset.soundLibraryField: string("The library item (scope:id) it was copied from"),
                 ])),
             "track": track,
             "item": .object(item),

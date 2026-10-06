@@ -116,21 +116,10 @@ public struct LibraryAudio: Sendable, Equatable {
     /// The folders library sounds are copied into; a copy in any of them is reused.
     public static let projectFolders = ["music", "sfx"]
 
-    /// `file` when it is inside the project folder `root`, else its copy `<folder>/library-<hash>.<ext>`, named by its
-    /// content (`sha256`, or hashed here) so using the same sound again, from any item, reuses one copy.
+    /// `file` when it is project media already, else its copy `<folder>/library-<hash>.<ext>`, named by its content
+    /// (`sha256`, or hashed here) so using the same sound again, from any item, reuses one copy.
     public static func projectCopy(of file: URL, root: URL, folder: String, sha256: String? = nil) throws -> URL {
-        let resolved = file.standardizedFileURL.resolvingSymlinksInPath().path
-        if resolved.hasPrefix(root.standardizedFileURL.resolvingSymlinksInPath().path + "/") { return file }
-        let digest = try sha256 ?? LibraryStore.sha256(of: file)
-        let suffix = file.pathExtension.isEmpty ? "" : ".\(file.pathExtension.lowercased())"
-        let name = "library-\(digest.prefix(16))\(suffix)"
-        for existing in ([folder] + projectFolders.filter { $0 != folder }) {
-            let candidate = root.appendingPathComponent(existing, isDirectory: true).appendingPathComponent(name)
-            if FileManager.default.fileExists(atPath: candidate.path) { return candidate }
-        }
-        let target = root.appendingPathComponent(folder, isDirectory: true).appendingPathComponent(name)
-        try LibraryStore.copy(file, to: target)
-        return target
+        try LibraryStore.projectCopy(of: file, root: root, folder: folder, sha256: sha256, reusing: projectFolders)
     }
 }
 

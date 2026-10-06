@@ -135,7 +135,16 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
 - One item model for every library panel (#74): kind, tags, pack, source and license, created by, version
   history, usage and params, in project (`.bashcut/library`), user (Application Support), plugin and built-in
   scopes. `library list|get|stats|add|update|remove|move|save-selection|apply|place|import-pack|export-pack`;
-  agents' user-scope writes need approval. Placing image stickers (#64) is open.
+  agents' user-scope writes need approval.
+- Sticker library (#64): emoji, image (transparency kept), animated (GIF, APNG, WebP) and video-alpha (HEVC with
+  alpha, ProRes 4444) stickers with optional size, safe-area position, motion-preset animation and length.
+  `library place` copies the file into `stickers/` once per content, imports it and places it on the Overlay layer
+  (added when missing) with `--position`/`--size`, as one undo step; emoji stickers place as text as before.
+  `library save-selection --kind sticker` saves an image or alpha-movie overlay with its framing, or an emoji text
+  item. Library files placed from a project library are copied too, and `library remove` keeps files project media
+  still points at. The Stickers panel has thumbnails, kind badges, drops of images and alpha movies, Place at
+  Playhead and an Edit… sheet for size, position and animation. Not yet: animated stickers move (they show their
+  first frame), Lottie, plugin sticker packs (`contributes`, #81), and size/position for emoji stickers.
 - Audio library (#78): audio items with a role (music, sfx, ambience), length, BPM, loudness (LUFS, true peak) and a
   loop flag, mood and genre as tags. `library add` measures the length; `library analyze` (a job) measures loudness
   and tempo on the library file with the `audio.loudness` and `audio.beats` providers and saves a new version.
@@ -305,7 +314,7 @@ Max): 219 checks. After the fixes in the same change, nothing fails; open notes:
 | Edit cost at scale | one `setProperties` round trip: 27 ms at 100 clips, 78 ms at 1000 (release build; core alone is ~3 ms). About 60% of the main thread is `TimelineCanvas.draw` repainting the whole visible timeline after each edit (clip titles, filmstrips) |
 | Edit cost at scale, fixed (#348) | the real cost was Core Animation rasterizing every visible clip (`CA::CG::Queue`, the main thread waits for it in `CABackingStoreGetFrontTexture`), not the draw calls. The canvas now diffs the drawn project against the new one and repaints only changed clips and gaps (`TimelineCanvas+Invalidation.swift`); the header repaints only when layers change. Release, M1 Max: 1,000 clips 52.5 → 22.9 ms per edit (100 edits 4.3 → 2.2 s, 100 undos 4.3 → 2.0 s); 100 clips 27 → 15.6 ms. Most of what is left is SwiftUI updating other views |
 | Export | once, `context get` waited 0.6 s while an export finished; not reproduced in three reruns |
-| Known gaps | `library place` of image sticker items (#64) |
+| Known gaps | animated stickers (GIF, APNG, WebP) render their first frame only (#64) |
 
 ## Agent automation latency (2026-10-03)
 

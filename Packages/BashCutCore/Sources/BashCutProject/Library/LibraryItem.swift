@@ -204,9 +204,8 @@ extension LibraryItem {
             guard file != nil || params["emoji"]?.string?.isEmpty == false else {
                 throw ProjectError.invalid("\(label): a sticker needs params.emoji or a file")
             }
-            if let preset = params["textPreset"], preset.string.map(TextPreset.all.contains) != true {
-                throw ProjectError.invalid("\(label): params.textPreset must be one of \(TextPreset.all.joined(separator: ", "))")
-            }
+            // Emoji, image, animated or video-alpha, with optional size, position, animation and length (#64).
+            _ = try LibrarySticker(params: params, file: file, label: label)
         case .textPreset:
             guard params["textPreset"]?.string.map(TextPreset.all.contains) == true else {
                 throw ProjectError.invalid(

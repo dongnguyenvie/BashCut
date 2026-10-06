@@ -10,6 +10,9 @@ struct LibraryPlacement {
     var frame: Int?
     var duration: Int?
     var trackID: String?
+    /// Image, animated and video stickers (#64): where and how wide; the sticker's defaults when nil.
+    var position: StickerPosition?
+    var size: Double?
     var author: Author = .user
     var baseRevision: Int?
 }
@@ -54,8 +57,11 @@ extension ProjectDocument {
                 text ?? item.params["text"]?.string ?? item.name, preset: item.params["textPreset"]?.string ?? "",
                 label: "Add text", placement)
         case .sticker:
-            guard let emoji = item.params["emoji"]?.string else {
-                throw RPCFailure(-32602, unsupported("Placing image stickers", item))
+            guard let emoji = item.params["emoji"]?.string, !isMediaSticker(item) else {
+                // Counts its own use.
+                let placed = try await placeLibrarySticker(item, placement)
+                if let note = placed.object["note"]?.string { message = note }
+                return (placed.object["rev"]?.int ?? project.revision, placed.object["item"]?.string ?? "")
             }
             result = try placeText(
                 emoji, preset: item.params["textPreset"]?.string ?? "bold-outline", label: "Add text", placement)
@@ -198,6 +204,9 @@ extension ProjectDocument {
         if kind == .audio, let file {
             item["params"] = .object(try await audioItemParams(item.params, file: file))
         }
+        if kind == .sticker, let file {
+            item["params"] = .object(try await stickerItemParams(item.params, file: file))
+        }
         item["createdBy"] = LibraryItem.creator(author: author)
         _ = try catalog.store(scope)
         let added = item
@@ -255,6 +264,7 @@ extension ProjectDocument {
         _ kind: LibraryKind, itemID: String? = nil, mediaID: String? = nil
     ) throws -> (params: [String: JSONValue], file: URL?) {
         if kind == .audio { return try audioSelection(itemID: itemID, mediaID: mediaID) }
+        if kind == .sticker { return try stickerSelection(itemID: itemID) }
         let id = itemID ?? selectedID
         let item = id.flatMap { id in project.tracks.flatMap(\.items).first { $0.id == id } }
         if let id, item == nil { throw RPCFailure(-32602, "Unknown item \(id)") }
@@ -404,17 +414,8 @@ extension ProjectDocument {
             }
         }
         handleAuthored("library.remove") { document, arguments, author in
-            let catalog = document.libraryCatalog
-            let item = try catalog.item(try arguments.string("id"), scope: Self.scope(arguments))
-            guard item.scope.isWritable else {
-                throw RPCFailure(-32602, "\(item.reference) is \(item.scope.rawValue) and cannot be removed")
-            }
-            let store = try catalog.store(item.scope)
-            return try await document.libraryChange(
-                "library.remove", scope: item.scope, author: author, arguments: ["id": item.reference, "name": item.name]
-            ) {
-                .object(["removed": .string(try store.remove(item.id).reference)])
-            }
+            let item = try document.libraryCatalog.item(try arguments.string("id"), scope: Self.scope(arguments))
+            return try await document.removeLibraryItem(item, author: author)
         }
     }
 
@@ -436,14 +437,24 @@ extension ProjectDocument {
         }
         handleAuthored("library.place") { document, arguments, author in
             let item = try document.libraryCatalog.item(try arguments.string("id"), scope: Self.scope(arguments))
+            let position: StickerPosition?
+            do {
+                position = try arguments.optionalString("position").map { try StickerPosition(text: $0, label: "position") }
+            } catch { throw RPCFailure(-32602, error.localizedDescription) }
             let placement = LibraryPlacement(
                 frame: arguments.optionalInt("atFrame"), duration: arguments.optionalInt("duration"),
-                trackID: arguments.optionalString("track"), author: author, baseRevision: try arguments.int("baseRev"))
+                trackID: arguments.optionalString("track"), position: position, size: arguments.optionalDouble("size"),
+                author: author, baseRevision: try arguments.int("baseRev"))
             if item.kind == .audio { return try await document.placeLibraryAudioCommand(item, placement) }
+            if document.isMediaSticker(item) { return try await document.placeLibrarySticker(item, placement) }
             let result = try await document.placeLibraryItem(item, placement, text: arguments.optionalString("text"))
-            return .object([
+            var placed: [String: JSONValue] = [
                 "rev": .integer(result.revision), "item": .string(result.itemID), "library": .string(item.reference),
-            ])
+            ]
+            if placement.position != nil || placement.size != nil {
+                placed["note"] = .string("position and size apply to image, animated and video stickers only")
+            }
+            return .object(placed)
         }
     }
 
