@@ -15,6 +15,15 @@ struct PendingPluginAction: Identifiable {
     let author: Author
 }
 
+/// A plugin action that asks before it runs (`confirm`), waiting for the user. Its job waits on `resume` without
+/// blocking the main actor, so commands keep being answered while the sheet is open.
+struct PendingPluginConfirm: Identifiable {
+    let id: UUID
+    let action: ContributedAction
+    let author: Author
+    let resume: @MainActor (Bool) -> Void
+}
+
 /// Plugin actions: the menus, buttons and context-menu entries plugins declare. The UI, `ui.action` and
 /// `plugins.run` all end in `runPluginAction`, and every result goes through `applyPluginProposal`, so a
 /// plugin edit is validated, undoable and attributed like an agent edit.
@@ -185,17 +194,20 @@ extension ProjectDocument {
         startPluginActionJob(action.id, params: [:], mediaID: mediaID, author: author)
     }
 
-    /// Runs the action in the background; `jobs.status` reports it.
+    /// Runs the action in the background; `jobs.status` reports it. An action with `confirm` waits in its job for the
+    /// user's answer unless `confirmed` (the user ran it from the parameter sheet, which shows the text).
     @discardableResult
     func startPluginActionJob(
-        _ id: String, params: [String: JSONValue], mediaID: String? = nil, author: Author
+        _ id: String, params: [String: JSONValue], mediaID: String? = nil, author: Author, confirmed: Bool = false
     ) -> String {
         let title = plugins.action(id)?.title ?? id
         plugins.lastRun[id] = Date()
         message = String(format: String(localized: "Running %@…"), title)
         return jobs.start("plugins.run", author: author, detail: id, work: { [weak self] reporter in
             guard let self else { throw CancellationError() }
-            return try await runPluginAction(id, params: params, mediaID: mediaID, author: author) { fraction, text in
+            return try await runPluginAction(
+                id, params: params, mediaID: mediaID, author: author, confirmed: confirmed
+            ) { fraction, text in
                 Task { @MainActor in
                     if let fraction { reporter.progress(fraction, detail: text) } else if let text { reporter.detail(text) }
                 }
@@ -206,10 +218,11 @@ extension ProjectDocument {
         })
     }
 
-    /// Runs one action and applies its proposal. Returns the new revision and the plugin's `data`.
+    /// Runs one action and applies its proposal. Returns the new revision and the plugin's `data`. `confirmed` is
+    /// set when the user already confirmed in the parameter sheet, which shows the `confirm` text.
     func runPluginAction(
         _ id: String, params: [String: JSONValue], mediaID: String? = nil, author: Author,
-        progress: PluginProgressHandler? = nil
+        confirmed: Bool = false, progress: PluginProgressHandler? = nil
     ) async throws -> JSONValue {
         guard let action = plugins.action(id) else {
             throw ProjectError.invalid("Unknown or unavailable plugin action \(id); see plugins actions")
@@ -225,12 +238,9 @@ extension ProjectDocument {
         let session = sessionID
         if action.spec.confirm != nil, author != .user, settings.dangerouslyAllowAgents {
             registry.recordApproval(method: "plugin.action." + id, author: author, approved: true, automatic: true)
-        } else if let confirm = action.spec.confirm {
-            let choice = ModalCenter.shared.alert(
-                "plugin-confirm", title: action.title, message: confirm.text,
-                buttons: [ModalOption("cancel", String(localized: "Cancel")), ModalOption("run", String(localized: "Run"))],
-                userOnly: true)
-            guard choice == "run", session == sessionID else { throw CancellationError() }
+        } else if action.spec.confirm != nil, !(confirmed && author == .user) {
+            let run = await confirmPluginAction(action, author: author)
+            guard run, session == sessionID else { throw CancellationError() }
         }
         let plugin = action.plugin
         let adapter = PluginActionCapability(
@@ -306,13 +316,36 @@ extension ProjectDocument {
         if let tab = request.inspector, UIAction.inspectorTabs.contains(tab) { ui.inspectorTab = tab }
     }
 
-    // MARK: Parameter sheet
+    // MARK: Parameter and confirm sheets
 
     func runPendingPluginAction() {
         guard let pending = plugins.pendingAction else { return }
         plugins.pendingAction = nil
         startPluginActionJob(
-            pending.action.id, params: pending.values, mediaID: pending.mediaID, author: pending.author)
+            pending.action.id, params: pending.values, mediaID: pending.mediaID, author: pending.author,
+            confirmed: pending.author == .user)
+    }
+
+    /// Waits for the user to answer the action's confirm sheet. Cancelling the job (`jobs.cancel`) or closing the
+    /// project answers Cancel.
+    func confirmPluginAction(_ action: ContributedAction, author: Author) async -> Bool {
+        let id = UUID()
+        return await withTaskCancellationHandler {
+            await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
+                guard !Task.isCancelled else { return continuation.resume(returning: false) }
+                plugins.confirmations.append(PendingPluginConfirm(id: id, action: action, author: author) {
+                    continuation.resume(returning: $0)
+                })
+            }
+        } onCancel: {
+            Task { @MainActor [weak self] in self?.resolvePluginConfirm(id, run: false) }
+        }
+    }
+
+    func resolvePluginConfirm(_ id: UUID, run: Bool) {
+        guard let index = plugins.confirmations.firstIndex(where: { $0.id == id }) else { return }
+        let pending = plugins.confirmations.remove(at: index)
+        pending.resume(run)
     }
 
     // MARK: Automation

@@ -7,10 +7,11 @@ import Foundation
 /// `::progress` lines from install recipes. Version 4 adds the `secret` option type and the session host channel
 /// (`event` and `call` lines during a request), used by the `agent.chat` capability. Version 5 adds the
 /// `agent.terminal` capability and the manifest's `terminal` object. Version 6 adds `contributes.library` (library
-/// packs), the `library.search` and `library.generate` capabilities and provider `kinds`.
+/// packs), the `library.search` and `library.generate` capabilities and provider `kinds`. Version 7 adds
+/// `contributes.skills` (agent skills).
 public enum PluginAPI {
     public static let minimum = 1
-    public static let current = 6
+    public static let current = 7
     /// The chat-agent capability; its requests carry a host channel (API 4).
     public static let agentChat = "agent.chat"
     /// An agent CLI in a dock terminal tab (API 5); its manifest has a `terminal` object.
@@ -271,17 +272,22 @@ public struct PluginContributions: Codable, Sendable, Equatable {
     public let hooks: [PluginHookContribution]?
     /// Library packs the plugin ships (API 6): read-only items in the panels while the plugin is installed.
     public let library: [PluginLibraryContribution]?
+    /// Agent skills the plugin ships (API 7): read-only `SKILL.md` folders agents get while the plugin is ready.
+    public let skills: [PluginSkillContribution]?
 
     public init(
         actions: [PluginActionContribution]? = nil, hooks: [PluginHookContribution]? = nil,
-        library: [PluginLibraryContribution]? = nil
+        library: [PluginLibraryContribution]? = nil, skills: [PluginSkillContribution]? = nil
     ) {
         self.actions = actions
         self.hooks = hooks
         self.library = library
+        self.skills = skills
     }
 
-    public var isEmpty: Bool { (actions ?? []).isEmpty && (hooks ?? []).isEmpty && (library ?? []).isEmpty }
+    public var isEmpty: Bool {
+        (actions ?? []).isEmpty && (hooks ?? []).isEmpty && (library ?? []).isEmpty && (skills ?? []).isEmpty
+    }
 }
 
 /// A command the plugin adds: a menu item, toolbar button, context-menu entry or panel button.

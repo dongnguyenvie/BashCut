@@ -74,7 +74,7 @@ arguments.
 | `doctor run` | read | Doctor sheet |
 | `knowledge get` | read | Knowledge window: Notes and Skills |
 | `knowledge lessons [--scope] [--status] [--tag] [--query] [--sort]` / `knowledge prefs` / `knowledge facts` / `knowledge proposals` / `knowledge history [--kind] [--target]` | read | Knowledge window: Lessons (search, filters, sort), Preferences, Project facts, Inbox, History; dock badge |
-| `skills list [--scope kit\|user\|project]` / `skills get <name> [--scope]` | read | Knowledge window › Skills: the project's, every project's and the agent kit's skills with their descriptions, Edit and Preview |
+| `skills list [--scope project\|user\|plugin\|kit]` / `skills get <name> [--scope]` | read | Knowledge window › Skills: the project's, every project's, the plugins' (read-only, `<plugin-id>:<name>`) and the agent kit's skills with their descriptions, Edit and Preview |
 | `ui frame [frame]` | read | Ask's attach viewer frame: the viewer picture at a frame as a PNG path |
 | `ui actions` | read | Every toolbar button, menu item and shortcut, with its enabled state |
 | `ui dialog` | read | Every open alert, file panel, sheet and popover |

@@ -69,7 +69,8 @@ extension AgentKnowledgeStore {
 
     var userSkillsFolder: URL { user.appendingPathComponent("skills", isDirectory: true) }
 
-    /// The skills of one scope, sorted by name. Project skills include ones only in an agent's folder.
+    /// The skills of one scope, sorted by name. Project skills include ones only in an agent's folder, but not the
+    /// plugin skills BashCut linked there.
     public func skills(_ scope: KnowledgeScope = .project) -> [AgentKnowledgeSkill] {
         let manager = FileManager.default
         let hasSkill = { (url: URL) in manager.fileExists(atPath: url.appendingPathComponent("SKILL.md").path) }
@@ -85,7 +86,9 @@ extension AgentKnowledgeStore {
             }
         }
         guard let (canonical, claude, codex) = projectSkillFolders else { return [] }
+        // Plugin skills linked here are the plugin's, listed in the plugin scope.
         let names = Set([canonical, claude, codex].flatMap(children).map(\.lastPathComponent))
+            .subtracting(linkedPluginSkills())
         return names.sorted().compactMap { name in
             guard let url = [canonical, codex, claude].map({ $0.appendingPathComponent(name) }).first(where: hasSkill)
             else { return nil }

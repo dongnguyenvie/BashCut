@@ -3,8 +3,9 @@ import BashCutAutomation
 import BashCutProject
 import Foundation
 
-/// Skills commands (#71): the agent kit's skills read-only, and the project's and every project's skills to write,
-/// turn on or off and delete. Agents' changes to skills every project reads wait for the user's approval.
+/// Skills commands (#71): the agent kit's and the plugins' skills read-only, and the project's and every project's
+/// skills to write, turn on or off and delete. Agents' changes to skills every project reads wait for the user's
+/// approval.
 extension ProjectDocument {
     func registerSkillCommands() {
         handle("skills.list") { document, arguments, _ in
@@ -20,9 +21,12 @@ extension ProjectDocument {
                 ?? KnowledgeSkillRef.Origin.allCases
             let knowledge = document.agents.knowledge
             for origin in origins {
-                let ref = KnowledgeSkillRef(origin: origin, name: name)
+                // A plugin skill is `<plugin-id>:<name>`; with --scope plugin a bare name works when one plugin has it.
+                let id = origin == .plugin ? document.pluginSkillID(name) : name
+                guard let id else { continue }
+                let ref = KnowledgeSkillRef(origin: origin, name: id)
                 guard let text = knowledge.text(of: ref),
-                      case .object(var fields)? = document.skillsJSON(origin).first(where: { $0.name == name })
+                      case .object(var fields)? = document.skillsJSON(origin).first(where: { $0.name == id })
                 else { continue }
                 fields["text"] = .string(text)
                 return .object(fields)
@@ -86,6 +90,17 @@ extension ProjectDocument {
     /// The skills of one origin as `skills list` shows them.
     private func skillsJSON(_ origin: KnowledgeSkillRef.Origin) -> [JSONValue] {
         let knowledge = agents.knowledge
+        if origin == .plugin {
+            return plugins.skills.map { skill in
+                .object([
+                    "name": .string(skill.id), "scope": .string("plugin"), "readOnly": .bool(true),
+                    "enabled": .bool(true), "plugin": .string(skill.pluginID), "pluginName": .string(skill.pluginName),
+                    "description": .string(
+                        SkillFrontMatter((try? String(contentsOf: skill.file, encoding: .utf8)) ?? "").summary),
+                    "path": .string(skill.file.path),
+                ])
+            }
+        }
         guard let scope = KnowledgeScope(rawValue: origin.rawValue) else {
             guard let kit = knowledge.kit else { return [] }
             return kit.skills.map { name in
@@ -120,10 +135,17 @@ extension ProjectDocument {
         return skill
     }
 
+    /// The ID of a ready plugin's skill named `name` (`<plugin-id>:<name>`, or a bare name only one plugin has).
+    private func pluginSkillID(_ name: String) -> String? {
+        if plugins.skills.contains(where: { $0.id == name }) { return name }
+        let matches = plugins.skills.filter { $0.name == name }
+        return matches.count == 1 ? matches[0].id : nil
+    }
+
     private static func skillOrigin(_ value: String?) throws -> KnowledgeSkillRef.Origin? {
         guard let value else { return nil }
         guard let origin = KnowledgeSkillRef.Origin(rawValue: value) else {
-            throw RPCFailure(-32602, "scope must be kit, user or project")
+            throw RPCFailure(-32602, "scope must be project, user, plugin or kit")
         }
         return origin
     }
@@ -131,8 +153,13 @@ extension ProjectDocument {
     private static func writableSkillScope(_ arguments: CommandArguments) throws -> KnowledgeScope {
         let value = arguments.optionalString("scope") ?? "project"
         guard let scope = KnowledgeScope(rawValue: value) else {
-            throw RPCFailure(-32602, value == "kit"
-                ? "Kit skills are read-only; propose a change with skills propose" : "scope must be project or user")
+            let reason = switch value {
+            case "kit": "Kit skills are read-only; propose a change with skills propose"
+            case "plugin":
+                "Plugin skills are read-only; copy one with skills get, then skills save --scope project or user"
+            default: "scope must be project or user"
+            }
+            throw RPCFailure(-32602, reason)
         }
         return scope
     }

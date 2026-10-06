@@ -150,6 +150,13 @@ extension ProjectDocument {
                 if option == "run" { runPendingPluginAction() } else { plugins.pendingAction = nil }
             })
         }
+        if let pending = plugins.confirmations.first {
+            // Running stays with the user; agents can only cancel (or cancel the job).
+            sheets.append(ModalSheet(
+                name: "plugin-confirm", title: pending.action.title, message: pending.action.spec.confirm?.text,
+                options: [ModalOption("cancel", String(localized: "Cancel"))]
+            ) { [weak self] _ in self?.resolvePluginConfirm(pending.id, run: false) })
+        }
         if ui.showPluginProposals, let proposal = plugins.proposals.first {
             sheets.append(ModalSheet(
                 name: "plugin-proposals", title: "\(proposal.plugin.manifest.displayName) proposes: \(proposal.title)",

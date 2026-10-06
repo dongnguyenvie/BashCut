@@ -1,0 +1,12 @@
+{
+  "schema": "bashcut.plugin/1",
+  "id": "example.skills",
+  "name": {"en": "Example Skills", "vi": "Skill mẫu"},
+  "version": "1.0.0",
+  "apiVersion": 7,
+  "entrypoint": "bin/provider",
+  "capabilities": [],
+  "contributes": {
+    "skills": [{"path": "skills/loudness-check"}]
+  }
+}

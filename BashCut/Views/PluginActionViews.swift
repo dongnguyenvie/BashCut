@@ -96,6 +96,34 @@ struct PluginActionParamsSheet: View {
     }
 }
 
+/// Asks the user before a plugin action that declares `confirm` runs. The action's job waits meanwhile.
+struct PluginConfirmSheet: View {
+    let pending: PendingPluginConfirm
+    let resolve: (Bool) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Label(pending.action.title, systemImage: pending.action.spec.icon ?? "puzzlepiece.extension")
+                .font(.title2)
+            Text(pending.action.plugin.manifest.displayName).font(.caption).foregroundStyle(.secondary)
+            if let confirm = pending.action.spec.confirm { Text(confirm.text).textSelection(.enabled) }
+            if pending.author != .user {
+                Text("Requested by \(pending.author.rawValue)").font(.caption).foregroundStyle(.secondary)
+            }
+            HStack {
+                Spacer()
+                Button("Cancel") { resolve(false) }.keyboardShortcut(.cancelAction)
+                // No Return shortcut for an agent's request: a keystroke meant for a terminal must not run it.
+                if pending.author == .user {
+                    Button("Run") { resolve(true) }.keyboardShortcut(.defaultAction).buttonStyle(.borderedProminent)
+                } else {
+                    Button("Run") { resolve(true) }.buttonStyle(.borderedProminent)
+                }
+            }
+        }.padding(20).frame(width: 460).interactiveDismissDisabled()
+    }
+}
+
 /// One option rendered natively: text field, picker, number field, toggle or file chooser.
 struct PluginOptionField: View {
     let option: PluginOption

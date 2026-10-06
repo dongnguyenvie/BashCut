@@ -1,4 +1,5 @@
 import BashCutAgent
+import BashCutPlugin
 import Foundation
 import Observation
 
@@ -10,6 +11,8 @@ import Observation
     // Skills (#71); see AgentKnowledgeModel+Skills.swift.
     var skills: [AgentKnowledgeSkill] = []
     var userSkills: [AgentKnowledgeSkill] = []
+    /// Skills of ready plugins (#377), read-only; set by the document when they change.
+    var pluginSkills: [PluginSkill] = []
     /// The agent kit BashCut's agents load, shown read-only; nil when none is found.
     var kit: AgentKit?
     /// Each listed skill's description without its trigger list.
@@ -71,6 +74,10 @@ import Observation
         }
         var lines = ["[Notes for every project]", user.isEmpty ? "None." : user]
         if !userSkills.isEmpty { lines.append("Skills: \(names(userSkills))") }
+        if !pluginSkills.isEmpty {
+            lines.append("Plugin skills (read one before using its plugin's feature): "
+                + pluginSkills.map { "\($0.id) (\($0.file.path))" }.joined(separator: ", "))
+        }
         lines.append("[/Notes for every project]")
         if memoSplitOffers.contains(.user) { lines.append(AgentKnowledgeStore.splitHint(.user)) }
         if hasProject {

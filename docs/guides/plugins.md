@@ -4,7 +4,9 @@ Plugins give BashCut optional, replaceable implementations of capabilities such 
 transcription, beat detection and loudness analysis. Since plugin API 2 they can also add actions to the editor
 (menus, toolbar, context menus, panel buttons), listen to editor events through hooks and declare options the
 app renders natively. Since plugin API 6 they can ship library packs for any library panel and search or generate
-library items (see [Library packs](#library-packs) and [Library search and generate](#library-search-and-generate)). A plugin is a separate executable that BashCut starts for
+library items (see [Library packs](#library-packs) and [Library search and generate](#library-search-and-generate)),
+and since API 7 agent skills that teach agents to use them ([Agent skills](#agent-skills)). A plugin is a separate
+executable that BashCut starts for
 each request; no third-party code is loaded into the app process. Project data, timeline validation, undo
 history and rendering stay in the app, so a missing plugin never prevents a project from opening. The design
 behind this boundary is in [03 — Architecture](../specs/03-architecture.md#optional-plugin-boundary).
@@ -59,7 +61,7 @@ checked manifest, an entrypoint that already speaks the protocol and smoke tests
 | `id` | Yes | Reverse-domain style: lowercase letters and digits in at least two parts separated by `.` or `-` (`example.voice`) |
 | `name` | Yes | Display name, up to 80 characters; [localized text](#localized-text) |
 | `version` | Yes | Semantic version, such as `1.2.0` or `1.2.0-beta.1` |
-| `apiVersion` | Yes | `1` to `6`; see [API versions](#api-versions) |
+| `apiVersion` | Yes | `1` to `7`; see [API versions](#api-versions) |
 | `minApiVersion` / `maxApiVersion` | No | The host API window the plugin works with; `minApiVersion` defaults to `apiVersion` |
 | `entrypoint` | Yes | Relative path inside the bundle to an executable file; no leading `/` and no `..` |
 | `capabilities` | Yes | List of unique capability IDs (lowercase, segments separated by `.` or `-`); may be empty only when `contributes` is not |
@@ -67,7 +69,7 @@ checked manifest, an entrypoint that already speaks the protocol and smoke tests
 | `dependencies` | No | External tools or models the plugin needs; see [Dependencies and health](#dependencies-and-health) |
 | `transport` | No | `oneshot` (default) or `session`; see [Session transport](#session-transport). API 2 |
 | `options` | No | Up to 64 settings; see [Options](#options). API 2 |
-| `contributes` | No | `actions` and `hooks` (API 2), `library` (API 6); see [Actions](#actions), [Hooks](#hooks) and [Library packs](#library-packs) |
+| `contributes` | No | `actions` and `hooks` (API 2), `library` (API 6), `skills` (API 7); see [Actions](#actions), [Hooks](#hooks), [Library packs](#library-packs) and [Agent skills](#agent-skills) |
 | `category` | No | Where Plugins and Settings group it: `agents`, `captions`, `voice`, `audio`, `color`, `effects`, `export` or `utilities`. A registry listing's category wins; without either, BashCut guesses from the capabilities (`agent.*`, `captions.*`, `voice.*`, `audio.*`) and falls back to Utilities. Older BashCut versions ignore it |
 
 BashCut resolves features by capability and provider ID, never by vendor SDK. A plugin is only chosen for a
@@ -88,13 +90,14 @@ and dependency names stay plain strings.
 
 ## API versions
 
-The host serves every plugin API version from `PluginAPI.minimum` (1) to `PluginAPI.current` (6); changes are
+The host serves every plugin API version from `PluginAPI.minimum` (1) to `PluginAPI.current` (7); changes are
 additive, so older manifests keep working. Version 2 adds `options`, `contributes` and the `session` transport.
 Version 3 adds option `choiceLabels` and the `file` option type, the `BASHCUT_PLUGIN_DATA`/`BASHCUT_PLUGIN_CACHE`
 folders and `::progress` lines from install recipes. Version 4 adds the `secret` option type, the session host
 channel (`event` and `call` lines) and the `agent.chat` capability. Version 5 adds the `agent.terminal` capability
 and the manifest's `terminal` object. Version 6 adds `contributes.library` (library packs), the `library.search` and
-`library.generate` capabilities and provider `kinds`. A manifest that uses a feature with an older `apiVersion` is
+`library.generate` capabilities and provider `kinds`. Version 7 adds `contributes.skills` (agent skills). A manifest
+that uses a feature with an older `apiVersion` is
 invalid; set `minApiVersion` so older BashCut builds list the plugin as outdated instead of failing.
 
 A plugin is **outdated** (listed, never run) when `minApiVersion` (or `apiVersion`) is newer than the host
@@ -577,7 +580,7 @@ code.
 | `params` | Up to 32 [options](#options) (their `scope` is ignored); shown in a native sheet before the action runs |
 | `shortcut` | Optional, written like `cmd+shift+g`; ignored (and reported in diagnostics) when a built-in or earlier plugin action uses it |
 | `context` | Extra read-only data: `timeline` (all tracks), `media` (all media with absolute paths), `project` (the whole document) |
-| `confirm` | A user-only question shown before execution from any entry point, including CLI and shortcuts; localized text |
+| `confirm` | A question only the user can answer, shown before execution from any entry point, including CLI and shortcuts; localized text |
 
 ### Placements
 
@@ -690,6 +693,53 @@ folder. Items are ordinary [library items](automation.md#library-items) (`id`, `
 
 `Fixtures/plugins/example.library` is a worked example: a Party pack (stickers, a text style, a look and a transition)
 and an offline `library.search` provider.
+
+## Agent skills
+
+`contributes.skills` (API 7) ships agent skills: `SKILL.md` folders in the agent kit's format that tell agents when
+and how to use what the plugin adds (its actions, options and capability commands). Each entry names a skill folder
+inside the plugin:
+
+```json
+"apiVersion": 7,
+"contributes": {
+  "skills": [{"path": "skills/loudness-check"}]
+}
+```
+
+```markdown
+---
+name: loudness-check
+description: Check how loud the media in an edit is and say what to change. Use when … Triggers: "to quá", "loudness check".
+---
+
+# Loudness check
+
+1. Find the media with `bashcut media list`, then `bashcut audio measure --media <id>` …
+```
+
+- Up to 16 skills. A `path` is relative, without `..`, `~` or a leading `/`; the folder, its `SKILL.md` and any link
+  inside it must resolve inside the plugin folder. The front matter `name` must equal the folder name (lowercase
+  words joined by `-`, at most 64 characters) and `description` is required (at most 1024 characters). A `SKILL.md`
+  is at most 64 KB and a skill folder at most 2 MB. Write the description as the kit does: what the skill is for,
+  "Use when …", then `Triggers:` with quoted phrases.
+- A skill that breaks a rule is left out and reported (`plugins validate`, `diagnostics` in `plugins list`); the rest
+  of the plugin still works.
+- Agents get the skills only while the plugin is trusted, turned on and compatible. Turning it off, revoking Trust,
+  removing it or a Reload that drops a skill takes the skill away at once.
+- In BashCut a plugin skill is named `<plugin-id>:<name>` (scope `plugin`), so it never clashes with the kit's
+  `bc:` skills, another plugin's or the user's: `skills list --scope plugin`, `skills get example.skills:loudness-check`.
+- They reach agents the way project and user skills do: listed with their paths in the agents' knowledge (the
+  `[Notes for every project]` block), linked into the open project's `.claude/skills` and `.agents/skills` as
+  `<plugin-id>--<name>`, into the Codex tab's workspace, and into a terminal plugin's `skillsFolder`. BashCut records
+  the links it made in `.bashcut/plugin-skills.json` and only ever removes those.
+- They are read-only. Knowledge › Skills shows them under **Plugins** with **Copy to This Project** and **Copy for
+  Every Project**; `skills get` then `skills save --scope project|user` does the same. `skills save`, `enable`,
+  `disable` and `remove` refuse the plugin scope.
+- Skills are text: no plugin process runs to list or deliver them, and a skill never ships executables (commands it
+  names go through BashCut's CLI or the plugin's capabilities).
+
+`Fixtures/plugins/example.skills` is a worked example: a plugin that only ships a `loudness-check` skill.
 
 ## Library search and generate
 
@@ -927,7 +977,7 @@ Everything above is available to agents through the CLI and MCP (`bashcut_plugin
 
 | Command | Mode | UI equivalent |
 |---|---|---|
-| `plugins list` | read | Plugins sheet: availability, transport, actions, hooks, options, library packs, provider kinds |
+| `plugins list` | read | Plugins sheet: availability, transport, actions, hooks, options, library packs, skills, provider kinds |
 | `plugins health [plugin]` | read | Check Health |
 | `plugins actions [text] [--plugin id]` | read | Every contributed action (or those matching the text or plugin) with placements, `when`, shortcut, a JSON Schema for its params, whether it is enabled now and when it last ran |
 | `plugins run <action> [--params '{…}']` | edit, job | Clicking the action and filling its sheet |
@@ -946,9 +996,11 @@ Everything above is available to agents through the CLI and MCP (`bashcut_plugin
 
 `ui actions` lists plugin actions next to built-in ones and `ui action <id or shortcut>` runs them. An action with
 parameters or `confirm` opens its sheet (dialog `plugin-action`); answer it with `ui respond run|cancel`, or use
-`plugins run --params` instead. When `confirm` is declared, execution then opens `plugin-confirm` with
-`userOnly: true`: automation can read it but only native user interaction can answer it. Cancelling starts no
-plugin request. `ui open plugin-proposals` opens the review sheet.
+`plugins run --params` instead. When `confirm` is declared, the action's job waits for the user in the
+`plugin-confirm` sheet (unless the user already ran it from the parameter sheet, which shows the text, or Settings
+allows all agent actions). Waiting never blocks the app: commands keep being answered, `jobs status` shows the job
+running, and `ui dialog` lists the sheet. Only the user can choose Run; automation can only answer `cancel` (or
+`jobs cancel` the job). Cancelling starts no plugin request. `ui open plugin-proposals` opens the review sheet.
 
 ## Dependencies and health
 
@@ -1022,7 +1074,7 @@ are two more adapters, `PluginActionCapability` and `PluginHookCapability`, run 
 - Voice, Text, Audio and Export use `voice.synthesize`, `captions.transcribe`, `audio.beats` and
   `audio.loudness`. Other analysis and interchange panels are not connected yet.
 - Plugins cannot own panels or windows; contributions use the fixed placements above. Library packs and library
-  search/generate (API 6) fill the existing library panels.
+  search/generate (API 6) fill the existing library panels. Agent skills (API 7) join the agents' skills.
 - The plugin registry (browse, install, update, remove, signatures, yanked versions, daily update check) is
   implemented.
 - A credential contract and detailed capability permissions are future work.

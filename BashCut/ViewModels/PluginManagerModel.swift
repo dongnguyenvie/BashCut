@@ -134,6 +134,12 @@ enum PluginText {
     var actions: [ContributedAction] = []
     /// The library packs ready plugins ship (`contributes.library`, API 6; `rebuildLibrary`).
     var library = PluginLibraryState()
+    /// The agent skills ready plugins ship (`contributes.skills`, API 7; `rebuildSkills`).
+    var skills: [PluginSkill] = []
+    /// Skills that could not be read, also in `diagnostics`.
+    var skillProblems: [String] = []
+    /// Called when `skills` changes, so the document links them for agents and lists them in their knowledge.
+    @ObservationIgnored var onSkillsChanged: (@MainActor () -> Void)?
     /// When each action last started, so MCP lists recently used actions first (#98).
     @ObservationIgnored var lastRun: [String: Date] = [:]
     /// Most recent hook deliveries, newest last.
@@ -141,6 +147,8 @@ enum PluginText {
     var proposals: [PluginProposal] = []
     /// The action whose parameter sheet is open.
     var pendingAction: PendingPluginAction?
+    /// Actions waiting for the user to confirm them, oldest first; the sheet shows the first.
+    var confirmations: [PendingPluginConfirm] = []
     var tab: PluginSheetTab = .installed
     /// Install or setup in progress: fraction from `::progress` lines, the current step and recent output.
     var installProgress: Double?
@@ -239,6 +247,7 @@ enum PluginText {
         }
         actions = list
         rebuildLibrary()
+        rebuildSkills()
     }
 
     func action(_ id: String) -> ContributedAction? { actions.first { $0.id == id } }

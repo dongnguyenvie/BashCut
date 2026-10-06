@@ -158,10 +158,15 @@ extension ProjectDocument {
         ])
     }
 
-    /// `context get`'s `scope`: the caller's own tab, else the shown chat or terminal tab; null without one.
+    /// `context get`'s `scope`: the caller's own tab. A session without a tab (the external agent token) gets null,
+    /// since nothing was attached to it and the guard does not check it; a caller without a token (a read from a
+    /// plain shell) sees the shown chat or terminal tab's.
     var agentScopeJSON: JSONValue {
-        let owner = CommandCaller.token.flatMap(scopeOwner(for:))
-            ?? agents.chatPluginID.map { chatAgents.model(for: $0) } ?? agents.current
+        let owner: (any AgentScopeOwner)? = if let token = CommandCaller.token {
+            scopeOwner(for: token)
+        } else {
+            agents.chatPluginID.map { chatAgents.model(for: $0) } ?? agents.current
+        }
         guard let owner else { return .null }
         var fields: [String: JSONValue] = [
             "scope": .array(owner.scope.map(\.json)), "mode": .string(agentScopeMode.rawValue),

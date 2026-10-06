@@ -121,6 +121,13 @@ struct PluginManagerView: View {
     }
 }
 
+extension PluginManagerView {
+    /// The skill folders a plugin's manifest lists, by name.
+    static func skillNames(_ plugin: InstalledPlugin) -> String {
+        plugin.manifest.skills.map { URL(fileURLWithPath: $0.path).lastPathComponent }.joined(separator: ", ")
+    }
+}
+
 private struct PluginRow: View {
     @Bindable var model: PluginManagerModel
     let document: ProjectDocument
@@ -166,6 +173,10 @@ private struct PluginRow: View {
             }
             if !plugin.manifest.hooks.isEmpty {
                 Text("Hooks: \(plugin.manifest.hooks.map(hookDescription).joined(separator: ", "))").font(.caption)
+            }
+            if !plugin.manifest.skills.isEmpty {
+                Text("Agent skills: \(PluginManagerView.skillNames(plugin))").font(.caption)
+                    .help("Agents get these skills while the plugin is trusted and on (Knowledge › Skills).")
             }
             if !plugin.manifest.dependencies.isEmpty {
                 Text("Dependencies: \(plugin.manifest.dependencies.map(\.name).joined(separator: ", "))")
@@ -333,6 +344,9 @@ private struct PluginInstallApprovalView: View {
             }
             if !plugin.manifest.hooks.isEmpty {
                 Text("Listens to: \(plugin.manifest.hooks.map(\.event).joined(separator: ", "))")
+            }
+            if !plugin.manifest.skills.isEmpty {
+                Text("Teaches agents: \(PluginManagerView.skillNames(plugin))")
             }
             if plugin.manifest.dependencies.isEmpty {
                 Text("This plugin has no external dependencies.")

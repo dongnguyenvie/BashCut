@@ -269,6 +269,14 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   `ui actions`/`ui action`. Worked example: `Fixtures/plugins/example.toolkit`.
 - Plugin API 6 (#81): `contributes.library` packs, the `library.search` and `library.generate` capabilities and
   provider `kinds`; manifests that use them need `apiVersion` 6, and older manifests stay valid.
+- Plugin API 7 (#375): `contributes.skills` agent skills (`PluginSkills`: confined after symlinks, front matter
+  `name` = folder and `description`, size limits; a bad skill is a diagnostic, not fatal). Ready plugins' skills are
+  the read-only `plugin` skill scope (`<plugin-id>:<name>`), listed in agent knowledge, linked into the project's
+  `.claude/skills` and `.agents/skills` as `<plugin-id>--<name>` (ledger `.bashcut/plugin-skills.json`), into the
+  Codex workspace and terminal plugins' `skillsFolder`, and shown in Knowledge › Skills with Copy. Example:
+  `Fixtures/plugins/example.skills`.
+- Plugin actions with `confirm` wait in their job for a non-blocking `plugin-confirm` sheet (agents can only cancel)
+  instead of a modal alert that stopped command handling.
 - Catalog refresh performance (#103): discovery keeps manifests in a `PluginCatalogCache` and reads a plugin again
   only when its `plugin.json` or entrypoint changes (stat identity, mode, size, mtime, ctime). A refresh shows each
   plugin's availability from the last file check (`PluginTrustStore.knownAvailability`); plugins not checked yet in

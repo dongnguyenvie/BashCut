@@ -77,6 +77,8 @@ public struct PluginManifest: Codable, Sendable, Equatable {
     public var hooks: [PluginHookContribution] { contributes?.hooks ?? [] }
     /// Library packs the plugin ships (API 6).
     public var libraryPacks: [PluginLibraryContribution] { contributes?.library ?? [] }
+    /// Agent skills the plugin ships (API 7).
+    public var skills: [PluginSkillContribution] { contributes?.skills ?? [] }
 
     /// Why this host cannot run the plugin, or nil when its API window includes the host.
     public var incompatibility: String? {
@@ -144,6 +146,7 @@ public struct PluginManifest: Codable, Sendable, Equatable {
         }
         try validateTerminal()
         try validateLibrary()
+        try validateSkills()
         guard Set(options.map(\.id)).count == options.count, options.count <= 64 else {
             throw PluginError.invalid("Option ids must be unique (at most 64)")
         }
@@ -192,6 +195,19 @@ public struct PluginManifest: Codable, Sendable, Equatable {
                         + LibraryKind.allCases.map(\.rawValue).joined(separator: ", ") + ")")
             }
         }
+    }
+
+    /// Agent skills (plugin API 7).
+    private func validateSkills() throws {
+        guard !skills.isEmpty else { return }
+        guard apiVersion >= 7 else { throw PluginError.invalid("contributes.skills needs apiVersion 7") }
+        guard skills.count <= PluginSkillContribution.maximumSkills,
+            Set(skills.map { NSString(string: $0.path).standardizingPath }).count == skills.count
+        else {
+            throw PluginError.invalid(
+                "contributes.skills lists at most \(PluginSkillContribution.maximumSkills) different skill folders")
+        }
+        for skill in skills { try skill.validate() }
     }
 
     private func validateHooks() throws {

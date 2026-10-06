@@ -9,25 +9,30 @@ extension CommandCatalog {
     private static let writableScope = CommandParameter(
         "scope", .string, "project (default) or user (every project)", default: .string("project"),
         choices: ["project", "user"], cli: .option("scope"))
+    private static let skillScopes = ["project", "user", "plugin", "kit"]
     private static let skillSession = CommandParameter(
         "session", .string, "Your agent session ID, recorded as the source", cli: .option("session"))
 
-    /// Skills (#71): the agent kit's, read-only, and the ones the user and agents write for one project
-    /// (`.bashcut/skills`, linked for Claude and Codex) or for every project (`Application Support/BashCut/Knowledge/
-    /// skills`). Changes are recorded in knowledge history.
+    /// Skills (#71): the agent kit's and the plugins' (#377), read-only, and the ones the user and agents write for
+    /// one project (`.bashcut/skills`, linked for Claude and Codex) or for every project
+    /// (`Application Support/BashCut/Knowledge/skills`). Changes are recorded in knowledge history.
     static let skillSpecs: [CommandSpec] = [
         CommandSpec(
             "skills.list", .read,
-            "List skills: the agent kit's (read-only), the ones for every project (user) and this project's, with "
-                + "whether agents get them (enabled) and their description.",
-            parameters: [CommandParameter("scope", .string, "Only this scope", choices: ["kit", "user", "project"],
-                                          cli: .option("scope"))]),
+            "List skills: this project's, the ones for every project (user), the ones trusted and enabled plugins ship "
+                + "(plugin, read-only, named <plugin-id>:<name>) and the agent kit's (read-only), with whether agents "
+                + "get them (enabled), their description and path.",
+            parameters: [CommandParameter("scope", .string, "Only this scope", choices: skillScopes, cli: .option("scope"))]),
         CommandSpec(
             "skills.get", .read,
-            "Read a skill's SKILL.md. Without scope, the project's skill wins over the one for every project, which wins "
-                + "over the kit's.",
-            parameters: [skillName, CommandParameter("scope", .string, "Where to look", choices: ["kit", "user", "project"],
-                                                     cli: .option("scope"))]),
+            "Read a skill's SKILL.md. Without scope, the project's skill wins over the one for every project, then a "
+                + "plugin's (<plugin-id>:<name>; with scope plugin a bare name works when one plugin has it), then the "
+                + "kit's. To change a plugin's skill, save a copy with skills save.",
+            parameters: [
+                CommandParameter("name", .string, "Skill name; a plugin's is <plugin-id>:<name>", required: true,
+                                 cli: .positional),
+                CommandParameter("scope", .string, "Where to look", choices: skillScopes, cli: .option("scope")),
+            ]),
         CommandSpec(
             "skills.save", .edit,
             "Write a skill's SKILL.md, creating the skill if needed: in the project (linked for Claude and Codex; needs "

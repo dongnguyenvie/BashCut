@@ -356,6 +356,11 @@ extension ProjectDocument {
                     "hooks": .array(plugin.manifest.hooks.map { .string($0.event) }),
                     "options": .array((plugin.manifest.options ?? []).map { .string($0.id) }),
                     "library": .array(plugin.manifest.libraryPacks.map { .string($0.path) }),
+                    // Skills it ships (API 7); agents get them only while the plugin is ready.
+                    "skills": .array(plugins.skills(of: plugin).map { skill in
+                        .object(["name": .string(skill.id), "description": .string(skill.description),
+                                 "path": .string(skill.file.path)])
+                    }),
                     "providers": .array((plugin.manifest.providers ?? []).map { provider in
                         .object([
                             "id": .string(provider.id), "capability": .string(provider.capability),

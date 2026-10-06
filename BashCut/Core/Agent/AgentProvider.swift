@@ -1,4 +1,5 @@
 import BashCutProject
+import BashCutPlugin
 import Foundation
 
 /// Stable provider identifier, used for preferences and per-project session bookmarks.
@@ -27,6 +28,8 @@ public struct AgentLaunchRequest: Sendable {
     public let mcpExecutable: String
     /// The agent kit to load, or nil when Settings › Agents turns it off or no kit is found.
     public var kit: AgentKitLaunch?
+    /// Skills of ready plugins (#377), linked next to the kit's where the provider keeps its own skills folder.
+    public var pluginSkills: [PluginSkill] = []
 }
 
 /// The installed agent kit and the skills-only Claude plugin made from it (`AgentKitInstall`).
@@ -71,6 +74,9 @@ public protocol AgentProvider: Sendable {
     var sessionFolder: String? { get }
     /// A session started in the workspace counts as the project's even without naming the project.
     var matchesWorkspaceSessions: Bool { get }
+    /// Bytes that start a new line in the agent's input, sent after a paste that ends with a newline. nil keeps the
+    /// newline inside the paste (the agent keeps it there).
+    var newlineAfterPaste: [UInt8]? { get }
     func commandLine(for request: AgentLaunchRequest) throws -> AgentCommandLine
 }
 
@@ -80,6 +86,7 @@ extension AgentProvider {
     public var environment: [String: String] { [:] }
     public var sessionFolder: String? { nil }
     public var matchesWorkspaceSessions: Bool { false }
+    public var newlineAfterPaste: [UInt8]? { nil }
 }
 
 public enum AgentProviders {

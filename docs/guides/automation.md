@@ -89,15 +89,19 @@ SwiftTerm terminal. Claude and Codex use your installed CLI and its existing log
     (`history.jsonl`). The Knowledge window's **History** section shows the diff; **Revert…** or `knowledge revert
     <change-id>` puts the entry back to how it was before that change, undoing later changes to it too, and is
     recorded as a change of its own. Rejecting a preference proposal changed nothing, so it has nothing to revert.
-  - **Skills** (`skills list [--scope kit|user|project]`, `get`, `save`, `enable`, `disable`, `remove`, `propose`):
-    the agent kit's skills are read-only; `skills propose <name> <file> --summary TEXT` sends the line diff against
+  - **Skills** (`skills list [--scope project|user|plugin|kit]`, `get`, `save`, `enable`, `disable`, `remove`,
+    `propose`): the agent kit's skills are read-only; `skills propose <name> <file> --summary TEXT` sends the line diff against
     the kit's SKILL.md to the Inbox as a lesson for every project tagged `kit`. Skills you or agents write live in the
     project (`.bashcut/skills/<name>`, linked into the project's `.claude/skills` and `.agents/skills`) or, with
     `--scope user`, for every project (`Application Support/BashCut/Knowledge/skills/<name>`, listed with its path in
     BashCut agents' knowledge). `disable` turns one off without deleting it: a project skill is unlinked, a skill for
     every project gets a `.disabled` marker and is left out of the agents' knowledge. Saves and removals are in
-    History, so `knowledge revert` brings a deleted skill back. The Knowledge window's **Skills** section lists all
-    three groups with an editor and Markdown preview.
+    History, so `knowledge revert` brings a deleted skill back. Skills that trusted, enabled plugins ship (API 7) are
+    in the read-only `plugin` scope as `<plugin-id>:<name>`: listed in BashCut agents' knowledge with their paths and
+    linked into the project's agent folders as `<plugin-id>--<name>` while the plugin is ready (see
+    [Agent skills](plugins.md#agent-skills)); copy one with `skills get` and `skills save` to change it. Without a
+    scope, `skills get` looks in the project, then every project, then plugins, then the kit. The Knowledge window's
+    **Skills** section lists every group with an editor and Markdown preview.
 
   An agent's request that otherwise changes knowledge for every project (memo, lesson edits and removals, skills for
   every project, reverts),
@@ -327,8 +331,8 @@ items (`--add` keeps the current selection). Delete, Lift, Copy, Cut, Paste and 
 `chat attach --items a,b` / `chat detach [--items a]` do the same for a chat agent; `agent detach [--items a]`
 removes them from the shown terminal tab. While items are attached, `context get` lists the caller's own tab's items
 as `scope` (`{plugin | terminal, scope: [{id, linked, track, layer, name, start, end}], mode, allowedForRequest}`;
-without a session of its own, the shown tab's) and every chat message starts with a `[Scope]` block: edit only those
-items and ask before changing anything else.
+a session without a tab, such as the external agent token, gets `null`; a read without a token sees the shown tab's)
+and every chat message starts with a `[Scope]` block: edit only those items and ask before changing anything else.
 
 The app enforces that rule (the scope guard, #356). Every edit a chat or terminal session with attached items makes
 (`timeline apply`, `clip *`, `layers *`, `library apply`, and any other authored edit) is checked first:

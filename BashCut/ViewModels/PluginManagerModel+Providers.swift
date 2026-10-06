@@ -49,4 +49,21 @@ extension PluginManagerModel {
         library = PluginLibraryState(
             items: found.items, roots: found.roots, problems: found.problems, revision: library.revision + 1)
     }
+
+    /// Reads the skills of the plugins that may run now (trusted, enabled, files checked). A skill that cannot be
+    /// read is left out and listed in `diagnostics`.
+    func rebuildSkills() {
+        let ready = plugins.filter { availability[$0.id] == .ready && !$0.manifest.skills.isEmpty }
+        let found = PluginSkills.catalog(ready)
+        diagnostics += found.problems
+        skillProblems = found.problems
+        guard found.skills != skills else { return }
+        skills = found.skills
+        onSkillsChanged?()
+    }
+
+    /// The skills one plugin ships, ready or not, for the plugin detail and `plugins list`.
+    func skills(of plugin: InstalledPlugin) -> [PluginSkill] {
+        plugin.manifest.skills.isEmpty ? [] : PluginSkills.skills(of: plugin).skills
+    }
 }
