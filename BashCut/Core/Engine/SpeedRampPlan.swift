@@ -35,10 +35,13 @@ struct SpeedRampPlan {
         self.pieces = pieces
     }
 
-    func insert(from source: AVAssetTrack, into target: AVMutableCompositionTrack) throws {
+    func insert(
+        from source: AVAssetTrack, into target: AVMutableCompositionTrack, available: CMTimeRange?,
+        frame: CMTime
+    ) throws {
         for piece in pieces {
-            try target.insertTimeRange(piece.source, of: source, at: piece.target.start)
-            target.scaleTimeRange(CMTimeRange(start: piece.target.start, duration: piece.source.duration), toDuration: piece.target.duration)
+            try target.insertHoldingEnd(
+                piece.source, of: source, available: available, frame: frame, over: piece.target)
         }
     }
 }

@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+- **Export no longer fails with `BashCutCompositor.MissingFrame 2` when a clip ends at its media's last frame.**
+  `Media.frames` comes from the file's duration, which can run a few frames past the video track's last picture
+  (audio longer than video, common in phone MOV/MP4). Clips, transition holds and speed ramps that reach past the
+  last picture now hold it for the missing frames instead of leaving the compositor without a source frame.
+
 - **Plugin authors.** A manifest may name its author: `"author": {"name": "…", "url": "https://…"}` (url
   optional, http or https). Plugins › Installed and Browse show *By <name>* (a link with a url), Browse search
   matches it, and `plugins list` / `plugins search` return `author`. The registry copies it from the manifest; the
