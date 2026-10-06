@@ -1,6 +1,24 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Save to Library…": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Save to Library…" } }, "vi": { "stringUnit": { "state": "translated", "value": "Lưu vào thư viện…" } } } },
+    "Place at Playhead": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Place at Playhead" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đặt tại đầu phát" } } } },
+    "Analyze Length, Loudness & Tempo": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Analyze Length, Loudness & Tempo" } }, "vi": { "stringUnit": { "state": "translated", "value": "Phân tích độ dài, độ to & nhịp" } } } },
+    "Place": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Place" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đặt" } } } },
+    "Place at the playhead on the Music or SFX layer": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Place at the playhead on the Music or SFX layer" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đặt tại đầu phát trên lớp Nhạc hoặc SFX" } } } },
+    "Play": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Play" } }, "vi": { "stringUnit": { "state": "translated", "value": "Phát" } } } },
+    "Loops seamlessly": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Loops seamlessly" } }, "vi": { "stringUnit": { "state": "translated", "value": "Lặp liền mạch" } } } },
+    "Use as": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Use as" } }, "vi": { "stringUnit": { "state": "translated", "value": "Dùng làm" } } } },
+    "Sound effect": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Sound effect" } }, "vi": { "stringUnit": { "state": "translated", "value": "Hiệu ứng âm thanh" } } } },
+    "Ambience": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Ambience" } }, "vi": { "stringUnit": { "state": "translated", "value": "Âm thanh nền" } } } },
+    "SFX": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "SFX" } }, "vi": { "stringUnit": { "state": "translated", "value": "SFX" } } } },
+    "Music and ambience go on the Music layer, sound effects on the SFX layer.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Music and ambience go on the Music layer, sound effects on the SFX layer." } }, "vi": { "stringUnit": { "state": "translated", "value": "Nhạc và âm thanh nền nằm trên lớp Nhạc, hiệu ứng âm thanh nằm trên lớp SFX." } } } },
+    "Placed longer than the file, a loopable sound repeats; another plays once.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Placed longer than the file, a loopable sound repeats; another plays once." } }, "vi": { "stringUnit": { "state": "translated", "value": "Khi đặt dài hơn tệp, âm thanh lặp được sẽ phát lặp lại; âm thanh khác chỉ phát một lần." } } } },
+    "Edit audio": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Edit audio" } }, "vi": { "stringUnit": { "state": "translated", "value": "Sửa âm thanh" } } } },
+    "Save the selected item's style, framing, transition, grade or sound as a library item.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Save the selected item's style, framing, transition, grade or sound as a library item." } }, "vi": { "stringUnit": { "state": "translated", "value": "Lưu kiểu chữ, khung hình, chuyển cảnh, màu hoặc âm thanh của mục đang chọn thành một mục thư viện." } } } },
+    "Analyzing “%@”…": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Analyzing “%@”…" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đang phân tích “%@”…" } } } },
+    "Analyzed “%@”": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Analyzed “%@”" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đã phân tích “%@”" } } } },
+    "My audio": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "My audio" } }, "vi": { "stringUnit": { "state": "translated", "value": "Âm thanh của tôi" } } } },
     "Select a clip, then click an effect. Apply with… changes its settings or applies it to part of the clip.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Select a clip, then click an effect. Apply with… changes its settings or applies it to part of the clip." } }, "vi": { "stringUnit": { "state": "translated", "value": "Chọn một clip rồi bấm vào hiệu ứng. Áp dụng với… để đổi thiết lập hoặc chỉ áp dụng cho một đoạn của clip." } } } },
     "Apply with…": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Apply with…" } }, "vi": { "stringUnit": { "state": "translated", "value": "Áp dụng với…" } } } },
     "Apply with other settings, or to part of the clip": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Apply with other settings, or to part of the clip" } }, "vi": { "stringUnit": { "state": "translated", "value": "Áp dụng với thiết lập khác, hoặc cho một đoạn của clip" } } } },
@@ -6142,12 +6160,6 @@
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Save selection as…" } },
         "vi": { "stringUnit": { "state": "translated", "value": "Lưu phần chọn thành…" } }
-      }
-    },
-    "Save the selected item's style, framing, transition or grade as a library item.": {
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Save the selected item's style, framing, transition or grade as a library item." } },
-        "vi": { "stringUnit": { "state": "translated", "value": "Lưu kiểu chữ, khung hình, chuyển cảnh hoặc màu của mục đang chọn thành một mục thư viện." } }
       }
     },
     "Add…": {

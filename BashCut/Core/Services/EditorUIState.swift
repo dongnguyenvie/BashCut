@@ -194,6 +194,10 @@ public struct LibraryEditorRequest: Identifiable {
     public var look: FilterStack?
     /// Whether the look keeps its own .cube LUT; nil when it has none.
     public var keepsLUT: Bool?
+    /// An audio item's role and loop flag, edited in the sheet (#78); nil for other kinds.
+    public var audio: LibraryAudio?
+    /// Save to Library… on project audio: the media saved instead of the timeline selection.
+    public var mediaID: String?
 
     public init(
         mode: Mode, name: String, tags: [String] = [], pack: String? = nil, scope: LibraryScope,

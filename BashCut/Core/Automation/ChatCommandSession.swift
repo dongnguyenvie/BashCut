@@ -18,7 +18,8 @@ import Foundation
         "knowledge.set-fact", "knowledge.split-memo", "knowledge.proposals", "knowledge.history", "skills.list",
         "skills.get", "skills.propose",
         "library.list", "library.get", "library.stats", "library.add", "library.update",
-        "library.remove", "library.apply", "library.place", "library.save-selection", "library.move",
+        "library.remove", "library.apply", "library.place", "library.save-selection", "library.move", "library.analyze",
+        "library.preview",
     ]
     private var token: String?
 

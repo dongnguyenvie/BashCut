@@ -147,7 +147,7 @@ struct LibraryTests {
         let transition = TimelineTransition(kind: "whip", from: "a", to: "b", duration: 9)
         let preset = try LibrarySelection.params(.transitionPreset, item: clip, transition: transition)
         #expect(preset == ["kind": .string("whip"), "duration": .integer(9)])
-        for kind in LibrarySelection.kinds {
+        for kind in LibrarySelection.kinds where kind != .audio {  // audio needs its file: LibraryAudioTests
             let params = kind == .transitionPreset ? preset : try LibrarySelection.params(kind, item: kind == .textPreset ? text : clip)
             try LibraryItem(id: "x", kind: kind, name: "X", params: params).validate()
         }

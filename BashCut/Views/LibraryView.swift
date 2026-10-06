@@ -152,14 +152,20 @@ struct LibraryView: View {
                     Button("Insert") { document.appendMedia(media, track: audioTrack) }.disabled(audioTrack.isEmpty)
                 }.font(.caption)
                     .onDrag { NSItemProvider(object: TimelineCanvas.mediaPasteboardPrefix + media.id as NSString) }
+                    .contextMenu {
+                        Button("Save to Library…") { document.beginSaveAudio(mediaID: media.id) }
+                    }
             }
             Divider()
-            LibraryItemsSection(document: document, kinds: [.audio], fileKind: .audio) { item in
-                Button { document.placeFromLibrary(item) } label: {
-                    Label { Self.title(item).lineLimit(1) } icon: { Image(systemName: "waveform") }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }.buttonStyle(.bordered).font(.caption)
-            }
+            LibraryItemsSection(
+                document: document, kinds: [.audio], saveKinds: [.audio], fileKind: .audio,
+                itemActions: { item in
+                    [
+                        LibraryPanelAction(title: "Place at Playhead") { document.placeFromLibrary(item) },
+                        LibraryPanelAction(title: "Analyze Length, Loudness & Tempo") { document.analyzeFromLibrary(item) },
+                    ]
+                },
+                tile: { item in AudioLibraryTile(document: document, item: item) })
             Divider()
             Text("Beat Detection").font(.headline)
             Picker("Source", selection: $beatSource) {

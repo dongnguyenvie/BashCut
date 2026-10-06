@@ -81,7 +81,7 @@ struct LibraryItemsSection<Tile: View>: View {
                 .labelStyle(.iconOnly).menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
                 .accessibilityLabel("Save selection as…")
                 .disabled(document.selectedID == nil)
-                .help("Save the selected item's style, framing, transition or grade as a library item.")
+                .help("Save the selected item's style, framing, transition, grade or sound as a library item.")
             }
             Button("Add…", systemImage: "plus") { document.chooseLibraryFiles(kind: fileKind) }
                 .labelStyle(.iconOnly).buttonStyle(.borderless)
@@ -135,7 +135,7 @@ struct LibraryItemsSection<Tile: View>: View {
         }
         Button("Duplicate & Edit…") { document.beginDuplicate(item) }
         if item.scope.isWritable {
-            if item.kind == .transitionPreset || item.kind == .look {
+            if item.kind == .transitionPreset || item.kind == .look || item.kind == .audio {
                 Button("Edit…") { document.beginRename(item) }
             } else {
                 Button("Rename…") { document.beginRename(item) }
@@ -233,6 +233,9 @@ struct LibraryItemEditorSheet: View {
                         stack: Binding(get: { request.look ?? FilterStack() }, set: { request.look = $0 }),
                         keepsLUT: $request.keepsLUT)
                 }
+                if request.audio != nil {
+                    LibraryAudioFields(audio: Binding(get: { request.audio ?? LibraryAudio() }, set: { request.audio = $0 }))
+                }
                 if !isRename {
                     Picker("Save in", selection: $request.scope) {
                         Text("Project").tag(LibraryScope.project)
@@ -261,7 +264,28 @@ struct LibraryItemEditorSheet: View {
         case .saveSelection(let kind): "Save selection as \(ProjectDocument.kindTitle(kind))"
         case .duplicate: "Duplicate & Edit"
         case .rename:
-            request.transition != nil ? "Edit transition" : request.look != nil ? "Edit look" : "Rename"
+            request.transition != nil ? "Edit transition" : request.look != nil ? "Edit look"
+                : request.audio != nil ? "Edit audio" : "Rename"
+        }
+    }
+}
+
+/// An audio item's role and loop flag in the item sheet (#78); mood and genre are its tags.
+struct LibraryAudioFields: View {
+    @Binding var audio: LibraryAudio
+
+    var body: some View {
+        Picker("Use as", selection: $audio.role) {
+            Text("Automatic").tag(String?.none)
+            Text("Music").tag(String?.some("music"))
+            Text("Sound effect").tag(String?.some("sfx"))
+            Text("Ambience").tag(String?.some("ambience"))
+        }
+        .help("Music and ambience go on the Music layer, sound effects on the SFX layer.")
+        Toggle("Loops seamlessly", isOn: Binding(get: { audio.loopable == true }, set: { audio.loopable = $0 }))
+            .help("Placed longer than the file, a loopable sound repeats; another plays once.")
+        if let line = LibraryAudioBadges.summary(audio) {
+            Text(verbatim: line).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
         }
     }
 }

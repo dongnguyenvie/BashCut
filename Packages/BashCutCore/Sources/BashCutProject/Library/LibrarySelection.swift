@@ -3,7 +3,7 @@ import Foundation
 /// "Save selection as…" (#80): the params of a new library item taken from what is selected on the timeline.
 public enum LibrarySelection {
     /// The kinds a selection can be saved as.
-    public static let kinds: [LibraryKind] = [.textPreset, .effectPreset, .transitionPreset, .look]
+    public static let kinds: [LibraryKind] = [.textPreset, .effectPreset, .transitionPreset, .look, .audio]
 
     /// The params for a `kind` item made from the timeline `item`, or from `transition` (the selected clip's) and
     /// the media of the sound a preset placed at its cut: one copied from an audio library item is kept as `sfx`.
@@ -34,9 +34,26 @@ public enum LibrarySelection {
             ).params
         case .look:
             return try look(item, lut: lut)
-        case .audio, .sticker, .voice:
+        case .audio:
+            guard let sound else { throw ProjectError.invalid("Select an audio clip, or pass a project audio media item") }
+            return try audio(sound, trackRole: nil)
+        case .sticker, .voice:
             throw ProjectError.invalid("A selection cannot be saved as \(kind.rawValue)")
         }
+    }
+
+    /// An audio item (#78) from project audio media: its length, and a role from the layer its clip is on (`trackRole`;
+    /// a Music layer gives music, an SFX layer sfx). The caller saves the media's file as the item's file.
+    public static func audio(_ media: Media, trackRole: String?) throws -> [String: JSONValue] {
+        guard media.kind == "audio", media.frames > 0 else {
+            throw ProjectError.invalid("\(media.id) is not audio media; save an audio file or clip")
+        }
+        let role: String? = switch trackRole {
+        case TrackRole.sfx: "sfx"
+        case TrackRole.music: "music"
+        default: nil
+        }
+        return LibraryAudio(role: role, seconds: media.durationSeconds).params()
     }
 
     private static func effect(_ item: Item?, soundItem: Item?, sound media: Media?) throws -> [String: JSONValue] {

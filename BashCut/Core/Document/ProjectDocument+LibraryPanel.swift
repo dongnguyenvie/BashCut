@@ -14,33 +14,45 @@ extension ProjectDocument {
     // MARK: Item sheet
 
     func beginSaveSelection(as kind: LibraryKind) {
+        let params: [String: JSONValue]
         do {
-            _ = try selectionParams(kind)
+            params = try selectionParams(kind).params
         } catch {
             message = error.localizedDescription
             return
         }
         let text = selected?["text"]?.string.map { String($0.prefix(40)) }
         let name = (kind == .textPreset ? text : nil) ?? String(localized: "My \(Self.kindTitle(kind))")
-        ui.libraryEditor = LibraryEditorRequest(
+        var request = LibraryEditorRequest(
             mode: .saveSelection(kind), name: name.prefix(1).uppercased() + name.dropFirst(), scope: defaultLibraryScope)
+        if kind == .audio { request.audio = try? LibraryAudio(params: params) }
+        ui.libraryEditor = request
     }
 
     func beginDuplicate(_ item: LibraryItem) {
         let name = item.scope == .builtIn ? String(localized: String.LocalizationValue(item.name)) : item.name
-        ui.libraryEditor = LibraryEditorRequest(
+        var request = LibraryEditorRequest(
             mode: .duplicate(item), name: String(localized: "\(name) copy"), tags: item.tags, pack: item.pack,
             scope: defaultLibraryScope, transition: editableTransition(item), look: editableLook(item),
             keepsLUT: editableLook(item) != nil && item.file != nil ? true : nil)
+        request.audio = editableAudio(item)
+        ui.libraryEditor = request
     }
 
     /// Rename…, and Edit… for a transition preset, whose kind, duration, easing and sound the sheet also shows, or
     /// for a look, whose grade and LUT it shows.
     func beginRename(_ item: LibraryItem) {
-        ui.libraryEditor = LibraryEditorRequest(
+        var request = LibraryEditorRequest(
             mode: .rename(item), name: item.name, tags: item.tags, pack: item.pack, scope: item.scope,
             transition: editableTransition(item), look: editableLook(item),
             keepsLUT: editableLook(item) != nil && item.file != nil ? true : nil)
+        request.audio = editableAudio(item)
+        ui.libraryEditor = request
+    }
+
+    /// An audio item's role and loop flag for the sheet (#78).
+    private func editableAudio(_ item: LibraryItem) -> LibraryAudio? {
+        item.kind == .audio ? (try? LibraryAudio(params: item.params)) ?? LibraryAudio() : nil
     }
 
     private func editableLook(_ item: LibraryItem) -> FilterStack? {
@@ -113,6 +125,7 @@ extension ProjectDocument {
             if let look = request.look {
                 edited.merge(Self.lookChanges(look, keepsLUT: request.keepsLUT, item: item)) { $1 }
             }
+            if let audio = request.audio { edited["params"] = .object(audio.params(merging: item.params)) }
         case .saveSelection:
             break
         }
@@ -121,8 +134,8 @@ extension ProjectDocument {
             switch request.mode {
             case .saveSelection(let kind):
                 var fields = changes
-                let selection = try document.selectionParams(kind)
-                fields["params"] = .object(selection.params)
+                let selection = try document.selectionParams(kind, mediaID: request.mediaID)
+                fields["params"] = .object(request.audio.map { $0.params(merging: selection.params) } ?? selection.params)
                 let preview = kind == .effectPreset ? await document.effectPreview(itemID: nil) : nil
                 return try await document.addLibraryItem(
                     kind: kind, name: name, scope: request.scope, changes: fields, file: selection.file, preview: preview,
