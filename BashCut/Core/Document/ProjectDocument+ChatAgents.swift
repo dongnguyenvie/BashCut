@@ -1,3 +1,4 @@
+import BashCutAgent
 import BashCutAutomation
 import BashCutProject
 import Foundation
@@ -77,5 +78,42 @@ extension ProjectDocument {
             transcript["plugin"] = .string(agent.pluginID)
             return .object(transcript)
         }
+    }
+
+    /// `chat attach|detach`: Send to Agent's chips on a chat agent's input.
+    func registerChatScopeCommands() {
+        handle("chat.attach") { document, arguments, _ in
+            let agent = try document.chatAgents.target(arguments.optionalString("plugin"))
+            let ids = Self.itemIDs(arguments.optionalString("items"))
+            let existing = Set(document.project.tracks.flatMap(\.items).map(\.id))
+            guard !ids.isEmpty else { throw RPCFailure(-32602, "Give --items") }
+            if let unknown = ids.first(where: { !existing.contains($0) }) {
+                throw RPCFailure(-32602, "Unknown item \(unknown)")
+            }
+            if !document.agents.isDetached { document.ui.showAgentDock = true }
+            document.agents.openChat(agent.pluginID)
+            agent.scope = AgentScope.merge(agent.scope, AgentScope.items(ids, in: document.project))
+            return Self.scopeJSON(agent)
+        }
+        handle("chat.detach") { document, arguments, _ in
+            let agent = try document.chatAgents.target(arguments.optionalString("plugin"))
+            let ids = Set(Self.itemIDs(arguments.optionalString("items")))
+            agent.scope.removeAll { ids.isEmpty || ids.contains($0.id) || $0.linked.map(ids.contains) == true }
+            return Self.scopeJSON(agent)
+        }
+    }
+
+    private static func itemIDs(_ list: String?) -> [String] {
+        (list ?? "").split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+    }
+
+    private static func scopeJSON(_ agent: ChatAgentModel) -> JSONValue {
+        .object(["plugin": .string(agent.pluginID), "scope": .array(agent.scope.map(\.json))])
+    }
+
+    /// The shown chat tab's attached items, for `context get`; null when no chat tab is shown.
+    var chatScopeJSON: JSONValue {
+        guard let pluginID = agents.chatPluginID else { return .null }
+        return Self.scopeJSON(chatAgents.model(for: pluginID))
     }
 }

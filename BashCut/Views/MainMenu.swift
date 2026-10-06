@@ -119,6 +119,7 @@ import BashCutPlugin
         menu.addItem(item(.unlinkAudio, String(localized: "Unlink Audio")))
         menu.addItem(item(.muteClips, String(localized: "Mute or Unmute Clips")))
         menu.addItem(.separator())
+        menu.addItem(item(.sendToAgent, String(localized: "Send to Agent")))
         menu.addItem(item(.askAgent, String(localized: "Ask Agent About Selection…")))
         return wrap(menu)
     }

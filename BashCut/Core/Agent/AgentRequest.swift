@@ -6,8 +6,9 @@ import Foundation
 public enum AgentRequest {
     /// The request, then the attached frame's path (with `~`); it ends with a newline so a second paste starts on
     /// its own line. Empty when there is nothing to send.
-    public static func paste(_ request: String, image: URL? = nil) -> String {
-        var lines = [request.trimmingCharacters(in: .whitespacesAndNewlines)].filter { !$0.isEmpty }
+    /// An attached scope (`AgentScope.text`) goes first, so the request typed after it reads in order.
+    public static func paste(_ request: String, image: URL? = nil, scope: String = "") -> String {
+        var lines = [scope, request.trimmingCharacters(in: .whitespacesAndNewlines)].filter { !$0.isEmpty }
         if let image { lines.append("Current viewer frame: `\((image.path as NSString).abbreviatingWithTildeInPath)`") }
         return lines.isEmpty ? "" : lines.joined(separator: "\n") + "\n"
     }

@@ -36,7 +36,8 @@ public enum CommandCatalog {
         CommandSpec(
             "context.get", .read,
             "Read the project path, revision, playhead and selection, and a summary of the agent knowledge: active "
-                + "lessons, preferences, project facts and the number of proposals."),
+                + "lessons, preferences, project facts and the number of proposals; scope lists the timeline items "
+                + "attached to the shown chat agent's request (edit only those)."),
         CommandSpec("project.get", .read, "Read the whole open project document."),
         CommandSpec(
             "timeline.get", .read, "Read the revision, format and tracks, including track IDs and roles.",

@@ -43,6 +43,8 @@ extension TimelineCanvas {
         for action in [UIAction.delete, .lift] { menu.addItem(actionItem(action)) }
         menu.addItem(.separator())
         for action in [UIAction.copyClips, .cutClips, .pasteClips, .muteClips] { menu.addItem(actionItem(action)) }
+        menu.addItem(.separator())
+        menu.addItem(actionItem(.sendToAgent))
         return menu
     }
 
@@ -61,7 +63,7 @@ extension TimelineCanvas {
 
     /// Short titles for the clip menus; `UIAction.title` describes the action for agents.
     private static let menuTitles: [UIAction: String] = [
-        .copyClips: "Copy", .cutClips: "Cut", .pasteClips: "Paste", .muteClips: "Mute",
+        .copyClips: "Copy", .cutClips: "Cut", .pasteClips: "Paste", .muteClips: "Mute", .sendToAgent: "Send to Agent",
     ]
 
     private func clipMenu(item: Item, track: Track) -> NSMenu {
@@ -90,6 +92,8 @@ extension TimelineCanvas {
                 })
             }
         }
+        menu.addItem(.separator())
+        menu.addItem(actionItem(.sendToAgent))
         menu.addItem(.separator())
         let locked = track.isLocked
         let title = String(format: String(localized: locked ? "Unlock %@" : "Lock %@"), track.name)

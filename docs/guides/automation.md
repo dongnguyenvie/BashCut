@@ -315,6 +315,11 @@ items (`--add` keeps the current selection). Delete, Lift, Copy, Cut, Paste and 
 `clip.copy`, `clip.cut`, `clip.paste`, `clip.mute`) act on the whole selection as one undo step;
 `timeline.select-all` and `timeline.deselect` change it.
 
+`ui action clip.send-to-agent` (Send to Agent) attaches the selected items to the open agent's request, and
+`chat attach --items a,b` / `chat detach [--items a]` do the same for a chat agent. While items are attached,
+`context get` lists them as `scope` (`{plugin, scope: [{id, linked, track, layer, name, start, end}]}`) and every
+chat message starts with a `[Scope]` block: edit only those items and ask before changing anything else.
+
 Use `timeline apply ... --dry-run` (MCP parameter `dryRun: true`) to validate the same batch on a copy.
 It checks the base revision, locks and project invariants, but changes no revision, undo history, files,
 preview or plugin hooks. The response has `dryRun: true`, current `rev`, `projectedRev`, predicted `duration`

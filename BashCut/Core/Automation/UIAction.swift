@@ -126,6 +126,7 @@ public enum UIAction: String, CaseIterable, Sendable {
     case cutClips = "clip.cut"
     case pasteClips = "clip.paste"
     case muteClips = "clip.mute"
+    case sendToAgent = "clip.send-to-agent"
 
     public var id: String { rawValue }
 
@@ -231,6 +232,7 @@ public enum UIAction: String, CaseIterable, Sendable {
         case .cutClips: "Cut selected clips (leave gaps)"
         case .pasteClips: "Paste copied clips at the playhead"
         case .muteClips: "Mute or unmute selected clips"
+        case .sendToAgent: "Send selected clips to the open agent as the scope of its request"
         }
     }
 

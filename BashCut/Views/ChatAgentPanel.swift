@@ -1,4 +1,6 @@
+import BashCutAgent
 import BashCutDocument
+import BashCutProject
 import SwiftUI
 
 /// A chat agent's tab: the conversation with the plugin's agent, an input box, and its status. Every control has a
@@ -21,7 +23,7 @@ struct ChatAgentPanel: View {
                                 .font(.caption).foregroundStyle(.secondary).padding(.top, 12)
                         }
                         ForEach(agent.entries) { entry in
-                            ChatEntryView(entry: entry).id(entry.id)
+                            ChatEntryView(entry: entry, fps: document.project.fps).id(entry.id)
                         }
                         if agent.running {
                             ProgressView().controlSize(.small).id("running")
@@ -74,6 +76,7 @@ struct ChatAgentPanel: View {
                     Button("Remove") { agent.draftImage = nil }.controlSize(.small)
                 }
             }
+            if !agent.scope.isEmpty { scopeChips }
             if !suggestions.isEmpty { suggestionMenu }
             ZStack(alignment: .topLeading) {
                 ChatInputView(text: $agent.draft, placeholder: String(localized: "Message to the agent"), onKey: key)
@@ -100,6 +103,21 @@ struct ChatAgentPanel: View {
             }
         }.padding(10)
         .onChange(of: agent.draft) { selection = 0 }
+    }
+
+    // MARK: Scope
+
+    /// The clips attached with Send to Agent: every message carries them until removed.
+    private var scopeChips: some View {
+        HStack(alignment: .top, spacing: 6) {
+            ScopeChipsView(items: agent.scope, fps: document.project.fps) { removed in
+                agent.scope.removeAll { $0.id == removed.id }
+            }
+            if agent.scope.count > 1 {
+                Button("Clear") { agent.scope = [] }.buttonStyle(.link).font(.caption)
+            }
+        }
+        .help("The agent edits only these clips and asks before changing anything else.")
     }
 
     // MARK: Slash commands
@@ -223,16 +241,51 @@ struct ChatAgentPanel: View {
     }
 }
 
+/// Attached timeline items as chips (`Clip · Main · 00:12–00:18`); `remove` adds an × to each.
+struct ScopeChipsView: View {
+    let items: [AgentScopeItem]
+    let fps: FrameRate
+    var remove: ((AgentScopeItem) -> Void)?
+
+    var body: some View {
+        FlowLayout(spacing: 4) {
+            ForEach(items) { item in
+                HStack(spacing: 3) {
+                    Image(systemName: "film").font(.caption2)
+                    Text(AgentScope.label(item, fps: fps)).font(.caption).lineLimit(1).truncationMode(.middle)
+                    if let remove {
+                        Button {
+                            remove(item)
+                        } label: {
+                            Image(systemName: "xmark").font(.caption2.bold())
+                        }
+                        .buttonStyle(.borderless).help("Remove from the request")
+                        .accessibilityLabel(String(format: String(localized: "Remove %@"), item.name))
+                    }
+                }
+                .padding(.horizontal, 6).padding(.vertical, 2)
+                .background(Capsule().fill(Color.accentColor.opacity(0.22)))
+                .help(item.id)
+            }
+        }
+    }
+}
+
 private struct ChatEntryView: View {
     let entry: ChatAgentModel.Entry
+    let fps: FrameRate
 
     var body: some View {
         switch entry.kind {
         case .user:
             HStack {
                 Spacer(minLength: 30)
-                Text(entry.text).textSelection(.enabled).padding(8)
-                    .background(RoundedRectangle(cornerRadius: 8).fill(Color.cyan.opacity(0.18)))
+                VStack(alignment: .trailing, spacing: 4) {
+                    if let scope = entry.scope { ScopeChipsView(items: scope, fps: fps) }
+                    Text(entry.text).textSelection(.enabled)
+                }
+                .padding(8)
+                .background(RoundedRectangle(cornerRadius: 8).fill(Color.cyan.opacity(0.18)))
             }
         case .assistant:
             Text(LocalizedStringKey(entry.text)).textSelection(.enabled)
