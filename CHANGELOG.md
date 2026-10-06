@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+- **Import counts a video's frames up to its last picture (#437).** `Media.frames` came from the container duration,
+  so a camera file with sound past its last picture offered 1–3 timeline frames without picture (the cause of #420).
+  Import (and stickers made from videos) now ends at the video track's last picture; audio files and images are
+  unchanged. Media already in a project keep their frame count, and the edge hold from #420 still covers them.
+
 - **Review grades issues and checks sound, text placement and the hook (#435, #431, #433, #434).** Every issue has a
   severity (`error` spoils the export, `warning` hurts it, `info` is a note), errors first, and a `fix` when one
   exists: a command with arguments (`timeline.close-gap`, `timeline.apply`, `export.start`) or a hint. `review run`

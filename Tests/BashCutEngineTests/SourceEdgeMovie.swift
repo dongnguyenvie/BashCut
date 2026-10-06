@@ -2,6 +2,9 @@ import AVFoundation
 import BashCutProject
 import BashCutTestSupport
 import Foundation
+import Testing
+
+import BashCutEngine
 
 /// Movies shaped like camera files whose picture and sound do not line up: sound running past the last picture, or
 /// the first picture arriving after the sound starts.
@@ -79,18 +82,27 @@ enum SourceEdgeMovie {
         }
     }
 
-    /// The media record import makes (`ProjectDocument.importedMedia`): frames from the file's duration.
-    static func media(_ url: URL, id: String = "m") async throws -> Media {
+    /// Where a media record's `frames` comes from: the container duration (projects imported before #437) or the
+    /// last picture (`MediaFrames`, what import records now).
+    enum Count: String, CaseIterable, CustomTestStringConvertible {
+        case duration, pictures
+        var testDescription: String { rawValue }
+    }
+
+    /// The media record import makes (`ProjectDocument.importedMedia`).
+    static func media(_ url: URL, id: String = "m", count: Count = .duration) async throws -> Media {
         let asset = AVURLAsset(url: url)
         guard let video = try await asset.loadTracks(withMediaType: .video).first else { throw failure("no video") }
         let nominal = Double(try await video.load(.nominalFrameRate))
         let fps: FrameRate = abs(nominal - 29.97) < 0.02 ? FrameRate()
             : abs(nominal - 23.976) < 0.02 ? FrameRate(24000, 1001) : FrameRate(Int(nominal.rounded()), 1)
-        let duration = try await asset.load(.duration)
+        let frames = switch count {
+        case .duration: Int((try await asset.load(.duration).seconds * fps.value).rounded(.down))
+        case .pictures: try await MediaFrames.sourceFrames(of: asset, fps: fps)
+        }
         return Media(fields: [
             "id": .string(id), "path": .string(url.lastPathComponent), "kind": .string("video"),
-            "fps": fps.json, "frames": .integer(Int((duration.seconds * fps.value).rounded(.down))),
-            "hasAudio": .bool(true),
+            "fps": fps.json, "frames": .integer(frames), "hasAudio": .bool(true),
         ])
     }
 
