@@ -275,6 +275,7 @@ extension ProjectDocument {
     private func updatePanels(_ arguments: CommandArguments) {
         if let tab = arguments.optionalString("inspector") { ui.inspectorTab = tab }
         if let section = arguments.optionalString("settingsSection") { ui.settingsSection = section }
+        if let search = arguments.optionalString("settingsSearch") { ui.settingsSearch = search }
         if let section = arguments.optionalString("knowledgeSection") { ui.knowledgeSection = section }
         if let tab = arguments.optionalString("pluginsTab").flatMap(PluginSheetTab.init(rawValue:)) { plugins.tab = tab }
         if let category = arguments.optionalString("pluginsCategory") {
@@ -312,7 +313,8 @@ extension ProjectDocument {
             "selectedTrack": selectedTrackID.map(JSONValue.string) ?? .null,
             "libraryPanel": .string(ui.libraryTab.panelName), "libraryFilter": libraryFilterJSON(),
             "inspector": .string(ui.inspectorTab),
-            "settingsSection": .string(ui.settingsSection), "knowledgeSection": .string(ui.knowledgeSection),
+            "settingsSection": .string(ui.settingsSection), "settingsSearch": .string(ui.settingsSearch),
+            "knowledgeSection": .string(ui.knowledgeSection),
             "pluginsTab": .string(plugins.tab.rawValue),
             "pluginsCategory": .string(plugins.browseCategory?.rawValue ?? "all"),
             "source": source,

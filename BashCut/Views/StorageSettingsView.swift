@@ -12,33 +12,31 @@ struct StorageSettingsView: View {
     @State private var error = ""
 
     var body: some View {
-        Section {
+        SettingsSection("Storage") {
             if let entries {
                 ForEach(StorageUsage.byPlugin(entries)) { plugin in
-                    RowDisclosureGroup {
+                    SettingsDisclosureRow(terms: [pluginName(plugin.pluginID), plugin.pluginID] + plugin.entries.map(title)) {
                         ForEach(plugin.entries) { entry in row(entry) }
                     } label: {
                         pluginLabel(plugin)
                     }
                 }
                 ForEach(entries.filter { $0.pluginID == nil }) { entry in row(entry) }
-                LabeledContent("Total") {
+                SettingsRow("Total", keywords: ["disk", "size"]) {
                     Text(Self.bytes(entries.reduce(0) { $0 + $1.bytes })).monospacedDigit().bold()
                 }
             } else {
-                ProgressView().controlSize(.small)
+                SettingsPlainRow { ProgressView().controlSize(.small) }.settingsHiddenWhileSearching()
             }
-            if !error.isEmpty { Text(error).font(.caption).foregroundStyle(.orange) }
-        } header: {
-            HStack {
-                Text("Storage")
-                Spacer()
-                Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([StorageUsage.supportFolder]) }
-                    .buttonStyle(.link)
-                Button {
-                    Task { await load() }
-                } label: { Image(systemName: "arrow.clockwise") }.buttonStyle(.borderless).help("Measure again")
+            if !error.isEmpty {
+                SettingsPlainRow { Text(error).font(.caption).foregroundStyle(.orange) }
             }
+        } accessory: {
+            Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([StorageUsage.supportFolder]) }
+                .buttonStyle(.link)
+            Button {
+                Task { await load() }
+            } label: { Image(systemName: "arrow.clockwise") }.buttonStyle(.borderless).help("Measure again")
         }
         .task { await load() }
         .confirmationDialog(
@@ -59,7 +57,7 @@ struct StorageSettingsView: View {
     }
 
     private func row(_ entry: StorageEntry) -> some View {
-        LabeledContent {
+        SettingsRow(verbatim: title(entry), detail: entry.url.path, detailLines: 1, keywords: ["cache", "disk"]) {
             HStack {
                 Text(Self.bytes(entry.bytes)).monospacedDigit().foregroundStyle(.secondary)
                 if entry.clearable {
@@ -72,24 +70,19 @@ struct StorageSettingsView: View {
                     }
                 }
             }
-        } label: {
-            VStack(alignment: .leading, spacing: 1) {
-                Text(title(entry))
-                Text(entry.url.path).font(.caption2).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
-            }
         }
     }
 
     private func pluginLabel(_ plugin: PluginStorage) -> some View {
-        LabeledContent {
-            Text(Self.bytes(plugin.bytes)).monospacedDigit()
-        } label: {
+        HStack {
             VStack(alignment: .leading, spacing: 1) {
                 Text(pluginName(plugin.pluginID))
                 if !plugin.installed {
                     Text("Not installed — left over from a removed plugin").font(.caption2).foregroundStyle(.secondary)
                 }
             }
+            Spacer()
+            Text(Self.bytes(plugin.bytes)).monospacedDigit()
         }
     }
 

@@ -277,7 +277,7 @@ public enum CommandCatalog {
         CommandSpec(
             "ui.view", .ui,
             "Read the editor view state, or change it: timeline zoom (pixels per second), viewer zoom, snapping, safe area, "
-                + "color compare, agent dock, inspector tab, Settings section, Knowledge section, Plugins tab and Browse "
+                + "color compare, agent dock, inspector tab, Settings section and search, Knowledge section, Plugins tab and Browse "
                 + "category, the open library panel's search and filters, and scroll the timeline to a frame.",
             parameters: [
                 CommandParameter("zoom", .integer, "Timeline zoom in pixels per second", minimum: 1, maximum: 600,
@@ -296,6 +296,8 @@ public enum CommandCatalog {
                                  cli: .option("inspector")),
                 CommandParameter("settingsSection", .string, "Settings section (open Settings with ui.open settings)",
                                  choices: UIAction.settingsSections, cli: .option("settings-section")),
+                CommandParameter("settingsSearch", .string, "Settings search text: lists matching settings of every "
+                                 + "section; empty clears it", cli: .option("settings-search")),
                 CommandParameter("knowledgeSection", .string, "Knowledge window section (open it with ui.open knowledge)",
                                  choices: UIAction.knowledgeSections, cli: .option("knowledge-section")),
                 CommandParameter("pluginsTab", .string, "Plugins sheet tab (open it with ui.open plugins)",
