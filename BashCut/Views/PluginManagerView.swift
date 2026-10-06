@@ -128,6 +128,23 @@ extension PluginManagerView {
     }
 }
 
+/// "By <author>", a link when the author has a web page.
+struct PluginAuthorLabel: View {
+    let author: PluginAuthor
+
+    var body: some View {
+        let text = String(format: String(localized: "By %@"), author.name)
+        Group {
+            if let link = author.link {
+                Link(text, destination: link).help(link.absoluteString)
+            } else {
+                Text(text)
+            }
+        }
+        .font(.caption2).foregroundStyle(.secondary)
+    }
+}
+
 private struct PluginRow: View {
     @Bindable var model: PluginManagerModel
     let document: ProjectDocument
@@ -151,6 +168,7 @@ private struct PluginRow: View {
                 stateBadge
             }
             Text(plugin.id).font(.caption2.monospaced()).foregroundStyle(.secondary)
+            if let author = plugin.manifest.author { PluginAuthorLabel(author: author) }
             if let origin = model.origin(of: plugin) {
                 Label(origin.url + (origin.resolved.map { " @ " + $0.prefix(12) } ?? ""), systemImage: "link")
                     .font(.caption2).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle).textSelection(.enabled)

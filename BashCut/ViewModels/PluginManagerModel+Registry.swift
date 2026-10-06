@@ -38,6 +38,7 @@ struct PluginListing: Identifiable {
             "id": .string(entry.id), "name": .string(entry.name.text), "status": .string(statusText),
             "summary": entry.summary.map { .string($0.text) } ?? .null,
             "publisher": entry.publisher.map(JSONValue.string) ?? .null,
+            "author": entry.author?.json ?? .null,
             "category": .string(category.rawValue),
             "capabilities": .array((entry.capabilities ?? []).map(JSONValue.string)),
             "version": version.map { .string($0.version) } ?? .null,

@@ -30,6 +30,9 @@ public struct PluginManifest: Codable, Sendable, Equatable {
     public let uses: [String]?
     /// Host features the plugin cannot work without (API 8, `PluginFeature`).
     public let features: [String]?
+    /// Who wrote the plugin, shown next to it in Plugins; the publisher (who signs and ships it) may differ.
+    /// Metadata only: older hosts ignore it, so it needs no API version.
+    public let author: PluginAuthor?
 
     public init(
         id: String, name: LocalizedText, version: String, apiVersion: Int = 1,
@@ -37,7 +40,8 @@ public struct PluginManifest: Codable, Sendable, Equatable {
         dependencies: [PluginDependency] = [], minApiVersion: Int? = nil, maxApiVersion: Int? = nil,
         transport: PluginTransportKind? = nil, options: [PluginOption]? = nil,
         contributes: PluginContributions? = nil, terminal: PluginTerminal? = nil, category: String? = nil,
-        requires: [PluginRequirement]? = nil, uses: [String]? = nil, features: [String]? = nil
+        requires: [PluginRequirement]? = nil, uses: [String]? = nil, features: [String]? = nil,
+        author: PluginAuthor? = nil
     ) {
         schema = Self.schema
         self.id = id
@@ -58,6 +62,7 @@ public struct PluginManifest: Codable, Sendable, Equatable {
         self.requires = requires
         self.uses = uses
         self.features = features
+        self.author = author
     }
 
     public init(from decoder: any Decoder) throws {
@@ -81,6 +86,7 @@ public struct PluginManifest: Codable, Sendable, Equatable {
         requires = try container.decodeIfPresent([PluginRequirement].self, forKey: .requires)
         uses = try container.decodeIfPresent([String].self, forKey: .uses)
         features = try container.decodeIfPresent([String].self, forKey: .features)
+        author = try container.decodeIfPresent(PluginAuthor.self, forKey: .author)
     }
 
     public var transportKind: PluginTransportKind { transport ?? .oneshot }
@@ -147,6 +153,7 @@ public struct PluginManifest: Codable, Sendable, Equatable {
         guard declaredProviders.allSatisfy({ ($0.timeoutSeconds ?? 120) >= 10 && ($0.timeoutSeconds ?? 120) <= 3600 })
         else { throw PluginError.invalid("Provider timeoutSeconds must be 10...3600") }
         for dependency in dependencies { try dependency.validate() }
+        try author?.validate()
         try validateExtensions()
     }
 

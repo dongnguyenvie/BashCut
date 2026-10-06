@@ -343,6 +343,7 @@ extension ProjectDocument {
                     "id": .string(plugin.id), "name": .string(plugin.manifest.displayName),
                     "category": .string(plugins.category(of: plugin).rawValue),
                     "version": .string(plugin.manifest.version), "apiVersion": .integer(plugin.manifest.apiVersion),
+                    "author": plugin.manifest.author?.json ?? .null,
                     "availability": .string(availability.name),
                     "detail": .string(availability.detail),
                     "transport": .string(plugin.manifest.transportKind.rawValue),
