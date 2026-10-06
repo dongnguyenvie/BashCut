@@ -45,6 +45,8 @@ public struct PluginRegistryEntry: Codable, Sendable, Equatable, Identifiable {
     public let publisher: String?
     public let category: String?
     public let homepage: String?
+    /// Who wrote the plugin (from its manifest); `publisher` is who signs and ships it.
+    public let author: PluginAuthor?
     public let capabilities: [String]?
     public let actions: [String]?
     public let hooks: [String]?
@@ -53,7 +55,7 @@ public struct PluginRegistryEntry: Codable, Sendable, Equatable, Identifiable {
     public init(
         id: String, name: LocalizedText, summary: LocalizedText? = nil, publisher: String? = nil,
         category: String? = nil, homepage: String? = nil, capabilities: [String]? = nil, actions: [String]? = nil,
-        hooks: [String]? = nil, versions: [PluginRegistryVersion]
+        hooks: [String]? = nil, author: PluginAuthor? = nil, versions: [PluginRegistryVersion]
     ) {
         self.id = id
         self.name = name
@@ -61,6 +63,7 @@ public struct PluginRegistryEntry: Codable, Sendable, Equatable, Identifiable {
         self.publisher = publisher
         self.category = category
         self.homepage = homepage
+        self.author = author
         self.capabilities = capabilities
         self.actions = actions
         self.hooks = hooks
@@ -92,11 +95,12 @@ public struct PluginRegistryEntry: Codable, Sendable, Equatable, Identifiable {
     /// The registry's record of an installed version, to tell whether it was yanked.
     public func version(_ version: String) -> PluginRegistryVersion? { versions.first { $0.version == version } }
 
-    /// True when the entry matches a search text (name, summary, id, category or capability).
+    /// True when the entry matches a search text (name, summary, id, category, capability or author).
     public func matches(_ query: String) -> Bool {
         let needle = query.trimmingCharacters(in: .whitespaces).lowercased()
         guard !needle.isEmpty else { return true }
-        let haystack = [id, category ?? ""] + (capabilities ?? []) + Array(name.values.values)
+        let fields: [String] = [id, category ?? "", author?.name ?? ""]
+        let haystack: [String] = fields + (capabilities ?? []) + Array(name.values.values)
             + Array((summary?.values ?? [:]).values)
         return haystack.contains { $0.lowercased().contains(needle) }
     }

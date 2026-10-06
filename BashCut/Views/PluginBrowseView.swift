@@ -141,6 +141,7 @@ private struct PluginListingRow: View {
                     }
                 }
                 if let summary = listing.entry.summary { Text(summary.text).font(.caption) }
+                if let author = listing.entry.author { PluginAuthorLabel(author: author) }
                 HStack(spacing: 8) {
                     Text(listing.entry.id).font(.caption2.monospaced())
                     Label(listing.category.title, systemImage: listing.category.symbol).font(.caption2)

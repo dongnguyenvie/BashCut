@@ -1,6 +1,7 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "By %@": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "By %@" } }, "vi": { "stringUnit": { "state": "translated", "value": "Tác giả: %@" } } } },
     "Font": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Font" } }, "vi": { "stringUnit": { "state": "translated", "value": "Phông chữ" } } } },
     "Preset (%@)": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Preset (%@)" } }, "vi": { "stringUnit": { "state": "translated", "value": "Mặc định (%@)" } } } },
     "Add Font…": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Add Font…" } }, "vi": { "stringUnit": { "state": "translated", "value": "Thêm phông chữ…" } } } },

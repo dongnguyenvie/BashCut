@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+- **Plugin authors.** A manifest may name its author: `"author": {"name": "…", "url": "https://…"}` (url
+  optional, http or https). Plugins › Installed and Browse show *By <name>* (a link with a url), Browse search
+  matches it, and `plugins list` / `plugins search` return `author`. The registry copies it from the manifest; the
+  `publisher` (who signs and ships) stays separate. Metadata only: no plugin API bump, older versions ignore it.
 - **Text fonts and colours end to end (#412–#415).** `textStyle.font` (PostScript name), `fill`, `stroke` and
   `highlight` (`#RRGGBB`) are declared item properties: validated, in `project.schema.json` and `schema get`.
   Inspector › Text adds a font menu (preset, project fonts, installed families; fonts without Vietnamese letters are

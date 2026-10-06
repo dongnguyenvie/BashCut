@@ -76,6 +76,7 @@ checked manifest, an entrypoint that already speaks the protocol and smoke tests
 | `uses` | No | Capability IDs this plugin calls with `plugins.invoke` (API 8), at most 32 |
 | `features` | No | [Host features](#host-features) the plugin cannot work without (API 8), at most 32 |
 | `category` | No | Where Plugins and Settings group it: `agents`, `captions`, `voice`, `audio`, `color`, `effects`, `export` or `utilities`. A registry listing's category wins; without either, BashCut guesses from the capabilities (`agent.*`, `captions.*`, `voice.*`, `audio.*`) and falls back to Utilities. Older BashCut versions ignore it |
+| `author` | No | Who wrote the plugin: `{"name": "Luan Tran", "url": "https://github.com/luantran069"}`. `name` is 1–80 characters on one line; `url` is optional (`null` or left out) and must be an `http` or `https` link. Plugins (Installed and Browse) show *By <name>*, a link when there is a url; `plugins list` and `plugins search` return it. The registry's `publisher` is who signs and ships the plugin, which may differ. Metadata only, so any `apiVersion`; older BashCut versions ignore it |
 
 BashCut resolves features by capability and provider ID, never by vendor SDK. A plugin is only chosen for a
 capability when it declares a provider for it.
