@@ -186,11 +186,13 @@ Find the time offset between two recordings of the same moment (a camera and a s
 
 ## review
 
-### `bashcut review run`
+### `bashcut review run [--min-severity <minSeverity>] [--summary]`
 
-Run the structural timeline review (not measured audio loudness).
+Review the timeline before export. Each issue has a severity (error: spoils the export, warning: hurts it, info: a note) and, when one exists, a fix: a command with arguments, or a hint. Errors come first. With summary, the result is {issues, summary: {errors, warnings, infos, passed}}; passed means no error. Loudness is checked from the last normalized export of this revision.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_review_run`
+- `minSeverity`: string, one of error, warning, info. Leave out issues less severe than this
+- `summary`: boolean. Wrap the issues with counts and a pass flag
 
 ## captions
 

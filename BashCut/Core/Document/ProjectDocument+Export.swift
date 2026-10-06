@@ -90,11 +90,12 @@ extension ProjectDocument {
     }
 
     private func finishExport(_ request: ExportRequest, outcome: ExportOutcome) {
-        if project.revision == request.source.revision,
-            let audio = ExportController.normalizedAudio(outcome, current: project["audio"])
-        {
+        let current = project.revision == request.source.revision
+        if current, let audio = ExportController.normalizedAudio(outcome, current: project["audio"]) {
             apply(.setProjectProperties(patch: ["audio": audio]), label: "Normalize audio")
         }
+        // The write-back above only stores the gain the export already applied, so the measurement describes it.
+        recordReviewLoudness(outcome.finalMeasurement, revision: current ? project.revision : request.source.revision)
         DebugLog.write("export", "done \(outcome.receipt.url.path)")
         emitPluginEvent(.exportFinished, [
             "output": .string(outcome.receipt.url.path), "preset": .string(request.preset.rawValue),
