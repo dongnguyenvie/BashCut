@@ -496,7 +496,7 @@ and fails above 50 ms.
   badges, voice cloning, expanded legacy effect/overlay/SFX import, effect recipes, keyframes,
   Demucs, and more interchange validation. Resolve remains reserved.
 - **Review and loudness:** coverage uses explicit speech tags and voiceover timing; dead air is found from layer
-  coverage, not measured audio, and untagged audio is not transcribed. Picture checks (#432) are not done. Export loudness is measured only when normalization is on (the core `bashcut.audio-analysis` plugin provides it).
+  coverage, not measured audio, and untagged audio is not transcribed. Picture checks sample the rendered timeline only on `review.measure` (two frames a second, small grey thumbnails), kept for the session. Export loudness is measured only when normalization is on (the core `bashcut.audio-analysis` plugin provides it).
 - **Editing scope:** ripple affects the edited track and its linked counterpart only. Source insert/overwrite
   targets Main. Unknown future effects round-trip but are not rendered.
 - **History:** full-snapshot undo is capped at 200 steps; `history.jsonl` stores one atomic checkpoint, and an

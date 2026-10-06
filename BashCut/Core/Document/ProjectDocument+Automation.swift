@@ -109,6 +109,7 @@ extension ProjectDocument {
             guard arguments.bool("summary") else { return list }
             return .object(["issues": list, "summary": ReviewSummary(issues).json])
         }
+        handleAuthored("review.measure") { document, _, author in try document.startPictureMeasure(author: author) }
         handle("export.status") { document, _, _ in document.exports.statusJSON }
     }
 

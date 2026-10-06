@@ -5840,6 +5840,12 @@
         "vi": { "stringUnit": { "state": "translated", "value": "Mở trong Finder" } }
       }
     },
+    "Measure picture": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Measure picture" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đo hình ảnh" } }
+      }
+    },
     "Measure again": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Measure again" } },

@@ -5,6 +5,17 @@
 
 ## [Unreleased]
 
+- **Review checks the rendered picture (#432).** `review measure` (a job; **Measure picture** in the Review sheet)
+  renders the timeline small, two frames a second plus both sides of every hard cut on Main, with proxies, and keeps
+  the measurement for that revision (a 3-minute 1080p edit takes about 9 s in a debug build). `review run` then
+  reports black or empty picture of 0.5 s or more (error; a fade out of up to 1 s at the end passes), frozen picture
+  longer than 4 s on vertical or 8 s on landscape outside freeze frames, and jump cuts (under 6 % change across a cut
+  that is not already "Repeated framing", with a punch-in fix). Shot length is checked from the timeline: under 0.4 s
+  is a note, over 8 s (15 s landscape) warns when the picture barely moves and passes when it keeps moving. A
+  project's `review` object (`minShotSeconds`, `maxShotSeconds`, `maxStillSeconds`) overrides the pacing. Issues over
+  a stretch carry `endFrame`; without a measurement of the current revision the review adds a "Picture not measured"
+  note with a `review.measure` fix.
+
 - **Import counts a video's frames up to its last picture (#437).** `Media.frames` came from the container duration,
   so a camera file with sound past its last picture offered 1–3 timeline frames without picture (the cause of #420).
   Import (and stickers made from videos) now ends at the video track's last picture; audio files and images are

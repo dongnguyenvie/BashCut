@@ -2,19 +2,31 @@ import BashCutProject
 import Foundation
 
 extension CommandCatalog {
-    /// Read-only sound analysis through plugin providers; each runs as a job whose result holds the values.
     static let reviewSpec = CommandSpec(
         "review.run", .read,
         "Review the timeline before export. Each issue has a severity (error: spoils the export, warning: hurts "
             + "it, info: a note) and, when one exists, a fix: a command with arguments, or a hint. Errors come first. "
             + "With summary, the result is {issues, summary: {errors, warnings, infos, passed}}; passed means no "
-            + "error. Loudness is checked from the last normalized export of this revision.",
+            + "error. Loudness is checked from the last normalized export of this revision, black and frozen picture "
+            + "and jump cuts from the last review.measure of this revision. Issues over a stretch carry endFrame. "
+            + "Pacing (shot length, still picture) follows the project's review object (minShotSeconds, "
+            + "maxShotSeconds, maxStillSeconds) when set.",
         parameters: [
             CommandParameter("minSeverity", .string, "Leave out issues less severe than this",
                              choices: ReviewSeverity.allCases.map(\.rawValue), cli: .option("min-severity")),
             CommandParameter("summary", .boolean, "Wrap the issues with counts and a pass flag",
                              cli: .flag("summary")),
         ])
+
+    static let reviewMeasureSpec = CommandSpec(
+        "review.measure", .read,
+        "Render the timeline small (two frames a second and both sides of every hard cut on Main, proxies "
+            + "allowed) and keep the picture measurement for this revision, so review.run checks black or empty "
+            + "picture, frozen picture, long static shots and jump cuts. The job's result has the sample count and "
+            + "the picture issues found; measure again after an edit.",
+        execution: .job)
+
+    /// Read-only sound analysis through plugin providers; each runs as a job whose result holds the values.
 
     static let analysisSpecs: [CommandSpec] = [
         CommandSpec(

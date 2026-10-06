@@ -35,17 +35,20 @@ public struct ReviewIssue: Identifiable, Sendable {
     public let title: String
     public let detail: String
     public let frame: Int
+    /// Where the problem ends (exclusive), for issues that span a range of the timeline.
+    public let endFrame: Int?
     public let severity: ReviewSeverity
     public let fix: ReviewFix?
 
     public init(
-        id: String, title: String, detail: String, frame: Int, severity: ReviewSeverity = .warning,
+        id: String, title: String, detail: String, frame: Int, endFrame: Int? = nil, severity: ReviewSeverity = .warning,
         fix: ReviewFix? = nil
     ) {
         self.id = id
         self.title = title
         self.detail = detail
         self.frame = frame
+        self.endFrame = endFrame
         self.severity = severity
         self.fix = fix
     }
@@ -55,6 +58,7 @@ public struct ReviewIssue: Identifiable, Sendable {
             "id": .string(id), "title": .string(title), "detail": .string(detail), "frame": .integer(frame),
             "severity": .string(severity.rawValue),
         ]
+        if let endFrame { fields["endFrame"] = .integer(endFrame) }
         if let fix { fields["fix"] = fix.json }
         return .object(fields)
     }
@@ -157,6 +161,7 @@ public enum TimelineReview {
         issues += textIssues(project, context: context)
         issues += hookIssues(project, context: context)
         issues += audioIssues(project, context: context)
+        issues += pictureIssues(project, context: context)
         for caption in project.tracks.filter({ $0.kind == "text" && $0.role == "captions" }).flatMap(\.items)
         where isRecognitionLoop(caption, fps: project.fps.value) {
             issues.append(
