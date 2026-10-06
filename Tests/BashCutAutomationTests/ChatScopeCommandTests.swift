@@ -15,5 +15,6 @@ struct ChatScopeCommandTests {
         #expect(!ChatCommandSession.allowedMethods.contains("chat.attach"))
         #expect(!ChatCommandSession.allowedMethods.contains("chat.detach"))
         #expect(UIAction.matching("clip.send-to-agent") == [.sendToAgent])
+        #expect(CommandCatalog.instructions.contains("[Scope] block"))
     }
 }

@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+- **Director is now AI Editor.** The chat-agent plugin's name in docs and the command catalog; the plugin itself was
+  renamed in `bashcut-plugins` (ID still `bashcut.director`). Agent instructions now say what a `[Scope]` block or
+  `scope` in `context get` means: change only those items, and ask before changing anything else.
 - **Send to Agent (#355).** Right-click a clip (or a multi-selection), the Clip menu or the multi-selection
   Inspector → **Send to Agent** attaches the clips to the open agent's request. A chat agent shows them as chips
   over its input (`Clip · Main · 00:12–00:18`; × removes one) that stay when the selection changes; every message

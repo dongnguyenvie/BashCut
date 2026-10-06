@@ -52,7 +52,7 @@ extension CommandCatalog {
             ]),
     ]
 
-    /// Chat-agent tabs: plugins with the `agent.chat` capability (docs/specs/11-chat-agents.md), such as Director.
+    /// Chat-agent tabs: plugins with the `agent.chat` capability (docs/specs/11-chat-agents.md), such as AI Editor.
     static let chatSpecs: [CommandSpec] = [
         CommandSpec(
             "chat.status", .read,
@@ -87,7 +87,7 @@ extension CommandCatalog {
         CommandSpec(
             "chat.commands", .read,
             "The slash commands a chat agent's tab offers: the app's (new, clear, stop, settings, copy, export), "
-                + "the agent kit's skills (skill:<name>) and the plugin's own (for Director: compact, model, thinking, "
+                + "the agent kit's skills (skill:<name>) and the plugin's own (for AI Editor: compact, model, thinking, "
                 + "session), with their arguments and choices.",
             parameters: [plugin]),
         CommandSpec(

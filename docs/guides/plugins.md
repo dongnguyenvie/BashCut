@@ -767,7 +767,7 @@ A worked example covering options, three actions, three hooks and both transport
 ## Chat agents
 
 A plugin that provides `agent.chat` becomes a tab in the agent dock, titled with the plugin's name. Any number of
-chat agents can be installed; Director (`bashcut.director` in `bashcut-plugins`) is the first. The full protocol
+chat agents can be installed; AI Editor (`bashcut.director` in `bashcut-plugins`) is the first. The full protocol
 is in [11 — Chat agents](../specs/11-chat-agents.md).
 
 - **`turn`** sends:
