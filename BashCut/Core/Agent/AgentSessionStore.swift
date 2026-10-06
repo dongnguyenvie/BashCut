@@ -55,12 +55,60 @@ public struct AgentSessionStore: Sendable {
     }
 }
 
+/// One session file as a scan last saw it.
+private struct SessionScanEntry {
+    let modified: Date
+    let size: Int
+    /// The session ID when the file matched the query, else nil.
+    let match: String?
+}
+
 public struct AgentSessionDiscovery: Sendable {
     private let roots: [AgentProviderID: URL]
+    private let cache: Cache
 
     /// `roots` overrides a provider's session folder (tests); others resolve under the home folder.
-    public init(roots: [AgentProviderID: URL] = [:]) {
+    public init(roots: [AgentProviderID: URL] = [:], cache: Cache = .shared) {
         self.roots = roots
+        self.cache = cache
+    }
+
+    /// What earlier scans found in each session file, so opening a project again reads only the files that are new or
+    /// changed since (#351). Kept for the app's lifetime.
+    public final class Cache: @unchecked Sendable {
+        public static let shared = Cache()
+        private let lock = NSLock()
+        /// Query → file path → result.
+        private var entries: [String: [String: SessionScanEntry]] = [:]
+        /// Files read (not answered from the cache) since this cache was made; for tests and the debug log.
+        public private(set) var reads = 0
+
+        public init() {}
+
+        /// The cached result for an unchanged file: `.some(id)` or `.some(nil)` for no match; nil when it must be read.
+        func result(_ query: String, _ file: SessionFile) -> String?? {
+            lock.withLock {
+                guard let entry = entries[query]?[file.url.path], entry.modified == file.modified,
+                    entry.size == file.size
+                else { return nil }
+                return .some(entry.match)
+            }
+        }
+
+        func store(_ query: String, _ file: SessionFile, match: String?) {
+            lock.withLock {
+                reads += 1
+                // Bounded: a query over a huge folder starts over rather than growing without end.
+                if entries[query, default: [:]].count >= 5_000 { entries[query] = [:] }
+                entries[query, default: [:]][file.url.path] = SessionScanEntry(modified: file.modified, size: file.size, match: match)
+            }
+        }
+    }
+
+    struct SessionFile {
+        let url: URL
+        let modified: Date
+        let size: Int
     }
 
     public func latest(
@@ -76,43 +124,61 @@ public struct AgentSessionDiscovery: Sendable {
         let projectPath = canonical(project)
         let projectRoot = canonical(project.deletingLastPathComponent())
         let workspacePath = canonical(workspace)
+        let matchesWorkspace = provider.matchesWorkspaceSessions || notBefore != nil
+        let query = [provider.id.rawValue, projectPath, workspacePath, matchesWorkspace ? "workspace" : ""]
+            .joined(separator: "\n")
+        // A record can only match when its bytes hold one of these paths, so the others are not parsed.
+        let needles = Set(
+            [projectRoot, project.deletingLastPathComponent().standardizedFileURL.path]
+                + (matchesWorkspace ? [workspacePath, workspace.standardizedFileURL.path] : [])
+        ).map { Data($0.utf8) }
         for candidate in candidates {
-            guard let record = record(at: candidate) else { continue }
-            let hasProject = record.strings.contains { value in
-                value.contains(projectPath) || value.contains(projectRoot)
+            if Task.isCancelled { return nil }
+            if let cached = cache.result(query, candidate) {
+                if let id = cached { return id }
+                continue
             }
-            let hasWorkspace = record.strings.contains { canonicalPath($0) == workspacePath }
-            if hasProject || (hasWorkspace && (provider.matchesWorkspaceSessions || notBefore != nil)) {
-                return record.id
+            var match: String?
+            if let record = record(at: candidate.url, needles: needles) {
+                let hasProject = record.strings.contains { value in
+                    value.contains(projectPath) || value.contains(projectRoot)
+                }
+                let hasWorkspace = record.strings.contains { canonicalPath($0) == workspacePath }
+                if hasProject || (hasWorkspace && matchesWorkspace) { match = record.id }
             }
+            cache.store(query, candidate, match: match)
+            if let match { return match }
         }
         return nil
     }
 
-    private func sessionFiles(in root: URL, notBefore: Date?) -> [URL] {
+    private func sessionFiles(in root: URL, notBefore: Date?) -> [SessionFile] {
         let fileManager = FileManager.default
+        let keys: [URLResourceKey] = [.contentModificationDateKey, .isRegularFileKey, .fileSizeKey]
         guard let enumerator = fileManager.enumerator(
-            at: root, includingPropertiesForKeys: [.contentModificationDateKey, .isRegularFileKey],
-            options: [.skipsHiddenFiles, .skipsPackageDescendants])
+            at: root, includingPropertiesForKeys: keys, options: [.skipsHiddenFiles, .skipsPackageDescendants])
         else { return [] }
-        var values: [(url: URL, date: Date)] = []
+        var values: [SessionFile] = []
         while values.count < 10_000, let url = enumerator.nextObject() as? URL {
             guard url.pathExtension == "jsonl",
-                let resources = try? url.resourceValues(
-                    forKeys: [.contentModificationDateKey, .isRegularFileKey]),
+                let resources = try? url.resourceValues(forKeys: Set(keys)),
                 resources.isRegularFile == true,
                 let date = resources.contentModificationDate,
                 notBefore.map({ date >= $0.addingTimeInterval(-2) }) ?? true
             else { continue }
-            values.append((url, date))
+            values.append(SessionFile(url: url, modified: date, size: resources.fileSize ?? 0))
         }
-        return values.sorted { $0.date > $1.date }.prefix(250).map(\.url)
+        return Array(values.sorted { $0.modified > $1.modified }.prefix(250))
     }
 
-    private func record(at url: URL) -> (id: String, strings: [String])? {
+    /// The session ID and every string in the file's first lines; nil when it cannot match. JSON is parsed only when
+    /// the bytes hold one of `needles` (or escape slashes, which hides them).
+    private func record(at url: URL, needles: [Data]) -> (id: String, strings: [String])? {
         guard let handle = try? FileHandle(forReadingFrom: url) else { return nil }
         defer { try? handle.close() }
         guard let data = try? handle.read(upToCount: 512 * 1_024) else { return nil }
+        guard data.range(of: Data("\\/".utf8)) != nil || needles.contains(where: { data.range(of: $0) != nil })
+        else { return nil }
         var strings: [String] = []
         var identifier: String?
         for line in data.split(separator: 0x0A).prefix(80) {

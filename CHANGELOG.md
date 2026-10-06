@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+- **Opening a project looks for earlier agent conversations faster (#351).** The scan parses a session file only
+  when its bytes hold the project's or workspace's path, remembers what each file held, and on the next open reads
+  only files that are new or changed. Closing or switching the project stops a running scan.
 - **Faster status commands (#349).** `storage get` measures folders the way `du` does (about 0.1 s instead of
   1.8 s with large plugin runtimes). `agent status` checks Claude Code and Codex at the same time and keeps the
   answer for 30 seconds; a different kit, search path or configuration folder, setting an agent up and Settings ›
