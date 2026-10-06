@@ -18,8 +18,6 @@ struct LibraryView: View {
     @State private var beatSource = ""
     @State private var beatProvider = ""
     @State private var beatMessage = ""
-    /// Library items of the Text, Stickers and Effects panels (#75), read again when the library changes.
-    @State private var libraryItems: [LibraryItem] = []
     var body: some View {
         VStack(spacing: 0) {
             HStack {
@@ -45,22 +43,17 @@ struct LibraryView: View {
                 }.padding(10)
             }
         }.background(Color.white.opacity(0.025))
-            .task(id: "\(document.libraryRevision):\(document.fileURL?.path ?? "")") { loadLibraryItems() }
+            .sheet(item: Bindable(document.ui).libraryEditor) { request in
+                // Not `Binding(optional)`: it force-unwraps, and saving clears the request while the sheet closes.
+                LibraryItemEditorSheet(
+                    document: document,
+                    request: Binding(
+                        get: { document.ui.libraryEditor ?? request }, set: { document.ui.libraryEditor = $0 }))
+            }
     }
-
-    private func loadLibraryItems() {
-        do {
-            libraryItems = try document.libraryCatalog.panelItems([.textPreset, .sticker, .effectPreset])
-        } catch {
-            libraryItems = LibraryBuiltIns.items
-            document.message = error.localizedDescription
-        }
-    }
-
-    private func libraryItems(_ kind: LibraryKind) -> [LibraryItem] { libraryItems.filter { $0.kind == kind } }
 
     /// Built-in names are UI strings to localize; saved names are user content.
-    private func title(_ item: LibraryItem) -> Text {
+    static func title(_ item: LibraryItem) -> Text {
         item.scope == .builtIn ? Text(LocalizedStringKey(item.name)) : Text(verbatim: item.name)
     }
     private var media: some View {
@@ -159,6 +152,13 @@ struct LibraryView: View {
                     Button("Insert") { document.appendMedia(media, track: audioTrack) }.disabled(audioTrack.isEmpty)
                 }.font(.caption)
                     .onDrag { NSItemProvider(object: TimelineCanvas.mediaPasteboardPrefix + media.id as NSString) }
+            }
+            Divider()
+            LibraryItemsSection(document: document, kinds: [.audio], fileKind: .audio) { item in
+                Button { document.placeFromLibrary(item) } label: {
+                    Label { Self.title(item).lineLimit(1) } icon: { Image(systemName: "waveform") }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }.buttonStyle(.bordered).font(.caption)
             }
             Divider()
             Text("Beat Detection").font(.headline)
@@ -260,7 +260,8 @@ struct LibraryView: View {
                 Button("Replace captions…") { document.importCaptions(replace: true) }
             }.disabled(document.fileURL == nil)
             Button("Export SRT…", action: document.exportCaptions).disabled(document.fileURL == nil)
-            ForEach(libraryItems(.textPreset), id: \.reference) { item in
+            Divider()
+            LibraryItemsSection(document: document, kinds: [.textPreset], saveKinds: [.textPreset]) { item in
                 let style = item.params["textPreset"]?.string ?? ""
                 Button {
                     document.placeFromLibrary(item)
@@ -272,7 +273,7 @@ struct LibraryView: View {
                                     ? .system(.body, design: .serif) : .headline)
                             .foregroundStyle(style == "keyword-sticker" ? .black : .white)
                             .frame(maxWidth: .infinity, minHeight: 55).background(.black.opacity(0.3))
-                        title(item).font(.caption)
+                        Self.title(item).font(.caption)
                     }.padding(8)
                 }.buttonStyle(.bordered).disabled(document.fileURL == nil)
             }
@@ -298,22 +299,44 @@ struct LibraryView: View {
         }
     }
     private var stickers: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 55))]) {
-            ForEach(libraryItems(.sticker), id: \.reference) { item in
-                Button(item.params["emoji"]?.string ?? item.name) { document.placeFromLibrary(item) }
-                    .font(.largeTitle).buttonStyle(.bordered).disabled(document.fileURL == nil)
+        LibraryItemsSection(
+            document: document, kinds: [.sticker], fileKind: .sticker, columns: [GridItem(.adaptive(minimum: 55))]
+        ) { item in
+            Button { document.placeFromLibrary(item) } label: {
+                if let emoji = item.params["emoji"]?.string {
+                    Text(verbatim: emoji).font(.largeTitle)
+                } else {
+                    LibraryImage(url: document.libraryCatalog.fileURL(of: item)).frame(width: 40, height: 40)
+                }
             }
+            .buttonStyle(.bordered).disabled(document.fileURL == nil)
+            .help(Self.title(item))
         }
     }
     private var effects: some View {
         VStack(alignment: .leading, spacing: 12) {
-            ForEach(libraryItems(.effectPreset), id: \.reference) { item in
-                Button { document.applyFromLibrary(item) } label: { title(item) }
+            LibraryItemsSection(document: document, kinds: [.effectPreset], saveKinds: [.effectPreset]) { item in
+                Button { document.applyFromLibrary(item) } label: {
+                    Self.title(item).frame(maxWidth: .infinity, alignment: .leading)
+                }.disabled(document.selected == nil)
             }
             Text("Select a clip. Animated effects and speed ramps are still in development.").font(
                 .caption
             ).foregroundStyle(.secondary)
-        }.disabled(document.selected == nil)
+        }
+    }
+}
+
+/// An image item's picture (a sticker), read once per file.
+struct LibraryImage: View {
+    let url: URL?
+    @State private var image: NSImage?
+
+    var body: some View {
+        Group {
+            if let image { Image(nsImage: image).resizable().scaledToFit() } else { Image(systemName: "photo") }
+        }
+        .task(id: url) { image = url.flatMap(NSImage.init(contentsOf:)) }
     }
 }
 

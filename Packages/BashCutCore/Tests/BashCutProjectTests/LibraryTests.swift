@@ -95,6 +95,63 @@ struct LibraryTests {
         #expect(try catalog.item("fire").scope == .user)
     }
 
+    @Test("Moving an item keeps its versions, files and use count; read-only items do not move")
+    func move() throws {
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let builtIn = LibraryItem(
+            id: "bold", kind: .textPreset, name: "Bold", params: ["textPreset": .string("bold-outline")])
+        let catalog = catalog(builtIn: [builtIn])
+        try catalog.add(Self.fire, into: .project, file: try file("fire.png", "v1"))
+        let updated = try catalog.store(.project).update("fire", changes: ["name": .string("Fire!")])
+        try catalog.recordUse(updated)
+
+        let moved = try catalog.move(updated, to: .user)
+        #expect(moved.scope == .user)
+        #expect(moved.version == 2 && moved.history.count == 1)
+        #expect(moved["createdAt"] == updated["createdAt"])
+        let userRoot = catalog.user!.root
+        #expect(try String(contentsOf: userRoot.appendingPathComponent("files/fire/v1/fire.png"), encoding: .utf8) == "v1")
+        #expect(try catalog.project!.items().isEmpty)
+        #expect(!FileManager.default.fileExists(atPath: catalog.project!.root.appendingPathComponent("files/fire").path))
+        #expect(try catalog.user!.usage()["user:fire"]?.count == 1)
+        #expect(try catalog.project!.usage().isEmpty)
+
+        #expect(throws: ProjectError.self) { try catalog.move(moved, to: .user) }
+        #expect(throws: ProjectError.self) { try catalog.move(try catalog.item("bold"), to: .user) }
+        // The destination already has the id: nothing changes.
+        try catalog.add(Self.fire, into: .project)
+        #expect(throws: ProjectError.self) { try catalog.move(moved, to: .project) }
+        #expect(try catalog.user!.items().map(\.id) == ["fire"])
+    }
+
+    @Test("Save selection as… takes a text style, framing, the clip's transition or a grade without its LUT")
+    func selection() throws {
+        var text = Item(at: 0, duration: 30)
+        text["text"] = .string("Hello")
+        text["textPreset"] = .string("hook-title")
+        #expect(try LibrarySelection.params(.textPreset, item: text) == [
+            "textPreset": .string("hook-title"), "text": .string("Hello"),
+        ])
+        var clip = Item(at: 0, duration: 30)
+        #expect(throws: ProjectError.self) { try LibrarySelection.params(.effectPreset, item: clip) }
+        #expect(throws: ProjectError.self) { try LibrarySelection.params(.textPreset, item: clip) }
+        #expect(throws: ProjectError.self) { try LibrarySelection.params(.look, item: clip) }
+        clip["transform"] = .object(["zoom": .number(1.3)])
+        clip["color"] = .object(["contrast": .number(1.1), "lut": .string("lut-1"), "lutStrength": .number(0.5)])
+        let effect = try LibrarySelection.params(.effectPreset, item: clip)
+        #expect(effect == ["patch": .object(["transform": .object(["zoom": .number(1.3)])])])
+        #expect(try LibrarySelection.params(.look, item: clip) == ["color": .object(["contrast": .number(1.1)])])
+        #expect(throws: ProjectError.self) { try LibrarySelection.params(.transitionPreset, item: clip) }
+        let transition = TimelineTransition(kind: "whip", from: "a", to: "b", duration: 9)
+        let preset = try LibrarySelection.params(.transitionPreset, item: clip, transition: transition)
+        #expect(preset == ["kind": .string("whip"), "duration": .integer(9)])
+        for kind in LibrarySelection.kinds {
+            let params = kind == .transitionPreset ? preset : try LibrarySelection.params(kind, item: kind == .textPreset ? text : clip)
+            try LibraryItem(id: "x", kind: kind, name: "X", params: params).validate()
+        }
+        #expect(throws: ProjectError.self) { try LibrarySelection.params(.sticker, item: text) }
+    }
+
     @Test("Usage goes to the project for its items and to this Mac for the rest; stats find unused and duplicates")
     func usageAndStats() throws {
         defer { try? FileManager.default.removeItem(at: folder) }

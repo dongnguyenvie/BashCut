@@ -412,14 +412,26 @@ them first, then the items saved in the project or on this Mac.
   sticker as a text item, or a look as an adjustment. `library apply <id> [--item] --base-rev N` sets a text preset,
   an effect preset's properties (`params.patch`) or a look's grade on an existing item. Both count a use (in
   `usage.json` next to `library.json`; the item list is not rewritten).
+- `bashcut library save-selection --kind text-preset|effect-preset|transition-preset|look --name X [--item]
+  [--scope] [--tags] [--pack]` saves what is selected: a text item's style and text, a clip's `transform` and
+  `keyframes`, the transition at the selected clip (kind and duration), or a grade (without its project LUT).
+- `bashcut library move <id> --to project|user` moves a saved item with its versions, files and use count.
+- `library apply` on a transition preset sets the transition at the cut beside the video clip.
 - `bashcut library stats [--panel]` reports usage, the saved items nobody used, and duplicates (same kind, params
   and file), to prune or merge. Saved items compare the `fileSHA256` stored when their file was copied in.
 - `bashcut library export-pack --pack Food --output ~/Food` writes a pack folder (`pack.json` and `files/`);
   `library import-pack <folder|zip> [--scope user] [--replace]` adds one. IDs already there are refused unless
   `--replace` saves them as new versions.
 
-Agents' `add`, `update`, `remove` and `import-pack` in the `user` scope wait for the user's approval, like exports;
-the project scope follows the normal edit rules.
+Agents' `add`, `save-selection`, `update`, `remove` and `import-pack` in the `user` scope, and every `move`, wait for
+the user's approval, like exports; the project scope follows the normal edit rules.
+
+Each panel (Audio, Text, Stickers, Effects, Transitions, Filters) shows its items with search, pack, tag and scope
+filters, badges for agent-made and project or Mac items, **Add…** (and drops) for files and packs, **Save selection
+as…**, and a context menu: Duplicate & Edit (`update --as`), Rename (`update --name`), Move (`move`), Show Source &
+License (`get`), Show in Finder and Remove (`remove`). `ui view --library-query X --library-pack P --library-tag T
+--library-scope user` sets the open panel's search and filters (`libraryFilter` in the view state); the item sheet
+is the `library-item` dialog (`ui respond save|cancel`).
 
 ## Media proxies
 

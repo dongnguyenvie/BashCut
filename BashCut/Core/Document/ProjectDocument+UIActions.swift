@@ -268,6 +268,13 @@ extension ProjectDocument {
         if let category = arguments.optionalString("pluginsCategory") {
             plugins.browseCategory = PluginCategory(rawValue: category)
         }
+        let panel = ui.libraryTab.panelName
+        var filter = ui.libraryFilters[panel] ?? LibraryPanelFilter()
+        if let query = arguments.optionalString("libraryQuery") { filter.query = query }
+        if let pack = arguments.optionalString("libraryPack") { filter.pack = pack.isEmpty ? nil : pack }
+        if let tag = arguments.optionalString("libraryTag") { filter.tag = tag.isEmpty ? nil : tag }
+        if let scope = arguments.optionalString("libraryScope") { filter.scope = scope == "all" ? nil : scope }
+        ui.libraryFilters[panel] = filter
     }
 
     func viewStateJSON() -> JSONValue {
@@ -290,11 +297,20 @@ extension ProjectDocument {
             "playing": .bool(preview.isPlaying), "playhead": .integer(playhead),
             "selection": selectedID.map(JSONValue.string) ?? .null,
             "selectedTrack": selectedTrackID.map(JSONValue.string) ?? .null,
-            "libraryPanel": .string(ui.libraryTab.panelName), "inspector": .string(ui.inspectorTab),
+            "libraryPanel": .string(ui.libraryTab.panelName), "libraryFilter": libraryFilterJSON(),
+            "inspector": .string(ui.inspectorTab),
             "settingsSection": .string(ui.settingsSection), "knowledgeSection": .string(ui.knowledgeSection),
             "pluginsTab": .string(plugins.tab.rawValue),
             "pluginsCategory": .string(plugins.browseCategory?.rawValue ?? "all"),
             "source": source,
+        ])
+    }
+
+    private func libraryFilterJSON() -> JSONValue {
+        let filter = ui.libraryFilters[ui.libraryTab.panelName] ?? LibraryPanelFilter()
+        return .object([
+            "query": .string(filter.query), "pack": filter.pack.map(JSONValue.string) ?? .null,
+            "tag": filter.tag.map(JSONValue.string) ?? .null, "scope": .string(filter.scope ?? "all"),
         ])
     }
 }

@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+- **Library panels you can manage (#80).** Audio, Text, Stickers, Effects, Transitions and Filters each show their
+  library items with search, pack, tag and scope filters, a badge on items an agent made and on items saved in the
+  project or on this Mac, **Add…** and drag-and-drop for files (audio, sticker images) and packs, **Save selection
+  as…** (a text style, a clip's framing, the transition at a clip, a grade), and a context menu: **Duplicate &
+  Edit…**, **Rename…**, **Move to Project / This Mac**, **Show Source & License**, **Show in Finder**, **Remove**.
+  New commands: `library save-selection`, `library move`, and `ui view --library-query|pack|tag|scope`;
+  `library apply` now applies transition presets (kind and duration).
+
 - **Translate joined labels.** Labels built with `+` (`"Changed: " + keys`, plugin **Actions**, **Hooks**,
   **Dependencies**, the install sheet's **Capabilities**/**Adds**/**Listens to**, the external-changes summary, and
   the two long plugin notes) were plain strings, so they stayed in English even where the catalog had a

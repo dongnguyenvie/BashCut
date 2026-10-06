@@ -79,6 +79,11 @@ extension ProjectDocument {
         guard let target = project.tracks.flatMap(\.items).first(where: { $0.id == itemID }) else {
             throw RPCFailure(-32602, "Unknown item \(itemID)")
         }
+        if item.kind == .transitionPreset {
+            let revision = try applyTransitionPreset(item, at: itemID, author: author, baseRevision: baseRevision)
+            recordLibraryUse(item)
+            return revision
+        }
         let patch: [String: JSONValue]
         switch item.kind {
         case .textPreset:
@@ -95,6 +100,25 @@ extension ProjectDocument {
             .setProperties(item: itemID, patch: patch), label: item.name, author: author, baseRevision: baseRevision)
         recordLibraryUse(item)
         return revision
+    }
+
+    /// Sets the transition at the cut beside the video clip `itemID` to the preset's kind and duration (at most the
+    /// shorter clip).
+    private func applyTransitionPreset(
+        _ item: LibraryItem, at itemID: String, author: Author, baseRevision: Int?
+    ) throws -> Int {
+        guard let kind = item.params["kind"]?.string, TimelineTransition.renderedKinds.contains(kind) else {
+            throw RPCFailure(-32602, "\(item.reference) has no transition kind BashCut can render")
+        }
+        guard let cut = videoCut(at: itemID) else { throw RPCFailure(-32602, "\(itemID) is not a video clip beside a cut") }
+        let existing = project.transitions.first { $0.fromItemID == cut.from.id && $0.toItemID == cut.to.id }
+        let longest = min(cut.from.duration, cut.to.duration)
+        let duration = min(longest, max(1, item.params["duration"]?.int ?? existing?.duration ?? min(15, longest / 3)))
+        return try commit(
+            .upsertTransition(
+                id: existing?.id ?? "transition-\(cut.from.id)-\(cut.to.id)", kind: kind, from: cut.from.id,
+                to: cut.to.id, duration: duration),
+            label: item.name, author: author, baseRevision: baseRevision)
     }
 
     /// Library panels: places an item at the playhead.
@@ -142,7 +166,7 @@ extension ProjectDocument {
 
     /// Runs a change to the library on the `LibraryWorker` now, or after approval when an agent writes to the user
     /// scope.
-    private func libraryChange(
+    func libraryChange(
         _ method: String, scope: LibraryScope, author: Author, arguments: [String: String],
         action: @escaping @Sendable () throws -> JSONValue
     ) async throws -> JSONValue {
@@ -169,6 +193,76 @@ extension ProjectDocument {
         return result
     }
 
+    /// Saves a new item (`library add`, `library save-selection` and the panels' Add… and Save selection as…).
+    func addLibraryItem(
+        kind: LibraryKind, name: String, id: String? = nil, scope: LibraryScope, changes: [String: JSONValue],
+        file: URL? = nil, preview: URL? = nil, author: Author, method: String = "library.add"
+    ) async throws -> JSONValue {
+        let catalog = libraryCatalog
+        let slug = Self.libraryID(from: name)
+        let id = id ?? (slug.isEmpty ? "\(kind.rawValue)-\(UUID().uuidString.prefix(8).lowercased())" : slug)
+        var item = LibraryItem(id: id, kind: kind, name: name)
+        for (key, value) in changes { item[key] = value == .null ? nil : value }
+        item["createdBy"] = LibraryItem.creator(author: author)
+        _ = try catalog.store(scope)
+        let added = item
+        return try await libraryChange(
+            method, scope: scope, author: author, arguments: ["id": id, "kind": kind.rawValue, "name": name]
+        ) {
+            try catalog.add(added, into: scope, file: file, preview: preview).json()
+        }
+    }
+
+    /// Adds a pack folder or .zip (`library import-pack`, and Add… or a drop in a panel).
+    func importLibraryPack(_ source: URL, scope: LibraryScope, replace: Bool, author: Author) async throws -> JSONValue {
+        let catalog = libraryCatalog
+        _ = try catalog.store(scope)
+        let scratch = FileManager.default.temporaryDirectory
+            .appendingPathComponent("bashcut-pack-\(UUID().uuidString)", isDirectory: true)
+        let pack = try await LibraryWorker.shared.run {
+            do { return try LibraryPack.read(try LibraryPack.folder(at: source, scratch: scratch)) } catch {
+                try? FileManager.default.removeItem(at: scratch)
+                throw error
+            }
+        }
+        let createdBy = LibraryItem.creator(author: author)
+        return try await libraryChange(
+            "library.import-pack", scope: scope, author: author,
+            arguments: ["pack": pack.name, "items": pack.items.map(\.id).joined(separator: ", ")]
+        ) {
+            defer { try? FileManager.default.removeItem(at: scratch) }
+            let items = try LibraryPack.importItems(pack, into: scope, catalog: catalog, replace: replace, createdBy: createdBy)
+            return .object(["pack": .string(pack.name), "items": .array(items.map { $0.json() })])
+        }
+    }
+
+    /// Moves a saved item between the project and user libraries; agents need approval either way, since the
+    /// user library gains or loses an item.
+    func moveLibraryItem(_ item: LibraryItem, to scope: LibraryScope, author: Author) async throws -> JSONValue {
+        let catalog = libraryCatalog
+        guard item.scope.isWritable else {
+            throw RPCFailure(-32602, "\(item.reference) is \(item.scope.rawValue) and cannot be moved; duplicate it")
+        }
+        _ = try catalog.store(scope)
+        return try await libraryChange(
+            "library.move", scope: .user, author: author,
+            arguments: ["id": item.reference, "to": scope.rawValue, "name": item.name]
+        ) {
+            try catalog.move(item, to: scope).json()
+        }
+    }
+
+    /// The params of a new item made from the timeline item `itemID` (the selection by default).
+    func selectionParams(_ kind: LibraryKind, itemID: String? = nil) throws -> [String: JSONValue] {
+        let id = itemID ?? selectedID
+        let item = id.flatMap { id in project.tracks.flatMap(\.items).first { $0.id == id } }
+        if let id, item == nil { throw RPCFailure(-32602, "Unknown item \(id)") }
+        let transition = id.flatMap { id in project.transitions.first { $0.fromItemID == id || $0.toItemID == id } }
+        do {
+            return try LibrarySelection.params(kind, item: item, transition: transition)
+        } catch { throw RPCFailure(-32602, error.localizedDescription) }
+    }
+
     private static func filter(_ arguments: CommandArguments) -> LibraryCatalog.Filter {
         var kinds = arguments.optionalString("kind").flatMap(LibraryKind.init(rawValue:)).map { [$0] }
         if let panel = arguments.optionalString("panel") {
@@ -183,7 +277,7 @@ extension ProjectDocument {
     }
 
     /// The item fields `library add` and `library update` take, as changes.
-    private static func itemChanges(_ arguments: CommandArguments) -> [String: JSONValue] {
+    static func itemChanges(_ arguments: CommandArguments) -> [String: JSONValue] {
         var changes: [String: JSONValue] = [:]
         if let name = arguments.optionalString("name") { changes["name"] = .string(name) }
         if let tags = arguments.optionalString("tags") {
@@ -240,24 +334,26 @@ extension ProjectDocument {
 
     private func registerLibraryChangeCommands() {
         handleAuthored("library.add") { document, arguments, author in
-            let catalog = document.libraryCatalog
             let kind = LibraryKind(rawValue: try arguments.string("kind")) ?? .sticker
-            let name = try arguments.string("name")
-            let slug = Self.libraryID(from: name)
-            let id = arguments.optionalString("id") ?? (slug.isEmpty ? "\(kind.rawValue)-\(UUID().uuidString.prefix(8).lowercased())" : slug)
-            var item = LibraryItem(id: id, kind: kind, name: name)
-            for (key, value) in Self.itemChanges(arguments) { item[key] = value }
-            item["createdBy"] = LibraryItem.creator(author: author)
-            let scope = LibraryScope(rawValue: try arguments.string("scope")) ?? .project
-            let file = Self.url(arguments, "file")
-            let preview = Self.url(arguments, "preview")
-            _ = try catalog.store(scope)
-            let added = item
-            return try await document.libraryChange(
-                "library.add", scope: scope, author: author, arguments: ["id": id, "kind": kind.rawValue, "name": name]
-            ) {
-                try catalog.add(added, into: scope, file: file, preview: preview).json()
-            }
+            return try await document.addLibraryItem(
+                kind: kind, name: try arguments.string("name"), id: arguments.optionalString("id"),
+                scope: LibraryScope(rawValue: try arguments.string("scope")) ?? .project,
+                changes: Self.itemChanges(arguments), file: Self.url(arguments, "file"),
+                preview: Self.url(arguments, "preview"), author: author)
+        }
+        handleAuthored("library.save-selection") { document, arguments, author in
+            let kind = LibraryKind(rawValue: try arguments.string("kind")) ?? .look
+            var changes = Self.itemChanges(arguments)
+            changes["params"] = .object(try document.selectionParams(kind, itemID: arguments.optionalString("item")))
+            return try await document.addLibraryItem(
+                kind: kind, name: try arguments.string("name"), id: arguments.optionalString("id"),
+                scope: LibraryScope(rawValue: try arguments.string("scope")) ?? .project, changes: changes,
+                author: author, method: "library.save-selection")
+        }
+        handleAuthored("library.move") { document, arguments, author in
+            let item = try document.libraryCatalog.item(try arguments.string("id"), scope: Self.scope(arguments))
+            let scope = LibraryScope(rawValue: try arguments.string("to")) ?? .project
+            return try await document.moveLibraryItem(item, to: scope, author: author)
         }
         handleAuthored("library.update") { document, arguments, author in
             let catalog = document.libraryCatalog
@@ -327,29 +423,10 @@ extension ProjectDocument {
 
     private func registerLibraryPackCommands() {
         handleAuthored("library.import-pack") { document, arguments, author in
-            let catalog = document.libraryCatalog
-            let scope = LibraryScope(rawValue: try arguments.string("scope")) ?? .project
-            _ = try catalog.store(scope)
-            let scratch = FileManager.default.temporaryDirectory
-                .appendingPathComponent("bashcut-pack-\(UUID().uuidString)", isDirectory: true)
-            let source = URL(fileURLWithPath: try arguments.string("path")).standardizedFileURL
-            let pack = try await LibraryWorker.shared.run {
-                do { return try LibraryPack.read(try LibraryPack.folder(at: source, scratch: scratch)) } catch {
-                    try? FileManager.default.removeItem(at: scratch)
-                    throw error
-                }
-            }
-            let replace = arguments.bool("replace")
-            let createdBy = LibraryItem.creator(author: author)
-            return try await document.libraryChange(
-                "library.import-pack", scope: scope, author: author,
-                arguments: ["pack": pack.name, "items": pack.items.map(\.id).joined(separator: ", ")]
-            ) {
-                defer { try? FileManager.default.removeItem(at: scratch) }
-                let items = try LibraryPack.importItems(
-                    pack, into: scope, catalog: catalog, replace: replace, createdBy: createdBy)
-                return .object(["pack": .string(pack.name), "items": .array(items.map { $0.json() })])
-            }
+            try await document.importLibraryPack(
+                URL(fileURLWithPath: try arguments.string("path")).standardizedFileURL,
+                scope: LibraryScope(rawValue: try arguments.string("scope")) ?? .project,
+                replace: arguments.bool("replace"), author: author)
         }
         handleAuthored("library.export-pack") { document, arguments, _ in
             let catalog = document.libraryCatalog

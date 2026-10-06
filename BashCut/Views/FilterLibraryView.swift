@@ -37,6 +37,13 @@ struct FilterLibraryView: View {
                         }
                     }
             }.disabled(document.fileURL == nil)
+            LibraryItemsSection(document: document, kinds: [.look], saveKinds: [.look]) { item in
+                Button {
+                    if document.selected == nil { document.placeFromLibrary(item) } else { document.applyFromLibrary(item) }
+                } label: {
+                    LibraryView.title(item).frame(maxWidth: .infinity, alignment: .leading)
+                }.disabled(document.fileURL == nil)
+            }
             Divider()
             HStack {
                 Text("3D LUTs").font(.headline)

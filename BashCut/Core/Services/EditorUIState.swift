@@ -1,3 +1,4 @@
+import BashCutProject
 import Foundation
 import Observation
 
@@ -27,6 +28,10 @@ public final class EditorUIState {
     public var viewerZoom: Double?
     public var showAgentDock = true
     public var libraryTab: LibraryTab = .media
+    /// Search and filters of each library panel, by panel name.
+    public var libraryFilters: [String: LibraryPanelFilter] = [:]
+    /// The library item sheet: Save selection as…, Duplicate & Edit… or Rename….
+    public var libraryEditor: LibraryEditorRequest?
     /// One of `UIAction.inspectorTabs`.
     public var inspectorTab = "video"
     /// One of `UIAction.settingsSections`: the section the Settings sheet shows.
@@ -148,6 +153,47 @@ public struct TimelineReveal: Equatable, Sendable {
     public let id = UUID()
 
     public init(frame: Int) { self.frame = frame }
+}
+
+/// What a library panel shows: items matching the search, in one pack, with one tag, from one scope (nil: all).
+public struct LibraryPanelFilter: Equatable, Sendable {
+    public var query = ""
+    public var pack: String?
+    public var tag: String?
+    /// A `LibraryScope` raw value.
+    public var scope: String?
+
+    public init() {}
+
+    public var isActive: Bool { !query.isEmpty || pack != nil || tag != nil || scope != nil }
+}
+
+/// What the library item sheet saves, with the fields the user can change before saving.
+public struct LibraryEditorRequest: Identifiable {
+    public enum Mode {
+        /// A new item of this kind from the timeline selection.
+        case saveSelection(LibraryKind)
+        /// A copy of any item (built-in and plugin ones too) under a new ID.
+        case duplicate(LibraryItem)
+        /// A new version of a saved item with another name, tags or pack.
+        case rename(LibraryItem)
+    }
+
+    public let id = UUID()
+    public var mode: Mode
+    public var name: String
+    /// Comma-separated.
+    public var tags: String
+    public var pack: String
+    public var scope: LibraryScope
+
+    public init(mode: Mode, name: String, tags: [String] = [], pack: String? = nil, scope: LibraryScope) {
+        self.mode = mode
+        self.name = name
+        self.tags = tags.joined(separator: ", ")
+        self.pack = pack ?? ""
+        self.scope = scope
+    }
 }
 
 /// Left-rail library panels; `CommandCatalog.libraryPanels` lists their lowercased names.
