@@ -297,7 +297,9 @@ the command mirrors something in the UI, see the parity rule in
 
 Edit commands need a live session token and the current revision as `--base-rev`. The server rejects stale
 revisions, file conflicts, busy operations and active timeline gestures; re-read the timeline and retry. Each
-apply is atomic and creates one undo step.
+apply is atomic and creates one undo step. The response has the new `rev` and `changed`. A batch that leaves the
+project exactly as it was returns `changed: false` with the current `rev`: no new revision, undo step, agent diff
+marks or plugin hooks.
 
 ```sh
 bashcut context get

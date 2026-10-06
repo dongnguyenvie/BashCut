@@ -95,7 +95,7 @@ Read the revision, format and tracks, including track IDs and roles.
 
 ### `bashcut timeline apply <ops.json> --base-rev <baseRev> [--label <label>] [--dry-run]`
 
-Atomically apply validated timeline operations as one undoable edit.
+Atomically apply validated timeline operations as one undoable edit; returns changed false and keeps the revision when nothing changes.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_timeline_apply`
 - `ops`: array, required. Operations array (CLI: path to ops.json)

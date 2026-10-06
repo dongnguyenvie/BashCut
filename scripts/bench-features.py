@@ -434,13 +434,16 @@ class Run:
         b.step("timeline.move then close-gap", move_and_gap)
         def noop():
             _, now = self.main_items()
-            before = rev()
             item = now[0]
-            apply([{"op": "setProperties", "item": item["id"], "patch": {"opacity": item.get("opacity", 1)}}])
-            after = rev()
-            if after != before:
+            op = [{"op": "setProperties", "item": item["id"], "patch": {"opacity": item.get("opacity", 1)}}]
+            # The first apply may store a default the item did not have yet; the second must change nothing.
+            first = apply(op)
+            middle = rev()
+            second = apply(op)
+            if first.get("changed"):
                 rpc("timeline.undo", {"baseRev": rev()})
-                return f"NOTE an edit that changes nothing still makes revision {after} and an undo step"
+            expect(second.get("changed") is False and second.get("rev") == middle,
+                   f"an edit that changes nothing returned {second} at revision {middle}")
         b.step("an edit that changes nothing", noop)
         b.step("timeline.get text", lambda: expect("MAIN" in rpc("timeline.get", {"format": "text"}), "no MAIN line"))
 

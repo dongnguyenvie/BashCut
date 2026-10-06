@@ -296,17 +296,33 @@ extension ProjectDocument {
         _ operation: EditOperation, label: String, author: Author = .user, baseRevision: Int? = nil,
         coalescingKey: String? = nil
     ) throws -> Int {
+        try commitEdit(
+            operation, label: label, author: author, baseRevision: baseRevision, coalescingKey: coalescingKey
+        ).revision
+    }
+
+    /// `commit`, also reporting whether the edit changed anything. An edit that changes nothing keeps the
+    /// revision, adds no undo step, leaves the agent diff alone and emits no plugin event.
+    func commitEdit(
+        _ operation: EditOperation, label: String, author: Author = .user, baseRevision: Int? = nil,
+        coalescingKey: String? = nil
+    ) throws -> (revision: Int, changed: Bool) {
         let before = project
         let (operation, firstClipCanvas) = withFirstClipCanvas(operation, label: label, author: author)
+        let changed: Bool
         do {
             try ensureEditable(author: author)
-            try history.apply(
+            changed = try history.apply(
                 operation, label: label, author: author, baseRevision: baseRevision, coalescingKey: coalescingKey)
         } catch {
             DebugLog.write(
                 "edit", "REJECTED edit by \(author) base=\(baseRevision.map(String.init) ?? "-") "
                     + "rev=\(before.revision) op=\(Self.describe(operation))")
             throw error
+        }
+        guard changed else {
+            DebugLog.write("edit", "no-op edit by \(author) rev \(before.revision) op=\(Self.describe(operation))")
+            return (project.revision, false)
         }
         didCommit(from: before, author: author, label: label, coalescing: coalescingKey != nil)
         if let firstClipCanvas {
@@ -321,7 +337,7 @@ extension ProjectDocument {
         DebugLog.write(
             "edit", "edit by \(author) rev \(before.revision)→\(project.revision) op=\(Self.describe(operation))"
                 + (before.tracks.map(\.id) == project.tracks.map(\.id) ? "" : " layers: \(layoutSummary())"))
-        return project.revision
+        return (project.revision, true)
     }
 
     /// The first picture clip on an empty timeline sets the canvas shape, in the same undo step as the clip.

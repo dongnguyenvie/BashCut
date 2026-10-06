@@ -70,7 +70,8 @@ public enum CommandCatalog {
 
     private static let editSpecs: [CommandSpec] = [
         CommandSpec(
-            "timeline.apply", .edit, "Atomically apply validated timeline operations as one undoable edit.",
+            "timeline.apply", .edit, "Atomically apply validated timeline operations as one undoable edit; "
+                + "returns changed false and keeps the revision when nothing changes.",
             parameters: [
                 CommandParameter("ops", .array, "Operations array (CLI: path to ops.json)", required: true,
                                  sensitive: true, cli: .positionalJSONFile),
