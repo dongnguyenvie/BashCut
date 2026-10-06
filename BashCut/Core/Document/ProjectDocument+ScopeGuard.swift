@@ -26,6 +26,8 @@ struct AgentScopeHold: Identifiable {
     let label: String
     let author: Author
     let coalescingKey: String?
+    /// The revision the agent based the edit on; the edit still fails as stale if the project moved past it.
+    let baseRevision: Int?
     /// The session that made it.
     let token: String
     /// The tab's title and what lies outside the scope, for the sheet.
@@ -40,17 +42,22 @@ enum AgentScopeChoice: String {
     case allowRequest = "allow-request"
 }
 
-/// What the guard decided for one edit; `owner` is set while a scope is active.
+/// What the guard decided for an edit it let through; `owner` is set while a scope is active, and items the edit
+/// makes join that scope.
 struct AgentScopeDecision {
     var owner: (any AgentScopeOwner)?
-    /// The edit stayed inside the scope, so items it makes join the scope.
-    var inScope = false
 }
 
 extension ProjectDocument {
     /// The guard's mode; off while all agent actions are allowed.
     var agentScopeMode: AgentScopeMode {
         settings.dangerouslyAllowAgents ? .off : AgentScopeMode(rawValue: settings.agentScopeModeRaw) ?? .ask
+    }
+
+    /// Rejects the held edit when the session that made it ends or loses edit access.
+    func rejectScopeHold(from token: String? = nil) {
+        guard let hold = scopeHold, token == nil || hold.token == token else { return }
+        resolveScopeHold(.reject)
     }
 
     /// The chat or terminal tab a live session token belongs to.
@@ -63,17 +70,18 @@ extension ProjectDocument {
     /// a shell tab), by sessions without an attached scope, and every edit while the guard is off pass. Otherwise
     /// an edit outside the scope is rejected (block) or held while the user is asked (ask). Asking never blocks the
     /// main actor: the command fails at once with `held` in its data, and the edit applies later if the user allows
-    /// it. Only the user can allow it.
+    /// it. Only the user can allow it. A stale edit passes, so it fails as stale instead of being held.
     func checkAgentScope(
-        _ operation: EditOperation, label: String, author: Author, coalescingKey: String?
+        _ operation: EditOperation, label: String, author: Author, baseRevision: Int?, coalescingKey: String?
     ) throws -> AgentScopeDecision {
         guard author != .user, let token = CommandCaller.token, let owner = scopeOwner(for: token),
             !owner.scope.isEmpty
         else { return AgentScopeDecision() }
+        if let baseRevision, baseRevision != project.revision { return AgentScopeDecision() }
         let mode = agentScopeMode
         guard mode != .off, !owner.scopeAllowed else { return AgentScopeDecision(owner: owner) }
         let check = AgentScopeGuard.check(operation, scope: owner.scope, extra: owner.scopeExtra, in: project)
-        guard !check.isInScope else { return AgentScopeDecision(owner: owner, inScope: true) }
+        guard !check.isInScope else { return AgentScopeDecision(owner: owner) }
         let outside = check.summary(in: project)
         DebugLog.write("edit", "scope guard (\(mode.rawValue)) stopped an edit by \(author): \(check.items.count) "
             + "item(s) outside, project-wide: \(check.projectWide.joined(separator: ", "))")
@@ -87,7 +95,7 @@ extension ProjectDocument {
         }
         let hold = AgentScopeHold(
             id: UUID(), operation: operation, label: label, author: author, coalescingKey: coalescingKey,
-            token: token, agent: owner.title, outside: outside)
+            baseRevision: baseRevision, token: token, agent: owner.title, outside: outside)
         scopeHold = hold
         owner.scopeLast = nil
         NSApp.activate(ignoringOtherApps: true)
@@ -113,12 +121,15 @@ extension ProjectDocument {
             message = String(format: String(localized: "Rejected an edit by %@ outside the attached clips"), hold.agent)
         case .allowOnce, .allowRequest:
             if choice == .allowRequest { owner?.scopeAllowed = true }
+            let before = project
             do {
                 // Run as the user's decision: no session token, so the guard does not stop it again.
                 let result = try CommandCaller.$token.withValue(nil) {
                     try commitEdit(
-                        hold.operation, label: hold.label, author: hold.author, coalescingKey: hold.coalescingKey)
+                        hold.operation, label: hold.label, author: hold.author, baseRevision: hold.baseRevision,
+                        coalescingKey: hold.coalescingKey)
                 }
+                if let owner { recordScopeEdit(AgentScopeDecision(owner: owner), before: before) }
                 outcome["outcome"] = .string("applied")
                 outcome["rev"] = .integer(result.revision)
             } catch {
@@ -131,9 +142,10 @@ extension ProjectDocument {
         owner?.scopeLast = .object(outcome)
     }
 
-    /// After an in-scope edit, the items it made join the scope, so later edits to them are not asked.
+    /// After an edit the guard let through (in scope, or allowed by the user), the items it made join the scope, so
+    /// later edits to them are not asked.
     func recordScopeEdit(_ decision: AgentScopeDecision, before: Project) {
-        guard decision.inScope, let owner = decision.owner else { return }
+        guard let owner = decision.owner else { return }
         let old = Set(before.tracks.flatMap(\.items).map(\.id))
         owner.scopeExtra.formUnion(project.tracks.flatMap(\.items).map(\.id).filter { !old.contains($0) })
     }

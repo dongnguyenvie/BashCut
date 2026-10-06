@@ -333,26 +333,30 @@ items and ask before changing anything else.
 The app enforces that rule (the scope guard, #356). Every edit a chat or terminal session with attached items makes
 (`timeline apply`, `clip *`, `layers *`, `library apply`, and any other authored edit) is checked first:
 
-- Edits to scope items, their linked partners, and items made by in-scope edits (a split's second half) run.
+- Edits to scope items, their linked partners, and items made by edits the guard let through (a split's second
+  half, or an item from an edit the user allowed) run.
 - `insert` runs when the new item lies inside the scope's span (first start to last end, where the items are now).
   A transition runs when either of its clips is in scope.
 - Media and LUT imports, beat grids and new layers run. Changes to existing layers, project settings (looks, style
   kits), format, sections, LUT deletes and `restore` are project-wide and always count as outside.
-- Ripple shifts, undo/redo and dry runs are not checked.
+- Ripple shifts, undo/redo and dry runs are not checked. An edit with a stale base revision fails with `-32002`
+  before the guard looks at it.
 
 What happens to an edit outside the scope is the user's choice in Settings › Agents ("Edits outside the attached
 clips"); agents cannot change it:
 
 - **Ask first** (default): the edit is held. A sheet (`agent-scope` in `ui dialog`) offers **Allow Once**,
   **Allow for This Request** (until the next chat message, or until a terminal's chips change) and **Reject**; only
-  the user can allow, agents can only reject.
+  the user can allow, agents can only reject. Return does not allow it. Closing the tab, or turning agent edits off,
+  rejects it.
 - **Block**: the edit is rejected at once.
 - **Allow**: every edit runs; the scope only tells the agent what the request is about.
 
 The command fails at once with `-32004` and `data: {outOfScope: [item IDs], projectWide: [changes]}`; a held edit
 also has `held: true` and `request`. Do not retry it. While it is held, `context get` shows it as `scope.held`;
 afterwards `scope.last` is `{request, label, outcome: applied | rejected | failed, rev?, error?}`. A held edit that
-the user allows is applied to the timeline as it is then, without the base revision. While one edit is held, another
+the user allows is applied then; an edit sent with a base revision still fails (`outcome: failed`) if the project
+changed while it waited. While one edit is held, another
 one outside the scope fails with `-32003`.
 
 Use `timeline apply ... --dry-run` (MCP parameter `dryRun: true`) to validate the same batch on a copy.
