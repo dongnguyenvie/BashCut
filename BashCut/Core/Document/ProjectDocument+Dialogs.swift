@@ -140,6 +140,12 @@ extension ProjectDocument {
                 options: [ModalOption("cancel", String(localized: "Cancel"))]
             ) { [weak self] _ in self?.plugins.showAddPlugin = false })
         }
+        if let key = ui.pluginSheet, let (plugin, view) = pluginViews.resolve(key) {
+            sheets.append(ModalSheet(
+                name: "plugin-view", title: plugin.manifest.displayName + ": " + view.title.text,
+                message: "Use plugins view and plugins view-event on \(key) to work in it.", options: [Self.close]
+            ) { [weak self] _ in self?.ui.pluginSheet = nil })
+        }
         if let pending = plugins.pendingAction {
             sheets.append(ModalSheet(
                 name: "plugin-action", title: pending.action.title,

@@ -55,7 +55,7 @@ extension PluginAvailability {
         switch self {
         case .ready: health?.state == .degraded
         case .disabled: false
-        case .untrusted, .changed, .outdated: true
+        case .untrusted, .changed, .outdated, .needsPlugin: true
         }
     }
 }

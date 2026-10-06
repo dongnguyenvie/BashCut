@@ -5,6 +5,27 @@
 
 ## [Unreleased]
 
+- **Plugin API 8: plugin panels, declarative views and plugins using other plugins (#390–#397, #399).**
+  `contributes.container` adds the plugin's icon to the left rail; it opens a panel BashCut draws from the manifest
+  (header, view picker, Tools, Skills, Requires, Uses with Find…) around the plugin's `contributes.views`. A view is
+  JSON components the plugin returns from `view.render` / `view.event` (section, row, text with markdown, badge,
+  keyValue, progress, image, imageCompare, audio, list, button, textField, textArea, toggle, picker, slider; unknown
+  types draw a placeholder), drawn natively: only while visible, one request at a time with coalesced changes,
+  debounced search, sliders on release, lazy lists, cached downsampled images, at most 2000 components. View requests
+  and session actions of API 8 plugins get the host channel and call app commands as author `plugin` (for example
+  `voice.speak`, so a plugin speaks with whichever voice plugin the user chose). `uses` + `plugins.invoke` call
+  another plugin's capability raw; `requires` (semver ranges) keeps a plugin `needs-plugin` until the plugins it needs
+  are installed, in range and ready, and installing it from the registry offers them next. `features` and the
+  hello's host feature list replace one API bump per feature. New commands: `plugins views`, `plugins view`,
+  `plugins view-event`, `plugins invoke`; `plugins list` reports container, views, requires and uses.
+  A view's `location` puts it in the rail panel (default), a tab in the agent dock (`dock`) or a sheet (`sheet`,
+  closed with Close, `ui respond close` or an answer's `close: true`); `plugins show-view` and the host call of the
+  same name (own views only) open one where it lives, and the panel lists a plugin's dock and sheet views.
+  Benchmarked (`scripts/verify.sh perf`, plus a live run): plugin answers are read with `JSONValue(parsing:)`
+  (`JSONSerialization`, same values as `JSONDecoder`; 186 KB in 5.7 ms instead of 82 ms), the panel is one lazy
+  column (worst main-actor stall for a 1900-component view 212 ms → 16 ms in a debug build), streamed renders are
+  drawn at most every 60 ms (300 in one request: 179 ms → 16 ms), answers are parsed off the main actor, and typing
+  15 characters in a search field sends one request.
 - **Plugins can ship agent skills (#375, #376, #377).** Plugin API 7 adds `contributes.skills`: `SKILL.md` folders
   inside the plugin (front matter `name` equal to the folder, a `description`; at most 16 skills, 64 KB per
   `SKILL.md`, 2 MB per folder, nothing linking out of the plugin). A bad skill is reported by `plugins validate` and

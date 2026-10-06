@@ -208,7 +208,7 @@ actor PluginSession {
 
         try send(.object([
             "type": .string("hello"), "apiVersion": .integer(PluginAPI.current), "host": .string("BashCut"),
-            "pluginId": .string(plugin.id),
+            "pluginId": .string(plugin.id), "features": .array(PluginFeature.all.map(JSONValue.string)),
         ]))
         let timer = Task { [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(handshakeTimeout * 1_000_000_000))
@@ -332,7 +332,7 @@ actor PluginSession {
 
     private func receive(_ line: Data) {
         guard !line.allSatisfy({ $0 == 0x20 || $0 == 0x0D || $0 == 0x09 }) else { return }
-        guard let message = try? JSONDecoder().decode(JSONValue.self, from: line), case .object(let fields) = message
+        guard let message = try? JSONValue(parsing: line), case .object(let fields) = message
         else {
             failAll(PluginError.invalid("Plugin session sent invalid JSON"))
             return

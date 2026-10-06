@@ -37,6 +37,7 @@ extension ProjectDocument {
         registerUIActionCommands()
         registerToolCommands()
         registerPluginCommands()
+        registerPluginViewCommands()
         plugins.jobs = jobs
         plugins.onSkillsChanged = { [weak self] in self?.pluginSkillsChanged() }
         plugins.service.optionValues = { [weak self] plugin in
@@ -269,6 +270,7 @@ extension ProjectDocument {
     func showLibraryTab(_ tab: LibraryTab) {
         DebugLog.write("ui", "library panel \(ui.libraryTab.rawValue) → \(tab.rawValue)")
         ui.libraryTab = tab
+        ui.pluginPanel = nil
     }
 
     func contextText() -> String {

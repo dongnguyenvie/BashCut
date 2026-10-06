@@ -361,6 +361,11 @@ extension ProjectDocument {
                         .object(["name": .string(skill.id), "description": .string(skill.description),
                                  "path": .string(skill.file.path)])
                     }),
+                    // API 8: the rail panel, its views, required plugins and capabilities it invokes.
+                    "container": plugin.manifest.container.map { _ in .string(plugin.manifest.containerTitle) } ?? .null,
+                    "views": .array(plugin.manifest.views.map { .string($0.id) }),
+                    "requires": plugins.requirementsJSON(plugin),
+                    "uses": .array(plugin.manifest.usedCapabilities.map(JSONValue.string)),
                     "providers": .array((plugin.manifest.providers ?? []).map { provider in
                         .object([
                             "id": .string(provider.id), "capability": .string(provider.capability),

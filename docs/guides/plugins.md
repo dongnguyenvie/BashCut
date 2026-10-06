@@ -61,7 +61,7 @@ checked manifest, an entrypoint that already speaks the protocol and smoke tests
 | `id` | Yes | Reverse-domain style: lowercase letters and digits in at least two parts separated by `.` or `-` (`example.voice`) |
 | `name` | Yes | Display name, up to 80 characters; [localized text](#localized-text) |
 | `version` | Yes | Semantic version, such as `1.2.0` or `1.2.0-beta.1` |
-| `apiVersion` | Yes | `1` to `7`; see [API versions](#api-versions) |
+| `apiVersion` | Yes | `1` to `8`; see [API versions](#api-versions) |
 | `minApiVersion` / `maxApiVersion` | No | The host API window the plugin works with; `minApiVersion` defaults to `apiVersion` |
 | `entrypoint` | Yes | Relative path inside the bundle to an executable file; no leading `/` and no `..` |
 | `capabilities` | Yes | List of unique capability IDs (lowercase, segments separated by `.` or `-`); may be empty only when `contributes` is not |
@@ -69,7 +69,10 @@ checked manifest, an entrypoint that already speaks the protocol and smoke tests
 | `dependencies` | No | External tools or models the plugin needs; see [Dependencies and health](#dependencies-and-health) |
 | `transport` | No | `oneshot` (default) or `session`; see [Session transport](#session-transport). API 2 |
 | `options` | No | Up to 64 settings; see [Options](#options). API 2 |
-| `contributes` | No | `actions` and `hooks` (API 2), `library` (API 6), `skills` (API 7); see [Actions](#actions), [Hooks](#hooks), [Library packs](#library-packs) and [Agent skills](#agent-skills) |
+| `contributes` | No | `actions` and `hooks` (API 2), `library` (API 6), `skills` (API 7), `container` and `views` (API 8); see [Actions](#actions), [Hooks](#hooks), [Library packs](#library-packs), [Agent skills](#agent-skills) and [Plugin panels and views](#plugin-panels-and-views) |
+| `requires` | No | Other plugins this one needs (API 8): `[{"id", "version"}]`, at most 16; see [Using other plugins](#using-other-plugins) |
+| `uses` | No | Capability IDs this plugin calls with `plugins.invoke` (API 8), at most 32 |
+| `features` | No | [Host features](#host-features) the plugin cannot work without (API 8), at most 32 |
 | `category` | No | Where Plugins and Settings group it: `agents`, `captions`, `voice`, `audio`, `color`, `effects`, `export` or `utilities`. A registry listing's category wins; without either, BashCut guesses from the capabilities (`agent.*`, `captions.*`, `voice.*`, `audio.*`) and falls back to Utilities. Older BashCut versions ignore it |
 
 BashCut resolves features by capability and provider ID, never by vendor SDK. A plugin is only chosen for a
@@ -90,19 +93,31 @@ and dependency names stay plain strings.
 
 ## API versions
 
-The host serves every plugin API version from `PluginAPI.minimum` (1) to `PluginAPI.current` (7); changes are
+The host serves every plugin API version from `PluginAPI.minimum` (1) to `PluginAPI.current` (8); changes are
 additive, so older manifests keep working. Version 2 adds `options`, `contributes` and the `session` transport.
 Version 3 adds option `choiceLabels` and the `file` option type, the `BASHCUT_PLUGIN_DATA`/`BASHCUT_PLUGIN_CACHE`
 folders and `::progress` lines from install recipes. Version 4 adds the `secret` option type, the session host
 channel (`event` and `call` lines) and the `agent.chat` capability. Version 5 adds the `agent.terminal` capability
 and the manifest's `terminal` object. Version 6 adds `contributes.library` (library packs), the `library.search` and
-`library.generate` capabilities and provider `kinds`. Version 7 adds `contributes.skills` (agent skills). A manifest
+`library.generate` capabilities and provider `kinds`. Version 7 adds `contributes.skills` (agent skills). Version 8 adds plugin UI and composition:
+`contributes.container` and `contributes.views` (a panel in the left rail with declarative views), `requires`, `uses`
+with the `plugins.invoke` host call, the host channel for views and session actions, and `features`. From version 8
+on, the API version goes up at most once per BashCut release; smaller differences between hosts are
+[host features](#host-features). A manifest
 that uses a feature with an older `apiVersion` is
 invalid; set `minApiVersion` so older BashCut builds list the plugin as outdated instead of failing.
 
 A plugin is **outdated** (listed, never run) when `minApiVersion` (or `apiVersion`) is newer than the host
 ("Update BashCut") or `maxApiVersion` is older than `PluginAPI.minimum` ("Update the plugin"). Requests carry
 the lower of the plugin's `apiVersion` and the host's current version.
+
+### Host features
+
+Host features (API 8) are names for what a BashCut can do, so a plugin asks for exactly what it uses instead of a whole
+API version: `container`, `views`, `requires`, `invoke`, and `views.<component>` for each view component (`views.list`,
+`views.audio`, `views.imageCompare`, …). The session `hello` carries `"features": […]` and `plugins views` lists them.
+A manifest's `features` names the ones the plugin cannot work without; a BashCut without one lists the plugin as
+outdated ("Update BashCut"). For optional features, read `features` from `hello` and adapt instead.
 
 ## Trust and availability
 
@@ -122,7 +137,8 @@ checked on its manifest and entrypoint only, so it can change while it is writte
 | `disabled` | Turned off in the Plugins sheet or with `plugins set --enabled off` |
 | `untrusted` | Never approved, such as a plugin that came with a project |
 | `changed` | Its manifest or entrypoint changed since approval; choose **Trust** again |
-| `outdated` | Its API window does not include this BashCut |
+| `outdated` | Its API window does not include this BashCut, or it needs a [host feature](#host-features) this BashCut lacks |
+| `needs-plugin` | Ready on its own, but a plugin it `requires` is missing, out of range or not ready (API 8; see [Using other plugins](#using-other-plugins)) |
 
 - Approvals, enabled/hooks switches and local option values belong to `(id, canonical installation root)`.
   Another copy with the same ID starts untrusted and has separate settings. Legacy ID-only approvals cannot
@@ -741,6 +757,189 @@ description: Check how loud the media in an edit is and say what to change. Use 
 
 `Fixtures/plugins/example.skills` is a worked example: a plugin that only ships a `loudness-check` skill.
 
+## Plugin panels and views
+
+A plugin with `contributes.container` (API 8) gets an icon in the left rail, under the built-in panels, while it is
+trusted, turned on and its requirements are met. The icon opens the plugin's panel in the library column. BashCut draws
+the panel's frame from the manifest, so every plugin gets the same parts:
+
+- a header with the container title, the plugin name and version, and a button to its settings;
+- a picker between its views when it has more than one, and the selected view;
+- **Plugin**: its actions as Tools (each with its `when` condition), its skills, the plugins it `requires` with their
+  state, and the capabilities it `uses` with **Find…** (Browse filtered by capability) when no ready plugin provides one.
+
+```json
+"transport": "session",
+"contributes": {
+  "container": {"icon": "waveform.badge.mic", "title": {"en": "Voices", "vi": "Giọng"}},
+  "views": [{"id": "voices", "title": "Library"}, {"id": "takes", "title": "Takes"}]
+}
+```
+
+| Field | Rules |
+|---|---|
+| `container.icon` | SF Symbol name |
+| `container.title` | Optional [localized text](#localized-text), at most 24 characters; the plugin name by default |
+| `views[].id` | A short key, unique; at most 8 views |
+| `views[].title` | Localized text, at most 40 characters |
+| `views[].location` | Where the view lives: `panel` (default), `dock` or `sheet` |
+| `views[].icon` | Optional SF Symbol for a dock tab or sheet; the container's icon by default |
+
+A container alone (no views) is a panel of the plugin's tools and skills. Views need the `session` transport.
+
+### Where views live
+
+| `location` | Where | Opens | Good for |
+|---|---|---|---|
+| `panel` | The plugin's panel in the left rail (225 pt wide); a picker switches between several | The rail icon | Browsing, tools next to the timeline |
+| `dock` | A tab in the agent dock on the right, next to the agent tabs (330–500 pt wide) | The tab, always there while the plugin is ready | Wider work: libraries, take lists, long forms |
+| `sheet` | A sheet over the editor with a Close button (Esc) | `plugins show-view`, the panel's **Views** list, or the plugin itself | A short task: a form, a confirmation with choices |
+
+Only `panel` views need `contributes.container`; a plugin may have dock or sheet views without a rail icon. The panel's
+**Plugin** section lists the plugin's dock and sheet views with a button that opens each. A plugin opens its own views
+from a view or action request with the host call `plugins.show-view` (`{"plugin": "<its id>", "view": "<id>"}`); it
+cannot open another plugin's. A view answer with `"close": true` closes its sheet (a finished form).
+`location.panel`, `location.dock` and `location.sheet` are [host features](#host-features).
+
+### View requests
+
+The app asks the plugin for a view's components and sends what the user does. Both requests carry a
+[host channel](#host-channel-api-4).
+
+| Method | Params |
+|---|---|
+| `view.render` | `{"view", "state", "values", "locale", "context", "options"}` |
+| `view.event` | the same plus `"event": {"node", "type", "value"}` |
+
+- `state` is whatever the plugin returned last time (or `null`), so a plugin can keep no state of its own.
+- `values` maps every input's `id` to its current value.
+- `context` is the read-only editor snapshot actions get (project, selection, playhead).
+- Event `type` is `click` (button), `change` (input), `submit` (text field with `submit`, on Return), `select` (list
+  row; value = item `id`) or `action` (list row button; value = `{"item", "action"}`).
+
+The answer:
+
+```json
+{
+  "title": "Voices",
+  "body": [{"type": "text", "text": "**3** voices", "markdown": true}, {"type": "button", "id": "refresh", "title": "Refresh"}],
+  "state": {"page": 1},
+  "refreshSeconds": 30,
+  "notify": "Loaded"
+}
+```
+
+- `body` (required): the components. `state`: kept and sent back (at most 64 KiB; left out, the last one is kept).
+  `close: true` closes the view's sheet.
+  `refreshSeconds` (2–3600): render again after that long, only while the view is on screen. `notify`: a status
+  message shown once.
+- While working, send `{"type":"event","id","event":{"kind":"render","body":[…],"title"?}}` to redraw before the answer
+  (a progress bar, partial results), or `{"kind":"notify","text"}` for a status message.
+
+### Components
+
+Every component is `{"type", "id"?, …}`. Buttons, inputs and lists need an `id` (a short key, unique in the view);
+others may have one. Text is shown as given (the plugin localizes it with `locale`).
+
+| Type | Fields |
+|---|---|
+| `section` | `title`?, `collapsed`?, `children` |
+| `row` | `children` side by side, `spacing`? |
+| `divider`, `spacer` | `size`? (spacer) |
+| `text` | `text`, `style`? (`body`, `title`, `heading`, `caption`, `secondary`, `mono`), `markdown`? (inline), `color`? |
+| `badge` | `text`, `color`? (`accent`, `green`, `orange`, `red`, `purple`, `secondary`) |
+| `keyValue` | `items: [{"key", "value"}]` (at most 100) |
+| `progress` | `value`? (0–1; spinner without), `label`? |
+| `image` | `path` (a local file), `height`? (16–600), `caption`? |
+| `imageCompare` | `before`, `after` (local files), `height`?, `beforeLabel`?, `afterLabel`?; drag to compare |
+| `audio` | `path`, `title`?: a play/stop button (one sound plays at a time) |
+| `list` | `items: [{"id", "title", "subtitle"?, "icon"?, "image"?, "badge"?, "audio"?, "actions"?: [{"id", "title", "icon"?}]}]` (at most 500, 3 actions per row), `selected`?, `empty`? |
+| `button` | `title`, `icon`?, `style`? (`primary`, `destructive`, `link`), `confirm`?, `wide`?, `disabled`? |
+| `textField` | `label`?, `placeholder`?, `value`?, `search`? (sends `change` 300 ms after typing stops), `submit`? |
+| `textArea` | `label`?, `value`?, `height`? (40–400) |
+| `toggle` | `label`, `value`? |
+| `picker` | `label`?, `value`?, `options: [{"value", "label"}]` or strings (at most 200) |
+| `slider` | `label`?, `value`?, `min`, `max`, `step`?: sends `change` when the drag ends |
+
+An input's `value` in an answer replaces what the user typed, except for an input whose change is still on its way.
+Leave `value` out to keep the user's text. A text field without `search` and a text area send their value with the
+next event instead of on every keystroke.
+
+A component type this BashCut does not know draws "Needs a newer BashCut" and the rest of the view still works; check
+`views.<type>` in the hello's `features` before relying on a new one.
+
+### Limits and performance
+
+- A view renders only while its panel is on screen; `refreshSeconds` timers stop when it is hidden.
+- The panel is one lazy column: only the top-level components on screen are built, so a long view scrolls smoothly.
+  Put long content at the top level or in a `list` rather than inside one huge `section`.
+- Streamed `render` events are drawn at most every 60 ms; the ones in between are skipped. Answers are read off the
+  main thread.
+- One request per view runs at a time. Events that arrive meanwhile wait in order; a newer `change` of the same input
+  replaces a waiting one (at most 16 wait).
+- A view has at most 2000 components, nested at most 12 deep; longer texts are cut at 20,000 characters.
+- Lists draw lazily. Images are read off the main thread as thumbnails of at most 640 pixels and cached; give
+  `image` small files or thumbnails anyway.
+- Answers over the session's line limit (8 MiB) fail; keep data in your plugin and send what is on screen.
+
+Not available (they would cost performance or safety): webviews, free drawing, video players, timeline or viewer
+overlays, inspector tabs, drag and drop from a view, and updates the plugin sends without a request.
+
+### Commands
+
+`plugins views` lists the plugins with panels or views, each view's location and whether it is shown, tools, skills,
+requirements, uses and the host features. `plugins show-view <plugin> --view id` shows a view where it lives (the
+sheet is dialog `plugin-view` in `ui dialog`; `ui respond close` closes it).
+`plugins view <plugin> [--view id] [--open]` renders a view and returns its components with the input values;
+`--open` also shows it. `plugins view-event <plugin> --node go [--type click|change|submit|select|action]
+[--value …]` does what a user does and returns the new components, so agents and tests can drive a plugin's UI.
+
+## Using other plugins
+
+A plugin can build on what other plugins provide. Prefer the first way that works:
+
+1. **Call a BashCut command** over the [host channel](#host-channel-api-4) from a view or action request:
+   `voice.speak` to generate speech, `captions.generate`, `beats.detect`, `media.import`, `media.place`,
+   `timeline.apply`, … BashCut picks the provider the user chose (VieNeu-TTS or any other `voice.synthesize`
+   plugin), checks the request, stores files in the project and records the edit with the plugin as author. Your
+   plugin never needs to know which plugin did the work.
+
+   ```json
+   {"type": "call", "id": "<request id>", "callId": "c1", "method": "voice.speak",
+    "params": {"text": "Xin chào", "keepTakes": true}}
+   ```
+
+2. **`plugins.invoke`** for a capability that has no BashCut command (a capability another plugin defined, such as
+   `image.unwatermark`). List it in `uses`; calling a capability that is not listed fails. BashCut resolves the
+   provider like any capability, adds its option values and a fresh `outputDirectory`, and returns
+   `{"plugin", "provider", "outputDirectory", "result"}` with the provider's result unchanged (`outputDirectory` is
+   `null`, and the folder gone, when the provider wrote no files).
+
+   ```json
+   {"type": "call", "id": "<request id>", "callId": "c2", "method": "plugins.invoke",
+    "params": {"capability": "image.unwatermark", "params": {"path": "/…/frame.png"}, "provider": null}}
+   ```
+
+   The called plugin gets no host channel, so invocations cannot loop; at most 4 run at once per plugin.
+   `agent.chat` and `agent.terminal` cannot be invoked. `bashcut plugins invoke <capability> --params '{…}'` does the
+   same from the command line (a job).
+
+3. **`requires`** when the plugin needs one particular plugin (its own commands, files or a feature only it has):
+
+   ```json
+   "requires": [{"id": "bashcut.vieneu-tts", "version": "^0.1.0"}]
+   ```
+
+   `version` is a range: `*` (default), `1.2.3`, `>=0.2.0`, `<2.0.0`, `^1.2.0` (same major; same minor below 1.0),
+   `~1.2.0` (same minor), or several separated by spaces (`>=1.0.0 <2.0.0`). Until every required plugin is
+   installed in range and ready (its own requirements included; a loop never is), the plugin is listed as
+   `needs-plugin` with the reason and nothing of it runs: actions, hooks, views, skills and providers. After the
+   plugin is installed from the registry, BashCut offers to install the first missing requirement the registry has
+   (each install is still approved and trusted on its own). `plugins list` reports each requirement's state
+   (`ready`, `missing`, `wrong-version`, …).
+
+Prefer capabilities (1, 2) over `requires`: the user keeps the choice of provider, and your plugin works with any.
+
 ## Library search and generate
 
 A provider of `library.search` finds items in some source (Freesound, Pexels audio, Giphy…); a provider of
@@ -893,7 +1092,9 @@ newline-delimited JSON over stdin/stdout. Requests may overlap; replies are matc
 
 ### Host channel (API 4)
 
-Requests the app sends with a host channel (today: `agent.chat`) accept two more lines while they run:
+Requests the app sends with a host channel accept two more lines while they run. Since API 4 that is `agent.chat`; since
+API 8 also `view.render` / `view.event` and `plugin.action` requests of session plugins whose `apiVersion` is 8 or
+later:
 
 | Direction | Message |
 |---|---|
@@ -904,6 +1105,10 @@ Requests the app sends with a host channel (today: `agent.chat`) accept two more
 - While a call runs, the request's silence timeout is paused.
 - Calls on a request without a host channel get the error "This request cannot call BashCut".
 - Call params and results are limited to 1 MiB.
+- Views and actions (API 8) call as author `plugin`, with one command token per plugin, limited to the chat-agent
+  commands plus `plugins.run`, `plugins.invoke`, `plugins.views` and `ui.notify`. Edits are validated and undoable
+  and the history shows the plugin as their author. An action that edits through calls should return no
+  `operations` of its own.
 
 A worked example covering options, three actions, three hooks and both transports is
 `Fixtures/plugins/example.toolkit` (Python standard library only).
@@ -977,7 +1182,12 @@ Everything above is available to agents through the CLI and MCP (`bashcut_plugin
 
 | Command | Mode | UI equivalent |
 |---|---|---|
-| `plugins list` | read | Plugins sheet: availability, transport, actions, hooks, options, library packs, skills, provider kinds |
+| `plugins list` | read | Plugins sheet: availability, transport, actions, hooks, options, library packs, skills, provider kinds, container, views, requires (with state), uses |
+| `plugins views` | read | The plugin icons in the left rail and their panels: views, tools, skills, requirements, uses; the host features |
+| `plugins show-view <plugin> --view <id>` | ui | Opening a view where it lives: the rail panel, its dock tab or its sheet |
+| `plugins view <plugin> [--view id] [--open]` | ui | Opening a view; returns its components and input values |
+| `plugins view-event <plugin> --node <id> [--type …] [--value …]` | ui | Clicking, typing or selecting in a plugin view |
+| `plugins invoke <capability> [--provider P] [--params '{…}']` | edit, job | None: a capability's raw result, for capabilities without a command |
 | `plugins health [plugin]` | read | Check Health |
 | `plugins actions [text] [--plugin id]` | read | Every contributed action (or those matching the text or plugin) with placements, `when`, shortcut, a JSON Schema for its params, whether it is enabled now and when it last ran |
 | `plugins run <action> [--params '{…}']` | edit, job | Clicking the action and filling its sheet |
@@ -1073,8 +1283,9 @@ are two more adapters, `PluginActionCapability` and `PluginHookCapability`, run 
   hooks and the session transport are implemented.
 - Voice, Text, Audio and Export use `voice.synthesize`, `captions.transcribe`, `audio.beats` and
   `audio.loudness`. Other analysis and interchange panels are not connected yet.
-- Plugins cannot own panels or windows; contributions use the fixed placements above. Library packs and library
-  search/generate (API 6) fill the existing library panels. Agent skills (API 7) join the agents' skills.
+- Plugins own one panel each in the left rail (API 8), dock tabs and sheets, all with declarative views the app
+  draws; they cannot own windows, webviews, inspector tabs or viewer overlays, or draw freely. Library packs and library search/generate
+  (API 6) fill the existing library panels. Agent skills (API 7) join the agents' skills.
 - The plugin registry (browse, install, update, remove, signatures, yanked versions, daily update check) is
   implemented.
 - A credential contract and detailed capability permissions are future work.

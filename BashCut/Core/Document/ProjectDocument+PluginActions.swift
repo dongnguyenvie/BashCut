@@ -252,7 +252,9 @@ extension ProjectDocument {
         let proposal: PluginEditProposal
         do {
             proposal = try await plugins.running(id) {
-                try await service.runContribution(adapter, plugin: plugin, contributionID: id, progress: progress)
+                try await service.runContribution(
+                    adapter, plugin: plugin, contributionID: id, progress: progress,
+                    host: pluginViews.hostChannel(for: plugin))
             }
         } catch {
             registry.record(method: "plugin.action." + id, author: author, succeeded: false)

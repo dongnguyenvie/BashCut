@@ -198,9 +198,12 @@ public struct CapabilityService: Sendable {
             throw PluginError.invalid(
                 "Install a plugin that provides \(capability)" + (kind.map { " for \($0.rawValue) items" } ?? ""))
         }
-        let candidates = declaring.filter { availability($0) == .ready }
+        let all = catalog(projectRoot: projectRoot).plugins
+        let problems = declaring.contains { !$0.manifest.requirements.isEmpty }
+            ? PluginRequirements.problems(all) { (knownAvailability($0) ?? availability($0)) == .ready } : [:]
+        let candidates = declaring.filter { availability($0) == .ready && problems[$0.id] == nil }
         guard !candidates.isEmpty else {
-            let reasons = declaring.map { "\($0.manifest.displayName): \(availability($0).detail)" }
+            let reasons = declaring.map { "\($0.manifest.displayName): \(problems[$0.id] ?? availability($0).detail)" }
             throw PluginError.invalid("No enabled provider for \(capability). " + reasons.joined(separator: "; "))
         }
         let ready = await withTaskGroup(of: InstalledPlugin?.self, returning: [InstalledPlugin].self) { group in
