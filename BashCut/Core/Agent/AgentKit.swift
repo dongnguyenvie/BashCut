@@ -13,6 +13,9 @@ public struct AgentKit: Sendable, Equatable {
     public let root: URL
     public let source: Source
     public let version: String
+    /// The plugin name in `plugin.json` (`bc`; `bashcut` before kit 0.1.0). Claude Code and Codex show the skills
+    /// as `<name>:<skill>`.
+    public let name: String
     /// Skill folder names, sorted.
     public let skills: [String]
 
@@ -32,10 +35,20 @@ public struct AgentKit: Sendable, Equatable {
         self.root = root.standardizedFileURL
         self.source = source
         self.version = fields["version"] as? String ?? "0"
+        self.name = fields["name"] as? String ?? "bashcut"
         self.skills = skills
     }
 
     public var skillsFolder: URL { root.appendingPathComponent("skills", isDirectory: true) }
+
+    /// The name a skill is linked under in a shared skills folder such as `~/.agents/skills`: `bc-audio-mix`, so a
+    /// short skill name cannot clash with another skill's folder. Kits before 0.1.0 already carry the prefix.
+    public func linkName(_ skill: String) -> String {
+        skill.hasPrefix("\(name)-") ? skill : "\(name)-\(skill)"
+    }
+
+    /// The Claude Code plugin ID of this kit installed from its marketplace.
+    public var claudePluginID: String { "\(name)@\(AgentKitSetup.marketplace)" }
 
     /// The text of a skill's SKILL.md; nil when the kit has no such skill.
     public func skillText(_ skill: String) -> String? {
@@ -141,7 +154,7 @@ public struct AgentKitInstall: Sendable {
         let manifestFolder = folder.appendingPathComponent(".claude-plugin", isDirectory: true)
         try manager.createDirectory(at: manifestFolder, withIntermediateDirectories: true)
         let manifest: [String: Any] = [
-            "name": "bashcut", "version": kit.version,
+            "name": kit.name, "version": kit.version,
             "description": "BashCut editing skills (loaded by BashCut for its Claude tabs).",
         ]
         let data = try JSONSerialization.data(withJSONObject: manifest, options: [.sortedKeys])
@@ -150,16 +163,19 @@ public struct AgentKitInstall: Sendable {
         return folder
     }
 
-    /// Links each kit skill into `folder` (an `.agents/skills` folder Codex reads). Links to another copy of the
-    /// kit are replaced; files and folders that are not links are never touched. Returns the linked names.
+    /// Links each kit skill into `folder` (an `.agents/skills` folder Codex reads) under its `linkName`. Links to
+    /// another copy of the kit are replaced, and links left by older kits are removed (`removeStaleLinks`); files and
+    /// folders that are not links are never touched. Returns the linked names.
     @discardableResult
     public static func linkSkills(of kit: AgentKit, into folder: URL) throws -> [String] {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        removeStaleLinks(of: kit, in: folder)
         var linked: [String] = []
-        for name in kit.skills {
+        for skill in kit.skills {
+            let name = kit.linkName(skill)
             let target = folder.appendingPathComponent(name)
             if isLink(target) || !FileManager.default.fileExists(atPath: target.path) {
-                try link(target, to: kit.skillsFolder.appendingPathComponent(name, isDirectory: true))
+                try link(target, to: kit.skillsFolder.appendingPathComponent(skill, isDirectory: true))
                 linked.append(name)
             }
         }
@@ -170,8 +186,30 @@ public struct AgentKitInstall: Sendable {
     /// and folders that are not links are left alone.
     public static func syncSkills(of kit: AgentKit?, into folder: URL) throws {
         let present = (try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []
-        unlinkSkills(named: present.filter { !(kit?.skills.contains($0) ?? false) }, in: folder)
+        let current = Set(kit.map { kit in kit.skills.map(kit.linkName) } ?? [])
+        unlinkSkills(named: present.filter { !current.contains($0) }, in: folder)
         if let kit { try linkSkills(of: kit, into: folder) }
+    }
+
+    /// Removes links in a shared folder that a kit put there but that no longer match `kit`: `bashcut-<skill>` links
+    /// from kits before 0.1.0 and `<kit name>-<skill>` links to a skill the kit no longer has. Only links into a kit's
+    /// `skills` folder (one with `.claude-plugin/plugin.json` next to it) or links that no longer resolve are removed.
+    @discardableResult
+    public static func removeStaleLinks(of kit: AgentKit, in folder: URL) -> [String] {
+        let manager = FileManager.default
+        let current = Set(kit.skills.map(kit.linkName))
+        let prefixes = Set(["bashcut-", "\(kit.name)-"])
+        let names = (try? manager.contentsOfDirectory(atPath: folder.path)) ?? []
+        let stale = names.filter { name in
+            guard !current.contains(name), prefixes.contains(where: name.hasPrefix) else { return false }
+            let target = folder.appendingPathComponent(name)
+            guard let destination = try? manager.destinationOfSymbolicLink(atPath: target.path) else { return false }
+            let skill = URL(fileURLWithPath: destination, relativeTo: folder).standardizedFileURL
+            let manifest = skill.deletingLastPathComponent().deletingLastPathComponent()
+                .appendingPathComponent(".claude-plugin/plugin.json")
+            return !manager.fileExists(atPath: skill.path) || manager.fileExists(atPath: manifest.path)
+        }
+        return unlinkSkills(named: stale, in: folder)
     }
 
     /// Removes the links in `folder` that point into a kit's `skills` folder (any copy), leaving everything else.
@@ -184,15 +222,17 @@ public struct AgentKitInstall: Sendable {
         }
     }
 
-    /// Skills of `kit` linked in `folder` to this kit.
+    /// The link names in `folder` that point to `kit`'s skills.
     public static func linkedSkills(of kit: AgentKit, in folder: URL) -> [String] {
-        kit.skills.filter { name in
+        kit.skills.compactMap { skill in
+            let name = kit.linkName(skill)
             let target = folder.appendingPathComponent(name)
             guard let destination = try? FileManager.default.destinationOfSymbolicLink(atPath: target.path) else {
-                return false
+                return nil
             }
-            return URL(fileURLWithPath: destination).standardizedFileURL
-                == kit.skillsFolder.appendingPathComponent(name).standardizedFileURL
+            let linked = URL(fileURLWithPath: destination).standardizedFileURL
+                == kit.skillsFolder.appendingPathComponent(skill).standardizedFileURL
+            return linked ? name : nil
         }
     }
 

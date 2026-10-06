@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+- **Shorter agent kit skill names.** Kit 0.1.0 is the plugin `bc` with skills such as `audio-mix`, so Claude Code
+  and Codex show `bc:audio-mix` instead of `bashcut:bashcut-audio-mix`. Codex links are `bc-<skill>`. `agent setup`
+  replaces the old `bashcut` plugin and removes the old `bashcut-<skill>` links; Settings → Agents shows an old
+  plugin as an older kit until **Update** runs. The MCP server is still `bashcut`.
+
 - **Faster edits on long timelines (#348).** After an edit the timeline repaints only the clips and gaps that
   changed (and clips whose selection, review warning or agent badge changed) instead of every visible clip, and
   the layer header repaints only when the layers change. One edit round trip at 1,000 clips: 52 → 23 ms; at 100

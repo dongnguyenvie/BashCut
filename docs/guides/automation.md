@@ -81,7 +81,7 @@ SwiftTerm terminal. Claude and Codex use your installed CLI and its existing log
     waits as a value proposal (ID `p-…`, kept in that scope's `proposals.json`) and `set-pref` returns
     `{"approval": "proposed", "proposal": …}`. A newer proposal for the same key replaces the older one. `approve
     p-… --value TEXT` applies your edited value instead. Kit change proposals (lessons tagged `kit`, written by the
-    `bashcut-self-learn` skill) show their diff. When Settings lets agents act without confirmation, preferences are
+    `bc:self-learn` skill) show their diff. When Settings lets agents act without confirmation, preferences are
     applied at once as before.
   - **History** (`knowledge history [--kind] [--target]`, `revert`): every change to lessons, preferences, facts,
     memos and project skills, newest first, with who made it, the entry before and after and a line `diff`
@@ -151,7 +151,8 @@ The [agent kit](https://github.com/dongnguyenvie/bashcut-agent-kit) is a set of 
 beat cuts, audio mix, captions, colour, effects, voiceover…) for Claude Code and Codex. BashCut ships a copy in
 `Contents/Resources/AgentKit` (`scripts/bundle-agent-kit.sh`, run by `scripts/run.sh` and the Xcode build, copies
 the tracked files of a `bashcut-agent-kit` checkout next to the repo, or `$BASHCUT_AGENT_KIT`). **Settings → Agents**
-and `agent status` / `agent setup` manage it.
+and `agent status` / `agent setup` manage it. The kit is the plugin `bc`, so Claude Code and Codex show its skills
+as `bc:audio-mix`, `bc:edit-workflow`, … (kits before 0.1.0 were the `bashcut` plugin, `bashcut:bashcut-<skill>`).
 
 - **Finding it.** When Claude Code or Codex is installed but lacks the kit (or has an older one), the agent dock
   shows a banner: **Set Up** (or **Update**) runs `agent setup` for each of them, **Details…** opens Settings →
@@ -169,12 +170,14 @@ and `agent status` / `agent setup` manage it.
 - **BashCut's tabs** load it by default (`agent setup in-app`, `--remove` to stop). The built-in kit is copied to
   `~/Library/Application Support/BashCut/agent-kit`. Claude tabs get a skills-only plugin
   (`agent-kit-claude`, passed with `--plugin-dir`; the tab already has the BashCut MCP server). Codex tabs see
-  the skills as links in `agent-workspace/.agents/skills`, which holds only the kit's skills.
+  the skills as links (`bc-<skill>`) in `agent-workspace/.agents/skills`, which holds only the kit's skills.
 - **Another kit folder** (a checkout being worked on): **Choose…** in Settings or `agent setup in-app --kit
   /abs/path` (`--kit built-in` to go back). It is used in place, so edits show up in the next tab.
 - **Claude Code and Codex outside BashCut**: `agent setup claude` adds the kit as the `bashcut-agent-kit`
-  marketplace and installs the `bashcut` plugin (skills and MCP server); `agent setup codex` links the skills
-  into `~/.agents/skills` (never over a folder that is not a link) and runs `codex mcp add bashcut`. `--remove`
+  marketplace and installs the `bc` plugin (skills and MCP server), uninstalling the old `bashcut` plugin;
+  `agent setup codex` links the skills into `~/.agents/skills` as `bc-<skill>` (never over a folder that is not a
+  link), removes the old kit's `bashcut-<skill>` links, and runs `codex mcp add bashcut`. An old `bashcut` plugin
+  shows as an older kit until **Update** runs. `--remove`
   undoes either. From the CLI this asks for approval like an export, because it changes the agents' own
   configuration.
 - **Configuration folders.** Claude Code and Codex may keep their login and settings elsewhere

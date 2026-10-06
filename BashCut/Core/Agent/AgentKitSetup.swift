@@ -1,13 +1,18 @@
 import Foundation
 
 /// Sets up Claude Code and Codex *outside* BashCut with the agent kit, like the kit's README does by hand:
-/// Claude Code gets the `bashcut` plugin from the kit's marketplace (skills and the BashCut MCP server); Codex gets
-/// the skills linked into `~/.agents/skills` and the MCP server registered with `codex mcp add`.
+/// Claude Code gets the kit's plugin (`bc`) from the kit's marketplace (skills and the BashCut MCP server); Codex gets
+/// the skills linked into `~/.agents/skills` as `bc-<skill>` and the MCP server registered with `codex mcp add`.
+/// Kits before 0.1.0 were the `bashcut` plugin with `bashcut-<skill>` links; installing replaces them.
 public enum AgentKitSetup {
     public enum Target: String, CaseIterable, Sendable { case claude, codex }
 
     public static let marketplace = "bashcut-agent-kit"
-    public static let claudePlugin = "bashcut@bashcut-agent-kit"
+    /// The plugin ID of kits before 0.1.0.
+    public static let legacyClaudePlugin = "bashcut@bashcut-agent-kit"
+
+    /// The plugin ID `kit` installs as; the current one when no kit is found.
+    public static func claudePlugin(for kit: AgentKit?) -> String { kit?.claudePluginID ?? "bc@\(marketplace)" }
 
     public struct Status: Sendable, Equatable {
         /// The CLI found on the search path, or nil.
@@ -48,14 +53,25 @@ public enum AgentKitSetup {
             guard let executable else { return Status(executable: nil, installed: false, detail: "Claude Code not found") }
             let result = await run(executable, ["plugin", "list", "--json"], environment)
             let plugins = (try? JSONSerialization.jsonObject(with: Data(result.output.utf8)) as? [[String: Any]]) ?? []
-            let entry = plugins.first { $0["id"] as? String == claudePlugin }
+            let id = claudePlugin(for: kit)
+            let entry = plugins.first { $0["id"] as? String == id }
+            // Only the user-scope install is BashCut's; a project-scope one belongs to that project.
+            let legacy = id != legacyClaudePlugin && plugins.contains {
+                $0["id"] as? String == legacyClaudePlugin && ($0["scope"] as? String ?? "user") == "user"
+            }
+            if entry == nil, legacy {
+                return Status(
+                    executable: executable, installed: true,
+                    detail: "Old plugin \(legacyClaudePlugin) installed; Update replaces it with \(id)", outdated: true)
+            }
             let enabled = entry?["enabled"] as? Bool ?? false
             let version = entry?["version"] as? String
-            let outdated = entry != nil && kit != nil && version != kit?.version
+            let outdated = entry != nil && kit != nil && (version != kit?.version || legacy)
             return Status(
                 executable: executable, installed: entry != nil && enabled,
                 detail: entry == nil ? "Plugin not installed"
                     : !enabled ? "Plugin installed but turned off"
+                    : legacy ? "Plugin \(version ?? "") installed; Update removes the old \(legacyClaudePlugin)"
                     : outdated ? "Plugin \(version ?? "?") installed; the kit is \(kit?.version ?? "?")"
                     : "Plugin \(version ?? "") installed",
                 outdated: outdated)
@@ -80,11 +96,18 @@ public enum AgentKitSetup {
             if await run(executable, ["plugin", "marketplace", "add", kit.root.path], environment).status != 0 {
                 try await check(run(executable, ["plugin", "marketplace", "update", marketplace], environment))
             }
-            let installed = await run(executable, ["plugin", "install", claudePlugin, "--scope", "user"], environment)
+            let id = claudePlugin(for: kit)
+            let installed = await run(executable, ["plugin", "install", id, "--scope", "user"], environment)
             if installed.status != 0 {
-                try await check(run(executable, ["plugin", "update", claudePlugin], environment))
+                try await check(run(executable, ["plugin", "update", id], environment))
             }
-            return "Claude Code: plugin \(claudePlugin) \(kit.version) installed"
+            // The kit's plugin was `bashcut` before 0.1.0: drop it so the skills are not listed twice.
+            var replaced = false
+            if id != legacyClaudePlugin {
+                replaced = await run(executable, ["plugin", "uninstall", legacyClaudePlugin], environment).status == 0
+            }
+            return "Claude Code: plugin \(id) \(kit.version) installed"
+                + (replaced ? "; old plugin \(legacyClaudePlugin) removed" : "")
         case .codex:
             let linked = try AgentKitInstall.linkSkills(of: kit, into: environment.codexSkills)
             _ = await run(executable, ["mcp", "remove", "bashcut"], environment)
@@ -100,12 +123,16 @@ public enum AgentKitSetup {
         let executable = try require(target, environment)
         switch target {
         case .claude:
-            try await check(run(executable, ["plugin", "uninstall", claudePlugin], environment))
+            let id = claudePlugin(for: kit)
+            let legacy = await run(executable, ["plugin", "uninstall", legacyClaudePlugin], environment)
+            let current = await run(executable, ["plugin", "uninstall", id], environment)
+            if current.status != 0, legacy.status != 0 { try check(current) }
             _ = await run(executable, ["plugin", "marketplace", "remove", marketplace], environment)
-            return "Claude Code: plugin \(claudePlugin) removed"
+            return "Claude Code: plugin \(id) removed"
         case .codex:
             let names = kit.map { AgentKitInstall.linkedSkills(of: $0, in: environment.codexSkills) } ?? []
             let removed = AgentKitInstall.unlinkSkills(named: names, in: environment.codexSkills)
+                + (kit.map { AgentKitInstall.removeStaleLinks(of: $0, in: environment.codexSkills) } ?? [])
             _ = await run(executable, ["mcp", "remove", "bashcut"], environment)
             return "Codex: \(removed.count) skill links and the MCP server removed"
         }
