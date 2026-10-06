@@ -126,7 +126,7 @@ public actor CompositionBuilder {
                     if freezeFrame == nil, !isStill, let ramp {
                         try ramp.insert(from: source, into: target, available: available, frame: media.fps.time(1))
                     } else {
-                        try target.insertHoldingEnd(
+                        try target.insertHoldingEdges(
                             videoSourceRange, of: source, available: available, frame: media.fps.time(1),
                             over: CMTimeRange(start: destination, duration: project.fps.time(item.duration)))
                     }
@@ -167,7 +167,7 @@ public actor CompositionBuilder {
                         let holdRange = isStill ? stillRange : CMTimeRange(
                             start: media.fps.time(frame), duration: media.fps.time(1))
                         let holdStart = project.fps.time(item.end)
-                        try hold.insertHoldingEnd(
+                        try hold.insertHoldingEdges(
                             holdRange, of: source, available: available, frame: media.fps.time(1),
                             over: CMTimeRange(start: holdStart, duration: project.fps.time(transition.duration)))
                         visualByTrack[track.id, default: []].append(

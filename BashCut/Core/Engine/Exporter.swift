@@ -67,8 +67,9 @@ public actor Exporter {
         writer.startSession(atSourceTime: .zero)
         progress(0)
         try await transferSamples(
-            pairs, duration: snapshot.composition.duration.seconds, reader: reader, writer: writer,
+            pairs, snapshot: snapshot, reader: reader, writer: writer,
             progress: progress)
+        writer.endSession(atSourceTime: snapshot.composition.duration)
         await writer.finishWriting()
         guard writer.status == .completed else {
             throw writer.error ?? ProjectError.invalid("Export failed")
@@ -130,14 +131,18 @@ public actor Exporter {
 
     private func transferSamples(
         _ pairs: [(AVAssetReaderOutput, AVAssetWriterInput)],
-        duration: Double, reader: AVAssetReader, writer: AVAssetWriter,
+        snapshot: CompositionSnapshot, reader: AVAssetReader, writer: AVAssetWriter,
         progress: @escaping @Sendable (Double) -> Void
     ) async throws {
+        let end = snapshot.composition.duration
         let lanes = pairs.map { output, input in
-            ExportSampleTransfer.Lane(request: { queue, callback in
+            let tail = output is AVAssetReaderVideoCompositionOutput
+                ? VideoTail(end: end, frame: snapshot.videoComposition.frameDuration) : nil
+            return ExportSampleTransfer.Lane(request: { queue, callback in
                 input.requestMediaDataWhenReady(on: queue, using: callback)
             }, ready: { input.isReadyForMoreMediaData }, next: {
-                guard let sample = output.copyNextSampleBuffer() else { return nil }
+                guard let sample = output.copyNextSampleBuffer() ?? tail?.closing() else { return nil }
+                tail?.last = sample
                 guard input.append(sample) else {
                     throw writer.error ?? ProjectError.invalid("Cannot write sample")
                 }
@@ -146,12 +151,39 @@ public actor Exporter {
                 if writer.status == .writing { input.markAsFinished() }
             })
         }
-        let transfer = ExportSampleTransfer(lanes: lanes, duration: duration, progress: progress, failure: {
+        let transfer = ExportSampleTransfer(lanes: lanes, duration: end.seconds, progress: progress, failure: {
             if reader.status == .failed { return reader.error ?? ProjectError.invalid("Cannot read media") }
             if reader.status == .cancelled { return CancellationError() }
             if writer.status != .writing { return writer.error ?? ProjectError.invalid("Writer stopped") }
             return nil
         }, interrupt: { reader.cancelReading() })
         try await transfer.run()
+    }
+}
+
+/// The composition output sends a held picture (freeze frame, still, the last source picture) as one sample. When the
+/// timeline ends on one, the video track would end with it; `closing` repeats it on the timeline's last frame.
+private final class VideoTail: @unchecked Sendable {
+    let end: CMTime
+    let frame: CMTime
+    var last: CMSampleBuffer?
+    private var closed = false
+
+    init(end: CMTime, frame: CMTime) {
+        self.end = end
+        self.frame = frame
+    }
+
+    func closing() -> CMSampleBuffer? {
+        guard !closed, let last else { return nil }
+        closed = true
+        let time = end - frame
+        guard time > last.presentationTimeStamp else { return nil }
+        var timing = CMSampleTimingInfo(duration: frame, presentationTimeStamp: time, decodeTimeStamp: .invalid)
+        var copy: CMSampleBuffer?
+        CMSampleBufferCreateCopyWithNewTiming(
+            allocator: nil, sampleBuffer: last, sampleTimingEntryCount: 1, sampleTimingArray: &timing,
+            sampleBufferOut: &copy)
+        return copy
     }
 }

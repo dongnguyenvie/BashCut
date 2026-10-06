@@ -29,9 +29,10 @@ actor AssetCache {
         let asset = AVURLAsset(url: url)
         let video = try await asset.loadTracks(withMediaType: .video).first
         let audio = try await asset.loadTracks(withMediaType: .audio).first
+        let videoRange: CMTimeRange? = if let video { try await Self.pictureRange(video) } else { nil }
         let loaded = LoadedAsset(
             asset: asset, signature: signature, video: video, audio: audio,
-            videoRange: try await video?.load(.timeRange),
+            videoRange: videoRange,
             naturalSize: try await video?.load(.naturalSize) ?? .zero,
             preferredTransform: try await video?.load(.preferredTransform) ?? .identity)
         loads += 1
@@ -39,6 +40,13 @@ actor AssetCache {
         touch(url)
         evict()
         return loaded
+    }
+
+    /// From the first to the last picture: an empty edit (sound before the first picture) is part of `timeRange`.
+    private static func pictureRange(_ track: AVAssetTrack) async throws -> CMTimeRange {
+        let pictures = try await track.load(.segments).filter { !$0.isEmpty }.map(\.timeMapping.target)
+        guard let first = pictures.first, let last = pictures.last else { return try await track.load(.timeRange) }
+        return CMTimeRange(start: first.start, end: last.end)
     }
 
     private func touch(_ url: URL) {

@@ -40,7 +40,7 @@ struct SpeedRampPlan {
         frame: CMTime
     ) throws {
         for piece in pieces {
-            try target.insertHoldingEnd(
+            try target.insertHoldingEdges(
                 piece.source, of: source, available: available, frame: frame, over: piece.target)
         }
     }
