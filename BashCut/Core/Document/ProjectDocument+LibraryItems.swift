@@ -61,6 +61,10 @@ extension ProjectDocument {
                 emoji, preset: item.params["textPreset"]?.string ?? "bold-outline", label: "Add text", placement)
         case .look:
             result = try await placeFilterStack(item, placement)
+        case .audio:
+            // Counts its own use.
+            let placed = try await placeLibraryAudio(item, placement)
+            return (placed.revision, placed.1.itemIDs.first ?? "")
         default:
             throw RPCFailure(-32602, unsupported("Placing \(item.kind?.rawValue ?? "these") items", item))
         }
@@ -191,6 +195,9 @@ extension ProjectDocument {
             // A .cube on its own is a look that is just that LUT (#79).
             item["params"] = .object(item.params.merging(["color": .object([:])]) { $1 })
         }
+        if kind == .audio, let file {
+            item["params"] = .object(try await audioItemParams(item.params, file: file))
+        }
         item["createdBy"] = LibraryItem.creator(author: author)
         _ = try catalog.store(scope)
         let added = item
@@ -243,7 +250,11 @@ extension ProjectDocument {
     /// The params of a new item made from the timeline item `itemID` (the selection by default), and the file to
     /// copy in: the sound a transition preset placed at the selected cut or an effect's sound at the clip (#76), unless
     /// it came from an audio library item (then `sfx` names that item), or the .cube LUT a look's grade uses (#79).
-    func selectionParams(_ kind: LibraryKind, itemID: String? = nil) throws -> (params: [String: JSONValue], file: URL?) {
+    /// An audio item (#78) is the clip's file, or the project audio media `mediaID`'s.
+    func selectionParams(
+        _ kind: LibraryKind, itemID: String? = nil, mediaID: String? = nil
+    ) throws -> (params: [String: JSONValue], file: URL?) {
+        if kind == .audio { return try audioSelection(itemID: itemID, mediaID: mediaID) }
         let id = itemID ?? selectedID
         let item = id.flatMap { id in project.tracks.flatMap(\.items).first { $0.id == id } }
         if let id, item == nil { throw RPCFailure(-32602, "Unknown item \(id)") }
@@ -313,6 +324,7 @@ extension ProjectDocument {
         registerLibraryChangeCommands()
         registerLibraryUseCommands()
         registerLibraryPackCommands()
+        registerLibraryAudioCommands()
     }
 
     private func registerLibraryReadCommands() {
@@ -348,7 +360,8 @@ extension ProjectDocument {
         handleAuthored("library.save-selection") { document, arguments, author in
             let kind = LibraryKind(rawValue: try arguments.string("kind")) ?? .look
             var changes = Self.itemChanges(arguments)
-            let selection = try document.selectionParams(kind, itemID: arguments.optionalString("item"))
+            let selection = try document.selectionParams(
+                kind, itemID: arguments.optionalString("item"), mediaID: arguments.optionalString("media"))
             changes["params"] = .object(selection.params)
             let preview = kind == .effectPreset ? await document.effectPreview(itemID: arguments.optionalString("item")) : nil
             return try await document.addLibraryItem(
@@ -426,6 +439,7 @@ extension ProjectDocument {
             let placement = LibraryPlacement(
                 frame: arguments.optionalInt("atFrame"), duration: arguments.optionalInt("duration"),
                 trackID: arguments.optionalString("track"), author: author, baseRevision: try arguments.int("baseRev"))
+            if item.kind == .audio { return try await document.placeLibraryAudioCommand(item, placement) }
             let result = try await document.placeLibraryItem(item, placement, text: arguments.optionalString("text"))
             return .object([
                 "rev": .integer(result.revision), "item": .string(result.itemID), "library": .string(item.reference),

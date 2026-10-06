@@ -434,13 +434,14 @@ project or on this Mac. The Filters panel also lists the style kits and the proj
   `basedOn` pointing at the original. Nothing is overwritten silently.
 - `bashcut library remove <id>` removes a project or user item and its files.
 - `bashcut library place <id> [--at-frame] [--duration] [--track] [--text] --base-rev N` adds a text preset or emoji
-  sticker as a text item, or a look as an adjustment. `library apply <id> [--item] --base-rev N` sets a text preset,
+  sticker as a text item, a look as an adjustment, or an audio item as a clip (see Audio below). `library apply <id> [--item] --base-rev N` sets a text preset,
   an effect preset's recipe or a look's grade on an existing item. Both count a use (in `usage.json` next to
   `library.json`; the item list is not rewritten).
-- `bashcut library save-selection --kind text-preset|effect-preset|transition-preset|look --name X [--item]
-  [--scope] [--tags] [--pack]` saves what is selected: a text item's style and text, a clip's `transform` and
+- `bashcut library save-selection --kind text-preset|effect-preset|transition-preset|look|audio --name X [--item]
+  [--media] [--scope] [--tags] [--pack]` saves what is selected: a text item's style and text, a clip's `transform` and
   `keyframes` as an effect recipe (see below), the transition at the selected clip (kind, duration, easing and the sound a preset placed at that cut),
-  or a grade as a look: the whole filter stack, with the project LUT it uses copied in as the look's file.
+  a grade as a look: the whole filter stack, with the project LUT it uses copied in as the look's file, or an audio
+  clip (or, with `--media`, any project audio media) as an audio item (see Audio below).
 - `bashcut library move <id> --to project|user` moves a saved item with its versions, files and use count.
 - Transition presets (#77) are `params` `{kind, duration, easing, sfx}`: `sfx` names an audio library item, or the
   preset carries its own sound as its `file` (`sfx` wins when both are set). `library apply` on one sets the transition
@@ -484,13 +485,40 @@ project or on this Mac. The Filters panel also lists the style kits and the proj
   (`luts/library-<hash>.cube`, its project LUT keeps `sha256` and `libraryItem`) and added in the same undo step, and
   using a look with the same file again reuses that LUT. Looks without a file apply their grade exactly as before.
   Edit one with `library update <id> --params '{...}'` (the Filters panel's Edit…).
+- Audio items (#78) are music, sound effects and ambience kept outside any one project (user scope) or with it
+  (project scope). The item's `file` is the sound; `params` `{role, seconds, bpm, loopable, lufs, truePeak}` are all
+  optional: `role` is `music`, `sfx` or `ambience`, `seconds` the length, `bpm` the tempo, `lufs` the integrated
+  loudness and `truePeak` the true peak in dBTP, and `loopable` says the end joins the start. Mood, genre and use are
+  tags (`--tags calm,lofi,intro`). `library add --kind audio --name X --file song.wav [--params '{"loopable":true}']`
+  measures `seconds` and, without a role, picks `sfx` for a file under 10 seconds and `music` otherwise.
+  - `library analyze <id> [--provider P]` runs as a job (`jobs status --job J` for its result): it measures the length,
+    the loudness and true peak with an `audio.loudness` provider (as `audio measure`) and, unless the item is a sound
+    effect, the tempo with an `audio.beats` provider (as `beats detect`), on the library file itself, and saves them
+    as a new version. A missing or failing provider leaves that value as it was and says why in the result's
+    `notes`. An agent analyzing a user-scope item waits for approval like any user-library change. Read-only items
+    (plugin, built-in) need a copy first (`library update <id> --as <new-id>`).
+  - `library place <id> [--at-frame F] [--duration N] [--track T]` copies the file into the project's `music/` (music,
+    ambience) or `sfx/` (sound effects) folder as `library-<hash>.<ext>` (the same content is copied once and reused,
+    whichever item or folder asked), imports it as media (reusing media for the same file) and places it on the Music
+    or SFX layer, adding that layer when the project has none (a new Music layer ducks under speech like a new
+    project's), or on a free layer beside it, as one undo step. `--duration` trims the sound. BashCut has no clip
+    looping, so a longer duration on a `loopable` sound places copies back to back (the last one trimmed; the result
+    lists them in `items` with `looped: true`); a sound that does not loop plays once and the result has a `note`.
+  - `library save-selection --kind audio --name X [--item clip | --media id]` saves a project sound: the clip's (or
+    media's) whole file is copied in, with its `seconds` and a role from its layer (Music → `music`, SFX → `sfx`).
+  - `library preview <id>` plays the item's sound in BashCut (the Audio panel's play button); `library preview
+    --stop` stops it.
+  - The Audio panel lists the project's audio (context menu **Save to Library…**) and the library's audio items with
+    a play/stop button, badges for role, length, BPM, LUFS and loop, and **Place**; their context menu adds **Place at
+    Playhead** and **Analyze Length, Loudness & Tempo**, and Edit… sets the role and the loop flag. Audio files dropped
+    on the panel or chosen with Add… become items.
 - `bashcut library stats [--panel]` reports usage, the saved items nobody used, and duplicates (same kind, params
   and file), to prune or merge. Saved items compare the `fileSHA256` stored when their file was copied in.
 - `bashcut library export-pack --pack Food --output ~/Food` writes a pack folder (`pack.json` and `files/`);
   `library import-pack <folder|zip> [--scope user] [--replace]` adds one. IDs already there are refused unless
   `--replace` saves them as new versions.
 
-Agents' `add`, `save-selection`, `update`, `remove` and `import-pack` in the `user` scope, and every `move`, wait for
+Agents' `add`, `save-selection`, `update`, `analyze`, `remove` and `import-pack` in the `user` scope, and every `move`, wait for
 the user's approval, like exports; the project scope follows the normal edit rules.
 
 Each panel (Audio, Text, Stickers, Effects, Transitions, Filters) shows its items with search, pack, tag and scope

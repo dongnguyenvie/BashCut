@@ -1,4 +1,3 @@
-import AVFoundation
 import BashCutAutomation
 import BashCutProject
 import Foundation
@@ -100,44 +99,5 @@ extension ProjectDocument {
             return nil
         }
         return try await librarySoundMedia(source)
-    }
-
-    /// Project media for the sound file of the library item `source` (an audio item, or a preset with its own
-    /// sound). A file from outside the project is copied into the project's `sfx` folder first, and a file already in
-    /// use reuses its media.
-    func librarySoundMedia(_ source: LibraryItem) async throws -> Media {
-        let catalog = libraryCatalog
-        guard let root = fileURL?.deletingLastPathComponent() else {
-            throw RPCFailure(-32602, "Save the project before adding a sound effect")
-        }
-        guard let file = catalog.fileURL(of: source) else { throw RPCFailure(-32602, "\(source.reference) has no file") }
-        let url = try await LibraryWorker.shared.run { try Self.projectCopy(of: file, item: source, root: root) }
-        let asset = AVURLAsset(url: url)
-        let duration = try await asset.load(.duration)
-        let frames = Int((duration.seconds * project.fps.value).rounded(.down))
-        guard frames > 0, try await !asset.loadTracks(withMediaType: .audio).isEmpty else {
-            throw RPCFailure(-32602, "\(source.reference) is too short or has no sound")
-        }
-        var fields: [String: JSONValue] = [
-            "id": .string(UUID().uuidString), "path": .string(Self.relativePath(url, root: root)),
-            "kind": .string("audio"), "fps": project.fps.json, "frames": .integer(frames), "hasAudio": .bool(true),
-        ]
-        if source.kind == .audio { fields[TransitionPreset.soundLibraryField] = .string(source.reference) }
-        let media = Media(fields: fields)
-        return project.existingMedia(like: media) ?? media
-    }
-
-    /// `file` when it is inside the project folder, else its copy in `sfx/`, named after the item and version so
-    /// applying the same sound again reuses the copy.
-    nonisolated static func projectCopy(of file: URL, item: LibraryItem, root: URL) throws -> URL {
-        let resolved = file.standardizedFileURL.resolvingSymlinksInPath().path
-        if resolved.hasPrefix(root.standardizedFileURL.resolvingSymlinksInPath().path + "/") { return file }
-        let folder = root.appendingPathComponent("sfx", isDirectory: true)
-        let suffix = file.pathExtension.isEmpty ? "" : ".\(file.pathExtension)"
-        let target = folder.appendingPathComponent("\(item.scope.rawValue)-\(item.id)-v\(item.version)\(suffix)")
-        guard !FileManager.default.fileExists(atPath: target.path) else { return target }
-        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        try FileManager.default.copyItem(at: file, to: target)
-        return target
     }
 }

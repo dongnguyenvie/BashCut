@@ -198,6 +198,8 @@ extension LibraryItem {
         switch kind {
         case .audio:
             guard file != nil else { throw ProjectError.invalid("\(label): an audio item needs a file") }
+            // Role, length, tempo, loudness and loop (#78), all optional.
+            _ = try LibraryAudio(params: params, label: label)
         case .sticker:
             guard file != nil || params["emoji"]?.string?.isEmpty == false else {
                 throw ProjectError.invalid("\(label): a sticker needs params.emoji or a file")

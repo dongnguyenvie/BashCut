@@ -199,7 +199,7 @@ struct CommandSpecTests {
             "kind": .string("look"), "name": .string("Warm"), "tags": .string("warm"), "scope": .string("project"),
         ])
         #expect(throws: CommandLineParser.Failure.self) {
-            try CommandLineParser.parse(["library", "save-selection", "--kind", "audio", "--name", "x"])
+            try CommandLineParser.parse(["library", "save-selection", "--kind", "sticker", "--name", "x"])
         }
         let move = try CommandLineParser.parse(["library", "move", "project:fire", "--to", "user"])
         #expect(move.params == ["id": .string("project:fire"), "to": .string("user")])

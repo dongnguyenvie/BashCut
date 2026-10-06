@@ -26,7 +26,9 @@ extension CommandCatalog {
                 + "…}], parameters: {name: {default, min, max}}} or the older {patch: item properties}, with its own sound "
                 + "as file; transition-preset {kind, duration, easing: linear|in|out|"
                 + "inOut, sfx: audio item ID} (or its own sound as file); look (a filter stack) {color: {exposure, contrast, "
-                + "saturation, lutStrength}, lutName} with an optional .cube LUT as file",
+                + "saturation, lutStrength}, lutName} with an optional .cube LUT as file; audio (its file required) {role: "
+                + "music|sfx|ambience, seconds, bpm, loopable, lufs, truePeak}, all optional (library add measures seconds "
+                + "and picks a role by length; library analyze fills the rest), with mood and genre as tags",
             cli: .option("params")),
         CommandParameter("file", .string, "File to copy in (audio, image sticker, a look's .cube LUT…)", isPath: true, cli: .option("file")),
         CommandParameter("preview", .string, "Preview image, GIF or audio snippet to copy in", isPath: true,
@@ -92,13 +94,16 @@ extension CommandCatalog {
                 + "item's style, a clip's effect as a recipe (reverse, speed or speed ramp, framing, keyframes scaled to the "
                 + "clip's length, and the sound effect at its start; a still of the clip as its preview), the transition "
                 + "at the selected clip (kind, duration, easing and the sound a preset placed there), or a grade as a look: "
-                + "the full filter stack, with the project LUT it uses copied in as the look's file.",
+                + "the full filter stack, with the project LUT it uses copied in as the look's file, or an audio clip (or "
+                + "project audio media) as an audio item: its file copied in, its length, and music or sfx from its layer.",
             parameters: [
                 CommandParameter("kind", .string, "What to save", required: true,
                                  choices: LibrarySelection.kinds.map(\.rawValue), cli: .option("kind")),
                 CommandParameter("name", .string, "Display name", required: true, cli: .option("name")),
                 CommandParameter("id", .string, "Item ID; from the name by default", cli: .option("id")),
                 CommandParameter("item", .string, "Timeline item ID; the selection by default", cli: .option("item")),
+                CommandParameter("media", .string, "Audio: project audio media ID instead of a timeline clip",
+                                 cli: .option("media")),
                 writableScope,
                 itemFields[0], itemFields[1],
             ]),
@@ -134,14 +139,41 @@ extension CommandCatalog {
         CommandSpec(
             "library.place", .edit,
             "Add a library item to the timeline as a new item: a text preset or emoji sticker as text, a look as an "
-                + "adjustment (with its LUT added to the project in the same undo step). At the playhead by default.",
+                + "adjustment (with its LUT added to the project in the same undo step), or audio: its file copied into the "
+                + "project's music/ or sfx/ folder (once per content), imported and placed on the Music layer (music, "
+                + "ambience) or SFX layer (sfx), the layer added when missing, as one undo step. duration trims a sound; "
+                + "longer than the file, a loopable sound repeats back to back and another plays once (the result says so). "
+                + "At the playhead by default.",
             parameters: [
                 libraryID, libraryScope,
                 CommandParameter("atFrame", .integer, "First timeline frame", minimum: 0, cli: .option("at-frame")),
                 CommandParameter("duration", .integer, "Length in timeline frames", minimum: 1, cli: .option("duration")),
-                CommandParameter("track", .string, "Layer ID", cli: .option("track")),
+                CommandParameter("track", .string, "Layer ID; for audio, the Music or SFX layer by its role by default",
+                                 cli: .option("track")),
                 CommandParameter("text", .string, "Text for a text preset instead of its sample", cli: .option("text")),
                 baseRevision,
+            ]),
+        CommandSpec(
+            "library.analyze", .edit,
+            "Measure an audio library item's file and save the values as a new version: its length, integrated "
+                + "loudness and true peak (an audio.loudness provider, as audio measure) and, unless it is a sound effect, "
+                + "its tempo in BPM (an audio.beats provider, as beats detect). Runs as a job; a missing provider leaves "
+                + "that value and says why in notes. Agents saving to the user scope wait for approval. Tag mood and "
+                + "genre with library update --tags after listening or reading the analysis.",
+            parameters: [
+                libraryID, libraryScope,
+                CommandParameter("provider", .string, "audio.loudness provider ID; the project's choice by default",
+                                 cli: .option("provider")),
+            ],
+            execution: .job),
+        CommandSpec(
+            "library.preview", .ui,
+            "Play a library item's sound in BashCut (the Audio panel's play button), stopping any other; stop, or no "
+                + "id, stops it.",
+            parameters: [
+                CommandParameter("id", .string, "Item ID, or scope:id", cli: .positional),
+                libraryScope,
+                CommandParameter("stop", .boolean, "Stop the sound playing", default: .bool(false), cli: .flag("stop")),
             ]),
         CommandSpec(
             "library.import-pack", .edit,

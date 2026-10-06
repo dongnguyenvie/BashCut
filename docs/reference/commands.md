@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 135 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 137 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -1164,7 +1164,7 @@ Save a new library item in the project or on this Mac. Files are copied in. Agen
 - `scope`: string, one of project, user, default "project". project (the open project's .bashcut/library; the default) or user (this Mac; agents need approval)
 - `tags`: string. Comma-separated tags (mood, use, genre…)
 - `pack`: string. Pack or collection name the panel groups it under
-- `params`: object. What the kind needs (JSON): text-preset {textPreset, text}; sticker {emoji, textPreset} or a file; effect-preset (a recipe) {steps: [{op: motion|keyframes|speed|speedCurve|reverse|freeze|patch|sfx|text, …}], parameters: {name: {default, min, max}}} or the older {patch: item properties}, with its own sound as file; transition-preset {kind, duration, easing: linear|in|out|inOut, sfx: audio item ID} (or its own sound as file); look (a filter stack) {color: {exposure, contrast, saturation, lutStrength}, lutName} with an optional .cube LUT as file
+- `params`: object. What the kind needs (JSON): text-preset {textPreset, text}; sticker {emoji, textPreset} or a file; effect-preset (a recipe) {steps: [{op: motion|keyframes|speed|speedCurve|reverse|freeze|patch|sfx|text, …}], parameters: {name: {default, min, max}}} or the older {patch: item properties}, with its own sound as file; transition-preset {kind, duration, easing: linear|in|out|inOut, sfx: audio item ID} (or its own sound as file); look (a filter stack) {color: {exposure, contrast, saturation, lutStrength}, lutName} with an optional .cube LUT as file; audio (its file required) {role: music|sfx|ambience, seconds, bpm, loopable, lufs, truePeak}, all optional (library add measures seconds and picks a role by length; library analyze fills the rest), with mood and genre as tags
 - `file`: string, path. File to copy in (audio, image sticker, a look's .cube LUT…)
 - `preview`: string, path. Preview image, GIF or audio snippet to copy in
 - `source`: string. Where it came from (URL or note)
@@ -1180,7 +1180,7 @@ Improve a library item: saves a new version (the old one stays in its history). 
 - `name`: string. New display name
 - `tags`: string. Comma-separated tags (mood, use, genre…)
 - `pack`: string. Pack or collection name the panel groups it under
-- `params`: object. What the kind needs (JSON): text-preset {textPreset, text}; sticker {emoji, textPreset} or a file; effect-preset (a recipe) {steps: [{op: motion|keyframes|speed|speedCurve|reverse|freeze|patch|sfx|text, …}], parameters: {name: {default, min, max}}} or the older {patch: item properties}, with its own sound as file; transition-preset {kind, duration, easing: linear|in|out|inOut, sfx: audio item ID} (or its own sound as file); look (a filter stack) {color: {exposure, contrast, saturation, lutStrength}, lutName} with an optional .cube LUT as file
+- `params`: object. What the kind needs (JSON): text-preset {textPreset, text}; sticker {emoji, textPreset} or a file; effect-preset (a recipe) {steps: [{op: motion|keyframes|speed|speedCurve|reverse|freeze|patch|sfx|text, …}], parameters: {name: {default, min, max}}} or the older {patch: item properties}, with its own sound as file; transition-preset {kind, duration, easing: linear|in|out|inOut, sfx: audio item ID} (or its own sound as file); look (a filter stack) {color: {exposure, contrast, saturation, lutStrength}, lutName} with an optional .cube LUT as file; audio (its file required) {role: music|sfx|ambience, seconds, bpm, loopable, lufs, truePeak}, all optional (library add measures seconds and picks a role by length; library analyze fills the rest), with mood and genre as tags
 - `file`: string, path. File to copy in (audio, image sticker, a look's .cube LUT…)
 - `preview`: string, path. Preview image, GIF or audio snippet to copy in
 - `source`: string. Where it came from (URL or note)
@@ -1196,15 +1196,16 @@ Remove a project or user library item and its files. Built-in and plugin items c
 - `id`: string, required. Item ID, or scope:id to pick one scope
 - `scope`: string, one of built-in, user, project, plugin. Look only in this scope; without it project, user, plugin, then built-in
 
-### `bashcut library save-selection --kind <kind> --name <name> [--id <id>] [--item <item>] [--scope <scope>] [--tags <tags>] [--pack <pack>]`
+### `bashcut library save-selection --kind <kind> --name <name> [--id <id>] [--item <item>] [--media <media>] [--scope <scope>] [--tags <tags>] [--pack <pack>]`
 
-Save what is selected on the timeline as a new library item (the panels' Save selection as…): a text item's style, a clip's effect as a recipe (reverse, speed or speed ramp, framing, keyframes scaled to the clip's length, and the sound effect at its start; a still of the clip as its preview), the transition at the selected clip (kind, duration, easing and the sound a preset placed there), or a grade as a look: the full filter stack, with the project LUT it uses copied in as the look's file.
+Save what is selected on the timeline as a new library item (the panels' Save selection as…): a text item's style, a clip's effect as a recipe (reverse, speed or speed ramp, framing, keyframes scaled to the clip's length, and the sound effect at its start; a still of the clip as its preview), the transition at the selected clip (kind, duration, easing and the sound a preset placed there), or a grade as a look: the full filter stack, with the project LUT it uses copied in as the look's file, or an audio clip (or project audio media) as an audio item: its file copied in, its length, and music or sfx from its layer.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_library_save-selection`
-- `kind`: string, required, one of text-preset, effect-preset, transition-preset, look. What to save
+- `kind`: string, required, one of text-preset, effect-preset, transition-preset, look, audio. What to save
 - `name`: string, required. Display name
 - `id`: string. Item ID; from the name by default
 - `item`: string. Timeline item ID; the selection by default
+- `media`: string. Audio: project audio media ID instead of a timeline clip
 - `scope`: string, one of project, user, default "project". project (the open project's .bashcut/library; the default) or user (this Mac; agents need approval)
 - `tags`: string. Comma-separated tags (mood, use, genre…)
 - `pack`: string. Pack or collection name the panel groups it under
@@ -1233,16 +1234,34 @@ Use a library item on an existing timeline item: a text preset on a text item, a
 
 ### `bashcut library place <id> [--scope <scope>] [--at-frame <atFrame>] [--duration <duration>] [--track <track>] [--text <text>] --base-rev <baseRev>`
 
-Add a library item to the timeline as a new item: a text preset or emoji sticker as text, a look as an adjustment (with its LUT added to the project in the same undo step). At the playhead by default.
+Add a library item to the timeline as a new item: a text preset or emoji sticker as text, a look as an adjustment (with its LUT added to the project in the same undo step), or audio: its file copied into the project's music/ or sfx/ folder (once per content), imported and placed on the Music layer (music, ambience) or SFX layer (sfx), the layer added when missing, as one undo step. duration trims a sound; longer than the file, a loopable sound repeats back to back and another plays once (the result says so). At the playhead by default.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_library_place`
 - `id`: string, required. Item ID, or scope:id to pick one scope
 - `scope`: string, one of built-in, user, project, plugin. Look only in this scope; without it project, user, plugin, then built-in
 - `atFrame`: integer, ≥ 0. First timeline frame
 - `duration`: integer, ≥ 1. Length in timeline frames
-- `track`: string. Layer ID
+- `track`: string. Layer ID; for audio, the Music or SFX layer by its role by default
 - `text`: string. Text for a text preset instead of its sample
 - `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
+
+### `bashcut library analyze <id> [--scope <scope>] [--provider <provider>]`
+
+Measure an audio library item's file and save the values as a new version: its length, integrated loudness and true peak (an audio.loudness provider, as audio measure) and, unless it is a sound effect, its tempo in BPM (an audio.beats provider, as beats detect). Runs as a job; a missing provider leaves that value and says why in notes. Agents saving to the user scope wait for approval. Tag mood and genre with library update --tags after listening or reading the analysis.
+
+- Mode: edit · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_library_analyze`
+- `id`: string, required. Item ID, or scope:id to pick one scope
+- `scope`: string, one of built-in, user, project, plugin. Look only in this scope; without it project, user, plugin, then built-in
+- `provider`: string. audio.loudness provider ID; the project's choice by default
+
+### `bashcut library preview [<id>] [--scope <scope>] [--stop]`
+
+Play a library item's sound in BashCut (the Audio panel's play button), stopping any other; stop, or no id, stops it.
+
+- Mode: ui · Runs: immediately · MCP: `bashcut_library_preview`
+- `id`: string. Item ID, or scope:id
+- `scope`: string, one of built-in, user, project, plugin. Look only in this scope; without it project, user, plugin, then built-in
+- `stop`: boolean, default false. Stop the sound playing
 
 ### `bashcut library import-pack <path> [--scope <scope>] [--replace]`
 

@@ -5,6 +5,19 @@
 
 ## [Unreleased]
 
+- **Audio library (#78).** Audio library items carry `params` `{role: music|sfx|ambience, seconds, bpm, loopable, lufs,
+  truePeak}`, all optional and checked, with mood and genre as tags; `library add --kind audio --file` measures the
+  length and picks a role by it. `library place` copies the file into the project's `music/` or `sfx/` folder once per
+  content (`library-<hash>.<ext>`, reused by any item with the same file), imports it and places it on the Music
+  (music, ambience) or SFX layer, adding the layer when missing, at the playhead or `--at-frame`, as one undo step;
+  `--duration` trims it, and a loopable sound repeats as back-to-back copies to fill a longer length (BashCut has no
+  clip looping) while another plays once and says so. New `library analyze <id>` (a job) measures length, loudness
+  and true peak (the `audio measure` provider) and tempo (the `beats detect` provider) on the library file and saves
+  them as a new version; agents saving to the user library still need approval. `library save-selection --kind audio
+  [--media]` saves a project clip or audio media. New `library preview <id> | --stop` plays a sound. The Audio panel
+  shows library audio with play/stop, role, length, BPM, LUFS and loop badges, Place, Analyze and Edit… (role, loop),
+  and **Save to Library…** on the project's audio. Transition and effect preset sounds now share this copy, so they
+  are also named by content in `sfx/`.
 - **Effect presets as recipes (#76).** An effect preset's `params.steps` is a recipe of clip edits BashCut already
   has: `motion` (a motion preset, or `focus` as fractions of the picture), `keyframes` (positions `t` 0–1 that scale
   with the clip, or integer `frame`s), `speed`, `speedCurve`, `reverse`, `freeze`, `patch` (item properties), `sfx`

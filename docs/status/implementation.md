@@ -17,7 +17,7 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
 | M1 Core editor | Features in place | Hand-rebuild of the 48-cut reference and accessibility QA pending |
 | M2 Agent dock and automation | Mostly done | Claude/Codex/Shell terminals, socket, CLI, MCP; real authenticated agent runs only partly smoke-tested |
 | M3 Text, captions, export | Mostly done | Export queue (E-1) done; no bundled transcription provider; first all-in-app vlog not yet recorded |
-| M4 Audio and voice | Partial | Ducking, loudness, voice takes, beats, framing done; music/SFX library and voice cloning open |
+| M4 Audio and voice | Partial | Ducking, loudness, voice takes, beats, framing, music/SFX library done; voice cloning open |
 | M5 Color, transitions, review | Mostly done | LUTs, transitions, review, resume and handoff done; measured review checks open |
 | M6 Extensions | Partial | OTIO export, voiceover recording, constant speed, ramps, keyframes done; effects, Demucs open |
 
@@ -135,7 +135,16 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
 - One item model for every library panel (#74): kind, tags, pack, source and license, created by, version
   history, usage and params, in project (`.bashcut/library`), user (Application Support), plugin and built-in
   scopes. `library list|get|stats|add|update|remove|move|save-selection|apply|place|import-pack|export-pack`;
-  agents' user-scope writes need approval. Placing audio (#78) and image stickers (#64) are open.
+  agents' user-scope writes need approval. Placing image stickers (#64) is open.
+- Audio library (#78): audio items with a role (music, sfx, ambience), length, BPM, loudness (LUFS, true peak) and a
+  loop flag, mood and genre as tags. `library add` measures the length; `library analyze` (a job) measures loudness
+  and tempo on the library file with the `audio.loudness` and `audio.beats` providers and saves a new version.
+  `library place` copies the file into `music/` or `sfx/` once per content (`library-<hash>.<ext>`), imports it and
+  places it on the Music or SFX layer (added when missing) as one undo step; `--duration` trims, and a loopable sound
+  repeats as back-to-back copies (the engine has no clip looping). Save selection (`--kind audio`, `--media`) saves
+  project audio; the Audio panel shows library audio with play/stop (`library preview`), badges and Place, Save to
+  Library… on project audio, Analyze, and Edit… for role and loop. Not yet: saving only a clip's trimmed range, and
+  a waveform preview.
 - Transition presets (#77): kind, duration, easing (`linear`, `in`, `out`, `inOut`, stored on the transition and
   honored by preview and export) and an optional sound (`params.sfx`, an audio item, or the preset's own file),
   applied as one undo step with the sound on an SFX layer; saved from the selected cut, edited from the Transitions
@@ -160,7 +169,7 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   white, Bright & airy, Moody).
 - Shared panel UI (#80): the Audio, Text, Stickers, Effects, Transitions and Filters panels show their library items
   with search, pack, tag and scope filters (`ui view --library-*`), agent and scope badges, Add… and drops (files or
-  packs), Save selection as… (text style, framing, transition, look) and a context menu (Duplicate & Edit, Rename,
+  packs), Save selection as… (text style, framing, transition, look, audio) and a context menu (Duplicate & Edit, Rename,
   Move to project/this Mac, Show Source & License, Show in Finder, Remove). The item sheet is the `library-item`
   dialog. Voice stays provider-driven.
 
@@ -296,7 +305,7 @@ Max): 219 checks. After the fixes in the same change, nothing fails; open notes:
 | Edit cost at scale | one `setProperties` round trip: 27 ms at 100 clips, 78 ms at 1000 (release build; core alone is ~3 ms). About 60% of the main thread is `TimelineCanvas.draw` repainting the whole visible timeline after each edit (clip titles, filmstrips) |
 | Edit cost at scale, fixed (#348) | the real cost was Core Animation rasterizing every visible clip (`CA::CG::Queue`, the main thread waits for it in `CABackingStoreGetFrontTexture`), not the draw calls. The canvas now diffs the drawn project against the new one and repaints only changed clips and gaps (`TimelineCanvas+Invalidation.swift`); the header repaints only when layers change. Release, M1 Max: 1,000 clips 52.5 → 22.9 ms per edit (100 edits 4.3 → 2.2 s, 100 undos 4.3 → 2.0 s); 100 clips 27 → 15.6 ms. Most of what is left is SwiftUI updating other views |
 | Export | once, `context get` waited 0.6 s while an export finished; not reproduced in three reruns |
-| Known gaps | `library place` of audio and sticker items (#78, #64) |
+| Known gaps | `library place` of image sticker items (#64) |
 
 ## Agent automation latency (2026-10-03)
 
