@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+- **Edits that change nothing are not edits (#347).** `timeline apply` with a batch that leaves the project as it
+  was keeps the revision, adds no undo step, no agent ◆ marks and no plugin hook, and returns `changed: false`.
+  Repeated agent edits no longer fill History or make other clients' `baseRev` stale.
+- **Re-importing a file reuses its media (#346).** `media import` (and Import or drop in the app) of a file the
+  project already has, unchanged, returns that media with `existing: true` instead of a duplicate entry;
+  `--place` still places a new item.
+
 - **Shorter agent kit skill names.** Kit 0.1.0 is the plugin `bc` with skills such as `audio-mix`, so Claude Code
   and Codex show `bc:audio-mix` instead of `bashcut:bashcut-audio-mix`. Codex links are `bc-<skill>`. `agent setup`
   replaces the old `bashcut` plugin and removes the old `bashcut-<skill>` links; Settings → Agents shows an old
