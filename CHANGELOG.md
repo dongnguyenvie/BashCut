@@ -18,6 +18,11 @@
   are installed, in range and ready, and installing it from the registry offers them next. `features` and the
   hello's host feature list replace one API bump per feature. New commands: `plugins views`, `plugins view`,
   `plugins view-event`, `plugins invoke`; `plugins list` reports container, views, requires and uses.
+  Benchmarked (`scripts/verify.sh perf`, plus a live run): plugin answers are read with `JSONValue(parsing:)`
+  (`JSONSerialization`, same values as `JSONDecoder`; 186 KB in 5.7 ms instead of 82 ms), the panel is one lazy
+  column (worst main-actor stall for a 1900-component view 212 ms → 16 ms in a debug build), streamed renders are
+  drawn at most every 60 ms (300 in one request: 179 ms → 16 ms), answers are parsed off the main actor, and typing
+  15 characters in a search field sends one request.
 - **Plugins can ship agent skills (#375, #376, #377).** Plugin API 7 adds `contributes.skills`: `SKILL.md` folders
   inside the plugin (front matter `name` equal to the folder, a `description`; at most 16 skills, 64 KB per
   `SKILL.md`, 2 MB per folder, nothing linking out of the plugin). A bad skill is reported by `plugins validate` and

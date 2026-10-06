@@ -854,6 +854,10 @@ A component type this BashCut does not know draws "Needs a newer BashCut" and th
 ### Limits and performance
 
 - A view renders only while its panel is on screen; `refreshSeconds` timers stop when it is hidden.
+- The panel is one lazy column: only the top-level components on screen are built, so a long view scrolls smoothly.
+  Put long content at the top level or in a `list` rather than inside one huge `section`.
+- Streamed `render` events are drawn at most every 60 ms; the ones in between are skipped. Answers are read off the
+  main thread.
 - One request per view runs at a time. Events that arrive meanwhile wait in order; a newer `change` of the same input
   replaces a waiting one (at most 16 wait).
 - A view has at most 2000 components, nested at most 12 deep; longer texts are cut at 20,000 characters.

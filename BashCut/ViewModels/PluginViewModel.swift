@@ -109,12 +109,17 @@ import Foundation
     var values: [String: JSONValue] = [:]
     private(set) var busy = false
     private(set) var error: String?
-    /// Last event-time render the plugin streamed while working (`event` `{kind: "render"}`).
+    /// The opaque `state` the plugin returned last, sent back with the next request.
     private var state: JSONValue?
     @ObservationIgnored private var queue: [PluginViewEvent] = []
     @ObservationIgnored private var refresh: Task<Void, Never>?
     @ObservationIgnored private var generation = 0
+    /// The newest streamed render not drawn yet, and whether a draw is scheduled.
+    @ObservationIgnored private var streamedRender: JSONValue?
+    @ObservationIgnored private var streamFlush: Task<Void, Never>?
     static let maximumQueue = 16
+    /// Streamed renders are drawn at most this often; the ones in between are skipped.
+    static let streamInterval: Duration = .milliseconds(60)
 
     init(document: ProjectDocument, pluginID: String, viewID: String) {
         self.document = document
@@ -149,6 +154,7 @@ import Foundation
     func forget() {
         generation += 1
         refresh?.cancel()
+        dropStreamedRender()
         tree = nil
         state = nil
         values = [:]
@@ -193,11 +199,18 @@ import Foundation
             self.streamed(value)
         }
         do {
+            let started = DispatchTime.now().uptimeNanoseconds
             let result = try await document.plugins.service.view(
                 event == nil ? "view.render" : "view.event", params: params, plugin: plugin, host: host)
-            let next = try PluginViewTree(parsing: result)
+            let answered = DispatchTime.now().uptimeNanoseconds
+            let next = try await Self.parse(result)
             guard self.generation == generation else { return next }
+            dropStreamedRender()
             apply(next, typing: event)
+            let applied = DispatchTime.now().uptimeNanoseconds
+            DebugLog.write("plugin", "view \(pluginID)/\(viewID) \(event?.kind.rawValue ?? "render"): plugin "
+                + "\((answered - started) / 1_000_000) ms, parse+apply \((applied - answered) / 1_000) µs, "
+                + "\(next.nodes.count) components")
             return next
         } catch {
             guard self.generation == generation else { throw error }
@@ -225,13 +238,35 @@ import Foundation
         if let notify = next.notify { document.message = notify }
     }
 
-    /// `{"kind": "render", "body": […], "title"?}` redraws while the request runs; `{"kind": "notify", "text"}` shows a
-    /// status message.
+    private func dropStreamedRender() {
+        streamFlush?.cancel()
+        streamFlush = nil
+        streamedRender = nil
+    }
+
+    /// Reads an answer off the main actor (a large view takes milliseconds to check).
+    private nonisolated static func parse(_ result: JSONValue) async throws -> PluginViewTree {
+        try PluginViewTree(parsing: result)
+    }
+
+    /// `{"kind": "render", "body": […], "title"?}` redraws while the request runs, at most every `streamInterval`
+    /// (a plugin that streams hundreds would otherwise redraw the panel for each); `{"kind": "notify", "text"}` shows
+    /// a status message.
     private func streamed(_ event: JSONValue) {
         switch event.object["kind"]?.string {
         case "render":
-            guard let next = try? PluginViewTree(parsing: event) else { return }
-            tree = PluginViewTree(title: next.title ?? tree?.title, body: next.body, state: tree?.state)
+            streamedRender = event
+            guard streamFlush == nil else { return }
+            let generation = self.generation
+            streamFlush = Task { [weak self] in
+                try? await Task.sleep(for: Self.streamInterval)
+                guard let self, !Task.isCancelled, self.generation == generation else { return }
+                self.streamFlush = nil
+                guard let event = self.streamedRender, let next = try? await Self.parse(event) else { return }
+                self.streamedRender = nil
+                guard !Task.isCancelled, self.generation == generation, self.busy else { return }
+                self.tree = PluginViewTree(title: next.title ?? self.tree?.title, body: next.body, state: self.tree?.state)
+            }
         case "notify":
             if let text = event.object["text"]?.string { document.message = String(text.prefix(300)) }
         default:

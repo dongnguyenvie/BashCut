@@ -15,7 +15,9 @@ struct PluginPanelView: View {
             header
             Divider()
             ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
+                // One lazy column for the whole panel: only the components on screen are built, so a view with
+                // thousands of components costs what its visible part costs.
+                LazyVStack(alignment: .leading, spacing: 8) {
                     let views = plugin.manifest.views
                     if views.count > 1 {
                         Picker("View", selection: Binding(
@@ -25,14 +27,24 @@ struct PluginPanelView: View {
                             ForEach(views) { view in Text(verbatim: view.title.text).tag(view.id) }
                         }.labelsHidden().pickerStyle(.segmented)
                     }
-                    if let view = document.pluginPanelView(plugin) {
-                        PluginViewHost(model: document.pluginViews.model(plugin: plugin.id, view: view.id))
-                            .id(plugin.id + "/" + view.id)
+                    if let model = selectedModel {
+                        PluginViewRows(model: model)
                     }
-                    PluginPanelManager(document: document, plugin: plugin)
+                    PluginPanelManager(document: document, plugin: plugin).padding(.top, 4)
                 }.padding(10)
             }
+            .task(id: selectedModel.map { $0.pluginID + "/" + $0.viewID }) {
+                // The view is visible while this task lives: it ends when the panel closes or shows another view.
+                guard let model = selectedModel else { return }
+                model.visible = true
+                while !Task.isCancelled { try? await Task.sleep(for: .seconds(3600)) }
+                model.visible = false
+            }
         }.background(Color.white.opacity(0.025))
+    }
+
+    private var selectedModel: PluginViewModel? {
+        document.pluginPanelView(plugin).map { document.pluginViews.model(plugin: plugin.id, view: $0.id) }
     }
 
     private var header: some View {
@@ -123,34 +135,30 @@ private struct PluginPanelManager: View {
     }
 }
 
-/// Draws a plugin view and keeps it on screen only while it is visible.
-struct PluginViewHost: View {
+/// A plugin view as rows of the panel's lazy column: its title, an error, then its top-level components.
+struct PluginViewRows: View {
     @Bindable var model: PluginViewModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if let title = model.tree?.title {
-                HStack {
-                    Text(verbatim: title).font(.subheadline.bold())
-                    Spacer()
-                    if model.busy { ProgressView().controlSize(.small) }
-                }
-            } else if model.busy {
-                ProgressView().controlSize(.small)
+        if let title = model.tree?.title {
+            HStack {
+                Text(verbatim: title).font(.subheadline.bold())
+                Spacer()
+                if model.busy { ProgressView().controlSize(.small) }
             }
-            if let error = model.error {
-                VStack(alignment: .leading, spacing: 4) {
-                    Label(error, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.orange)
-                        .textSelection(.enabled)
-                    Button("Try Again") { model.load() }.controlSize(.small)
-                }
-            }
-            if let tree = model.tree {
-                PluginNodesView(nodes: tree.body, model: model)
+        } else if model.busy {
+            ProgressView().controlSize(.small)
+        }
+        if let error = model.error {
+            VStack(alignment: .leading, spacing: 4) {
+                Label(error, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.orange)
+                    .textSelection(.enabled)
+                Button("Try Again") { model.load() }.controlSize(.small)
             }
         }
-        .onAppear { model.visible = true }
-        .onDisappear { model.visible = false }
+        if let tree = model.tree {
+            ForEach(tree.body) { node in PluginNodeView(node: node, model: model) }
+        }
     }
 }
 

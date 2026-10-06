@@ -332,7 +332,7 @@ actor PluginSession {
 
     private func receive(_ line: Data) {
         guard !line.allSatisfy({ $0 == 0x20 || $0 == 0x0D || $0 == 0x09 }) else { return }
-        guard let message = try? JSONDecoder().decode(JSONValue.self, from: line), case .object(let fields) = message
+        guard let message = try? JSONValue(parsing: line), case .object(let fields) = message
         else {
             failAll(PluginError.invalid("Plugin session sent invalid JSON"))
             return
