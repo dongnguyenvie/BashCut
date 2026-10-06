@@ -64,7 +64,10 @@ struct AskAgentView: View {
     }
 
     private var subtitle: String {
-        let target = document.selectedID ?? String(localized: "Whole project")
+        let count = document.selectedIDs.count
+        let target = count > 1
+            ? String(format: String(localized: "%d selected clips"), count)
+            : document.selectedID ?? String(localized: "Whole project")
         guard let agentTitle else { return String(localized: "Open an agent in the dock first, then ask again") }
         return String(format: String(localized: "To %@ · about %@ · ⌘↩ sends"), agentTitle, target)
     }

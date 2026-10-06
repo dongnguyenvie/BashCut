@@ -136,7 +136,7 @@ import Testing
         ] {
             #expect(await registry.handle(RPCRequest(method: method)).result == .bool(true))
         }
-        for method in ["ui.select", "ui.respond", "chat.send", "chat.command", "chat.reset",
+        for method in ["ui.select", "ui.respond", "chat.send", "chat.command", "chat.reset", "chat.attach", "chat.detach",
                        "timeline.undo", "timeline.redo", "captions.import", "export.start"] {
             #expect(await registry.handle(RPCRequest(method: method)).error?.code == -32001)
         }

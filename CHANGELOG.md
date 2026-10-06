@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+- **Send to Agent (#355).** Right-click a clip (or a multi-selection), the Clip menu or the multi-selection
+  Inspector → **Send to Agent** attaches the clips to the open agent's request. A chat agent shows them as chips
+  over its input (`Clip · Main · 00:12–00:18`; × removes one) that stay when the selection changes; every message
+  carries them as a `[Scope]` block with the item IDs and the rule to edit only those, and the transcript keeps
+  them. A terminal agent gets the block pasted in its input. With no agent open, the first chat agent opens. New:
+  `ui action clip.send-to-agent`, `chat attach --items a,b`, `chat detach`, `scope` in `context get` and
+  `chat transcript`, and `scope` in the chat plugin's `turn` parameters. The Ask agent sheet names the number of
+  selected clips.
 - **Timeline multi-select (#357).** ⌘-click toggles a clip, ⇧-click selects a run of clips on a layer, dragging
   over empty space draws a selection rectangle, ⌘A selects every clip and Esc clears the selection. Delete, Lift,
   Mute, Copy, Cut and Paste act on every selected clip as one undo step, and dragging a selected clip moves them all

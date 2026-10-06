@@ -49,7 +49,7 @@ extension ProjectDocument {
         case .clearRecentProjects: return !settings.recentProjects.isEmpty
         case .selectAll: return project.tracks.contains { !$0.items.isEmpty }
         case .deselect: return !selectedIDs.isEmpty
-        case .copyClips, .cutClips: return !selectedItems.isEmpty
+        case .copyClips, .cutClips, .sendToAgent: return !selectedItems.isEmpty
         case .pasteClips: return hasProject && clipboard != nil
         case .muteClips: return selectedItems.contains { $0.mediaID != nil }
         case .showHistory, .showReview, .showPlugins, .showDoctor, .showSettings, .showAgentKit, .showSections,
@@ -146,6 +146,7 @@ extension ProjectDocument {
         case .cutClips: try cutSelection(author: author)
         case .pasteClips: try pasteClipboard(author: author)
         case .muteClips: try toggleMuteSelection(author: author)
+        case .sendToAgent: agents.sendToAgent(selectedIDs)
         default: try performOtherAction(action)
         }
     }

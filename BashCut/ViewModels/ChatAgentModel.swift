@@ -21,6 +21,8 @@ enum ChatEntryKind: String, Codable { case user, assistant, tool, notice, error 
         var callID: String?
         var name: String?
         var ok: Bool?
+        /// User messages: the timeline items attached when it was sent.
+        var scope: [AgentScopeItem]?
     }
 
     private struct Saved: Codable {
@@ -43,6 +45,9 @@ enum ChatEntryKind: String, Codable { case user, assistant, tool, notice, error 
     /// The message being written in the agent's tab, and a frame to attach (the dock's quick prompts fill these).
     var draft = ""
     var draftImage: URL?
+    /// Timeline items attached with Send to Agent, shown as chips over the input. Every message carries them until
+    /// the user removes them.
+    var scope: [AgentScopeItem] = []
     private(set) var conversation = UUID().uuidString
     private var turn: Task<Void, Never>?
     private let commandSession = ChatCommandSession()
@@ -67,12 +72,15 @@ enum ChatEntryKind: String, Codable { case user, assistant, tool, notice, error 
     func send(_ text: String, imageURL: URL? = nil) {
         let message = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !message.isEmpty, !running else { return }
-        append(Entry(kind: .user, text: message + (imageURL.map { "\n[\($0.lastPathComponent)]" } ?? "")))
+        let scope = scope
+        append(Entry(
+            kind: .user, text: message + (imageURL.map { "\n[\($0.lastPathComponent)]" } ?? ""),
+            scope: scope.isEmpty ? nil : scope))
         running = true
         error = ""
         streaming = nil
         turn = Task { [weak self] in
-            await self?.run(message, imageURL: imageURL)
+            await self?.run(message, imageURL: imageURL, scope: scope)
             self?.running = false
             self?.streaming = nil
             self?.save()
@@ -94,6 +102,7 @@ enum ChatEntryKind: String, Codable { case user, assistant, tool, notice, error 
         revokeToken()
         conversation = UUID().uuidString
         entries = []
+        scope = []
         error = ""
         save()
     }
@@ -114,6 +123,7 @@ enum ChatEntryKind: String, Codable { case user, assistant, tool, notice, error 
         stop()
         revokeToken()
         entries = []
+        scope = []
         conversation = UUID().uuidString
         error = ""
         guard let url = stateURL, let data = try? Data(contentsOf: url),
@@ -126,13 +136,13 @@ enum ChatEntryKind: String, Codable { case user, assistant, tool, notice, error 
     var transcriptJSON: JSONValue {
         .object([
             "conversation": .string(conversation), "running": .bool(running),
-            "entries": .array(entries.map(Self.json)),
+            "entries": .array(entries.map(Self.json)), "scope": .array(scope.map(\.json)),
         ])
     }
 
     // MARK: Turn
 
-    private func run(_ text: String, imageURL: URL?) async {
+    private func run(_ text: String, imageURL: URL?, scope: [AgentScopeItem]) async {
         do {
             let resolved = try await resolve()
             let (events, sink) = AsyncStream.makeStream(of: JSONValue.self)
@@ -143,7 +153,7 @@ enum ChatEntryKind: String, Codable { case user, assistant, tool, notice, error 
                 guard let self else { return .failure(PluginCallFailure(code: -32603, message: "The agent closed")) }
                 return await self.perform(method, params)
             })
-            let result = try await document.plugins.service.chat(turnParams(text, imageURL: imageURL), using: resolved, host: host)
+            let result = try await document.plugins.service.chat(turnParams(text, imageURL: imageURL, scope: scope), using: resolved, host: host)
             sink.finish()
             await pump.value
             switch result.object["stopReason"]?.string {
@@ -159,9 +169,13 @@ enum ChatEntryKind: String, Codable { case user, assistant, tool, notice, error 
         }
     }
 
-    private func turnParams(_ text: String, imageURL: URL?) -> [String: JSONValue] {
-        [
-            "op": .string("turn"), "conversation": .string(conversation), "text": .string(text),
+    /// The scope rides in the text for any model, and as `scope` for plugins that read it.
+    private func turnParams(_ text: String, imageURL: URL?, scope: [AgentScopeItem]) -> [String: JSONValue] {
+        let scopeText = AgentScope.text(scope, fps: document.project.fps)
+        return [
+            "op": .string("turn"), "conversation": .string(conversation),
+            "text": .string(scopeText.isEmpty ? text : scopeText + "\n\n" + text),
+            "scope": .array(scope.map(\.json)),
             "images": .array(imageURL.map { [.string($0.path)] } ?? []),
             "context": .string(document.contextText() + "\n" + TimelineSummary.text(document.project) + "\n"
                 + document.agents.knowledgeStore.summary().text),
@@ -266,6 +280,7 @@ enum ChatEntryKind: String, Codable { case user, assistant, tool, notice, error 
         var fields: [String: JSONValue] = ["kind": .string(entry.kind.rawValue), "text": .string(entry.text)]
         if let name = entry.name { fields["name"] = .string(name) }
         if let ok = entry.ok { fields["ok"] = .bool(ok) }
+        if let scope = entry.scope { fields["scope"] = .array(scope.map(\.json)) }
         return .object(fields)
     }
 

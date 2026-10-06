@@ -78,7 +78,7 @@ Requires `"transport": "session"` and API 4. Method `agent.chat`; `params.op` se
 
 | op | Params | Result | Notes |
 |---|---|---|---|
-| `turn` | `conversation` (string), `text`, `images` (paths, optional), `context` (string), `instructions` (string), `tools` (array of `{name, method, description, inputSchema}`), `kit` (`{root, skillsFolder, version, skills:[{name, description}]}` or null), `options` | `{"stopReason":"end"\|"aborted"\|"error","error"?}` | Streams `event`s and makes `call`s while it runs |
+| `turn` | `conversation` (string), `text` (begins with the `[Scope]` block when clips are attached), `images` (paths, optional), `scope` (array of attached items `{id, linked?, track, layer, name, start, end}`, may be empty), `context` (string), `instructions` (string), `tools` (array of `{name, method, description, inputSchema}`), `kit` (`{root, skillsFolder, version, skills:[{name, description}]}` or null), `options` | `{"stopReason":"end"\|"aborted"\|"error","error"?}` | Streams `event`s and makes `call`s while it runs |
 | `reset` | `conversation` | `{}` | Forgets the conversation |
 | `status` | `options` | `{"ready":bool,"provider","model","detail"}` | Is a key set, and is the model known |
 | `commands` | `options` | `{"commands":[{"name","args"?,"summary","choices"?}]}` | The plugin's own slash commands. `choices` are argument suggestions, such as thinking levels or model IDs |
@@ -143,11 +143,20 @@ calls back with `method`.
 
   Survey, Write VO and Review fill the shown agent's input box; **Ask agent…** (⌘K) sends the request written in
   the Ask agent sheet as a turn.
+
+  **Send to Agent** (clip menu, Clip menu, multi-selection Inspector; `ui action clip.send-to-agent`) attaches the
+  selected clips as chips over the input (`Clip · Main · 00:12–00:18`, a linked pair once). Chips stay when the
+  selection changes and until the user removes them or starts a new conversation; every message carries them
+  as a `[Scope]` block (item IDs, layer, frames and the rule "Edit only these items; ask before changing anything
+  else") and as `scope`. The transcript keeps each message's scope. A terminal tab gets the block pasted in its
+  input instead. With no agent open it opens the first chat agent, or shows the dock when there is none.
 - **CLI/MCP:**
   - `chat status` lists every chat agent;
   - `chat send <text> [--plugin <id>] [--image <path>]` starts a turn and returns at once;
   - `chat transcript [--plugin]` shows the conversation; poll it until `running` is false;
   - `chat stop` and `chat reset`;
+  - `chat attach --items a,b [--plugin]` and `chat detach [--items a] [--plugin]` change the chips;
+    `context get` reports the shown chat tab's as `scope`;
   - `ui action agent.open-chat` opens the first chat agent's tab;
   - `ui view` reports `chatTab`.
 

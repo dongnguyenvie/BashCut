@@ -1,6 +1,12 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Send to Agent": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Send to Agent" } }, "vi": { "stringUnit": { "state": "translated", "value": "Gửi cho agent" } } } },
+    "%d selected clips": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%d selected clips" } }, "vi": { "stringUnit": { "state": "translated", "value": "%d clip đã chọn" } } } },
+    "Open an agent in the dock, then send the clips to it again.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Open an agent in the dock, then send the clips to it again." } }, "vi": { "stringUnit": { "state": "translated", "value": "Hãy mở một agent trong dock rồi gửi lại các clip." } } } },
+    "Remove from the request": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Remove from the request" } }, "vi": { "stringUnit": { "state": "translated", "value": "Bỏ khỏi yêu cầu" } } } },
+    "Remove %@": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Remove %@" } }, "vi": { "stringUnit": { "state": "translated", "value": "Bỏ %@" } } } },
+    "The agent edits only these clips and asks before changing anything else.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "The agent edits only these clips and asks before changing anything else." } }, "vi": { "stringUnit": { "state": "translated", "value": "Agent chỉ sửa các clip này và sẽ hỏi trước khi đổi bất cứ thứ gì khác." } } } },
     "Mute or Unmute Clips": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Mute or Unmute Clips" } }, "vi": { "stringUnit": { "state": "translated", "value": "Tắt/bật tiếng clip" } } } },
     "Unmute": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Unmute" } }, "vi": { "stringUnit": { "state": "translated", "value": "Bật tiếng" } } } },
     "Lift": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Lift" } }, "vi": { "stringUnit": { "state": "translated", "value": "Nhấc ra" } } } },

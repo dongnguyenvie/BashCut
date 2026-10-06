@@ -67,6 +67,22 @@ extension CommandCatalog {
                 plugin,
                 CommandParameter("image", .string, "PNG or JPEG to attach, such as a ui frame", cli: .option("image")),
             ]),
+        CommandSpec(
+            "chat.attach", .ui,
+            "Attach timeline items to a chat agent's request like Send to Agent on the clip menu: they show as chips "
+                + "in its input, and every message carries them with the rule to edit only these items until they are "
+                + "detached. Items already attached (or their linked partner) are skipped.",
+            parameters: [
+                CommandParameter("items", .string, "Item IDs, comma-separated", required: true, cli: .option("items")),
+                plugin,
+            ]),
+        CommandSpec(
+            "chat.detach", .ui,
+            "Remove attached timeline items from a chat agent's request, like the chip's ×; without --items, all of them.",
+            parameters: [
+                CommandParameter("items", .string, "Item IDs, comma-separated", cli: .option("items")),
+                plugin,
+            ]),
         CommandSpec("chat.stop", .ui, "Stop a chat agent's running turn.", parameters: [plugin]),
         CommandSpec(
             "chat.commands", .read,
