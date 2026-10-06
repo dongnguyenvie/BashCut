@@ -267,6 +267,20 @@ swift build -c release --product bashcut-bench
 .build/release/bashcut-bench <footage-dir> --clips 20 [--proxies]
 ```
 
+## Feature bench (2026-10-06)
+
+`scripts/bench-features.py [--only groups] [--stress N] [--keep]` against the running app (debug Xcode build, M1
+Max): 219 checks. After the fixes in the same change, nothing fails; open notes:
+
+| Finding | Detail |
+|---|---|
+| Re-importing a file | `media import` of a file already in the project adds a second media entry (no reuse) |
+| Edits that change nothing | still make a revision and an undo step |
+| Slow service commands (UI stays responsive) | `agent status` ~0.9 s, `chat status` ~0.5 s, `storage get` 0.3–0.6 s |
+| Edit cost at scale | one `setProperties` round trip: 27 ms at 100 clips, 78 ms at 1000 (release build; core alone is ~3 ms). About 60% of the main thread is `TimelineCanvas.draw` repainting the whole visible timeline after each edit (clip titles, filmstrips) |
+| Export | once, `context get` waited 0.6 s while an export finished; not reproduced in three reruns |
+| Known gaps | `library place` of audio and sticker items (#78, #64) |
+
 ## Agent automation latency (2026-10-03)
 
 `scripts/bench-automation.py --edits 5` against the running app (debug build from `scripts/run.sh`, a 16:9 project

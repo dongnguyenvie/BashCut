@@ -5,6 +5,17 @@
 
 ## [Unreleased]
 
+- **Feature bench.** `scripts/bench-features.py` runs every command group end to end against the running app in a
+  scratch project (generated media; the open project is saved and reopened): media, timeline edits with exact
+  undo/redo checks, clip speed/motion/keyframes/reverse, layers, colour, captions, library, knowledge and skills,
+  dialogs, save and reopen, export length, OTIO, legacy EDL, service commands, a 500-clip stress project, and
+  whether the UI stays responsive during exports and slow commands. It writes report.md/report.json.
+- **Close buttons read "Cận cảnh" in Vietnamese.** The dialog button **Close** and the **Close** framing preset
+  shared one key, so every **Close** button showed the shot-size word. The framing preset is now **Close-up**
+  (Cận cảnh) and **Close** is **Đóng**.
+- `media place` and `media import --place` put audio media on the Music layer by default, like Import in the app;
+  they used the Main layer and failed with "audio media cannot go on a video layer".
+
 - **Library panels you can manage (#80).** Audio, Text, Stickers, Effects, Transitions and Filters each show their
   library items with search, pack, tag and scope filters, a badge on items an agent made and on items saved in the
   project or on this Mac, **Add…** and drag-and-drop for files (audio, sticker images) and packs, **Save selection

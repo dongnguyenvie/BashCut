@@ -107,7 +107,7 @@ public enum CommandCatalog {
                                  choices: ["video", "audio", "image"], cli: .option("kind")),
                 CommandParameter("place", .boolean, "Also place it on a layer", default: .bool(false),
                                  cli: .flag("place")),
-                CommandParameter("track", .string, "Layer ID for place; defaults to the main layer",
+                CommandParameter("track", .string, "Layer ID for place; defaults to the main layer (music for audio)",
                                  cli: .option("track")),
                 CommandParameter("atFrame", .integer, "Timeline frame for place", minimum: 0, cli: .option("at-frame")),
                 baseRevision,
@@ -124,11 +124,12 @@ public enum CommandCatalog {
             ]),
         CommandSpec(
             "media.place", .edit,
-            "Place project media on a layer (main by default), with linked sound on a dialogue layer; "
+            "Place project media on a layer (main by default, music for audio), with linked sound on a dialogue layer; "
                 + "an occupied range spills onto a free or new layer.",
             parameters: [
                 CommandParameter("media", .string, "Project media ID", required: true, cli: .option("media")),
-                CommandParameter("track", .string, "Layer ID; defaults to the main layer", cli: .option("track")),
+                CommandParameter("track", .string, "Layer ID; defaults to the main layer (music for audio)",
+                                 cli: .option("track")),
                 CommandParameter("atFrame", .integer, "Timeline frame; defaults to the playhead or the end of the main layer",
                                  minimum: 0, cli: .option("at-frame")),
                 baseRevision,

@@ -32,7 +32,7 @@ extension ProjectDocument {
         _ media: Media, trackID: String? = nil, at frame: Int? = nil, itemID: String = UUID().uuidString,
         author: Author = .user, baseRevision: Int? = nil
     ) throws -> (revision: Int, trackID: String) {
-        let trackID = try trackID ?? project.requireTrack(role: TrackRole.main, kind: "video").id
+        let trackID = try trackID ?? defaultTrackID(forKind: media.kind)
         let duration = media.placementFrames(in: project.fps)
         guard duration > 0 else { throw ProjectError.invalid("Media is too short") }
         var planner = LayerPlanner(project)
@@ -47,6 +47,12 @@ extension ProjectDocument {
                 + (used == trackID ? "" : " (SPILLED)")
                 + " linkedAudio=\(audio ?? "none (needs video layer, hasAudio=true and a dialogue layer)")")
         return (revision, used)
+    }
+
+    /// The layer media goes on when none is named: music for sound, Main for pictures (as Import does).
+    func defaultTrackID(forKind kind: String) throws -> String {
+        try (kind == "audio" ? project.requireTrack(role: TrackRole.music)
+            : project.requireTrack(role: TrackRole.main, kind: "video")).id
     }
 
     /// Moves an item and its linked partner, spilling onto free or new layers instead of overlapping.

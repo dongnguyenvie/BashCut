@@ -152,7 +152,7 @@ Add a media file (path relative to the project or absolute): video, audio or a s
 - `path`: string, required, path. Media file path
 - `kind`: string, one of video, audio, image. Media kind; from the file type by default
 - `place`: boolean, default false. Also place it on a layer
-- `track`: string. Layer ID for place; defaults to the main layer
+- `track`: string. Layer ID for place; defaults to the main layer (music for audio)
 - `atFrame`: integer, ≥ 0. Timeline frame for place
 - `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
 
@@ -166,11 +166,11 @@ Queue preview proxies (smaller, quick-to-seek copies in .bashcut/cache/proxies; 
 
 ### `bashcut media place --media <media> [--track <track>] [--at-frame <atFrame>] --base-rev <baseRev>`
 
-Place project media on a layer (main by default), with linked sound on a dialogue layer; an occupied range spills onto a free or new layer.
+Place project media on a layer (main by default, music for audio), with linked sound on a dialogue layer; an occupied range spills onto a free or new layer.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_media_place`
 - `media`: string, required. Project media ID
-- `track`: string. Layer ID; defaults to the main layer
+- `track`: string. Layer ID; defaults to the main layer (music for audio)
 - `atFrame`: integer, ≥ 0. Timeline frame; defaults to the playhead or the end of the main layer
 - `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
 

@@ -1448,6 +1448,12 @@
     "Close": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Close" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đóng" } }
+      }
+    },
+    "Close-up": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Close-up" } },
         "vi": { "stringUnit": { "state": "translated", "value": "Cận cảnh" } }
       }
     },
