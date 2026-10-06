@@ -36,9 +36,7 @@ extension ProjectDocument {
                 var mediaIDs: [String] = []
                 for url in urls {
                     let fileKind = kind == "video" && StillImageMovie.isImage(url) ? "image" : kind ?? Self.kind(of: url)
-                    let target = try trackID
-                        ?? (fileKind == "audio" ? project.requireTrack(role: TrackRole.music) : project.requireTrack(
-                            role: TrackRole.main, kind: "video")).id
+                    let target = try trackID ?? defaultTrackID(forKind: fileKind)
                     let start = at ?? project.insertionFrame(trackID: target, playhead: playhead)
                     let imported = try await Self.importedMedia(url: url, kind: fileKind, projectFPS: project.fps, root: root)
                     DebugLog.write(
@@ -79,7 +77,7 @@ extension ProjectDocument {
             var result: [String: JSONValue] = ["media": .string(imported.media.id)]
             if arguments.bool("place") {
                 let trackID = try arguments.optionalString("track")
-                    ?? document.project.requireTrack(role: TrackRole.main, kind: "video").id
+                    ?? document.defaultTrackID(forKind: imported.media.kind)
                 let itemID = UUID().uuidString
                 try planner.placeMedia(
                     imported.media, on: trackID,

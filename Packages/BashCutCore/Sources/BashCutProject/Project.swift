@@ -44,7 +44,7 @@ public struct ReframePreset: Sendable, Equatable, Identifiable {
     public static let all: [ReframePreset] = [
         .init(id: "wide", title: "Wide", zoom: 1, pan: 0, tilt: 0),
         .init(id: "medium", title: "Medium", zoom: 1.15, pan: 0, tilt: 0),
-        .init(id: "close", title: "Close", zoom: 1.3, pan: 0, tilt: 0),
+        .init(id: "close", title: "Close-up", zoom: 1.3, pan: 0, tilt: 0),
         .init(id: "left", title: "Left emphasis", zoom: 1.22, pan: -120, tilt: 0),
         .init(id: "right", title: "Right emphasis", zoom: 1.22, pan: 120, tilt: 0),
     ]
