@@ -297,7 +297,9 @@ the command mirrors something in the UI, see the parity rule in
 
 Edit commands need a live session token and the current revision as `--base-rev`. The server rejects stale
 revisions, file conflicts, busy operations and active timeline gestures; re-read the timeline and retry. Each
-apply is atomic and creates one undo step.
+apply is atomic and creates one undo step. The response has the new `rev` and `changed`. A batch that leaves the
+project exactly as it was returns `changed: false` with the current `rev`: no new revision, undo step, agent diff
+marks or plugin hooks.
 
 ```sh
 bashcut context get
@@ -381,6 +383,10 @@ the same planner as the timeline UI. When the range is taken, the clip goes to t
 kind and role, or to a new layer next to the target, and linked sound follows onto a dialogue layer. Both
 return the layer actually used. Raw `timeline apply` insert and move operations that would overlap are
 rejected.
+
+`media import` of a file the project already has (same path, same kind, rate, length, size and sound) reuses
+that media and returns `existing: true` instead of adding a duplicate. With `--place` it still places a new
+item; without it the revision stays the same.
 
 ## Library items
 

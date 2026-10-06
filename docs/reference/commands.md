@@ -95,7 +95,7 @@ Read the revision, format and tracks, including track IDs and roles.
 
 ### `bashcut timeline apply <ops.json> --base-rev <baseRev> [--label <label>] [--dry-run]`
 
-Atomically apply validated timeline operations as one undoable edit.
+Atomically apply validated timeline operations as one undoable edit; returns changed false and keeps the revision when nothing changes.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_timeline_apply`
 - `ops`: array, required. Operations array (CLI: path to ops.json)
@@ -146,7 +146,7 @@ List project media.
 
 ### `bashcut media import <path> [--kind <kind>] [--place] [--track <track>] [--at-frame <atFrame>] --base-rev <baseRev>`
 
-Add a media file (path relative to the project or absolute): video, audio or a still image (PNG keeps transparency; placed for 3 s, trims to any length). With place, also put it on a layer like Import.
+Add a media file (path relative to the project or absolute): video, audio or a still image (PNG keeps transparency; placed for 3 s, trims to any length). With place, also put it on a layer like Import. A file already in the project, unchanged, reuses its media and returns existing true.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_media_import`
 - `path`: string, required, path. Media file path

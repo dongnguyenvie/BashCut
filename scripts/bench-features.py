@@ -326,9 +326,11 @@ class Run:
                            f"{entry.get('name')}: no duration")
         b.step("media.list has every import with a duration", listed)
         def reimport():
-            again = edit("media.import", path=str(self.media_dir / "talk.mp4"), kind="video")["media"]
-            if again != self.media["talk.mp4"]:
-                return "NOTE importing the same file again adds a second media entry"
+            before = rev()
+            again = edit("media.import", path=str(self.media_dir / "talk.mp4"), kind="video")
+            expect(again["media"] == self.media["talk.mp4"] and again.get("existing") is True,
+                   f"importing the same file again returned {again}")
+            expect(rev() == before, f"reusing media without --place moved the revision {before} → {rev()}")
         b.step("media.import twice", reimport)
         b.step("media.import a missing file is rejected", lambda: self.rejects(
             lambda: edit("media.import", path=str(self.media_dir / "nope.mp4"))))
@@ -434,13 +436,16 @@ class Run:
         b.step("timeline.move then close-gap", move_and_gap)
         def noop():
             _, now = self.main_items()
-            before = rev()
             item = now[0]
-            apply([{"op": "setProperties", "item": item["id"], "patch": {"opacity": item.get("opacity", 1)}}])
-            after = rev()
-            if after != before:
+            op = [{"op": "setProperties", "item": item["id"], "patch": {"opacity": item.get("opacity", 1)}}]
+            # The first apply may store a default the item did not have yet; the second must change nothing.
+            first = apply(op)
+            middle = rev()
+            second = apply(op)
+            if first.get("changed"):
                 rpc("timeline.undo", {"baseRev": rev()})
-                return f"NOTE an edit that changes nothing still makes revision {after} and an undo step"
+            expect(second.get("changed") is False and second.get("rev") == middle,
+                   f"an edit that changes nothing returned {second} at revision {middle}")
         b.step("an edit that changes nothing", noop)
         b.step("timeline.get text", lambda: expect("MAIN" in rpc("timeline.get", {"format": "text"}), "no MAIN line"))
 

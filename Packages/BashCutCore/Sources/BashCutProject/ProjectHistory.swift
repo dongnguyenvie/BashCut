@@ -104,11 +104,14 @@ public struct ProjectHistory: Codable, Sendable {
     /// A non-nil `coalescingKey` merges continuous input into the previous step when that step used
     /// the same key and author less than a second ago and nothing else changed the project since.
     /// The kept entry's snapshot inverse still restores the state before the first merged edit.
+    /// An operation that changes nothing leaves the project, its revision and both stacks alone and returns false.
+    @discardableResult
     public mutating func apply(
         _ operation: EditOperation, label: String, author: Author = .user,
         baseRevision: Int? = nil, coalescingKey: String? = nil, now: Date = Date()
-    ) throws {
+    ) throws -> Bool {
         let result = try project.applying(operation, baseRevision: baseRevision)
+        guard result.changed else { return false }
         var merges = false
         if let key = coalescingKey, let last = coalescing, !undoStack.isEmpty, redoStack.isEmpty {
             merges = last.key == key && last.revision == project.revision && last.author == author
@@ -121,6 +124,7 @@ public struct ProjectHistory: Codable, Sendable {
         redoStack.removeAll()
         project = result.project
         coalescing = coalescingKey.map { ($0, project.revision, author, now) }
+        return true
     }
 
     public mutating func undo() throws {

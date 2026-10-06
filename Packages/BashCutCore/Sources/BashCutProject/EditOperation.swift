@@ -43,6 +43,8 @@ public indirect enum EditOperation: Codable, Sendable, Equatable {
 public struct EditResult: Sendable {
     public let project: Project
     public let inverse: EditOperation
+    /// False when the operation left the project as it was: `project` is then the input, revision included.
+    public var changed = true
 }
 
 extension Project {
@@ -55,14 +57,16 @@ extension Project {
         try next.perform(operation)
         try enforceLocks(after: next, operation: operation)
         next.removeInvalidTransitions()
+        var before = self
+        before.markValid()
+        // A restore that only moves the revision (an external reload) still counts, so revisions stay monotonic.
+        if next == self { return EditResult(project: before, inverse: .restore(before), changed: false) }
         guard max(revision, next.revision) < Int.max - 1 else {
             throw ProjectError.invalid("Revision counter exhausted")
         }
         next.revision = max(revision, next.revision) + 1
         try next.validate()
         next.markValid()
-        var before = self
-        before.markValid()
         return EditResult(project: next, inverse: .restore(before))
     }
 }

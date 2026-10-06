@@ -38,13 +38,18 @@ extension ProjectDocument {
                     let fileKind = kind == "video" && StillImageMovie.isImage(url) ? "image" : kind ?? Self.kind(of: url)
                     let target = try trackID ?? defaultTrackID(forKind: fileKind)
                     let start = at ?? project.insertionFrame(trackID: target, playhead: playhead)
-                    let imported = try await Self.importedMedia(url: url, kind: fileKind, projectFPS: project.fps, root: root)
+                    var imported = try await Self.importedMedia(url: url, kind: fileKind, projectFPS: project.fps, root: root)
+                    let existing = planner.project.existingMedia(like: imported.media)
                     DebugLog.write(
                         "import", "\(url.lastPathComponent) → \(mediaSummary(imported.media)) timelineFrames=\(imported.frames) "
-                            + "target=\(target) at=\(start)")
-                    try planner.add([.addMedia(imported.media)])
+                            + "target=\(target) at=\(start)" + (existing.map { " reusing \($0.id)" } ?? ""))
+                    if let existing {
+                        imported.media = existing
+                    } else {
+                        try planner.add([.addMedia(imported.media)])
+                        mediaIDs.append(imported.media.id)
+                    }
                     try planner.placeMedia(imported.media, on: target, at: start, duration: imported.frames)
-                    mediaIDs.append(imported.media.id)
                     at = start + imported.frames
                 }
                 try commitPlan(planner, label: "Import footage", author: .user, baseRevision: nil)
@@ -70,11 +75,18 @@ extension ProjectDocument {
             guard FileManager.default.fileExists(atPath: url.path) else { throw RPCFailure(-32602, "No file at \(url.path)") }
             let kind = arguments.optionalString("kind") ?? Self.kind(of: url)
             let base = try arguments.int("baseRev")
-            let imported = try await Self.importedMedia(url: url, kind: kind, projectFPS: document.project.fps, root: root)
-            DebugLog.write("import", "\(url.lastPathComponent) → \(document.mediaSummary(imported.media)) (automation)")
+            var imported = try await Self.importedMedia(url: url, kind: kind, projectFPS: document.project.fps, root: root)
+            let existing = document.project.existingMedia(like: imported.media)
+            DebugLog.write(
+                "import", "\(url.lastPathComponent) → \(document.mediaSummary(imported.media)) (automation)"
+                    + (existing.map { " reusing \($0.id)" } ?? ""))
             var planner = LayerPlanner(document.project)
-            try planner.add([.addMedia(imported.media)])
-            var result: [String: JSONValue] = ["media": .string(imported.media.id)]
+            if let existing {
+                imported.media = existing
+            } else {
+                try planner.add([.addMedia(imported.media)])
+            }
+            var result: [String: JSONValue] = ["media": .string(imported.media.id), "existing": .bool(existing != nil)]
             if arguments.bool("place") {
                 let trackID = try arguments.optionalString("track")
                     ?? document.defaultTrackID(forKind: imported.media.kind)
@@ -86,10 +98,13 @@ extension ProjectDocument {
                     duration: imported.frames, itemID: itemID)
                 result["item"] = .string(itemID)
             }
+            // Reusing media without placing it is an empty plan: it keeps the revision (#347).
             result["rev"] = .integer(
                 try document.commitPlan(planner, label: "Import media", author: author, baseRevision: base))
-            document.requestProxiesAfterImport([imported.media.id], author: author)
-            document.emitMediaImported([imported.media.id], author: author)
+            if existing == nil {
+                document.requestProxiesAfterImport([imported.media.id], author: author)
+                document.emitMediaImported([imported.media.id], author: author)
+            }
             if let item = result["item"]?.string {
                 result["track"] = document.project.tracks.first { $0.items.contains { $0.id == item } }.map { .string($0.id) }
                 result["linkedAudio"] = document.project.tracks.flatMap(\.items).first { $0.id == item }?

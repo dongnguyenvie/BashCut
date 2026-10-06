@@ -113,8 +113,9 @@ extension ProjectDocument {
             if arguments.bool("dryRun") {
                 return try document.dryRunEdit(operation, author: author, baseRevision: arguments.int("baseRev"))
             }
-            let revision = try document.commit(operation, label: label, author: author, baseRevision: arguments.int("baseRev"))
-            return .object(["rev": .integer(revision)])
+            let result = try document.commitEdit(
+                operation, label: label, author: author, baseRevision: arguments.int("baseRev"))
+            return .object(["rev": .integer(result.revision), "changed": .bool(result.changed)])
         }
         handleAuthored("timeline.undo") { document, arguments, author in
             .object(["rev": .integer(try document.commitUndo(author: author, baseRevision: arguments.int("baseRev")))])
