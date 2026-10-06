@@ -1071,18 +1071,18 @@ Put an entry back to how it was before a change from knowledge history: a remove
 
 ### `bashcut skills list [--scope <scope>]`
 
-List skills: the agent kit's (read-only), the ones for every project (user) and this project's, with whether agents get them (enabled) and their description.
+List skills: this project's, the ones for every project (user), the ones trusted and enabled plugins ship (plugin, read-only, named <plugin-id>:<name>) and the agent kit's (read-only), with whether agents get them (enabled), their description and path.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_skills_list`
-- `scope`: string, one of kit, user, project. Only this scope
+- `scope`: string, one of project, user, plugin, kit. Only this scope
 
 ### `bashcut skills get <name> [--scope <scope>]`
 
-Read a skill's SKILL.md. Without scope, the project's skill wins over the one for every project, which wins over the kit's.
+Read a skill's SKILL.md. Without scope, the project's skill wins over the one for every project, then a plugin's (<plugin-id>:<name>; with scope plugin a bare name works when one plugin has it), then the kit's. To change a plugin's skill, save a copy with skills save.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_skills_get`
-- `name`: string, required. Skill name (lowercase, hyphenated)
-- `scope`: string, one of kit, user, project. Where to look
+- `name`: string, required. Skill name; a plugin's is <plugin-id>:<name>
+- `scope`: string, one of project, user, plugin, kit. Where to look
 
 ### `bashcut skills save <name> <text-file> [--scope <scope>] [--session <session>]`
 

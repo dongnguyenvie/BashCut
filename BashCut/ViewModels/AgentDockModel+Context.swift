@@ -84,3 +84,15 @@ extension AgentDockModel {
         }
     }
 }
+
+extension TerminalSession {
+    func paste(_ text: String) {
+        // Bracketed paste prevents multiline context from becoming immediate shell commands. An agent that drops a
+        // paste's last newline gets it as a key after the paste instead (`newlineAfterPaste`).
+        var safe = text.replacingOccurrences(of: "\u{1b}", with: "")
+        let newline = safe.hasSuffix("\n") ? provider.newlineAfterPaste : nil
+        if newline != nil { safe.removeLast() }
+        view.send(source: view, data: Array(("\u{1b}[200~" + safe + "\u{1b}[201~").utf8)[...])
+        if let newline { view.send(source: view, data: newline[...]) }
+    }
+}

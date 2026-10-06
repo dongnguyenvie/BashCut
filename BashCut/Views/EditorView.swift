@@ -149,6 +149,9 @@ struct EditorView: View {
         .sheet(item: Bindable(document.plugins).pendingAction) { _ in
             PluginActionParamsSheet(document: document, model: document.plugins)
         }
+        .sheet(item: Binding(get: { document.plugins.confirmations.first }, set: { _ in })) { pending in
+            PluginConfirmSheet(pending: pending) { document.resolvePluginConfirm(pending.id, run: $0) }
+        }
         .sheet(isPresented: Bindable(document.ui).showPluginProposals) {
             PluginProposalSheet(document: document, model: document.plugins)
         }

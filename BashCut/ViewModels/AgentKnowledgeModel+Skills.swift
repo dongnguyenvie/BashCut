@@ -1,15 +1,18 @@
 import BashCutAgent
 import BashCutDocument
+import BashCutPlugin
 import Foundation
 
-/// A skill in the Knowledge window: one of this project, one for every project, or one of the agent kit.
+/// A skill in the Knowledge window: one of this project, one for every project, one a plugin ships (named
+/// `<plugin-id>:<name>`) or one of the agent kit. `allCases` is the lookup order of `skills get`.
 struct KnowledgeSkillRef: Hashable, Sendable {
-    enum Origin: String, CaseIterable, Sendable { case project, user, kit }
+    enum Origin: String, CaseIterable, Sendable { case project, user, plugin, kit }
     let origin: Origin
     let name: String
 
-    /// The knowledge scope of a project or user skill; nil for a kit skill.
+    /// The knowledge scope of a project or user skill; nil for a plugin or kit skill, which are read-only.
     var scope: KnowledgeScope? { KnowledgeScope(rawValue: origin.rawValue) }
+    var isReadOnly: Bool { scope == nil }
 }
 
 /// A change to a kit skill the user is writing: the kit is read-only, so it becomes a proposal in the inbox.
@@ -32,14 +35,21 @@ extension AgentKnowledgeModel {
 
     /// The text on disk of a skill, or nil when it is gone.
     func text(of ref: KnowledgeSkillRef) -> String? {
-        guard let scope = ref.scope else { return kit?.skillText(ref.name) }
-        return store?.skillText(ref.name, scope: scope)
+        switch ref.origin {
+        case .kit: return kit?.skillText(ref.name)
+        case .plugin: return pluginSkill(ref.name).flatMap { try? String(contentsOf: $0.file, encoding: .utf8) }
+        case .project, .user: return ref.scope.flatMap { store?.skillText(ref.name, scope: $0) }
+        }
     }
 
-    /// Every listed skill: this project's, then every project's, then the kit's.
+    /// A ready plugin's skill by `<plugin-id>:<name>`.
+    func pluginSkill(_ id: String) -> PluginSkill? { pluginSkills.first { $0.id == id } }
+
+    /// Every listed skill: this project's, then every project's, then the plugins', then the kit's.
     var skillRefs: [KnowledgeSkillRef] {
         skills.map { KnowledgeSkillRef(origin: .project, name: $0.name) }
             + userSkills.map { KnowledgeSkillRef(origin: .user, name: $0.name) }
+            + pluginSkills.map { KnowledgeSkillRef(origin: .plugin, name: $0.id) }
             + (kit?.skills ?? []).map { KnowledgeSkillRef(origin: .kit, name: $0) }
     }
 
@@ -50,6 +60,7 @@ extension AgentKnowledgeModel {
         loadSkillSummaries()
         let first = skills.first.map { KnowledgeSkillRef(origin: .project, name: $0.name) }
             ?? userSkills.first.map { KnowledgeSkillRef(origin: .user, name: $0.name) }
+            ?? pluginSkills.first.map { KnowledgeSkillRef(origin: .plugin, name: $0.id) }
             ?? kit?.skills.first.map { KnowledgeSkillRef(origin: .kit, name: $0) }
         selectSkill(selectedSkill.flatMap { text(of: $0) == nil ? nil : $0 } ?? first)
     }
@@ -68,6 +79,12 @@ extension AgentKnowledgeModel {
         }
     }
 
+    /// The plugins' skills changed: keeps the list current and drops the selection when its skill is gone.
+    func refreshPluginSkills() {
+        loadSkillSummaries()
+        if let selectedSkill, selectedSkill.origin == .plugin, text(of: selectedSkill) == nil { selectSkill(nil) }
+    }
+
     private func loadSkillSummaries() {
         skillSummaries = Dictionary(uniqueKeysWithValues: skillRefs.map { ref in
             (ref, SkillFrontMatter(text(of: ref) ?? "").summary)
@@ -80,7 +97,7 @@ extension AgentKnowledgeModel {
         let text = ref.flatMap(text(of:)) ?? ""
         skillText = text
         savedSkillText = text
-        if ref?.origin == .kit { skillPreview = true }
+        if ref?.isReadOnly == true { skillPreview = true }
     }
 
     // MARK: Editing
@@ -153,6 +170,22 @@ extension AgentKnowledgeModel {
             loadSkills()
             loadHistory()
             message = String(localized: "Skill deleted")
+        } catch { message = error.localizedDescription }
+    }
+
+    /// Copies a plugin's read-only skill to this project or every project under its own name, where it can be
+    /// changed (`skills get` then `skills save` do the same).
+    func copyPluginSkill(_ ref: KnowledgeSkillRef, to scope: KnowledgeScope) {
+        guard ref.origin == .plugin, let skill = pluginSkill(ref.name), let text = text(of: ref) else { return }
+        guard store?.skill(skill.name, scope: scope) == nil else {
+            message = String(format: String(localized: "A skill named %@ already exists there"), skill.name)
+            return
+        }
+        do {
+            try writeSkill(named: skill.name, text: text, scope: scope)
+            skillPreview = false
+            message = scope == .project
+                ? String(localized: "Skill copied to this project") : String(localized: "Skill copied for every project")
         } catch { message = error.localizedDescription }
     }
 

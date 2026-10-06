@@ -45,11 +45,6 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
             environment: launch.environment.map { "\($0.key)=\($0.value)" },
             currentDirectory: launch.directory)
     }
-    func paste(_ text: String) {
-        // Bracketed paste prevents multiline context from becoming immediate shell commands.
-        let safe = text.replacingOccurrences(of: "\u{1b}", with: "")
-        view.send(source: view, data: Array(("\u{1b}[200~" + safe + "\u{1b}[201~").utf8)[...])
-    }
     /// Presses Return in the terminal, sending what is in the agent's input.
     func submit() { view.send(source: view, data: [13][...]) }
     func runCommand(_ text: String) { view.send(source: view, data: Array((text + "\n").utf8)[...]) }
@@ -195,7 +190,7 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
                 toolsDirectory: toolsDirectory, prompt: prompt)
             let launch = try AgentLaunch.make(
                 provider: provider, workspace: directory, context: context,
-                resumeID: resumeID(for: provider), kit: document.agentKitLaunch(),
+                resumeID: resumeID(for: provider), kit: document.agentKitLaunch(), pluginSkills: document.plugins.skills,
                 environment: document.currentAgentEnvironment)
             let session = TerminalSession(provider: provider, token: token, launch: launch, icon: icon)
             sessions.append(session)

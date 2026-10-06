@@ -184,6 +184,8 @@ public enum PluginLocalSource {
         // Library packs (API 6): each pack.json and every file it names, inside the plugin folder.
         let plugin = InstalledPlugin(manifest: manifest, directory: folder)
         report.problems += PluginLibrary.items(of: plugin).problems.map { "contributes.library: " + $0 }
+        // Agent skills (API 7): each folder inside the plugin, with a SKILL.md that names and describes it.
+        report.problems += PluginSkills.skills(of: plugin).problems.map { "contributes.skills: " + $0 }
         // `validate` already refused a path that leaves the folder; here, check the file itself.
         let entrypoint = folder.appendingPathComponent(manifest.entrypoint).standardizedFileURL
         if manifest.entrypoint.isEmpty || !entrypoint.path.hasPrefix(folder.standardizedFileURL.path + "/") {

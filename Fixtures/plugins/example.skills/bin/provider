@@ -1,0 +1,5 @@
+#!/bin/sh
+# Example BashCut plugin (plugin API 7): it only ships an agent skill (skills/loudness-check), so BashCut never
+# starts this program. A plugin that adds a capability would answer its requests here.
+echo '{"error": {"code": "unsupported", "message": "example.skills only ships an agent skill"}}'
+exit 1

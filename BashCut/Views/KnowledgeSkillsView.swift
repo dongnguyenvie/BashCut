@@ -1,9 +1,11 @@
 import BashCutAgent
+import BashCutPlugin
 import SwiftUI
 
-/// The Skills section of the Knowledge window (#71): this project's skills, the ones for every project and the agent
-/// kit's. Project and user skills are edited with a Markdown preview, turned on or off and deleted; kit skills are
-/// read-only with "Propose change…". Every action here is also a `skills` command.
+/// The Skills section of the Knowledge window (#71): this project's skills, the ones for every project, the ones ready
+/// plugins ship (#377) and the agent kit's. Project and user skills are edited with a Markdown preview, turned on or
+/// off and deleted; plugin skills are read-only with Copy to this project or every project; kit skills are read-only
+/// with "Propose change…". Every action here is also a `skills` command.
 struct KnowledgeSkillsSection: View {
     @Bindable var model: AgentKnowledgeModel
 
@@ -33,6 +35,16 @@ struct KnowledgeSkillsSection: View {
                 Section("This project") { rows(model.skills, origin: .project) }
             }
             Section("Every project") { rows(model.userSkills, origin: .user) }
+            if !model.pluginSkills.isEmpty {
+                Section("Plugins") {
+                    ForEach(model.pluginSkills) { skill in
+                        let ref = KnowledgeSkillRef(origin: .plugin, name: skill.id)
+                        KnowledgeSkillRow(name: skill.name, summary: model.skillSummaries[ref], plugin: skill.pluginName)
+                            .tag(ref)
+                            .contextMenu { PluginSkillCopyButtons(model: model, ref: ref) }
+                    }
+                }
+            }
             if let kit = model.kit {
                 Section(String(format: String(localized: "Agent kit %@"), kit.version)) {
                     ForEach(kit.skills, id: \.self) { name in
@@ -77,12 +89,15 @@ private struct KnowledgeSkillRow: View {
     let name: String
     let summary: String?
     var skill: AgentKnowledgeSkill?
+    /// The plugin that ships it, for a plugin skill.
+    var plugin: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
             HStack(spacing: 6) {
                 Text(name).foregroundStyle(skill?.enabled == false ? .secondary : .primary)
                 Spacer(minLength: 4)
+                if let plugin { KnowledgeChip(text: plugin, color: .teal) }
                 if let skill {
                     if !skill.enabled { KnowledgeChip(text: "Off", color: .gray) }
                     if skill.claude { KnowledgeChip(text: "Claude", color: .purple) }
@@ -101,7 +116,7 @@ private struct KnowledgeSkillDetail: View {
     let ref: KnowledgeSkillRef
 
     private var isKit: Bool { ref.origin == .kit }
-    private var editable: Bool { !isKit || model.kitProposal != nil }
+    private var editable: Bool { !ref.isReadOnly || (isKit && model.kitProposal != nil) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -127,7 +142,7 @@ private struct KnowledgeSkillDetail: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
                     Text(ref.name).font(.headline)
-                    KnowledgeChip(text: scopeTitle, color: isKit ? .indigo : .gray)
+                    KnowledgeChip(text: scopeTitle, color: isKit ? .indigo : ref.origin == .plugin ? .teal : .gray)
                     if let skill = model.selectedSkillEntry, !skill.enabled { KnowledgeChip(text: "Off", color: .gray) }
                 }
                 if let path {
@@ -136,7 +151,9 @@ private struct KnowledgeSkillDetail: View {
                 }
             }
             Spacer()
-            if isKit {
+            if ref.origin == .plugin {
+                Menu("Copy…") { PluginSkillCopyButtons(model: model, ref: ref) }.fixedSize()
+            } else if isKit {
                 if model.kitProposal == nil {
                     Button("Propose change…", systemImage: "square.and.pencil", action: model.beginKitProposal)
                 }
@@ -157,6 +174,7 @@ private struct KnowledgeSkillDetail: View {
         switch ref.origin {
         case .project: "This project"
         case .user: "Every project"
+        case .plugin: model.pluginSkill(ref.name)?.pluginName ?? String(localized: "Plugin")
         case .kit: "Agent kit"
         }
     }
@@ -164,12 +182,16 @@ private struct KnowledgeSkillDetail: View {
     private var path: String? {
         switch ref.origin {
         case .kit: model.kit?.skillsFolder.appendingPathComponent("\(ref.name)/SKILL.md").path
+        case .plugin: model.pluginSkill(ref.name)?.file.path
         default: model.selectedSkillEntry?.file.path
         }
     }
 
     @ViewBuilder private var footer: some View {
-        if isKit {
+        if ref.origin == .plugin {
+            Text("Plugin skills are read-only and go away with the plugin. Copy one to change it.")
+                .font(.caption).foregroundStyle(.secondary)
+        } else if isKit {
             if let draft = model.kitProposal {
                 let binding = Binding(get: { model.kitProposal ?? draft }, set: { model.kitProposal = $0 })
                 VStack(alignment: .leading, spacing: 6) {
@@ -195,6 +217,19 @@ private struct KnowledgeSkillDetail: View {
                 Button("Revert", action: model.discardSkillEdits).disabled(!model.skillChanged)
             }
         }
+    }
+}
+
+/// Copy a plugin's skill to this project or to every project.
+private struct PluginSkillCopyButtons: View {
+    let model: AgentKnowledgeModel
+    let ref: KnowledgeSkillRef
+
+    var body: some View {
+        if model.hasProject {
+            Button("Copy to This Project") { model.copyPluginSkill(ref, to: .project) }
+        }
+        Button("Copy for Every Project") { model.copyPluginSkill(ref, to: .user) }
     }
 }
 

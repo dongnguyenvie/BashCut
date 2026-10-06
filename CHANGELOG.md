@@ -5,6 +5,29 @@
 
 ## [Unreleased]
 
+- **Plugins can ship agent skills (#375, #376, #377).** Plugin API 7 adds `contributes.skills`: `SKILL.md` folders
+  inside the plugin (front matter `name` equal to the folder, a `description`; at most 16 skills, 64 KB per
+  `SKILL.md`, 2 MB per folder, nothing linking out of the plugin). A bad skill is reported by `plugins validate` and
+  in `plugins list` diagnostics and left out. While the plugin is trusted, turned on and compatible, its skills are in
+  the new read-only `plugin` scope as `<plugin-id>:<name>` (`skills list --scope plugin`, `skills get`; without a
+  scope `get` looks in the project, every project, plugins, then the kit), listed with their paths in the agents'
+  knowledge, linked into the open project's `.claude/skills` and `.agents/skills` as `<plugin-id>--<name>`
+  (recorded in `.bashcut/plugin-skills.json`, so only those links are ever removed), into the Codex tab's workspace
+  and into terminal plugins' `skillsFolder`. Turning the plugin off, revoking Trust or removing it takes them away.
+  Knowledge › Skills lists them under Plugins with Copy to This Project / Copy for Every Project; `skills save`,
+  `enable`, `disable` and `remove` refuse the plugin scope. `plugins list` reports each plugin's `skills`, and the
+  Plugins sheet and install approval name them. `Fixtures/plugins/example.skills` is an example.
+- **Plugin confirmations no longer freeze the app.** An action that declares `confirm` used to ask in a modal alert
+  that stopped every command (agents' calls timed out) until it was answered. Its job now waits for the user in a
+  `plugin-confirm` sheet instead, so the app keeps answering; agents see the job running and the sheet in
+  `ui dialog`, and can only cancel it (`ui respond cancel` or `jobs cancel`). Running an action from its parameter
+  sheet no longer asks a second time.
+- **`context get` scope for agents without a tab.** A session that has no tab of its own, such as the external agent
+  token, now gets `scope: null` instead of the shown tab's scope, which the guard never applied to it. A read
+  without a token still sees the shown tab's.
+- **Codex: text after a sent scope starts on a new line.** Codex drops the newline at the end of a paste, so a
+  request typed after Send to Agent was glued to `[/Scope]`. BashCut now ends the paste with Ctrl+J, which Codex
+  takes as a new line.
 - **Settings like VS Code (#384).** Settings no longer uses grouped forms, which macOS caps at about 600 pt: its
   section cards stretch with the sheet up to 1000 pt. A search box above them lists the matching settings of every
   section (title, description and keywords, in English or the interface language, ignoring case and accents, so

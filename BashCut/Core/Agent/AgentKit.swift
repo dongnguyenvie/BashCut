@@ -182,13 +182,19 @@ public struct AgentKitInstall: Sendable {
         return linked
     }
 
-    /// Makes `folder` (one BashCut owns) hold exactly the kit's skills as links, or none when `kit` is nil. Files
-    /// and folders that are not links are left alone.
-    public static func syncSkills(of kit: AgentKit?, into folder: URL) throws {
+    /// Makes `folder` (one BashCut owns) hold exactly the kit's skills and `plugins`' skills as links, or none when
+    /// `kit` is nil and there are no plugin skills. Files and folders that are not links are left alone.
+    public static func syncSkills(of kit: AgentKit?, into folder: URL, plugins: [PluginSkill] = []) throws {
         let present = (try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []
-        let current = Set(kit.map { kit in kit.skills.map(kit.linkName) } ?? [])
+        let current = Set((kit.map { kit in kit.skills.map(kit.linkName) } ?? []) + plugins.map(\.linkName))
         unlinkSkills(named: present.filter { !current.contains($0) }, in: folder)
         if let kit { try linkSkills(of: kit, into: folder) }
+        guard !plugins.isEmpty else { return }
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        for skill in plugins {
+            let target = folder.appendingPathComponent(skill.linkName)
+            if isLink(target) || !FileManager.default.fileExists(atPath: target.path) { try link(target, to: skill.folder) }
+        }
     }
 
     /// Removes links in a shared folder that a kit put there but that no longer match `kit`: `bashcut-<skill>` links

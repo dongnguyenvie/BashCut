@@ -11,6 +11,9 @@ public struct CodexAgentProvider: AgentProvider {
     public let author = Author.codex
     public let environmentAllowlist = ["CODEX_*", "OPENAI_API_KEY", "OPENAI_BASE_URL"]
     public let sessionFolder: String? = ".codex/sessions"
+    /// Codex trims a paste's trailing newline, so text typed after a `[Scope]` block would join `[/Scope]`; Ctrl+J
+    /// inserts a newline in its input without sending.
+    public let newlineAfterPaste: [UInt8]? = [10]
 
     public func commandLine(for request: AgentLaunchRequest) throws -> AgentCommandLine {
         let socket = request.context.socket
@@ -19,7 +22,8 @@ public struct CodexAgentProvider: AgentProvider {
             .appendingPathComponent("agent-workspace", isDirectory: true)
         try FileManager.default.createDirectory(at: agentDirectory, withIntermediateDirectories: true)
         try AgentKitInstall.syncSkills(
-            of: request.kit?.kit, into: agentDirectory.appendingPathComponent(".agents/skills", isDirectory: true))
+            of: request.kit?.kit, into: agentDirectory.appendingPathComponent(".agents/skills", isDirectory: true),
+            plugins: request.pluginSkills)
         let permissionProfile = """
             permissions.bashcut={ extends = ":workspace", \
             filesystem = { \(Self.tomlString(socketDirectory)) = "write" }, \

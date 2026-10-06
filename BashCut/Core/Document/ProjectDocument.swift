@@ -236,6 +236,7 @@ final class ProjectDocument {
         }
         plugins.proposals.removeAll()
         plugins.pendingAction = nil
+        for pending in plugins.confirmations { resolvePluginConfirm(pending.id, run: false) }
         if privilegedApproval != nil { resolvePrivilegedApproval(false) }
         resolveScopeHold(.reject)
         // Terminals stay open; pending session lookups end with the old project.
@@ -272,6 +273,8 @@ final class ProjectDocument {
         registry.projectSwitched(to: url == nil ? "no project" : project.name)
         agents.keepSessions(after: liveBookmarks)
         plugins.refresh(projectRoot: url?.deletingLastPathComponent())
+        // The new project gets the plugin skills linked even when the list did not change.
+        syncPluginSkillLinks()
         if settings.checkPluginUpdatesDaily { Task { await plugins.checkForUpdatesIfDue() } }
         if settings.checkAppUpdatesDaily { checkAppUpdateIfDue() }
     }

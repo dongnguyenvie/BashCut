@@ -38,6 +38,7 @@ extension ProjectDocument {
         registerToolCommands()
         registerPluginCommands()
         plugins.jobs = jobs
+        plugins.onSkillsChanged = { [weak self] in self?.pluginSkillsChanged() }
         plugins.service.optionValues = { [weak self] plugin in
             await MainActor.run { self?.pluginOptionValues(plugin, revealSecrets: true) ?? [:] }
         }

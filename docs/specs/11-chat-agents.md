@@ -165,7 +165,8 @@ calls back with `method`.
   - `chat stop` and `chat reset`;
   - `chat attach --items a,b [--plugin]` and `chat detach [--items a] [--plugin]` change the chips;
     `agent detach [--items a]` does the same for the shown terminal tab, and `agent terminals` lists each tab's
-    `scope`; `context get` reports the caller's own tab's as `scope` (else the shown tab's), with the guard `mode`;
+    `scope`; `context get` reports the caller's own tab's as `scope` (`null` for a session without a tab; a read
+    without a token sees the shown tab's), with the guard `mode`;
   - `ui action agent.open-chat` opens the first chat agent's tab;
   - `ui view` reports `chatTab`.
 
