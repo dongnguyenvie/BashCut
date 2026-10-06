@@ -56,19 +56,84 @@ shows in Show Changes and can be undone. See [Automation](docs/guides/automation
 
 ## What's inside
 
-- Layered timeline: linked audio, sections, snapping, beat grid, split/trim/move, gaps, freeze frames, constant
-  speed and ramps, keyframes, transitions
-- Viewer and source viewer with In/Out, Insert/Overwrite, safe area and compare
-- Captions and text with presets, SRT import, Vietnamese and English
-- Color: LUTs, exposure, contrast, saturation and adjustment layers
-- Audio: volume, fades, ducking under speech, loudness, voiceover recording, source-aligned waveforms
-- Review checks, history, autosave with recovery, external-change reload and conflict handling
-- H.264 export queue with burned-in captions; OTIO export
-- Agent dock with real Claude, Codex and Shell terminals, plus the
-  [agent kit](https://github.com/dongnguyenvie/bashcut-agent-kit) of editing skills
-- `bashcut` CLI and MCP server: every UI action and dialog, with dry runs and revision checks
-- Out-of-process plugins for transcription, voice, beats and loudness, from the
-  [plugin registry](https://github.com/dongnguyenvie/bashcut-plugins)
+### Editing
+
+- **Layered timeline**: as many video, overlay, text, sticker, adjustment, voiceover, music and SFX layers as you
+  need, with linked sound, sections, snapping, multi-select, gaps, split, trim, move, lift and ripple delete
+- **Viewer and source viewer**: In/Out, Insert/Overwrite, viewer zoom, safe area and before/after compare
+- **Speed**: constant speed, reverse, freeze frames and CapCut-style speed ramps (montage, hero, bullet, jump-cut,
+  flash in/out, or your own curve)
+- **Motion**: keyframes for position, scale, rotation, opacity and volume, shown on the timeline, plus animation
+  presets (zoom, pan, Ken Burns, pop-in, slide-up, zoom-punch); crop and rounded corners
+- **Transitions**: dissolve, whip, blink, zoom, spin, shutter, wipe and saved transition presets
+- **Still images** and stickers (emoji or image) on the timeline
+- **Change the canvas** of an open project (9:16, 16:9, 1:1…) without rebuilding it
+
+### Captions and text
+
+- Transcribe speech into captions with a local Whisper plugin, import and export SubRip
+- **Word-by-word captions**: highlight, karaoke and reveal styles
+- Text presets for hook titles, place labels, keyword stickers and chapter cards, keeping their style when edited;
+  Vietnamese and English throughout
+
+### Color
+
+- LUT import (`.cube`), exposure, contrast and saturation
+- **Adjustment layers** and **filter stacks** that grade everything below them
+- **Looks** and **style kits**: save a grade (with its LUT) and a caption style, apply them to the next video in one
+  step
+
+### Sound
+
+- Volume, fades, volume keyframes, ducking music under speech, loudness normalization at export
+- Voiceover recording, and text-to-speech takes through a voice plugin (VieNeu TTS for Vietnamese, cloned voices)
+- **Beat grid** from the music, for cutting on the beat
+- Measure loudness, true peak and speech-band energy, and **sync** a camera with a screen recording by their sound,
+  without ffmpeg
+
+### Library
+
+- One library for music and SFX, text styles, stickers, effect recipes, transition presets and looks: built-in
+  items, your own (this project or every project), and packs that plugins ship
+- Search, tags, packs, import and export of packs, usage stats, and **search or generate** new items through plugins
+
+### Review and export
+
+- Review checks: gaps in the picture, repeated framing between cuts, long caption lines, speech-recognition loops,
+  voiceover too close to real speech; full history; autosave with crash recovery; reload when files change on disk,
+  with conflict handling
+- Preview proxies for heavy footage; export presets for TikTok, YouTube 1080p and 4K, a quick draft and ProRes,
+  queued in the background, with burned-in captions and an optional `.srt`; OTIO export
+
+### AI agents
+
+- **Agent dock**: real Claude Code, Codex and Shell terminals beside the timeline, plus chat agents and terminal
+  agents from plugins (AI Editor with your own API key, Antigravity…)
+- **Send to Agent**: select clips and send them with your request; the **scope guard** keeps the agent's edits to
+  those clips, or asks you first
+- **Show Changes**: see what an agent changed, jump to it, and undo it as one step
+- **Knowledge**: agents remember lessons, your preferences and project facts between sessions; review them in the
+  Knowledge window's inbox, edit project notes and skills, and revert any change from its history
+- The **[agent kit](https://github.com/dongnguyenvie/bashcut-agent-kit)**: editing skills (footage survey, beat
+  cuts, sound mix, captions, colour, effects, voiceover, style study, self-learning) loaded into every agent tab
+- **Agent permissions**: choose what agents may do without asking (edits, exports, plugin actions), or allow
+  everything
+
+### Automation
+
+- The `bashcut` CLI and MCP server cover every UI action, dialog, shortcut and view: 140 commands, with dry runs,
+  revision checks and one undoable edit per call ([command reference](docs/reference/commands.md))
+- `ui frame` renders any frame to a PNG, so an agent can look at its own work
+- Command palette (⇧⌘P), a full Mac menu bar and searchable Settings
+
+### Plugins
+
+- Out-of-process plugins in any language: capabilities (transcription, voice, beats, loudness, sync, library search
+  and generate), actions in menus and context menus, hooks on editor events, options, chat and terminal agents,
+  library packs and **agent skills** that teach agents how to use them
+- A signed [plugin registry](https://github.com/dongnguyenvie/bashcut-plugins) with Browse, one-click install, daily
+  update checks, Trust per plugin and dependency setup that never needs Terminal; plugins from a link or a folder
+  too. See [Writing plugins](docs/guides/plugins.md)
 
 ## Install
 
@@ -146,7 +211,7 @@ Two other repositories are part of BashCut. Contributions are welcome in each:
 
 | Repository | What it holds | Contribute there |
 |---|---|---|
-| [bashcut-plugins](https://github.com/dongnguyenvie/bashcut-plugins) | The plugin registry (`registry.json`) and its plugins, such as Silence Markers and VieNeu TTS | New plugins and fixes to existing ones. See [Writing plugins](docs/guides/plugins.md) |
+| [bashcut-plugins](https://github.com/dongnguyenvie/bashcut-plugins) | The plugin registry (`registry.json`) and its plugins: Whisper Captions, VieNeu TTS, Silence Markers, AI Editor and Antigravity | New plugins and fixes to existing ones. See [Writing plugins](docs/guides/plugins.md) |
 | [bashcut-agent-kit](https://github.com/dongnguyenvie/bashcut-agent-kit) | Editing skills for Claude Code and Codex (footage survey, beat cuts, audio mix, captions, colour, effects, voiceover…). BashCut ships them and loads them in its agent tabs | Editing know-how that agents should follow. See its README › Writing skills |
 
 Changes to the editor itself, its commands and the plugin API belong in this repository.

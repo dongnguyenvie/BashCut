@@ -56,19 +56,82 @@ Show Changes và hoàn tác được. Xem [Tự động hóa](docs/guides/automa
 
 ## Có gì bên trong
 
-- Timeline nhiều layer: audio liên kết, section, snap, beat grid, cắt/trim/di chuyển, khoảng trống, freeze frame,
-  đổi tốc độ cố định và speed ramp, keyframe, transition
-- Viewer và source viewer với In/Out, Insert/Overwrite, vùng an toàn và so sánh
-- Phụ đề và chữ với preset, nhập SRT, hỗ trợ tiếng Việt và tiếng Anh
-- Màu: LUT, exposure, contrast, saturation và adjustment layer
-- Âm thanh: âm lượng, fade, ducking dưới giọng nói, loudness, thu voiceover, waveform khớp với nguồn
-- Review, lịch sử chỉnh sửa, autosave có khôi phục, tự tải lại hoặc báo xung đột khi file bị sửa từ bên ngoài
-- Hàng đợi export H.264 có phụ đề burn-in; export OTIO
-- Agent dock với terminal Claude, Codex và Shell thật, cùng [agent kit](https://github.com/dongnguyenvie/bashcut-agent-kit)
-  chứa các skill dựng video
-- CLI `bashcut` và MCP server: mọi thao tác và hộp thoại trên giao diện, có chạy thử (dry run) và kiểm tra revision
-- Plugin chạy ngoài tiến trình cho transcription, giọng đọc, beat và loudness, lấy từ
-  [plugin registry](https://github.com/dongnguyenvie/bashcut-plugins)
+### Dựng phim
+
+- **Timeline nhiều layer**: bao nhiêu layer video, overlay, chữ, sticker, adjustment, voiceover, nhạc và SFX cũng
+  được, có audio liên kết, section, snap, chọn nhiều clip, khoảng trống, cắt, trim, di chuyển, lift và ripple delete
+- **Viewer và source viewer**: In/Out, Insert/Overwrite, phóng to viewer, vùng an toàn và so sánh trước/sau
+- **Tốc độ**: đổi tốc độ cố định, tua ngược, freeze frame và speed ramp kiểu CapCut (montage, hero, bullet,
+  jump-cut, flash in/out, hoặc đường cong tự vẽ)
+- **Chuyển động**: keyframe cho vị trí, tỉ lệ, xoay, độ mờ và âm lượng, hiện ngay trên timeline, cùng preset hoạt
+  ảnh (zoom, pan, Ken Burns, pop-in, slide-up, zoom-punch); crop và bo góc
+- **Chuyển cảnh**: dissolve, whip, blink, zoom, spin, shutter, wipe và preset chuyển cảnh đã lưu
+- **Ảnh tĩnh** và sticker (emoji hoặc ảnh) trên timeline
+- **Đổi khung hình** của project đang mở (9:16, 16:9, 1:1…) mà không phải dựng lại
+
+### Phụ đề và chữ
+
+- Nhận giọng nói thành phụ đề bằng plugin Whisper chạy trên máy, nhập và xuất SubRip
+- **Phụ đề từng chữ**: kiểu highlight, karaoke và reveal
+- Preset chữ cho tiêu đề hook, nhãn địa điểm, sticker từ khoá và thẻ chương, giữ nguyên kiểu khi sửa; tiếng Việt và
+  tiếng Anh ở mọi nơi
+
+### Màu
+
+- Nhập LUT (`.cube`), exposure, contrast và saturation
+- **Adjustment layer** và **chuỗi filter** áp lên mọi thứ bên dưới
+- **Look** và **style kit**: lưu một tone màu (kèm LUT) và một kiểu phụ đề, áp cho video tiếp theo chỉ một bước
+
+### Âm thanh
+
+- Âm lượng, fade, keyframe âm lượng, ducking nhạc dưới giọng nói, chuẩn hoá loudness khi xuất
+- Thu voiceover, và tạo giọng đọc bằng plugin (VieNeu TTS cho tiếng Việt, giọng clone)
+- **Beat grid** từ nhạc để cắt theo nhịp
+- Đo loudness, true peak và năng lượng dải giọng nói, **đồng bộ** camera với video quay màn hình bằng âm thanh, không
+  cần ffmpeg
+
+### Thư viện
+
+- Một thư viện chung cho nhạc và SFX, kiểu chữ, sticker, công thức hiệu ứng, preset chuyển cảnh và look: mục có sẵn,
+  mục của bạn (cho project này hoặc mọi project), và gói do plugin mang theo
+- Tìm kiếm, tag, gói, nhập/xuất gói, thống kê sử dụng, và **tìm hoặc tạo** mục mới qua plugin
+
+### Kiểm tra và xuất video
+
+- Review: khoảng trống trong hình, khung lặp giữa hai cut, dòng phụ đề quá dài, lỗi nhận dạng lặp, voiceover quá gần
+  giọng thật; lịch sử đầy đủ; autosave có khôi phục khi crash; tự tải lại khi file bị sửa bên ngoài, có xử lý xung đột
+- Proxy xem trước cho footage nặng; preset xuất cho TikTok, YouTube 1080p và 4K, bản nháp nhanh và ProRes, chạy nền
+  theo hàng đợi, có phụ đề burn-in và file `.srt` tuỳ chọn; xuất OTIO
+
+### AI agent
+
+- **Agent dock**: terminal Claude Code, Codex và Shell thật cạnh timeline, cùng agent chat và agent terminal từ
+  plugin (AI Editor bằng API key của bạn, Antigravity…)
+- **Gửi cho Agent**: chọn clip rồi gửi kèm yêu cầu; **scope guard** giữ cho agent chỉ sửa những clip đó, hoặc hỏi
+  bạn trước
+- **Show Changes**: xem agent đã sửa gì, nhảy tới chỗ đó, và hoàn tác cả lượt trong một bước
+- **Kiến thức**: agent nhớ bài học, sở thích của bạn và thông tin project giữa các phiên; duyệt trong hộp duyệt của
+  cửa sổ Kiến thức, sửa ghi chú và skill của project, và hoàn tác mọi thay đổi từ lịch sử
+- **[Agent kit](https://github.com/dongnguyenvie/bashcut-agent-kit)**: các skill dựng video (khảo sát footage, cắt
+  theo nhịp, trộn âm, phụ đề, màu, hiệu ứng, lồng tiếng, học style, tự rút kinh nghiệm) nạp sẵn vào mọi tab agent
+- **Quyền của agent**: chọn những gì agent được làm mà không cần hỏi (sửa, xuất video, hành động plugin), hoặc cho
+  phép tất cả
+
+### Tự động hoá
+
+- CLI `bashcut` và MCP server bao trọn mọi thao tác, hộp thoại, phím tắt và chế độ xem: 140 lệnh, có chạy thử, kiểm
+  tra revision và mỗi lệnh là một thay đổi hoàn tác được ([danh sách lệnh](docs/reference/commands.md))
+- `ui frame` xuất một khung hình bất kỳ ra PNG để agent tự xem kết quả
+- Command palette (⇧⌘P), menu bar đầy đủ kiểu Mac và Settings có ô tìm kiếm
+
+### Plugin
+
+- Plugin chạy ngoài tiến trình, viết bằng ngôn ngữ nào cũng được: capability (nhận giọng nói, giọng đọc, beat,
+  loudness, đồng bộ, tìm và tạo mục thư viện), action trong menu và menu chuột phải, hook theo sự kiện, tuỳ chọn,
+  agent chat và agent terminal, gói thư viện và **skill cho agent** dạy agent cách dùng plugin
+- [Plugin registry](https://github.com/dongnguyenvie/bashcut-plugins) có chữ ký, với Duyệt, cài một chạm, kiểm tra
+  cập nhật hằng ngày, Trust từng plugin và cài dependency không cần mở Terminal; cũng cài được từ link hoặc thư mục.
+  Xem [Viết plugin](docs/guides/plugins.md)
 
 ## Cài đặt
 
@@ -146,7 +209,7 @@ Hai repository khác cũng thuộc BashCut. Mọi đóng góp đều được ho
 
 | Repository | Chứa gì | Đóng góp gì ở đó |
 |---|---|---|
-| [bashcut-plugins](https://github.com/dongnguyenvie/bashcut-plugins) | Plugin registry (`registry.json`) và các plugin như Silence Markers, VieNeu TTS | Plugin mới và sửa plugin hiện có. Xem [Viết plugin](docs/guides/plugins.md) |
+| [bashcut-plugins](https://github.com/dongnguyenvie/bashcut-plugins) | Plugin registry (`registry.json`) và các plugin: Whisper Captions, VieNeu TTS, Silence Markers, AI Editor và Antigravity | Plugin mới và sửa plugin hiện có. Xem [Viết plugin](docs/guides/plugins.md) |
 | [bashcut-agent-kit](https://github.com/dongnguyenvie/bashcut-agent-kit) | Skill dựng video cho Claude Code và Codex (khảo sát footage, cắt theo beat, mix âm thanh, phụ đề, màu, hiệu ứng, voiceover…). BashCut đóng gói sẵn và nạp chúng trong các tab agent | Kinh nghiệm dựng mà agent nên làm theo. Xem README › Writing skills của repo đó |
 
 Thay đổi cho chính trình dựng, các lệnh và plugin API thuộc về repository này.
