@@ -43,7 +43,11 @@ extension ProjectDocument {
         }
         handleAuthored("knowledge.memo") { document, arguments, author in
             let scope = try Self.knowledgeScope(arguments.optionalString("scope")) ?? .project
-            let text = try arguments.string("text")
+            let clear = arguments.bool("clear")
+            guard clear != (arguments.optionalString("text") != nil) else {
+                throw RPCFailure(-32602, clear ? "Give the memo text or clear, not both" : "Missing text (or pass clear)")
+            }
+            let text = clear ? "" : try arguments.string("text")
             let source = Self.knowledgeSource(author, arguments)
             document.agents.loadKnowledge()
             return try document.knowledgeChange("knowledge.memo", approval: scope == .user, author: author,

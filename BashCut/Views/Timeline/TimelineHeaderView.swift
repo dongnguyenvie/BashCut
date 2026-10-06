@@ -53,7 +53,7 @@ final class TimelineHeaderView: NSView {
         shift.translateX(by: 0, yBy: -scrollOffset)
         shift.concat()
         let area = visible.offsetBy(dx: 0, dy: scrollOffset)
-        ("Sections" as NSString).draw(
+        (String(localized: "Sections") as NSString).draw(
             at: NSPoint(x: 8, y: TimelineLayout.sectionBand.lowerBound + 4),
             withAttributes: [.font: NSFont.systemFont(ofSize: 10), .foregroundColor: NSColor.gray])
         for row in layout.rows where NSRect(x: 0, y: row.y, width: bounds.width, height: row.height).intersects(area) {

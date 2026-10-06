@@ -35,10 +35,12 @@ extension CommandCatalog {
         CommandSpec(
             "knowledge.memo", .edit,
             "Replace a memo: the project memo (.bashcut/agent-memory.md in the project) or, with scope user, the notes "
-                + "every project reads (Application Support/BashCut/Knowledge). Agents need approval for scope user.",
+                + "every project reads (Application Support/BashCut/Knowledge). clear empties it. Agents need approval "
+                + "for scope user.",
             parameters: [
-                CommandParameter("text", .string, "Memo text (CLI: path to a text file)", required: true,
+                CommandParameter("text", .string, "Memo text (CLI: path to a text file); omit it with clear",
                                  sensitive: true, cli: .positionalTextFile(maximumBytes: 256 * 1024)),
+                CommandParameter("clear", .boolean, "Empty the memo instead of replacing its text", cli: .flag("clear")),
                 CommandParameter("scope", .string, "project (default) or user", choices: knowledgeScopes,
                                  cli: .option("scope")),
             ]),

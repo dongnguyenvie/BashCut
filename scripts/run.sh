@@ -38,7 +38,9 @@ build_number="$(version_setting CURRENT_PROJECT_VERSION)"
 sed -e 's/$(PRODUCT_BUNDLE_IDENTIFIER)/app.bashcut/' -e 's/$(PRODUCT_NAME)/BashCut/' \
     -e "s/\$(MARKETING_VERSION)/${version:-0.0.0}/" -e "s/\$(CURRENT_PROJECT_VERSION)/${build_number:-1}/" \
     BashCut/Info.plist >"$bundle/Info.plist"
+# UI strings come from Localizable.xcstrings, compiled the way Xcode does, so dev and release builds match.
 cp -R BashCut/Resources/en.lproj BashCut/Resources/vi.lproj "$bundle/Resources/"
+xcrun xcstringstool compile BashCut/Resources/Localizable.xcstrings --output-directory "$bundle/Resources"
 # The app icon: Xcode compiles Assets.xcassets; this bundle gets the same PNGs as an .icns.
 iconset="$(mktemp -d)/AppIcon.iconset"
 mkdir -p "$iconset"

@@ -247,7 +247,7 @@ struct InspectorView: View {
                 Text("Off").tag("none")
                 Text("Highlight word").tag("highlight")
                 Text("Karaoke").tag("karaoke")
-                Text("Reveal").tag("reveal")
+                Text("Reveal word by word").tag("reveal")
             }
             if let style = item.wordStyle {
                 Button("Use on all captions") {

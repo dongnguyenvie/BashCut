@@ -876,12 +876,13 @@ Read the project memo and skills (stored in the project folder), the notes for e
 
 - Mode: read · Runs: immediately · MCP: `bashcut_knowledge_get`
 
-### `bashcut knowledge memo <text-file> [--scope <scope>]`
+### `bashcut knowledge memo [<text-file>] [--clear] [--scope <scope>]`
 
-Replace a memo: the project memo (.bashcut/agent-memory.md in the project) or, with scope user, the notes every project reads (Application Support/BashCut/Knowledge). Agents need approval for scope user.
+Replace a memo: the project memo (.bashcut/agent-memory.md in the project) or, with scope user, the notes every project reads (Application Support/BashCut/Knowledge). clear empties it. Agents need approval for scope user.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_knowledge_memo`
-- `text`: string, required. Memo text (CLI: path to a text file)
+- `text`: string. Memo text (CLI: path to a text file); omit it with clear
+- `clear`: boolean. Empty the memo instead of replacing its text
 - `scope`: string, one of project, user. project (default) or user
 
 ### `bashcut knowledge migrate [--to <to>]`

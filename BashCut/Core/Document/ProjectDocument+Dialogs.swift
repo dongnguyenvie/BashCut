@@ -24,7 +24,13 @@ extension ProjectDocument {
         ) { [weak self] option in
             guard let self else { return }
             switch option {
-            case "send": Task { await self.agents.sendAsk() }
+            case "send":
+                // Like the disabled Send button: refuse instead of answering with nothing sent.
+                guard !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                    throw ModalError("The request is empty; write it in the sheet first")
+                }
+                guard agents.hasOpenAgent else { throw ModalError("Open an agent in the dock first") }
+                Task { await self.agents.sendAsk() }
             case "clear": agents.askModel.draft = ""
             default: ui.showAsk = false
             }
