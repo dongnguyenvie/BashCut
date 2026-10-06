@@ -46,7 +46,7 @@ extension ProjectDocument {
     @discardableResult
     func placeLibraryItem(
         _ item: LibraryItem, _ placement: LibraryPlacement = LibraryPlacement(), text: String? = nil
-    ) throws -> (revision: Int, itemID: String) {
+    ) async throws -> (revision: Int, itemID: String) {
         let result: (revision: Int, itemID: String)
         switch item.kind {
         case .textPreset:
@@ -60,10 +60,7 @@ extension ProjectDocument {
             result = try placeText(
                 emoji, preset: item.params["textPreset"]?.string ?? "bold-outline", label: "Add text", placement)
         case .look:
-            let added = try addAdjustment(
-                color: item.params["color"]?.object ?? [:], at: placement.frame, duration: placement.duration,
-                trackID: placement.trackID, author: placement.author, baseRevision: placement.baseRevision)
-            result = (added.revision, added.itemID)
+            result = try await placeFilterStack(item, placement)
         default:
             throw RPCFailure(-32602, unsupported("Placing \(item.kind?.rawValue ?? "these") items", item))
         }
@@ -79,8 +76,10 @@ extension ProjectDocument {
         guard let target = project.tracks.flatMap(\.items).first(where: { $0.id == itemID }) else {
             throw RPCFailure(-32602, "Unknown item \(itemID)")
         }
-        if item.kind == .transitionPreset {
-            let revision = try await applyTransitionPreset(item, at: itemID, author: author, baseRevision: baseRevision)
+        if item.kind == .transitionPreset || item.kind == .look {
+            let revision = item.kind == .look
+                ? try await applyFilterStack(item, to: itemID, author: author, baseRevision: baseRevision)
+                : try await applyTransitionPreset(item, at: itemID, author: author, baseRevision: baseRevision)
             recordLibraryUse(item)
             return revision
         }
@@ -91,8 +90,6 @@ extension ProjectDocument {
             patch = ["textPreset": item.params["textPreset"] ?? .null]
         case .effectPreset:
             patch = item.params["patch"]?.object ?? [:]
-        case .look:
-            patch = ["color": .object(item.params["color"]?.object ?? [:])]
         default:
             throw RPCFailure(-32602, unsupported("Applying \(item.kind?.rawValue ?? "these") items", item))
         }
@@ -104,7 +101,7 @@ extension ProjectDocument {
 
     /// Library panels: places an item at the playhead.
     func placeFromLibrary(_ item: LibraryItem) {
-        do { try placeLibraryItem(item) } catch { message = error.localizedDescription }
+        Task { do { try await placeLibraryItem(item) } catch { message = error.localizedDescription } }
     }
 
     /// Library panels: uses an item on the selected timeline item.
@@ -186,6 +183,10 @@ extension ProjectDocument {
         let id = id ?? (slug.isEmpty ? "\(kind.rawValue)-\(UUID().uuidString.prefix(8).lowercased())" : slug)
         var item = LibraryItem(id: id, kind: kind, name: name)
         for (key, value) in changes { item[key] = value == .null ? nil : value }
+        if kind == .look, file != nil, item.params["color"] == nil {
+            // A .cube on its own is a look that is just that LUT (#79).
+            item["params"] = .object(item.params.merging(["color": .object([:])]) { $1 })
+        }
         item["createdBy"] = LibraryItem.creator(author: author)
         _ = try catalog.store(scope)
         let added = item
@@ -237,17 +238,19 @@ extension ProjectDocument {
 
     /// The params of a new item made from the timeline item `itemID` (the selection by default), and the file to
     /// copy in: the sound a transition preset placed at the selected cut, unless it came from an audio library item
-    /// (then `params.sfx` names that item).
+    /// (then `params.sfx` names that item), or the .cube LUT a look's grade uses (#79).
     func selectionParams(_ kind: LibraryKind, itemID: String? = nil) throws -> (params: [String: JSONValue], file: URL?) {
         let id = itemID ?? selectedID
         let item = id.flatMap { id in project.tracks.flatMap(\.items).first { $0.id == id } }
         if let id, item == nil { throw RPCFailure(-32602, "Unknown item \(id)") }
         let transition = id.flatMap { id in project.transitions.first { $0.fromItemID == id || $0.toItemID == id } }
         let sound = kind == .transitionPreset ? transition.flatMap { project.transitionSound(for: $0.id)?.media } : nil
+        let grade = kind == .look ? gradeLUT(of: item) : nil
         let params: [String: JSONValue]
         do {
-            params = try LibrarySelection.params(kind, item: item, transition: transition, sound: sound)
+            params = try LibrarySelection.params(kind, item: item, transition: transition, sound: sound, lut: grade?.lut)
         } catch { throw RPCFailure(-32602, error.localizedDescription) }
+        if let grade { return (params, grade.file) }
         guard let sound, params["sfx"] == nil, let root = fileURL?.deletingLastPathComponent() else { return (params, nil) }
         return (params, try MediaPathResolver.resolve(sound.path, projectRoot: root, workspaceRoot: settings.workspace))
     }
@@ -404,7 +407,7 @@ extension ProjectDocument {
             let placement = LibraryPlacement(
                 frame: arguments.optionalInt("atFrame"), duration: arguments.optionalInt("duration"),
                 trackID: arguments.optionalString("track"), author: author, baseRevision: try arguments.int("baseRev"))
-            let result = try document.placeLibraryItem(item, placement, text: arguments.optionalString("text"))
+            let result = try await document.placeLibraryItem(item, placement, text: arguments.optionalString("text"))
             return .object([
                 "rev": .integer(result.revision), "item": .string(result.itemID), "library": .string(item.reference),
             ])

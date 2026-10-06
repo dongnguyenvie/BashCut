@@ -140,11 +140,17 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   honored by preview and export) and an optional sound (`params.sfx`, an audio item, or the preset's own file),
   applied as one undo step with the sound on an SFX layer; saved from the selected cut, edited from the Transitions
   panel (Edit…, easing on the active transition) or `library update --params`.
+- Filter stacks (#79): a look is a grade plus an optional .cube LUT carried as the item's file (`params.color`,
+  `params.lutName`); place (as an adjustment) and apply (to a clip or adjustment) are one undo step that also adds
+  the LUT to the project, reusing one copied from the same file. Save selection keeps the whole stack with its LUT.
+  The Filters panel shows looks, style kits and project looks in the shared library UI, with Edit… for a look's
+  grade and LUT; looks saved before stay valid and behave the same.
 - Library performance: use counts live in `usage.json` (an older `usage` field in `library.json` is read until the
   next save moves it), stored files keep their `fileSHA256`, and changes, packs, stats and use counting run on the
   `LibraryWorker` actor, off the main actor and one at a time.
 - Built-in packs (#75): Text styles (the 6 caption presets), Emoji (8 stickers), Framing (Punch in 1.3×, Reset
-  framing) and Transitions (Soft dissolve, Quick whip, Zoom punch).
+  framing), Transitions (Soft dissolve, Quick whip, Zoom punch) and Looks (Original, Vivid, Muted film, Black &
+  white, Bright & airy, Moody).
 - Shared panel UI (#80): the Audio, Text, Stickers, Effects, Transitions and Filters panels show their library items
   with search, pack, tag and scope filters (`ui view --library-*`), agent and scope badges, Add… and drops (files or
   packs), Save selection as… (text style, framing, transition, look) and a context menu (Duplicate & Edit, Rename,

@@ -627,6 +627,10 @@
           "minLength" : 1,
           "type" : "string"
         },
+        "libraryItem" : {
+          "description" : "The library look (scope:id) it was copied from",
+          "type" : "string"
+        },
         "name" : {
           "description" : "Display name",
           "maxLength" : 120,
@@ -636,6 +640,10 @@
         "path" : {
           "description" : "luts/<file>.cube",
           "pattern" : "^luts/.+\\.cube$",
+          "type" : "string"
+        },
+        "sha256" : {
+          "description" : "SHA-256 of the library look's .cube it was copied from",
           "type" : "string"
         },
         "size" : {

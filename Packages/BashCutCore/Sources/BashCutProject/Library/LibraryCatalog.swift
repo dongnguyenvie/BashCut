@@ -225,10 +225,10 @@ public struct LibraryCatalog: Sendable {
     }
 }
 
-/// The built-in packs the Text, Stickers and Effects panels show (#75). Names are English UI strings to localize;
+/// The built-in packs the Text, Stickers, Effects, Transitions and Filters panels show (#75). Names are English UI strings to localize;
 /// IDs are stable.
 public enum LibraryBuiltIns {
-    public static let items: [LibraryItem] = textPresets + stickers + effects + transitions
+    public static let items: [LibraryItem] = textPresets + stickers + effects + transitions + looks
 
     /// One per caption renderer preset (`TextPreset.all`), with the sample text the panel shows.
     public static let textPresets: [LibraryItem] = [
@@ -272,4 +272,15 @@ public enum LibraryBuiltIns {
     ].map { id, name, preset in
         LibraryItem(id: id, kind: .transitionPreset, name: name, pack: "Transitions", params: preset.params)
     }
+
+    /// Filter stacks (#79): the built-in looks (`ColorLook.builtIn`, same IDs and grades) and a few more grades.
+    public static let looks: [LibraryItem] = {
+        let more: [(id: String, name: String, color: [String: JSONValue])] = [
+            ("bright-airy", "Bright & airy", ["exposure": .number(0.3), "contrast": .number(0.95), "saturation": .number(1.1)]),
+            ("moody", "Moody", ["exposure": .number(-0.3), "contrast": .number(1.15), "saturation": .number(0.85)]),
+        ]
+        return (ColorLook.builtIn.map { (id: $0.id, name: $0.title, color: $0.color) } + more).map { look in
+            LibraryItem(id: look.id, kind: .look, name: look.name, pack: "Looks", params: FilterStack(color: look.color).params)
+        }
+    }()
 }

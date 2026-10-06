@@ -225,6 +225,8 @@ public enum ProjectSchema {
                     "id": string("Stable ID", minLength: 1), "name": string("Display name", minLength: 1, maxLength: 120),
                     "path": string("luts/<file>.cube", pattern: "^luts/.+\\.cube$"),
                     "size": integer("Cube dimension", minimum: 2, maximum: 64),
+                    ColorLUT.libraryHashField: string("SHA-256 of the library look's .cube it was copied from"),
+                    ColorLUT.libraryItemField: string("The library look (scope:id) it was copied from"),
                 ])),
             "look": .object(fields(
                 "A reusable color grade", required: ["id", "title", "color"],

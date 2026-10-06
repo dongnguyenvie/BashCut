@@ -188,10 +188,14 @@ public struct LibraryEditorRequest: Identifiable {
     public var scope: LibraryScope
     /// A transition preset's kind, duration, easing and sound, edited in the sheet (#77); nil for other kinds.
     public var transition: TransitionPreset?
+    /// A look's grade and LUT name, edited in the sheet (#79); nil for other kinds.
+    public var look: FilterStack?
+    /// Whether the look keeps its own .cube LUT; nil when it has none.
+    public var keepsLUT: Bool?
 
     public init(
         mode: Mode, name: String, tags: [String] = [], pack: String? = nil, scope: LibraryScope,
-        transition: TransitionPreset? = nil
+        transition: TransitionPreset? = nil, look: FilterStack? = nil, keepsLUT: Bool? = nil
     ) {
         self.mode = mode
         self.name = name
@@ -199,6 +203,8 @@ public struct LibraryEditorRequest: Identifiable {
         self.pack = pack ?? ""
         self.scope = scope
         self.transition = transition
+        self.look = look
+        self.keepsLUT = keepsLUT
     }
 }
 

@@ -218,14 +218,10 @@ extension LibraryItem {
             // params.sfx wins over the preset's own file.
             _ = try TransitionPreset(params: params, label: label)
         case .look:
-            guard case .object(let color) = params["color"] ?? .null else {
-                throw ProjectError.invalid("\(label): a look needs params.color")
-            }
-            for (key, range) in ColorGrade.ranges {
-                guard let value = color[key] else { continue }
-                guard let number = value.double, number.isFinite, range.contains(number) else {
-                    throw ProjectError.invalid("\(label): params.color.\(key) must be a number in \(range)")
-                }
+            // A filter stack (#79): params.color, and optionally a .cube file as its LUT.
+            _ = try FilterStack(params: params, label: label)
+            if let file, !FilterStack.isLUTFile(file) {
+                throw ProjectError.invalid("\(label): a look's file must be a .cube LUT")
             }
         case .voice:
             break

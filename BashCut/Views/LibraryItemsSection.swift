@@ -12,6 +12,10 @@ struct LibraryItemsSection<Tile: View>: View {
     /// The kind Add… and drops make from plain files (audio, sticker images); packs are always accepted.
     var fileKind: LibraryKind?
     var columns = [GridItem(.flexible())]
+    /// Entries kept outside the library that the panel shows as items, searched and filtered with them (the
+    /// Filters panel's style kits and project looks); their context menu is `extraActions`.
+    var extraItems: [LibraryItem] = []
+    var extraActions: (LibraryItem) -> [LibraryPanelAction] = { _ in [] }
     @ViewBuilder let tile: (LibraryItem) -> Tile
 
     @State private var items: [LibraryItem] = []
@@ -87,11 +91,11 @@ struct LibraryItemsSection<Tile: View>: View {
         Menu {
             Picker("Pack", selection: filter.pack) {
                 Text("All packs").tag(String?.none)
-                ForEach(Self.unique(items.compactMap(\.pack)), id: \.self) { Text(verbatim: $0).tag(String?.some($0)) }
+                ForEach(Self.unique(allItems.compactMap(\.pack)), id: \.self) { Text(verbatim: $0).tag(String?.some($0)) }
             }
             Picker("Tag", selection: filter.tag) {
                 Text("All tags").tag(String?.none)
-                ForEach(Self.unique(items.flatMap(\.tags)), id: \.self) { Text(verbatim: $0).tag(String?.some($0)) }
+                ForEach(Self.unique(allItems.flatMap(\.tags)), id: \.self) { Text(verbatim: $0).tag(String?.some($0)) }
             }
             Picker("Scope", selection: filter.scope) {
                 Text("All scopes").tag(String?.none)
@@ -112,9 +116,19 @@ struct LibraryItemsSection<Tile: View>: View {
     }
 
     @ViewBuilder private func contextMenu(_ item: LibraryItem) -> some View {
+        if extraItems.contains(where: { $0.reference == item.reference }) {
+            ForEach(Array(extraActions(item).enumerated()), id: \.offset) { _, action in
+                Button(action.title, role: action.destructive ? .destructive : nil, action: action.run)
+            }
+        } else {
+            libraryMenu(item)
+        }
+    }
+
+    @ViewBuilder private func libraryMenu(_ item: LibraryItem) -> some View {
         Button("Duplicate & Edit…") { document.beginDuplicate(item) }
         if item.scope.isWritable {
-            if item.kind == .transitionPreset {
+            if item.kind == .transitionPreset || item.kind == .look {
                 Button("Edit…") { document.beginRename(item) }
             } else {
                 Button("Rename…") { document.beginRename(item) }
@@ -142,8 +156,10 @@ struct LibraryItemsSection<Tile: View>: View {
         let match = LibraryCatalog.Filter(
             tag: filter.tag, scope: filter.scope.flatMap(LibraryScope.init(rawValue:)), pack: filter.pack,
             query: filter.query.isEmpty ? nil : filter.query)
-        return items.filter(match.matches)
+        return allItems.filter(match.matches)
     }
+
+    private var allItems: [LibraryItem] { extraItems + items }
 
     private func load() {
         do {
@@ -158,6 +174,13 @@ struct LibraryItemsSection<Tile: View>: View {
         var seen: Set<String> = []
         return values.filter { seen.insert($0.lowercased()).inserted }.sorted { $0.localizedStandardCompare($1) == .orderedAscending }
     }
+}
+
+/// A context menu command for an entry a panel shows beside its library items.
+struct LibraryPanelAction {
+    let title: LocalizedStringKey
+    var destructive = false
+    let run: () -> Void
 }
 
 /// Small marks on an item: who made it when not built in, and where it is saved.
@@ -198,6 +221,11 @@ struct LibraryItemEditorSheet: View {
                         get: { request.transition ?? TransitionPreset(kind: "dissolve") },
                         set: { request.transition = $0 }))
                 }
+                if request.look != nil {
+                    FilterStackFields(
+                        stack: Binding(get: { request.look ?? FilterStack() }, set: { request.look = $0 }),
+                        keepsLUT: $request.keepsLUT)
+                }
                 if !isRename {
                     Picker("Save in", selection: $request.scope) {
                         Text("Project").tag(LibraryScope.project)
@@ -225,7 +253,8 @@ struct LibraryItemEditorSheet: View {
         switch request.mode {
         case .saveSelection(let kind): "Save selection as \(ProjectDocument.kindTitle(kind))"
         case .duplicate: "Duplicate & Edit"
-        case .rename: request.transition == nil ? "Rename" : "Edit transition"
+        case .rename:
+            request.transition != nil ? "Edit transition" : request.look != nil ? "Edit look" : "Rename"
         }
     }
 }
