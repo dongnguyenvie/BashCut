@@ -45,7 +45,6 @@ struct TextPresetTile: View {
 /// shows the preset's own value; Use preset style clears them all.
 struct TextPresetFields: View {
     @Binding var style: LibraryTextPreset
-    var projectRoot: URL?
 
     var body: some View {
         slider("Font size", key: "size", in: 0.02...0.15, format: { String(format: "%.1f%%", $0 * 100) })
@@ -53,7 +52,7 @@ struct TextPresetFields: View {
         slider("Vertical position", key: "positionY", in: 0.05...0.9, format: { "\(Int(($0 * 100).rounded()))%" })
             .help("Baseline height from the bottom of the frame")
         slider("Outline", key: "strokeWidth", in: 0...12, format: { "\(Int($0.rounded())) pt" })
-        TextFontFields(preset: style.textPreset, projectRoot: projectRoot, style: $style.textStyle)
+        TextFontFields(preset: style.textPreset, style: $style.textStyle)
         Picker("Animation", selection: Binding(
             get: { style.animation ?? "none" }, set: { style.animation = $0 == "none" ? nil : $0 })
         ) {

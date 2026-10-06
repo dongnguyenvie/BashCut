@@ -7,7 +7,6 @@ import SwiftUI
 /// Unset fields show the preset's own; the font menu lists the project's fonts first, then the installed families.
 struct TextFontFields: View {
     let preset: String?
-    let projectRoot: URL?
     @Binding var style: [String: JSONValue]
     /// Shows Add Font… (needs a saved project).
     var addFont: (() -> Void)?
@@ -17,10 +16,10 @@ struct TextFontFields: View {
         LabeledContent("Font") {
             Menu(font ?? String(localized: "Preset (\(TextPresetStyle.font(preset)))")) {
                 Button("Preset (\(TextPresetStyle.font(preset)))") { style["font"] = nil }
-                let own = ProjectFonts.list(projectRoot: projectRoot, installed: false)
+                let own = ProjectFontCatalog.shared.fonts
                 if !own.isEmpty {
                     Section("Project") {
-                        ForEach(own, id: \.postScriptName) { item in button(item) }
+                        ForEach(own, id: \.postScriptName) { item in button(item, family: true) }
                     }
                 }
                 Section("Installed") {
@@ -44,8 +43,9 @@ struct TextFontFields: View {
         colorPicker("Outline colour", key: "stroke", fallback: "#000000")
     }
 
-    private func button(_ item: ProjectFonts.Font) -> some View {
-        let title = item.style.isEmpty ? item.postScriptName : item.style
+    /// `family`: the title names the family too (the project's fonts are not grouped by family).
+    private func button(_ item: ProjectFonts.Font, family: Bool = false) -> some View {
+        let title = item.style.isEmpty ? item.postScriptName : family ? "\(item.family) \(item.style)" : item.style
         return Button(item.vietnamese ? title : String(localized: "\(title) (no Vietnamese)")) {
             style["font"] = .string(item.postScriptName)
         }

@@ -3,7 +3,18 @@ import BashCutAutomation
 import BashCutDocument
 import BashCutEngine
 import BashCutProject
+import Observation
 import UniformTypeIdentifiers
+
+/// The open project's own fonts, observed by the font menus so a font added from the menu or `fonts import` shows
+/// at once.
+@MainActor @Observable final class ProjectFontCatalog {
+    static let shared = ProjectFontCatalog()
+    private(set) var fonts: [ProjectFonts.Font] = []
+
+    /// Registers the fonts of the project at `projectRoot` (nil: none) and publishes them.
+    func activate(projectRoot: URL?) { fonts = ProjectFonts.activate(projectRoot: projectRoot) }
+}
 
 /// Project fonts (#415): Inspector › Text › Font › Add Font… and `fonts import` copy a font into the project's
 /// `fonts` folder, which is registered for this process whenever the project opens.
@@ -31,6 +42,7 @@ extension ProjectDocument {
             throw ProjectError.invalid("Save the project before adding a font")
         }
         let fonts = try ProjectFonts.importFont(from: source, projectRoot: root)
+        ProjectFontCatalog.shared.activate(projectRoot: root)
         DebugLog.write("project", "font added: \(fonts.map(\.postScriptName).joined(separator: ", "))")
         rebuild()
         return fonts
