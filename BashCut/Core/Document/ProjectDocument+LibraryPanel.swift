@@ -26,6 +26,9 @@ extension ProjectDocument {
         var request = LibraryEditorRequest(
             mode: .saveSelection(kind), name: name.prefix(1).uppercased() + name.dropFirst(), scope: defaultLibraryScope)
         if kind == .audio { request.audio = try? LibraryAudio(params: params) }
+        if kind == .sticker {
+            request.sticker = try? LibrarySticker(params: params, file: params["emoji"] == nil ? "sticker.png" : nil)
+        }
         ui.libraryEditor = request
     }
 
@@ -36,6 +39,7 @@ extension ProjectDocument {
             scope: defaultLibraryScope, transition: editableTransition(item), look: editableLook(item),
             keepsLUT: editableLook(item) != nil && item.file != nil ? true : nil)
         request.audio = editableAudio(item)
+        request.sticker = editableSticker(item)
         ui.libraryEditor = request
     }
 
@@ -47,7 +51,17 @@ extension ProjectDocument {
             transition: editableTransition(item), look: editableLook(item),
             keepsLUT: editableLook(item) != nil && item.file != nil ? true : nil)
         request.audio = editableAudio(item)
+        request.sticker = editableSticker(item)
         ui.libraryEditor = request
+    }
+
+    /// An image, animated or video sticker's size, position and animation for the sheet (#64); emoji stickers have
+    /// none.
+    private func editableSticker(_ item: LibraryItem) -> LibrarySticker? {
+        guard item.kind == .sticker, let sticker = try? LibrarySticker(params: item.params, file: item.file) else {
+            return nil
+        }
+        return sticker.isMedia ? sticker : nil
     }
 
     /// An audio item's role and loop flag for the sheet (#78).
@@ -104,6 +118,16 @@ extension ProjectDocument {
         return changes
     }
 
+    /// The changes the sheet's kind fields (a transition, look, audio or sticker) make to `item`.
+    private static func kindChanges(_ request: LibraryEditorRequest, item: LibraryItem) -> [String: JSONValue] {
+        var changes: [String: JSONValue] = [:]
+        if let transition = request.transition { changes.merge(transitionChanges(transition, item: item)) { $1 } }
+        if let look = request.look { changes.merge(lookChanges(look, keepsLUT: request.keepsLUT, item: item)) { $1 } }
+        if let audio = request.audio { changes["params"] = .object(audio.params(merging: item.params)) }
+        if let sticker = request.sticker { changes["params"] = .object(sticker.params(merging: item.params)) }
+        return changes
+    }
+
     /// Saves what the item sheet shows and closes it.
     func commitLibraryEditor() {
         guard let request = ui.libraryEditor else { return }
@@ -120,14 +144,8 @@ extension ProjectDocument {
             "pack": pack.isEmpty ? .null : .string(pack),
         ]
         switch request.mode {
-        case .duplicate(let item), .rename(let item):
-            if let transition = request.transition { edited.merge(Self.transitionChanges(transition, item: item)) { $1 } }
-            if let look = request.look {
-                edited.merge(Self.lookChanges(look, keepsLUT: request.keepsLUT, item: item)) { $1 }
-            }
-            if let audio = request.audio { edited["params"] = .object(audio.params(merging: item.params)) }
-        case .saveSelection:
-            break
+        case .duplicate(let item), .rename(let item): edited.merge(Self.kindChanges(request, item: item)) { $1 }
+        case .saveSelection: break
         }
         let changes = edited
         runLibraryPanelChange(done: String(localized: "Saved “\(name)” in the library")) { document in
@@ -135,7 +153,9 @@ extension ProjectDocument {
             case .saveSelection(let kind):
                 var fields = changes
                 let selection = try document.selectionParams(kind, mediaID: request.mediaID)
-                fields["params"] = .object(request.audio.map { $0.params(merging: selection.params) } ?? selection.params)
+                fields["params"] = .object(
+                    request.audio.map { $0.params(merging: selection.params) }
+                        ?? request.sticker.map { $0.params(merging: selection.params) } ?? selection.params)
                 let preview = kind == .effectPreset ? await document.effectPreview(itemID: nil) : nil
                 return try await document.addLibraryItem(
                     kind: kind, name: name, scope: request.scope, changes: fields, file: selection.file, preview: preview,
@@ -213,12 +233,7 @@ extension ProjectDocument {
             ])
         guard answer == "remove" else { return }
         runLibraryPanelChange(done: String(localized: "Removed “\(item.name)”")) { document in
-            let store = try document.libraryCatalog.store(item.scope)
-            return try await document.libraryChange(
-                "library.remove", scope: item.scope, author: .user, arguments: ["id": item.reference, "name": item.name]
-            ) {
-                .object(["removed": .string(try store.remove(item.id).reference)])
-            }
+            try await document.removeLibraryItem(item, author: .user)
         }
     }
 
@@ -304,7 +319,7 @@ extension ProjectDocument {
     static func fileTypes(_ kind: LibraryKind) -> [UTType] {
         switch kind {
         case .audio: [.audio]
-        case .sticker: [.image]
+        case .sticker: [.image, .movie]
         case .look: [UTType(filenameExtension: "cube")].compactMap { $0 }
         default: []
         }

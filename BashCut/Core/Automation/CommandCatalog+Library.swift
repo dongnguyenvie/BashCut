@@ -21,7 +21,11 @@ extension CommandCatalog {
         CommandParameter("pack", .string, "Pack or collection name the panel groups it under", cli: .option("pack")),
         CommandParameter(
             "params", .object,
-            "What the kind needs (JSON): text-preset {textPreset, text}; sticker {emoji, textPreset} or a file; "
+            "What the kind needs (JSON): text-preset {textPreset, text}; sticker {emoji, textPreset} or a file (PNG, "
+                + "JPEG, HEIC, WebP, GIF, APNG, or a .mov/.mp4 with alpha; not Lottie) with {stickerKind: "
+                + "emoji|image|animated|video-alpha (from the file by default), size: width as 0.01–1 of the frame, "
+                + "position: center|top|bottom|left|right|top-left|top-right|bottom-left|bottom-right or {x, y} in 0–1, "
+                + "animation: a clip motion preset, seconds}, all optional; "
                 + "effect-preset (a recipe) {steps: [{op: motion|keyframes|speed|speedCurve|reverse|freeze|patch|sfx|text, "
                 + "…}], parameters: {name: {default, min, max}}} or the older {patch: item properties}, with its own sound "
                 + "as file; transition-preset {kind, duration, easing: linear|in|out|"
@@ -30,7 +34,9 @@ extension CommandCatalog {
                 + "music|sfx|ambience, seconds, bpm, loopable, lufs, truePeak}, all optional (library add measures seconds "
                 + "and picks a role by length; library analyze fills the rest), with mood and genre as tags",
             cli: .option("params")),
-        CommandParameter("file", .string, "File to copy in (audio, image sticker, a look's .cube LUT…)", isPath: true, cli: .option("file")),
+        CommandParameter(
+            "file", .string, "File to copy in (audio, image or alpha-movie sticker, a look's .cube LUT…)", isPath: true,
+            cli: .option("file")),
         CommandParameter("preview", .string, "Preview image, GIF or audio snippet to copy in", isPath: true,
                          cli: .option("preview")),
         CommandParameter("source", .string, "Where it came from (URL or note)", cli: .option("source")),
@@ -95,7 +101,9 @@ extension CommandCatalog {
                 + "clip's length, and the sound effect at its start; a still of the clip as its preview), the transition "
                 + "at the selected clip (kind, duration, easing and the sound a preset placed there), or a grade as a look: "
                 + "the full filter stack, with the project LUT it uses copied in as the look's file, or an audio clip (or "
-                + "project audio media) as an audio item: its file copied in, its length, and music or sfx from its layer.",
+                + "project audio media) as an audio item: its file copied in, its length, and music or sfx from its layer, or "
+                + "an overlay item as a sticker: an image or alpha movie with its file, size, position and length, or an "
+                + "emoji text item with its text preset.",
             parameters: [
                 CommandParameter("kind", .string, "What to save", required: true,
                                  choices: LibrarySelection.kinds.map(\.rawValue), cli: .option("kind")),
@@ -138,7 +146,10 @@ extension CommandCatalog {
             ]),
         CommandSpec(
             "library.place", .edit,
-            "Add a library item to the timeline as a new item: a text preset or emoji sticker as text, a look as an "
+            "Add a library item to the timeline as a new item: a text preset or emoji sticker as text, an image, "
+                + "animated or video-alpha sticker (its file copied into the project's stickers/ folder once per content, "
+                + "imported and placed on the Overlay layer, added when missing, at size and position, as one undo step; "
+                + "an animated sticker shows its first frame for now and the result says so), a look as an "
                 + "adjustment (with its LUT added to the project in the same undo step), or audio: its file copied into the "
                 + "project's music/ or sfx/ folder (once per content), imported and placed on the Music layer (music, "
                 + "ambience) or SFX layer (sfx), the layer added when missing, as one undo step. duration trims a sound; "
@@ -148,8 +159,15 @@ extension CommandCatalog {
                 libraryID, libraryScope,
                 CommandParameter("atFrame", .integer, "First timeline frame", minimum: 0, cli: .option("at-frame")),
                 CommandParameter("duration", .integer, "Length in timeline frames", minimum: 1, cli: .option("duration")),
-                CommandParameter("track", .string, "Layer ID; for audio, the Music or SFX layer by its role by default",
-                                 cli: .option("track")),
+                CommandParameter("track", .string, "Layer ID; for audio, the Music or SFX layer by its role by default; "
+                                 + "for a sticker, the Overlay layer", cli: .option("track")),
+                CommandParameter(
+                    "position", .string,
+                    "Sticker: center, top, bottom, left, right, top-left, top-right, bottom-left or bottom-right (inside "
+                        + "the safe area), or x,y in 0–1 (its centre, from the top left); the sticker's default otherwise",
+                    cli: .option("position")),
+                CommandParameter("size", .number, "Sticker: width as a fraction of the frame width (0.3 by default)",
+                                 range: 0.01...1, cli: .option("size")),
                 CommandParameter("text", .string, "Text for a text preset instead of its sample", cli: .option("text")),
                 baseRevision,
             ]),

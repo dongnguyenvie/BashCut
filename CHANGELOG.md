@@ -5,6 +5,23 @@
 
 ## [Unreleased]
 
+- **Sticker library (#64).** Stickers are library items of four kinds, `params.stickerKind`: `emoji` (as before),
+  `image` (PNG, JPEG, HEIC, WebP…, transparency kept), `animated` (GIF, APNG, animated WebP) and `video-alpha` (a
+  .mov/.mp4 with an alpha channel: HEVC with alpha or ProRes 4444). `library add --kind sticker --file` reads the kind,
+  pixel size and frame count from the file and refuses a movie without alpha; Lottie is refused with a clear message.
+  Optional defaults in params: `size` (width as 0.01–1 of the frame), `position` (a named spot inside the safe area,
+  `center`, `top-left`… `bottom-right`, or `{x, y}`), `animation` (a `clip motion` preset, applied around the
+  sticker's own size and place) and `seconds`. `library place` on an image, animated or video sticker copies its file
+  into the project's `stickers/` folder once per content (`library-<hash>.<ext>`), imports it and places it on the
+  Overlay layer (added when missing) at the playhead or `--at-frame`, with new `--position` and `--size`, as one
+  undo step; emoji stickers place as text as before. Animated stickers show their first frame for now (the result
+  says so); a sticker movie plays once and is previewed without a proxy, which would drop its alpha. `library
+  save-selection --kind sticker` saves the selected image or alpha-movie overlay with its size, position and length,
+  or an emoji text item with its text preset. Placing a project library file (any kind, audio too) now copies it into
+  the project instead of pointing at `.bashcut/library`, so removing a library item never breaks the timeline;
+  `library remove` keeps (and lists under `kept`) any of the item's files the open project's media still points at
+  from before. The Stickers panel shows image and movie thumbnails with animated/video badges, takes dropped images
+  and alpha movies, and adds Place at Playhead, Edit… (size, position, animation) and Save selection as sticker.
 - **Audio library (#78).** Audio library items carry `params` `{role: music|sfx|ambience, seconds, bpm, loopable, lufs,
   truePeak}`, all optional and checked, with mood and genre as tags; `library add --kind audio --file` measures the
   length and picks a role by it. `library place` copies the file into the project's `music/` or `sfx/` folder once per

@@ -703,6 +703,10 @@
     "media" : {
       "description" : "A source file, referenced by path, never copied",
       "properties" : {
+        "alpha" : {
+          "description" : "A movie with an alpha channel (a video sticker); previewed without a proxy",
+          "type" : "boolean"
+        },
         "fps" : {
           "$ref" : "#/$defs/rational"
         },
@@ -733,6 +737,10 @@
             "audio",
             "image"
           ],
+          "type" : "string"
+        },
+        "libraryItem" : {
+          "description" : "The library item (scope:id) it was copied from",
           "type" : "string"
         },
         "path" : {

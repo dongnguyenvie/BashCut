@@ -432,16 +432,20 @@ project or on this Mac. The Filters panel also lists the style kits and the proj
 - `bashcut library update <id> [--name] [--tags] [--params] [--file] …` saves a new version; the old one stays in
   `history`. Built-in and plugin items are read-only: `--as <new-id> [--into user]` saves an improved copy with
   `basedOn` pointing at the original. Nothing is overwritten silently.
-- `bashcut library remove <id>` removes a project or user item and its files.
+- `bashcut library remove <id>` removes a project or user item and its files. Placed copies live in the project
+  folder and are never touched; files of the item that the open project's media still points at directly (placed
+  before #64 from a project library) are kept and listed in the result's `kept`.
 - `bashcut library place <id> [--at-frame] [--duration] [--track] [--text] --base-rev N` adds a text preset or emoji
-  sticker as a text item, a look as an adjustment, or an audio item as a clip (see Audio below). `library apply <id> [--item] --base-rev N` sets a text preset,
+  sticker as a text item, an image, animated or video sticker on the Overlay layer (see Stickers below), a look as an
+  adjustment, or an audio item as a clip (see Audio below). `library apply <id> [--item] --base-rev N` sets a text preset,
   an effect preset's recipe or a look's grade on an existing item. Both count a use (in `usage.json` next to
   `library.json`; the item list is not rewritten).
-- `bashcut library save-selection --kind text-preset|effect-preset|transition-preset|look|audio --name X [--item]
+- `bashcut library save-selection --kind text-preset|effect-preset|transition-preset|look|audio|sticker --name X [--item]
   [--media] [--scope] [--tags] [--pack]` saves what is selected: a text item's style and text, a clip's `transform` and
   `keyframes` as an effect recipe (see below), the transition at the selected clip (kind, duration, easing and the sound a preset placed at that cut),
   a grade as a look: the whole filter stack, with the project LUT it uses copied in as the look's file, or an audio
-  clip (or, with `--media`, any project audio media) as an audio item (see Audio below).
+  clip (or, with `--media`, any project audio media) as an audio item (see Audio below), or an overlay item as a
+  sticker (see Stickers below).
 - `bashcut library move <id> --to project|user` moves a saved item with its versions, files and use count.
 - Transition presets (#77) are `params` `{kind, duration, easing, sfx}`: `sfx` names an audio library item, or the
   preset carries its own sound as its `file` (`sfx` wins when both are set). `library apply` on one sets the transition
@@ -512,6 +516,35 @@ project or on this Mac. The Filters panel also lists the style kits and the proj
     a play/stop button, badges for role, length, BPM, LUFS and loop, and **Place**; their context menu adds **Place at
     Playhead** and **Analyze Length, Loudness & Tempo**, and Edit… sets the role and the loop flag. Audio files dropped
     on the panel or chosen with Add… become items.
+- Stickers (#64) have a kind, `params.stickerKind`: `emoji` (`params.emoji`, drawn as text with `params.textPreset`),
+  `image` (a PNG, JPEG, HEIC, WebP… file; transparency is kept), `animated` (a GIF, APNG or animated WebP) or
+  `video-alpha` (a .mov or .mp4 with an alpha channel: HEVC with alpha or ProRes 4444 with alpha). Lottie files are
+  refused: export the animation as a GIF, an animated WebP or a movie with alpha. `library add --kind sticker --name
+  Arrow --file arrow.png [--pack Arrows] [--tags arrow] [--source URL --license CC0] [--scope project]` reads the kind,
+  `width`, `height` and `frames` from the file (an image with more than one frame is `animated`; a movie without
+  alpha is refused, since it would cover the picture below). Optional placing defaults in `params`: `size` (the
+  sticker's width as 0.01–1 of the frame width; 0.3 without one), `position` (`center`, `top`, `bottom`, `left`,
+  `right`, `top-left`, `top-right`, `bottom-left`, `bottom-right`, which keep the sticker inside the safe area the
+  viewer draws, or `{x, y}`, its centre as 0–1 of the frame from the top left), `animation` (a `clip motion` preset
+  such as `pop-in` or `slide-up`; zoom keys scale the sticker's own size and pan/tilt keys move it from its place)
+  and `seconds` (how long it stays; 3 for an image without one).
+  - `library place <id> [--at-frame F] [--duration N] [--position top-right|x,y] [--size 0.25] [--track T]` copies an
+    image, animated or video sticker's file into the project's `stickers/` folder as `library-<hash>.<ext>` (the same
+    content is copied once), imports it as media (reusing media for the same file) and places it on the Overlay layer,
+    added in front of the other video layers when the project has none, or on a free overlay layer beside it, fitted
+    (`fill: false`) and framed with `transform` zoom, pan and tilt, all as one undo step. Options win over the
+    sticker's defaults. The engine draws an animated sticker's first frame for now; the result's `note` says so. A
+    sticker movie plays once (a longer `--duration` is cut to its length and the `note` says so) and is marked
+    `alpha: true` in the project, so BashCut previews it from the original instead of a proxy without alpha. Emoji
+    stickers place as text exactly as before; `--position` and `--size` do not apply to them.
+  - The project copy belongs to the project: `library remove` or `library update` of the sticker never changes it.
+  - `library save-selection --kind sticker --name X [--item id]` saves the selected overlay: an image (or a movie with
+    `alpha`) with its file, `size`, `position` (`{x, y}`) and `seconds` from the item's framing and length, or an emoji
+    text item with its text and text preset. A filling item keeps only its length.
+  - The Stickers panel shows emoji, image and movie thumbnails (badges for animated and video stickers), places one
+    at the playhead on click (context menu **Place at Playhead**), takes dropped or chosen images and alpha movies
+    (Add…), and its item sheet (Duplicate & Edit…, Edit…, Save selection as sticker) sets size, position and
+    animation.
 - `bashcut library stats [--panel]` reports usage, the saved items nobody used, and duplicates (same kind, params
   and file), to prune or merge. Saved items compare the `fileSHA256` stored when their file was copied in.
 - `bashcut library export-pack --pack Food --output ~/Food` writes a pack folder (`pack.json` and `files/`);

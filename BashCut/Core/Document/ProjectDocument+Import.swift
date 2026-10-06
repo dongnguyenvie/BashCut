@@ -122,7 +122,7 @@ extension ProjectDocument {
 
     /// An image: its oriented size, the project frame rate and `Media.imageMaximumSeconds` of frames, placed for
     /// `Media.imageDefaultSeconds`.
-    private static func importedImage(url: URL, projectFPS: FrameRate, root: URL) throws -> (media: Media, frames: Int) {
+    static func importedImage(url: URL, projectFPS: FrameRate, root: URL) throws -> (media: Media, frames: Int) {
         guard let size = StillImageMovie.pixelSize(of: url) else {
             throw ProjectError.invalid("Cannot read the image \(url.lastPathComponent)")
         }
@@ -135,7 +135,7 @@ extension ProjectDocument {
         return (media, media.placementFrames(in: projectFPS))
     }
 
-    private static func importedMedia(
+    static func importedMedia(
         url: URL, kind: String, projectFPS: FrameRate, root: URL
     ) async throws -> (media: Media, frames: Int) {
         if kind == "image" { return try importedImage(url: url, projectFPS: projectFPS, root: root) }

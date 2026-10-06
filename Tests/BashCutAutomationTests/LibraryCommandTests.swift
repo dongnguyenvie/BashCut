@@ -53,4 +53,46 @@ struct LibraryCommandTests {
             #expect(ChatCommandSession.allowedMethods.contains(method))
         }
     }
+
+    @Test("Sticker library commands (#64): place with position and size, add a file, save an overlay item")
+    func stickerLibraryCommands() throws {
+        let place = try CommandLineParser.parse([
+            "library", "place", "project:arrow", "--at-frame", "12", "--duration", "45", "--position", "top-right",
+            "--size", "0.25", "--track", "v2", "--base-rev", "7",
+        ])
+        #expect(place.spec.name == "library.place")
+        #expect(place.params == [
+            "id": .string("project:arrow"), "atFrame": .integer(12), "duration": .integer(45),
+            "position": .string("top-right"), "size": .number(0.25), "track": .string("v2"), "baseRev": .integer(7),
+        ])
+        let point = try CommandLineParser.parse(["library", "place", "arrow", "--position", "0.2,0.7", "--base-rev", "1"])
+        #expect(point.params["position"] == .string("0.2,0.7"))
+        let properties = try #require(CommandCatalog.spec(named: "library.place")).inputSchema.object["properties"]?.object
+        #expect(properties?["position"]?.object["type"] == .string("string"))
+        #expect(properties?["size"]?.object["type"] == .string("number"))
+        #expect(throws: (any Error).self) { try CommandLineParser.parse(["library", "place", "arrow", "--size", "3", "--base-rev", "1"]) }
+
+        let add = try CommandLineParser.parse([
+            "library", "add", "--kind", "sticker", "--name", "Arrow", "--file", "/tmp/arrow.png", "--pack", "Arrows",
+            "--params", #"{"size":0.2,"position":"bottom-right","animation":"pop-in"}"#, "--license", "CC0",
+        ])
+        #expect(add.params["kind"] == .string("sticker") && add.params["file"] == .string("/tmp/arrow.png"))
+        #expect(add.params["params"]?.object["position"] == .string("bottom-right"))
+
+        let save = try CommandLineParser.parse([
+            "library", "save-selection", "--kind", "sticker", "--name", "Logo", "--item", "c9", "--scope", "user",
+        ])
+        #expect(save.params == [
+            "kind": .string("sticker"), "name": .string("Logo"), "item": .string("c9"), "scope": .string("user"),
+        ])
+        let kinds = try #require(CommandCatalog.spec(named: "library.save-selection")).inputSchema.object["properties"]?
+            .object["kind"]?.object["enum"]?.array
+        #expect(kinds?.contains(.string("sticker")) == true)
+        // Remove, packs and listing the Stickers panel need nothing new.
+        for name in ["library.remove", "library.import-pack", "library.export-pack", "library.list", "library.update"] {
+            #expect(CommandCatalog.spec(named: name) != nil)
+        }
+        let list = try CommandLineParser.parse(["library", "list", "--panel", "stickers", "--pack", "Arrows"])
+        #expect(list.params == ["panel": .string("stickers"), "pack": .string("Arrows")])
+    }
 }

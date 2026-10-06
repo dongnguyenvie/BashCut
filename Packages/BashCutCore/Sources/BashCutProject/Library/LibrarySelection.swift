@@ -3,7 +3,7 @@ import Foundation
 /// "Save selection as…" (#80): the params of a new library item taken from what is selected on the timeline.
 public enum LibrarySelection {
     /// The kinds a selection can be saved as.
-    public static let kinds: [LibraryKind] = [.textPreset, .effectPreset, .transitionPreset, .look, .audio]
+    public static let kinds: [LibraryKind] = [.textPreset, .effectPreset, .transitionPreset, .look, .audio, .sticker]
 
     /// The params for a `kind` item made from the timeline `item`, or from `transition` (the selected clip's) and
     /// the media of the sound a preset placed at its cut: one copied from an audio library item is kept as `sfx`.
@@ -37,9 +37,57 @@ public enum LibrarySelection {
         case .audio:
             guard let sound else { throw ProjectError.invalid("Select an audio clip, or pass a project audio media item") }
             return try audio(sound, trackRole: nil)
-        case .sticker, .voice:
+        case .sticker:
+            return try sticker(item, media: nil, project: nil)
+        case .voice:
             throw ProjectError.invalid("A selection cannot be saved as \(kind.rawValue)")
         }
+    }
+
+    /// A sticker (#64) from an overlay item: an emoji text item as an emoji sticker with its text preset, or an image
+    /// or movie item (`media`, on `project`'s frame) as an image, animated or video-alpha sticker with its size,
+    /// position and length. `frames` is the image file's frame count; a movie is a sticker only with `alpha` media.
+    /// The caller saves the media's file as the item's file.
+    public static func sticker(
+        _ item: Item?, media: Media?, project: Project?, frames: Int = 1
+    ) throws -> [String: JSONValue] {
+        if let text = item?["text"]?.string {
+            let emoji = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !emoji.isEmpty, emoji.count <= 32 else {
+                throw ProjectError.invalid("The text is too long for an emoji sticker; save it as a text style instead")
+            }
+            return LibrarySticker(stickerKind: "emoji", emoji: emoji)
+                .params(merging: ["textPreset": .string(item?["textPreset"]?.string ?? "bold-outline")])
+        }
+        guard let item, let media, let project else {
+            throw ProjectError.invalid("Select an image or emoji overlay item to save it as a sticker")
+        }
+        let kind: String
+        switch media.kind {
+        case "image": kind = frames > 1 ? "animated" : "image"
+        case "video" where media["alpha"]?.bool == true: kind = "video-alpha"
+        default:
+            throw ProjectError.invalid(
+                "\(item.id) is not an image or a movie with alpha; only those can be saved as stickers")
+        }
+        let transform = item["transform"]?.object ?? [:]
+        let pictureWidth = media.width ?? project.width, pictureHeight = media.height ?? project.height
+        // A filling item covers the frame; its framing is not a sticker's, so it keeps only the length.
+        var sticker = LibrarySticker(stickerKind: kind, seconds: Double(item.duration) / project.fps.value)
+        if !project.fills(item) {
+            let placed = StickerFraming(
+                pictureWidth: pictureWidth, pictureHeight: pictureHeight, width: project.width, height: project.height
+            ).placement(
+                zoom: transform["zoom"]?.double ?? 1, pan: transform["pan"]?.double ?? 0,
+                tilt: transform["tilt"]?.double ?? 0)
+            sticker.size = min(LibrarySticker.sizeRange.upperBound, max(LibrarySticker.sizeRange.lowerBound, placed.size))
+            sticker.position = .point(x: min(1, max(0, placed.x)), y: min(1, max(0, placed.y)))
+        }
+        var params = sticker.params()
+        params["width"] = .integer(pictureWidth)
+        params["height"] = .integer(pictureHeight)
+        if frames > 1 { params["frames"] = .integer(frames) }
+        return params
     }
 
     /// An audio item (#78) from project audio media: its length, and a role from the layer its clip is on (`trackRole`;
