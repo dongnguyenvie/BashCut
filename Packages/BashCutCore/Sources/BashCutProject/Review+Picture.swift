@@ -77,9 +77,7 @@ extension TimelineReview {
         let freezes = project.tracks.filter { $0.role == "main" }.flatMap(\.items).filter { $0["freezeFrame"] != nil }
         let samples = picture.samples
         // A run of unchanged samples starts at the sample before its first one: that is the picture they repeat.
-        let still = runs(picture) { sample in
-            sample.change < ReviewPicture.stillChange && !picture.isBlack(sample)
-        }
+        let still = runs(picture) { $0.isStill && !picture.isBlack($0) }
         return still.compactMap { first, end in
             let index = samples.firstIndex { $0.frame == first } ?? 0
             let start = index > 0 ? samples[index - 1].frame : first

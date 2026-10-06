@@ -37,7 +37,8 @@ public enum PictureSampler {
             guard let pixels = thumbnails[frame] else { continue }
             let (luma, spread) = statistics(pixels)
             samples.append(ReviewPicture.Sample(
-                frame: frame, luma: luma, spread: spread, change: previous.map { difference($0, pixels) } ?? 1))
+                frame: frame, luma: luma, spread: spread, change: previous.map { difference($0, pixels) } ?? 1,
+                peak: previous.map { peakDifference($0, pixels) } ?? 1))
             previous = pixels
         }
         var differences: [String: Double] = [:]
@@ -70,6 +71,12 @@ public enum PictureSampler {
         let mean = values.reduce(0, +) / Double(values.count)
         let variance = values.map { ($0 - mean) * ($0 - mean) }.reduce(0, +) / Double(values.count)
         return (mean, variance.squareRoot())
+    }
+
+    /// The largest difference of one cell, as a fraction of full scale.
+    static func peakDifference(_ left: [UInt8], _ right: [UInt8]) -> Double {
+        guard left.count == right.count, !left.isEmpty else { return 1 }
+        return Double(zip(left, right).map { abs(Int($0) - Int($1)) }.max() ?? 0) / 255
     }
 
     /// Mean absolute difference, as a fraction of full scale.

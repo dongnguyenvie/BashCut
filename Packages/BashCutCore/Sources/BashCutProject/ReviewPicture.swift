@@ -11,13 +11,20 @@ public struct ReviewPicture: Sendable, Equatable {
         public let spread: Double
         /// Mean absolute difference from the previous sample; the first sample has 1.
         public let change: Double
+        /// The largest difference of one thumbnail cell from the previous sample: a small moving part (a mouth, a
+        /// ticker) shows here while the mean barely moves.
+        public let peak: Double
 
-        public init(frame: Int, luma: Double, spread: Double, change: Double) {
+        public init(frame: Int, luma: Double, spread: Double, change: Double, peak: Double? = nil) {
             self.frame = frame
             self.luma = luma
             self.spread = spread
             self.change = change
+            self.peak = peak ?? change
         }
+
+        /// The same picture as the previous sample: no change overall and no part that moved.
+        public var isStill: Bool { change < ReviewPicture.stillChange && peak < ReviewPicture.stillPeak }
     }
 
     public let revision: Int
@@ -40,6 +47,8 @@ public struct ReviewPicture: Sendable, Equatable {
     public static let flatSpread = 0.03
     /// A change below this between samples is the same picture (encoder noise stays well under it).
     public static let stillChange = 0.004
+    /// A cell changing by more than this (about 8 of 255 levels) is movement, not encoder noise.
+    public static let stillPeak = 0.03
     /// A cut whose two sides differ less than this looks like a jump cut.
     public static let jumpCutChange = 0.06
 

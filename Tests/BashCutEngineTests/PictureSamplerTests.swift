@@ -11,7 +11,8 @@ struct PictureSamplerTests {
     /// A video-only 160×90, 30 fps movie of `frames` pictures; `shade(index)` is the grey level of picture `index`
     /// (a horizontal ramp is added unless `flat`).
     static func writeMovie(
-        to url: URL, frames: Int, flat: Bool = false, width: Int = 160, height: Int = 90, shade: (Int) -> Int
+        to url: URL, frames: Int, flat: Bool = false, width: Int = 160, height: Int = 90,
+        dot: ((Int) -> (x: Int, y: Int))? = nil, shade: (Int) -> Int
     ) async throws {
         let writer = try AVAssetWriter(outputURL: url, fileType: .mov)
         let input = AVAssetWriterInput(mediaType: .video, outputSettings: [
@@ -40,6 +41,10 @@ struct PictureSamplerTests {
                     (level, level, level, 255)
             }
             for row in 1..<height { memcpy(bytes + row * stride, bytes, width * 4) }
+            // A small white square, such as a mouth or a ticker moving on a still background.
+            if let (x, y) = dot?(index) {
+                for row in y..<min(height, y + 6) { memset(bytes + row * stride + x * 4, 255, 6 * 4) }
+            }
             CVPixelBufferUnlockBaseAddress(buffer, [])
             guard adaptor.append(buffer, withPresentationTime: CMTime(value: Int64(index), timescale: 30)) else {
                 throw writer.error ?? CancellationError()
@@ -88,7 +93,7 @@ struct PictureSamplerTests {
         let moving = picture.samples.filter { $0.frame > 0 && $0.frame < 60 }
         #expect(moving.allSatisfy { $0.change > ReviewPicture.stillChange }, "\(moving)")
         let still = picture.samples.filter { $0.frame > 90 && $0.frame < 240 }
-        #expect(still.allSatisfy { $0.change < ReviewPicture.stillChange }, "\(still)")
+        #expect(still.allSatisfy { $0.isStill }, "\(still)")
         #expect(Set(picture.cuts.keys) == ["b", "c", "d", "e"])
         #expect((picture.cuts["d"] ?? 1) < ReviewPicture.jumpCutChange)
         #expect((picture.cuts["b"] ?? 0) > ReviewPicture.jumpCutChange)
@@ -101,6 +106,27 @@ struct PictureSamplerTests {
         #expect(frozen.frame == 90 && frozen.endFrame == 240)
         #expect(issues.contains { $0.id == "jump-d" && $0.fix?.command == "timeline.apply" })
         #expect(!issues.contains { $0.id == "jump-c" || $0.id == "jump-e" })
+    }
+
+    @Test("A small part moving on a still background is not frozen picture")
+    func smallMovement() async throws {
+        let root = try TestFixtures.temporaryDirectory("picture-sampler-dot")
+        defer { try? FileManager.default.removeItem(at: root) }
+        try await Self.writeMovie(
+            to: root.appendingPathComponent("dot.mov"), frames: 180, dot: { (20 + ($0 / 15 % 2) * 60, 40) },
+            shade: { _ in 90 })
+        var project = Project(name: "Dot", fps: FrameRate(30, 1))
+        project = try project.applying(.setFormat(width: 320, height: 180)).project
+        project = try project.applying(.group(label: "Fixture", author: .user, ops: [
+            .addMedia(Self.media("dot", "dot.mov", frames: 180)),
+            .insert(track: "v1", item: Item(id: "a", media: "dot", at: 0, duration: 180)),
+        ])).project
+        let picture = try await PictureSampler.measure(try await CompositionBuilder().build(project, root: root), project: project)
+        let moving = picture.samples.dropFirst()
+        #expect(moving.allSatisfy { $0.change < 0.01 }, "the mean barely moves: \(moving.map(\.change))")
+        #expect(moving.allSatisfy { !$0.isStill }, "\(moving.map(\.peak))")
+        let issues = TimelineReview.run(project, context: ReviewContext(picture: picture))
+        #expect(!issues.contains { $0.id.hasPrefix("still-") })
     }
 
     /// The ticket's budget (#432): a 3-minute 1080p edit. Run with BASHCUT_PERF=1.
