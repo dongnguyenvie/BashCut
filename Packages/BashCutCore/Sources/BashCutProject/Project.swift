@@ -353,6 +353,14 @@ public struct Project: JSONObject {
         get { storage["media"]?.array.map { Media(fields: $0.object) } ?? [] }
         set { storage["media"] = .array(newValue.map { .object($0.fields) }) }
     }
+    /// Media already in the project for the same file: the same path and every probed field of `candidate`
+    /// (kind, rate, length, size, sound) unchanged. Importing that file again reuses it instead of adding a copy.
+    public func existingMedia(like candidate: Media) -> Media? {
+        media.first { existing in
+            existing.id != candidate.id && existing.path == candidate.path
+                && candidate.fields.allSatisfy { key, value in key == "id" || existing.fields[key] == value }
+        }
+    }
     public var markers: [TimelineMarker] {
         get { storage["markers"]?.array.map { TimelineMarker(fields: $0.object) } ?? [] }
         set { storage["markers"] = .array(newValue.map { .object($0.fields) }) }

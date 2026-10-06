@@ -326,9 +326,11 @@ class Run:
                            f"{entry.get('name')}: no duration")
         b.step("media.list has every import with a duration", listed)
         def reimport():
-            again = edit("media.import", path=str(self.media_dir / "talk.mp4"), kind="video")["media"]
-            if again != self.media["talk.mp4"]:
-                return "NOTE importing the same file again adds a second media entry"
+            before = rev()
+            again = edit("media.import", path=str(self.media_dir / "talk.mp4"), kind="video")
+            expect(again["media"] == self.media["talk.mp4"] and again.get("existing") is True,
+                   f"importing the same file again returned {again}")
+            expect(rev() == before, f"reusing media without --place moved the revision {before} → {rev()}")
         b.step("media.import twice", reimport)
         b.step("media.import a missing file is rejected", lambda: self.rejects(
             lambda: edit("media.import", path=str(self.media_dir / "nope.mp4"))))

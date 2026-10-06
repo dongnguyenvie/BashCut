@@ -384,6 +384,10 @@ kind and role, or to a new layer next to the target, and linked sound follows on
 return the layer actually used. Raw `timeline apply` insert and move operations that would overlap are
 rejected.
 
+`media import` of a file the project already has (same path, same kind, rate, length, size and sound) reuses
+that media and returns `existing: true` instead of adding a duplicate. With `--place` it still places a new
+item; without it the revision stays the same.
+
 ## Library items
 
 The library panels (Audio, Text, Stickers, Effects, Transitions, Filters, Voice) are collections of items with one
