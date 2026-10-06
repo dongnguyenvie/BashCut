@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 145 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 147 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -1362,3 +1362,21 @@ Write library items as a pack folder (pack.json and files) to share or import el
 - `kind`: string, one of audio, text-preset, sticker, effect-preset, transition-preset, look, voice. Item kind
 - `scope`: string, one of built-in, user, project, plugin. Look only in this scope; without it project, user, plugin, then built-in
 - `name`: string. Pack name; the pack filter or the folder name by default
+
+## fonts
+
+### `bashcut fonts list [--query <query>] [--project] [--vietnamese]`
+
+List fonts for text items (Inspector › Text › Font): the project's fonts folder first, then the fonts installed on this Mac, with PostScript names (textStyle.font) and Vietnamese coverage.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_fonts_list`
+- `query`: string. Only names or families containing this text
+- `project`: boolean, default false. Only the project's own fonts
+- `vietnamese`: boolean, default false. Only fonts with every Vietnamese letter
+
+### `bashcut fonts import <path>`
+
+Copy a .ttf, .otf or .ttc font into the project's fonts folder and use it for this project (Inspector › Text › Font › Add Font…). The font travels with the project; nothing is installed on the Mac.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_fonts_import`
+- `path`: string, required, path. Font file

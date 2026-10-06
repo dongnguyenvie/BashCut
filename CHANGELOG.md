@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+- **Text fonts and colours end to end (#412–#415).** `textStyle.font` (PostScript name), `fill`, `stroke` and
+  `highlight` (`#RRGGBB`) are declared item properties: validated, in `project.schema.json` and `schema get`.
+  Inspector › Text adds a font menu (preset, project fonts, installed families; fonts without Vietnamese letters are
+  marked), text and outline colours and outline width. Library text presets keep font and colours, and the Text
+  panel cards show them. Projects carry fonts: `fonts import` (or Add Font…) copies a font into the project's
+  `fonts/` folder, registered for the app process when the project opens (nothing is installed on the Mac);
+  `fonts list` gives names and Vietnamese coverage; `review run` flags a font that would fall back to Helvetica.
 - **Plugin API 8: plugin panels, declarative views and plugins using other plugins (#390–#397, #399).**
   `contributes.container` adds the plugin's icon to the left rail; it opens a panel BashCut draws from the manifest
   (header, view picker, Tools, Skills, Requires, Uses with Find…) around the plugin's `contributes.views`. A view is

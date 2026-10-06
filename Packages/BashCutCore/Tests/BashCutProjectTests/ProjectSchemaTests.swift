@@ -91,6 +91,8 @@ struct ProjectSchemaTests {
             case .number(let range): .number(range.upperBound + 1)
             case .integer(let range): .integer(range.upperBound + 1)
             case .boolean: .string("yes")
+            case .text(let maxLength): .string(String(repeating: "x", count: maxLength + 1))
+            case .color: .string("yellow")
             }
             Self.editItem(&outOfRange, "left") { item in
                 if let group = property.group {

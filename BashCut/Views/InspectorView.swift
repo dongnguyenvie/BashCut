@@ -1,5 +1,6 @@
 import BashCutProject
 import BashCutAutomation
+import BashCutEngine
 import SwiftUI
 
 struct InspectorView: View {
@@ -235,6 +236,15 @@ struct InspectorView: View {
             number(
                 "Vertical position", group: "textStyle", key: "positionY", defaultValue: 0.18,
                 range: 0.05...0.9)
+            TextFontFields(
+                preset: item.textPreset, projectRoot: document.fileURL?.deletingLastPathComponent(),
+                style: Binding(
+                    get: { document.selected?["textStyle"]?.object ?? [:] },
+                    set: { document.patchSelected(["textStyle": .object($0)], label: "Text style", coalescing: true) }),
+                addFont: document.fileURL == nil ? nil : { document.importFont() })
+            number(
+                "Outline", group: "textStyle", key: "strokeWidth",
+                defaultValue: TextPresetStyle.defaults(item.textPreset)["strokeWidth"] ?? 0, range: 0...12)
             Picker(
                 "Word by word",
                 selection: Binding(

@@ -23,11 +23,12 @@ struct LibraryTextPresetTests {
         try #require(project.tracks.flatMap(\.items).first { $0.id == id })
     }
 
-    @Test("Save selection keeps the declared textStyle fields and a motion preset; placing gives them back")
+    @Test("Save selection keeps the declared textStyle fields (font and colours too, #414) and a motion preset; placing gives them back")
     func roundTrip() throws {
         var styled = text([
             "size": .number(0.0712345), "positionY": .number(0.4), "strokeWidth": .integer(6),
-            "highlight": .string("#FF0000"),
+            "highlight": .string("#FF0000"), "font": .string("Montserrat-ExtraBold"), "fill": .string("#FFD400"),
+            "stroke": .string("#000000"), "unknown": .string("dropped"),
         ])
         let base = try project(styled)
         styled["keyframes"] = try MotionPreset.motion(
@@ -36,7 +37,11 @@ struct LibraryTextPresetTests {
         let params = try LibrarySelection.params(.textPreset, item: styled, project: base)
         #expect(params == [
             "textPreset": .string("hook-title"), "text": .string("Hello"), "animation": .string("pop-in"),
-            "textStyle": .object(["size": .number(0.0712), "positionY": .number(0.4), "strokeWidth": .integer(6)]),
+            "textStyle": .object([
+                "size": .number(0.0712), "positionY": .number(0.4), "strokeWidth": .integer(6),
+                "highlight": .string("#FF0000"), "font": .string("Montserrat-ExtraBold"), "fill": .string("#FFD400"),
+                "stroke": .string("#000000"),
+            ]),
         ])
         try LibraryItem(id: "styled", kind: .textPreset, name: "Styled", params: params).validate()
 
@@ -97,7 +102,9 @@ struct LibraryTextPresetTests {
             ["textStyle": .object(["size": .number(2)])],
             ["textStyle": .object(["strokeWidth": .number(-1)])],
             ["textStyle": .object(["positionY": .string("top")])],
-            ["textStyle": .object(["font": .string("Arial")])],
+            ["textStyle": .object(["font": .string("")])],
+            ["textStyle": .object(["fill": .string("yellow")])],
+            ["textStyle": .object(["outline": .string("#000000")])],
             ["animation": .string("spin")],
             ["text": .integer(1)],
         ]

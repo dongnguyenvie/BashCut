@@ -501,6 +501,22 @@
         "textStyle" : {
           "description" : "Text style overrides",
           "properties" : {
+            "fill" : {
+              "description" : "Text colour, #RRGGBB (the preset's by default)",
+              "pattern" : "^#[0-9A-Fa-f]{6}$",
+              "type" : "string"
+            },
+            "font" : {
+              "description" : "Font PostScript name (fonts list); missing fonts draw as Helvetica",
+              "maxLength" : 128,
+              "minLength" : 1,
+              "type" : "string"
+            },
+            "highlight" : {
+              "description" : "Word-by-word highlight colour, #RRGGBB (default #FFD400)",
+              "pattern" : "^#[0-9A-Fa-f]{6}$",
+              "type" : "string"
+            },
             "positionY" : {
               "description" : "Baseline position from the bottom, as a fraction",
               "maximum" : 1,
@@ -512,6 +528,11 @@
               "maximum" : 1,
               "minimum" : 0.005,
               "type" : "number"
+            },
+            "stroke" : {
+              "description" : "Outline colour, #RRGGBB (default black)",
+              "pattern" : "^#[0-9A-Fa-f]{6}$",
+              "type" : "string"
             },
             "strokeWidth" : {
               "description" : "Outline width in points",
