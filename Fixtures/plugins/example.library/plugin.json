@@ -1,0 +1,18 @@
+{
+  "schema": "bashcut.plugin/1",
+  "id": "example.library",
+  "name": {"en": "Example Library", "vi": "Thư viện mẫu"},
+  "version": "1.0.0",
+  "apiVersion": 6,
+  "entrypoint": "bin/provider",
+  "capabilities": ["library.search"],
+  "providers": [
+    {"id": "example.library.emoji", "capability": "library.search", "name": "Emoji search", "kinds": ["sticker"]}
+  ],
+  "dependencies": [
+    {"id": "python", "name": "Python 3", "kind": "executable", "probe": {"executable": "python3", "arguments": ["--version"]}}
+  ],
+  "contributes": {
+    "library": [{"path": "packs/party"}]
+  }
+}

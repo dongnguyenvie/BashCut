@@ -3,7 +3,8 @@
 Plugins give BashCut optional, replaceable implementations of capabilities such as voice synthesis,
 transcription, beat detection and loudness analysis. Since plugin API 2 they can also add actions to the editor
 (menus, toolbar, context menus, panel buttons), listen to editor events through hooks and declare options the
-app renders natively. A plugin is a separate executable that BashCut starts for
+app renders natively. Since plugin API 6 they can ship library packs for any library panel and search or generate
+library items (see [Library packs](#library-packs) and [Library search and generate](#library-search-and-generate)). A plugin is a separate executable that BashCut starts for
 each request; no third-party code is loaded into the app process. Project data, timeline validation, undo
 history and rendering stay in the app, so a missing plugin never prevents a project from opening. The design
 behind this boundary is in [03 — Architecture](../specs/03-architecture.md#optional-plugin-boundary).
@@ -58,15 +59,15 @@ checked manifest, an entrypoint that already speaks the protocol and smoke tests
 | `id` | Yes | Reverse-domain style: lowercase letters and digits in at least two parts separated by `.` or `-` (`example.voice`) |
 | `name` | Yes | Display name, up to 80 characters; [localized text](#localized-text) |
 | `version` | Yes | Semantic version, such as `1.2.0` or `1.2.0-beta.1` |
-| `apiVersion` | Yes | `1` or `2`; see [API versions](#api-versions) |
+| `apiVersion` | Yes | `1` to `6`; see [API versions](#api-versions) |
 | `minApiVersion` / `maxApiVersion` | No | The host API window the plugin works with; `minApiVersion` defaults to `apiVersion` |
 | `entrypoint` | Yes | Relative path inside the bundle to an executable file; no leading `/` and no `..` |
 | `capabilities` | Yes | List of unique capability IDs (lowercase, segments separated by `.` or `-`); may be empty only when `contributes` is not |
-| `providers` | No | Implementations the app can choose; each needs a unique `id`, a `capability` from `capabilities`, a `name`, an optional `priority` (default 0) and an optional `timeoutSeconds` (10–3600, default 120; see [Limits](#limits)) |
+| `providers` | No | Implementations the app can choose; each needs a unique `id`, a `capability` from `capabilities`, a `name`, an optional `priority` (default 0), an optional `timeoutSeconds` (10–3600, default 120; see [Limits](#limits)) and, for `library.search` and `library.generate` only, optional `kinds` (API 6): the library kinds it serves, every kind when left out |
 | `dependencies` | No | External tools or models the plugin needs; see [Dependencies and health](#dependencies-and-health) |
 | `transport` | No | `oneshot` (default) or `session`; see [Session transport](#session-transport). API 2 |
 | `options` | No | Up to 64 settings; see [Options](#options). API 2 |
-| `contributes` | No | `actions` and `hooks`; see [Actions](#actions) and [Hooks](#hooks). API 2 |
+| `contributes` | No | `actions` and `hooks` (API 2), `library` (API 6); see [Actions](#actions), [Hooks](#hooks) and [Library packs](#library-packs) |
 | `category` | No | Where Plugins and Settings group it: `agents`, `captions`, `voice`, `audio`, `color`, `effects`, `export` or `utilities`. A registry listing's category wins; without either, BashCut guesses from the capabilities (`agent.*`, `captions.*`, `voice.*`, `audio.*`) and falls back to Utilities. Older BashCut versions ignore it |
 
 BashCut resolves features by capability and provider ID, never by vendor SDK. A plugin is only chosen for a
@@ -87,12 +88,13 @@ and dependency names stay plain strings.
 
 ## API versions
 
-The host serves every plugin API version from `PluginAPI.minimum` (1) to `PluginAPI.current` (5); changes are
+The host serves every plugin API version from `PluginAPI.minimum` (1) to `PluginAPI.current` (6); changes are
 additive, so older manifests keep working. Version 2 adds `options`, `contributes` and the `session` transport.
 Version 3 adds option `choiceLabels` and the `file` option type, the `BASHCUT_PLUGIN_DATA`/`BASHCUT_PLUGIN_CACHE`
 folders and `::progress` lines from install recipes. Version 4 adds the `secret` option type, the session host
 channel (`event` and `call` lines) and the `agent.chat` capability. Version 5 adds the `agent.terminal` capability
-and the manifest's `terminal` object. A manifest that uses a feature with an older `apiVersion` is
+and the manifest's `terminal` object. Version 6 adds `contributes.library` (library packs), the `library.search` and
+`library.generate` capabilities and provider `kinds`. A manifest that uses a feature with an older `apiVersion` is
 invalid; set `minApiVersion` so older BashCut builds list the plugin as outdated instead of failing.
 
 A plugin is **outdated** (listed, never run) when `minApiVersion` (or `apiVersion`) is newer than the host
@@ -402,10 +404,12 @@ builds the request parameters and validates the result.
 | `agent.chat` (API 4, session only) | A chat-agent tab in the agent dock, `chat send` | `op` (`turn`, `reset`, `status`); a turn adds `conversation`, `text`, `images`, `context`, `instructions`, `tools`, `kit` | A turn: `stopReason` (`end`, `aborted`, `error`) and `error`; status: `ready`, `provider`, `model`, `detail`. See [Chat agents](#chat-agents) |
 | `audio.loudness` | Normalized export, `audio measure` | `mediaPath`, optional `bands` | `integratedLUFS`, `truePeakDbTP`, optional `loudnessRangeLU`, `speechShare`, `presenceShare` |
 | `audio.sync` | `media sync` | `mediaPath`, `otherPath` | `offsetSeconds`, `correlation`, optional `halves`, `overlapStartSeconds`, `overlapEndSeconds` |
+| `library.search` (API 6) | A library panel's Search…, `library search` | `kind`, `query`, `limit`, `page`, `language`, `outputDirectory` | `items`: up to `limit` library item objects; see [Library search and generate](#library-search-and-generate) |
+| `library.generate` (API 6) | A library panel's Generate…, `library generate` | `kind`, `prompt`, `limit`, `params` (hints), `language`, `outputDirectory` | `items`, as for `library.search` |
 
 ### Output files
 
-Capabilities that produce files (`voice.synthesize`, `captions.transcribe`) get a fresh `0700` request folder
+Capabilities that produce files (`voice.synthesize`, `captions.transcribe`, `library.search`, `library.generate`) get a fresh `0700` request folder
 as `outputDirectory`. Returned paths may be absolute or relative to it, but must resolve inside it after
 symlinks are followed, and the file must exist. If the call fails, BashCut deletes the folder.
 
@@ -645,6 +649,96 @@ and is audited as `plugin.action.<action id>` or `plugin.hook.<event>`. An `addM
 inside the project folder is stored relative to the project, so files written to `outputDirectory` can be added
 directly.
 
+## Library packs
+
+`contributes.library` (API 6) ships library packs for any library panel: music and sound effects, text styles,
+stickers, effect recipes, transition presets and looks. Each entry names a pack folder inside the plugin:
+
+```json
+"apiVersion": 6,
+"contributes": {
+  "library": [{"path": "packs/party"}, {"path": "packs/lofi-music"}]
+}
+```
+
+A pack folder is the format `library export-pack` writes and `library import-pack` reads: a `pack.json` with
+`{"format": 1, "name": "Party", "items": [...]}` and the files its items' `file` and `preview` name, relative to the
+folder. Items are ordinary [library items](automation.md#library-items) (`id`, `kind`, `name`, `tags`, `params`,
+`source`, `license`…) and are checked like an imported pack's.
+
+```json
+{"format": 1, "name": "Lo-fi", "items": [
+  {"id": "lofi-rain", "kind": "audio", "name": "Rain bed", "file": "files/rain.m4a", "tags": ["calm", "rain"],
+   "license": "CC0", "params": {"role": "ambience", "loopable": true}},
+  {"id": "party-popper", "kind": "sticker", "name": "Party popper", "params": {"emoji": "🎉"}}
+]}
+```
+
+- Up to 32 packs. A `path` is relative, without `..`, `~` or a leading `/`; the folder and every file must resolve
+  inside the plugin folder after symlinks. `plugins validate` reports a pack that cannot be read, with the reason.
+- While the plugin is trusted, turned on and compatible, its items are in the **plugin** scope: `library list --scope
+  plugin`, `plugin:<id>`, and the panels, where they are grouped under the plugin's name with their pack names.
+  `createdBy` is `{"by": "plugin", "plugin", "pluginName", "pluginVersion"}`, whatever the pack says.
+- They are read-only. `library update <id> --as <new-id>` (Duplicate & Edit…) saves an editable copy, with its
+  files, in the project or user library.
+- Placing or applying one (`library place`, `library apply`) copies any file it uses into the project first (by
+  content: `music/`, `sfx/`, `stickers/`, `luts/library-<hash>.<ext>`), so removing, updating or turning off the
+  plugin never breaks a timeline. The items disappear from the library with the plugin.
+- IDs are shared across scopes: an item whose ID is built in, or that an earlier plugin already uses, is left out and
+  listed under `diagnostics` in `plugins list`. Prefix IDs with something of your own (`party-…`).
+- Packs are data: no plugin process runs to list or place them.
+
+`Fixtures/plugins/example.library` is a worked example: a Party pack (stickers, a text style, a look and a transition)
+and an offline `library.search` provider.
+
+## Library search and generate
+
+A provider of `library.search` finds items in some source (Freesound, Pexels audio, Giphy…); a provider of
+`library.generate` makes new ones from a prompt (AI music, stickers). Both return **candidates**; nothing enters the
+library until the user or an agent saves one. Declare the kinds a provider serves, so the right panels offer it:
+
+```json
+"apiVersion": 6,
+"capabilities": ["library.search"],
+"providers": [
+  {"id": "example.sounds.freesound", "capability": "library.search", "name": "Freesound", "kinds": ["audio"]}
+]
+```
+
+The request's `params`:
+
+| Field | Meaning |
+|---|---|
+| `kind` | The library kind wanted (`audio`, `sticker`, `look`…) |
+| `query` (search) / `prompt` (generate) | What the user typed |
+| `limit` | Most items to return (1–50; 12 for search and 4 for generate by default) |
+| `page` (search) | Result page, from 1 |
+| `params` (generate) | Hints such as `{"seconds": 30}`, passed through from `library generate --params` |
+| `language` | The project's content language |
+| `outputDirectory` | A fresh `0700` request folder for downloaded or generated files |
+| `options` | The plugin's option values (API keys go in a `secret` option) |
+
+The result is `{"items": [...]}`, at most `limit` library item objects. `kind` may be left out (it is the one asked
+for; another kind is refused) and so may `id` (a missing, invalid or repeated one becomes `candidate-<n>`).
+`file` and `preview` must be files in `outputDirectory` (absolute or relative to it, inside it after symlinks):
+download or write them there. Give `source` (a URL or a note) and `license` so people can check them before use.
+Each item is checked like a saved one of its kind (an `audio` item needs a `file`, a `sticker` an `emoji` or a
+file, and so on); one bad item fails the request, and its folder is removed.
+
+```json
+{"items": [
+  {"name": "Rain on a window", "file": "rain.wav", "preview": "rain.png", "tags": ["rain", "calm"],
+   "source": "https://freesound.org/s/12345/", "license": "CC-BY 4.0", "params": {"role": "ambience"}}
+]}
+```
+
+BashCut keeps the request folder under `~/Library/Caches/BashCut/LibraryCandidates` for a day. `library search` and
+`library generate` run as jobs whose result lists the candidates with an `index`, `fileURL` and `previewURL`;
+`library add --from-result <job>:<index>` (or the panel sheet's **Save**) copies one into the project or user
+library with its source, license, the provider as `provenance` and the plugin in `createdBy.plugin`. Agents saving to
+the user library wait for approval. Network access is the plugin's own: BashCut only starts it, as for any capability.
+Use a provider `timeoutSeconds` for slow generation, and report progress over the session transport.
+
 ## Hooks
 
 `contributes.hooks` subscribes to editor events. An entry is an event name or an object:
@@ -833,7 +927,7 @@ Everything above is available to agents through the CLI and MCP (`bashcut_plugin
 
 | Command | Mode | UI equivalent |
 |---|---|---|
-| `plugins list` | read | Plugins sheet: availability, transport, actions, hooks, options |
+| `plugins list` | read | Plugins sheet: availability, transport, actions, hooks, options, library packs, provider kinds |
 | `plugins health [plugin]` | read | Check Health |
 | `plugins actions [text] [--plugin id]` | read | Every contributed action (or those matching the text or plugin) with placements, `when`, shortcut, a JSON Schema for its params, whether it is enabled now and when it last ran |
 | `plugins run <action> [--params '{…}']` | edit, job | Clicking the action and filling its sheet |
@@ -847,6 +941,8 @@ Everything above is available to agents through the CLI and MCP (`bashcut_plugin
 | `plugins install <plugin> [--version <v>]` | edit, job | Install or Update in Browse: downloads and verifies, then shows the approval (only the user can approve) |
 | `plugins remove <plugin> [--data]` | edit | Installed › Remove; `--data` also deletes the plugin's data and cache folders |
 | `plugins setup <plugin>` | edit | Install Dependencies… (opens the approval; only the user approves) |
+| `library search <text> --kind K [--provider P]`, `library generate <prompt> --kind K` | edit, job | A library panel's Search… and Generate… (API 6 providers) |
+| `library add --from-result <job>:<index>` | edit | Save in that sheet |
 
 `ui actions` lists plugin actions next to built-in ones and `ui action <id or shortcut>` runs them. An action with
 parameters or `confirm` opens its sheet (dialog `plugin-action`); answer it with `ui respond run|cancel`, or use
@@ -925,7 +1021,8 @@ are two more adapters, `PluginActionCapability` and `PluginHookCapability`, run 
   hooks and the session transport are implemented.
 - Voice, Text, Audio and Export use `voice.synthesize`, `captions.transcribe`, `audio.beats` and
   `audio.loudness`. Other analysis and interchange panels are not connected yet.
-- Plugins cannot own panels or windows; contributions use the fixed placements above.
+- Plugins cannot own panels or windows; contributions use the fixed placements above. Library packs and library
+  search/generate (API 6) fill the existing library panels.
 - The plugin registry (browse, install, update, remove, signatures, yanked versions, daily update check) is
   implemented.
 - A credential contract and detailed capability permissions are future work.

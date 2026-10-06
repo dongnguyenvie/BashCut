@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 137 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 139 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -332,7 +332,7 @@ List installed plugins with a newer compatible version in the registry.
 
 ### `bashcut plugins validate [<path>] [--url <url>] [--ref <ref>] [--sha256 <sha256>]`
 
-Check a plugin that is not in the registry (a folder, its plugin.json, a .zip or .bashcutplugin archive, or a link) without installing or running it: its id, version and capabilities, every problem with the field and the fix, and for a link the commit or release it resolved to.
+Check a plugin that is not in the registry (a folder, its plugin.json, a .zip or .bashcutplugin archive, or a link) without installing or running it: its id, version and capabilities, every problem with the field and the fix (library packs included: each pack.json and the files it names, inside the plugin), and for a link the commit or release it resolved to.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_plugins_validate`
 - `path`: string, path. Plugin folder, plugin.json, or .zip / .bashcutplugin file (or use url)
@@ -775,7 +775,7 @@ Answer the topmost dialog like the user: choose an option ID or title, or give a
 Open a sheet or popover in the app.
 
 - Mode: ui · Runs: immediately · MCP: `bashcut_ui_open`
-- `dialog`: string, required, one of new-project, export, export-report, agent-changes, review, history, plugins, settings, doctor, knowledge, ask, sections, external-changes, plugin-proposals, commands, shortcuts, add-plugin. Dialog
+- `dialog`: string, required, one of new-project, export, export-report, agent-changes, review, history, plugins, settings, doctor, knowledge, ask, sections, external-changes, plugin-proposals, commands, shortcuts, add-plugin, library-search, library-generate. Dialog
 
 ### `bashcut ui select [<item>] [--items <items>] [--add] [--track <track>]`
 
@@ -1153,13 +1153,14 @@ Usage of every library item, the saved items nobody used, and groups of duplicat
 - `kind`: string, one of audio, text-preset, sticker, effect-preset, transition-preset, look, voice. Item kind
 - `panel`: string, one of audio, text, stickers, effects, transitions, filters, voice. Only items the library panel shows
 
-### `bashcut library add --kind <kind> --name <name> [--id <id>] [--scope <scope>] [--tags <tags>] [--pack <pack>] [--params <params>] [--file <file>] [--preview <preview>] [--source <source>] [--license <license>]`
+### `bashcut library add [--kind <kind>] [--name <name>] [--from-result <fromResult>] [--id <id>] [--scope <scope>] [--tags <tags>] [--pack <pack>] [--params <params>] [--file <file>] [--preview <preview>] [--source <source>] [--license <license>]`
 
-Save a new library item in the project or on this Mac. Files are copied in. Agents saving to the user scope wait for approval. To improve an existing item, use library update.
+Save a new library item in the project or on this Mac. Files are copied in. Agents saving to the user scope wait for approval. To improve an existing item, use library update. fromResult saves a candidate of a finished library search or library generate job instead (its kind, name, files, source and license; the other fields here override them).
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_library_add`
-- `kind`: string, required, one of audio, text-preset, sticker, effect-preset, transition-preset, look, voice. Item kind
-- `name`: string, required. Display name
+- `kind`: string, one of audio, text-preset, sticker, effect-preset, transition-preset, look, voice. Item kind (required unless fromResult)
+- `name`: string. Display name (required unless fromResult)
+- `fromResult`: string. A library search or generate candidate as <job>:<index> (index from 0, as the job result lists it)
 - `id`: string. Item ID: lowercase letters, digits and hyphens; from the name by default
 - `scope`: string, one of project, user, default "project". project (the open project's .bashcut/library; the default) or user (this Mac; agents need approval)
 - `tags`: string. Comma-separated tags (mood, use, genre…)
@@ -1264,6 +1265,32 @@ Play a library item's sound in BashCut (the Audio panel's play button), stopping
 - `id`: string. Item ID, or scope:id
 - `scope`: string, one of built-in, user, project, plugin. Look only in this scope; without it project, user, plugin, then built-in
 - `stop`: boolean, default false. Stop the sound playing
+
+### `bashcut library search <query> --kind <kind> [--provider <provider>] [--limit <limit>] [--save <save>] [--scope <scope>] [--page <page>]`
+
+Ask an installed plugin that provides library.search (sounds, stickers, GIFs… from Freesound, Giphy or another source) for candidate items of a kind. Runs as a job; its result lists candidates with their fields, downloaded file and preview paths, source and license. Nothing is saved until library add --from-result <job>:<index> (or save here) copies one into the library. Network use is the plugin's.
+
+- Mode: edit · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_library_search`
+- `query`: string, required. What to look for
+- `kind`: string, required, one of audio, text-preset, sticker, effect-preset, transition-preset, look, voice. Item kind
+- `provider`: string. Plugin or provider ID; the first available provider that serves the kind by default
+- `limit`: integer, 1…50, default 12. Most candidates to return
+- `save`: integer, ≥ 0. Also save the candidate with this index (from 0) when the job finishes
+- `scope`: string, one of project, user, default "project". Where save puts it: project (the default) or user (agents need approval)
+- `page`: integer, 1…1000, default 1. Result page, from 1
+
+### `bashcut library generate <prompt> --kind <kind> [--provider <provider>] [--limit <limit>] [--save <save>] [--scope <scope>] [--params <params>]`
+
+Ask an installed plugin that provides library.generate (AI music, stickers…) to make candidate items of a kind from a prompt. Runs as a job; its result lists candidates like library search. Nothing is saved until library add --from-result <job>:<index> (or save here) copies one into the library.
+
+- Mode: edit · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_library_generate`
+- `prompt`: string, required. What to make
+- `kind`: string, required, one of audio, text-preset, sticker, effect-preset, transition-preset, look, voice. Item kind
+- `provider`: string. Plugin or provider ID; the first available provider that serves the kind by default
+- `limit`: integer, 1…50, default 4. Most candidates to return
+- `save`: integer, ≥ 0. Also save the candidate with this index (from 0) when the job finishes
+- `scope`: string, one of project, user, default "project". Where save puts it: project (the default) or user (agents need approval)
+- `params`: object. Hints for the provider (JSON), such as {"seconds": 30}
 
 ### `bashcut library import-pack <path> [--scope <scope>] [--replace]`
 

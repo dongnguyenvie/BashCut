@@ -77,7 +77,8 @@ extension CommandCatalog {
             "plugins.validate", .read,
             "Check a plugin that is not in the registry (a folder, its plugin.json, a .zip or .bashcutplugin archive, or a "
                 + "link) without installing or running it: its id, version and capabilities, every problem with the field "
-                + "and the fix, and for a link the commit or release it resolved to.",
+                + "and the fix (library packs included: each pack.json and the files it names, inside the plugin), and for "
+                + "a link the commit or release it resolved to.",
             parameters: [
                 CommandParameter("path", .string, "Plugin folder, plugin.json, or .zip / .bashcutplugin file (or use url)",
                                  isPath: true, cli: .positional),

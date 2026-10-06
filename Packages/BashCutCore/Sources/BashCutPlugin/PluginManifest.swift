@@ -75,6 +75,8 @@ public struct PluginManifest: Codable, Sendable, Equatable {
     public var displayName: String { name.text }
     public var actions: [PluginActionContribution] { contributes?.actions ?? [] }
     public var hooks: [PluginHookContribution] { contributes?.hooks ?? [] }
+    /// Library packs the plugin ships (API 6).
+    public var libraryPacks: [PluginLibraryContribution] { contributes?.library ?? [] }
 
     /// Why this host cannot run the plugin, or nil when its API window includes the host.
     public var incompatibility: String? {
@@ -141,6 +143,7 @@ public struct PluginManifest: Codable, Sendable, Equatable {
             throw PluginError.invalid("agent.chat needs the session transport")
         }
         try validateTerminal()
+        try validateLibrary()
         guard Set(options.map(\.id)).count == options.count, options.count <= 64 else {
             throw PluginError.invalid("Option ids must be unique (at most 64)")
         }
@@ -159,6 +162,36 @@ public struct PluginManifest: Codable, Sendable, Equatable {
             throw PluginError.invalid("agent.terminal and the terminal object go together")
         }
         try terminal?.validate()
+    }
+
+    /// Library packs, `library.search`/`library.generate` and provider `kinds` (plugin API 6).
+    private func validateLibrary() throws {
+        let declaredProviders = providers ?? []
+        let usesAPI6 = !libraryPacks.isEmpty || declaredProviders.contains { $0.kinds != nil }
+            || capabilities.contains(where: PluginAPI.libraryCapabilities.contains)
+        guard !usesAPI6 || apiVersion >= 6 else {
+            throw PluginError.invalid("contributes.library, library.search, library.generate and provider kinds need apiVersion 6")
+        }
+        guard libraryPacks.count <= PluginLibraryContribution.maximumPacks,
+            Set(libraryPacks.map { NSString(string: $0.path).standardizingPath }).count == libraryPacks.count
+        else {
+            throw PluginError.invalid(
+                "contributes.library lists at most \(PluginLibraryContribution.maximumPacks) different pack folders")
+        }
+        for pack in libraryPacks { try pack.validate() }
+        for provider in declaredProviders {
+            guard let kinds = provider.kinds else { continue }
+            guard PluginAPI.libraryCapabilities.contains(provider.capability) else {
+                throw PluginError.invalid("Provider \(provider.id): kinds are for library.search and library.generate")
+            }
+            guard !kinds.isEmpty, Set(kinds).count == kinds.count,
+                kinds.allSatisfy({ LibraryKind(rawValue: $0) != nil })
+            else {
+                throw PluginError.invalid(
+                    "Provider \(provider.id): kinds must be unique library kinds ("
+                        + LibraryKind.allCases.map(\.rawValue).joined(separator: ", ") + ")")
+            }
+        }
     }
 
     private func validateHooks() throws {
@@ -193,14 +226,22 @@ public struct PluginProvider: Codable, Sendable, Equatable, Identifiable {
     public let priority: Int
     /// Seconds a request may go without reporting progress (default 120), for providers with long silent steps.
     public let timeoutSeconds: Int?
+    /// Library kinds a `library.search` or `library.generate` provider serves (API 6); nil serves every kind.
+    public let kinds: [String]?
 
-    public init(id: String, capability: String, name: String, priority: Int = 0, timeoutSeconds: Int? = nil) {
+    public init(
+        id: String, capability: String, name: String, priority: Int = 0, timeoutSeconds: Int? = nil, kinds: [String]? = nil
+    ) {
         self.id = id
         self.capability = capability
         self.name = name
         self.priority = priority
         self.timeoutSeconds = timeoutSeconds
+        self.kinds = kinds
     }
+
+    /// Whether a library provider serves `kind`.
+    public func serves(_ kind: LibraryKind) -> Bool { kinds?.contains(kind.rawValue) ?? true }
 
     /// `priority` may be left out of a manifest; it defaults to 0, as the plugin guide says.
     public init(from decoder: any Decoder) throws {
@@ -210,6 +251,7 @@ public struct PluginProvider: Codable, Sendable, Equatable, Identifiable {
         name = try container.decode(String.self, forKey: .name)
         priority = try container.decodeIfPresent(Int.self, forKey: .priority) ?? 0
         timeoutSeconds = try container.decodeIfPresent(Int.self, forKey: .timeoutSeconds)
+        kinds = try container.decodeIfPresent([String].self, forKey: .kinds)
     }
 }
 

@@ -37,8 +37,10 @@ extension ProjectDocument {
     static let libraryApplicationSupport = FileManager.default.urls(
         for: .applicationSupportDirectory, in: .userDomainMask)[0]
 
+    /// Project, user, plugin (packs of plugins that may run now, #81) and built-in items.
     var libraryCatalog: LibraryCatalog {
         LibraryCatalog(
+            plugin: plugins.library.items, pluginRoots: plugins.library.roots,
             user: .user(applicationSupport: Self.libraryApplicationSupport),
             project: fileURL.map { .project(root: $0.deletingLastPathComponent()) })
     }
@@ -190,7 +192,7 @@ extension ProjectDocument {
     /// Saves a new item (`library add`, `library save-selection` and the panels' Add… and Save selection as…).
     func addLibraryItem(
         kind: LibraryKind, name: String, id: String? = nil, scope: LibraryScope, changes: [String: JSONValue],
-        file: URL? = nil, preview: URL? = nil, author: Author, method: String = "library.add"
+        file: URL? = nil, preview: URL? = nil, author: Author, method: String = "library.add", plugin: String? = nil
     ) async throws -> JSONValue {
         let catalog = libraryCatalog
         let slug = Self.libraryID(from: name)
@@ -207,7 +209,7 @@ extension ProjectDocument {
         if kind == .sticker, let file {
             item["params"] = .object(try await stickerItemParams(item.params, file: file))
         }
-        item["createdBy"] = LibraryItem.creator(author: author)
+        item["createdBy"] = LibraryItem.creator(author: author, plugin: plugin)
         _ = try catalog.store(scope)
         let added = item
         return try await libraryChange(
@@ -316,7 +318,7 @@ extension ProjectDocument {
         return changes
     }
 
-    private static func url(_ arguments: CommandArguments, _ key: String) -> URL? {
+    static func url(_ arguments: CommandArguments, _ key: String) -> URL? {
         arguments.optionalString(key).map { URL(fileURLWithPath: $0).standardizedFileURL }
     }
 
@@ -335,6 +337,7 @@ extension ProjectDocument {
         registerLibraryUseCommands()
         registerLibraryPackCommands()
         registerLibraryAudioCommands()
+        registerLibraryProviderCommands()
     }
 
     private func registerLibraryReadCommands() {
@@ -360,6 +363,10 @@ extension ProjectDocument {
 
     private func registerLibraryChangeCommands() {
         handleAuthored("library.add") { document, arguments, author in
+            if let reference = arguments.optionalString("fromResult") {
+                return try await document.saveLibraryCandidate(
+                    reference, arguments: arguments, changes: Self.itemChanges(arguments), author: author)
+            }
             let kind = LibraryKind(rawValue: try arguments.string("kind")) ?? .sticker
             return try await document.addLibraryItem(
                 kind: kind, name: try arguments.string("name"), id: arguments.optionalString("id"),

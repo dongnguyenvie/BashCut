@@ -1,5 +1,6 @@
 import BashCutAutomation
 import BashCutDocument
+import BashCutPlugin
 import BashCutPlugins
 import BashCutProject
 import Foundation
@@ -43,7 +44,7 @@ extension ProjectDocument {
             guard open else { return }
             sheets.append(ModalSheet(name: name, title: title, options: [Self.close]) { _ in close() })
         }
-        sheets.append(contentsOf: [askSheet(), libraryEditorSheet(), effectApplySheet()].compactMap { $0 })
+        sheets.append(contentsOf: [askSheet(), libraryEditorSheet(), effectApplySheet(), librarySearchSheet()].compactMap { $0 })
         closing("sections", "Sections", when: ui.showSections) { [weak self] in self?.ui.showSections = false }
         closing("commands", "Command palette", when: ui.showCommands) { [weak self] in self?.ui.showCommands = false }
         closing("shortcuts", "Keyboard shortcuts", when: ui.showShortcuts) { [weak self] in
@@ -223,6 +224,14 @@ extension ProjectDocument {
             plugins.addPlugin()
         } else if name == "knowledge" {
             agents.openKnowledge()
+        } else if name == "library-search" || name == "library-generate" {
+            // The open library panel's Search… or Generate… (#81).
+            let capability = name == "library-search" ? PluginAPI.librarySearch : PluginAPI.libraryGenerate
+            let kinds = LibraryKind.kinds(inPanel: ui.libraryTab.panelName)
+            guard !libraryProviders(capability, kinds: kinds).isEmpty else {
+                throw RPCFailure(-32602, "No plugin provides \(capability) for the \(ui.libraryTab.panelName) panel")
+            }
+            beginLibrarySearch(capability, kinds: kinds)
         } else {
             throw RPCFailure(-32602, "Unknown dialog \(name)")
         }
