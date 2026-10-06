@@ -242,7 +242,7 @@ struct LibraryView: View {
                 Text("Off").tag("none")
                 Text("Highlight word").tag("highlight")
                 Text("Karaoke").tag("karaoke")
-                Text("Reveal").tag("reveal")
+                Text("Reveal word by word").tag("reveal")
             }
             Button(
                 pluginManager.calling.contains("captions.transcribe") ? "Transcribing…" : "Generate captions"

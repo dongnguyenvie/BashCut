@@ -5,6 +5,17 @@
 
 ## [Unreleased]
 
+- **One source for UI translations.** Release builds read `Localizable.xcstrings`, but `scripts/run.sh` copied
+  older `en.lproj`/`vi.lproj` `Localizable.strings` files, so the two drifted: dev builds showed new screens (Ask
+  agent, Knowledge) in English, and release builds missed 106 Vietnamese strings that only the old files had
+  (Settings, Sections, Recent projects, Doctor, word-by-word captions…). Those strings moved into the catalog, 12
+  untranslated ones were added, the old files were removed and `run.sh` now compiles the catalog with
+  `xcstringstool`. **Clear** in the Ask agent sheet reads "Xóa" again, and the word-by-word style **Reveal** has its
+  own key so it no longer shares a translation with **Reveal** in Finder.
+- `ui respond send` on the Ask agent sheet now fails, like the disabled **Send** button, when the request is empty or
+  no agent is open; before, it answered OK and sent nothing.
+- `knowledge memo --clear [--scope user]` empties a memo; before, an empty file was rejected as missing text.
+
 - **Ask agent sheet with templates; short requests in agent terminals.** Claude Code and Codex fold a long paste
   into a placeholder (`[Pasted text #1 +23 lines]`, `[Pasted Content 1801 chars]`), which hid the request behind
   the context block. Survey, Write VO, Review, review fixes and **Ask the agent to split it** now paste only the

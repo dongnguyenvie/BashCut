@@ -336,6 +336,17 @@ struct CommandSpecTests {
         #expect(try CommandLineParser.parse(["knowledge", "split-memo", "--keep"]).params == ["keep": .bool(true)])
     }
 
+    @Test("The memo command replaces the text from a file, or clears it with --clear")
+    func memoCommand() throws {
+        #expect(try CommandLineParser.parse(["knowledge", "memo", "--clear", "--scope", "user"]).params == [
+            "clear": .bool(true), "scope": .string("user"),
+        ])
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".md")
+        try Data("Prefer lo-fi music".utf8).write(to: file)
+        defer { try? FileManager.default.removeItem(at: file) }
+        #expect(try CommandLineParser.parse(["knowledge", "memo", file.path]).params == ["text": .string("Prefer lo-fi music")])
+    }
+
     @Test("The SubRip import reads the file named on the command line")
     func subRipFile() throws {
         let file = FileManager.default.temporaryDirectory.appendingPathComponent("bashcut-\(UUID().uuidString).srt")
