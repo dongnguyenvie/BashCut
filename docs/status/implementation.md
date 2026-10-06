@@ -278,6 +278,7 @@ Max): 219 checks. After the fixes in the same change, nothing fails; open notes:
 | Edits that change nothing | still make a revision and an undo step |
 | Slow service commands (UI stays responsive) | `agent status` ~0.9 s, `chat status` ~0.5 s, `storage get` 0.3–0.6 s |
 | Edit cost at scale | one `setProperties` round trip: 27 ms at 100 clips, 78 ms at 1000 (release build; core alone is ~3 ms). About 60% of the main thread is `TimelineCanvas.draw` repainting the whole visible timeline after each edit (clip titles, filmstrips) |
+| Edit cost at scale, fixed (#348) | the real cost was Core Animation rasterizing every visible clip (`CA::CG::Queue`, the main thread waits for it in `CABackingStoreGetFrontTexture`), not the draw calls. The canvas now diffs the drawn project against the new one and repaints only changed clips and gaps (`TimelineCanvas+Invalidation.swift`); the header repaints only when layers change. Release, M1 Max: 1,000 clips 52.5 → 22.9 ms per edit (100 edits 4.3 → 2.2 s, 100 undos 4.3 → 2.0 s); 100 clips 27 → 15.6 ms. Most of what is left is SwiftUI updating other views |
 | Export | once, `context get` waited 0.6 s while an export finished; not reproduced in three reruns |
 | Known gaps | `library place` of audio and sticker items (#78, #64) |
 

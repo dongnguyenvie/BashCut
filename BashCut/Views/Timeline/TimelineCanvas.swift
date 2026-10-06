@@ -22,6 +22,8 @@ import BashCutProject
     var lastZoomAnchor: TimelineZoomAnchor?
     var lastContent: TimelineView.ContentKey?
     var voiceoverWarningIDs: Set<String> = []
+    /// The document's agent-changed clips as of the last update; clips in it show a sparkle.
+    var drawnAgentChanges: Set<String> = []
     var reviewRevision = -1
 
     /// The clip under the pointer, drawn highlighted with trim handles.
@@ -201,7 +203,7 @@ import BashCutProject
     private func drawGaps(in row: TimelineLayout.Row, dirtyRect: CGRect) {
         guard row.track.role == TrackRole.main else { return }
         for gap in row.track.gaps {
-            let rect = CGRect(x: layout.x(gap.lowerBound), y: row.y, width: Double(gap.count) * scale - 2, height: row.height)
+            let rect = layout.rect(ofGap: gap, in: row)
             guard rect.width > 2, rect.intersects(dirtyRect) else { continue }
             let selected = selectedGap?.trackID == row.track.id && selectedGap?.range == gap
             NSGraphicsContext.saveGraphicsState()

@@ -4,6 +4,29 @@ import Testing
 @testable import BashCutProject
 
 struct ProjectTests {
+    @Test("Same settings ignores clip edits and the revision but not project or layer fields")
+    func sameSettings() throws {
+        let project = try fixture()
+        let edited = try project.applying(.setProperties(item: "c1", patch: ["opacity": .number(0.5)])).project
+        #expect(edited.revision != project.revision)
+        #expect(edited.sameSettings(as: project))
+        #expect(edited.tracks[0].sameSettings(as: project.tracks[0]))
+        #expect(edited.tracks[0] != project.tracks[0])
+
+        var renamed = project
+        renamed.tracks[0].name = "Renamed"
+        #expect(renamed.sameSettings(as: project))
+        #expect(!renamed.tracks[0].sameSettings(as: project.tracks[0]))
+
+        var reformatted = project
+        reformatted["format"] = .object(["width": .integer(1080), "height": .integer(1920)])
+        #expect(!reformatted.sameSettings(as: project))
+        var extended = project
+        extended["futureSetting"] = .bool(true)
+        #expect(!extended.sameSettings(as: project))
+        #expect(!project.sameSettings(as: extended))
+    }
+
     @Test("Color comparison preview bypasses color without mutating project data")
     func colorComparisonPreview() throws {
         var project = try fixture()

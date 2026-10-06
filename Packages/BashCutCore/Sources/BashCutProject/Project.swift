@@ -194,6 +194,8 @@ public struct Track: JSONObject, Identifiable {
         get { storage["name"]?.string ?? "" }
         set { storage["name"] = .string(newValue) }
     }
+    /// True when every field but the items matches `other` (kind, role, switches, name).
+    public func sameSettings(as other: Track) -> Bool { storage == other.storage }
 }
 
 public struct TimelineMarker: JSONObject, Identifiable {
@@ -337,6 +339,12 @@ public struct Project: JSONObject {
     public var revision: Int {
         get { storage["rev"]?.int ?? -1 }
         set { storage["rev"] = .integer(newValue) }
+    }
+    /// True when every field but the tracks and the revision matches `other`: the same format, media, looks and
+    /// markers. The timeline uses it to repaint only the clips an edit changed.
+    public func sameSettings(as other: Project) -> Bool {
+        storage.count == other.storage.count
+            && storage.allSatisfy { key, value in key == "rev" || other.storage[key] == value }
     }
     public var fps: FrameRate { FrameRate(json: storage["format"]?.object["fps"]) }
     public var width: Int { storage["format"]?.object["width"]?.int ?? 0 }

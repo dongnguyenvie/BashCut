@@ -4,7 +4,7 @@ import SwiftUI
 
 /// Hosts the timeline canvas in a scroll view with the layer header pinned to the left edge. SwiftUI calls
 /// `updateNSView` for every playhead change; that only moves the playhead overlay. The canvas redraws when its
-/// content (project, zoom, selection, waveforms, size) changes.
+/// content (project, zoom, selection, waveforms, size) changes; after an edit, only the clips it touched.
 struct TimelineView: NSViewRepresentable {
     let document: ProjectDocument
 
@@ -63,14 +63,26 @@ struct TimelineView: NSViewRepresentable {
                 canvas.filmstripURLs.removeAll()
             }
             if key.session != canvas.lastContent?.session { canvas.filmstrips.reset() }
+            let previous = canvas.lastContent
+            let drawn = TimelineDrawnState(
+                project: canvas.project, layout: canvas.layout, selectedID: canvas.selectedID,
+                warnings: canvas.voiceoverWarningIDs, agentChanges: canvas.drawnAgentChanges)
             canvas.lastContent = key
             canvas.project = project
             canvas.layout = layout
             canvas.updateReviewWarnings(for: project)
             canvas.waveforms = document.waveforms.values
             canvas.selectedID = document.selectedID
+            canvas.drawnAgentChanges = document.agentChangedIDs
             canvas.setFrameSize(size)
-            canvas.needsDisplay = true
+            // An edit or a selection change repaints only the clips it touched.
+            if let previous, previous.session == key.session, previous.scale == key.scale, previous.size == key.size,
+                previous.selectedTrackID == key.selectedTrackID, previous.waveforms == key.waveforms,
+                let rects = canvas.changedRects(since: drawn) {
+                rects.forEach(canvas.setNeedsDisplay)
+            } else {
+                canvas.needsDisplay = true
+            }
             header.layout = layout
         }
         header.selectedTrackID = document.selectedTrackID

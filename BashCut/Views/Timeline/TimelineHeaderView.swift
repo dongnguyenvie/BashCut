@@ -7,7 +7,9 @@ import BashCutProject
 final class TimelineHeaderView: NSView {
     enum Switch { case hidden, muted, locked }
 
-    var layout = TimelineLayout(project: Project(name: ""), scale: 1) { didSet { needsDisplay = true } }
+    var layout = TimelineLayout(project: Project(name: ""), scale: 1) {
+        didSet { if !layout.sameRows(as: oldValue) { needsDisplay = true } }
+    }
     var selectedTrackID: String? { didSet { if selectedTrackID != oldValue { needsDisplay = true } } }
     /// The playhead time over the ruler. A subview of its own, so playback redraws only this label.
     let time = TimelineTimeLabel(
