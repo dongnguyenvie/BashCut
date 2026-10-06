@@ -122,13 +122,13 @@ public actor CompositionBuilder {
                     }
                     let target = try visualLanes.take(
                         layer: track.id, start: item.at, end: item.end, composition: composition)
+                    let available = isStill ? nil : asset.videoRange
                     if freezeFrame == nil, !isStill, let ramp {
-                        try ramp.insert(from: source, into: target)
+                        try ramp.insert(from: source, into: target, available: available, frame: media.fps.time(1))
                     } else {
-                        try target.insertTimeRange(videoSourceRange, of: source, at: destination)
-                        target.scaleTimeRange(
-                            CMTimeRange(start: destination, duration: videoSourceRange.duration),
-                            toDuration: project.fps.time(item.duration))
+                        try target.insertHoldingEnd(
+                            videoSourceRange, of: source, available: available, frame: media.fps.time(1),
+                            over: CMTimeRange(start: destination, duration: project.fps.time(item.duration)))
                     }
                     let preferred = asset.preferredTransform
                     let rect = CGRect(origin: .zero, size: asset.naturalSize).applying(preferred)
@@ -167,10 +167,9 @@ public actor CompositionBuilder {
                         let holdRange = isStill ? stillRange : CMTimeRange(
                             start: media.fps.time(frame), duration: media.fps.time(1))
                         let holdStart = project.fps.time(item.end)
-                        try hold.insertTimeRange(holdRange, of: source, at: holdStart)
-                        hold.scaleTimeRange(
-                            CMTimeRange(start: holdStart, duration: holdRange.duration),
-                            toDuration: project.fps.time(transition.duration))
+                        try hold.insertHoldingEnd(
+                            holdRange, of: source, available: available, frame: media.fps.time(1),
+                            over: CMTimeRange(start: holdStart, duration: project.fps.time(transition.duration)))
                         visualByTrack[track.id, default: []].append(
                             PlacedVisual(
                                 start: item.end, end: item.end + transition.duration,

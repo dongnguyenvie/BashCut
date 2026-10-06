@@ -31,6 +31,7 @@ actor AssetCache {
         let audio = try await asset.loadTracks(withMediaType: .audio).first
         let loaded = LoadedAsset(
             asset: asset, signature: signature, video: video, audio: audio,
+            videoRange: try await video?.load(.timeRange),
             naturalSize: try await video?.load(.naturalSize) ?? .zero,
             preferredTransform: try await video?.load(.preferredTransform) ?? .identity)
         loads += 1
@@ -56,6 +57,8 @@ struct LoadedAsset: @unchecked Sendable {
     let signature: FileSignature
     let video: AVAssetTrack?
     let audio: AVAssetTrack?
+    /// Where the video track has pictures; the file's duration (and so `Media.frames`) can run past its end.
+    let videoRange: CMTimeRange?
     let naturalSize: CGSize
     let preferredTransform: CGAffineTransform
 }
