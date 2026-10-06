@@ -109,6 +109,9 @@ struct EditorView: View {
         .sheet(item: $document.privilegedApproval) { prompt in
             PrivilegedApprovalView(prompt: prompt, resolve: document.resolvePrivilegedApproval)
         }
+        .sheet(item: $document.scopeHold) { hold in
+            AgentScopeHoldView(hold: hold, resolve: document.resolveScopeHold)
+        }
         .sheet(isPresented: Bindable(document.ui).showAgentChanges) {
             if let change = document.agentChange {
                 AgentChangesView(

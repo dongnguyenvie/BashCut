@@ -103,6 +103,13 @@ extension ProjectDocument {
             ) { [weak self] _ in self?.plugins.cancelPendingInstall() })
         }
         sheets += pluginSheets()
+        sheets += approvalSheets()
+        return sheets
+    }
+
+    /// Decisions only the user can approve: a privileged agent action and an edit outside the attached scope.
+    private func approvalSheets() -> [ModalSheet] {
+        var sheets: [ModalSheet] = []
         if let prompt = privilegedApproval {
             // Approving stays with the user; agents can only decline.
             sheets.append(ModalSheet(
@@ -111,6 +118,14 @@ extension ProjectDocument {
                     + "to let agents export without asking.",
                 options: [ModalOption("deny", String(localized: "Deny"))]
             ) { [weak self] _ in self?.resolvePrivilegedApproval(false) })
+        }
+        if let hold = scopeHold {
+            // Allowing stays with the user; agents can only reject.
+            sheets.append(ModalSheet(
+                name: "agent-scope", title: "\(hold.agent) wants to edit outside the attached clips",
+                message: "This edit also changes: \(hold.outside). Only the user can allow it.",
+                options: [ModalOption(AgentScopeChoice.reject.rawValue, String(localized: "Reject"))]
+            ) { [weak self] _ in self?.resolveScopeHold(.reject) })
         }
         return sheets
     }

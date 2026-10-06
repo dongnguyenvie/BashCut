@@ -112,10 +112,4 @@ extension ProjectDocument {
     private static func scopeJSON(_ agent: ChatAgentModel) -> JSONValue {
         .object(["plugin": .string(agent.pluginID), "scope": .array(agent.scope.map(\.json))])
     }
-
-    /// The shown chat tab's attached items, for `context get`; null when no chat tab is shown.
-    var chatScopeJSON: JSONValue {
-        guard let pluginID = agents.chatPluginID else { return .null }
-        return Self.scopeJSON(chatAgents.model(for: pluginID))
-    }
 }

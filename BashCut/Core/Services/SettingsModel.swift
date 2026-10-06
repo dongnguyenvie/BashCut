@@ -41,6 +41,11 @@ public final class SettingsModel {
     public var allowExternalAgents: Bool {
         didSet { defaults.set(allowExternalAgents, forKey: Keys.allowExternalAgents) }
     }
+    /// What happens when an agent with an attached scope edits outside it (#356): `ask`, `block` or `off`
+    /// (`AgentScopeMode`). Like export approval, only the user can change it in Settings.
+    public var agentScopeModeRaw: String {
+        didSet { defaults.set(agentScopeModeRaw, forKey: Keys.agentScopeMode) }
+    }
     /// Run privileged agent commands (exports) without the in-app confirmation sheet. Off by default;
     /// only the user can change it in Settings — no automation command exists for it.
     public var autoApprovePrivileged: Bool {
@@ -102,6 +107,7 @@ public final class SettingsModel {
         static let allowAgentEdits = "allowAgentEdits"
         static let allowExternalAgents = "allowExternalAgents"
         static let autoApprovePrivileged = "autoApprovePrivileged"
+        static let agentScopeMode = "agentScopeMode"
         static let defaultExportPreset = "defaultExportPreset"
         static let runPluginHooks = "runPluginHooks"
         static let autoApplyPluginHookEdits = "autoApplyPluginHookEdits"
@@ -127,6 +133,7 @@ public final class SettingsModel {
         allowAgentEdits = defaults.object(forKey: Keys.allowAgentEdits) as? Bool ?? true
         allowExternalAgents = defaults.object(forKey: Keys.allowExternalAgents) as? Bool ?? true
         autoApprovePrivileged = defaults.bool(forKey: Keys.autoApprovePrivileged)
+        agentScopeModeRaw = defaults.string(forKey: Keys.agentScopeMode) ?? "ask"
         runPluginHooks = defaults.object(forKey: Keys.runPluginHooks) as? Bool ?? true
         autoApplyPluginHookEdits = defaults.bool(forKey: Keys.autoApplyPluginHookEdits)
         checkPluginUpdatesDaily = defaults.object(forKey: Keys.checkPluginUpdatesDaily) as? Bool ?? true

@@ -6,7 +6,7 @@ import Testing
 struct RPCFailureTests {
     @Test("CLI exit statuses distinguish stale, busy, permissions, usage, transport and internal errors")
     func statuses() {
-        for (code, status): (Int, Int32) in [(-32002, 75), (-32003, 69), (-32001, 77), (-32602, 64),
+        for (code, status): (Int, Int32) in [(-32002, 75), (-32003, 69), (-32001, 77), (-32004, 77), (-32602, 64),
                                            (-32000, 69), (-32700, 65), (-32603, 70)] {
             #expect(RPCFailure(code, "error").exitStatus == status)
         }
@@ -24,5 +24,27 @@ struct RPCFailureTests {
         let stale = await registry.handle(RPCRequest(method: "timeline.redo", params: ["baseRev": .integer(1)], token: token))
         #expect(stale.error?.code == -32002)
         #expect(stale.error?.data == .object(["expected": .integer(1), "actual": .integer(2)]))
+    }
+}
+
+struct CommandCallerTests {
+    @Test("Handlers see the live token they run with, and nil for a request without one")
+    @MainActor func token() async {
+        let registry = CommandRegistry()
+        var seen: [String?] = []
+        registry.register("timeline.undo") { _, _ in
+            seen.append(CommandCaller.token)
+            return .null
+        }
+        registry.register("context.get") { _, _ in
+            seen.append(CommandCaller.token)
+            return .null
+        }
+        let token = registry.issueToken(author: .agent)
+        _ = await registry.handle(RPCRequest(method: "timeline.undo", params: ["baseRev": .integer(1)], token: token))
+        _ = await registry.handle(RPCRequest(method: "context.get", token: "revoked"))
+        _ = await registry.handle(RPCRequest(method: "context.get"))
+        #expect(seen == [token, nil, nil])
+        #expect(CommandCaller.token == nil)
     }
 }

@@ -8,6 +8,12 @@ public struct AuditEvent: Codable, Sendable {
     public let succeeded: Bool
 }
 
+/// The live session token of the command running on this task, so checks deeper in the app (the scope guard,
+/// #356) know which agent session made an edit. Nil outside a command or for a request without a live token.
+public enum CommandCaller {
+    @TaskLocal public static var token: String?
+}
+
 @MainActor public final class CommandRegistry {
     public typealias Handler = @MainActor (CommandArguments, Author?) async throws -> JSONValue
     private var handlers: [String: Handler] = [:]
@@ -104,7 +110,9 @@ public struct AuditEvent: Codable, Sendable {
                 switchedProject.removeValue(forKey: token)
             }
             let arguments = CommandArguments(try spec.validate(request.params))
-            let result = try await handler(arguments, author)
+            let result = try await CommandCaller.$token.withValue(author == nil ? nil : request.token) {
+                try await handler(arguments, author)
+            }
             if Self.projectSwitches.contains(request.method), let token = request.token {
                 switchedProject.removeValue(forKey: token)
             }

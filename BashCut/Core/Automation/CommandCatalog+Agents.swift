@@ -50,6 +50,12 @@ extension CommandCatalog {
                 CommandParameter("new", .boolean, "Start a new conversation instead of continuing the last one",
                                  default: .bool(false), cli: .flag("new")),
             ]),
+        CommandSpec(
+            "agent.detach", .ui,
+            "Remove timeline items sent to the shown terminal tab with Send to Agent (ui action clip.send-to-agent), "
+                + "like the chip's ×; without --items, all of them. While items are attached, the scope guard checks "
+                + "that tab's edits against them.",
+            parameters: [CommandParameter("items", .string, "Item IDs, comma-separated", cli: .option("items"))]),
     ]
 
     /// Chat-agent tabs: plugins with the `agent.chat` capability (docs/specs/11-chat-agents.md), such as AI Editor.

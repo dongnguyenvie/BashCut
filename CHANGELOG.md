@@ -5,6 +5,16 @@
 
 ## [Unreleased]
 
+- **Scope guard (#356).** While a chat or terminal tab has clips attached with Send to Agent, the app checks each
+  edit that tab's agent makes. Edits to the attached clips, their linked partners, items those edits make, and new
+  items inside the attached range run as before. An edit that changes other clips or the whole project (layers,
+  project settings, format, sections) follows Settings › Agents › **Edits outside the attached clips**: **Ask
+  first** (the default: the edit is held and a sheet offers Allow Once, Allow for This Request and Reject; only the
+  user can allow), **Block**, or **Allow**. The command fails at once with the new code `-32004` (CLI exit 77),
+  listing the items in `data.outOfScope` (`held: true` when it waits for the user); a held edit the user allows is
+  applied then, and `context get` reports the answer as `scope.last`. Terminal tabs now show their attached clips as chips over the terminal; `agent detach [--items]`
+  removes them, and `agent terminals` lists each tab's `scope`. `context get`'s `scope` is now the caller's own tab's,
+  with the guard `mode`, `allowedForRequest`, `held` and `last`. Shell tabs are the user's own and are not checked.
 - **Text presets keep their style (#380).** A `text-preset` library item can store `textStyle` (`size`, `positionY`,
   `strokeWidth`, with the item property ranges) and `animation` (a `clip motion` preset) next to `textPreset` and
   `text`. `library save-selection --kind text-preset` keeps the selected text item's style and its motion preset

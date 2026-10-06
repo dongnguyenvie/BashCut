@@ -135,9 +135,15 @@ struct SettingsView: View {
                 }
             }
             Toggle("Run agent exports without confirmation", isOn: $settings.autoApprovePrivileged)
+            Picker("Edits outside the attached clips", selection: $settings.agentScopeModeRaw) {
+                Text("Ask first").tag(AgentScopeMode.ask.rawValue)
+                Text("Block").tag(AgentScopeMode.block.rawValue)
+                Text("Allow").tag(AgentScopeMode.off.rawValue)
+            }
         } footer: {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Re-enable agent edits by starting a new Claude or Codex session.")
+                Text("When you send clips to an agent, its edits to other clips or to the whole project ask you first, are blocked, or are allowed.")
                 Text("With confirmation off, agents can export and write files without asking. Every request is still logged.")
                 Text("Agents outside BashCut use the bashcut CLI or MCP with a token file only your user account can read.")
             }.font(.caption).foregroundStyle(.secondary)
