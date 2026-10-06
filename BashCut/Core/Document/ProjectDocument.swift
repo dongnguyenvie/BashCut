@@ -46,6 +46,8 @@ final class ProjectDocument {
     let fileSync = FileSyncController()
     /// Report of the timeline import that created the open project.
     var importReport: TimelineImport?
+    /// The loudness the last export of this session measured, for review (#431); not saved.
+    var reviewLoudness: ReviewLoudness?
     var sessionID = UUID()
     /// Socket server, command registry and the external-agent token file.
     let automation: AutomationController

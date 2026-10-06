@@ -5,6 +5,18 @@
 
 ## [Unreleased]
 
+- **Review grades issues and checks sound, text placement and the hook (#435, #431, #433, #434).** Every issue has a
+  severity (`error` spoils the export, `warning` hurts it, `info` is a note), errors first, and a `fix` when one
+  exists: a command with arguments (`timeline.close-gap`, `timeline.apply`, `export.start`) or a hint. `review run`
+  takes `--min-severity` and `--summary` (`{issues, summary: {errors, warnings, infos, passed}}`); the Review sheet
+  colours rows by severity and applies edit and export fixes with **Fix**. New checks: loudness against the project's
+  `audio.targetLUFS` (±2 LU, true peak ≤ -1 dBTP) from the last normalized export of the same revision (info when not
+  measured); Music with ducking off under speech; dead air over 1.5 s; a music bed that drops out; text under the
+  vertical caption bar (error, with a fix that raises it), the side buttons or the top bar; text outside title safe on
+  landscape; text below 3 % of the short side; vertical captions over two lines or 32 characters; overlapping text;
+  and no hook (text with a number or question, or speech) in the first 3 s. Thresholds come from a study of 30
+  Reelcrew/AgentVid videos.
+
 - **Export no longer fails with `BashCutCompositor.MissingFrame 2` when a clip reaches its media's first or last
   frame.** `Media.frames` comes from the file's duration, and camera MOV/MP4 files often have sound before the first
   picture or after the last one. Clips, freeze frames, transition holds and speed ramps that reach past the pictures

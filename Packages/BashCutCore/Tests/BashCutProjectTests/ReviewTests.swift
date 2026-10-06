@@ -22,7 +22,7 @@ struct ReviewTests {
                 ])
         ).project
         let issues = TimelineReview.run(project)
-        #expect(Set(issues.map(\.id)) == ["gap-clip", "caption-caption", "coverage"])
+        #expect(Set(issues.map(\.id)) == ["gap-clip", "caption-caption", "safe-side-caption", "coverage"])
     }
 
     @Test("Review flags each missing font once, at its first text item (#415)")

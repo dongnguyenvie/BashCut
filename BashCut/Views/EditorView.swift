@@ -303,30 +303,17 @@ struct EditorView: View {
                 Spacer()
                 Button("Done") { document.ui.showReview = false }
             }
-            Text("Review checks the timeline. Loudness is measured during normalized export; silence analysis is not available yet.").font(
-                .caption
-            ).foregroundStyle(.secondary)
-            let issues = TimelineReview.run(document.project, fontAvailable: ProjectFonts.isAvailable)
+            Text(
+                "Review checks the timeline, text placement, the hook and sound. Loudness comes from the last normalized "
+                    + "export of this revision."
+            ).font(.caption).foregroundStyle(.secondary)
+            let issues = document.reviewIssues()
             if issues.isEmpty { Label("No timeline issues found", systemImage: "checkmark.circle") }
-            ForEach(issues) { issue in
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(issue.title).font(.headline)
-                    Text(issue.detail).font(.caption)
-                    HStack {
-                        Button("Jump") {
-                            document.preview.seek(issue.frame)
-                            document.ui.showReview = false
-                        }
-                        Button("Ask agent to fix") {
-                            document.ui.showAgentDock = true
-                            document.agents.fillInput("Fix this review issue: " + issue.detail)
-                            document.ui.showReview = false
-                        }.disabled(document.agents.current == nil && document.agents.chatPluginID == nil)
-                    }
-                }.padding(8).frame(maxWidth: .infinity, alignment: .leading).background(
-                    .orange.opacity(0.08)
-                ).cornerRadius(6)
-            }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(issues) { issue in reviewRow(issue) }
+                }
+            }.frame(maxHeight: 520)
         }.padding(20).frame(width: 560).preferredColorScheme(.dark)
     }
     private var history: some View {

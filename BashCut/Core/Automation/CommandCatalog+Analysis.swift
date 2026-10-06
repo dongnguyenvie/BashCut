@@ -3,6 +3,19 @@ import Foundation
 
 extension CommandCatalog {
     /// Read-only sound analysis through plugin providers; each runs as a job whose result holds the values.
+    static let reviewSpec = CommandSpec(
+        "review.run", .read,
+        "Review the timeline before export. Each issue has a severity (error: spoils the export, warning: hurts "
+            + "it, info: a note) and, when one exists, a fix: a command with arguments, or a hint. Errors come first. "
+            + "With summary, the result is {issues, summary: {errors, warnings, infos, passed}}; passed means no "
+            + "error. Loudness is checked from the last normalized export of this revision.",
+        parameters: [
+            CommandParameter("minSeverity", .string, "Leave out issues less severe than this",
+                             choices: ReviewSeverity.allCases.map(\.rawValue), cli: .option("min-severity")),
+            CommandParameter("summary", .boolean, "Wrap the issues with counts and a pass flag",
+                             cli: .flag("summary")),
+        ])
+
     static let analysisSpecs: [CommandSpec] = [
         CommandSpec(
             "audio.measure", .read,

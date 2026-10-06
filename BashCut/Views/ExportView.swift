@@ -19,7 +19,7 @@ struct ExportView: View {
     private var dimensions: (Int, Int) {
         preset.dimensions(projectWidth: document.project.width, projectHeight: document.project.height)
     }
-    private var issues: Int { TimelineReview.run(document.project, fontAvailable: ProjectFonts.isAvailable).count }
+    private var issues: Int { document.reviewIssues().filter { $0.severity != .info }.count }
     private var loudnessProviders: [PluginProviderChoice] {
         document.plugins.providers(for: "audio.loudness")
     }

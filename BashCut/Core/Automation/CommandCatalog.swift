@@ -48,7 +48,7 @@ public enum CommandCatalog {
                     cli: .option("format"))
             ]),
         CommandSpec("media.list", .read, "List project media."),
-        CommandSpec("review.run", .read, "Run the structural timeline review (not measured audio loudness)."),
+        reviewSpec,
         CommandSpec("captions.export", .read, "Export captions as SubRip text."),
         CommandSpec(
             "export.status", .read,

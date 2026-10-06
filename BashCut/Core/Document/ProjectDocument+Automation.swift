@@ -100,14 +100,14 @@ extension ProjectDocument {
                 return .object(fields)
             })
         }
-        handle("review.run") { document, _, _ in
-            .array(
-                TimelineReview.run(document.project, fontAvailable: ProjectFonts.isAvailable).map { issue in
-                    .object([
-                        "id": .string(issue.id), "title": .string(issue.title),
-                        "detail": .string(issue.detail), "frame": .integer(issue.frame),
-                    ])
-                })
+        handle("review.run") { document, arguments, _ in
+            var issues = document.reviewIssues()
+            if let minimum = arguments.optionalString("minSeverity").flatMap(ReviewSeverity.init(rawValue:)) {
+                issues = issues.filter { $0.severity <= minimum }
+            }
+            let list = JSONValue.array(issues.map(\.json))
+            guard arguments.bool("summary") else { return list }
+            return .object(["issues": list, "summary": ReviewSummary(issues).json])
         }
         handle("export.status") { document, _, _ in document.exports.statusJSON }
     }

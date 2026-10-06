@@ -18,7 +18,7 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
 | M2 Agent dock and automation | Mostly done | Claude/Codex/Shell terminals, socket, CLI, MCP; real authenticated agent runs only partly smoke-tested |
 | M3 Text, captions, export | Mostly done | Export queue (E-1) done; no bundled transcription provider; first all-in-app vlog not yet recorded |
 | M4 Audio and voice | Partial | Ducking, loudness, voice takes, beats, framing, music/SFX library done; voice cloning open |
-| M5 Color, transitions, review | Mostly done | LUTs, transitions, review, resume and handoff done; measured review checks open |
+| M5 Color, transitions, review | Mostly done | LUTs, transitions, review (severity, fixes, loudness, text safe area, hook), resume and handoff done; picture checks open |
 | M6 Extensions | Partial | OTIO export, voiceover recording, constant speed, ramps, keyframes done; effects, Demucs open |
 
 ## Implemented
@@ -113,6 +113,10 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
 - Direct voiceover recording asks for microphone permission, writes 48 kHz mono WAV under the project, shows
   duration and input level, and inserts at the playhead.
 - Review warns when voiceover comes within 0.3 s of tagged speech on any layer.
+- Review issues carry a severity and a fix (command or hint); `review run --summary` adds counts and a pass flag.
+  Sound checks: loudness from the last normalized export of the revision, ducking off under speech, dead air, music
+  drop-outs. Text checks: vertical safe area (caption bar, side buttons, top bar), title safe, minimum size, caption
+  lines, overlap. Hook check for the first 3 s.
 
 ### Color & transitions
 
@@ -490,8 +494,8 @@ and fails above 50 ms.
 - **M3–M6:** bundled transcription provider and real-engine acceptance, music/SFX library with BPM and license
   badges, voice cloning, expanded legacy effect/overlay/SFX import, effect recipes, keyframes,
   Demucs, and more interchange validation. Resolve remains reserved.
-- **Review and loudness:** coverage uses explicit speech tags and voiceover timing; it does not measure silence or
-  transcribe untagged audio. Export loudness is measured only when normalization is on (the core `bashcut.audio-analysis` plugin provides it).
+- **Review and loudness:** coverage uses explicit speech tags and voiceover timing; dead air is found from layer
+  coverage, not measured audio, and untagged audio is not transcribed. Picture checks (#432) are not done. Export loudness is measured only when normalization is on (the core `bashcut.audio-analysis` plugin provides it).
 - **Editing scope:** ripple affects the edited track and its linked counterpart only. Source insert/overwrite
   targets Main. Unknown future effects round-trip but are not rendered.
 - **History:** full-snapshot undo is capped at 200 steps; `history.jsonl` stores one atomic checkpoint, and an
