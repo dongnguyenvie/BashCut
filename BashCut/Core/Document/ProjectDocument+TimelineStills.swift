@@ -66,7 +66,7 @@ extension ProjectDocument {
             frames: frames.map { (Double($0) / fps, images[$0]) },
             levels: levels.map { (0.01, $0.map(Double.init)) },
             gaps: [], words: words.map { ($0.text, Double($0.at) / fps, Double($0.end) / fps) }, from: from, to: to,
-            levelsFrom: from, marks: cuts.map { Double($0) / fps })
+            levelsFrom: from, marks: cuts.map { Double($0) / fps }, labels: frames.map { "f\($0)" })
         guard let image = MediaStills.strip(strip, width: width) else {
             throw RPCFailure(-32603, "The window could not be drawn; lower width")
         }

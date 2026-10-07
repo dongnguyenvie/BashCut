@@ -135,11 +135,13 @@ public enum MediaStills {
         public var levelsFrom: Double
         /// Seconds drawn as vertical lines across the strip (cuts).
         public var marks: [Double]
+        /// Labels for the frames in place of their time (timeline frame numbers).
+        public var labels: [String]
 
         public init(
             frames: [(seconds: Double, image: CGImage?)], levels: (window: Double, values: [Double])?,
             gaps: [(start: Double, end: Double)], words: [(text: String, start: Double, end: Double)], from: Double,
-            to: Double, levelsFrom: Double = 0, marks: [Double] = []
+            to: Double, levelsFrom: Double = 0, marks: [Double] = [], labels: [String] = []
         ) {
             self.frames = frames
             self.levels = levels
@@ -149,6 +151,7 @@ public enum MediaStills {
             self.to = to
             self.levelsFrom = levelsFrom
             self.marks = marks
+            self.labels = labels
         }
     }
 
@@ -171,8 +174,8 @@ public enum MediaStills {
             let rect = CGRect(x: Double(index) * cellWidth, y: 0, width: cellWidth - 2, height: picture)
             fill(context, rect, grey: 0)
             if let image = frame.image { draw(image, fittedIn: rect, context: context) }
-            label(clock(frame.seconds), at: CGPoint(x: rect.minX + 3, y: rect.maxY - 3), Style(size: 11, anchor: .bottom),
-                  context: context)
+            let text = strip.labels.indices.contains(index) ? strip.labels[index] : clock(frame.seconds)
+            label(text, at: CGPoint(x: rect.minX + 3, y: rect.maxY - 3), Style(size: 11, anchor: .bottom), context: context)
         }
         let waveTop = picture + ruler
         for gap in strip.gaps where gap.end > strip.from && gap.start < strip.to {
