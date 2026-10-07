@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+- **Speech map with its calibration (P0-A3).** `media speech-map --media M` (`media.speech-map`, read) splits the
+  `media analyze` level windows into quiet and loud by Otsu's method (digital silence counts as quiet and is left
+  out) and reports the floor, the loud level, their separation in dB and the share of variance the split explains.
+  When they do not separate (`--min-separation-db`, default 6) it returns `separation: none` and no spans instead of
+  made-up silences; otherwise spans and gaps in source seconds with gap statistics. `--threshold-db` skips the
+  calibration. With a stored transcript it adds the spans where words were recognised and how far the two agree.
+
 - **Source transcripts (P0-A2).** `media transcribe [--media M] [--provider P] [--force]` (`media.transcribe`, a
   job) transcribes whole files once with a `captions.transcribe` provider and keeps the transcript by file content
   in `.bashcut/cache/transcripts`, without touching the timeline. `media transcript --media M --as

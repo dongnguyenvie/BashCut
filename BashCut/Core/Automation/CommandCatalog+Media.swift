@@ -54,6 +54,29 @@ extension CommandCatalog {
                 CommandParameter("curve", .boolean, "Include the sound level per second (dBFS)", cli: .flag("curve")),
             ]),
         CommandSpec(
+            "media.speech-map", .read,
+            "Map where an analysed media has sound that may be speech, and the gaps, with the calibration used: the "
+                + "media.analyze level windows (broadband RMS per 0.1 s; digital silence counts as quiet and is left "
+                + "out) are split into quiet and loud by Otsu's method unless thresholdDb is given. calibration "
+                + "{method otsu/given, floorDb, speechDb, separationDb, eta (share of level variance the split "
+                + "explains), otsuThresholdDb, thresholdDb, minSeparationDb, separation clear/weak/none/given}. When "
+                + "the classes are closer than minSeparationDb (noise, music under the voice) separation is none and "
+                + "spans/gaps are null with a reason, instead of made-up silences. Otherwise spans and gaps "
+                + "[{start, end, seconds}] in source seconds, speechSeconds, speechShare, gapStats. With a stored "
+                + "transcript (media.transcribe), transcript {words, spans, gaps, speechSeconds, levelCoveredByWords, "
+                + "wordsCoveredByLevel}. Spans are sound, not proof of speech.",
+            parameters: [
+                mediaMedia,
+                CommandParameter("thresholdDb", .number, "dBFS that counts as sound, instead of calibrating",
+                                 range: -120...0, cli: .option("threshold-db")),
+                CommandParameter("bridgeSeconds", .number, "Gaps bridged inside a span (default 0.3)", range: 0...10,
+                                 cli: .option("bridge")),
+                CommandParameter("minSpeechSeconds", .number, "Shortest span kept (default 0.2)", range: 0...10,
+                                 cli: .option("min-speech")),
+                CommandParameter("minSeparationDb", .number, "Classes closer than this do not separate (default 6)",
+                                 range: 0...60, cli: .option("min-separation-db")),
+            ]),
+        CommandSpec(
             "media.cuts", .edit,
             "Correct the cut list of an analysed media: add cuts or remove candidates at source seconds (a removal "
                 + "matches within one sample interval; removing an added cut takes it back). Shots and statistics in "
