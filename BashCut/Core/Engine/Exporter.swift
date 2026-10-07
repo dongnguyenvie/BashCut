@@ -110,7 +110,7 @@ public actor Exporter {
             compression[AVVideoMaxKeyFrameIntervalDurationKey] = 2.0
             compression[AVVideoProfileLevelKey] = AVVideoProfileLevelH264HighAutoLevel
         }
-        if let bitRate = settings?.preset.videoBitRate {
+        if let bitRate = settings?.effectiveVideoBitRate {
             compression[AVVideoAverageBitRateKey] = bitRate
         }
         var videoSettings: [String: Any] = [

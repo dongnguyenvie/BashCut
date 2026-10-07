@@ -29,19 +29,19 @@ struct OutputPlatformTests {
         TimelineReview.run(project, context: ReviewContext(targets: ReviewTargets(platforms: platforms)))
     }
 
-    @Test("Safe zones follow every output: Reels' taller caption bar flags text TikTok alone accepts (#469)")
+    @Test("Safe zones follow every output: TikTok's taller caption bar flags text Shorts alone accepts (#469, P1-F1)")
     func safeZones() throws {
         var project = try project()
-        // Default bold-outline caption: baseline at 18 %, its box starts about 17 % from the bottom.
-        set(&project, track: "t1", [text("cap", "Đà Lạt 48h?")])
-        #expect(run(project, .tiktok).first { $0.id == "safe-bottom-cap" } == nil)
-        let reels = run(project, .reels).first { $0.id == "safe-bottom-cap" }
-        #expect(reels?.severity == .error)
-        #expect(reels?.detail.contains("20%") == true)
+        // A caption with its baseline at 23 %: its box starts about 22 % from the bottom.
+        set(&project, track: "t1", [text("cap", "Đà Lạt 48h?", positionY: 0.23)])
+        #expect(run(project, .shorts).first { $0.id == "safe-bottom-cap" } == nil)
+        let tiktok = run(project, .tiktok).first { $0.id == "safe-bottom-cap" }
+        #expect(tiktok?.severity == .error)
+        #expect(tiktok?.detail.contains("24%") == true)
         // Two outputs: the strictest zone of each side wins.
-        let both = run(project, .tiktok, .reels).first { $0.id == "safe-bottom-cap" }
-        #expect(both?.detail.contains("TikTok and Instagram Reels") == true)
-        #expect(run(project, .shorts).contains { $0.id == "safe-bottom-cap" })
+        let both = run(project, .shorts, .reels).first { $0.id == "safe-bottom-cap" }
+        #expect(both?.detail.contains("YouTube Shorts and Instagram Reels") == true)
+        #expect(run(project, .reels).contains { $0.id == "safe-bottom-cap" })
         // No platform: nothing assumed, one note.
         let none = run(project)
         #expect(!none.contains { $0.id.hasPrefix("safe-") })
@@ -141,5 +141,41 @@ struct OutputPlatformTests {
             project["review"] = review
             #expect(throws: ProjectError.self) { try project.validate() }
         }
+    }
+}
+
+/// Platform facts as data with provenance (P1-F1).
+struct PlatformDataTests {
+    @Test("The built-in table has provenance on every field; a newer table replaces it, an older one does not")
+    func table() throws {
+        let builtIn = PlatformData.builtIn
+        #expect(builtIn.origin == "built-in" && builtIn.platforms.map(\.id) == ["tiktok", "reels", "shorts", "youtube"])
+        #expect(builtIn.platforms.allSatisfy { record in record.fields.values.allSatisfy { !$0.source.isEmpty } })
+        #expect(OutputPlatform.tiktok.safeArea.bottom == 0.24 && OutputPlatform.tiktok.facts["safeArea.bottom"]?.confidence == "measured")
+        #expect(OutputPlatform.reels.bitrateMbps == 5 && OutputPlatform.youtube.maxSeconds == nil)
+        #expect(OutputPlatform.youtube.facts["chapters"]?.kind == .hard)
+        var newer = builtIn.json.object
+        newer["version"] = .string("2099-01-01")
+        var platforms = newer["platforms"]?.array ?? []
+        var tiktok = platforms[0].object
+        var fields = tiktok["fields"]?.object ?? [:]
+        fields["maxSeconds"] = .object([
+            "value": .number(900), "kind": .string("hard"), "source": .string("test"), "checked": .string("2099-01"),
+            "confidence": .string("official"),
+        ])
+        tiktok["fields"] = .object(fields)
+        platforms[0] = .object(tiktok)
+        newer["platforms"] = .array(platforms)
+        // Checked without installing: other tests read the table in use at the same time.
+        let table = try PlatformTable(json: .object(newer), origin: "test.plugin")
+        #expect(PlatformData.accepts(table) && OutputPlatform(table.platforms[0]).maxSeconds == 900)
+        var older = newer
+        older["version"] = .string("2000-01-01")
+        #expect(!PlatformData.accepts(try PlatformTable(json: .object(older), origin: "old")))
+        fields["targetLUFS"] = .object(["value": .number(-14)])
+        tiktok["fields"] = .object(fields)
+        platforms[0] = .object(tiktok)
+        newer["platforms"] = .array(platforms)
+        #expect(throws: ProjectError.self) { try PlatformTable(json: .object(newer), origin: "bad") }
     }
 }

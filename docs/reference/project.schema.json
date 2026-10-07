@@ -1316,6 +1316,184 @@
       ],
       "type" : "object"
     },
+    "brief" : {
+      "description" : "What the edit is for (P1-D1)",
+      "properties" : {
+        "angle" : {
+          "description" : "A brief field",
+          "properties" : {
+            "source" : {
+              "description" : "Where it came from",
+              "type" : "string"
+            },
+            "status" : {
+              "description" : "Who said it",
+              "enum" : [
+                "stated",
+                "inferred",
+                "confirmed"
+              ],
+              "type" : "string"
+            },
+            "value" : {
+              "description" : "Any JSON value"
+            }
+          },
+          "required" : [
+            "value",
+            "status"
+          ],
+          "type" : "object"
+        },
+        "audience" : {
+          "description" : "A brief field",
+          "properties" : {
+            "source" : {
+              "description" : "Where it came from",
+              "type" : "string"
+            },
+            "status" : {
+              "description" : "Who said it",
+              "enum" : [
+                "stated",
+                "inferred",
+                "confirmed"
+              ],
+              "type" : "string"
+            },
+            "value" : {
+              "description" : "Any JSON value"
+            }
+          },
+          "required" : [
+            "value",
+            "status"
+          ],
+          "type" : "object"
+        },
+        "goal" : {
+          "description" : "A brief field",
+          "properties" : {
+            "source" : {
+              "description" : "Where it came from",
+              "type" : "string"
+            },
+            "status" : {
+              "description" : "Who said it",
+              "enum" : [
+                "stated",
+                "inferred",
+                "confirmed"
+              ],
+              "type" : "string"
+            },
+            "value" : {
+              "description" : "Any JSON value"
+            }
+          },
+          "required" : [
+            "value",
+            "status"
+          ],
+          "type" : "object"
+        },
+        "ideas" : {
+          "description" : "Ideas",
+          "items" : {
+            "type" : "object"
+          },
+          "maxItems" : 100,
+          "type" : "array"
+        },
+        "lengthSeconds" : {
+          "description" : "A brief field",
+          "properties" : {
+            "source" : {
+              "description" : "Where it came from",
+              "type" : "string"
+            },
+            "status" : {
+              "description" : "Who said it",
+              "enum" : [
+                "stated",
+                "inferred",
+                "confirmed"
+              ],
+              "type" : "string"
+            },
+            "value" : {
+              "description" : "Any JSON value"
+            }
+          },
+          "required" : [
+            "value",
+            "status"
+          ],
+          "type" : "object"
+        },
+        "notes" : {
+          "description" : "A brief field",
+          "properties" : {
+            "source" : {
+              "description" : "Where it came from",
+              "type" : "string"
+            },
+            "status" : {
+              "description" : "Who said it",
+              "enum" : [
+                "stated",
+                "inferred",
+                "confirmed"
+              ],
+              "type" : "string"
+            },
+            "value" : {
+              "description" : "Any JSON value"
+            }
+          },
+          "required" : [
+            "value",
+            "status"
+          ],
+          "type" : "object"
+        },
+        "outputs" : {
+          "description" : "A brief field",
+          "properties" : {
+            "source" : {
+              "description" : "Where it came from",
+              "type" : "string"
+            },
+            "status" : {
+              "description" : "Who said it",
+              "enum" : [
+                "stated",
+                "inferred",
+                "confirmed"
+              ],
+              "type" : "string"
+            },
+            "value" : {
+              "description" : "Any JSON value"
+            }
+          },
+          "required" : [
+            "value",
+            "status"
+          ],
+          "type" : "object"
+        },
+        "references" : {
+          "description" : "Reference videos or notes",
+          "items" : {
+            "type" : "object"
+          },
+          "maxItems" : 100,
+          "type" : "array"
+        }
+      },
+      "type" : "object"
+    },
     "canvasFromFirstClip" : {
       "description" : "The first video or image clip placed on the timeline sets the canvas shape (portrait, landscape or square, keeping the short side). Cleared by any canvas change, so a canvas set on purpose stays; absent in projects made before it existed",
       "type" : "boolean"
@@ -1412,6 +1590,9 @@
               "tiktok",
               "reels",
               "shorts",
+              "feed-4x5",
+              "square",
+              "portrait-3x4",
               "youtube-1080",
               "youtube-4k",
               "quick-draft",
@@ -1447,6 +1628,102 @@
       },
       "type" : "object"
     },
+    "plan" : {
+      "description" : "How the agent means to make it (P1-D2)",
+      "properties" : {
+        "beats" : {
+          "description" : "Script beats [{id, section, text}]",
+          "items" : {
+            "type" : "object"
+          },
+          "maxItems" : 500,
+          "type" : "array"
+        },
+        "decisions" : {
+          "description" : "Decisions [{text}]",
+          "items" : {
+            "type" : "object"
+          },
+          "maxItems" : 500,
+          "type" : "array"
+        },
+        "mode" : {
+          "description" : "Mode",
+          "enum" : [
+            "create",
+            "directed",
+            "revision"
+          ],
+          "type" : "string"
+        },
+        "notes" : {
+          "description" : "Notes",
+          "type" : "string"
+        },
+        "options" : {
+          "description" : "Story options",
+          "items" : {
+            "type" : "object"
+          },
+          "type" : "array"
+        },
+        "ranges" : {
+          "additionalProperties" : {
+            "description" : "A range",
+            "properties" : {
+              "max" : {
+                "description" : "High",
+                "maximum" : 1000000000,
+                "minimum" : -1000000000,
+                "type" : "number"
+              },
+              "min" : {
+                "description" : "Low",
+                "maximum" : 1000000000,
+                "minimum" : -1000000000,
+                "type" : "number"
+              },
+              "reason" : {
+                "description" : "Why",
+                "type" : "string"
+              },
+              "source" : {
+                "description" : "Source",
+                "type" : "string"
+              }
+            },
+            "required" : [
+              "min",
+              "max"
+            ],
+            "type" : "object"
+          },
+          "description" : "Review key → the range chosen",
+          "type" : "object"
+        },
+        "sections" : {
+          "description" : "Sections [{id, label, lengthSeconds {min, max}, reason, frozen}]",
+          "items" : {
+            "type" : "object"
+          },
+          "maxItems" : 500,
+          "type" : "array"
+        },
+        "shots" : {
+          "description" : "Shot rows [{id, purpose, section, size, move, mustShow, targetSeconds, source}]",
+          "items" : {
+            "type" : "object"
+          },
+          "maxItems" : 500,
+          "type" : "array"
+        },
+        "stage" : {
+          "description" : "Current stage",
+          "type" : "string"
+        }
+      },
+      "type" : "object"
+    },
     "providers" : {
       "additionalProperties" : {
         "type" : "string"
@@ -1462,11 +1739,45 @@
     "review" : {
       "description" : "Review profile (#466): every editorial limit is the project's (a recipe skill sets them); core has none",
       "properties" : {
+        "accepted" : {
+          "additionalProperties" : {
+            "description" : "Accepted issue",
+            "properties" : {
+              "author" : {
+                "description" : "Author",
+                "type" : "string"
+              },
+              "reason" : {
+                "description" : "Why it stays",
+                "type" : "string"
+              },
+              "rev" : {
+                "description" : "Revision",
+                "minimum" : 0,
+                "type" : "integer"
+              }
+            },
+            "required" : [
+              "reason"
+            ],
+            "type" : "object"
+          },
+          "description" : "Issue ID → {reason, rev, author}: warnings and notes kept on purpose (P1-E2); never errors",
+          "type" : "object"
+        },
         "blackMinSeconds" : {
           "description" : "Black picture at least this long is flagged; unset: no check, or the measured value as info",
           "maximum" : 600,
           "minimum" : 0.01,
           "type" : "number"
+        },
+        "blockExport" : {
+          "description" : "Issue ID prefixes (such as font, glyph, cut-in-word) that stop an export while open (P1-E1)",
+          "items" : {
+            "description" : "Prefix",
+            "type" : "string"
+          },
+          "type" : "array"
         },
         "captionLineChars" : {
           "description" : "Caption lines longer than this many characters are flagged; unset: no check, or the measured value as info",

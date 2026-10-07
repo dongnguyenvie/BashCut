@@ -16,7 +16,7 @@ import Foundation
         "media.frames", "media.frame", "media.strip", "media.inventory", "review.cuts", "review.sync",
         "review.window", "timeline.sheet", "color.measure", "audio.mix-measure",
         "beats.grid", "audio.energy", "review.hook", "speech.rate", "narration.windows",
-        "voice.check", "voice.fit", "captions.align", "voice.voices", "captions.group", "platforms.list",
+        "voice.check", "voice.fit", "captions.align", "voice.voices", "captions.group", "platforms.list", "platforms.get",
         "project.brief", "project.set-brief", "plan.get", "plan.set",
         "review.accept", "review.coverage", "script.check",
         "workflow.gates", "workflow.set-gates", "checkpoint.request", "checkpoint.status", "run.log", "run.append",

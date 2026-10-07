@@ -58,7 +58,7 @@ public enum CommandCatalog {
         reviewShotsSpec,
         reviewLayoutSpec,
         reviewHookSpec,
-        platformsListSpec,
+        platformsListSpec, platformsGetSpec,
         CommandSpec(
             "export.status", .read,
             "Read the export state: while one runs, its job, step, preset and path (last receipt under lastExport); "
@@ -216,7 +216,10 @@ public enum CommandCatalog {
     private static let privilegedSpecs: [CommandSpec] = [
         CommandSpec(
             "export.start", .privileged,
-            "Request a background video export; the user approves it in the app first. Approved exports queue behind a running one.",
+            "Request a background video export; the user approves it in the app first. Approved exports queue behind a running one. "
+                + "Vertical presets default under the platform's recompression line (platforms list: bitrateMbps); "
+                + "bitrate overrides it. Feed shapes: feed-4x5 (1080×1350), square, portrait-3x4 (1080×1440). The "
+                + "export status reports the bitrate written.",
             parameters: [
                 CommandParameter("preset", .string, "Export preset", required: true, choices: exportPresets,
                                  cli: .option("preset")),
@@ -226,6 +229,8 @@ public enum CommandCatalog {
                                  cli: .flag("include-srt")),
                 CommandParameter("normalizeAudio", .boolean, "Run two-pass LUFS normalization with a plugin",
                                  default: .bool(false), cli: .flag("normalize-audio")),
+                CommandParameter("bitrate", .number, "Video bit rate in Mbps instead of the preset's", range: 0.5...200,
+                                 cli: .option("bitrate")),
             ],
             execution: .approval),
         CommandSpec(

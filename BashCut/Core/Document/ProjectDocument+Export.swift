@@ -40,7 +40,7 @@ extension ProjectDocument {
     @discardableResult
     func startExportAuthorized(
         name: String, preset: ExportPreset, directory: URL, includeSubRip: Bool,
-        normalizeAudio: Bool = false, author: Author = .user
+        normalizeAudio: Bool = false, author: Author = .user, videoBitRate: Int? = nil
     ) throws -> String {
         guard !preview.isMaintainingCache else { throw AutomationBusy() }
         guard let root = fileURL?.deletingLastPathComponent() else {
@@ -57,10 +57,11 @@ extension ProjectDocument {
                 throw ProjectError.invalid("Install a plugin that provides audio.loudness")
             }
         }
-        let request = try ExportRequest(
+        var request = try ExportRequest(
             project: project, root: root, workspace: settings.workspace, name: name, preset: preset,
             directory: directory, includeSubRip: includeSubRip, normalizeAudio: normalizeAudio,
             reserved: exports.queue.reservedOutputs)
+        request.videoBitRate = videoBitRate
         let queued = exports.isRunning
         let session = sessionID
         let name = request.output.lastPathComponent

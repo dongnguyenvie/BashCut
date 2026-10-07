@@ -25,7 +25,7 @@ struct ReviewTests {
         #expect(Set(bare.map(\.id)) == ["gap-clip", "platform-none", "shot-short-clip", "coverage"])
         project["review"] = .object(["captionLineChars": .integer(32), "minSpeechCoverage": .number(0.9)])
         let issues = TimelineReview.run(project, context: ReviewContext(targets: ReviewTargets(platforms: [.tiktok])))
-        #expect(Set(issues.map(\.id)) == ["gap-clip", "caption-caption", "safe-side-caption", "coverage", "shot-short-clip"])
+        #expect(Set(issues.map(\.id)) == ["gap-clip", "caption-caption", "safe-bottom-caption", "coverage", "shot-short-clip"])
     }
 
     @Test("Review flags each missing font once, at its first text item (#415)")

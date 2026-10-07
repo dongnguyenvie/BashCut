@@ -174,6 +174,8 @@ public enum ProjectSchema {
                 "audio": ref("audio"),
                 "output": outputSchema,
                 "review": reviewSchema,
+                "brief": planSchemas["brief"] ?? .null,
+                "plan": planSchemas["plan"] ?? .null,
                 "beatGrid": object(
                     "Beat grid of one audio media", required: ["media", "bpm", "frames"],
                     properties: [
