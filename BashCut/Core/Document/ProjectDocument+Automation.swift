@@ -82,11 +82,18 @@ extension ProjectDocument {
         }
     }
 
-    /// Edit and privileged commands: the registry has already rejected requests without a session token.
+    /// Edit and privileged commands: the registry has already rejected requests without a session token. A result
+    /// object of a command that changed the project carries `changes`, a bounded digest of what changed (P2-G1).
     func handleAuthored(_ method: String, _ body: @escaping AuthoredCommandBody) {
         handle(method) { document, arguments, author in
             guard let author else { throw RPCFailure(-32001, "A live agent session token is required") }
-            return try await body(document, arguments, author)
+            let before = document.project
+            let result = try await body(document, arguments, author)
+            guard case .object(var fields) = result, fields["changes"] == nil,
+                document.project.revision != before.revision, document.project["id"] == before["id"]
+            else { return result }
+            fields["changes"] = ChangeDigest.json(before: before, after: document.project)
+            return .object(fields)
         }
     }
 

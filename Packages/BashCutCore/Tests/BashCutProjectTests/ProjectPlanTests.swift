@@ -196,3 +196,23 @@ struct ProjectDerivationTests {
         #expect(diff["changedAs"]?.object["right"] == .string("hook"))
     }
 }
+
+/// Bounded change digests on edit results (P2-G1).
+struct ChangeDigestTests {
+    @Test("Added, removed and modified items with their fields, project fields, limits and + ~ - lines")
+    func digest() {
+        let before = ReviewSequenceTests().project()
+        var after = before
+        let main = after.tracks.firstIndex { $0.id == "v1" }!
+        after.tracks[main].items.removeFirst()
+        after.tracks[main].items[0].at = 0
+        after.tracks[main].items.append(Item(id: "e", media: "m", at: 300, duration: 30))
+        after["review"] = .object(["hookSeconds": .number(2)])
+        let json = ChangeDigest.json(before: before, after: after, limit: 1).object
+        #expect(json["removed"] == .array([.string("a")]))
+        #expect(json["modified"]?.array.first?.object["fields"] == .array([.string("at")]))
+        #expect(json["project"] == .array([.string("review")]))
+        #expect(json["counts"]?.object["added"] == .integer(1) && json["truncated"] == .bool(false))
+        #expect(json["text"]?.string?.contains("+ e on v1") == true && json["text"]?.string?.contains("- a") == true)
+    }
+}
