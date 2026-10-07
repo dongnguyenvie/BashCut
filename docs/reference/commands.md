@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 203 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 207 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -93,6 +93,14 @@ Set the brief as one undoable edit (validated: fields {value, status, source?}, 
 - `value`: object, required. The brief (CLI: path to brief.json)
 - `merge`: boolean. Change only the given fields
 - `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
+
+### `bashcut project derive [--ids <ids>] [--dir <directory>]`
+
+Write a sibling project per select (the kept ones, or ids): same canvas, outputs, review profile, brief and layers, only that media (paths made absolute) and the select's range on Main, with derivedFrom. Several shorts from one long recording; the open project does not change and nothing opens.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_project_derive`
+- `ids`: string. Select IDs instead of the kept ones
+- `directory`: string, path. Parent folder; defaults to the one holding this project's folder
 
 ### `bashcut project recents`
 
@@ -1128,6 +1136,32 @@ Lay the kept selects (or the given IDs) on Main in order (order, else source sta
 - `ids`: string. Select IDs instead of the kept ones
 - `atFrame`: integer, ≥ 0. Timeline frame
 - `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
+
+## variants
+
+### `bashcut variants create <name> --changed <changed> [--dir <directory>]`
+
+Write a full copy of the project next to it as a variant that records what it changes (one thing per variant), for example an ad with another hook. Open it to make the change; diff compares them.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_variants_create`
+- `name`: string, required. Short name (folder and title suffix)
+- `changed`: string, required. What this variant changes
+- `directory`: string, path. Parent folder
+
+### `bashcut variants list [--dir <directory>]`
+
+The variants and derived projects of this project in the sibling folders, with what each changes.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_variants_list`
+- `directory`: string, path. Parent folder
+
+### `bashcut variants diff <other> [--base <base>]`
+
+What differs between two projects (default: this one against other): top-level fields, items added, removed or changed, durations and each one's recorded change.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_variants_diff`
+- `other`: string, required, path. Project file or folder
+- `base`: string, path. Project file or folder instead of the open one
 
 ## speech
 

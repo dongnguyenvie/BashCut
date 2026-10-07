@@ -179,4 +179,38 @@ extension CommandCatalog {
                 baseRevision,
             ]),
     ]
+
+    /// Derived projects and variants (P1-D9).
+    static let variantSpecs: [CommandSpec] = [
+        CommandSpec(
+            "project.derive", .edit,
+            "Write a sibling project per select (the kept ones, or ids): same canvas, outputs, review profile, brief and "
+                + "layers, only that media (paths made absolute) and the select's range on Main, with derivedFrom. "
+                + "Several shorts from one long recording; the open project does not change and nothing opens.",
+            parameters: [
+                CommandParameter("ids", .string, "Select IDs instead of the kept ones", cli: .option("ids")),
+                CommandParameter("directory", .string, "Parent folder; defaults to the one holding this project's folder",
+                                 isPath: true, cli: .option("dir")),
+            ]),
+        CommandSpec(
+            "variants.create", .edit,
+            "Write a full copy of the project next to it as a variant that records what it changes (one thing per "
+                + "variant), for example an ad with another hook. Open it to make the change; diff compares them.",
+            parameters: [
+                CommandParameter("name", .string, "Short name (folder and title suffix)", required: true, cli: .positional),
+                CommandParameter("changed", .string, "What this variant changes", required: true, cli: .option("changed")),
+                CommandParameter("directory", .string, "Parent folder", isPath: true, cli: .option("dir")),
+            ]),
+        CommandSpec(
+            "variants.list", .read, "The variants and derived projects of this project in the sibling folders, with what each changes.",
+            parameters: [CommandParameter("directory", .string, "Parent folder", isPath: true, cli: .option("dir"))]),
+        CommandSpec(
+            "variants.diff", .read,
+            "What differs between two projects (default: this one against other): top-level fields, items added, "
+                + "removed or changed, durations and each one's recorded change.",
+            parameters: [
+                CommandParameter("other", .string, "Project file or folder", required: true, isPath: true, cli: .positional),
+                CommandParameter("base", .string, "Project file or folder instead of the open one", isPath: true, cli: .option("base")),
+            ]),
+    ]
 }

@@ -16,6 +16,7 @@ public enum CommandCatalog {
     public static let specs: [CommandSpec] = readSpecs + projectSpecs + editSpecs + captionSpecs + layerSpecs + styleSpecs
         + formatSpecs + clipSpecs + capabilitySpecs + analysisSpecs + reviewCutSpecs + timelineStillsSpecs + [colorMeasureSpec] + planSpecs
         + workflowSpecs + planCheckSpecs + quoteSpecs + selectsSpecs
+        + variantSpecs
         + sourceMediaSpecs
         + pluginSpecs + pluginViewSpecs
         + storageSpecs + agentSpecs + appSpecs + chatSpecs

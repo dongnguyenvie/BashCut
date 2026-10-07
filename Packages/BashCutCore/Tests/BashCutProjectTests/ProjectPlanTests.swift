@@ -149,3 +149,50 @@ struct ProjectSelectsTests {
         }
     }
 }
+
+/// Derived projects and variants (P1-D9).
+struct ProjectDerivationTests {
+    @Test("A derived project keeps format, outputs and profile, plays only the select's range and says where it came from")
+    func derive() throws {
+        var project = ReviewSequenceTests().project()
+        project["output"] = .object(["presets": .array([.string("tiktok")])])
+        project["review"] = .object(["maxShotSeconds": .number(4)])
+        let root = URL(fileURLWithPath: "/tmp/long")
+        let select = ProjectSelect(fields: [
+            "id": .string("s1"), "media": .string("m"), "from": .number(2), "to": .number(5), "status": .string("kept"),
+        ])
+        let derived = try ProjectDerivation.derived(
+            from: project,
+            target: .init(root: root, path: "/tmp/long/project.bashcut.json", destination: URL(fileURLWithPath: "/tmp/long-s1"), name: "Short"),
+            select: select)
+        try derived.validate()
+        #expect(derived.revision == 0 && derived["id"] != project["id"] && derived.name == "Short")
+        #expect(derived.media.map(\.path) == ["../long/m.mp4"])
+        let clips = derived.tracks.first { $0.id == "v1" }?.items ?? []
+        #expect(clips.count == 1 && clips[0].sourceIn == 60 && clips[0].duration == 90)
+        #expect(derived["output"] == project["output"] && derived["review"] == project["review"])
+        #expect(derived["derivedFrom"]?.object["select"] == .string("s1"))
+        #expect(derived.markers.isEmpty && derived["selects"] == nil)
+    }
+
+    @Test("A variant is a full copy that records its change; diff lists fields and items that differ")
+    func variants() throws {
+        let project = ReviewSequenceTests().project()
+        var variant = ProjectDerivation.variant(
+            of: project,
+            target: .init(root: URL(fileURLWithPath: "/tmp/ad"), path: "/tmp/ad/project.bashcut.json",
+                          destination: URL(fileURLWithPath: "/tmp/ads/ad-b"), name: "B"),
+            changed: "hook")
+        #expect(variant.media.map(\.path) == ["../../ad/m.mp4"])
+        try variant.validate()
+        #expect(variant["variant"]?.object["changed"] == .string("hook") && variant.tracks == project.tracks)
+        let main = variant.tracks.firstIndex { $0.id == "v1" }!
+        variant.tracks[main].items.removeFirst()
+        variant["review"] = .object(["hookSeconds": .number(2)])
+        let diff = ProjectDerivation.diff(project, variant).object
+        #expect(diff["fields"]?.array.contains(.string("review")) == true)
+        #expect(diff["fields"]?.array.contains(.string("media")) == true)
+        #expect(diff["items"]?.object["removed"] == .array([.string("a")]))
+        #expect(diff["changedAs"]?.object["right"] == .string("hook"))
+    }
+}

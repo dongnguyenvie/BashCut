@@ -40,6 +40,7 @@ extension ProjectDocument {
         registerPlanCommands()
         registerWorkflowCommands()
         registerSelectsCommands()
+        registerVariantCommands()
         registerStorageCommands()
         registerLibraryCommands()
         registerAgentKitCommands()
