@@ -46,11 +46,7 @@ extension ProjectDocument {
         guard let root = fileURL?.deletingLastPathComponent() else {
             throw ProjectError.invalid("Save the project before exporting")
         }
-        let blocking = TimelineReview.blockingExport(project, issues: reviewIssues())
-        if !blocking.isEmpty {
-            throw ProjectError.invalid("review.blockExport stops the export while these are open: "
-                + blocking.map(\.id).joined(separator: ", "))
-        }
+        try checkExportable()
         if normalizeAudio {
             plugins.refresh(projectRoot: root)
             guard !plugins.providers(for: "audio.loudness").isEmpty else {
@@ -93,6 +89,19 @@ extension ProjectDocument {
             "author": .string(author.rawValue),
         ])
         return job
+    }
+
+    /// Refuses an export of video this Mac cannot decode, or while issues `review.blockExport` names are open.
+    private func checkExportable() throws {
+        // The export build refuses these too; checking the preview's build here fails the request, not a later job.
+        if let undecodable = preview.currentBuild?.undecodable, !undecodable.isEmpty {
+            throw UndecodableMediaError(undecodable)
+        }
+        let blocking = TimelineReview.blockingExport(project, issues: reviewIssues())
+        if !blocking.isEmpty {
+            throw ProjectError.invalid("review.blockExport stops the export while these are open: "
+                + blocking.map(\.id).joined(separator: ", "))
+        }
     }
 
     private func finishExport(_ request: ExportRequest, outcome: ExportOutcome) {

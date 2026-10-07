@@ -48,7 +48,8 @@ Common error codes:
 Every error's `data` also carries `category`, `retryable` and, where a factual next step exists, `remediation`
 (`{command?, hint}`); fields a command sets itself (such as a stale revision's `expected` and `actual`) stay.
 Categories: `malformed`, `invalid_request`, `unknown_command`, `invalid_arguments`, `permission`,
-`stale_revision`, `out_of_scope`, `unavailable`, `capability_missing`, `internal`, and for `-32003`:
+`stale_revision`, `out_of_scope`, `unavailable`, `capability_missing`, `unsupported_media` (this Mac cannot
+decode a media's video; `data.media` lists it with its codec and timeline frames), `internal`, and for `-32003`:
 `busy_dialog` (answer or close the open dialog: `ui dialog`), `busy_approval` (an earlier request waits for the
 user), `busy_running` (the same work is running), `file_conflict` and `not_available_now`. `context get` ›
 `recentFailures` lists your session's failures of the last 15 minutes and how many in a row repeat.
@@ -680,8 +681,11 @@ written to `.bashcut/cache/proxies/<media id>.mov`. The viewer reads proxies; ex
 Proxies are made one at a time as `media.proxy` jobs, and the preview switches to each one as it lands.
 
 - `bashcut media proxy [MEDIA_ID] [--force]` queues them by hand and returns a status per media: `queued`
-  (with its job ID), `exists`, `not-needed` or `skipped`. The Media panel's **Create Preview Proxy** menu does
-  the same with `--force`.
+  (with its job ID), `exists`, `not-needed`, `skipped`, or `unsupported` (with `codec` and `reason`) when this Mac
+  cannot decode the video. The Media panel's **Create Preview Proxy** menu does the same with `--force`.
+- BashCut turns on the macOS VP9 (and, where the Mac has it, AV1) decoder at launch. Video the Mac still cannot
+  decode imports and analyzes, but the viewer shows black there, `ui frame` on those frames and `export start`
+  fail with `unsupported_media`; convert the file to H.264 or HEVC.
 - `media list` reports each media's `proxy` state: `none`, `queued` or `ready`.
 
 ## Dialogs and UI actions
