@@ -5,7 +5,8 @@ import BashCutProject
 import Foundation
 
 /// A measured record per source media (P0-A1): `media.analyze` measures, `media.analysis` reads with the agent's
-/// limits, `media.cuts` corrects the cut list, and `media.list --analysis` shows what is measured.
+/// limits, `media.cuts` corrects the cut list, `media.speech-map` calibrates sound spans (P0-A3), and
+/// `media.list --analysis` shows what is measured.
 extension ProjectDocument {
     /// The project folder and the original file of `mediaID`.
     func analysisSource(_ mediaID: String) throws -> (root: URL, media: Media, url: URL) {
@@ -101,6 +102,23 @@ extension ProjectDocument {
                 bridgeSeconds: arguments.optionalDouble("bridgeSeconds") ?? defaults.bridgeSeconds)
             var result = record.json(
                 limits: limits, samples: arguments.bool("samples"), curve: arguments.bool("curve")).object
+            result["media"] = .string(mediaID)
+            return .object(result)
+        }
+        handle("media.speech-map") { document, arguments, _ in
+            let mediaID = try arguments.string("media")
+            guard let sound = try document.storedAnalysis(mediaID).record?.sound else {
+                throw RPCFailure(
+                    -32602, "Media \(mediaID) has no measured sound: run media analyze --media \(mediaID) first")
+            }
+            let defaults = SpeechMap.Parameters()
+            let parameters = SpeechMap.Parameters(
+                thresholdDb: arguments.optionalDouble("thresholdDb"),
+                bridgeSeconds: arguments.optionalDouble("bridgeSeconds") ?? defaults.bridgeSeconds,
+                minSpeechSeconds: arguments.optionalDouble("minSpeechSeconds") ?? defaults.minSpeechSeconds,
+                minSeparationDb: arguments.optionalDouble("minSeparationDb") ?? defaults.minSeparationDb)
+            let words = try await document.storedTranscript(mediaID)?.words
+            var result = SpeechMap.json(sound: sound, words: words, parameters: parameters).object
             result["media"] = .string(mediaID)
             return .object(result)
         }

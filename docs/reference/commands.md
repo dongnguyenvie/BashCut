@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 157 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 158 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -206,6 +206,17 @@ Read the media.analyze record of one media without measuring: tech (file facts, 
 - `bridgeSeconds`: number, 0…10. Quiet gaps bridged inside an active span (default 0.3)
 - `samples`: boolean. Include every picture sample
 - `curve`: boolean. Include the sound level per second (dBFS)
+
+### `bashcut media speech-map --media <media> [--threshold-db <thresholdDb>] [--bridge <bridgeSeconds>] [--min-speech <minSpeechSeconds>] [--min-separation-db <minSeparationDb>]`
+
+Map where an analysed media has sound that may be speech, and the gaps, with the calibration used: the media.analyze level windows (broadband RMS per 0.1 s; digital silence counts as quiet and is left out) are split into quiet and loud by Otsu's method unless thresholdDb is given. calibration {method otsu/given, floorDb, speechDb, separationDb, eta (share of level variance the split explains), otsuThresholdDb, thresholdDb, minSeparationDb, separation clear/weak/none/given}. When the classes are closer than minSeparationDb (noise, music under the voice) separation is none and spans/gaps are null with a reason, instead of made-up silences. Otherwise spans and gaps [{start, end, seconds}] in source seconds, speechSeconds, speechShare, gapStats. With a stored transcript (media.transcribe), transcript {words, spans, gaps, speechSeconds, levelCoveredByWords, wordsCoveredByLevel}. Spans are sound, not proof of speech.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_media_speech-map`
+- `media`: string, required. Project media ID
+- `thresholdDb`: number, -120…0. dBFS that counts as sound, instead of calibrating
+- `bridgeSeconds`: number, 0…10. Gaps bridged inside a span (default 0.3)
+- `minSpeechSeconds`: number, 0…10. Shortest span kept (default 0.2)
+- `minSeparationDb`: number, 0…60. Classes closer than this do not separate (default 6)
 
 ### `bashcut media cuts --media <media> [--add <add>] [--remove <remove>] [--clear]`
 

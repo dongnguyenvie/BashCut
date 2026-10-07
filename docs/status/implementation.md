@@ -105,6 +105,8 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   and `captions generate` unless `--fresh`; `media transcribe` makes one without placing captions, `media transcript`
   reads it in source seconds (phrases, words with confidence/speaker/event/noSpeechProb when the provider gives
   them), and `transcript words --heard` maps its words through the clips playing the media now.
+- `media speech-map` calibrates sound spans from the `media analyze` levels (Otsu split, separation in dB and eta,
+  `separation: none` when floor and sound do not separate) and compares them with the stored transcript's words.
 
 ### Audio & voice
 

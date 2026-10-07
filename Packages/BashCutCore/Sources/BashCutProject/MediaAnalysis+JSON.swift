@@ -160,17 +160,10 @@ extension MediaAnalysis {
 
     /// Windows at or over `threshold`, joined across quiet gaps up to `bridge` seconds, as start and end seconds.
     static func activeSpans(_ sound: Sound, over threshold: Double, bridge: Double) -> [(Double, Double)] {
-        var spans: [(Double, Double)] = []
-        for (index, level) in sound.levels.enumerated() where level >= threshold {
-            let start = Double(index) * sound.window
-            let end = start + sound.window
-            if let last = spans.last, start - last.1 <= bridge + 1e-9 {
-                spans[spans.count - 1].1 = end
-            } else {
-                spans.append((start, end))
-            }
-        }
-        return spans
+        SpeechMap.joined(
+            sound.levels.indices.filter { sound.levels[$0] >= threshold }.map {
+                (Double($0) * sound.window, Double($0 + 1) * sound.window)
+            }, bridge: bridge)
     }
 
     /// RMS level per second (power mean of its windows), dBFS.
