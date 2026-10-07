@@ -66,6 +66,18 @@ public enum PluginFolders {
         }
     }
 
+    /// Where uv keeps the Python installs and the package cache plugins and agents share, as uv's environment
+    /// variables plus the shared folders themselves. Plugin install recipes set the same paths; agent terminals get
+    /// them so the kit's scripts (`uv run`, `uvx`) reuse those runtimes and Settings › Storage counts and clears
+    /// everything in one place. The folders are fixed: there is no setting to move them.
+    public static var sharedRuntimeEnvironment: [String: String] {
+        [
+            "BASHCUT_SHARED_DATA": sharedData.path, "BASHCUT_SHARED_CACHE": sharedCache.path,
+            "UV_PYTHON_INSTALL_DIR": sharedData.appendingPathComponent("python").path,
+            "UV_CACHE_DIR": sharedCache.appendingPathComponent("uv").path,
+        ]
+    }
+
     /// Bytes used by the plugin's data and cache folders.
     public static func usage(_ pluginID: String) -> Int64 {
         [data(pluginID), cache(pluginID)].reduce(0) { $0 + size(of: $1) }

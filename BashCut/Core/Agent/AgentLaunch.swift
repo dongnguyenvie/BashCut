@@ -23,7 +23,8 @@ public struct AgentLaunch: Sendable {
     public let directory: String
 
     /// Builds the launch for `provider`: an allowlisted environment with the BashCut session
-    /// variables, the executable found on the extended PATH, and the provider's command line.
+    /// variables and the shared runtime folders (`PluginFolders.sharedRuntimeEnvironment`), the executable
+    /// found on the extended PATH, and the provider's command line.
     public static func make(
         provider: any AgentProvider, workspace: URL, context: AgentSessionContext,
         resumeID: String = "", kit: AgentKitLaunch? = nil, pluginSkills: [PluginSkill] = [],
@@ -35,6 +36,8 @@ public struct AgentLaunch: Sendable {
         env["BASHCUT_SESSION_TOKEN"] = context.token
         env["BASHCUT_SOCKET"] = context.socket
         env["BASHCUT_PROJECT"] = context.project?.path ?? ""
+        // The kit's Python scripts use the runtimes plugins share, in BashCut's own folders (uv creates them).
+        env.merge(PluginFolders.sharedRuntimeEnvironment) { _, shared in shared }
         env["TERM"] = "xterm-256color"
         env["COLORTERM"] = "truecolor"
         guard let executable = find(provider.command, path: env["PATH"] ?? "") else {

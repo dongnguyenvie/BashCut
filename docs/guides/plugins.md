@@ -407,6 +407,11 @@ Rules for the shared folders:
 - Never run `uv cache clean` or otherwise empty them from a setup script: other plugins use them.
 - Fall back to your own folders when the variables are not set (an older BashCut).
 
+Agent terminals (Claude, Codex and plugin agents launched by BashCut) get the same `BASHCUT_SHARED_DATA` and
+`BASHCUT_SHARED_CACHE`, with `UV_PYTHON_INSTALL_DIR` and `UV_CACHE_DIR` set to their `python` and `uv` subfolders, so
+the agent kit's scripts (`uv run`, `uvx`) reuse the same Python and packages. The folders are fixed; there is no
+setting to move them, so Settings › Storage always knows what to clean up.
+
 Plugin processes run as the user, without a sandbox, so the shared folders are a convention, not a boundary: any
 plugin a user trusts can already write anywhere the user can. One plugin's venv lives in its own data folder, which
 other plugins are not told about. `PATH`
