@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 193 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 195 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -429,6 +429,12 @@ Look across a moment of the edit without exporting: one PNG with the composed fr
 - `span`: integer, 1…120. Frames on each side (default 6)
 - `step`: integer, 1…60. Frames between pictures (default 1)
 - `width`: integer, 400…8192. Image width in pixels (default 1600)
+
+### `bashcut review coverage`
+
+The plan's shot rows against the footage: per planned shot the described shots that fit it (size, and every mustShow name among the described subjects), the clips that place it (a clip's planShot field, or the described shot it plays fits), and a status placed, found, missing or undescribed (no media described yet: media describe). Facts only; what is enough is the plan's.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_review_coverage`
 
 ## platforms
 
@@ -1040,6 +1046,14 @@ Append to the run log: start (opens a run), stage, round, measured, note or end.
 - `left`: integer, ≥ 0. Issues left
 - `measured`: string. Comma-separated checks measured
 - `notMeasured`: string. Comma-separated checks not measured
+
+## script
+
+### `bashcut script check`
+
+The plan's script beats against the words heard on the timeline (stored transcripts, else caption words): per beat the share of its words heard as written, the unmatched words, where it was heard and the section marker it starts in against the planned section; overall similarity and extra heard words.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_script_check`
 
 ## speech
 

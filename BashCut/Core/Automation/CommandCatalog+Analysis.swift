@@ -255,6 +255,21 @@ extension CommandCatalog {
             ]),
     ]
 
+    /// The plan against what was measured (P1-D3).
+    static let planCheckSpecs: [CommandSpec] = [
+        CommandSpec(
+            "review.coverage", .read,
+            "The plan's shot rows against the footage: per planned shot the described shots that fit it (size, and every "
+                + "mustShow name among the described subjects), the clips that place it (a clip's planShot field, or the "
+                + "described shot it plays fits), and a status placed, found, missing or undescribed (no media described "
+                + "yet: media describe). Facts only; what is enough is the plan's."),
+        CommandSpec(
+            "script.check", .read,
+            "The plan's script beats against the words heard on the timeline (stored transcripts, else caption words): "
+                + "per beat the share of its words heard as written, the unmatched words, where it was heard and the "
+                + "section marker it starts in against the planned section; overall similarity and extra heard words."),
+    ]
+
     /// Workflow gates, checkpoints and the run log (P1-D4–D6).
     static let workflowSpecs: [CommandSpec] = [
         CommandSpec(
