@@ -698,6 +698,60 @@
           },
           "type" : "object"
         },
+        "voice" : {
+          "description" : "Voiceover facts set by voice speak and voice check",
+          "properties" : {
+            "language" : {
+              "description" : "Content language",
+              "type" : "string"
+            },
+            "provider" : {
+              "description" : "voice.synthesize provider ID",
+              "type" : "string"
+            },
+            "text" : {
+              "description" : "The text the take was synthesized from",
+              "type" : "string"
+            },
+            "voice" : {
+              "description" : "provider/voice the rate store uses",
+              "type" : "string"
+            },
+            "words" : {
+              "description" : "Words heard in the take, in its seconds",
+              "items" : {
+                "description" : "A word",
+                "properties" : {
+                  "end" : {
+                    "description" : "Seconds",
+                    "maximum" : 86400,
+                    "minimum" : 0,
+                    "type" : "number"
+                  },
+                  "start" : {
+                    "description" : "Seconds",
+                    "maximum" : 86400,
+                    "minimum" : 0,
+                    "type" : "number"
+                  },
+                  "text" : {
+                    "description" : "Word",
+                    "type" : "string"
+                  }
+                },
+                "required" : [
+                  "text",
+                  "start",
+                  "end"
+                ],
+                "type" : "object"
+              },
+              "maxItems" : 10000,
+              "type" : "array"
+            }
+          },
+          "type" : "object"
+        },
         "volumeDb" : {
           "description" : "Clip gain in dB",
           "maximum" : 24,

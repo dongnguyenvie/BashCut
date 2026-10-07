@@ -408,6 +408,7 @@ public enum ProjectSchema {
         for property in ItemProperty.all where property.group == nil {
             properties[property.key] = schema(for: property)
         }
+        properties["voice"] = voiceItemSchema
         return fields("A timeline item; see the layer rules for which fields it needs", required: ["id", "at", "dur"],
                       properties: properties)
     }

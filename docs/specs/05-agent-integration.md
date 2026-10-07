@@ -70,6 +70,8 @@ arguments.
 | `media frames` / `media frame` / `media strip` | read | None yet: exact source frames, contact sheets (with a REF row) and a filmstrip with level, gaps and words, by source time |
 | `media describe` / `media description` | edit / read | None yet: shot facts the agent saw in a source file (closed vocabulary), with their coverage |
 | `audio measure --curve\|--timeline` / `audio mix-measure` | read | None yet: loudness over time of a file or of the mix, and the mix by role (voice, music under speech and in gaps, sound effects against the voice) |
+| `speech rate` / `narration windows` / `voice voices` | read | None yet: speaking rate per speaker and voice, speech-free windows with a text budget, voices by facts |
+| `voice check` / `voice fit` / `captions group` / `captions align` | read / edit | Voice panel takes, captions: check a take against its text, fit it to a slot, re-cut captions from word groups, captions from a script |
 | `review hook` | read | None yet: how the edit opens and closes (first words, titles, captions, cuts, described subjects; last title, words, cut) |
 | `beats grid` / `audio energy` | read | None yet: the stored beat grid with strengths, downbeats, fit and alternates; the music's energy curve with lift/drop/breath candidates |
 | `color measure` | read | None yet: colour of each clip as numbers, source or graded, the change a grade makes and the distance from the median clip |

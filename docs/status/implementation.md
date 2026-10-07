@@ -108,6 +108,9 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
 - `audio measure --curve` / `--timeline` give loudness over time of a file or of the rendered mix (with silent
   stretches), `audio mix-measure` reads per-role stems against each other and against the words, and `library
   analyze` stores sound landmarks; the `audio.loudness` contract has an optional `curve`.
+- Speech and voice: `speech rate`, `narration windows`, measured take facts and explicit take choice in `voice speak`
+  (no pace formula), `voice speak --replace`, `voice check`, `voice fit`, `voice voices` with clone consent,
+  `captions group` and `captions align`.
 - `review hook` gives the opening and close as facts; the review's hook check runs only with a project
   `review.hookSeconds` and no longer judges what the opening text says.
 - `beats detect` keeps the provider's grid v2 per file (strengths, kick-phase downbeats, confidence, fit,

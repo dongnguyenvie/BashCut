@@ -161,7 +161,7 @@ struct CapabilityServiceTests {
         }
     }
 
-    @Test("Voice takes are validated audio, scored, and discardable while keeping the chosen take")
+    @Test("Voice takes are validated audio, keep the provider's score, and are discardable while keeping the chosen take")
     func voiceTakes() async throws {
         let sandbox = try PluginSandbox()
         defer { sandbox.cleanup() }
@@ -178,12 +178,32 @@ struct CapabilityServiceTests {
             text: "Xin chào các bạn", language: "vi", count: 2, preferredProvider: nil,
             projectRoot: sandbox.project, outputRoot: sandbox.project.appendingPathComponent("voiceover/generated"))
         #expect(takes.count == 2)
-        #expect(takes.allSatisfy { $0.scoreSource == "provider" && abs($0.durationSeconds - 1) < 0.05 })
+        #expect(takes.allSatisfy { $0.score != nil && abs($0.durationSeconds - 1) < 0.05 })
         let best = try #require(takes.best)
         #expect(best.score == 0.9)
         CapabilityService.discardVoiceTakes(takes, keeping: best.asset.url)
         #expect(FileManager.default.fileExists(atPath: best.asset.url.path))
         #expect(takes.filter { $0.id != best.id }.allSatisfy { !FileManager.default.fileExists(atPath: $0.asset.url.path) })
+    }
+
+    @Test("Without provider scores no pace formula ranks the takes: the first take is the best")
+    func unscoredTakes() async throws {
+        let sandbox = try PluginSandbox()
+        defer { sandbox.cleanup() }
+        let tone = sandbox.root.appendingPathComponent("tone.wav")
+        try TestFixtures.writeTone(to: tone, seconds: 1)
+        try sandbox.addPlugin(
+            "test.voice", providers: [PluginProvider(id: "test.tts", capability: "voice.synthesize", name: "T")],
+            body: """
+                cp '\(tone.path)' "$out/a.wav"
+                cp '\(tone.path)' "$out/b.wav"
+                printf '{"id":"%s","result":{"takes":[{"audioPath":"a.wav"},{"audioPath":"b.wav"}]}}\\n' "$id"
+                """)
+        let takes = try await sandbox.service.synthesizeVoiceTakes(
+            text: "Xin chào", language: "vi", count: 2, preferredProvider: nil, projectRoot: sandbox.project,
+            outputRoot: sandbox.project.appendingPathComponent("voiceover/generated"), cloneConsent: true)
+        #expect(takes.allSatisfy { $0.score == nil })
+        #expect(takes.best?.id == takes.first?.id)
     }
 
     @Test("Loudness measurements carry provenance")

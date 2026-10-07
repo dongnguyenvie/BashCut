@@ -12,13 +12,18 @@ public struct VoiceSynthesisCapability: CapabilityAdapter {
     public let takeCount: Int
     public let takeOffset: Int
     public let outputRoot: URL?
+    /// The person asking agreed to clone a voice (P0-C7); providers that clone refuse without it.
+    public let cloneConsent: Bool
 
-    public init(text: String, language: String, takeCount: Int, takeOffset: Int = 0, outputRoot: URL) {
+    public init(
+        text: String, language: String, takeCount: Int, takeOffset: Int = 0, outputRoot: URL, cloneConsent: Bool = false
+    ) {
         self.text = text.trimmingCharacters(in: .whitespacesAndNewlines)
         self.language = language
         self.takeCount = takeCount
         self.takeOffset = takeOffset
         self.outputRoot = outputRoot
+        self.cloneConsent = cloneConsent
     }
 
     public func validate() throws {
@@ -30,6 +35,7 @@ public struct VoiceSynthesisCapability: CapabilityAdapter {
         .object([
             "language": .string(language), "outputDirectory": .string(outputDirectory?.path ?? ""),
             "takeCount": .integer(takeCount), "takeOffset": .integer(takeOffset), "text": .string(text),
+            "cloneConsent": .bool(cloneConsent),
         ])
     }
 
@@ -44,17 +50,8 @@ public struct VoiceSynthesisCapability: CapabilityAdapter {
             takes.append(
                 GeneratedVoiceTake(
                     asset: GeneratedPluginAsset(url: audio, provenance: context.provenance),
-                    durationSeconds: duration,
-                    score: specification.score ?? Self.paceScore(text: text, duration: duration),
-                    scoreSource: specification.score == nil ? "pace" : "provider"))
+                    durationSeconds: duration, score: specification.score))
         }
         return takes
-    }
-
-    /// 1 when the take runs about 2.5 words per second, falling to 0 as it drifts from that.
-    static func paceScore(text: String, duration: Double) -> Double {
-        let words = text.split(whereSeparator: { $0.isWhitespace }).count
-        let expected = max(1, Double(words) / 2.5)
-        return max(0, min(1, 1 - abs(duration - expected) / expected))
     }
 }

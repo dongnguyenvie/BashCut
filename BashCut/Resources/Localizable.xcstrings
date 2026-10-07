@@ -3490,12 +3490,6 @@
         "vi": { "stringUnit": { "state": "translated", "value": "khớp" } }
       }
     },
-    "pace": {
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "pace" } },
-        "vi": { "stringUnit": { "state": "translated", "value": "nhịp" } }
-      }
-    },
     "Music": {
       "localizations": {
         "en": {

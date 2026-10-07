@@ -9,7 +9,8 @@ import Foundation
 private let capabilityForMethod = [
     "captions.generate": "captions.transcribe", "beats.detect": "audio.beats", "voice.speak": "voice.synthesize",
     "audio.measure": "audio.loudness", "media.sync": "audio.sync", "media.transcribe": "captions.transcribe",
-    "audio.energy": "audio.energy", "audio.mix-measure": "audio.loudness",
+    "audio.energy": "audio.energy", "audio.mix-measure": "audio.loudness", "voice.check": "captions.transcribe",
+    "captions.align": "captions.transcribe",
 ]
 
 extension ProjectDocument {
@@ -164,8 +165,10 @@ extension ProjectDocument {
         return .object(fields)
     }
 
+    /// `cloneConsent`: the person asking agreed to clone a voice; the Voice panel passes it for the user, agents only
+    /// when told to.
     func generateVoiceTakes(
-        text: String, count: Int = 3, provider: String? = nil
+        text: String, count: Int = 3, provider: String? = nil, cloneConsent: Bool = false
     ) async throws -> [GeneratedVoiceTake] {
         guard let root = fileURL?.deletingLastPathComponent() else {
             throw ProjectError.invalid("Open a project before generating voiceover")
@@ -175,7 +178,8 @@ extension ProjectDocument {
             try await plugins.service.synthesizeVoiceTakes(
                 text: text, language: contentLanguage, count: count,
                 preferredProvider: provider ?? project.preferredProvider(for: "voice.synthesize"),
-                projectRoot: root, outputRoot: root.appendingPathComponent("voiceover/generated", isDirectory: true))
+                projectRoot: root, outputRoot: root.appendingPathComponent("voiceover/generated", isDirectory: true),
+                cloneConsent: cloneConsent)
         }
         guard session == sessionID else {
             CapabilityService.discardVoiceTakes(takes)
@@ -187,7 +191,7 @@ extension ProjectDocument {
     /// Inserts one generated take on the Voiceover track and returns the new item ID.
     @discardableResult
     func insertVoiceTake(
-        _ asset: GeneratedPluginAsset, at frame: Int? = nil, author: Author = .user
+        _ asset: GeneratedPluginAsset, at frame: Int? = nil, voice: [String: JSONValue]? = nil, author: Author = .user
     ) async throws -> String {
         guard let root = fileURL?.deletingLastPathComponent() else {
             throw ProjectError.invalid("Open a project before generating voiceover")
@@ -207,7 +211,8 @@ extension ProjectDocument {
             "kind": .string("audio"), "fps": project.fps.json, "frames": .integer(frames),
             "generatedBy": .object(asset.provenance.json),
         ])
-        let item = Item(media: mediaID, at: start, duration: frames)
+        var item = Item(media: mediaID, at: start, duration: frames)
+        if let voice { item["voice"] = .object(voice) }
         let track = try project.requireTrack(role: TrackRole.voiceover, kind: "audio")
         try commit(
             .group(
@@ -321,56 +326,6 @@ extension ProjectDocument {
                 ])
             }
         }
-        handleAuthored("voice.speak") { document, arguments, author in
-            let text = try arguments.string("text")
-            let count = try arguments.int("takes")
-            let frame = arguments.optionalInt("atFrame")
-            let provider = arguments.optionalString("provider")
-            let keepTakes = arguments.bool("keepTakes")
-            return try document.startCapabilityJob("voice.speak", author: author) { document in
-                if keepTakes { return try await document.generateKeptTakes(text: text, count: count, provider: provider) }
-                return try await document.speak(text: text, count: count, frame: frame, provider: provider, author: author)
-            }
-        }
-    }
-
-    /// Generates takes, inserts the best-scoring one and removes the rest.
-    private func speak(
-        text: String, count: Int, frame: Int?, provider: String?, author: Author
-    ) async throws -> JSONValue {
-        let takes = try await generateVoiceTakes(text: text, count: count, provider: provider)
-        guard let best = takes.best else { throw ProjectError.invalid("Voice provider returned no takes") }
-        let itemID: String
-        do {
-            itemID = try await insertVoiceTake(best.asset, at: frame, author: author)
-        } catch {
-            CapabilityService.discardVoiceTakes(takes)
-            throw error
-        }
-        CapabilityService.discardVoiceTakes(takes, keeping: best.asset.url)
-        return .object([
-            "rev": .integer(project.revision), "item": .string(itemID),
-            "score": .number(best.score), "scoreSource": .string(best.scoreSource),
-            "takes": .array(takes.map { .object(["score": .number($0.score), "seconds": .number($0.durationSeconds)]) }),
-        ])
-    }
-
-    /// Generates takes and keeps every file (like the Voice panel's take list) without inserting one.
-    private func generateKeptTakes(text: String, count: Int, provider: String?) async throws -> JSONValue {
-        let takes = try await generateVoiceTakes(text: text, count: count, provider: provider)
-        let root = fileURL?.deletingLastPathComponent()
-        return .object([
-            "best": takes.best.map { .string($0.asset.url.path) } ?? .null,
-            "takes": .array(takes.map { take in
-                .object([
-                    "path": .string(take.asset.url.path),
-                    "projectPath": root.map { .string(MediaPathResolver.projectPath(for: take.asset.url, projectRoot: $0)) }
-                        ?? .null,
-                    "score": .number(take.score), "scoreSource": .string(take.scoreSource),
-                    "seconds": .number(take.durationSeconds),
-                ])
-            }),
-        ])
     }
 
     private func pluginCatalogJSON(category: PluginCategory? = nil) -> JSONValue {

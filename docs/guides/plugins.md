@@ -450,9 +450,21 @@ symlinks are followed, and the file must exist. If the call fails, BashCut delet
   through 1. A provider that only makes one file can return `{"audioPath": …}` instead.
 - When the provider returns fewer takes than requested, BashCut calls it again with a higher `takeOffset` until
   the count is filled. If any call fails, the takes made so far are discarded.
-- Each file must be valid audio with a positive duration. Without a `score`, BashCut scores the take by pace:
-  1 at about 2.5 words per second, falling toward 0 as it drifts from that.
-- The highest-scoring take wins; ties go to the earlier take.
+- Each file must be valid audio with a positive duration. BashCut does not score takes itself (P0-C4): it measures
+  each take (seconds, units per second in the content language's unit, leading and trailing silence, pauses) and
+  picks the take the caller names (`--target-rate`, `--choose`), else the highest provider `score` (ties go to the
+  earlier take), else the first take.
+- Every request carries `cloneConsent` (true only when the person asked to clone a voice). A provider that clones from
+  a recording must refuse a clone request without it.
+- A provider may describe its voices in the manifest (P0-C7), so agents pick by facts (`voice voices`):
+  `"voices": [{"id", "language", "region"?, "style"?, "gender"?, "supportsRate"?}]` and `"clones": true` when it can
+  clone. Only `voice.synthesize` providers may declare them; IDs are unique and every voice has a language.
+
+### `captions.align`
+
+`mediaPath` and `text` (with `language`): force-align the known text to the speech. Return `words`
+`[{text, start, end}]` in media seconds, one per word of the text in order; `score` and `unmatched` are optional.
+`captions align --aligner <provider>` uses it; without one, BashCut matches the text to the media's transcript words.
 
 ### `captions.transcribe`
 
