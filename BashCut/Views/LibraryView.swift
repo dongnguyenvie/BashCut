@@ -8,7 +8,6 @@ struct LibraryView: View {
     @Bindable var document: ProjectDocument
     @Bindable var pluginManager: PluginManagerModel
     @State private var search = ""
-    @State private var mediaSource = MediaLibrarySource.footage
     @State private var audioTrack = ""
     @State private var captionSource = ""
     @State private var captionProvider = ""
@@ -64,7 +63,7 @@ struct LibraryView: View {
     }
     private var media: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Picker("Media source", selection: $mediaSource) {
+            Picker("Media source", selection: mediaSourceBinding) {
                 ForEach(MediaLibrarySource.allCases) { source in
                     Text(LocalizedStringKey(source.title)).tag(source)
                 }
@@ -317,6 +316,13 @@ struct LibraryView: View {
 }
 
 private extension LibraryView {
+    /// Kept in the document's UI state so `ui view --media-source` can switch it.
+    var mediaSource: MediaLibrarySource { MediaLibrarySource(rawValue: document.ui.mediaSource) ?? .footage }
+
+    var mediaSourceBinding: Binding<MediaLibrarySource> {
+        Binding(get: { mediaSource }, set: { document.ui.mediaSource = $0.rawValue })
+    }
+
     var visibleMedia: [Media] {
         document.project.media.filter {
             $0["kind"] != .string("audio")

@@ -16,6 +16,16 @@ struct NegativeControlTests {
         #expect(gap?.severity == .error && gap?.frame == 30)
     }
 
+    @Test("Sound running past Main's last clip is an error over the frames with no picture")
+    func pictureEndsEarly() throws {
+        var project = try ReviewPictureTests().project([("a", "m", 30)])
+        #expect(!TimelineReview.run(project).contains { $0.id == "gap-end" })
+        let music = project.tracks.firstIndex { $0.role == TrackRole.music }!
+        project.tracks[music].items = [Item(id: "song", media: "m", at: 0, duration: 90)]
+        let gap = try #require(TimelineReview.run(project).first { $0.id == "gap-end" })
+        #expect(gap.severity == .error && gap.frame == 30 && gap.endFrame == 90)
+    }
+
     @Test("A caption 0.3 s after its word is measured as 9 frames late")
     func captionShift() throws {
         var project = try ReviewPictureTests().project([("a", "m", 300)])
@@ -88,6 +98,17 @@ struct ReviewMechanicsTests {
         var stale = facts
         stale.revision += 1
         #expect(TimelineReview.deliveredIssues(project, delivered: [stale]).isEmpty)
+    }
+
+    @Test("The written frame rate ignores held frames and a coarse timescale's 20/21-tick jitter")
+    func writtenRate() throws {
+        // 29.97 fps at a 1/600 timescale: frames 20 or 21 ticks apart, then a 5 s black stretch held as one frame.
+        var times: [Double] = []
+        for index in 0..<120 { times.append((Double(index) * 20.02).rounded() / 600) }
+        times.append(times.last! + 5)
+        let rate = try #require(DeliveredFacts.writtenRate(times))
+        #expect(abs(rate - 29.97) < 0.01)
+        #expect(DeliveredFacts.writtenRate([0]) == nil)
     }
 }
 

@@ -14,15 +14,32 @@ public enum DeliveredQC {
         guard let video = try await asset.loadTracks(withMediaType: .video).first else {
             throw ProjectError.invalid("The export has no picture")
         }
-        let (range, rate, size) = try await video.load(.timeRange, .nominalFrameRate, .naturalSize)
+        let (range, average, size) = try await video.load(.timeRange, .nominalFrameRate, .naturalSize)
+        // nominalFrameRate averages over the track, so a held frame (an encoder writes a still or black stretch as
+        // one long frame) lowers it; the frame times give the rate frames are written at.
+        let rate = DeliveredFacts.writtenRate(try frameTimes(asset, track: video)) ?? Double(average)
         let audio = try await asset.loadTracks(withMediaType: .audio).first
         let audioStart = try await audio?.load(.timeRange).start.seconds
         let black = try await blackRanges(asset, duration: duration)
         let silence = try await silentRanges(asset)
         return DeliveredFacts(
             revision: revision, preset: preset, path: url.path, videoStart: range.start.seconds, audioStart: audioStart,
-            fps: Double(rate), expectedFps: expectedFps, size: (Int(size.width), Int(size.height)), expectedSize: expectedSize,
-            duration: duration, black: black, silence: silence)
+            fps: rate, expectedFps: expectedFps, size: (Int(size.width), Int(size.height)), expectedSize: expectedSize,
+            duration: duration, black: black, silence: silence, averageFps: Double(average))
+    }
+
+    /// Presentation times of the picture's samples, read without decoding.
+    static func frameTimes(_ asset: AVAsset, track: AVAssetTrack) throws -> [Double] {
+        let reader = try AVAssetReader(asset: asset)
+        let output = AVAssetReaderTrackOutput(track: track, outputSettings: nil)
+        reader.add(output)
+        guard reader.startReading() else { return [] }
+        var times: [Double] = []
+        while let sample = output.copyNextSampleBuffer() {
+            let time = CMSampleBufferGetPresentationTimeStamp(sample)
+            if time.isValid, CMSampleBufferGetNumSamples(sample) > 0 { times.append(time.seconds) }
+        }
+        return times
     }
 
     static func blackRanges(_ asset: AVAsset, duration: Double) async throws -> [ClosedRange<Double>] {

@@ -277,10 +277,16 @@ extension ProjectDocument {
         if let section = arguments.optionalString("settingsSection") { ui.settingsSection = section }
         if let search = arguments.optionalString("settingsSearch") { ui.settingsSearch = search }
         if let section = arguments.optionalString("knowledgeSection") { ui.knowledgeSection = section }
+        if let source = arguments.optionalString("mediaSource") { ui.mediaSource = source }
         if let tab = arguments.optionalString("pluginsTab").flatMap(PluginSheetTab.init(rawValue:)) { plugins.tab = tab }
         if let category = arguments.optionalString("pluginsCategory") {
             plugins.browseCategory = PluginCategory(rawValue: category)
         }
+        updateLibraryFilter(arguments)
+    }
+
+    /// The open library panel's search and filters.
+    private func updateLibraryFilter(_ arguments: CommandArguments) {
         let panel = ui.libraryTab.panelName
         var filter = ui.libraryFilters[panel] ?? LibraryPanelFilter()
         if let query = arguments.optionalString("libraryQuery") { filter.query = query }
@@ -312,6 +318,7 @@ extension ProjectDocument {
             "selectedItems": .array(selectedIDs.map(JSONValue.string)),
             "selectedTrack": selectedTrackID.map(JSONValue.string) ?? .null,
             "libraryPanel": .string(ui.libraryTab.panelName), "libraryFilter": libraryFilterJSON(),
+            "mediaSource": .string(ui.mediaSource),
             "inspector": .string(ui.inspectorTab),
             "settingsSection": .string(ui.settingsSection), "settingsSearch": .string(ui.settingsSearch),
             "knowledgeSection": .string(ui.knowledgeSection),

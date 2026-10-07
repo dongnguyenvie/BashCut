@@ -37,6 +37,9 @@ struct SelectsListView: View {
             }
             if let quote = select.quote { Text(verbatim: "“\(quote)”").font(.caption).lineLimit(2) }
             if let reason = select.reason { Text(verbatim: reason).font(.caption2).foregroundStyle(.secondary).lineLimit(2) }
+            if let statusReason = select.statusReason {
+                Text(verbatim: "→ " + statusReason).font(.caption2.italic()).foregroundStyle(.secondary).lineLimit(2)
+            }
             HStack(spacing: 6) {
                 Button("Keep") { mark(select, status: "kept") }.disabled(select.status == "kept")
                 Button("Reject") { mark(select, status: "rejected") }.disabled(select.status == "rejected")
@@ -67,11 +70,10 @@ struct SelectsListView: View {
     }
 
     private func mark(_ select: ProjectSelect, status: String? = nil, mustKeep: Bool? = nil) {
-        var all = document.project.selects.map(\.fields)
-        guard let index = all.firstIndex(where: { $0["id"]?.string == select.id }) else { return }
-        if let status { all[index]["status"] = .string(status) }
-        if let mustKeep { all[index]["mustKeep"] = .bool(mustKeep) }
-        do { _ = try document.saveSelects(all, label: "Mark select", author: .user, base: nil) } catch {
+        do {
+            let all = try document.project.markingSelects([select.id], status: status, mustKeep: mustKeep, reason: nil)
+            _ = try document.saveSelects(all, label: "Mark select", author: .user, base: nil)
+        } catch {
             document.message = error.localizedDescription
         }
     }

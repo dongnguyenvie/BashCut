@@ -227,7 +227,7 @@ Find the time offset between two recordings of the same moment (a camera and a s
 
 ### `bashcut media resolve-range <media> [--quote <quote>] [--words <words>] [--from <from>] [--to <to>]`
 
-A source range from what was said, in the media's stored transcript: a quote (the place its words match best; equal places listed in alternatives, in order, never ranked), word indices FIRST-LAST, or rough from/to seconds snapped outwards to the words they cut into (snap gives how far each edge moved). Returns from/to seconds and in/out frames for media place, the text, and per edge midWord, midSentence (inside a transcript phrase) and the nearest word and sentence edges before and after.
+A source range from what was said, in the media's stored transcript: a quote (the place its words match best; equal places listed in alternatives, in order, never ranked), word indices FIRST-LAST, or rough from/to seconds snapped outwards to the words they cut into (snap gives how far each edge moved). A quote's matched is the share of its words heard in place: under 1 the transcript differs (a misheard word, or a quote that is not there), so read text before using the range. Returns from/to seconds and in/out frames for media place, the text, and per edge midWord, midSentence (inside a transcript phrase) and the nearest word and sentence edges before and after.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_media_resolve-range`
 - `media`: string, required. Project media ID
@@ -1135,7 +1135,7 @@ The plan's script beats against the words heard on the timeline (stored transcri
 
 ### `bashcut selects list [--status <status>]`
 
-The project's selects: source ranges {id, media, from, to (seconds), status candidate|kept|rejected, quote, reason, evidence, mustKeep, order} and counts per status. The user sees and overrides them in the Media panel (Selects).
+The project's selects: source ranges {id, media, from, to (seconds), status candidate|kept|rejected, quote, reason (why it was picked), evidence, mustKeep, order, statusReason (why its status last changed)} and counts per status. The user sees and overrides them in the Media panel (Selects).
 
 - Mode: read · Runs: immediately · MCP: `bashcut_selects_list`
 - `status`: string, one of candidate, kept, rejected. Only this status
@@ -1150,7 +1150,7 @@ Add or update selects (by id; a new one without id gets one, status candidate) a
 
 ### `bashcut selects mark <ids> [--status <status>] [--must-keep <mustKeep>] [--reason <reason>] --base-rev <baseRev>`
 
-Change the status or mustKeep of selects (comma-separated IDs), with an optional reason, as one edit. A must-keep select no clip plays is a review warning.
+Change the status or mustKeep of selects (comma-separated IDs), with an optional reason (kept as statusReason; the pick's reason stays), as one edit. A must-keep select no clip plays is a review warning.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_selects_mark`
 - `ids`: string, required. Select IDs
@@ -1169,7 +1169,7 @@ Remove selects (comma-separated IDs) as one edit.
 
 ### `bashcut selects place [--ids <ids>] [--at-frame <atFrame>] --base-rev <baseRev>`
 
-Lay the kept selects (or the given IDs) on Main in order (order, else source start), from atFrame or Main's end, as one undoable edit; returns the new item IDs.
+Lay the kept selects (or the given IDs) in order (order, else source start), from atFrame or the first one's layer end, as one undoable edit: pictures on Main, sound-only media on the dialogue layer (else music); returns the new item IDs.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_selects_place`
 - `ids`: string. Select IDs instead of the kept ones
@@ -1468,9 +1468,9 @@ Run an editor action like the user: by ID (timeline.split, timeline.zoom-in, pla
 - Mode: edit · Runs: immediately · MCP: `bashcut_ui_action`
 - `action`: string, required. Action ID or shortcut
 
-### `bashcut ui view [--zoom <zoom>] [--zoom-anchor <zoomAnchor>] [--snap <snap>] [--safe-area <safeArea>] [--viewer-zoom <viewerZoom>] [--compare <compare>] [--agent-dock <agentDock>] [--reveal <reveal>] [--inspector <inspector>] [--settings-section <settingsSection>] [--settings-search <settingsSearch>] [--knowledge-section <knowledgeSection>] [--plugins-tab <pluginsTab>] [--plugins-category <pluginsCategory>] [--library-query <libraryQuery>] [--library-pack <libraryPack>] [--library-tag <libraryTag>] [--library-scope <libraryScope>]`
+### `bashcut ui view [--zoom <zoom>] [--zoom-anchor <zoomAnchor>] [--snap <snap>] [--safe-area <safeArea>] [--viewer-zoom <viewerZoom>] [--compare <compare>] [--agent-dock <agentDock>] [--reveal <reveal>] [--inspector <inspector>] [--settings-section <settingsSection>] [--settings-search <settingsSearch>] [--knowledge-section <knowledgeSection>] [--plugins-tab <pluginsTab>] [--plugins-category <pluginsCategory>] [--media-source <mediaSource>] [--library-query <libraryQuery>] [--library-pack <libraryPack>] [--library-tag <libraryTag>] [--library-scope <libraryScope>]`
 
-Read the editor view state, or change it: timeline zoom (pixels per second), viewer zoom, snapping, safe area, color compare, agent dock, inspector tab, Settings section and search, Knowledge section, Plugins tab and Browse category, the open library panel's search and filters, and scroll the timeline to a frame.
+Read the editor view state, or change it: timeline zoom (pixels per second), viewer zoom, snapping, safe area, color compare, agent dock, inspector tab, Settings section and search, Knowledge section, Plugins tab and Browse category, the Media panel's source (footage, project, shared, selects), the open library panel's search and filters, and scroll the timeline to a frame.
 
 - Mode: ui · Runs: immediately · MCP: `bashcut_ui_view`
 - `zoom`: integer, 1…600. Timeline zoom in pixels per second
@@ -1487,6 +1487,7 @@ Read the editor view state, or change it: timeline zoom (pixels per second), vie
 - `knowledgeSection`: string, one of inbox, lessons, prefs, facts, notes, skills, history. Knowledge window section (open it with ui.open knowledge)
 - `pluginsTab`: string, one of installed, browse, updates, activity. Plugins sheet tab (open it with ui.open plugins)
 - `pluginsCategory`: string, one of all, agents, captions, voice, audio, color, effects, export, utilities. Category Plugins › Browse shows; all shows every one
+- `mediaSource`: string, one of footage, project, shared, selects. What the Media panel lists
 - `libraryQuery`: string. Search text of the open library panel; empty clears it
 - `libraryPack`: string. Pack the open library panel shows; empty shows all
 - `libraryTag`: string. Tag the open library panel shows; empty shows all
