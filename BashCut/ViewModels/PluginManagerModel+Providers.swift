@@ -66,4 +66,20 @@ extension PluginManagerModel {
     func skills(of plugin: InstalledPlugin) -> [PluginSkill] {
         plugin.manifest.skills.isEmpty ? [] : PluginSkills.skills(of: plugin).skills
     }
+
+    /// Uses the newest valid platform table a ready plugin ships (P1-F1) when it is newer than BashCut's own.
+    func rebuildPlatformTable() {
+        var newest: PlatformTable?
+        for plugin in plugins where availability[plugin.id] == .ready {
+            guard let path = plugin.manifest.contributes?.platforms else { continue }
+            do {
+                let data = try Data(contentsOf: plugin.directory.appendingPathComponent(path))
+                let table = try PlatformTable(json: try JSONValue(parsing: data), origin: plugin.id)
+                if table.version > (newest?.version ?? "") { newest = table }
+            } catch {
+                diagnostics.append("\(plugin.id): platform table \(path): \(error.localizedDescription)")
+            }
+        }
+        PlatformData.install(newest)
+    }
 }

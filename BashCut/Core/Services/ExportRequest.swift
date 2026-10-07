@@ -16,6 +16,8 @@ public struct ExportRequest: Sendable {
     public let captionText: String?
     public let preset: ExportPreset
     public let normalizeAudio: Bool
+    /// Overrides the preset's video bit rate (`export start --bitrate`, P1-F2).
+    public var videoBitRate: Int?
 
     public var includesSubRip: Bool { subRip != nil }
 

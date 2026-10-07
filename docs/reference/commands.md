@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 195 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 196 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -76,7 +76,7 @@ Change the open project's canvas like the format menu in the toolbar: portrait 9
 - `canvas`: string, one of portrait, landscape, square. Canvas
 - `clips`: string, one of fit, fill. How clips meet the frame by default
 - `resolution`: string, one of 720, 1080, 2160. Short-side resolution; the current one by default
-- `outputs`: string. Comma-separated export presets (tiktok, reels, shorts, youtube-1080, youtube-4k, quick-draft, prores); none clears them
+- `outputs`: string. Comma-separated export presets (tiktok, reels, shorts, feed-4x5, square, portrait-3x4, youtube-1080, youtube-4k, quick-draft, prores); none clears them
 - `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
 
 ### `bashcut project brief`
@@ -438,11 +438,19 @@ The plan's shot rows against the footage: per planned shot the described shots t
 
 ## platforms
 
-### `bashcut platforms list`
+### `bashcut platforms list [--facts]`
 
-Read the platform facts review uses: per platform (TikTok, Reels, Shorts, YouTube) shape, maxSeconds, targetLUFS, maxTruePeakDbTP and safeArea (zones the app covers, as fractions), with the project's review.platform overrides applied, whether it is one of the project's outputs and whether it was overridden; layout: the zones text is checked against (the strictest of the outputs of the frame's shape, null when none); targets: each output preset's loudness target (output.targets, else the platform's).
+Read the platform facts review uses: per platform (TikTok, Reels, Shorts, YouTube) shape, maxSeconds, targetLUFS, maxTruePeakDbTP and safeArea (zones the app covers, as fractions), with the project's review.platform overrides applied, whether it is one of the project's outputs and whether it was overridden; layout: the zones text is checked against (the strictest of the outputs of the frame's shape, null when none); targets: each output preset's loudness target (output.targets, else the platform's); data: the platform table's version and origin (built-in or the plugin that shipped a newer one). With facts, every field with {value, kind hard|recommended|info, source, checked, confidence}, including bitrateMbps, title and cover facts, chapter and disclosure rules where known.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_platforms_list`
+- `facts`: boolean. Include each field's provenance
+
+### `bashcut platforms get <id>`
+
+One platform's facts with the project's overrides applied and every field's provenance (value, kind, source, checked, confidence): length, loudness, safe zones, recompression bit rate, shape, title and cover facts, chapter and disclosure rules.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_platforms_get`
+- `id`: string, required. tiktok, reels, shorts, youtube
 
 ## export
 
@@ -452,16 +460,17 @@ Read the export state: while one runs, its job, step, preset and path (last rece
 
 - Mode: read · Runs: immediately · MCP: `bashcut_export_status`
 
-### `bashcut export start --preset <preset> --name <name> [--output-dir <directory>] [--include-srt] [--normalize-audio]`
+### `bashcut export start --preset <preset> --name <name> [--output-dir <directory>] [--include-srt] [--normalize-audio] [--bitrate <bitrate>]`
 
-Request a background video export; the user approves it in the app first. Approved exports queue behind a running one.
+Request a background video export; the user approves it in the app first. Approved exports queue behind a running one. Vertical presets default under the platform's recompression line (platforms list: bitrateMbps); bitrate overrides it. Feed shapes: feed-4x5 (1080×1350), square, portrait-3x4 (1080×1440). The export status reports the bitrate written.
 
 - Mode: privileged · Runs: after the user approves in the app · MCP: `bashcut_export_start`
-- `preset`: string, required, one of tiktok, reels, shorts, youtube-1080, youtube-4k, quick-draft, prores. Export preset
+- `preset`: string, required, one of tiktok, reels, shorts, feed-4x5, square, portrait-3x4, youtube-1080, youtube-4k, quick-draft, prores. Export preset
 - `name`: string, required. Output base name without an extension
 - `directory`: string. Output folder, relative to the project; defaults to its render folder
 - `includeSRT`: boolean, default false. Also write a SubRip file
 - `normalizeAudio`: boolean, default false. Run two-pass LUFS normalization with a plugin
+- `bitrate`: number, 0.5…200. Video bit rate in Mbps instead of the preset's
 
 ### `bashcut export otio --name <name> [--output-dir <directory>]`
 

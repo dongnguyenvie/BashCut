@@ -42,7 +42,8 @@ public struct ReviewProfile: Sendable, Equatable {
             safeArea: SafeArea(
                 top: value("top", base.top), bottom: value("bottom", base.bottom),
                 sideWidth: value("sideWidth", base.sideWidth), sideHeight: value("sideHeight", base.sideHeight),
-                margin: value("margin", base.margin)))
+                margin: value("margin", base.margin)),
+            facts: platform.facts)
     }
 }
 

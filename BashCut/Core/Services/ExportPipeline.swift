@@ -108,7 +108,7 @@ public struct ExportPipeline: Sendable {
         _ snapshot: CompositionSnapshot, to url: URL, _ request: ExportRequest, _ range: ClosedRange<Double>,
         _ progress: @escaping @Sendable (Double, String?) -> Void
     ) async throws -> ExportReceipt {
-        try await engine.export(snapshot, to: url, settings: ExportSettings(preset: request.preset)) { value in
+        try await engine.export(snapshot, to: url, settings: ExportSettings(preset: request.preset, videoBitRate: request.videoBitRate)) { value in
             progress(range.lowerBound + value * (range.upperBound - range.lowerBound), nil)
         }
     }

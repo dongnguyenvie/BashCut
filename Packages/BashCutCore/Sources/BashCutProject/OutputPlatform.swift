@@ -3,7 +3,10 @@ import Foundation
 /// The export presets a project may name (`output.presets`, `export start --preset`), in the CLI spelling. The app's
 /// `ExportPreset` resolves each one.
 public enum OutputPresetName {
-    public static let all = ["tiktok", "reels", "shorts", "youtube-1080", "youtube-4k", "quick-draft", "prores"]
+    public static let all = [
+        "tiktok", "reels", "shorts", "feed-4x5", "square", "portrait-3x4", "youtube-1080", "youtube-4k", "quick-draft",
+        "prores",
+    ]
 }
 
 /// Where a vertical platform's own UI covers the picture, as fractions of the frame: the caption bar along the
@@ -35,8 +38,8 @@ public struct SafeArea: Sendable, Equatable {
 
 /// What a platform expects of a finished video (#441): shape, longest upload, loudness and the zones its UI covers.
 /// Export presets name their platform; review checks the project against the platforms of its outputs
-/// (`output.presets`), and `review.platform` overrides the facts when an app changes (#469). Numbers are each app's
-/// documented limits in 2026, rounded to the safe side; every short-form app plays at about -14 LUFS.
+/// (`output.presets`), and `review.platform` overrides the facts when an app changes (#469). The numbers come from
+/// the platform table (`PlatformData`, P1-F1), each with its source, date and confidence in `facts`.
 public struct OutputPlatform: Sendable, Equatable, Identifiable {
     public let id: String
     public let title: String
@@ -46,10 +49,12 @@ public struct OutputPlatform: Sendable, Equatable, Identifiable {
     public let targetLUFS: Double
     public let maxTruePeakDbTP: Double
     public let safeArea: SafeArea
+    /// Every field of the platform's table entry with its provenance.
+    public let facts: [String: PlatformFact]
 
     public init(
         id: String, title: String, vertical: Bool, maxSeconds: Double?, targetLUFS: Double = -14,
-        maxTruePeakDbTP: Double = -1, safeArea: SafeArea
+        maxTruePeakDbTP: Double = -1, safeArea: SafeArea, facts: [String: PlatformFact] = [:]
     ) {
         self.id = id
         self.title = title
@@ -58,31 +63,42 @@ public struct OutputPlatform: Sendable, Equatable, Identifiable {
         self.targetLUFS = targetLUFS
         self.maxTruePeakDbTP = maxTruePeakDbTP
         self.safeArea = safeArea
+        self.facts = facts
     }
 
-    /// TikTok: in-app uploads up to 10 minutes. Reels: 3 minutes, a taller caption area. Shorts: 3 minutes (since
-    /// October 2024). YouTube: landscape, title safe 5 %.
-    public static let tiktok = OutputPlatform(
-        id: "tiktok", title: "TikTok", vertical: true, maxSeconds: 600,
-        safeArea: SafeArea(top: 0.08, bottom: 0.16, sideWidth: 0.14, sideHeight: 0.46))
-    public static let reels = OutputPlatform(
-        id: "reels", title: "Instagram Reels", vertical: true, maxSeconds: 180,
-        safeArea: SafeArea(top: 0.1, bottom: 0.2, sideWidth: 0.14, sideHeight: 0.5))
-    public static let shorts = OutputPlatform(
-        id: "shorts", title: "YouTube Shorts", vertical: true, maxSeconds: 180,
-        safeArea: SafeArea(top: 0.08, bottom: 0.18, sideWidth: 0.14, sideHeight: 0.46))
-    public static let youtube = OutputPlatform(
-        id: "youtube", title: "YouTube", vertical: false, maxSeconds: nil, safeArea: SafeArea(margin: 0.05))
+    init(_ record: PlatformTable.Record) {
+        let number = { (key: String) in record.number(key) ?? 0 }
+        self.init(
+            id: record.id, title: record.title, vertical: record.vertical, maxSeconds: record.number("maxSeconds"),
+            targetLUFS: number("targetLUFS"), maxTruePeakDbTP: number("maxTruePeakDbTP"),
+            safeArea: SafeArea(
+                top: number("safeArea.top"), bottom: number("safeArea.bottom"), sideWidth: number("safeArea.sideWidth"),
+                sideHeight: number("safeArea.sideHeight"), margin: number("safeArea.margin")),
+            facts: record.fields)
+    }
 
-    public static let all: [OutputPlatform] = [tiktok, reels, shorts, youtube]
+    /// The bitrate below which the platform does not re-compress, when known (P1-F2).
+    public var bitrateMbps: Double? { facts["bitrateMbps"]?.value.double }
 
-    public static func named(_ id: String) -> OutputPlatform? { all.first { $0.id == id } }
+    public static var tiktok: OutputPlatform { named("tiktok")! }
+    public static var reels: OutputPlatform { named("reels")! }
+    public static var shorts: OutputPlatform { named("shorts")! }
+    public static var youtube: OutputPlatform { named("youtube")! }
+
+    /// The platforms of the table in use.
+    public static var all: [OutputPlatform] { PlatformData.current.platforms.map(OutputPlatform.init) }
+
+    public static func named(_ id: String) -> OutputPlatform? {
+        PlatformData.current.platforms.first { $0.id == id }.map(OutputPlatform.init)
+            ?? PlatformData.builtIn.platforms.first { $0.id == id }.map(OutputPlatform.init)
+    }
 
     public var json: JSONValue {
         .object([
             "id": .string(id), "title": .string(title), "vertical": .bool(vertical),
             "maxSeconds": maxSeconds.map(JSONValue.number) ?? .null, "targetLUFS": .number(targetLUFS),
             "maxTruePeakDbTP": .number(maxTruePeakDbTP), "safeArea": safeArea.json,
+            "bitrateMbps": bitrateMbps.map(JSONValue.number) ?? .null,
         ])
     }
 }

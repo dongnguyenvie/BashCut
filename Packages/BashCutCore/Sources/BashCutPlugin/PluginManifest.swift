@@ -185,6 +185,7 @@ public struct PluginManifest: Codable, Sendable, Equatable {
         try validateTerminal()
         try validateLibrary()
         try validateSkills()
+        try validatePlatformTable()
         try validateComposition()
         guard Set(options.map(\.id)).count == options.count, options.count <= 64 else {
             throw PluginError.invalid("Option ids must be unique (at most 64)")
@@ -234,6 +235,16 @@ public struct PluginManifest: Codable, Sendable, Equatable {
                         + LibraryKind.allCases.map(\.rawValue).joined(separator: ", ") + ")")
             }
         }
+    }
+
+    /// The platform table file (plugin API 9): a relative path inside the plugin.
+    private func validatePlatformTable() throws {
+        guard let path = contributes?.platforms else { return }
+        guard apiVersion >= 9 else { throw PluginError.invalid("contributes.platforms needs apiVersion 9") }
+        let components = NSString(string: path).pathComponents
+        guard path.hasSuffix(".json"), path.count <= 512, !path.hasPrefix("/"), !path.hasPrefix("~"),
+            !components.contains("..")
+        else { throw PluginError.invalid("contributes.platforms must be a .json file inside the plugin bundle") }
     }
 
     /// Agent skills (plugin API 7).

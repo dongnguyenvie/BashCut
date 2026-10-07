@@ -135,9 +135,9 @@ struct ReviewQualityTests {
         var project = try project()
         set(&project, track: "t1", [
             text("low", "Mua ngay", style: ["positionY": .number(0.05)]),
-            text("wide", "Một dòng chữ rất dài chạy hết ngang khung", at: 60),
+            text("wide", "Một dòng chữ rất dài chạy hết ngang khung", at: 60, style: ["positionY": .number(0.3)]),
             text("high", "Tiêu đề", at: 120, style: ["positionY": .number(0.95)]),
-            text("fine", "Đà Lạt 48h", at: 180),
+            text("fine", "Đà Lạt 48h", at: 180, style: ["positionY": .number(0.6)]),
         ])
         let issues = run(project)
         let low = issues.first { $0.id == "safe-bottom-low" }

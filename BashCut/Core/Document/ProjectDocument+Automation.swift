@@ -187,6 +187,7 @@ extension ProjectDocument {
             guard document.project.duration > 0 else { throw RPCFailure(-32602, "The timeline is empty") }
             let includeSubRip = arguments.bool("includeSRT")
             let normalizeAudio = arguments.bool("normalizeAudio")
+            let bitRate = arguments.optionalDouble("bitrate").map { Int($0 * 1_000_000) }
             let output = directory.appendingPathComponent(name).appendingPathExtension(preset.fileExtension)
             // Fail before asking the user to approve an export that cannot start.
             let reserved = document.exports.queue.reservedOutputs
@@ -203,12 +204,13 @@ extension ProjectDocument {
                     "captions": includeSubRip ? "include .srt" : "burned in only",
                     "normalization": normalizeAudio ? "two-pass LUFS" : "off",
                     "output": output.path, "preset": preset.title,
+                    "bitrate": bitRate.map { "\(Double($0) / 1_000_000) Mbps" } ?? "preset default",
                 ]
             ) { [weak document] in
                 guard let document else { throw RPCFailure(-32000, "Editor closed") }
                 try document.startExportAuthorized(
                     name: name, preset: preset, directory: directory, includeSubRip: includeSubRip,
-                    normalizeAudio: normalizeAudio, author: author)
+                    normalizeAudio: normalizeAudio, author: author, videoBitRate: bitRate)
             }
             if !approval.autoApproved {
                 document.message = String(localized: "Waiting for approval: export.start")

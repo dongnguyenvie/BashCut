@@ -340,7 +340,17 @@ extension CommandCatalog {
             + "review.platform overrides applied, whether it is one of the project's outputs and whether it was "
             + "overridden; layout: the zones text is checked against (the strictest of the outputs of the frame's "
             + "shape, null when none); targets: each output preset's loudness target (output.targets, else the "
-            + "platform's).")
+            + "platform's); data: the platform table's version and origin (built-in or the plugin that shipped a newer "
+            + "one). With facts, every field with {value, kind hard|recommended|info, source, checked, confidence}, "
+            + "including bitrateMbps, title and cover facts, chapter and disclosure rules where known.",
+        parameters: [CommandParameter("facts", .boolean, "Include each field's provenance", cli: .flag("facts"))])
+
+    static let platformsGetSpec = CommandSpec(
+        "platforms.get", .read,
+        "One platform's facts with the project's overrides applied and every field's provenance (value, kind, source, "
+            + "checked, confidence): length, loudness, safe zones, recompression bit rate, shape, title and cover facts, "
+            + "chapter and disclosure rules.",
+        parameters: [CommandParameter("id", .string, "tiktok, reels, shorts, youtube", required: true, cli: .positional)])
 
     /// Hook and close as facts (#467, P0-B11).
     static let reviewHookSpec = CommandSpec(

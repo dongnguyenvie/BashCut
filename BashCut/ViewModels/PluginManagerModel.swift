@@ -249,6 +249,7 @@ enum PluginText {
         actions = list
         rebuildLibrary()
         rebuildSkills()
+        rebuildPlatformTable()
     }
 
     func action(_ id: String) -> ContributedAction? { actions.first { $0.id == id } }

@@ -30,7 +30,21 @@ extension ProjectDocument {
                 lowVariance: lowVariance)
         }
         handle("review.cuts") { document, _, _ in ReviewCuts.json(document.project) }
-        handle("platforms.list") { document, _, _ in
+        handle("platforms.get") { document, arguments, _ in
+            let id = try arguments.string("id")
+            guard let platform = OutputPlatform.named(id) else {
+                throw RPCFailure(-32602, "Unknown platform \(id); use " + OutputPlatform.all.map(\.id).joined(separator: ", "))
+            }
+            let applied = ReviewProfile(document.project).applying(to: platform)
+            var row = applied.json.object
+            row["facts"] = .object(platform.facts.mapValues(\.json))
+            row["overridden"] = .bool(applied != platform)
+            row["data"] = .object([
+                "version": .string(PlatformData.current.version), "origin": .string(PlatformData.current.origin),
+            ])
+            return .object(row)
+        }
+        handle("platforms.list") { document, arguments, _ in
             let profile = ReviewProfile(document.project)
             let outputs = Set(document.outputPresets.compactMap(\.platform?.id))
             return .object([
@@ -38,8 +52,12 @@ extension ProjectDocument {
                     var row = profile.applying(to: platform).json.object
                     row["output"] = .bool(outputs.contains(platform.id))
                     row["overridden"] = .bool(profile.applying(to: platform) != platform)
+                    if arguments.bool("facts") { row["facts"] = .object(platform.facts.mapValues(\.json)) }
                     return .object(row)
                 }),
+                "data": .object([
+                    "version": .string(PlatformData.current.version), "origin": .string(PlatformData.current.origin),
+                ]),
                 "layout": document.layoutPlatform?.json ?? .null,
                 "targets": .object(Dictionary(uniqueKeysWithValues: document.outputPresets.map { preset in
                     let target = document.project.loudnessTarget(preset: preset.argument, platform: preset.platform)

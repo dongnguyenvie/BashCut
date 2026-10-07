@@ -91,6 +91,9 @@ extension ExportReport {
                 "speechCoverage": .number(speechCoverage),
                 "completedAt": .string(ISO8601DateFormatter().string(from: completedAt)),
                 "acceptedIssues": .object(acceptedIssues.mapValues(JSONValue.string)),
+                // What was written, audio included (P1-F2).
+                "bitrateMbps": receipt.duration > 0
+                    ? .number((Double(receipt.bytes) * 8 / receipt.duration / 10_000).rounded() / 100) : .null,
             ]
             if let comparison = comparison {
                 var values: [String: JSONValue] = [
