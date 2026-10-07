@@ -113,7 +113,8 @@ public enum TimelineReview {
         run(project, context: ReviewContext(fontAvailable: fontAvailable))
     }
 
-    /// Every check, errors first. Loudness is checked only when `context.targets` has a loudness target.
+    /// Every check, errors first. Mechanical problems (gaps, missing fonts, black picture) and platform facts are
+    /// errors; editorial checks run on the project's `review` profile (#466) and are info without it (#470).
     public static func run(_ project: Project, context: ReviewContext) -> [ReviewIssue] {
         var issues: [ReviewIssue] = []
         let main = project.tracks.first { $0.role == "main" }?.items.sorted { $0.at < $1.at } ?? []
@@ -133,33 +134,25 @@ public enum TimelineReview {
             }
             end = clip.end
         }
+        let profile = ReviewProfile(project)
         for (left, right) in zip(main, main.dropFirst())
         where left.mediaID == right.mediaID && left["transform"] == right["transform"] {
             issues.append(
                 ReviewIssue(
                     id: "framing-" + right.id, title: "Repeated framing",
-                    detail: "Adjacent cuts use the same source and transform.", frame: right.at,
-                    fix: ReviewFix(hint: "Reframe one side (a punch-in with transform zoom) or put a cutaway between them.")))
+                    detail: "Adjacent cuts use the same source and transform.", frame: right.at, severity: .info,
+                    fix: ReviewFix(hint: "Change the framing of one side, put another shot between them, or keep it on purpose.")))
         }
-        for voice in voiceover {
-            let margin = Int((0.3 * project.fps.value).rounded(.up))
-            if speech.contains(where: { voice.at < $0.end + margin && voice.end > $0.at - margin }) {
+        issues += voiceoverIssues(project, voiceover: voiceover, speech: speech, profile: profile)
+        if let limit = profile["captionLineChars"].map({ Int($0) }) {
+            for text in project.tracks.filter({ $0.kind == "text" }).flatMap(\.items)
+            where text.text.split(separator: "\n").contains(where: { $0.count > limit }) {
                 issues.append(
                     ReviewIssue(
-                        id: "overlap-" + voice.id, title: "Voiceover near real speech",
-                        detail: "Keep at least 0.3 seconds between voiceover and tagged speech.",
-                        frame: voice.at, fix: ReviewFix(hint: "Move the voiceover or mute the speech under it.")))
+                        id: "caption-" + text.id, title: "Long caption line",
+                        detail: "A line is longer than the project's \(limit) characters (review.captionLineChars).",
+                        frame: text.at, fix: ReviewFix(hint: "Split the text with a line break or into two captions.")))
             }
-        }
-        // Vertical frames fit fewer characters per line at a readable size.
-        let lineLimit = project.height > project.width ? 32 : 42
-        for text in project.tracks.filter({ $0.kind == "text" }).flatMap(\.items)
-        where text.text.split(separator: "\n").contains(where: { $0.count > lineLimit }) {
-            issues.append(
-                ReviewIssue(
-                    id: "caption-" + text.id, title: "Long caption line",
-                    detail: "Consider splitting lines longer than \(lineLimit) characters.", frame: text.at,
-                    fix: ReviewFix(hint: "Split the text with a line break or into two captions.")))
         }
         issues += missingFonts(project, fontAvailable: context.fontAvailable)
         issues += textIssues(project, context: context)
@@ -180,14 +173,14 @@ public enum TimelineReview {
         }
         if project.duration > 0 {
             let coverage = speechCoverage(project)
-            if coverage < 0.9 {
+            let minimum = profile["minSpeechCoverage"]
+            if minimum.map({ coverage < $0 }) ?? true {
                 issues.append(
                     ReviewIssue(
-                        id: "coverage", title: "Tagged speech coverage below 90%",
-                        detail: String(
-                            format:
-                                "%.0f%% from clip roles and voiceover timing. Audio has not been transcribed or measured.",
-                            coverage * 100), frame: 0, severity: .info))
+                        id: "coverage", title: "Tagged speech coverage",
+                        detail: String(format: "%.0f%% of the edit from clip roles and voiceover timing", coverage * 100)
+                            + (minimum.map { String(format: "; the project asks for %.0f%%.", $0 * 100) } ?? "."),
+                        frame: 0, severity: minimum == nil ? .info : .warning))
             }
         }
         return sorted(applyingSeverities(issues, project: project))
@@ -212,7 +205,7 @@ public enum TimelineReview {
                     id: "font-" + text.id, title: "Missing font",
                     detail: "\(font) is not installed and not in the project's fonts folder, so it draws as Helvetica. "
                         + "Add it with fonts import, or pick another (fonts list).",
-                    frame: text.at, fix: ReviewFix(command: "fonts.import")))
+                    frame: text.at, severity: .error, fix: ReviewFix(command: "fonts.import")))
         }
         return issues
     }
@@ -230,5 +223,24 @@ public enum TimelineReview {
         guard words.count >= 6 else { return false }
         let most = Dictionary(grouping: words, by: { $0 }).values.map(\.count).max() ?? 0
         return most * 2 >= words.count
+    }
+}
+
+extension TimelineReview {
+    /// Voiceover over tagged speech: with `review.voiceoverMarginSeconds`, closer than that (warning); without it,
+    /// only actual overlap, as info.
+    static func voiceoverIssues(_ project: Project, voiceover: [Item], speech: [Item], profile: ReviewProfile) -> [ReviewIssue] {
+        let marginSeconds = profile["voiceoverMarginSeconds"]
+        let margin = Int(((marginSeconds ?? 0) * project.fps.value).rounded(.up))
+        return voiceover.filter { voice in
+            speech.contains { voice.at < $0.end + margin && voice.end > $0.at - margin }
+        }.map { voice in
+            ReviewIssue(
+                id: "overlap-" + voice.id, title: "Voiceover over real speech",
+                detail: marginSeconds.map { String(format: "Closer than the project's %.1f s to tagged speech.", $0) }
+                    ?? "It plays over tagged speech.",
+                frame: voice.at, severity: marginSeconds == nil ? .info : .warning,
+                fix: ReviewFix(hint: "Move the voiceover or mute the speech under it."))
+        }
     }
 }

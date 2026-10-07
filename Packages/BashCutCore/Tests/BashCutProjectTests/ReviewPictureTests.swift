@@ -46,7 +46,7 @@ struct ReviewPictureTests {
         #expect(issues.contains { $0.id == "picture-unmeasured" })
     }
 
-    @Test("Black picture: half a second is an error with its range; a short fade out at the end passes")
+    @Test("Black picture: inside the edit an error with its range; at the end (a fade) info")
     func black() throws {
         let project = try project([("a", "m", 300)])
         let middle = picture(project) { frame in frame >= 90 && frame < 120 ? (0.01, 0.0, 0.5) : (0.5, 0.2, 0.05) }
@@ -57,15 +57,17 @@ struct ReviewPictureTests {
         #expect(black.json.object["endFrame"] == .integer(120))
         #expect(issues.first?.id == "black-90")
         let tail = picture(project) { frame in frame >= 270 ? (0.01, 0.0, 0.5) : (0.5, 0.2, 0.05) }
-        #expect(!TimelineReview.run(project, context: ReviewContext(picture: tail)).contains { $0.id.hasPrefix("black-") })
+        #expect(TimelineReview.run(project, context: ReviewContext(picture: tail)).filter { $0.id.hasPrefix("black-") }
+            .allSatisfy { $0.severity == .info })
         // Dark but detailed picture (a night shot) is not black.
         let night = picture(project) { _ in (0.03, 0.1, 0.05) }
         #expect(!TimelineReview.run(project, context: ReviewContext(picture: night)).contains { $0.id.hasPrefix("black-") })
     }
 
-    @Test("Frozen picture: longer than the pacing allows, except a freeze frame placed on purpose")
+    @Test("Frozen picture: longer than the project allows, except a freeze frame placed on purpose")
     func frozen() throws {
         var project = try project([("a", "m", 300)])
+        project["review"] = .object(["maxStillSeconds": .number(4)])
         let measured = picture(project) { frame in (0.5, 0.2, frame > 30 && frame <= 210 ? 0.001 : 0.05) }
         let issue = try #require(
             TimelineReview.run(project, context: ReviewContext(picture: measured)).first { $0.id.hasPrefix("still-") })
@@ -76,30 +78,35 @@ struct ReviewPictureTests {
         project["review"] = .object(["maxStillSeconds": .number(10)])
         let relaxed = picture(project) { frame in (0.5, 0.2, frame > 30 && frame <= 210 ? 0.001 : 0.05) }
         #expect(!TimelineReview.run(project, context: ReviewContext(picture: relaxed)).contains { $0.id.hasPrefix("still-") })
-        project["review"] = nil
+        project["review"] = .object(["maxStillSeconds": .number(4)])
         let index = project.tracks.firstIndex { $0.id == "v1" }!
         project.tracks[index].items[0]["freezeFrame"] = .integer(10)
         let frozen = picture(project) { _ in (0.5, 0.2, 0.001) }
         #expect(!TimelineReview.run(project, context: ReviewContext(picture: frozen)).contains { $0.id.hasPrefix("still-") })
     }
 
-    @Test("Jump cuts: a near-identical cut warns with a punch-in fix; repeated framing is not reported twice")
+    @Test("Jump cuts: only with the project's jumpCutChange; the fix is a hint, not a fixed punch-in (#468)")
     func jumpCuts() throws {
-        let project = try project([("a", "take1", 60), ("b", "take2", 60), ("c", "take2", 60), ("d", "take3", 60)])
+        var project = try project([("a", "take1", 60), ("b", "take2", 60), ("c", "take2", 60), ("d", "take3", 60)])
         let measured = picture(project, cuts: ["b": 0.02, "c": 0.01, "d": 0.3]) { _ in (0.5, 0.2, 0.05) }
+        #expect(!TimelineReview.run(project, context: ReviewContext(picture: measured)).contains { $0.id.hasPrefix("jump-") })
+        project["review"] = .object(["jumpCutChange": .number(0.06)])
         let issues = TimelineReview.run(project, context: ReviewContext(picture: measured))
         let jump = try #require(issues.first { $0.id == "jump-b" })
-        #expect(jump.fix?.command == "timeline.apply")
-        let op = jump.fix?.arguments["ops"]?.array.first?.object
-        #expect(op?["op"] == .string("setProperties"))
-        #expect(op?["patch"]?.object["transform"]?.object["zoom"]?.double.map { abs($0 - 1.15) < 0.001 } == true)
+        #expect(jump.fix?.command == nil && jump.fix?.hint != nil)
         #expect(issues.contains { $0.id == "framing-c" })
         #expect(!issues.contains { $0.id == "jump-c" || $0.id == "jump-d" })
     }
 
-    @Test("Shot length: short shots are notes, long still shots warn, long moving shots pass, recipes override")
+    @Test("Shot length: without limits the shortest and longest are notes; with them, long still shots warn")
     func shots() throws {
         var project = try project([("flash", "m", 6), ("long", "m", 300), ("ok", "m", 90)])
+        let bare = TimelineReview.run(project)
+        #expect(bare.filter { $0.id.hasPrefix("shot-") }.map(\.id).sorted() == ["shot-long-long", "shot-short-flash"])
+        #expect(bare.filter { $0.id.hasPrefix("shot-") }.allSatisfy { $0.severity == .info })
+        project["review"] = .object([
+            "minShotSeconds": .number(0.4), "maxShotSeconds": .number(8), "stillMotion": .number(0.02),
+        ])
         let unmeasured = TimelineReview.run(project)
         #expect(unmeasured.first { $0.id == "shot-short-flash" }?.severity == .info)
         let long = try #require(unmeasured.first { $0.id == "shot-long-long" })
@@ -112,8 +119,6 @@ struct ReviewPictureTests {
         #expect(!TimelineReview.run(project, context: ReviewContext(picture: moving)).contains { $0.id == "shot-long-long" })
         project["review"] = .object(["maxShotSeconds": .number(20), "minShotSeconds": .number(0.1)])
         #expect(!TimelineReview.run(project).contains { $0.id.hasPrefix("shot-") })
-        let landscape = try self.project([("long", "m", 300)], width: 1920, height: 1080)
-        #expect(!TimelineReview.run(landscape).contains { $0.id.hasPrefix("shot-") })
     }
 
     @Test("Plugin check issues join the review of their revision, sorted with the built-in ones (#451)")

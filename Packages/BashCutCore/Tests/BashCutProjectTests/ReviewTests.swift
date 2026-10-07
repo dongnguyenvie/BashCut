@@ -3,7 +3,7 @@ import Testing
 @testable import BashCutProject
 
 struct ReviewTests {
-    @Test("Review finds picture gaps, long caption lines and missing tagged speech")
+    @Test("Review finds picture gaps; caption lines and zones need the project's limits and outputs")
     func rules() throws {
         var project = Project(name: "Review")
         let media = Media(fields: [
@@ -21,8 +21,11 @@ struct ReviewTests {
                     .insert(track: "t1", item: caption),
                 ])
         ).project
-        let issues = TimelineReview.run(project)
-        #expect(Set(issues.map(\.id)) == ["gap-clip", "caption-caption", "safe-side-caption", "coverage"])
+        let bare = TimelineReview.run(project)
+        #expect(Set(bare.map(\.id)) == ["gap-clip", "platform-none", "shot-short-clip", "coverage"])
+        project["review"] = .object(["captionLineChars": .integer(32), "minSpeechCoverage": .number(0.9)])
+        let issues = TimelineReview.run(project, context: ReviewContext(targets: ReviewTargets(platforms: [.tiktok])))
+        #expect(Set(issues.map(\.id)) == ["gap-clip", "caption-caption", "safe-side-caption", "coverage", "shot-short-clip"])
     }
 
     @Test("Review flags each missing font once, at its first text item (#415)")
@@ -58,7 +61,7 @@ struct ReviewTests {
         }
     }
 
-    @Test("Review flags voiceover closer than 0.3 seconds to tagged speech across layers")
+    @Test("Voiceover near tagged speech: within the project's margin, else only actual overlap")
     func voiceoverProximity() throws {
         var project = Project(name: "Voice review", fps: FrameRate(30, 1))
         let media = Media(fields: [
@@ -79,6 +82,8 @@ struct ReviewTests {
         ).project
         project.tracks.append(extraVoice)
 
+        #expect(!TimelineReview.run(project).contains { $0.id.hasPrefix("overlap-") })
+        project["review"] = .object(["voiceoverMarginSeconds": .number(0.3)])
         let overlapIDs = Set(
             TimelineReview.run(project).filter { $0.id.hasPrefix("overlap-") }.map(\.id))
         #expect(overlapIDs == ["overlap-close"])

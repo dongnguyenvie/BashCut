@@ -3,12 +3,12 @@ import Foundation
 /// The raw picture measurement as data for the agent (`review.picture`, #463): every sample and every hard cut, with
 /// the units and the noise floors the picture checks use, so an agent can judge from the numbers instead of verdicts.
 extension ReviewPicture {
-    /// The noise floors and check limits the picture checks use, as documented measurement facts (fractions of full
+    /// The noise floors the picture measurement uses, as documented measurement facts (fractions of full
     /// scale on a 24×24 grey thumbnail).
     public static var floorsJSON: JSONValue {
         .object([
             "blackLuma": .number(blackLuma), "flatSpread": .number(flatSpread), "stillChange": .number(stillChange),
-            "stillPeak": .number(stillPeak), "jumpCutChange": .number(jumpCutChange),
+            "stillPeak": .number(stillPeak),
         ])
     }
 

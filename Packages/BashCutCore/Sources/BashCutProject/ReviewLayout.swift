@@ -17,7 +17,7 @@ public enum ReviewLayout {
         }
         var result: [String: JSONValue] = [
             "width": .integer(project.width), "height": .integer(project.height),
-            "platform": context.targets.layoutPlatform(for: project).json, "items": .array(rows),
+            "platform": context.targets.layoutPlatform(for: project)?.json ?? .null, "items": .array(rows),
             "density": TextFacts.density(all, project: project), "facesProvider": .bool(false),
         ]
         if let frame {

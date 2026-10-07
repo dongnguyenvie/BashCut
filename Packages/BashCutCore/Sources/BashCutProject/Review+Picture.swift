@@ -15,105 +15,110 @@ extension TimelineReview {
                     frame: 0, severity: .info,
                     fix: ReviewFix(command: "review.measure", hint: "Measure, then run the review again.")))
         }
-        issues += shotIssues(project, context: context, picture: measured)
+        let profile = ReviewProfile(project)
+        issues += shotIssues(project, profile: profile, picture: measured)
         if let measured {
-            issues += blackIssues(project, picture: measured)
-            issues += stillIssues(project, context: context, picture: measured)
-            issues += jumpCutIssues(project, picture: measured)
+            issues += blackIssues(project, picture: measured, profile: profile)
+            issues += stillIssues(project, picture: measured, profile: profile)
+            issues += jumpCutIssues(project, picture: measured, profile: profile)
         }
         return issues
     }
 
-    /// Shots on Main outside the pacing range. A long shot is a warning when its picture barely moves (or was not
-    /// measured, as a note); a long shot that keeps moving, such as an animated explainer, passes.
-    static func shotIssues(_ project: Project, context: ReviewContext, picture: ReviewPicture?) -> [ReviewIssue] {
-        let pacing = context.targets.pacing(for: project)
+    /// Shots on Main against the project's `minShotSeconds`/`maxShotSeconds`; without them, the shortest and the longest
+    /// shot as info. With `stillMotion`, a long shot is a warning only when its picture moves less; without it, or
+    /// without a measurement, long shots are info.
+    static func shotIssues(_ project: Project, profile: ReviewProfile, picture: ReviewPicture?) -> [ReviewIssue] {
         let fps = project.fps.value
         let main = project.tracks.first { $0.role == "main" }?.items.sorted { $0.at < $1.at } ?? []
-        var issues: [ReviewIssue] = []
-        for shot in main {
-            let seconds = Double(shot.duration) / fps
-            if seconds < pacing.minShot {
-                issues.append(
-                    ReviewIssue(
-                        id: "shot-short-" + shot.id, title: "Very short shot",
-                        detail: String(format: "%.2f s; shots under %.1f s read as a flash.", seconds, pacing.minShot),
-                        frame: shot.at, endFrame: shot.end, severity: .info,
-                        fix: ReviewFix(hint: "Lengthen it, remove it, or make it a deliberate beat cut.")))
-            } else if seconds > pacing.maxShot {
-                let motion = picture.flatMap { meanChange($0, from: shot.at, to: shot.end) }
-                guard motion.map({ $0 < 0.02 }) ?? true else { continue }
-                issues.append(
-                    ReviewIssue(
-                        id: "shot-long-" + shot.id, title: motion == nil ? "Long shot" : "Long static shot",
-                        detail: String(
-                            format: "%.1f s; the pacing range ends at %.0f s%@.", seconds, pacing.maxShot,
-                            motion == nil ? " (picture not measured)" : " and the picture barely moves"),
-                        frame: shot.at, endFrame: shot.end, severity: motion == nil ? .info : .warning,
-                        fix: ReviewFix(hint: "Split it with a punch-in, add a cutaway or b-roll, or animate it (Ken Burns).")))
-            }
+        guard !main.isEmpty else { return [] }
+        let seconds = { (shot: Item) in Double(shot.duration) / fps }
+        let short = profile["minShotSeconds"].map { limit in main.filter { seconds($0) < limit } }
+            ?? [main.min { $0.duration < $1.duration }].compactMap { $0 }
+        let long = profile["maxShotSeconds"].map { limit in main.filter { seconds($0) > limit } }
+            ?? [main.max { $0.duration < $1.duration }].compactMap { $0 }
+        var issues: [ReviewIssue] = short.map { shot in
+            ReviewIssue(
+                id: "shot-short-" + shot.id, title: profile["minShotSeconds"] == nil ? "Shortest shot" : "Very short shot",
+                detail: String(format: "%.2f s", seconds(shot))
+                    + (profile["minShotSeconds"].map { String(format: "; the project's shortest is %.2f s.", $0) } ?? "."),
+                frame: shot.at, endFrame: shot.end, severity: .info,
+                fix: ReviewFix(hint: "Lengthen it, remove it, or keep it as a deliberate beat."))
+        }
+        for shot in long where profile["minShotSeconds"] != nil || !short.contains(where: { $0.id == shot.id }) {
+            let motion = picture.flatMap { meanChange($0, from: shot.at, to: shot.end) }
+            if let still = profile["stillMotion"], let motion, motion >= still { continue }
+            let warn = profile["maxShotSeconds"] != nil && profile["stillMotion"] != nil && motion != nil
+            issues.append(
+                ReviewIssue(
+                    id: "shot-long-" + shot.id, title: profile["maxShotSeconds"] == nil ? "Longest shot" : "Long shot",
+                    detail: String(format: "%.1f s", seconds(shot))
+                        + (motion.map { String(format: ", mean picture change %.3f", $0) } ?? " (picture not measured)")
+                        + (profile["maxShotSeconds"].map { String(format: "; the project's longest is %.0f s.", $0) } ?? "."),
+                    frame: shot.at, endFrame: shot.end, severity: warn ? .warning : .info,
+                    fix: ReviewFix(hint: "Split it, add a cutaway, animate it, or keep it on purpose.")))
         }
         return issues
     }
 
-    /// Runs of black, flat picture of half a second or more. A fade to black of up to a second at the very end passes.
-    static func blackIssues(_ project: Project, picture: ReviewPicture) -> [ReviewIssue] {
+    /// Runs of black, flat picture: inside the edit an error (longer than `review.blackMinSeconds` when set); at its
+    /// very start or end, where fades go, info.
+    static func blackIssues(_ project: Project, picture: ReviewPicture, profile: ReviewProfile) -> [ReviewIssue] {
         let fps = project.fps.value
         return runs(picture, where: picture.isBlack).compactMap { start, end in
             let seconds = Double(end - start) / fps
-            guard seconds >= 0.5, !(end >= project.duration && seconds <= 1) else { return nil }
+            if let minimum = profile["blackMinSeconds"], seconds < minimum { return nil }
+            let edge = start == 0 || end >= project.duration
             return ReviewIssue(
-                id: "black-\(start)", title: "Black picture",
+                id: "black-\(start)", title: edge ? "Black at the edge of the edit" : "Black picture",
                 detail: String(format: "%.1f s of black or empty picture from frame %d.", seconds, start),
-                frame: start, endFrame: end, severity: .error,
+                frame: start, endFrame: end, severity: edge ? .info : .error,
                 fix: ReviewFix(hint: "Check for an offline or missing clip, a layer hiding the picture, or a gap under it."))
         }
     }
 
-    /// Picture that stays the same for longer than the pacing allows, outside freeze frames placed on purpose.
-    static func stillIssues(_ project: Project, context: ReviewContext, picture: ReviewPicture) -> [ReviewIssue] {
-        let maxStill = context.targets.pacing(for: project).maxStill
+    /// Unchanged picture outside freeze frames placed on purpose: each run longer than `review.maxStillSeconds`
+    /// (warning), or without it the longest run as info.
+    static func stillIssues(_ project: Project, picture: ReviewPicture, profile: ReviewProfile) -> [ReviewIssue] {
         let fps = project.fps.value
         let freezes = project.tracks.filter { $0.role == "main" }.flatMap(\.items).filter { $0["freezeFrame"] != nil }
         let samples = picture.samples
         // A run of unchanged samples starts at the sample before its first one: that is the picture they repeat.
-        let still = runs(picture) { $0.isStill && !picture.isBlack($0) }
-        return still.compactMap { first, end in
+        let still: [(Int, Int)] = runs(picture) { $0.isStill && !picture.isBlack($0) }.map { first, end in
             let index = samples.firstIndex { $0.frame == first } ?? 0
-            let start = index > 0 ? samples[index - 1].frame : first
-            let seconds = Double(end - start) / fps
-            guard seconds > maxStill, !freezes.contains(where: { $0.at <= start && $0.end >= end }) else { return nil }
-            return ReviewIssue(
-                id: "still-\(start)", title: "Frozen picture",
-                detail: String(format: "%.1f s without any change; keep still picture under %.0f s.", seconds, maxStill),
-                frame: start, endFrame: end,
-                fix: ReviewFix(hint: "Animate it (Ken Burns, a slow punch-in), cut sooner, or put b-roll over it."))
+            return (index > 0 ? samples[index - 1].frame : first, end)
+        }.filter { start, end in !freezes.contains(where: { $0.at <= start && $0.end >= end }) }
+        let limit = profile["maxStillSeconds"]
+        let flagged = limit.map { limit in still.filter { Double($0.1 - $0.0) / fps > limit } }
+            ?? [still.max { $0.1 - $0.0 < $1.1 - $1.0 }].compactMap { $0 }
+        return flagged.map { start, end in
+            ReviewIssue(
+                id: "still-\(start)", title: limit == nil ? "Longest unchanged picture" : "Frozen picture",
+                detail: String(format: "%.1f s without any change", Double(end - start) / fps)
+                    + (limit.map { String(format: "; the project's limit is %.0f s.", $0) } ?? "."),
+                frame: start, endFrame: end, severity: limit == nil ? .info : .warning,
+                fix: ReviewFix(hint: "Animate it, cut sooner, put b-roll over it, or keep it on purpose."))
         }
     }
 
-    /// Hard cuts whose two sides look nearly the same. Cuts between the same source and transform are already
-    /// "Repeated framing"; this finds the rest, such as two takes from a locked-off camera.
-    static func jumpCutIssues(_ project: Project, picture: ReviewPicture) -> [ReviewIssue] {
+    /// Hard cuts whose two sides differ less than the project's `review.jumpCutChange` (not checked without it).
+    /// Cuts between the same source and transform are already "Repeated framing". The fix is a hint: how far to
+    /// reframe, or whether to cut away instead, is the agent's choice (#468).
+    static func jumpCutIssues(_ project: Project, picture: ReviewPicture, profile: ReviewProfile) -> [ReviewIssue] {
+        guard let limit = profile["jumpCutChange"] else { return [] }
         let items = Dictionary(project.tracks.flatMap(\.items).map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         let main = project.tracks.first { $0.role == "main" }?.items.sorted { $0.at < $1.at } ?? []
         let previous = Dictionary(zip(main.dropFirst(), main).map { ($0.id, $1) }, uniquingKeysWith: { first, _ in first })
         return ReviewPicture.hardCuts(project).compactMap { cut in
-            guard let change = picture.cuts[cut.item], change < ReviewPicture.jumpCutChange,
-                  let right = items[cut.item], let left = previous[cut.item],
-                  !(left.mediaID == right.mediaID && left["transform"] == right["transform"])
+            guard let change = picture.cuts[cut.item], change < limit,
+                let right = items[cut.item], let left = previous[cut.item],
+                !(left.mediaID == right.mediaID && left["transform"] == right["transform"])
             else { return nil }
-            var transform = right["transform"]?.object ?? [:]
-            transform["zoom"] = .number((transform["zoom"]?.double ?? 1) * 1.15)
-            let op: JSONValue = .object([
-                "op": .string("setProperties"), "item": .string(right.id), "patch": .object(["transform": .object(transform)]),
-            ])
             return ReviewIssue(
                 id: "jump-" + right.id, title: "Jump cut",
                 detail: String(format: "The picture changes only %.0f%% across this cut.", change * 100),
                 frame: right.at,
-                fix: ReviewFix(
-                    command: "timeline.apply", arguments: ["ops": .array([op]), "label": .string("Punch in")],
-                    hint: "Punch in on one side (zoom 1.15) or put a cutaway between them."))
+                fix: ReviewFix(hint: "Reframe one side (review shots gives each shot's scale headroom) or put a cutaway between them."))
         }
     }
 

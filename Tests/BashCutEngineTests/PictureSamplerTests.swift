@@ -96,16 +96,18 @@ struct PictureSamplerTests {
         let still = picture.samples.filter { $0.frame > 90 && $0.frame < 240 }
         #expect(still.allSatisfy { $0.isStill }, "\(still)")
         #expect(Set(picture.cuts.keys) == ["b", "c", "d", "e"])
-        #expect((picture.cuts["d"] ?? 1) < ReviewPicture.jumpCutChange)
-        #expect((picture.cuts["b"] ?? 0) > ReviewPicture.jumpCutChange)
+        #expect((picture.cuts["d"] ?? 1) < 0.06)
+        #expect((picture.cuts["b"] ?? 0) > 0.06)
 
-        let issues = TimelineReview.run(project, context: ReviewContext(picture: picture))
+        var profiled = project
+        profiled["review"] = .object(["jumpCutChange": .number(0.06), "maxStillSeconds": .number(4)])
+        let issues = TimelineReview.run(profiled, context: ReviewContext(picture: picture))
         let black0 = try #require(issues.first { $0.id.hasPrefix("black-") })
         #expect(black0.severity == .error)
         #expect(black0.frame == 60 && black0.endFrame == 90)
         let frozen = try #require(issues.first { $0.id.hasPrefix("still-") })
         #expect(frozen.frame == 90 && frozen.endFrame == 240)
-        #expect(issues.contains { $0.id == "jump-d" && $0.fix?.command == "timeline.apply" })
+        #expect(issues.contains { $0.id == "jump-d" && $0.fix?.hint != nil })
         #expect(!issues.contains { $0.id == "jump-c" || $0.id == "jump-e" })
     }
 

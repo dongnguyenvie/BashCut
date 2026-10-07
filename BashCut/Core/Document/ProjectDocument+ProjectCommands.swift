@@ -95,7 +95,7 @@ extension ProjectDocument {
     }
 
     /// `project format`: canvas, clip fill and output presets, each its own undoable edit.
-    private func formatCommand(_ arguments: CommandArguments, author: Author) throws -> JSONValue {
+    func formatCommand(_ arguments: CommandArguments, author: Author) throws -> JSONValue {
         let canvas = arguments.optionalString("canvas")
         let clips = arguments.optionalString("clips")
         let outputs = arguments.optionalString("outputs")

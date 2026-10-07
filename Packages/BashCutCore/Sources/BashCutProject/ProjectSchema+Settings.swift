@@ -21,27 +21,64 @@ extension ProjectSchema {
             "What the project is made for (#441)", required: [],
             properties: [
                 "presets": array(
-                    "Export presets, first one primary: review checks its platform and the Export sheet starts with it",
-                    of: enumeration("Export preset", OutputPresetName.all), maxItems: 8),
+                    "Export presets, first one primary: review checks every output's platform and the Export sheet "
+                        + "starts with the first", of: enumeration("Export preset", OutputPresetName.all), maxItems: 8),
+                "targets": .object([
+                    "type": .string("object"),
+                    "description": .string(
+                        "Export preset → {integratedLUFS, truePeakDbTP}: that export's loudness target instead of the "
+                            + "platform's (P0-K2)"),
+                    "additionalProperties": object(
+                        "Loudness target", required: [],
+                        properties: [
+                            "integratedLUFS": number("LUFS", -30 ... -5), "truePeakDbTP": number("dBTP", -12...0),
+                        ]),
+                ]),
             ])
     }
 
+    static let reviewSummaries: [String: String] = [
+        "minShotSeconds": "Shots on Main shorter than this are flagged",
+        "maxShotSeconds": "Shots on Main longer than this are flagged (with stillMotion, only those that barely move)",
+        "maxStillSeconds": "Frozen picture longer than this is flagged",
+        "hookSeconds": "Text or speech must start within this many seconds",
+        "maxSilenceSeconds": "Dead air longer than this is flagged",
+        "maxMusicGapSeconds": "A music bed stopping for longer than this is flagged",
+        "voiceoverMarginSeconds": "Voiceover closer than this to tagged speech is flagged",
+        "captionLineChars": "Caption lines longer than this many characters are flagged",
+        "captionMaxLines": "Captions with more lines than this are flagged",
+        "stillMotion": "Mean picture change under which a long shot counts as still (0–1)",
+        "jumpCutChange": "Picture change across a hard cut under which it counts as a jump cut (0–1)",
+        "blackMinSeconds": "Black picture at least this long is flagged",
+        "loudnessToleranceLU": "Loudness further than this from the export's target is flagged",
+        "minTextSize": "Text smaller than this share of the frame's short side is flagged",
+        "minSpeechCoverage": "Tagged speech covering less than this share of the edit is flagged",
+    ]
+
     static var reviewSchema: JSONValue {
-        object(
-            "Review profile: pacing, hook and severities (a recipe skill sets them) and plugin checks turned off",
-            required: [],
+        var properties: [String: JSONValue] = Dictionary(uniqueKeysWithValues: ReviewProfile.numberKeys.map { key, range in
+            (key, number((reviewSummaries[key] ?? key) + "; unset: no check, or the measured value as info", range))
+        })
+        properties["severities"] = .object([
+            "type": .string("object"),
+            "description": .string(
+                "Check ID (or prefix before a hyphen, such as safe or shot-long; or a plugin provider ID ending in ':') → "
+                    + "error, warning, info or off"),
+            "additionalProperties": enumeration("Severity", ReviewProfile.severityValues),
+        ])
+        properties["platform"] = object(
+            "Overrides of platform facts when an app changes its interface (#469)", required: [],
             properties: [
-                "minShotSeconds": number("Shots shorter than this are flagged", 0.04...60),
-                "maxShotSeconds": number("Still shots longer than this are flagged", 0.1...600),
-                "maxStillSeconds": number("Frozen picture longer than this is flagged", 0.1...600),
-                "hookSeconds": number("Text or speech must start within this many seconds", 0.5...30),
-                "severities": .object([
-                    "type": .string("object"),
-                    "description": .string(
-                        "Check ID (or prefix before a hyphen, such as safe or shot-long) → error, warning, info or off"),
-                    "additionalProperties": enumeration("Severity", ReviewSeverity.allCases.map(\.rawValue) + ["off"]),
-                ]),
-                "disabledChecks": array("Plugin or provider IDs whose review checks do not run", of: string("ID")),
+                "safeArea": object(
+                    "Covered zones as fractions of the frame", required: [],
+                    properties: Dictionary(uniqueKeysWithValues: ["top", "bottom", "sideWidth", "sideHeight", "margin"].map {
+                        ($0, number("Fraction", 0...1))
+                    })),
+                "maxSeconds": number("Longest upload", 1...86_400),
             ])
+        properties["disabledChecks"] = array("Plugin or provider IDs whose review checks do not run", of: string("ID"))
+        return object(
+            "Review profile (#466): every editorial limit is the project's (a recipe skill sets them); core has none",
+            required: [], properties: properties)
     }
 }

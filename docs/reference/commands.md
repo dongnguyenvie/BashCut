@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 181 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 182 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -403,6 +403,14 @@ Look across a moment of the edit without exporting: one PNG with the composed fr
 - `span`: integer, 1…120. Frames on each side (default 6)
 - `step`: integer, 1…60. Frames between pictures (default 1)
 - `width`: integer, 400…8192. Image width in pixels (default 1600)
+
+## platforms
+
+### `bashcut platforms list`
+
+Read the platform facts review uses: per platform (TikTok, Reels, Shorts, YouTube) shape, maxSeconds, targetLUFS, maxTruePeakDbTP and safeArea (zones the app covers, as fractions), with the project's review.platform overrides applied, whether it is one of the project's outputs and whether it was overridden; layout: the zones text is checked against (the strictest of the outputs of the frame's shape, null when none); targets: each output preset's loudness target (output.targets, else the platform's).
+
+- Mode: read · Runs: immediately · MCP: `bashcut_platforms_list`
 
 ## export
 

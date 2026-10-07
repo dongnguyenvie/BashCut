@@ -1405,7 +1405,7 @@
       "description" : "What the project is made for (#441)",
       "properties" : {
         "presets" : {
-          "description" : "Export presets, first one primary: review checks its platform and the Export sheet starts with it",
+          "description" : "Export presets, first one primary: review checks every output's platform and the Export sheet starts with the first",
           "items" : {
             "description" : "Export preset",
             "enum" : [
@@ -1421,6 +1421,28 @@
           },
           "maxItems" : 8,
           "type" : "array"
+        },
+        "targets" : {
+          "additionalProperties" : {
+            "description" : "Loudness target",
+            "properties" : {
+              "integratedLUFS" : {
+                "description" : "LUFS",
+                "maximum" : -5,
+                "minimum" : -30,
+                "type" : "number"
+              },
+              "truePeakDbTP" : {
+                "description" : "dBTP",
+                "maximum" : 0,
+                "minimum" : -12,
+                "type" : "number"
+              }
+            },
+            "type" : "object"
+          },
+          "description" : "Export preset → {integratedLUFS, truePeakDbTP}: that export's loudness target instead of the platform's (P0-K2)",
+          "type" : "object"
         }
       },
       "type" : "object"
@@ -1438,8 +1460,26 @@
       "type" : "integer"
     },
     "review" : {
-      "description" : "Review profile: pacing, hook and severities (a recipe skill sets them) and plugin checks turned off",
+      "description" : "Review profile (#466): every editorial limit is the project's (a recipe skill sets them); core has none",
       "properties" : {
+        "blackMinSeconds" : {
+          "description" : "Black picture at least this long is flagged; unset: no check, or the measured value as info",
+          "maximum" : 600,
+          "minimum" : 0.01,
+          "type" : "number"
+        },
+        "captionLineChars" : {
+          "description" : "Caption lines longer than this many characters are flagged; unset: no check, or the measured value as info",
+          "maximum" : 500,
+          "minimum" : 1,
+          "type" : "number"
+        },
+        "captionMaxLines" : {
+          "description" : "Captions with more lines than this are flagged; unset: no check, or the measured value as info",
+          "maximum" : 20,
+          "minimum" : 1,
+          "type" : "number"
+        },
         "disabledChecks" : {
           "description" : "Plugin or provider IDs whose review checks do not run",
           "items" : {
@@ -1449,28 +1489,112 @@
           "type" : "array"
         },
         "hookSeconds" : {
-          "description" : "Text or speech must start within this many seconds",
-          "maximum" : 30,
-          "minimum" : 0.5,
+          "description" : "Text or speech must start within this many seconds; unset: no check, or the measured value as info",
+          "maximum" : 60,
+          "minimum" : 0.1,
+          "type" : "number"
+        },
+        "jumpCutChange" : {
+          "description" : "Picture change across a hard cut under which it counts as a jump cut (0–1); unset: no check, or the measured value as info",
+          "maximum" : 1,
+          "minimum" : 0,
+          "type" : "number"
+        },
+        "loudnessToleranceLU" : {
+          "description" : "Loudness further than this from the export's target is flagged; unset: no check, or the measured value as info",
+          "maximum" : 20,
+          "minimum" : 0,
+          "type" : "number"
+        },
+        "maxMusicGapSeconds" : {
+          "description" : "A music bed stopping for longer than this is flagged; unset: no check, or the measured value as info",
+          "maximum" : 600,
+          "minimum" : 0.1,
           "type" : "number"
         },
         "maxShotSeconds" : {
-          "description" : "Still shots longer than this are flagged",
+          "description" : "Shots on Main longer than this are flagged (with stillMotion, only those that barely move); unset: no check, or the measured value as info",
+          "maximum" : 3600,
+          "minimum" : 0.1,
+          "type" : "number"
+        },
+        "maxSilenceSeconds" : {
+          "description" : "Dead air longer than this is flagged; unset: no check, or the measured value as info",
           "maximum" : 600,
           "minimum" : 0.1,
           "type" : "number"
         },
         "maxStillSeconds" : {
-          "description" : "Frozen picture longer than this is flagged",
-          "maximum" : 600,
+          "description" : "Frozen picture longer than this is flagged; unset: no check, or the measured value as info",
+          "maximum" : 3600,
           "minimum" : 0.1,
           "type" : "number"
         },
         "minShotSeconds" : {
-          "description" : "Shots shorter than this are flagged",
+          "description" : "Shots on Main shorter than this are flagged; unset: no check, or the measured value as info",
           "maximum" : 60,
-          "minimum" : 0.04,
+          "minimum" : 0.01,
           "type" : "number"
+        },
+        "minSpeechCoverage" : {
+          "description" : "Tagged speech covering less than this share of the edit is flagged; unset: no check, or the measured value as info",
+          "maximum" : 1,
+          "minimum" : 0,
+          "type" : "number"
+        },
+        "minTextSize" : {
+          "description" : "Text smaller than this share of the frame's short side is flagged; unset: no check, or the measured value as info",
+          "maximum" : 0.5,
+          "minimum" : 0.001,
+          "type" : "number"
+        },
+        "platform" : {
+          "description" : "Overrides of platform facts when an app changes its interface (#469)",
+          "properties" : {
+            "maxSeconds" : {
+              "description" : "Longest upload",
+              "maximum" : 86400,
+              "minimum" : 1,
+              "type" : "number"
+            },
+            "safeArea" : {
+              "description" : "Covered zones as fractions of the frame",
+              "properties" : {
+                "bottom" : {
+                  "description" : "Fraction",
+                  "maximum" : 1,
+                  "minimum" : 0,
+                  "type" : "number"
+                },
+                "margin" : {
+                  "description" : "Fraction",
+                  "maximum" : 1,
+                  "minimum" : 0,
+                  "type" : "number"
+                },
+                "sideHeight" : {
+                  "description" : "Fraction",
+                  "maximum" : 1,
+                  "minimum" : 0,
+                  "type" : "number"
+                },
+                "sideWidth" : {
+                  "description" : "Fraction",
+                  "maximum" : 1,
+                  "minimum" : 0,
+                  "type" : "number"
+                },
+                "top" : {
+                  "description" : "Fraction",
+                  "maximum" : 1,
+                  "minimum" : 0,
+                  "type" : "number"
+                }
+              },
+              "type" : "object"
+            }
+          },
+          "type" : "object"
         },
         "severities" : {
           "additionalProperties" : {
@@ -1483,8 +1607,20 @@
             ],
             "type" : "string"
           },
-          "description" : "Check ID (or prefix before a hyphen, such as safe or shot-long) → error, warning, info or off",
+          "description" : "Check ID (or prefix before a hyphen, such as safe or shot-long; or a plugin provider ID ending in ':') → error, warning, info or off",
           "type" : "object"
+        },
+        "stillMotion" : {
+          "description" : "Mean picture change under which a long shot counts as still (0–1); unset: no check, or the measured value as info",
+          "maximum" : 1,
+          "minimum" : 0,
+          "type" : "number"
+        },
+        "voiceoverMarginSeconds" : {
+          "description" : "Voiceover closer than this to tagged speech is flagged; unset: no check, or the measured value as info",
+          "maximum" : 10,
+          "minimum" : 0,
+          "type" : "number"
         }
       },
       "type" : "object"
