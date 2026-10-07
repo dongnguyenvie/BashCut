@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 148 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 149 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -202,6 +202,16 @@ Run the measured review for this revision and keep it, so review.run includes it
 - Mode: read · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_review_measure`
 - `picture`: boolean. Measure the picture (default true)
 - `plugins`: boolean. Run plugin review checks (default true)
+
+### `bashcut review picture [--from <from>] [--to <to>] [--samples <samples>] [--cuts <cuts>]`
+
+Read the raw picture measurement of the last review.measure: per sample {frame, seconds, luma, spread, change, peak} at a fixed interval and per hard cut on Main {item, fromItem, frame, before, seconds, difference}, with the units and the noise floors the picture checks use (floors). Values are fractions of full scale on a small grey thumbnail. current is false when the timeline changed since; measure again for this revision. No verdicts: read the numbers to find frozen stretches, flat or dark picture and near-identical cuts.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_review_picture`
+- `from`: integer, ≥ 0. First timeline frame (default 0)
+- `to`: integer, ≥ 1. Timeline frame after the range (default: the end)
+- `samples`: boolean. Include the samples (default true)
+- `cuts`: boolean. Include the cuts (default true)
 
 ## captions
 

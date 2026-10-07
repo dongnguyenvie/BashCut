@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+- **Raw picture data for agents (#463).** `review picture` (`review.picture`, read) returns the measurement behind the
+  picture checks of the last `review measure`: every sample `{frame, seconds, luma, spread, change, peak}` and every
+  hard cut on Main `{item, fromItem, frame, before, seconds, difference}`, with the units and the noise floors the
+  checks use (`floors`). `--from/--to` limit the range, `--samples false` / `--cuts false` leave a part out, and
+  `current` says whether the timeline changed since. No verdicts: an agent can find a frozen stretch or a
+  near-identical cut from the numbers alone.
+
 - **Agents use the runtimes plugins share.** Agent terminals get `BASHCUT_SHARED_DATA`, `BASHCUT_SHARED_CACHE` and
   uv's `UV_PYTHON_INSTALL_DIR` / `UV_CACHE_DIR` pointing at BashCut's shared plugin folders, so the agent kit's
   Python scripts (`uv run`, `uvx`) reuse the Python and packages Whisper and VieNeu installed instead of a second copy

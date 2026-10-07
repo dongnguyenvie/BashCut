@@ -131,4 +131,37 @@ struct ReviewPictureTests {
         let stale = ReviewPluginIssues(revision: project.revision + 1, issues: reported)
         #expect(!TimelineReview.run(project, context: ReviewContext(pluginIssues: stale)).contains { $0.source != nil })
     }
+
+    @Test("Raw data (#463): samples and cuts with seconds, units and floors; a range and a stale measurement")
+    func rawData() throws {
+        let project = try project([("a", "m", 60), ("b", "n", 60)])
+        let measured = picture(project, cuts: ["b": 0.0123456]) { frame in (0.5, 0.2, frame == 30 ? 0.001 : 0.05) }
+        let json = measured.json(for: project).object
+        #expect(json["current"] == .bool(true))
+        #expect(json["interval"] == .integer(15))
+        #expect(json["floors"]?.object["stillChange"] == .number(ReviewPicture.stillChange))
+        let samples = try #require(json["samples"]?.array)
+        #expect(samples.count == 8)
+        let still = try #require(samples.first { $0.object["frame"] == .integer(30) }?.object)
+        #expect(still["seconds"] == .number(1))
+        #expect(still["change"] == .number(0.001))
+        #expect(still["peak"] == .number(0.001))
+        let cut = try #require(json["cuts"]?.array.first?.object)
+        #expect(cut["item"] == .string("b"))
+        #expect(cut["fromItem"] == .string("a"))
+        #expect(cut["frame"] == .integer(60))
+        #expect(cut["before"] == .integer(59))
+        #expect(cut["difference"] == .number(0.01235))
+
+        let range = measured.json(for: project, from: 0, to: 60, cuts: true).object
+        #expect(range["samples"]?.array.count == 4)
+        #expect(range["cuts"]?.array.isEmpty == true)
+        let cutsOnly = measured.json(for: project, samples: false).object
+        #expect(cutsOnly["samples"] == nil)
+
+        let stale = ReviewPicture(revision: project.revision + 1, interval: 15, samples: [], cuts: ["gone": 0.5])
+        let staleJSON = stale.json(for: project).object
+        #expect(staleJSON["current"] == .bool(false))
+        #expect(staleJSON["cuts"]?.array.first?.object["frame"] == nil)
+    }
 }
