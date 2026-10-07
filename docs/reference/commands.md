@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 149 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 150 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -212,6 +212,13 @@ Read the raw picture measurement of the last review.measure: per sample {frame, 
 - `to`: integer, ≥ 1. Timeline frame after the range (default: the end)
 - `samples`: boolean. Include the samples (default true)
 - `cuts`: boolean. Include the cuts (default true)
+
+### `bashcut review shots [--summary]`
+
+Read the shots on Main in order: index, id, at/atSeconds, duration (frames) and seconds, media, mediaKind, sourceIn and sourceInSeconds, zoom and transform, speed, keyframed properties, freezeFrame/reverse when set, gapBefore (frames since the previous shot), transitionIn {kind, duration} or the picture cutDifference across a hard cut, and motion {mean, peak, samples} (fractions of full scale, see review.picture) when review.measure ran for this revision (pictureMeasured). No verdicts. With summary: count, total, mean, median, min and max seconds and cuts per minute.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_review_shots`
+- `summary`: boolean. Add count, length statistics and cuts per minute
 
 ## captions
 
