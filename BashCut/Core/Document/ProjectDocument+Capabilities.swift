@@ -383,9 +383,9 @@ extension ProjectDocument {
         work: @escaping @MainActor (ProjectDocument) async throws -> JSONValue
     ) throws -> JSONValue {
         guard fileURL != nil else { throw RPCFailure(-32602, "Open a saved project first") }
-        guard !conflict else { throw RPCFailure(-32003, "The project has a file conflict; retry later") }
+        guard !conflict else { throw RPCFailure(-32003, "The project has a file conflict; retry later", category: .fileConflict) }
         if let capability = capabilityForMethod[method], plugins.calling.contains(capability) {
-            throw RPCFailure(-32003, "\(capability) is already running; retry later")
+            throw RPCFailure(-32003, "\(capability) is already running; retry later", category: .busyRunning)
         }
         let id = jobs.start(method, author: author, work: { [weak self] _ in
             guard let self else { throw CancellationError() }

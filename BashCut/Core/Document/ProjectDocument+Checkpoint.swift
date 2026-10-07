@@ -76,7 +76,7 @@ extension ProjectDocument {
                     entry[key] = .array(value.split(separator: ",").map { .string($0.trimmingCharacters(in: .whitespaces)) })
                 }
             }
-            do { return try log.append(entry) } catch { throw RPCFailure(-32602, error.localizedDescription) }
+            do { return try log.append(entry) } catch { throw RPCFailure.from(error, fallbackCode: -32602) }
         }
     }
 
@@ -113,7 +113,7 @@ extension ProjectDocument {
             throw RPCFailure(-32602, "Attachment not found: \(missing.path)")
         }
         let mode = settings.gateMode(gate)
-        if mode == .ask, checkpoint != nil { throw RPCFailure(-32003, "Another checkpoint is waiting for the user") }
+        if mode == .ask, checkpoint != nil { throw RPCFailure(-32003, "Another checkpoint is waiting for the user", category: .busyApproval) }
         var request = CheckpointRequest(
             id: String(UUID().uuidString.prefix(8)).lowercased(), gate: gate, summary: try arguments.string("summary"),
             attachments: attachments, revision: project.revision, author: author,

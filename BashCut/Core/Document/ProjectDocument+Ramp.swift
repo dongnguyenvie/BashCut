@@ -115,7 +115,7 @@ extension ProjectDocument {
             guard let id else { throw RPCFailure(-32602, "Give an item or select a clip first") }
             let curve: SpeedCurve?
             do { curve = try Self.curve(preset: arguments.optionalString("preset"), points: arguments.optionalString("points")) } catch {
-                throw RPCFailure(-32602, error.localizedDescription)
+                throw RPCFailure.from(error, fallbackCode: -32602)
             }
             let before = document.project.tracks.flatMap(\.items).first { $0.id == id }?.duration
             let revision = try document.setClipSpeedCurve(

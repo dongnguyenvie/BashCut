@@ -19,7 +19,7 @@ extension ProjectDocument {
         handle("plugins.search") { document, arguments, _ in
             await document.plugins.refreshRegistry(force: arguments.bool("refresh"))
             guard document.plugins.registry != nil else {
-                throw RPCFailure(-32003, document.plugins.registryError ?? "The plugin registry is unavailable")
+                throw RPCFailure(-32003, document.plugins.registryError ?? "The plugin registry is unavailable", category: .unavailable)
             }
             let listings = document.plugins.listings(
                 query: arguments.optionalString("query") ?? "", capability: arguments.optionalString("capability"),
@@ -64,7 +64,7 @@ extension ProjectDocument {
             let plugin = try document.requirePlugin(arguments.string("plugin"))
             do {
                 try document.plugins.removePlugin(plugin, deleteData: arguments.bool("data"))
-            } catch { throw RPCFailure(-32602, error.localizedDescription) }
+            } catch { throw RPCFailure.from(error, fallbackCode: -32602) }
             return .object(["removed": .string(plugin.id), "data": .bool(arguments.bool("data"))])
         }
         handleAuthored("plugins.setup") { document, arguments, _ in
@@ -158,7 +158,7 @@ enum PluginSourceArgument {
             self = .path(URL(fileURLWithPath: path))
         case (nil, let url?):
             do { self = .link(try PluginLink(parsing: url, ref: ref, sha256: sha256)) } catch {
-                throw RPCFailure(-32602, error.localizedDescription)
+                throw RPCFailure.from(error, fallbackCode: -32602)
             }
         default:
             throw RPCFailure(-32602, "Give either a path or a url, not both")

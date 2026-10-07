@@ -27,7 +27,7 @@ extension ProjectDocument {
                         describedAt: ISO8601DateFormatter().string(from: Date())
                     ).json
                 } catch let error as ProjectError {
-                    throw RPCFailure(-32602, error.localizedDescription)
+                    throw RPCFailure.invalid(error)
                 }
             }
             let revision = try document.commit(

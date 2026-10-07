@@ -151,7 +151,7 @@ extension ProjectDocument {
             return try QuoteRange.json(
                 transcript, media: media, from: arguments.optionalDouble("from"), to: arguments.optionalDouble("to"))
         } catch let error as ProjectError {
-            throw RPCFailure(-32602, error.localizedDescription)
+            throw RPCFailure.invalid(error)
         }
     }
 

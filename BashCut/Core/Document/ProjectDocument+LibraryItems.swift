@@ -108,7 +108,7 @@ extension ProjectDocument {
             guard target["text"] != nil else { throw RPCFailure(-32602, "\(itemID) is not a text item") }
             // The preset, the stored style and animation in one undo step (#380).
             do { patch = try textPreset(item).patch(for: target, project: project) } catch {
-                throw RPCFailure(-32602, error.localizedDescription)
+                throw RPCFailure.from(error, fallbackCode: -32602)
             }
         default:
             throw RPCFailure(-32602, unsupported("Applying \(item.kind?.rawValue ?? "these") items", item))
@@ -268,7 +268,7 @@ extension ProjectDocument {
             params = try LibrarySelection.params(
                 kind, item: item, transition: transition, sound: sound ?? effectSound?.media, lut: grade?.lut,
                 soundItem: effectSound?.item, project: project)
-        } catch { throw RPCFailure(-32602, error.localizedDescription) }
+        } catch { throw RPCFailure.from(error, fallbackCode: -32602) }
         if let grade { return (params, grade.file) }
         let ownSound = kind == .effectPreset
             ? params["steps"]?.array.contains { $0.object["op"]?.string == "sfx" && $0.object["sfx"] == nil } == true
@@ -436,7 +436,7 @@ extension ProjectDocument {
             let position: StickerPosition?
             do {
                 position = try arguments.optionalString("position").map { try StickerPosition(text: $0, label: "position") }
-            } catch { throw RPCFailure(-32602, error.localizedDescription) }
+            } catch { throw RPCFailure.from(error, fallbackCode: -32602) }
             let placement = LibraryPlacement(
                 frame: arguments.optionalInt("atFrame"), duration: arguments.optionalInt("duration"),
                 trackID: arguments.optionalString("track"), position: position, size: arguments.optionalDouble("size"),

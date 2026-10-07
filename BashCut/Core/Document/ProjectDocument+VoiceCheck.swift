@@ -170,7 +170,7 @@ extension ProjectDocument {
         }
         let planned: (operation: EditOperation, cues: [Item])
         do { planned = try CaptionGrouping.operation(project, words: words, groups: groups, author: author) } catch {
-            throw RPCFailure(-32602, error.localizedDescription)
+            throw RPCFailure.from(error, fallbackCode: -32602)
         }
         let revision = try commit(planned.operation, label: "Group captions", author: author, baseRevision: arguments.int("baseRev"))
         var result = CaptionGrouping.facts(planned.cues, fps: project.fps.value).object

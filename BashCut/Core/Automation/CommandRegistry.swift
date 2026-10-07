@@ -14,6 +14,16 @@ public enum CommandCaller {
     @TaskLocal public static var token: String?
 }
 
+/// One failed request, kept for `context get` (the token only to tell sessions apart; never reported).
+struct FailedRequest {
+    let date: Date
+    let method: String
+    let code: Int
+    let category: RPCErrorCategory
+    let message: String
+    let token: String?
+}
+
 @MainActor public final class CommandRegistry {
     public typealias Handler = @MainActor (CommandArguments, Author?) async throws -> JSONValue
     private var handlers: [String: Handler] = [:]
@@ -25,6 +35,9 @@ public enum CommandCaller {
     /// Commands that switch the project; their result shows the new project to the caller.
     static let projectSwitches: Set<String> = ["project.open", "project.create", "project.close", "edl.import"]
     private let audit: @Sendable (AuditEvent) -> Void
+    /// The last failed requests, newest last (P2-G2), so `context get` can show an agent what keeps failing.
+    private var failures: [FailedRequest] = []
+    static let failureMemory = 30
     private let logger: (@Sendable (String, String) -> Void)?
     public init(audit: @escaping @Sendable (AuditEvent) -> Void = { _ in }) {
         logger = nil
@@ -123,12 +136,37 @@ public enum CommandCaller {
             return RPCResponse(id: request.id, result: result)
         } catch {
             audit(AuditEvent(date: Date(), method: request.method, author: author, succeeded: false))
-            let failure = RPCFailure.from(error, fallbackCode: -32602)
+            let failure = RPCFailure.from(error, fallbackCode: -32602).typed
+            failures.append(
+                FailedRequest(
+                    date: Date(), method: request.method, code: failure.code, category: failure.category,
+                    message: String(failure.message.prefix(200)), token: request.token))
+            if failures.count > Self.failureMemory { failures.removeFirst(failures.count - Self.failureMemory) }
             log(
                 "rpc", "\(CommandCatalog.spec(named: request.method)?.name ?? "unknown command") by \(who) "
                     + "FAILED \(failure.code) in \(Self.milliseconds(since: started)) ms")
             return RPCResponse(id: request.id, error: failure)
         }
+    }
+
+    /// Failed requests of the last `window` seconds, newest first: those sent with `token` when given, else all; and
+    /// how many of them at the newest end in a row share a method and category (`repeated`).
+    public func recentFailures(token: String?, window: TimeInterval = 900, now: Date = Date()) -> JSONValue {
+        let mine = failures.filter { now.timeIntervalSince($0.date) <= window && (token == nil || $0.token == token) }
+        let newest = mine.last
+        let repeated = newest.map { last in
+            mine.reversed().prefix { $0.method == last.method && $0.category == last.category }.count
+        } ?? 0
+        return .object([
+            "count": .integer(mine.count), "repeated": .integer(repeated),
+            "items": .array(mine.suffix(10).reversed().map { failure in
+                .object([
+                    "method": .string(failure.method), "code": .integer(failure.code),
+                    "category": .string(failure.category.rawValue), "message": .string(failure.message),
+                    "secondsAgo": .integer(Int(now.timeIntervalSince(failure.date))),
+                ])
+            }),
+        ])
     }
 
     private static func milliseconds(since date: Date) -> Int { Int(Date().timeIntervalSince(date) * 1000) }

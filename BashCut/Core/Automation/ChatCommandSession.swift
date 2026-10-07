@@ -52,7 +52,7 @@ import Foundation
         if !allowEdits { revoke(in: registry) }
         let id = JSONValue.string(UUID().uuidString)
         guard Self.allowedMethods.contains(method) else {
-            return RPCResponse(id: id, error: RPCFailure(-32601, "Chat agents cannot run \(method)"))
+            return RPCResponse(id: id, error: RPCFailure(-32601, "Chat agents cannot run \(method)").typed)
         }
         if token == nil, allowEdits { token = registry.issueToken(author: .agent) }
         return await registry.handle(RPCRequest(id: id, method: method, params: params, token: token))

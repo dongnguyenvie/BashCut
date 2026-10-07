@@ -35,7 +35,7 @@ extension ProjectDocument {
         finished: @escaping @MainActor (Result<JSONValue, any Error>) -> Void = { _ in }
     ) throws -> String {
         guard !plugins.calling.contains(request.capability) else {
-            throw RPCFailure(-32003, "\(request.capability) is already running; retry later")
+            throw RPCFailure(-32003, "\(request.capability) is already running; retry later", category: .busyRunning)
         }
         if request.save != nil, request.scope == .project, fileURL == nil {
             throw RPCFailure(-32602, "Open a saved project to save into its library, or pass --scope user")
@@ -116,7 +116,7 @@ extension ProjectDocument {
         }
         let candidate: LibraryCandidate
         do { candidate = try LibraryCandidate(jobResult: job.result, index: index) } catch {
-            throw RPCFailure(-32602, error.localizedDescription)
+            throw RPCFailure.from(error, fallbackCode: -32602)
         }
         if let kind = arguments.optionalString("kind"), kind != candidate.item.kind?.rawValue {
             throw RPCFailure(-32602, "Candidate \(index) is \(candidate.item.kind?.rawValue ?? "unknown"), not \(kind)")

@@ -31,7 +31,7 @@ extension ProjectDocument {
         do {
             recipe = try EffectRecipe(params: item.params, label: item.reference)
             steps = try recipe.resolvedSteps(values, label: item.reference)
-        } catch { throw RPCFailure(-32602, error.localizedDescription) }
+        } catch { throw RPCFailure.from(error, fallbackCode: -32602) }
         var application = EffectApplication(values: values, range: range)
         application.sounds = try await effectSounds(item, steps: steps)
         do {
@@ -52,7 +52,7 @@ extension ProjectDocument {
     ) async throws -> JSONValue {
         let values: [String: Double]
         do { values = try arguments.optionalString("set").map(EffectRecipe.overrides) ?? [:] } catch {
-            throw RPCFailure(-32602, error.localizedDescription)
+            throw RPCFailure.from(error, fallbackCode: -32602)
         }
         var range: Range<Int>?
         let from = arguments.optionalInt("from"), to = arguments.optionalInt("to")
@@ -87,7 +87,7 @@ extension ProjectDocument {
                 else { throw need }
                 application.reversed[need.path] = existing
             } catch let error as ProjectError {
-                throw RPCFailure(-32602, error.localizedDescription)
+                throw RPCFailure.invalid(error)
             }
         }
     }
@@ -128,7 +128,7 @@ extension ProjectDocument {
             guard sounds[key] == nil else { continue }
             let source: LibraryItem
             if let reference {
-                do { source = try libraryCatalog.item(reference) } catch { throw RPCFailure(-32602, error.localizedDescription) }
+                do { source = try libraryCatalog.item(reference) } catch { throw RPCFailure.from(error, fallbackCode: -32602) }
                 guard source.kind == .audio else { throw RPCFailure(-32602, "\(reference) is not an audio library item") }
             } else {
                 guard item.file != nil else {

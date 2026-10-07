@@ -91,7 +91,8 @@ extension ProjectDocument {
                     + "these items or to change them themselves.", data: check.json)
         }
         guard scopeHold == nil else {
-            throw RPCFailure(-32003, "Another edit outside the scope is waiting for the user; retry after they answer")
+            throw RPCFailure(
+                -32003, "Another edit outside the scope is waiting for the user; retry after they answer", category: .busyApproval)
         }
         let hold = AgentScopeHold(
             id: UUID(), operation: operation, label: label, author: author, coalescingKey: coalescingKey,

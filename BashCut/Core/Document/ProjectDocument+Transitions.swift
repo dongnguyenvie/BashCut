@@ -76,12 +76,12 @@ extension ProjectDocument {
     ) async throws -> Int {
         let preset: TransitionPreset
         do { preset = try TransitionPreset(params: item.params, label: item.reference) } catch {
-            throw RPCFailure(-32602, error.localizedDescription)
+            throw RPCFailure.from(error, fallbackCode: -32602)
         }
         let sound = try await transitionSoundMedia(item, preset)
         let planner: LayerPlanner
         do { planner = try project.transitionPresetPlan(preset, at: itemID, sound: sound) } catch {
-            throw RPCFailure(-32602, error.localizedDescription)
+            throw RPCFailure.from(error, fallbackCode: -32602)
         }
         return try commitPlan(planner, label: item.name, author: author, baseRevision: baseRevision)
     }
@@ -91,7 +91,7 @@ extension ProjectDocument {
         let catalog = libraryCatalog
         let source: LibraryItem
         if let sfx = preset.sfx {
-            do { source = try catalog.item(sfx) } catch { throw RPCFailure(-32602, error.localizedDescription) }
+            do { source = try catalog.item(sfx) } catch { throw RPCFailure.from(error, fallbackCode: -32602) }
             guard source.kind == .audio else { throw RPCFailure(-32602, "\(sfx) is not an audio library item") }
         } else if item.file != nil {
             source = item
