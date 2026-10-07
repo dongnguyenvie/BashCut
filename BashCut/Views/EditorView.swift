@@ -118,6 +118,9 @@ struct EditorView: View {
         .sheet(item: $document.privilegedApproval) { prompt in
             PrivilegedApprovalView(prompt: prompt, resolve: document.resolvePrivilegedApproval)
         }
+        .sheet(item: $document.checkpoint) { request in
+            CheckpointView(request: request, resolve: document.resolveCheckpoint)
+        }
         .sheet(item: $document.scopeHold) { hold in
             AgentScopeHoldView(hold: hold, resolve: document.resolveScopeHold)
         }

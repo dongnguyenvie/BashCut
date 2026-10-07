@@ -212,6 +212,7 @@ struct SettingsView: View {
             Text("Agents outside BashCut use the bashcut CLI or MCP with a token file only your user account can read.")
         }
         agentPermissions
+        WorkflowGatesSettings(settings: settings)
         AgentSettingsView(document: document, settings: settings)
     }
 

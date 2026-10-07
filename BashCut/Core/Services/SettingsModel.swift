@@ -56,6 +56,12 @@ public final class SettingsModel {
     public var agentScopeModeRaw: String {
         didSet { defaults.set(agentScopeModeRaw, forKey: Keys.agentScopeMode) }
     }
+    /// Gate modes by ID (`G1`…`G5`, P1-D4); a gate not listed asks. Only the user loosens a gate.
+    public var workflowGatesRaw: [String: String] {
+        didSet { defaults.set(workflowGatesRaw, forKey: Keys.workflowGates) }
+    }
+    /// The most review rounds an agent runs before it hands the rest to the user (P1-D4).
+    public var maxReviewRounds: Int { didSet { defaults.set(maxReviewRounds, forKey: Keys.maxReviewRounds) } }
     /// Run privileged agent commands (exports) without the in-app confirmation sheet. Off by default;
     /// only the user can change it in Settings — no automation command exists for it.
     public var autoApprovePrivileged: Bool {
@@ -107,6 +113,8 @@ public final class SettingsModel {
 
     private enum Keys {
         static let workspace = "agentWorkspace"
+        static let workflowGates = "workflowGates"
+        static let maxReviewRounds = "maxReviewRounds"
         static let projectsFolder = "projectsFolder"
         static let defaultAgent = "defaultAgent"
         static let loadAgentKit = "loadAgentKit"
@@ -145,6 +153,10 @@ public final class SettingsModel {
         allowExternalAgents = defaults.object(forKey: Keys.allowExternalAgents) as? Bool ?? true
         autoApprovePrivileged = defaults.bool(forKey: Keys.autoApprovePrivileged)
         agentScopeModeRaw = defaults.string(forKey: Keys.agentScopeMode) ?? "ask"
+        workflowGatesRaw = defaults.dictionary(forKey: Keys.workflowGates) as? [String: String] ?? [:]
+        maxReviewRounds = (defaults.object(forKey: Keys.maxReviewRounds) as? Int).map {
+            min(max($0, WorkflowGate.roundLimits.lowerBound), WorkflowGate.roundLimits.upperBound)
+        } ?? 3
         dangerouslyAllowAgents = defaults.object(forKey: Keys.dangerouslyAllowAgents) as? Bool ?? true
         runPluginHooks = defaults.object(forKey: Keys.runPluginHooks) as? Bool ?? true
         autoApplyPluginHookEdits = defaults.bool(forKey: Keys.autoApplyPluginHookEdits)

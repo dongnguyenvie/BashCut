@@ -5,6 +5,7 @@
 
 ## [Unreleased]
 
+- **Workflow gates, checkpoints and the run log (P1-D4, D5, D6).** Settings → Agents → Workflow gates sets G1 brief, G2 strategy, G3 rough-cut sheet, G4 script and G5 draft to ask (default), notify or skip, plus the review round limit; `workflow gates`/`workflow set-gates` (agents may only make a gate ask more). `checkpoint request <gate> --summary --attach` shows a sheet only the user can answer (approve, ask for changes with a note, reject; an agent can only withdraw), bound to the revision; `checkpoint status` reads it. `run log`/`run append` keep an append-only `.bashcut/run-log.jsonl` of starts, stages, gates with the user's answers, review rounds and what was measured or not; `context get` shows the gates and the waiting checkpoint.
 - **Brief and edit plan (P1-D1, P1-D2).** The brief and the edit plan are project data (P1-D1, P1-D2): `project brief`/`project set-brief` and `plan get`/`plan set` (JSON file, `--merge`, one undoable edit, validated shape). Review reports the edit's length and outputs against the brief and each planned section's length against its section marker, as info; `context get` summarises both.
 - **No taste in core review (P0-K1, K2, #466, #468, #469, #470, #472).** Every editorial limit is the project's:
   `review` gains `maxSilenceSeconds`, `maxMusicGapSeconds`, `voiceoverMarginSeconds`, `captionLineChars`,
