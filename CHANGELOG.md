@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+- **Colour as numbers (P0-B8).** `color measure [--items A,B] [--samples N] [--graded] [--compare source] [--by clip]`
+  (`color.measure`) measures each clip on the colour skill's 0–100 scale: black/p5/mid/p95/white luma, mean,
+  saturation and its p95, the tint of shadows, mids and highlights, and the clipped and crushed shares; from the
+  source frames, from the edit as graded, or both with what the grade changed (black lift, chroma ratio, clipping and
+  crushing growth, mean ΔE), and each clip's difference from the median clip. The kit no longer needs ffmpeg and
+  NumPy to measure colour.
+
 - **Text, layout and scale facts (P0-B6, P0-B7).** `review layout` adds per text item its hold, words and words per
   second, how it sits against the speech (onset offset from the nearest word, share of its time with words spoken),
   how much of a caption a title covers, how often its template repeats on its layer, titles and captions per minute,

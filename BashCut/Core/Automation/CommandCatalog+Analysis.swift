@@ -175,6 +175,30 @@ extension CommandCatalog {
             ]),
     ]
 
+    /// Colour as numbers (P0-B8).
+    static let colorMeasureSpec = CommandSpec(
+        "color.measure", .read,
+        "Measure colour per clip on frames spread over each clip (samples, default 3), on the scale the colour skill "
+            + "reads (0–100): black (luma p1), p5, mid (p50), p95, white (p99), mean, saturation (mean HSV) and "
+            + "saturationP95, tintShadows/Mids/Highlights [R−B, G−(R+B)/2] (bands split at luma 0.25 and 0.7; null "
+            + "with too few pixels), clippedShare and crushedShare; the median over the samples. By default the "
+            + "source frames (no reframe, no grade); graded measures the edit as composed; compare source measures "
+            + "the edit without colour and as graded and adds change {black, mid, white, saturation, tintMids, "
+            + "chromaRatio, blackLift, clippedGrowth, crushedGrowth, meanDeltaE (CIE76)}. by clip adds the median "
+            + "clip and each clip's difference from it. Clips on Main by default, or the given video item IDs. Facts "
+            + "only.",
+        parameters: [
+            CommandParameter("items", .string, "Video item IDs, comma separated; the clips on Main by default",
+                             cli: .option("items")),
+            CommandParameter("samples", .integer, "Frames per clip (default 3)", minimum: 1, maximum: 24,
+                             cli: .option("samples")),
+            CommandParameter("graded", .boolean, "Measure the edit as composed", cli: .flag("graded")),
+            CommandParameter("compare", .string, "source: the edit without colour against it as graded",
+                             choices: ["source"], cli: .option("compare")),
+            CommandParameter("by", .string, "clip: each clip's difference from the median clip", choices: ["clip"],
+                             cli: .option("by")),
+        ])
+
     static let reviewLayoutSpec = CommandSpec(
         "review.layout", .read,
         "Read where text sits as the renderer lays it out: per visible text item id, track, trackRole, at/end, text, "
