@@ -32,6 +32,7 @@ extension ProjectDocument {
         registerMediaInventoryCommands()
         registerReviewTimingCommands()
         registerTimelineStillsCommands()
+        registerColorMeasureCommands()
         registerStorageCommands()
         registerLibraryCommands()
         registerAgentKitCommands()

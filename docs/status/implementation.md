@@ -105,6 +105,9 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   and `captions generate` unless `--fresh`; `media transcribe` makes one without placing captions, `media transcript`
   reads it in source seconds (phrases, words with confidence/speaker/event/noSpeechProb when the provider gives
   them), and `transcript words --heard` maps its words through the clips playing the media now.
+- `color measure` gives each clip's luma percentiles, saturation, tint per band and clipped/crushed shares from
+  source frames or the edit as graded, the change a grade makes (with mean ΔE) and each clip's distance from the
+  median clip.
 - `ui frame --phone|--width` renders the viewer at viewer size and `ui frames --compare graded|source` makes a
   before/after grid; `review layout` adds reading speed, speech, caption overlap, template repeats, density, the
   pictures on screen and measured contrast (`--contrast`); every video/image item has `scale` facts (fit/fill, zoom,

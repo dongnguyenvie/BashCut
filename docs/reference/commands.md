@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 169 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 170 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -871,6 +871,19 @@ Measure a media file's sound with an audio.loudness provider: integrated loudnes
 - Mode: read · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_audio_measure`
 - `media`: string, required. Project media ID
 - `provider`: string. Provider ID overriding the project preference for one request
+
+## color
+
+### `bashcut color measure [--items <items>] [--samples <samples>] [--graded] [--compare <compare>] [--by <by>]`
+
+Measure colour per clip on frames spread over each clip (samples, default 3), on the scale the colour skill reads (0–100): black (luma p1), p5, mid (p50), p95, white (p99), mean, saturation (mean HSV) and saturationP95, tintShadows/Mids/Highlights [R−B, G−(R+B)/2] (bands split at luma 0.25 and 0.7; null with too few pixels), clippedShare and crushedShare; the median over the samples. By default the source frames (no reframe, no grade); graded measures the edit as composed; compare source measures the edit without colour and as graded and adds change {black, mid, white, saturation, tintMids, chromaRatio, blackLift, clippedGrowth, crushedGrowth, meanDeltaE (CIE76)}. by clip adds the median clip and each clip's difference from it. Clips on Main by default, or the given video item IDs. Facts only.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_color_measure`
+- `items`: string. Video item IDs, comma separated; the clips on Main by default
+- `samples`: integer, 1…24. Frames per clip (default 3)
+- `graded`: boolean. Measure the edit as composed
+- `compare`: string, one of source. source: the edit without colour against it as graded
+- `by`: string, one of clip. clip: each clip's difference from the median clip
 
 ## storage
 
