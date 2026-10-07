@@ -37,6 +37,7 @@ extension ProjectDocument {
         registerSpeechRateCommands()
         registerVoiceCheckCommands()
         registerVoiceTakeCommands()
+        registerPlanCommands()
         registerStorageCommands()
         registerLibraryCommands()
         registerAgentKitCommands()
@@ -99,6 +100,7 @@ extension ProjectDocument {
                 "knowledge": document.agents.knowledgeStore.summary().json,
                 "scope": document.agentScopeJSON,
                 "agentPermissions": document.agentPermissionsJSON, "analysis": analysis,
+                "plan": ProjectPlan.summary(document.project),
             ])
         }
         handle("project.get") { document, _, _ in .object(document.project.fields) }

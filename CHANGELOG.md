@@ -5,6 +5,7 @@
 
 ## [Unreleased]
 
+- **Brief and edit plan (P1-D1, P1-D2).** The brief and the edit plan are project data (P1-D1, P1-D2): `project brief`/`project set-brief` and `plan get`/`plan set` (JSON file, `--merge`, one undoable edit, validated shape). Review reports the edit's length and outputs against the brief and each planned section's length against its section marker, as info; `context get` summarises both.
 - **No taste in core review (P0-K1, K2, #466, #468, #469, #470, #472).** Every editorial limit is the project's:
   `review` gains `maxSilenceSeconds`, `maxMusicGapSeconds`, `voiceoverMarginSeconds`, `captionLineChars`,
   `captionMaxLines`, `stillMotion`, `jumpCutChange`, `blackMinSeconds`, `loudnessToleranceLU`, `minTextSize` and

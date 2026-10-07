@@ -199,6 +199,42 @@ extension CommandCatalog {
                              cli: .option("by")),
         ])
 
+    /// The brief and the edit plan (P1-D1, P1-D2).
+    static let planSpecs: [CommandSpec] = [
+        CommandSpec(
+            "project.brief", .read,
+            "Read the project brief: goal, audience, outputs, angle, lengthSeconds, notes as {value, status stated|"
+                + "inferred|confirmed, source?}, and ideas and references. Null when none."),
+        CommandSpec(
+            "project.set-brief", .edit,
+            "Set the brief as one undoable edit (validated: fields {value, status, source?}, ideas and references up to "
+                + "100 objects); with merge, only the given fields change (null removes one). Review compares its "
+                + "length and outputs with the edit, as info.",
+            parameters: [
+                CommandParameter("value", .object, "The brief (CLI: path to brief.json)", required: true,
+                                 cli: .positionalJSONFile),
+                CommandParameter("merge", .boolean, "Change only the given fields", cli: .flag("merge")),
+                baseRevision,
+            ]),
+        CommandSpec(
+            "plan.get", .read,
+            "Read the edit plan: mode (create, directed, revision), stage, options, sections [{id, label, "
+                + "lengthSeconds {min, max}, reason, frozen}], shots [{id, section, purpose, size, move, mustShow, "
+                + "targetSeconds, source footage|stock|generated}], beats [{id, section, text}], decisions, ranges "
+                + "(the review profile values chosen, {min, max, source, reason}) and notes. Null when none."),
+        CommandSpec(
+            "plan.set", .edit,
+            "Set the edit plan as one undoable edit (validated shape); with merge, only the given top-level fields "
+                + "change (null removes one). Review compares each section's planned length with its section "
+                + "marker, as info. context get summarises it so work can resume from it.",
+            parameters: [
+                CommandParameter("value", .object, "The plan (CLI: path to plan.json)", required: true,
+                                 cli: .positionalJSONFile),
+                CommandParameter("merge", .boolean, "Change only the given fields", cli: .flag("merge")),
+                baseRevision,
+            ]),
+    ]
+
     /// Platform facts the checks use (#469).
     static let platformsListSpec = CommandSpec(
         "platforms.list", .read,

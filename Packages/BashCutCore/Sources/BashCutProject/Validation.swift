@@ -59,6 +59,7 @@ extension Project {
         try validateAudioSettings()
         try validateOutputSettings()
         try validateReviewSettings()
+        try validatePlanSettings()
         try validateMarkers()
         try validateColorLUTs()
         try validateStyleCatalog()
