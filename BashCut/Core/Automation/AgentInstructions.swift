@@ -3,17 +3,18 @@ import Foundation
 
 extension CommandCatalog {
     /// Commands for the user, the app's own panels or plugin views, not for agents: still callable, but left out of
-    /// the agent instructions to keep them short (flexibility audit, D12/D13/A13).
+    /// the agent instructions to keep them short (flexibility audit, D10/D12/D13/A13).
     public static let hiddenFromAgents: Set<String> = [
         "project.close", "project.recents", "project.folder", "media.proxy", "export.otio", "edl.import",
         "plugins.hooks", "plugins.proposal", "plugins.updates", "plugins.validate", "plugins.install", "plugins.replace",
-        "plugins.reload", "plugins.remove", "plugins.setup", "plugins.set", "plugins.views", "plugins.show-view",
-        "plugins.view", "plugins.view-event", "plugins.invoke", "plugins.health", "storage.get", "storage.clear",
+        "plugins.reload", "plugins.remove", "plugins.setup", "plugins.set", "plugins.show-view",
+        "plugins.view", "plugins.view-event", "plugins.invoke", "storage.get", "storage.clear",
         "agent.status", "agent.setup", "agent.kit-check", "agent.kit-update", "agent.terminals", "agent.open",
         "agent.detach", "app.update-check", "chat.status", "chat.send", "chat.attach", "chat.detach", "chat.stop",
-        "chat.commands", "chat.command", "chat.reset", "chat.transcript", "ui.open", "ui.source", "ui.panel",
-        "ui.notify", "doctor.run", "knowledge.approve", "knowledge.reject", "knowledge.remove-lesson",
-        "skills.enable", "skills.disable", "skills.remove",
+        "chat.commands", "chat.command", "chat.reset", "chat.transcript", "doctor.run", "knowledge.approve",
+        "knowledge.reject", "knowledge.remove-lesson", "skills.enable", "skills.disable", "skills.remove",
+        // Inspector › Speed; agents use the setSpeed and setSpeedCurve ops (D10).
+        "clip.speed", "clip.speed-curve",
     ]
 
     /// Instructions given to terminal agents, rendered from the command specs: each command's usage and first
@@ -142,8 +143,11 @@ extension CommandCatalog {
         return "Text items take `textPreset` (built-in: \(presets); any other name uses the first's defaults) and "
             + "open `textStyle` fields: size, positionY, positionX, align left|center|right, font, fill, stroke, "
             + "strokeWidth, highlight, lineHeight, tracking, uppercase, background {color, opacity, padding, radius}, "
-            + "shadow {color, opacity, blur, dx, dy}. wordStyle is highlight|karaoke|reveal or {spoken, upcoming, "
-            + "past} looks of {fill, opacity}."
+            + "shadow {color, opacity, blur, dx, dy}, accentBars [{side left|right|top|bottom, color, opacity, "
+            + "thickness, gap (× font size), length (share of the side), radius}]. wordStyle is highlight|karaoke|reveal "
+            + "or {spoken, upcoming, past} looks of {fill, opacity}. Keyframes also animate textStyle.size, positionX, "
+            + "positionY, strokeWidth, lineHeight, tracking on text and color.exposure, contrast, saturation, "
+            + "lutStrength on clips and adjustment layers."
     }()
 
     private static let operations = """
@@ -178,7 +182,10 @@ extension CommandCatalog {
         {"op":"upsertSection","id":"section-hook","label":"Hook","atFrame":0},
         {"op":"deleteSection","id":"section-hook"}.
         {"op":"upsertTransition","id":"cut-a-b","kind":"dissolve","from":"CLIP_A","to":"CLIP_B","duration":12,
-         "easing":"inOut"} (easing: linear, the default, in, out or inOut),
+         "easing":"inOut"} (easing: linear, the default, in, out, inOut or "cubic-bezier(0.2,0,0,1)"; kinds dissolve,
+         whip, blink, zoom, spin, shutter, wipe, or any name with "motion":{"outgoing":{"zoom":[1,1.2],"opacity":[1,0]},
+         "incoming":{"panX":[0.3,0],"opacity":[0,1]}}: zoom, panX/panY (share of the frame), rotation (deg), opacity,
+         exposure (EV), scaleX, reveal (wipe from the left), each [from, to] or more points),
         {"op":"deleteTransition","id":"cut-a-b"}.
         {"op":"insert","track":"ADJUSTMENT_TRACK_ID","item":{"id":"grade-1","at":0,"dur":90,"color":{"saturation":0.8,"lut":"LUT_ID"}}},
         {"op":"addColorLUT","lut":{"id":"look","name":"Look","path":"luts/look.cube","size":33}},

@@ -22,7 +22,7 @@ import Foundation
         document.plugins.plugins.filter { $0.manifest.container != nil && document.plugins.isReady($0) }
     }
 
-    /// Ready plugins with a rail container or any view, for `plugins views`.
+    /// Ready plugins with a rail container or any view, for `plugins list --views`.
     var viewPlugins: [InstalledPlugin] {
         document.plugins.plugins.filter {
             ($0.manifest.container != nil || !$0.manifest.views.isEmpty) && document.plugins.isReady($0)

@@ -7,8 +7,10 @@ import Foundation
 /// caller before it gets here, since it needs the calling plugin's `uses`.
 @MainActor public final class PluginCommandSession {
     public static let allowedMethods: Set<String> = ChatCommandSession.allowedMethods.union([
-        "plugins.run", "plugins.invoke", "plugins.views", "plugins.show-view", "ui.notify",
+        "plugins.run", "plugins.invoke", "plugins.show-view",
     ]).subtracting(["plugins.view", "plugins.view-event"])
+    /// The chat agent's `ui.action` actions plus status messages (`ui.action notify`).
+    public static let allowedUIActions = ChatCommandSession.allowedUIActions.union(["notify"])
     private var token: String?
 
     public init() {}
@@ -20,7 +22,9 @@ import Foundation
 
     public func perform(_ method: String, params: [String: JSONValue], registry: CommandRegistry) async -> RPCResponse {
         let id = JSONValue.string(UUID().uuidString)
-        guard Self.allowedMethods.contains(method), method != "plugins.invoke" else {
+        guard ChatCommandSession.allows(method, params: params, methods: Self.allowedMethods, actions: Self.allowedUIActions),
+            method != "plugins.invoke"
+        else {
             return RPCResponse(id: id, error: RPCFailure(-32601, "Plugins cannot run \(method)").typed)
         }
         if token == nil { token = registry.issueToken(author: .plugin) }

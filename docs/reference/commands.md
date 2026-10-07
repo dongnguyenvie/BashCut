@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 209 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 198 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -85,18 +85,20 @@ Rights facts of the media the edit plays (P2-H9): per media {media, name, kind, 
 
 - Mode: read · Runs: immediately · MCP: `bashcut_project_credits`
 
-### `bashcut project brief`
+### `bashcut project data <key>`
 
-Read the project brief: a free JSON object (the agent's notes). Null when none.
+Read a top-level project field: brief, plan or any key of your own (a free JSON object, the agent's notes); null when unset.
 
-- Mode: read · Runs: immediately · MCP: `bashcut_project_brief`
+- Mode: read · Runs: immediately · MCP: `bashcut_project_data`
+- `key`: string, required. brief, plan or your own key
 
-### `bashcut project set-brief <value.json> [--merge] --base-rev <baseRev>`
+### `bashcut project set-data <key> <value.json> [--merge] --base-rev <baseRev>`
 
-Set the brief (any JSON object) as one undoable edit; with merge, only the given fields change (null removes one). Review reads lengthSeconds {min, max} and outputs [names] when present (directly or under value) and compares them with the edit, as info.
+Set a top-level project field to a JSON object as one undoable edit; with merge, only the given fields change (null removes one). Identity, format, media and tracks are not data. Core reads only: brief lengthSeconds {min, max} and outputs [names], plan sections [{id, label, lengthSeconds {min, max}, frozen}], shots and beats [{id, text, section}] when present (directly or under value): review compares them with the edit, as info, and context get summarises them so work can resume from them.
 
-- Mode: edit · Runs: immediately · MCP: `bashcut_project_set-brief`
-- `value`: object, required. The brief (CLI: path to brief.json)
+- Mode: edit · Runs: immediately · MCP: `bashcut_project_set-data`
+- `key`: string, required. brief, plan or your own key
+- `value`: object, required. The object (CLI: path to a JSON file)
 - `merge`: boolean. Change only the given fields
 - `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
 
@@ -426,7 +428,7 @@ Prove a fix: the issue as an earlier review of this session saw it (before, befo
 
 ### `bashcut review packet`
 
-Write an evidence folder for a fresh critic (a sub-agent with only this folder and bc:review): README, plan.json (brief, plan, review profile, outputs), digest.json (what changed since the last review round), issues.json (with the round diff), cuts.json, word-landing.json (words against cuts and titles), hook.json, coverage.json (planned shots and beats), measured.json (what was and was not measured) and a contact sheet of every cut and title. No editor reasons are included.
+Write an evidence folder for a fresh critic (a sub-agent with only this folder and bc:review): README, plan.json (brief, plan, review profile, outputs), digest.json (what changed since the last review round), issues.json (with the round diff), shots.json (review.shots with summary), word-landing.json (words against cuts and titles), coverage.json (described shot per clip, script beats heard), measured.json (what was and was not measured) and a contact sheet of every cut and title. No editor reasons are included.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_review_packet`
 
@@ -448,43 +450,35 @@ Read the raw picture measurement of the last review.measure: per sample {frame, 
 - `samples`: boolean. Include the samples (default true)
 - `cuts`: boolean. Include the cuts (default true)
 
-### `bashcut review shots [--summary] [--media <media>] [--min-score <minScore>] [--run-length <runLength>] [--max-cv <maxCV>]`
+### `bashcut review shots [--summary] [--from <from>] [--to <to>] [--media <media>] [--min-score <minScore>]`
 
-Read the shots on Main in order: index, id, at/atSeconds, duration (frames) and seconds, media, mediaKind, sourceIn and sourceInSeconds, zoom and transform, speed, keyframed properties, freezeFrame/reverse when set, gapBefore (frames since the previous shot), transitionIn {kind, duration} or the picture cutDifference across a hard cut, and motion {mean, peak, samples} (fractions of full scale, see review.picture) when review.measure ran for this revision (pictureMeasured), described (the media.describe facts of the source shot it plays), cameraMove [{property, from, to, perSecond, unit, ease}] from its keyframes, and cut (into it): sameMedia, sameSetup (same media, overlapping or adjacent source), sourceGapSeconds, size/move/direction {from, to} when described. No verdicts. With summary: count, total, mean, median, min and max seconds and cuts per minute; rhythm {overall, sections [per section marker]} with mean, median, cv, cutsPerMinute, mode (the most common length bin and its share) and, given runLength and maxCV, lowVarianceRuns; runs of shots with the same described size and move; shares of each size, move and direction. With media: the same for a source file's measured shots (media.analyze) and its descriptions.
+Read the shots on Main in order: index, id, at/atSeconds, duration (frames) and seconds, media, mediaKind, sourceIn and sourceInSeconds, zoom and transform, speed, keyframed properties, freezeFrame/reverse when set, gapBefore (frames since the previous shot), transitionIn {kind, duration, easing} or the picture cutDifference across a hard cut, and motion {mean, peak, samples} (fractions of full scale, see review.picture) when review.measure ran for this revision (pictureMeasured), described (the media.describe facts of the source shot it plays), cameraMove [{property, from, to, perSecond, unit, ease}] from its keyframes, and cut (into it): kind (hard or the transition's kind), sameMedia, sameSetup (same media, overlapping or adjacent source), sourceGapSeconds, framingBefore/After {zoom, pan, tilt} (keyframes included), sameFraming, size/move/direction {from, to} when described. With from/to, only the shots that overlap those frames. No verdicts. With summary: count, total, mean, median, min and max seconds and cuts per minute; rhythm {overall, sections [per section marker]} with mean, median, cv, cutsPerMinute, mode (the most common length bin and its share); shares of each size, move and direction. With media: the same for a source file's measured shots (media.analyze) and its descriptions.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_review_shots`
-- `summary`: boolean. Add statistics, rhythm, runs and shares
+- `summary`: boolean. Add statistics, rhythm and shares
+- `from`: integer, ≥ 0. Only shots that end after this timeline frame
+- `to`: integer, ≥ 1. Only shots that start before this timeline frame
 - `media`: string. Read a source file's measured shots instead of Main
 - `minScore`: number, 0…1. With media: lowest cut score (default 0.1)
-- `runLength`: integer, 2…100. Shots in a low-variance run (with maxCV)
-- `maxCV`: number, 0…10. Largest length variation (deviation over mean) in such a run
 
-### `bashcut review layout [--frame <frame>] [--contrast]`
+### `bashcut review layout [--frame <frame>] [--from <from>] [--to <to>] [--ink] [--contrast]`
 
-Read where text sits as the renderer lays it out: per visible text item id, track, trackRole, at/end, text, preset, lines, longestLineChars, fontPixels and fontShare (of the frame's short side), bounds (pixels from the top-left) and edges (distance to each frame edge as a share of that dimension, negative outside), keyframed when keyframes move it (not followed); holdSeconds, words and wordsPerSecond; speech {onsetOffsetFrames (from the nearest word start), narrationShare (of its time with words spoken)} from the heard or caption words; captionOverlap {item, ratio of its box} for titles; templateRepeats (items with its preset on its layer); faceOverlap null (needs a vision.faces provider; null means unknown). With contrast: contrast {ratio (WCAG, 1–21) of the mean, lightRatio and darkRatio (the light and dark parts of the text, such as fill and outline), textLuminance, backgroundLuminance, textPixels} measured on the frame with and without text (at frame, or each item's middle). Also the frame size, the platform whose zones apply (safeArea, minTextSize), density (titles and captions per minute) and, at a frame, pictures on screen with their scale and coverage. No verdicts.
+Read where text sits as the renderer lays it out: per visible text item id, track, trackRole, at/end, text, preset, lines, longestLineChars, fontPixels and fontShare (of the frame's short side), bounds (pixels from the top-left) and edges (distance to each frame edge as a share of that dimension, negative outside), keyframed when keyframes move it (not followed); holdSeconds, words and wordsPerSecond; speech {onsetOffsetFrames (from the nearest word start), narrationShare (of its time with words spoken)} from the heard or caption words; captionOverlap {item, ratio of its box} for titles; templateRepeats (items with its preset on its layer); faceOverlap null (needs a vision.faces provider; null means unknown). With contrast: contrast {ratio (WCAG, 1–21) of the mean, lightRatio and darkRatio (the light and dark parts of the text, such as fill and outline), textLuminance, backgroundLuminance, textPixels} measured on the frame with and without text (at frame, or each item's middle). Also the frame size, the platform whose zones apply (safeArea, minTextSize), density (titles and captions per minute) and, at a frame, pictures on screen with their scale and coverage. With from/to, only text that overlaps those frames. With ink: ink {frame, luma, mid (0–100), inkShare (pixels text and overlay layers change)} of the composed frame (frame, default 0) against Main alone. No verdicts.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_review_layout`
 - `frame`: integer, ≥ 0. Only text on screen at this timeline frame
+- `from`: integer, ≥ 0. Only text that ends after this timeline frame
+- `to`: integer, ≥ 1. Only text that starts before this timeline frame
+- `ink`: boolean. Measure the composed frame (frame, default 0): luma, mid and inkShare
 - `contrast`: boolean. Measure each item's contrast on rendered frames
 
-### `bashcut review hook`
+### `bashcut review sync [--events <events>] [--bins] [--rendered]`
 
-Read how the edit opens and closes, as facts: opening {hookSeconds (the project's review.hookSeconds or null), firstWords {frame, seconds, text} (heard or caption words), firstSpeechItem, firstTitle and firstCaption {frame, seconds, item, text, holdSeconds}, firstCut, described {subjects and sizes [{name, firstFrame, firstSeconds, onScreenSeconds}] from media.describe}, firstFrame {luma, mid, inkShare (pixels text and overlay layers change)}}, close {duration, lastWords, lastCut, lastTitle with its hold, bounds and edges}, and the platform zones. No verdict about what is early enough; the review's hook check runs only when the project sets review.hookSeconds.
-
-- Mode: read · Runs: immediately · MCP: `bashcut_review_hook`
-
-### `bashcut review cuts`
-
-Read every cut on Main: index, frame/seconds, from/to item IDs, kind (hard, or the transition's kind with transitionFrames/Seconds and easing), gapFrames when there is a gap, framingBefore/After {zoom, pan, tilt} (keyframes included) and sameFraming (same media and the same framing on both sides); counts per kind, runs of the same kind and how many cuts keep the framing. No verdicts.
-
-- Mode: read · Runs: immediately · MCP: `bashcut_review_cuts`
-
-### `bashcut review sync [--events <events>] [--rendered]`
-
-Time events against the beat grid and the spoken words: per event (cuts on Main by default; text items and sfx items on request) the nearest beat and the nearest word edge (start or end, its text, whether the event falls inside the word) with offsetFrames and offsetMs (positive = after it), and for beats and words the distribution: count, mean, median, p10, p90 and counts per offset from −6 to +6 frames. Words are the stored transcripts heard through the clips (media.transcribe), else the caption words. With rendered: rendered {windows [{at, lagMs, correlation}], driftMsPerMinute, lagStartMs, lagEndMs} from matching the last export's sound to the timeline's mix every 10 s (positive lag = the render is later); the export must show this revision.
+Time events against the beat grid and the spoken words: per event (cuts on Main by default; text items and sfx items on request) the nearest beat and the nearest word edge (start or end, its text, whether the event falls inside the word) with offsetFrames and offsetMs (positive = after it), and for beats and words count, mean and median offset (with bins also p10, p90 and counts per offset from −6 to +6 frames). Words are the stored transcripts heard through the clips (media.transcribe), else the caption words. With rendered: rendered {windows [{at, lagMs, correlation}], driftMsPerMinute, lagStartMs, lagEndMs} from matching the last export's sound to the timeline's mix every 10 s (positive lag = the render is later); the export must show this revision.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_review_sync`
 - `events`: string. cuts, text, sfx, captions (comma separated; default cuts)
+- `bins`: boolean. Add p10/p90 and counts per offset
 - `rendered`: boolean. Also measure the last export's timing against the timeline
 
 ### `bashcut review window <frame> [--span <span>] [--step <step>] [--width <width>]`
@@ -499,25 +493,19 @@ Look across a moment of the edit without exporting: one PNG with the composed fr
 
 ### `bashcut review coverage`
 
-The plan's shot rows against the footage: per planned shot the described shots that fit it (size, and every mustShow name among the described subjects), the clips that place it (a clip's planShot field, or the described shot it plays fits), and a status placed, found, missing or undescribed (no media described yet: media describe). Facts only; what is enough is the plan's.
+Which described source shot each clip plays: per clip on the video layers in time order item, track, at/end, media, planShot when the clip has that field, and described {index, start, end and the media.describe facts} or null (no description covers it: media describe); counts. Join it with your plan yourself; media description lists the shots not played.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_review_coverage`
 
 ## platforms
 
-### `bashcut platforms list [--facts]`
+### `bashcut platforms get [<id>] [--facts]`
 
-Read the platform facts review uses: per platform (TikTok, Reels, Shorts, YouTube) shape, maxSeconds, targetLUFS, maxTruePeakDbTP and safeArea (zones the app covers, as fractions), with the project's review.platform overrides applied, whether it is one of the project's outputs and whether it was overridden; layout: the zones text is checked against (the strictest of the outputs of the frame's shape, null when none); targets: each output preset's loudness target (output.targets, else the platform's); data: the platform table's version and origin (built-in or the plugin that shipped a newer one). With facts, every field with {value, kind hard|recommended|info, source, checked, confidence}, including bitrateMbps, title and cover facts, chapter and disclosure rules where known.
-
-- Mode: read · Runs: immediately · MCP: `bashcut_platforms_list`
-- `facts`: boolean. Include each field's provenance
-
-### `bashcut platforms get <id>`
-
-One platform's facts with the project's overrides applied and every field's provenance (value, kind, source, checked, confidence): length, loudness, safe zones, recompression bit rate, shape, title and cover facts, chapter and disclosure rules.
+Read the platform facts review uses: per platform (TikTok, Reels, Shorts, YouTube) shape, maxSeconds, targetLUFS, maxTruePeakDbTP and safeArea (zones the app covers, as fractions), with the project's review.platform overrides applied, whether it is one of the project's outputs and whether it was overridden; layout: the zones text is checked against (the strictest of the outputs of the frame's shape, null when none); targets: each output preset's loudness target (output.targets, else the platform's); data: the platform table's version and origin (built-in or the plugin that shipped a newer one). With facts, every field with {value, kind hard|recommended|info, source, checked, confidence}, including bitrateMbps, title and cover facts, chapter and disclosure rules where known. With id, that one platform's row with its facts.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_platforms_get`
-- `id`: string, required. tiktok, reels, shorts, youtube
+- `id`: string. tiktok, reels, shorts, youtube
+- `facts`: boolean. Include each field's provenance
 
 ## export
 
@@ -566,12 +554,15 @@ Request an OpenTimelineIO export; the user approves it in the app first.
 
 ## plugins
 
-### `bashcut plugins list [--category <category>]`
+### `bashcut plugins list [--category <category>] [--health] [--plugin <plugin>] [--views]`
 
-List installed plugins with their category, providers and project provider preferences.
+List installed plugins with their category, providers and project provider preferences. With health, health {plugin, state, dependencies} from checks run now (Plugins sheet, Check Health); with views, views {panels (ready plugins with a rail panel or views (plugin API 8): title and icon, each view with where it lives and whether it is shown, tools, skills, required plugins, used capabilities), open panel, sheet, the host's plugin features, apiVersion}.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_plugins_list`
 - `category`: string, one of agents, captions, voice, audio, color, effects, export, utilities. Only plugins in this category
+- `health`: boolean. Run health checks
+- `plugin`: string. With health: only this plugin
+- `views`: boolean. Add plugin panels and views
 
 ### `bashcut plugins actions [<query>] [--plugin <plugin>]`
 
@@ -698,19 +689,13 @@ Turn a plugin or its hooks off (agents can only turn them off; turning on and tr
 - `enabled`: boolean. Plugin on or off
 - `hooks`: boolean. Hooks on or off
 
-### `bashcut plugins views`
-
-List ready plugins with a panel in the left rail or views (plugin API 8): title and icon, each view with where it lives (panel, dock tab or sheet) and whether it is shown, tools (actions), skills, required plugins with their state, the capabilities it uses and whether a ready plugin provides each, the open panel and sheet. Also lists the host's plugin features.
-
-- Mode: read · Runs: immediately · MCP: `bashcut_plugins_views`
-
 ### `bashcut plugins show-view <plugin> --view <view>`
 
 Show a plugin view where it lives: its plugin's panel in the left rail, its tab in the agent dock, or a sheet. Plugins call this for their own views (an action opening a form sheet).
 
 - Mode: ui · Runs: immediately · MCP: `bashcut_plugins_show-view`
 - `plugin`: string, required. Plugin ID
-- `view`: string, required. View ID from plugins views
+- `view`: string, required. View ID from plugins list --views
 
 ### `bashcut plugins view <plugin> [--view <view>] [--open]`
 
@@ -718,7 +703,7 @@ Render a plugin view and return its components as JSON (what the app draws: text
 
 - Mode: ui · Runs: immediately · MCP: `bashcut_plugins_view`
 - `plugin`: string, required. Plugin ID
-- `view`: string. View ID from plugins views; the plugin's first view by default
+- `view`: string. View ID from plugins list --views; the plugin's first view by default
 - `open`: boolean, default false. Show the view where it lives
 
 ### `bashcut plugins view-event <plugin> [--view <view>] --node <node> [--type <type>] [--value <value>]`
@@ -727,7 +712,7 @@ Do what a user does in a plugin view: click a button, change an input, submit a 
 
 - Mode: ui · Runs: immediately · MCP: `bashcut_plugins_view-event`
 - `plugin`: string, required. Plugin ID
-- `view`: string. View ID from plugins views; the plugin's first view by default
+- `view`: string. View ID from plugins list --views; the plugin's first view by default
 - `node`: string, required. Component id from plugins view
 - `type`: string, one of click, change, submit, select, action, default "click". What happened
 - `value`: string. New value (change), row id (select) or {"item","action"} (action); JSON or text
@@ -740,13 +725,6 @@ Run a plugin capability directly with raw parameters and return the provider's r
 - `capability`: string, required. Capability ID, such as voice.synthesize
 - `provider`: string. Provider ID; the project's choice or the highest priority by default
 - `params`: object. Request parameters (JSON object)
-
-### `bashcut plugins health [<plugin>]`
-
-Run plugin health checks (Plugins sheet, Check Health); all plugins by default.
-
-- Mode: read · Runs: immediately · MCP: `bashcut_plugins_health`
-- `plugin`: string. Plugin ID
 
 ## captions
 
@@ -914,7 +892,7 @@ Give a clip a speed ramp (CapCut Curve) like Inspector › Speed › Curve: a pr
 
 ### `bashcut clip motion [<item>] [--preset <preset>] [--keyframes <keyframes>] [--focus <focus>] [--focus-to <focusTo>] [--ease <ease>] --base-rev <baseRev>`
 
-Animate a clip, image or text over its length (Inspector › Animation): a preset (zoom-in, zoom-out, pan-left, pan-right, pan-up, pan-down, fade-in-out, pop-in, slide-up, zoom-punch; none removes the animation) sized to the item, or keyframes JSON {property: [{frame, value, ease?}, …]} with frames from the item's start. Properties: zoom, pan, tilt (px, up), rotation (degrees), opacity, and volume (dB, like volumeDb; the only one on audio items, none on text); ease: linear, in, out, inOut, hold (default inOut). Keys replace the item's static value for that property. Images with zoom-in, zoom-out or pan-* make a Ken Burns move; presets are for pictures and text. focus frames a rectangle of a video clip (a panel of a screen recording) without working out zoom, pan and tilt by hand.
+Animate a clip, image or text over its length (Inspector › Animation): a preset (zoom-in, zoom-out, pan-left, pan-right, pan-up, pan-down, fade-in-out, pop-in, slide-up, zoom-punch; none removes the animation) sized to the item, or keyframes JSON {property: [{frame, value, ease?}, …]} with frames from the item's start. Properties: zoom, pan, tilt (px, up), rotation (degrees), opacity, and volume (dB, like volumeDb; the only one on audio items, none on text); ease: linear, in, out, inOut, hold or cubic-bezier(x1,y1,x2,y2) (default inOut). Keys replace the item's static value for that property. Images with zoom-in, zoom-out or pan-* make a Ken Burns move; presets are for pictures and text. focus frames a rectangle of a video clip (a panel of a screen recording) without working out zoom, pan and tilt by hand.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_clip_motion`
 - `item`: string. Item ID; the selection by default
@@ -922,7 +900,7 @@ Animate a clip, image or text over its length (Inspector › Animation): a prese
 - `keyframes`: string. Keyframes as JSON, replacing the item's animation
 - `focus`: string. Frame a rectangle of a video clip's picture: x,y,width,height in source pixels from the top left (media.list width/height); sets zoom, pan and tilt and keeps the other keys
 - `focusTo`: string. With focus: move to this rectangle by the item's last frame
-- `ease`: string, one of linear, in, out, inOut, hold. With focus-to: the move's ease
+- `ease`: string. With focus-to: the move's ease (linear, in, out, inOut, hold or cubic-bezier(x1,y1,x2,y2))
 - `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
 
 ### `bashcut clip keyframe [<item>] [--property <property>] [--value <value>] [--at-frame <atFrame>] [--ease <ease>] [--remove] --base-rev <baseRev>`
@@ -931,10 +909,10 @@ Set one keyframe like the Inspector's controls with keyframes on: property at a 
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_clip_keyframe`
 - `item`: string. Item ID; the selection by default
-- `property`: string, one of opacity, pan, rotation, tilt, volume, zoom. Property; all of them by default
+- `property`: string, one of color.contrast, color.exposure, color.lutStrength, color.saturation, opacity, pan, rotation, textStyle.lineHeight, textStyle.positionX, textStyle.positionY, textStyle.size, textStyle.strokeWidth, textStyle.tracking, tilt, volume, zoom. Property; all of them by default
 - `value`: number. Value
 - `atFrame`: integer, ≥ 0. Timeline frame inside the item; the playhead by default
-- `ease`: string, one of linear, in, out, inOut, hold. Change to the next key
+- `ease`: string. Change to the next key: linear, in, out, inOut, hold or cubic-bezier(x1,y1,x2,y2)
 - `remove`: boolean, default false. Remove the key at that frame
 - `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
 
@@ -971,13 +949,14 @@ Cancel a queued or running job (plugin call or export).
 
 ## capabilities
 
-### `bashcut capabilities get [<capability>] [--kind <kind>]`
+### `bashcut capabilities get [<capability>] [--kind <kind>] [--voices]`
 
-Whether each plugin capability (or one) can serve now: available, else reason missing (no plugin provides it), not_configured (turned off, not approved, changed, outdated or missing a required plugin) or unhealthy (a dependency fails its health check). Lists each provider with plugin, priority, paid, state and detail, and the commands that call the capability. A command whose capability cannot serve fails with category capability_missing and the same reason.
+Whether each plugin capability (or one) can serve now: available, else reason missing (no plugin provides it), not_configured (turned off, not approved, changed, outdated or missing a required plugin) or unhealthy (a dependency fails its health check). Lists each provider with plugin, priority, paid, state and detail, and the commands that call the capability. A command whose capability cannot serve fails with category capability_missing and the same reason. With voices, voices: the voices of every voice.synthesize provider (per provider plugin, name, availability, clones (voice speak then needs cloneConsent) and the voice its plugin is set to; per voice id, language, region, style, gender, supportsRate and measuredRate (rates measured on its takes, per language: samples, p10, p50, p90)); without a capability the result is then {capabilities, voices}.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_capabilities_get`
 - `capability`: string. Capability ID, such as captions.transcribe; all by default
 - `kind`: string, one of audio, text-preset, sticker, effect-preset, transition-preset, look, voice. Only providers serving this library item kind
+- `voices`: boolean. Add the voices of the voice providers
 
 ## beats
 
@@ -1045,28 +1024,11 @@ Measure colour per clip on frames spread over each clip (samples, default 3), on
 - `compare`: string, one of source. source: the edit without colour against it as graded
 - `by`: string, one of clip. clip: each clip's difference from the median clip
 
-## plan
-
-### `bashcut plan get`
-
-Read the edit plan: a free JSON object (the agent's notes). Null when none.
-
-- Mode: read · Runs: immediately · MCP: `bashcut_plan_get`
-
-### `bashcut plan set <value.json> [--merge] --base-rev <baseRev>`
-
-Set the edit plan (any JSON object) as one undoable edit; with merge, only the given top-level fields change (null removes one). Core reads only sections [{id, label, lengthSeconds {min, max}, frozen}], shots and beats [{id, text, section}] when present: review compares section lengths with section markers, as info; context get summarises it so work can resume from it.
-
-- Mode: edit · Runs: immediately · MCP: `bashcut_plan_set`
-- `value`: object, required. The plan (CLI: path to plan.json)
-- `merge`: boolean. Change only the given fields
-- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
-
 ## workflow
 
 ### `bashcut workflow gates`
 
-The user's workflow gates: G1 brief, G2 strategy, G3 roughCut (rough-cut sheet), G4 script (before speech is made), G5 draft (before export), each ask, notify or skip (ask unless the user changed it), and maxReviewRounds. Request each gate with checkpoint request; never decide one is approved yourself.
+The user's workflow gates: G1 brief, G2 strategy, G3 roughCut (rough-cut sheet), G4 script (before speech is made), G5 draft (before export) and any gate a skill stopped at by name, each ask, notify or skip (ask unless the user changed it), and maxReviewRounds. Request each gate with checkpoint request; never decide one is approved yourself.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_workflow_gates`
 
@@ -1075,7 +1037,7 @@ The user's workflow gates: G1 brief, G2 strategy, G3 roughCut (rough-cut sheet),
 Change a gate or the review round limit. Agents may only make a gate ask more (skip → notify → ask); loosening a gate or changing the round limit is the user's (Settings → Agents → Workflow gates).
 
 - Mode: ui · Runs: immediately · MCP: `bashcut_workflow_set-gates`
-- `gate`: string. G1…G5 or brief, strategy, roughCut, script, draft
+- `gate`: string. G1…G5, brief, strategy, roughCut, script, draft or a gate name
 - `mode`: string, one of ask, notify, skip. Gate mode
 - `maxReviewRounds`: integer, 1…10. Review round limit (user only)
 
@@ -1086,7 +1048,7 @@ Change a gate or the review round limit. Agents may only make a gate ask more (s
 Stop at a gate: with ask, the user sees the summary and attachments in BashCut and answers approved, changes (with a note) or rejected; poll checkpoint status until it is not awaiting_user. With notify the user is told and the run goes on; with skip nothing is shown. The answer is bound to the current revision and written to the run log; only the user can answer.
 
 - Mode: ui · Runs: immediately · MCP: `bashcut_checkpoint_request`
-- `gate`: string, required. G1…G5 or brief, strategy, roughCut, script, draft
+- `gate`: string, required. G1…G5, brief, strategy, roughCut, script, draft, or any name (1–40 letters, digits, ., -, _) for a stop of your own
 - `summary`: string, required. What the user is asked to approve
 - `attach`: string. Comma-separated files to show (sheets, stills); relative to the project
 
@@ -1125,11 +1087,13 @@ Append to the run log: an entry of any kind (start opens a run; stage, round, me
 
 ## script
 
-### `bashcut script check`
+### `bashcut script check [--beats <beats>] [--text <text>]`
 
-The plan's script beats against the words heard on the timeline (stored transcripts, else caption words): per beat the share of its words heard as written, the unmatched words, where it was heard and the section marker it starts in against the planned section; overall similarity and extra heard words.
+A script against the words heard on the timeline (stored transcripts, else caption words): per beat (the beats given, the text as one beat, else the plan's beats) the share of its words heard as written, the unmatched words, where it was heard and the section marker it starts in against the beat's section; overall similarity and extra heard words.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_script_check`
+- `beats`: array. Beats [{id, text, section}] as JSON
+- `text`: string. The whole script as one beat
 
 ## selects
 
@@ -1207,28 +1171,29 @@ List stretches of at least minSeconds with no spoken word (heard or caption word
 
 ## voice
 
-### `bashcut voice voices`
+### `bashcut voice speak [<text>] [--takes <takes>] [--provider <provider>] [--choose <choose>] [--at-frame <atFrame>] [--replace <replace>] [--clone-consent] [--request-id <requestId>] [--dry-run]`
 
-List the voices of every voice.synthesize provider: per provider plugin, name, availability, clones (it can clone a voice; voice speak then needs cloneConsent) and the voice its plugin is set to; per voice id, language, region, style, gender, supportsRate and measuredRate (rates measured on its takes by voice speak, per language: samples, p10, p50, p90).
-
-- Mode: read · Runs: immediately · MCP: `bashcut_voice_voices`
-
-### `bashcut voice speak [<text>] [--replace <replace>] [--takes <takes>] [--at-frame <atFrame>] [--provider <provider>] [--keep-takes] [--target-rate <targetRate>] [--choose <choose>] [--clone-consent] [--request-id <requestId>] [--dry-run]`
-
-Synthesize voice takes and insert one on the Voiceover track: the take whose rate is closest to targetRate, the take number choose, or else the provider's best score (the first take when it gives none). Every take is reported with seconds, units (syllables, words or characters for the content language), unitsPerSecond over its sound, leadingSilence, trailingSilence, pauses and its file; the rates are kept per voice (speech rate). The item keeps voice {text, language, provider, voice}. With replace, the take goes into that item instead. With keepTakes, insert nothing and keep every take file so one can be chosen and placed with media.import.
+Synthesize voice takes and measure them: per take index, path, projectPath, seconds, units (syllables, words or characters for the content language), unitsPerSecond over its sound, leadingSilence, trailingSilence, pauses and the provider's score when it gives one; the rates are kept per voice (speech rate). Every take file is kept: pick one yourself and put it on the timeline with voice place. With choose, take N goes on the Voiceover track at once (the rest are removed); with replace, the take (choose, default 1) goes into that item, keeping its place, and its captions are timed again. The item keeps voice {text, language, provider, voice}.
 
 - Mode: edit · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_voice_speak`
 - `text`: string. Voiceover text in the project content language (with replace, the item's voice text by default)
-- `replace`: string. Voiceover item to put the new take into, keeping its place; its captions are timed again from the new take
 - `takes`: integer, 1…8, default 3. Number of takes to generate
-- `atFrame`: integer, ≥ 0. Timeline frame; defaults to the playhead
 - `provider`: string. Provider ID overriding the project preference for one request
-- `keepTakes`: boolean, default false. Keep all takes in voiceover/generated and insert none
-- `targetRate`: number, 0.1…50. Insert the take closest to this many units per second
-- `choose`: integer, 1…8. Insert this take (1 = first)
+- `choose`: integer, 1…8. Put this take on the timeline (1 = first)
+- `atFrame`: integer, ≥ 0. With choose: timeline frame; defaults to the playhead
+- `replace`: string. Voiceover item to put the take into, keeping its place
 - `cloneConsent`: boolean. The user agreed to clone the voice set in the plugin's options; providers that clone refuse without it
 - `requestId`: string. Your stable ID for this request: sending it again returns the same job instead of starting (and paying for) another; the provider receives it too
 - `dryRun`: boolean, default false. Return the request as it would go to the provider (without option values), whether the provider is paid and its estimate if it gives one; nothing runs
+
+### `bashcut voice place <take> [--at-frame <atFrame>] [--replace <replace>]`
+
+Put a take voice speak kept on the Voiceover track with its voice facts and provenance: at a frame (the playhead by default), or into a voiceover item, keeping its place, with its captions timed again from the new take.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_voice_place`
+- `take`: string, required. The take's path or projectPath from voice speak
+- `atFrame`: integer, ≥ 0. Timeline frame; defaults to the playhead
+- `replace`: string. Voiceover item to put the take into
 
 ### `bashcut voice check [--item <item>] [--media <media>] [--text <text>] [--min-similarity <minSimilarity>] [--provider <provider>] [--request-id <requestId>] [--dry-run]`
 
@@ -1423,13 +1388,6 @@ Answer the topmost dialog like the user: choose an option ID or title, or give a
 - `path`: string, path. File or folder for an open/save panel
 - `dialog`: string. Only answer if this dialog ID is topmost
 
-### `bashcut ui open <dialog>`
-
-Open a sheet or popover in the app.
-
-- Mode: ui · Runs: immediately · MCP: `bashcut_ui_open`
-- `dialog`: string, required, one of new-project, export, export-report, agent-changes, review, history, plugins, settings, doctor, knowledge, ask, sections, external-changes, plugin-proposals, commands, shortcuts, add-plugin, library-search, library-generate. Dialog
-
 ### `bashcut ui select [<item>] [--items <items>] [--add] [--track <track>]`
 
 Select timeline items in the app (omit them to clear the selection), or a layer with --track. Several items: --items a,b,c; --add keeps the current selection.
@@ -1446,12 +1404,15 @@ List every editor action (buttons, menu items, keyboard shortcuts) with its shor
 
 - Mode: read · Runs: immediately · MCP: `bashcut_ui_actions`
 
-### `bashcut ui action <action>`
+### `bashcut ui action <action> [<target>] [--in <in>] [--out <out>]`
 
-Run an editor action like the user: by ID (timeline.split, timeline.zoom-in, playback.toggle) or by shortcut (cmd+b, space, cmd+=). Actions that open a dialog return at once; answer it with ui.respond.
+Run an editor action like the user: by ID (timeline.split, timeline.zoom-in, playback.toggle) or by shortcut (cmd+b, space, cmd+=). Actions that open a dialog return at once; answer it with ui.respond. With a target: open DIALOG (a sheet or popover: new-project, export, export-report, agent-changes, review, history, plugins, settings, doctor, knowledge, ask, sections, external-changes, plugin-proposals, commands, shortcuts, add-plugin, library-search, library-generate), panel PANEL (a library panel in the left rail: media, audio, text, stickers, effects, transitions, filters, voice), source MEDIA (the source viewer, with --in/--out frames marked) or notify MESSAGE (a short status message).
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_ui_action`
-- `action`: string, required. Action ID or shortcut
+- `action`: string, required. Action ID or shortcut, or open, panel, source, notify
+- `target`: string. The dialog, panel, media ID or message of open, panel, source, notify
+- `in`: integer, ≥ 0. source: in frame
+- `out`: integer, ≥ 1. source: out frame (exclusive)
 
 ### `bashcut ui view [--zoom <zoom>] [--zoom-anchor <zoomAnchor>] [--snap <snap>] [--safe-area <safeArea>] [--viewer-zoom <viewerZoom>] [--compare <compare>] [--agent-dock <agentDock>] [--reveal <reveal>] [--inspector <inspector>] [--settings-section <settingsSection>] [--settings-search <settingsSearch>] [--knowledge-section <knowledgeSection>] [--plugins-tab <pluginsTab>] [--plugins-category <pluginsCategory>] [--media-source <mediaSource>] [--library-query <libraryQuery>] [--library-pack <libraryPack>] [--library-tag <libraryTag>] [--library-scope <libraryScope>]`
 
@@ -1467,25 +1428,16 @@ Read the editor view state, or change it: timeline zoom (pixels per second), vie
 - `agentDock`: boolean. Agent dock shown or hidden
 - `reveal`: integer, ≥ 0. Scroll the timeline so this frame is visible
 - `inspector`: string, one of video, audio, text, color, speed. Inspector tab
-- `settingsSection`: string, one of general, agents, plugins, storage. Settings section (open Settings with ui.open settings)
+- `settingsSection`: string, one of general, agents, plugins, storage. Settings section (open Settings with ui.action open settings)
 - `settingsSearch`: string. Settings search text: lists matching settings of every section; empty clears it
-- `knowledgeSection`: string, one of inbox, lessons, prefs, facts, notes, skills, history. Knowledge window section (open it with ui.open knowledge)
-- `pluginsTab`: string, one of installed, browse, updates, activity. Plugins sheet tab (open it with ui.open plugins)
+- `knowledgeSection`: string, one of inbox, lessons, prefs, facts, notes, skills, history. Knowledge window section (open it with ui.action open knowledge)
+- `pluginsTab`: string, one of installed, browse, updates, activity. Plugins sheet tab (open it with ui.action open plugins)
 - `pluginsCategory`: string, one of all, agents, captions, voice, audio, color, effects, export, utilities. Category Plugins › Browse shows; all shows every one
 - `mediaSource`: string, one of footage, project, shared, selects. What the Media panel lists
 - `libraryQuery`: string. Search text of the open library panel; empty clears it
 - `libraryPack`: string. Pack the open library panel shows; empty shows all
 - `libraryTag`: string. Tag the open library panel shows; empty shows all
 - `libraryScope`: string, one of all, built-in, user, project, plugin. Scope the open library panel shows
-
-### `bashcut ui source <media> [--in <in>] [--out <out>]`
-
-Open project media in the source viewer, optionally with in/out frames marked.
-
-- Mode: ui · Runs: immediately · MCP: `bashcut_ui_source`
-- `media`: string, required. Media ID
-- `in`: integer, ≥ 0. Source in frame
-- `out`: integer, ≥ 1. Source out frame (exclusive)
 
 ### `bashcut ui seek <frame>`
 
@@ -1512,20 +1464,6 @@ Compare pictures in one PNG grid, one row per frame: compare graded puts the fra
 - `frames`: string. Timeline frames, comma separated
 - `items`: string. Item IDs, comma separated
 - `width`: integer, 64…2048. Cell width in pixels (default 390)
-
-### `bashcut ui panel <panel>`
-
-Open a library panel in the left rail.
-
-- Mode: ui · Runs: immediately · MCP: `bashcut_ui_panel`
-- `panel`: string, required, one of media, audio, text, stickers, effects, transitions, filters, voice. Panel
-
-### `bashcut ui notify <message>`
-
-Show a short status message in BashCut.
-
-- Mode: ui · Runs: immediately · MCP: `bashcut_ui_notify`
-- `message`: string, required. Message
 
 ## luts
 

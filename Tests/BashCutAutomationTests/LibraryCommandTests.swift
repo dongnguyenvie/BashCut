@@ -130,7 +130,7 @@ struct LibraryCommandTests {
             #expect(ChatCommandSession.allowedMethods.contains(method))
         }
         #expect(CommandCatalog.dialogs.contains("library-search") && CommandCatalog.dialogs.contains("library-generate"))
-        let open = try CommandLineParser.parse(["ui", "open", "library-search"])
-        #expect(open.params["dialog"] == .string("library-search"))
+        let open = try CommandLineParser.parse(["ui", "action", "open", "library-search"])
+        #expect(open.params == ["action": .string("open"), "target": .string("library-search")])
     }
 }

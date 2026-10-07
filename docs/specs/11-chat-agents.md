@@ -130,8 +130,9 @@ calls back with `method`.
   - the conversation ID per project, saved in `.bashcut/chat/<plugin id>.json` next to the project;
   - the token, issued on the first command call with author `.agent` and revoked on reset or a project switch.
     With **Allow agent timeline edits** off, no token is issued, so edits fail.
-- **Tools:** every `CommandSpec` except `agent.*`, `chat.*` and `ui.notify`. The app also refuses any other
-  method a plugin calls.
+- **Tools:** the reviewed allow-list (`ChatCommandSession.allowedMethods`): no `agent.*`, `chat.*`, plugin
+  administration or `clip.speed*` (agents use the `setSpeed`/`setSpeedCurve` ops), and `ui.action` only for
+  `panel` and `source`. The app also refuses any other method a plugin calls.
 - **Context:** `document.contextText()` plus the timeline summary on every turn. The instructions are a generic
   preamble (how to work in steps, look with `ui frame`, keep edits undoable) plus `CommandCatalog.instructions`.
   The plugin adds its own identity.

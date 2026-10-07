@@ -2,12 +2,13 @@ import Foundation
 
 /// The shots on Main as data for the agent (`review.shots`, #464): timing, source, framing and speed from the
 /// timeline, motion from a picture measurement of the same revision, the facts `media.describe` stored for the
-/// source shot it plays (`described`), the camera move its keyframes make and what changes at the cut into it; with
-/// the summary, rhythm overall and per section, runs and shares (ReviewShots+Sequence.swift). No verdicts: a skill
-/// compares the numbers with the range its genre allows.
+/// source shot it plays (`described`), the camera move its keyframes make and what changes at the cut into it (its
+/// kind and the framing on both sides); with the summary, rhythm overall and per section and shares
+/// (ReviewShots+Sequence.swift). `range` keeps the shots that overlap those frames. No verdicts: a skill compares the
+/// numbers with the range its genre allows.
 public enum ReviewShots {
     public static func json(
-        _ project: Project, picture: ReviewPicture? = nil, summary: Bool = false, lowVariance: LowVariance? = nil
+        _ project: Project, picture: ReviewPicture? = nil, summary: Bool = false, range: Range<Int>? = nil
     ) -> JSONValue {
         let fps = project.fps.value
         let measured = picture.flatMap { $0.revision == project.revision ? $0 : nil }
@@ -26,9 +27,10 @@ public enum ReviewShots {
                     shot.mediaID.flatMap { descriptions[$0] }?.shot(covering: span.lowerBound, to: span.upperBound)
                 })
         }
-        var previous: Item?
-        let shots: [JSONValue] = main.enumerated().map { index, shot in
-            defer { previous = shot }
+        let inRange = main.indices.filter { index in range.map { main[index].at < $0.upperBound && main[index].end > $0.lowerBound } ?? true }
+        let shots: [JSONValue] = inRange.map { index in
+            let shot = main[index]
+            let previous = index > 0 ? main[index - 1] : nil
             var row: [String: JSONValue] = [
                 "index": .integer(index), "id": .string(shot.id), "at": .integer(shot.at),
                 "atSeconds": .number(rounded(Double(shot.at) / fps)), "duration": .integer(shot.duration),
@@ -45,16 +47,21 @@ public enum ReviewShots {
             if let asset = shot.mediaID.flatMap({ media[$0] }), let scale = ReviewScale.json(shot, media: asset, project: project) {
                 row["scale"] = scale
             }
-            if index > 0 { row["cut"] = cut(from: sequence[index - 1], to: sequence[index]) }
             if let left = previous {
+                var cut = cut(from: sequence[index - 1], to: sequence[index]).object
+                cut.merge(framingChange(from: left, to: shot)) { _, new in new }
+                cut["kind"] = .string("hard")
                 row["gapBefore"] = .integer(shot.at - left.end)
                 if let transition = transitions[shot.id], transition.fromItemID == left.id {
+                    cut["kind"] = .string(transition.kind)
                     row["transitionIn"] = .object([
                         "kind": .string(transition.kind), "duration": .integer(transition.duration),
+                        "easing": .string(transition.easing),
                     ])
                 } else if let difference = measured?.cuts[shot.id] {
                     row["cutDifference"] = .number(rounded(difference))
                 }
+                row["cut"] = .object(cut)
             }
             if let measured { row["motion"] = motion(measured, from: shot.at, to: shot.end) }
             return .object(row)
@@ -65,15 +72,14 @@ public enum ReviewShots {
         ]
         if measured == nil, let picture { result["pictureRevision"] = .integer(picture.revision) }
         if summary {
-            result["summary"] = Self.summary(main, fps: fps)
-            let span = Double((main.last?.end ?? 0) - (main.first?.at ?? 0)) / fps
+            let picked = inRange.map { main[$0] }
+            result["summary"] = Self.summary(picked, fps: fps)
+            let span = Double((picked.last?.end ?? 0) - (picked.first?.at ?? 0)) / fps
             result["rhythm"] = .object([
-                "overall": rhythm(sequence.map(\.seconds), span: span, lowVariance: lowVariance),
-                "sections": sectionRhythm(main, sections: project.sectionMarkers, fps: fps, lowVariance: lowVariance),
+                "overall": rhythm(inRange.map { sequence[$0].seconds }, span: span),
+                "sections": sectionRhythm(picked, sections: project.sectionMarkers, fps: fps),
             ])
-            let (runs, shares) = runsAndShares(sequence)
-            result["runs"] = runs
-            result["shares"] = shares
+            result["shares"] = shares(inRange.map { sequence[$0] })
         }
         return .object(result)
     }

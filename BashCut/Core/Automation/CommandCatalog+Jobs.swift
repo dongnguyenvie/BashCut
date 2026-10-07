@@ -25,12 +25,17 @@ extension CommandCatalog {
                 + "provides it), not_configured (turned off, not approved, changed, outdated or missing a required "
                 + "plugin) or unhealthy (a dependency fails its health check). Lists each provider with plugin, "
                 + "priority, paid, state and detail, and the commands that call the capability. A command whose "
-                + "capability cannot serve fails with category capability_missing and the same reason.",
+                + "capability cannot serve fails with category capability_missing and the same reason. With voices, "
+                + "voices: the voices of every voice.synthesize provider (per provider plugin, name, availability, "
+                + "clones (voice speak then needs cloneConsent) and the voice its plugin is set to; per voice id, "
+                + "language, region, style, gender, supportsRate and measuredRate (rates measured on its takes, per "
+                + "language: samples, p10, p50, p90)); without a capability the result is then {capabilities, voices}.",
             parameters: [
                 CommandParameter("capability", .string, "Capability ID, such as captions.transcribe; all by default",
                                  cli: .positional),
                 CommandParameter("kind", .string, "Only providers serving this library item kind",
                                  choices: libraryKinds, cli: .option("kind")),
+                CommandParameter("voices", .boolean, "Add the voices of the voice providers", cli: .flag("voices")),
             ]),
         CommandSpec(
             "jobs.cancel", .edit, "Cancel a queued or running job (plugin call or export).",

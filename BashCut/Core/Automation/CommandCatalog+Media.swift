@@ -30,7 +30,7 @@ extension CommandCatalog {
     /// Every command about source media (P0-A).
     static var sourceMediaSpecs: [CommandSpec] {
         mediaAnalysisSpecs + sourceTranscriptSpecs + mediaDescriptionSpecs + mediaStillsSpecs
-            + [mediaInventorySpec, speechRateSpec, narrationWindowsSpec, voiceVoicesSpec, voiceSpeakSpec] + voiceCheckSpecs
+            + [mediaInventorySpec, speechRateSpec, narrationWindowsSpec, voiceSpeakSpec, voicePlaceSpec] + voiceCheckSpecs
     }
 
     static let mediaInventorySpec = CommandSpec(
@@ -263,41 +263,43 @@ extension CommandCatalog {
     /// Voiceover takes with their measured facts (P0-C4, C6, C7).
     static let voiceSpeakSpec = CommandSpec(
         "voice.speak", .edit,
-        "Synthesize voice takes and insert one on the Voiceover track: the take whose rate is closest to "
-            + "targetRate, the take number choose, or else the provider's best score (the first take when it gives "
-            + "none). Every take is reported with seconds, units (syllables, words or characters for the content "
-            + "language), unitsPerSecond over its sound, leadingSilence, trailingSilence, pauses and its file; the "
-            + "rates are kept per voice (speech rate). The item keeps voice {text, language, provider, voice}. With "
-            + "replace, the take goes into that item instead. With keepTakes, insert nothing and keep every take "
-            + "file so one can be chosen and placed with media.import.",
+        "Synthesize voice takes and measure them: per take index, path, projectPath, seconds, units (syllables, "
+            + "words or characters for the content language), unitsPerSecond over its sound, leadingSilence, "
+            + "trailingSilence, pauses and the provider's score when it gives one; the rates are kept per voice "
+            + "(speech rate). Every take file is kept: pick one yourself and put it on the timeline with voice place. "
+            + "With choose, take N goes on the Voiceover track at once (the rest are removed); with replace, the take "
+            + "(choose, default 1) goes into that item, keeping its place, and its captions are timed again. The item "
+            + "keeps voice {text, language, provider, voice}.",
         parameters: [
             CommandParameter("text", .string, "Voiceover text in the project content language (with replace, "
                              + "the item's voice text by default)", sensitive: true, cli: .positional),
-            CommandParameter("replace", .string, "Voiceover item to put the new take into, keeping its place; "
-                             + "its captions are timed again from the new take", cli: .option("replace")),
             CommandParameter("takes", .integer, "Number of takes to generate", default: .integer(3), minimum: 1,
                              maximum: 8, cli: .option("takes")),
-            CommandParameter("atFrame", .integer, "Timeline frame; defaults to the playhead", minimum: 0,
-                             cli: .option("at-frame")),
             provider,
-            CommandParameter("keepTakes", .boolean, "Keep all takes in voiceover/generated and insert none",
-                             default: .bool(false), cli: .flag("keep-takes")),
-            CommandParameter("targetRate", .number, "Insert the take closest to this many units per second",
-                             range: 0.1...50, cli: .option("target-rate")),
-            CommandParameter("choose", .integer, "Insert this take (1 = first)", minimum: 1, maximum: 8,
+            CommandParameter("choose", .integer, "Put this take on the timeline (1 = first)", minimum: 1, maximum: 8,
                              cli: .option("choose")),
+            CommandParameter("atFrame", .integer, "With choose: timeline frame; defaults to the playhead", minimum: 0,
+                             cli: .option("at-frame")),
+            CommandParameter("replace", .string, "Voiceover item to put the take into, keeping its place",
+                             cli: .option("replace")),
             CommandParameter("cloneConsent", .boolean, "The user agreed to clone the voice set in the plugin's "
                              + "options; providers that clone refuse without it", cli: .flag("clone-consent")),
         ] + paidRequestParameters,
         execution: .job)
 
-    /// Voices by their facts (P0-C7).
-    static let voiceVoicesSpec = CommandSpec(
-        "voice.voices", .read,
-        "List the voices of every voice.synthesize provider: per provider plugin, name, availability, clones (it can "
-            + "clone a voice; voice speak then needs cloneConsent) and the voice its plugin is set to; per voice id, "
-            + "language, region, style, gender, supportsRate and measuredRate (rates measured on its takes by voice "
-            + "speak, per language: samples, p10, p50, p90).")
+    /// A kept take on the timeline (flexibility audit D4).
+    static let voicePlaceSpec = CommandSpec(
+        "voice.place", .edit,
+        "Put a take voice speak kept on the Voiceover track with its voice facts and provenance: at a frame (the "
+            + "playhead by default), or into a voiceover item, keeping its place, with its captions timed again from "
+            + "the new take.",
+        parameters: [
+            CommandParameter("take", .string, "The take's path or projectPath from voice speak", required: true,
+                             cli: .positional),
+            CommandParameter("atFrame", .integer, "Timeline frame; defaults to the playhead", minimum: 0,
+                             cli: .option("at-frame")),
+            CommandParameter("replace", .string, "Voiceover item to put the take into", cli: .option("replace")),
+        ])
 
     /// Voiceover checks and script captions (P0-C5, P0-C9).
     static let voiceCheckSpecs: [CommandSpec] = [

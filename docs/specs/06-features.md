@@ -34,9 +34,9 @@ A command in *italics* is planned and does not exist yet. "—" means manual onl
 | P-4 | Reload on external file change, conflict handling | P0 | Implemented | `ui dialog`, `ui respond` (answer the conflict sheet) |
 | P-5 | Import from `edl.json` with a comparison report | P1 | Implemented | `edl import` |
 | M-1 | Media library: grid, thumbnails, hover-scrub, specs; list view | P0 | Implemented (list view Planned) | `media list`, `media import` |
-| M-2 | Source viewer, In/Out, insert (E) / overwrite (Q) | P0 | Implemented | `ui source`, `ui action source.insert` / `source.overwrite`, `media place` |
+| M-2 | Source viewer, In/Out, insert (E) / overwrite (Q) | P0 | Implemented | `ui action source <media>`, `ui action source.insert` / `source.overwrite`, `media place` |
 | M-3 | Background survey: thumbnails, static-clip detection, contact sheet | P1 | Partial: contact sheets, exact source frames and filmstrips for agents are Implemented (`media frames --sheet`, `media frame`, `media strip`); background thumbnails in the library are Planned | `media frames`, `media frame`, `media strip` |
-| M-8 | Shot descriptions: the agent writes per-shot facts (size, angle, move, direction, subjects, best moment) in a closed vocabulary, saved with the project, with coverage of the measured shots | P1 | Implemented (no UI yet) | `media describe`, `media description` |
+| M-8 | Shot descriptions: the agent writes per-shot facts (size, angle, move, direction, subjects, tags, best moment) as open labels with a suggested vocabulary, saved with the project, with coverage of the measured shots | P1 | Implemented (no UI yet) | `media describe`, `media description` |
 | M-4 | Transcript through a replaceable `captions.transcribe` provider, speech badge, search by speech | P1 | Partial: source transcripts are Implemented (`media transcribe`, `media transcript`, reused by Auto Captions); speech badge and search are Planned | `media transcribe`, `media transcript`, *`media search`* |
 | M-5 | Automatic preview proxies for heavy footage | P1 | Implemented | `media proxy` |
 | M-6 | Transcode unsupported formats with ffmpeg on import | P2 | Planned | — |
@@ -92,7 +92,7 @@ A command in *italics* is planned and does not exist yet. "—" means manual onl
 
 | # | Feature | Priority | Status | Agent |
 |---|---|---|---|---|
-| F-1 | Transitions: dissolve, whip, blink, zoom | P1 | Implemented | `timeline apply` (`upsertTransition`) |
+| F-1 | Transitions: dissolve, whip, blink, zoom, spin, shutter, wipe as data rows; any kind with its own `motion`; easing incl. cubic-bezier | P1 | Implemented | `timeline apply` (`upsertTransition`) |
 | F-2 | Transitions: spin, shutter, wipe | P2 | Implemented | `timeline apply` (`upsertTransition`) |
 | F-3 | Clip effects: zoom punch, shake, flash, glitch, film look | P2 | Planned | *`timeline apply` (`setProperties`)* |
 | F-4 | Overlays: banner, callout, place card, REC frame, progress bar, stickers | P2 | Implemented (emoji stickers only; the rest Planned) | `timeline apply` (`insert`) |
@@ -107,7 +107,7 @@ A command in *italics* is planned and does not exist yet. "—" means manual onl
 |---|---|---|---|---|
 | PL-1 | Discover validated `bashcut.plugin/1` bundles from project, user and bundled catalogs | P1 | Implemented | `plugins list` |
 | PL-2 | Capability/provider resolution with undoable project preferences and healthy-priority fallback | P1 | Implemented | `timeline apply` (`setProviderPreference`) |
-| PL-3 | Plugins UI: local-folder install, exact dependency-plan approval, health checks, diagnostics | P1 | Implemented | `plugins health` (install is UI only) |
+| PL-3 | Plugins UI: local-folder install, exact dependency-plan approval, health checks, diagnostics | P1 | Implemented | `plugins list --health` (install is UI only) |
 | PL-4 | Isolated one-request process RPC with time and output bounds, filtered environment, confined generated files | P1 | Implemented | — |
 | PL-5 | Plugin, provider and version provenance; generated media stays usable after uninstall | P1 | Implemented | `project get` |
 | PL-6 | Signed remote catalog; explicit credential and permission declarations | P2 | Planned | — |
@@ -137,7 +137,7 @@ A command in *italics* is planned and does not exist yet. "—" means manual onl
 | E-5 | **Apply to DaVinci Resolve** through the workspace bridge | Reserved | Reserved | *`resolve plan`*, *`resolve apply`* |
 | D-1 | Doctor: workspace, `claude`, `codex`, optional tools, plugin catalog diagnostics, provider dependency health | P0 | Implemented | `doctor run` |
 | D-2 | Fix hints per missing item; button to run the workspace's `scripts/setup.sh` (with confirmation) | P0 (hints) / P1 (button) | Implemented (hints; button Planned) | — |
-| S-1 | Settings: workspace, default agent, agent edit permission, export presets, language (English / Tiếng Việt) | P0 | Implemented | `ui open settings` |
+| S-1 | Settings: workspace, default agent, agent edit permission, export presets, language (English / Tiếng Việt) | P0 | Implemented | `ui action open settings` |
 
 ## Stays with the agent (not in the UI)
 

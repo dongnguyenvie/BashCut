@@ -30,7 +30,7 @@ struct TransitionLibraryView: View {
                 Picker("Easing", selection: Binding(
                     get: { active.easing }, set: { document.setSelectedTransitionEasing($0) }
                 )) {
-                    ForEach(TimelineTransition.easings, id: \.self) { Text(Self.easingTitle($0)).tag($0) }
+                    ForEach(Self.easings(with: active.easing), id: \.self) { Text(Self.easingTitle($0)).tag($0) }
                 }
                 Button("Remove transition", role: .destructive) {
                     document.removeSelectedTransition()
@@ -58,8 +58,15 @@ struct TransitionLibraryView: View {
         case "in": "Ease in"
         case "out": "Ease out"
         case "inOut": "Ease in and out"
-        default: "Linear"
+        case TimelineTransition.defaultEasing: "Linear"
+        default: "\(easing)"
         }
+    }
+
+    /// The named easings, plus `current` when it is a curve of its own (a cubic-bezier set by an agent or a preset).
+    static func easings(with current: String?) -> [String] {
+        guard let current, !TimelineTransition.easings.contains(current) else { return TimelineTransition.easings }
+        return TimelineTransition.easings + [current]
     }
 
     /// Kind, length, easing and whether the preset has a sound, under its name.
@@ -115,7 +122,9 @@ struct TransitionPresetFields: View {
         Picker("Easing", selection: Binding(
             get: { preset.easing ?? TimelineTransition.defaultEasing }, set: { preset.easing = $0 }
         )) {
-            ForEach(TimelineTransition.easings, id: \.self) { Text(TransitionLibraryView.easingTitle($0)).tag($0) }
+            ForEach(TransitionLibraryView.easings(with: preset.easing), id: \.self) {
+                Text(TransitionLibraryView.easingTitle($0)).tag($0)
+            }
         }
         Picker("Sound", selection: Binding(get: { preset.sfx ?? "" }, set: { preset.sfx = $0.isEmpty ? nil : $0 })) {
             Text("None").tag("")

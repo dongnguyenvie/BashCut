@@ -1,82 +1,9 @@
 import Foundation
 
-/// Every cut on Main as data (P0-B2, `review.cuts`): its kind (a hard cut or the transition's kind) with length and
-/// easing, a gap before it, the framing on each side and whether it stays the same, plus counts and runs per kind.
-/// `review.sync` (ReviewSync) times the same cuts against the beats and the words.
-public enum ReviewCuts {
-    /// Zoom, pan and tilt of `item` at `frame` frames from its start: its keyframes where it has them, else its
-    /// transform.
-    static func framing(_ item: Item, at frame: Int) -> (zoom: Double, pan: Double, tilt: Double) {
-        let transform = item["transform"]?.object ?? [:]
-        let motion = item.pictureMotion
-        let value = { (property: String, fallback: Double) in motion?.value(property, at: Double(frame)) ?? fallback }
-        return (
-            value("zoom", transform["zoom"]?.double ?? 1), value("pan", transform["pan"]?.double ?? 0),
-            value("tilt", transform["tilt"]?.double ?? 0)
-        )
-    }
-
-    static func framingJSON(_ framing: (zoom: Double, pan: Double, tilt: Double)) -> JSONValue {
-        .object([
-            "zoom": .number(ReviewShots.rounded(framing.zoom)), "pan": .number(ReviewShots.rounded(framing.pan)),
-            "tilt": .number(ReviewShots.rounded(framing.tilt)),
-        ])
-    }
-
-    public static func json(_ project: Project) -> JSONValue {
-        let fps = project.fps.value
-        let main = project.tracks.first { $0.role == TrackRole.main }?.items.sorted { $0.at < $1.at } ?? []
-        let transitions = Dictionary(
-            project.transitions.map { ($0.toItemID, $0) }, uniquingKeysWith: { first, _ in first })
-        var cuts: [JSONValue] = []
-        var kinds: [String] = []
-        for (left, right) in zip(main, main.dropFirst()) {
-            var kind = "hard"
-            var row: [String: JSONValue] = [
-                "index": .integer(cuts.count), "frame": .integer(right.at),
-                "seconds": .number(ReviewShots.rounded(Double(right.at) / fps)), "from": .string(left.id),
-                "to": .string(right.id),
-            ]
-            if let transition = transitions[right.id], transition.fromItemID == left.id {
-                kind = transition.kind
-                row["transitionFrames"] = .integer(transition.duration)
-                row["transitionSeconds"] = .number(ReviewShots.rounded(Double(transition.duration) / fps))
-                row["easing"] = .string(transition.easing)
-            }
-            if right.at > left.end { row["gapFrames"] = .integer(right.at - left.end) }
-            let before = framing(left, at: max(0, left.duration - 1)), after = framing(right, at: 0)
-            row["framingBefore"] = framingJSON(before)
-            row["framingAfter"] = framingJSON(after)
-            row["sameFraming"] = .bool(
-                left.mediaID != nil && left.mediaID == right.mediaID && abs(before.zoom - after.zoom) < 0.001
-                    && abs(before.pan - after.pan) < 0.5 && abs(before.tilt - after.tilt) < 0.5)
-            row["kind"] = .string(kind)
-            kinds.append(kind)
-            cuts.append(.object(row))
-        }
-        var runs: [JSONValue] = []
-        var start = 0
-        for index in kinds.indices.dropFirst() + [kinds.count] where index == kinds.count || kinds[index] != kinds[start] {
-            if index - start >= 2 {
-                runs.append(.object([
-                    "kind": .string(kinds[start]), "fromIndex": .integer(start), "toIndex": .integer(index - 1),
-                    "count": .integer(index - start),
-                ]))
-            }
-            start = index
-        }
-        let counts = Dictionary(grouping: kinds, by: { $0 }).mapValues { JSONValue.integer($0.count) }
-        return .object([
-            "revision": .integer(project.revision), "fps": .number(fps), "cuts": .array(cuts),
-            "counts": .object(counts), "runs": .array(runs),
-            "sameFraming": .integer(cuts.filter { $0.object["sameFraming"] == .bool(true) }.count),
-        ])
-    }
-}
-
 /// When cuts and other events land against the beat grid and the spoken words (P0-B2, `review.sync`): per event
 /// the offset to the nearest beat and to the nearest word edge in frames and milliseconds (positive = after it),
-/// and the distribution of those offsets. No limit says what is "on" the beat.
+/// and count, mean and median of those offsets (with `bins`, also p10/p90 and counts per offset). No limit says what
+/// is "on" the beat.
 public enum ReviewSync {
     public enum Event: String, CaseIterable, Sendable {
         /// `captions`: each caption cue's start against the nearest word edge (P1-E7: a shifted caption track).
@@ -116,7 +43,9 @@ public enum ReviewSync {
         return result.sorted { $0.frame == $1.frame ? $0.item < $1.item : $0.frame < $1.frame }
     }
 
-    public static func json(_ project: Project, words: [WordSpan], kinds: Set<Event> = [.cuts]) -> JSONValue {
+    public static func json(
+        _ project: Project, words: [WordSpan], kinds: Set<Event> = [.cuts], bins: Bool = false
+    ) -> JSONValue {
         let fps = project.fps.value
         let beats = project.beatFrames
         let edges = words.flatMap { [(frame: $0.at, edge: "start", text: $0.text), (frame: $0.end, edge: "end", text: $0.text)] }
@@ -153,7 +82,7 @@ public enum ReviewSync {
         return .object([
             "revision": .integer(project.revision), "fps": .number(fps), "beats": .integer(beats.count),
             "words": .integer(words.count), "events": .array(rows),
-            "beat": distribution(beatOffsets, fps: fps), "word": distribution(wordOffsets, fps: fps),
+            "beat": distribution(beatOffsets, fps: fps, bins: bins), "word": distribution(wordOffsets, fps: fps, bins: bins),
         ])
     }
 
@@ -168,22 +97,25 @@ public enum ReviewSync {
         return frame - frames[after - 1] <= frames[after] - frame ? after - 1 : after
     }
 
-    /// Count, mean, median, p10, p90 of `offsets` in frames, and how many land at each offset from −6 to +6 frames
-    /// with the rest counted as `earlier` and `later`.
-    static func distribution(_ offsets: [Int], fps: Double) -> JSONValue {
+    /// Count, mean and median of `offsets` in frames; with `bins`, also p10, p90 and how many land at each offset
+    /// from −6 to +6 frames with the rest counted as `earlier` and `later`.
+    static func distribution(_ offsets: [Int], fps: Double, bins: Bool) -> JSONValue {
         guard !offsets.isEmpty else { return .object(["count": .integer(0)]) }
         let sorted = offsets.sorted()
         let percentile = { (share: Double) in sorted[min(sorted.count - 1, Int((Double(sorted.count - 1) * share).rounded()))] }
+        let mean = Double(offsets.reduce(0, +)) / Double(offsets.count)
+        var result: [String: JSONValue] = [
+            "count": .integer(offsets.count), "meanFrames": .number(ReviewShots.rounded(mean)),
+            "medianFrames": .integer(percentile(0.5)), "medianMs": .number((Double(percentile(0.5)) / fps * 1_000).rounded()),
+        ]
+        guard bins else { return .object(result) }
         var counts: [String: JSONValue] = [:]
         for offset in -6...6 { counts[String(offset)] = .integer(offsets.filter { $0 == offset }.count) }
         counts["earlier"] = .integer(offsets.filter { $0 < -6 }.count)
         counts["later"] = .integer(offsets.filter { $0 > 6 }.count)
-        let mean = Double(offsets.reduce(0, +)) / Double(offsets.count)
-        return .object([
-            "count": .integer(offsets.count), "meanFrames": .number(ReviewShots.rounded(mean)),
-            "medianFrames": .integer(percentile(0.5)), "p10Frames": .integer(percentile(0.1)),
-            "p90Frames": .integer(percentile(0.9)), "medianMs": .number((Double(percentile(0.5)) / fps * 1_000).rounded()),
-            "byOffset": .object(counts),
-        ])
+        result["p10Frames"] = .integer(percentile(0.1))
+        result["p90Frames"] = .integer(percentile(0.9))
+        result["byOffset"] = .object(counts)
+        return .object(result)
     }
 }

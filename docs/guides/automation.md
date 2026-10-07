@@ -262,7 +262,8 @@ bashcut help review shots   # one command: description, mode, parameters (works 
 
 The agent instructions list each command a terminal agent uses with its usage and the first sentence of its
 description (about 8k tokens); commands for the user, panels and plugin views (chat, plugin install and views,
-storage, agent setup, `ui open/panel/source/notify`, knowledge approval, skill switches) are left out but still work.
+storage, agent setup, knowledge approval, skill switches, `clip speed`/`clip speed-curve` (agents use the `setSpeed`
+and `setSpeedCurve` ops)) are left out but still work.
 
 Add `--format text` to any command to print string results without JSON quoting. MCP tools take the same
 parameter names as the JSON-RPC `params` (`baseRev`, `atFrame`, …); the CLI spells them as options
@@ -297,15 +298,15 @@ tool name and parameters (types, ranges, choices, defaults). It is generated fro
 | `project create --canvas` | `portrait` (default), `landscape`, `square` |
 | `project create --resolution` | `720`, `1080` (default), `2160` (short side) |
 | `project create --fps` | `29.97` (default), `30`, `24`, `60` |
-| `project create --language` | A language tag; defaults to `vi` |
+| `project create --language` | A language tag; unset (plugins detect the language) by default |
 | `project create --dir` | An existing absolute folder; defaults to the projects folder (`project folder`, `~/Movies/BashCut` unless changed), made on first use |
 | `layers add --kind` | `video`, `adjustment`, `text`, `audio` |
 | `adjustment add --look` | A library look without a LUT file: built-in `original` (default), `vivid`, `muted-film`, `black-white`, `bright-airy`, `moody`, or `scope:id` from `library list --kind look` |
 | Grade options | `--exposure` −10…10, `--contrast` 0…4, `--saturation` 0…4, `--lut-strength` 0…1 (decimals allowed), `--lut` a LUT ID |
 | `media import --kind` | `video` (default), `audio` |
 | `export start --preset` | `tiktok`, `youtube-1080`, `youtube-4k`, `quick-draft`, `prores` |
-| `ui open <dialog>` | `new-project`, `export`, `export-report`, `agent-changes`, `review`, `history`, `plugins`, `settings`, `doctor`, `knowledge`, `ask`, `sections`, `external-changes`, `plugin-proposals` |
-| `ui panel <panel>` | `media`, `audio`, `text`, `stickers`, `effects`, `transitions`, `filters`, `voice` |
+| `ui action open <dialog>` | `new-project`, `export`, `export-report`, `agent-changes`, `review`, `history`, `plugins`, `settings`, `doctor`, `knowledge`, `ask`, `sections`, `external-changes`, `plugin-proposals` |
+| `ui action panel <panel>` | `media`, `audio`, `text`, `stickers`, `effects`, `transitions`, `filters`, `voice` |
 | `ui view --zoom` | 1–600 pixels per second; `--zoom-anchor` is the frame kept in place (the playhead by default) |
 | `ui view --snap`, `--safe-area`, `--compare`, `--agent-dock` | `on` / `off` (also `true`/`false`, `yes`/`no`, `1`/`0`) |
 | `ui view --inspector` | `video`, `audio`, `text`, `color`, `speed` |
@@ -428,10 +429,14 @@ recorded show only label and author. Plugins see `why` in the `edit.committed` e
 - **Sections and LUTs** keep stable IDs. A LUT catalog entry uses a project-relative `luts/*.cube` path and a 3D
   size from 2 through 64. Apply it with `setProperties` on `color.lut`, with optional `color.lutStrength` from 0
   through 1.
-- **Transitions.** `upsertTransition` takes stable `from`/`to` clip IDs, a kind (`dissolve`, `whip`, `blink`,
-  `zoom`, `spin`, `shutter` or `wipe`), an integer-frame `duration` and an optional `easing` (`linear`, the default,
-  `in`, `out` or `inOut`; preview and export shape the tween the same way). The clips must be adjacent on one video
-  track. `deleteTransition` restores a hard cut; moving or deleting either clip removes a transition that no
+- **Transitions.** `upsertTransition` takes stable `from`/`to` clip IDs, a kind, an integer-frame `duration`, an
+  optional `easing` (`linear`, the default, `in`, `out`, `inOut` or `"cubic-bezier(x1,y1,x2,y2)"` with x1 and x2 in
+  0…1, the same ease type keyframes use) and an optional `motion`. The built-in kinds (`dissolve`, `whip`, `blink`,
+  `zoom`, `spin`, `shutter`, `wipe`) are rows of data; any other kind (lowercase letters, digits, dashes) needs a
+  `motion`: `{"outgoing": {…}, "incoming": {…}}`, each side mapping `zoom`, `panX`/`panY` (share of the frame,
+  right/up), `rotation` (degrees, counterclockwise), `opacity`, `exposure` (EV), `scaleX` (horizontal squeeze) or
+  `reveal` (share of the width shown from the left) to 2–16 values spread evenly over the eased tween. Preview and
+  export draw it the same way. The clips must be adjacent on one video track. `deleteTransition` restores a hard cut; moving or deleting either clip removes a transition that no
   longer describes a valid cut.
 - **Roll.** `{"op": "roll", "item": "ID", "edge": "end", "toFrame": 75}` moves the shared cut with exactly one
   adjacent clip; `edge: "start"` uses the preceding clip. Both clips must stay nonempty and within source
@@ -689,7 +694,7 @@ Each panel (Audio, Text, Stickers, Effects, Transitions, Filters) shows its item
 filters, badges for agent-made and project or Mac items, plugin packs grouped under the plugin's name, **Add…** (and
 drops) for files and packs, **Save selection as…**, **Search…** and **Generate…** when a plugin provides them for the
 panel's kinds (the sheet runs `library search`/`library generate`, previews each candidate and saves it with **Save**;
-`ui open library-search|library-generate` opens it for the open panel and `ui respond run|save-<index>|close` answers
+`ui action open library-search|library-generate` opens it for the open panel and `ui respond run|save-<index>|close` answers
 it), and a context menu: Duplicate & Edit (`update --as`), Rename (`update --name`), Move (`move`), Show Source &
 License (`get`), Show in Finder and Remove (`remove`). `ui view --library-query X --library-pack P --library-tag T
 --library-scope user` sets the open panel's search and filters (`libraryFilter` in the view state); the item sheet
@@ -744,7 +749,7 @@ bashcut ui respond --path /path/to/project
 - Actions that open an alert or panel (`project.new`, `project.open`, `project.import-media`) return at once
   so you can answer the dialog.
 - `ui respond --dialog ID` answers only if that dialog is topmost.
-- `ui open` refuses while another dialog is open, and some sheets only open when they apply (for example
+- `ui action open` refuses while another dialog is open, and some sheets only open when they apply (for example
   `export` needs a nonempty timeline).
 - The export approval and plugin-install sheets offer agents only `deny` or `cancel`. Approving stays with
   the user.
@@ -757,7 +762,8 @@ Voice panels, so provider resolution, health checks, output confinement and vali
 ```sh
 bashcut captions generate --media MEDIA_ID --replace
 bashcut beats detect --media AUDIO_MEDIA_ID
-bashcut voice speak 'Xin chào các bạn' --takes 3 --at-frame 120
+bashcut voice speak 'Xin chào các bạn' --takes 3
+bashcut voice place voiceover/generated/…/take-2.wav --at-frame 120
 bashcut jobs wait JOB_ID --timeout 25
 bashcut jobs status JOB_ID
 bashcut jobs cancel JOB_ID
@@ -766,25 +772,28 @@ bashcut jobs cancel JOB_ID
 - Each returns `{"job": ID, "state": "running"}` at once. `jobs wait ID` holds the call until the job's state or
   step changes or it finishes, up to `--timeout` seconds (1–30, default 25), and returns `{job, changed,
   timedOut}`; call it again until the state is `completed`, `failed` or `cancelled` instead of polling `jobs
-  status`. A completed job's result includes the new `rev`, plus `bpm`/`beats`, or the inserted voice `item`
-  with its score and all take scores.
+  status`. A completed job's result includes the new `rev`, plus `bpm`/`beats`, or the measured voice `takes`
+  (and the `item` a chosen take went into).
 - Every job reports `progress` (0–1 or null), `step` (its current step; `detail` is the same text) and
   `usage {provider, wallSec, units, costUSD, costSource}`. `wallSec` is the time it has run; `provider`, `units`
   and `costUSD` appear only as plugin providers reported them (`costSource: "provider"`), never estimated, and
   are null for BashCut's own work such as exports.
-- `voice speak` and `library generate` may call a paid provider. `--request-id ID` makes a resend return the
+- Every provider job may call a paid provider. `--request-id ID` makes a resend return the
   same job (`reused: true`) instead of paying again, while the job is still listed. `--dry-run` runs nothing and
   returns the request as it would go to the provider (option values left out, only their names), `paid`, and the
   provider's `estimate` when it gives one.
 - The result is one undoable edit attributed to the agent, with change markers and the Undo toast.
-- `voice speak --keep-takes` inserts nothing and keeps every take in `voiceover/generated`, so you can choose
-  one and place it with `media import`.
+- `voice speak` measures every take (seconds, units, unitsPerSecond, silences, pauses, the provider's score) and
+  keeps them all in `voiceover/generated` with a `<take>.json` provenance sidecar; pick one and put it on the
+  Voiceover track with `voice place TAKE [--at-frame N | --replace ITEM]`. `--choose N` inserts take N at once;
+  `--replace ITEM` puts take `--choose` (default 1) into that item and times its captions again.
 - `--provider ID` overrides the project preference for one request.
-- `bashcut capabilities get [CAPABILITY] [--kind K]` says whether each capability can serve now: `available`, or
+- `bashcut capabilities get [CAPABILITY] [--kind K] [--voices]` says whether each capability can serve now: `available`, or
   `reason` `missing` (no plugin provides it: the user installs one), `not_configured` (turned off, not approved,
   changed, outdated or missing a required plugin: the user turns it on or approves it) or `unhealthy` (a dependency
   fails its health check). Each provider has `plugin`, `priority`, `paid`, `state` and `detail`; `commands` lists
-  the commands that call the capability. Health checks run in parallel and stop after about 8 s
+  the commands that call the capability; `--voices` adds every voice provider's voices with their facts and measured
+  rates. Health checks run in parallel and stop after about 8 s
   (`healthChecked: false`). A job command whose capability cannot serve fails at the call with `capability_missing`;
   one that fails later in its job keeps `errorCategory` on the job.
 - A capability that is already running (from the UI or another job) is rejected with a retry error.

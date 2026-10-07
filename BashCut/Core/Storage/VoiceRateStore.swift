@@ -2,7 +2,7 @@ import BashCutProject
 import Foundation
 
 /// Speaking rates measured on synthesized takes, kept per voice (P0-C2, P0-C4): `voice speak` adds each take's rate,
-/// and `speech rate` and `voice voices` read them, so a voice's pace is a measurement on this Mac, not an assumption.
+/// and `speech rate` and `capabilities get --voices` read them, so a voice's pace is a measurement on this Mac, not an assumption.
 /// One JSON file in the user's BashCut folder; the newest 30 samples per voice are kept.
 public final class VoiceRateStore: @unchecked Sendable {
     public static let shared = VoiceRateStore(

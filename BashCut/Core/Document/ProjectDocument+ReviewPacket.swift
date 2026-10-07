@@ -36,15 +36,14 @@ extension ProjectDocument {
                 "issues": .array(issues.map(\.json)), "summary": ReviewSummary(issues).json,
                 "diff": previous.map { ReviewRounds.diff(before: $0.issues, after: issues) } ?? .null,
             ])),
-            ("cuts.json", ReviewCuts.json(project)),
+            ("shots.json", ReviewShots.json(project, picture: reviewPicture, summary: true)),
             ("word-landing.json", {
                 var sync = ReviewSync.json(project, words: words, kinds: [.cuts, .text]).object
                 sync["wordSource"] = .string(wordSource)
                 return .object(sync)
             }()),
-            ("hook.json", ReviewHook.json(project, context: reviewContext(), words: words)),
             ("coverage.json", .object([
-                "shots": PlanCoverage.coverage(project), "script": PlanCoverage.scriptCheck(project, words: words),
+                "clips": PlanCoverage.coverage(project), "script": PlanCoverage.scriptCheck(project, words: words),
             ])),
             ("measured.json", .object([
                 "picture": reviewPicture.map { $0.revision == project.revision ? .bool(true) : .string("stale") } ?? .bool(false),
@@ -73,8 +72,8 @@ extension ProjectDocument {
             - plan.json: the brief, the plan, the review profile and the outputs
             - digest.json: what changed since the last review round
             - issues.json: measured issues, counts and the round diff
-            - cuts.json, word-landing.json, hook.json: cut facts, words against cuts and titles, the opening and close
-            - coverage.json: planned shots and script beats against what is on the timeline
+            - shots.json, word-landing.json: shots and cuts on Main, words against cuts and titles
+            - coverage.json: the described shot each clip plays, and the plan's script beats against the words heard
             - measured.json: what was measured and what was not
             - sheet-*.png: a contact sheet at every cut and title
 

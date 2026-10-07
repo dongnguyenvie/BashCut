@@ -66,25 +66,19 @@ struct ProjectPlanTests {
 
 /// The plan against what was measured (P1-D3).
 struct PlanCoverageTests {
-    @Test("Planned shots are placed, found or missing from the descriptions; facts only")
+    @Test("Each clip says which described shot it plays and its planShot; no plan matching")
     func coverage() throws {
         var project = ReviewSequenceTests().project()
-        project["plan"] = .object(["shots": .array([
-            .object(["id": .string("wide"), "purpose": .string("establish"), "size": .string("MS")]),
-            .object(["id": .string("close"), "purpose": .string("detail"), "size": .string("CU")]),
-            .object(["id": .string("tagged"), "purpose": .string("x"), "size": .string("ECU")]),
-            .object(["id": .string("none"), "purpose": .string("y"), "mustShow": .array([.string("bánh mì")])]),
-        ])])
         let main = project.tracks.firstIndex { $0.id == "v1" }!
         project.tracks[main].items[2]["planShot"] = .string("tagged")
-        project.tracks[main].items.removeLast()
         let json = PlanCoverage.coverage(project).object
-        let rows = Dictionary(uniqueKeysWithValues: (json["shots"]?.array ?? []).map { ($0.object["id"]?.string ?? "", $0.object) })
-        #expect(rows["wide"]?["status"] == .string("placed") && rows["wide"]?["foundCount"] == .integer(2))
-        #expect(rows["close"]?["status"] == .string("found"))
-        #expect(rows["tagged"]?["placed"]?.array.first?.object["item"] == .string("c"))
-        #expect(rows["none"]?["status"] == .string("missing"))
-        #expect(json["summary"]?.object["missing"] == .integer(1))
+        let clips = (json["clips"]?.array ?? []).map(\.object)
+        #expect(clips.map { $0["item"] } == ["a", "b", "c", "d"].map(JSONValue.string))
+        #expect(clips[0]["described"]?.object["index"] == .integer(0) && clips[0]["described"]?.object["size"] == .string("MS"))
+        #expect(clips[2]["planShot"] == .string("tagged") && clips[2]["described"]?.object["index"] == .integer(1))
+        #expect(clips[3]["described"]?.object["size"] == .string("CU"))
+        #expect(json["summary"]?.object["described"] == .integer(4))
+        #expect(json["shots"] == nil)
     }
 
     @Test("Beats are found in the heard words with their share, place and section against the plan")
@@ -105,6 +99,8 @@ struct PlanCoverageTests {
         #expect(beats[0]["heardShare"] == .number(0.75) && beats[0]["at"] == .integer(120))
         #expect(beats[0]["inPlannedSection"] == .bool(true) && beats[0]["unmatched"] == .array([.string("các")]))
         #expect(beats[1]["heardShare"] == .number(0) && beats[1]["at"] == nil)
+        let given = PlanCoverage.scriptCheck(project, words: words, beats: [["id": .string("x"), "text": .string("xin chào")]]).object
+        #expect(given["beats"]?.array.first?.object["heardShare"] == .number(1))
     }
 }
 

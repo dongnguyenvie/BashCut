@@ -108,14 +108,16 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
 - `audio measure --curve` / `--timeline` give loudness over time of a file or of the rendered mix (with silent
   stretches), `audio mix-measure` reads per-role stems against each other and against the words, and `library
   analyze` stores sound landmarks; the `audio.loudness` contract has an optional `curve`.
-- Speech and voice: `speech rate`, `narration windows`, measured take facts and explicit take choice in `voice speak`
-  (no pace formula), `voice speak --replace`, `voice check`, `voice fit`, `voice voices` with clone consent,
+- Speech and voice: `speech rate`, `narration windows`, measured takes from `voice speak` placed by the agent with
+  `voice place` (no pace formula, no automatic pick), `voice speak --replace`, `voice check`, `voice fit`, voices by
+  facts (`capabilities get --voices`) with clone consent,
   `captions group` and `captions align`.
 - Review profile (#466, #470): editorial limits only from the project's `review` object (validated), neutral info
-  without them; zones checked against every output with overrides (#469, `platforms list`); loudness per export
+  without them; zones checked against every output with overrides (#469, `platforms get`); loudness per export
   preset (`output.targets`, P0-K2); no creative constants in fixes (#468).
-- `review hook` gives the opening and close as facts; the review's hook check runs only with a project
-  `review.hookSeconds` and no longer judges what the opening text says.
+- The opening and close are read with `review shots`/`review layout --from/--to`, `review layout --ink` and
+  `transcript words --from/--to`; the review's hook check runs only with a project `review.hookSeconds` and no
+  longer judges what the opening text says.
 - `beats detect` keeps the provider's grid v2 per file (strengths, kick-phase downbeats, confidence, fit,
   alternates; `beats grid`), and `audio energy` gives the energy curve (picking lifts and drops is the agent's).
 - `color measure` gives each clip's luma percentiles, saturation, tint per band and clipped/crushed shares from
@@ -125,10 +127,20 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   before/after grid; `review layout` adds reading speed, speech, caption overlap, template repeats, density, the
   pictures on screen and measured contrast (`--contrast`); every video/image item has `scale` facts (fit/fill, zoom,
   pixels per source pixel, `maxZoomNative`, coverage) in `timeline get` and `review shots`.
-- `review shots` reads the edit as a sequence (cut facts, runs and shares from shot descriptions, rhythm overall and
-  per section, keyframe camera moves; `--media` for a source file), `review cuts` lists every cut with kind and
-  framing, `review sync` times cuts, titles and sound effects against beats and words and a render against the
+- `review shots` reads the edit as a sequence (cut facts with kind and framing on both sides, shares from shot
+  descriptions, rhythm overall and per section, keyframe camera moves; `--from/--to` for a range, `--media` for a
+  source file), `review sync` times cuts, titles and sound effects against beats and words and a render against the
   timeline, `review window` and `timeline sheet` show the composed edit as pictures without exporting.
+- Flexibility audit, deferred items (2026-10-08): `review cuts` and `review hook` folded into `review shots`,
+  `review layout --from/--to/--ink` and `transcript words`; no runs or low-variance runs (`--run-length`/`--max-cv`
+  gone); `review sync` bins only with `--bins`; `platforms list` → `platforms get [id]`; `project brief`/`set-brief`
+  and `plan get`/`set` → `project data KEY` / `project set-data KEY`; `clip speed*` user-only (ops `setSpeed`,
+  `setSpeedCurve`); `ui open/panel/source/notify` → `ui action open|panel|source|notify TARGET`; `plugins health`/
+  `views` → `plugins list --health/--views`; `voice voices` → `capabilities get --voices`; gates by any name;
+  `review coverage` gives the described shot per clip (the agent joins its plan); `script check --beats/--text`;
+  `voice speak` measures and keeps takes, `voice place` puts one on the timeline. Restyle: one ease type with
+  `cubic-bezier(…)`, transitions as data (`motion`, any kind), keyframes on `color.*` and numeric `textStyle.*`,
+  `textStyle.accentBars`.
 - `media inventory` lists capture facts (time, GPS, device, shown size) read once per file content
   (`.bashcut/cache/inventory`), speech seconds and language, and what is measured, transcribed and described, per
   media, folder and project; `context get` adds `analysis` (running analysis jobs, media not measured, transcribed or
@@ -138,7 +150,8 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   filmstrip with the sound level, speech-map gaps and transcript words; all by source time, in
   `.bashcut/cache/media-stills`.
 - `media describe` stores agent-written shot facts on a media (size, angle, move, direction, subjects, people,
-  on-screen text, confidence, best moment, frames looked at) in a closed vocabulary as one undoable edit;
+  on-screen text, tags, confidence, best moment, frames looked at) as open labels (the lists are a suggested
+  vocabulary; unknown fields are kept) as one undoable edit;
   `media description` reads them with coverage of the `media analyze` shots, and `review shots` adds the facts of
   the source shot each clip plays (`described`).
 - `media speech-map` calibrates sound spans from the `media analyze` levels (Otsu split, separation in dB and eta,
@@ -276,7 +289,7 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   CLI and MCP.
 - 48 commands declared once as `CommandSpec`s, which generate validation, the CLI parser, MCP tools and agent
   instructions. Every button, menu item and shortcut is a `UIAction` (`ui actions`, `ui action <id|shortcut>`);
-  every alert, panel and sheet goes through `ModalCenter` (`ui dialog`, `ui respond`, `ui open`).
+  every alert, panel and sheet goes through `ModalCenter` (`ui dialog`, `ui respond`, `ui action open`).
 - Agent edits keep a before/after diff, show ◆ markers and an Undo/Show Changes toast, and restore the latest diff
   after reopen. Edits are recorded in a metadata-only audit log.
 - Privileged exports need a live token and an in-app approval sheet showing the concrete output; agents can only
@@ -307,7 +320,7 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   capability is one `CapabilityAdapter`; calls go through a `PluginTransport`, with `PluginProcessRunner` as the
   one-shot process transport (one bounded child per request, filtered environment, process-group cancellation).
 - `captions.generate`, `beats.detect` and `voice.speak` run as background jobs with `jobs.status`/`jobs.cancel`
-  and apply one undoable agent-attributed edit; `plugins.list` and `plugins health` report providers,
+  and apply one undoable agent-attributed edit; `plugins list` (with `--health`) reports providers,
   availability and diagnostics. See [plugins.md](../guides/plugins.md).
 - Plugin API 2: an API window (`minApiVersion`/`maxApiVersion`), SHA-256 trust pins with user-only Trust and
   enable switches (states ready, disabled, untrusted, changed, outdated), native `options` per user or project,
@@ -332,7 +345,7 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   coalesced changes, streamed renders at most every 60 ms, answers parsed off the main actor. View and session
   action requests get the host channel (`PluginCommandSession`, author `plugin`). `requires` with semver ranges
   (`needs-plugin`, registry install offers requirements), `uses` + `plugins.invoke`, `features`. Commands
-  `plugins views|view|view-event|show-view|invoke`. Session lines are read with `JSONValue(parsing:)`. Example:
+  `plugins list --views`, `plugins view|view-event|show-view|invoke`. Session lines are read with `JSONValue(parsing:)`. Example:
   `bashcut-plugins/samples/views-example`; perf: `PluginViewPerfTests`, `PluginViewSessionPerfTests`.
 - Plugin API 9 (#451): `review.check` (`ReviewCheckCapability`): every ready provider runs on `review.measure`,
   side by side, 30 s each; failures become info issues with `source`; `review.disabledChecks` per project;

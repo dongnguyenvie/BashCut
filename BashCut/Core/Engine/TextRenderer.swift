@@ -90,7 +90,9 @@ private struct CaptionLineLayout {
 /// A text item's look: its preset's defaults overridden by the open `textStyle` fields (Phase 2 restyle): `align`
 /// left|center|right, `positionX` (0–1: the left edge, centre or right edge by align), `lineHeight` (× font size),
 /// `tracking` (× font size between letters), `uppercase`, `background {color, opacity, padding, radius}` (a plate
-/// behind the block) and `shadow {color, opacity, blur, dx, dy}`.
+/// behind the block), `shadow {color, opacity, blur, dx, dy}` and `accentBars [{side left|right|top|bottom, color,
+/// opacity, thickness, gap (× font size), length (share of the block's side), radius}]` (flexibility audit C1). A
+/// background or accent bars replace the preset's own plates and bars.
 private struct CaptionStyle {
     let preset: CaptionPreset
     let style: [String: JSONValue]
@@ -132,6 +134,10 @@ private struct CaptionStyle {
     }
 
     var background: [String: JSONValue]? { style["background"]?.object }
+    var accentBars: [[String: JSONValue]]? {
+        guard case .array(let bars)? = style["accentBars"] else { return nil }
+        return bars.map(\.object)
+    }
     var shadow: [String: JSONValue]? { style["shadow"]?.object }
 }
 
@@ -370,16 +376,22 @@ enum TextRenderer {
         _ look: CaptionStyle, lines: [CaptionLineLayout], lineHeight: CGFloat, canvas: CGSize
     ) -> [CaptionDecoration] {
         guard let first = lines.first else { return [] }
-        if let background = look.background {
-            let padding = CGFloat(background["padding"]?.double ?? 0.3) * lineHeight / look.lineSpacing
+        if look.background != nil || look.accentBars != nil {
+            let points = lineHeight / look.lineSpacing
             let minX = lines.map(\.position.x).min() ?? 0
             let maxX = lines.map { $0.position.x + $0.width }.max() ?? 0
             let top = (lines.last?.position.y ?? first.position.y) + lineHeight * 0.8
-            let rect = CGRect(x: minX - padding, y: first.position.y - lineHeight * 0.28 - padding,
-                              width: maxX - minX + padding * 2, height: top - first.position.y + lineHeight * 0.28 + padding * 2)
-            return [CaptionDecoration(
-                rect: rect, color: color(background["color"]?.string ?? "#000000", alpha: background["opacity"]?.double ?? 0.8),
-                radius: CGFloat(background["radius"]?.double ?? 0.2) * lineHeight / look.lineSpacing)]
+            var box = CGRect(x: minX, y: first.position.y - lineHeight * 0.28, width: maxX - minX,
+                             height: top - first.position.y + lineHeight * 0.28)
+            var result: [CaptionDecoration] = []
+            if let background = look.background {
+                let padding = CGFloat(background["padding"]?.double ?? 0.3) * points
+                box = box.insetBy(dx: -padding, dy: -padding)
+                result.append(CaptionDecoration(
+                    rect: box, color: color(background["color"]?.string ?? "#000000", alpha: background["opacity"]?.double ?? 0.8),
+                    radius: CGFloat(background["radius"]?.double ?? 0.2) * points))
+            }
+            return result + (look.accentBars ?? []).map { accentBar($0, around: box, points: points) }
         }
         switch look.preset {
         case .keywordSticker:
@@ -404,6 +416,28 @@ enum TextRenderer {
         default: return []
         }
     }
+    /// One accent bar beside `box` (the text block, or its plate): on `side`, `gap` font sizes away, `thickness` font
+    /// sizes thick and `length` of that side long, centred on it.
+    private static func accentBar(_ bar: [String: JSONValue], around box: CGRect, points: CGFloat) -> CaptionDecoration {
+        let thickness = CGFloat(min(2, max(0.005, bar["thickness"]?.double ?? 0.12))) * points
+        let gap = CGFloat(min(4, max(-4, bar["gap"]?.double ?? 0.2))) * points
+        let share = CGFloat(min(1, max(0, bar["length"]?.double ?? 1)))
+        let rect: CGRect
+        switch bar["side"]?.string ?? "left" {
+        case "right":
+            rect = CGRect(x: box.maxX + gap, y: box.midY - box.height * share / 2, width: thickness, height: box.height * share)
+        case "top":
+            rect = CGRect(x: box.midX - box.width * share / 2, y: box.maxY + gap, width: box.width * share, height: thickness)
+        case "bottom":
+            rect = CGRect(x: box.midX - box.width * share / 2, y: box.minY - gap - thickness, width: box.width * share, height: thickness)
+        default:
+            rect = CGRect(x: box.minX - gap - thickness, y: box.midY - box.height * share / 2, width: thickness, height: box.height * share)
+        }
+        return CaptionDecoration(
+            rect: rect, color: color(bar["color"]?.string ?? "#FACC15", alpha: bar["opacity"]?.double ?? 1),
+            radius: CGFloat(max(0, bar["radius"]?.double ?? 0)) * thickness)
+    }
+
     static func color(_ hex: String, alpha: Double = 1) -> CGColor {
         let value =
             UInt32(hex.trimmingCharacters(in: CharacterSet(charactersIn: "#")), radix: 16) ?? 0xFFFFFF

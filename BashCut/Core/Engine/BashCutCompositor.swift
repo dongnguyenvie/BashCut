@@ -18,9 +18,9 @@ public final class FrameInstruction: NSObject, AVVideoCompositionInstructionProt
         self.layers = layers
         containsTweening = layers.contains {
             switch $0 {
-            case .video(let layer): layer.transition != nil || layer.motion != nil
-            case .text(let text): text.motion != nil || text.wordStarts != nil
-            case .adjustment: false
+            case .video(let layer): layer.transition != nil || layer.motion != nil || layer.style != nil
+            case .text(let text): text.motion != nil || text.wordStarts != nil || text.style != nil
+            case .adjustment(let adjustment): adjustment.style != nil
             }
         }
         requiredSourceTrackIDs = layers.compactMap {
@@ -41,6 +41,8 @@ public enum VisualLayer: @unchecked Sendable {
 public struct TextLayer: @unchecked Sendable {
     public let item: Item
     public let motion: LayerMotion?
+    /// Keyed `textStyle.*` fields; the text is then drawn again for each frame's style.
+    public let style: StyleMotion?
     /// Word starts (frames from the item's start) when the item shows its words as they are spoken.
     public let wordStarts: [Int]?
     public let fps: Double
@@ -51,6 +53,7 @@ public struct TextLayer: @unchecked Sendable {
         self.item = item
         self.motion = motion
         self.fps = fps
+        style = StyleMotion(item: item, fps: fps)
         wordStarts = item.wordStyle == nil ? nil : item.wordTimings.map(\.at)
         cacheKey = TextRenderer.cacheKey(item)
     }
@@ -88,9 +91,12 @@ private final class AnchorCache: @unchecked Sendable {
 public struct AdjustmentLayer: @unchecked Sendable {
     public let properties: [String: JSONValue]
     public let lut: CubeLUT?
-    public init(properties: [String: JSONValue], lut: CubeLUT? = nil) {
+    /// Keyed `color.*` fields.
+    public let style: StyleMotion?
+    public init(properties: [String: JSONValue], lut: CubeLUT? = nil, style: StyleMotion? = nil) {
         self.properties = properties
         self.lut = lut
+        self.style = style
     }
 }
 
@@ -104,11 +110,15 @@ public struct FrameLayer: @unchecked Sendable {
     public let motion: (LayerMotion, ClipPlacement)?
     /// The visible part of the source frame, cut before the transform.
     public let crop: SourceCrop?
+    /// Keyed `color.*` fields.
+    public let style: StyleMotion?
     public init(
         trackID: CMPersistentTrackID, transform: CGAffineTransform,
         properties: [String: JSONValue] = [:], transition: RenderTransition? = nil,
-        lut: CubeLUT? = nil, motion: (LayerMotion, ClipPlacement)? = nil, crop: SourceCrop? = nil
+        lut: CubeLUT? = nil, motion: (LayerMotion, ClipPlacement)? = nil, crop: SourceCrop? = nil,
+        style: StyleMotion? = nil
     ) {
+        self.style = style
         self.trackID = trackID
         self.transform = transform
         self.properties = properties
@@ -127,6 +137,8 @@ public struct RenderTransition: Sendable, Equatable {
     public let fps: Double
     /// `TimelineTransition.easing`; linear is the straight tween.
     public var easing = TimelineTransition.defaultEasing
+    /// `TimelineTransition.motion`; nil draws the built-in row of `kind`.
+    public var motion: TransitionMotion?
 
     /// How far the tween is at `time` seconds, from 0 to 1, shaped by the easing.
     public func progress(at time: Double) -> Double {
@@ -177,7 +189,8 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
                         to: sourceImage, transition: transition,
                         time: request.compositionTime.seconds, bounds: bounds)
                 }
-                sourceImage = Self.graded(sourceImage, properties: video.properties, lut: video.lut)
+                let properties = video.style?.fields(video.properties, at: time) ?? video.properties
+                sourceImage = Self.graded(sourceImage, properties: properties, lut: video.lut)
                 let opacity = (motion?.opacity ?? video.properties["opacity"]?.double ?? 1)
                     * transitionOpacity
                 if opacity != 1 {
@@ -187,10 +200,14 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
                 }
                 image = sourceImage.composited(over: image)
             case .adjustment(let adjustment):
-                image = Self.graded(image, properties: adjustment.properties, lut: adjustment.lut).cropped(to: bounds)
+                let properties = adjustment.style?.fields(adjustment.properties, at: request.compositionTime.seconds)
+                    ?? adjustment.properties
+                image = Self.graded(image, properties: properties, lut: adjustment.lut).cropped(to: bounds)
             case .text(let text):
                 let spoken = text.spokenWord(at: request.compositionTime.seconds)
-                if let overlay = TextRenderer.overlay(text.item, size: size, spoken: spoken, itemKey: text.cacheKey) {
+                let styled = text.style.map { Item(fields: $0.fields(text.item.fields, at: request.compositionTime.seconds)) }
+                if let overlay = TextRenderer.overlay(
+                    styled ?? text.item, size: size, spoken: spoken, itemKey: styled == nil ? text.cacheKey : nil) {
                     image = Self.animated(overlay, text: text, size: size,
                                           time: request.compositionTime.seconds).composited(over: image)
                 }
@@ -242,50 +259,31 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
         return image
     }
 
-    // Each case is intentionally isolated here so preview and export share identical tween math.
-    // swiftlint:disable:next cyclomatic_complexity
+    /// The transition's motion at this time (C5: every kind is data): exposure, then zoom, horizontal squeeze and
+    /// rotation around the frame centre with the pan, then the reveal from the left. Preview and export share it.
     private func applyTransition(
         to input: CIImage, transition: RenderTransition, time: Double, bounds: CGRect
     ) -> (CIImage, Double) {
         let progress = transition.progress(at: time)
-        let center = CGPoint(x: bounds.midX, y: bounds.midY)
+        let motion = transition.motion ?? TransitionMotion.resolved(kind: transition.kind, motion: nil)
+        let value = { (property: String) in motion.value(property, incoming: transition.incoming, at: progress) }
         var image = input
-        var opacity = 1.0
-        func scale(_ value: Double) {
-            image = image.transformed(
-                by: CGAffineTransform(translationX: center.x, y: center.y)
-                    .scaledBy(x: value, y: value).translatedBy(x: -center.x, y: -center.y))
+        if let exposure = value("exposure"), exposure != 0 {
+            image = image.applyingFilter("CIExposureAdjust", parameters: [kCIInputEVKey: exposure])
         }
-        switch transition.kind {
-        case "whip":
-            let offset = transition.incoming ? (1 - progress) * bounds.width : -progress * bounds.width
-            image = image.transformed(by: CGAffineTransform(translationX: offset, y: 0))
-        case "blink":
-            image = image.applyingFilter(
-                "CIExposureAdjust", parameters: [kCIInputEVKey: sin(.pi * progress) * 4])
-            if transition.incoming { opacity = progress }
-        case "zoom":
-            scale(transition.incoming ? 1.25 - 0.25 * progress : 1 - 0.1 * progress)
-            if transition.incoming { opacity = progress }
-        case "spin":
-            let angle = transition.incoming ? (1 - progress) * .pi / 2 : -progress * .pi / 2
+        let zoom = value("zoom") ?? 1, squeeze = max(0.001, value("scaleX") ?? 1)
+        let rotation = (value("rotation") ?? 0) * .pi / 180
+        let pan = CGPoint(x: (value("panX") ?? 0) * bounds.width, y: (value("panY") ?? 0) * bounds.height)
+        if zoom != 1 || squeeze != 1 || rotation != 0 || pan != .zero {
             image = image.transformed(
-                by: CGAffineTransform(translationX: center.x, y: center.y)
-                    .rotated(by: angle).translatedBy(x: -center.x, y: -center.y))
-            if transition.incoming { opacity = progress }
-        case "shutter":
-            let amount = max(0.001, transition.incoming ? progress : 1 - progress)
-            image = image.transformed(
-                by: CGAffineTransform(translationX: center.x, y: 0)
-                    .scaledBy(x: amount, y: 1).translatedBy(x: -center.x, y: 0))
-        case "wipe":
-            if transition.incoming {
-                image = image.cropped(
-                    to: CGRect(x: 0, y: 0, width: bounds.width * progress, height: bounds.height))
-            }
-        default:
-            if transition.incoming { opacity = progress }
+                by: CGAffineTransform(translationX: bounds.midX + pan.x, y: bounds.midY + pan.y)
+                    .rotated(by: rotation).scaledBy(x: zoom * squeeze, y: zoom)
+                    .translatedBy(x: -bounds.midX, y: -bounds.midY))
         }
+        if let reveal = value("reveal") {
+            image = image.cropped(to: CGRect(x: bounds.minX, y: bounds.minY, width: bounds.width * reveal, height: bounds.height))
+        }
+        let opacity = value("opacity") ?? 1
         return (image, opacity)
     }
 }

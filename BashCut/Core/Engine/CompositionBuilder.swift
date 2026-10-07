@@ -157,10 +157,11 @@ public actor CompositionBuilder {
                         zoom: properties["zoom"]?.double ?? 1, pan: properties["pan"]?.double ?? 0,
                         tilt: properties["tilt"]?.double ?? 0, rotation: properties["rotation"]?.double ?? 0)
                     let motion = item.pictureMotion.map { LayerMotion(motion: $0, item: item, fps: project.fps.value) }
+                    let style = StyleMotion(item: item, fps: project.fps.value)
                     let incoming = transitionTo[item.id].map {
                         RenderTransition(
                             kind: $0.kind, startFrame: item.at, duration: $0.duration,
-                            incoming: true, fps: project.fps.value, easing: $0.easing)
+                            incoming: true, fps: project.fps.value, easing: $0.easing, motion: $0.motion)
                     }
                     let lut = try loadLUT(for: item)
                     let crop = SourceCrop(
@@ -171,7 +172,7 @@ public actor CompositionBuilder {
                             layer: FrameLayer(
                                 trackID: target.trackID, transform: transform,
                                 properties: item.fields, transition: incoming, lut: lut,
-                                motion: motion.map { ($0, placement) }, crop: crop)))
+                                motion: motion.map { ($0, placement) }, crop: crop, style: style)))
                     if let transition = transitionFrom[item.id] {
                         let hold = try visualLanes.take(
                             layer: track.id, start: item.end, end: item.end + transition.duration, composition: composition)
@@ -194,8 +195,9 @@ public actor CompositionBuilder {
                                     transition: RenderTransition(
                                         kind: transition.kind, startFrame: item.end,
                                         duration: transition.duration, incoming: false,
-                                        fps: project.fps.value, easing: transition.easing), lut: lut,
-                                    motion: motion.map { ($0, placement) }, crop: crop)))
+                                        fps: project.fps.value, easing: transition.easing, motion: transition.motion),
+                                    lut: lut,
+                                    motion: motion.map { ($0, placement) }, crop: crop, style: style)))
                     }
                 }
                 // Main sound remains attached in the spike until separate linked dialogue editing lands.
@@ -245,7 +247,9 @@ public actor CompositionBuilder {
                 timedLayers += (visualByTrack[track.id] ?? []).map { ($0.start, $0.end, .video($0.layer)) }
             } else if track.isAdjustment {
                 for item in track.items {
-                    let layer = AdjustmentLayer(properties: item.fields, lut: try loadLUT(for: item))
+                    let layer = AdjustmentLayer(
+                        properties: item.fields, lut: try loadLUT(for: item),
+                        style: StyleMotion(item: item, fps: project.fps.value))
                     timedLayers.append((item.at, item.end, .adjustment(layer)))
                 }
             } else if track.kind == "text" {

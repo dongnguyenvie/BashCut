@@ -108,7 +108,7 @@ struct SettingsModelTests {
         let defaults = try defaults()
         defer { defaults.removePersistentDomain(forName: suite) }
         let settings = SettingsModel(defaults: defaults)
-        #expect(WorkflowGate.allCases.allSatisfy { settings.gateMode($0) == .ask })
+        #expect(WorkflowGate.builtIns.allSatisfy { settings.gateMode($0) == .ask })
         #expect(settings.maxReviewRounds == 3)
         settings.setGateMode(.roughCut, .skip)
         settings.setGateMode(.draft, .notify)
@@ -117,7 +117,25 @@ struct SettingsModelTests {
         #expect(reloaded.gateMode(.roughCut) == .skip && reloaded.gateMode(.draft) == .notify && reloaded.gateMode(.brief) == .ask)
         #expect(reloaded.maxReviewRounds == 2)
         #expect(WorkflowGate(id: "g3") == .roughCut && WorkflowGate(id: "script") == .script && WorkflowGate(id: "G9") == nil)
+        #expect(WorkflowGate(id: "music pick") == nil && WorkflowGate(id: String(repeating: "a", count: 41)) == nil)
         let gates = reloaded.workflowJSON.object["gates"]?.array.map(\.object) ?? []
         #expect(gates.first { $0["id"] == .string("G3") }?["mode"] == .string("skip"))
+    }
+
+    @Test("A gate by any name asks, is listed after the built-ins once seen and keeps its mode (flexibility audit A6)")
+    func namedGates() throws {
+        let defaults = try defaults()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = SettingsModel(defaults: defaults)
+        let music = try #require(WorkflowGate(id: "music-pick"))
+        #expect(!music.isBuiltIn && music.name == "music-pick" && settings.gateMode(music) == .ask)
+        #expect(settings.workflowGates == WorkflowGate.builtIns)
+        settings.noteGate(music)
+        #expect(SettingsModel(defaults: defaults).workflowGates == WorkflowGate.builtIns + [music])
+        settings.setGateMode(music, .skip)
+        settings.setGateMode(music, .ask)
+        #expect(SettingsModel(defaults: defaults).workflowGates.last == music)
+        let gates = settings.workflowJSON.object["gates"]?.array.map(\.object) ?? []
+        #expect(gates.last?["id"] == .string("music-pick") && gates.last?["mode"] == .string("ask"))
     }
 }

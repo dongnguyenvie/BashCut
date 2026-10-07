@@ -13,7 +13,7 @@ struct CheckpointView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Label("\(request.gate.rawValue) · \(request.gate.title)", systemImage: "hand.raised")
+            Label(request.gate.label, systemImage: "hand.raised")
                 .font(.title2.bold())
             Text("\(request.author.rawValue.capitalized) is waiting for your answer. Revision \(request.revision).")
                 .foregroundStyle(.secondary)

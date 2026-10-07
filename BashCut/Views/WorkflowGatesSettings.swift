@@ -1,14 +1,15 @@
 import BashCutDocument
 import SwiftUI
 
-/// Where an agent's run stops for you (P1-D4): each gate asks, tells you, or is skipped, and the review round limit.
+/// Where an agent's run stops for you (P1-D4): each gate (built in, or one a skill stopped at) asks, tells you, or is
+/// skipped, and the review round limit.
 struct WorkflowGatesSettings: View {
     @Bindable var settings: SettingsModel
 
     var body: some View {
         SettingsSection("Workflow gates") {
-            ForEach(WorkflowGate.allCases, id: \.self) { gate in
-                SettingsRow(verbatim: "\(gate.rawValue) · \(gate.title)", keywords: ["gate", "checkpoint", "approve", gate.name]) {
+            ForEach(settings.workflowGates, id: \.self) { gate in
+                SettingsRow(verbatim: gate.label, keywords: ["gate", "checkpoint", "approve", gate.name]) {
                     Picker(gate.title, selection: Binding(get: { settings.gateMode(gate) }, set: { settings.setGateMode(gate, $0) })) {
                         Text("Ask me").tag(WorkflowGate.Mode.ask)
                         Text("Tell me").tag(WorkflowGate.Mode.notify)

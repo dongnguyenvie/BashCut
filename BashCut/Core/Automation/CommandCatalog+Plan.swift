@@ -3,7 +3,7 @@ import Foundation
 
 /// Planning, gates, selects and quote ranges (P1-D).
 extension CommandCatalog {
-    /// The brief and the edit plan (P1-D1, P1-D2).
+    /// Credits and the agent's notes on the project: brief, plan and any key (P1-D1, P1-D2).
     static let planSpecs: [CommandSpec] = [
         CommandSpec(
             "project.credits", .read,
@@ -13,30 +13,21 @@ extension CommandCatalog {
                 + "the video. With the project's review.credits true, review notes AI picture as info and each "
                 + "export's job result carries these facts."),
         CommandSpec(
-            "project.brief", .read,
-            "Read the project brief: a free JSON object (the agent's notes). Null when none."),
+            "project.data", .read,
+            "Read a top-level project field: brief, plan or any key of your own (a free JSON object, the agent's "
+                + "notes); null when unset.",
+            parameters: [CommandParameter("key", .string, "brief, plan or your own key", required: true, cli: .positional)]),
         CommandSpec(
-            "project.set-brief", .edit,
-            "Set the brief (any JSON object) as one undoable edit; with merge, only the given fields change (null "
-                + "removes one). Review reads lengthSeconds {min, max} and outputs [names] when present (directly or "
-                + "under value) and compares them with the edit, as info.",
+            "project.set-data", .edit,
+            "Set a top-level project field to a JSON object as one undoable edit; with merge, only the given fields "
+                + "change (null removes one). Identity, format, "
+                + "media and tracks are not data. Core reads only: brief lengthSeconds {min, max} and outputs [names], "
+                + "plan sections [{id, label, lengthSeconds {min, max}, frozen}], shots and beats [{id, text, section}] "
+                + "when present (directly or under value): review compares them with the edit, as info, and context get "
+                + "summarises them so work can resume from them.",
             parameters: [
-                CommandParameter("value", .object, "The brief (CLI: path to brief.json)", required: true,
-                                 cli: .positionalJSONFile),
-                CommandParameter("merge", .boolean, "Change only the given fields", cli: .flag("merge")),
-                baseRevision,
-            ]),
-        CommandSpec(
-            "plan.get", .read,
-            "Read the edit plan: a free JSON object (the agent's notes). Null when none."),
-        CommandSpec(
-            "plan.set", .edit,
-            "Set the edit plan (any JSON object) as one undoable edit; with merge, only the given top-level fields "
-                + "change (null removes one). Core reads only sections [{id, label, lengthSeconds {min, max}, frozen}], "
-                + "shots and beats [{id, text, section}] when present: review compares section lengths with section "
-                + "markers, as info; context get summarises it so work can resume from it.",
-            parameters: [
-                CommandParameter("value", .object, "The plan (CLI: path to plan.json)", required: true,
+                CommandParameter("key", .string, "brief, plan or your own key", required: true, cli: .positional),
+                CommandParameter("value", .object, "The object (CLI: path to a JSON file)", required: true,
                                  cli: .positionalJSONFile),
                 CommandParameter("merge", .boolean, "Change only the given fields", cli: .flag("merge")),
                 baseRevision,
@@ -48,14 +39,16 @@ extension CommandCatalog {
         CommandSpec(
             "workflow.gates", .read,
             "The user's workflow gates: G1 brief, G2 strategy, G3 roughCut (rough-cut sheet), G4 script (before speech "
-                + "is made), G5 draft (before export), each ask, notify or skip (ask unless the user changed it), and "
-                + "maxReviewRounds. Request each gate with checkpoint request; never decide one is approved yourself."),
+                + "is made), G5 draft (before export) and any gate a skill stopped at by name, each ask, notify or skip "
+                + "(ask unless the user changed it), and maxReviewRounds. Request each gate with checkpoint request; "
+                + "never decide one is approved yourself."),
         CommandSpec(
             "workflow.set-gates", .ui,
             "Change a gate or the review round limit. Agents may only make a gate ask more (skip → notify → ask); "
                 + "loosening a gate or changing the round limit is the user's (Settings → Agents → Workflow gates).",
             parameters: [
-                CommandParameter("gate", .string, "G1…G5 or brief, strategy, roughCut, script, draft", cli: .option("gate")),
+                CommandParameter("gate", .string, "G1…G5, brief, strategy, roughCut, script, draft or a gate name",
+                                 cli: .option("gate")),
                 CommandParameter("mode", .string, "Gate mode", choices: ["ask", "notify", "skip"], cli: .option("mode")),
                 CommandParameter("maxReviewRounds", .integer, "Review round limit (user only)", minimum: 1, maximum: 10,
                                  cli: .option("max-review-rounds")),
@@ -67,7 +60,8 @@ extension CommandCatalog {
                 + "user is told and the run goes on; with skip nothing is shown. The answer is bound to the current "
                 + "revision and written to the run log; only the user can answer.",
             parameters: [
-                CommandParameter("gate", .string, "G1…G5 or brief, strategy, roughCut, script, draft", required: true,
+                CommandParameter("gate", .string, "G1…G5, brief, strategy, roughCut, script, draft, or any name (1–40 "
+                                 + "letters, digits, ., -, _) for a stop of your own", required: true,
                                  cli: .positional),
                 CommandParameter("summary", .string, "What the user is asked to approve", required: true, cli: .option("summary")),
                 CommandParameter("attach", .string, "Comma-separated files to show (sheets, stills); relative to the project",
@@ -110,15 +104,20 @@ extension CommandCatalog {
     static let planCheckSpecs: [CommandSpec] = [
         CommandSpec(
             "review.coverage", .read,
-            "The plan's shot rows against the footage: per planned shot the described shots that fit it (size, and every "
-                + "mustShow name among the described subjects), the clips that place it (a clip's planShot field, or the "
-                + "described shot it plays fits), and a status placed, found, missing or undescribed (no media described "
-                + "yet: media describe). Facts only; what is enough is the plan's."),
+            "Which described source shot each clip plays: per clip on the video layers in time order item, track, "
+                + "at/end, media, planShot when the clip has that field, and described {index, start, end and the "
+                + "media.describe facts} or null (no description covers it: media describe); counts. Join it with your "
+                + "plan yourself; media description lists the shots not played."),
         CommandSpec(
             "script.check", .read,
-            "The plan's script beats against the words heard on the timeline (stored transcripts, else caption words): "
-                + "per beat the share of its words heard as written, the unmatched words, where it was heard and the "
-                + "section marker it starts in against the planned section; overall similarity and extra heard words."),
+            "A script against the words heard on the timeline (stored transcripts, else caption words): per beat (the "
+                + "beats given, the text as one beat, else the plan's beats) the share of its words heard as written, "
+                + "the unmatched words, where it was heard and the section marker it starts in against the beat's "
+                + "section; overall similarity and extra heard words.",
+            parameters: [
+                CommandParameter("beats", .array, "Beats [{id, text, section}] as JSON", cli: .option("beats")),
+                CommandParameter("text", .string, "The whole script as one beat", cli: .option("text")),
+            ]),
     ]
 
     /// Select by quote (P1-D7).
