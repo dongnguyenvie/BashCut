@@ -5,7 +5,7 @@ import BashCutProject
 import Foundation
 
 /// The shots and cuts on Main (P0-B1, P0-B2): `review.shots` reads them as a sequence (or a source file's measured
-/// shots), `review.cuts` lists the cuts with kind and framing, `review.sync` times cuts, text and sound effects
+/// shots, each cut with its kind and framing), `review.sync` times cuts, text and sound effects
 /// against the beat grid and the words, and with `rendered` the last export's sound against the timeline's mix.
 extension ProjectDocument {
     func registerReviewTimingCommands() {
@@ -14,27 +14,18 @@ extension ProjectDocument {
         handle("review.verify") { document, arguments, _ in try await document.verifyReviewIssue(arguments) }
         handleAuthored("review.accept") { document, arguments, author in try document.acceptReviewIssue(arguments, author: author) }
         handle("review.shots") { document, arguments, _ in
-            var lowVariance: ReviewShots.LowVariance?
-            switch (arguments.optionalInt("runLength"), arguments.optionalDouble("maxCV")) {
-            case (let length?, let cv?): lowVariance = ReviewShots.LowVariance(runLength: length, maxCV: cv)
-            case (nil, nil): break
-            default: throw RPCFailure(-32602, "Give runLength and maxCV together")
-            }
             guard let mediaID = arguments.optionalString("media") else {
                 return ReviewShots.json(
                     document.project, picture: document.reviewPicture, summary: arguments.bool("summary"),
-                    lowVariance: lowVariance)
+                    range: try arguments.frameRange())
             }
             let (_, record) = try document.storedAnalysis(mediaID)
             guard let record, record.picture != nil, let media = document.project.media.first(where: { $0.id == mediaID })
             else { throw RPCFailure(-32602, "Media \(mediaID) has no picture measurement: run media analyze first") }
-            return ReviewShots.json(
-                media: media, record: record, minScore: arguments.optionalDouble("minScore") ?? 0.1,
-                lowVariance: lowVariance)
+            return ReviewShots.json(media: media, record: record, minScore: arguments.optionalDouble("minScore") ?? 0.1)
         }
-        handle("review.cuts") { document, _, _ in ReviewCuts.json(document.project) }
         handle("platforms.get") { document, arguments, _ in
-            let id = try arguments.string("id")
+            guard let id = arguments.optionalString("id") else { return document.platformsJSON(facts: arguments.bool("facts")) }
             guard let platform = OutputPlatform.named(id) else {
                 throw RPCFailure(-32602, "Unknown platform \(id); use " + OutputPlatform.all.map(\.id).joined(separator: ", "))
             }
@@ -46,29 +37,6 @@ extension ProjectDocument {
                 "version": .string(PlatformData.current.version), "origin": .string(PlatformData.current.origin),
             ])
             return .object(row)
-        }
-        handle("platforms.list") { document, arguments, _ in
-            let profile = ReviewProfile(document.project)
-            let outputs = Set(document.outputPresets.compactMap(\.platform?.id))
-            return .object([
-                "platforms": .array(OutputPlatform.all.map { platform in
-                    var row = profile.applying(to: platform).json.object
-                    row["output"] = .bool(outputs.contains(platform.id))
-                    row["overridden"] = .bool(profile.applying(to: platform) != platform)
-                    if arguments.bool("facts") { row["facts"] = .object(platform.facts.mapValues(\.json)) }
-                    return .object(row)
-                }),
-                "data": .object([
-                    "version": .string(PlatformData.current.version), "origin": .string(PlatformData.current.origin),
-                ]),
-                "layout": document.layoutPlatform?.json ?? .null,
-                "targets": .object(Dictionary(uniqueKeysWithValues: document.outputPresets.map { preset in
-                    let target = document.project.loudnessTarget(preset: preset.argument, platform: preset.platform)
-                    return (preset.argument, JSONValue.object([
-                        "integratedLUFS": .number(target.lufs), "truePeakDbTP": .number(target.truePeak),
-                    ]))
-                })),
-            ])
         }
         handle("review.sync") { document, arguments, _ in
             var kinds: Set<ReviewSync.Event> = [.cuts]
@@ -82,11 +50,36 @@ extension ProjectDocument {
                 })
             }
             let (words, source) = await document.syncWords()
-            var result = ReviewSync.json(document.project, words: words, kinds: kinds).object
+            var result = ReviewSync.json(document.project, words: words, kinds: kinds, bins: arguments.bool("bins")).object
             result["wordSource"] = .string(source)
             if arguments.bool("rendered") { result["rendered"] = try await document.renderDrift() }
             return .object(result)
         }
+    }
+
+    /// Every platform's facts with the project's overrides (`platforms.get` without an id).
+    func platformsJSON(facts: Bool) -> JSONValue {
+        let profile = ReviewProfile(project)
+        let outputs = Set(outputPresets.compactMap(\.platform?.id))
+        return .object([
+            "platforms": .array(OutputPlatform.all.map { platform in
+                var row = profile.applying(to: platform).json.object
+                row["output"] = .bool(outputs.contains(platform.id))
+                row["overridden"] = .bool(profile.applying(to: platform) != platform)
+                if facts { row["facts"] = .object(platform.facts.mapValues(\.json)) }
+                return .object(row)
+            }),
+            "data": .object([
+                "version": .string(PlatformData.current.version), "origin": .string(PlatformData.current.origin),
+            ]),
+            "layout": layoutPlatform?.json ?? .null,
+            "targets": .object(Dictionary(uniqueKeysWithValues: outputPresets.map { preset in
+                let target = project.loudnessTarget(preset: preset.argument, platform: preset.platform)
+                return (preset.argument, JSONValue.object([
+                    "integratedLUFS": .number(target.lufs), "truePeakDbTP": .number(target.truePeak),
+                ]))
+            })),
+        ])
     }
 
     /// The words heard through the clips from stored transcripts, else the caption words.

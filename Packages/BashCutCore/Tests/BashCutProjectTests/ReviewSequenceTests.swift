@@ -3,7 +3,7 @@ import Testing
 
 @testable import BashCutProject
 
-/// The shots as a sequence (P0-B1): cut facts, runs and shares from descriptions, rhythm overall and per section,
+/// The shots as a sequence (P0-B1): cut facts, shares from descriptions, rhythm overall and per section,
 /// keyframe camera moves, and the same facts for a source file.
 struct ReviewSequenceTests {
     /// Main at 30 fps over a 20 s, 30 fps media described as MS/static 0–8 s, MS/static 8–12 s, CU/push 12–20 s.
@@ -56,12 +56,10 @@ struct ReviewSequenceTests {
         #expect(shots[0]["cameraMove"] == nil)
     }
 
-    @Test("The summary lists runs of the same size and move, shares, and rhythm overall and per section")
+    @Test("The summary lists shares and rhythm overall and per section; no runs")
     func summary() throws {
-        let json = ReviewShots.json(project(), summary: true, lowVariance: .init(runLength: 2, maxCV: 0.05)).object
-        let runs = try #require(json["runs"]?.array).map(\.object)
-        #expect(runs.count == 1)
-        #expect(runs[0]["fromIndex"] == .integer(0) && runs[0]["count"] == .integer(3) && runs[0]["size"] == .string("MS"))
+        let json = ReviewShots.json(project(), summary: true).object
+        #expect(json["runs"] == nil)
         let shares = try #require(json["shares"]).object
         #expect(shares["size"]?.object["MS"]?.object["share"] == .number(0.75))
         #expect(shares["described"] == .integer(4))
@@ -70,12 +68,20 @@ struct ReviewSequenceTests {
         #expect(overall["count"] == .integer(4))
         // Lengths 2, 2, 1, 2 s.
         #expect(overall["mode"]?.object["share"] == .number(0.75))
-        #expect(overall["lowVarianceRuns"]?.array.first?.object["count"] == .integer(2))
+        #expect(overall["lowVarianceRuns"] == nil)
         #expect(abs((overall["cv"]?.double ?? 0) - 0.2474) < 0.001)
         let sections = try #require(rhythm["sections"]?.array).map(\.object)
         #expect(sections.map { $0["label"] } == [.string("B")])
         #expect(sections[0]["count"] == .integer(2))
-        #expect(ReviewShots.json(project(), summary: true).object["rhythm"]?.object["overall"]?.object["lowVarianceRuns"] == nil)
+    }
+
+    @Test("from/to keep the shots that overlap the range; the summary counts only those")
+    func range() throws {
+        let json = ReviewShots.json(project(), summary: true, range: 100..<160).object
+        let shots = try #require(json["shots"]?.array).map(\.object)
+        #expect(shots.map { $0["id"] } == [.string("b"), .string("c"), .string("d")])
+        #expect(shots[0]["cut"] != nil)
+        #expect(json["summary"]?.object["count"] == .integer(3))
     }
 
     @Test("A source file's measured shots give the same sequence facts")
@@ -88,12 +94,12 @@ struct ReviewSequenceTests {
                 .object(["start": .number(3), "end": .number(10), "size": .string("WS"), "move": .string("pan")]),
             ])]),
         ])
-        let json = ReviewShots.json(media: media, record: analysis, minScore: 0.1, lowVariance: nil).object
+        let json = ReviewShots.json(media: media, record: analysis, minScore: 0.1).object
         let shots = try #require(json["shots"]?.array).map(\.object)
         #expect(shots.count == 3)
         #expect(shots[1]["cut"]?.object["sameSetup"] == .bool(true))
         #expect(shots[2]["described"]?.object["size"] == .string("WS"))
-        #expect(json["runs"]?.array.first?.object["count"] == .integer(3))
+        #expect(json["shares"]?.object["size"]?.object["WS"]?.object["count"] == .integer(3))
         #expect(json["rhythm"]?.object["cutsPerMinute"] == .number(12))
     }
 }

@@ -278,19 +278,120 @@
           "additionalProperties" : false,
           "description" : "Animation (video, text and audio layers; audio animates volume only): property → keys sorted by frame, counted from the item's start; values between keys follow each key's ease, and hold before the first and after the last key",
           "properties" : {
+            "color.contrast" : {
+              "description" : "Like the item's color.contrast; clips and adjustment layers",
+              "items" : {
+                "properties" : {
+                  "ease" : {
+                    "description" : "Change to the next key: linear, in, out, inOut, hold or cubic-bezier(x1,y1,x2,y2); default inOut",
+                    "type" : "string"
+                  },
+                  "frame" : {
+                    "type" : "integer"
+                  },
+                  "value" : {
+                    "maximum" : 4,
+                    "minimum" : 0,
+                    "type" : "number"
+                  }
+                },
+                "required" : [
+                  "frame",
+                  "value"
+                ],
+                "type" : "object"
+              },
+              "maxItems" : 1000,
+              "minItems" : 1,
+              "type" : "array"
+            },
+            "color.exposure" : {
+              "description" : "Like the item's color.exposure; clips and adjustment layers",
+              "items" : {
+                "properties" : {
+                  "ease" : {
+                    "description" : "Change to the next key: linear, in, out, inOut, hold or cubic-bezier(x1,y1,x2,y2); default inOut",
+                    "type" : "string"
+                  },
+                  "frame" : {
+                    "type" : "integer"
+                  },
+                  "value" : {
+                    "maximum" : 10,
+                    "minimum" : -10,
+                    "type" : "number"
+                  }
+                },
+                "required" : [
+                  "frame",
+                  "value"
+                ],
+                "type" : "object"
+              },
+              "maxItems" : 1000,
+              "minItems" : 1,
+              "type" : "array"
+            },
+            "color.lutStrength" : {
+              "description" : "Like the item's color.lutStrength; clips and adjustment layers",
+              "items" : {
+                "properties" : {
+                  "ease" : {
+                    "description" : "Change to the next key: linear, in, out, inOut, hold or cubic-bezier(x1,y1,x2,y2); default inOut",
+                    "type" : "string"
+                  },
+                  "frame" : {
+                    "type" : "integer"
+                  },
+                  "value" : {
+                    "maximum" : 1,
+                    "minimum" : 0,
+                    "type" : "number"
+                  }
+                },
+                "required" : [
+                  "frame",
+                  "value"
+                ],
+                "type" : "object"
+              },
+              "maxItems" : 1000,
+              "minItems" : 1,
+              "type" : "array"
+            },
+            "color.saturation" : {
+              "description" : "Like the item's color.saturation; clips and adjustment layers",
+              "items" : {
+                "properties" : {
+                  "ease" : {
+                    "description" : "Change to the next key: linear, in, out, inOut, hold or cubic-bezier(x1,y1,x2,y2); default inOut",
+                    "type" : "string"
+                  },
+                  "frame" : {
+                    "type" : "integer"
+                  },
+                  "value" : {
+                    "maximum" : 4,
+                    "minimum" : 0,
+                    "type" : "number"
+                  }
+                },
+                "required" : [
+                  "frame",
+                  "value"
+                ],
+                "type" : "object"
+              },
+              "maxItems" : 1000,
+              "minItems" : 1,
+              "type" : "array"
+            },
             "opacity" : {
               "description" : "Opacity, 0 to 1",
               "items" : {
                 "properties" : {
                   "ease" : {
-                    "description" : "Change to the next key; default inOut",
-                    "enum" : [
-                      "linear",
-                      "in",
-                      "out",
-                      "inOut",
-                      "hold"
-                    ],
+                    "description" : "Change to the next key: linear, in, out, inOut, hold or cubic-bezier(x1,y1,x2,y2); default inOut",
                     "type" : "string"
                   },
                   "frame" : {
@@ -317,14 +418,7 @@
               "items" : {
                 "properties" : {
                   "ease" : {
-                    "description" : "Change to the next key; default inOut",
-                    "enum" : [
-                      "linear",
-                      "in",
-                      "out",
-                      "inOut",
-                      "hold"
-                    ],
+                    "description" : "Change to the next key: linear, in, out, inOut, hold or cubic-bezier(x1,y1,x2,y2); default inOut",
                     "type" : "string"
                   },
                   "frame" : {
@@ -351,14 +445,7 @@
               "items" : {
                 "properties" : {
                   "ease" : {
-                    "description" : "Change to the next key; default inOut",
-                    "enum" : [
-                      "linear",
-                      "in",
-                      "out",
-                      "inOut",
-                      "hold"
-                    ],
+                    "description" : "Change to the next key: linear, in, out, inOut, hold or cubic-bezier(x1,y1,x2,y2); default inOut",
                     "type" : "string"
                   },
                   "frame" : {
@@ -380,19 +467,174 @@
               "minItems" : 1,
               "type" : "array"
             },
+            "textStyle.lineHeight" : {
+              "description" : "Like the item's textStyle.lineHeight; text",
+              "items" : {
+                "properties" : {
+                  "ease" : {
+                    "description" : "Change to the next key: linear, in, out, inOut, hold or cubic-bezier(x1,y1,x2,y2); default inOut",
+                    "type" : "string"
+                  },
+                  "frame" : {
+                    "type" : "integer"
+                  },
+                  "value" : {
+                    "maximum" : 4,
+                    "minimum" : 0.5,
+                    "type" : "number"
+                  }
+                },
+                "required" : [
+                  "frame",
+                  "value"
+                ],
+                "type" : "object"
+              },
+              "maxItems" : 1000,
+              "minItems" : 1,
+              "type" : "array"
+            },
+            "textStyle.positionX" : {
+              "description" : "Like the item's textStyle.positionX; text",
+              "items" : {
+                "properties" : {
+                  "ease" : {
+                    "description" : "Change to the next key: linear, in, out, inOut, hold or cubic-bezier(x1,y1,x2,y2); default inOut",
+                    "type" : "string"
+                  },
+                  "frame" : {
+                    "type" : "integer"
+                  },
+                  "value" : {
+                    "maximum" : 1,
+                    "minimum" : 0,
+                    "type" : "number"
+                  }
+                },
+                "required" : [
+                  "frame",
+                  "value"
+                ],
+                "type" : "object"
+              },
+              "maxItems" : 1000,
+              "minItems" : 1,
+              "type" : "array"
+            },
+            "textStyle.positionY" : {
+              "description" : "Like the item's textStyle.positionY; text",
+              "items" : {
+                "properties" : {
+                  "ease" : {
+                    "description" : "Change to the next key: linear, in, out, inOut, hold or cubic-bezier(x1,y1,x2,y2); default inOut",
+                    "type" : "string"
+                  },
+                  "frame" : {
+                    "type" : "integer"
+                  },
+                  "value" : {
+                    "maximum" : 1,
+                    "minimum" : 0,
+                    "type" : "number"
+                  }
+                },
+                "required" : [
+                  "frame",
+                  "value"
+                ],
+                "type" : "object"
+              },
+              "maxItems" : 1000,
+              "minItems" : 1,
+              "type" : "array"
+            },
+            "textStyle.size" : {
+              "description" : "Like the item's textStyle.size; text",
+              "items" : {
+                "properties" : {
+                  "ease" : {
+                    "description" : "Change to the next key: linear, in, out, inOut, hold or cubic-bezier(x1,y1,x2,y2); default inOut",
+                    "type" : "string"
+                  },
+                  "frame" : {
+                    "type" : "integer"
+                  },
+                  "value" : {
+                    "maximum" : 1,
+                    "minimum" : 0.005,
+                    "type" : "number"
+                  }
+                },
+                "required" : [
+                  "frame",
+                  "value"
+                ],
+                "type" : "object"
+              },
+              "maxItems" : 1000,
+              "minItems" : 1,
+              "type" : "array"
+            },
+            "textStyle.strokeWidth" : {
+              "description" : "Like the item's textStyle.strokeWidth; text",
+              "items" : {
+                "properties" : {
+                  "ease" : {
+                    "description" : "Change to the next key: linear, in, out, inOut, hold or cubic-bezier(x1,y1,x2,y2); default inOut",
+                    "type" : "string"
+                  },
+                  "frame" : {
+                    "type" : "integer"
+                  },
+                  "value" : {
+                    "maximum" : 50,
+                    "minimum" : 0,
+                    "type" : "number"
+                  }
+                },
+                "required" : [
+                  "frame",
+                  "value"
+                ],
+                "type" : "object"
+              },
+              "maxItems" : 1000,
+              "minItems" : 1,
+              "type" : "array"
+            },
+            "textStyle.tracking" : {
+              "description" : "Like the item's textStyle.tracking; text",
+              "items" : {
+                "properties" : {
+                  "ease" : {
+                    "description" : "Change to the next key: linear, in, out, inOut, hold or cubic-bezier(x1,y1,x2,y2); default inOut",
+                    "type" : "string"
+                  },
+                  "frame" : {
+                    "type" : "integer"
+                  },
+                  "value" : {
+                    "maximum" : 2,
+                    "minimum" : -0.5,
+                    "type" : "number"
+                  }
+                },
+                "required" : [
+                  "frame",
+                  "value"
+                ],
+                "type" : "object"
+              },
+              "maxItems" : 1000,
+              "minItems" : 1,
+              "type" : "array"
+            },
             "tilt" : {
               "description" : "Vertical offset in output pixels, up",
               "items" : {
                 "properties" : {
                   "ease" : {
-                    "description" : "Change to the next key; default inOut",
-                    "enum" : [
-                      "linear",
-                      "in",
-                      "out",
-                      "inOut",
-                      "hold"
-                    ],
+                    "description" : "Change to the next key: linear, in, out, inOut, hold or cubic-bezier(x1,y1,x2,y2); default inOut",
                     "type" : "string"
                   },
                   "frame" : {
@@ -419,14 +661,7 @@
               "items" : {
                 "properties" : {
                   "ease" : {
-                    "description" : "Change to the next key; default inOut",
-                    "enum" : [
-                      "linear",
-                      "in",
-                      "out",
-                      "inOut",
-                      "hold"
-                    ],
+                    "description" : "Change to the next key: linear, in, out, inOut, hold or cubic-bezier(x1,y1,x2,y2); default inOut",
                     "type" : "string"
                   },
                   "frame" : {
@@ -453,14 +688,7 @@
               "items" : {
                 "properties" : {
                   "ease" : {
-                    "description" : "Change to the next key; default inOut",
-                    "enum" : [
-                      "linear",
-                      "in",
-                      "out",
-                      "inOut",
-                      "hold"
-                    ],
+                    "description" : "Change to the next key: linear, in, out, inOut, hold or cubic-bezier(x1,y1,x2,y2); default inOut",
                     "type" : "string"
                   },
                   "frame" : {
@@ -1282,13 +1510,7 @@
           "type" : "integer"
         },
         "easing" : {
-          "description" : "How the tween runs; linear when absent",
-          "enum" : [
-            "linear",
-            "in",
-            "out",
-            "inOut"
-          ],
+          "description" : "How the tween runs: linear, in, out, inOut or cubic-bezier(x1,y1,x2,y2); linear when absent",
           "type" : "string"
         },
         "from" : {
@@ -1301,17 +1523,13 @@
           "type" : "string"
         },
         "kind" : {
-          "description" : "Transition kind",
-          "enum" : [
-            "dissolve",
-            "whip",
-            "blink",
-            "zoom",
-            "spin",
-            "shutter",
-            "wipe"
-          ],
+          "description" : "Transition kind: dissolve, whip, blink, zoom, spin, shutter, wipe, or any name with motion",
+          "pattern" : "^[a-z][a-z0-9-]{0,63}$",
           "type" : "string"
+        },
+        "motion" : {
+          "description" : "The tween as data: outgoing and incoming {property: [values]} over the tween; properties exposure, opacity, panX, panY, reveal, rotation, scaleX, zoom",
+          "type" : "object"
         },
         "to" : {
           "description" : "Incoming item ID",

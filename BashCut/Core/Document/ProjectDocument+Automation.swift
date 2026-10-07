@@ -337,18 +337,6 @@ extension ProjectDocument {
                 "width": .integer(capture.width), "height": .integer(capture.height),
             ])
         }
-        handle("ui.panel") { document, arguments, _ in
-            let name = try arguments.string("panel")
-            guard let tab = LibraryTab(panelName: name) else {
-                throw RPCFailure(-32602, "Unknown panel \(name)")
-            }
-            document.showLibraryTab(tab)
-            return .bool(true)
-        }
-        handle("ui.notify") { document, arguments, _ in
-            document.message = String(try arguments.string("message").prefix(2000))
-            return .bool(true)
-        }
     }
 
     /// `a`, or `a (3 items: a, b, c)` when several are selected.

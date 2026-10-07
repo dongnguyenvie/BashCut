@@ -2,7 +2,7 @@ import BashCutProject
 
 extension CommandCatalog {
     private static let motionPresets: String = MotionPreset.all.map(\.id).joined(separator: ", ")
-    private static let eases: String = ItemMotion.Ease.allCases.map(\.rawValue).joined(separator: ", ")
+    private static let eases: String = ItemMotion.Ease.summary
     private static let motionSummary: String =
         "Animate a clip, image or text over its length (Inspector › Animation): a preset (\(motionPresets); none "
         + "removes the animation) sized to the item, or keyframes JSON {property: [{frame, value, ease?}, …]} with "
@@ -107,8 +107,7 @@ extension CommandCatalog {
                                  + "and keeps the other keys", cli: .option("focus")),
                 CommandParameter("focusTo", .string, "With focus: move to this rectangle by the item's last frame",
                                  cli: .option("focus-to")),
-                CommandParameter("ease", .string, "With focus-to: the move's ease",
-                                 choices: ItemMotion.Ease.allCases.map(\.rawValue), cli: .option("ease")),
+                CommandParameter("ease", .string, "With focus-to: the move's ease (" + eases + ")", cli: .option("ease")),
                 baseRevision,
             ]),
         CommandSpec(
@@ -124,8 +123,7 @@ extension CommandCatalog {
                 CommandParameter("value", .number, "Value", cli: .option("value")),
                 CommandParameter("atFrame", .integer, "Timeline frame inside the item; the playhead by default",
                                  minimum: 0, cli: .option("at-frame")),
-                CommandParameter("ease", .string, "Change to the next key", choices: ItemMotion.Ease.allCases.map(\.rawValue),
-                                 cli: .option("ease")),
+                CommandParameter("ease", .string, "Change to the next key: " + eases, cli: .option("ease")),
                 CommandParameter("remove", .boolean, "Remove the key at that frame", default: .bool(false),
                                  cli: .flag("remove")),
                 baseRevision,

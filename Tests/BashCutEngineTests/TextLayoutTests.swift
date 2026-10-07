@@ -44,6 +44,29 @@ struct TextLayoutTests {
         #expect(layout.maxX > size.width * 0.9 - 2 && layout.maxX < size.width * 0.95)
     }
 
+    @Test("Accent bars sit beside the block, replace the preset's bars, and the layout includes them (C1)")
+    func accentBars() throws {
+        let size = CGSize(width: 1920, height: 1080)
+        var item = Item(id: "bars", at: 0, duration: 30)
+        item["text"] = .string("Chapter one")
+        item["textPreset"] = .string("place-card")
+        let plain = try #require(TextPresetStyle.layout(item, size: size))
+        item["textStyle"] = .object(["accentBars": .array([
+            .object(["side": .string("left"), "thickness": .number(0.2), "gap": .number(0.5), "color": .string("#FF0000")]),
+            .object(["side": .string("bottom"), "thickness": .number(0.1), "gap": .number(1)]),
+        ])])
+        let layout = try #require(TextPresetStyle.layout(item, size: size))
+        let raster = try #require(TextRenderer.raster(item, size: size, fullCanvas: true))
+        let drawn = try #require(inkBounds(raster.bitmap))
+        #expect(abs(layout.minX - drawn.minX) <= 4 && abs(layout.minY - drawn.minY) <= 4)
+        #expect(abs(layout.maxX - drawn.maxX) <= 4 && abs(layout.maxY - drawn.maxY) <= 4)
+        // The place card's plate is gone; the bars reach below and left of the text.
+        #expect(layout.minY < plain.minY && layout.points > 0)
+        item["textStyle"] = .object(["accentBars": .array([])])
+        let bare = try #require(TextPresetStyle.layout(item, size: size))
+        #expect(bare.maxX - bare.minX < plain.maxX - plain.minX)
+    }
+
     @Test("Empty text has no layout")
     func empty() {
         var item = Item(id: "empty", at: 0, duration: 30)

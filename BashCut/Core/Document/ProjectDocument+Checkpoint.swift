@@ -21,7 +21,7 @@ struct CheckpointRequest: Identifiable {
 
     func json(currentRevision: Int) -> JSONValue {
         var row: [String: JSONValue] = [
-            "id": .string(id), "gate": .string(gate.rawValue), "name": .string(gate.name), "status": .string(status.rawValue),
+            "id": .string(id), "gate": .string(gate.id), "name": .string(gate.name), "status": .string(status.rawValue),
             "rev": .integer(revision), "summary": .string(summary),
             "attachments": .array(attachments.map { .string($0.path) }), "requestedBy": .string(author.rawValue),
         ]
@@ -95,7 +95,7 @@ extension ProjectDocument {
         let order: [WorkflowGate.Mode] = [.skip, .notify, .ask]
         if let id = arguments.optionalString("gate") {
             guard let gate = WorkflowGate(id: id), let mode = arguments.optionalString("mode").flatMap(WorkflowGate.Mode.init)
-            else { throw RPCFailure(-32602, "Give a gate (G1…G5) and a mode (ask, notify, skip)") }
+            else { throw RPCFailure(-32602, "Give a gate (G1…G5 or a name) and a mode (ask, notify, skip)") }
             let current = settings.gateMode(gate)
             if author != .user, order.firstIndex(of: mode)! < order.firstIndex(of: current)! {
                 throw RPCFailure(-32001, "Only the user can loosen a gate (Settings → Agents → Workflow gates)")
@@ -111,8 +111,9 @@ extension ProjectDocument {
 
     func requestCheckpoint(_ arguments: CommandArguments, author: Author) throws -> JSONValue {
         guard let gate = WorkflowGate(id: try arguments.string("gate")) else {
-            throw RPCFailure(-32602, "Unknown gate; use G1…G5 or brief, strategy, roughCut, script, draft")
+            throw RPCFailure(-32602, "A gate is G1…G5, brief, strategy, roughCut, script, draft or a name of 1–40 letters, digits, ., - or _")
         }
+        settings.noteGate(gate)
         let root = fileURL?.deletingLastPathComponent()
         let attachments = (arguments.optionalString("attach") ?? "").split(separator: ",").map { part -> URL in
             let path = part.trimmingCharacters(in: .whitespaces)
@@ -151,7 +152,7 @@ extension ProjectDocument {
 
     private func logGate(_ request: CheckpointRequest, event: String) {
         var entry: [String: JSONValue] = [
-            "kind": .string("gate"), "gate": .string(request.gate.rawValue), "checkpoint": .string(request.id),
+            "kind": .string("gate"), "gate": .string(request.gate.id), "checkpoint": .string(request.id),
             "event": .string(event), "rev": .integer(request.revision), "author": .string(request.author.rawValue),
         ]
         if event == "requested" { entry["summary"] = .string(String(request.summary.prefix(2_000))) }

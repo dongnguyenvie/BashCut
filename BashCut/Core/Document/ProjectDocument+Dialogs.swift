@@ -122,7 +122,7 @@ extension ProjectDocument {
         if let request = checkpoint {
             // Answering stays with the user; an agent can only withdraw its request.
             sheets.append(ModalSheet(
-                name: "checkpoint", title: "\(request.gate.rawValue) \(request.gate.title)",
+                name: "checkpoint", title: request.gate.label,
                 message: "Only the user can approve, ask for changes or reject. " + request.summary,
                 options: [ModalOption("withdraw", String(localized: "Withdraw"))]
             ) { [weak self] _ in self?.resolveCheckpoint(.withdrawn) })
@@ -208,13 +208,18 @@ extension ProjectDocument {
             DebugLog.write("ui", "dialog \(answered.name) answered \(option ?? path?.path ?? "")")
             return .object(["answered": answered.json])
         }
-        handle("ui.open") { document, arguments, _ in
-            if let open = ModalCenter.shared.current {
-                throw RPCFailure(-32003, "Close the open dialog \(open.name) first", category: .busyDialog)
-            }
-            try document.openDialog(try arguments.string("dialog"))
-            return .bool(true)
+    }
+
+    /// `ui.action open DIALOG`.
+    func openDialogFromAutomation(_ dialog: String) throws -> JSONValue {
+        if let open = ModalCenter.shared.current {
+            throw RPCFailure(-32003, "Close the open dialog \(open.name) first", category: .busyDialog)
         }
+        guard CommandCatalog.dialogs.contains(dialog) else {
+            throw RPCFailure(-32602, "Unknown dialog \(dialog); use " + CommandCatalog.dialogs.joined(separator: ", "))
+        }
+        try openDialog(dialog)
+        return .bool(true)
     }
 
     /// The Export button's popover while an export runs; Cancel Export stops it.

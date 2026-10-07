@@ -37,5 +37,14 @@ import Testing
                        "project.create", "edl.import", "ui.action", "ui.respond", "ui.open", "chat.send", "future.command"] {
             #expect(await session.perform(method, params: [:], allowEdits: true, registry: registry).error?.code == -32601)
         }
+        // ui.action only points at media or a library panel (formerly ui.source and ui.panel); plugins may also notify.
+        for action in ["open", "notify", "timeline.split", "cmd+b"] {
+            let params: [String: JSONValue] = ["action": .string(action), "target": .string("x")]
+            #expect(await session.perform("ui.action", params: params, allowEdits: true, registry: registry).error?.code == -32601)
+        }
+        #expect(ChatCommandSession.allows("ui.action", params: ["action": .string("panel")],
+                                          methods: ChatCommandSession.allowedMethods, actions: ChatCommandSession.allowedUIActions))
+        #expect(ChatCommandSession.allows("ui.action", params: ["action": .string("notify")],
+                                          methods: PluginCommandSession.allowedMethods, actions: PluginCommandSession.allowedUIActions))
     }
 }

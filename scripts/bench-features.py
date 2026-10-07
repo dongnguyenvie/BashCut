@@ -691,7 +691,7 @@ class Run:
         b.section("ui")
         b.step("close dialogs left open", lambda: self.close_all())
         for panel in ["media", "audio", "text", "stickers", "effects", "transitions", "filters", "voice"]:
-            b.step(f"ui.panel {panel}", lambda panel=panel: rpc("ui.panel", {"panel": panel}))
+            b.step(f"ui.action panel {panel}", lambda panel=panel: rpc("ui.action", {"action": "panel", "target": panel}))
         views = [{"zoom": 50}, {"snap": False}, {"snap": True}, {"safeArea": True}, {"viewerZoom": "50"},
                  {"viewerZoom": "fit"}, {"compare": True}, {"compare": False}, {"inspector": "color"},
                  {"inspector": "speed"}, {"libraryQuery": "bench"}, {"libraryScope": "project"},
@@ -707,8 +707,8 @@ class Run:
                        "doctor", "knowledge", "new-project", "add-plugin"]:
             b.step(f"ui.open {dialog} + close", lambda dialog=dialog: self.open_and_close(dialog), budget=1500)
         b.step("ui.dialog is empty at the end", lambda: expect(not self.open_dialog(), f"left open: {self.open_dialog()}"))
-        b.step("ui.notify", lambda: rpc("ui.notify", {"message": "Bench notification"}))
-        b.step("ui.source", lambda: rpc("ui.source", {"media": self.media["talk.mp4"], "in": 10, "out": 60}))
+        b.step("ui.action notify", lambda: rpc("ui.action", {"action": "notify", "target": "Bench notification"}))
+        b.step("ui.action source", lambda: rpc("ui.action", {"action": "source", "target": self.media["talk.mp4"], "in": 10, "out": 60}))
 
     def open_dialog(self):
         state = rpc("ui.dialog")
@@ -730,7 +730,7 @@ class Run:
         return closes
 
     def open_and_close(self, dialog):
-        rpc("ui.open", {"dialog": dialog})
+        rpc("ui.action", {"action": "open", "target": dialog})
         time.sleep(0.25)
         expect(self.open_dialog(), f"{dialog} did not report as open")
         closes = 0

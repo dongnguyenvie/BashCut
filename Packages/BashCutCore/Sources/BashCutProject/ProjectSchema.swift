@@ -243,10 +243,18 @@ public enum ProjectSchema {
                 required: ["id", "kind", "from", "to", "duration"],
                 properties: [
                     "id": string("Stable ID", minLength: 1),
-                    "kind": enumeration("Transition kind", TimelineTransition.renderedKinds),
+                    "kind": string(
+                        "Transition kind: " + TimelineTransition.renderedKinds.joined(separator: ", ")
+                            + ", or any name with motion", pattern: "^[a-z][a-z0-9-]{0,63}$"),
                     "from": string("Outgoing item ID"), "to": string("Incoming item ID"),
                     "duration": integer("Timeline frames", minimum: 1),
-                    "easing": enumeration("How the tween runs; linear when absent", TimelineTransition.easings),
+                    "easing": string("How the tween runs: " + TimelineTransition.easingSummary + "; linear when absent"),
+                    "motion": .object([
+                        "type": .string("object"),
+                        "description": .string(
+                            "The tween as data: outgoing and incoming {property: [values]} over the tween; properties "
+                                + TransitionMotion.ranges.keys.sorted().joined(separator: ", ")),
+                    ]),
                 ])),
             "lut": .object(fields(
                 "A .cube file in the project luts folder", required: ["id", "name", "path", "size"],
@@ -358,8 +366,7 @@ public enum ProjectSchema {
                                     "type": .string("number"), "minimum": .number(range.lowerBound),
                                     "maximum": .number(range.upperBound),
                                 ]),
-                                "ease": enumeration("Change to the next key; default inOut",
-                                                    ItemMotion.Ease.allCases.map(\.rawValue)),
+                                "ease": string("Change to the next key: " + ItemMotion.Ease.summary + "; default inOut"),
                             ]),
                         ]),
                     ]))

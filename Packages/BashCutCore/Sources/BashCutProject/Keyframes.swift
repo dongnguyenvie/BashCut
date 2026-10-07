@@ -9,24 +9,89 @@ import Foundation
 /// output pixels, like `transform.pan`/`tilt`; tilt is up), `rotation` (degrees, counterclockwise) and `opacity`
 /// animate the picture; `volume` (gain in dB, like `volumeDb`) the sound. A property with keys replaces the item's
 /// static value; the others keep it. On text items, zoom scales the text around its own position. Audio items have
-/// only `volume`, text items have no `volume` (see `properties(onTrackKind:)`).
+/// only `volume`, text items have no `volume` (see `properties(onTrackKind:)`). Numeric style fields animate too
+/// (flexibility audit C13): `color.exposure`, `color.contrast`, `color.saturation` and `color.lutStrength` on clips and
+/// adjustment layers, `textStyle.size`, `positionX`, `positionY`, `strokeWidth`, `lineHeight` and `tracking` on text.
 public struct ItemMotion: Sendable, Equatable {
-    public enum Ease: String, Sendable, CaseIterable {
+    /// How a value changes from one key to the next, and how a transition's tween runs (flexibility audit C6): the
+    /// named curves, or `cubic-bezier(x1, y1, x2, y2)` like CSS (x1 and x2 in 0…1).
+    public enum Ease: Sendable, Hashable, CaseIterable, RawRepresentable {
         case linear
-        case easeIn = "in"
-        case easeOut = "out"
-        case easeInOut = "inOut"
+        case easeIn
+        case easeOut
+        case easeInOut
         /// Keeps this key's value until the next key.
         case hold
+        case cubicBezier(Double, Double, Double, Double)
 
-        func apply(_ t: Double) -> Double {
+        /// The named curves (pickers and choices); any `cubic-bezier(…)` is valid too.
+        public static let allCases: [Ease] = [.linear, .easeIn, .easeOut, .easeInOut, .hold]
+
+        public init?(rawValue: String) {
+            switch rawValue {
+            case "linear": self = .linear
+            case "in": self = .easeIn
+            case "out": self = .easeOut
+            case "inOut": self = .easeInOut
+            case "hold": self = .hold
+            default:
+                let text = rawValue.replacingOccurrences(of: " ", with: "")
+                guard text.hasPrefix("cubic-bezier("), text.hasSuffix(")") else { return nil }
+                let numbers = text.dropFirst(13).dropLast().split(separator: ",").compactMap { Double($0) }
+                guard numbers.count == 4, numbers.allSatisfy(\.isFinite), (0...1).contains(numbers[0]),
+                    (0...1).contains(numbers[2]), (-10...10).contains(numbers[1]), (-10...10).contains(numbers[3])
+                else { return nil }
+                self = .cubicBezier(numbers[0], numbers[1], numbers[2], numbers[3])
+            }
+        }
+
+        public var rawValue: String {
+            switch self {
+            case .linear: "linear"
+            case .easeIn: "in"
+            case .easeOut: "out"
+            case .easeInOut: "inOut"
+            case .hold: "hold"
+            case .cubicBezier(let x1, let y1, let x2, let y2):
+                "cubic-bezier(" + [x1, y1, x2, y2].map { String(format: "%g", $0) }.joined(separator: ",") + ")"
+            }
+        }
+
+        /// The names and the bezier form, for messages and descriptions.
+        public static let summary = allCases.map(\.rawValue).joined(separator: ", ") + " or cubic-bezier(x1,y1,x2,y2)"
+
+        public func apply(_ t: Double) -> Double {
             switch self {
             case .linear: t
             case .easeIn: t * t * t
             case .easeOut: 1 - pow(1 - t, 3)
             case .easeInOut: t < 0.5 ? 4 * t * t * t : 1 - pow(-2 * t + 2, 3) / 2
             case .hold: 0
+            case .cubicBezier(let x1, let y1, let x2, let y2): Self.bezier(t, x1, y1, x2, y2)
             }
+        }
+
+        /// y at the curve point whose x is `x`: Newton steps on x(s), then bisection when the slope is flat.
+        static func bezier(_ x: Double, _ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double) -> Double {
+            let t = min(1, max(0, x))
+            let curve = { (s: Double, p1: Double, p2: Double) in
+                3 * (1 - s) * (1 - s) * s * p1 + 3 * (1 - s) * s * s * p2 + s * s * s
+            }
+            var s = t
+            for _ in 0..<8 {
+                let error = curve(s, x1, x2) - t
+                if abs(error) < 1e-7 { return curve(s, y1, y2) }
+                let slope = 3 * (1 - s) * (1 - s) * x1 + 6 * (1 - s) * s * (x2 - x1) + 3 * s * s * (1 - x2)
+                if abs(slope) < 1e-6 { break }
+                s = min(1, max(0, s - error / slope))
+            }
+            var low = 0.0, high = 1.0
+            s = t
+            for _ in 0..<40 {
+                if curve(s, x1, x2) < t { low = s } else { high = s }
+                s = (low + high) / 2
+            }
+            return curve(s, y1, y2)
         }
     }
 
@@ -42,10 +107,18 @@ public struct ItemMotion: Sendable, Equatable {
         }
     }
 
+    /// Style fields keyframes can drive, as `group.field` paths with their ranges.
+    public static let colorProperties: [String: ClosedRange<Double>] = Dictionary(
+        uniqueKeysWithValues: ColorGrade.ranges.map { ("color." + $0.key, $0.range) })
+    public static let textStyleProperties: [String: ClosedRange<Double>] = [
+        "textStyle.size": 0.005...1, "textStyle.positionX": 0...1, "textStyle.positionY": 0...1,
+        "textStyle.strokeWidth": 0...50, "textStyle.lineHeight": 0.5...4, "textStyle.tracking": -0.5...2,
+    ]
+
     public static let ranges: [String: ClosedRange<Double>] = [
         "zoom": 0.01...100, "pan": -65536...65536, "tilt": -65536...65536, "rotation": -3600...3600, "opacity": 0...1,
         "volume": -120...24,
-    ]
+    ].merging(colorProperties) { $1 }.merging(textStyleProperties) { $1 }
     public static let summaries = [
         "zoom": "Scale over the fitted or filled size (1 = unchanged)",
         "pan": "Horizontal offset in output pixels",
@@ -53,15 +126,17 @@ public struct ItemMotion: Sendable, Equatable {
         "rotation": "Rotation in degrees, counterclockwise",
         "opacity": "Opacity, 0 to 1",
         "volume": "Gain in dB (0 = unchanged), like volumeDb; audio and clips with sound",
-    ]
+    ].merging(colorProperties.keys.map { ($0, "Like the item's \($0); clips and adjustment layers") }) { $1 }
+        .merging(textStyleProperties.keys.map { ($0, "Like the item's \($0); text") }) { $1 }
     /// The properties that move the picture, in the order the Inspector shows them.
     public static let pictureProperties = ["zoom", "pan", "tilt", "rotation", "opacity"]
 
     /// The properties an item on a layer of `kind` can animate.
     public static func properties(onTrackKind kind: String) -> [String] {
         switch kind {
-        case TrackKind.video: pictureProperties + ["volume"]
-        case TrackKind.text: pictureProperties
+        case TrackKind.video: pictureProperties + ["volume"] + colorProperties.keys.sorted()
+        case TrackKind.text: pictureProperties + textStyleProperties.keys.sorted()
+        case TrackKind.adjustment: colorProperties.keys.sorted()
         case TrackKind.audio: ["volume"]
         default: []
         }
@@ -94,8 +169,7 @@ public struct ItemMotion: Sendable, Equatable {
                 var ease = Ease.easeInOut
                 if let text = fields["ease"]?.string {
                     guard let known = Ease(rawValue: text) else {
-                        throw ProjectError.invalid(
-                            "keyframes.\(name): ease must be one of \(Ease.allCases.map(\.rawValue).joined(separator: ", "))")
+                        throw ProjectError.invalid("keyframes.\(name): ease must be one of \(Ease.summary)")
                     }
                     ease = known
                 }
@@ -140,6 +214,25 @@ public struct ItemMotion: Sendable, Equatable {
     public var picture: ItemMotion? {
         let motion = ItemMotion(keys: keys.filter { Self.pictureProperties.contains($0.key) && !$0.value.isEmpty })
         return motion.isEmpty ? nil : motion
+    }
+
+    /// Only the keys of style fields (`color.*`, `textStyle.*`); nil when there are none.
+    public var style: ItemMotion? {
+        let motion = ItemMotion(keys: keys.filter { $0.key.contains(".") && !$0.value.isEmpty })
+        return motion.isEmpty ? nil : motion
+    }
+
+    /// `fields` with each keyed style field set to its value at `frame` (from the item's start).
+    public func styled(_ fields: [String: JSONValue], at frame: Double) -> [String: JSONValue] {
+        var fields = fields
+        for property in keys.keys where property.contains(".") {
+            let parts = property.split(separator: ".", maxSplits: 1).map(String.init)
+            guard parts.count == 2, let value = value(property, at: frame) else { continue }
+            var group = fields[parts[0]]?.object ?? [:]
+            group[parts[1]] = .number((value * 10_000).rounded() / 10_000)
+            fields[parts[0]] = .object(group)
+        }
+        return fields
     }
 
     /// The same animation with every key `offset` frames later (negative: earlier).

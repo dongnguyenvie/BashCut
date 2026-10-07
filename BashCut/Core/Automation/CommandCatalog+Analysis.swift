@@ -44,9 +44,9 @@ extension CommandCatalog {
         "review.packet", .read,
         "Write an evidence folder for a fresh critic (a sub-agent with only this folder and bc:review): README, "
             + "plan.json (brief, plan, review profile, outputs), digest.json (what changed since the last review round), "
-            + "issues.json (with the round diff), cuts.json, word-landing.json (words against cuts and titles), hook.json, "
-            + "coverage.json (planned shots and beats), measured.json (what was and was not measured) and a contact sheet "
-            + "of every cut and title. No editor reasons are included.")
+            + "issues.json (with the round diff), shots.json (review.shots with summary), word-landing.json (words against "
+            + "cuts and titles), coverage.json (described shot per clip, script beats heard), measured.json (what was and was not "
+            + "measured) and a contact sheet of every cut and title. No editor reasons are included.")
 
     static let reviewCompareSpec = CommandSpec(
         "review.compare", .read,
@@ -95,54 +95,48 @@ extension CommandCatalog {
         "review.shots", .read,
         "Read the shots on Main in order: index, id, at/atSeconds, duration (frames) and seconds, media, mediaKind, "
             + "sourceIn and sourceInSeconds, zoom and transform, speed, keyframed properties, freezeFrame/reverse when "
-            + "set, gapBefore (frames since the previous shot), transitionIn {kind, duration} or the picture "
+            + "set, gapBefore (frames since the previous shot), transitionIn {kind, duration, easing} or the picture "
             + "cutDifference across a hard cut, and motion {mean, peak, samples} (fractions of full scale, see "
             + "review.picture) when review.measure ran for this revision (pictureMeasured), described (the "
             + "media.describe facts of the source shot it plays), cameraMove [{property, from, to, perSecond, unit, "
-            + "ease}] from its keyframes, and cut (into it): sameMedia, sameSetup (same media, overlapping or "
-            + "adjacent source), sourceGapSeconds, size/move/direction {from, to} when described. No verdicts. With "
-            + "summary: count, total, mean, median, min and max seconds and cuts per minute; rhythm {overall, "
-            + "sections [per section marker]} with mean, median, cv, cutsPerMinute, mode (the most common length "
-            + "bin and its share) and, given runLength and maxCV, lowVarianceRuns; runs of shots with the same "
-            + "described size and move; shares of each size, move and direction. With media: the same for a source "
-            + "file's measured shots (media.analyze) and its descriptions.",
+            + "ease}] from its keyframes, and cut (into it): kind (hard or the transition's kind), sameMedia, "
+            + "sameSetup (same media, overlapping or adjacent source), sourceGapSeconds, framingBefore/After {zoom, "
+            + "pan, tilt} (keyframes included), sameFraming, size/move/direction {from, to} when described. With "
+            + "from/to, only the shots that overlap those frames. No verdicts. With summary: count, total, mean, "
+            + "median, min and max seconds and cuts per minute; rhythm {overall, sections [per section marker]} with "
+            + "mean, median, cv, cutsPerMinute, mode (the most common length bin and its share); shares of each size, "
+            + "move and direction. With media: the same for a source file's measured shots (media.analyze) and its "
+            + "descriptions.",
         parameters: [
-            CommandParameter("summary", .boolean, "Add statistics, rhythm, runs and shares", cli: .flag("summary")),
+            CommandParameter("summary", .boolean, "Add statistics, rhythm and shares", cli: .flag("summary")),
+            CommandParameter("from", .integer, "Only shots that end after this timeline frame", minimum: 0,
+                             cli: .option("from")),
+            CommandParameter("to", .integer, "Only shots that start before this timeline frame", minimum: 1,
+                             cli: .option("to")),
             CommandParameter("media", .string, "Read a source file's measured shots instead of Main",
                              cli: .option("media")),
             CommandParameter("minScore", .number, "With media: lowest cut score (default 0.1)", range: 0...1,
                              cli: .option("min-score")),
-            CommandParameter("runLength", .integer, "Shots in a low-variance run (with maxCV)", minimum: 2,
-                             maximum: 100, cli: .option("run-length")),
-            CommandParameter("maxCV", .number, "Largest length variation (deviation over mean) in such a run",
-                             range: 0...10, cli: .option("max-cv")),
         ])
 
-    /// The cuts on Main and their timing against beats and words (P0-B2).
-    static let reviewCutSpecs: [CommandSpec] = [
-        CommandSpec(
-            "review.cuts", .read,
-            "Read every cut on Main: index, frame/seconds, from/to item IDs, kind (hard, or the transition's kind with "
-                + "transitionFrames/Seconds and easing), gapFrames when there is a gap, framingBefore/After {zoom, pan, "
-                + "tilt} (keyframes included) and sameFraming (same media and the same framing on both sides); counts "
-                + "per kind, runs of the same kind and how many cuts keep the framing. No verdicts."),
-        CommandSpec(
-            "review.sync", .read,
-            "Time events against the beat grid and the spoken words: per event (cuts on Main by default; text items "
-                + "and sfx items on request) the nearest beat and the nearest word edge (start or end, its text, "
-                + "whether the event falls inside the word) with offsetFrames and offsetMs (positive = after it), and "
-                + "for beats and words the distribution: count, mean, median, p10, p90 and counts per offset from −6 "
-                + "to +6 frames. Words are the stored transcripts heard through the clips (media.transcribe), else "
-                + "the caption words. With rendered: rendered {windows [{at, lagMs, correlation}], driftMsPerMinute, "
-                + "lagStartMs, lagEndMs} from matching the last export's sound to the timeline's mix every 10 s "
-                + "(positive lag = the render is later); the export must show this revision.",
-            parameters: [
-                CommandParameter("events", .string, "cuts, text, sfx, captions (comma separated; default cuts)",
-                                 cli: .option("events")),
-                CommandParameter("rendered", .boolean, "Also measure the last export's timing against the timeline",
-                                 cli: .flag("rendered")),
-            ]),
-    ]
+    /// Cuts, text, captions and sound effects timed against beats and words (P0-B2).
+    static let reviewSyncSpec = CommandSpec(
+        "review.sync", .read,
+        "Time events against the beat grid and the spoken words: per event (cuts on Main by default; text items "
+            + "and sfx items on request) the nearest beat and the nearest word edge (start or end, its text, "
+            + "whether the event falls inside the word) with offsetFrames and offsetMs (positive = after it), and "
+            + "for beats and words count, mean and median offset (with bins also p10, p90 and counts per offset "
+            + "from −6 to +6 frames). Words are the stored transcripts heard through the clips (media.transcribe), "
+            + "else the caption words. With rendered: rendered {windows [{at, lagMs, correlation}], "
+            + "driftMsPerMinute, lagStartMs, lagEndMs} from matching the last export's sound to the timeline's mix "
+            + "every 10 s (positive lag = the render is later); the export must show this revision.",
+        parameters: [
+            CommandParameter("events", .string, "cuts, text, sfx, captions (comma separated; default cuts)",
+                             cli: .option("events")),
+            CommandParameter("bins", .boolean, "Add p10/p90 and counts per offset", cli: .flag("bins")),
+            CommandParameter("rendered", .boolean, "Also measure the last export's timing against the timeline",
+                             cli: .flag("rendered")),
+        ])
 
     static let uiFrameSpec = CommandSpec(
         "ui.frame", .read,
@@ -241,8 +235,8 @@ extension CommandCatalog {
         ])
 
     /// Platform facts the checks use (#469).
-    static let platformsListSpec = CommandSpec(
-        "platforms.list", .read,
+    static let platformsGetSpec = CommandSpec(
+        "platforms.get", .read,
         "Read the platform facts review uses: per platform (TikTok, Reels, Shorts, YouTube) shape, maxSeconds, "
             + "targetLUFS, maxTruePeakDbTP and safeArea (zones the app covers, as fractions), with the project's "
             + "review.platform overrides applied, whether it is one of the project's outputs and whether it was "
@@ -250,26 +244,12 @@ extension CommandCatalog {
             + "shape, null when none); targets: each output preset's loudness target (output.targets, else the "
             + "platform's); data: the platform table's version and origin (built-in or the plugin that shipped a newer "
             + "one). With facts, every field with {value, kind hard|recommended|info, source, checked, confidence}, "
-            + "including bitrateMbps, title and cover facts, chapter and disclosure rules where known.",
-        parameters: [CommandParameter("facts", .boolean, "Include each field's provenance", cli: .flag("facts"))])
-
-    static let platformsGetSpec = CommandSpec(
-        "platforms.get", .read,
-        "One platform's facts with the project's overrides applied and every field's provenance (value, kind, source, "
-            + "checked, confidence): length, loudness, safe zones, recompression bit rate, shape, title and cover facts, "
-            + "chapter and disclosure rules.",
-        parameters: [CommandParameter("id", .string, "tiktok, reels, shorts, youtube", required: true, cli: .positional)])
-
-    /// Hook and close as facts (#467, P0-B11).
-    static let reviewHookSpec = CommandSpec(
-        "review.hook", .read,
-        "Read how the edit opens and closes, as facts: opening {hookSeconds (the project's review.hookSeconds or "
-            + "null), firstWords {frame, seconds, text} (heard or caption words), firstSpeechItem, firstTitle and "
-            + "firstCaption {frame, seconds, item, text, holdSeconds}, firstCut, described {subjects and sizes [{name, "
-            + "firstFrame, firstSeconds, onScreenSeconds}] from media.describe}, firstFrame {luma, mid, inkShare (pixels "
-            + "text and overlay layers change)}}, close {duration, lastWords, lastCut, lastTitle with its hold, bounds "
-            + "and edges}, and the platform zones. No verdict about what is early enough; the review's hook check runs "
-            + "only when the project sets review.hookSeconds.")
+            + "including bitrateMbps, title and cover facts, chapter and disclosure rules where known. With id, that "
+            + "one platform's row with its facts.",
+        parameters: [
+            CommandParameter("id", .string, "tiktok, reels, shorts, youtube", cli: .positional),
+            CommandParameter("facts", .boolean, "Include each field's provenance", cli: .flag("facts")),
+        ])
 
     static let reviewLayoutSpec = CommandSpec(
         "review.layout", .read,
@@ -285,10 +265,18 @@ extension CommandCatalog {
             + "backgroundLuminance, textPixels} measured on the frame with and without text (at frame, or each "
             + "item's middle). Also the frame size, the platform whose zones apply (safeArea, minTextSize), density "
             + "(titles and captions per minute) and, at a frame, pictures on screen with their scale and coverage. "
+            + "With from/to, only text that overlaps those frames. With ink: ink {frame, luma, mid (0–100), inkShare "
+            + "(pixels text and overlay layers change)} of the composed frame (frame, default 0) against Main alone. "
             + "No verdicts.",
         parameters: [
             CommandParameter("frame", .integer, "Only text on screen at this timeline frame", minimum: 0,
                              cli: .option("frame")),
+            CommandParameter("from", .integer, "Only text that ends after this timeline frame", minimum: 0,
+                             cli: .option("from")),
+            CommandParameter("to", .integer, "Only text that starts before this timeline frame", minimum: 1,
+                             cli: .option("to")),
+            CommandParameter("ink", .boolean, "Measure the composed frame (frame, default 0): luma, mid and inkShare",
+                             cli: .flag("ink")),
             CommandParameter("contrast", .boolean, "Measure each item's contrast on rendered frames",
                              cli: .flag("contrast")),
         ])

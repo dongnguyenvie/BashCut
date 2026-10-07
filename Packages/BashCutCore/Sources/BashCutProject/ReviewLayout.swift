@@ -3,14 +3,18 @@ import Foundation
 /// Text layout as data for the agent (`review.layout`, #465): each text item's box as the renderer draws it, its size
 /// against the frame and its margins to each edge, next to the zones of the project's platform. No verdicts.
 public enum ReviewLayout {
-    /// The text items on visible text tracks, or only those on screen at `frame`. With `words` (heard or caption
-    /// words), each item also says how it sits against the speech (P0-B6).
+    /// The text items on visible text tracks, or only those on screen at `frame`, or only those that overlap `range`.
+    /// With `words` (heard or caption words), each item also says how it sits against the speech (P0-B6).
     public static func json(
-        _ project: Project, context: ReviewContext, frame: Int? = nil, words: [ReviewSync.WordSpan]? = nil
+        _ project: Project, context: ReviewContext, frame: Int? = nil, range: Range<Int>? = nil,
+        words: [ReviewSync.WordSpan]? = nil
     ) -> JSONValue {
         let all = textItems(project, frame: nil)
         let scene = TextFacts.Scene(project: project, context: context, all: all, words: words)
-        let rows = textItems(project, frame: frame).map { track, item in
+        let shown = textItems(project, frame: frame).filter { _, item in
+            range.map { item.at < $0.upperBound && item.end > $0.lowerBound } ?? true
+        }
+        let rows = shown.map { track, item in
             var row = row(item, track: track, project: project, context: context).object
             row.merge(TextFacts.json(item, track: track, in: scene)) { _, new in new }
             return JSONValue.object(row)

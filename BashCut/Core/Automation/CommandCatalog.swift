@@ -4,7 +4,7 @@ import Foundation
 /// Every automation command, declared once. Modes, CLI parsing, MCP tools and agent instructions derive from it.
 public enum CommandCatalog {
     /// Left-rail library panels, matching `LibraryTab` (checked by `EditorUIStateTests`).
-    /// Sheets and popovers `ui.open` can show.
+    /// Sheets and popovers `ui.action open` can show.
     public static let dialogs = [
         "new-project", "export", "export-report", "agent-changes", "review", "history", "plugins", "settings",
         "doctor", "knowledge", "ask", "sections", "external-changes", "plugin-proposals", "commands", "shortcuts",
@@ -27,7 +27,8 @@ public enum CommandCatalog {
     public static let specs: [CommandSpec] = declaredSpecs.map(withRequestParameters)
 
     private static let declaredSpecs: [CommandSpec] = readSpecs + projectSpecs + editSpecs + captionSpecs + layerSpecs + styleSpecs
-        + formatSpecs + clipSpecs + jobSpecs + capabilitySpecs + analysisSpecs + reviewCutSpecs + timelineStillsSpecs + [colorMeasureSpec] + planSpecs
+        + formatSpecs + clipSpecs + jobSpecs + capabilitySpecs + analysisSpecs + [reviewSyncSpec] + timelineStillsSpecs
+        + [colorMeasureSpec] + planSpecs
         + workflowSpecs + planCheckSpecs + quoteSpecs + selectsSpecs
         + variantSpecs + packagingSpecs
         + sourceMediaSpecs
@@ -81,8 +82,7 @@ public enum CommandCatalog {
         reviewPictureSpec,
         reviewShotsSpec,
         reviewLayoutSpec,
-        reviewHookSpec,
-        platformsListSpec, platformsGetSpec,
+        platformsGetSpec,
         CommandSpec(
             "export.status", .read,
             "Read the export state: while one runs, its job, step, preset and path (last receipt under lastExport); "
@@ -91,8 +91,17 @@ public enum CommandCatalog {
                 + "black and silent stretches), which review run reads (P1-E6)."),
         CommandSpec(
             "plugins.list", .read,
-            "List installed plugins with their category, providers and project provider preferences.",
-            parameters: [pluginCategory]),
+            "List installed plugins with their category, providers and project provider preferences. With health, "
+                + "health {plugin, state, dependencies} from checks run now (Plugins sheet, Check Health); with views, "
+                + "views {panels (ready plugins with a rail panel or views (plugin API 8): title and icon, each view "
+                + "with where it lives and whether it is shown, tools, skills, required plugins, used capabilities), "
+                + "open panel, sheet, the host's plugin features, apiVersion}.",
+            parameters: [
+                pluginCategory,
+                CommandParameter("health", .boolean, "Run health checks", cli: .flag("health")),
+                CommandParameter("plugin", .string, "With health: only this plugin", cli: .option("plugin")),
+                CommandParameter("views", .boolean, "Add plugin panels and views", cli: .flag("views")),
+            ]),
     ]
 
     static let leaveCurrent = [
@@ -264,10 +273,6 @@ public enum CommandCatalog {
                 CommandParameter("dialog", .string, "Only answer if this dialog ID is topmost", cli: .option("dialog")),
             ]),
         CommandSpec(
-            "ui.open", .ui, "Open a sheet or popover in the app.",
-            parameters: [CommandParameter("dialog", .string, "Dialog", required: true, choices: dialogs,
-                                          cli: .positional)]),
-        CommandSpec(
             "ui.select", .ui,
             "Select timeline items in the app (omit them to clear the selection), or a layer with --track. "
                 + "Several items: --items a,b,c; --add keeps the current selection.",
@@ -283,8 +288,18 @@ public enum CommandCatalog {
         CommandSpec(
             "ui.action", .edit,
             "Run an editor action like the user: by ID (timeline.split, timeline.zoom-in, playback.toggle) or by "
-                + "shortcut (cmd+b, space, cmd+=). Actions that open a dialog return at once; answer it with ui.respond.",
-            parameters: [CommandParameter("action", .string, "Action ID or shortcut", required: true, cli: .positional)]),
+                + "shortcut (cmd+b, space, cmd+=). Actions that open a dialog return at once; answer it with ui.respond. "
+                + "With a target: open DIALOG (a sheet or popover: " + dialogs.joined(separator: ", ") + "), panel "
+                + "PANEL (a library panel in the left rail: " + libraryPanels.joined(separator: ", ") + "), source "
+                + "MEDIA (the source viewer, with --in/--out frames marked) or notify MESSAGE (a short status message).",
+            parameters: [
+                CommandParameter("action", .string, "Action ID or shortcut, or open, panel, source, notify",
+                                 required: true, cli: .positional),
+                CommandParameter("target", .string, "The dialog, panel, media ID or message of open, panel, source, notify",
+                                 cli: .positional),
+                CommandParameter("in", .integer, "source: in frame", minimum: 0, cli: .option("in")),
+                CommandParameter("out", .integer, "source: out frame (exclusive)", minimum: 1, cli: .option("out")),
+            ]),
         CommandSpec(
             "ui.view", .ui,
             "Read the editor view state, or change it: timeline zoom (pixels per second), viewer zoom, snapping, safe area, "
@@ -306,13 +321,13 @@ public enum CommandCatalog {
                                  cli: .option("reveal")),
                 CommandParameter("inspector", .string, "Inspector tab", choices: UIAction.inspectorTabs,
                                  cli: .option("inspector")),
-                CommandParameter("settingsSection", .string, "Settings section (open Settings with ui.open settings)",
+                CommandParameter("settingsSection", .string, "Settings section (open Settings with ui.action open settings)",
                                  choices: UIAction.settingsSections, cli: .option("settings-section")),
                 CommandParameter("settingsSearch", .string, "Settings search text: lists matching settings of every "
                                  + "section; empty clears it", cli: .option("settings-search")),
-                CommandParameter("knowledgeSection", .string, "Knowledge window section (open it with ui.open knowledge)",
+                CommandParameter("knowledgeSection", .string, "Knowledge window section (open it with ui.action open knowledge)",
                                  choices: UIAction.knowledgeSections, cli: .option("knowledge-section")),
-                CommandParameter("pluginsTab", .string, "Plugins sheet tab (open it with ui.open plugins)",
+                CommandParameter("pluginsTab", .string, "Plugins sheet tab (open it with ui.action open plugins)",
                                  choices: UIAction.pluginsTabs, cli: .option("plugins-tab")),
                 CommandParameter("pluginsCategory", .string, "Category Plugins › Browse shows; all shows every one",
                                  choices: ["all"] + UIAction.pluginCategories,
@@ -328,24 +343,10 @@ public enum CommandCatalog {
                                  choices: ["all"] + LibraryScope.allCases.map(\.rawValue), cli: .option("library-scope")),
             ]),
         CommandSpec(
-            "ui.source", .ui, "Open project media in the source viewer, optionally with in/out frames marked.",
-            parameters: [
-                CommandParameter("media", .string, "Media ID", required: true, cli: .positional),
-                CommandParameter("in", .integer, "Source in frame", minimum: 0, cli: .option("in")),
-                CommandParameter("out", .integer, "Source out frame (exclusive)", minimum: 1, cli: .option("out")),
-            ]),
-        CommandSpec(
             "ui.seek", .ui, "Move the viewer to a timeline frame.",
             parameters: [CommandParameter("frame", .integer, "Timeline frame", required: true, minimum: 0,
                                           cli: .positional)]),
         uiFrameSpec, uiFramesSpec,
-        CommandSpec(
-            "ui.panel", .ui, "Open a library panel in the left rail.",
-            parameters: [CommandParameter("panel", .string, "Panel", required: true, choices: libraryPanels,
-                                          cli: .positional)]),
-        CommandSpec(
-            "ui.notify", .ui, "Show a short status message in BashCut.",
-            parameters: [CommandParameter("message", .string, "Message", required: true, cli: .positional)]),
     ]
 
     /// Library tools and health checks (each matches a panel or sheet in the app).
@@ -365,8 +366,5 @@ public enum CommandCatalog {
                 + leaveCurrent),
         CommandSpec("project.recents", .read, "List recently opened projects (Welcome screen)."),
         CommandSpec("doctor.run", .read, "Run the Doctor checks (workspace, tools, plugins) and return the results."),
-        CommandSpec(
-            "plugins.health", .read, "Run plugin health checks (Plugins sheet, Check Health); all plugins by default.",
-            parameters: [CommandParameter("plugin", .string, "Plugin ID", cli: .positional)]),
     ]
 }

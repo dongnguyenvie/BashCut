@@ -129,11 +129,29 @@ longest side against the frame (bars on the other sides), **fill** covers the fr
 (fit); a project without the field fills, as every project did before it existed, so older zoom values keep their
 look. `transform.zoom` scales from that base size, and `pan` / `tilt` move it in output pixels.
 
+## Motion and style as data
+
+- **Ease.** Keyframe `ease` and transition `easing` are one type: `linear`, `in`, `out`, `inOut` (keyframes also
+  `hold`) or `"cubic-bezier(x1,y1,x2,y2)"` with x1 and x2 in 0…1.
+- **Keyframes** animate `zoom`, `pan`, `tilt`, `rotation`, `opacity`, `volume` and numeric style fields as
+  `group.field` paths: `color.exposure`, `color.contrast`, `color.saturation`, `color.lutStrength` on clips and
+  adjustment layers; `textStyle.size`, `positionX`, `positionY`, `strokeWidth`, `lineHeight`, `tracking` on text.
+- **Transitions** keep `kind`, `duration`, optional `easing` and optional `motion`
+  `{"outgoing": {property: [values]}, "incoming": {…}}`. Properties: `zoom`, `panX`/`panY` (share of the frame,
+  right/up), `rotation` (degrees, counterclockwise), `opacity`, `exposure` (EV), `scaleX` and `reveal` (share of
+  the width shown from the left); 2–16 values spread evenly over the eased tween. The built-in kinds (`dissolve`,
+  `whip`, `blink`, `zoom`, `spin`, `shutter`, `wipe`) are rows of the same table; any other kind needs `motion`.
+- **Text style** is open: besides the declared `textStyle` fields, the renderer reads `background {color, opacity,
+  padding, radius}`, `shadow {color, opacity, blur, dx, dy}` and `accentBars [{side left|right|top|bottom, color,
+  opacity, thickness, gap, length, radius}]` (thickness and gap in font sizes, defaults 0.12 and 0.2; length a share
+  of the side; bars sit beside the text block or its plate). A background or accent bars replace the preset's own
+  plates and bars.
+
 ## Schema and versioning
 
 [project.schema.json](project.schema.json) is a JSON Schema (draft 2020-12) of the whole file. It is generated,
 never edited by hand: `ProjectSchema` builds it from the same declarations validation uses (`TrackKind`,
-`ItemProperty`, `ColorGrade`, `TextPreset`, the look and kit catalogs). Agents read it with `schema get`. Fields
+`ItemProperty`, `ColorGrade`, `TextPreset`, `ItemMotion`, `TransitionMotion`). Agents read it with `schema get`. Fields
 it does not declare are still allowed, because unknown fields round-trip; rules that span several fields (layer
 bands, overlaps, links, transitions) are enforced by `Project.validate()` and described in the schema text.
 

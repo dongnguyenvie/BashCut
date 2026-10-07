@@ -64,20 +64,22 @@ extension ProjectDocument {
                 ])
             })
         }
-        handle("plugins.health") { document, arguments, _ in
-            document.plugins.refresh(projectRoot: document.fileURL?.deletingLastPathComponent())
-            var selected = document.plugins.plugins
-            if let id = arguments.optionalString("plugin") {
-                selected = selected.filter { $0.id == id }
-                guard !selected.isEmpty else { throw RPCFailure(-32602, "Unknown plugin \(id)") }
-            }
-            var results: [JSONValue] = []
-            for plugin in selected {
-                results.append(Self.healthJSON(await document.plugins.checkHealthNow(plugin)))
-            }
-            return .array(results)
-        }
         registerKnowledgeCommands()
+    }
+
+    /// Health checks run now (`plugins.list --health`): every plugin's, or one's.
+    func pluginHealthJSON(_ id: String?) async throws -> JSONValue {
+        plugins.refresh(projectRoot: fileURL?.deletingLastPathComponent())
+        var selected = plugins.plugins
+        if let id {
+            selected = selected.filter { $0.id == id }
+            guard !selected.isEmpty else { throw RPCFailure(-32602, "Unknown plugin \(id)") }
+        }
+        var results: [JSONValue] = []
+        for plugin in selected {
+            results.append(Self.healthJSON(await plugins.checkHealthNow(plugin)))
+        }
+        return .array(results)
     }
 
     private static func healthJSON(_ health: PluginHealth) -> JSONValue {

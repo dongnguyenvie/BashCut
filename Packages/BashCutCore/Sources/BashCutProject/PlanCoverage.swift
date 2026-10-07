@@ -1,64 +1,56 @@
 import Foundation
 
-/// The edit plan against what was measured (P1-D3), as facts with no threshold: for each planned shot the described
-/// shots in the footage that fit it and the clips that place it (`review.coverage`), and for each script beat whether
-/// and where it was heard (`script.check`).
+/// What the timeline plays and says, as facts with no threshold (P1-D3, flexibility audit A8/A9): which described
+/// source shot each video clip plays (`review.coverage`; the agent joins it with its plan), and for each script beat
+/// whether and where it was heard (`script.check`).
 public enum PlanCoverage {
-    /// A planned shot fits a described shot when the size matches (if planned) and every `mustShow` name is among the
-    /// described subjects (case-insensitive, either containing the other).
-    static func fits(_ plan: [String: JSONValue], _ shot: MediaDescription.Shot) -> Bool {
-        if let size = plan["size"]?.string, shot.size != size { return false }
-        let subjects = shot.subjects.map { $0.lowercased() }
-        let names = plan["mustShow"]?.array.compactMap { $0.string?.lowercased() } ?? []
-        return names.allSatisfy { name in subjects.contains { $0.contains(name) || name.contains($0) } }
-    }
-
+    /// Every clip on the video tracks in time order: item, track, at/end, media, its `planShot` field when set, and
+    /// the `media.describe` shot it plays {index, start, end and the described facts}, or null when its media has no
+    /// description covering it.
     public static func coverage(_ project: Project) -> JSONValue {
-        let planned = project["plan"]?.object["shots"]?.array.map(\.object) ?? []
-        let described = project.media.compactMap { media in media.shotDescription.map { (media, $0) } }
-        let clips = project.tracks.filter { $0.kind == TrackKind.video }.flatMap(\.items).sorted { $0.at < $1.at }
         let media = Dictionary(project.media.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-        let rows: [JSONValue] = planned.map { plan in
-            let id = plan["id"]?.string ?? ""
-            let found = described.flatMap { asset, description in
-                description.shots.filter { fits(plan, $0) }.map { shot in
-                    JSONValue.object([
-                        "media": .string(asset.id), "start": .number(shot.start), "end": .number(shot.end),
-                        "size": shot.size.map(JSONValue.string) ?? .null,
-                    ])
+        var clips: [(track: Track, clip: Item)] = []
+        for track in project.tracks where track.kind == TrackKind.video {
+            clips += track.items.map { (track, $0) }
+        }
+        clips.sort { $0.clip.at == $1.clip.at ? $0.clip.id < $1.clip.id : $0.clip.at < $1.clip.at }
+        var described = 0
+        let rows: [JSONValue] = clips.map { track, clip in
+            var row: [String: JSONValue] = [
+                "item": .string(clip.id), "track": .string(track.id), "at": .integer(clip.at), "end": .integer(clip.end),
+                "media": clip.mediaID.map(JSONValue.string) ?? .null, "described": .null,
+            ]
+            if let planShot = clip["planShot"] { row["planShot"] = planShot }
+            if let asset = clip.mediaID.flatMap({ media[$0] }), let description = asset.shotDescription {
+                let span = project.sourceSpan(of: clip, media: asset)
+                if let shot = description.shot(covering: span.lowerBound, to: span.upperBound) {
+                    var facts = shot.factsJSON.object
+                    facts["index"] = description.shots.firstIndex(of: shot).map(JSONValue.integer) ?? .null
+                    facts["start"] = .number(shot.start)
+                    facts["end"] = .number(shot.end)
+                    row["described"] = .object(facts)
+                    described += 1
                 }
             }
-            let placed = clips.filter { clip in
-                if clip["planShot"]?.string == id { return true }
-                guard let asset = clip.mediaID.flatMap({ media[$0] }), let description = asset.shotDescription else { return false }
-                let span = project.sourceSpan(of: clip, media: asset)
-                return description.shot(covering: span.lowerBound, to: span.upperBound).map { fits(plan, $0) } ?? false
-            }
-            let status = !placed.isEmpty ? "placed" : !found.isEmpty ? "found" : described.isEmpty ? "undescribed" : "missing"
-            var row: [String: JSONValue] = [
-                "id": .string(id), "status": .string(status), "foundCount": .integer(found.count),
-                "found": .array(Array(found.prefix(20))),
-                "placed": .array(placed.map { .object(["item": .string($0.id), "at": .integer($0.at)]) }),
-            ]
-            for key in ["section", "purpose", "size", "mustShow", "source"] { row[key] = plan[key] }
             return .object(row)
         }
-        let count = { (status: String) in rows.filter { $0.object["status"] == .string(status) }.count }
         return .object([
-            "revision": .integer(project.revision), "shots": .array(rows),
+            "revision": .integer(project.revision), "clips": .array(rows),
             "summary": .object([
-                "planned": .integer(rows.count), "placed": .integer(count("placed")), "found": .integer(count("found")),
-                "missing": .integer(count("missing")), "undescribed": .integer(count("undescribed")),
-                "describedMedia": .integer(described.count),
+                "clips": .integer(rows.count), "described": .integer(described),
+                "describedMedia": .integer(project.media.filter { $0.shotDescription != nil }.count),
             ]),
         ])
     }
 
-    /// Each beat aligned to the words heard on the timeline: the share of its words heard as written, where it was
-    /// heard, and in which section marker it starts against the section the plan put it in.
-    public static func scriptCheck(_ project: Project, words: [ReviewSync.WordSpan]) -> JSONValue {
+    /// Each beat ({id, text, section}; default the plan's beats) aligned to the words heard on the timeline: the share
+    /// of its words heard as written, where it was heard, and in which section marker it starts against the section
+    /// the beat names.
+    public static func scriptCheck(
+        _ project: Project, words: [ReviewSync.WordSpan], beats given: [[String: JSONValue]]? = nil
+    ) -> JSONValue {
         let fps = project.fps.value
-        let beats = project["plan"]?.object["beats"]?.array.map(\.object) ?? []
+        let beats = given ?? project["plan"]?.object["beats"]?.array.map(\.object) ?? []
         let heard = words.sorted { $0.at < $1.at }.map {
             CaptionWords.Timed(text: $0.text, start: Double($0.at) / fps, end: Double($0.end) / fps)
         }

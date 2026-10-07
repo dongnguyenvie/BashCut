@@ -192,11 +192,20 @@ extension ProjectDocument {
     func insertVoiceTake(
         _ asset: GeneratedPluginAsset, at frame: Int? = nil, voice: [String: JSONValue]? = nil, author: Author = .user
     ) async throws -> String {
+        try await insertVoiceTake(
+            VoiceTakeFile(asset, voice: voice), at: frame, voice: voice, author: author)
+    }
+
+    /// Inserts a take file with its recorded provenance on the Voiceover track and returns the new item ID.
+    @discardableResult
+    func insertVoiceTake(
+        _ take: VoiceTakeFile, at frame: Int?, voice: [String: JSONValue]?, author: Author
+    ) async throws -> String {
         guard let root = fileURL?.deletingLastPathComponent() else {
             throw ProjectError.invalid("Open a project before generating voiceover")
         }
         let session = sessionID
-        let mediaAsset = AVURLAsset(url: asset.url)
+        let mediaAsset = AVURLAsset(url: take.url)
         let duration = try await mediaAsset.load(.duration)
         let hasAudio = try await !mediaAsset.loadTracks(withMediaType: .audio).isEmpty
         try ensureSession(session)
@@ -206,10 +215,9 @@ extension ProjectDocument {
         guard start >= 0 else { throw ProjectError.invalid("Voiceover start frame must not be negative") }
         let mediaID = UUID().uuidString
         let media = Media(fields: [
-            "id": .string(mediaID), "path": .string(Self.relativePath(asset.url, root: root)),
+            "id": .string(mediaID), "path": .string(Self.relativePath(take.url, root: root)),
             "kind": .string("audio"), "fps": project.fps.json, "frames": .integer(frames),
-            "generatedBy": .object(Self.voiceProvenance(asset, voice: voice)),
-            "provenance": Self.voiceTakeProvenance(asset),
+            "generatedBy": .object(take.generatedBy), "provenance": take.provenance,
         ])
         var item = Item(media: mediaID, at: start, duration: frames)
         if let voice { item["voice"] = .object(voice) }
@@ -222,7 +230,7 @@ extension ProjectDocument {
         selectedID = item.id
         selectedTrackID = track.id
         emitPluginEvent(.voiceGenerated, [
-            "item": .string(item.id), "media": .string(mediaID), "path": .string(asset.url.path),
+            "item": .string(item.id), "media": .string(mediaID), "path": .string(take.url.path),
         ])
         return item.id
     }
@@ -273,11 +281,7 @@ extension ProjectDocument {
     // MARK: Automation
 
     func registerCapabilityCommands() {
-        handle("plugins.list") { document, arguments, _ in
-            await document.plugins.loadCachedRegistry()
-            let category = arguments.optionalString("category").flatMap(PluginCategory.init(rawValue:))
-            return document.pluginCatalogJSON(category: category)
-        }
+        handle("plugins.list") { document, arguments, _ in try await document.pluginsList(arguments) }
         handle("jobs.status") { document, arguments, _ in
             if let id = arguments.optionalString("job") {
                 guard let job = document.jobs.job(id) else { throw RPCFailure(-32602, "Unknown job") }
@@ -285,22 +289,7 @@ extension ProjectDocument {
             }
             return .array(document.jobs.jobs.map(\.json))
         }
-        handle("capabilities.get") { document, arguments, _ in
-            let root = document.fileURL?.deletingLastPathComponent()
-            let kind = try arguments.optionalString("kind").map {
-                guard let kind = LibraryKind(rawValue: $0) else { throw RPCFailure(-32602, "Unknown kind \($0)") }
-                return kind
-            }
-            let service = document.plugins.service
-            if let capability = arguments.optionalString("capability") {
-                let report = await service.checkedCapabilityStatus(capability, projectRoot: root, kind: kind)
-                return Self.capabilityJSON(report)
-            }
-            let declared = service.catalog(projectRoot: root).plugins.flatMap { ($0.manifest.providers ?? []).map(\.capability) }
-            let names = Set(CommandCatalog.capabilities.values).union(CapabilityService.serviceCapabilities).union(declared).sorted()
-            let reports = await service.checkedCapabilityStatuses(names, projectRoot: root, kind: kind)
-            return .array(reports.map(Self.capabilityJSON))
-        }
+        handle("capabilities.get") { document, arguments, _ in try await document.capabilitiesJSON(arguments) }
         handle("jobs.wait") { document, arguments, _ in
             try await document.waitForJob(try arguments.string("job"), seconds: try arguments.int("timeout"))
         }
@@ -375,7 +364,7 @@ extension ProjectDocument {
         }
     }
 
-    private func pluginCatalogJSON(category: PluginCategory? = nil) -> JSONValue {
+    func pluginCatalogJSON(category: PluginCategory? = nil) -> JSONValue {
         let result = plugins.service.catalog(projectRoot: fileURL?.deletingLastPathComponent())
         let listed = result.plugins.filter { category == nil || plugins.category(of: $0) == category }
         return .object([

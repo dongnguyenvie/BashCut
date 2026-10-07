@@ -320,9 +320,8 @@ extension Project {
             guard transitionIsValid(transition, cuts: cuts) else {
                 throw ProjectError.invalid("transition.\(transition.id): invalid cut or duration")
             }
-            if let easing = transition.fields["easing"], easing.string.map(TimelineTransition.easings.contains) != true {
-                throw ProjectError.invalid(
-                    "transition.\(transition.id): easing must be one of \(TimelineTransition.easings.joined(separator: ", "))")
+            do { try transition.checkKindAndEasing() } catch let ProjectError.invalid(message) {
+                throw ProjectError.invalid("transition.\(transition.id): \(message)")
             }
         }
     }

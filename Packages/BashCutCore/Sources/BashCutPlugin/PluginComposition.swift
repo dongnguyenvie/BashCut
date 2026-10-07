@@ -3,7 +3,7 @@ import Foundation
 // Plugin API 8: plugin UI (a rail container with declarative views) and composition (requirements on other plugins,
 // capabilities a plugin calls, host features it needs).
 
-/// Named host features (API 8). The host lists them in the session hello and in `plugins views`; a manifest's
+/// Named host features (API 8). The host lists them in the session hello and in `plugins list --views`; a manifest's
 /// `features` names the ones the plugin cannot work without. New features are added here instead of bumping the API
 /// version for each one, so a plugin asks for exactly what it uses.
 public enum PluginFeature {

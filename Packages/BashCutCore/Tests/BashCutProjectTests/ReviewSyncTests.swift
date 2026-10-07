@@ -3,8 +3,8 @@ import Testing
 
 @testable import BashCutProject
 
-/// Cut inventory and timing against beats and words (P0-B2).
-struct ReviewCutsTests {
+/// Cut kind and framing in review.shots, and timing against beats and words (P0-B2).
+struct ReviewSyncTests {
     /// Main at 30 fps: a (0–60), b (60–120, same media, punched in to 1.3), dissolve into c (120–180), d (190–240)
     /// after a 10-frame gap. Beats every 30 frames from 0; a text item at 62, an sfx at 119.
     func project() -> Project {
@@ -30,19 +30,16 @@ struct ReviewCutsTests {
         return project
     }
 
-    @Test("Cuts carry kind, transition, gap and framing on both sides; counts and runs per kind")
+    @Test("Each shot's cut carries its kind and the framing on both sides; the transition its easing")
     func inventory() throws {
-        let json = ReviewCuts.json(project()).object
-        let cuts = try #require(json["cuts"]?.array).map(\.object)
+        let shots = try #require(ReviewShots.json(project()).object["shots"]?.array).map(\.object)
+        let cuts = shots.dropFirst().compactMap { $0["cut"]?.object }
         #expect(cuts.map { $0["kind"] } == [.string("hard"), .string("dissolve"), .string("hard")])
         #expect(cuts[0]["framingAfter"]?.object["zoom"] == .number(1.3))
         #expect(cuts[0]["sameFraming"] == .bool(false))
-        #expect(cuts[1]["transitionFrames"] == .integer(12) && cuts[1]["easing"] == .string("linear"))
-        #expect(cuts[2]["gapFrames"] == .integer(10))
+        #expect(shots[2]["transitionIn"]?.object["easing"] == .string("linear"))
+        #expect(shots[3]["gapBefore"] == .integer(10))
         #expect(cuts[2]["sameFraming"] == .bool(true))
-        #expect(json["counts"] == .object(["hard": .integer(2), "dissolve": .integer(1)]))
-        #expect(json["runs"] == .array([]))
-        #expect(json["sameFraming"] == .integer(1))
     }
 
     @Test("Events are timed against the nearest beat and word edge, with the distribution")
@@ -61,7 +58,9 @@ struct ReviewCutsTests {
         #expect(events[3]["word"]?.object["inside"] == .bool(true))
         let beat = try #require(json["beat"]).object
         #expect(beat["count"] == .integer(5))
-        #expect(beat["byOffset"]?.object["10"] == nil && beat["byOffset"]?.object["-1"] == .integer(1))
+        #expect(beat["byOffset"] == nil && beat["p10Frames"] == nil)
+        let binned = try #require(ReviewSync.json(project(), words: words, kinds: [.cuts, .text, .sfx], bins: true).object["beat"]).object
+        #expect(binned["byOffset"]?.object["10"] == nil && binned["byOffset"]?.object["-1"] == .integer(1))
         #expect(ReviewSync.json(project(), words: []).object["word"] == .object(["count": .integer(0)]))
     }
 }

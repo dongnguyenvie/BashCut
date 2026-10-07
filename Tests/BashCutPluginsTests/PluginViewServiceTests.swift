@@ -34,7 +34,7 @@ for line in sys.stdin:
         rid, method, params = message["id"], message["method"], message["params"]
         if method in ("view.render", "view.event"):
             send({"type": "event", "id": rid, "event": {"kind": "render", "body": [{"type": "progress", "label": "Working"}]}})
-            answer = call(rid, "voice.speak", {"text": "Xin chao", "keepTakes": True})
+            answer = call(rid, "voice.speak", {"text": "Xin chao"})
             event = params.get("event") or {}
             send({"id": rid, "result": {
                 "title": params["view"], "state": {"count": ((params.get("state") or {}).get("count") or 0) + 1},

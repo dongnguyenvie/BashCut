@@ -120,7 +120,7 @@ the lower of the plugin's `apiVersion` and the host's current version.
 
 Host features (API 8) are names for what a BashCut can do, so a plugin asks for exactly what it uses instead of a whole
 API version: `container`, `views`, `requires`, `invoke`, and `views.<component>` for each view component (`views.list`,
-`views.audio`, `views.imageCompare`, …). The session `hello` carries `"features": […]` and `plugins views` lists them.
+`views.audio`, `views.imageCompare`, …). The session `hello` carries `"features": […]` and `plugins list --views` lists them.
 A manifest's `features` names the ones the plugin cannot work without; a BashCut without one lists the plugin as
 outdated ("Update BashCut"). For optional features, read `features` from `hello` and adapt instead.
 
@@ -282,7 +282,7 @@ Agents and scripts:
 - `bashcut plugins replace <id> --path <path>` shows the approval to update a plugin from a new folder or zip.
 - `bashcut plugins reload <id>` restarts a plugin and checks its files again; it reports `availability` (`changed`
   until the user trusts the new files). `plugins list` reports a linked plugin's folder as `linked`.
-- `bashcut ui open add-plugin` opens the Add Plugin sheet.
+- `bashcut ui action open add-plugin` opens the Add Plugin sheet.
 
 To share a private plugin with a team, push it to a private GitHub repo and share the link (each person adds a
 token once), send the zip (`ditto -c -k --keepParent my-plugin my-plugin.zip`) or commit
@@ -452,11 +452,10 @@ symlinks are followed, and the file must exist. If the call fails, BashCut delet
   the count is filled. If any call fails, the takes made so far are discarded.
 - Each file must be valid audio with a positive duration. BashCut does not score takes itself (P0-C4): it measures
   each take (seconds, units per second in the content language's unit, leading and trailing silence, pauses) and
-  picks the take the caller names (`--target-rate`, `--choose`), else the highest provider `score` (ties go to the
-  earlier take), else the first take.
+  reports them with the provider's `score`; the caller picks (`voice place`, or `--choose`).
 - Every request carries `cloneConsent` (true only when the person asked to clone a voice). A provider that clones from
   a recording must refuse a clone request without it.
-- A provider may describe its voices in the manifest (P0-C7), so agents pick by facts (`voice voices`):
+- A provider may describe its voices in the manifest (P0-C7), so agents pick by facts (`capabilities get voice.synthesize --voices`):
   `"voices": [{"id", "language", "region"?, "style"?, "gender"?, "supportsRate"?}]` and `"clones": true` when it can
   clone. Only `voice.synthesize` providers may declare them; IDs are unique and every voice has a language.
 
@@ -983,7 +982,7 @@ overlays, inspector tabs, drag and drop from a view, and updates the plugin send
 
 ### Commands
 
-`plugins views` lists the plugins with panels or views, each view's location and whether it is shown, tools, skills,
+`plugins list --views` lists the plugins with panels or views, each view's location and whether it is shown, tools, skills,
 requirements, uses and the host features. `plugins show-view <plugin> --view id` shows a view where it lives (the
 sheet is dialog `plugin-view` in `ui dialog`; `ui respond close` closes it).
 `plugins view <plugin> [--view id] [--open]` renders a view and returns its components with the input values;
@@ -995,14 +994,14 @@ sheet is dialog `plugin-view` in `ui dialog`; `ui respond close` closes it).
 A plugin can build on what other plugins provide. Prefer the first way that works:
 
 1. **Call a BashCut command** over the [host channel](#host-channel-api-4) from a view or action request:
-   `voice.speak` to generate speech, `captions.generate`, `beats.detect`, `media.import`, `media.place`,
+   `voice.speak` to generate measured takes and `voice.place` to put one on the timeline, `captions.generate`, `beats.detect`, `media.import`, `media.place`,
    `timeline.apply`, … BashCut picks the provider the user chose (VieNeu-TTS or any other `voice.synthesize`
    plugin), checks the request, stores files in the project and records the edit with the plugin as author. Your
    plugin never needs to know which plugin did the work.
 
    ```json
    {"type": "call", "id": "<request id>", "callId": "c1", "method": "voice.speak",
-    "params": {"text": "Xin chào", "keepTakes": true}}
+    "params": {"text": "Xin chào"}}
    ```
 
 2. **`plugins.invoke`** for a capability that has no BashCut command (a capability another plugin defined, such as
@@ -1205,7 +1204,8 @@ later:
 - Calls on a request without a host channel get the error "This request cannot call BashCut".
 - Call params and results are limited to 1 MiB.
 - Views and actions (API 8) call as author `plugin`, with one command token per plugin, limited to the chat-agent
-  commands plus `plugins.run`, `plugins.invoke`, `plugins.views` and `ui.notify`. Edits are validated and undoable
+  commands plus `plugins.run`, `plugins.invoke` and `plugins.show-view`; `ui.action` only for `notify`, `panel` and
+  `source` (`{"action": "notify", "target": "Done"}` shows a status message). Edits are validated and undoable
   and the history shows the plugin as their author. An action that edits through calls should return no
   `operations` of its own.
 
@@ -1220,7 +1220,8 @@ is in [11 — Chat agents](../specs/11-chat-agents.md).
 
 - **`turn`** sends:
   - `tools`: the BashCut commands the agent may call, as `{name, method, description, inputSchema}`. Everything
-    except `agent.*`, `chat.*` and `ui.notify`.
+    on the chat allow-list (no `agent.*`, `chat.*`, plugin administration or `clip.speed*`; `ui.action` only for
+    `panel` and `source`).
   - `instructions` and `context`: a generic editing preamble, the command instructions, the project context
     and the timeline summary.
   - `kit`: the agent kit, as `{root, skillsFolder, version, skills: [{name, description}]}`.
@@ -1282,12 +1283,12 @@ Everything above is available to agents through the CLI and MCP (`bashcut_plugin
 | Command | Mode | UI equivalent |
 |---|---|---|
 | `plugins list` | read | Plugins sheet: availability, transport, actions, hooks, options, library packs, skills, provider kinds, container, views, requires (with state), uses |
-| `plugins views` | read | The plugin icons in the left rail and their panels: views, tools, skills, requirements, uses; the host features |
+| `plugins list --views` | read | The plugin icons in the left rail and their panels: views, tools, skills, requirements, uses; the host features |
 | `plugins show-view <plugin> --view <id>` | ui | Opening a view where it lives: the rail panel, its dock tab or its sheet |
 | `plugins view <plugin> [--view id] [--open]` | ui | Opening a view; returns its components and input values |
 | `plugins view-event <plugin> --node <id> [--type …] [--value …]` | ui | Clicking, typing or selecting in a plugin view |
 | `plugins invoke <capability> [--provider P] [--params '{…}']` | edit, job | None: a capability's raw result, for capabilities without a command |
-| `plugins health [plugin]` | read | Check Health |
+| `plugins list --health [--plugin ID]` | read | Check Health |
 | `plugins actions [text] [--plugin id]` | read | Every contributed action (or those matching the text or plugin) with placements, `when`, shortcut, a JSON Schema for its params, whether it is enabled now and when it last ran |
 | `plugins run <action> [--params '{…}']` | edit, job | Clicking the action and filling its sheet |
 | `plugins hooks` | read | Hook Activity: subscriptions, the delivery queue (limit, running, queued, debouncing), recent runs, waiting proposals |
@@ -1309,7 +1310,7 @@ parameters or `confirm` opens its sheet (dialog `plugin-action`); answer it with
 `plugin-confirm` sheet (unless the user already ran it from the parameter sheet, which shows the text, or Settings
 allows all agent actions). Waiting never blocks the app: commands keep being answered, `jobs status` shows the job
 running, and `ui dialog` lists the sheet. Only the user can choose Run; automation can only answer `cancel` (or
-`jobs cancel` the job). Cancelling starts no plugin request. `ui open plugin-proposals` opens the review sheet.
+`jobs cancel` the job). Cancelling starts no plugin request. `ui action open plugin-proposals` opens the review sheet.
 
 ## Dependencies and health
 

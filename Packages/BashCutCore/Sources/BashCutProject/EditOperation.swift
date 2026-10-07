@@ -36,7 +36,9 @@ public indirect enum EditOperation: Codable, Sendable, Equatable {
     case upsertSection(id: String, label: String, atFrame: Int)
     case deleteSection(id: String)
     /// `easing` nil or `linear` is the default straight tween (see `TimelineTransition.easings`).
-    case upsertTransition(id: String, kind: String, from: String, to: String, duration: Int, easing: String? = nil)
+    /// `motion` (a `TransitionMotion` object) makes any kind; without it the kind must be a built-in one.
+    case upsertTransition(
+        id: String, kind: String, from: String, to: String, duration: Int, easing: String? = nil, motion: JSONValue? = nil)
     case deleteTransition(id: String)
     case addColorLUT(ColorLUT)
     case deleteColorLUT(id: String)
@@ -131,9 +133,10 @@ extension Project {
             try upsertSection(id: id, label: label, frame: frame)
         case .deleteSection(let id):
             try deleteSection(id: id)
-        case .upsertTransition(let id, let kind, let from, let to, let duration, let easing):
-            try upsertTransition(
-                TimelineTransition(id: id, kind: kind, from: from, to: to, duration: duration, easing: easing))
+        case .upsertTransition(let id, let kind, let from, let to, let duration, let easing, let motion):
+            var transition = TimelineTransition(id: id, kind: kind, from: from, to: to, duration: duration, easing: easing)
+            transition.fields["motion"] = motion
+            try upsertTransition(transition)
         case .deleteTransition(let id):
             try deleteTransition(id: id)
         case .addColorLUT(let lut):

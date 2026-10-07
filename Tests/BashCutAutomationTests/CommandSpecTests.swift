@@ -62,7 +62,7 @@ struct CommandSpecTests {
     func validation() throws {
         let speak = try #require(CommandCatalog.spec(named: "voice.speak"))
         let values = try speak.validate(["text": .string("Xin chào"), "provider": .null])
-        #expect(values == ["text": .string("Xin chào"), "takes": .integer(3), "keepTakes": .bool(false), "dryRun": .bool(false)])
+        #expect(values == ["text": .string("Xin chào"), "takes": .integer(3), "dryRun": .bool(false)])
         for params: [String: JSONValue] in [
             ["text": .string("a"), "takes": .integer(9)], ["text": .string("a"), "atFrame": .integer(-1)],
             ["text": .string("a"), "voice": .string("x")], ["text": .integer(1)],
@@ -230,7 +230,7 @@ struct CommandSpecTests {
         #expect(apply.format == "json")
 
         let speak = try CommandLineParser.parse(["voice", "speak", "--takes=2", "--", "--hello"])
-        #expect(speak.params == ["text": .string("--hello"), "takes": .integer(2), "keepTakes": .bool(false), "dryRun": .bool(false)])
+        #expect(speak.params == ["text": .string("--hello"), "takes": .integer(2), "dryRun": .bool(false)])
 
         let export = try CommandLineParser.parse([
             "export", "start", "--preset", "quick-draft", "--name", "draft", "--normalize-audio", "--output-dir", "out",
@@ -287,8 +287,10 @@ struct CommandSpecTests {
         let revert = try CommandLineParser.parse(["knowledge", "revert", "0f1e2d3c"])
         #expect(revert.spec.mode == .edit && revert.params == ["id": .string("0f1e2d3c")])
         #expect(try CommandLineParser.parse(["knowledge", "approve", "l-1a2b3c4d"]).spec.mode == .edit)
-        let speakKept = try CommandLineParser.parse(["voice", "speak", "Xin chào", "--keep-takes"])
-        #expect(speakKept.params["keepTakes"] == .bool(true))
+        let speakChosen = try CommandLineParser.parse(["voice", "speak", "Xin chào", "--choose", "2"])
+        #expect(speakChosen.params["choose"] == .integer(2))
+        #expect(try CommandLineParser.parse(["voice", "place", "voiceover/generated/a/take-1.wav"]).params
+            == ["take": .string("voiceover/generated/a/take-1.wav")])
         let inspector = try CommandLineParser.parse(["ui", "view", "--inspector", "color"])
         #expect(inspector.params == ["inspector": .string("color")])
 

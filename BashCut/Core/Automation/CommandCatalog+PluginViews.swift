@@ -3,24 +3,18 @@ import BashCutProject
 extension CommandCatalog {
     private static let viewPlugin = CommandParameter("plugin", .string, "Plugin ID", required: true, cli: .positional)
     private static let viewID = CommandParameter(
-        "view", .string, "View ID from plugins views; the plugin's first view by default", cli: .option("view"))
+        "view", .string, "View ID from plugins list --views; the plugin's first view by default", cli: .option("view"))
 
     /// Plugin panels in the left rail and their declarative views (plugin API 8), and capability calls between
     /// plugins: everything the plugin panel shows or does.
     static let pluginViewSpecs: [CommandSpec] = [
-        CommandSpec(
-            "plugins.views", .read,
-            "List ready plugins with a panel in the left rail or views (plugin API 8): title and icon, each view with "
-                + "where it lives (panel, dock tab or sheet) and whether it is shown, tools (actions), skills, required "
-                + "plugins with their state, the capabilities it uses and whether a ready plugin provides each, the open "
-                + "panel and sheet. Also lists the host's plugin features."),
         CommandSpec(
             "plugins.show-view", .ui,
             "Show a plugin view where it lives: its plugin's panel in the left rail, its tab in the agent dock, or a "
                 + "sheet. Plugins call this for their own views (an action opening a form sheet).",
             parameters: [
                 viewPlugin,
-                CommandParameter("view", .string, "View ID from plugins views", required: true, cli: .option("view")),
+                CommandParameter("view", .string, "View ID from plugins list --views", required: true, cli: .option("view")),
             ]),
         CommandSpec(
             "plugins.view", .ui,
