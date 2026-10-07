@@ -126,7 +126,7 @@ private final class AcceptLoop: @unchecked Sendable {
                 guard client >= 0 else { continue }
                 SocketIO.configure(client)
                 guard slots.wait(timeout: .now()) == .success else {
-                    Self.reply(RPCResponse(id: .null, error: RPCFailure(-32003, "Too many automation clients")), client)
+                    Self.reply(RPCResponse(id: .null, error: RPCFailure(-32003, "Too many automation clients", category: .unavailable).typed), client)
                     Darwin.close(client)
                     continue
                 }
@@ -161,7 +161,7 @@ private final class AcceptLoop: @unchecked Sendable {
         do {
             request = try JSONDecoder().decode(RPCRequest.self, from: SocketIO.readLine(client))
         } catch {
-            reply(RPCResponse(id: .null, error: RPCFailure(-32600, "Invalid JSON-RPC request")), client)
+            reply(RPCResponse(id: .null, error: RPCFailure(-32600, "Invalid JSON-RPC request").typed), client)
             return
         }
         let box = ResponseBox()

@@ -91,14 +91,14 @@ extension ProjectDocument {
     private func libraryAudio(_ item: LibraryItem) throws -> LibraryAudio {
         guard item.kind == .audio else { throw RPCFailure(-32602, "\(item.reference) is not an audio library item") }
         do { return try LibraryAudio(params: item.params, label: item.reference) } catch {
-            throw RPCFailure(-32602, error.localizedDescription)
+            throw RPCFailure.from(error, fallbackCode: -32602)
         }
     }
 
     /// A new audio item's params: its length measured from `file` and, without a role, one from that length.
     func audioItemParams(_ params: [String: JSONValue], file: URL) async throws -> [String: JSONValue] {
         var audio: LibraryAudio
-        do { audio = try LibraryAudio(params: params) } catch { throw RPCFailure(-32602, error.localizedDescription) }
+        do { audio = try LibraryAudio(params: params) } catch { throw RPCFailure.from(error, fallbackCode: -32602) }
         let seconds = try await Self.soundSeconds(file, label: file.lastPathComponent)
         audio.seconds = audio.seconds ?? seconds
         audio.role = audio.placementRole(seconds: seconds)
@@ -123,7 +123,7 @@ extension ProjectDocument {
             placed = try project.audioPlacePlan(
                 sound, role: role, loopable: audio.loopable == true, at: placement.frame ?? playhead,
                 duration: placement.duration, trackID: placement.trackID)
-        } catch { throw RPCFailure(-32602, error.localizedDescription) }
+        } catch { throw RPCFailure.from(error, fallbackCode: -32602) }
         let revision = try commitPlan(
             placed.planner, label: item.name, author: placement.author, baseRevision: placement.baseRevision)
         selectedTrackID = placed.trackID
@@ -202,7 +202,7 @@ extension ProjectDocument {
         }
         let changes: [String: JSONValue]
         do { changes = try LibraryAudio.analysisChanges(item, measured: measured) } catch {
-            throw RPCFailure(-32602, error.localizedDescription)
+            throw RPCFailure.from(error, fallbackCode: -32602)
         }
         let saved = try await libraryChange(
             "library.analyze", scope: item.scope, author: author, arguments: ["id": item.reference, "name": item.name]
@@ -297,7 +297,7 @@ extension ProjectDocument {
         }
         let params: [String: JSONValue]
         do { params = try LibrarySelection.audio(media, trackRole: trackRole) } catch {
-            throw RPCFailure(-32602, error.localizedDescription)
+            throw RPCFailure.from(error, fallbackCode: -32602)
         }
         let file = try MediaPathResolver.resolve(media.path, projectRoot: root, workspaceRoot: settings.workspace)
         return (params, file)

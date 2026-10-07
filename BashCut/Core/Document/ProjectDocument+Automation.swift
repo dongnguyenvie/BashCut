@@ -112,6 +112,7 @@ extension ProjectDocument {
                 "scope": document.agentScopeJSON,
                 "agentPermissions": document.agentPermissionsJSON, "analysis": analysis,
                 "plan": ProjectPlan.summary(document.project), "workflow": document.workflowContext,
+                "recentFailures": document.registry.recentFailures(token: CommandCaller.token),
             ])
         }
         handle("project.get") { document, _, _ in .object(document.project.fields) }

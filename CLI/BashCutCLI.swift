@@ -36,7 +36,7 @@ import Foundation
     private func report(_ failure: RPCFailure) -> ExitCode {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
-        if var data = try? encoder.encode(failure.payload) {
+        if var data = try? encoder.encode(failure.typed.payload) {
             data.append(10)
             FileHandle.standardError.write(data)
         }

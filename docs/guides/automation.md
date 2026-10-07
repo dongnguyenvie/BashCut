@@ -45,6 +45,14 @@ Common error codes:
 | `-32601` | Unknown command |
 | `-32602` | Invalid or missing parameters, or a rejected edit |
 
+Every error's `data` also carries `category`, `retryable` and, where a factual next step exists, `remediation`
+(`{command?, hint}`); fields a command sets itself (such as a stale revision's `expected` and `actual`) stay.
+Categories: `malformed`, `invalid_request`, `unknown_command`, `invalid_arguments`, `permission`,
+`stale_revision`, `out_of_scope`, `unavailable`, `capability_missing`, `internal`, and for `-32003`:
+`busy_dialog` (answer or close the open dialog: `ui dialog`), `busy_approval` (an earlier request waits for the
+user), `busy_running` (the same work is running), `file_conflict` and `not_available_now`. `context get` ›
+`recentFailures` lists your session's failures of the last 15 minutes and how many in a row repeat.
+
 ## Terminal dock
 
 Open a terminal with **Agent → + → Claude terminal / Codex terminal / Shell terminal**. Each tab is a real

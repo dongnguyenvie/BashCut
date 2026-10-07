@@ -21,7 +21,7 @@ import Foundation
     public func perform(_ method: String, params: [String: JSONValue], registry: CommandRegistry) async -> RPCResponse {
         let id = JSONValue.string(UUID().uuidString)
         guard Self.allowedMethods.contains(method), method != "plugins.invoke" else {
-            return RPCResponse(id: id, error: RPCFailure(-32601, "Plugins cannot run \(method)"))
+            return RPCResponse(id: id, error: RPCFailure(-32601, "Plugins cannot run \(method)").typed)
         }
         if token == nil { token = registry.issueToken(author: .plugin) }
         return await registry.handle(RPCRequest(id: id, method: method, params: params, token: token))

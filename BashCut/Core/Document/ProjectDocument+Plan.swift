@@ -37,7 +37,7 @@ extension ProjectDocument {
                 baseRevision: arguments.int("baseRev"))
             return .object(["rev": .integer(revision), key: project[key] ?? .null])
         } catch let error as ProjectError {
-            throw RPCFailure(-32602, error.localizedDescription)
+            throw RPCFailure.invalid(error)
         }
     }
 }

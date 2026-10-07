@@ -84,7 +84,8 @@ extension ProjectDocument {
             throw RPCFailure(-32602, "\(id) has no views; see plugins views")
         }
         guard plugins.isReady(plugin) else {
-            throw RPCFailure(-32003, "\(plugin.manifest.displayName): \(plugins.currentAvailability(plugin).detail)")
+            throw RPCFailure(
+                -32003, "\(plugin.manifest.displayName): \(plugins.currentAvailability(plugin).detail)", category: .notAvailableNow)
         }
         return plugin
     }

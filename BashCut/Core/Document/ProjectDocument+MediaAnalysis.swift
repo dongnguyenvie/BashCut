@@ -133,7 +133,7 @@ extension ProjectDocument {
                     add: try Self.seconds(arguments.optionalString("add")),
                     remove: try Self.seconds(arguments.optionalString("remove")), clear: arguments.bool("clear"))
             } catch let error as ProjectError {
-                throw RPCFailure(-32602, error.localizedDescription)
+                throw RPCFailure.invalid(error)
             }
             try MediaAnalyzer.save(record, projectRoot: root)
             let picture = record.json().object["picture"]?.object ?? [:]

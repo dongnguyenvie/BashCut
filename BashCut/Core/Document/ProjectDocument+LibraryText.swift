@@ -7,7 +7,7 @@ extension ProjectDocument {
     /// A text preset item's preset, text, style and animation.
     func textPreset(_ item: LibraryItem) throws -> LibraryTextPreset {
         do { return try LibraryTextPreset(params: item.params, label: item.reference) } catch {
-            throw RPCFailure(-32602, error.localizedDescription)
+            throw RPCFailure.from(error, fallbackCode: -32602)
         }
     }
 

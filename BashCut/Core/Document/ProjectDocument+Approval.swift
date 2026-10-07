@@ -29,7 +29,7 @@ extension ProjectDocument {
             return PrivilegedRequest(id: UUID(), autoApproved: true)
         }
         guard privilegedApproval == nil else {
-            throw RPCFailure(-32003, "Another privileged action is awaiting approval")
+            throw RPCFailure(-32003, "Another privileged action is awaiting approval", category: .busyApproval)
         }
         let id = UUID()
         privilegedAction = action

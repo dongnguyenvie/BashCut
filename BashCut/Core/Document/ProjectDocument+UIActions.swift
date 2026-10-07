@@ -225,14 +225,14 @@ extension ProjectDocument {
     private func performFromAutomation(_ name: String, author: Author) throws -> JSONValue {
         let candidates = UIAction.matching(name)
         if let open = ModalCenter.shared.current {
-            throw RPCFailure(-32003, "Answer the open dialog \(open.name) first (ui.dialog)")
+            throw RPCFailure(-32003, "Answer the open dialog \(open.name) first (ui.dialog)", category: .busyDialog)
         }
         guard let first = candidates.first else {
             if let result = try performPluginActionFromAutomation(name, author: author) { return result }
             throw RPCFailure(-32602, "Unknown action or shortcut \(name); see ui.actions")
         }
         guard let action = candidates.first(where: canPerform) else {
-            throw RPCFailure(-32003, "\(first.id) is not available now")
+            throw RPCFailure(-32003, "\(first.id) is not available now", category: .notAvailableNow)
         }
         if action.mayShowModal {
             // The alert or panel blocks until answered; return now so the agent can answer it. Start it from

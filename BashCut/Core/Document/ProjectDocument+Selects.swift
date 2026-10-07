@@ -44,7 +44,7 @@ extension ProjectDocument {
                 selects = try document.project.markingSelects(
                     ids, status: status, mustKeep: mustKeep, reason: arguments.optionalString("reason"))
             } catch let error as ProjectError {
-                throw RPCFailure(-32602, error.localizedDescription)
+                throw RPCFailure.invalid(error)
             }
             return try document.saveSelects(selects, label: "Mark selects", author: author, base: arguments.int("baseRev"))
         }
@@ -69,7 +69,7 @@ extension ProjectDocument {
                 label: label, author: author, baseRevision: base)
             return .object(["rev": .integer(revision), "selects": .array(project.selects.map(\.json))])
         } catch let error as ProjectError {
-            throw RPCFailure(-32602, error.localizedDescription)
+            throw RPCFailure.invalid(error)
         }
     }
 

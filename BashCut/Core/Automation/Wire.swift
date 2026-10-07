@@ -41,6 +41,11 @@ public struct RPCFailure: Error, Codable, Sendable, LocalizedError {
         }
         return RPCFailure(error is DecodingError ? -32700 : fallbackCode, error.localizedDescription)
     }
+    /// A project error as invalid arguments, except a stale revision, which keeps -32002 and its expected/actual.
+    public static func invalid(_ error: ProjectError) -> RPCFailure {
+        if case .staleRevision = error { return from(error) }
+        return RPCFailure.from(error, fallbackCode: -32602)
+    }
     /// sysexits-compatible process statuses; the original RPC code remains in the JSON error.
     public var exitStatus: Int32 {
         switch code {
@@ -82,7 +87,7 @@ public enum WireOperations {
             do {
                 return try EditOperation(json: operation)
             } catch let error as ProjectError {
-                throw RPCFailure(-32602, error.localizedDescription)
+                throw RPCFailure.invalid(error)
             }
         }
     }

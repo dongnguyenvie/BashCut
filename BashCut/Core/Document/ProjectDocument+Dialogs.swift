@@ -201,16 +201,16 @@ extension ProjectDocument {
             let path = arguments.optionalString("path").map { URL(fileURLWithPath: $0) }
             guard option != nil || path != nil else { throw RPCFailure(-32602, "Give an option or a path") }
             let center = ModalCenter.shared
-            guard let answered = center.current else { throw RPCFailure(-32003, "No dialog is open") }
+            guard let answered = center.current else { throw RPCFailure(-32003, "No dialog is open", category: .notAvailableNow) }
             do {
                 try center.respond(option: option, path: path, dialog: arguments.optionalString("dialog"))
-            } catch { throw RPCFailure(-32602, error.localizedDescription) }
+            } catch { throw RPCFailure.from(error, fallbackCode: -32602) }
             DebugLog.write("ui", "dialog \(answered.name) answered \(option ?? path?.path ?? "")")
             return .object(["answered": answered.json])
         }
         handle("ui.open") { document, arguments, _ in
             if let open = ModalCenter.shared.current {
-                throw RPCFailure(-32003, "Close the open dialog \(open.name) first")
+                throw RPCFailure(-32003, "Close the open dialog \(open.name) first", category: .busyDialog)
             }
             try document.openDialog(try arguments.string("dialog"))
             return .bool(true)

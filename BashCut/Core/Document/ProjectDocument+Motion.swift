@@ -169,7 +169,7 @@ extension ProjectDocument {
                     throw RPCFailure(-32602, "keyframes must be a JSON object")
                 }
                 let motion: ItemMotion
-                do { motion = try ItemMotion(json: json) } catch { throw RPCFailure(-32602, error.localizedDescription) }
+                do { motion = try ItemMotion(json: json) } catch { throw RPCFailure.from(error, fallbackCode: -32602) }
                 revision = try document.setMotion(motion, item: id, author: author, baseRevision: base)
             } else if let preset = arguments.optionalString("preset") {
                 revision = try document.applyMotionPreset(preset, item: id, author: author, baseRevision: base)

@@ -386,12 +386,12 @@ extension ProjectDocument {
                 throw RPCFailure(-32602, "Unknown or unavailable plugin action \(id); see plugins actions")
             }
             guard document.fileURL != nil else { throw RPCFailure(-32602, "Open a saved project first") }
-            guard !document.plugins.calling.contains(id) else { throw RPCFailure(-32003, "\(id) is already running") }
+            guard !document.plugins.calling.contains(id) else { throw RPCFailure(-32003, "\(id) is already running", category: .busyRunning) }
             guard document.canRunPluginAction(action) else {
-                throw RPCFailure(-32003, "\(id) is not available now (\(action.spec.when ?? "busy"))")
+                throw RPCFailure(-32003, "\(id) is not available now (\(action.spec.when ?? "busy"))", category: .notAvailableNow)
             }
             let params = arguments["params"]?.object ?? [:]
-            do { _ = try action.params.resolve(params) } catch { throw RPCFailure(-32602, error.localizedDescription) }
+            do { _ = try action.params.resolve(params) } catch { throw RPCFailure.from(error, fallbackCode: -32602) }
             let job = document.startPluginActionJob(id, params: params, author: author)
             return .object(["job": .string(job), "state": .string("running")])
         }
@@ -426,7 +426,7 @@ extension ProjectDocument {
             }
             let value: JSONValue?
             do { value = try arguments.optionalString("value").map(option.parse) } catch {
-                throw RPCFailure(-32602, error.localizedDescription)
+                throw RPCFailure.from(error, fallbackCode: -32602)
             }
             try document.setPluginOption(plugin, option: id, value: value, author: author)
             return .object(["value": document.pluginOptionValues(plugin)[id] ?? .null, "rev": .integer(document.project.revision)])
@@ -460,7 +460,7 @@ extension ProjectDocument {
         let shortcut = UIShortcut(parsing: value)
         guard let action = plugins.actions.first(where: { $0.id == value || ($0.shortcut != nil && $0.shortcut == shortcut) })
         else { return nil }
-        guard canRunPluginAction(action) else { throw RPCFailure(-32003, "\(action.id) is not available now") }
+        guard canRunPluginAction(action) else { throw RPCFailure(-32003, "\(action.id) is not available now", category: .notAvailableNow) }
         if !action.params.isEmpty || action.spec.confirm != nil {
             // Opens the parameter sheet like a click; answer it with ui.respond run|cancel, or use plugins.run.
             let defaults = (try? action.params.resolve([:])) ?? [:]
