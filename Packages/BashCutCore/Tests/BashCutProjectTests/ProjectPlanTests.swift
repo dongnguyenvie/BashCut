@@ -119,3 +119,33 @@ struct PlanCoverageTests {
         #expect(beats[1]["heardShare"] == .number(0) && beats[1]["at"] == nil)
     }
 }
+
+/// The selects store (P1-D8).
+struct ProjectSelectsTests {
+    @Test("Selects validate their shape; a must-keep select no clip plays is a warning")
+    func selects() throws {
+        var project = ReviewSequenceTests().project()
+        let select = { (id: String, from: Double, to: Double, mustKeep: Bool) -> JSONValue in
+            .object([
+                "id": .string(id), "media": .string("m"), "from": .number(from), "to": .number(to),
+                "status": .string("kept"), "mustKeep": .bool(mustKeep), "quote": .string("giá năm chục"),
+            ])
+        }
+        // Clips play source 0–4 s, 9–10 s and 14–16 s.
+        project["selects"] = .array([select("played", 1, 2, true), select("missing", 5, 6, true), select("free", 5, 6, false)])
+        try project.validate()
+        #expect(project.selects.map(\.id) == ["played", "missing", "free"])
+        let issues = TimelineReview.mustKeepIssues(project)
+        #expect(issues.map(\.id) == ["must-keep-missing"] && issues[0].severity == .warning)
+        #expect(issues[0].detail.contains("giá năm chục"))
+        for bad: JSONValue in [
+            .array([select("a", 2, 1, false)]),
+            .array([select("a", 1, 2, false), select("a", 3, 4, false)]),
+            .array([.object(["id": .string("x"), "media": .string("m"), "from": .number(0), "to": .number(1), "status": .string("maybe")])]),
+        ] {
+            var copy = project
+            copy["selects"] = bad
+            #expect(throws: ProjectError.self) { try copy.validate() }
+        }
+    }
+}

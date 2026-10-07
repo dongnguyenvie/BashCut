@@ -72,6 +72,16 @@ struct LibraryView: View {
             .pickerStyle(.segmented)
             // The panel is too narrow for an inline label; it stays the accessibility label.
             .labelsHidden()
+            if mediaSource == .selects {
+                SelectsListView(document: document)
+            } else {
+                mediaGrid
+            }
+        }
+    }
+
+    private var mediaGrid: some View {
+        VStack(alignment: .leading, spacing: 10) {
             TextField("Search media…", text: $search).textFieldStyle(.roundedBorder)
             Button("Import footage…") { document.importMedia() }.disabled(document.fileURL == nil)
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
@@ -321,6 +331,7 @@ private extension LibraryView {
         case .footage: return "Import footage to start editing."
         case .project: return "No project media."
         case .shared: return "No shared media in this project."
+        case .selects: return ""
         }
     }
 
@@ -343,6 +354,7 @@ private enum MediaLibrarySource: String, CaseIterable, Identifiable {
     case footage
     case project
     case shared
+    case selects
 
     var id: Self { self }
     var title: String {
@@ -350,6 +362,7 @@ private enum MediaLibrarySource: String, CaseIterable, Identifiable {
         case .footage: "Footage"
         case .project: "Project"
         case .shared: "Shared"
+        case .selects: "Selects"
         }
     }
 }
