@@ -9,6 +9,7 @@ import Foundation
 private let capabilityForMethod = [
     "captions.generate": "captions.transcribe", "beats.detect": "audio.beats", "voice.speak": "voice.synthesize",
     "audio.measure": "audio.loudness", "media.sync": "audio.sync", "media.transcribe": "captions.transcribe",
+    "audio.energy": "audio.energy", "audio.mix-measure": "audio.loudness",
 ]
 
 extension ProjectDocument {
@@ -96,6 +97,7 @@ extension ProjectDocument {
                 media: media.id, bpm: generated.bpm, frames: frames.sorted(),
                 provenance: generated.provenance.json),
             label: "Detect beats", author: author)
+        try? storeBeatGrid(generated, url: url, root: root)
         emitPluginEvent(.beatsDetected, [
             "media": .string(media.id), "bpm": .number(generated.bpm), "beats": .integer(frames.count),
         ])
@@ -220,7 +222,7 @@ extension ProjectDocument {
         return item.id
     }
 
-    private func capabilityMedia(_ mediaID: String) throws -> (URL, Media, URL) {
+    func capabilityMedia(_ mediaID: String) throws -> (URL, Media, URL) {
         guard let root = fileURL?.deletingLastPathComponent() else {
             throw ProjectError.invalid("Open a saved project first")
         }
@@ -315,6 +317,7 @@ extension ProjectDocument {
                     "rev": .integer(document.project.revision),
                     "bpm": document.project.beatBPM.map(JSONValue.number) ?? .null,
                     "beats": .integer(document.project.beatFrames.count),
+                    "grid": (try? document.storedBeatGrid(media))?.object["grid"] ?? .null,
                 ])
             }
         }

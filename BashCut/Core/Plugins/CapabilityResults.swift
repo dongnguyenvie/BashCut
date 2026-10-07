@@ -49,6 +49,15 @@ public struct GeneratedBeatGrid: Sendable {
     public let bpm: Double
     public let beatSeconds: [Double]
     public let provenance: PluginProvenance
+    /// Grid v2 facts the provider gave (P0-B10), checked: strengths, downbeats, beatsPerBar, phaseScores,
+    /// confidence, fit, alternates. Empty for a provider that gives only beats.
+    public var grid: [String: JSONValue] = [:]
+}
+
+/// `audio.energy` (P0-B10): level, onset density and fullness every `step` seconds, and lift/drop/breath candidates.
+public struct GeneratedEnergy: Sendable {
+    public let result: JSONValue
+    public let provenance: PluginProvenance
 }
 
 public struct GeneratedLoudnessMeasurement: Sendable {

@@ -91,8 +91,32 @@ func sync(_ params: [String: Any]) async throws -> [String: Any] {
 
 func beats(_ params: [String: Any]) async throws -> [String: Any] {
     let channels = try await decode(mediaPath(params), sampleRate: BeatTracker.sampleRate, maximumChannels: 1)
-    let result = try BeatTracker.track(channels[0])
-    return ["bpm": result.bpm, "beatsSeconds": result.beatsSeconds]
+    let bar = (params["beatsPerBar"] as? NSNumber)?.intValue ?? 4
+    let (result, grid) = try BeatTracker.trackGrid(channels[0], beatsPerBar: min(16, max(1, bar)))
+    return [
+        "bpm": result.bpm, "beatsSeconds": result.beatsSeconds, "strengths": grid.strengths,
+        "downbeats": grid.downbeats, "beatsPerBar": grid.beatsPerBar, "phaseScores": grid.phaseScores,
+        "confidence": grid.tempoStrength,
+        "fit": ["periodSeconds": grid.periodSeconds, "phaseSeconds": grid.phaseSeconds, "rmsErrorMs": grid.rmsErrorMs],
+        "alternates": grid.alternates.map { ["bpm": ($0.bpm * 10).rounded() / 10, "relative": $0.relative] },
+    ]
+}
+
+func energy(_ params: [String: Any]) async throws -> [String: Any] {
+    let channels = try await decode(mediaPath(params), sampleRate: EnergyCurve.sampleRate, maximumChannels: 1)
+    let beats = (try? BeatTracker.track(channels[0]))?.beatsSeconds ?? []
+    let count = (params["count"] as? NSNumber)?.intValue ?? 6
+    let window = (params["windowSeconds"] as? NSNumber)?.doubleValue ?? 2
+    let result = EnergyCurve.measure(channels[0], beats: beats, count: min(50, max(1, count)), window: min(30, max(0.5, window)))
+    return [
+        "step": EnergyCurve.step, "levelDb": result.levelDb, "onset": result.onset, "fullness": result.fullness,
+        "beatsSeconds": beats,
+        "candidates": result.candidates.map { candidate -> [String: Any] in
+            var row: [String: Any] = ["kind": candidate.kind, "seconds": candidate.seconds, "magnitude": candidate.magnitude]
+            if let beat = candidate.beatSeconds { row["beatSeconds"] = beat }
+            return row
+        },
+    ]
 }
 
 func handle(_ request: [String: Any]) async -> [String: Any] {
@@ -103,6 +127,7 @@ func handle(_ request: [String: Any]) async -> [String: Any] {
         case "audio.loudness": return ["id": id, "result": try await loudness(params)]
         case "audio.beats": return ["id": id, "result": try await beats(params)]
         case "audio.sync": return ["id": id, "result": try await sync(params)]
+        case "audio.energy": return ["id": id, "result": try await energy(params)]
         default: return ["id": id, "error": ["code": "unknown_method", "message": "\(request["method"] ?? "")"]]
         }
     } catch {

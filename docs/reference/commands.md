@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 171 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 173 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -849,6 +849,13 @@ Detect beats in audio media and set its beat grid as one undoable edit.
 - `media`: string, required. Audio media ID already placed on the timeline
 - `provider`: string. Provider ID overriding the project preference for one request
 
+### `bashcut beats grid --media <media>`
+
+Read the beat grid beats detect stored for a media file, in its own seconds: bpm, beatsSeconds and, when the provider gives them, grid {strengths (0–1 per beat), downbeats and beatsPerBar (the phase where the kick band hits hardest; phaseScores per phase), confidence (how much the tempo stands out, 0–1), fit {periodSeconds, phaseSeconds, rmsErrorMs of the beats from a straight grid}, alternates [{bpm half and double, relative strength}]}, and downbeatFrames on the timeline where the media plays.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_beats_grid`
+- `media`: string, required. Project media ID
+
 ## voice
 
 ### `bashcut voice speak <text> [--takes <takes>] [--at-frame <atFrame>] [--provider <provider>] [--keep-takes]`
@@ -872,6 +879,16 @@ Measure a media file's sound with an audio.loudness provider: integrated loudnes
 - `media`: string. Project media ID
 - `curve`: boolean. Add loudness over time
 - `timeline`: boolean. Measure the timeline's mix instead of a media file
+- `provider`: string. Provider ID overriding the project preference for one request
+
+### `bashcut audio energy --media <media> [--count <count>] [--window <windowSeconds>] [--provider <provider>]`
+
+How a music file's energy moves, with an audio.energy provider: every step seconds levelDb, onset (density) and fullness (share of octave bands near the loudest), and candidates [{kind lift, drop or breath, seconds, magnitude dB, beatSeconds (snapped), timeline [{item, frame}]}] ranked by size, count per kind. Pointers to listen to, not cut points. A job.
+
+- Mode: read · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_audio_energy`
+- `media`: string, required. Project media ID
+- `count`: integer, 1…50. Candidates per kind (default 6)
+- `windowSeconds`: number, 0.5…30. Seconds compared before and after (default 2)
 - `provider`: string. Provider ID overriding the project preference for one request
 
 ### `bashcut audio mix-measure [--near <nearSeconds>] [--provider <provider>]`
