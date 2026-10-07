@@ -32,7 +32,7 @@ extension ProjectDocument {
     /// What the review and `review.layout` know beyond the project: fonts, preset defaults, the renderer's text
     /// layout (#465), the last measurements and the targets.
     func reviewContext() -> ReviewContext {
-        ReviewContext(
+        var context = ReviewContext(
             fontAvailable: ProjectFonts.isAvailable,
             textDefaults: { preset in
                 let defaults = TextPresetStyle.defaults(preset)
@@ -40,6 +40,76 @@ extension ProjectDocument {
             },
             textLayout: { item, width, height in TextPresetStyle.layout(item, size: CGSize(width: width, height: height)) },
             loudness: reviewLoudness, picture: reviewPicture, pluginIssues: reviewPluginIssues, targets: reviewTargets)
+        let used = Set(project.tracks.flatMap(\.items).compactMap(\.mediaID))
+        context.transcripts = reviewTranscripts.filter { used.contains($0.key) }
+        context.missingGlyphs = ProjectFonts.missingGlyphs
+        return context
+    }
+
+    /// `review.run`: the issues with the session's transcripts loaded, kept as a round; with `sinceRev`, what the
+    /// round fixed, added and left against the review of that revision (P1-E2).
+    func runReview(_ arguments: CommandArguments) async throws -> JSONValue {
+        await loadReviewTranscripts()
+        let all = reviewIssues()
+        let previous = arguments.optionalInt("sinceRev").map { revision in reviewRounds.last { $0.revision == revision } }
+        if let previous, previous == nil {
+            throw RPCFailure(-32602, "No review of that revision in this session; reviewed: "
+                + reviewRounds.map { "\($0.revision)" }.joined(separator: ", "))
+        }
+        // One round per revision, holding its latest review (after a measure, say).
+        if reviewRounds.last?.revision == project.revision { reviewRounds.removeLast() }
+        reviewRounds.append((project.revision, all))
+        reviewRounds = Array(reviewRounds.suffix(50))
+        var issues = all
+        if let minimum = arguments.optionalString("minSeverity").flatMap(ReviewSeverity.init(rawValue:)) {
+            issues = issues.filter { $0.severity <= minimum }
+        }
+        let list = JSONValue.array(issues.map(\.json))
+        guard arguments.bool("summary") || previous != nil else { return list }
+        var result: [String: JSONValue] = [
+            "issues": list, "summary": ReviewSummary(all).json, "rev": .integer(project.revision),
+            "round": .integer(reviewRounds.count),
+        ]
+        if let previous, let previous {
+            var diff = ReviewRounds.diff(before: previous.issues, after: all).object
+            diff["sinceRev"] = .integer(previous.revision)
+            result["diff"] = .object(diff)
+        }
+        return .object(result)
+    }
+
+    /// `review.accept`: keeps a warning or note with the reason (or drops the acceptance) as one undoable edit.
+    func acceptReviewIssue(_ arguments: CommandArguments, author: Author) throws -> JSONValue {
+        let id = try arguments.string("id")
+        var review = project["review"]?.object ?? [:]
+        var accepted = review["accepted"]?.object ?? [:]
+        if arguments.bool("remove") {
+            guard accepted.removeValue(forKey: id) != nil else { throw RPCFailure(-32602, "\(id) is not accepted") }
+        } else {
+            guard let reason = arguments.optionalString("reason") else { throw RPCFailure(-32602, "Give the reason") }
+            if let issue = reviewIssues().first(where: { $0.id == id }), issue.severity == .error {
+                throw RPCFailure(-32602, "\(id) is an error: fix it, or change its severity in review.severities with a reason")
+            }
+            accepted[id] = .object([
+                "reason": .string(reason), "rev": .integer(project.revision), "author": .string(author.rawValue),
+            ])
+        }
+        review["accepted"] = accepted.isEmpty ? nil : .object(accepted)
+        let revision = try commit(
+            .setProjectProperties(patch: ["review": review.isEmpty ? .null : .object(review)]),
+            label: arguments.bool("remove") ? "Reopen review issue" : "Accept review issue", author: author,
+            baseRevision: arguments.int("baseRev"))
+        return .object(["rev": .integer(revision), "accepted": .object(accepted)])
+    }
+
+    /// Loads the stored transcripts of the media on the timeline for the review.
+    func loadReviewTranscripts() async {
+        let used = Set(project.tracks.flatMap(\.items).compactMap(\.mediaID))
+        var loaded: [String: SourceTranscript] = [:]
+        for mediaID in used.sorted() {
+            if let stored = try? await storedTranscript(mediaID) { loaded[mediaID] = stored }
+        }
+        reviewTranscripts = loaded
     }
 
     /// Whether the Review panel can apply `fix` itself (an edit or an export); other fixes go to the agent.

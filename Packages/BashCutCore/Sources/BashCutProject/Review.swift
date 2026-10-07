@@ -41,6 +41,8 @@ public struct ReviewIssue: Identifiable, Sendable {
     public let fix: ReviewFix?
     /// The plugin whose `review.check` reported the issue; nil for built-in checks.
     public let source: String?
+    /// Why the project keeps this warning or note (`review.accepted`, P1-E2); accepted issues are not counted.
+    public var accepted: String?
 
     public init(
         id: String, title: String, detail: String, frame: Int, endFrame: Int? = nil, severity: ReviewSeverity = .warning,
@@ -64,6 +66,7 @@ public struct ReviewIssue: Identifiable, Sendable {
         if let endFrame { fields["endFrame"] = .integer(endFrame) }
         if let fix { fields["fix"] = fix.json }
         if let source { fields["source"] = .string(source) }
+        if let accepted { fields["accepted"] = .object(["reason": .string(accepted)]) }
         return .object(fields)
     }
 }
@@ -73,18 +76,22 @@ public struct ReviewSummary: Sendable, Equatable {
     public let errors: Int
     public let warnings: Int
     public let infos: Int
+    /// Warnings and notes the project accepted with a reason; not in the other counts.
+    public let accepted: Int
     public var passed: Bool { errors == 0 }
 
     public init(_ issues: [ReviewIssue]) {
-        errors = issues.filter { $0.severity == .error }.count
-        warnings = issues.filter { $0.severity == .warning }.count
-        infos = issues.filter { $0.severity == .info }.count
+        let open = issues.filter { $0.accepted == nil }
+        errors = open.filter { $0.severity == .error }.count
+        warnings = open.filter { $0.severity == .warning }.count
+        infos = open.filter { $0.severity == .info }.count
+        accepted = issues.count - open.count
     }
 
     public var json: JSONValue {
         .object([
             "errors": .integer(errors), "warnings": .integer(warnings), "infos": .integer(infos),
-            "passed": .bool(passed),
+            "accepted": .integer(accepted), "passed": .bool(passed),
         ])
     }
 }
@@ -155,6 +162,8 @@ public enum TimelineReview {
             }
         }
         issues += missingFonts(project, fontAvailable: context.fontAvailable)
+        issues += glyphIssues(project, missing: context.missingGlyphs)
+        issues += wordCutIssues(project, transcripts: context.transcripts)
         issues += textIssues(project, context: context)
         issues += hookIssues(project, context: context)
         issues += audioIssues(project, context: context)
@@ -170,7 +179,7 @@ public enum TimelineReview {
                     detail: "A caption over 10 seconds or one word repeated many times: speech recognition looped and "
                         + "its timings are smeared. Do not cut on it; transcribe the stretch again "
                         + "(captions generate --from/--to, about 20 s at a time).",
-                    frame: caption.at, fix: ReviewFix(command: "captions.generate", hint: "Use --from/--to around this caption.")))
+                    frame: caption.at, severity: .info, fix: ReviewFix(command: "captions.generate", hint: "Use --from/--to around this caption.")))
         }
         if project.duration > 0 {
             let coverage = speechCoverage(project)
@@ -184,7 +193,20 @@ public enum TimelineReview {
                         frame: 0, severity: minimum == nil ? .info : .warning))
             }
         }
-        return sorted(applyingSeverities(issues, project: project))
+        return sorted(accepting(applyingSeverities(issues, project: project), project: project))
+    }
+
+    /// Warnings and notes the project accepted (`review.accepted`), with their reasons. Errors are never accepted:
+    /// they are fixed, or their severity is changed in `review.severities` for a stated reason.
+    static func accepting(_ issues: [ReviewIssue], project: Project) -> [ReviewIssue] {
+        let accepted = project["review"]?.object["accepted"]?.object ?? [:]
+        guard !accepted.isEmpty else { return issues }
+        return issues.map { issue in
+            guard issue.severity != .error, let reason = accepted[issue.id]?.object["reason"]?.string else { return issue }
+            var copy = issue
+            copy.accepted = reason
+            return copy
+        }
     }
 
     /// Errors first, then warnings, then info; issues of one severity keep the order the checks found them in.

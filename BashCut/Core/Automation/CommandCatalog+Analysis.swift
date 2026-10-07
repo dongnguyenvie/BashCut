@@ -10,12 +10,32 @@ extension CommandCatalog {
             + "error. Loudness is checked from the last normalized export of this revision, black and frozen picture, "
             + "jump cuts and plugin checks from the last review.measure of this revision. Issues over a stretch carry endFrame. "
             + "Pacing (shot length, still picture) follows the project's review object (minShotSeconds, "
-            + "maxShotSeconds, maxStillSeconds) when set.",
+            + "maxShotSeconds, maxStillSeconds) when set. With no review settings only invariants are errors: gaps and "
+            + "black picture on Main, a clip edge inside a transcribed word (cut-in-word), a missing font or characters "
+            + "the font cannot draw (glyph), and the outputs' length and shape; the rest is info unless the project "
+            + "raises it. Issue IDs are anchored to clips, so they survive edits elsewhere. Each run is a round: with "
+            + "sinceRev, the result also has diff {fixed, new, persisting} against the review of that revision and the "
+            + "round number. Issues accepted with review accept carry accepted.reason and are not counted.",
         parameters: [
+            CommandParameter("sinceRev", .integer, "Compare with the review of this revision (this session)", minimum: 0,
+                             cli: .option("since-rev")),
             CommandParameter("minSeverity", .string, "Leave out issues less severe than this",
                              choices: ReviewSeverity.allCases.map(\.rawValue), cli: .option("min-severity")),
             CommandParameter("summary", .boolean, "Wrap the issues with counts and a pass flag",
                              cli: .flag("summary")),
+        ])
+
+    static let reviewAcceptSpec = CommandSpec(
+        "review.accept", .edit,
+        "Keep a warning or note on purpose, with the reason, as one undoable edit (review.accepted); later runs show it "
+            + "with accepted.reason, leave it out of the counts, and the export report lists it. Errors cannot be "
+            + "accepted: fix them, or change their severity in review.severities with a reason. With remove, the "
+            + "issue counts again.",
+        parameters: [
+            CommandParameter("id", .string, "Issue ID from review run", required: true, cli: .positional),
+            CommandParameter("reason", .string, "Why it stays", cli: .option("reason")),
+            CommandParameter("remove", .boolean, "Count the issue again", cli: .flag("remove")),
+            baseRevision,
         ])
 
     static let reviewMeasureSpec = CommandSpec(

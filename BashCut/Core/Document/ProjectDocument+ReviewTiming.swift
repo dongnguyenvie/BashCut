@@ -9,6 +9,7 @@ import Foundation
 /// against the beat grid and the words, and with `rendered` the last export's sound against the timeline's mix.
 extension ProjectDocument {
     func registerReviewTimingCommands() {
+        handleAuthored("review.accept") { document, arguments, author in try document.acceptReviewIssue(arguments, author: author) }
         handle("review.shots") { document, arguments, _ in
             var lowVariance: ReviewShots.LowVariance?
             switch (arguments.optionalInt("runLength"), arguments.optionalDouble("maxCV")) {

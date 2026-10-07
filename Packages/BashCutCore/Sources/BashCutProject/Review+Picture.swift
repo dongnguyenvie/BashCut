@@ -70,7 +70,7 @@ extension TimelineReview {
             if let minimum = profile["blackMinSeconds"], seconds < minimum { return nil }
             let edge = start == 0 || end >= project.duration
             return ReviewIssue(
-                id: "black-\(start)", title: edge ? "Black at the edge of the edit" : "Black picture",
+                id: "black-" + anchor(project, frame: start), title: edge ? "Black at the edge of the edit" : "Black picture",
                 detail: String(format: "%.1f s of black or empty picture from frame %d.", seconds, start),
                 frame: start, endFrame: end, severity: edge ? .info : .error,
                 fix: ReviewFix(hint: "Check for an offline or missing clip, a layer hiding the picture, or a gap under it."))
@@ -93,7 +93,7 @@ extension TimelineReview {
             ?? [still.max { $0.1 - $0.0 < $1.1 - $1.0 }].compactMap { $0 }
         return flagged.map { start, end in
             ReviewIssue(
-                id: "still-\(start)", title: limit == nil ? "Longest unchanged picture" : "Frozen picture",
+                id: "still-" + anchor(project, frame: start), title: limit == nil ? "Longest unchanged picture" : "Frozen picture",
                 detail: String(format: "%.1f s without any change", Double(end - start) / fps)
                     + (limit.map { String(format: "; the project's limit is %.0f s.", $0) } ?? "."),
                 frame: start, endFrame: end, severity: limit == nil ? .info : .warning,

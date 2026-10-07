@@ -46,6 +46,11 @@ extension ProjectDocument {
         guard let root = fileURL?.deletingLastPathComponent() else {
             throw ProjectError.invalid("Save the project before exporting")
         }
+        let blocking = TimelineReview.blockingExport(project, issues: reviewIssues())
+        if !blocking.isEmpty {
+            throw ProjectError.invalid("review.blockExport stops the export while these are open: "
+                + blocking.map(\.id).joined(separator: ", "))
+        }
         if normalizeAudio {
             plugins.refresh(projectRoot: root)
             guard !plugins.providers(for: "audio.loudness").isEmpty else {

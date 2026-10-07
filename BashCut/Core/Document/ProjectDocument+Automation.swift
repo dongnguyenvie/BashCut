@@ -127,15 +127,7 @@ extension ProjectDocument {
             }
             return .array(list)
         }
-        handle("review.run") { document, arguments, _ in
-            var issues = document.reviewIssues()
-            if let minimum = arguments.optionalString("minSeverity").flatMap(ReviewSeverity.init(rawValue:)) {
-                issues = issues.filter { $0.severity <= minimum }
-            }
-            let list = JSONValue.array(issues.map(\.json))
-            guard arguments.bool("summary") else { return list }
-            return .object(["issues": list, "summary": ReviewSummary(issues).json])
-        }
+        handle("review.run") { document, arguments, _ in try await document.runReview(arguments) }
         handleAuthored("review.measure") { document, arguments, author in
             try document.startReviewMeasure(
                 author: author, picture: arguments.optionalBool("picture") ?? true,

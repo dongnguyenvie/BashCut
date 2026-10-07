@@ -83,7 +83,7 @@ extension TimelineReview {
         let found = gaps(in: audible.flatMap(\.items), from: 0, to: project.duration)
         return limited(found, limit: profile["maxSilenceSeconds"], fps: project.fps.value) { gap, limited in
             ReviewIssue(
-                id: "silence-\(gap.start)", title: limited ? "Dead air" : "Longest stretch without sound",
+                id: "silence-" + anchor(project, frame: gap.start), title: limited ? "Dead air" : "Longest stretch without sound",
                 detail: String(format: "%.1f s with no sound at all.", Double(gap.end - gap.start) / project.fps.value),
                 frame: gap.start, severity: limited ? .warning : .info,
                 fix: ReviewFix(hint: "Place music or room tone under the gap, close it, or keep the silence on purpose."))
@@ -98,7 +98,7 @@ extension TimelineReview {
         let found = gaps(in: music, from: first, to: last)
         return limited(found, limit: profile["maxMusicGapSeconds"], fps: project.fps.value) { gap, limited in
             ReviewIssue(
-                id: "music-gap-\(gap.start)", title: limited ? "Music drops out" : "Longest gap in the music",
+                id: "music-gap-" + anchor(project, frame: gap.start), title: limited ? "Music drops out" : "Longest gap in the music",
                 detail: String(
                     format: "The music stops for %.1f s and comes back.", Double(gap.end - gap.start) / project.fps.value),
                 frame: gap.start, severity: limited ? .warning : .info,

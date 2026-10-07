@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 192 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 193 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -344,11 +344,12 @@ What the footage holds, from one call (read only; capture facts are read once pe
 
 ## review
 
-### `bashcut review run [--min-severity <minSeverity>] [--summary]`
+### `bashcut review run [--since-rev <sinceRev>] [--min-severity <minSeverity>] [--summary]`
 
-Review the timeline before export. Each issue has a severity (error: spoils the export, warning: hurts it, info: a note) and, when one exists, a fix: a command with arguments, or a hint. Errors come first. With summary, the result is {issues, summary: {errors, warnings, infos, passed}}; passed means no error. Loudness is checked from the last normalized export of this revision, black and frozen picture, jump cuts and plugin checks from the last review.measure of this revision. Issues over a stretch carry endFrame. Pacing (shot length, still picture) follows the project's review object (minShotSeconds, maxShotSeconds, maxStillSeconds) when set.
+Review the timeline before export. Each issue has a severity (error: spoils the export, warning: hurts it, info: a note) and, when one exists, a fix: a command with arguments, or a hint. Errors come first. With summary, the result is {issues, summary: {errors, warnings, infos, passed}}; passed means no error. Loudness is checked from the last normalized export of this revision, black and frozen picture, jump cuts and plugin checks from the last review.measure of this revision. Issues over a stretch carry endFrame. Pacing (shot length, still picture) follows the project's review object (minShotSeconds, maxShotSeconds, maxStillSeconds) when set. With no review settings only invariants are errors: gaps and black picture on Main, a clip edge inside a transcribed word (cut-in-word), a missing font or characters the font cannot draw (glyph), and the outputs' length and shape; the rest is info unless the project raises it. Issue IDs are anchored to clips, so they survive edits elsewhere. Each run is a round: with sinceRev, the result also has diff {fixed, new, persisting} against the review of that revision and the round number. Issues accepted with review accept carry accepted.reason and are not counted.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_review_run`
+- `sinceRev`: integer, ≥ 0. Compare with the review of this revision (this session)
 - `minSeverity`: string, one of error, warning, info. Leave out issues less severe than this
 - `summary`: boolean. Wrap the issues with counts and a pass flag
 
@@ -359,6 +360,16 @@ Run the measured review for this revision and keep it, so review.run includes it
 - Mode: read · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_review_measure`
 - `picture`: boolean. Measure the picture (default true)
 - `plugins`: boolean. Run plugin review checks (default true)
+
+### `bashcut review accept <id> [--reason <reason>] [--remove] --base-rev <baseRev>`
+
+Keep a warning or note on purpose, with the reason, as one undoable edit (review.accepted); later runs show it with accepted.reason, leave it out of the counts, and the export report lists it. Errors cannot be accepted: fix them, or change their severity in review.severities with a reason. With remove, the issue counts again.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_review_accept`
+- `id`: string, required. Issue ID from review run
+- `reason`: string. Why it stays
+- `remove`: boolean. Count the issue again
+- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
 
 ### `bashcut review picture [--from <from>] [--to <to>] [--samples <samples>] [--cuts <cuts>]`
 

@@ -65,12 +65,27 @@ extension Project {
                 throw ProjectError.invalid("review.severities: values must be \(ReviewProfile.severityValues.joined(separator: ", "))")
             }
         }
+        try Self.validateReviewRecords(review)
         if let platform = review["platform"], platform != .null {
             let fields = platform.object
             let area = fields["safeArea"]?.object ?? [:]
             guard case .object = platform, area.values.allSatisfy({ ($0.double ?? -1).isFinite && (0...1).contains($0.double ?? -1) }),
                 fields["maxSeconds"].map({ ($0.double ?? 0) > 0 }) ?? true
             else { throw ProjectError.invalid("review.platform: safeArea fractions 0–1 and a positive maxSeconds") }
+        }
+    }
+
+    /// `accepted` ({issueID: {reason}}) and `blockExport` (issue ID prefixes), P1-E1/E2.
+    static func validateReviewRecords(_ review: [String: JSONValue]) throws {
+        if let accepted = review["accepted"], accepted != .null {
+            guard case .object(let map) = accepted, map.count <= 1_000,
+                map.values.allSatisfy({ !($0.object["reason"]?.string ?? "").isEmpty })
+            else { throw ProjectError.invalid("review.accepted: each issue ID needs {reason}") }
+        }
+        if let block = review["blockExport"], block != .null {
+            guard case .array(let list) = block, list.allSatisfy({ !($0.string ?? "").isEmpty }) else {
+                throw ProjectError.invalid("review.blockExport: expected issue ID prefixes")
+            }
         }
     }
 }

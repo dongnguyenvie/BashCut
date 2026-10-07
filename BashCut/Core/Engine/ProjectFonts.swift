@@ -90,6 +90,19 @@ public enum ProjectFonts {
     }()
 
     /// Whether `name` resolves to that font rather than the Helvetica fallback.
+    /// The characters of `text` that `name` has no glyphs for, each once, in order (spaces and line breaks aside).
+    public static func missingCharacters(_ name: String, text: String) -> String {
+        let font = CTFontCreateWithName(name as CFString, 12, nil)
+        var seen = Set<Character>()
+        var missing = ""
+        for character in text where !character.isWhitespace && seen.insert(character).inserted {
+            let units = Array(String(character).utf16)
+            var glyphs = [CGGlyph](repeating: 0, count: units.count)
+            if !CTFontGetGlyphsForCharacters(font, units, &glyphs, units.count) { missing.append(character) }
+        }
+        return missing
+    }
+
     public static func isAvailable(_ name: String) -> Bool {
         lock.lock()
         if let known = availability[name] {

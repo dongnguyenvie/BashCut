@@ -51,11 +51,11 @@ struct ReviewPictureTests {
         let project = try project([("a", "m", 300)])
         let middle = picture(project) { frame in frame >= 90 && frame < 120 ? (0.01, 0.0, 0.5) : (0.5, 0.2, 0.05) }
         let issues = TimelineReview.run(project, context: ReviewContext(picture: middle))
-        let black = try #require(issues.first { $0.id == "black-90" })
+        let black = try #require(issues.first { $0.id == "black-a+90" })
         #expect(black.severity == .error)
         #expect(black.endFrame == 120)
         #expect(black.json.object["endFrame"] == .integer(120))
-        #expect(issues.first?.id == "black-90")
+        #expect(issues.first?.id == "black-a+90")
         let tail = picture(project) { frame in frame >= 270 ? (0.01, 0.0, 0.5) : (0.5, 0.2, 0.05) }
         #expect(TimelineReview.run(project, context: ReviewContext(picture: tail)).filter { $0.id.hasPrefix("black-") }
             .allSatisfy { $0.severity == .info })
