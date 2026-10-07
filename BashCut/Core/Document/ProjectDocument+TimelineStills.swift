@@ -13,6 +13,18 @@ extension ProjectDocument {
         handle("review.window") { document, arguments, _ in try await document.reviewWindow(arguments) }
         handle("timeline.sheet") { document, arguments, _ in try await document.timelineSheet(arguments) }
         handle("ui.frames") { document, arguments, _ in try await document.compareFrames(arguments) }
+        handle("review.hook") { document, _, _ in
+            let words = await document.syncWords()
+            var result = ReviewHook.json(
+                document.project, context: document.reviewContext(), words: words.source == "none" ? [] : words.words
+            ).object
+            result["wordSource"] = .string(words.source)
+            if var opening = result["opening"]?.object {
+                opening["firstFrame"] = try await document.firstFrameFacts()
+                result["opening"] = .object(opening)
+            }
+            return .object(result)
+        }
         handle("review.layout") { document, arguments, _ in
             let frame = arguments.optionalInt("frame")
             let words = await document.syncWords()
@@ -25,6 +37,29 @@ extension ProjectDocument {
             }
             return .object(result)
         }
+    }
+
+    /// Frame 0 as composed: its mean luma (0–100) and the share of pixels that text and overlay layers change
+    /// (ink), against the same frame with only Main.
+    func firstFrameFacts() async throws -> JSONValue {
+        guard let root = fileURL?.deletingLastPathComponent(), project.duration > 0 else { return .null }
+        var bare = project
+        for index in bare.tracks.indices where bare.tracks[index].kind == TrackKind.text
+            || (bare.tracks[index].kind == TrackKind.video && bare.tracks[index].role != TrackRole.main)
+        {
+            bare.tracks[index]["hidden"] = .bool(true)
+        }
+        bare.revision = 0
+        let plain = try await engine.build(bare, root: root, workspace: settings.workspace, purpose: .preview)
+        guard let composed = try await timelineImages([0], maximumSide: 480)[0],
+            let main = try await images(of: plain, frames: [0], maximumSide: 480)[0]
+        else { return .null }
+        let ink = MediaStills.contrast(withText: composed, without: main, rect: CGRect(x: 0, y: 0, width: 1, height: 1))
+        let stats = ColorMeasure.stats(composed)
+        return .object([
+            "luma": .number((stats.mean * 10).rounded() / 10), "mid": .number((stats.mid * 10).rounded() / 10),
+            "inkShare": .number(((Double(ink?.pixels ?? 0) / Double(composed.width * composed.height)) * 1_000).rounded() / 1_000),
+        ])
     }
 
     /// Each text row with `contrast` measured on the composed frame (at `frame`, or the item's middle) against the

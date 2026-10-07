@@ -88,10 +88,11 @@ struct OutputPlatformTests {
     func hookWindow() throws {
         var project = try project(seconds: 20)
         set(&project, track: "t1", [text("title", "Hello", at: 4 * 30)])
-        #expect(run(project, nil).first { $0.id == "hook" }?.title == "No hook in the first 3 seconds")
+        #expect(run(project, nil).first { $0.id == "hook" } == nil)
+        project["review"] = .object(["hookSeconds": .integer(3)])
+        #expect(run(project, nil).first { $0.id == "hook" }?.title == "Nothing said or written in the first 3 seconds")
         project["review"] = .object(["hookSeconds": .integer(5)])
-        let hook = run(project, nil).first { $0.id == "hook" }
-        #expect(hook?.title == "Hook without a number or question")
+        #expect(run(project, nil).first { $0.id == "hook" } == nil)
     }
 
     @Test("output.presets lists known export presets; anything else is refused")

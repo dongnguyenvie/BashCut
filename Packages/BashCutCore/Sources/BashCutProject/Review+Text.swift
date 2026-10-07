@@ -139,32 +139,24 @@ extension TimelineReview {
         return ReviewFix(command: "timeline.apply", arguments: ["label": .string("Move text into the safe area"), "ops": .array([op])])
     }
 
-    /// The edit should hook in its first seconds: on-screen text with a number or a question, or speech right away.
-    /// Every Reelcrew/AgentVid reference opens with a question and a concrete number in 1–3 s.
+    /// Only when the project sets a hook window (`review.hookSeconds`, from a recipe or the user): nothing said and no
+    /// text on screen inside it. Core sets no window of its own and does not judge what the text says (#467); the
+    /// facts behind the check are `review.hook`.
     static func hookIssues(_ project: Project, context: ReviewContext) -> [ReviewIssue] {
-        let fps = project.fps.value
-        let hookSeconds = context.targets.hookSeconds(for: project)
-        let hook = Int((hookSeconds * fps).rounded())
+        guard let hookSeconds = project["review"]?.object["hookSeconds"]?.double, hookSeconds > 0 else { return [] }
+        let hook = Int((hookSeconds * project.fps.value).rounded())
         guard project.duration >= hook * 2 else { return [] }
-        if speechRegions(project).contains(where: { $0.at <= Int((0.5 * fps).rounded()) }) { return [] }
+        if speechRegions(project).contains(where: { $0.at < hook }) { return [] }
         let early = project.tracks.filter { $0.kind == "text" && $0["hidden"] != .bool(true) }.flatMap(\.items)
             .filter { $0.at < hook && !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-        if early.contains(where: { $0.text.contains("?") || $0.text.contains(where: \.isNumber) }) { return [] }
+        guard early.isEmpty else { return [] }
         let seconds = String(format: "%g", hookSeconds)
-        if let first = early.min(by: { $0.at < $1.at }) {
-            return [
-                ReviewIssue(
-                    id: "hook", title: "Hook without a number or question",
-                    detail: "The opening text has neither. A question or a concrete number (price, time, count) holds viewers better.",
-                    frame: first.at, severity: .info)
-            ]
-        }
         return [
             ReviewIssue(
-                id: "hook", title: "No hook in the first \(seconds) seconds",
-                detail: "No on-screen text and no speech in the first \(seconds) s. Open with a title card: a question or a "
-                    + "concrete number (hook-title preset).", frame: 0,
-                fix: ReviewFix(hint: "Add a hook-title text item at frame 0."))
+                id: "hook", title: "Nothing said or written in the first \(seconds) seconds",
+                detail: "The project's hook window (review.hookSeconds) has no speech and no on-screen text. review hook "
+                    + "lists what does happen first.", frame: 0,
+                fix: ReviewFix(hint: "Read review hook, then open with the moment the plan chose as the hook."))
         ]
     }
 }

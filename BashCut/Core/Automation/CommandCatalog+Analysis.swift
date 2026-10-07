@@ -199,6 +199,17 @@ extension CommandCatalog {
                              cli: .option("by")),
         ])
 
+    /// Hook and close as facts (#467, P0-B11).
+    static let reviewHookSpec = CommandSpec(
+        "review.hook", .read,
+        "Read how the edit opens and closes, as facts: opening {hookSeconds (the project's review.hookSeconds or "
+            + "null), firstWords {frame, seconds, text} (heard or caption words), firstSpeechItem, firstTitle and "
+            + "firstCaption {frame, seconds, item, text, holdSeconds}, firstCut, described {subjects and sizes [{name, "
+            + "firstFrame, firstSeconds, onScreenSeconds}] from media.describe}, firstFrame {luma, mid, inkShare (pixels "
+            + "text and overlay layers change)}}, close {duration, lastWords, lastCut, lastTitle with its hold, bounds "
+            + "and edges}, and the platform zones. No verdict about what is early enough; the review's hook check runs "
+            + "only when the project sets review.hookSeconds.")
+
     static let reviewLayoutSpec = CommandSpec(
         "review.layout", .read,
         "Read where text sits as the renderer lays it out: per visible text item id, track, trackRole, at/end, text, "

@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 173 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 174 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -373,6 +373,12 @@ Read where text sits as the renderer lays it out: per visible text item id, trac
 - Mode: read · Runs: immediately · MCP: `bashcut_review_layout`
 - `frame`: integer, ≥ 0. Only text on screen at this timeline frame
 - `contrast`: boolean. Measure each item's contrast on rendered frames
+
+### `bashcut review hook`
+
+Read how the edit opens and closes, as facts: opening {hookSeconds (the project's review.hookSeconds or null), firstWords {frame, seconds, text} (heard or caption words), firstSpeechItem, firstTitle and firstCaption {frame, seconds, item, text, holdSeconds}, firstCut, described {subjects and sizes [{name, firstFrame, firstSeconds, onScreenSeconds}] from media.describe}, firstFrame {luma, mid, inkShare (pixels text and overlay layers change)}}, close {duration, lastWords, lastCut, lastTitle with its hold, bounds and edges}, and the platform zones. No verdict about what is early enough; the review's hook check runs only when the project sets review.hookSeconds.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_review_hook`
 
 ### `bashcut review cuts`
 
