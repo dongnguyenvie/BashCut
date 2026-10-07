@@ -1,4 +1,5 @@
 import BashCutAgent
+import BashCutPlugin
 import Foundation
 import Testing
 
@@ -27,6 +28,11 @@ struct AgentLaunchTests {
         #expect(launch.environment["ANTHROPIC_API_KEY"] == nil)
         #expect(launch.environment["HOME"] == "/Users/test")
         #expect(launch.environment["BASHCUT_SESSION_TOKEN"] == "token")
+        // The kit's scripts share uv's Python and packages with plugins, in BashCut's folders.
+        #expect(launch.environment["BASHCUT_SHARED_DATA"] == PluginFolders.sharedData.path)
+        #expect(launch.environment["BASHCUT_SHARED_CACHE"] == PluginFolders.sharedCache.path)
+        #expect(launch.environment["UV_CACHE_DIR"] == PluginFolders.sharedCache.appendingPathComponent("uv").path)
+        #expect(launch.environment["UV_PYTHON_INSTALL_DIR"] == PluginFolders.sharedData.appendingPathComponent("python").path)
         #expect(launch.directory == root.path)
     }
 
@@ -138,6 +144,7 @@ struct AgentLaunchTests {
         }))
         #expect(launch.arguments.contains(where: { argument in
             argument.contains("permissions.bashcut=") && argument.contains(socket)
+                && argument.contains(PluginFolders.sharedCache.path) && argument.contains(PluginFolders.sharedData.path)
                 && argument.contains("unix_sockets")
         }))
         #expect(launch.arguments.contains(where: { argument in

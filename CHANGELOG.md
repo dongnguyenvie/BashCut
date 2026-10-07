@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+- **Agents use the runtimes plugins share.** Agent terminals get `BASHCUT_SHARED_DATA`, `BASHCUT_SHARED_CACHE` and
+  uv's `UV_PYTHON_INSTALL_DIR` / `UV_CACHE_DIR` pointing at BashCut's shared plugin folders, so the agent kit's
+  Python scripts (`uv run`, `uvx`) reuse the Python and packages Whisper and VieNeu installed instead of a second copy
+  in `~/.cache/uv`, and Settings › Storage counts and clears all of it. Codex's sandbox may write those folders. The
+  folders stay fixed (no setting to move them).
+
 - **Platform output presets with targets (#441).** Export presets now include **Instagram Reels** and **YouTube
   Shorts** (1080×1920, rendered like TikTok; `reels` was a TikTok alias before). Each social preset names a platform
   with its longest upload (TikTok 10 min, Reels and Shorts 3 min), loudness (-14 LUFS, -1 dBTP), the zones its UI

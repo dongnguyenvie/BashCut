@@ -49,7 +49,7 @@ struct StorageSettingsView: View {
             case .pluginData:
                 Text("The plugin's environments and settings are deleted. Use Install Dependencies… in Plugins to set it up again.")
             case .sharedData:
-                Text("Runtimes shared by plugins are deleted. Plugins that use them must be set up again with Install Dependencies… in Plugins.")
+                Text("Runtimes shared by plugins and agents are deleted. Plugins need Install Dependencies… again; agents download theirs again.")
             default:
                 Text("This is downloaded or made again when needed.")
             }

@@ -1,8 +1,10 @@
+import BashCutPlugin
 import BashCutProject
 import Foundation
 
 /// Codex CLI on the low-cost model, sandboxed to a permission profile that may only write the
-/// automation socket folder and reach the BashCut socket.
+/// automation socket folder and the shared plugin data and cache (uv's Python and packages for the kit's scripts),
+/// and reach the BashCut socket.
 public struct CodexAgentProvider: AgentProvider {
     public init() {}
     public let id = AgentProviderID.codex
@@ -26,7 +28,9 @@ public struct CodexAgentProvider: AgentProvider {
             plugins: request.pluginSkills)
         let permissionProfile = """
             permissions.bashcut={ extends = ":workspace", \
-            filesystem = { \(Self.tomlString(socketDirectory)) = "write" }, \
+            filesystem = { \(Self.tomlString(socketDirectory)) = "write", \
+            \(Self.tomlString(PluginFolders.sharedData.path)) = "write", \
+            \(Self.tomlString(PluginFolders.sharedCache.path)) = "write" }, \
             network = { enabled = true, unix_sockets = { \(Self.tomlString(socket)) = "allow" } } }
             """
         let arguments = [
