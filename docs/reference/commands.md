@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 170 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 171 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -864,12 +864,22 @@ Synthesize voice takes and insert the best take on the Voiceover track; with kee
 
 ## audio
 
-### `bashcut audio measure --media <media> [--provider <provider>]`
+### `bashcut audio measure [--media <media>] [--curve] [--timeline] [--provider <provider>]`
 
-Measure a media file's sound with an audio.loudness provider: integrated loudness (LUFS), true peak, loudness range (LU) and the energy share in the speech band (300-3000 Hz) and the presence band (1-4 kHz, where consonants carry words). Under a voice, prefer music with a low presence share and loudness range. The job's result holds the values.
+Measure a media file's sound with an audio.loudness provider: integrated loudness (LUFS), true peak, loudness range (LU) and the energy share in the speech band (300-3000 Hz) and the presence band (1-4 kHz, where consonants carry words). With curve, loudness over time: curve {step 0.1 s, momentary (400 ms) and shortTerm (3 s) LUFS, peakDb per step}. With timeline (instead of media), the whole mix is rendered to a scratch file (no export) and measured with its curve and silences [{start, end, seconds}] where momentary loudness stays at or under −70 LUFS. The job's result holds the values.
 
 - Mode: read · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_audio_measure`
-- `media`: string, required. Project media ID
+- `media`: string. Project media ID
+- `curve`: boolean. Add loudness over time
+- `timeline`: boolean. Measure the timeline's mix instead of a media file
+- `provider`: string. Provider ID overriding the project preference for one request
+
+### `bashcut audio mix-measure [--near <nearSeconds>] [--provider <provider>]`
+
+Read the mix by role without exporting: one stem each for speech (dialogue and voiceover layers and the sound of video clips), music and sound effects is rendered (other sounds at −120 dB, so ducking stays as in the mix) and measured over time. Spoken blocks are those inside heard or caption words, else where the speech stem is over −70 LUFS. Returns voice, musicUnderSpeech (voice minus music, in LU) and musicInGaps as {median, p10, p90, blocks}; speechWindows with the same per window; effects per sound-effect item: loudness (loudest momentary LUFS), peakDb, voiceP95 within nearSeconds, deltaDb, masked (under that voice level), onset and peak offsets in frames to the nearest cut, beat and word edge; and each stem's integrated loudness. A job; no levels are changed.
+
+- Mode: read · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_audio_mix-measure`
+- `nearSeconds`: number, 0.1…10. Seconds around an effect read for the voice (default 1)
 - `provider`: string. Provider ID overriding the project preference for one request
 
 ## color
@@ -1546,7 +1556,7 @@ Add a library item to the timeline as a new item: a text preset (with its stored
 
 ### `bashcut library analyze <id> [--scope <scope>] [--provider <provider>]`
 
-Measure an audio library item's file and save the values as a new version: its length, integrated loudness and true peak (an audio.loudness provider, as audio measure) and, unless it is a sound effect, its tempo in BPM (an audio.beats provider, as beats detect). Runs as a job; a missing provider leaves that value and says why in notes. Agents saving to the user scope wait for approval. Tag mood and genre with library update --tags after listening or reading the analysis.
+Measure an audio library item's file and save the values as a new version: its length, integrated loudness and true peak (an audio.loudness provider, as audio measure), landmarks {onset, peak, tail} in seconds (where it passes the −70 LUFS gate, peaks and drops back under it) and, unless it is a sound effect, its tempo in BPM (an audio.beats provider, as beats detect). Runs as a job; a missing provider leaves that value and says why in notes. Agents saving to the user scope wait for approval. Tag mood and genre with library update --tags after listening or reading the analysis.
 
 - Mode: edit · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_library_analyze`
 - `id`: string, required. Item ID, or scope:id to pick one scope

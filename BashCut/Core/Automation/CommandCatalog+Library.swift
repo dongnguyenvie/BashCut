@@ -202,7 +202,8 @@ extension CommandCatalog {
         CommandSpec(
             "library.analyze", .edit,
             "Measure an audio library item's file and save the values as a new version: its length, integrated "
-                + "loudness and true peak (an audio.loudness provider, as audio measure) and, unless it is a sound effect, "
+                + "loudness and true peak (an audio.loudness provider, as audio measure), landmarks {onset, peak, tail} "
+                + "in seconds (where it passes the −70 LUFS gate, peaks and drops back under it) and, unless it is a sound effect, "
                 + "its tempo in BPM (an audio.beats provider, as beats detect). Runs as a job; a missing provider leaves "
                 + "that value and says why in notes. Agents saving to the user scope wait for approval. Tag mood and "
                 + "genre with library update --tags after listening or reading the analysis.",

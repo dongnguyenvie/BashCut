@@ -8,10 +8,13 @@ public struct LoudnessCapability: CapabilityAdapter {
     public static let capability = "audio.loudness"
     public let mediaURL: URL
     public let bands: Bool
+    /// Also ask for loudness over time (#471); providers that do not know it leave it out.
+    public let curve: Bool
 
-    public init(mediaURL: URL, bands: Bool = false) {
+    public init(mediaURL: URL, bands: Bool = false, curve: Bool = false) {
         self.mediaURL = mediaURL
         self.bands = bands
+        self.curve = curve
     }
 
     public func validate() throws {
@@ -21,7 +24,10 @@ public struct LoudnessCapability: CapabilityAdapter {
     }
 
     public func params(outputDirectory: URL?) -> JSONValue {
-        .object(bands ? ["mediaPath": .string(mediaURL.path), "bands": .bool(true)] : ["mediaPath": .string(mediaURL.path)])
+        var params: [String: JSONValue] = ["mediaPath": .string(mediaURL.path)]
+        if bands { params["bands"] = .bool(true) }
+        if curve { params["curve"] = .bool(true) }
+        return .object(params)
     }
 
     public func output(from result: JSONValue, context: CapabilityContext) async throws

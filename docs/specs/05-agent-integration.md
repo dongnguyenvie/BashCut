@@ -69,6 +69,7 @@ arguments.
 | `media inventory` | read | None yet: capture time, place, device, orientation, speech and what is measured, transcribed and described, per media, folder and project |
 | `media frames` / `media frame` / `media strip` | read | None yet: exact source frames, contact sheets (with a REF row) and a filmstrip with level, gaps and words, by source time |
 | `media describe` / `media description` | edit / read | None yet: shot facts the agent saw in a source file (closed vocabulary), with their coverage |
+| `audio measure --curve\|--timeline` / `audio mix-measure` | read | None yet: loudness over time of a file or of the mix, and the mix by role (voice, music under speech and in gaps, sound effects against the voice) |
 | `color measure` | read | None yet: colour of each clip as numbers, source or graded, the change a grade makes and the distance from the median clip |
 | `ui frames --compare graded\|source` | read | The viewer's Compare toggle, as one before/after grid per frame |
 | `review cuts` / `review sync` / `review window` / `timeline sheet` | read | None yet: every cut with kind and framing; cuts, titles and sound effects timed against beats and words (and a render against the timeline); the frames, level and words around a frame; contact sheets of the composed edit with zones per output |

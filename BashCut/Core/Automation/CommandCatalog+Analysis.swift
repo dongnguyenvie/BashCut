@@ -228,10 +228,32 @@ extension CommandCatalog {
             "audio.measure", .read,
             "Measure a media file's sound with an audio.loudness provider: integrated loudness (LUFS), true peak, "
                 + "loudness range (LU) and the energy share in the speech band (300-3000 Hz) and the presence band "
-                + "(1-4 kHz, where consonants carry words). Under a voice, prefer music with a low presence share and "
-                + "loudness range. The job's result holds the values.",
+                + "(1-4 kHz, where consonants carry words). With curve, loudness over time: curve {step 0.1 s, "
+                + "momentary (400 ms) and shortTerm (3 s) LUFS, peakDb per step}. With timeline (instead of media), "
+                + "the whole mix is rendered to a scratch file (no export) and measured with its curve and silences "
+                + "[{start, end, seconds}] where momentary loudness stays at or under −70 LUFS. The job's result holds "
+                + "the values.",
             parameters: [
-                CommandParameter("media", .string, "Project media ID", required: true, cli: .option("media")),
+                CommandParameter("media", .string, "Project media ID", cli: .option("media")),
+                CommandParameter("curve", .boolean, "Add loudness over time", cli: .flag("curve")),
+                CommandParameter("timeline", .boolean, "Measure the timeline's mix instead of a media file",
+                                 cli: .flag("timeline")),
+                provider,
+            ],
+            execution: .job),
+        CommandSpec(
+            "audio.mix-measure", .read,
+            "Read the mix by role without exporting: one stem each for speech (dialogue and voiceover layers and the "
+                + "sound of video clips), music and sound effects is rendered (other sounds at −120 dB, so ducking "
+                + "stays as in the mix) and measured over time. Spoken blocks are those inside heard or caption words, "
+                + "else where the speech stem is over −70 LUFS. Returns voice, musicUnderSpeech (voice minus music, "
+                + "in LU) and musicInGaps as {median, p10, p90, blocks}; speechWindows with the same per window; "
+                + "effects per sound-effect item: loudness (loudest momentary LUFS), peakDb, voiceP95 within "
+                + "nearSeconds, deltaDb, masked (under that voice level), onset and peak offsets in frames to the "
+                + "nearest cut, beat and word edge; and each stem's integrated loudness. A job; no levels are changed.",
+            parameters: [
+                CommandParameter("nearSeconds", .number, "Seconds around an effect read for the voice (default 1)",
+                                 range: 0.1...10, cli: .option("near")),
                 provider,
             ],
             execution: .job),
