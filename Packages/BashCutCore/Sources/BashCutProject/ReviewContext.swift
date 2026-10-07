@@ -48,12 +48,15 @@ public struct ReviewTargets: Sendable, Equatable {
     public var minShotSeconds: Double?
     public var maxShotSeconds: Double?
     public var maxStillSeconds: Double?
+    /// The platform of the project's first output preset (#441): its safe area, longest length and smallest text.
+    /// Nil, or one of another shape than the frame, uses `OutputPlatform.fallback(for:)` for the layout checks.
+    public var platform: OutputPlatform?
 
     public init(
         integratedLUFS: Double? = nil, toleranceLU: Double = 2, maxTruePeakDbTP: Double = -1,
         maxSilenceSeconds: Double = 1.5, hookSeconds: Double = 3, measureArguments: [String: JSONValue] = [:],
         measuresPicture: Bool = false, minShotSeconds: Double? = nil, maxShotSeconds: Double? = nil,
-        maxStillSeconds: Double? = nil
+        maxStillSeconds: Double? = nil, platform: OutputPlatform? = nil
     ) {
         self.integratedLUFS = integratedLUFS
         self.toleranceLU = toleranceLU
@@ -65,6 +68,18 @@ public struct ReviewTargets: Sendable, Equatable {
         self.minShotSeconds = minShotSeconds
         self.maxShotSeconds = maxShotSeconds
         self.maxStillSeconds = maxStillSeconds
+        self.platform = platform
+    }
+
+    /// The platform whose zones and text size the layout checks use: `platform` when it has the frame's shape.
+    public func layoutPlatform(for project: Project) -> OutputPlatform {
+        if let platform, platform.vertical == (project.height > project.width) { return platform }
+        return .fallback(for: project)
+    }
+
+    /// The hook window: the project's `review.hookSeconds` (a recipe sets it), else `hookSeconds`.
+    public func hookSeconds(for project: Project) -> Double {
+        project["review"]?.object["hookSeconds"]?.double ?? hookSeconds
     }
 
     /// The pacing for `project`: its `review` overrides, then these targets, then the defaults. Vertical short-form

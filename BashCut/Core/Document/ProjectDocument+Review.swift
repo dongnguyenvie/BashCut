@@ -6,10 +6,24 @@ import BashCutProject
 import Foundation
 
 extension ProjectDocument {
+    /// The project's export presets (`output.presets`), known ones only, first one primary.
+    var outputPresets: [ExportPreset] { project.outputPresets.compactMap(ExportPreset.init(argument:)) }
+
+    /// The preset the Export sheet and a loudness fix start with: the project's first output, else the shape's.
+    var primaryExportPreset: ExportPreset {
+        outputPresets.first ?? (project.width > project.height ? .youtube1080 : .tiktok)
+    }
+
+    /// The platform whose zones the viewer's safe-area overlay and the text checks use.
+    var layoutPlatform: OutputPlatform {
+        ReviewTargets(platform: outputPresets.lazy.compactMap(\.platform).first).layoutPlatform(for: project)
+    }
+
     /// The review the panel, the export sheet and `review.run` show: installed fonts, the text presets' defaults,
-    /// the last loudness and picture measurements of this session and social-video targets (-14 LUFS, -1 dBTP).
+    /// the last loudness and picture measurements of this session and the targets of the project's first output
+    /// platform (#441; -14 LUFS, -1 dBTP when it names none).
     func reviewIssues() -> [ReviewIssue] {
-        let vertical = project.height > project.width
+        let platform = outputPresets.lazy.compactMap(\.platform).first
         let context = ReviewContext(
             fontAvailable: ProjectFonts.isAvailable,
             textDefaults: { preset in
@@ -18,9 +32,10 @@ extension ProjectDocument {
             },
             loudness: reviewLoudness, picture: reviewPicture, pluginIssues: reviewPluginIssues,
             targets: ReviewTargets(
-                integratedLUFS: project["audio"]?.object["targetLUFS"]?.double ?? -14,
-                measureArguments: ["preset": .string(vertical ? ExportPreset.tiktok.rawValue : ExportPreset.youtube1080.rawValue)],
-                measuresPicture: true))
+                integratedLUFS: project["audio"]?.object["targetLUFS"]?.double ?? platform?.targetLUFS ?? -14,
+                maxTruePeakDbTP: platform?.maxTruePeakDbTP ?? -1,
+                measureArguments: ["preset": .string(primaryExportPreset.argument)],
+                measuresPicture: true, platform: platform))
         return TimelineReview.run(project, context: context)
     }
 

@@ -8,7 +8,9 @@ extension CommandCatalog {
             "Change the open project's canvas like the format menu in the toolbar: portrait 9:16, landscape 16:9 or "
                 + "square, at a short-side resolution (the current one by default); timing is kept and clip pan/tilt "
                 + "scale with the frame. --clips fit shows each clip whole (bars where its shape differs), fill covers "
-                + "the frame and crops; a clip's own `fill` property overrides it. Each change is one undoable edit.",
+                + "the frame and crops; a clip's own `fill` property overrides it. --outputs sets the export presets the "
+                + "project is made for (first one primary): review checks the first one's platform (safe area, longest "
+                + "length, smallest text) and the Export sheet starts with it. Each change is one undoable edit.",
             parameters: [
                 CommandParameter("canvas", .string, "Canvas", choices: ["portrait", "landscape", "square"],
                                  cli: .option("canvas")),
@@ -16,6 +18,10 @@ extension CommandCatalog {
                                  cli: .option("clips")),
                 CommandParameter("resolution", .string, "Short-side resolution; the current one by default",
                                  choices: ["720", "1080", "2160"], cli: .option("resolution")),
+                CommandParameter(
+                    "outputs", .string,
+                    "Comma-separated export presets (\(OutputPresetName.all.joined(separator: ", "))); none clears them",
+                    cli: .option("outputs")),
                 baseRevision,
             ]),
     ]

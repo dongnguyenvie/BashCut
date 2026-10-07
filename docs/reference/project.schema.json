@@ -1193,6 +1193,30 @@
       "minLength" : 1,
       "type" : "string"
     },
+    "output" : {
+      "description" : "What the project is made for (#441)",
+      "properties" : {
+        "presets" : {
+          "description" : "Export presets, first one primary: review checks its platform and the Export sheet starts with it",
+          "items" : {
+            "description" : "Export preset",
+            "enum" : [
+              "tiktok",
+              "reels",
+              "shorts",
+              "youtube-1080",
+              "youtube-4k",
+              "quick-draft",
+              "prores"
+            ],
+            "type" : "string"
+          },
+          "maxItems" : 8,
+          "type" : "array"
+        }
+      },
+      "type" : "object"
+    },
     "providers" : {
       "additionalProperties" : {
         "type" : "string"
@@ -1204,6 +1228,58 @@
       "description" : "Revision, +1 on every applied edit",
       "minimum" : 0,
       "type" : "integer"
+    },
+    "review" : {
+      "description" : "Review profile: pacing, hook and severities (a recipe skill sets them) and plugin checks turned off",
+      "properties" : {
+        "disabledChecks" : {
+          "description" : "Plugin or provider IDs whose review checks do not run",
+          "items" : {
+            "description" : "ID",
+            "type" : "string"
+          },
+          "type" : "array"
+        },
+        "hookSeconds" : {
+          "description" : "Text or speech must start within this many seconds",
+          "maximum" : 30,
+          "minimum" : 0.5,
+          "type" : "number"
+        },
+        "maxShotSeconds" : {
+          "description" : "Still shots longer than this are flagged",
+          "maximum" : 600,
+          "minimum" : 0.1,
+          "type" : "number"
+        },
+        "maxStillSeconds" : {
+          "description" : "Frozen picture longer than this is flagged",
+          "maximum" : 600,
+          "minimum" : 0.1,
+          "type" : "number"
+        },
+        "minShotSeconds" : {
+          "description" : "Shots shorter than this are flagged",
+          "maximum" : 60,
+          "minimum" : 0.04,
+          "type" : "number"
+        },
+        "severities" : {
+          "additionalProperties" : {
+            "description" : "Severity",
+            "enum" : [
+              "error",
+              "warning",
+              "info",
+              "off"
+            ],
+            "type" : "string"
+          },
+          "description" : "Check ID (or prefix before a hyphen, such as safe or shot-long) → error, warning, info or off",
+          "type" : "object"
+        }
+      },
+      "type" : "object"
     },
     "schema" : {
       "const" : "bashcut.project/1"

@@ -19,4 +19,18 @@ struct ExportPresetTests {
         #expect(ExportPreset(argument: "youtube-4k") == .youtube4K)
         #expect(ExportPreset(argument: "unknown") == nil)
     }
+
+    @Test("Reels and Shorts render like TikTok and name their own platform (#441)")
+    func platforms() {
+        for preset in [ExportPreset.reels, .shorts] {
+            #expect(preset.dimensions(projectWidth: 1920, projectHeight: 1080) == (1080, 1920))
+            #expect(preset.videoBitRate == ExportPreset.tiktok.videoBitRate)
+        }
+        #expect(ExportPreset(argument: "reels") == .reels)
+        #expect(ExportPreset(argument: "youtube-shorts") == .shorts)
+        #expect(ExportPreset.reels.platform?.id == "reels")
+        #expect(ExportPreset.youtube4K.platform?.id == "youtube")
+        #expect(ExportPreset.quickDraft.platform == nil)
+        for preset in ExportPreset.allCases { #expect(ExportPreset(argument: preset.argument) == preset) }
+    }
 }

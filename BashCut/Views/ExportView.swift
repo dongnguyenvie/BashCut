@@ -105,8 +105,8 @@ struct ExportView: View {
         }.padding(24).frame(width: 620)
             .onAppear {
                 directory = document.fileURL?.deletingLastPathComponent().appendingPathComponent("render")
-                preset = document.settings.savedExportPreset
-                    ?? (document.project.width > document.project.height ? .youtube1080 : .tiktok)
+                // The project's own output (a recipe or the format menu sets it) wins over the Settings default.
+                preset = document.outputPresets.first ?? document.settings.savedExportPreset ?? document.primaryExportPreset
                 // The project name, numbered when an earlier export already took it.
                 name = directory.map {
                     ExportRequest.availableName(
