@@ -6,9 +6,10 @@ extension CommandCatalog {
     static let mediaListSpec = CommandSpec(
         "media.list", .read,
         "List project media. With analysis, each media also has analysis: measured false, or {measured, key, "
-            + "measuredAt, picture, sound, shots at the default cut limit, corrected} from media.analyze.",
+            + "measuredAt, picture, sound, shots at the default cut limit, corrected} from media.analyze, and "
+            + "transcript: transcribed false, or the media.transcript overview from media.transcribe.",
         parameters: [
-            CommandParameter("analysis", .boolean, "Add what media.analyze measured for each media",
+            CommandParameter("analysis", .boolean, "Add what media.analyze measured and media.transcribe heard",
                              cli: .flag("analysis"))
         ])
 
@@ -64,6 +65,46 @@ extension CommandCatalog {
                 CommandParameter("remove", .string, "Source seconds of cuts to drop, comma separated",
                                  cli: .option("remove")),
                 CommandParameter("clear", .boolean, "Drop earlier corrections first", cli: .flag("clear")),
+            ]),
+    ]
+
+    /// `captions.generate --fresh`.
+    static let freshTranscript = CommandParameter(
+        "fresh", .boolean, "Transcribe again instead of using the media's stored transcript", cli: .flag("fresh"))
+
+    /// What was said in source media (P0-A2), kept by file content and read in source seconds.
+    static let sourceTranscriptSpecs: [CommandSpec] = [
+        CommandSpec(
+            "media.transcribe", .read,
+            "Transcribe whole source media once with a captions.transcribe provider and keep the transcript (by file "
+                + "content, in .bashcut/cache/transcripts), without placing anything on the timeline. Read it with "
+                + "media.transcript; captions.generate places captions from it without transcribing again, and "
+                + "transcript.words --heard maps its words through the clips. A transcript in the project's content "
+                + "language (by the given provider) is reused unless force. The job's result lists each media with "
+                + "status transcribed, reused or failed and its overview.",
+            parameters: [
+                CommandParameter("media", .string, "Project media ID; every video and audio media by default",
+                                 cli: .option("media")),
+                CommandParameter("force", .boolean, "Transcribe again even when a transcript exists",
+                                 cli: .flag("force")),
+                provider,
+            ],
+            execution: .job),
+        CommandSpec(
+            "media.transcript", .read,
+            "Read the stored transcript of one media in its own seconds: language, provider, transcribedAt, "
+                + "speechSeconds, firstSpeech/lastSpeech, precision (wordTimes provider or none, and whether words carry "
+                + "confidence, speakers, events, noSpeechProb), then as words: wordList [{index, text, start, end, "
+                + "gapBefore, confidence?, speaker?, event?, noSpeechProb?}]; phrases (default): phraseList [{index, "
+                + "start, end, seconds, text, words, confidence (mean), gapBefore}]; json: both; text: one line per "
+                + "phrase (#index start–end seconds | text; print it with --format text). from/to keep what overlaps.",
+            parameters: [
+                mediaMedia,
+                CommandParameter("as", .string, "phrases (default), words, json or text",
+                                 choices: SourceTranscript.Format.allCases.map(\.rawValue), cli: .option("as")),
+                CommandParameter("from", .number, "Only from this source second", range: 0...86_400,
+                                 cli: .option("from")),
+                CommandParameter("to", .number, "Only up to this source second", range: 0...86_400, cli: .option("to")),
             ]),
     ]
 }

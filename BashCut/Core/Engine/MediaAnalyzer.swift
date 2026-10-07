@@ -1,7 +1,6 @@
 @preconcurrency import AVFoundation
 import BashCutProject
 import CoreGraphics
-import CryptoKit
 import Foundation
 
 /// Measures one source file for `media.analyze` (P0-A1): file facts, picture samples with exact-frame cut candidates,
@@ -16,37 +15,19 @@ public enum MediaAnalyzer {
     /// A content key: SHA-256 of the size and the first and last mebibyte, with the measurement version. A moved or
     /// renamed file keeps its key; an edited one gets a new key.
     public static func key(for url: URL) throws -> String {
-        let handle = try FileHandle(forReadingFrom: url)
-        defer { try? handle.close() }
-        let size = try handle.seekToEnd()
-        var hasher = SHA256()
-        hasher.update(data: Data("media-analysis-v\(MediaAnalysis.version)|\(size)|".utf8))
-        let chunk = UInt64(1 << 20)
-        try handle.seek(toOffset: 0)
-        hasher.update(data: try handle.read(upToCount: Int(chunk)) ?? Data())
-        if size > chunk {
-            try handle.seek(toOffset: max(chunk, size - chunk))
-            hasher.update(data: try handle.read(upToCount: Int(chunk)) ?? Data())
-        }
-        return hasher.finalize().map { String(format: "%02x", $0) }.joined()
+        try ProjectCache.contentKey(for: url, namespace: "media-analysis-v\(MediaAnalysis.version)")
     }
 
     /// The stored record for `key` in the project's analysis cache, if any and of this version.
     public static func load(key: String, projectRoot: URL) -> MediaAnalysis? {
-        let url = ProjectCache.url(.analysis, projectRoot: projectRoot).appendingPathComponent(key + ".json")
-        guard let data = try? Data(contentsOf: url),
-            let record = try? JSONDecoder().decode(MediaAnalysis.self, from: data),
+        guard let record = ProjectCache.record(MediaAnalysis.self, .analysis, key: key, projectRoot: projectRoot),
             record.version == MediaAnalysis.version, record.key == key
         else { return nil }
         return record
     }
 
     public static func save(_ record: MediaAnalysis, projectRoot: URL) throws {
-        let folder = ProjectCache.url(.analysis, projectRoot: projectRoot)
-        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.sortedKeys]
-        try encoder.encode(record).write(to: folder.appendingPathComponent(record.key + ".json"), options: .atomic)
+        try ProjectCache.store(record, .analysis, key: record.key, projectRoot: projectRoot)
     }
 
     /// Measures `url`. `pictureURL` (a proxy with the same timing) is read for the picture when given; `fps` and

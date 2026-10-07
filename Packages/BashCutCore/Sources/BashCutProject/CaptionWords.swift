@@ -14,15 +14,29 @@ public enum CaptionWords {
     public static let defaultHighlight = "#FFD400"
     public static let maximumWords = 2000
 
-    /// One word with its time in seconds of the media it was heard in (transcription output).
-    public struct Timed: Sendable, Equatable {
+    /// One word with its time in seconds of the media it was heard in (transcription output), plus what the
+    /// provider knows about it when it says: `confidence` (0–1), `speaker`, `event` (a non-speech sound such as
+    /// laughter or music) and `noSpeechProb` (0–1, the chance its stretch holds no speech).
+    public struct Timed: Codable, Sendable, Equatable {
         public let text: String
         public let start: Double
         public let end: Double
-        public init(text: String, start: Double, end: Double) {
+        public var confidence: Double?
+        public var speaker: String?
+        public var event: String?
+        public var noSpeechProb: Double?
+
+        public init(
+            text: String, start: Double, end: Double, confidence: Double? = nil, speaker: String? = nil,
+            event: String? = nil, noSpeechProb: Double? = nil
+        ) {
             self.text = text
             self.start = start
             self.end = end
+            self.confidence = confidence
+            self.speaker = speaker
+            self.event = event
+            self.noSpeechProb = noSpeechProb
         }
     }
 
@@ -31,7 +45,8 @@ public enum CaptionWords {
         text.split(whereSeparator: { $0.isWhitespace }).map(String.init)
     }
 
-    /// Reads a word-timings file: `[{"text"|"word", "start", "end"}]` in seconds.
+    /// Reads a word-timings file: `[{"text"|"word", "start", "end"}]` in seconds, with the optional `confidence`
+    /// (or `probability`), `speaker`, `event` and `noSpeechProb`; values out of range are left out.
     public static func decode(_ data: Data) throws -> [Timed] {
         guard data.count <= 8 * 1024 * 1024,
             let value = try? JSONDecoder().decode(JSONValue.self, from: data), case .array(let list) = value,
@@ -43,7 +58,13 @@ public enum CaptionWords {
                 !text.isEmpty, let start = fields["start"]?.double, let end = fields["end"]?.double,
                 start.isFinite, end.isFinite, start >= 0, end >= start
             else { return nil }
-            return Timed(text: text, start: start, end: end)
+            let unit = { (value: JSONValue?) in value?.double.flatMap { (0...1).contains($0) ? $0 : nil } }
+            let label = { (value: JSONValue?) in
+                value?.string.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.flatMap { $0.isEmpty ? nil : String($0.prefix(64)) }
+            }
+            return Timed(
+                text: text, start: start, end: end, confidence: unit(fields["confidence"] ?? fields["probability"]),
+                speaker: label(fields["speaker"]), event: label(fields["event"]), noSpeechProb: unit(fields["noSpeechProb"]))
         }
     }
 }

@@ -5,6 +5,17 @@
 
 ## [Unreleased]
 
+- **Source transcripts (P0-A2).** `media transcribe [--media M] [--provider P] [--force]` (`media.transcribe`, a
+  job) transcribes whole files once with a `captions.transcribe` provider and keeps the transcript by file content
+  in `.bashcut/cache/transcripts`, without touching the timeline. `media transcript --media M --as
+  phrases|words|json|text [--from S] [--to S]` reads it in source seconds: phrases with their gap and mean
+  confidence, words with the provider's `confidence`, `speaker`, `event` and `noSpeechProb`, and precision flags
+  saying which of these the provider gave. `captions generate` places captions from the stored transcript instead
+  of transcribing again (`--fresh` transcribes again; the job's result says `stored`, `transcribed` or `range`).
+  `transcript words --heard` maps the stored words through the clips that play each media now, so they follow
+  trims, moves and speed changes. `media list --analysis` adds each media's transcript overview. The
+  `captions.transcribe` word file gains those optional per-word fields.
+
 - **A measured record per media (P0-A1).** `media analyze [--media M] [--force] [--rate N]` (`media.analyze`, a
   job) measures source files once and keeps the record by file content in `.bashcut/cache/analysis`: file facts
   (codec, size, rotation, frame timing for variable frame rate, colour transfer, primaries and bit depth, track

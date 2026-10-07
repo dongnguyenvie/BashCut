@@ -40,9 +40,10 @@ extension ProjectDocument {
             }
         }
         handle("transcript.words") { document, arguments, _ in
-            TimelineTranscript.wordsJSON(
-                document.project, from: arguments.optionalInt("from") ?? 0, to: arguments.optionalInt("to"),
-                media: arguments.optionalString("media"))
+            let from = arguments.optionalInt("from") ?? 0, to = arguments.optionalInt("to")
+            let media = arguments.optionalString("media")
+            if arguments.bool("heard") { return await document.heardWords(from: from, to: to, media: media) }
+            return TimelineTranscript.wordsJSON(document.project, from: from, to: to, media: media)
         }
         handleAuthored("captions.import") { document, arguments, author in
             let revision = try document.commit(

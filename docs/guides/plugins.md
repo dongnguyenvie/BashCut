@@ -468,6 +468,20 @@ time in the media's seconds (at most 8 MiB). BashCut stores the words that fall 
 `words` (frames from the caption's start), which word-by-word captions (`wordStyle`, `captions words`) follow.
 Without it, word timings are estimated from word length.
 
+Each word may also carry what the provider knows about it; BashCut keeps these in the media's source transcript
+(`media transcript`, `transcript words --heard`) and leaves out values outside their range:
+
+| Field | Meaning |
+|---|---|
+| `confidence` (or `probability`) | 0–1, how sure the recogniser is of the word |
+| `speaker` | A speaker label, up to 64 characters |
+| `event` | A non-speech sound the "word" stands for, such as `laughter` or `music` |
+| `noSpeechProb` | 0–1, the chance the word's stretch holds no speech |
+
+A whole-file transcription (no range) is kept as the media's source transcript, by file content, in
+`.bashcut/cache/transcripts`. `captions generate` and `media transcribe` reuse it while the file, the content
+language and (when one is named) the provider stay the same, so a provider is called once per file.
+
 With `startSeconds` and `endSeconds` (`captions generate --from/--to`), transcribe only that stretch of the media and
 keep the times in the media's seconds. BashCut cuts the cues and words to the range and, with `replace`, removes only
 this media's captions heard inside it, so a stretch where recognition looped can be transcribed again. A provider

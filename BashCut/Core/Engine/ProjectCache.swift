@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 /// Everything BashCut can make again for a project lives under one folder, `.bashcut/cache/`, apart from the
@@ -22,9 +23,11 @@ public enum ProjectCache {
         case agentContext = "agent-context"
         /// Measured records of source files (`media.analyze`), `<content key>.json`.
         case analysis
+        /// What was said in source files (`media.transcribe`), `<content key>.json`.
+        case transcripts
 
         /// Where this cache was before `.bashcut/cache/`; waveforms were already there, and analysis is newer.
-        var legacyPath: String? { [.waveforms, .analysis].contains(self) ? nil : ".bashcut/" + rawValue }
+        var legacyPath: String? { [.waveforms, .analysis, .transcripts].contains(self) ? nil : ".bashcut/" + rawValue }
     }
 
     public static func root(projectRoot: URL) -> URL {
@@ -34,6 +37,40 @@ public enum ProjectCache {
     /// The folder holding `kind` for the project at `projectRoot`.
     public static func url(_ kind: Kind, projectRoot: URL) -> URL {
         root(projectRoot: projectRoot).appendingPathComponent(kind.rawValue, isDirectory: true)
+    }
+
+    /// A content key for a file: SHA-256 of `namespace`, the size and the first and last mebibyte. A moved or
+    /// renamed file keeps its key; an edited one gets a new key. It reads at most two mebibytes.
+    public static func contentKey(for url: URL, namespace: String) throws -> String {
+        let handle = try FileHandle(forReadingFrom: url)
+        defer { try? handle.close() }
+        let size = try handle.seekToEnd()
+        var hasher = SHA256()
+        hasher.update(data: Data("\(namespace)|\(size)|".utf8))
+        let chunk = UInt64(1 << 20)
+        try handle.seek(toOffset: 0)
+        hasher.update(data: try handle.read(upToCount: Int(chunk)) ?? Data())
+        if size > chunk {
+            try handle.seek(toOffset: max(chunk, size - chunk))
+            hasher.update(data: try handle.read(upToCount: Int(chunk)) ?? Data())
+        }
+        return hasher.finalize().map { String(format: "%02x", $0) }.joined()
+    }
+
+    /// The JSON record `<key>.json` of `kind`, or nil when it is missing or does not decode.
+    public static func record<Record: Decodable>(_ type: Record.Type, _ kind: Kind, key: String, projectRoot: URL) -> Record? {
+        let url = url(kind, projectRoot: projectRoot).appendingPathComponent(key + ".json")
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        return try? JSONDecoder().decode(type, from: data)
+    }
+
+    /// Writes `record` as `<key>.json` of `kind`.
+    public static func store<Record: Encodable>(_ record: Record, _ kind: Kind, key: String, projectRoot: URL) throws {
+        let folder = url(kind, projectRoot: projectRoot)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        try encoder.encode(record).write(to: folder.appendingPathComponent(key + ".json"), options: .atomic)
     }
 
     /// Moves caches left in their old `.bashcut/<name>` folders into `.bashcut/cache/` and marks the cache folder
