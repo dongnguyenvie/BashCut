@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 158 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 160 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -141,7 +141,7 @@ Delete an empty gap on a layer (the main layer by default): later clips on that 
 
 ### `bashcut media list [--analysis]`
 
-List project media. With analysis, each media also has analysis: measured false, or {measured, key, measuredAt, picture, sound, shots at the default cut limit, corrected} from media.analyze, and transcript: transcribed false, or the media.transcript overview from media.transcribe.
+List project media. With analysis, each media also has analysis: measured false, or {measured, key, measuredAt, picture, sound, shots at the default cut limit, corrected} from media.analyze, and transcript: transcribed false, or the media.transcript overview from media.transcribe. A described media has description {shots, describedBy, describedAt}; with analysis, its media.description coverage.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_media_list`
 - `analysis`: boolean. Add what media.analyze measured and media.transcribe heard
@@ -246,6 +246,24 @@ Read the stored transcript of one media in its own seconds: language, provider, 
 - `as`: string, one of words, phrases, json, text. phrases (default), words, json or text
 - `from`: number, 0…86400. Only from this source second
 - `to`: number, 0…86400. Only up to this source second
+
+### `bashcut media describe [<shots.json>] --media <media> [--merge] [--clear] --base-rev <baseRev>`
+
+Store what you saw in a source media, shot by shot, as one undoable edit (it is saved with the project). Each shot: start and end in source seconds (shots may not overlap) and at least one fact in the closed vocabulary: size ECU/CU/MCU/MS/MWS/WS/EWS/insert, angle eye/high/low/top/dutch/pov/ots, move static/pan/tilt/push/pull/track/orbit/handheld/zoom/crane, direction left/right/toward/away/none, subjects (up to 12 names), people, onScreenText, confidence 0–1, bestMoment (source seconds or null), looked (source seconds of the frames you looked at), note. Unknown fields and values are rejected; there is no field for pairings or verdicts. Replaces the description unless merge (shots overlapping the new ones are replaced) or clear. Returns rev and coverage.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_media_describe`
+- `shots`: array. Shots array, or {shots: […]} (CLI: path to shots.json)
+- `media`: string, required. Project media ID
+- `merge`: boolean. Keep stored shots that the new ones do not overlap
+- `clear`: boolean. Remove the description
+- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
+
+### `bashcut media description [--media <media>]`
+
+Read media descriptions. With media: description {shots, describedBy, describedAt} and coverage {shots, describedSeconds, describedShare, and with a media.analyze record measuredShots, coveredShots (half or more of the measured shot described) and missing [{index, start, end}]}. Without: each media's coverage, describedMedia/totalMedia, measuredShots/coveredShots, missing media IDs and the vocabulary.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_media_description`
+- `media`: string. Project media ID; every media by default
 
 ## review
 

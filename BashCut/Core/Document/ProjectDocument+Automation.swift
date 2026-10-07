@@ -27,6 +27,7 @@ extension ProjectDocument {
         registerProxyCommands()
         registerMediaAnalysisCommands()
         registerSourceTranscriptCommands()
+        registerMediaDescriptionCommands()
         registerStorageCommands()
         registerLibraryCommands()
         registerAgentKitCommands()
@@ -103,6 +104,11 @@ extension ProjectDocument {
                 if arguments.bool("analysis") {
                     fields["analysis"] = document.mediaAnalysisOverview(media)
                     fields["transcript"] = await document.mediaTranscriptOverview(media)
+                }
+                // Shots stay out of the list; media.description reads them.
+                if fields["description"] != nil {
+                    fields["description"] = arguments.bool("analysis")
+                        ? document.mediaDescriptionCoverage(media) : media.shotDescription?.summaryJSON ?? .null
                 }
                 list.append(.object(fields))
             }

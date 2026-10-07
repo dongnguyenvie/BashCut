@@ -105,6 +105,10 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   and `captions generate` unless `--fresh`; `media transcribe` makes one without placing captions, `media transcript`
   reads it in source seconds (phrases, words with confidence/speaker/event/noSpeechProb when the provider gives
   them), and `transcript words --heard` maps its words through the clips playing the media now.
+- `media describe` stores agent-written shot facts on a media (size, angle, move, direction, subjects, people,
+  on-screen text, confidence, best moment, frames looked at) in a closed vocabulary as one undoable edit;
+  `media description` reads them with coverage of the `media analyze` shots, and `review shots` adds the facts of
+  the source shot each clip plays (`described`).
 - `media speech-map` calibrates sound spans from the `media analyze` levels (Otsu split, separation in dB and eta,
   `separation: none` when floor and sound do not separate) and compares them with the stored transcript's words.
 

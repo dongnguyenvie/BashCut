@@ -5,6 +5,15 @@
 
 ## [Unreleased]
 
+- **Shot descriptions (P0-A4).** `media describe shots.json --media M --base-rev N [--merge] [--clear]`
+  (`media.describe`, edit) stores what the agent saw in a source file, shot by shot, on the media in the project
+  (new optional `media.description`, op `setMediaDescription`), so it is undoable and survives save and reopen.
+  Each shot has source `start`/`end` and facts in a closed vocabulary: `size` ECU…EWS/insert, `angle`, `move`,
+  `direction`, `subjects`, `people`, `onScreenText`, `confidence`, nullable `bestMoment`, the frames `looked` at and
+  a short `note`. Unknown fields or values are rejected and there is no field for pairings. `media description
+  [--media M]` reads them with coverage of the `media analyze` shots ("38/40", `missing`), `media list --analysis`
+  shows each media's coverage, and `review shots` adds `described` facts to every clip from the source shot it plays.
+
 - **Speech map with its calibration (P0-A3).** `media speech-map --media M` (`media.speech-map`, read) splits the
   `media analyze` level windows into quiet and loud by Otsu's method (digital silence counts as quiet and is left
   out) and reports the floor, the loud level, their separation in dB and the share of variance the split explains.

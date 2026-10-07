@@ -188,7 +188,7 @@ public enum ProjectSchema {
         root["$schema"] = .string("https://json-schema.org/draft/2020-12/schema")
         root["$id"] = .string("https://bashcut.app/schema/\(Project.schema).json")
         root["title"] = .string("BashCut project")
-        root["$defs"] = .object(definitions)
+        root["$defs"] = .object(definitions.merging(mediaDescriptionDefinitions) { first, _ in first })
         return .object(root)
     }
 
@@ -219,6 +219,7 @@ public enum ProjectSchema {
                     "hasAudio": boolean("Whether the file has sound"),
                     "alpha": boolean("A movie with an alpha channel (a video sticker); previewed without a proxy"),
                     TransitionPreset.soundLibraryField: string("The library item (scope:id) it was copied from"),
+                    "description": ref("mediaDescription"),
                 ])),
             "track": track,
             "item": .object(item),

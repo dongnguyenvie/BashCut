@@ -36,6 +36,7 @@ A command in *italics* is planned and does not exist yet. "—" means manual onl
 | M-1 | Media library: grid, thumbnails, hover-scrub, specs; list view | P0 | Implemented (list view Planned) | `media list`, `media import` |
 | M-2 | Source viewer, In/Out, insert (E) / overwrite (Q) | P0 | Implemented | `ui source`, `ui action source.insert` / `source.overwrite`, `media place` |
 | M-3 | Background survey: thumbnails, static-clip detection, contact sheet | P1 | Planned | — (skill `nolan-footage-survey`) |
+| M-8 | Shot descriptions: the agent writes per-shot facts (size, angle, move, direction, subjects, best moment) in a closed vocabulary, saved with the project, with coverage of the measured shots | P1 | Implemented (no UI yet) | `media describe`, `media description` |
 | M-4 | Transcript through a replaceable `captions.transcribe` provider, speech badge, search by speech | P1 | Partial: source transcripts are Implemented (`media transcribe`, `media transcript`, reused by Auto Captions); speech badge and search are Planned | `media transcribe`, `media transcript`, *`media search`* |
 | M-5 | Automatic preview proxies for heavy footage | P1 | Implemented | `media proxy` |
 | M-6 | Transcode unsupported formats with ffmpeg on import | P2 | Planned | — |

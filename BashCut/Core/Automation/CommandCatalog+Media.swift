@@ -7,7 +7,8 @@ extension CommandCatalog {
         "media.list", .read,
         "List project media. With analysis, each media also has analysis: measured false, or {measured, key, "
             + "measuredAt, picture, sound, shots at the default cut limit, corrected} from media.analyze, and "
-            + "transcript: transcribed false, or the media.transcript overview from media.transcribe.",
+            + "transcript: transcribed false, or the media.transcript overview from media.transcribe. A described media "
+            + "has description {shots, describedBy, describedAt}; with analysis, its media.description coverage.",
         parameters: [
             CommandParameter("analysis", .boolean, "Add what media.analyze measured and media.transcribe heard",
                              cli: .flag("analysis"))
@@ -88,6 +89,39 @@ extension CommandCatalog {
                 CommandParameter("remove", .string, "Source seconds of cuts to drop, comma separated",
                                  cli: .option("remove")),
                 CommandParameter("clear", .boolean, "Drop earlier corrections first", cli: .flag("clear")),
+            ]),
+    ]
+
+    /// Shot facts written by the agent (P0-A4), stored on the media in the project.
+    static let mediaDescriptionSpecs: [CommandSpec] = [
+        CommandSpec(
+            "media.describe", .edit,
+            "Store what you saw in a source media, shot by shot, as one undoable edit (it is saved with the project). "
+                + "Each shot: start and end in source seconds (shots may not overlap) and at least one fact in the "
+                + "closed vocabulary: size ECU/CU/MCU/MS/MWS/WS/EWS/insert, angle eye/high/low/top/dutch/pov/ots, "
+                + "move static/pan/tilt/push/pull/track/orbit/handheld/zoom/crane, direction left/right/toward/away/"
+                + "none, subjects (up to 12 names), people, onScreenText, confidence 0–1, bestMoment (source "
+                + "seconds or null), looked (source seconds of the frames you looked at), note. Unknown fields and "
+                + "values are rejected; there is no field for pairings or verdicts. Replaces the description unless "
+                + "merge (shots overlapping the new ones are replaced) or clear. Returns rev and coverage.",
+            parameters: [
+                CommandParameter("shots", .array, "Shots array, or {shots: […]} (CLI: path to shots.json)",
+                                 cli: .positionalJSONFile),
+                mediaMedia,
+                CommandParameter("merge", .boolean, "Keep stored shots that the new ones do not overlap",
+                                 cli: .flag("merge")),
+                CommandParameter("clear", .boolean, "Remove the description", cli: .flag("clear")),
+                baseRevision,
+            ]),
+        CommandSpec(
+            "media.description", .read,
+            "Read media descriptions. With media: description {shots, describedBy, describedAt} and coverage {shots, "
+                + "describedSeconds, describedShare, and with a media.analyze record measuredShots, coveredShots (half "
+                + "or more of the measured shot described) and missing [{index, start, end}]}. Without: each media's "
+                + "coverage, describedMedia/totalMedia, measuredShots/coveredShots, missing media IDs and the "
+                + "vocabulary.",
+            parameters: [
+                CommandParameter("media", .string, "Project media ID; every media by default", cli: .option("media"))
             ]),
     ]
 

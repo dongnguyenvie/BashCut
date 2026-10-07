@@ -67,6 +67,9 @@ extension EditOperation {
             if case .object(let value) = fields["generatedBy"] { provenance = value }
             self = .setBeatGrid(
                 media: try read.string("media"), bpm: bpm, frames: values.compactMap(\.int), provenance: provenance)
+        case "setMediaDescription":
+            let description = fields["description"].flatMap { $0 == .null ? nil : $0 }
+            self = .setMediaDescription(media: try read.string("media"), description: description)
         case "upsertSection":
             self = .upsertSection(
                 id: try read.string("id"), label: try read.string("label"), atFrame: try read.frame("atFrame"))
@@ -145,6 +148,8 @@ extension EditOperation {
                 "media": .string(media), "bpm": .number(bpm), "frames": .array(frames.map(JSONValue.integer)),
                 "generatedBy": provenance.map(JSONValue.object) ?? .null,
             ])
+        case .setMediaDescription(let media, let description):
+            return op("setMediaDescription", ["media": .string(media), "description": description ?? .null])
         case .upsertSection(let id, let label, let frame):
             return op("upsertSection", ["id": .string(id), "label": .string(label), "atFrame": .integer(frame)])
         case .deleteSection(let id): return op("deleteSection", ["id": .string(id)])

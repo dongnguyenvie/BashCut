@@ -169,6 +169,11 @@ extension Track {
 
 extension Project {
     private func validateMetadata(_ asset: Media) throws {
+        if let description = asset.fields["description"], description != .null {
+            do { _ = try MediaDescription(json: description, duration: asset.durationSeconds) } catch {
+                throw ProjectError.invalid("media.\(asset.id).\(error.localizedDescription)")
+            }
+        }
         if asset.fields["width"] != nil || asset.fields["height"] != nil {
             guard asset.width.map({ (1...16384).contains($0) }) == true,
                 asset.height.map({ (1...16384).contains($0) }) == true
