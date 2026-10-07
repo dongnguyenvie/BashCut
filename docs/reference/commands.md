@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 151 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 152 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -226,46 +226,6 @@ Read where text sits as the renderer lays it out: per visible text item id, trac
 
 - Mode: read · Runs: immediately · MCP: `bashcut_review_layout`
 - `frame`: integer, ≥ 0. Only text on screen at this timeline frame
-
-## captions
-
-### `bashcut captions export`
-
-Export captions as SubRip text.
-
-- Mode: read · Runs: immediately · MCP: `bashcut_captions_export`
-
-### `bashcut captions import <text-file> --base-rev <baseRev> [--replace]`
-
-Import UTF-8 SubRip captions as one undoable edit.
-
-- Mode: edit · Runs: immediately · MCP: `bashcut_captions_import`
-- `text`: string, required. SubRip text (CLI: path to a .srt file)
-- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
-- `replace`: boolean, default false. Replace existing captions
-
-### `bashcut captions words [<item>] --style <style> [--all] [--color <color>] --base-rev <baseRev>`
-
-Show caption words as they are spoken (Inspector › Text › Word by word): highlight colours the word being said, karaoke colours the words already said, reveal makes words appear as they are said; none shows them all at once. Timings come from the transcription's word timings (captions generate) or are estimated from word length.
-
-- Mode: edit · Runs: immediately · MCP: `bashcut_captions_words`
-- `item`: string. Text item ID; the selection by default
-- `style`: string, required, one of highlight, karaoke, reveal, none. Word style
-- `all`: boolean, default false. Every caption on the caption layers
-- `color`: string. Highlight colour, #RRGGBB (default #FFD400)
-- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
-
-### `bashcut captions generate --media <media> [--replace] [--word-style <wordStyle>] [--from <from>] [--to <to>] [--provider <provider>]`
-
-Transcribe project media with a captions.transcribe provider and import the captions as one undoable edit. Captions follow the clips where the media is heard (trim, position, speed): place the clips first.
-
-- Mode: edit · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_captions_generate`
-- `media`: string, required. Project media ID
-- `replace`: boolean, default false. Replace this media's captions
-- `wordStyle`: string, one of highlight, karaoke, reveal, none. Show words as they are spoken (see captions.words)
-- `from`: number, 0…86400. Transcribe only from this source second of the media (with replace, only this media's captions heard in the range are replaced)
-- `to`: number, 0…86400. Transcribe only up to this source second of the media
-- `provider`: string. Provider ID overriding the project preference for one request
 
 ## export
 
@@ -493,6 +453,58 @@ Cancel a queued or running job (plugin call or export).
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_jobs_cancel`
 - `job`: string, required. Job ID
+
+## captions
+
+### `bashcut captions export [--as <as>]`
+
+Export the captions (text on text layers, in time order) as: srt (default), SubRip text; json as {revision, fps, cues} with per cue index, item, track, trackRole, at/end/duration (frames), atSeconds, endSeconds, seconds, text, lines, chars (line breaks read as one space), cps, gapBefore (frames since the previous cue ended, negative when they overlap), captionMedia, wordStyle, wordTiming (transcribed or estimated from word length) and words [{text, at, end, atSeconds, endSeconds, source}]; text, one line per cue: #index start–end seconds cps | text (print it with --format text).
+
+- Mode: read · Runs: immediately · MCP: `bashcut_captions_export`
+- `as`: string, one of srt, json, text. srt (default), json or text
+
+### `bashcut captions import <text-file> --base-rev <baseRev> [--replace]`
+
+Import UTF-8 SubRip captions as one undoable edit.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_captions_import`
+- `text`: string, required. SubRip text (CLI: path to a .srt file)
+- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
+- `replace`: boolean, default false. Replace existing captions
+
+### `bashcut captions words [<item>] --style <style> [--all] [--color <color>] --base-rev <baseRev>`
+
+Show caption words as they are spoken (Inspector › Text › Word by word): highlight colours the word being said, karaoke colours the words already said, reveal makes words appear as they are said; none shows them all at once. Timings come from the transcription's word timings (captions generate) or are estimated from word length.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_captions_words`
+- `item`: string. Text item ID; the selection by default
+- `style`: string, required, one of highlight, karaoke, reveal, none. Word style
+- `all`: boolean, default false. Every caption on the caption layers
+- `color`: string. Highlight colour, #RRGGBB (default #FFD400)
+- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
+
+### `bashcut captions generate --media <media> [--replace] [--word-style <wordStyle>] [--from <from>] [--to <to>] [--provider <provider>]`
+
+Transcribe project media with a captions.transcribe provider and import the captions as one undoable edit. Captions follow the clips where the media is heard (trim, position, speed): place the clips first.
+
+- Mode: edit · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_captions_generate`
+- `media`: string, required. Project media ID
+- `replace`: boolean, default false. Replace this media's captions
+- `wordStyle`: string, one of highlight, karaoke, reveal, none. Show words as they are spoken (see captions.words)
+- `from`: number, 0…86400. Transcribe only from this source second of the media (with replace, only this media's captions heard in the range are replaced)
+- `to`: number, 0…86400. Transcribe only up to this source second of the media
+- `provider`: string. Provider ID overriding the project preference for one request
+
+## transcript
+
+### `bashcut transcript words [--from <from>] [--to <to>] [--media <media>]`
+
+Read every word on the caption layers in timeline order: index, text, at/end (frames), atSeconds, endSeconds, item and cue (captions export numbering), timing (transcribed or estimated from word length), gapBefore (frames since the previous word ended) and, for captions made from a media, source {media, clip, start, end} in that media's seconds through the clip heard there now (null when no clip of it plays there: captions do not move with their clips). No speaker or confidence is stored yet. count is the words returned, total the words on the caption layers.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_transcript_words`
+- `from`: integer, ≥ 0. Only words ending after this timeline frame
+- `to`: integer, ≥ 0. Only words starting before this timeline frame
+- `media`: string. Only captions made from this media ID
 
 ## layers
 

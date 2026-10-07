@@ -15,6 +15,33 @@ extension CommandCatalog {
     /// Caption import (generation is with the plugin capabilities).
     static let captionSpecs: [CommandSpec] = [
         CommandSpec(
+            "captions.export", .read,
+            "Export the captions (text on text layers, in time order) as: srt (default), SubRip text; json as "
+                + "{revision, fps, cues} with per cue index, item, track, trackRole, at/end/duration (frames), atSeconds, "
+                + "endSeconds, seconds, text, lines, chars (line breaks read as one space), cps, gapBefore (frames since "
+                + "the previous cue ended, negative when they overlap), captionMedia, wordStyle, wordTiming "
+                + "(transcribed or estimated from word length) and words [{text, at, end, atSeconds, endSeconds, "
+                + "source}]; text, one line per cue: #index start–end seconds cps | text (print it with --format text).",
+            parameters: [
+                CommandParameter("as", .string, "srt (default), json or text", choices: ["srt", "json", "text"],
+                                 cli: .option("as"))
+            ]),
+        CommandSpec(
+            "transcript.words", .read,
+            "Read every word on the caption layers in timeline order: index, text, at/end (frames), atSeconds, "
+                + "endSeconds, item and cue (captions export numbering), timing (transcribed or estimated from word "
+                + "length), gapBefore (frames since the previous word ended) and, for captions made from a media, "
+                + "source {media, clip, start, end} in that media's seconds through the clip heard there now (null "
+                + "when no clip of it plays there: captions do not move with their clips). No speaker or confidence "
+                + "is stored yet. count is the words returned, total the words on the caption layers.",
+            parameters: [
+                CommandParameter("from", .integer, "Only words ending after this timeline frame", minimum: 0,
+                                 cli: .option("from")),
+                CommandParameter("to", .integer, "Only words starting before this timeline frame", minimum: 0,
+                                 cli: .option("to")),
+                CommandParameter("media", .string, "Only captions made from this media ID", cli: .option("media")),
+            ]),
+        CommandSpec(
             "captions.import", .edit, "Import UTF-8 SubRip captions as one undoable edit.",
             parameters: [
                 CommandParameter("text", .string, "SubRip text (CLI: path to a .srt file)", required: true,
