@@ -1119,6 +1119,10 @@
           "description" : "A movie with an alpha channel (a video sticker); previewed without a proxy",
           "type" : "boolean"
         },
+        "data" : {
+          "description" : "The agent's own fields (P2-H10: takes, verdicts, reasons); free JSON, set by setMediaData",
+          "type" : "object"
+        },
         "description" : {
           "$ref" : "#/$defs/mediaDescription"
         },

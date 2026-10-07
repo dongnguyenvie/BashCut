@@ -419,7 +419,8 @@ recorded show only label and author. Plugins see `why` in the `edit.committed` e
   `setLinkedAudio`, track operations (`addTrack`, `moveTrack`, `setTrackProperties`, `deleteTrack`),
   `setProjectProperties`, `setProviderPreference`, `setBeatGrid`, `upsertSection`, `deleteSection`,
   `upsertTransition`, `deleteTransition`, `addColorLUT`, `deleteColorLUT`, `setMediaRights` (a media's `license` and
-  `provenance`; null removes one) and `setFormat` (the canvas size; the
+  `provenance`; null removes one), `setMediaData` (the agent's own fields on a media under `data`, such as take
+  numbers and verdicts; each key replaces, null removes; core never reads them) and `setFormat` (the canvas size; the
   `project format` command and the toolbar's format menu use it). The agent instructions
   (`BashCut/Core/Automation/AgentInstructions.swift`) show an example of each.
 - **Frames.** All frames are integers. `atFrame` and `toFrame` are absolute timeline frames; an item's `in` is a

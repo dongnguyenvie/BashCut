@@ -226,6 +226,10 @@ public enum ProjectSchema {
                     TransitionPreset.soundLibraryField: string("The library item (scope:id) it was copied from"),
                     "description": ref("mediaDescription"),
                     "license": mediaLicenseSchema, "provenance": mediaProvenanceSchema,
+                    "data": .object([
+                        "type": .string("object"),
+                        "description": .string("The agent's own fields (P2-H10: takes, verdicts, reasons); free JSON, set by setMediaData"),
+                    ]),
                 ])),
             "track": track,
             "item": .object(item),

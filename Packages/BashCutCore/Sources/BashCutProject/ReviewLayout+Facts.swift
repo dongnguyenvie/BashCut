@@ -2,8 +2,9 @@ import Foundation
 
 /// Facts about text and pictures on screen for `review.layout` (P0-B6): how long a text holds and how fast it must
 /// be read, how it sits against the speech, whether it covers a caption, how often its template repeats and how
-/// much text there is per minute; at a frame, the pictures on screen with their scale and coverage. Faces need a
-/// `vision.faces` provider: until there is one, face fields are null (unknown), never "no face". No verdicts.
+/// much text there is per minute; at a frame, the pictures on screen with their scale and coverage. Faces are not
+/// measured here (`media.subjects` reads them from source pictures): face fields are null (unknown), never "no face".
+/// No verdicts.
 enum TextFacts {
     /// What every item is measured against.
     struct Scene {

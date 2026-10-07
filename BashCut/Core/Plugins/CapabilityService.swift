@@ -175,6 +175,20 @@ public struct CapabilityService: Sendable {
             preferredProvider: preferredProvider, projectRoot: projectRoot)
     }
 
+    public func detectSubjects(
+        _ sampling: VisionSampling, preferredProvider: String?, projectRoot: URL?
+    ) async throws -> GeneratedVision {
+        try await run(FacesCapability(sampling), preferredProvider: preferredProvider, projectRoot: projectRoot)
+    }
+
+    public func recognizeText(
+        _ sampling: VisionSampling, languages: [String], preferredProvider: String?, projectRoot: URL?
+    ) async throws -> GeneratedVision {
+        try await run(
+            TextRecognitionCapability(sampling, languages: languages), preferredProvider: preferredProvider,
+            projectRoot: projectRoot)
+    }
+
     public func syncAudio(
         mediaURL: URL, otherURL: URL, preferredProvider: String?, projectRoot: URL?
     ) async throws -> GeneratedAudioSync {

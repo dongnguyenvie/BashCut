@@ -511,6 +511,12 @@ no setup. It is an ordinary out-of-process plugin built from Swift with AVFounda
 - `audio.sync`: cross-correlation of the two files' loudness envelopes (100 per second), coarse over every overlap
   of at least half the shorter file, then fine around the best lag, and again on each half of the overlap.
 
+`bashcut.vision` (source in `Plugins/vision/`) is built the same way on Apple Vision (P2-H6, P2-H7). It samples one
+upright picture every `step` source seconds and reports raw boxes, confidence and time, with no labels:
+
+- `vision.faces`: face rectangles and whole-body person rectangles (`media subjects`).
+- `vision.text`: lines of on-screen text with the accurate recognizer (`media ocr`).
+
 The providers have priority 0, so an installed provider with a higher priority, or one chosen for the project,
 takes over. Core plugins can be turned off but not removed; a registry copy with a higher version replaces one.
 
@@ -533,6 +539,16 @@ detect` stores the whole grid per file (`beats grid`) next to the timeline grid;
 `mediaPath` is a music file. Return `step` (seconds) and `levelDb`, `onset` and `fullness` arrays (one value per
 step). BashCut passes the curve on as measured; picking lifts, drops and breaths from it is the agent's, so any
 `candidates` a provider returns are ignored. The built-in Audio Analysis plugin provides it (`audio energy`).
+
+### `vision.faces` and `vision.text`
+
+The request has `mediaPath` (a video or an image), `step` (source seconds between pictures), optional `fromSeconds`
+and `toSeconds`, and for `vision.text` optional `languages` (BCP 47, in order). Return `frames`, at most 3,600, each
+with `seconds` (finite, nonnegative: the second the picture shows) and the lists `faces` and `people`
+(`vision.faces`) or `text` (`vision.text`). Each entry has `box` `[x, y, width, height]` as shares (0–1) of the upright
+picture from its top left and a finite `confidence`; a `text` entry also has `string`. Fields a provider adds (a
+landmark, mouth movement) are passed on; BashCut adds the source `frame` and where the media plays on the timeline.
+Which face matters, or whether a line is a caption, is the agent's.
 
 ### `audio.loudness`
 

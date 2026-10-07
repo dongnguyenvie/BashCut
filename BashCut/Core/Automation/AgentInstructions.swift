@@ -179,6 +179,8 @@ extension CommandCatalog {
         {"op":"deleteTrack","track":"TRACK_ID"},
         {"op":"setProviderPreference","capability":"voice.synthesize","provider":"acme.voice.fast"}.
         {"op":"setBeatGrid","media":"MEDIA_ID","bpm":120,"frames":[0,15,30]}.
+        {"op":"setMediaData","media":"MEDIA_ID","patch":{"take":3,"verdict":"keep","reason":"sharp, clean audio"}}
+        keeps your own fields on a media under data (takes, verdicts; null removes a key; media list shows them).
         {"op":"upsertSection","id":"section-hook","label":"Hook","atFrame":0},
         {"op":"deleteSection","id":"section-hook"}.
         {"op":"upsertTransition","id":"cut-a-b","kind":"dissolve","from":"CLIP_A","to":"CLIP_B","duration":12,

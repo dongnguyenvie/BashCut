@@ -48,6 +48,17 @@ extension ProjectDocument {
         return frames
     }
 
+    /// Where `media` plays on the timeline, `[{item, at, fromSeconds, toSeconds}]`, to place a source second.
+    func mediaPlacements(_ media: Media) -> JSONValue {
+        .array(project.tracks.flatMap(\.items).filter { $0.mediaID == media.id }.map { item in
+            let start = Double(item.sourceIn) / media.fps.value
+            return .object([
+                "item": .string(item.id), "at": .integer(item.at), "fromSeconds": .number(start),
+                "toSeconds": .number(start + item.sourceSeconds(afterFrames: item.duration, fps: project.fps)),
+            ])
+        })
+    }
+
     func registerBeatGridCommands() {
         handle("beats.grid") { document, arguments, _ in
             let mediaID = try arguments.string("media")
@@ -71,14 +82,7 @@ extension ProjectDocument {
                         projectRoot: root)
                 }
                 var result = generated.result.object
-                // Where the file plays on the timeline, to place a second of the curve.
-                result["timeline"] = .array(document.project.tracks.flatMap(\.items).filter { $0.mediaID == media.id }.map { item in
-                    let start = Double(item.sourceIn) / media.fps.value
-                    return .object([
-                        "item": .string(item.id), "at": .integer(item.at), "fromSeconds": .number(start),
-                        "toSeconds": .number(start + item.sourceSeconds(afterFrames: item.duration, fps: document.project.fps)),
-                    ])
-                })
+                result["timeline"] = document.mediaPlacements(media)
                 result["media"] = .string(mediaID)
                 result["provider"] = .object(generated.provenance.json)
                 return .object(result)

@@ -30,6 +30,7 @@ struct EditOperationCodecTests {
         .setProviderPreference(capability: "voice.synthesize", provider: nil),
         .setBeatGrid(media: "m1", bpm: 120, frames: [0, 15], provenance: ["plugin": .string("p")]),
         .setBeatGrid(media: "m1", bpm: 90, frames: [0], provenance: nil),
+        .setMediaData(media: "m1", patch: ["take": .integer(2), "verdict": .null]),
         .upsertSection(id: "s1", label: "Hook", atFrame: 0),
         .deleteSection(id: "s1"),
         .upsertTransition(id: "t", kind: "dissolve", from: "c1", to: "c2", duration: 12),

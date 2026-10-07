@@ -15,7 +15,7 @@ import Foundation
         "media.transcript", "media.speech-map", "media.describe", "media.description",
         "media.frames", "media.frame", "media.strip", "media.inventory", "review.sync",
         "review.window", "timeline.sheet", "color.measure", "audio.mix-measure",
-        "beats.grid", "audio.energy", "speech.rate", "narration.windows",
+        "beats.grid", "audio.energy", "media.subjects", "media.ocr", "speech.rate", "narration.windows",
         "voice.check", "voice.fit", "captions.align", "captions.group", "platforms.get",
         "project.data", "project.set-data",
         "review.accept", "review.verify", "review.packet", "review.compare",

@@ -34,6 +34,7 @@ extension ProjectDocument {
         registerTimelineStillsCommands()
         registerColorMeasureCommands()
         registerBeatGridCommands()
+        registerVisionCommands()
         registerSpeechRateCommands()
         registerVoiceCheckCommands()
         registerVoiceTakeCommands()

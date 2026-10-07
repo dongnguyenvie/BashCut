@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 198 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 200 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -238,6 +238,33 @@ Place project media on a layer (main by default, music for audio), with linked s
 - `atFrame`: integer, ≥ 0. Timeline frame; defaults to the playhead or the end of the main layer
 - `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
 
+### `bashcut media subjects --media <media> [--step <step>] [--from <from>] [--to <to>] [--provider <provider>] [--request-id <requestId>] [--dry-run]`
+
+Faces and people in the picture of a video or image, with a vision.faces provider (built in: Apple Vision): frames [{seconds, frame (source), faces [{box, confidence}], people [{box, confidence}]}] one picture every step source seconds over from…to; box is [x, y, width, height] as shares of the upright picture from the top left. timeline [{item, at, fromSeconds, toSeconds}] places a second. No labels: which face is the speaker or matters is yours. A job.
+
+- Mode: read · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_media_subjects`
+- `media`: string, required. Project media ID
+- `step`: number, 0.04…3600. Source seconds between pictures (default 1; at most 3600 pictures)
+- `from`: number, 0…86400. From this source second
+- `to`: number, 0…86400. Up to this source second
+- `provider`: string. Provider ID overriding the project preference for one request
+- `requestId`: string. Your stable ID for this request: sending it again returns the same job instead of starting (and paying for) another; the provider receives it too
+- `dryRun`: boolean, default false. Return the request as it would go to the provider (without option values), whether the provider is paid and its estimate if it gives one; nothing runs
+
+### `bashcut media ocr --media <media> [--step <step>] [--from <from>] [--to <to>] [--provider <provider>] [--languages <languages>] [--request-id <requestId>] [--dry-run]`
+
+On-screen text in the picture of a video or image, with a vision.text provider (built in: Apple Vision): frames [{seconds, frame (source), text [{string, box, confidence}]}] one picture every step source seconds over from…to, lines top to bottom; box as in media.subjects. Use it to read a reference's text cards and caption placement. Whether a line is a caption, a title or a sign is yours. A job.
+
+- Mode: read · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_media_ocr`
+- `media`: string, required. Project media ID
+- `step`: number, 0.04…3600. Source seconds between pictures (default 1; at most 3600 pictures)
+- `from`: number, 0…86400. From this source second
+- `to`: number, 0…86400. Up to this source second
+- `provider`: string. Provider ID overriding the project preference for one request
+- `languages`: string. BCP 47 languages to try in order, comma separated (default: the provider picks)
+- `requestId`: string. Your stable ID for this request: sending it again returns the same job instead of starting (and paying for) another; the provider receives it too
+- `dryRun`: boolean, default false. Return the request as it would go to the provider (without option values), whether the provider is paid and its estimate if it gives one; nothing runs
+
 ### `bashcut media sync --media <media> --to <to> [--item <item>] [--provider <provider>] [--request-id <requestId>] [--dry-run]`
 
 Find the time offset between two recordings of the same moment (a camera and a screen recording, or a render played inside a screen recording) from their sound, with an audio.sync provider. The job's result: time in `to` = time in `media` + offsetSeconds, the correlation (below 0.4: no shared sound) and each half of the overlap (steady: no clock drift). With item, also the matching source frame of `to` for that clip's in-point.
@@ -463,7 +490,7 @@ Read the shots on Main in order: index, id, at/atSeconds, duration (frames) and 
 
 ### `bashcut review layout [--frame <frame>] [--from <from>] [--to <to>] [--ink] [--contrast]`
 
-Read where text sits as the renderer lays it out: per visible text item id, track, trackRole, at/end, text, preset, lines, longestLineChars, fontPixels and fontShare (of the frame's short side), bounds (pixels from the top-left) and edges (distance to each frame edge as a share of that dimension, negative outside), keyframed when keyframes move it (not followed); holdSeconds, words and wordsPerSecond; speech {onsetOffsetFrames (from the nearest word start), narrationShare (of its time with words spoken)} from the heard or caption words; captionOverlap {item, ratio of its box} for titles; templateRepeats (items with its preset on its layer); faceOverlap null (needs a vision.faces provider; null means unknown). With contrast: contrast {ratio (WCAG, 1–21) of the mean, lightRatio and darkRatio (the light and dark parts of the text, such as fill and outline), textLuminance, backgroundLuminance, textPixels} measured on the frame with and without text (at frame, or each item's middle). Also the frame size, the platform whose zones apply (safeArea, minTextSize), density (titles and captions per minute) and, at a frame, pictures on screen with their scale and coverage. With from/to, only text that overlaps those frames. With ink: ink {frame, luma, mid (0–100), inkShare (pixels text and overlay layers change)} of the composed frame (frame, default 0) against Main alone. No verdicts.
+Read where text sits as the renderer lays it out: per visible text item id, track, trackRole, at/end, text, preset, lines, longestLineChars, fontPixels and fontShare (of the frame's short side), bounds (pixels from the top-left) and edges (distance to each frame edge as a share of that dimension, negative outside), keyframed when keyframes move it (not followed); holdSeconds, words and wordsPerSecond; speech {onsetOffsetFrames (from the nearest word start), narrationShare (of its time with words spoken)} from the heard or caption words; captionOverlap {item, ratio of its box} for titles; templateRepeats (items with its preset on its layer); faceOverlap null (unknown: not measured here; media subjects gives face boxes in source pictures). With contrast: contrast {ratio (WCAG, 1–21) of the mean, lightRatio and darkRatio (the light and dark parts of the text, such as fill and outline), textLuminance, backgroundLuminance, textPixels} measured on the frame with and without text (at frame, or each item's middle). Also the frame size, the platform whose zones apply (safeArea, minTextSize), density (titles and captions per minute) and, at a frame, pictures on screen with their scale and coverage. With from/to, only text that overlaps those frames. With ink: ink {frame, luma, mid (0–100), inkShare (pixels text and overlay layers change)} of the composed frame (frame, default 0) against Main alone. No verdicts.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_review_layout`
 - `frame`: integer, ≥ 0. Only text on screen at this timeline frame

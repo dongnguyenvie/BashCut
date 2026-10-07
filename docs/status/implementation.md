@@ -120,6 +120,11 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   longer judges what the opening text says.
 - `beats detect` keeps the provider's grid v2 per file (strengths, kick-phase downbeats, confidence, fit,
   alternates; `beats grid`), and `audio energy` gives the energy curve (picking lifts and drops is the agent's).
+- What is in the picture (P2-H6, P2-H7): `media subjects` (face and person boxes) and `media ocr` (on-screen text
+  lines) sample one picture every `--step` source seconds through the built-in `bashcut.vision` plugin (Apple
+  Vision); raw boxes, confidence and time, no labels or review checks. `review layout` face fields stay null.
+- The agent's own fields on a media (P2-H10): op `setMediaData` keeps takes, verdicts and reasons under `data`
+  (`media list` shows them); core never reads them, and there are no take commands.
 - `color measure` gives each clip's luma percentiles, saturation, tint per band and clipped/crushed shares from
   source frames or the edit as graded, the change a grade makes (with mean ΔE) and each clip's distance from the
   median clip.

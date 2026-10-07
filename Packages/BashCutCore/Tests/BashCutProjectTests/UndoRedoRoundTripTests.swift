@@ -51,6 +51,7 @@ struct UndoRedoRoundTripTests {
             .setFormat(width: 1920, height: 1080),
             .setProviderPreference(capability: "voice.synthesize", provider: "acme.voice"),
             .setBeatGrid(media: "m", bpm: 120, frames: [0, 15], provenance: ["plugin": .string("p")]),
+            .setMediaData(media: "m", patch: ["take": .integer(2), "verdict": .string("keep")]),
             .upsertSection(id: "s1", label: "Hook", atFrame: 30),
             .deleteSection(id: "s0"),
             .upsertTransition(id: "t", kind: "dissolve", from: "c1", to: "c2", duration: 12),
