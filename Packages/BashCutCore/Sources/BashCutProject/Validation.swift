@@ -58,6 +58,7 @@ extension Project {
         try validateProjectFlags()
         try validateAudioSettings()
         try validateOutputSettings()
+        try validateReviewSettings()
         try validateMarkers()
         try validateColorLUTs()
         try validateStyleCatalog()
@@ -108,6 +109,15 @@ extension Project {
     fileprivate func validateOutputSettings() throws {
         guard let value = self["output"] else { return }
         guard case .object(let output) = value else { throw ProjectError.invalid("output: expected object") }
+        if let targets = output["targets"], targets != .null {
+            guard case .object(let map) = targets, map.keys.allSatisfy(OutputPresetName.all.contains),
+                map.values.allSatisfy({ target in
+                    let fields = target.object
+                    return (fields["integratedLUFS"]?.double).map { (-30 ... -5).contains($0) } ?? (fields["integratedLUFS"] == nil)
+                        && ((fields["truePeakDbTP"]?.double).map { (-12...0).contains($0) } ?? (fields["truePeakDbTP"] == nil))
+                })
+            else { throw ProjectError.invalid("output.targets: preset → {integratedLUFS −30…−5, truePeakDbTP −12…0}") }
+        }
         guard let presets = output["presets"] else { return }
         guard case .array(let names) = presets, names.count <= 8,
             names.allSatisfy({ $0.string.map(OutputPresetName.all.contains) == true })

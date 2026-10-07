@@ -30,6 +30,22 @@ struct ReviewQualityTests {
         issues.map(\.id).filter { $0.hasPrefix(prefix) }
     }
 
+    /// The limits the checks used before #466, as a recipe would set them.
+    static let shortFormProfile: JSONValue = .object([
+        "minShotSeconds": .number(0.4), "maxShotSeconds": .number(8), "maxStillSeconds": .number(4),
+        "maxSilenceSeconds": .number(1.5), "maxMusicGapSeconds": .number(1), "voiceoverMarginSeconds": .number(0.3),
+        "captionLineChars": .number(32), "captionMaxLines": .number(2), "stillMotion": .number(0.02),
+        "jumpCutChange": .number(0.06), "blackMinSeconds": .number(0.5), "loudnessToleranceLU": .number(2),
+        "minTextSize": .number(0.03), "minSpeechCoverage": .number(0.9),
+    ])
+
+    /// The review with TikTok as the output and, with `profiled`, the short-form profile.
+    func run(_ project: Project, profiled: Bool = true, platforms: [OutputPlatform] = [.tiktok]) -> [ReviewIssue] {
+        var project = project
+        if profiled, project["review"] == nil { project["review"] = Self.shortFormProfile }
+        return TimelineReview.run(project, context: ReviewContext(targets: ReviewTargets(platforms: platforms)))
+    }
+
     @Test("Errors come first; the summary counts severities and passes only without errors (#435)")
     func severityAndSummary() throws {
         var project = try project()
@@ -50,11 +66,12 @@ struct ReviewQualityTests {
         #expect(ReviewSummary([]).passed)
     }
 
-    @Test("Loudness: unmeasured is info, off target and hot peaks are errors, other revisions do not count (#431)")
+    @Test("Loudness against the export's own target: unmeasured is info, off target and hot peaks are errors (#431, P0-K2)")
     func loudness() throws {
         var project = try project()
+        project["review"] = Self.shortFormProfile
         set(&project, track: "a3", [Item(id: "bed", media: "music", at: 0, duration: 300)])
-        let targets = ReviewTargets(integratedLUFS: -14, measureArguments: ["preset": .string("tiktok")])
+        let targets = ReviewTargets(measureArguments: ["preset": .string("tiktok")])
         let unmeasured = TimelineReview.run(project, context: ReviewContext(targets: targets))
         let note = unmeasured.first { $0.id == "loudness-unmeasured" }
         #expect(note?.severity == .info)
@@ -62,20 +79,24 @@ struct ReviewQualityTests {
         #expect(note?.fix?.arguments["normalizeAudio"] == .bool(true))
         #expect(note?.fix?.arguments["preset"] == .string("tiktok"))
 
-        let measured = { (lufs: Double, peak: Double, revision: Int) in
+        let measured = { (project: Project, lufs: Double, peak: Double, revision: Int) in
             TimelineReview.run(project, context: ReviewContext(
-                loudness: ReviewLoudness(revision: revision, integratedLUFS: lufs, truePeakDbTP: peak, loudnessRangeLU: 3),
+                loudness: ReviewLoudness(
+                    revision: revision, integratedLUFS: lufs, truePeakDbTP: peak, loudnessRangeLU: 3, targetLUFS: -14,
+                    maxTruePeakDbTP: -1, preset: "tiktok"),
                 targets: targets))
         }
-        #expect(ids(measured(-14.3, -1.2, project.revision), "loudness").isEmpty)
-        #expect(ids(measured(-14.3, -1.2, project.revision), "true-peak").isEmpty)
+        #expect(ids(measured(project, -14.3, -1.2, project.revision), "loudness").isEmpty)
+        #expect(ids(measured(project, -14.3, -1.2, project.revision), "true-peak").isEmpty)
         // The older AgentVid kits shipped at -31 LUFS; one Reelcrew render clipped at +0.2 dBTP.
-        let quiet = measured(-31, -9, project.revision)
-        #expect(quiet.first { $0.id == "loudness" }?.severity == .error)
-        #expect(ids(measured(-12.7, 0.2, project.revision), "true-peak") == ["true-peak"])
-        #expect(ids(measured(-31, -9, project.revision + 1), "loudness") == ["loudness-unmeasured"])
-        // No target, no loudness checks (the default context).
-        #expect(ids(TimelineReview.run(project), "loudness").isEmpty)
+        #expect(measured(project, -31, -9, project.revision).first { $0.id == "loudness" }?.severity == .error)
+        #expect(ids(measured(project, -12.7, 0.2, project.revision), "true-peak") == ["true-peak"])
+        #expect(ids(measured(project, -31, -9, project.revision + 1), "loudness") == ["loudness-unmeasured"])
+        // Without a tolerance the measurement is info; the peak ceiling is the platform's and stays an error.
+        var bare = project
+        bare["review"] = nil
+        #expect(measured(bare, -31, 0.2, bare.revision).first { $0.id == "loudness" }?.severity == .info)
+        #expect(measured(bare, -31, 0.2, bare.revision).first { $0.id == "true-peak" }?.severity == .error)
     }
 
     @Test("Music with ducking off under speech, dead air and a music bed that drops out (#431)")
@@ -88,9 +109,9 @@ struct ReviewQualityTests {
         ])
         let index = project.tracks.firstIndex { $0.id == "a3" }!
         project.tracks[index]["duckingEnabled"] = .bool(false)
-        let issues = TimelineReview.run(project)
+        let issues = run(project)
         let ducking = issues.first { $0.id == "ducking-a3" }
-        #expect(ducking?.fix?.command == "timeline.apply")
+        #expect(ducking?.fix?.command == "timeline.apply" && ducking?.severity == .info)
         let op = ducking?.fix?.arguments["ops"]?.array.first?.object
         #expect(op?["op"] == .string("setTrackProperties"))
         #expect(op?["patch"]?.object["duckingEnabled"] == .bool(true))
@@ -100,10 +121,13 @@ struct ReviewQualityTests {
 
         project.tracks[index]["muted"] = .bool(true)
         project.tracks[index]["duckingEnabled"] = .bool(true)
-        let muted = TimelineReview.run(project)
+        let muted = run(project)
         #expect(ids(muted, "ducking-").isEmpty)
         #expect(ids(muted, "music-gap-").isEmpty)
         #expect(ids(muted, "silence-") == ["silence-150"])
+        // Without limits: only the longest silence, as info.
+        let bare = run(project, profiled: false).filter { $0.id.hasPrefix("silence-") }
+        #expect(bare.map(\.id) == ["silence-150"] && bare.first?.severity == .info)
     }
 
     @Test("Vertical safe area: bottom bar is an error with a fix, side buttons and top bar are warnings (#433)")
@@ -115,7 +139,7 @@ struct ReviewQualityTests {
             text("high", "Tiêu đề", at: 120, style: ["positionY": .number(0.95)]),
             text("fine", "Đà Lạt 48h", at: 180),
         ])
-        let issues = TimelineReview.run(project)
+        let issues = run(project)
         let low = issues.first { $0.id == "safe-bottom-low" }
         #expect(low?.severity == .error)
         let patch = low?.fix?.arguments["ops"]?.array.first?.object["patch"]?.object["textStyle"]?.object
@@ -123,7 +147,7 @@ struct ReviewQualityTests {
         #expect(raised > 0.16)
         var moved = project
         set(&moved, track: "t1", [text("low", "Mua ngay", style: ["positionY": .number(raised)])])
-        #expect(ids(TimelineReview.run(moved), "safe-").isEmpty)
+        #expect(ids(run(moved), "safe-").isEmpty)
         #expect(ids(issues, "safe-side-") == ["safe-side-wide"])
         #expect(ids(issues, "safe-top-") == ["safe-top-high"])
         #expect(!issues.contains { $0.id.hasSuffix("-fine") })
@@ -140,14 +164,17 @@ struct ReviewQualityTests {
         var titles = Track(id: "t2", kind: "text", role: "overlay")
         titles.items = [text("over", "chồng", at: 100)]
         project.tracks.append(titles)
-        let issues = TimelineReview.run(project)
+        let issues = run(project)
         #expect(ids(issues, "small-text-") == ["small-text-tiny"])
         #expect(ids(issues, "caption-lines-") == ["caption-lines-lines"])
         #expect(ids(issues, "text-overlap-") == ["text-overlap-over"])
+        // Text size and lines are the project's limits: none without them.
+        let bare = run(project, profiled: false)
+        #expect(ids(bare, "small-text-").isEmpty && ids(bare, "caption-lines-").isEmpty)
 
         var wide = try self.project(width: 1920, height: 1080)
         set(&wide, track: "t1", [text("edge", "Tiêu đề", style: ["positionY": .number(0.97)])])
-        let landscape = TimelineReview.run(wide)
+        let landscape = run(wide, platforms: [.youtube])
         #expect(ids(landscape, "title-safe-") == ["title-safe-edge"])
         #expect(ids(landscape, "safe-").isEmpty)
     }
@@ -172,5 +199,21 @@ struct ReviewQualityTests {
 
         // Too short to need a hook.
         #expect(ids(TimelineReview.run(try self.project(seconds: 5)), "hook").isEmpty)
+    }
+
+    @Test("With an empty review profile, editorial findings are info only; mechanical problems stay errors (#470)")
+    func neutralDefaults() throws {
+        var project = try project(seconds: 20)
+        set(&project, track: "v1", [
+            Item(id: "a", media: "m", at: 0, duration: 400), Item(id: "b", media: "m", at: 400, duration: 5),
+            Item(id: "c", media: "m", at: 420, duration: 180),
+        ])
+        set(&project, track: "t1", [text("long", "Một dòng phụ đề rất dài hơn ba mươi hai ký tự nhiều lắm")])
+        set(&project, track: "a3", [Item(id: "bed", media: "music", at: 0, duration: 200)])
+        let issues = run(project, profiled: false)
+        #expect(issues.contains { $0.id == "gap-c" && $0.severity == .error })
+        let editorial = issues.filter { !$0.id.hasPrefix("gap-") && !$0.id.hasPrefix("safe-") }
+        #expect(!editorial.isEmpty && editorial.allSatisfy { $0.severity == .info }, "\(editorial.map { ($0.id, $0.severity) })")
+        #expect(ids(issues, "caption-").isEmpty)
     }
 }

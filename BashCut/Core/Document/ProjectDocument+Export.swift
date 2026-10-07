@@ -95,7 +95,8 @@ extension ProjectDocument {
             apply(.setProjectProperties(patch: ["audio": audio]), label: "Normalize audio")
         }
         // The write-back above only stores the gain the export already applied, so the measurement describes it.
-        recordReviewLoudness(outcome.finalMeasurement, revision: current ? project.revision : request.source.revision)
+        recordReviewLoudness(
+            outcome.finalMeasurement, revision: current ? project.revision : request.source.revision, preset: request.preset)
         lastRender = (outcome.receipt.url, current ? project.revision : request.source.revision)
         DebugLog.write("export", "done \(outcome.receipt.url.path)")
         emitPluginEvent(.exportFinished, [

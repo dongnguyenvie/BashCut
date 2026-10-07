@@ -165,7 +165,8 @@ extension EditorView {
                     let aspect = Double(document.project.width) / Double(document.project.height)
                     let height = min(geo.size.height, geo.size.width / aspect)
                     let width = height * aspect
-                    let area = document.layoutPlatform.safeArea
+                    // No output set: only the frame and a title-safe guide (#469).
+                    let area = document.layoutPlatform?.safeArea ?? SafeArea()
                     Group {
                         if aspect < 1 {
                             // Vertical video: the platform covers the bottom, the right edge and the top (#441).

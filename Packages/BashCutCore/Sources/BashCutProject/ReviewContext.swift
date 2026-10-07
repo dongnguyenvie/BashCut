@@ -1,17 +1,27 @@
 import Foundation
 
-/// A loudness measurement of the mixed timeline, from a normalized export of `revision`.
+/// A loudness measurement of the mixed timeline, from a normalized export of `revision`, with the target that export
+/// was normalized to (its preset's, P0-K2).
 public struct ReviewLoudness: Sendable, Equatable {
     public let revision: Int
     public let integratedLUFS: Double
     public let truePeakDbTP: Double
     public let loudnessRangeLU: Double?
+    public let targetLUFS: Double?
+    public let maxTruePeakDbTP: Double?
+    public let preset: String?
 
-    public init(revision: Int, integratedLUFS: Double, truePeakDbTP: Double, loudnessRangeLU: Double?) {
+    public init(
+        revision: Int, integratedLUFS: Double, truePeakDbTP: Double, loudnessRangeLU: Double?, targetLUFS: Double? = nil,
+        maxTruePeakDbTP: Double? = nil, preset: String? = nil
+    ) {
         self.revision = revision
         self.integratedLUFS = integratedLUFS
         self.truePeakDbTP = truePeakDbTP
         self.loudnessRangeLU = loudnessRangeLU
+        self.targetLUFS = targetLUFS
+        self.maxTruePeakDbTP = maxTruePeakDbTP
+        self.preset = preset
     }
 }
 
@@ -26,71 +36,40 @@ public struct ReviewPluginIssues: Sendable {
     }
 }
 
-/// The targets measured checks compare against. The defaults fit short-form social video (TikTok, Reels, Shorts,
-/// YouTube): -14 LUFS within 2 LU, true peak at most -1 dBTP; the Reelcrew study (#431) found every finished
-/// reference within 0.3 LU of -14.
+/// What the review checks against beyond the project's own `review` profile: the platforms of the project's outputs
+/// (#441, #469) and how to measure what is not measured yet. Editorial limits are not here: they are the project's
+/// (`ReviewProfile`, #466).
 public struct ReviewTargets: Sendable, Equatable {
-    /// Integrated loudness target; nil skips the loudness checks.
-    public var integratedLUFS: Double?
-    public var toleranceLU: Double
-    public var maxTruePeakDbTP: Double
-    /// Longest stretch without any audible layer before it counts as dead air.
-    public var maxSilenceSeconds: Double
-    /// How soon the edit has to hook the viewer: on-screen text or speech within this many seconds.
-    public var hookSeconds: Double
-    /// The export command a loudness fix suggests (`export.start` arguments), when loudness was not measured.
+    /// The export a loudness fix suggests (`export.start` arguments), when loudness was not measured.
     public var measureArguments: [String: JSONValue]
     /// Whether to report a picture that was not measured for this revision (with a `review.measure` fix).
     public var measuresPicture: Bool
-    /// Pacing: shots shorter or longer than these, and still picture longer than `maxStillSeconds`. Nil uses the
-    /// orientation's default; a project's `review` object (`minShotSeconds`, `maxShotSeconds`, `maxStillSeconds`)
-    /// overrides both, so a recipe can set its own range.
-    public var minShotSeconds: Double?
-    public var maxShotSeconds: Double?
-    public var maxStillSeconds: Double?
-    /// The platform of the project's first output preset (#441): its safe area, longest length and smallest text.
-    /// Nil, or one of another shape than the frame, uses `OutputPlatform.fallback(for:)` for the layout checks.
-    public var platform: OutputPlatform?
+    /// The platforms of the project's outputs, in `output.presets` order.
+    public var platforms: [OutputPlatform]
 
-    public init(
-        integratedLUFS: Double? = nil, toleranceLU: Double = 2, maxTruePeakDbTP: Double = -1,
-        maxSilenceSeconds: Double = 1.5, hookSeconds: Double = 3, measureArguments: [String: JSONValue] = [:],
-        measuresPicture: Bool = false, minShotSeconds: Double? = nil, maxShotSeconds: Double? = nil,
-        maxStillSeconds: Double? = nil, platform: OutputPlatform? = nil
-    ) {
-        self.integratedLUFS = integratedLUFS
-        self.toleranceLU = toleranceLU
-        self.maxTruePeakDbTP = maxTruePeakDbTP
-        self.maxSilenceSeconds = maxSilenceSeconds
-        self.hookSeconds = hookSeconds
+    public init(measureArguments: [String: JSONValue] = [:], measuresPicture: Bool = false, platforms: [OutputPlatform] = []) {
         self.measureArguments = measureArguments
         self.measuresPicture = measuresPicture
-        self.minShotSeconds = minShotSeconds
-        self.maxShotSeconds = maxShotSeconds
-        self.maxStillSeconds = maxStillSeconds
-        self.platform = platform
+        self.platforms = platforms
     }
 
-    /// The platform whose zones and text size the layout checks use: `platform` when it has the frame's shape.
-    public func layoutPlatform(for project: Project) -> OutputPlatform {
-        if let platform, platform.vertical == (project.height > project.width) { return platform }
-        return .fallback(for: project)
-    }
-
-    /// The hook window: the project's `review.hookSeconds` (a recipe sets it), else `hookSeconds`.
-    public func hookSeconds(for project: Project) -> Double {
-        project["review"]?.object["hookSeconds"]?.double ?? hookSeconds
-    }
-
-    /// The pacing for `project`: its `review` overrides, then these targets, then the defaults. Vertical short-form
-    /// changes picture more often (Reelcrew promos: 4–4.5 s shots, #432) than landscape.
-    public func pacing(for project: Project) -> (minShot: Double, maxShot: Double, maxStill: Double) {
-        let overrides = project["review"]?.object ?? [:]
+    /// The outputs' platforms of the frame's shape with the project's overrides, as one: the strictest zone of each
+    /// side and the shortest length. Nil when no output of that shape is set.
+    public func layoutPlatform(for project: Project) -> OutputPlatform? {
         let vertical = project.height > project.width
-        return (
-            overrides["minShotSeconds"]?.double ?? minShotSeconds ?? 0.4,
-            overrides["maxShotSeconds"]?.double ?? maxShotSeconds ?? (vertical ? 8 : 15),
-            overrides["maxStillSeconds"]?.double ?? maxStillSeconds ?? (vertical ? 4 : 8))
+        var seen = Set<String>()
+        let profile = ReviewProfile(project)
+        let matching = platforms.filter { $0.vertical == vertical && seen.insert($0.id).inserted }.map(profile.applying)
+        guard let first = matching.first else { return nil }
+        guard matching.count > 1 else { return first }
+        let area = { (path: KeyPath<SafeArea, Double>) in matching.map { $0.safeArea[keyPath: path] }.max() ?? 0 }
+        return OutputPlatform(
+            id: matching.map(\.id).joined(separator: "+"), title: matching.map(\.title).joined(separator: " and "),
+            vertical: vertical, maxSeconds: matching.compactMap(\.maxSeconds).min(),
+            targetLUFS: first.targetLUFS, maxTruePeakDbTP: matching.map(\.maxTruePeakDbTP).min() ?? first.maxTruePeakDbTP,
+            safeArea: SafeArea(
+                top: area(\.top), bottom: area(\.bottom), sideWidth: area(\.sideWidth), sideHeight: area(\.sideHeight),
+                margin: area(\.margin)))
     }
 }
 
@@ -112,7 +91,7 @@ public struct TextLayout: Sendable, Equatable {
 }
 
 /// What the review knows beyond the project: installed fonts, the text presets' defaults, the last loudness and
-/// picture measurements, plugin check results and the targets.
+/// picture measurements, plugin check results and the output platforms.
 public struct ReviewContext {
     /// Whether a `textStyle.font` name draws on this Mac (the app passes `ProjectFonts.isAvailable`).
     public var fontAvailable: (String) -> Bool

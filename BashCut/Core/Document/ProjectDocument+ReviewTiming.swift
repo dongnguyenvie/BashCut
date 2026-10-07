@@ -29,6 +29,25 @@ extension ProjectDocument {
                 lowVariance: lowVariance)
         }
         handle("review.cuts") { document, _, _ in ReviewCuts.json(document.project) }
+        handle("platforms.list") { document, _, _ in
+            let profile = ReviewProfile(document.project)
+            let outputs = Set(document.outputPresets.compactMap(\.platform?.id))
+            return .object([
+                "platforms": .array(OutputPlatform.all.map { platform in
+                    var row = profile.applying(to: platform).json.object
+                    row["output"] = .bool(outputs.contains(platform.id))
+                    row["overridden"] = .bool(profile.applying(to: platform) != platform)
+                    return .object(row)
+                }),
+                "layout": document.layoutPlatform?.json ?? .null,
+                "targets": .object(Dictionary(uniqueKeysWithValues: document.outputPresets.map { preset in
+                    let target = document.project.loudnessTarget(preset: preset.argument, platform: preset.platform)
+                    return (preset.argument, JSONValue.object([
+                        "integratedLUFS": .number(target.lufs), "truePeakDbTP": .number(target.truePeak),
+                    ]))
+                })),
+            ])
+        }
         handle("review.sync") { document, arguments, _ in
             var kinds: Set<ReviewSync.Event> = [.cuts]
             if let list = arguments.optionalString("events") {

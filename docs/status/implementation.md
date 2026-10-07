@@ -111,6 +111,9 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
 - Speech and voice: `speech rate`, `narration windows`, measured take facts and explicit take choice in `voice speak`
   (no pace formula), `voice speak --replace`, `voice check`, `voice fit`, `voice voices` with clone consent,
   `captions group` and `captions align`.
+- Review profile (#466, #470): editorial limits only from the project's `review` object (validated), neutral info
+  without them; zones checked against every output with overrides (#469, `platforms list`); loudness per export
+  preset (`output.targets`, P0-K2); no creative constants in fixes (#468).
 - `review hook` gives the opening and close as facts; the review's hook check runs only with a project
   `review.hookSeconds` and no longer judges what the opening text says.
 - `beats detect` keeps the provider's grid v2 per file (strengths, kick-phase downbeats, confidence, fit,

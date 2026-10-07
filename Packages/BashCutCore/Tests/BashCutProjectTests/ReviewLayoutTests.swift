@@ -22,7 +22,7 @@ struct ReviewLayoutTests {
     func context(bottom: Double, platform: OutputPlatform? = .tiktok) -> ReviewContext {
         ReviewContext(
             textLayout: { _, _, _ in TextLayout(points: 64.8, lines: 1, minX: 200, maxX: 800, minY: bottom, maxY: bottom + 100) },
-            targets: ReviewTargets(platform: platform))
+            targets: ReviewTargets(platforms: platform.map { [$0] } ?? []))
     }
 
     @Test("Items carry the renderer's bounds, edges and font share next to the platform zones")

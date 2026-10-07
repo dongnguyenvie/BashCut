@@ -72,8 +72,9 @@ public struct ExportPipeline: Sendable {
         let preferred = request.source.preferredProvider(for: "audio.loudness")
         let measured = try await loudness.analyzeLoudness(
             mediaURL: temporary, preferredProvider: preferred, projectRoot: request.root)
+        let target = request.source.loudnessTarget(preset: request.preset.argument, platform: request.preset.platform)
         let correction = try LoudnessNormalizer.correction(
-            measurement: measured.measurement, targetLUFS: request.source.targetLUFS)
+            measurement: measured.measurement, targetLUFS: target.lufs, peakCeilingDbTP: target.truePeak)
         let currentMixGain = request.project.mixGainDb
         let mixGain = max(-60, min(24, currentMixGain + correction))
         let appliedGain = mixGain - currentMixGain

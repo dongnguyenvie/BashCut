@@ -33,10 +33,10 @@ public struct SafeArea: Sendable, Equatable {
     }
 }
 
-/// What a platform expects of a finished video (#441): shape, longest upload, loudness, the zones its UI covers and
-/// the smallest readable text. Export presets name their platform; review checks the project against the platform
-/// of its first output preset (`output.presets`). Numbers are each app's documented limits in 2026, rounded to the
-/// safe side; every short-form app plays at about -14 LUFS.
+/// What a platform expects of a finished video (#441): shape, longest upload, loudness and the zones its UI covers.
+/// Export presets name their platform; review checks the project against the platforms of its outputs
+/// (`output.presets`), and `review.platform` overrides the facts when an app changes (#469). Numbers are each app's
+/// documented limits in 2026, rounded to the safe side; every short-form app plays at about -14 LUFS.
 public struct OutputPlatform: Sendable, Equatable, Identifiable {
     public let id: String
     public let title: String
@@ -46,12 +46,10 @@ public struct OutputPlatform: Sendable, Equatable, Identifiable {
     public let targetLUFS: Double
     public let maxTruePeakDbTP: Double
     public let safeArea: SafeArea
-    /// Smallest text, as a share of the frame's short side (about 32 px on 1080).
-    public let minTextSize: Double
 
     public init(
         id: String, title: String, vertical: Bool, maxSeconds: Double?, targetLUFS: Double = -14,
-        maxTruePeakDbTP: Double = -1, safeArea: SafeArea, minTextSize: Double = 0.03
+        maxTruePeakDbTP: Double = -1, safeArea: SafeArea
     ) {
         self.id = id
         self.title = title
@@ -60,7 +58,6 @@ public struct OutputPlatform: Sendable, Equatable, Identifiable {
         self.targetLUFS = targetLUFS
         self.maxTruePeakDbTP = maxTruePeakDbTP
         self.safeArea = safeArea
-        self.minTextSize = minTextSize
     }
 
     /// TikTok: in-app uploads up to 10 minutes. Reels: 3 minutes, a taller caption area. Shorts: 3 minutes (since
@@ -75,23 +72,17 @@ public struct OutputPlatform: Sendable, Equatable, Identifiable {
         id: "shorts", title: "YouTube Shorts", vertical: true, maxSeconds: 180,
         safeArea: SafeArea(top: 0.08, bottom: 0.18, sideWidth: 0.14, sideHeight: 0.46))
     public static let youtube = OutputPlatform(
-        id: "youtube", title: "YouTube", vertical: false, maxSeconds: nil, safeArea: SafeArea(margin: 0.05),
-        minTextSize: 0.025)
+        id: "youtube", title: "YouTube", vertical: false, maxSeconds: nil, safeArea: SafeArea(margin: 0.05))
 
     public static let all: [OutputPlatform] = [tiktok, reels, shorts, youtube]
 
     public static func named(_ id: String) -> OutputPlatform? { all.first { $0.id == id } }
 
-    /// The platform review assumes when the project names none: TikTok for vertical frames, YouTube otherwise.
-    public static func fallback(for project: Project) -> OutputPlatform {
-        project.height > project.width ? .tiktok : .youtube
-    }
-
     public var json: JSONValue {
         .object([
             "id": .string(id), "title": .string(title), "vertical": .bool(vertical),
             "maxSeconds": maxSeconds.map(JSONValue.number) ?? .null, "targetLUFS": .number(targetLUFS),
-            "maxTruePeakDbTP": .number(maxTruePeakDbTP), "safeArea": safeArea.json, "minTextSize": .number(minTextSize),
+            "maxTruePeakDbTP": .number(maxTruePeakDbTP), "safeArea": safeArea.json,
         ])
     }
 }
@@ -100,4 +91,14 @@ extension Project {
     /// The export presets this project is made for (`output.presets`), first one primary; set by the user, a recipe
     /// skill or the format menu. Empty when none were chosen.
     public var outputPresets: [String] { self["output"]?.object["presets"]?.array.compactMap(\.string) ?? [] }
+
+    /// The loudness an export of `preset` is normalized to and reviewed against (P0-K2): the project's
+    /// `output.targets` for that preset, else the preset's platform, else the project's mix target.
+    public func loudnessTarget(preset: String, platform: OutputPlatform?) -> (lufs: Double, truePeak: Double) {
+        let own = self["output"]?.object["targets"]?.object[preset]?.object ?? [:]
+        return (
+            own["integratedLUFS"]?.double ?? platform?.targetLUFS ?? targetLUFS,
+            own["truePeakDbTP"]?.double ?? platform?.maxTruePeakDbTP ?? -1
+        )
+    }
 }

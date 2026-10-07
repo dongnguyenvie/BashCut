@@ -14,38 +14,37 @@ extension ProjectDocument {
         outputPresets.first ?? (project.width > project.height ? .youtube1080 : .tiktok)
     }
 
-    /// The platform whose zones the viewer's safe-area overlay and the text checks use.
-    var layoutPlatform: OutputPlatform {
-        ReviewTargets(platform: outputPresets.lazy.compactMap(\.platform).first).layoutPlatform(for: project)
+    /// The platforms of the project's outputs whose zones the viewer's safe-area overlay and the text checks use
+    /// (the strictest of each side); nil when no output of the frame's shape is set.
+    var layoutPlatform: OutputPlatform? { reviewTargets.layoutPlatform(for: project) }
+
+    var reviewTargets: ReviewTargets {
+        ReviewTargets(
+            measureArguments: ["preset": .string(primaryExportPreset.argument)], measuresPicture: true,
+            platforms: outputPresets.compactMap(\.platform))
     }
 
     /// The review the panel, the export sheet and `review.run` show: installed fonts, the text presets' defaults,
-    /// the last loudness and picture measurements of this session and the targets of the project's first output
-    /// platform (#441; -14 LUFS, -1 dBTP when it names none).
+    /// the last loudness and picture measurements of this session, the output platforms and the project's review
+    /// profile.
     func reviewIssues() -> [ReviewIssue] { TimelineReview.run(project, context: reviewContext()) }
 
     /// What the review and `review.layout` know beyond the project: fonts, preset defaults, the renderer's text
     /// layout (#465), the last measurements and the targets.
     func reviewContext() -> ReviewContext {
-        let platform = outputPresets.lazy.compactMap(\.platform).first
-        return ReviewContext(
+        ReviewContext(
             fontAvailable: ProjectFonts.isAvailable,
             textDefaults: { preset in
                 let defaults = TextPresetStyle.defaults(preset)
                 return (defaults["size"] ?? 0.055, defaults["positionY"] ?? 0.18)
             },
             textLayout: { item, width, height in TextPresetStyle.layout(item, size: CGSize(width: width, height: height)) },
-            loudness: reviewLoudness, picture: reviewPicture, pluginIssues: reviewPluginIssues,
-            targets: ReviewTargets(
-                integratedLUFS: project["audio"]?.object["targetLUFS"]?.double ?? platform?.targetLUFS ?? -14,
-                maxTruePeakDbTP: platform?.maxTruePeakDbTP ?? -1,
-                measureArguments: ["preset": .string(primaryExportPreset.argument)],
-                measuresPicture: true, platform: platform))
+            loudness: reviewLoudness, picture: reviewPicture, pluginIssues: reviewPluginIssues, targets: reviewTargets)
     }
 
     /// Whether the Review panel can apply `fix` itself (an edit or an export); other fixes go to the agent.
     func canApply(_ fix: ReviewFix) -> Bool {
-        ["timeline.apply", "timeline.close-gap", "export.start", "review.measure"].contains(fix.command ?? "")
+        ["timeline.apply", "timeline.close-gap", "export.start", "review.measure", "project.format"].contains(fix.command ?? "")
     }
 
     /// Applies a review fix as the user: edits run as one undoable step, an export fix opens the Export sheet.
@@ -63,6 +62,10 @@ extension ProjectDocument {
                 ui.showExport = true
             case "review.measure":
                 _ = try startReviewMeasure(author: .user)
+            case "project.format":
+                var arguments = fix.arguments
+                arguments["baseRev"] = .integer(project.revision)
+                _ = try formatCommand(CommandArguments(arguments), author: .user)
             default:
                 break
             }
@@ -141,10 +144,12 @@ extension ProjectDocument {
     static let pictureIssuePrefixes = ["black-", "still-", "jump-", "shot-"]
 
     /// Keeps the loudness a finished export measured, for the revision it now describes.
-    func recordReviewLoudness(_ measurement: LoudnessMeasurement?, revision: Int) {
+    func recordReviewLoudness(_ measurement: LoudnessMeasurement?, revision: Int, preset: ExportPreset) {
         guard let measurement else { return }
+        let target = project.loudnessTarget(preset: preset.argument, platform: preset.platform)
         reviewLoudness = ReviewLoudness(
             revision: revision, integratedLUFS: measurement.integratedLUFS, truePeakDbTP: measurement.truePeakDbTP,
-            loudnessRangeLU: measurement.loudnessRangeLU)
+            loudnessRangeLU: measurement.loudnessRangeLU, targetLUFS: target.lufs, maxTruePeakDbTP: target.truePeak,
+            preset: preset.argument)
     }
 }

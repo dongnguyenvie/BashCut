@@ -199,6 +199,16 @@ extension CommandCatalog {
                              cli: .option("by")),
         ])
 
+    /// Platform facts the checks use (#469).
+    static let platformsListSpec = CommandSpec(
+        "platforms.list", .read,
+        "Read the platform facts review uses: per platform (TikTok, Reels, Shorts, YouTube) shape, maxSeconds, "
+            + "targetLUFS, maxTruePeakDbTP and safeArea (zones the app covers, as fractions), with the project's "
+            + "review.platform overrides applied, whether it is one of the project's outputs and whether it was "
+            + "overridden; layout: the zones text is checked against (the strictest of the outputs of the frame's "
+            + "shape, null when none); targets: each output preset's loudness target (output.targets, else the "
+            + "platform's).")
+
     /// Hook and close as facts (#467, P0-B11).
     static let reviewHookSpec = CommandSpec(
         "review.hook", .read,

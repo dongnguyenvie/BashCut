@@ -57,7 +57,7 @@ public enum ReviewHook {
         }
         return .object([
             "revision": .integer(project.revision), "opening": .object(opening), "close": .object(close),
-            "platform": context.targets.layoutPlatform(for: project).json,
+            "platform": context.targets.layoutPlatform(for: project)?.json ?? .null,
         ])
     }
 

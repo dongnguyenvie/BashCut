@@ -6,8 +6,8 @@ import Foundation
 /// are estimated the way `TextRenderer` lays text out: the font is the preset (or `textStyle.size`) share of the
 /// frame's short side, shrunk so the widest line fits 90 % of the width; the last line's baseline sits at `positionY`
 /// from the bottom and lines stack upwards 1.28 em apart, with glyph widths at 0.55 em per character. The side-zone
-/// check stays a warning. Keyframed text motion is not followed. The zones and the smallest text come from the
-/// project's platform (`ReviewTargets.layoutPlatform`, #441).
+/// check stays a warning. Keyframed text motion is not followed. The zones come from the project's output platforms
+/// (`ReviewTargets.layoutPlatform`, #441, #469); text size and caption lines from its `review` profile (#466).
 extension TimelineReview {
     struct TextBox {
         let item: Item
@@ -44,16 +44,28 @@ extension TimelineReview {
         let height = Double(project.height)
         guard width > 0, height > 0 else { return [] }
         let vertical = height > width
-        // The zones of the project's platform (#441); TikTok's for vertical frames and title safe otherwise.
-        let platform = context.targets.layoutPlatform(for: project)
-        let area = platform.safeArea
-        let top = 1 - area.top
+        let profile = ReviewProfile(project)
         let boxes = project.tracks.filter { $0.kind == "text" && $0["hidden"] != .bool(true) }
             .flatMap { track in track.items.map { (track, $0) } }
             .filter { !$0.1.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
             .map { (track: $0.0, box: textBox($0.1, width: width, height: height, context: context)) }
         var issues: [ReviewIssue] = []
-        for (track, box) in boxes {
+        // The zones of every output of this shape, the strictest side of each (#441, #469); none set, none assumed.
+        guard let platform = context.targets.layoutPlatform(for: project) else {
+            if !boxes.isEmpty {
+                issues.append(
+                    ReviewIssue(
+                        id: "platform-none", title: "No output platform set",
+                        detail: "Text is not checked against a platform's covered zones until output.presets names one.",
+                        frame: 0, severity: .info,
+                        fix: ReviewFix(command: "project.format", hint: "Set the outputs with project format --outputs.")))
+            }
+            return issues + profileTextIssues(boxes, profile: profile, width: width, height: height)
+                + overlappingText(boxes.map(\.box))
+        }
+        let area = platform.safeArea
+        let top = 1 - area.top
+        for (_, box) in boxes {
             let item = box.item
             if vertical, box.minY < height * area.bottom {
                 let raised = area.bottom + 0.25 * box.points / height + 0.02
@@ -68,8 +80,8 @@ extension TimelineReview {
                     ReviewIssue(
                         id: "safe-side-" + item.id, title: "Text under the side buttons",
                         detail: "The line reaches the right \(percent(area.sideWidth)) of the lower part, where "
-                            + "\(platform.title)'s like/comment buttons sit. Use shorter lines (3–6 words) or a smaller size.",
-                        frame: item.at, fix: ReviewFix(hint: "Split the line or lower textStyle.size.")))
+                            + "\(platform.title)'s like/comment buttons sit.",
+                        frame: item.at, fix: ReviewFix(hint: "Shorten or split the line, lower textStyle.size, or move it.")))
             }
             if vertical, box.maxY > height * top {
                 issues.append(
@@ -86,22 +98,34 @@ extension TimelineReview {
                         detail: "Keep text inside the central \(percent(1 - 2 * area.margin)) of the frame.", frame: item.at,
                         fix: ReviewFix(hint: "Move it with textStyle.positionY.")))
             }
-            if box.points / min(width, height) < platform.minTextSize {
+        }
+        issues += profileTextIssues(boxes, profile: profile, width: width, height: height)
+        issues += overlappingText(boxes.map(\.box))
+        return issues
+    }
+
+    /// Text size and caption lines against the project's `review.minTextSize` and `review.captionMaxLines`; neither is
+    /// checked without them.
+    static func profileTextIssues(
+        _ boxes: [(track: Track, box: TextBox)], profile: ReviewProfile, width: Double, height: Double
+    ) -> [ReviewIssue] {
+        var issues: [ReviewIssue] = []
+        for (track, box) in boxes {
+            if let minimum = profile["minTextSize"], box.points / min(width, height) < minimum {
                 issues.append(
                     ReviewIssue(
-                        id: "small-text-" + item.id, title: "Text too small",
-                        detail: "It draws below \(percent(platform.minTextSize)) of the frame's short side and is hard "
-                            + "to read on a phone. Shorten the line or raise textStyle.size.", frame: item.at))
+                        id: "small-text-" + box.item.id, title: "Text smaller than the project's minimum",
+                        detail: "It draws below \(percent(minimum)) of the frame's short side (review.minTextSize).",
+                        frame: box.item.at, fix: ReviewFix(hint: "Shorten the line or raise textStyle.size.")))
             }
-            if vertical, track.role == TrackRole.captions, box.lines > 2 {
+            if let lines = profile["captionMaxLines"].map({ Int($0) }), track.role == TrackRole.captions, box.lines > lines {
                 issues.append(
                     ReviewIssue(
-                        id: "caption-lines-" + item.id, title: "Caption over two lines",
-                        detail: "Vertical captions read best as one short line (3–6 words), two at most.",
-                        frame: item.at, fix: ReviewFix(hint: "Split it into shorter captions.")))
+                        id: "caption-lines-" + box.item.id, title: "Caption over \(lines) line\(lines == 1 ? "" : "s")",
+                        detail: "\(box.lines) lines; the project allows \(lines) (review.captionMaxLines).",
+                        frame: box.item.at, fix: ReviewFix(hint: "Split it into shorter captions (captions group).")))
             }
         }
-        issues += overlappingText(boxes.map(\.box))
         return issues
     }
 

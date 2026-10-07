@@ -49,8 +49,6 @@ public struct ReviewPicture: Sendable, Equatable {
     public static let stillChange = 0.004
     /// A cell changing by more than this (about 8 of 255 levels) is movement, not encoder noise.
     public static let stillPeak = 0.03
-    /// A cut whose two sides differ less than this looks like a jump cut.
-    public static let jumpCutChange = 0.06
 
     public func isBlack(_ sample: Sample) -> Bool { sample.luma < Self.blackLuma && sample.spread < Self.flatSpread }
 

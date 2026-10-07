@@ -5,6 +5,19 @@
 
 ## [Unreleased]
 
+- **No taste in core review (P0-K1, K2, #466, #468, #469, #470, #472).** Every editorial limit is the project's:
+  `review` gains `maxSilenceSeconds`, `maxMusicGapSeconds`, `voiceoverMarginSeconds`, `captionLineChars`,
+  `captionMaxLines`, `stillMotion`, `jumpCutChange`, `blackMinSeconds`, `loudnessToleranceLU`, `minTextSize` and
+  `minSpeechCoverage` next to the pacing and hook keys, and core keeps no defaults: without a limit a check does not
+  run or reports the measured value as info (the longest shot, the longest silence…). Editorial findings are info
+  unless a profile or `review.severities` raises them; gaps, missing fonts, black picture inside the edit and
+  platform facts stay errors. The `review` object is validated on every edit, and severities can name a plugin
+  provider (`provider:`). The jump-cut fix is a hint (no ×1.15 punch-in) and the Review sheet can apply the
+  `project.format` fix. Text is checked against the zones of **every** output of the frame's shape (strictest side
+  wins) with `review.platform` overrides; with no output set nothing is assumed (one note); `platforms list` shows
+  the facts. Platforms no longer carry a smallest text size. Each export is normalized to and reviewed against its
+  own preset's loudness (`output.targets`, else the platform's). Command descriptions carry no editing advice.
+
 - **Speech, script and voice (P0-C2–C9).** `speech rate` measures speaking rate in the content language's unit
   (syllables for Vietnamese, characters for CJK, else words) per transcribed media and speaker (p10/p50/p90, overall,
   articulation) and lists the rates measured on synthesized takes per voice. `narration windows --min-seconds S
