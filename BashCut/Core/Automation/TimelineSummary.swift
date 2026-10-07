@@ -13,6 +13,16 @@ public enum TimelineSummary {
             "luts": .array(project.colorLUTs.map { .object($0.fields) }),
             "looks": .array(project.looks.map(\.json)), "styleKits": .array(project.styleKits.map(\.json)),
             "scale": ReviewScale.all(project),
+            "media": .array(project.media.map(rights)),
+        ])
+    }
+
+    /// Each media's path, kind, licence (with what it allows) and provenance (P2-H8); null when not recorded.
+    static func rights(_ media: Media) -> JSONValue {
+        .object([
+            "id": .string(media.id), "path": .string(media.path), "kind": .string(media.kind),
+            "license": media["license"].flatMap(LicenseTerms.init(json:))?.reportJSON ?? .null,
+            "provenance": media["provenance"] ?? .null,
         ])
     }
 

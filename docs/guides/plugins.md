@@ -1067,7 +1067,10 @@ The request's `params`:
 The result is `{"items": [...]}`, at most `limit` library item objects. `kind` may be left out (it is the one asked
 for; another kind is refused) and so may `id` (a missing, invalid or repeated one becomes `candidate-<n>`).
 `file` and `preview` must be files in `outputDirectory` (absolute or relative to it, inside it after symlinks):
-download or write them there. Give `source` (a URL or a note) and `license` so people can check them before use.
+download or write them there. Give `source` (a URL or a note) and `license` so people can check them before use;
+`license` may be text (mapped to a structured licence) or `{id, version, url, attribution}`. `author` and
+`provenance {origin, sourceUrl, author, model, seed, prompt}` are kept with the saved item; without an `origin`,
+generated items are `ai` and found ones `stock`.
 Each item is checked like a saved one of its kind (an `audio` item needs a `file`, a `sticker` an `emoji` or a
 file, and so on); one bad item fails the request, and its folder is removed.
 

@@ -222,6 +222,7 @@ public enum ProjectSchema {
                     "alpha": boolean("A movie with an alpha channel (a video sticker); previewed without a proxy"),
                     TransitionPreset.soundLibraryField: string("The library item (scope:id) it was copied from"),
                     "description": ref("mediaDescription"),
+                    "license": mediaLicenseSchema, "provenance": mediaProvenanceSchema,
                 ])),
             "track": track,
             "item": .object(item),

@@ -48,6 +48,18 @@ extension CommandCatalog {
     ]
 }
 
+extension CommandCatalog {
+    /// Where a media file came from and what its licence allows (P2-H8), recorded on `media import`.
+    static let mediaRightsParameters = [
+        CommandParameter("origin", .string, "Where the file came from", choices: ["stock", "ai", "own", "built-in"],
+                         cli: .option("origin")),
+        CommandParameter("license", .string, "Its licence as written (CC0, CC-BY 4.0, Pexels License…); stored "
+                         + "structured with what it allows", cli: .option("license")),
+        CommandParameter("source", .string, "Where it was found (URL)", cli: .option("source")),
+        CommandParameter("author", .string, "Who made it, for the credit line", cli: .option("author")),
+    ]
+}
+
 /// `jobs.wait` bounds (P2-G4): the socket client waits this long plus a margin for the answer.
 public enum JobWaitDefaults {
     public static let seconds = 25

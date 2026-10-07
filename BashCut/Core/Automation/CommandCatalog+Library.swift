@@ -41,7 +41,8 @@ extension CommandCatalog {
         CommandParameter("preview", .string, "Preview image, GIF or audio snippet to copy in", isPath: true,
                          cli: .option("preview")),
         CommandParameter("source", .string, "Where it came from (URL or note)", cli: .option("source")),
-        CommandParameter("license", .string, "License or terms of use", cli: .option("license")),
+        CommandParameter("license", .string, "License or terms of use as written (CC0, CC-BY 4.0, Pexels License…); "
+                         + "stored structured with what it allows", cli: .option("license")),
     ]
 
     /// The provider, count and saving options of library search and library generate (#81).
@@ -101,6 +102,9 @@ extension CommandCatalog {
                 CommandParameter("id", .string, "Item ID: lowercase letters, digits and hyphens; from the name by default",
                                  cli: .option("id")),
                 writableScope,
+                CommandParameter("origin", .string, "Where it came from (P2-H8)", choices: ["stock", "ai", "own", "built-in"],
+                                 cli: .option("origin")),
+                CommandParameter("author", .string, "Who made it, for the credit line", cli: .option("author")),
             ] + itemFields),
         CommandSpec(
             "library.update", .edit,
@@ -262,7 +266,9 @@ extension CommandCatalog {
         CommandSpec(
             "library.export-pack", .edit,
             "Write library items as a pack folder (pack.json and files) to share or import elsewhere: one pack, or "
-                + "every item of a kind or scope.",
+                + "every item of a kind or scope. Refuses, naming them, when an item's licence does not allow "
+                + "redistribution (a stock-site licence, all rights reserved); unknownLicenses lists items exported "
+                + "without a licence BashCut can read.",
             parameters: [
                 CommandParameter("output", .string, "New or empty folder to write", required: true, isPath: true,
                                  cli: .option("output")),

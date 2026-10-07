@@ -375,7 +375,10 @@ public struct Project: JSONObject {
     public func existingMedia(like candidate: Media) -> Media? {
         media.first { existing in
             existing.id != candidate.id && existing.path == candidate.path
-                && candidate.fields.allSatisfy { key, value in key == "id" || existing.fields[key] == value }
+                && candidate.fields.allSatisfy { key, value in
+                    // Rights describe the file, not this use of it: media placed before they were recorded is reused.
+                    ["id", "license", "provenance"].contains(key) || existing.fields[key] == value
+                }
         }
     }
     public var markers: [TimelineMarker] {
