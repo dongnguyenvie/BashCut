@@ -6,7 +6,7 @@ import Foundation
     public static let allowedMethods: Set<String> = [
         "context.get", "project.get", "project.save", "project.format", "timeline.get", "timeline.apply",
         "timeline.undo", "timeline.redo", "timeline.move", "timeline.close-gap", "media.list", "media.import",
-        "media.proxy", "media.place", "review.run", "captions.export", "captions.import", "captions.words",
+        "media.proxy", "media.place", "review.run", "captions.export", "transcript.words", "captions.import", "captions.words",
         "captions.generate", "export.status", "export.start", "export.otio", "plugins.list", "plugins.actions",
         "plugins.hooks", "plugins.options", "plugins.health", "jobs.status", "jobs.cancel", "layers.add", "layers.set",
         "adjustment.add", "style.apply", "style.save", "style.delete", "looks.save", "looks.delete", "schema.get",

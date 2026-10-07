@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+- **Captions and spoken words as data (P0-C1).** `captions export --as json|text` adds two formats next to
+  SubRip: JSON cues with timing in frames and seconds, characters, characters per second, the gap since the previous
+  cue, line count, the media they were made from and their words; `text` is one line per cue for a cheap read.
+  `transcript words [--from F] [--to F] [--media M]` (`transcript.words`, read) lists every word on the caption
+  layers in timeline order with its frames, caption, timing kind (transcribed or estimated), the gap since the previous
+  word and, for captions made from a media, its source seconds through the clip heard there now.
+
 - **Rendered text layout for agents and the review (#465).** `review layout [--frame N]` (`review.layout`, read)
   returns each visible text item's box as `TextRenderer` lays it out: font size in pixels and as a share of the short
   side, line count, longest line, bounds in pixels and the margin to each frame edge, next to the platform's zones.
