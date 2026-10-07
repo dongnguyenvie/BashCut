@@ -63,6 +63,18 @@ extension CommandCatalog {
                              cli: .flag("summary"))
         ])
 
+    static let reviewLayoutSpec = CommandSpec(
+        "review.layout", .read,
+        "Read where text sits as the renderer lays it out: per visible text item id, track, trackRole, at/end, text, "
+            + "preset, lines, longestLineChars, fontPixels and fontShare (of the frame's short side), bounds (pixels "
+            + "from the top-left) and edges (distance to each frame edge as a share of that dimension, negative "
+            + "outside), keyframed when keyframes move it (not followed). Also the frame size and the platform whose "
+            + "zones apply (safeArea, minTextSize). No verdicts.",
+        parameters: [
+            CommandParameter("frame", .integer, "Only text on screen at this timeline frame", minimum: 0,
+                             cli: .option("frame"))
+        ])
+
     /// Read-only sound analysis through plugin providers; each runs as a job whose result holds the values.
 
     static let analysisSpecs: [CommandSpec] = [

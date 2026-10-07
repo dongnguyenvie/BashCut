@@ -2,11 +2,12 @@ import Foundation
 
 /// Text layout checks (#433) and the hook check (#434).
 ///
-/// Text boxes are estimated the way `TextRenderer` lays text out: the font is the preset (or `textStyle.size`) share
-/// of the frame's short side, shrunk so the widest line fits 90 % of the width; the last line's baseline sits at
-/// `positionY` from the bottom and lines stack upwards 1.28 em apart. Glyph widths are estimated (0.55 em per
-/// character), so the side-zone check is a warning, not an error. Keyframed text motion is not followed. The zones and
-/// the smallest text come from the project's platform (`ReviewTargets.layoutPlatform`, #441).
+/// Text boxes come from the renderer's layout (`ReviewContext.textLayout`, #465) when the app passes it. Otherwise they
+/// are estimated the way `TextRenderer` lays text out: the font is the preset (or `textStyle.size`) share of the
+/// frame's short side, shrunk so the widest line fits 90 % of the width; the last line's baseline sits at `positionY`
+/// from the bottom and lines stack upwards 1.28 em apart, with glyph widths at 0.55 em per character. The side-zone
+/// check stays a warning. Keyframed text motion is not followed. The zones and the smallest text come from the
+/// project's platform (`ReviewTargets.layoutPlatform`, #441).
 extension TimelineReview {
     struct TextBox {
         let item: Item
@@ -14,9 +15,16 @@ extension TimelineReview {
         /// Font size in pixels after fitting the width.
         let points: Double
         let minX, maxX, minY, maxY: Double
+        /// Whether the box is the renderer's layout rather than an estimate.
+        var measured = false
     }
 
     static func textBox(_ item: Item, width: Double, height: Double, context: ReviewContext) -> TextBox {
+        if let layout = context.textLayout?(item, width, height) {
+            return TextBox(
+                item: item, lines: layout.lines, points: layout.points, minX: layout.minX, maxX: layout.maxX,
+                minY: layout.minY, maxY: layout.maxY, measured: true)
+        }
         let defaults = context.textDefaults(item.textPreset)
         let style = item["textStyle"]?.object ?? [:]
         let lines = item.text.components(separatedBy: "\n")

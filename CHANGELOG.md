@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+- **Rendered text layout for agents and the review (#465).** `review layout [--frame N]` (`review.layout`, read)
+  returns each visible text item's box as `TextRenderer` lays it out: font size in pixels and as a share of the short
+  side, line count, longest line, bounds in pixels and the margin to each frame edge, next to the platform's zones.
+  The review's text checks (safe zones, text size, overlap) now use the same rendered bounds instead of an estimate at
+  0.55 em per character.
+
 - **Shot list for agents (#464).** `review shots` (`review.shots`, read) lists the shots on Main in order with their
   timing in frames and seconds, source media and in-point, zoom and transform, speed, keyframed properties, the gap
   before, the transition in or the picture difference across the hard cut, and the measured motion (mean and peak

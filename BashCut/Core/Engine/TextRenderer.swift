@@ -101,6 +101,9 @@ public enum TextPresetStyle {
 
     /// `preset`'s text colour, `#RRGGBB`.
     public static func fill(_ preset: String?) -> String { CaptionPreset(preset).fill }
+
+    /// How `item` lays out on a `size` frame, as the renderer draws it (#465).
+    public static func layout(_ item: Item, size: CGSize) -> TextLayout? { TextRenderer.layout(item, size: size) }
 }
 
 enum TextRenderer {
@@ -156,9 +159,7 @@ enum TextRenderer {
             let (lineText, first) = entry
             let line = CTLineCreateWithAttributedString(words.string(lineText, firstWord: first))
             let width = CTLineGetTypographicBounds(line, nil, nil, nil)
-            let position = CGPoint(
-                x: preset.leftAligned ? size.width * 0.1 : (size.width - width) / 2,
-                y: size.height * baseline + Double(index) * lineHeight)
+            let position = linePosition(preset, width: width, index: index, spacing: (baseline, lineHeight), canvas: size)
             return CaptionLineLayout(line: line, width: width, position: position)
         }
         let decorations = decorations(preset, lines: lines, lineHeight: lineHeight, canvas: size)
@@ -188,6 +189,57 @@ enum TextRenderer {
         cache.images.setObject(raster, forKey: key as NSString, cost: raster.bytes)
         return raster
     }
+    /// Where line `index` (counted from the bottom line) starts: centred, or at 10 % for left-aligned presets; the
+    /// bottom baseline sits at `baseline` of the height and lines stack upwards `lineHeight` apart.
+    private static func linePosition(
+        _ preset: CaptionPreset, width: CGFloat, index: Int, spacing: (baseline: Double, lineHeight: CGFloat), canvas: CGSize
+    ) -> CGPoint {
+        CGPoint(x: preset.leftAligned ? canvas.width * 0.1 : (canvas.width - width) / 2,
+                y: canvas.height * spacing.baseline + Double(index) * spacing.lineHeight)
+    }
+
+    /// The rendered layout of a text item on a `size` canvas (#465): the fitted font size and the union of the lines'
+    /// typographic and glyph bounds (with the outline) plus the preset's plates and bars, in pixels with y up from the
+    /// bottom, laid out exactly as `raster` draws them. Shadows and keyframed motion are not included.
+    static func layout(_ item: Item, size: CGSize) -> TextLayout? {
+        let lineTexts = item.text.components(separatedBy: "\n")
+        guard size.width > 0, size.height > 0,
+              !item.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+        let preset = CaptionPreset(item.textPreset)
+        let style = item["textStyle"]?.object ?? [:]
+        let font = fittedFont(
+            style["font"]?.string ?? preset.font, size: fontSize(style["size"]?.double ?? preset.size, canvas: size),
+            lines: lineTexts, maximumWidth: size.width * 0.9)
+        let points = CTFontGetSize(font)
+        let lineHeight = points * 1.28
+        let baseline = style["positionY"]?.double ?? preset.baseline
+        // The outline is centred on the glyph edge, so half its width (a share of the font size) lies outside.
+        let outline = abs(style["strokeWidth"]?.double ?? preset.strokeWidth) * points / 200
+        let attributes = [NSAttributedString.Key(kCTFontAttributeName as String): font]
+        let lines = lineTexts.reversed().enumerated().map { index, text in
+            let line = CTLineCreateWithAttributedString(NSAttributedString(string: text, attributes: attributes))
+            let width = CTLineGetTypographicBounds(line, nil, nil, nil)
+            return CaptionLineLayout(
+                line: line, width: width,
+                position: linePosition(preset, width: width, index: index, spacing: (baseline, lineHeight), canvas: size))
+        }
+        var bounds = CGRect.null
+        for layout in lines {
+            var ascent: CGFloat = 0, descent: CGFloat = 0
+            CTLineGetTypographicBounds(layout.line, &ascent, &descent, nil)
+            let typographic = CGRect(x: layout.position.x, y: layout.position.y - descent, width: layout.width, height: ascent + descent)
+            let glyphs = CTLineGetBoundsWithOptions(layout.line, .useGlyphPathBounds)
+                .offsetBy(dx: layout.position.x, dy: layout.position.y)
+            bounds = bounds.union((glyphs.isNull ? typographic : typographic.union(glyphs)).insetBy(dx: -outline, dy: -outline))
+        }
+        for decoration in decorations(preset, lines: lines, lineHeight: lineHeight, canvas: size) {
+            bounds = bounds.union(decoration.rect)
+        }
+        guard !bounds.isNull else { return nil }
+        return TextLayout(
+            points: points, lines: lineTexts.count, minX: bounds.minX, maxX: bounds.maxX, minY: bounds.minY, maxY: bounds.maxY)
+    }
+
     /// Hash only raster drawing inputs, once per TextLayer. Timing, identity and compositor transforms
     /// do not change these pixels; canvas size and the spoken word are appended by `image`.
     static func cacheKey(_ item: Item) -> String {

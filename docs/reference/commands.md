@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 150 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 151 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -219,6 +219,13 @@ Read the shots on Main in order: index, id, at/atSeconds, duration (frames) and 
 
 - Mode: read · Runs: immediately · MCP: `bashcut_review_shots`
 - `summary`: boolean. Add count, length statistics and cuts per minute
+
+### `bashcut review layout [--frame <frame>]`
+
+Read where text sits as the renderer lays it out: per visible text item id, track, trackRole, at/end, text, preset, lines, longestLineChars, fontPixels and fontShare (of the frame's short side), bounds (pixels from the top-left) and edges (distance to each frame edge as a share of that dimension, negative outside), keyframed when keyframes move it (not followed). Also the frame size and the platform whose zones apply (safeArea, minTextSize). No verdicts.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_review_layout`
+- `frame`: integer, ≥ 0. Only text on screen at this timeline frame
 
 ## captions
 
