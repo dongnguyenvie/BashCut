@@ -141,6 +141,8 @@ public enum UIAction: String, CaseIterable, Sendable {
 
     /// Inspector tabs, for `ui.view --inspector`.
     public static let inspectorTabs = ["video", "audio", "text", "color", "speed"]
+    /// The Media panel's sources: footage, project media, shared assets and the selects store (P1-D8).
+    public static let mediaSources = ["footage", "project", "shared", "selects"]
     /// Settings sections, for `ui.view --settings-section`.
     public static let settingsSections = ["general", "agents", "plugins", "storage"]
     /// Knowledge window sections, for `ui.view --knowledge-section`.

@@ -56,16 +56,18 @@ extension ProjectDocument {
             return .object(["variants": .array(rows)])
         }
         handle("variants.diff") { document, arguments, _ in
-            let read = { (path: String) throws -> Project in
+            let read = { (path: String) throws -> (project: Project, root: URL) in
                 var url = URL(fileURLWithPath: path)
                 if url.pathExtension != "json" { url.appendPathComponent("project.bashcut.json") }
                 guard let data = try? Data(contentsOf: url), case .object(let fields)? = try? JSONValue(parsing: data) else {
                     throw RPCFailure(-32602, "Cannot read a project at \(path)")
                 }
-                return Project(fields: fields)
+                return (Project(fields: fields), url.deletingLastPathComponent())
             }
-            let left = try arguments.optionalString("base").map(read) ?? document.project
-            return ProjectDerivation.diff(left, try read(try arguments.string("other")))
+            let left = try arguments.optionalString("base").map(read)
+                ?? (project: document.project, root: document.fileURL?.deletingLastPathComponent() ?? URL(fileURLWithPath: "/"))
+            let right = try read(try arguments.string("other"))
+            return ProjectDerivation.diff(left.project, right.project, leftRoot: left.root, rightRoot: right.root)
         }
     }
 

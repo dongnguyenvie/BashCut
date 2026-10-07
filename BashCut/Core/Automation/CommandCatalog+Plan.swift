@@ -123,6 +123,8 @@ extension CommandCatalog {
             "A source range from what was said, in the media's stored transcript: a quote (the place its words match "
                 + "best; equal places listed in alternatives, in order, never ranked), word indices FIRST-LAST, or rough "
                 + "from/to seconds snapped outwards to the words they cut into (snap gives how far each edge moved). "
+                + "A quote's matched is the share of its words heard in place: under 1 the transcript differs (a "
+                + "misheard word, or a quote that is not there), so read text before using the range. "
                 + "Returns from/to seconds and in/out frames for media place, the text, and per edge midWord, "
                 + "midSentence (inside a transcript phrase) and the nearest word and sentence edges before and after.",
             parameters: [
@@ -144,7 +146,8 @@ extension CommandCatalog {
         CommandSpec(
             "selects.list", .read,
             "The project's selects: source ranges {id, media, from, to (seconds), status candidate|kept|rejected, quote, "
-                + "reason, evidence, mustKeep, order} and counts per status. The user sees and overrides them in the "
+                + "reason (why it was picked), evidence, mustKeep, order, statusReason (why its status last changed)} and "
+                + "counts per status. The user sees and overrides them in the "
                 + "Media panel (Selects).",
             parameters: [CommandParameter("status", .string, "Only this status", choices: ProjectSelect.statuses, cli: .option("status"))]),
         CommandSpec(
@@ -157,7 +160,8 @@ extension CommandCatalog {
             ]),
         CommandSpec(
             "selects.mark", .edit,
-            "Change the status or mustKeep of selects (comma-separated IDs), with an optional reason, as one edit. A "
+            "Change the status or mustKeep of selects (comma-separated IDs), with an optional reason (kept as statusReason; "
+                + "the pick's reason stays), as one edit. A "
                 + "must-keep select no clip plays is a review warning.",
             parameters: [
                 CommandParameter("ids", .string, "Select IDs", required: true, cli: .positional),
@@ -171,8 +175,9 @@ extension CommandCatalog {
             parameters: [CommandParameter("ids", .string, "Select IDs", required: true, cli: .positional), baseRevision]),
         CommandSpec(
             "selects.place", .edit,
-            "Lay the kept selects (or the given IDs) on Main in order (order, else source start), from atFrame or Main's "
-                + "end, as one undoable edit; returns the new item IDs.",
+            "Lay the kept selects (or the given IDs) in order (order, else source start), from atFrame or the first "
+                + "one's layer end, as one undoable edit: pictures on Main, sound-only media on the dialogue layer (else "
+                + "music); returns the new item IDs.",
             parameters: [
                 CommandParameter("ids", .string, "Select IDs instead of the kept ones", cli: .option("ids")),
                 CommandParameter("atFrame", .integer, "Timeline frame", minimum: 0, cli: .option("at-frame")),

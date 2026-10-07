@@ -39,13 +39,12 @@ extension ProjectDocument {
             let ids = Set(try arguments.string("ids").split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) })
             let status = arguments.optionalString("status"), mustKeep = arguments.optionalBool("mustKeep")
             guard status != nil || mustKeep != nil else { throw RPCFailure(-32602, "Give status or mustKeep") }
-            var selects = document.project.selects.map(\.fields)
-            let missing = ids.subtracting(selects.compactMap { $0["id"]?.string })
-            guard missing.isEmpty else { throw RPCFailure(-32602, "Unknown selects: " + missing.sorted().joined(separator: ", ")) }
-            for index in selects.indices where ids.contains(selects[index]["id"]?.string ?? "") {
-                if let status { selects[index]["status"] = .string(status) }
-                if let mustKeep { selects[index]["mustKeep"] = .bool(mustKeep) }
-                if let reason = arguments.optionalString("reason") { selects[index]["reason"] = .string(reason) }
+            let selects: [[String: JSONValue]]
+            do {
+                selects = try document.project.markingSelects(
+                    ids, status: status, mustKeep: mustKeep, reason: arguments.optionalString("reason"))
+            } catch let error as ProjectError {
+                throw RPCFailure(-32602, error.localizedDescription)
             }
             return try document.saveSelects(selects, label: "Mark selects", author: author, base: arguments.int("baseRev"))
         }
@@ -74,25 +73,28 @@ extension ProjectDocument {
         }
     }
 
-    /// Lays `selects` on Main in their order (`order`, else source start), from `frame` or Main's end, one edit.
+    /// Lays `selects` in their order (`order`, else source start), from `frame` or the first one's layer end, one
+    /// edit: pictures on Main, sound-only media (a podcast, a voice memo) on the dialogue layer.
     @discardableResult
     func placeSelects(
         _ selects: [ProjectSelect], at frame: Int?, author: Author = .user, baseRevision: Int? = nil
     ) throws -> (revision: Int, items: [String]) {
         guard !selects.isEmpty else { throw RPCFailure(-32602, "No selects to place (mark some kept, or give ids)") }
-        let main = try project.requireTrack(role: TrackRole.main, kind: "video").id
-        var planner = LayerPlanner(project)
-        var cursor = frame ?? project.insertionFrame(trackID: main, playhead: playhead)
-        var items: [String] = []
-        for select in selects.sorted(by: { ($0.order, $0.from) < ($1.order, $1.from) }) {
+        let ordered = try selects.sorted(by: { ($0.order, $0.from) < ($1.order, $1.from) }).map { select in
             guard let media = project.media.first(where: { $0.id == select.media }) else {
                 throw RPCFailure(-32602, "Select \(select.id): media \(select.media) is not in the project")
             }
+            return (select: select, media: media, track: try project.selectTrackID(for: media))
+        }
+        var planner = LayerPlanner(project)
+        var cursor = frame ?? project.insertionFrame(trackID: ordered[0].track, playhead: playhead)
+        var items: [String] = []
+        for (select, media, track) in ordered {
             let duration = Int(((select.to - select.from) * project.fps.value).rounded())
             guard duration > 0 else { continue }
             let id = UUID().uuidString
             try planner.placeMedia(
-                media, on: main, at: cursor, duration: duration, itemID: id,
+                media, on: track, at: cursor, duration: duration, itemID: id,
                 sourceIn: Int((select.from * media.fps.value).rounded(.down)))
             items.append(id)
             cursor += duration

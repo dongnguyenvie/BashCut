@@ -141,6 +141,15 @@ public enum TimelineReview {
             }
             end = clip.end
         }
+        // Sound or text running on after Main's last clip plays over no picture, like a gap.
+        if !main.isEmpty, end < project.duration {
+            issues.append(
+                ReviewIssue(
+                    id: "gap-end", title: "Main ends before the edit",
+                    detail: "No picture between frames \(end) and \(project.duration), while other layers go on.",
+                    frame: end, endFrame: project.duration, severity: .error,
+                    fix: ReviewFix(hint: "Extend or add a clip on Main, or trim what runs past its end.")))
+        }
         let profile = ReviewProfile(project)
         for (left, right) in zip(main, main.dropFirst())
         where left.mediaID == right.mediaID && left["transform"] == right["transform"] {

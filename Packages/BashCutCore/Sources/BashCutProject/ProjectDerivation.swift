@@ -55,7 +55,8 @@ public enum ProjectDerivation {
         return Project(fields: fields)
     }
 
-    /// The same canvas, outputs, review profile, brief and media with empty layers and the select's range on Main.
+    /// The same canvas, outputs, review profile, brief and media with empty layers and the select's range on Main
+    /// (sound-only media on the dialogue layer, as `selects place`).
     public static func derived(from project: Project, target: Target, select: ProjectSelect) throws -> Project {
         guard let media = project.media.first(where: { $0.id == select.media }) else {
             throw ProjectError.invalid("Select \(select.id): media \(select.media) is not in the project")
@@ -78,22 +79,38 @@ public enum ProjectDerivation {
             "from": .number(select.from), "to": .number(select.to),
         ])
         var derived = Project(fields: fields)
-        let main = try derived.requireTrack(role: TrackRole.main, kind: "video").id
-        var planner = LayerPlanner(derived)
         let portableMedia = derived.media[0]
+        let track = try derived.selectTrackID(for: portableMedia)
+        var planner = LayerPlanner(derived)
         try planner.placeMedia(
-            portableMedia, on: main, at: 0, duration: Int(((select.to - select.from) * project.fps.value).rounded()),
+            portableMedia, on: track, at: 0, duration: Int(((select.to - select.from) * project.fps.value).rounded()),
             sourceIn: Int((select.from * media.fps.value).rounded(.down)))
         derived = try derived.applying(.group(label: "Derive", author: .agent, ops: planner.operations)).project
         derived.revision = 0
         return derived
     }
 
-    /// What differs between two projects: top-level fields, and per track the items added, removed or changed.
-    public static func diff(_ left: Project, _ right: Project) -> JSONValue {
+    /// What differs between two projects: top-level fields, and per track the items added, removed or changed. With
+    /// each project's folder, media paths are compared as the files they name, so a variant's rewritten relative
+    /// paths are not a change.
+    public static func diff(_ left: Project, _ right: Project, leftRoot: URL? = nil, rightRoot: URL? = nil) -> JSONValue {
         let skip: Set<String> = ["id", "name", "rev", "tracks", "variant", "derivedFrom"]
         let keys = Set(left.fields.keys).union(right.fields.keys).subtracting(skip).sorted()
-        let fields = keys.filter { left.fields[$0] != right.fields[$0] }
+        let resolved = { (project: Project, root: URL?) -> [String: JSONValue] in
+            guard let root else { return project.fields }
+            var fields = project.fields
+            fields["media"] = .array(project.media.map { asset in
+                var media = asset.fields
+                if !asset.path.hasPrefix("@") {
+                    // Symlinks resolved on both sides: a project's footage folder may link to the source folder.
+                    media["path"] = .string(root.appendingPathComponent(asset.path).resolvingSymlinksInPath().path)
+                }
+                return .object(media)
+            })
+            return fields
+        }
+        let leftFields = resolved(left, leftRoot), rightFields = resolved(right, rightRoot)
+        let fields = keys.filter { leftFields[$0] != rightFields[$0] }
         let items = { (project: Project) in
             Dictionary(project.tracks.flatMap(\.items).map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         }

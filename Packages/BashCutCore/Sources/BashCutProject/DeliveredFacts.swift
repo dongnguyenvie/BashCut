@@ -9,7 +9,10 @@ public struct DeliveredFacts: Sendable, Equatable {
     public var path: String
     public var videoStart: Double
     public var audioStart: Double?
+    /// The rate frames are written at (from the shortest frame duration).
     public var fps: Double
+    /// Frames over duration: lower than `fps` when the encoder holds a frame (a still or black stretch).
+    public var averageFps: Double?
     public var expectedFps: Double
     public var width: Int
     public var height: Int
@@ -22,7 +25,8 @@ public struct DeliveredFacts: Sendable, Equatable {
 
     public init(
         revision: Int, preset: String, path: String, videoStart: Double, audioStart: Double?, fps: Double, expectedFps: Double,
-        size: (Int, Int), expectedSize: (Int, Int), duration: Double, black: [ClosedRange<Double>], silence: [ClosedRange<Double>]
+        size: (Int, Int), expectedSize: (Int, Int), duration: Double, black: [ClosedRange<Double>], silence: [ClosedRange<Double>],
+        averageFps: Double? = nil
     ) {
         self.revision = revision
         self.preset = preset
@@ -30,12 +34,25 @@ public struct DeliveredFacts: Sendable, Equatable {
         self.videoStart = videoStart
         self.audioStart = audioStart
         self.fps = fps
+        self.averageFps = averageFps
         self.expectedFps = expectedFps
         (width, height) = size
         (expectedWidth, expectedHeight) = expectedSize
         self.duration = duration
         self.black = black
         self.silence = silence
+    }
+
+    /// The rate frames are written at, from their presentation times: frames over the time of those no longer than
+    /// 1.5 × the median frame, so held frames (a still or black stretch written as one long frame) and a coarse
+    /// timescale's alternating 20/21-tick frames (29.97 fps at 1/600) do not skew it. Nil under two frames.
+    public static func writtenRate(_ times: [Double]) -> Double? {
+        let sorted = times.sorted()
+        let gaps = zip(sorted.dropFirst(), sorted).map { $0 - $1 }.filter { $0 > 0 }
+        guard !gaps.isEmpty else { return nil }
+        let median = gaps.sorted()[gaps.count / 2]
+        let regular = gaps.filter { $0 <= median * 1.5 }
+        return Double(regular.count) / regular.reduce(0, +)
     }
 
     /// Sound start minus picture start, seconds; nil without sound.
@@ -49,7 +66,8 @@ public struct DeliveredFacts: Sendable, Equatable {
         return .object([
             "revision": .integer(revision), "preset": .string(preset), "path": .string(path),
             "videoStart": round(videoStart), "audioStart": audioStart.map(round) ?? .null, "drift": drift.map(round) ?? .null,
-            "fps": round(fps), "expectedFps": round(expectedFps), "width": .integer(width), "height": .integer(height),
+            "fps": round(fps), "averageFps": averageFps.map(round) ?? .null, "expectedFps": round(expectedFps),
+            "width": .integer(width), "height": .integer(height),
             "expectedWidth": .integer(expectedWidth), "expectedHeight": .integer(expectedHeight), "duration": round(duration),
             "black": ranges(black), "silence": ranges(silence),
         ])

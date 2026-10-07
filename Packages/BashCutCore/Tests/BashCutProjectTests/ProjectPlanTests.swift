@@ -148,6 +148,35 @@ struct ProjectSelectsTests {
             #expect(throws: ProjectError.self) { try copy.validate() }
         }
     }
+
+    @Test("Marking keeps the pick's reason, records why the status changed and drops that note on the next change")
+    func marking() throws {
+        var project = ReviewSequenceTests().project()
+        project["selects"] = .array([.object([
+            "id": .string("s"), "media": .string("m"), "from": .number(1), "to": .number(2), "status": .string("candidate"),
+            "reason": .string("states the topic"),
+        ])])
+        project["selects"] = .array(try project.markingSelects(["s"], status: "rejected", mustKeep: nil, reason: "too generic")
+            .map(JSONValue.object))
+        #expect(project.selects[0].reason == "states the topic" && project.selects[0].statusReason == "too generic")
+        project["selects"] = .array(try project.markingSelects(["s"], status: "kept", mustKeep: true, reason: nil)
+            .map(JSONValue.object))
+        #expect(project.selects[0].status == "kept" && project.selects[0].mustKeep && project.selects[0].statusReason == nil)
+        #expect(throws: ProjectError.self) { try project.markingSelects(["nope"], status: "kept", mustKeep: nil, reason: nil) }
+    }
+
+    @Test("A select of sound-only media goes on the dialogue layer, pictures on Main")
+    func placementLayer() throws {
+        var project = ReviewSequenceTests().project()
+        let audio = Media(fields: ["id": .string("pod"), "path": .string("pod.m4a"), "kind": .string("audio"),
+                                   "fps": FrameRate(48_000, 1).json, "frames": .integer(480_000)])
+        project.media.append(audio)
+        #expect(try project.selectTrackID(for: project.media[0]) == project.track(role: TrackRole.main, kind: "video")?.id)
+        let dialogue = try #require(project.track(role: TrackRole.dialogue, kind: "audio"))
+        #expect(try project.selectTrackID(for: audio) == dialogue.id)
+        project.tracks.removeAll { $0.id == dialogue.id }
+        #expect(try project.selectTrackID(for: audio) == project.track(role: TrackRole.music)?.id)
+    }
 }
 
 /// Derived projects and variants (P1-D9).
@@ -173,6 +202,15 @@ struct ProjectDerivationTests {
         #expect(derived["output"] == project["output"] && derived["review"] == project["review"])
         #expect(derived["derivedFrom"]?.object["select"] == .string("s1"))
         #expect(derived.markers.isEmpty && derived["selects"] == nil)
+
+        project.media.append(Media(fields: ["id": .string("pod"), "path": .string("pod.m4a"), "kind": .string("audio"),
+                                            "fps": FrameRate(48_000, 1).json, "frames": .integer(480_000)]))
+        let audio = try ProjectDerivation.derived(
+            from: project,
+            target: .init(root: root, path: "/tmp/long/project.bashcut.json", destination: URL(fileURLWithPath: "/tmp/long-s2"), name: "Pod"),
+            select: ProjectSelect(fields: ["id": .string("s2"), "media": .string("pod"), "from": .number(1), "to": .number(3)]))
+        let dialogue = audio.track(role: TrackRole.dialogue, kind: "audio")
+        #expect(dialogue?.items.count == 1 && audio.tracks.first { $0.id == "v1" }?.items.isEmpty == true)
     }
 
     @Test("A variant is a full copy that records its change; diff lists fields and items that differ")
@@ -192,6 +230,10 @@ struct ProjectDerivationTests {
         let diff = ProjectDerivation.diff(project, variant).object
         #expect(diff["fields"]?.array.contains(.string("review")) == true)
         #expect(diff["fields"]?.array.contains(.string("media")) == true)
+        // With each folder, the rewritten relative paths name the same file.
+        let resolved = ProjectDerivation.diff(
+            project, variant, leftRoot: URL(fileURLWithPath: "/tmp/ad"), rightRoot: URL(fileURLWithPath: "/tmp/ads/ad-b")).object
+        #expect(resolved["fields"] == .array([.string("review")]))
         #expect(diff["items"]?.object["removed"] == .array([.string("a")]))
         #expect(diff["changedAs"]?.object["right"] == .string("hook"))
     }

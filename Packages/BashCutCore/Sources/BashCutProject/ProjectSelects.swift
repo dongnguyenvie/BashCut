@@ -1,8 +1,9 @@
 import Foundation
 
 /// Candidate, kept and rejected source ranges with why (P1-D8): `selects` in the project, each `{id, media, from, to
-/// (source seconds), status, quote?, reason?, evidence?, mustKeep?, order?}`. The agent proposes, the user overrides
-/// in the Media panel, and `selects place` lays the kept ones on Main as one edit.
+/// (source seconds), status, quote?, reason?, evidence?, mustKeep?, order?, statusReason?}`: `reason` is why it was
+/// picked, `statusReason` why its status or must-keep last changed. The agent proposes, the user overrides
+/// in the Media panel, and `selects place` lays the kept ones on the timeline as one edit.
 public struct ProjectSelect: Sendable, Equatable {
     public static let statuses = ["candidate", "kept", "rejected"]
 
@@ -18,6 +19,7 @@ public struct ProjectSelect: Sendable, Equatable {
     public var mustKeep: Bool { fields["mustKeep"]?.bool ?? false }
     public var quote: String? { fields["quote"]?.string }
     public var reason: String? { fields["reason"]?.string }
+    public var statusReason: String? { fields["statusReason"]?.string }
     public var order: Double { fields["order"]?.double ?? from }
     public var json: JSONValue { .object(fields) }
 }
@@ -25,6 +27,32 @@ public struct ProjectSelect: Sendable, Equatable {
 extension Project {
     public var selects: [ProjectSelect] {
         self["selects"]?.array.map { ProjectSelect(fields: $0.object) } ?? []
+    }
+
+    /// The selects with `ids` given a new status and/or mustKeep. `reason` says why and is kept as `statusReason`; the
+    /// pick's own `reason` stays. A status change drops the old `statusReason`.
+    public func markingSelects(
+        _ ids: Set<String>, status: String?, mustKeep: Bool?, reason: String?
+    ) throws -> [[String: JSONValue]] {
+        var selects = self.selects.map(\.fields)
+        let missing = ids.subtracting(selects.compactMap { $0["id"]?.string })
+        guard missing.isEmpty else { throw ProjectError.invalid("Unknown selects: " + missing.sorted().joined(separator: ", ")) }
+        for index in selects.indices where ids.contains(selects[index]["id"]?.string ?? "") {
+            if let status, status != selects[index]["status"]?.string {
+                selects[index]["status"] = .string(status)
+                selects[index]["statusReason"] = nil
+            }
+            if let mustKeep { selects[index]["mustKeep"] = .bool(mustKeep) }
+            if let reason { selects[index]["statusReason"] = .string(reason) }
+        }
+        return selects
+    }
+
+    /// The layer a select of `media` is placed on: pictures on Main; sound only (a podcast, a voice memo) on the
+    /// dialogue layer, else the music layer where imported sound goes.
+    public func selectTrackID(for media: Media) throws -> String {
+        guard media.kind == "audio" else { return try requireTrack(role: TrackRole.main, kind: "video").id }
+        return try (track(role: TrackRole.dialogue, kind: "audio") ?? requireTrack(role: TrackRole.music)).id
     }
 
     /// Each select has a unique ID, a media ID, from < to and a known status. The media may be gone (removing media

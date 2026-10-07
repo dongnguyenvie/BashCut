@@ -66,7 +66,8 @@ struct ReviewInvariantsTests {
         let captions = project.tracks.firstIndex { $0.role == TrackRole.captions }!
         project.tracks[captions].items = [caption]
         let issues = TimelineReview.run(project)
-        #expect(issues.filter { $0.severity == .error }.map(\.id) == ["gap-b"])
+        // The 400-frame caption also runs past Main's end.
+        #expect(issues.filter { $0.severity == .error }.map(\.id) == ["gap-b", "gap-end"])
         #expect(issues.first { $0.id == "loop-loop" }?.severity == .info)
         #expect(!issues.contains { $0.severity == .warning })
     }
