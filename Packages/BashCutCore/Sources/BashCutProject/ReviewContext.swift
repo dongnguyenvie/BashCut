@@ -114,6 +114,9 @@ public struct ReviewContext {
     public var missingGlyphs: ((Item) -> (font: String, characters: String)?)?
     /// What the exports of this session wrote, measured from the files (P1-E6).
     public var delivered: [DeliveredFacts] = []
+    /// Current content keys (`SourceHash.mediaNamespace`) of `Project.sourceKeyedMedia`, for results made from an
+    /// earlier version of a file (P2-G6).
+    public var mediaKeys: [String: String] = [:]
 
     public init(
         fontAvailable: @escaping (String) -> Bool = { _ in true },

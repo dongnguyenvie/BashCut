@@ -44,6 +44,7 @@ extension ProjectDocument {
         context.transcripts = reviewTranscripts.filter { used.contains($0.key) }
         context.missingGlyphs = ProjectFonts.missingGlyphs
         context.delivered = deliveredQC
+        context.mediaKeys = sourceMediaKeys()
         return context
     }
 

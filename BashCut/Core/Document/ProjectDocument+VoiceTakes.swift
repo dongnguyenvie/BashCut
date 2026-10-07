@@ -120,7 +120,8 @@ extension ProjectDocument {
         let mediaID = UUID().uuidString
         let media = Media(fields: [
             "id": .string(mediaID), "path": .string(Self.relativePath(asset.url, root: root)), "kind": .string("audio"),
-            "fps": project.fps.json, "frames": .integer(frames), "generatedBy": .object(asset.provenance.json),
+            "fps": project.fps.json, "frames": .integer(frames),
+            "generatedBy": .object(Self.voiceProvenance(asset, voice: voice)),
         ])
         var operations: [EditOperation] = [.addMedia(media), .setSource(item: item.id, media: mediaID, sourceIn: 0, reversed: nil)]
         if item.speed != 1 { operations.append(.setSpeed(item: item.id, speed: 1, keepDuration: true)) }
@@ -174,7 +175,7 @@ extension ProjectDocument {
         let chosen = takes[index]
         let itemID: String
         let voice: [String: JSONValue] = [
-            "text": .string(text), "language": .string(contentLanguage),
+            "text": .string(text), "language": .string(contentLanguage), "textHash": .string(SourceHash.text(text)),
             "provider": .string(chosen.asset.provenance.providerID), "voice": .string(voiceKey(chosen)),
         ]
         var replaced: JSONValue = .null

@@ -713,6 +713,10 @@
               "description" : "The text the take was synthesized from",
               "type" : "string"
             },
+            "textHash" : {
+              "description" : "Hash of the text the take says (SourceHash.text); review notes when text differs",
+              "type" : "string"
+            },
             "voice" : {
               "description" : "provider/voice the rate store uses",
               "type" : "string"
