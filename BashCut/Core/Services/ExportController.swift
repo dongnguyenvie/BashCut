@@ -69,7 +69,7 @@ public final class ExportController {
     }
 
     private func record(_ request: ExportRequest, outcome: ExportOutcome) {
-        let report = ExportReport(
+        var report = ExportReport(
             receipt: outcome.receipt, preset: request.preset,
             cutCount: request.source.tracks.first(where: { $0.role == TrackRole.main })?.items.count ?? 0,
             captionCount: request.source.tracks.first(where: { $0.role == TrackRole.captions })?.items.count ?? 0,
@@ -77,6 +77,8 @@ public final class ExportController {
             loudnessVerified: outcome.verified, appliedGainDb: outcome.appliedGainDb,
             speechCoverage: TimelineReview.speechCoverage(request.source), completedAt: Date(),
             comparison: nil)
+        report.acceptedIssues = (request.source["review"]?.object["accepted"]?.object ?? [:])
+            .compactMapValues { $0.object["reason"]?.string }
         if let snapshot = try? history.record(report.storedMetrics, projectRoot: request.root) {
             self.report = ExportReport(snapshot: snapshot) ?? report
         } else {

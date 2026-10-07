@@ -57,6 +57,10 @@ final class ProjectDocument {
     var reviewPicture: ReviewPicture?
     /// What plugin review checks reported on the last `review.measure` (#451); not saved.
     var reviewPluginIssues: ReviewPluginIssues?
+    /// Stored transcripts of the media the timeline plays, loaded by `review.run` for cuts inside words (P1-E1).
+    var reviewTranscripts: [String: SourceTranscript] = [:]
+    /// The issues of each `review.run` this session, by revision (P1-E2); not saved.
+    var reviewRounds: [(revision: Int, issues: [ReviewIssue])] = []
     var sessionID = UUID()
     /// Socket server, command registry and the external-agent token file.
     let automation: AutomationController
@@ -253,6 +257,8 @@ final class ProjectDocument {
         resolveScopeHold(.reject)
         resolveCheckpoint(.withdrawn)
         checkpoints.removeAll()
+        reviewTranscripts = [:]
+        reviewRounds = []
         // Terminals stay open; pending session lookups end with the old project.
         let liveBookmarks = agents.liveBookmarks()
         agents.resetProjectState()

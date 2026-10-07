@@ -116,18 +116,18 @@ struct ReviewQualityTests {
         #expect(op?["op"] == .string("setTrackProperties"))
         #expect(op?["patch"]?.object["duckingEnabled"] == .bool(true))
         // 200–300 has no sound (3.3 s); 500–600 too, at the end.
-        #expect(ids(issues, "silence-") == ["silence-200", "silence-500"])
-        #expect(ids(issues, "music-gap-") == ["music-gap-200"])
+        #expect(ids(issues, "silence-") == ["silence-clip+200", "silence-clip+500"])
+        #expect(ids(issues, "music-gap-") == ["music-gap-clip+200"])
 
         project.tracks[index]["muted"] = .bool(true)
         project.tracks[index]["duckingEnabled"] = .bool(true)
         let muted = run(project)
         #expect(ids(muted, "ducking-").isEmpty)
         #expect(ids(muted, "music-gap-").isEmpty)
-        #expect(ids(muted, "silence-") == ["silence-150"])
+        #expect(ids(muted, "silence-") == ["silence-clip+150"])
         // Without limits: only the longest silence, as info.
         let bare = run(project, profiled: false).filter { $0.id.hasPrefix("silence-") }
-        #expect(bare.map(\.id) == ["silence-150"] && bare.first?.severity == .info)
+        #expect(bare.map(\.id) == ["silence-clip+150"] && bare.first?.severity == .info)
     }
 
     @Test("Vertical safe area: bottom bar is an error with a fix, side buttons and top bar are warnings (#433)")

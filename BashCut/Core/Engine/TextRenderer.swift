@@ -382,3 +382,14 @@ private struct WordColoring {
         return text
     }
 }
+
+extension ProjectFonts {
+    /// The font a text item draws with (its `textStyle.font`, else its preset's) and the characters of its text that
+    /// font has no glyphs for (P1-E1); nil when every character is covered or the font itself is missing.
+    public static func missingGlyphs(_ item: Item) -> (font: String, characters: String)? {
+        let name = item["textStyle"]?.object["font"]?.string ?? CaptionPreset(item.textPreset).font
+        guard isAvailable(name) else { return nil }
+        let characters = missingCharacters(name, text: item.text)
+        return characters.isEmpty ? nil : (name, characters)
+    }
+}

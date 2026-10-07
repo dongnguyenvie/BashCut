@@ -18,7 +18,7 @@ import Foundation
         "beats.grid", "audio.energy", "review.hook", "speech.rate", "narration.windows",
         "voice.check", "voice.fit", "captions.align", "voice.voices", "captions.group", "platforms.list",
         "project.brief", "project.set-brief", "plan.get", "plan.set",
-        "workflow.gates", "workflow.set-gates", "checkpoint.request", "checkpoint.status", "run.log", "run.append",
+        "review.accept", "workflow.gates", "workflow.set-gates", "checkpoint.request", "checkpoint.status", "run.log", "run.append",
         "storage.get", "ui.select", "ui.view", "ui.source", "ui.seek", "ui.frame", "ui.frames", "ui.panel", "luts.import",
         "fonts.list", "fonts.import",
         "knowledge.get", "knowledge.memo", "knowledge.lessons", "knowledge.add-lesson", "knowledge.update-lesson",

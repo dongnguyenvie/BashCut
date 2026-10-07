@@ -53,7 +53,7 @@ public enum CommandCatalog {
             ]),
         mediaListSpec,
         reviewSpec,
-        reviewMeasureSpec,
+        reviewMeasureSpec, reviewAcceptSpec,
         reviewPictureSpec,
         reviewShotsSpec,
         reviewLayoutSpec,

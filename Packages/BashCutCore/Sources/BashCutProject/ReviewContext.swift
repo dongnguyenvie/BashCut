@@ -107,6 +107,11 @@ public struct ReviewContext {
     /// What plugin checks reported on the last `review.measure`; used only for the project's revision.
     public var pluginIssues: ReviewPluginIssues?
     public var targets: ReviewTargets
+    /// Stored transcripts of the media the timeline plays, for cuts inside words (P1-E1).
+    public var transcripts: [String: SourceTranscript] = [:]
+    /// The font a text item draws with and the characters of its text that font has no glyphs for (the app passes
+    /// CoreText's answer); nil when every character is covered.
+    public var missingGlyphs: ((Item) -> (font: String, characters: String)?)?
 
     public init(
         fontAvailable: @escaping (String) -> Bool = { _ in true },

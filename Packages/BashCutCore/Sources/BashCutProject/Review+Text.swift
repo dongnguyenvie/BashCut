@@ -144,6 +144,7 @@ extension TimelineReview {
                     ReviewIssue(
                         id: "text-overlap-" + other.item.id, title: "Overlapping text",
                         detail: "This text covers another text item shown at the same time.", frame: other.item.at,
+                        severity: .info,
                         fix: ReviewFix(hint: "Move one with textStyle.positionY or shift it in time.")))
             }
         }
