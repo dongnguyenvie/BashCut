@@ -10,7 +10,7 @@ private let capabilityForMethod = [
     "captions.generate": "captions.transcribe", "beats.detect": "audio.beats", "voice.speak": "voice.synthesize",
     "audio.measure": "audio.loudness", "media.sync": "audio.sync", "media.transcribe": "captions.transcribe",
     "audio.energy": "audio.energy", "audio.mix-measure": "audio.loudness", "voice.check": "captions.transcribe",
-    "captions.align": "captions.transcribe",
+    "captions.align": "captions.transcribe", "library.search": "library.search", "library.generate": "library.generate",
 ]
 
 extension ProjectDocument {
