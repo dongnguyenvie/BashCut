@@ -54,6 +54,14 @@ struct RPCFailureTests {
         #expect(stale.code == -32002 && stale.data?.object["actual"] == .integer(15))
     }
 
+    @Test("A file conflict is busy -32003 with category file_conflict, also through a generic catch")
+    func fileConflict() {
+        let failure = RPCFailure.from(FileConflictError("Resolve the file conflict before editing."), fallbackCode: -32602).typed
+        #expect(failure.code == -32003 && failure.category == .fileConflict)
+        #expect(failure.data?.object["retryable"] == .bool(true))
+        #expect(failure.data?.object["remediation"]?.object["command"] == .string("context.get"))
+    }
+
     @Test("Recent failures are kept per session token, newest first, with the repeated run at the newest end")
     @MainActor func recentFailures() async {
         let registry = CommandRegistry()

@@ -162,14 +162,36 @@ extension ProjectDocument {
     private func registerEditCommands() {
         handleAuthored("timeline.apply") { document, arguments, author in
             let label = try arguments.string("label")
-            let operation = EditOperation.group(label: label, author: author, ops: try WireOperations.decode(arguments.value("ops")))
+            let ops = try WireOperations.decode(arguments.value("ops"))
+            let baseRevision = try arguments.int("baseRev")
+            let fingerprint = try EditFingerprint.of(ops, baseRevision: baseRevision)
+            let operation = EditOperation.group(label: label, author: author, ops: ops)
             if arguments.bool("dryRun") {
                 await document.loadReviewTranscripts()
-                return try document.dryRunEdit(operation, author: author, baseRevision: arguments.int("baseRev"))
+                guard case .object(var fields) = try document.dryRunEdit(operation, author: author, baseRevision: baseRevision)
+                else { throw RPCFailure(-32603, "Dry run returned no object") }
+                fields["fingerprint"] = .string(fingerprint)
+                return .object(fields)
+            }
+            if let expected = arguments.optionalString("expectFingerprint"), expected != fingerprint {
+                throw RPCFailure(-32602, "The ops or baseRev differ from the dry run that was reviewed", data: .object([
+                    "expected": .string(expected), "actual": .string(fingerprint),
+                    "remediation": .object([
+                        "command": .string("timeline.apply"),
+                        "hint": .string("Dry-run these ops, review the result, then apply with its fingerprint."),
+                    ]),
+                ]))
             }
             let result = try document.commitEdit(
-                operation, label: label, author: author, baseRevision: arguments.int("baseRev"))
-            return .object(["rev": .integer(result.revision), "changed": .bool(result.changed)])
+                operation, label: label, author: author, baseRevision: baseRevision, note: try Self.editNote(arguments))
+            return .object([
+                "rev": .integer(result.revision), "changed": .bool(result.changed), "fingerprint": .string(fingerprint),
+            ])
+        }
+        handle("timeline.changes") { document, arguments, _ in
+            TimelineChanges.json(
+                history: document.history, limit: try arguments.int("limit"), author: arguments.optionalString("author"),
+                isAgent: \.isAgent)
         }
         handleAuthored("timeline.undo") { document, arguments, author in
             .object(["rev": .integer(try document.commitUndo(author: author, baseRevision: arguments.int("baseRev")))])
@@ -177,6 +199,19 @@ extension ProjectDocument {
         handleAuthored("timeline.redo") { document, arguments, author in
             .object(["rev": .integer(try document.commitRedo(author: author, baseRevision: arguments.int("baseRev")))])
         }
+    }
+
+    /// `why` and `evidence` of an edit command (P2-G3), bounded so the history journal stays small.
+    static func editNote(_ arguments: CommandArguments) throws -> EditNote? {
+        let why = arguments.optionalString("why")?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let evidence = (arguments.optionalString("evidence") ?? "").split(separator: ";")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+        guard (why?.count ?? 0) <= 500 else { throw RPCFailure(-32602, "why must be at most 500 characters") }
+        guard evidence.count <= 20, evidence.allSatisfy({ $0.count <= 200 }) else {
+            throw RPCFailure(-32602, "evidence takes at most 20 entries of 200 characters each")
+        }
+        let note = EditNote(why: why?.isEmpty == true ? nil : why, evidence: evidence)
+        return note.isEmpty ? nil : note
     }
 
     /// Resolves an export name and optional directory against the saved project's folder.

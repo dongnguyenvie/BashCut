@@ -351,10 +351,11 @@ extension ProjectDocument {
     }
 
     /// `commit`, also reporting whether the edit changed anything. An edit that changes nothing keeps the
-    /// revision, adds no undo step, leaves the agent diff alone and emits no plugin event.
+    /// revision, adds no undo step, leaves the agent diff alone and emits no plugin event. `note` (why and evidence)
+    /// stays with the undo step.
     func commitEdit(
         _ operation: EditOperation, label: String, author: Author = .user, baseRevision: Int? = nil,
-        coalescingKey: String? = nil
+        coalescingKey: String? = nil, note: EditNote? = nil
     ) throws -> (revision: Int, changed: Bool) {
         let scope = try checkAgentScope(
             operation, label: label, author: author, baseRevision: baseRevision, coalescingKey: coalescingKey)
@@ -364,7 +365,8 @@ extension ProjectDocument {
         do {
             try ensureEditable(author: author)
             changed = try history.apply(
-                operation, label: label, author: author, baseRevision: baseRevision, coalescingKey: coalescingKey)
+                operation, label: label, author: author, baseRevision: baseRevision, coalescingKey: coalescingKey,
+                note: note)
         } catch {
             DebugLog.write(
                 "edit", "REJECTED edit by \(author) base=\(baseRevision.map(String.init) ?? "-") "
@@ -385,7 +387,9 @@ extension ProjectDocument {
             }
             message = String(format: String(localized: "Canvas set to %@ to match the first clip"), name)
         }
-        emitPluginEvent(.editCommitted, editEventPayload(label: label, author: author, before: before))
+        var payload = editEventPayload(label: label, author: author, before: before)
+        if let why = note?.why, !why.isEmpty { payload["why"] = .string(why) }
+        emitPluginEvent(.editCommitted, payload)
         DebugLog.write(
             "edit", "edit by \(author) rev \(before.revision)→\(project.revision) op=\(Self.describe(operation))"
                 + (before.tracks.map(\.id) == project.tracks.map(\.id) ? "" : " layers: \(layoutSummary())"))
@@ -453,7 +457,7 @@ extension ProjectDocument {
     private func ensureEditable(author: Author) throws {
         // External reloads resolve conflicts themselves; everything else waits for the user.
         guard author == .external || !conflict else {
-            throw ProjectError.invalid(String(localized: "Resolve the file conflict before editing."))
+            throw FileConflictError(String(localized: "Resolve the file conflict before editing."))
         }
         if author.isAgent, busy || timelineGestureActive {
             throw AutomationBusy()
