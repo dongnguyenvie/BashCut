@@ -103,6 +103,35 @@ extension CommandCatalog {
             ]),
     ]
 
+    static let uiFrameSpec = CommandSpec(
+        "ui.frame", .read,
+        "Render the viewer's picture at a timeline frame (the playhead by default) to a PNG, like attaching the "
+            + "viewer frame in Ask; returns its path. Read the file to look at the edit. Keeps the ten newest. width "
+            + "renders it that many pixels wide (phone: 390, about a phone screen, to judge text at the size viewers "
+            + "see it); otherwise up to 1280 on the long edge.",
+        parameters: [
+            CommandParameter("frame", .integer, "Timeline frame; the playhead by default", minimum: 0, cli: .positional),
+            CommandParameter("width", .integer, "Width in pixels", minimum: 64, maximum: 4_096, cli: .option("width")),
+            CommandParameter("phone", .boolean, "390 pixels wide", cli: .flag("phone")),
+        ])
+
+    /// Before/after grids (P0-B5).
+    static let uiFramesSpec = CommandSpec(
+        "ui.frames", .read,
+        "Compare pictures in one PNG grid, one row per frame: compare graded puts the frame without colour (looks, "
+            + "adjustments, LUTs bypassed) next to the edit as graded; compare source puts the source frame of the "
+            + "clip on Main at that point (no reframe, no grade) next to the edit. Rows from frames (timeline "
+            + "frames) or items (the middle of each item). Each cell is width pixels wide (default 390). Returns "
+            + "{path, rows [{frame, item?, sourceSeconds?}], columns}.",
+        parameters: [
+            CommandParameter("compare", .string, "graded or source", required: true, choices: ["graded", "source"],
+                             cli: .option("compare")),
+            CommandParameter("frames", .string, "Timeline frames, comma separated", cli: .option("frames")),
+            CommandParameter("items", .string, "Item IDs, comma separated", cli: .option("items")),
+            CommandParameter("width", .integer, "Cell width in pixels (default 390)", minimum: 64, maximum: 2_048,
+                             cli: .option("width")),
+        ])
+
     /// The composed timeline as pictures without exporting (P0-B3, P0-B4).
     static let timelineStillsSpecs: [CommandSpec] = [
         CommandSpec(
@@ -151,11 +180,20 @@ extension CommandCatalog {
         "Read where text sits as the renderer lays it out: per visible text item id, track, trackRole, at/end, text, "
             + "preset, lines, longestLineChars, fontPixels and fontShare (of the frame's short side), bounds (pixels "
             + "from the top-left) and edges (distance to each frame edge as a share of that dimension, negative "
-            + "outside), keyframed when keyframes move it (not followed). Also the frame size and the platform whose "
-            + "zones apply (safeArea, minTextSize). No verdicts.",
+            + "outside), keyframed when keyframes move it (not followed); holdSeconds, words and wordsPerSecond; "
+            + "speech {onsetOffsetFrames (from the nearest word start), narrationShare (of its time with words "
+            + "spoken)} from the heard or caption words; captionOverlap {item, ratio of its box} for titles; "
+            + "templateRepeats (items with its preset on its layer); faceOverlap null (needs a vision.faces "
+            + "provider; null means unknown). With contrast: contrast {ratio (WCAG, 1–21), textLuminance, "
+            + "backgroundLuminance, textPixels} measured on the frame with and without text (at frame, or each "
+            + "item's middle). Also the frame size, the platform whose zones apply (safeArea, minTextSize), density "
+            + "(titles and captions per minute) and, at a frame, pictures on screen with their scale and coverage. "
+            + "No verdicts.",
         parameters: [
             CommandParameter("frame", .integer, "Only text on screen at this timeline frame", minimum: 0,
-                             cli: .option("frame"))
+                             cli: .option("frame")),
+            CommandParameter("contrast", .boolean, "Measure each item's contrast on rendered frames",
+                             cli: .flag("contrast")),
         ])
 
     /// Read-only sound analysis through plugin providers; each runs as a job whose result holds the values.

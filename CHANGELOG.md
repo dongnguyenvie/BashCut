@@ -5,6 +5,18 @@
 
 ## [Unreleased]
 
+- **Text, layout and scale facts (P0-B6, P0-B7).** `review layout` adds per text item its hold, words and words per
+  second, how it sits against the speech (onset offset from the nearest word, share of its time with words spoken),
+  how much of a caption a title covers, how often its template repeats on its layer, titles and captions per minute,
+  and at a frame the pictures on screen with their scale; `--contrast` measures each item's WCAG contrast on the
+  rendered frame against the same frame without text. Face fields stay null until a `vision.faces` provider exists.
+  `timeline get` and `review shots` give each video or image item's `scale`: fit or fill, base scale, zoom now and
+  at its largest key, output pixels per source pixel at both, `maxZoomNative` (the largest zoom before upscaling) and
+  frame coverage. The compositor's fit/fill scale now comes from the same core function.
+- **Phone-width frames and before/after grids (P0-B5).** `ui frame --phone` (390 px) or `--width N` renders the
+  viewer at viewer size; `ui frames --compare graded|source --frames F,F | --items A,B` puts the frame without colour,
+  or the clip's source frame, next to the edit in one grid.
+
 - **The edit as pictures without exporting (P0-B3, P0-B4).** `review window F [--span N] [--step N]`
   (`review.window`) draws the composed frames around frame F with the cuts as lines, the timeline's sound level and
   the heard words, and returns the level per frame. `timeline sheet [--at F,first,last] [--cuts] [--text] [--every

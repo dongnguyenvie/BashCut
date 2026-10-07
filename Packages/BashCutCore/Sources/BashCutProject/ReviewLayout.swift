@@ -3,16 +3,27 @@ import Foundation
 /// Text layout as data for the agent (`review.layout`, #465): each text item's box as the renderer draws it, its size
 /// against the frame and its margins to each edge, next to the zones of the project's platform. No verdicts.
 public enum ReviewLayout {
-    /// The text items on visible text tracks, or only those on screen at `frame`.
-    public static func json(_ project: Project, context: ReviewContext, frame: Int? = nil) -> JSONValue {
+    /// The text items on visible text tracks, or only those on screen at `frame`. With `words` (heard or caption
+    /// words), each item also says how it sits against the speech (P0-B6).
+    public static func json(
+        _ project: Project, context: ReviewContext, frame: Int? = nil, words: [ReviewSync.WordSpan]? = nil
+    ) -> JSONValue {
+        let all = textItems(project, frame: nil)
+        let scene = TextFacts.Scene(project: project, context: context, all: all, words: words)
+        let rows = textItems(project, frame: frame).map { track, item in
+            var row = row(item, track: track, project: project, context: context).object
+            row.merge(TextFacts.json(item, track: track, in: scene)) { _, new in new }
+            return JSONValue.object(row)
+        }
         var result: [String: JSONValue] = [
             "width": .integer(project.width), "height": .integer(project.height),
-            "platform": context.targets.layoutPlatform(for: project).json,
-            "items": .array(textItems(project, frame: frame).map { track, item in
-                row(item, track: track, project: project, context: context)
-            }),
+            "platform": context.targets.layoutPlatform(for: project).json, "items": .array(rows),
+            "density": TextFacts.density(all, project: project), "facesProvider": .bool(false),
         ]
-        if let frame { result["frame"] = .integer(frame) }
+        if let frame {
+            result["frame"] = .integer(frame)
+            result["pictures"] = TextFacts.pictures(project, at: frame)
+        }
         return .object(result)
     }
 

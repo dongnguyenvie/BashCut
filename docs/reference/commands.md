@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 168 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 169 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -89,7 +89,7 @@ List recently opened projects (Welcome screen).
 
 ### `bashcut timeline get [--format <format>]`
 
-Read the revision, format and tracks, including track IDs and roles.
+Read the revision, format and tracks, including track IDs and roles, and scale per video or image item: fit or fill, baseScale, zoom and maxZoom (keyframes), pixelRatio (output pixels per source pixel; over 1 is upscaled) now and at maxZoom, maxZoomNative (the largest zoom before upscaling), shown size and frameCoverage.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_timeline_get`
 - `format`: string, one of json, text. json (default) or a compact text listing
@@ -366,12 +366,13 @@ Read the shots on Main in order: index, id, at/atSeconds, duration (frames) and 
 - `runLength`: integer, 2…100. Shots in a low-variance run (with maxCV)
 - `maxCV`: number, 0…10. Largest length variation (deviation over mean) in such a run
 
-### `bashcut review layout [--frame <frame>]`
+### `bashcut review layout [--frame <frame>] [--contrast]`
 
-Read where text sits as the renderer lays it out: per visible text item id, track, trackRole, at/end, text, preset, lines, longestLineChars, fontPixels and fontShare (of the frame's short side), bounds (pixels from the top-left) and edges (distance to each frame edge as a share of that dimension, negative outside), keyframed when keyframes move it (not followed). Also the frame size and the platform whose zones apply (safeArea, minTextSize). No verdicts.
+Read where text sits as the renderer lays it out: per visible text item id, track, trackRole, at/end, text, preset, lines, longestLineChars, fontPixels and fontShare (of the frame's short side), bounds (pixels from the top-left) and edges (distance to each frame edge as a share of that dimension, negative outside), keyframed when keyframes move it (not followed); holdSeconds, words and wordsPerSecond; speech {onsetOffsetFrames (from the nearest word start), narrationShare (of its time with words spoken)} from the heard or caption words; captionOverlap {item, ratio of its box} for titles; templateRepeats (items with its preset on its layer); faceOverlap null (needs a vision.faces provider; null means unknown). With contrast: contrast {ratio (WCAG, 1–21), textLuminance, backgroundLuminance, textPixels} measured on the frame with and without text (at frame, or each item's middle). Also the frame size, the platform whose zones apply (safeArea, minTextSize), density (titles and captions per minute) and, at a frame, pictures on screen with their scale and coverage. No verdicts.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_review_layout`
 - `frame`: integer, ≥ 0. Only text on screen at this timeline frame
+- `contrast`: boolean. Measure each item's contrast on rendered frames
 
 ### `bashcut review cuts`
 
@@ -1109,12 +1110,24 @@ Move the viewer to a timeline frame.
 - Mode: ui · Runs: immediately · MCP: `bashcut_ui_seek`
 - `frame`: integer, required, ≥ 0. Timeline frame
 
-### `bashcut ui frame [<frame>]`
+### `bashcut ui frame [<frame>] [--width <width>] [--phone]`
 
-Render the viewer's picture at a timeline frame (the playhead by default) to a PNG, like attaching the viewer frame in Ask; returns its path. Read the file to look at the edit. Keeps the ten newest.
+Render the viewer's picture at a timeline frame (the playhead by default) to a PNG, like attaching the viewer frame in Ask; returns its path. Read the file to look at the edit. Keeps the ten newest. width renders it that many pixels wide (phone: 390, about a phone screen, to judge text at the size viewers see it); otherwise up to 1280 on the long edge.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_ui_frame`
 - `frame`: integer, ≥ 0. Timeline frame; the playhead by default
+- `width`: integer, 64…4096. Width in pixels
+- `phone`: boolean. 390 pixels wide
+
+### `bashcut ui frames --compare <compare> [--frames <frames>] [--items <items>] [--width <width>]`
+
+Compare pictures in one PNG grid, one row per frame: compare graded puts the frame without colour (looks, adjustments, LUTs bypassed) next to the edit as graded; compare source puts the source frame of the clip on Main at that point (no reframe, no grade) next to the edit. Rows from frames (timeline frames) or items (the middle of each item). Each cell is width pixels wide (default 390). Returns {path, rows [{frame, item?, sourceSeconds?}], columns}.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_ui_frames`
+- `compare`: string, required, one of graded, source. graded or source
+- `frames`: string. Timeline frames, comma separated
+- `items`: string. Item IDs, comma separated
+- `width`: integer, 64…2048. Cell width in pixels (default 390)
 
 ### `bashcut ui panel <panel>`
 

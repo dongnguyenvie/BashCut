@@ -141,9 +141,6 @@ extension ProjectDocument {
                 for: document.project, from: arguments.optionalInt("from") ?? 0, to: arguments.optionalInt("to"),
                 samples: arguments.optionalBool("samples") ?? true, cuts: arguments.optionalBool("cuts") ?? true)
         }
-        handle("review.layout") { document, arguments, _ in
-            ReviewLayout.json(document.project, context: document.reviewContext(), frame: arguments.optionalInt("frame"))
-        }
         handle("export.status") { document, _, _ in document.exports.statusJSON }
     }
 
@@ -275,7 +272,12 @@ extension ProjectDocument {
             if let frame, frame >= document.project.duration {
                 throw RPCFailure(-32602, "frame must be within the timeline")
             }
-            let capture = try await document.captureAgentFrame(at: frame)
+            var maximum = 1_280
+            if let width = arguments.bool("phone") ? 390 : arguments.optionalInt("width") {
+                let project = document.project
+                maximum = Int((Double(width) * Double(max(project.width, project.height)) / Double(max(1, project.width))).rounded())
+            }
+            let capture = try await document.captureAgentFrame(at: frame, maximumDimension: maximum)
             return .object([
                 "path": .string(capture.url.path), "frame": .integer(capture.frame),
                 "width": .integer(capture.width), "height": .integer(capture.height),

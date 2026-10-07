@@ -46,8 +46,9 @@ public actor CompositionBuilder {
     /// The scale at zoom 1: fitting shows the whole picture inside the canvas (bars on the other sides), filling
     /// covers the canvas and crops what does not fit.
     public static func baseScale(source: CGSize, canvas: CGSize, fill: Bool) -> Double {
-        let horizontal = canvas.width / abs(source.width), vertical = canvas.height / abs(source.height)
-        return fill ? max(horizontal, vertical) : min(horizontal, vertical)
+        ReviewScale.baseScale(
+            sourceWidth: source.width, sourceHeight: source.height, canvasWidth: canvas.width,
+            canvasHeight: canvas.height, fill: fill)
     }
 
     // This coordinates media loading, video lanes, audio parameters and frame instructions.

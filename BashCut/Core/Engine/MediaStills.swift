@@ -53,6 +53,57 @@ public enum MediaStills {
         try await MediaAnalyzer.sound(AVURLAsset(url: url))
     }
 
+    /// Contrast of text against what is behind it, measured: inside `rect` (fractions of the frame from the top-left),
+    /// the pixels that differ between the frame with text and without it are the text; their WCAG relative luminance
+    /// in the frame with text against the same pixels without it gives the ratio (1–21). Nil when no pixel changed.
+    public static func contrast(withText: CGImage, without: CGImage, rect: CGRect)
+        -> (ratio: Double, text: Double, background: Double, pixels: Int)?
+    {
+        let width = withText.width, height = withText.height
+        guard let first = pixels(withText, width: width, height: height),
+            let second = pixels(without, width: width, height: height)
+        else { return nil }
+        let x0 = max(0, Int(rect.minX * Double(width))), x1 = min(width, Int(rect.maxX * Double(width)))
+        let y0 = max(0, Int(rect.minY * Double(height))), y1 = min(height, Int(rect.maxY * Double(height)))
+        var text = 0.0, background = 0.0, count = 0
+        for y in y0..<max(y0, y1) {
+            for x in x0..<max(x0, x1) {
+                let offset = (y * width + x) * 4
+                let change = (0..<3).map { abs(Int(first[offset + $0]) - Int(second[offset + $0])) }.max() ?? 0
+                guard change > 24 else { continue }
+                text += luminance(first, offset)
+                background += luminance(second, offset)
+                count += 1
+            }
+        }
+        guard count > 0 else { return nil }
+        let (a, b) = (text / Double(count), background / Double(count))
+        return ((max(a, b) + 0.05) / (min(a, b) + 0.05), a, b, count)
+    }
+
+    /// RGBA bytes of `image` drawn at `width × height`, top row first.
+    private static func pixels(_ image: CGImage, width: Int, height: Int) -> [UInt8]? {
+        var bytes = [UInt8](repeating: 0, count: width * height * 4)
+        let drawn = bytes.withUnsafeMutableBytes { raw -> Bool in
+            guard let context = CGContext(
+                data: raw.baseAddress, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
+                space: CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+            else { return false }
+            context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+            return true
+        }
+        return drawn ? bytes : nil
+    }
+
+    private static func luminance(_ bytes: [UInt8], _ offset: Int) -> Double {
+        let linear = { (value: UInt8) -> Double in
+            let channel = Double(value) / 255
+            return channel <= 0.040_45 ? channel / 12.92 : pow((channel + 0.055) / 1.055, 2.4)
+        }
+        return 0.2126 * linear(bytes[offset]) + 0.7152 * linear(bytes[offset + 1]) + 0.0722 * linear(bytes[offset + 2])
+    }
+
     /// Removes all but the `limit` newest PNGs in `directory`.
     public static func prune(_ directory: URL, keeping limit: Int) {
         guard let values = try? FileManager.default.contentsOfDirectory(

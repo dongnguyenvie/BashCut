@@ -42,6 +42,9 @@ public enum ReviewShots {
                 row["described"] = .object(facts)
             }
             if let move = cameraMove(shot, fps: fps) { row["cameraMove"] = move }
+            if let asset = shot.mediaID.flatMap({ media[$0] }), let scale = ReviewScale.json(shot, media: asset, project: project) {
+                row["scale"] = scale
+            }
             if index > 0 { row["cut"] = cut(from: sequence[index - 1], to: sequence[index]) }
             if let left = previous {
                 row["gapBefore"] = .integer(shot.at - left.end)

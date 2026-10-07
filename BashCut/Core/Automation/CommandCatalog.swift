@@ -40,7 +40,11 @@ public enum CommandCatalog {
             "context.get", .read, contextSummary),
         CommandSpec("project.get", .read, "Read the whole open project document."),
         CommandSpec(
-            "timeline.get", .read, "Read the revision, format and tracks, including track IDs and roles.",
+            "timeline.get", .read,
+            "Read the revision, format and tracks, including track IDs and roles, and scale per video or image item: "
+                + "fit or fill, baseScale, zoom and maxZoom (keyframes), pixelRatio (output pixels per source pixel; "
+                + "over 1 is upscaled) now and at maxZoom, maxZoomNative (the largest zoom before upscaling), shown "
+                + "size and frameCoverage.",
             parameters: [
                 CommandParameter(
                     "format", .string, "json (default) or a compact text listing", choices: ["json", "text"],
@@ -329,12 +333,7 @@ public enum CommandCatalog {
             "ui.seek", .ui, "Move the viewer to a timeline frame.",
             parameters: [CommandParameter("frame", .integer, "Timeline frame", required: true, minimum: 0,
                                           cli: .positional)]),
-        CommandSpec(
-            "ui.frame", .read,
-            "Render the viewer's picture at a timeline frame (the playhead by default) to a PNG, like attaching the "
-                + "viewer frame in Ask; returns its path. Read the file to look at the edit. Keeps the ten newest.",
-            parameters: [CommandParameter("frame", .integer, "Timeline frame; the playhead by default", minimum: 0,
-                                          cli: .positional)]),
+        uiFrameSpec, uiFramesSpec,
         CommandSpec(
             "ui.panel", .ui, "Open a library panel in the left rail.",
             parameters: [CommandParameter("panel", .string, "Panel", required: true, choices: libraryPanels,

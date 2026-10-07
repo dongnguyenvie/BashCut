@@ -12,6 +12,132 @@ extension ProjectDocument {
     func registerTimelineStillsCommands() {
         handle("review.window") { document, arguments, _ in try await document.reviewWindow(arguments) }
         handle("timeline.sheet") { document, arguments, _ in try await document.timelineSheet(arguments) }
+        handle("ui.frames") { document, arguments, _ in try await document.compareFrames(arguments) }
+        handle("review.layout") { document, arguments, _ in
+            let frame = arguments.optionalInt("frame")
+            let words = await document.syncWords()
+            var result = ReviewLayout.json(
+                document.project, context: document.reviewContext(), frame: frame,
+                words: words.source == "none" ? nil : words.words
+            ).object
+            if arguments.bool("contrast"), case .array(let items)? = result["items"] {
+                result["items"] = .array(try await document.measureContrast(items, frame: frame))
+            }
+            return .object(result)
+        }
+    }
+
+    /// Each text row with `contrast` measured on the composed frame (at `frame`, or the item's middle) against the
+    /// same frame with every text layer hidden.
+    func measureContrast(_ rows: [JSONValue], frame: Int?) async throws -> [JSONValue] {
+        guard let root = fileURL?.deletingLastPathComponent() else { throw RPCFailure(-32602, "Open a saved project first") }
+        var bare = project
+        for index in bare.tracks.indices where bare.tracks[index].kind == TrackKind.text {
+            bare.tracks[index]["hidden"] = .bool(true)
+        }
+        bare.revision = 0
+        let textless = try await engine.build(bare, root: root, workspace: settings.workspace, purpose: .preview)
+        let side = 720
+        let frames = rows.map { row -> Int in
+            frame ?? ((row.object["at"]?.int ?? 0) + (row.object["end"]?.int ?? 0)) / 2
+        }
+        let with = try await timelineImages(frames, maximumSide: side)
+        let without = try await images(of: textless, frames: frames, maximumSide: side)
+        let width = Double(project.width), height = Double(project.height)
+        return zip(rows, frames).map { row, at in
+            var fields = row.object
+            let bounds = fields["bounds"]?.object ?? [:]
+            let rect = CGRect(
+                x: (bounds["x"]?.double ?? 0) / width, y: (bounds["y"]?.double ?? 0) / height,
+                width: (bounds["width"]?.double ?? 0) / width, height: (bounds["height"]?.double ?? 0) / height)
+            if let first = with[at], let second = without[at],
+                let measured = MediaStills.contrast(withText: first, without: second, rect: rect)
+            {
+                fields["contrast"] = .object([
+                    "ratio": .number((measured.ratio * 100).rounded() / 100), "frame": .integer(at),
+                    "textLuminance": .number((measured.text * 1_000).rounded() / 1_000),
+                    "backgroundLuminance": .number((measured.background * 1_000).rounded() / 1_000),
+                    "textPixels": .integer(measured.pixels),
+                ])
+            } else {
+                fields["contrast"] = .null
+            }
+            return .object(fields)
+        }
+    }
+
+    /// Before and after in one grid (P0-B5): the frame without colour or the source frame, next to the edit.
+    func compareFrames(_ arguments: CommandArguments) async throws -> JSONValue {
+        let mode = try arguments.string("compare")
+        var rows: [(frame: Int, item: String?)] = try (arguments.optionalString("frames") ?? "").split(separator: ",").map {
+            guard let frame = Int($0.trimmingCharacters(in: .whitespaces)), frame >= 0, frame < project.duration else {
+                throw RPCFailure(-32602, "frames must be timeline frames inside the edit")
+            }
+            return (frame, nil)
+        }
+        for id in (arguments.optionalString("items") ?? "").split(separator: ",").map({ $0.trimmingCharacters(in: .whitespaces) }) {
+            guard let item = project.tracks.flatMap(\.items).first(where: { $0.id == id }) else {
+                throw RPCFailure(-32602, "Unknown item \(id)")
+            }
+            rows.append((item.at + item.duration / 2, id))
+        }
+        guard !rows.isEmpty, rows.count <= 40 else { throw RPCFailure(-32602, "Give 1–40 frames or items") }
+        let width = arguments.optionalInt("width") ?? 390
+        let longEdge = Int((Double(width) * Double(max(project.width, project.height)) / Double(max(1, project.width))).rounded())
+        let edited = try await timelineImages(rows.map(\.frame), maximumSide: longEdge)
+        var before: [Int: CGImage] = [:]
+        var sources: [Int: Double] = [:]
+        if mode == "graded" {
+            guard let root = fileURL?.deletingLastPathComponent() else { throw RPCFailure(-32602, "Open a saved project first") }
+            var ungraded = project.withoutColorEffects()
+            ungraded.revision = 0
+            let snapshot = try await engine.build(ungraded, root: root, workspace: settings.workspace, purpose: .preview)
+            before = try await images(of: snapshot, frames: rows.map(\.frame), maximumSide: longEdge)
+        } else {
+            (before, sources) = try await sourceFrames(rows.map(\.frame), maximumSide: longEdge)
+        }
+        let fps = project.fps.value
+        let cells = rows.flatMap { row in
+            [
+                MediaStills.Cell(image: before[row.frame], label: "f\(row.frame) \(mode == "graded" ? "ungraded" : "source")", group: 0),
+                MediaStills.Cell(image: edited[row.frame], label: "f\(row.frame) \(MediaStills.clock(Double(row.frame) / fps)) edit", group: 1),
+            ]
+        }
+        guard let image = MediaStills.sheet(cells, columns: 2, longEdge: longEdge) else {
+            throw RPCFailure(-32603, "The grid is too large; lower width")
+        }
+        let directory = try stillsDirectory()
+        let url = directory.appendingPathComponent("compare-\(mode)-r\(project.revision)-\(Int(Date().timeIntervalSince1970)).png")
+        try MediaStills.png(image).write(to: url, options: .atomic)
+        MediaStills.prune(directory, keeping: Self.keptStills)
+        return .object([
+            "path": .string(url.path), "columns": .array([.string(mode == "graded" ? "ungraded" : "source"), .string("edit")]),
+            "rows": .array(rows.map { row in
+                var json: [String: JSONValue] = ["frame": .integer(row.frame)]
+                if let item = row.item { json["item"] = .string(item) }
+                if let seconds = sources[row.frame] { json["sourceSeconds"] = .number((seconds * 1_000).rounded() / 1_000) }
+                return .object(json)
+            }),
+            "width": .integer(image.width), "height": .integer(image.height),
+        ])
+    }
+
+    /// The source frame the clip on Main shows at each timeline frame (no reframe, no grade), and its source second.
+    private func sourceFrames(_ frames: [Int], maximumSide: Int) async throws -> ([Int: CGImage], [Int: Double]) {
+        let main = project.tracks.first { $0.role == TrackRole.main }?.items ?? []
+        var images: [Int: CGImage] = [:], seconds: [Int: Double] = [:]
+        for frame in frames {
+            guard let clip = main.first(where: { $0.at <= frame && frame < $0.end }), let mediaID = clip.mediaID,
+                let media = project.media.first(where: { $0.id == mediaID }), let url = try? analysisSource(mediaID).url
+            else { continue }
+            let second = Double(clip.sourceIn) / media.fps.value
+                + clip.sourceSeconds(afterFrames: frame - clip.at, fps: project.fps)
+            seconds[frame] = second
+            let index = min(max(0, media.frames - 1), Int((second * media.fps.value).rounded(.down)))
+            images[frame] = try await MediaStills.images(
+                url: url, isImage: media.isImage, fps: media.fps, frames: [index], maximumSide: maximumSide)[index]
+        }
+        return (images, seconds)
     }
 
     /// The preview composition of this revision, waiting up to 5 s for it after an edit.
@@ -27,7 +153,10 @@ extension ProjectDocument {
 
     /// Composed frames of the timeline, each fitted inside `maximumSide` pixels.
     func timelineImages(_ frames: [Int], maximumSide: Int) async throws -> [Int: CGImage] {
-        let snapshot = try await currentComposition()
+        try await images(of: try await currentComposition(), frames: frames, maximumSide: maximumSide)
+    }
+
+    func images(of snapshot: CompositionSnapshot, frames: [Int], maximumSide: Int) async throws -> [Int: CGImage] {
         let generator = AVAssetImageGenerator(asset: snapshot.composition)
         generator.videoComposition = snapshot.videoComposition
         generator.appliesPreferredTrackTransform = true

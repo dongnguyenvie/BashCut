@@ -43,6 +43,29 @@ struct MediaStillsTests {
         #expect(small[10]?.width == 80)
     }
 
+    @Test("Contrast is measured on the pixels the text changes, against what was behind them")
+    func contrast() throws {
+        func frame(text: Bool) throws -> CGImage {
+            let context = try #require(CGContext(
+                data: nil, width: 100, height: 100, bitsPerComponent: 8, bytesPerRow: 400,
+                space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+            context.setFillColor(CGColor(srgbRed: 0.5, green: 0.5, blue: 0.5, alpha: 1))
+            context.fill(CGRect(x: 0, y: 0, width: 100, height: 100))
+            if text {
+                context.setFillColor(CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 1))
+                context.fill(CGRect(x: 10, y: 10, width: 30, height: 10))
+            }
+            return try #require(context.makeImage())
+        }
+        let measured = try #require(MediaStills.contrast(
+            withText: try frame(text: true), without: try frame(text: false), rect: CGRect(x: 0, y: 0, width: 1, height: 1)))
+        #expect(measured.pixels == 300)
+        #expect(abs(measured.text - 1) < 0.01 && abs(measured.background - 0.214) < 0.01)
+        #expect(abs(measured.ratio - 3.98) < 0.05)
+        #expect(MediaStills.contrast(
+            withText: try frame(text: false), without: try frame(text: false), rect: CGRect(x: 0, y: 0, width: 1, height: 1)) == nil)
+    }
+
     @Test("Fitting keeps the picture upright")
     func fit() throws {
         let context = try #require(CGContext(

@@ -105,6 +105,10 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   and `captions generate` unless `--fresh`; `media transcribe` makes one without placing captions, `media transcript`
   reads it in source seconds (phrases, words with confidence/speaker/event/noSpeechProb when the provider gives
   them), and `transcript words --heard` maps its words through the clips playing the media now.
+- `ui frame --phone|--width` renders the viewer at viewer size and `ui frames --compare graded|source` makes a
+  before/after grid; `review layout` adds reading speed, speech, caption overlap, template repeats, density, the
+  pictures on screen and measured contrast (`--contrast`); every video/image item has `scale` facts (fit/fill, zoom,
+  pixels per source pixel, `maxZoomNative`, coverage) in `timeline get` and `review shots`.
 - `review shots` reads the edit as a sequence (cut facts, runs and shares from shot descriptions, rhythm overall and
   per section, keyframe camera moves; `--media` for a source file), `review cuts` lists every cut with kind and
   framing, `review sync` times cuts, titles and sound effects against beats and words and a render against the
