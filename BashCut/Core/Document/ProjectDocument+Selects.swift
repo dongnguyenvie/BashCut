@@ -12,46 +12,22 @@ extension ProjectDocument {
             let all = document.project.selects
             return .object([
                 "selects": .array(selects.map(\.json)),
-                "counts": .object(Dictionary(uniqueKeysWithValues: ProjectSelect.statuses.map { name in
-                    (name, JSONValue.integer(all.filter { $0.status == name }.count))
-                })),
+                "counts": .object(Dictionary(all.map { ($0.status, JSONValue.integer(1)) }) { old, _ in
+                    .integer((old.int ?? 0) + 1)
+                }),
             ])
         }
         handleAuthored("selects.set") { document, arguments, author in
             guard case .array(let list)? = arguments["value"], !list.isEmpty else {
                 throw RPCFailure(-32602, "Give a list of selects")
             }
-            var selects = document.project.selects.map(\.fields)
-            for entry in list {
-                let id = entry.object["id"]?.string ?? UUID().uuidString.prefix(8).lowercased()
-                var fields = entry.object
-                fields["id"] = .string(id)
-                if fields["status"] == nil { fields["status"] = .string("candidate") }
-                if let index = selects.firstIndex(where: { $0["id"]?.string == id }) {
-                    selects[index].merge(fields) { _, new in new }
-                } else {
-                    selects.append(fields)
-                }
-            }
-            return try document.saveSelects(selects, label: "Update selects", author: author, base: arguments.int("baseRev"))
-        }
-        handleAuthored("selects.mark") { document, arguments, author in
-            let ids = Set(try arguments.string("ids").split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) })
-            let status = arguments.optionalString("status"), mustKeep = arguments.optionalBool("mustKeep")
-            guard status != nil || mustKeep != nil else { throw RPCFailure(-32602, "Give status or mustKeep") }
             let selects: [[String: JSONValue]]
             do {
-                selects = try document.project.markingSelects(
-                    ids, status: status, mustKeep: mustKeep, reason: arguments.optionalString("reason"))
+                selects = try document.project.settingSelects(list.map(\.object))
             } catch let error as ProjectError {
                 throw RPCFailure.invalid(error)
             }
-            return try document.saveSelects(selects, label: "Mark selects", author: author, base: arguments.int("baseRev"))
-        }
-        handleAuthored("selects.remove") { document, arguments, author in
-            let ids = Set(try arguments.string("ids").split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) })
-            let selects = document.project.selects.map(\.fields).filter { !ids.contains($0["id"]?.string ?? "") }
-            return try document.saveSelects(selects, label: "Remove selects", author: author, base: arguments.int("baseRev"))
+            return try document.saveSelects(selects, label: "Update selects", author: author, base: arguments.int("baseRev"))
         }
         handleAuthored("selects.place") { document, arguments, author in
             let ids = arguments.optionalString("ids").map { Set($0.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }) }

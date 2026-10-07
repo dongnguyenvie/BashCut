@@ -9,10 +9,15 @@ extension ProjectDocument {
     /// The project's export presets (`output.presets`), known ones only, first one primary.
     var outputPresets: [ExportPreset] { project.outputPresets.compactMap(ExportPreset.init(argument:)) }
 
-    /// The preset the Export sheet and a loudness fix start with: the project's first output, else the shape's.
+    /// The preset the Export sheet starts with: the project's first output, else the shape's (a UI default the user
+    /// sees and changes).
     var primaryExportPreset: ExportPreset {
         outputPresets.first ?? (project.width > project.height ? .youtube1080 : .tiktok)
     }
+
+    /// The preset a loudness measurement uses: the project's first output, else Quick Draft — no platform, so the
+    /// target is the project's own (never a guessed platform's).
+    var measurePreset: ExportPreset { outputPresets.first ?? .quickDraft }
 
     /// The platforms of the project's outputs whose zones the viewer's safe-area overlay and the text checks use
     /// (the strictest of each side); nil when no output of the frame's shape is set.
@@ -20,7 +25,7 @@ extension ProjectDocument {
 
     var reviewTargets: ReviewTargets {
         ReviewTargets(
-            measureArguments: ["preset": .string(primaryExportPreset.argument)], measuresPicture: true,
+            measureArguments: ["preset": .string(measurePreset.argument)], measuresPicture: true,
             platforms: outputPresets.compactMap(\.platform))
     }
 
@@ -168,7 +173,7 @@ extension ProjectDocument {
         do {
             switch fix.command {
             case "timeline.apply":
-                let ops = try WireOperations.decode(fix.arguments["ops"] ?? .null)
+                let ops = try WireOperations.decode(fix.arguments["ops"] ?? .null, project: project)
                 let name = fix.arguments["label"]?.string ?? label
                 apply(.group(label: name, author: .user, ops: ops), label: name)
             case "timeline.close-gap":

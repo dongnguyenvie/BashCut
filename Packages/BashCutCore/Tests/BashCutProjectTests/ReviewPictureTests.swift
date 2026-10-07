@@ -85,7 +85,7 @@ struct ReviewPictureTests {
         #expect(!TimelineReview.run(project, context: ReviewContext(picture: frozen)).contains { $0.id.hasPrefix("still-") })
     }
 
-    @Test("Jump cuts: only with the project's jumpCutChange; the fix is a hint, not a fixed punch-in (#468)")
+    @Test("Jump cuts: only with the project's jumpCutChange, same framing included; facts, no fix (#468)")
     func jumpCuts() throws {
         var project = try project([("a", "take1", 60), ("b", "take2", 60), ("c", "take2", 60), ("d", "take3", 60)])
         let measured = picture(project, cuts: ["b": 0.02, "c": 0.01, "d": 0.3]) { _ in (0.5, 0.2, 0.05) }
@@ -93,17 +93,15 @@ struct ReviewPictureTests {
         project["review"] = .object(["jumpCutChange": .number(0.06)])
         let issues = TimelineReview.run(project, context: ReviewContext(picture: measured))
         let jump = try #require(issues.first { $0.id == "jump-b" })
-        #expect(jump.fix?.command == nil && jump.fix?.hint != nil)
-        #expect(issues.contains { $0.id == "framing-c" })
-        #expect(!issues.contains { $0.id == "jump-c" || $0.id == "jump-d" })
+        #expect(jump.fix == nil && jump.facts["change"] == .number(0.02) && jump.kind == "jump")
+        #expect(issues.contains { $0.id == "jump-c" })
+        #expect(!issues.contains { $0.id == "jump-d" || $0.id.hasPrefix("framing-") })
     }
 
-    @Test("Shot length: without limits the shortest and longest are notes; with them, long still shots warn")
+    @Test("Shot length: nothing without limits; with them, long still shots warn")
     func shots() throws {
         var project = try project([("flash", "m", 6), ("long", "m", 300), ("ok", "m", 90)])
-        let bare = TimelineReview.run(project)
-        #expect(bare.filter { $0.id.hasPrefix("shot-") }.map(\.id).sorted() == ["shot-long-long", "shot-short-flash"])
-        #expect(bare.filter { $0.id.hasPrefix("shot-") }.allSatisfy { $0.severity == .info })
+        #expect(!TimelineReview.run(project).contains { $0.id.hasPrefix("shot-") })
         project["review"] = .object([
             "minShotSeconds": .number(0.4), "maxShotSeconds": .number(8), "stillMotion": .number(0.02),
         ])

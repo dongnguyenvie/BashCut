@@ -233,9 +233,7 @@ extension ProjectDocument {
                         text: text, count: count, frame: frame, provider: provider, choice: choice, replace: replace,
                         cloneConsent: consent), author: author)
             }
-            if arguments.bool("dryRun") { return try await document.capabilityDryRun(work) }
-            return try document.startCapabilityJob(
-                "voice.speak", author: author, requestID: arguments.optionalString("requestId"), work: work)
+            return try await document.startCapabilityJob("voice.speak", author: author, arguments: arguments, work: work)
         }
         handle("voice.voices") { document, _, _ in document.voiceList() }
     }

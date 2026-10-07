@@ -25,6 +25,25 @@ struct TextLayoutTests {
         }
     }
 
+    @Test("Open textStyle fields (align, positionX, tracking, line height, uppercase, plate) lay out as drawn")
+    func openStyle() throws {
+        let size = CGSize(width: 1080, height: 1920)
+        var item = Item(id: "open", at: 0, duration: 30)
+        item["text"] = .string("Phở bò\nHà Nội")
+        item["textPreset"] = .string("my-own-look")
+        item["textStyle"] = .object([
+            "align": .string("right"), "positionX": .number(0.9), "positionY": .number(0.3), "tracking": .number(0.05),
+            "lineHeight": .number(1.6), "uppercase": .bool(true),
+            "background": .object(["color": .string("#101010"), "opacity": .number(0.9), "radius": .number(0.3)]),
+        ])
+        let layout = try #require(TextPresetStyle.layout(item, size: size))
+        let raster = try #require(TextRenderer.raster(item, size: size, fullCanvas: true))
+        let drawn = try #require(inkBounds(raster.bitmap))
+        #expect(abs(layout.maxX - drawn.maxX) <= 4 && abs(layout.minX - drawn.minX) <= 4)
+        #expect(abs(layout.minY - drawn.minY) <= 4 && abs(layout.maxY - drawn.maxY) <= 4)
+        #expect(layout.maxX > size.width * 0.9 - 2 && layout.maxX < size.width * 0.95)
+    }
+
     @Test("Empty text has no layout")
     func empty() {
         var item = Item(id: "empty", at: 0, duration: 30)

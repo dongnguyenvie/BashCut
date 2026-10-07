@@ -59,12 +59,10 @@ extension Project {
         try validateAudioSettings()
         try validateOutputSettings()
         try validateReviewSettings()
-        try validatePlanSettings()
         try validateSelects()
         try validateOutputCaptions()
         try validateMarkers()
         try validateColorLUTs()
-        try validateStyleCatalog()
         let lutIDs = Set(colorLUTs.map(\.id))
         let mediaByID = Dictionary(media.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         var ids = Set<String>()
@@ -225,8 +223,10 @@ extension Project {
             try validateSourceRange(item, on: track, media: asset)
         } else if item.fields["text"]?.string == nil {
             throw ProjectError.invalid("item.\(item.id): text required")
-        } else if let preset = item.fields["textPreset"], preset.string.map(TextPreset.all.contains) != true {
-            throw ProjectError.invalid("item.\(item.id).textPreset: expected one of \(TextPreset.all.joined(separator: ", "))")
+        } else if let preset = item.fields["textPreset"], preset.string.map({ (1...80).contains($0.count) }) != true {
+            // Open (Phase 2 restyle): a built-in name picks its defaults; any other name renders with the first
+            // preset's defaults plus the item's textStyle.
+            throw ProjectError.invalid("item.\(item.id).textPreset: expected a name of 1–80 characters")
         }
     }
 

@@ -325,13 +325,17 @@ public enum LibraryBuiltIns {
         LibraryItem(id: id, kind: .transitionPreset, name: name, pack: "Transitions", params: preset.params)
     }
 
-    /// Filter stacks (#79): the built-in looks (`ColorLook.builtIn`, same IDs and grades) and a few more grades.
+    /// Filter stacks (#79): the built-in looks, the only look system (C8).
     public static let looks: [LibraryItem] = {
-        let more: [(id: String, name: String, color: [String: JSONValue])] = [
+        let grades: [(id: String, name: String, color: [String: JSONValue])] = [
+            ("original", "Original", [:]),
+            ("vivid", "Vivid", ["saturation": .number(1.2), "contrast": .number(1.05)]),
+            ("muted-film", "Muted film", ["saturation": .number(0.8), "contrast": .number(0.9)]),
+            ("black-white", "Black & white", ["saturation": .integer(0)]),
             ("bright-airy", "Bright & airy", ["exposure": .number(0.3), "contrast": .number(0.95), "saturation": .number(1.1)]),
             ("moody", "Moody", ["exposure": .number(-0.3), "contrast": .number(1.15), "saturation": .number(0.85)]),
         ]
-        return (ColorLook.builtIn.map { (id: $0.id, name: $0.title, color: $0.color) } + more).map { look in
+        return grades.map { look in
             LibraryItem(id: look.id, kind: .look, name: look.name, pack: "Looks", params: FilterStack(color: look.color).params)
         }
     }()

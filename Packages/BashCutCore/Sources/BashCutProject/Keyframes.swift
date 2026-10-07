@@ -178,73 +178,137 @@ extension Item {
     }
 }
 
-/// Ready-made animations for `clip motion` and the Inspector's Animation menu.
+/// Keyframes as data, independent of an item's length and frame size (C7): `{property: [key]}` like `keyframes`, with
+/// each key's time as `t` (0–1 of the item's length, 1 = its last frame) or `s` (seconds from the start; negative:
+/// from the end) instead of `frame`, and `value` a number or `{"width": f}` / `{"height": f}` (a fraction of the
+/// frame's size, for pan and tilt). `ease` as on keyframes. Keys are clamped into the item and kept increasing.
+public struct MotionTemplate: Sendable, Equatable {
+    public let json: JSONValue
+
+    public init(json: JSONValue, label: String = "animation") throws {
+        guard case .object(let properties) = json, !properties.isEmpty else {
+            throw ProjectError.invalid("\(label): expected an object of property to keys")
+        }
+        for (name, value) in properties {
+            guard ItemMotion.ranges[name] != nil else {
+                throw ProjectError.invalid(
+                    "\(label).\(name): unknown property; use \(ItemMotion.ranges.keys.sorted().joined(separator: ", "))")
+            }
+            guard case .array(let keys) = value, (1...1000).contains(keys.count) else {
+                throw ProjectError.invalid("\(label).\(name): expected 1–1000 keys")
+            }
+            for key in keys {
+                let fields = key.object
+                let time = fields["t"]?.double.map { (0...1).contains($0) } ?? (fields["s"]?.double?.isFinite == true)
+                let number = fields["value"]?.double ?? fields["value"]?.object["width"]?.double
+                    ?? fields["value"]?.object["height"]?.double
+                guard time, number?.isFinite == true else {
+                    throw ProjectError.invalid(
+                        "\(label).\(name): each key needs t (0–1) or s (seconds) and a number value (or {width|height: f})")
+                }
+                if let ease = fields["ease"]?.string, ItemMotion.Ease(rawValue: ease) == nil {
+                    throw ProjectError.invalid(
+                        "\(label).\(name): ease must be one of \(ItemMotion.Ease.allCases.map(\.rawValue).joined(separator: ", "))")
+                }
+            }
+        }
+        self.json = json
+    }
+
+    /// The keys for an item of `duration` frames in a `width`×`height` frame at `fps`.
+    public func motion(duration: Int, width: Int, height: Int, fps: FrameRate) throws -> ItemMotion {
+        let end = max(1, duration - 1)
+        var keys: [String: [ItemMotion.Key]] = [:]
+        for (name, value) in json.object {
+            var list: [ItemMotion.Key] = []
+            for entry in value.array {
+                let fields = entry.object
+                var frame: Int
+                if let t = fields["t"]?.double {
+                    frame = Int((t * Double(end)).rounded())
+                } else {
+                    let seconds = fields["s"]?.double ?? 0
+                    let offset = Int((abs(seconds) * fps.value).rounded())
+                    frame = seconds < 0 ? end - offset : offset
+                }
+                frame = min(max(0, frame), end)
+                if let last = list.last?.frame { frame = max(frame, last + 1) }
+                let number = Self.value(fields["value"], width: width, height: height)
+                let ease = fields["ease"]?.string.flatMap(ItemMotion.Ease.init(rawValue:)) ?? .easeInOut
+                list.append(ItemMotion.Key(frame: frame, value: number, ease: ease))
+            }
+            keys[name] = list
+        }
+        return try ItemMotion(json: ItemMotion(keys: keys).json)
+    }
+
+    /// A key's value: a number, or a fraction of the frame's width or height.
+    private static func value(_ raw: JSONValue?, width: Int, height: Int) -> Double {
+        if let number = raw?.double { return number }
+        let fractions = raw?.object ?? [:]
+        if let fraction = fractions["width"]?.double { return fraction * Double(width) }
+        return (fractions["height"]?.double ?? 0) * Double(height)
+    }
+}
+
+/// Ready-made animations for `clip motion` and the Inspector's Animation menu: `MotionTemplate` data (C7).
 public enum MotionPreset {
     public struct Preset: Sendable, Identifiable {
         public let id: String
         public let title: String
         /// Whether it suits text items (true) or pictures (false).
         public let forText: Bool
+        public let template: MotionTemplate
     }
 
-    public static let all: [Preset] = [
-        Preset(id: "zoom-in", title: "Slow zoom in", forText: false),
-        Preset(id: "zoom-out", title: "Slow zoom out", forText: false),
-        Preset(id: "pan-left", title: "Pan left", forText: false),
-        Preset(id: "pan-right", title: "Pan right", forText: false),
-        Preset(id: "pan-up", title: "Pan up", forText: false),
-        Preset(id: "pan-down", title: "Pan down", forText: false),
-        Preset(id: "fade-in-out", title: "Fade in and out", forText: true),
-        Preset(id: "pop-in", title: "Pop in", forText: true),
-        Preset(id: "slide-up", title: "Slide up", forText: true),
-        Preset(id: "zoom-punch", title: "Zoom punch", forText: true),
-    ]
+    // Ken Burns: 12% over the length, panning across the margin that zoom leaves; text moves take 0.3 s.
+    private static let data = #"""
+        [
+          {"id": "zoom-in", "title": "Slow zoom in", "keys": {"zoom": [{"t": 0, "value": 1, "ease": "linear"}, {"t": 1, "value": 1.12}]}},
+          {"id": "zoom-out", "title": "Slow zoom out", "keys": {"zoom": [{"t": 0, "value": 1.12, "ease": "linear"}, {"t": 1, "value": 1}]}},
+          {"id": "pan-left", "title": "Pan left", "keys": {"zoom": [{"t": 0, "value": 1.12}],
+            "pan": [{"t": 0, "value": {"width": 0.05}, "ease": "linear"}, {"t": 1, "value": {"width": -0.05}}]}},
+          {"id": "pan-right", "title": "Pan right", "keys": {"zoom": [{"t": 0, "value": 1.12}],
+            "pan": [{"t": 0, "value": {"width": -0.05}, "ease": "linear"}, {"t": 1, "value": {"width": 0.05}}]}},
+          {"id": "pan-up", "title": "Pan up", "keys": {"zoom": [{"t": 0, "value": 1.12}],
+            "tilt": [{"t": 0, "value": {"height": -0.05}, "ease": "linear"}, {"t": 1, "value": {"height": 0.05}}]}},
+          {"id": "pan-down", "title": "Pan down", "keys": {"zoom": [{"t": 0, "value": 1.12}],
+            "tilt": [{"t": 0, "value": {"height": 0.05}, "ease": "linear"}, {"t": 1, "value": {"height": -0.05}}]}},
+          {"id": "fade-in-out", "title": "Fade in and out", "text": true, "keys": {"opacity": [
+            {"t": 0, "value": 0, "ease": "out"}, {"s": 0.3, "value": 1, "ease": "linear"},
+            {"s": -0.3, "value": 1, "ease": "in"}, {"t": 1, "value": 0}]}},
+          {"id": "pop-in", "title": "Pop in", "text": true, "keys": {
+            "zoom": [{"t": 0, "value": 0.6, "ease": "out"}, {"s": 0.3, "value": 1.08}, {"s": 0.45, "value": 1}],
+            "opacity": [{"t": 0, "value": 0, "ease": "out"}, {"s": 0.15, "value": 1}]}},
+          {"id": "slide-up", "title": "Slide up", "text": true, "keys": {
+            "tilt": [{"t": 0, "value": {"height": -0.04}, "ease": "out"}, {"s": 0.3, "value": 0}],
+            "opacity": [{"t": 0, "value": 0, "ease": "out"}, {"s": 0.3, "value": 1}]}},
+          {"id": "zoom-punch", "title": "Zoom punch", "text": true, "keys": {
+            "zoom": [{"t": 0, "value": 1.25, "ease": "out"}, {"s": 0.3, "value": 1}]}}
+        ]
+        """#
 
-    // Keys for `id` on an item of `duration` frames in a `width`×`height` frame, at `fps`. One case per preset keeps
-    // each animation next to its name.
-    // swiftlint:disable:next cyclomatic_complexity
-    public static func motion(_ id: String, duration: Int, width: Int, height: Int, fps: FrameRate) throws -> ItemMotion {
-        let end = max(1, duration - 1)
-        let quick = max(1, min(end, Int((fps.value * 0.3).rounded())))
-        // Ken Burns: 12% over the length, panning across the margin that zoom leaves (6% of the frame per side).
-        let zoom = 1.12, panX = Double(width) * 0.05, panY = Double(height) * 0.05
-        func keys(_ from: Double, _ to: Double, ease: ItemMotion.Ease = .linear) -> [ItemMotion.Key] {
-            [.init(frame: 0, value: from, ease: ease), .init(frame: end, value: to)]
+    public static let all: [Preset] = {
+        // The data above is fixed; a mistake in it is a programming error the preset tests catch.
+        // swiftlint:disable:next force_try
+        let rows = try! JSONDecoder().decode(JSONValue.self, from: Data(data.utf8)).array
+        return rows.compactMap { row in
+            let fields = row.object
+            guard let id = fields["id"]?.string, let keys = fields["keys"],
+                let template = try? MotionTemplate(json: keys, label: id)
+            else { return nil }
+            return Preset(id: id, title: fields["title"]?.string ?? id, forText: fields["text"]?.bool ?? false,
+                          template: template)
         }
-        func still(_ value: Double) -> [ItemMotion.Key] { [.init(frame: 0, value: value)] }
-        switch id {
-        case "zoom-in": return ItemMotion(keys: ["zoom": keys(1, zoom)])
-        case "zoom-out": return ItemMotion(keys: ["zoom": keys(zoom, 1)])
-        case "pan-left": return ItemMotion(keys: ["zoom": still(zoom), "pan": keys(panX, -panX)])
-        case "pan-right": return ItemMotion(keys: ["zoom": still(zoom), "pan": keys(-panX, panX)])
-        case "pan-up": return ItemMotion(keys: ["zoom": still(zoom), "tilt": keys(-panY, panY)])
-        case "pan-down": return ItemMotion(keys: ["zoom": still(zoom), "tilt": keys(panY, -panY)])
-        case "fade-in-out":
-            let fade = min(quick, max(1, duration / 3))
-            return ItemMotion(keys: ["opacity": [
-                .init(frame: 0, value: 0, ease: .easeOut), .init(frame: fade, value: 1, ease: .linear),
-                .init(frame: max(fade + 1, end - fade), value: 1, ease: .easeIn), .init(frame: max(fade + 2, end), value: 0),
-            ]])
-        case "pop-in":
-            let settle = min(end, quick + quick / 2)
-            return ItemMotion(keys: [
-                "zoom": [.init(frame: 0, value: 0.6, ease: .easeOut), .init(frame: quick, value: 1.08),
-                         .init(frame: max(quick + 1, settle), value: 1)],
-                "opacity": [.init(frame: 0, value: 0, ease: .easeOut), .init(frame: max(1, quick / 2), value: 1)],
-            ])
-        case "slide-up":
-            return ItemMotion(keys: [
-                "tilt": [.init(frame: 0, value: -Double(height) * 0.04, ease: .easeOut), .init(frame: quick, value: 0)],
-                "opacity": [.init(frame: 0, value: 0, ease: .easeOut), .init(frame: quick, value: 1)],
-            ])
-        case "zoom-punch":
-            return ItemMotion(keys: ["zoom": [
-                .init(frame: 0, value: 1.25, ease: .easeOut), .init(frame: quick, value: 1),
-            ]])
-        default:
+    }()
+
+    /// Keys for `id` on an item of `duration` frames in a `width`×`height` frame, at `fps`.
+    public static func motion(_ id: String, duration: Int, width: Int, height: Int, fps: FrameRate) throws -> ItemMotion {
+        guard let preset = all.first(where: { $0.id == id }) else {
             throw ProjectError.invalid(
                 "Unknown motion preset \(id); use \(all.map(\.id).joined(separator: ", ")) or none")
         }
+        return try preset.template.motion(duration: duration, width: width, height: height, fps: fps)
     }
 }
 

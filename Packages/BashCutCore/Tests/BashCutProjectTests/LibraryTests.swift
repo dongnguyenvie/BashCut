@@ -30,7 +30,7 @@ struct LibraryTests {
         let bad: [(LibraryItem, String)] = [
             (LibraryItem(id: "Bad ID", kind: .sticker, name: "x", params: ["emoji": .string("x")]), "lowercase"),
             (LibraryItem(id: "s", kind: .sticker, name: "Sticker"), "params.emoji"),
-            (LibraryItem(id: "t", kind: .textPreset, name: "T", params: ["textPreset": .string("comic")]), "textPreset"),
+            (LibraryItem(id: "t", kind: .textPreset, name: "T", params: ["textPreset": .string("")]), "textPreset"),
             (LibraryItem(id: "e", kind: .effectPreset, name: "E"), "params.patch"),
             (LibraryItem(id: "a", kind: .audio, name: "A"), "file"),
             (LibraryItem(id: "l", kind: .look, name: "L", params: ["color": .object(["contrast": .integer(9)])]), "contrast"),
@@ -302,7 +302,7 @@ struct LibraryTests {
         #expect(LibraryBuiltIns.effects.map(\.name).prefix(2) == ["Punch in 1.3×", "Reset framing"])
         #expect(LibraryBuiltIns.effects[0].params["patch"] == .object(["transform": .object(["zoom": .number(1.3)])]))
         #expect(LibraryBuiltIns.transitions.map(\.id) == ["soft-dissolve", "quick-whip", "zoom-punch"])
-        #expect(LibraryBuiltIns.looks.map(\.id) == ColorLook.builtIn.map(\.id) + ["bright-airy", "moody"])
+        #expect(LibraryBuiltIns.looks.map(\.id) == ["original", "vivid", "muted-film", "black-white", "bright-airy", "moody"])
         #expect(Set(items.compactMap(\.kind)) == [.textPreset, .sticker, .effectPreset, .transitionPreset, .look])
     }
 

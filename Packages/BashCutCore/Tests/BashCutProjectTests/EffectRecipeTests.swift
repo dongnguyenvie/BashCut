@@ -71,7 +71,8 @@ struct EffectRecipeTests {
             (["steps": .array([step("keyframes", ["keys": .object(["glow": .array([])])])])], "keys.glow"),
             (["steps": .array([step("motion", ["preset": .string("spin")])])], "preset"),
             (["steps": .array([step("motion", ["focus": .array([.integer(0), .integer(0), .integer(2), .integer(1)])])])], "focus"),
-            (["steps": .array([step("text", ["text": .string("Hi"), "textPreset": .string("comic")])])], "textPreset"),
+            (["steps": .array([step("text", ["text": .string("Hi"), "textPreset": .string("")])])], "textPreset"),
+            (["steps": .array([step("text", ["text": .string("Hi"), "keyframes": .object(["glow": .array([])])])])], "glow"),
             (["steps": .array([step("patch", ["patch": .object(["dur": .integer(3)])])])], "timing"),
             (["steps": .array([step("sfx", ["sfx": .string("Bad ID")])])], "sfx"),
             (["steps": .array([step("reverse")]), "parameters": .object(["x": .object(["default": .integer(5), "min": .integer(0),
@@ -194,7 +195,10 @@ struct EffectRecipeTests {
         #expect(project.track(role: TrackRole.sfx) == nil)
         let recipe = try Self.recipe([
             ["op": .string("sfx"), "sfx": .string("user:whoosh"), "frame": .integer(5), "volumeDb": .integer(-6)],
-            ["op": .string("text"), "text": .string("WOW"), "textPreset": .string("keyword-sticker"), "t": .number(0.5)],
+            ["op": .string("text"), "text": .string("WOW"), "textPreset": .string("keyword-sticker"), "t": .number(0.5),
+             "textStyle": .object(["shadow": .object(["blur": .integer(8)])]),
+             "keyframes": .object(["opacity": .array([.object(["t": .integer(0), "value": .integer(0)]),
+                                                      .object(["s": .number(0.2), "value": .integer(1)])])])],
         ])
         var application = EffectApplication()
         application.sounds["user:whoosh"] = Self.whoosh()
@@ -207,6 +211,8 @@ struct EffectRecipeTests {
         let text = once.tracks.flatMap(\.items).filter { $0[EffectRecipe.textField] == .string("c") }
         #expect(text.map(\.at) == [30])
         #expect(text.map(\.duration) == [30])
+        #expect(text.first?["textStyle"] == .object(["shadow": .object(["blur": .integer(8)])]))
+        #expect(text.first?.motion?.keys["opacity"]?.map(\.frame) == [0, 6])
         let twice = try Self.applied(recipe, to: once, application).project
         #expect(twice.tracks.filter { $0.role == TrackRole.sfx }.count == 1)
         #expect(twice.tracks.flatMap(\.items).filter { $0[EffectRecipe.soundField] != nil }.count == 1)

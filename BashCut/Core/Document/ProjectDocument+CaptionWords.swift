@@ -11,13 +11,14 @@ extension ProjectDocument {
             .sorted { $0.at < $1.at }
     }
 
-    /// Sets the word style (nil: words shown all at once) on `ids`, or on every caption when `ids` is nil.
+    /// Sets the word style — a style name, or `{spoken, upcoming, past}` states; nil: words shown all at once — on
+    /// `ids`, or on every caption when `ids` is nil.
     @discardableResult
     func setWordStyle(
-        _ style: String?, items ids: [String]? = nil, highlight: String? = nil, author: Author = .user,
+        _ style: JSONValue?, items ids: [String]? = nil, highlight: String? = nil, author: Author = .user,
         baseRevision: Int? = nil
     ) throws -> (revision: Int, items: [String]) {
-        if let style, !CaptionWords.styles.contains(style) {
+        if let name = style?.string, !CaptionWords.styles.contains(name) {
             throw ProjectError.invalid("Word style must be one of \(CaptionWords.styles.joined(separator: ", ")) or none")
         }
         if let highlight, highlight.range(of: "^#[0-9A-Fa-f]{6}$", options: .regularExpression) == nil {
@@ -34,7 +35,7 @@ extension ProjectDocument {
         } ?? captionItems
         guard !targets.isEmpty else { throw ProjectError.invalid("There are no captions to change") }
         let operations = targets.map { item -> EditOperation in
-            var patch: [String: JSONValue] = ["wordStyle": style.map(JSONValue.string) ?? .null]
+            var patch: [String: JSONValue] = ["wordStyle": style ?? .null]
             if let highlight {
                 var textStyle = item["textStyle"]?.object ?? [:]
                 textStyle["highlight"] = .string(highlight.uppercased())
@@ -61,7 +62,7 @@ extension ProjectDocument {
                 throw RPCFailure(-32602, "Give an item, select a caption, or pass all")
             }
             let result = try document.setWordStyle(
-                style == "none" ? nil : style, items: ids, highlight: arguments.optionalString("color"), author: author,
+                style == "none" ? nil : .string(style), items: ids, highlight: arguments.optionalString("color"), author: author,
                 baseRevision: try arguments.int("baseRev"))
             return .object(["rev": .integer(result.revision), "items": .array(result.items.map(JSONValue.string))])
         }

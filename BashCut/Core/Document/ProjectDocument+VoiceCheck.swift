@@ -37,7 +37,7 @@ extension ProjectDocument {
             }
             let provider = arguments.optionalString("provider")
             let minimum = arguments.optionalDouble("minSimilarity")
-            return try document.startCapabilityJob("voice.check", author: author) { document in
+            return try await document.startCapabilityJob("voice.check", author: author, arguments: arguments) { document in
                 let heard = try await document.heardWords(of: mediaID, item: item, provider: provider)
                 let result = TextAlignment.align(text, to: heard)
                 var json: [String: JSONValue] = [
@@ -69,7 +69,7 @@ extension ProjectDocument {
             let provider = arguments.optionalString("provider")
             let replace = arguments.bool("replace")
             let aligner = arguments.optionalString("aligner")
-            return try document.startCapabilityJob("captions.align", author: author) { document in
+            return try await document.startCapabilityJob("captions.align", author: author, arguments: arguments) { document in
                 let heard: [CaptionWords.Timed]
                 if let aligner {
                     // A captions.align provider times the script's own words; matching them is then exact.

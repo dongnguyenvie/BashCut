@@ -168,10 +168,10 @@ public struct CapabilityService: Sendable {
     }
 
     public func analyzeEnergy(
-        mediaURL: URL, count: Int?, windowSeconds: Double?, preferredProvider: String?, projectRoot: URL?
+        mediaURL: URL, preferredProvider: String?, projectRoot: URL?
     ) async throws -> GeneratedEnergy {
         try await run(
-            EnergyCapability(mediaURL: mediaURL, count: count, windowSeconds: windowSeconds),
+            EnergyCapability(mediaURL: mediaURL),
             preferredProvider: preferredProvider, projectRoot: projectRoot)
     }
 

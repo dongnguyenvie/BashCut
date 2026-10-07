@@ -24,27 +24,15 @@ struct ProjectPlanTests {
         "ranges": .object(["maxShotSeconds": .object(["min": .number(2), "max": .number(4), "reason": .string("fast")])]),
     ])
 
-    @Test("A valid brief and plan pass; malformed fields name their path")
-    func validation() throws {
+    @Test("Brief and plan are free JSON: unknown fields load, validate and save")
+    func freeNotes() throws {
         var project = ReviewSequenceTests().project()
-        project["brief"] = brief
-        project["plan"] = plan
+        project["brief"] = .object(["tone": .string("warm"), "goal": .string("x")])
+        project["plan"] = .object(["mode": .string("auto"), "anything": .array([.integer(1)])])
         try project.validate()
-        let bad: [(String, JSONValue)] = [
-            ("brief", .object(["goal": .object(["value": .string("x"), "status": .string("guessed")])])),
-            ("brief", .object(["mood": .object(["value": .string("x"), "status": .string("stated")])])),
-            ("plan", .object(["mode": .string("auto")])),
-            ("plan", .object(["sections": .array([.object(["id": .string("a")])])])),
-            ("plan", .object(["sections": .array([.object(["id": .string("a"), "label": .string("A")]),
-                                                  .object(["id": .string("a"), "label": .string("B")])])])),
-            ("plan", .object(["shots": .array([.object(["id": .string("s"), "purpose": .string("p"), "size": .string("XL")])])])),
-            ("plan", .object(["ranges": .object(["x": .object(["min": .number(3), "max": .number(1)])])])),
-        ]
-        for (key, value) in bad {
-            var copy = project
-            copy[key] = value
-            #expect(throws: ProjectError.self) { try copy.validate() }
-        }
+        #expect(throws: ProjectError.self) { try ProjectPlan.validateNotes(.array([]), key: "brief") }
+        #expect(ProjectPlan.range(.object(["min": .number(1), "max": .number(2)]))?.max == 2)
+        #expect(ProjectPlan.strings(.array([.string("tiktok")])) == ["tiktok"])
     }
 
     @Test("Review compares the brief's length and outputs and each planned section with what was cut, as info")
@@ -141,7 +129,7 @@ struct ProjectSelectsTests {
         for bad: JSONValue in [
             .array([select("a", 2, 1, false)]),
             .array([select("a", 1, 2, false), select("a", 3, 4, false)]),
-            .array([.object(["id": .string("x"), "media": .string("m"), "from": .number(0), "to": .number(1), "status": .string("maybe")])]),
+            .array([.object(["id": .string("x"), "media": .string("m"), "from": .number(0), "to": .number(1), "status": .string("")])]),
         ] {
             var copy = project
             copy["selects"] = bad

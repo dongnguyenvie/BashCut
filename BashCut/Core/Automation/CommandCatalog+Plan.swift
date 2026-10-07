@@ -7,21 +7,19 @@ extension CommandCatalog {
     static let planSpecs: [CommandSpec] = [
         CommandSpec(
             "project.credits", .read,
-            "What the edit owes for the media it plays (P2-H9), from each media's license and provenance: credit lines "
-                + "(required ones are those the licence asks for; text is the block for a description), ai {media, "
-                + "pictureShare, disclosures: each output platform's AI-label rule}, contentIDNotes for stock or "
-                + "downloaded music, and flags {nonCommercial, allRightsReserved, unknown}. Facts only, on request: "
-                + "nothing is added to the video. With the project's review.credits true, review run reports them as "
-                + "info and each export's job result carries them for its platform."),
+            "Rights facts of the media the edit plays (P2-H9): per media {media, name, kind, license and provenance "
+                + "as stored, framesOnTop (frames where it is the picture on top)}, frames, and ai {media, "
+                + "pictureShare}. Raw facts on request; credit wording and disclosure are yours. Nothing is added to "
+                + "the video. With the project's review.credits true, review notes AI picture as info and each "
+                + "export's job result carries these facts."),
         CommandSpec(
             "project.brief", .read,
-            "Read the project brief: goal, audience, outputs, angle, lengthSeconds, notes as {value, status stated|"
-                + "inferred|confirmed, source?}, and ideas and references. Null when none."),
+            "Read the project brief: a free JSON object (the agent's notes). Null when none."),
         CommandSpec(
             "project.set-brief", .edit,
-            "Set the brief as one undoable edit (validated: fields {value, status, source?}, ideas and references up to "
-                + "100 objects); with merge, only the given fields change (null removes one). Review compares its "
-                + "length and outputs with the edit, as info.",
+            "Set the brief (any JSON object) as one undoable edit; with merge, only the given fields change (null "
+                + "removes one). Review reads lengthSeconds {min, max} and outputs [names] when present (directly or "
+                + "under value) and compares them with the edit, as info.",
             parameters: [
                 CommandParameter("value", .object, "The brief (CLI: path to brief.json)", required: true,
                                  cli: .positionalJSONFile),
@@ -30,15 +28,13 @@ extension CommandCatalog {
             ]),
         CommandSpec(
             "plan.get", .read,
-            "Read the edit plan: mode (create, directed, revision), stage, options, sections [{id, label, "
-                + "lengthSeconds {min, max}, reason, frozen}], shots [{id, section, purpose, size, move, mustShow, "
-                + "targetSeconds, source footage|stock|generated}], beats [{id, section, text}], decisions, ranges "
-                + "(the review profile values chosen, {min, max, source, reason}) and notes. Null when none."),
+            "Read the edit plan: a free JSON object (the agent's notes). Null when none."),
         CommandSpec(
             "plan.set", .edit,
-            "Set the edit plan as one undoable edit (validated shape); with merge, only the given top-level fields "
-                + "change (null removes one). Review compares each section's planned length with its section "
-                + "marker, as info. context get summarises it so work can resume from it.",
+            "Set the edit plan (any JSON object) as one undoable edit; with merge, only the given top-level fields "
+                + "change (null removes one). Core reads only sections [{id, label, lengthSeconds {min, max}, frozen}], "
+                + "shots and beats [{id, text, section}] when present: review compares section lengths with section "
+                + "markers, as info; context get summarises it so work can resume from it.",
             parameters: [
                 CommandParameter("value", .object, "The plan (CLI: path to plan.json)", required: true,
                                  cli: .positionalJSONFile),
@@ -94,11 +90,12 @@ extension CommandCatalog {
             ]),
         CommandSpec(
             "run.append", .ui,
-            "Append to the run log: start (opens a run), stage, round, measured, note or end. Gate entries come only from "
-                + "checkpoints. The revision, author and time are added.",
+            "Append to the run log: an entry of any kind (start opens a run; stage, round, measured, note and end are "
+                + "the usual ones; gate is reserved for checkpoints) with the fields given and any data object. The "
+                + "revision, author and time are added.",
             parameters: [
-                CommandParameter("kind", .string, "Entry kind", required: true, choices: ["start", "stage", "round", "measured", "note", "end"],
-                                 cli: .positional),
+                CommandParameter("kind", .string, "Entry kind (1–40 characters; not gate)", required: true, cli: .positional),
+                CommandParameter("data", .object, "More fields as a JSON object", cli: .option("data")),
                 CommandParameter("stage", .string, "Stage name", cli: .option("stage")),
                 CommandParameter("text", .string, "What happened", cli: .option("text")),
                 CommandParameter("round", .integer, "Review round", minimum: 1, maximum: 100, cli: .option("round")),
@@ -153,34 +150,21 @@ extension CommandCatalog {
     static let selectsSpecs: [CommandSpec] = [
         CommandSpec(
             "selects.list", .read,
-            "The project's selects: source ranges {id, media, from, to (seconds), status candidate|kept|rejected, quote, "
+            "The project's selects: source ranges {id, media, from, to (seconds), status (free; usually candidate, kept or rejected), quote, "
                 + "reason (why it was picked), evidence, mustKeep, order, statusReason (why its status last changed)} and "
                 + "counts per status. The user sees and overrides them in the "
                 + "Media panel (Selects).",
-            parameters: [CommandParameter("status", .string, "Only this status", choices: ProjectSelect.statuses, cli: .option("status"))]),
+            parameters: [CommandParameter("status", .string, "Only this status", cli: .option("status"))]),
         CommandSpec(
             "selects.set", .edit,
-            "Add or update selects (by id; a new one without id gets one, status candidate) as one undoable edit. Give "
-                + "the quote, the reason and the evidence (what was measured) with each; media resolve-range gives from/to.",
+            "Add, update or remove selects (by id; a new one without id gets one, status candidate) as one undoable "
+                + "edit. Give the quote, the reason and the evidence (what was measured) with each; media resolve-range "
+                + "gives from/to. On an existing select, status or mustKeep with a reason keeps it as statusReason; "
+                + "{id, remove: true} removes it. A must-keep select no clip plays is a review warning.",
             parameters: [
                 CommandParameter("value", .array, "Selects (CLI: path to selects.json)", required: true, cli: .positionalJSONFile),
                 baseRevision,
             ]),
-        CommandSpec(
-            "selects.mark", .edit,
-            "Change the status or mustKeep of selects (comma-separated IDs), with an optional reason (kept as statusReason; "
-                + "the pick's reason stays), as one edit. A "
-                + "must-keep select no clip plays is a review warning.",
-            parameters: [
-                CommandParameter("ids", .string, "Select IDs", required: true, cli: .positional),
-                CommandParameter("status", .string, "New status", choices: ProjectSelect.statuses, cli: .option("status")),
-                CommandParameter("mustKeep", .boolean, "Must the edit keep it", cli: .option("must-keep")),
-                CommandParameter("reason", .string, "Why", cli: .option("reason")),
-                baseRevision,
-            ]),
-        CommandSpec(
-            "selects.remove", .edit, "Remove selects (comma-separated IDs) as one edit.",
-            parameters: [CommandParameter("ids", .string, "Select IDs", required: true, cli: .positional), baseRevision]),
         CommandSpec(
             "selects.place", .edit,
             "Lay the kept selects (or the given IDs) in order (order, else source start), from atFrame or the first "

@@ -7,46 +7,20 @@ import Testing
 /// Structured licences and provenance (P2-H8).
 @Suite("Licensing")
 struct LicensingTests {
-    @Test("Free licence text maps to an id and version and keeps the text")
-    func parse() {
-        let cases: [(String, LicenseTerms.Identifier, String?)] = [
-            ("CC0", .cc0, nil), ("CC0 1.0 Universal", .cc0, "1.0"), ("Public Domain", .publicDomain, nil),
-            ("CC-BY 4.0", .ccBy, "4.0"), ("Creative Commons Attribution 3.0", .ccBy, "3.0"),
-            ("CC BY-SA 4.0", .ccBySa, "4.0"), ("CC BY-NC 4.0", .ccByNc, "4.0"), ("cc-by-nc-sa", .ccByNcSa, nil),
-            ("CC BY-ND 2.0", .ccByNd, "2.0"), ("Attribution-NonCommercial-NoDerivatives 4.0", .ccByNcNd, "4.0"),
-            ("Pexels License", .royaltyFree, nil), ("Royalty-free", .royaltyFree, nil), ("own", .own, nil),
-            ("All rights reserved", .allRightsReserved, nil), ("© 2026 Studio", .allRightsReserved, nil),
-            ("", .unknown, nil), ("Ask the band first", .custom, nil),
-        ]
-        for (text, id, version) in cases {
-            let terms = LicenseTerms.parse(text)
-            #expect(terms.id == id, "\(text)")
-            #expect(terms.version == version, "\(text)")
-            if id != .unknown { #expect(terms.text == text.trimmingCharacters(in: .whitespaces)) }
-        }
-    }
-
-    @Test("What a licence allows follows from its id; unreadable terms are unknown, not allowed")
-    func facts() {
-        #expect(LicenseTerms(id: .ccByNc).facts.commercial == false)
-        #expect(LicenseTerms(id: .ccBySa).facts.shareAlike == true)
-        #expect(LicenseTerms(id: .ccBy).facts.attributionRequired == true)
-        #expect(LicenseTerms(id: .royaltyFree).facts.redistribute == false)
-        #expect(LicenseTerms(id: .cc0).facts.redistribute == true)
-        #expect(LicenseTerms(id: .custom, text: "x").facts.redistribute == nil)
-        #expect(LicenseTerms(id: .ccBy, version: "4.0").displayName == "CC-BY 4.0")
-        #expect(LicenseTerms.parse("CC-BY 4.0").reportJSON.object["facts"]?.object["commercial"] == .bool(true))
-    }
-
-    @Test("Stored licences read as text or object; anything else is refused")
+    @Test("Licences are free text or an open object; facts are the item's own")
     func storage() throws {
-        let object = LicenseTerms(id: .ccBy, version: "4.0", attribution: "Photo by A").json
-        #expect(LicenseTerms(json: object)?.attribution == "Photo by A")
-        #expect(LicenseTerms(json: .string("CC0"))?.id == .cc0)
+        let object: JSONValue = .object(["id": .string("gpl"), "version": .string("3"), "attribution": .string("Photo by A"),
+                                         "redistribute": .bool(false), "custom": .integer(1)])
+        let terms = try #require(LicenseTerms(json: object))
+        #expect(terms.attribution == "Photo by A" && terms.facts.redistribute == false && terms.facts.commercial == nil)
+        #expect(terms.json == object && terms.displayName == "gpl 3")
+        #expect(LicenseTerms(json: .string("CC0"))?.text == "CC0" && LicenseTerms(json: .string("CC0"))?.id == nil)
         try LicenseTerms.validate(object, label: "x")
         try LicenseTerms.validate(.string("CC0"), label: "x")
-        #expect(throws: ProjectError.self) { try LicenseTerms.validate(.object(["id": .string("gpl")]), label: "x") }
+        #expect(throws: ProjectError.self) { try LicenseTerms.validate(.object(["redistribute": .string("no")]), label: "x") }
         #expect(throws: ProjectError.self) { try LicenseTerms.validate(.integer(3), label: "x") }
+        #expect(LicenseTerms.argument("{\"id\":\"cc-by\"}") == .object(["id": .string("cc-by")]))
+        #expect(LicenseTerms.argument("CC-BY 4.0") == .string("CC-BY 4.0"))
     }
 
     @Test("Provenance checks origin, text fields, seed and charged; unknown fields pass")
@@ -68,7 +42,7 @@ struct LicensingTests {
     func mediaRights() throws {
         let base = try Project(name: "Rights", fps: FrameRate(30, 1)).applying(.addMedia(
             ProjectFixtures.media("m", path: "m.mov", frames: 60, fps: FrameRate(30, 1), kind: "video", hasAudio: true))).project
-        let license = LicenseTerms.parse("CC-BY 4.0").json
+        let license: JSONValue = .string("CC-BY 4.0")
         let set = EditOperation.setMediaRights(media: "m", license: license, provenance: .object(["origin": .string("stock")]))
         var project = try base.applying(set).project
         #expect(project.media[0]["license"] == license && project.media[0]["provenance"]?.object["origin"] == .string("stock"))
@@ -89,9 +63,9 @@ struct LicensingTests {
     @Test("A pack export refuses items whose licence forbids redistribution and lists unknown ones")
     func packExport() throws {
         var stock = LibraryItem(id: "stock", kind: .audio, name: "Stock", scope: .project)
-        stock.fields["license"] = .string("Pixabay License")
+        stock.fields["license"] = .object(["text": .string("Pixabay License"), "redistribute": .bool(false)])
         var free = LibraryItem(id: "free", kind: .audio, name: "Free", scope: .project)
-        free.fields["license"] = LicenseTerms.parse("CC0").json
+        free.fields["license"] = .object(["id": .string("cc0"), "redistribute": .bool(true)])
         let bare = LibraryItem(id: "bare", kind: .audio, name: "Bare", scope: .project)
         let builtIn = LibraryItem(id: "kit", kind: .textPreset, name: "Kit")
         #expect(LibraryPack.redistributionRefusals([stock, free, bare]).map(\.item) == ["stock"])

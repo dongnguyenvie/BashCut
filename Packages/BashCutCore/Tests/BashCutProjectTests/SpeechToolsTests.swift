@@ -56,7 +56,7 @@ struct SpeechToolsTests {
         #expect(speaker?["articulation"] == .number(5))
     }
 
-    @Test("Narration windows: speech-free stretches with anchors, owner, shots and a budget at the caller's rate")
+    @Test("Narration windows: speech-free stretches with anchors, covered shares, shots and a budget at the caller's rate")
     func windows() throws {
         var project = Project(name: "VO", fps: FrameRate(30, 1))
         project.media = [Media(fields: ["id": .string("m"), "path": .string("m.mp4"), "fps": FrameRate(30, 1).json, "frames": .integer(900)])]
@@ -71,7 +71,8 @@ struct SpeechToolsTests {
         let windows = try #require(json["windows"]?.array).map(\.object)
         #expect(windows.count == 1)
         #expect(windows[0]["at"] == .integer(60) && windows[0]["end"] == .integer(240))
-        #expect(windows[0]["owner"] == .string("music"))
+        #expect(windows[0]["covered"]?.object["music"] == .number(1))
+        #expect(windows[0]["owner"] == nil)
         #expect(windows[0]["anchors"]?.object["firstCut"] == .integer(150))
         #expect(windows[0]["anchors"]?.object["afterWord"]?.object["text"] == .string("xin"))
         #expect(windows[0]["budget"]?.object["units"] == .integer(24))

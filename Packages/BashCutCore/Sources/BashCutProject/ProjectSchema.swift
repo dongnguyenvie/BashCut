@@ -60,6 +60,11 @@ public struct ItemProperty: Sendable {
         .init("textStyle", "fill", .color, "Text colour, #RRGGBB (the preset's by default)"),
         .init("textStyle", "stroke", .color, "Outline colour, #RRGGBB (default black)"),
         .init("textStyle", "highlight", .color, "Word-by-word highlight colour, #RRGGBB (default #FFD400)"),
+        .init("textStyle", "align", .text(maxLength: 6), "left, center or right (the preset's by default)"),
+        .init("textStyle", "positionX", .number(0...1), "Horizontal anchor: left edge, centre or right edge by align"),
+        .init("textStyle", "lineHeight", .number(0.5...4), "Line spacing as a multiple of the font size (default 1.28)"),
+        .init("textStyle", "tracking", .number(-0.5...2), "Letter spacing as a share of the font size (default 0)"),
+        .init("textStyle", "uppercase", .boolean, "Draw the text in capitals"),
     ] + ColorGrade.ranges.map { .init("color", $0.key, .number($0.range), ColorGrade.summaries[$0.key] ?? "") }
 }
 
@@ -169,8 +174,6 @@ public enum ProjectSchema {
                 "markers": array("Timeline markers", of: ref("marker"), maxItems: 10_000),
                 "transitions": array("Transitions on adjacent video cuts", of: ref("transition"), maxItems: 10_000),
                 "luts": array("Project .cube LUT catalog", of: ref("lut"), maxItems: 1_000),
-                "looks": array("Custom looks (built-in looks are not stored)", of: ref("look"), maxItems: 1_000),
-                "styleKits": array("Custom style kits (built-in kits are not stored)", of: ref("styleKit"), maxItems: 1_000),
                 "audio": ref("audio"),
                 "output": outputSchema,
                 "review": reviewSchema,
@@ -254,21 +257,6 @@ public enum ProjectSchema {
                     ColorLUT.libraryHashField: string("SHA-256 of the library look's .cube it was copied from"),
                     ColorLUT.libraryItemField: string("The library look (scope:id) it was copied from"),
                 ])),
-            "look": .object(fields(
-                "A reusable color grade", required: ["id", "title", "color"],
-                properties: [
-                    "id": string("Unique among built-in and custom looks", pattern: StyleCatalog.idPattern),
-                    "title": string("Display name", minLength: 1, maxLength: 120), "color": ref("color"),
-                ])),
-            "styleKit": .object(fields(
-                "A one-shot recipe: a full-length adjustment with a look plus a caption preset",
-                required: ["id", "title", "look", "captionPreset"],
-                properties: [
-                    "id": string("Unique among built-in and custom kits", pattern: StyleCatalog.idPattern),
-                    "title": string("Display name", minLength: 1, maxLength: 120),
-                    "look": string("Built-in or custom look ID"),
-                    "captionPreset": enumeration("Text preset given to captions", TextPreset.all),
-                ])),
             "audio": audioSchema,
         ]
     }
@@ -321,7 +309,9 @@ public enum ProjectSchema {
             "in": integer("Source in-point, in media frames", minimum: 0),
             "media": string("Media ID (video and audio layers)"),
             "text": string("Caption or title text (text layers)"),
-            "textPreset": enumeration("Text preset (text layers); default bold-outline", TextPreset.all),
+            "textPreset": string(
+                "Text preset (text layers): built-in " + TextPreset.all.joined(separator: ", ")
+                    + " or any name (the first's defaults); default bold-outline", minLength: 1, maxLength: 80),
             "freezeFrame": integer("Video: source frame held for the whole item", minimum: 0),
             "reframePreset": string("Framing preset ID, or custom"),
             "linkedAudio": string("Video: ID of its linked sound item"),
@@ -388,10 +378,15 @@ public enum ProjectSchema {
                     ]),
                 ]),
             ]),
-            "wordStyle": enumeration(
-                "Text: show the words as they are spoken (highlight the current word, karaoke fill, or reveal); "
-                    + "timings come from words, or are estimated", CaptionWords.styles),
-            "styleKit": string("Adjustment: the style kit that added it; the next kit replaces it"),
+            "wordStyle": .object([
+                "description": .string("Text: show the words as they are spoken: a preset (highlight the current "
+                    + "word, karaoke fill, or reveal) or {spoken, upcoming, past} looks of {fill #RRGGBB, opacity 0–1}; "
+                    + "timings come from words, or are estimated"),
+                "oneOf": .array([
+                    .object(["type": .string("string"), "enum": .array(CaptionWords.styles.map(JSONValue.string))]),
+                    .object(["type": .string("object"), "additionalProperties": .object(["type": .string("object")])]),
+                ]),
+            ]),
             "tag": .object([
                 "type": .string("object"), "description": .string("Editorial tags"),
                 "properties": .object([
@@ -471,27 +466,5 @@ public enum ProjectSchema {
         .object([
             "type": .string("string"), "description": .string(summary), "enum": .array(values.map(JSONValue.string)),
         ])
-    }
-
-    static func integer(_ summary: String, minimum: Int? = nil, maximum: Int? = nil) -> JSONValue {
-        var value: [String: JSONValue] = ["type": .string("integer"), "description": .string(summary)]
-        if let minimum { value["minimum"] = .integer(minimum) }
-        if let maximum { value["maximum"] = .integer(maximum) }
-        return .object(value)
-    }
-
-    static func number(_ summary: String, _ range: ClosedRange<Double>) -> JSONValue {
-        .object([
-            "type": .string("number"), "description": .string(summary),
-            "minimum": bound(range.lowerBound), "maximum": bound(range.upperBound),
-        ])
-    }
-
-    private static func bound(_ value: Double) -> JSONValue {
-        value.rounded() == value && abs(value) < 1e15 ? .integer(Int(value)) : .number(value)
-    }
-
-    static func boolean(_ summary: String) -> JSONValue {
-        .object(["type": .string("boolean"), "description": .string(summary)])
     }
 }

@@ -250,8 +250,8 @@ struct InspectorView: View {
                 selection: Binding(
                     get: { document.selected?.wordStyle ?? "none" },
                     set: { value in
-                        guard let id = document.selectedID else { return }
-                        do { try document.setWordStyle(value == "none" ? nil : value, items: [id]) } catch {
+                        guard let id = document.selectedID, value != "custom" else { return }
+                        do { try document.setWordStyle(value == "none" ? nil : .string(value), items: [id]) } catch {
                             document.message = error.localizedDescription
                         }
                     })
@@ -260,8 +260,9 @@ struct InspectorView: View {
                 Text("Highlight word").tag("highlight")
                 Text("Karaoke").tag("karaoke")
                 Text("Reveal word by word").tag("reveal")
+                if item.wordStyle == "custom" { Text("Custom").tag("custom") }
             }
-            if let style = item.wordStyle {
+            if let style = item["wordStyle"], item.wordStyle != nil {
                 Button("Use on all captions") {
                     do { try document.setWordStyle(style) } catch { document.message = error.localizedDescription }
                 }

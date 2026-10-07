@@ -130,12 +130,12 @@ extension CommandCatalog {
         CommandSpec(
             "media.describe", .edit,
             "Store what you saw in a source media, shot by shot, as one undoable edit (it is saved with the project). "
-                + "Each shot: start and end in source seconds (shots may not overlap) and at least one fact in the "
-                + "closed vocabulary: size ECU/CU/MCU/MS/MWS/WS/EWS/insert, angle eye/high/low/top/dutch/pov/ots, "
-                + "move static/pan/tilt/push/pull/track/orbit/handheld/zoom/crane, direction left/right/toward/away/"
-                + "none, subjects (up to 12 names), people, onScreenText, confidence 0–1, bestMoment (source "
-                + "seconds or null), looked (source seconds of the frames you looked at), note. Unknown fields and "
-                + "values are rejected; there is no field for pairings or verdicts. Replaces the description unless "
+                + "Each shot: start and end in source seconds (shots may not overlap) and at least one fact: size, "
+                + "angle, move, direction (open labels; suggested: size ECU/CU/MCU/MS/MWS/WS/EWS/insert, angle "
+                + "eye/high/low/top/dutch/pov/ots, move static/pan/tilt/push/pull/track/orbit/handheld/zoom/crane, "
+                + "direction left/right/toward/away/none), subjects (up to 12 names), tags, people, onScreenText, "
+                + "confidence 0–1, bestMoment (source seconds or null), looked (source seconds of the frames you "
+                + "looked at), note; any other field is kept as given. Replaces the description unless "
                 + "merge (shots overlapping the new ones are replaced) or clear. Returns rev and coverage.",
             parameters: [
                 CommandParameter("shots", .array, "Shots array, or {shots: […]} (CLI: path to shots.json)",
@@ -249,7 +249,7 @@ extension CommandCatalog {
         "narration.windows", .read,
         "List stretches of at least minSeconds with no spoken word (heard or caption words) and no voiceover item: "
             + "at/end frames and seconds, anchors {afterWord (the last word before it), firstCut, firstBeat, section, "
-            + "sectionStartsInside}, owner (music, footage or silence: what covers most of it), the shots on Main under "
+            + "sectionStartsInside}, covered {music, footage} (shares 0–1 of the window), the shots on Main under "
             + "it with their described facts, and with rate (units per second, in the content language's unit) a "
             + "budget of units that fit. With levels, the mix is rendered once (no export) and each window gets its "
             + "mixLoudness {median, p10, p90}. No length or rate is assumed.",

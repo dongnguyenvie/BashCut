@@ -257,7 +257,12 @@ Print every usage line (also shown by `bashcut --help`) with:
 
 ```sh
 bashcut help
+bashcut help review shots   # one command: description, mode, parameters (works without the app)
 ```
+
+The agent instructions list each command a terminal agent uses with its usage and the first sentence of its
+description (about 8k tokens); commands for the user, panels and plugin views (chat, plugin install and views,
+storage, agent setup, `ui open/panel/source/notify`, knowledge approval, skill switches) are left out but still work.
 
 Add `--format text` to any command to print string results without JSON quoting. MCP tools take the same
 parameter names as the JSON-RPC `params` (`baseRev`, `atFrame`, …); the CLI spells them as options
@@ -295,10 +300,8 @@ tool name and parameters (types, ranges, choices, defaults). It is generated fro
 | `project create --language` | A language tag; defaults to `vi` |
 | `project create --dir` | An existing absolute folder; defaults to the projects folder (`project folder`, `~/Movies/BashCut` unless changed), made on first use |
 | `layers add --kind` | `video`, `adjustment`, `text`, `audio` |
-| `adjustment add --look`, `style save --look` | Built-in `original` (default), `vivid`, `muted-film`, `black-white`, or a custom look ID from `timeline get` |
-| `style apply <kit>` | Built-in `food-review` (vivid, Bold Outline), `cinematic` (muted film, Cinematic Serif), or a custom kit ID |
+| `adjustment add --look` | A library look without a LUT file: built-in `original` (default), `vivid`, `muted-film`, `black-white`, `bright-airy`, `moody`, or `scope:id` from `library list --kind look` |
 | Grade options | `--exposure` −10…10, `--contrast` 0…4, `--saturation` 0…4, `--lut-strength` 0…1 (decimals allowed), `--lut` a LUT ID |
-| `style save --caption-preset` | `bold-outline` (default), `cinematic-serif`, `keyword-sticker`, `place-card`, `hook-title`, `chapter-card` |
 | `media import --kind` | `video` (default), `audio` |
 | `export start --preset` | `tiktok`, `youtube-1080`, `youtube-4k`, `quick-draft`, `prores` |
 | `ui open <dialog>` | `new-project`, `export`, `export-report`, `agent-changes`, `review`, `history`, `plugins`, `settings`, `doctor`, `knowledge`, `ask`, `sections`, `external-changes`, `plugin-proposals` |
@@ -352,8 +355,7 @@ The app enforces that rule (the scope guard, #356). Every edit a chat or termina
   half, or an item from an edit the user allowed) run.
 - `insert` runs when the new item lies inside the scope's span (first start to last end, where the items are now).
   A transition runs when either of its clips is in scope.
-- Media and LUT imports, beat grids and new layers run. Changes to existing layers, project settings (looks, style
-  kits), format, sections, LUT deletes and `restore` are project-wide and always count as outside.
+- Media and LUT imports, beat grids and new layers run. Changes to existing layers, project settings, format, sections, LUT deletes and `restore` are project-wide and always count as outside.
 - Ripple shifts, undo/redo and dry runs are not checked. An edit with a stale base revision fails with `-32002`
   before the guard looks at it.
 
@@ -515,8 +517,7 @@ Built-in packs: **Text styles** (`bold-outline`, `cinematic-serif`, `keyword-sti
 `zoom-punch-in`), **Speed** effects (`speed-ramp`, `slow-motion`), **Transitions** presets (`soft-dissolve`, `quick-whip`,
 `zoom-punch`) and **Looks** (`original`, `vivid`, `muted-film`, `black-white`, `bright-airy`, `moody`). Their IDs are
 reserved. The Text, Stickers, Effects, Transitions and Filters panels show them first, then the items saved in the
-project or on this Mac. The Filters panel also lists the style kits and the project's own looks (`style save`,
-`looks save`) among its items; clicking a kit runs `style apply`.
+project or on this Mac.
 
 - `bashcut library list [--panel text] [--kind sticker] [--tag food] [--scope user] [--created-by agent] [--pack X]
   [--query word]` lists items with their usage; `library get <id>` adds the earlier versions and the file path.

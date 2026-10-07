@@ -92,14 +92,16 @@ struct ReviewQualityTests {
         #expect(measured(project, -31, -9, project.revision).first { $0.id == "loudness" }?.severity == .error)
         #expect(ids(measured(project, -12.7, 0.2, project.revision), "true-peak") == ["true-peak"])
         #expect(ids(measured(project, -31, -9, project.revision + 1), "loudness") == ["loudness-unmeasured"])
-        // Without a tolerance the measurement is info; the peak ceiling is the platform's and stays an error.
+        // Without a tolerance loudness is not checked; the peak ceiling is the platform's and stays an error.
         var bare = project
         bare["review"] = nil
-        #expect(measured(bare, -31, 0.2, bare.revision).first { $0.id == "loudness" }?.severity == .info)
+        #expect(ids(measured(bare, -31, 0.2, bare.revision), "loudness").isEmpty)
+        let hot = measured(project, -31, -9, project.revision).first { $0.id == "loudness" }
+        #expect(hot?.kind == "loudness" && hot?.facts["lufs"] == .number(-31) && hot?.facts["target"] == .number(-14))
         #expect(measured(bare, -31, 0.2, bare.revision).first { $0.id == "true-peak" }?.severity == .error)
     }
 
-    @Test("Music with ducking off under speech, dead air and a music bed that drops out (#431)")
+    @Test("Music with ducking off under speech, dead air and a music bed that drops out (#431); no limits, no issues")
     func soundLayout() throws {
         var project = try project(seconds: 20)
         set(&project, track: "a2", [Item(id: "vo", media: "voice", at: 0, duration: 150)])
@@ -125,12 +127,12 @@ struct ReviewQualityTests {
         #expect(ids(muted, "ducking-").isEmpty)
         #expect(ids(muted, "music-gap-").isEmpty)
         #expect(ids(muted, "silence-") == ["silence-clip+150"])
-        // Without limits: only the longest silence, as info.
-        let bare = run(project, profiled: false).filter { $0.id.hasPrefix("silence-") }
-        #expect(bare.map(\.id) == ["silence-clip+150"] && bare.first?.severity == .info)
+        #expect(muted.first { $0.id == "silence-clip+150" }?.facts["seconds"] != nil)
+        // Without limits nothing is reported; audio.measure has the numbers.
+        #expect(ids(run(project, profiled: false), "silence-").isEmpty)
     }
 
-    @Test("Vertical safe area: bottom bar is an error with a fix, side buttons and top bar are warnings (#433)")
+    @Test("Vertical safe area: bottom bar is an error, side buttons and top bar are warnings, with box and zone facts (#433)")
     func verticalSafeArea() throws {
         var project = try project()
         set(&project, track: "t1", [
@@ -142,11 +144,9 @@ struct ReviewQualityTests {
         let issues = run(project)
         let low = issues.first { $0.id == "safe-bottom-low" }
         #expect(low?.severity == .error)
-        let patch = low?.fix?.arguments["ops"]?.array.first?.object["patch"]?.object["textStyle"]?.object
-        let raised = patch?["positionY"]?.double ?? 0
-        #expect(raised > 0.16)
+        #expect(low?.fix == nil && low?.facts["bottom"]?.double != nil && low?.facts["box"]?.array.count == 4)
         var moved = project
-        set(&moved, track: "t1", [text("low", "Mua ngay", style: ["positionY": .number(raised)])])
+        set(&moved, track: "t1", [text("low", "Mua ngay", style: ["positionY": .number(0.25)])])
         #expect(ids(run(moved), "safe-").isEmpty)
         #expect(ids(issues, "safe-side-") == ["safe-side-wide"])
         #expect(ids(issues, "safe-top-") == ["safe-top-high"])

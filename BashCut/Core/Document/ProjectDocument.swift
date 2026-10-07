@@ -226,6 +226,7 @@ final class ProjectDocument {
         }
         restoreLatestAgentChangeFromHistory()
         relinkOlderMediaPaths(projectRoot: url.deletingLastPathComponent())
+        copyProjectLooksToLibrary()
         rebuild()
         emitPluginEvent(.projectOpened, [
             "path": .string(url.path), "name": .string(project.name), "rev": .integer(project.revision),

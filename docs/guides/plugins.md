@@ -531,10 +531,9 @@ detect` stores the whole grid per file (`beats grid`) next to the timeline grid;
 
 ### `audio.energy`
 
-`mediaPath` is a music file; optional `count` (candidates per kind) and `windowSeconds`. Return `step` (seconds),
-`levelDb`, `onset` and `fullness` arrays (one value per step) and `candidates`
-`[{kind: "lift"|"drop"|"breath", seconds, magnitude, beatSeconds?}]`. They are pointers for the agent to listen to,
-not cut decisions. The built-in Audio Analysis plugin provides it (`audio energy`).
+`mediaPath` is a music file. Return `step` (seconds) and `levelDb`, `onset` and `fullness` arrays (one value per
+step). BashCut passes the curve on as measured; picking lifts, drops and breaths from it is the agent's, so any
+`candidates` a provider returns are ignored. The built-in Audio Analysis plugin provides it (`audio energy`).
 
 ### `audio.loudness`
 

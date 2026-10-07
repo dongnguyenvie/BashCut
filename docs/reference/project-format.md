@@ -109,17 +109,10 @@ it, in preview and export alike; layers above it, such as captions, are not grad
 New adjustment tracks (ID prefix `fx`) go above the video tracks and below text. `adjustment add` places an item
 on the first adjustment track, adding one when needed, and spills overlaps onto another adjustment track.
 
-A style kit (`style apply`) is not stored as a setting. Applying one is a single undoable edit: it deletes
-adjustment items an earlier kit added (marked `styleKit: "<kit id>"`), adds a full-length adjustment item with
-the kit's look, and sets the kit's `captionPreset` as the `textPreset` of every caption on a `captions` text track
-that has no preset or another kit's caption preset (titles, place cards and other presets keep theirs).
-
-**Looks and style kits** come built in (looks `original`, `vivid`, `muted-film`, `black-white`; kits
-`food-review`, `cinematic`) or from the project. Custom ones are stored in the top-level `looks`
-(`{id, title, color}`) and `styleKits` (`{id, title, look, captionPreset}`) arrays, managed with `looks save`,
-`looks delete`, `style save` and `style delete`. IDs are lowercase letters, digits and hyphens, unique across
-built-in and custom entries. A kit's look must exist, and a look cannot be deleted while a custom kit uses it.
-Deleting a LUT removes it from clips, adjustments and custom looks alike.
+**Looks** are library `look` items (built-in `original`, `vivid`, `muted-film`, `black-white`, `bright-airy`,
+`moody`, or saved in the project or user library); there is no project-level look catalog and no style kit.
+Projects saved before this keep their top-level `looks` and `styleKits` arrays as unknown fields; opening one copies
+each of its `looks` into the project library once. Deleting a LUT removes it from clips and adjustments.
 
 ```json
 {"id": "fx1", "kind": "adjustment", "role": "adjustment", "name": "Adjustment 1", "items": [

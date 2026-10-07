@@ -74,7 +74,7 @@ arguments.
 | `voice check` / `voice fit` / `captions group` / `captions align` | read / edit | Voice panel takes, captions: check a take against its text, fit it to a slot, re-cut captions from word groups, captions from a script |
 | `platforms list` | read | None yet: platform facts (zones, length, loudness) with the project's overrides and each output's loudness target |
 | `review hook` | read | None yet: how the edit opens and closes (first words, titles, captions, cuts, described subjects; last title, words, cut) |
-| `beats grid` / `audio energy` | read | None yet: the stored beat grid with strengths, downbeats, fit and alternates; the music's energy curve with lift/drop/breath candidates |
+| `beats grid` / `audio energy` | read | None yet: the stored beat grid with strengths, downbeats, fit and alternates; the music's energy curve (level, onset, fullness); the agent picks lifts and drops |
 | `color measure` | read | None yet: colour of each clip as numbers, source or graded, the change a grade makes and the distance from the median clip |
 | `ui frames --compare graded\|source` | read | The viewer's Compare toggle, as one before/after grid per frame |
 | `review cuts` / `review sync` / `review window` / `timeline sheet` | read | None yet: every cut with kind and framing; cuts, titles and sound effects timed against beats and words (and a render against the timeline); the frames, level and words around a frame; contact sheets of the composed edit with zones per output |

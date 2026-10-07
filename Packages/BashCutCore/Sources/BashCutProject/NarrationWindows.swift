@@ -1,8 +1,8 @@
 import Foundation
 
 /// Where narration could go (P0-C3, `narration.windows`): stretches of at least `minSeconds` with no spoken word and no
-/// voiceover, each with its entry anchors (the last word before it, the first cut, beat and section inside), its owner
-/// (music, footage sound or silence, by what covers most of it), the shots under it with their described facts, the
+/// voiceover, each with its entry anchors (the last word before it, the first cut, beat and section inside), the
+/// share of it each sound covers (music items, footage sound; the agent decides who owns it), the shots under it with their described facts, the
 /// mix level when measured, and with a caller's rate the text budget in the content language's unit.
 public enum NarrationWindows {
     public static func json(
@@ -40,7 +40,7 @@ public enum NarrationWindows {
                 "section": sections.last { $0.at <= start }.map { .string($0.label) } ?? .null,
                 "sectionStartsInside": sections.first { $0.at > start && $0.at < end }.map { .string($0.label) } ?? .null,
             ])
-            row["owner"] = .string(owner(project, start: start, end: end, media: media))
+            row["covered"] = coverage(project, start: start, end: end, media: media)
             row["shots"] = .array(main.filter { $0.at < end && $0.end > start }.map { shot in
                 var facts: [String: JSONValue] = ["id": .string(shot.id), "at": .integer(shot.at), "end": .integer(shot.end)]
                 if let asset = shot.mediaID.flatMap({ media[$0] }), let description = asset.shotDescription {
@@ -70,17 +70,18 @@ public enum NarrationWindows {
         ])
     }
 
-    /// What covers most of the window: music items, the sound of footage on picture layers, or nothing.
-    static func owner(_ project: Project, start: Int, end: Int, media: [String: Media]) -> String {
+    /// The share (0–1) of the window that music items and the sound of footage on picture or dialogue layers cover.
+    static func coverage(_ project: Project, start: Int, end: Int, media: [String: Media]) -> JSONValue {
         let covered = { (items: [Item]) in
             items.reduce(0) { $0 + max(0, min($1.end, end) - max($1.at, start)) }
         }
         let music = covered(project.tracks.filter { $0.role == TrackRole.music && !$0.isMuted }.flatMap(\.items))
         let footage = covered(project.tracks.filter { ($0.kind == TrackKind.video || $0.role == TrackRole.dialogue) && !$0.isMuted }
             .flatMap(\.items).filter { item in item.mediaID.flatMap { media[$0]?.hasAudio } ?? false })
-        let half = (end - start) / 2
-        if music >= half, music >= footage { return "music" }
-        if footage >= half { return "footage" }
-        return "silence"
+        let length = Double(max(1, end - start))
+        return .object([
+            "music": .number(ReviewShots.rounded(min(1, Double(music) / length))),
+            "footage": .number(ReviewShots.rounded(min(1, Double(footage) / length))),
+        ])
     }
 }

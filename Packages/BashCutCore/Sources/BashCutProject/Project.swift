@@ -324,11 +324,11 @@ public struct Project: JSONObject {
             }
         }
     }
-    public init(name: String, fps: FrameRate = FrameRate(), contentLanguage: String = "vi") {
+    public init(name: String, fps: FrameRate = FrameRate(), contentLanguage: String? = nil) {
         self.init(fields: [
             "schema": .string(Self.schema), "id": .string(UUID().uuidString),
             "name": .string(name), "rev": .integer(0),
-            "contentLanguage": .string(contentLanguage), "media": .array([]),
+            "media": .array([]),
             "format": .object([
                 "width": .integer(1080), "height": .integer(1920),
                 "fps": fps.json, "sampleRate": .integer(48000),
@@ -336,6 +336,7 @@ public struct Project: JSONObject {
             "transitions": .array([]), "markers": .array([]), "targets": .object([:]),
             "audio": .object(["targetLUFS": .integer(-14), "normalizeEnabled": .bool(true)]),
         ])
+        if let contentLanguage, !contentLanguage.isEmpty { self["contentLanguage"] = .string(contentLanguage) }
         var music = Track(id: "a3", kind: "audio", role: "music")
         music["duckingEnabled"] = .bool(true)
         music["duckUnderSpeechDb"] = .integer(-14)

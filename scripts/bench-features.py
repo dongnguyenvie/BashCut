@@ -517,14 +517,8 @@ class Run:
                                                                  atFrame=0, duration=90))
         b.step("adjustment.add with LUT", lambda: edit("adjustment.add", lut=lut, lutStrength=0.6, atFrame=90,
                                                        duration=60))
-        _, clips = self.main_items()
-        b.step("looks.save from item", lambda: edit("looks.save", id="bench-look", title="Bench look",
-                                                    item=clips[0]["id"], exposure=0.1, saturation=1.2))
-        b.step("style.save", lambda: edit("style.save", id="bench-kit", title="Bench kit", look="bench-look",
-                                           captionPreset="bold-outline"))
-        b.step("style.apply", lambda: edit("style.apply", kit="bench-kit"), budget=500)
-        b.step("style.delete", lambda: edit("style.delete", id="bench-kit"))
-        b.step("looks.delete", lambda: edit("looks.delete", id="bench-look"))
+        b.step("adjustment.add with a library look", lambda: edit("adjustment.add", look="vivid", atFrame=0,
+                                                                   duration=30))
         b.step("project.format landscape fit then back", lambda: (
             edit("project.format", canvas="landscape", clips="fit"),
             expect(rpc("project.get")["format"].get("width", 0) > rpc("project.get")["format"].get("height", 0),

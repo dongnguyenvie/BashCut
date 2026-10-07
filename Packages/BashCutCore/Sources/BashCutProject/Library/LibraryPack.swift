@@ -48,16 +48,16 @@ public enum LibraryPack {
         return folder
     }
 
-    /// Items whose licence does not allow redistribution (P2-H8), with the reason: a stock-site licence or all rights
-    /// reserved. Items without a licence, or with terms BashCut cannot read, are listed by `unknownLicenses`.
+    /// Items whose own licence says `redistribute: false` (P2-H8), with the licence as shown. Items that do not say
+    /// are listed by `unknownLicenses`.
     public static func redistributionRefusals(_ items: [LibraryItem]) -> [(item: String, reason: String)] {
         items.compactMap { item in
             guard let terms = item.licenseTerms, terms.facts.redistribute == false else { return nil }
-            return (item.id, terms.text ?? terms.id.rawValue)
+            return (item.id, terms.displayName)
         }
     }
 
-    /// Items exported without knowing whether their licence allows it: no licence, or custom text.
+    /// Items exported without their licence saying whether redistribution is allowed.
     public static func unknownLicenses(_ items: [LibraryItem]) -> [String] {
         items.filter { item in
             item.scope != .builtIn && (item.licenseTerms.map { $0.facts.redistribute == nil } ?? true)

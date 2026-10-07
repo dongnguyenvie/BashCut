@@ -4,100 +4,31 @@ import Foundation
 /// audience, outputs, angle, length, ideas and references, each field stated by the user, inferred by the agent or
 /// confirmed) and the edit plan (mode, stage, sections with ranges and reasons, shot rows, script beats, decisions,
 /// frozen sections and the ranges chosen for the review profile). Both are saved with the project, so an agent can
-/// resume from them alone. Core checks their shape, not their content.
+/// resume from them alone. Both are free JSON; core reads only the few fields review uses, when present.
 public enum ProjectPlan {
-    public static let statuses = ["stated", "inferred", "confirmed"]
-    public static let briefFields = ["goal", "audience", "outputs", "angle", "lengthSeconds", "notes"]
-    public static let modes = ["create", "directed", "revision"]
-    public static let shotSources = ["footage", "stock", "generated"]
-
-    // MARK: Brief
-
-    /// A brief field: `{value, status, source?}`.
-    static func validateField(_ value: JSONValue, path: String) throws {
-        let fields = value.object
-        guard case .object = value, fields["value"] != nil,
-            fields["status"]?.string.map(statuses.contains) == true,
-            Set(fields.keys).isSubset(of: ["value", "status", "source"])
-        else { throw ProjectError.invalid("\(path): expected {value, status stated|inferred|confirmed, source?}") }
-    }
-
-    public static func validateBrief(_ value: JSONValue) throws {
-        guard case .object(let brief) = value else { throw ProjectError.invalid("brief: expected object") }
-        for key in brief.keys.sorted() {
-            switch key {
-            case _ where briefFields.contains(key): try validateField(brief[key] ?? .null, path: "brief.\(key)")
-            case "ideas", "references":
-                guard case .array(let list)? = brief[key], list.count <= 100,
-                    list.allSatisfy({ if case .object = $0 { return true } else { return false } })
-                else { throw ProjectError.invalid("brief.\(key): expected up to 100 objects") }
-            default: throw ProjectError.invalid("brief: unknown field \(key)")
-            }
+    /// Brief and plan are free JSON objects: the agent's notes, never validated on load (an unknown field must not
+    /// block a project). Only the setter checks that each is an object or null.
+    public static func validateNotes(_ value: JSONValue, key: String) throws {
+        switch value {
+        case .object, .null: return
+        default: throw ProjectError.invalid("\(key): expected an object")
         }
     }
 
-    // MARK: Plan
-
-    public static func validatePlan(_ value: JSONValue) throws {
-        guard case .object(let plan) = value else { throw ProjectError.invalid("plan: expected object") }
-        let allowed: Set<String> = ["mode", "stage", "options", "sections", "shots", "beats", "decisions", "ranges", "notes"]
-        if let unknown = plan.keys.sorted().first(where: { !allowed.contains($0) }) {
-            throw ProjectError.invalid("plan: unknown field \(unknown)")
-        }
-        if let mode = plan["mode"], mode.string.map(modes.contains) != true {
-            throw ProjectError.invalid("plan.mode: expected \(modes.joined(separator: ", "))")
-        }
-        let sections = try rows(plan["sections"], path: "plan.sections", required: ["id", "label"])
-        for (index, section) in sections.enumerated() {
-            if let length = section["lengthSeconds"] { try validateRange(length, path: "plan.sections[\(index)].lengthSeconds") }
-        }
-        guard Set(sections.compactMap { $0["id"]?.string }).count == sections.count else {
-            throw ProjectError.invalid("plan.sections: IDs must be unique")
-        }
-        try validateShots(plan["shots"])
-        _ = try rows(plan["beats"], path: "plan.beats", required: ["id", "text"])
-        _ = try rows(plan["decisions"], path: "plan.decisions", required: ["text"])
-        if let ranges = plan["ranges"] {
-            guard case .object(let map) = ranges else { throw ProjectError.invalid("plan.ranges: expected object") }
-            for (key, range) in map { try validateRange(range, path: "plan.ranges.\(key)") }
-        }
+    /// `{min, max}` read from `value` itself or its `value` field (the stated/inferred wrapper), when both are numbers.
+    public static func range(_ value: JSONValue?) -> (min: Double, max: Double)? {
+        guard let value else { return nil }
+        let fields = value.object["value"]?.object ?? value.object
+        guard let low = fields["min"]?.double, let high = fields["max"]?.double else { return nil }
+        return (low, high)
     }
 
-    /// Shot rows: `id` and `purpose`, an optional known size and source, `mustShow` as names.
-    static func validateShots(_ value: JSONValue?) throws {
-        let shots = try rows(value, path: "plan.shots", required: ["id", "purpose"])
-        for (index, shot) in shots.enumerated() {
-            if let size = shot["size"], size.string.map(MediaDescription.sizes.contains) != true {
-                throw ProjectError.invalid("plan.shots[\(index)].size: expected \(MediaDescription.sizes.joined(separator: ", "))")
-            }
-            if let source = shot["source"], source.string.map(shotSources.contains) != true {
-                throw ProjectError.invalid("plan.shots[\(index)].source: expected \(shotSources.joined(separator: ", "))")
-            }
-            if let tags = shot["mustShow"] {
-                guard case .array(let list) = tags, list.allSatisfy({ $0.string != nil }) else {
-                    throw ProjectError.invalid("plan.shots[\(index)].mustShow: expected names")
-                }
-            }
-        }
-    }
-
-    /// `{min, max, source?, reason?}` with min ≤ max.
-    static func validateRange(_ value: JSONValue, path: String) throws {
-        let fields = value.object
-        guard let low = fields["min"]?.double, let high = fields["max"]?.double, low.isFinite, high.isFinite, low <= high
-        else { throw ProjectError.invalid("\(path): expected {min, max} with min ≤ max") }
-    }
-
-    /// The objects of an optional list, each with `required` keys, at most 500.
-    static func rows(_ value: JSONValue?, path: String, required: [String]) throws -> [[String: JSONValue]] {
-        guard let value, value != .null else { return [] }
-        guard case .array(let list) = value, list.count <= 500 else { throw ProjectError.invalid("\(path): expected a list") }
-        return try list.enumerated().map { index, row in
-            guard case .object(let fields) = row, required.allSatisfy({ fields[$0] != nil }) else {
-                throw ProjectError.invalid("\(path)[\(index)]: expected an object with \(required.joined(separator: ", "))")
-            }
-            return fields
-        }
+    /// A list of strings read from `value` itself or its `value` field.
+    public static func strings(_ value: JSONValue?) -> [String]? {
+        guard let value else { return nil }
+        if let list = value.object["value"]?.array { return list.compactMap(\.string) }
+        if case .array(let list) = value { return list.compactMap(\.string) }
+        return nil
     }
 
     /// A short summary for `context.get`: the brief's goal and outputs with their status, and the plan's mode, stage,
@@ -123,14 +54,6 @@ public enum ProjectPlan {
     }
 }
 
-extension Project {
-    /// `brief` and `plan`, when present.
-    func validatePlanSettings() throws {
-        if let brief = self["brief"], brief != .null { try ProjectPlan.validateBrief(brief) }
-        if let plan = self["plan"], plan != .null { try ProjectPlan.validatePlan(plan) }
-    }
-}
-
 extension TimelineReview {
     /// The brief and plan against what was measured (P1-D1, P1-D3), as info: the edit's length against the brief's
     /// length range, the brief's outputs against `output.presets`, and each planned section's length range against
@@ -140,16 +63,14 @@ extension TimelineReview {
         let fps = project.fps.value
         let seconds = Double(project.duration) / fps
         let brief = project["brief"]?.object ?? [:]
-        if let range = brief["lengthSeconds"]?.object["value"]?.object, let low = range["min"]?.double,
-            let high = range["max"]?.double, seconds < low || seconds > high
-        {
+        if let length = ProjectPlan.range(brief["lengthSeconds"]), seconds < length.min || seconds > length.max {
             issues.append(
                 ReviewIssue(
                     id: "brief-length", title: "Length outside the brief",
-                    detail: String(format: "The brief asks %.0f–%.0f s; the edit runs %.1f s.", low, high, seconds),
+                    detail: String(format: "The brief asks %.0f–%.0f s; the edit runs %.1f s.", length.min, length.max, seconds),
                     frame: 0, severity: .info))
         }
-        if let outputs = brief["outputs"]?.object["value"]?.array.compactMap(\.string), !outputs.isEmpty,
+        if let outputs = ProjectPlan.strings(brief["outputs"]), !outputs.isEmpty,
             Set(outputs) != Set(project.outputPresets)
         {
             issues.append(
@@ -163,17 +84,17 @@ extension TimelineReview {
         }
         let markers = project.sectionMarkers
         for section in project["plan"]?.object["sections"]?.array.map(\.object) ?? [] {
-            guard let range = section["lengthSeconds"]?.object, let low = range["min"]?.double, let high = range["max"]?.double,
+            guard let length = ProjectPlan.range(section["lengthSeconds"]),
                 let index = markers.firstIndex(where: { $0.id == section["id"]?.string || $0.label == section["label"]?.string })
             else { continue }
             let end = index + 1 < markers.count ? markers[index + 1].at : project.duration
             let measured = Double(end - markers[index].at) / fps
-            guard measured < low || measured > high else { continue }
+            guard measured < length.min || measured > length.max else { continue }
             let label = section["label"]?.string ?? markers[index].label
             issues.append(
                 ReviewIssue(
                     id: "plan-section-" + (section["id"]?.string ?? markers[index].id), title: "Section \(label) off plan",
-                    detail: String(format: "Planned %.0f–%.0f s, measured %.1f s.", low, high, measured),
+                    detail: String(format: "Planned %.0f–%.0f s, measured %.1f s.", length.min, length.max, measured),
                     frame: markers[index].at, endFrame: end, severity: .info))
         }
         return issues

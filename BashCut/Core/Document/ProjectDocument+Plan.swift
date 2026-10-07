@@ -8,7 +8,7 @@ extension ProjectDocument {
     func registerPlanCommands() {
         handle("project.brief") { document, _, _ in document.project["brief"] ?? .null }
         handle("project.credits") { document, _, _ in
-            ProjectCredits.of(document.project, platforms: document.reviewTargets.platforms).json
+            ProjectCredits.of(document.project).json
         }
         handleAuthored("project.set-brief") { document, arguments, author in
             try document.setPlanObject("brief", arguments, author: author, label: "Set brief")
@@ -35,6 +35,7 @@ extension ProjectDocument {
             next = .object(current)
         }
         do {
+            try ProjectPlan.validateNotes(next, key: key)
             let revision = try commit(
                 .setProjectProperties(patch: [key: next]), label: label, author: author,
                 baseRevision: arguments.int("baseRev"))

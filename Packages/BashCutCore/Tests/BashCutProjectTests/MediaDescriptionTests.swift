@@ -50,12 +50,22 @@ struct MediaDescriptionTests {
         #expect(cleared.media[0].fields["description"] == nil)
     }
 
-    @Test("Unknown fields and values, bad ranges and overlaps are rejected")
+    @Test("Open labels and extra fields are kept")
+    func open() throws {
+        let value = description([shot(0, 2, ["size": .string("medium"), "tags": .array([.string("food")]),
+                                            "mood": .string("calm")])])
+        let stored = try #require(try project().applying(.setMediaDescription(media: "m", description: value))
+            .project.media[0].shotDescription)
+        #expect(stored.shots[0].size == "medium")
+        #expect(stored.shots[0].json.object["mood"] == .string("calm"))
+        #expect(stored.shots[0].tags == ["food"])
+    }
+
+    @Test("Bad labels, bad ranges and overlaps are rejected")
     func closed() {
         let project = project()
         let cases: [(JSONValue, String)] = [
-            (description([shot(0, 2, ["size": .string("medium")])]), "size: expected one of"),
-            (description([shot(0, 2, ["pairsWith": .string("x")])]), "unknown field pairsWith"),
+            (description([shot(0, 2, ["size": .string("")])]), "size: expected a label"),
             (description([shot(0, 11)]), "start and end"),
             (description([shot(2, 1)]), "start and end"),
             (description([shot(0, 3), shot(2, 5)]), "overlaps"),
@@ -77,7 +87,7 @@ struct MediaDescriptionTests {
     @Test("A stored invalid description fails project validation")
     func validation() {
         var project = project()
-        project.media[0].fields["description"] = description([shot(0, 2, ["move": .string("dolly")])])
+        project.media[0].fields["description"] = description([shot(0, 2, ["move": .integer(3)])])
         #expect(throws: ProjectError.self) { try project.validate() }
     }
 

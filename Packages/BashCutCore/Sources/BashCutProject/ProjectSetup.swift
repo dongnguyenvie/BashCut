@@ -21,7 +21,8 @@ public struct ProjectSetup: Sendable {
     public var canvasFromFirstClip = true
     public var resolution: Resolution = .fullHD
     public var rate: Rate = .ntsc
-    public var contentLanguage = "vi"
+    /// Empty: unknown (providers detect it).
+    public var contentLanguage = ""
 
     public init() {}
 
@@ -40,8 +41,8 @@ public struct ProjectSetup: Sendable {
             throw ProjectError.invalid("Use a project name with letters or numbers, up to 120 characters.")
         }
         let language = contentLanguage.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard language.count <= 64,
-            language.range(of: "^[A-Za-z]{2,8}(-[A-Za-z0-9]{1,8})*$", options: .regularExpression) != nil
+        guard language.isEmpty || (language.count <= 64
+            && language.range(of: "^[A-Za-z]{2,8}(-[A-Za-z0-9]{1,8})*$", options: .regularExpression) != nil)
         else { throw ProjectError.invalid("Use a language tag such as vi, en or en-US.") }
         var project = Project(name: title, fps: rate.fps, contentLanguage: language)
         var format = project["format"]?.object ?? [:]

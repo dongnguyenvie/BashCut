@@ -58,7 +58,7 @@ struct ReviewInvariantsTests {
         #expect(issues.map(\.id) == ["glyph-t1"] && issues[0].severity == .error)
     }
 
-    @Test("A fresh project reports only invariant errors; text overlap and recognition loops are notes")
+    @Test("A fresh project reports only invariant errors and no notes of its own")
     func onlyInvariants() {
         var (project, _) = project([Item(id: "a", media: "m", at: 0, duration: 60), Item(id: "b", media: "m", at: 90, duration: 30)])
         var caption = Item(id: "loop", at: 0, duration: 400)
@@ -68,7 +68,7 @@ struct ReviewInvariantsTests {
         let issues = TimelineReview.run(project)
         // The 400-frame caption also runs past Main's end.
         #expect(issues.filter { $0.severity == .error }.map(\.id) == ["gap-b", "gap-end"])
-        #expect(issues.first { $0.id == "loop-loop" }?.severity == .info)
+        #expect(!issues.contains { $0.id.hasPrefix("loop-") })
         #expect(!issues.contains { $0.severity == .warning })
     }
 
@@ -76,7 +76,7 @@ struct ReviewInvariantsTests {
     func accepted() {
         var (project, _) = project([Item(id: "a", media: "m", at: 0, duration: 60), Item(id: "b", media: "m", at: 90, duration: 30)])
         project["review"] = .object([
-            "severities": .object(["framing": .string("warning")]),
+            "severities": .object(["shot-short": .string("warning")]), "minShotSeconds": .number(1.5),
             "accepted": .object([
                 "gap-b": .object(["reason": .string("on purpose")]),
             ]),
@@ -88,12 +88,12 @@ struct ReviewInvariantsTests {
         let issues = TimelineReview.run(project)
         #expect(issues.first { $0.id == "gap-b" }?.accepted == nil)
         project["review"] = .object([
-            "severities": .object(["framing": .string("warning")]),
-            "accepted": .object(["framing-c": .object(["reason": .string("same angle on purpose")])]),
+            "severities": .object(["shot-short": .string("warning")]), "minShotSeconds": .number(1.5),
+            "accepted": .object(["shot-short-c": .object(["reason": .string("same angle on purpose")])]),
             "blockExport": .array([.string("gap")]),
         ])
         let kept = TimelineReview.run(project)
-        let framing = kept.first { $0.id == "framing-c" }
+        let framing = kept.first { $0.id == "shot-short-c" }
         #expect(framing?.accepted == "same angle on purpose")
         #expect(framing?.json.object["accepted"]?.object["reason"] == .string("same angle on purpose"))
         let summary = ReviewSummary(kept)

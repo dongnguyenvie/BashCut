@@ -12,8 +12,8 @@ extension TimelineReview {
     }
 
     /// The last normalized export of this revision against its own target (P0-K2): true peak over the target is a
-    /// platform fact (error); loudness off by more than `review.loudnessToleranceLU` is an error, and without that
-    /// limit the measurement is reported as info.
+    /// platform fact (error); loudness off by more than `review.loudnessToleranceLU` is an error (not checked
+    /// without that limit; `audio.measure` reports the numbers).
     static func loudnessIssues(_ project: Project, context: ReviewContext, profile: ReviewProfile) -> [ReviewIssue] {
         let normalize = ReviewFix(
             command: "export.start",
@@ -29,29 +29,23 @@ extension TimelineReview {
         }
         var issues: [ReviewIssue] = []
         let measured = String(format: "%.1f LUFS, true peak %.1f dBTP", loudness.integratedLUFS, loudness.truePeakDbTP)
-        if let target = loudness.targetLUFS {
-            let tolerance = profile["loudnessToleranceLU"]
-            let off = abs(loudness.integratedLUFS - target)
-            if let tolerance, off > tolerance {
-                issues.append(
-                    ReviewIssue(
-                        id: "loudness", title: "Loudness off target",
-                        detail: String(format: "%@; the export's target is %.0f ±%.1f LU.", measured, target, tolerance),
-                        frame: 0, severity: .error, fix: normalize))
-            } else if tolerance == nil {
-                issues.append(
-                    ReviewIssue(
-                        id: "loudness", title: "Loudness measured",
-                        detail: String(format: "%@; the export's target is %.0f LUFS.", measured, target), frame: 0,
-                        severity: .info))
-            }
+        if let target = loudness.targetLUFS, let tolerance = profile["loudnessToleranceLU"],
+            abs(loudness.integratedLUFS - target) > tolerance
+        {
+            issues.append(
+                ReviewIssue(
+                    id: "loudness", title: "Loudness off target",
+                    detail: String(format: "%@; the export's target is %.0f ±%.1f LU.", measured, target, tolerance),
+                    frame: 0, severity: .error, fix: normalize,
+                    facts: ["lufs": fact(loudness.integratedLUFS), "target": .number(target), "tolerance": .number(tolerance)]))
         }
         if let ceiling = loudness.maxTruePeakDbTP, loudness.truePeakDbTP > ceiling {
             issues.append(
                 ReviewIssue(
                     id: "true-peak", title: "True peak too high",
                     detail: String(format: "%.1f dBTP over the export's %.0f dBTP ceiling.", loudness.truePeakDbTP, ceiling),
-                    frame: 0, severity: .error, fix: normalize))
+                    frame: 0, severity: .error, fix: normalize,
+                    facts: ["truePeak": fact(loudness.truePeakDbTP), "ceiling": .number(ceiling)]))
         }
         return issues
     }
@@ -77,45 +71,40 @@ extension TimelineReview {
         }
     }
 
-    /// Stretches with no audible layer: each one longer than `review.maxSilenceSeconds`, or without that limit the
-    /// longest one as info.
+    /// Stretches with no audible layer longer than `review.maxSilenceSeconds` (nothing without it).
     static func silenceIssues(_ project: Project, audible: [Track], profile: ReviewProfile) -> [ReviewIssue] {
-        let found = gaps(in: audible.flatMap(\.items), from: 0, to: project.duration)
-        return limited(found, limit: profile["maxSilenceSeconds"], fps: project.fps.value) { gap, limited in
-            ReviewIssue(
-                id: "silence-" + anchor(project, frame: gap.start), title: limited ? "Dead air" : "Longest stretch without sound",
-                detail: String(format: "%.1f s with no sound at all.", Double(gap.end - gap.start) / project.fps.value),
-                frame: gap.start, severity: limited ? .warning : .info,
-                fix: ReviewFix(hint: "Place music or room tone under the gap, close it, or keep the silence on purpose."))
+        guard let limit = profile["maxSilenceSeconds"] else { return [] }
+        let fps = project.fps.value
+        return gaps(in: audible.flatMap(\.items), from: 0, to: project.duration, over: limit, fps: fps).map { gap in
+            let seconds = Double(gap.end - gap.start) / fps
+            return ReviewIssue(
+                id: "silence-" + anchor(project, frame: gap.start), title: "Dead air",
+                detail: String(format: "%.1f s with no sound at all.", seconds),
+                frame: gap.start, endFrame: gap.end, facts: ["seconds": fact(seconds), "maximum": .number(limit)])
         }
     }
 
-    /// Gaps inside the music bed: each one longer than `review.maxMusicGapSeconds`, or without that limit the longest
-    /// one as info.
+    /// Gaps inside the music bed longer than `review.maxMusicGapSeconds` (nothing without it).
     static func musicDropouts(_ project: Project, audible: [Track], profile: ReviewProfile) -> [ReviewIssue] {
+        guard let limit = profile["maxMusicGapSeconds"] else { return [] }
         let music = audible.filter { $0.role == TrackRole.music }.flatMap(\.items)
         guard let first = music.map(\.at).min(), let last = music.map(\.end).max() else { return [] }
-        let found = gaps(in: music, from: first, to: last)
-        return limited(found, limit: profile["maxMusicGapSeconds"], fps: project.fps.value) { gap, limited in
-            ReviewIssue(
-                id: "music-gap-" + anchor(project, frame: gap.start), title: limited ? "Music drops out" : "Longest gap in the music",
-                detail: String(
-                    format: "The music stops for %.1f s and comes back.", Double(gap.end - gap.start) / project.fps.value),
-                frame: gap.start, severity: limited ? .warning : .info,
-                fix: ReviewFix(hint: "Extend the music item, add the next one at its end, or keep the pause on purpose."))
+        let fps = project.fps.value
+        return gaps(in: music, from: first, to: last, over: limit, fps: fps).map { gap in
+            let seconds = Double(gap.end - gap.start) / fps
+            return ReviewIssue(
+                id: "music-gap-" + anchor(project, frame: gap.start), title: "Music drops out",
+                detail: String(format: "The music stops for %.1f s and comes back.", seconds),
+                frame: gap.start, endFrame: gap.end, facts: ["seconds": fact(seconds), "maximum": .number(limit)])
         }
     }
 
-    /// Gaps over `limit` seconds, or without a limit only the longest gap.
-    static func limited(
-        _ gaps: [(start: Int, end: Int)], limit: Double?, fps: Double,
-        issue: ((start: Int, end: Int), Bool) -> ReviewIssue
-    ) -> [ReviewIssue] {
-        guard let limit else {
-            return gaps.max { $0.end - $0.start < $1.end - $1.start }.map { [issue($0, false)] } ?? []
-        }
+    /// The gaps longer than `limit` seconds.
+    static func gaps(
+        in items: [Item], from start: Int, to end: Int, over limit: Double, fps: Double
+    ) -> [(start: Int, end: Int)] {
         let frames = Int((limit * fps).rounded(.up))
-        return gaps.filter { $0.end - $0.start > frames }.map { issue($0, true) }
+        return gaps(in: items, from: start, to: end).filter { $0.end - $0.start > frames }
     }
 
     static func speechRegions(_ project: Project) -> [Item] {

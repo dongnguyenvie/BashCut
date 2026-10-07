@@ -25,38 +25,37 @@ extension TimelineReview {
         return issues
     }
 
-    /// Shots on Main against the project's `minShotSeconds`/`maxShotSeconds`; without them, the shortest and the longest
-    /// shot as info. With `stillMotion`, a long shot is a warning only when its picture moves less; without it, or
-    /// without a measurement, long shots are info.
+    /// Shots on Main against the project's `minShotSeconds`/`maxShotSeconds` (nothing without them). With
+    /// `stillMotion`, a long shot is a warning only when its picture moves less; without it, or without a measurement,
+    /// long shots are info.
     static func shotIssues(_ project: Project, profile: ReviewProfile, picture: ReviewPicture?) -> [ReviewIssue] {
         let fps = project.fps.value
         let main = project.tracks.first { $0.role == "main" }?.items.sorted { $0.at < $1.at } ?? []
-        guard !main.isEmpty else { return [] }
         let seconds = { (shot: Item) in Double(shot.duration) / fps }
-        let short = profile["minShotSeconds"].map { limit in main.filter { seconds($0) < limit } }
-            ?? [main.min { $0.duration < $1.duration }].compactMap { $0 }
-        let long = profile["maxShotSeconds"].map { limit in main.filter { seconds($0) > limit } }
-            ?? [main.max { $0.duration < $1.duration }].compactMap { $0 }
-        var issues: [ReviewIssue] = short.map { shot in
-            ReviewIssue(
-                id: "shot-short-" + shot.id, title: profile["minShotSeconds"] == nil ? "Shortest shot" : "Very short shot",
-                detail: String(format: "%.2f s", seconds(shot))
-                    + (profile["minShotSeconds"].map { String(format: "; the project's shortest is %.2f s.", $0) } ?? "."),
-                frame: shot.at, endFrame: shot.end, severity: .info,
-                fix: ReviewFix(hint: "Lengthen it, remove it, or keep it as a deliberate beat."))
+        var issues: [ReviewIssue] = []
+        if let minimum = profile["minShotSeconds"] {
+            issues += main.filter { seconds($0) < minimum }.map { shot in
+                ReviewIssue(
+                    id: "shot-short-" + shot.id, title: "Very short shot",
+                    detail: String(format: "%.2f s; the project's shortest is %.2f s.", seconds(shot), minimum),
+                    frame: shot.at, endFrame: shot.end, severity: .info,
+                    facts: ["seconds": fact(seconds(shot)), "minimum": .number(minimum)])
+            }
         }
-        for shot in long where profile["minShotSeconds"] != nil || !short.contains(where: { $0.id == shot.id }) {
+        guard let maximum = profile["maxShotSeconds"] else { return issues }
+        for shot in main where seconds(shot) > maximum {
             let motion = picture.flatMap { meanChange($0, from: shot.at, to: shot.end) }
             if let still = profile["stillMotion"], let motion, motion >= still { continue }
-            let warn = profile["maxShotSeconds"] != nil && profile["stillMotion"] != nil && motion != nil
+            var facts: [String: JSONValue] = ["seconds": fact(seconds(shot)), "maximum": .number(maximum)]
+            if let motion { facts["meanChange"] = fact(motion) }
             issues.append(
                 ReviewIssue(
-                    id: "shot-long-" + shot.id, title: profile["maxShotSeconds"] == nil ? "Longest shot" : "Long shot",
+                    id: "shot-long-" + shot.id, title: "Long shot",
                     detail: String(format: "%.1f s", seconds(shot))
                         + (motion.map { String(format: ", mean picture change %.3f", $0) } ?? " (picture not measured)")
-                        + (profile["maxShotSeconds"].map { String(format: "; the project's longest is %.0f s.", $0) } ?? "."),
-                    frame: shot.at, endFrame: shot.end, severity: warn ? .warning : .info,
-                    fix: ReviewFix(hint: "Split it, add a cutaway, animate it, or keep it on purpose.")))
+                        + String(format: "; the project's longest is %.0f s.", maximum),
+                    frame: shot.at, endFrame: shot.end,
+                    severity: profile["stillMotion"] != nil && motion != nil ? .warning : .info, facts: facts))
         }
         return issues
     }
@@ -73,13 +72,14 @@ extension TimelineReview {
                 id: "black-" + anchor(project, frame: start), title: edge ? "Black at the edge of the edit" : "Black picture",
                 detail: String(format: "%.1f s of black or empty picture from frame %d.", seconds, start),
                 frame: start, endFrame: end, severity: edge ? .info : .error,
-                fix: ReviewFix(hint: "Check for an offline or missing clip, a layer hiding the picture, or a gap under it."))
+                facts: ["seconds": fact(seconds), "edge": .bool(edge)])
         }
     }
 
     /// Unchanged picture outside freeze frames placed on purpose: each run longer than `review.maxStillSeconds`
-    /// (warning), or without it the longest run as info.
+    /// (warning); nothing without it.
     static func stillIssues(_ project: Project, picture: ReviewPicture, profile: ReviewProfile) -> [ReviewIssue] {
+        guard let limit = profile["maxStillSeconds"] else { return [] }
         let fps = project.fps.value
         let freezes = project.tracks.filter { $0.role == "main" }.flatMap(\.items).filter { $0["freezeFrame"] != nil }
         let samples = picture.samples
@@ -88,37 +88,28 @@ extension TimelineReview {
             let index = samples.firstIndex { $0.frame == first } ?? 0
             return (index > 0 ? samples[index - 1].frame : first, end)
         }.filter { start, end in !freezes.contains(where: { $0.at <= start && $0.end >= end }) }
-        let limit = profile["maxStillSeconds"]
-        let flagged = limit.map { limit in still.filter { Double($0.1 - $0.0) / fps > limit } }
-            ?? [still.max { $0.1 - $0.0 < $1.1 - $1.0 }].compactMap { $0 }
-        return flagged.map { start, end in
-            ReviewIssue(
-                id: "still-" + anchor(project, frame: start), title: limit == nil ? "Longest unchanged picture" : "Frozen picture",
-                detail: String(format: "%.1f s without any change", Double(end - start) / fps)
-                    + (limit.map { String(format: "; the project's limit is %.0f s.", $0) } ?? "."),
-                frame: start, endFrame: end, severity: limit == nil ? .info : .warning,
-                fix: ReviewFix(hint: "Animate it, cut sooner, put b-roll over it, or keep it on purpose."))
+        return still.filter { Double($0.1 - $0.0) / fps > limit }.map { start, end in
+            let seconds = Double(end - start) / fps
+            return ReviewIssue(
+                id: "still-" + anchor(project, frame: start), title: "Frozen picture",
+                detail: String(format: "%.1f s without any change; the project's limit is %.0f s.", seconds, limit),
+                frame: start, endFrame: end, severity: .warning,
+                facts: ["seconds": fact(seconds), "maximum": .number(limit)])
         }
     }
 
-    /// Hard cuts whose two sides differ less than the project's `review.jumpCutChange` (not checked without it).
-    /// Cuts between the same source and transform are already "Repeated framing". The fix is a hint: how far to
-    /// reframe, or whether to cut away instead, is the agent's choice (#468).
+    /// Hard cuts whose two sides differ less than the project's `review.jumpCutChange` (not checked without it),
+    /// including cuts between the same source and transform. How far to reframe, or whether to cut away instead, is
+    /// the agent's choice (#468).
     static func jumpCutIssues(_ project: Project, picture: ReviewPicture, profile: ReviewProfile) -> [ReviewIssue] {
         guard let limit = profile["jumpCutChange"] else { return [] }
         let items = Dictionary(project.tracks.flatMap(\.items).map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-        let main = project.tracks.first { $0.role == "main" }?.items.sorted { $0.at < $1.at } ?? []
-        let previous = Dictionary(zip(main.dropFirst(), main).map { ($0.id, $1) }, uniquingKeysWith: { first, _ in first })
         return ReviewPicture.hardCuts(project).compactMap { cut in
-            guard let change = picture.cuts[cut.item], change < limit,
-                let right = items[cut.item], let left = previous[cut.item],
-                !(left.mediaID == right.mediaID && left["transform"] == right["transform"])
-            else { return nil }
+            guard let change = picture.cuts[cut.item], change < limit, let right = items[cut.item] else { return nil }
             return ReviewIssue(
                 id: "jump-" + right.id, title: "Jump cut",
                 detail: String(format: "The picture changes only %.0f%% across this cut.", change * 100),
-                frame: right.at,
-                fix: ReviewFix(hint: "Reframe one side (review shots gives each shot's scale headroom) or put a cutaway between them."))
+                frame: right.at, facts: ["change": fact(change), "minimum": .number(limit)])
         }
     }
 

@@ -47,9 +47,11 @@ extension ProjectDocument {
 
     /// Transcribes the listed media (every video and audio media when nil) one after another, reusing stored
     /// transcripts unless `force`.
-    func startMediaTranscribe(mediaID: String?, provider: String?, force: Bool, author: Author) throws -> JSONValue {
+    func startMediaTranscribe(
+        mediaID: String?, provider: String?, force: Bool, author: Author, arguments: CommandArguments? = nil
+    ) async throws -> JSONValue {
         let selected = try mediaID.map { [try analysisSource($0).media] } ?? project.media.filter { !$0.isImage }
-        return try startCapabilityJob("media.transcribe", author: author) { document in
+        return try await startCapabilityJob("media.transcribe", author: author, arguments: arguments) { document in
             var results: [JSONValue] = []
             for media in selected {
                 try Task.checkCancellation()
@@ -77,9 +79,9 @@ extension ProjectDocument {
         handle("media.resolve-range") { document, arguments, _ in try await document.resolveRange(arguments) }
         handle("captions.find") { document, arguments, _ in await document.findSpoken(try arguments.string("text")) }
         handleAuthored("media.transcribe") { document, arguments, author in
-            try document.startMediaTranscribe(
+            try await document.startMediaTranscribe(
                 mediaID: arguments.optionalString("media"), provider: arguments.optionalString("provider"),
-                force: arguments.bool("force"), author: author)
+                force: arguments.bool("force"), author: author, arguments: arguments)
         }
         handle("media.transcript") { document, arguments, _ in
             let mediaID = try arguments.string("media")

@@ -117,7 +117,7 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
 - `review hook` gives the opening and close as facts; the review's hook check runs only with a project
   `review.hookSeconds` and no longer judges what the opening text says.
 - `beats detect` keeps the provider's grid v2 per file (strengths, kick-phase downbeats, confidence, fit,
-  alternates; `beats grid`), and `audio energy` gives the energy curve with lift/drop/breath candidates.
+  alternates; `beats grid`), and `audio energy` gives the energy curve (picking lifts and drops is the agent's).
 - `color measure` gives each clip's luma percentiles, saturation, tint per band and clipped/crushed shares from
   source frames or the edit as graded, the change a grade makes (with mean ΔE) and each clip's distance from the
   median clip.
