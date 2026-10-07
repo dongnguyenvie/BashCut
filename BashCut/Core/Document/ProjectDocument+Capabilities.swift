@@ -8,7 +8,7 @@ import Foundation
 
 private let capabilityForMethod = [
     "captions.generate": "captions.transcribe", "beats.detect": "audio.beats", "voice.speak": "voice.synthesize",
-    "audio.measure": "audio.loudness", "media.sync": "audio.sync",
+    "audio.measure": "audio.loudness", "media.sync": "audio.sync", "media.transcribe": "captions.transcribe",
 ]
 
 extension ProjectDocument {
@@ -16,30 +16,53 @@ extension ProjectDocument {
 
     // MARK: Shared actions for native panels and automation
 
-    /// Transcribes one project media item and imports the SRT as one undoable edit.
-    /// With `range` (source seconds), only that stretch is transcribed and replaced.
+    /// Transcribes one project media item and imports its captions as one undoable edit. The whole file is
+    /// transcribed once and kept as its source transcript (`media.transcribe`); later calls place captions from it
+    /// unless `fresh`, or when it was made in another language or by another provider than `provider`.
+    /// With `range` (source seconds), only that stretch is replaced; without a stored transcript only that stretch
+    /// is transcribed (and not kept). Returns how the words were found: `stored`, `transcribed` or `range`.
+    @discardableResult
     func generateCaptions(
         mediaID: String, replace: Bool, provider: String? = nil, wordStyle: String? = nil,
-        range: ClosedRange<Double>? = nil, author: Author = .user
-    ) async throws {
-        let (root, _, url) = try capabilityMedia(mediaID)
+        range: ClosedRange<Double>? = nil, fresh: Bool = false, author: Author = .user
+    ) async throws -> String {
         let session = sessionID
-        let generated = try await plugins.running("captions.transcribe") {
+        let phrases: [SubRip.Cue], words: [CaptionWords.Timed], provenance: [String: JSONValue], how: String
+        if !fresh, let stored = try await reusableTranscript(mediaID, provider: provider) {
+            (phrases, words, provenance, how) = (stored.phrases, stored.words, stored.provider, "stored")
+        } else if range == nil {
+            let transcript = try await transcribeSource(mediaID, provider: provider)
+            (phrases, words, provenance, how) = (transcript.phrases, transcript.words, transcript.provider, "transcribed")
+        } else {
+            let generated = try await transcribe(mediaID, provider: provider, range: range)
+            (phrases, words, provenance, how) = (
+                try SubRip.cues(generated.text), generated.words, generated.provenance.json, "range"
+            )
+        }
+        try ensureSession(session)
+        try commit(
+            project.importingCues(
+                phrases, replace: replace, provenance: provenance, media: mediaID, words: words, wordStyle: wordStyle,
+                range: range),
+            label: "Generate captions", author: author)
+        emitPluginEvent(.captionsGenerated, [
+            "media": .string(mediaID), "provider": .object(provenance), "rev": .integer(project.revision),
+        ])
+        return how
+    }
+
+    /// Runs `captions.transcribe` on one media (or the `range` of it, in source seconds).
+    func transcribe(
+        _ mediaID: String, provider: String?, range: ClosedRange<Double>? = nil
+    ) async throws -> GeneratedPluginCaptions {
+        let (root, _, url) = try capabilityMedia(mediaID)
+        return try await plugins.running("captions.transcribe") {
             try await plugins.service.transcribe(
                 mediaURL: url, language: contentLanguage, range: range,
                 preferredProvider: provider ?? project.preferredProvider(for: "captions.transcribe"),
                 projectRoot: root,
                 outputRoot: root.appendingPathComponent("subtitles/generated", isDirectory: true))
         }
-        try ensureSession(session)
-        try commit(
-            project.importingSubRip(
-                generated.text, replace: replace, provenance: generated.provenance.json, media: mediaID,
-                words: generated.words, wordStyle: wordStyle, range: range),
-            label: "Generate captions", author: author)
-        emitPluginEvent(.captionsGenerated, [
-            "media": .string(mediaID), "provider": .object(generated.provenance.json), "rev": .integer(project.revision),
-        ])
     }
 
     /// Detects beats in an audio media item and maps them through its timeline items to integer frames.
@@ -245,11 +268,12 @@ extension ProjectDocument {
                 guard upper > lower else { throw RPCFailure(-32602, "to must be after from") }
                 range = lower...upper
             }
+            let fresh = arguments.bool("fresh")
             return try document.startCapabilityJob("captions.generate", author: author) { document in
-                try await document.generateCaptions(
+                let words = try await document.generateCaptions(
                     mediaID: media, replace: replace, provider: provider, wordStyle: wordStyle, range: range,
-                    author: author)
-                return .object(["rev": .integer(document.project.revision)])
+                    fresh: fresh, author: author)
+                return .object(["rev": .integer(document.project.revision), "transcript": .string(words)])
             }
         }
         handleAuthored("audio.measure") { document, arguments, author in
@@ -383,7 +407,7 @@ extension ProjectDocument {
         ])
     }
 
-    private func startCapabilityJob(
+    func startCapabilityJob(
         _ method: String, author: Author,
         work: @escaping @MainActor (ProjectDocument) async throws -> JSONValue
     ) throws -> JSONValue {

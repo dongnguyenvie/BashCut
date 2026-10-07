@@ -14,7 +14,7 @@ public enum CommandCatalog {
     public static let exportPresets = OutputPresetName.all
 
     public static let specs: [CommandSpec] = readSpecs + projectSpecs + editSpecs + captionSpecs + layerSpecs + styleSpecs
-        + formatSpecs + clipSpecs + capabilitySpecs + analysisSpecs + mediaAnalysisSpecs + pluginSpecs + pluginViewSpecs
+        + formatSpecs + clipSpecs + capabilitySpecs + analysisSpecs + mediaAnalysisSpecs + sourceTranscriptSpecs + pluginSpecs + pluginViewSpecs
         + storageSpecs + agentSpecs + appSpecs + chatSpecs
         + privilegedSpecs + uiSpecs + toolSpecs + knowledgeSpecs + skillSpecs + librarySpecs + fontSpecs
 
@@ -181,8 +181,10 @@ public enum CommandCatalog {
             parameters: [CommandParameter("job", .string, "Job ID", required: true, cli: .positional)]),
         CommandSpec(
             "captions.generate", .edit,
-            "Transcribe project media with a captions.transcribe provider and import the captions as one undoable edit. "
-                + "Captions follow the clips where the media is heard (trim, position, speed): place the clips first.",
+            "Place captions of project media as one undoable edit, from its stored transcript (media.transcribe) or by "
+                + "transcribing it with a captions.transcribe provider (the whole file is kept as its transcript). "
+                + "Captions follow the clips where the media is heard (trim, position, speed): place the clips first. "
+                + "The job's result says transcript: stored, transcribed or range (only from/to transcribed).",
             parameters: [
                 CommandParameter("media", .string, "Project media ID", required: true, cli: .option("media")),
                 CommandParameter("replace", .boolean, "Replace this media's captions", default: .bool(false), cli: .flag("replace")),
@@ -193,7 +195,7 @@ public enum CommandCatalog {
                                  cli: .option("from")),
                 CommandParameter("to", .number, "Transcribe only up to this source second of the media", range: 0...86_400,
                                  cli: .option("to")),
-                provider,
+                provider, freshTranscript,
             ],
             execution: .job),
         CommandSpec(

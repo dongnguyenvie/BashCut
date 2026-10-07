@@ -5,10 +5,16 @@ public enum SubRip {
     public static let maximumBytes = 4 * 1024 * 1024
 
     /// One cue in seconds, before it is placed on frames.
-    public struct Cue: Sendable, Equatable {
+    public struct Cue: Codable, Sendable, Equatable {
         public let start: Double
         public let end: Double
         public let text: String
+
+        public init(start: Double, end: Double, text: String) {
+            self.start = start
+            self.end = end
+            self.text = text
+        }
 
         /// The part of the cue inside `range`, or nil when it falls outside.
         func clipped(to range: ClosedRange<Double>) -> Cue? {
@@ -127,12 +133,22 @@ extension Project {
         _ text: String, replace: Bool = false, provenance: [String: JSONValue]? = nil, media: String? = nil,
         words: [CaptionWords.Timed] = [], wordStyle: String? = nil, range: ClosedRange<Double>? = nil
     ) throws -> EditOperation {
+        try importingCues(
+            SubRip.cues(text), replace: replace, provenance: provenance, media: media, words: words,
+            wordStyle: wordStyle, range: range)
+    }
+
+    /// `importingSubRip` for cues already read, such as the phrases of a stored source transcript.
+    public func importingCues(
+        _ cues: [SubRip.Cue], replace: Bool = false, provenance: [String: JSONValue]? = nil, media: String? = nil,
+        words: [CaptionWords.Timed] = [], wordStyle: String? = nil, range: ClosedRange<Double>? = nil
+    ) throws -> EditOperation {
         try validate()
         guard let captions = tracks.first(where: { $0.role == "captions" }) else {
             throw ProjectError.invalid("Caption track is missing")
         }
         let placed = media.map { id in tracks.contains { $0.items.contains { $0.mediaID == id } } } ?? false
-        let cues = try SubRip.cues(text).compactMap { cue in range.map { cue.clipped(to: $0) } ?? cue }
+        let cues = cues.compactMap { cue in range.map { cue.clipped(to: $0) } ?? cue }
         let words = range.map { range in words.filter { $0.end > range.lowerBound && $0.start < range.upperBound } } ?? words
         let clips = media.map(audibleClips) ?? []
         var items = placed
@@ -166,15 +182,24 @@ extension Project {
 
     /// Timeline frames where the source seconds `range` of `item`'s media play.
     func clipSpan(of range: ClosedRange<Double>, in item: Item, media: Media) -> Range<Int>? {
-        let sourceStart = Double(item.sourceIn) / media.fps.value
-        let sourceEnd = sourceStart + item.sourceSeconds(afterFrames: item.duration, fps: fps)
-        let start = max(range.lowerBound, sourceStart), end = min(range.upperBound, sourceEnd)
+        let source = sourceSpan(of: item, media: media)
+        let start = max(range.lowerBound, source.lowerBound), end = min(range.upperBound, source.upperBound)
         guard end > start else { return nil }
-        let frame = { (seconds: Double) in
-            item.at + Int(item.timelineFrames(atSourceSeconds: seconds - sourceStart, fps: self.fps).rounded())
-        }
-        let lower = max(item.at, frame(start)), upper = min(item.end, frame(end))
+        let lower = max(item.at, frame(atSource: start, in: item, media: media))
+        let upper = min(item.end, frame(atSource: end, in: item, media: media))
         return upper > lower ? lower..<upper : nil
+    }
+
+    /// Source seconds of `media` that `item` plays, from its in-point through trim, speed and any speed ramp.
+    func sourceSpan(of item: Item, media: Media) -> ClosedRange<Double> {
+        let start = Double(item.sourceIn) / media.fps.value
+        return start...(start + item.sourceSeconds(afterFrames: item.duration, fps: fps))
+    }
+
+    /// The timeline frame where `item` plays source second `seconds` of `media`.
+    func frame(atSource seconds: Double, in item: Item, media: Media) -> Int {
+        let start = Double(item.sourceIn) / media.fps.value
+        return item.at + Int(item.timelineFrames(atSourceSeconds: seconds - start, fps: fps).rounded())
     }
 
     /// Clips where `mediaID` is heard: audio clips (including the sound linked to a video clip) and video clips
@@ -216,15 +241,13 @@ extension Project {
         // source time (rounding, at the fastest speed); only words that near a cue are handed to attachingWords.
         let margin = 2 * Project.speedRange.upperBound / fps.value
         for (clip, asset) in clips {
-            let sourceStart = Double(clip.sourceIn) / asset.fps.value
-            let sourceEnd = sourceStart + clip.sourceSeconds(afterFrames: clip.duration, fps: fps)
+            let source = sourceSpan(of: clip, media: asset)
+            let sourceStart = source.lowerBound, sourceEnd = source.upperBound
             // Words heard inside this clip only, mapped through it like the cue.
             let heard = words.filter { $0.end > sourceStart && $0.start < sourceEnd }.sorted { $0.start < $1.start }
             let longest = heard.map { $0.end - $0.start }.max() ?? 0
             for cue in cues where cue.end > sourceStart && cue.start < sourceEnd {
-                let frame = { (seconds: Double) in
-                    clip.at + Int(clip.timelineFrames(atSourceSeconds: seconds - sourceStart, fps: self.fps).rounded())
-                }
+                let frame = { (seconds: Double) in self.frame(atSource: seconds, in: clip, media: asset) }
                 let at = max(clip.at, frame(max(cue.start, sourceStart)))
                 let end = min(clip.end, frame(min(cue.end, sourceEnd)))
                 guard end > at else { continue }

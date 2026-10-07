@@ -100,7 +100,11 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
 - SRT add, replace and export from the Text library and the CLI, with Unicode and multiline cues, rational-FPS
   conversion and one-step undo.
 - Auto Captions resolves a healthy `captions.transcribe` provider, sends the media path and language, validates
-  bounded UTF-8 SRT output and imports it atomically with provider provenance.
+  bounded UTF-8 SRT output and imports it atomically with provider provenance. A whole-file transcription is kept
+  as the media's source transcript (by file content, `.bashcut/cache/transcripts`) and reused by later Auto Captions
+  and `captions generate` unless `--fresh`; `media transcribe` makes one without placing captions, `media transcript`
+  reads it in source seconds (phrases, words with confidence/speaker/event/noSpeechProb when the provider gives
+  them), and `transcript words --heard` maps its words through the clips playing the media now.
 
 ### Audio & voice
 

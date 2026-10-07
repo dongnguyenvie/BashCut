@@ -32,14 +32,20 @@ extension CommandCatalog {
                 + "endSeconds, item and cue (captions export numbering), timing (transcribed or estimated from word "
                 + "length), gapBefore (frames since the previous word ended) and, for captions made from a media, "
                 + "source {media, clip, start, end} in that media's seconds through the clip heard there now (null "
-                + "when no clip of it plays there: captions do not move with their clips). No speaker or confidence "
-                + "is stored yet. count is the words returned, total the words on the caption layers.",
+                + "when no clip of it plays there: captions do not move with their clips). count is the words "
+                + "returned, total the words on the caption layers. With heard, the words come from the stored "
+                + "transcripts (media.transcribe) of the media the timeline plays instead: each word inside a clip "
+                + "that plays it, at that clip's frames (trim, speed), with item = the clip, timing source and the "
+                + "provider's confidence/speaker/event/noSpeechProb; transcribed and untranscribed list the media.",
             parameters: [
                 CommandParameter("from", .integer, "Only words ending after this timeline frame", minimum: 0,
                                  cli: .option("from")),
                 CommandParameter("to", .integer, "Only words starting before this timeline frame", minimum: 0,
                                  cli: .option("to")),
-                CommandParameter("media", .string, "Only captions made from this media ID", cli: .option("media")),
+                CommandParameter("media", .string, "Only captions made from (or with heard, words of) this media ID",
+                                 cli: .option("media")),
+                CommandParameter("heard", .boolean, "Words of the source transcripts heard through the clips now",
+                                 cli: .flag("heard")),
             ]),
         CommandSpec(
             "captions.import", .edit, "Import UTF-8 SubRip captions as one undoable edit.",

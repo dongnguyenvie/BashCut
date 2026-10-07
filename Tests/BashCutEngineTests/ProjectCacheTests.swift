@@ -52,4 +52,24 @@ struct ProjectCacheTests {
         #expect(ProjectCache.prepare(projectRoot: root).isEmpty)
         #expect(!FileManager.default.fileExists(atPath: root.appendingPathComponent(".bashcut").path))
     }
+
+    @Test("Content keys depend on the namespace and the bytes; records round-trip")
+    func contentKeysAndRecords() throws {
+        let root = try project()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let file = root.appendingPathComponent("clip.bin")
+        try Data(repeating: 7, count: 3 << 20).write(to: file)
+        let key = try ProjectCache.contentKey(for: file, namespace: "a")
+        #expect(try ProjectCache.contentKey(for: file, namespace: "a") == key)
+        #expect(try ProjectCache.contentKey(for: file, namespace: "b") != key)
+        // The analysis key is the content key of its namespace, so records stored before still match.
+        #expect(try MediaAnalyzer.key(for: file) == ProjectCache.contentKey(
+            for: file, namespace: "media-analysis-v\(MediaAnalysis.version)"))
+        let transcript = SourceTranscript(
+            key: key, language: "vi", provider: [:], transcribedAt: "t", phrases: [.init(start: 0, end: 1, text: "a")],
+            words: [])
+        try ProjectCache.store(transcript, .transcripts, key: key, projectRoot: root)
+        #expect(ProjectCache.record(SourceTranscript.self, .transcripts, key: key, projectRoot: root) == transcript)
+        #expect(ProjectCache.record(SourceTranscript.self, .transcripts, key: "missing", projectRoot: root) == nil)
+    }
 }
