@@ -38,6 +38,28 @@ struct LicensingTests {
         #expect(Provenance.from(origin: "stock", sourceUrl: "https://a", author: "B")?.object["author"] == .string("B"))
     }
 
+    @Test("setMediaData merges the agent's free fields under data, null removes one, an empty data goes, undo restores")
+    func mediaData() throws {
+        let base = try Project(name: "Takes", fps: FrameRate(30, 1)).applying(.addMedia(
+            ProjectFixtures.media("m", path: "m.mov", frames: 60, fps: FrameRate(30, 1), kind: "video", hasAudio: true))).project
+        let take = EditOperation.setMediaData(media: "m", patch: [
+            "take": .integer(3), "verdict": .object(["value": .string("keep"), "reason": .string("clean focus")]),
+        ])
+        let first = try base.applying(take)
+        #expect(first.project.media[0]["data"]?.object["take"] == .integer(3))
+        let second = try first.project.applying(.setMediaData(media: "m", patch: ["take": .null, "slate": .string("2B")]))
+        #expect(second.project.media[0]["data"]?.object.keys.sorted() == ["slate", "verdict"])
+        let cleared = try second.project.applying(.setMediaData(media: "m", patch: ["slate": .null, "verdict": .null]))
+        #expect(cleared.project.media[0]["data"] == nil)
+        #expect(try second.project.applying(second.inverse).project.media == first.project.media)
+        #expect(throws: ProjectError.self) { try base.applying(.setMediaData(media: "nope", patch: ["a": .integer(1)])) }
+        #expect(throws: ProjectError.self) { try base.applying(.setMediaData(media: "m", patch: [:])) }
+        #expect(throws: ProjectError.self) { try base.applying(.setMediaData(media: "m", patch: ["": .integer(1)])) }
+        let json = try JSONDecoder().decode(EditOperation.self, from: Data(
+            #"{"op":"setMediaData","media":"m","patch":{"take":3}}"#.utf8))
+        #expect(json == .setMediaData(media: "m", patch: ["take": .integer(3)]))
+    }
+
     @Test("setMediaRights sets, keeps and removes rights, round-trips as JSON and is validated with the project")
     func mediaRights() throws {
         let base = try Project(name: "Rights", fps: FrameRate(30, 1)).applying(.addMedia(

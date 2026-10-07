@@ -72,6 +72,9 @@ extension EditOperation {
             self = .setMediaDescription(media: try read.string("media"), description: description)
         case "setMediaRights":
             self = .setMediaRights(media: try read.string("media"), license: fields["license"], provenance: fields["provenance"])
+        case "setMediaData":
+            guard case .object(let patch) = fields["patch"] else { throw ProjectError.invalid("patch object is required") }
+            self = .setMediaData(media: try read.string("media"), patch: patch)
         case "upsertSection":
             self = .upsertSection(
                 id: try read.string("id"), label: try read.string("label"), atFrame: try read.frame("atFrame"))
@@ -158,6 +161,8 @@ extension EditOperation {
             if let license { fields["license"] = license }
             if let provenance { fields["provenance"] = provenance }
             return op("setMediaRights", fields)
+        case .setMediaData(let media, let patch):
+            return op("setMediaData", ["media": .string(media), "patch": .object(patch)])
         case .upsertSection(let id, let label, let frame):
             return op("upsertSection", ["id": .string(id), "label": .string(label), "atFrame": .integer(frame)])
         case .deleteSection(let id): return op("deleteSection", ["id": .string(id)])

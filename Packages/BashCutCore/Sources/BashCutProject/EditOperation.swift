@@ -33,6 +33,8 @@ public indirect enum EditOperation: Codable, Sendable, Equatable {
     case setMediaDescription(media: String, description: JSONValue?)
     /// A media's `license` and `provenance` (P2-H8): nil leaves a field as it is, JSON null removes it.
     case setMediaRights(media: String, license: JSONValue?, provenance: JSONValue?)
+    /// The agent's own fields under a media's `data` (P2-H10); a key replaces, null removes; core never reads them.
+    case setMediaData(media: String, patch: [String: JSONValue])
     case upsertSection(id: String, label: String, atFrame: Int)
     case deleteSection(id: String)
     /// `easing` nil or `linear` is the default straight tween (see `TimelineTransition.easings`).
@@ -129,6 +131,8 @@ extension Project {
             try setMediaDescription(media: media, description: description)
         case .setMediaRights(let media, let license, let provenance):
             try setMediaRights(media: media, license: license, provenance: provenance)
+        case .setMediaData(let media, let patch):
+            try setMediaData(media: media, patch: patch)
         case .upsertSection(let id, let label, let frame):
             try upsertSection(id: id, label: label, frame: frame)
         case .deleteSection(let id):

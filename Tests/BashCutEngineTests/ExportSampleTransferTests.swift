@@ -106,8 +106,10 @@ struct ExportSampleTransferTests {
     func gracefulCancellation() async throws {
         let stream = TestStream(samples: 20), gate = DispatchSemaphore(value: 0), state = TransferState()
         stream.gate = gate
+        // The grace is far above the 50 ms the test waits: under a fully parallel `swift test` the cooperative
+        // pool can delay that sleep by seconds, and passing never waits for the grace.
         let transfer = ExportSampleTransfer(lanes: [stream.lane], duration: 20, progress: { _ in }, failure: { nil },
-                                            interrupt: { state.fail(); gate.signal() }, interruptGrace: .seconds(5))
+                                            interrupt: { state.fail(); gate.signal() }, interruptGrace: .seconds(60))
         let task = Task { try await transfer.run() }
         defer { task.cancel() }
         try await wait { stream.readCount == 1 }

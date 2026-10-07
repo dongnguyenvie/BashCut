@@ -20,7 +20,7 @@ public enum CommandCatalog {
         "voice.check": "captions.transcribe", "captions.align": "captions.transcribe", "beats.detect": "audio.beats",
         "voice.speak": "voice.synthesize", "audio.measure": "audio.loudness", "audio.mix-measure": "audio.loudness",
         "media.sync": "audio.sync", "audio.energy": "audio.energy", "library.search": "library.search",
-        "library.generate": "library.generate",
+        "library.generate": "library.generate", "media.subjects": "vision.faces", "media.ocr": "vision.text",
     ]
 
     /// Every command, provider jobs with `requestId` and `dryRun` (flexibility audit, D8).

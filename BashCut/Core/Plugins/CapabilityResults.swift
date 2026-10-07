@@ -60,6 +60,14 @@ public struct GeneratedEnergy: Sendable {
     public let provenance: PluginProvenance
 }
 
+/// `vision.faces` / `vision.text` (P2-H6, P2-H7): the sampled pictures, each `{seconds, faces, people}` or
+/// `{seconds, text}`.
+public struct GeneratedVision: Sendable {
+    public let step: Double
+    public let frames: [JSONValue]
+    public let provenance: PluginProvenance
+}
+
 public struct GeneratedLoudnessMeasurement: Sendable {
     public let measurement: LoudnessMeasurement
     public let provenance: PluginProvenance

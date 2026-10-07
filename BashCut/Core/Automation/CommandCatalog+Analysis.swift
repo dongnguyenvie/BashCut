@@ -259,8 +259,8 @@ extension CommandCatalog {
             + "outside), keyframed when keyframes move it (not followed); holdSeconds, words and wordsPerSecond; "
             + "speech {onsetOffsetFrames (from the nearest word start), narrationShare (of its time with words "
             + "spoken)} from the heard or caption words; captionOverlap {item, ratio of its box} for titles; "
-            + "templateRepeats (items with its preset on its layer); faceOverlap null (needs a vision.faces "
-            + "provider; null means unknown). With contrast: contrast {ratio (WCAG, 1–21) of the mean, lightRatio and "
+            + "templateRepeats (items with its preset on its layer); faceOverlap null (unknown: not measured "
+            + "here; media subjects gives face boxes in source pictures). With contrast: contrast {ratio (WCAG, 1–21) of the mean, lightRatio and "
             + "darkRatio (the light and dark parts of the text, such as fill and outline), textLuminance, "
             + "backgroundLuminance, textPixels} measured on the frame with and without text (at frame, or each "
             + "item's middle). Also the frame size, the platform whose zones apply (safeArea, minTextSize), density "
@@ -320,6 +320,24 @@ extension CommandCatalog {
             ],
             execution: .job),
         CommandSpec(
+            "media.subjects", .read,
+            "Faces and people in the picture of a video or image, with a vision.faces provider (built in: Apple "
+                + "Vision): frames [{seconds, frame (source), faces [{box, confidence}], people [{box, confidence}]}] "
+                + "one picture every step source seconds over from…to; box is [x, y, width, height] as shares of the "
+                + "upright picture from the top left. timeline [{item, at, fromSeconds, toSeconds}] places a second. "
+                + "No labels: which face is the speaker or matters is yours. A job.",
+            parameters: visionParameters, execution: .job),
+        CommandSpec(
+            "media.ocr", .read,
+            "On-screen text in the picture of a video or image, with a vision.text provider (built in: Apple Vision): "
+                + "frames [{seconds, frame (source), text [{string, box, confidence}]}] one picture every step source "
+                + "seconds over from…to, lines top to bottom; box as in media.subjects. Use it to read a reference's "
+                + "text cards and caption placement. Whether a line is a caption, a title or a sign is yours. A job.",
+            parameters: visionParameters + [
+                CommandParameter("languages", .string, "BCP 47 languages to try in order, comma separated (default: "
+                                 + "the provider picks)", cli: .option("languages")),
+            ], execution: .job),
+        CommandSpec(
             "audio.mix-measure", .read,
             "Read the mix by role without exporting: one stem each for speech (dialogue and voiceover layers and the "
                 + "sound of video clips), music and sound effects is rendered (other sounds at −120 dB, so ducking "
@@ -353,4 +371,16 @@ extension CommandCatalog {
             ],
             execution: .job),
     ]
+
+    /// Sampling for `media.subjects` and `media.ocr` (P2-H6, P2-H7).
+    static var visionParameters: [CommandParameter] {
+        [
+            mediaMedia,
+            CommandParameter("step", .number, "Source seconds between pictures (default 1; at most 3600 pictures)",
+                             range: 0.04...3_600, cli: .option("step")),
+            CommandParameter("from", .number, "From this source second", range: 0...86_400, cli: .option("from")),
+            CommandParameter("to", .number, "Up to this source second", range: 0...86_400, cli: .option("to")),
+            provider,
+        ]
+    }
 }
