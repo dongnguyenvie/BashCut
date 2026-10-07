@@ -172,6 +172,8 @@ public enum ProjectSchema {
                 "looks": array("Custom looks (built-in looks are not stored)", of: ref("look"), maxItems: 1_000),
                 "styleKits": array("Custom style kits (built-in kits are not stored)", of: ref("styleKit"), maxItems: 1_000),
                 "audio": ref("audio"),
+                "output": outputSchema,
+                "review": reviewSchema,
                 "beatGrid": object(
                     "Beat grid of one audio media", required: ["media", "bpm", "frames"],
                     properties: [
@@ -263,17 +265,7 @@ public enum ProjectSchema {
                     "look": string("Built-in or custom look ID"),
                     "captionPreset": enumeration("Text preset given to captions", TextPreset.all),
                 ])),
-            "audio": .object(fields(
-                "Mix settings and the last loudness measurement", required: [],
-                properties: [
-                    "targetLUFS": number("Normalization target", -30 ... -5),
-                    "normalizeEnabled": boolean("Two-pass normalization on export"),
-                    "mixGainDb": number("Master gain", -60...24),
-                    "measuredLUFS": number("Measured integrated loudness", -100...10),
-                    "truePeakDbTP": number("Measured true peak", -100...20),
-                    "loudnessRangeLU": number("Measured loudness range", 0...100),
-                    "measurementVerified": boolean("The final file was re-measured"),
-                ])),
+            "audio": audioSchema,
         ]
     }
 
@@ -437,7 +429,7 @@ public enum ProjectSchema {
 
     // MARK: Builders
 
-    private static func fields(
+    static func fields(
         _ summary: String, required: [String], properties: [String: JSONValue]
     ) -> [String: JSONValue] {
         var value: [String: JSONValue] = [
@@ -447,20 +439,20 @@ public enum ProjectSchema {
         return value
     }
 
-    private static func object(_ summary: String, required: [String], properties: [String: JSONValue]) -> JSONValue {
+    static func object(_ summary: String, required: [String], properties: [String: JSONValue]) -> JSONValue {
         .object(fields(summary, required: required, properties: properties))
     }
 
-    private static func ref(_ name: String) -> JSONValue { .object(["$ref": .string("#/$defs/\(name)")]) }
+    static func ref(_ name: String) -> JSONValue { .object(["$ref": .string("#/$defs/\(name)")]) }
 
-    private static func array(_ summary: String, of items: JSONValue, minItems: Int? = nil, maxItems: Int? = nil) -> JSONValue {
+    static func array(_ summary: String, of items: JSONValue, minItems: Int? = nil, maxItems: Int? = nil) -> JSONValue {
         var value: [String: JSONValue] = ["type": .string("array"), "description": .string(summary), "items": items]
         if let minItems { value["minItems"] = .integer(minItems) }
         if let maxItems { value["maxItems"] = .integer(maxItems) }
         return .object(value)
     }
 
-    private static func string(
+    static func string(
         _ summary: String, minLength: Int? = nil, maxLength: Int? = nil, pattern: String? = nil
     ) -> JSONValue {
         var value: [String: JSONValue] = ["type": .string("string"), "description": .string(summary)]
@@ -470,20 +462,20 @@ public enum ProjectSchema {
         return .object(value)
     }
 
-    private static func enumeration(_ summary: String, _ values: [String]) -> JSONValue {
+    static func enumeration(_ summary: String, _ values: [String]) -> JSONValue {
         .object([
             "type": .string("string"), "description": .string(summary), "enum": .array(values.map(JSONValue.string)),
         ])
     }
 
-    private static func integer(_ summary: String, minimum: Int? = nil, maximum: Int? = nil) -> JSONValue {
+    static func integer(_ summary: String, minimum: Int? = nil, maximum: Int? = nil) -> JSONValue {
         var value: [String: JSONValue] = ["type": .string("integer"), "description": .string(summary)]
         if let minimum { value["minimum"] = .integer(minimum) }
         if let maximum { value["maximum"] = .integer(maximum) }
         return .object(value)
     }
 
-    private static func number(_ summary: String, _ range: ClosedRange<Double>) -> JSONValue {
+    static func number(_ summary: String, _ range: ClosedRange<Double>) -> JSONValue {
         .object([
             "type": .string("number"), "description": .string(summary),
             "minimum": bound(range.lowerBound), "maximum": bound(range.upperBound),
@@ -494,7 +486,7 @@ public enum ProjectSchema {
         value.rounded() == value && abs(value) < 1e15 ? .integer(Int(value)) : .number(value)
     }
 
-    private static func boolean(_ summary: String) -> JSONValue {
+    static func boolean(_ summary: String) -> JSONValue {
         .object(["type": .string("boolean"), "description": .string(summary)])
     }
 }

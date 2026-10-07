@@ -11,7 +11,7 @@ public enum CommandCatalog {
         "add-plugin", "library-search", "library-generate",
     ]
     public static let libraryPanels = ["media", "audio", "text", "stickers", "effects", "transitions", "filters", "voice"]
-    public static let exportPresets = ["tiktok", "youtube-1080", "youtube-4k", "quick-draft", "prores"]
+    public static let exportPresets = OutputPresetName.all
 
     public static let specs: [CommandSpec] = readSpecs + projectSpecs + editSpecs + captionSpecs + layerSpecs + styleSpecs
         + formatSpecs + clipSpecs + capabilitySpecs + analysisSpecs + pluginSpecs + pluginViewSpecs + storageSpecs + agentSpecs + appSpecs + chatSpecs

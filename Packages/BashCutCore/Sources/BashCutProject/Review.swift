@@ -166,6 +166,7 @@ public enum TimelineReview {
         issues += hookIssues(project, context: context)
         issues += audioIssues(project, context: context)
         issues += pictureIssues(project, context: context)
+        issues += outputIssues(project, context: context)
         if let plugins = context.pluginIssues, plugins.revision == project.revision { issues += plugins.issues }
         for caption in project.tracks.filter({ $0.kind == "text" && $0.role == "captions" }).flatMap(\.items)
         where isRecognitionLoop(caption, fps: project.fps.value) {
@@ -189,7 +190,7 @@ public enum TimelineReview {
                             coverage * 100), frame: 0, severity: .info))
             }
         }
-        return sorted(issues)
+        return sorted(applyingSeverities(issues, project: project))
     }
 
     /// Errors first, then warnings, then info; issues of one severity keep the order the checks found them in.

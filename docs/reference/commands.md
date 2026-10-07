@@ -68,14 +68,15 @@ Save the open project to disk.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_project_save`
 
-### `bashcut project format [--canvas <canvas>] [--clips <clips>] [--resolution <resolution>] --base-rev <baseRev>`
+### `bashcut project format [--canvas <canvas>] [--clips <clips>] [--resolution <resolution>] [--outputs <outputs>] --base-rev <baseRev>`
 
-Change the open project's canvas like the format menu in the toolbar: portrait 9:16, landscape 16:9 or square, at a short-side resolution (the current one by default); timing is kept and clip pan/tilt scale with the frame. --clips fit shows each clip whole (bars where its shape differs), fill covers the frame and crops; a clip's own `fill` property overrides it. Each change is one undoable edit.
+Change the open project's canvas like the format menu in the toolbar: portrait 9:16, landscape 16:9 or square, at a short-side resolution (the current one by default); timing is kept and clip pan/tilt scale with the frame. --clips fit shows each clip whole (bars where its shape differs), fill covers the frame and crops; a clip's own `fill` property overrides it. --outputs sets the export presets the project is made for (first one primary): review checks the first one's platform (safe area, longest length, smallest text) and the Export sheet starts with it. Each change is one undoable edit.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_project_format`
 - `canvas`: string, one of portrait, landscape, square. Canvas
 - `clips`: string, one of fit, fill. How clips meet the frame by default
 - `resolution`: string, one of 720, 1080, 2160. Short-side resolution; the current one by default
+- `outputs`: string. Comma-separated export presets (tiktok, reels, shorts, youtube-1080, youtube-4k, quick-draft, prores); none clears them
 - `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
 
 ### `bashcut project recents`
@@ -255,7 +256,7 @@ Read the export state: while one runs, its job, step, preset and path (last rece
 Request a background video export; the user approves it in the app first. Approved exports queue behind a running one.
 
 - Mode: privileged · Runs: after the user approves in the app · MCP: `bashcut_export_start`
-- `preset`: string, required, one of tiktok, youtube-1080, youtube-4k, quick-draft, prores. Export preset
+- `preset`: string, required, one of tiktok, reels, shorts, youtube-1080, youtube-4k, quick-draft, prores. Export preset
 - `name`: string, required. Output base name without an extension
 - `directory`: string. Output folder, relative to the project; defaults to its render folder
 - `includeSRT`: boolean, default false. Also write a SubRip file

@@ -118,6 +118,10 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   Sound checks: loudness from the last normalized export of the revision, ducking off under speech, dead air, music
   drop-outs. Text checks: vertical safe area (caption bar, side buttons, top bar), title safe, minimum size, caption
   lines, overlap. Hook check for the first 3 s.
+- Platform targets (#441): `output.presets` names the export presets a project is made for (format menu ›
+  Platform, `project format --outputs`). The first one's platform (TikTok, Reels, Shorts, YouTube) sets the safe
+  zones, smallest text and longest length the review checks, the viewer's safe-area overlay and the Export sheet's
+  preset. `review.hookSeconds` and `review.severities` (check ID or prefix → severity or `off`) tune the review.
 
 ### Color & transitions
 

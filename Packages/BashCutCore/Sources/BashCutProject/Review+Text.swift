@@ -5,23 +5,9 @@ import Foundation
 /// Text boxes are estimated the way `TextRenderer` lays text out: the font is the preset (or `textStyle.size`) share
 /// of the frame's short side, shrunk so the widest line fits 90 % of the width; the last line's baseline sits at
 /// `positionY` from the bottom and lines stack upwards 1.28 em apart. Glyph widths are estimated (0.55 em per
-/// character), so the side-zone check is a warning, not an error. Keyframed text motion is not followed.
+/// character), so the side-zone check is a warning, not an error. Keyframed text motion is not followed. The zones and
+/// the smallest text come from the project's platform (`ReviewTargets.layoutPlatform`, #441).
 extension TimelineReview {
-    /// The platform UI zones on a vertical frame, as fractions: TikTok, Reels and Shorts cover the bottom 16 % with
-    /// the caption bar, the right 14 % of the lower 46 % with buttons, and the top 8 % with tabs. Same zones as the
-    /// viewer's safe-area overlay.
-    enum VerticalSafeArea {
-        static let bottom = 0.16
-        static let sideWidth = 0.14
-        static let sideHeight = 0.46
-        static let top = 0.92
-    }
-
-    /// Landscape and square frames keep text inside the central 90 % (title safe).
-    static let titleSafeMargin = 0.05
-    /// Smallest readable text, as a share of the frame's short side (about 32 px on 1080).
-    static let minimumTextSize = 0.03
-
     struct TextBox {
         let item: Item
         let lines: Int
@@ -50,6 +36,10 @@ extension TimelineReview {
         let height = Double(project.height)
         guard width > 0, height > 0 else { return [] }
         let vertical = height > width
+        // The zones of the project's platform (#441); TikTok's for vertical frames and title safe otherwise.
+        let platform = context.targets.layoutPlatform(for: project)
+        let area = platform.safeArea
+        let top = 1 - area.top
         let boxes = project.tracks.filter { $0.kind == "text" && $0["hidden"] != .bool(true) }
             .flatMap { track in track.items.map { (track, $0) } }
             .filter { !$0.1.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
@@ -57,43 +47,43 @@ extension TimelineReview {
         var issues: [ReviewIssue] = []
         for (track, box) in boxes {
             let item = box.item
-            if vertical, box.minY < height * VerticalSafeArea.bottom {
-                let raised = VerticalSafeArea.bottom + 0.25 * box.points / height + 0.02
+            if vertical, box.minY < height * area.bottom {
+                let raised = area.bottom + 0.25 * box.points / height + 0.02
                 issues.append(
                     ReviewIssue(
                         id: "safe-bottom-" + item.id, title: "Text under the platform caption bar",
-                        detail: "The bottom 16% of a vertical video is covered by the TikTok/Reels/Shorts caption bar.",
+                        detail: "The bottom \(percent(area.bottom)) of a vertical video is covered by the \(platform.title) "
+                            + "caption bar.",
                         frame: item.at, severity: .error, fix: moveText(item, positionY: raised)))
-            } else if vertical, box.maxX > width * (1 - VerticalSafeArea.sideWidth),
-                box.minY < height * VerticalSafeArea.sideHeight
-            {
+            } else if vertical, box.maxX > width * (1 - area.sideWidth), box.minY < height * area.sideHeight {
                 issues.append(
                     ReviewIssue(
                         id: "safe-side-" + item.id, title: "Text under the side buttons",
-                        detail: "The line reaches the right 14% of the lower half, where the like/comment buttons sit. "
-                            + "Use shorter lines (3–6 words) or a smaller size.",
+                        detail: "The line reaches the right \(percent(area.sideWidth)) of the lower part, where "
+                            + "\(platform.title)'s like/comment buttons sit. Use shorter lines (3–6 words) or a smaller size.",
                         frame: item.at, fix: ReviewFix(hint: "Split the line or lower textStyle.size.")))
             }
-            if vertical, box.maxY > height * VerticalSafeArea.top {
+            if vertical, box.maxY > height * top {
                 issues.append(
                     ReviewIssue(
                         id: "safe-top-" + item.id, title: "Text under the top bar",
-                        detail: "The top 8% of a vertical video is covered by the app's tabs.", frame: item.at,
-                        fix: moveText(item, positionY: max(0, (height * VerticalSafeArea.top - (box.maxY - box.minY)) / height - 0.02))))
+                        detail: "The top \(percent(area.top)) of a vertical video is covered by \(platform.title)'s tabs.",
+                        frame: item.at,
+                        fix: moveText(item, positionY: max(0, (height * top - (box.maxY - box.minY)) / height - 0.02))))
             }
-            if !vertical, box.minY < height * titleSafeMargin || box.maxY > height * (1 - titleSafeMargin) {
+            if !vertical, box.minY < height * area.margin || box.maxY > height * (1 - area.margin) {
                 issues.append(
                     ReviewIssue(
                         id: "title-safe-" + item.id, title: "Text outside title safe",
-                        detail: "Keep text inside the central 90% of the frame.", frame: item.at,
+                        detail: "Keep text inside the central \(percent(1 - 2 * area.margin)) of the frame.", frame: item.at,
                         fix: ReviewFix(hint: "Move it with textStyle.positionY.")))
             }
-            if box.points / min(width, height) < minimumTextSize {
+            if box.points / min(width, height) < platform.minTextSize {
                 issues.append(
                     ReviewIssue(
                         id: "small-text-" + item.id, title: "Text too small",
-                        detail: "It draws below 3% of the frame's short side and is hard to read on a phone. "
-                            + "Shorten the line or raise textStyle.size.", frame: item.at))
+                        detail: "It draws below \(percent(platform.minTextSize)) of the frame's short side and is hard "
+                            + "to read on a phone. Shorten the line or raise textStyle.size.", frame: item.at))
             }
             if vertical, track.role == TrackRole.captions, box.lines > 2 {
                 issues.append(
@@ -128,6 +118,9 @@ extension TimelineReview {
         return issues
     }
 
+    /// "16%" for 0.16.
+    static func percent(_ fraction: Double) -> String { String(format: "%g%%", (fraction * 1000).rounded() / 10) }
+
     /// `timeline.apply` that sets `textStyle.positionY`, keeping the item's other style fields.
     static func moveText(_ item: Item, positionY: Double) -> ReviewFix {
         var style = item["textStyle"]?.object ?? [:]
@@ -142,13 +135,14 @@ extension TimelineReview {
     /// Every Reelcrew/AgentVid reference opens with a question and a concrete number in 1–3 s.
     static func hookIssues(_ project: Project, context: ReviewContext) -> [ReviewIssue] {
         let fps = project.fps.value
-        let hook = Int((context.targets.hookSeconds * fps).rounded())
+        let hookSeconds = context.targets.hookSeconds(for: project)
+        let hook = Int((hookSeconds * fps).rounded())
         guard project.duration >= hook * 2 else { return [] }
         if speechRegions(project).contains(where: { $0.at <= Int((0.5 * fps).rounded()) }) { return [] }
         let early = project.tracks.filter { $0.kind == "text" && $0["hidden"] != .bool(true) }.flatMap(\.items)
             .filter { $0.at < hook && !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
         if early.contains(where: { $0.text.contains("?") || $0.text.contains(where: \.isNumber) }) { return [] }
-        let seconds = String(format: "%.0f", context.targets.hookSeconds)
+        let seconds = String(format: "%g", hookSeconds)
         if let first = early.min(by: { $0.at < $1.at }) {
             return [
                 ReviewIssue(

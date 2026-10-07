@@ -1,8 +1,12 @@
 import AVFoundation
+import BashCutProject
 import Foundation
 
 public enum ExportPreset: String, CaseIterable, Sendable, Identifiable {
     case tiktok
+    /// Reels and Shorts render like TikTok; their platform targets differ (#441).
+    case reels
+    case shorts
     case youtube1080
     case youtube4K
     case quickDraft
@@ -11,7 +15,9 @@ public enum ExportPreset: String, CaseIterable, Sendable, Identifiable {
     public var id: String { rawValue }
     public init?(argument: String) {
         switch argument.lowercased().replacingOccurrences(of: "_", with: "-") {
-        case "tiktok", "reels", "tiktok-9x16": self = .tiktok
+        case "tiktok", "tiktok-9x16": self = .tiktok
+        case "reels", "instagram-reels": self = .reels
+        case "shorts", "youtube-shorts": self = .shorts
         case "youtube1080", "youtube-1080", "youtube-1080p": self = .youtube1080
         case "youtube4k", "youtube-4k": self = .youtube4K
         case "quickdraft", "quick-draft", "draft", "720p": self = .quickDraft
@@ -21,7 +27,9 @@ public enum ExportPreset: String, CaseIterable, Sendable, Identifiable {
     }
     public var title: String {
         switch self {
-        case .tiktok: "TikTok / Reels 9:16"
+        case .tiktok: "TikTok 9:16"
+        case .reels: "Instagram Reels 9:16"
+        case .shorts: "YouTube Shorts 9:16"
         case .youtube1080: "YouTube 16:9 1080p"
         case .youtube4K: "YouTube 16:9 4K"
         case .quickDraft: "Quick Draft 720p"
@@ -30,7 +38,7 @@ public enum ExportPreset: String, CaseIterable, Sendable, Identifiable {
     }
     public var size: CGSize? {
         switch self {
-        case .tiktok: CGSize(width: 1080, height: 1920)
+        case .tiktok, .reels, .shorts: CGSize(width: 1080, height: 1920)
         case .youtube1080: CGSize(width: 1920, height: 1080)
         case .youtube4K: CGSize(width: 3840, height: 2160)
         case .quickDraft: nil
@@ -44,11 +52,35 @@ public enum ExportPreset: String, CaseIterable, Sendable, Identifiable {
     public var fileExtension: String { self == .proRes422HQ ? "mov" : "mp4" }
     public var videoBitRate: Int? {
         switch self {
-        case .tiktok: 16_000_000
+        case .tiktok, .reels, .shorts: 16_000_000
         case .youtube1080: 12_000_000
         case .youtube4K: 45_000_000
         case .quickDraft: 4_000_000
         case .proRes422HQ: nil
+        }
+    }
+
+    /// The CLI and project spelling (`export start --preset`, `output.presets`).
+    public var argument: String {
+        switch self {
+        case .tiktok: "tiktok"
+        case .reels: "reels"
+        case .shorts: "shorts"
+        case .youtube1080: "youtube-1080"
+        case .youtube4K: "youtube-4k"
+        case .quickDraft: "quick-draft"
+        case .proRes422HQ: "prores"
+        }
+    }
+
+    /// The platform whose targets review checks for this preset; drafts and masters have none.
+    public var platform: OutputPlatform? {
+        switch self {
+        case .tiktok: .tiktok
+        case .reels: .reels
+        case .shorts: .shorts
+        case .youtube1080, .youtube4K: .youtube
+        case .quickDraft, .proRes422HQ: nil
         }
     }
 

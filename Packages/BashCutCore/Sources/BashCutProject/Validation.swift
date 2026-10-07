@@ -57,6 +57,7 @@ extension Project {
         }
         try validateProjectFlags()
         try validateAudioSettings()
+        try validateOutputSettings()
         try validateMarkers()
         try validateColorLUTs()
         try validateStyleCatalog()
@@ -103,6 +104,19 @@ extension Project {
 }
 
 extension Project {
+    /// `output.presets` (#441): at most 8 known export presets.
+    fileprivate func validateOutputSettings() throws {
+        guard let value = self["output"] else { return }
+        guard case .object(let output) = value else { throw ProjectError.invalid("output: expected object") }
+        guard let presets = output["presets"] else { return }
+        guard case .array(let names) = presets, names.count <= 8,
+            names.allSatisfy({ $0.string.map(OutputPresetName.all.contains) == true })
+        else {
+            throw ProjectError.invalid(
+                "output.presets: expected at most 8 of \(OutputPresetName.all.joined(separator: ", "))")
+        }
+    }
+
     fileprivate func validateAudioSettings() throws {
         guard let value = self["audio"] else { return }
         guard case .object(let audio) = value else {

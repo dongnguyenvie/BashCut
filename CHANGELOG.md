@@ -5,6 +5,17 @@
 
 ## [Unreleased]
 
+- **Platform output presets with targets (#441).** Export presets now include **Instagram Reels** and **YouTube
+  Shorts** (1080×1920, rendered like TikTok; `reels` was a TikTok alias before). Each social preset names a platform
+  with its longest upload (TikTok 10 min, Reels and Shorts 3 min), loudness (-14 LUFS, -1 dBTP), the zones its UI
+  covers (Reels' caption bar is 20 %, Shorts' 18 %, TikTok's 16 %) and the smallest readable text. A project records
+  the presets it is made for in `output.presets` (format menu › **Platform**, or `project format --outputs
+  reels,youtube-1080`); the review checks the first one's platform — safe zones and text size follow it, a cut longer
+  than the platform takes is an error and a frame of another shape warns with a `project.format` fix — the viewer's
+  safe-area overlay draws its zones and the Export sheet starts with its preset. A project's `review` object also
+  takes `hookSeconds` and `severities` (check ID or prefix → `error`, `warning`, `info` or `off`), so a genre recipe
+  can tune the review; `output` and `review` are in the project schema.
+
 - **Plugins can contribute review checks (plugin API 9, #451).** A provider of the new `review.check` capability gets
   the project and returns issues in the review's shape (severity, frame/endFrame, optional fix). `review measure`
   runs every enabled check side by side with the picture measurement, each for at most 30 s; a check that fails,
