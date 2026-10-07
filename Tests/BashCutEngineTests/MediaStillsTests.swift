@@ -61,7 +61,7 @@ struct MediaStillsTests {
             withText: try frame(text: true), without: try frame(text: false), rect: CGRect(x: 0, y: 0, width: 1, height: 1)))
         #expect(measured.pixels == 300)
         #expect(abs(measured.text - 1) < 0.01 && abs(measured.background - 0.214) < 0.01)
-        #expect(abs(measured.ratio - 3.98) < 0.05)
+        #expect(abs(measured.ratio - 3.98) < 0.05 && abs(measured.lightRatio - 3.98) < 0.05)
         #expect(MediaStills.contrast(
             withText: try frame(text: false), without: try frame(text: false), rect: CGRect(x: 0, y: 0, width: 1, height: 1)) == nil)
     }

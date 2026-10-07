@@ -58,6 +58,8 @@ extension ProjectDocument {
                     "textLuminance": .number((measured.text * 1_000).rounded() / 1_000),
                     "backgroundLuminance": .number((measured.background * 1_000).rounded() / 1_000),
                     "textPixels": .integer(measured.pixels),
+                    "lightRatio": .number((measured.lightRatio * 100).rounded() / 100),
+                    "darkRatio": .number((measured.darkRatio * 100).rounded() / 100),
                 ])
             } else {
                 fields["contrast"] = .null

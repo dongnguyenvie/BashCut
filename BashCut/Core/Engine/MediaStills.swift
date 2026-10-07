@@ -56,29 +56,44 @@ public enum MediaStills {
     /// Contrast of text against what is behind it, measured: inside `rect` (fractions of the frame from the top-left),
     /// the pixels that differ between the frame with text and without it are the text; their WCAG relative luminance
     /// in the frame with text against the same pixels without it gives the ratio (1–21). Nil when no pixel changed.
-    public static func contrast(withText: CGImage, without: CGImage, rect: CGRect)
-        -> (ratio: Double, text: Double, background: Double, pixels: Int)?
-    {
+    public struct Contrast: Sendable, Equatable {
+        /// Mean text luminance against the mean of what was behind it.
+        public let ratio: Double
+        public let text: Double
+        public let background: Double
+        public let pixels: Int
+        /// The light and dark parts of the text (90th and 10th percentile luminance, such as a fill and its outline)
+        /// against the background.
+        public let lightRatio: Double
+        public let darkRatio: Double
+    }
+
+    public static func contrast(withText: CGImage, without: CGImage, rect: CGRect) -> Contrast? {
         let width = withText.width, height = withText.height
         guard let first = pixels(withText, width: width, height: height),
             let second = pixels(without, width: width, height: height)
         else { return nil }
         let x0 = max(0, Int(rect.minX * Double(width))), x1 = min(width, Int(rect.maxX * Double(width)))
         let y0 = max(0, Int(rect.minY * Double(height))), y1 = min(height, Int(rect.maxY * Double(height)))
-        var text = 0.0, background = 0.0, count = 0
+        var text: [Double] = [], background = 0.0
         for y in y0..<max(y0, y1) {
             for x in x0..<max(x0, x1) {
                 let offset = (y * width + x) * 4
                 let change = (0..<3).map { abs(Int(first[offset + $0]) - Int(second[offset + $0])) }.max() ?? 0
                 guard change > 24 else { continue }
-                text += luminance(first, offset)
+                text.append(luminance(first, offset))
                 background += luminance(second, offset)
-                count += 1
             }
         }
-        guard count > 0 else { return nil }
-        let (a, b) = (text / Double(count), background / Double(count))
-        return ((max(a, b) + 0.05) / (min(a, b) + 0.05), a, b, count)
+        guard !text.isEmpty else { return nil }
+        let behind = background / Double(text.count)
+        let ratio = { (value: Double) in (max(value, behind) + 0.05) / (min(value, behind) + 0.05) }
+        let sorted = text.sorted()
+        let mean = text.reduce(0, +) / Double(text.count)
+        return Contrast(
+            ratio: ratio(mean), text: mean, background: behind, pixels: text.count,
+            lightRatio: ratio(sorted[Int(Double(sorted.count - 1) * 0.9)]),
+            darkRatio: ratio(sorted[Int(Double(sorted.count - 1) * 0.1)]))
     }
 
     /// RGBA bytes of `image` drawn at `width × height`, top row first.
