@@ -40,7 +40,7 @@ public enum LibrarySelection {
             return try audio(sound, trackRole: nil)
         case .sticker:
             return try sticker(item, media: nil, project: nil)
-        case .voice:
+        case .voice, .clip:
             throw ProjectError.invalid("A selection cannot be saved as \(kind.rawValue)")
         }
     }

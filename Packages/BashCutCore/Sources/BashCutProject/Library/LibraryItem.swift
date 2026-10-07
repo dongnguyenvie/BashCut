@@ -1,6 +1,6 @@
 import Foundation
 
-// The library (#66): every left-rail panel (Audio, Text, Stickers, Effects, Transitions, Filters, Voice) is a
+// The library (#66): every left-rail panel (Media, Audio, Text, Stickers, Effects, Transitions, Filters, Voice) is a
 // collection of items with one model. Items come from four scopes: built-in (shipped with the app, read-only),
 // user (this Mac), project (`.bashcut/library` in the project folder, so they travel with it) and plugin (read-only,
 // removed with the plugin). Improving an item saves a new version or a copy; nothing is overwritten silently.
@@ -14,6 +14,8 @@ public enum LibraryKind: String, CaseIterable, Sendable {
     case transitionPreset = "transition-preset"
     case look
     case voice
+    /// Footage: a movie or still placed as media (P2-H5).
+    case clip
 
     /// The library panel (`CommandCatalog.libraryPanels`) that lists this kind.
     public var panel: String {
@@ -25,6 +27,7 @@ public enum LibraryKind: String, CaseIterable, Sendable {
         case .transitionPreset: "transitions"
         case .look: "filters"
         case .voice: "voice"
+        case .clip: "media"
         }
     }
 
@@ -197,6 +200,8 @@ extension LibraryItem {
         }
     }
 
+    // One case per kind.
+    // swiftlint:disable:next cyclomatic_complexity
     private func validateParams(_ kind: LibraryKind, label: String) throws {
         switch kind {
         case .audio:
@@ -226,6 +231,9 @@ extension LibraryItem {
             }
         case .voice:
             break
+        case .clip:
+            // A movie or an image; params are free (measured length and size, a provider's keys).
+            try LibraryClip.validate(file: file, label: label)
         }
     }
 

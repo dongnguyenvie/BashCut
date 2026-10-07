@@ -5,7 +5,7 @@ extension CommandCatalog {
     private static let libraryKind = CommandParameter(
         "kind", .string, "Item kind", choices: libraryKinds, cli: .option("kind"))
     private static let libraryPanel = CommandParameter(
-        "panel", .string, "Only items the library panel shows", choices: libraryPanels.filter { $0 != "media" },
+        "panel", .string, "Only items the library panel shows", choices: libraryPanels,
         cli: .option("panel"))
     private static let libraryID = CommandParameter(
         "id", .string, "Item ID, or scope:id to pick one scope", required: true, cli: .positional)
@@ -33,10 +33,12 @@ extension CommandCatalog {
                 + "inOut, sfx: audio item ID} (or its own sound as file); look (a filter stack) {color: {exposure, contrast, "
                 + "saturation, lutStrength}, lutName} with an optional .cube LUT as file; audio (its file required) {role: "
                 + "music|sfx|ambience, seconds, bpm, loopable, lufs, truePeak}, all optional (library add measures seconds "
-                + "and picks a role by length; library analyze fills the rest), with mood and genre as tags",
+                + "and picks a role by length; library analyze fills the rest), with mood and genre as tags; clip (footage: a "
+                + ".mov/.mp4/.m4v or an image file, required) takes any keys (library add measures seconds, width, "
+                + "height and hasAudio; a generator's model, prompt or aspect may ride along)",
             cli: .option("params")),
         CommandParameter(
-            "file", .string, "File to copy in (audio, image or alpha-movie sticker, a look's .cube LUT…)", isPath: true,
+            "file", .string, "File to copy in (audio, image or alpha-movie sticker, a look's .cube LUT, a clip's movie or image…)", isPath: true,
             cli: .option("file")),
         CommandParameter("preview", .string, "Preview image, GIF or audio snippet to copy in", isPath: true,
                          cli: .option("preview")),
@@ -66,7 +68,7 @@ extension CommandCatalog {
     static let librarySpecs: [CommandSpec] = [
         CommandSpec(
             "library.list", .read,
-            "List library items (Audio, Text, Stickers, Effects, Transitions, Filters, Voice) from the open project, "
+            "List library items (Media clips, Audio, Text, Stickers, Effects, Transitions, Filters, Voice) from the open project, "
                 + "this Mac, plugins and built-in packs, with usage. Check here before making something new.",
             parameters: [
                 libraryKind, libraryPanel,
@@ -186,13 +188,15 @@ extension CommandCatalog {
                 + "project's music/ or sfx/ folder (once per content), imported and placed on the Music layer (music, "
                 + "ambience) or SFX layer (sfx), the layer added when missing, as one undo step. duration trims a sound; "
                 + "longer than the file, a loopable sound repeats back to back and another plays once (the result says so). "
-                + "At the playhead by default.",
+                + "A clip (footage) is copied into the project's clips/ folder (once per content), imported and placed "
+                + "like media place: on track or the main layer, spilling onto a free layer when the range is taken, "
+                + "duration trimming it, as one undo step. At the playhead by default.",
             parameters: [
                 libraryID, libraryScope,
                 CommandParameter("atFrame", .integer, "First timeline frame", minimum: 0, cli: .option("at-frame")),
                 CommandParameter("duration", .integer, "Length in timeline frames", minimum: 1, cli: .option("duration")),
                 CommandParameter("track", .string, "Layer ID; for audio, the Music or SFX layer by its role by default; "
-                                 + "for a sticker, the Overlay layer", cli: .option("track")),
+                                 + "for a sticker, the Overlay layer; for a clip, the main layer", cli: .option("track")),
                 CommandParameter(
                     "position", .string,
                     "Sticker: center, top, bottom, left, right, top-left, top-right, bottom-left or bottom-right (inside "

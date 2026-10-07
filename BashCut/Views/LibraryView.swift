@@ -73,10 +73,32 @@ struct LibraryView: View {
             .labelsHidden()
             if mediaSource == .selects {
                 SelectsListView(document: document)
+            } else if mediaSource == .clips {
+                clips
             } else {
                 mediaGrid
             }
         }
+    }
+
+    /// Clip items (P2-H5): footage saved in the library, such as generated B-roll; a click places one at the playhead.
+    private var clips: some View {
+        LibraryItemsSection(
+            document: document, kinds: [.clip], fileKind: .clip,
+            itemActions: { item in
+                document.fileURL == nil ? [] : [LibraryPanelAction(title: "Place at Playhead") { document.placeFromLibrary(item) }]
+            },
+            tile: { item in
+                Button { document.placeFromLibrary(item) } label: {
+                    VStack(alignment: .leading, spacing: 2) {
+                        LibraryImage(url: document.libraryCatalog.previewURL(of: item) ?? document.libraryCatalog.fileURL(of: item))
+                            .frame(height: 60)
+                        LibraryView.title(item).font(.caption2).lineLimit(1)
+                    }
+                }
+                .buttonStyle(.plain).disabled(document.fileURL == nil)
+                .help("Place at Playhead")
+            })
     }
 
     private var mediaGrid: some View {
@@ -337,7 +359,7 @@ private extension LibraryView {
         case .footage: return "Import footage to start editing."
         case .project: return "No project media."
         case .shared: return "No shared media in this project."
-        case .selects: return ""
+        case .selects, .clips: return ""
         }
     }
 
@@ -361,6 +383,7 @@ private enum MediaLibrarySource: String, CaseIterable, Identifiable {
     case project
     case shared
     case selects
+    case clips
 
     var id: Self { self }
     var title: String {
@@ -369,6 +392,7 @@ private enum MediaLibrarySource: String, CaseIterable, Identifiable {
         case .project: "Project"
         case .shared: "Shared"
         case .selects: "Selects"
+        case .clips: "Clips"
         }
     }
 }
