@@ -56,6 +56,7 @@ public enum CommandCatalog {
         reviewPictureSpec,
         reviewShotsSpec,
         reviewLayoutSpec,
+        reviewHookSpec,
         CommandSpec(
             "export.status", .read,
             "Read the export state: while one runs, its job, step, preset and path (last receipt under lastExport); "

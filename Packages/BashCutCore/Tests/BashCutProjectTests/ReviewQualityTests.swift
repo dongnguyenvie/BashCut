@@ -152,15 +152,15 @@ struct ReviewQualityTests {
         #expect(ids(landscape, "safe-").isEmpty)
     }
 
-    @Test("Hook: nothing in the first 3 s warns, text without a number is info, a number or speech passes (#434)")
+    @Test("Hook: no check without a project window; with one, nothing in it warns and any text or speech passes (#467)")
     func hook() throws {
         var project = try project()
+        #expect(ids(TimelineReview.run(project), "hook").isEmpty)
+
+        project["review"] = .object(["hookSeconds": .integer(3)])
         #expect(TimelineReview.run(project).first { $0.id == "hook" }?.severity == .warning)
 
         set(&project, track: "t1", [text("title", "Chuyến đi Đà Lạt", at: 15)])
-        #expect(TimelineReview.run(project).first { $0.id == "hook" }?.severity == .info)
-
-        set(&project, track: "t1", [text("title", "Đà Lạt 48h · 3 triệu", at: 15)])
         #expect(ids(TimelineReview.run(project), "hook").isEmpty)
 
         set(&project, track: "t1", [text("title", "Đi đâu cuối tuần?", at: 15)])

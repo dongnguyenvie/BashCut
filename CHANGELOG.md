@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+- **Hook and close as facts (#467, P0-B11).** `review hook` reads when the first words are heard, the first title,
+  caption and cut appear, when each described subject and shot size first shows and how long it stays, frame 0's luma
+  and ink share, and at the end the last title (hold, bounds, edges), the last words and the last cut. The review's
+  hook check no longer asks for a number or a question or speech in the first 0.5 s: it runs only when the project
+  sets `review.hookSeconds`, and then reports nothing said or written inside that window.
+
 - **Beat grid v2 and music energy (P0-B10, PL2).** The built-in beat tracker also returns each beat's strength,
   the downbeats (the bar phase where the kick band hits hardest), how clearly the tempo stands out, a least-squares
   grid fit (period, phase, RMS error) and the half and double tempos with their relative strength; `beats detect`
