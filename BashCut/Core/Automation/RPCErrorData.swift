@@ -18,6 +18,7 @@ public enum RPCErrorCategory: String, Sendable, CaseIterable {
     case notAvailableNow = "not_available_now"
     case fileConflict = "file_conflict"
     case capabilityMissing = "capability_missing"
+    case unsupportedMedia = "unsupported_media"
     case internalError = "internal"
 
     /// Whether the same request can succeed later without changing it.
@@ -61,6 +62,9 @@ public enum RPCErrorCategory: String, Sendable, CaseIterable {
         case .permission: return step(nil, "Run from a terminal BashCut opened, which has BASHCUT_SESSION_TOKEN.")
         case .outOfScope: return step("context.get", "context get › scope lists what you may change; ask the user.")
         case .capabilityMissing: return step("plugins.search", "No plugin provides this; find or install one.")
+        case .unsupportedMedia:
+            return step("media.inventory", "This Mac cannot decode that media's video; convert it to H.264 or HEVC "
+                + "(for example ffmpeg -i in -c:v libx264 -crf 18 -c:a aac out.mp4) and import the converted file.")
         default: return nil
         }
     }

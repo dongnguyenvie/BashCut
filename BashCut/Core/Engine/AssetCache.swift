@@ -30,9 +30,11 @@ actor AssetCache {
         let video = try await asset.loadTracks(withMediaType: .video).first
         let audio = try await asset.loadTracks(withMediaType: .audio).first
         let videoRange: CMTimeRange? = if let video { try await MediaFrames.pictureRange(video) } else { nil }
+        let undecodableCodec = if let video { try await VideoDecoders.undecodableCodec(video) } else { String?.none }
         let loaded = LoadedAsset(
             asset: asset, signature: signature, video: video, audio: audio,
             videoRange: videoRange,
+            undecodableCodec: undecodableCodec,
             naturalSize: try await video?.load(.naturalSize) ?? .zero,
             preferredTransform: try await video?.load(.preferredTransform) ?? .identity)
         loads += 1
@@ -61,6 +63,8 @@ struct LoadedAsset: @unchecked Sendable {
     /// Where the video track has pictures; the file's duration, and so `Media.frames` of media imported before #437,
     /// can run past its end.
     let videoRange: CMTimeRange?
+    /// The video codec when this Mac cannot decode it (`VideoDecoders.undecodableCodec`).
+    let undecodableCodec: String?
     let naturalSize: CGSize
     let preferredTransform: CGAffineTransform
 }

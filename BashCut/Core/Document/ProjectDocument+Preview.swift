@@ -27,6 +27,8 @@ extension ProjectDocument {
             throw ProjectError.invalid("The viewer has no frame to attach")
         }
         let frame = min(requested ?? playhead, project.duration - 1)
+        let undecodable = snapshot.undecodable(at: frame)
+        if !undecodable.isEmpty { throw UndecodableMediaError(undecodable) }
         let generator = AVAssetImageGenerator(asset: snapshot.composition)
         generator.videoComposition = snapshot.videoComposition
         generator.appliesPreferredTrackTransform = true

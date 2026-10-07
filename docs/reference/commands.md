@@ -208,7 +208,7 @@ Add a media file (path relative to the project or absolute): video, audio or a s
 
 ### `bashcut media proxy [<media>] [--force]`
 
-Queue preview proxies (smaller, quick-to-seek copies in .bashcut/cache/proxies; export keeps the originals) for heavy video media, or one media item. Imports queue them automatically. Returns a status per media: queued with its job ID, exists, not-needed or skipped.
+Queue preview proxies (smaller, quick-to-seek copies in .bashcut/cache/proxies; export keeps the originals) for heavy video media, or one media item. Imports queue them automatically. Returns a status per media: queued with its job ID, exists, not-needed, skipped, or unsupported (with codec and reason) when this Mac cannot decode the video.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_media_proxy`
 - `media`: string. Project media ID; all video media by default

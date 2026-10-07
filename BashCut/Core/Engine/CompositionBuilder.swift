@@ -9,14 +9,24 @@ public struct CompositionSnapshot: @unchecked Sendable {
     /// snapshots with the same value differ only in their video composition and audio mix, so a player can take the
     /// new ones without loading the composition again. Nil: unknown, never reused.
     public let structure: Int?
+    /// Items whose video this Mac cannot decode. Preview leaves them out (black, sound still plays); an export
+    /// build throws `UndecodableMediaError` instead.
+    public let undecodable: [UndecodableMedia]
 
     public init(
-        composition: AVComposition, videoComposition: AVVideoComposition, audioMix: AVAudioMix, structure: Int? = nil
+        composition: AVComposition, videoComposition: AVVideoComposition, audioMix: AVAudioMix, structure: Int? = nil,
+        undecodable: [UndecodableMedia] = []
     ) {
         self.composition = composition
         self.videoComposition = videoComposition
         self.audioMix = audioMix
         self.structure = structure
+        self.undecodable = undecodable
+    }
+
+    /// The undecodable media an item shows at timeline `frame`, if any.
+    public func undecodable(at frame: Int) -> [UndecodableMedia] {
+        undecodable.filter { $0.start <= frame && frame < $0.end }
     }
 }
 
@@ -89,6 +99,7 @@ public actor CompositionBuilder {
         // One source decision, still conversion and asset signature check per media in this snapshot.
         // Keep this local: a later build must discover newly created proxies or replaced originals.
         var loadedMedia: [String: LoadedAsset] = [:]
+        var undecodable: [UndecodableMedia] = []
         let transitionFrom = Dictionary(uniqueKeysWithValues: project.transitions.map { ($0.fromItemID, $0) })
         let transitionTo = Dictionary(uniqueKeysWithValues: project.transitions.map { ($0.toItemID, $0) })
         for track in project.tracks where track.kind == "video" || track.kind == "audio" {
@@ -117,7 +128,10 @@ public actor CompositionBuilder {
                 } ?? normalSourceRange
                 let destination = project.fps.time(item.at)
                 let ramp = rampPlans.plan(for: item, mediaFPS: media.fps, fps: project.fps)
-                if track.kind == "video" {
+                if track.kind == "video", let codec = asset.undecodableCodec {
+                    undecodable.append(
+                        UndecodableMedia(mediaID: mediaID, path: media.path, codec: codec, start: item.at, end: item.end))
+                } else if track.kind == "video" {
                     guard let source = asset.video else {
                         throw ProjectError.invalid("No video track in \(media.path)")
                     }
@@ -208,6 +222,7 @@ public actor CompositionBuilder {
                 }
             }
         }
+        if purpose == .export, !undecodable.isEmpty { throw UndecodableMediaError(undecodable) }
         let targetDuration = project.fps.time(project.duration)
         if composition.duration < targetDuration {
             composition.insertEmptyTimeRange(
@@ -259,7 +274,8 @@ public actor CompositionBuilder {
         let audio = AVMutableAudioMix()
         audio.inputParameters = audioLanes.parameters
         return CompositionSnapshot(
-            composition: composition, videoComposition: video, audioMix: audio, structure: Self.structure(of: composition))
+            composition: composition, videoComposition: video, audioMix: audio, structure: Self.structure(of: composition),
+            undecodable: undecodable)
     }
 
     /// A hash of every track (ID and media type) and segment (source file and its state on disk, source track, source

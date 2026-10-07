@@ -115,7 +115,8 @@ public enum CommandCatalog {
             "media.proxy", .edit,
             "Queue preview proxies (smaller, quick-to-seek copies in .bashcut/cache/proxies; export keeps the originals) "
                 + "for heavy video media, or one media item. Imports queue them automatically. Returns a status per "
-                + "media: queued with its job ID, exists, not-needed or skipped.",
+                + "media: queued with its job ID, exists, not-needed, skipped, or unsupported (with codec and reason) "
+                + "when this Mac cannot decode the video.",
             parameters: [
                 CommandParameter("media", .string, "Project media ID; all video media by default", cli: .positional),
                 CommandParameter("force", .boolean, "Make proxies even for light footage, replacing existing ones",
