@@ -53,7 +53,8 @@ func mediaPath(_ params: [String: Any], key: String = "mediaPath") throws -> Str
 
 func loudness(_ params: [String: Any]) async throws -> [String: Any] {
     let channels = try await decode(mediaPath(params), sampleRate: LoudnessMeter.sampleRate, maximumChannels: 2)
-    let result = try LoudnessMeter.measure(channels)
+    let wantsCurve = params["curve"] as? Bool == true
+    let result = try LoudnessMeter.measure(channels, allowSilence: wantsCurve)
     var values: [String: Any] = [
         "integratedLUFS": (result.integratedLUFS * 10).rounded() / 10,
         "truePeakDbTP": (result.truePeakDbTP * 10).rounded() / 10,
@@ -63,6 +64,14 @@ func loudness(_ params: [String: Any]) async throws -> [String: Any] {
         let shares = try SpectralShare.measure(channels)
         values["speechShare"] = shares.speech
         values["presenceShare"] = shares.presence
+    }
+    if wantsCurve {
+        let curve = LoudnessMeter.curve(channels)
+        let tenths = { (values: [Double]) in values.map { ($0 * 10).rounded() / 10 } }
+        values["curve"] = [
+            "step": 0.1, "momentaryWindow": 0.4, "shortTermWindow": 3, "momentary": tenths(curve.momentary),
+            "shortTerm": tenths(curve.shortTerm), "peakDb": tenths(curve.peakDb),
+        ]
     }
     return values
 }

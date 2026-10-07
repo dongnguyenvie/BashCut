@@ -14,7 +14,7 @@ import Foundation
         "audio.measure", "media.sync", "media.analyze", "media.analysis", "media.cuts", "media.transcribe",
         "media.transcript", "media.speech-map", "media.describe", "media.description",
         "media.frames", "media.frame", "media.strip", "media.inventory", "review.cuts", "review.sync",
-        "review.window", "timeline.sheet", "color.measure",
+        "review.window", "timeline.sheet", "color.measure", "audio.mix-measure",
         "storage.get", "ui.select", "ui.view", "ui.source", "ui.seek", "ui.frame", "ui.frames", "ui.panel", "luts.import",
         "fonts.list", "fonts.import",
         "knowledge.get", "knowledge.memo", "knowledge.lessons", "knowledge.add-lesson", "knowledge.update-lesson",

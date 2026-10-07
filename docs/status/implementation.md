@@ -105,6 +105,9 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   and `captions generate` unless `--fresh`; `media transcribe` makes one without placing captions, `media transcript`
   reads it in source seconds (phrases, words with confidence/speaker/event/noSpeechProb when the provider gives
   them), and `transcript words --heard` maps its words through the clips playing the media now.
+- `audio measure --curve` / `--timeline` give loudness over time of a file or of the rendered mix (with silent
+  stretches), `audio mix-measure` reads per-role stems against each other and against the words, and `library
+  analyze` stores sound landmarks; the `audio.loudness` contract has an optional `curve`.
 - `color measure` gives each clip's luma percentiles, saturation, tint per band and clipped/crushed shares from
   source frames or the edit as graded, the change a grade makes (with mean ΔE) and each clip's distance from the
   median clip.

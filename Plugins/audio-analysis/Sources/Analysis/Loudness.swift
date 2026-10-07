@@ -14,7 +14,8 @@ public enum LoudnessMeter {
     }
 
     /// `channels` are deinterleaved channels of equal length at 48 kHz (1 or 2; surround should be downmixed).
-    public static func measure(_ channels: [[Float]]) throws -> Result {
+    /// Silent audio throws unless `allowSilence`, which reports −100 LUFS instead.
+    public static func measure(_ channels: [[Float]], allowSilence: Bool = false) throws -> Result {
         guard let length = channels.first?.count, length > 0, channels.allSatisfy({ $0.count == length }) else {
             throw AnalysisError("The audio is empty")
         }
@@ -22,13 +23,42 @@ public enum LoudnessMeter {
         let block = Int(sampleRate * 0.4)
         let step = Int(sampleRate * 0.1)
         let blocks = meanSquares(weighted, window: block, step: step)
-        guard let integrated = gatedLoudness(blocks, relativeGate: -10) else {
+        guard let integrated = gatedLoudness(blocks, relativeGate: -10) ?? (allowSilence ? -100 : nil) else {
             throw AnalysisError("The audio is silent")
         }
         let shortTerm = meanSquares(weighted, window: Int(sampleRate * 3), step: step)
         return Result(
             integratedLUFS: max(-100, integrated), truePeakDbTP: truePeak(channels),
             loudnessRangeLU: loudnessRange(shortTerm))
+    }
+
+    /// Loudness over time, every 100 ms from the start: momentary (400 ms windows) and short-term (3 s windows)
+    /// loudness in LUFS (−100 for silence), and the sample peak of each 100 ms in dBFS. Window `i` starts at
+    /// `i × 0.1` s; the last windows are left out where they would run past the end.
+    public static func curve(_ channels: [[Float]]) -> (momentary: [Double], shortTerm: [Double], peakDb: [Double]) {
+        guard let length = channels.first?.count, length > 0 else { return ([], [], []) }
+        let weighted = channels.map(kWeight)
+        let step = Int(sampleRate * 0.1)
+        let level = { (value: Double) in value > 1e-10 ? max(-100, loudness(value)) : -100 }
+        let momentary = meanSquares(weighted, window: Int(sampleRate * 0.4), step: step).map(level)
+        let shortTerm = length >= Int(sampleRate * 3)
+            ? meanSquares(weighted, window: Int(sampleRate * 3), step: step).map(level) : []
+        var peaks: [Double] = []
+        var start = 0
+        while start < length {
+            let end = min(length, start + step)
+            var peak: Float = 0
+            for channel in channels {
+                var value: Float = 0
+                channel.withUnsafeBufferPointer { buffer in
+                    vDSP_maxmgv(buffer.baseAddress! + start, 1, &value, vDSP_Length(end - start))
+                }
+                peak = max(peak, value)
+            }
+            peaks.append(peak > 0 ? max(-100, 20 * log10(Double(peak))) : -100)
+            start = end
+        }
+        return (momentary, shortTerm, peaks)
     }
 
     // MARK: K-weighting

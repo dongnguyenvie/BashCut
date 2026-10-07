@@ -5,6 +5,15 @@
 
 ## [Unreleased]
 
+- **The mix as numbers without exporting (#471, P0-B9).** `audio measure --media M --curve` adds loudness over time
+  (momentary and short-term LUFS and the sample peak every 100 ms); `audio measure --timeline` renders the mix to a
+  scratch file and measures it with its curve and silent stretches. `audio mix-measure` renders one stem per role
+  (speech, music, sound effects; other sounds at −120 dB so ducking stays) and reports the voice level, music under
+  speech and music in the gaps as median/p10/p90 overall and per spoken window, and for every sound effect its level
+  and peak against the voice around it (masked when under it) and its onset and peak offsets to the nearest cut, beat
+  and word. `library analyze` stores each sound's landmarks (onset, peak, tail). The `audio.loudness` contract gains
+  an optional `curve`; the built-in provider supports it.
+
 - **Colour as numbers (P0-B8).** `color measure [--items A,B] [--samples N] [--graded] [--compare source] [--by clip]`
   (`color.measure`) measures each clip on the colour skill's 0–100 scale: black/p5/mid/p95/white luma, mean,
   saturation and its p95, the tint of shadows, mids and highlights, and the clipped and crushed shares; from the

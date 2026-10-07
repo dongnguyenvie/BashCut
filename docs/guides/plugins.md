@@ -523,6 +523,12 @@ With `bands: true` (`audio measure`), also return `speechShare` and `presenceSha
 file's energy in the speech band (300–3000 Hz) and in the presence band (1–4 kHz). A provider that leaves them out
 still answers `audio measure` without them.
 
+With `curve: true` (`audio measure --curve` and `--timeline`, `audio mix-measure`, `library analyze`), also return
+`curve`: `{"step": 0.1, "momentary": […], "shortTerm": […], "peakDb": […]}`, momentary (400 ms) and short-term (3 s)
+loudness in LUFS and the sample peak in dBFS every `step` seconds from the start (window `i` starts at `i × step`;
+−100 for silence). A silent file (a stem with nothing in it) is then not an error: report −100 LUFS. Without a
+curve, the commands that need one say the provider gave none.
+
 ### `audio.sync`
 
 `mediaPath` and `otherPath` are two recordings of the same moment. Return `offsetSeconds` (time in `otherPath` =

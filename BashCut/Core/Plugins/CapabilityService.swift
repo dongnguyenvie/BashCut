@@ -151,10 +151,11 @@ public struct CapabilityService: Sendable {
     }
 
     public func analyzeLoudness(
-        mediaURL: URL, bands: Bool, preferredProvider: String?, projectRoot: URL?
+        mediaURL: URL, bands: Bool, curve: Bool = false, preferredProvider: String?, projectRoot: URL?
     ) async throws -> GeneratedLoudnessMeasurement {
         try await run(
-            LoudnessCapability(mediaURL: mediaURL, bands: bands), preferredProvider: preferredProvider, projectRoot: projectRoot)
+            LoudnessCapability(mediaURL: mediaURL, bands: bands, curve: curve), preferredProvider: preferredProvider,
+            projectRoot: projectRoot)
     }
 
     public func syncAudio(

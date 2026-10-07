@@ -19,6 +19,23 @@ struct PluginCatalogTests {
         }
     }
 
+    @Test("A loudness curve is optional and checked")
+    func loudnessCurve() throws {
+        let measured = try LoudnessMeasurement(result: .object([
+            "integratedLUFS": .number(-20), "truePeakDbTP": .number(-3),
+            "curve": .object(["step": .number(0.1), "momentary": .array([.number(-100), .number(-21.5)]),
+                              "peakDb": .array([.number(-100), .number(-6)])]),
+        ]))
+        #expect(measured.curve?.momentary == [-100, -21.5] && measured.curve?.shortTerm == [])
+        #expect(measured.json.object["curve"]?.object["step"] == .number(0.1))
+        #expect(throws: PluginError.self) {
+            try LoudnessMeasurement(result: .object([
+                "integratedLUFS": .number(-20), "truePeakDbTP": .number(-3),
+                "curve": .object(["step": .number(0), "momentary": .array([])]),
+            ]))
+        }
+    }
+
     @Test("Voice synthesis accepts scored take arrays and legacy single outputs")
     func voiceSynthesisResults() throws {
         let takes = try VoiceSynthesisResultParser.parse(.object([

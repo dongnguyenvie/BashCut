@@ -102,12 +102,12 @@ extension ProjectDocument {
     }
 
     /// Loudness, loudness range and speech-band shares of one media item.
-    func measureAudio(mediaID: String, provider: String? = nil) async throws -> JSONValue {
+    func measureAudio(mediaID: String, provider: String? = nil, curve: Bool = false) async throws -> JSONValue {
         let (root, media, url) = try capabilityMedia(mediaID)
         let generated = try await plugins.running("audio.loudness") {
             try await plugins.service.analyzeLoudness(
-                mediaURL: url, bands: true, preferredProvider: provider ?? project.preferredProvider(for: "audio.loudness"),
-                projectRoot: root)
+                mediaURL: url, bands: true, curve: curve,
+                preferredProvider: provider ?? project.preferredProvider(for: "audio.loudness"), projectRoot: root)
         }
         guard case .object(var fields) = generated.measurement.json else { return generated.measurement.json }
         fields["media"] = .string(media.id)
@@ -277,10 +277,23 @@ extension ProjectDocument {
             }
         }
         handleAuthored("audio.measure") { document, arguments, author in
-            let media = try arguments.string("media")
             let provider = arguments.optionalString("provider")
+            if arguments.bool("timeline") {
+                return try document.startCapabilityJob("audio.measure", author: author) { document in
+                    try await document.measureTimelineAudio(provider: provider)
+                }
+            }
+            guard let media = arguments.optionalString("media") else { throw RPCFailure(-32602, "Give media, or timeline") }
+            let curve = arguments.bool("curve")
             return try document.startCapabilityJob("audio.measure", author: author) { document in
-                try await document.measureAudio(mediaID: media, provider: provider)
+                try await document.measureAudio(mediaID: media, provider: provider, curve: curve)
+            }
+        }
+        handleAuthored("audio.mix-measure") { document, arguments, author in
+            let provider = arguments.optionalString("provider")
+            let near = arguments.optionalDouble("nearSeconds") ?? 1
+            return try document.startCapabilityJob("audio.mix-measure", author: author) { document in
+                try await document.measureMix(provider: provider, nearSeconds: near)
             }
         }
         handleAuthored("media.sync") { document, arguments, author in

@@ -168,11 +168,17 @@ extension ProjectDocument {
         do {
             let loudness = try await plugins.running("audio.loudness") {
                 try await plugins.service.analyzeLoudness(
-                    mediaURL: url, preferredProvider: provider ?? project.preferredProvider(for: "audio.loudness"),
-                    projectRoot: root)
+                    mediaURL: url, bands: false, curve: true,
+                    preferredProvider: provider ?? project.preferredProvider(for: "audio.loudness"), projectRoot: root)
             }
             measured.lufs = loudness.measurement.integratedLUFS
             measured.truePeak = loudness.measurement.truePeakDbTP
+            if let curve = Self.curve(loudness.measurement) {
+                measured.landmarks = MixMeasure.landmarks(curve)
+                if measured.landmarks == nil { notes["landmarks"] = .string("The sound never passes −70 LUFS") }
+            } else {
+                notes["landmarks"] = .string("The audio.loudness provider gave no curve")
+            }
         } catch {
             notes["lufs"] = .string(error.localizedDescription)
         }

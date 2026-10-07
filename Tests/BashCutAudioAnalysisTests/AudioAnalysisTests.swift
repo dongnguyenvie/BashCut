@@ -27,6 +27,19 @@ struct AudioAnalysisTests {
         #expect(throws: AnalysisError.self) { try LoudnessMeter.measure([[Float](repeating: 0, count: 48_000)]) }
     }
 
+    @Test("The curve follows the sound every 100 ms; silence is allowed when asked")
+    func curve() throws {
+        let sound = [Float](repeating: 0, count: 48_000) + sine(amplitude: 0.1, seconds: 4)
+        let curve = LoudnessMeter.curve([sound])
+        #expect(curve.momentary.count == 47 && curve.peakDb.count == 50)
+        #expect(curve.momentary[0] == -100 && curve.peakDb[5] == -100)
+        #expect(abs(curve.momentary[20] - -23) < 0.3)
+        #expect(abs(curve.peakDb[30] - -20) < 0.2)
+        #expect(abs((curve.shortTerm.last ?? 0) - -23) < 0.3)
+        let silent = try LoudnessMeter.measure([[Float](repeating: 0, count: 48_000)], allowSilence: true)
+        #expect(silent.integratedLUFS == -100)
+    }
+
     @Test("True peak sees an inter-sample peak the samples miss")
     func interSamplePeak() throws {
         // A quarter-rate sine sampled at ±45° never hits its crest: samples read −3 dB, the wave is at 0 dB.
