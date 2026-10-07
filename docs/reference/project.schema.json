@@ -1582,6 +1582,38 @@
     "output" : {
       "description" : "What the project is made for (#441)",
       "properties" : {
+        "captions" : {
+          "additionalProperties" : {
+            "description" : "Captions of one output",
+            "properties" : {
+              "format" : {
+                "description" : "Sidecar format",
+                "enum" : [
+                  "srt",
+                  "vtt"
+                ],
+                "type" : "string"
+              },
+              "mode" : {
+                "description" : "Burned in, a sidecar file, both or none",
+                "enum" : [
+                  "burn",
+                  "sidecar",
+                  "both",
+                  "none"
+                ],
+                "type" : "string"
+              },
+              "track" : {
+                "description" : "Caption layer ID; default the first caption layer",
+                "type" : "string"
+              }
+            },
+            "type" : "object"
+          },
+          "description" : "Export preset → how that output carries captions (P1-F4)",
+          "type" : "object"
+        },
         "presets" : {
           "description" : "Export presets, first one primary: review checks every output's platform and the Export sheet starts with the first",
           "items" : {

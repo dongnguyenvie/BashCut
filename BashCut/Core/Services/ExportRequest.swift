@@ -34,10 +34,13 @@ public struct ExportRequest: Sendable {
         guard source.duration > 0 else { throw ProjectError.invalid("The timeline is empty") }
         let base = directory.appendingPathComponent(baseName).standardizedFileURL
         let output = base.appendingPathExtension(preset.fileExtension)
-        // No SubRip file when the timeline has no captions.
-        let captionText = includeSubRip ? try SubRip.encode(source) : nil
+        // The output's caption settings (P1-F4) choose the sidecar and what burns in; otherwise every text item
+        // goes to SubRip when asked. No sidecar file when there are no captions.
+        let outputCaptions = OutputPackaging.captions(source, preset: preset.argument)
+        let captionText = try outputCaptions.map { $0.sidecar ? OutputPackaging.sidecar(source, captions: $0) : nil }
+            ?? (includeSubRip ? SubRip.encode(source) : nil)
         let hasCaptions = captionText.map { !$0.isEmpty } ?? false
-        let subRip = hasCaptions ? base.appendingPathExtension("srt") : nil
+        let subRip = hasCaptions ? base.appendingPathExtension(outputCaptions?.format ?? "srt") : nil
         for url in [output, subRip].compactMap({ $0 }) where Self.isTaken(url, reserved: reserved) {
             let free = Self.availableName(
                 baseName, preset: preset, directory: directory, includeSubRip: hasCaptions, reserved: reserved)
@@ -45,7 +48,7 @@ public struct ExportRequest: Sendable {
                 "\(url.lastPathComponent) already exists or is queued; choose a new export name such as \(free)")
         }
         let dimensions = preset.dimensions(projectWidth: source.width, projectHeight: source.height)
-        var sized = source
+        var sized = outputCaptions.map { OutputPackaging.burned(source, captions: $0) } ?? source
         var format = sized["format"]?.object ?? [:]
         format["width"] = .integer(dimensions.0)
         format["height"] = .integer(dimensions.1)

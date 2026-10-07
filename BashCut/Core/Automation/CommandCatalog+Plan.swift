@@ -213,4 +213,28 @@ extension CommandCatalog {
                 CommandParameter("base", .string, "Project file or folder instead of the open one", isPath: true, cli: .option("base")),
             ]),
     ]
+
+    /// Covers, chapters and captions per output (P1-F3, P1-F4).
+    static let packagingSpecs: [CommandSpec] = [
+        CommandSpec(
+            "export.cover", .ui,
+            "Write a still of the composed frame for each cover aspect into render/: the asked aspects (W:H, comma "
+                + "separated), else each output's cover aspect from platforms get (cover.aspect, else its shape), cropped "
+                + "from the centre. Pick the frame from real frames (timeline sheet); look at the result.",
+            parameters: [
+                CommandParameter("frame", .integer, "Timeline frame", required: true, minimum: 0, cli: .positional),
+                CommandParameter("aspect", .string, "Aspects such as 16:9,9:16", cli: .option("aspect")),
+                CommandParameter("size", .integer, "Long edge in pixels", minimum: 160, maximum: 3_840, cli: .option("size")),
+            ]),
+        CommandSpec(
+            "export.chapters", .ui,
+            "A chapter list from the section markers (00:00 first; an Intro at 0 when no marker is there) and each "
+                + "rule of the platform's chapter fact (first at 00:00, the least count, the shortest chapter) with "
+                + "whether it holds. With write, saves render/chapters-<platform>.txt. Caption mode per output is "
+                + "output.captions (preset → {mode burn|sidecar|both|none, format srt|vtt, track}); the export follows it.",
+            parameters: [
+                CommandParameter("platform", .string, "Platform whose rule applies (default youtube)", cli: .option("platform")),
+                CommandParameter("write", .boolean, "Save the list in render/", cli: .flag("write")),
+            ]),
+    ]
 }

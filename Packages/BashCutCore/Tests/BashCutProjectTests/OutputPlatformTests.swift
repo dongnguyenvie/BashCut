@@ -179,3 +179,42 @@ struct PlatformDataTests {
         #expect(throws: ProjectError.self) { try PlatformTable(json: .object(newer), origin: "bad") }
     }
 }
+
+/// Chapters and captions per output (P1-F3, P1-F4).
+struct OutputPackagingTests {
+    @Test("Chapters from section markers with each platform rule and whether it holds")
+    func chapters() throws {
+        var project = try ReviewPictureTests().project([("a", "m", 1_800)])
+        project.markers = [TimelineMarker(at: 300, kind: "section", label: "Chợ"), TimelineMarker(at: 600, kind: "section", label: "Phở")]
+        let json = OutputPackaging.chapters(project, platform: .youtube).object
+        #expect(json["text"] == .string("00:00 Intro\n00:10 Chợ\n00:20 Phở"))
+        #expect(json["holds"] == .bool(true))
+        project.markers = [TimelineMarker(at: 0, kind: "section", label: "A"), TimelineMarker(at: 150, kind: "section", label: "B")]
+        let failing = OutputPackaging.chapters(project, platform: .youtube).object
+        #expect(failing["holds"] == .bool(false))
+        let rules = (failing["rules"]?.array ?? []).map(\.object)
+        #expect(rules.filter { $0["holds"] == .bool(false) }.count == 2)
+    }
+
+    @Test("Per-output captions: what burns, the sidecar in SRT or WebVTT, validated settings and layer languages")
+    func captions() throws {
+        var project = try ReviewPictureTests().project([("a", "m", 300)])
+        let captions = project.tracks.firstIndex { $0.role == TrackRole.captions }!
+        var cue = Item(id: "c1", at: 30, duration: 45)
+        cue["text"] = .string("xin chào")
+        project.tracks[captions].items = [cue]
+        project.tracks[captions]["language"] = .string("vi")
+        project["output"] = .object(["captions": .object(["youtube-1080": .object(["mode": .string("sidecar"), "format": .string("vtt")])])])
+        try project.validateOutputCaptions()
+        let settings = try #require(OutputPackaging.captions(project, preset: "youtube-1080"))
+        #expect(OutputPackaging.burned(project, captions: settings).tracks[captions].items.isEmpty)
+        let text = try #require(OutputPackaging.sidecar(project, captions: settings))
+        #expect(text.hasPrefix("WEBVTT\n\n1\n00:00:01.000 --> 00:00:02.500\nxin chào"))
+        let both = OutputPackaging.Captions(mode: "both", format: "srt", track: nil)
+        #expect(OutputPackaging.burned(project, captions: both).tracks[captions].items.count == 1)
+        #expect(OutputPackaging.sidecar(project, captions: both)?.contains("00:00:01,000") == true)
+        var bad = project
+        bad["output"] = .object(["captions": .object(["tiktok": .object(["mode": .string("float")])])])
+        #expect(throws: ProjectError.self) { try bad.validateOutputCaptions() }
+    }
+}

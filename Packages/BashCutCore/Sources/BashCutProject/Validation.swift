@@ -61,6 +61,7 @@ extension Project {
         try validateReviewSettings()
         try validatePlanSettings()
         try validateSelects()
+        try validateOutputCaptions()
         try validateMarkers()
         try validateColorLUTs()
         try validateStyleCatalog()
