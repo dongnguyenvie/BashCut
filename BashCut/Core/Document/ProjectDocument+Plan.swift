@@ -11,6 +11,13 @@ extension ProjectDocument {
             try document.setPlanObject("brief", arguments, author: author, label: "Set brief")
         }
         handle("plan.get") { document, _, _ in document.project["plan"] ?? .null }
+        handle("review.coverage") { document, _, _ in PlanCoverage.coverage(document.project) }
+        handle("script.check") { document, _, _ in
+            let (words, source) = await document.syncWords()
+            var result = PlanCoverage.scriptCheck(document.project, words: words).object
+            result["wordSource"] = .string(source)
+            return .object(result)
+        }
         handleAuthored("plan.set") { document, arguments, author in
             try document.setPlanObject("plan", arguments, author: author, label: "Set edit plan")
         }
