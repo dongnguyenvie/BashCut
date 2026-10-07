@@ -22,21 +22,25 @@ extension ProjectDocument {
     /// The review the panel, the export sheet and `review.run` show: installed fonts, the text presets' defaults,
     /// the last loudness and picture measurements of this session and the targets of the project's first output
     /// platform (#441; -14 LUFS, -1 dBTP when it names none).
-    func reviewIssues() -> [ReviewIssue] {
+    func reviewIssues() -> [ReviewIssue] { TimelineReview.run(project, context: reviewContext()) }
+
+    /// What the review and `review.layout` know beyond the project: fonts, preset defaults, the renderer's text
+    /// layout (#465), the last measurements and the targets.
+    func reviewContext() -> ReviewContext {
         let platform = outputPresets.lazy.compactMap(\.platform).first
-        let context = ReviewContext(
+        return ReviewContext(
             fontAvailable: ProjectFonts.isAvailable,
             textDefaults: { preset in
                 let defaults = TextPresetStyle.defaults(preset)
                 return (defaults["size"] ?? 0.055, defaults["positionY"] ?? 0.18)
             },
+            textLayout: { item, width, height in TextPresetStyle.layout(item, size: CGSize(width: width, height: height)) },
             loudness: reviewLoudness, picture: reviewPicture, pluginIssues: reviewPluginIssues,
             targets: ReviewTargets(
                 integratedLUFS: project["audio"]?.object["targetLUFS"]?.double ?? platform?.targetLUFS ?? -14,
                 maxTruePeakDbTP: platform?.maxTruePeakDbTP ?? -1,
                 measureArguments: ["preset": .string(primaryExportPreset.argument)],
                 measuresPicture: true, platform: platform))
-        return TimelineReview.run(project, context: context)
     }
 
     /// Whether the Review panel can apply `fix` itself (an edit or an export); other fixes go to the agent.

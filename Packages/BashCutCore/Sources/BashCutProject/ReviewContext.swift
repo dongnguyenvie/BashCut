@@ -94,6 +94,23 @@ public struct ReviewTargets: Sendable, Equatable {
     }
 }
 
+/// A text item as the renderer lays it out (#465): the fitted font size in pixels, the line count and the bounds of the
+/// drawn text and its plates in pixels, with y up from the bottom of the frame.
+public struct TextLayout: Sendable, Equatable {
+    public let points: Double
+    public let lines: Int
+    public let minX, maxX, minY, maxY: Double
+
+    public init(points: Double, lines: Int, minX: Double, maxX: Double, minY: Double, maxY: Double) {
+        self.points = points
+        self.lines = lines
+        self.minX = minX
+        self.maxX = maxX
+        self.minY = minY
+        self.maxY = maxY
+    }
+}
+
 /// What the review knows beyond the project: installed fonts, the text presets' defaults, the last loudness and
 /// picture measurements, plugin check results and the targets.
 public struct ReviewContext {
@@ -102,6 +119,9 @@ public struct ReviewContext {
     /// `size` (fraction of the short side) and `positionY` (baseline from the bottom) of a text preset, for items
     /// that do not set them.
     public var textDefaults: (String?) -> (size: Double, positionY: Double)
+    /// The rendered layout of a text item on a frame of the given width and height (the app passes `TextRenderer`'s);
+    /// nil, or a nil result, falls back to an estimate.
+    public var textLayout: ((Item, Double, Double) -> TextLayout?)?
     public var loudness: ReviewLoudness?
     /// The last picture measurement (`review.measure`); checks use it only for the project's revision.
     public var picture: ReviewPicture?
@@ -112,11 +132,13 @@ public struct ReviewContext {
     public init(
         fontAvailable: @escaping (String) -> Bool = { _ in true },
         textDefaults: @escaping (String?) -> (size: Double, positionY: Double) = { _ in (0.055, 0.18) },
+        textLayout: ((Item, Double, Double) -> TextLayout?)? = nil,
         loudness: ReviewLoudness? = nil, picture: ReviewPicture? = nil, pluginIssues: ReviewPluginIssues? = nil,
         targets: ReviewTargets = ReviewTargets()
     ) {
         self.fontAvailable = fontAvailable
         self.textDefaults = textDefaults
+        self.textLayout = textLayout
         self.loudness = loudness
         self.picture = picture
         self.pluginIssues = pluginIssues

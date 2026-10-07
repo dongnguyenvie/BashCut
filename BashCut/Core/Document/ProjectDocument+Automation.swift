@@ -125,6 +125,9 @@ extension ProjectDocument {
         handle("review.shots") { document, arguments, _ in
             ReviewShots.json(document.project, picture: document.reviewPicture, summary: arguments.bool("summary"))
         }
+        handle("review.layout") { document, arguments, _ in
+            ReviewLayout.json(document.project, context: document.reviewContext(), frame: arguments.optionalInt("frame"))
+        }
         handle("export.status") { document, _, _ in document.exports.statusJSON }
     }
 
