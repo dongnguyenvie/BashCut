@@ -25,6 +25,7 @@ extension ProjectDocument {
         registerAdjustmentCommands()
         registerImportCommands()
         registerProxyCommands()
+        registerMediaAnalysisCommands()
         registerStorageCommands()
         registerLibraryCommands()
         registerAgentKitCommands()
@@ -93,10 +94,11 @@ extension ProjectDocument {
             arguments.optionalString("format") == "text"
                 ? .string(TimelineSummary.text(document.project)) : TimelineSummary.json(document.project)
         }
-        handle("media.list") { document, _, _ in
+        handle("media.list") { document, arguments, _ in
             .array(document.project.media.map { media in
                 var fields = media.fields
                 fields["proxy"] = .string(document.proxyState(media).rawValue)
+                if arguments.bool("analysis") { fields["analysis"] = document.mediaAnalysisOverview(media) }
                 return .object(fields)
             })
         }

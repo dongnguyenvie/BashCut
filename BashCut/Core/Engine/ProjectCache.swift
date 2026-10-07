@@ -20,9 +20,11 @@ public enum ProjectCache {
         case loudness
         /// Viewer frames attached for agents.
         case agentContext = "agent-context"
+        /// Measured records of source files (`media.analyze`), `<content key>.json`.
+        case analysis
 
-        /// Where this cache was before `.bashcut/cache/`; waveforms were already there.
-        var legacyPath: String? { self == .waveforms ? nil : ".bashcut/" + rawValue }
+        /// Where this cache was before `.bashcut/cache/`; waveforms were already there, and analysis is newer.
+        var legacyPath: String? { [.waveforms, .analysis].contains(self) ? nil : ".bashcut/" + rawValue }
     }
 
     public static func root(projectRoot: URL) -> URL {

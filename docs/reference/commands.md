@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 152 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 155 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -139,11 +139,12 @@ Delete an empty gap on a layer (the main layer by default): later clips on that 
 
 ## media
 
-### `bashcut media list`
+### `bashcut media list [--analysis]`
 
-List project media.
+List project media. With analysis, each media also has analysis: measured false, or {measured, key, measuredAt, picture, sound, shots at the default cut limit, corrected} from media.analyze.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_media_list`
+- `analysis`: boolean. Add what media.analyze measured for each media
 
 ### `bashcut media import <path> [--kind <kind>] [--place] [--track <track>] [--at-frame <atFrame>] --base-rev <baseRev>`
 
@@ -184,6 +185,37 @@ Find the time offset between two recordings of the same moment (a camera and a s
 - `to`: string, required. Project media ID of the second recording
 - `item`: string. A timeline item of the first media whose in-point to map
 - `provider`: string. Provider ID overriding the project preference for one request
+
+### `bashcut media analyze [--media <media>] [--force] [--rate <rate>]`
+
+Measure source media once and keep the record (by file content, in .bashcut/cache/analysis): file facts (codec, size, rotation, frame timing for variable frame rate, colour transfer/primaries/bit depth, track lengths), picture samples (luma, spread, change, peak as in review.picture, plus sharpness and colourfulness) with every jump searched to its exact frame as a cut candidate, and sound levels (RMS per 0.1 s, peak, stereo correlation). Read it with media.analysis. A record that exists is reused unless force. The job's result lists each media with its key and whether it was reused.
+
+- Mode: read · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_media_analyze`
+- `media`: string. Project media ID; every video and audio media by default
+- `force`: boolean. Measure again even when a record exists (drops corrections)
+- `rate`: number, 0.5…30. Picture samples per second (default 4)
+
+### `bashcut media analysis --media <media> [--min-score <minScore>] [--activity-db <activityDb>] [--bridge <bridgeSeconds>] [--samples] [--curve]`
+
+Read the media.analyze record of one media without measuring: tech (file facts, variableFrameRate, transferKind sdr/pq/hlg/log/unknown, audioMinusVideoSeconds), picture {cuts (score = cutDifference, or added), shots with the review.shots fields (index, at/atSeconds, duration/seconds in source frames, cutDifference, motion) plus mean luma/spread/sharpness/colourfulness, summary (the review.shots statistics, a shot-length histogram and cuts per 10 s)}, sound {floorDb, medianDb, loudDb, peakDb, silentShare, active spans over floor + activityDb, activeShare, stereoCorrelation} and corrections. The limits are yours: lower minScore to see weaker cuts. No verdicts.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_media_analysis`
+- `media`: string, required. Project media ID
+- `minScore`: number, 0…1. Lowest candidate score read as a cut (default 0.1)
+- `activityDb`: number, 0…80. dB over the sound floor that counts as active (default 10)
+- `bridgeSeconds`: number, 0…10. Quiet gaps bridged inside an active span (default 0.3)
+- `samples`: boolean. Include every picture sample
+- `curve`: boolean. Include the sound level per second (dBFS)
+
+### `bashcut media cuts --media <media> [--add <add>] [--remove <remove>] [--clear]`
+
+Correct the cut list of an analysed media: add cuts or remove candidates at source seconds (a removal matches within one sample interval; removing an added cut takes it back). Shots and statistics in media.analysis follow. Corrections live in the record and are dropped when the file is measured again. Returns the corrected cuts.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_media_cuts`
+- `media`: string, required. Project media ID
+- `add`: string. Source seconds to cut at, comma separated
+- `remove`: string. Source seconds of cuts to drop, comma separated
+- `clear`: boolean. Drop earlier corrections first
 
 ## review
 

@@ -14,7 +14,8 @@ public enum CommandCatalog {
     public static let exportPresets = OutputPresetName.all
 
     public static let specs: [CommandSpec] = readSpecs + projectSpecs + editSpecs + captionSpecs + layerSpecs + styleSpecs
-        + formatSpecs + clipSpecs + capabilitySpecs + analysisSpecs + pluginSpecs + pluginViewSpecs + storageSpecs + agentSpecs + appSpecs + chatSpecs
+        + formatSpecs + clipSpecs + capabilitySpecs + analysisSpecs + mediaAnalysisSpecs + pluginSpecs + pluginViewSpecs
+        + storageSpecs + agentSpecs + appSpecs + chatSpecs
         + privilegedSpecs + uiSpecs + toolSpecs + knowledgeSpecs + skillSpecs + librarySpecs + fontSpecs
 
     public static let modes: [String: CommandMode] = Dictionary(uniqueKeysWithValues: specs.map { ($0.name, $0.mode) })
@@ -47,7 +48,7 @@ public enum CommandCatalog {
                     "format", .string, "json (default) or a compact text listing", choices: ["json", "text"],
                     cli: .option("format"))
             ]),
-        CommandSpec("media.list", .read, "List project media."),
+        mediaListSpec,
         reviewSpec,
         reviewMeasureSpec,
         reviewPictureSpec,
