@@ -43,6 +43,7 @@ extension ProjectDocument {
         let used = Set(project.tracks.flatMap(\.items).compactMap(\.mediaID))
         context.transcripts = reviewTranscripts.filter { used.contains($0.key) }
         context.missingGlyphs = ProjectFonts.missingGlyphs
+        context.delivered = deliveredQC
         return context
     }
 
@@ -58,8 +59,8 @@ extension ProjectDocument {
         }
         // One round per revision, holding its latest review (after a measure, say).
         if reviewRounds.last?.revision == project.revision { reviewRounds.removeLast() }
-        reviewRounds.append((project.revision, all))
-        reviewRounds = Array(reviewRounds.suffix(50))
+        reviewRounds.append((project.revision, all, project))
+        reviewRounds = Array(reviewRounds.suffix(20))
         var issues = all
         if let minimum = arguments.optionalString("minSeverity").flatMap(ReviewSeverity.init(rawValue:)) {
             issues = issues.filter { $0.severity <= minimum }
@@ -68,12 +69,56 @@ extension ProjectDocument {
         guard arguments.bool("summary") || previous != nil else { return list }
         var result: [String: JSONValue] = [
             "issues": list, "summary": ReviewSummary(all).json, "rev": .integer(project.revision),
-            "round": .integer(reviewRounds.count),
+            "round": .integer(reviewRounds.count), "checks": TimelineReview.coverage(project, context: reviewContext()),
         ]
         if let previous, let previous {
             var diff = ReviewRounds.diff(before: previous.issues, after: all).object
             diff["sinceRev"] = .integer(previous.revision)
             result["diff"] = .object(diff)
+        }
+        return .object(result)
+    }
+
+    /// `review.verify` (P1-E3): the issue as the last review of an earlier revision saw it, measured again now over
+    /// its own range (picture issues re-sample just that range; the rest re-run on the current project), with a still
+    /// window around it as proof.
+    func verifyReviewIssue(_ arguments: CommandArguments) async throws -> JSONValue {
+        let id = try arguments.string("id")
+        guard let round = reviewRounds.last(where: { $0.revision != project.revision && $0.issues.contains { $0.id == id } })
+            ?? reviewRounds.last(where: { $0.issues.contains { $0.id == id } }),
+            let before = round.issues.first(where: { $0.id == id })
+        else { throw RPCFailure(-32602, "\(id) is not in a review of this session; run review run first") }
+        await loadReviewTranscripts()
+        var context = reviewContext()
+        let fps = project.fps.value
+        let margin = Int(fps.rounded())
+        let range = max(0, before.frame - margin)..<min(project.duration, (before.endFrame ?? before.frame + 1) + margin)
+        let picture = Self.pictureIssuePrefixes.contains(where: id.hasPrefix)
+        if picture, let root = fileURL?.deletingLastPathComponent(), !range.isEmpty {
+            let snapshot = try await engine.build(project, root: root, workspace: settings.workspace, purpose: .preview)
+            context.picture = try await PictureSampler.measure(snapshot, project: project, range: range)
+        }
+        let now = TimelineReview.run(project, context: context)
+        let after = now.first { $0.id == id }
+        var result: [String: JSONValue] = [
+            "id": .string(id), "status": .string(after == nil ? "fixed" : "persisting"),
+            "before": before.json, "beforeRev": .integer(round.revision), "after": after?.json ?? .null,
+            "rev": .integer(project.revision),
+            "measured": .string(picture ? "picture re-sampled over frames \(range.lowerBound)–\(range.upperBound)" : "review re-run"),
+            "nearby": .array(now.filter { issue in
+                issue.id != id && range.contains(issue.frame)
+            }.map(\.json)),
+        ]
+        if id.hasPrefix("loudness") || id.hasPrefix("true-peak") {
+            result["measured"] = .string("loudness needs a normalized export of this revision")
+        }
+        if project.duration > 0, !range.isEmpty {
+            let center = min(project.duration - 1, (range.lowerBound + range.upperBound) / 2)
+            let window = try? await reviewWindow(CommandArguments([
+                "frame": .integer(center), "span": .integer(max(2, min(30, range.count / 2))),
+                "step": .integer(max(1, range.count / 12)),
+            ]))
+            result["window"] = window?.object["path"] ?? .null
         }
         return .object(result)
     }

@@ -9,6 +9,9 @@ import Foundation
 /// against the beat grid and the words, and with `rendered` the last export's sound against the timeline's mix.
 extension ProjectDocument {
     func registerReviewTimingCommands() {
+        handle("review.compare") { document, arguments, _ in try document.compareReview(arguments) }
+        handle("review.packet") { document, _, _ in try await document.reviewPacket() }
+        handle("review.verify") { document, arguments, _ in try await document.verifyReviewIssue(arguments) }
         handleAuthored("review.accept") { document, arguments, author in try document.acceptReviewIssue(arguments, author: author) }
         handle("review.shots") { document, arguments, _ in
             var lowVariance: ReviewShots.LowVariance?
@@ -73,7 +76,7 @@ extension ProjectDocument {
                 kinds = try Set(list.split(separator: ",").map { name in
                     let trimmed = name.trimmingCharacters(in: .whitespaces)
                     guard let event = ReviewSync.Event(rawValue: trimmed) else {
-                        throw RPCFailure(-32602, "Unknown event \(trimmed): use cuts, text or sfx")
+                        throw RPCFailure(-32602, "Unknown event \(trimmed): use cuts, text, sfx or captions")
                     }
                     return event
                 })
@@ -118,6 +121,22 @@ extension ProjectDocument {
             timelineSeconds: Double(timeline.count) / 100
         ).object
         result["path"] = .string(render.url.path)
+        return .object(result)
+    }
+
+    /// `review.compare` (P1-E8): two measured media, the project's tolerances.
+    func compareReview(_ arguments: CommandArguments) throws -> JSONValue {
+        let load = { (id: String) throws -> MediaAnalysis in
+            guard let record = try self.storedAnalysis(id).record else {
+                throw RPCFailure(-32602, "\(id) is not measured yet: media analyze --media \(id)")
+            }
+            return record
+        }
+        let reference = try arguments.string("reference"), ours = try arguments.string("ours")
+        let tolerances = (project["review"]?.object["compare"]?.object ?? [:]).compactMapValues(\.double)
+        var result = ReviewCompare.json(reference: try load(reference), ours: try load(ours), tolerances: tolerances).object
+        result["reference"] = .string(reference)
+        result["ours"] = .string(ours)
         return .object(result)
     }
 }

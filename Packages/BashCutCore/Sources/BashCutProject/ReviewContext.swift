@@ -112,6 +112,8 @@ public struct ReviewContext {
     /// The font a text item draws with and the characters of its text that font has no glyphs for (the app passes
     /// CoreText's answer); nil when every character is covered.
     public var missingGlyphs: ((Item) -> (font: String, characters: String)?)?
+    /// What the exports of this session wrote, measured from the files (P1-E6).
+    public var delivered: [DeliveredFacts] = []
 
     public init(
         fontAvailable: @escaping (String) -> Bool = { _ in true },

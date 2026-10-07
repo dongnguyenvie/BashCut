@@ -83,6 +83,11 @@ extension Project {
                 map.values.allSatisfy({ !($0.object["reason"]?.string ?? "").isEmpty })
             else { throw ProjectError.invalid("review.accepted: each issue ID needs {reason}") }
         }
+        if let compare = review["compare"], compare != .null {
+            guard case .object(let map) = compare, map.values.allSatisfy({ ($0.double ?? -1) >= 0 }) else {
+                throw ProjectError.invalid("review.compare: metric → tolerance (a number ≥ 0)")
+            }
+        }
         if let block = review["blockExport"], block != .null {
             guard case .array(let list) = block, list.allSatisfy({ !($0.string ?? "").isEmpty }) else {
                 throw ProjectError.invalid("review.blockExport: expected issue ID prefixes")

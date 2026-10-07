@@ -9,13 +9,17 @@ public enum PictureSampler {
     /// Grey thumbnail width and height the comparisons use.
     static let grid = 24
 
+    /// With `range`, only the samples and cuts inside it (`review.verify`, P1-E3); samples stay on the same grid.
     public static func measure(
-        _ snapshot: CompositionSnapshot, project: Project, samplesPerSecond: Double = 2, side: Int = 96
+        _ snapshot: CompositionSnapshot, project: Project, samplesPerSecond: Double = 2, side: Int = 96,
+        range: Range<Int>? = nil
     ) async throws -> ReviewPicture {
         let interval = max(1, Int((project.fps.value / samplesPerSecond).rounded()))
         let duration = project.duration
-        let sampleFrames = Array(stride(from: 0, to: duration, by: interval))
-        let cuts = ReviewPicture.hardCuts(project).filter { $0.at < duration }
+        let span = range.map { max(0, $0.lowerBound)..<min(duration, $0.upperBound) } ?? 0..<duration
+        let first = span.lowerBound - span.lowerBound % interval
+        let sampleFrames = Array(stride(from: first, to: span.upperBound, by: interval))
+        let cuts = ReviewPicture.hardCuts(project).filter { $0.at < duration && span.contains($0.at) }
         let frames = Set(sampleFrames + cuts.flatMap { [$0.before, $0.at] }).sorted()
         let generator = AVAssetImageGenerator(asset: snapshot.composition)
         generator.videoComposition = snapshot.videoComposition

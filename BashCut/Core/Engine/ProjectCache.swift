@@ -33,10 +33,13 @@ public enum ProjectCache {
         case timelineSheets = "timeline-sheets"
         /// Beat grids of source files in their own seconds (`beats.detect`, P0-B10), `<content key>.json`.
         case beats
+        /// Evidence folders for a fresh critic (`review.packet`, P1-E4), one per revision.
+        case reviewPackets = "review-packets"
 
         /// Where this cache was before `.bashcut/cache/`; waveforms were already there, and analysis is newer.
         var legacyPath: String? {
-            [.waveforms, .analysis, .transcripts, .mediaStills, .inventory, .timelineSheets, .beats].contains(self)
+            [.waveforms, .analysis, .transcripts, .mediaStills, .inventory, .timelineSheets, .beats, .reviewPackets]
+                .contains(self)
                 ? nil : ".bashcut/" + rawValue
         }
     }
