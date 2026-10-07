@@ -7,6 +7,9 @@ import Foundation
 extension ProjectDocument {
     func registerPlanCommands() {
         handle("project.brief") { document, _, _ in document.project["brief"] ?? .null }
+        handle("project.credits") { document, _, _ in
+            ProjectCredits.of(document.project, platforms: document.reviewTargets.platforms).json
+        }
         handleAuthored("project.set-brief") { document, arguments, author in
             try document.setPlanObject("brief", arguments, author: author, label: "Set brief")
         }

@@ -6,6 +6,14 @@ extension CommandCatalog {
     /// The brief and the edit plan (P1-D1, P1-D2).
     static let planSpecs: [CommandSpec] = [
         CommandSpec(
+            "project.credits", .read,
+            "What the edit owes for the media it plays (P2-H9), from each media's license and provenance: credit lines "
+                + "(required ones are those the licence asks for; text is the block for a description), ai {media, "
+                + "pictureShare, disclosures: each output platform's AI-label rule}, contentIDNotes for stock or "
+                + "downloaded music, and flags {nonCommercial, allRightsReserved, unknown}. Facts only, on request: "
+                + "nothing is added to the video. With the project's review.credits true, review run reports them as "
+                + "info and each export's job result carries them for its platform."),
+        CommandSpec(
             "project.brief", .read,
             "Read the project brief: goal, audience, outputs, angle, lengthSeconds, notes as {value, status stated|"
                 + "inferred|confirmed, source?}, and ideas and references. Null when none."),

@@ -95,10 +95,15 @@ public final class ExportQueue {
                 if let step { Task { @MainActor in detailReporter.detail(step) } }
             }
             self?.outcomes[id] = result
-            return .object([
+            var receipt: [String: JSONValue] = [
                 "path": .string(result.receipt.url.path), "duration": .number(result.receipt.duration),
                 "bytes": .integer(Int(result.receipt.bytes)),
-            ])
+            ]
+            // What the file owes for the media it plays, for its platform (P2-H9), when the project asks for it.
+            if ReviewProfile(request.project).credits {
+                receipt["credits"] = ProjectCredits.of(request.project, platforms: [request.preset.platform].compactMap { $0 }).json
+            }
+            return .object(receipt)
         }, finished: { [weak self] result in
             guard let self else { return }
             let outcome = outcomes.removeValue(forKey: id)

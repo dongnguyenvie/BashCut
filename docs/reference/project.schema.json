@@ -1934,6 +1934,10 @@
           "minimum" : 1,
           "type" : "number"
         },
+        "credits" : {
+          "description" : "Report credit lines, AI disclosure and licence flags in review and export results (P2-H9); off by default",
+          "type" : "boolean"
+        },
         "disabledChecks" : {
           "description" : "Plugin or provider IDs whose review checks do not run",
           "items" : {
