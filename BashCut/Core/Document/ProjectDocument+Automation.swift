@@ -30,6 +30,8 @@ extension ProjectDocument {
         registerMediaDescriptionCommands()
         registerMediaStillsCommands()
         registerMediaInventoryCommands()
+        registerReviewTimingCommands()
+        registerTimelineStillsCommands()
         registerStorageCommands()
         registerLibraryCommands()
         registerAgentKitCommands()
@@ -138,9 +140,6 @@ extension ProjectDocument {
             return picture.json(
                 for: document.project, from: arguments.optionalInt("from") ?? 0, to: arguments.optionalInt("to"),
                 samples: arguments.optionalBool("samples") ?? true, cuts: arguments.optionalBool("cuts") ?? true)
-        }
-        handle("review.shots") { document, arguments, _ in
-            ReviewShots.json(document.project, picture: document.reviewPicture, summary: arguments.bool("summary"))
         }
         handle("review.layout") { document, arguments, _ in
             ReviewLayout.json(document.project, context: document.reviewContext(), frame: arguments.optionalInt("frame"))

@@ -5,6 +5,24 @@
 
 ## [Unreleased]
 
+- **The edit as pictures without exporting (P0-B3, P0-B4).** `review window F [--span N] [--step N]`
+  (`review.window`) draws the composed frames around frame F with the cuts as lines, the timeline's sound level and
+  the heard words, and returns the level per frame. `timeline sheet [--at F,first,last] [--cuts] [--text] [--every
+  S] [--outputs all|presets]` (`timeline.sheet`) lays the composed edit out on labelled contact sheets with an index
+  of the items and text on screen in each cell (also written as `index.json`, kept per revision and request in
+  `.bashcut/cache/timeline-sheets`); `--outputs` adds sheets with each output's covered zones shaded.
+- **Cuts and timing as data (P0-B2).** `review cuts` lists every cut on Main with its kind (hard or the transition,
+  with length and easing), a gap before it, the framing on both sides and whether it stays the same, with counts and
+  runs per kind. `review sync [--events cuts,text,sfx] [--rendered]` gives each event's offset to the nearest beat
+  and word edge (frames and ms) and their distribution; `--rendered` matches the last export's sound to the
+  timeline's mix every 10 s and reports each window's lag and the drift per minute.
+- **Shots as a sequence (P0-B1).** `review shots` adds per shot the `cut` into it (`sameMedia`, `sameSetup`,
+  `sourceGapSeconds`, size/move/direction from → to from `media describe`) and `cameraMove` from its keyframes
+  (property, from, to, change per second, ease). With `--summary`: `rhythm` overall and per section marker (mean,
+  median, cv, cuts per minute, the most common length bin and its share, and with `--run-length N --max-cv X` the
+  runs whose lengths vary less), runs of the same described size and move, and shares of each size, move and
+  direction. `--media ID` gives the same for a source file's measured shots.
+
 - **Footage inventory and analysis readiness (P0-A6).** `media inventory [--location-grid D]` (`media.inventory`,
   read) lists each media's capture time, GPS position, device and shown size/orientation as the file records them
   (read once per file content, kept in `.bashcut/cache/inventory`), speech seconds and language from the stored

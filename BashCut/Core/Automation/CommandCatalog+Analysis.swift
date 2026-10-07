@@ -56,12 +56,95 @@ extension CommandCatalog {
             + "sourceIn and sourceInSeconds, zoom and transform, speed, keyframed properties, freezeFrame/reverse when "
             + "set, gapBefore (frames since the previous shot), transitionIn {kind, duration} or the picture "
             + "cutDifference across a hard cut, and motion {mean, peak, samples} (fractions of full scale, see "
-            + "review.picture) when review.measure ran for this revision (pictureMeasured). No verdicts. With "
-            + "summary: count, total, mean, median, min and max seconds and cuts per minute.",
+            + "review.picture) when review.measure ran for this revision (pictureMeasured), described (the "
+            + "media.describe facts of the source shot it plays), cameraMove [{property, from, to, perSecond, unit, "
+            + "ease}] from its keyframes, and cut (into it): sameMedia, sameSetup (same media, overlapping or "
+            + "adjacent source), sourceGapSeconds, size/move/direction {from, to} when described. No verdicts. With "
+            + "summary: count, total, mean, median, min and max seconds and cuts per minute; rhythm {overall, "
+            + "sections [per section marker]} with mean, median, cv, cutsPerMinute, mode (the most common length "
+            + "bin and its share) and, given runLength and maxCV, lowVarianceRuns; runs of shots with the same "
+            + "described size and move; shares of each size, move and direction. With media: the same for a source "
+            + "file's measured shots (media.analyze) and its descriptions.",
         parameters: [
-            CommandParameter("summary", .boolean, "Add count, length statistics and cuts per minute",
-                             cli: .flag("summary"))
+            CommandParameter("summary", .boolean, "Add statistics, rhythm, runs and shares", cli: .flag("summary")),
+            CommandParameter("media", .string, "Read a source file's measured shots instead of Main",
+                             cli: .option("media")),
+            CommandParameter("minScore", .number, "With media: lowest cut score (default 0.1)", range: 0...1,
+                             cli: .option("min-score")),
+            CommandParameter("runLength", .integer, "Shots in a low-variance run (with maxCV)", minimum: 2,
+                             maximum: 100, cli: .option("run-length")),
+            CommandParameter("maxCV", .number, "Largest length variation (deviation over mean) in such a run",
+                             range: 0...10, cli: .option("max-cv")),
         ])
+
+    /// The cuts on Main and their timing against beats and words (P0-B2).
+    static let reviewCutSpecs: [CommandSpec] = [
+        CommandSpec(
+            "review.cuts", .read,
+            "Read every cut on Main: index, frame/seconds, from/to item IDs, kind (hard, or the transition's kind with "
+                + "transitionFrames/Seconds and easing), gapFrames when there is a gap, framingBefore/After {zoom, pan, "
+                + "tilt} (keyframes included) and sameFraming (same media and the same framing on both sides); counts "
+                + "per kind, runs of the same kind and how many cuts keep the framing. No verdicts."),
+        CommandSpec(
+            "review.sync", .read,
+            "Time events against the beat grid and the spoken words: per event (cuts on Main by default; text items "
+                + "and sfx items on request) the nearest beat and the nearest word edge (start or end, its text, "
+                + "whether the event falls inside the word) with offsetFrames and offsetMs (positive = after it), and "
+                + "for beats and words the distribution: count, mean, median, p10, p90 and counts per offset from −6 "
+                + "to +6 frames. Words are the stored transcripts heard through the clips (media.transcribe), else "
+                + "the caption words. With rendered: rendered {windows [{at, lagMs, correlation}], driftMsPerMinute, "
+                + "lagStartMs, lagEndMs} from matching the last export's sound to the timeline's mix every 10 s "
+                + "(positive lag = the render is later); the export must show this revision.",
+            parameters: [
+                CommandParameter("events", .string, "cuts, text, sfx (comma separated; default cuts)",
+                                 cli: .option("events")),
+                CommandParameter("rendered", .boolean, "Also measure the last export's timing against the timeline",
+                                 cli: .flag("rendered")),
+            ]),
+    ]
+
+    /// The composed timeline as pictures without exporting (P0-B3, P0-B4).
+    static let timelineStillsSpecs: [CommandSpec] = [
+        CommandSpec(
+            "review.window", .read,
+            "Look across a moment of the edit without exporting: one PNG with the composed frames from frame − span "
+                + "to frame + span (every step frames) labelled with their time, the cuts on Main drawn as lines, the "
+                + "timeline's sound level (−60…0 dBFS) and the words heard there. Returns {path, frames, cuts, words "
+                + "[{text, at, end}], levels [{frame, db}] (the mix per frame, null without sound)}.",
+            parameters: [
+                CommandParameter("frame", .integer, "Timeline frame in the middle", required: true, minimum: 0,
+                                 cli: .positional),
+                CommandParameter("span", .integer, "Frames on each side (default 6)", minimum: 1, maximum: 120,
+                                 cli: .option("span")),
+                CommandParameter("step", .integer, "Frames between pictures (default 1)", minimum: 1, maximum: 60,
+                                 cli: .option("step")),
+                CommandParameter("width", .integer, "Image width in pixels (default 1600)", minimum: 400,
+                                 maximum: 8_192, cli: .option("width")),
+            ]),
+        CommandSpec(
+            "timeline.sheet", .read,
+            "Lay the composed edit out on contact sheets without exporting: cells at listed frames (at: numbers, "
+                + "first, last), at every cut on Main (cuts), in the middle of every title (text) and every N seconds "
+                + "(every; 2 s when nothing else is asked), labelled '<cell> <m:ss.s>'. Returns {sheets [{path, "
+                + "output, firstCell, cells}], cells [{cell, frame, seconds, items on screen, text on screen}], index "
+                + "(the same as index.json), cached}. Kept per revision and request in .bashcut/cache/timeline-sheets. "
+                + "With outputs (all: the project's outputs; or preset names) another set of sheets per output of the "
+                + "frame's shape with the zones its interface covers shaded.",
+            parameters: [
+                CommandParameter("at", .string, "Frames, comma separated; first and last allowed", cli: .option("at")),
+                CommandParameter("cuts", .boolean, "A cell at the start of every shot on Main", cli: .flag("cuts")),
+                CommandParameter("text", .boolean, "A cell in the middle of every title", cli: .flag("text")),
+                CommandParameter("every", .number, "Seconds between cells", range: 0.1...3_600, cli: .option("every")),
+                CommandParameter("size", .integer, "Long edge of each cell in pixels (default 320)", minimum: 64,
+                                 maximum: 2_048, cli: .option("size")),
+                CommandParameter("columns", .integer, "Cells per row (default 8 portrait, 6 landscape)", minimum: 1,
+                                 maximum: 24, cli: .option("columns")),
+                CommandParameter("rows", .integer, "Rows per sheet (default 3 portrait, 6 landscape)", minimum: 1,
+                                 maximum: 24, cli: .option("rows")),
+                CommandParameter("outputs", .string, "all, or export preset names: sheets with each one's zones",
+                                 cli: .option("outputs")),
+            ]),
+    ]
 
     static let reviewLayoutSpec = CommandSpec(
         "review.layout", .read,

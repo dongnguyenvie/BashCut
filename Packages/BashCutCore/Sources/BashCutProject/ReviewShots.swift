@@ -1,10 +1,14 @@
 import Foundation
 
 /// The shots on Main as data for the agent (`review.shots`, #464): timing, source, framing and speed from the
-/// timeline, motion from a picture measurement of the same revision, and the facts `media.describe` stored for the
-/// source shot it plays (`described`). No verdicts: a skill compares the numbers with the range its genre allows.
+/// timeline, motion from a picture measurement of the same revision, the facts `media.describe` stored for the
+/// source shot it plays (`described`), the camera move its keyframes make and what changes at the cut into it; with
+/// the summary, rhythm overall and per section, runs and shares (ReviewShots+Sequence.swift). No verdicts: a skill
+/// compares the numbers with the range its genre allows.
 public enum ReviewShots {
-    public static func json(_ project: Project, picture: ReviewPicture? = nil, summary: Bool = false) -> JSONValue {
+    public static func json(
+        _ project: Project, picture: ReviewPicture? = nil, summary: Bool = false, lowVariance: LowVariance? = nil
+    ) -> JSONValue {
         let fps = project.fps.value
         let measured = picture.flatMap { $0.revision == project.revision ? $0 : nil }
         let main = project.tracks.first { $0.role == "main" }?.items.sorted { $0.at < $1.at } ?? []
@@ -12,6 +16,16 @@ public enum ReviewShots {
         let descriptions = media.compactMapValues(\.shotDescription)
         let transitions = Dictionary(
             project.transitions.map { ($0.toItemID, $0) }, uniquingKeysWith: { first, _ in first })
+        let sequence = main.map { shot -> SequenceShot in
+            let asset = shot.mediaID.flatMap { media[$0] }
+            let span = asset.map { project.sourceSpan(of: shot, media: $0) }
+            return SequenceShot(
+                seconds: Double(shot.duration) / fps, media: shot.mediaID, source: span,
+                sourceFrame: 1 / max(1, asset?.fps.value ?? fps),
+                facts: span.flatMap { span in
+                    shot.mediaID.flatMap { descriptions[$0] }?.shot(covering: span.lowerBound, to: span.upperBound)
+                })
+        }
         var previous: Item?
         let shots: [JSONValue] = main.enumerated().map { index, shot in
             defer { previous = shot }
@@ -21,15 +35,14 @@ public enum ReviewShots {
                 "seconds": .number(rounded(Double(shot.duration) / fps)), "speed": .number(shot.speed),
             ]
             row.merge(source(shot, media: media, fps: fps)) { _, new in new }
-            if let mediaID = shot.mediaID, let asset = media[mediaID], let description = descriptions[mediaID] {
-                let span = project.sourceSpan(of: shot, media: asset)
-                if let described = description.shot(covering: span.lowerBound, to: span.upperBound) {
-                    var facts = described.factsJSON.object
-                    facts["start"] = .number(rounded(described.start))
-                    facts["end"] = .number(rounded(described.end))
-                    row["described"] = .object(facts)
-                }
+            if let described = sequence[index].facts {
+                var facts = described.factsJSON.object
+                facts["start"] = .number(rounded(described.start))
+                facts["end"] = .number(rounded(described.end))
+                row["described"] = .object(facts)
             }
+            if let move = cameraMove(shot, fps: fps) { row["cameraMove"] = move }
+            if index > 0 { row["cut"] = cut(from: sequence[index - 1], to: sequence[index]) }
             if let left = previous {
                 row["gapBefore"] = .integer(shot.at - left.end)
                 if let transition = transitions[shot.id], transition.fromItemID == left.id {
@@ -48,7 +61,17 @@ public enum ReviewShots {
             "pictureMeasured": .bool(measured != nil),
         ]
         if measured == nil, let picture { result["pictureRevision"] = .integer(picture.revision) }
-        if summary { result["summary"] = Self.summary(main, fps: fps) }
+        if summary {
+            result["summary"] = Self.summary(main, fps: fps)
+            let span = Double((main.last?.end ?? 0) - (main.first?.at ?? 0)) / fps
+            result["rhythm"] = .object([
+                "overall": rhythm(sequence.map(\.seconds), span: span, lowVariance: lowVariance),
+                "sections": sectionRhythm(main, sections: project.sectionMarkers, fps: fps, lowVariance: lowVariance),
+            ])
+            let (runs, shares) = runsAndShares(sequence)
+            result["runs"] = runs
+            result["shares"] = shares
+        }
         return .object(result)
     }
 

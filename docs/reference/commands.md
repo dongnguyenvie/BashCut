@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 164 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 168 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -136,6 +136,20 @@ Delete an empty gap on a layer (the main layer by default): later clips on that 
 - `atFrame`: integer, required, ≥ 0. A frame inside the gap
 - `track`: string. Layer ID; defaults to the main layer
 - `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
+
+### `bashcut timeline sheet [--at <at>] [--cuts] [--text] [--every <every>] [--size <size>] [--columns <columns>] [--rows <rows>] [--outputs <outputs>]`
+
+Lay the composed edit out on contact sheets without exporting: cells at listed frames (at: numbers, first, last), at every cut on Main (cuts), in the middle of every title (text) and every N seconds (every; 2 s when nothing else is asked), labelled '<cell> <m:ss.s>'. Returns {sheets [{path, output, firstCell, cells}], cells [{cell, frame, seconds, items on screen, text on screen}], index (the same as index.json), cached}. Kept per revision and request in .bashcut/cache/timeline-sheets. With outputs (all: the project's outputs; or preset names) another set of sheets per output of the frame's shape with the zones its interface covers shaded.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_timeline_sheet`
+- `at`: string. Frames, comma separated; first and last allowed
+- `cuts`: boolean. A cell at the start of every shot on Main
+- `text`: boolean. A cell in the middle of every title
+- `every`: number, 0.1…3600. Seconds between cells
+- `size`: integer, 64…2048. Long edge of each cell in pixels (default 320)
+- `columns`: integer, 1…24. Cells per row (default 8 portrait, 6 landscape)
+- `rows`: integer, 1…24. Rows per sheet (default 3 portrait, 6 landscape)
+- `outputs`: string. all, or export preset names: sheets with each one's zones
 
 ## media
 
@@ -341,12 +355,16 @@ Read the raw picture measurement of the last review.measure: per sample {frame, 
 - `samples`: boolean. Include the samples (default true)
 - `cuts`: boolean. Include the cuts (default true)
 
-### `bashcut review shots [--summary]`
+### `bashcut review shots [--summary] [--media <media>] [--min-score <minScore>] [--run-length <runLength>] [--max-cv <maxCV>]`
 
-Read the shots on Main in order: index, id, at/atSeconds, duration (frames) and seconds, media, mediaKind, sourceIn and sourceInSeconds, zoom and transform, speed, keyframed properties, freezeFrame/reverse when set, gapBefore (frames since the previous shot), transitionIn {kind, duration} or the picture cutDifference across a hard cut, and motion {mean, peak, samples} (fractions of full scale, see review.picture) when review.measure ran for this revision (pictureMeasured). No verdicts. With summary: count, total, mean, median, min and max seconds and cuts per minute.
+Read the shots on Main in order: index, id, at/atSeconds, duration (frames) and seconds, media, mediaKind, sourceIn and sourceInSeconds, zoom and transform, speed, keyframed properties, freezeFrame/reverse when set, gapBefore (frames since the previous shot), transitionIn {kind, duration} or the picture cutDifference across a hard cut, and motion {mean, peak, samples} (fractions of full scale, see review.picture) when review.measure ran for this revision (pictureMeasured), described (the media.describe facts of the source shot it plays), cameraMove [{property, from, to, perSecond, unit, ease}] from its keyframes, and cut (into it): sameMedia, sameSetup (same media, overlapping or adjacent source), sourceGapSeconds, size/move/direction {from, to} when described. No verdicts. With summary: count, total, mean, median, min and max seconds and cuts per minute; rhythm {overall, sections [per section marker]} with mean, median, cv, cutsPerMinute, mode (the most common length bin and its share) and, given runLength and maxCV, lowVarianceRuns; runs of shots with the same described size and move; shares of each size, move and direction. With media: the same for a source file's measured shots (media.analyze) and its descriptions.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_review_shots`
-- `summary`: boolean. Add count, length statistics and cuts per minute
+- `summary`: boolean. Add statistics, rhythm, runs and shares
+- `media`: string. Read a source file's measured shots instead of Main
+- `minScore`: number, 0…1. With media: lowest cut score (default 0.1)
+- `runLength`: integer, 2…100. Shots in a low-variance run (with maxCV)
+- `maxCV`: number, 0…10. Largest length variation (deviation over mean) in such a run
 
 ### `bashcut review layout [--frame <frame>]`
 
@@ -354,6 +372,30 @@ Read where text sits as the renderer lays it out: per visible text item id, trac
 
 - Mode: read · Runs: immediately · MCP: `bashcut_review_layout`
 - `frame`: integer, ≥ 0. Only text on screen at this timeline frame
+
+### `bashcut review cuts`
+
+Read every cut on Main: index, frame/seconds, from/to item IDs, kind (hard, or the transition's kind with transitionFrames/Seconds and easing), gapFrames when there is a gap, framingBefore/After {zoom, pan, tilt} (keyframes included) and sameFraming (same media and the same framing on both sides); counts per kind, runs of the same kind and how many cuts keep the framing. No verdicts.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_review_cuts`
+
+### `bashcut review sync [--events <events>] [--rendered]`
+
+Time events against the beat grid and the spoken words: per event (cuts on Main by default; text items and sfx items on request) the nearest beat and the nearest word edge (start or end, its text, whether the event falls inside the word) with offsetFrames and offsetMs (positive = after it), and for beats and words the distribution: count, mean, median, p10, p90 and counts per offset from −6 to +6 frames. Words are the stored transcripts heard through the clips (media.transcribe), else the caption words. With rendered: rendered {windows [{at, lagMs, correlation}], driftMsPerMinute, lagStartMs, lagEndMs} from matching the last export's sound to the timeline's mix every 10 s (positive lag = the render is later); the export must show this revision.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_review_sync`
+- `events`: string. cuts, text, sfx (comma separated; default cuts)
+- `rendered`: boolean. Also measure the last export's timing against the timeline
+
+### `bashcut review window <frame> [--span <span>] [--step <step>] [--width <width>]`
+
+Look across a moment of the edit without exporting: one PNG with the composed frames from frame − span to frame + span (every step frames) labelled with their time, the cuts on Main drawn as lines, the timeline's sound level (−60…0 dBFS) and the words heard there. Returns {path, frames, cuts, words [{text, at, end}], levels [{frame, db}] (the mix per frame, null without sound)}.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_review_window`
+- `frame`: integer, required, ≥ 0. Timeline frame in the middle
+- `span`: integer, 1…120. Frames on each side (default 6)
+- `step`: integer, 1…60. Frames between pictures (default 1)
+- `width`: integer, 400…8192. Image width in pixels (default 1600)
 
 ## export
 

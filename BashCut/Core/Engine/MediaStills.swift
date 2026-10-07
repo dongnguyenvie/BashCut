@@ -79,11 +79,14 @@ public enum MediaStills {
         public let label: String
         /// Cells of one media share a label colour; the colour changes with the group.
         public let group: Int
+        /// A platform's zones its interface covers, drawn over the picture.
+        public let zones: SafeArea?
 
-        public init(image: CGImage?, label: String, group: Int) {
+        public init(image: CGImage?, label: String, group: Int, zones: SafeArea? = nil) {
             self.image = image
             self.label = label
             self.group = group
+            self.zones = zones
         }
     }
 
@@ -106,7 +109,10 @@ public enum MediaStills {
                 x: gap + (index % columns) * (cellWidth + gap), y: gap + (index / columns) * (cellHeight + gap),
                 width: cellWidth, height: cellHeight)
             fill(context, rect, grey: 0)
-            if let image = cell.image { draw(image, fittedIn: rect, context: context) }
+            if let image = cell.image {
+                let picture = draw(image, fittedIn: rect, context: context)
+                if let zones = cell.zones { drawZones(zones, over: picture, context: context) }
+            }
             let colour: CGColor = cell.group.isMultiple(of: 2)
                 ? CGColor(red: 1, green: 0.85, blue: 0.2, alpha: 1) : CGColor(red: 0.3, green: 0.9, blue: 1, alpha: 1)
             label(cell.label, at: CGPoint(x: rect.minX + 4, y: rect.maxY - 4),
@@ -125,11 +131,15 @@ public enum MediaStills {
         public var words: [(text: String, start: Double, end: Double)]
         public var from: Double
         public var to: Double
+        /// Second of the first level window (0 for a whole file).
+        public var levelsFrom: Double
+        /// Seconds drawn as vertical lines across the strip (cuts).
+        public var marks: [Double]
 
         public init(
             frames: [(seconds: Double, image: CGImage?)], levels: (window: Double, values: [Double])?,
             gaps: [(start: Double, end: Double)], words: [(text: String, start: Double, end: Double)], from: Double,
-            to: Double
+            to: Double, levelsFrom: Double = 0, marks: [Double] = []
         ) {
             self.frames = frames
             self.levels = levels
@@ -137,6 +147,8 @@ public enum MediaStills {
             self.words = words
             self.from = from
             self.to = to
+            self.levelsFrom = levelsFrom
+            self.marks = marks
         }
     }
 
@@ -174,12 +186,16 @@ public enum MediaStills {
             context.setFillColor(CGColor(red: 0.35, green: 0.95, blue: 0.55, alpha: 1))
             for column in 0..<width {
                 let seconds = strip.from + Double(column) / Double(width) * span
-                let index = Int(seconds / levels.window)
+                let index = Int((seconds - strip.levelsFrom) / levels.window)
                 guard levels.values.indices.contains(index) else { continue }
                 let level = min(1, max(0, (levels.values[index] + 60) / 60))
                 let bar = level * wave
                 context.fill(CGRect(x: Double(column), y: waveTop + (wave - bar) / 2, width: 1, height: max(1, bar)))
             }
+        }
+        context.setFillColor(CGColor(red: 1, green: 0.4, blue: 0.2, alpha: 1))
+        for mark in strip.marks where mark >= strip.from && mark <= strip.to {
+            context.fill(CGRect(x: x(mark) - 1, y: 0, width: 2, height: Double(height)))
         }
         for (index, word) in strip.words.enumerated() where word.end > strip.from && word.start < strip.to {
             let line = index.isMultiple(of: 2) ? 0.0 : 1.0
@@ -231,7 +247,8 @@ public enum MediaStills {
         context.fill(rect)
     }
 
-    private static func draw(_ image: CGImage, fittedIn rect: CGRect, context: CGContext) {
+    @discardableResult
+    private static func draw(_ image: CGImage, fittedIn rect: CGRect, context: CGContext) -> CGRect {
         let scale = min(rect.width / Double(image.width), rect.height / Double(image.height))
         let size = CGSize(width: Double(image.width) * scale, height: Double(image.height) * scale)
         let origin = CGPoint(x: rect.midX - size.width / 2, y: rect.midY - size.height / 2)
@@ -241,6 +258,28 @@ public enum MediaStills {
         context.scaleBy(x: 1, y: -1)
         context.draw(image, in: CGRect(origin: .zero, size: size))
         context.restoreGState()
+        return CGRect(origin: origin, size: size)
+    }
+
+    /// The covered zones of a vertical platform (top bar, caption bar, side buttons) or the title-safe margin of a
+    /// landscape one, shaded over `picture`.
+    private static func drawZones(_ zones: SafeArea, over picture: CGRect, context: CGContext) {
+        context.setFillColor(CGColor(red: 1, green: 0.2, blue: 0.2, alpha: 0.28))
+        if zones.top > 0 || zones.bottom > 0 || zones.sideWidth > 0 {
+            context.fill(CGRect(x: picture.minX, y: picture.minY, width: picture.width, height: picture.height * zones.top))
+            context.fill(CGRect(
+                x: picture.minX, y: picture.maxY - picture.height * zones.bottom, width: picture.width,
+                height: picture.height * zones.bottom))
+            let sideHeight = picture.height * zones.sideHeight
+            context.fill(CGRect(
+                x: picture.maxX - picture.width * zones.sideWidth,
+                y: picture.maxY - picture.height * zones.bottom - sideHeight, width: picture.width * zones.sideWidth,
+                height: sideHeight))
+        } else if zones.margin > 0 {
+            context.setStrokeColor(CGColor(red: 1, green: 0.2, blue: 0.2, alpha: 0.8))
+            context.setLineWidth(1)
+            context.stroke(picture.insetBy(dx: picture.width * zones.margin, dy: picture.height * zones.margin))
+        }
     }
 
     private enum Anchor { case top, bottom }
