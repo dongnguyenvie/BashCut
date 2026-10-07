@@ -158,6 +158,14 @@ public struct CapabilityService: Sendable {
             projectRoot: projectRoot)
     }
 
+    public func analyzeEnergy(
+        mediaURL: URL, count: Int?, windowSeconds: Double?, preferredProvider: String?, projectRoot: URL?
+    ) async throws -> GeneratedEnergy {
+        try await run(
+            EnergyCapability(mediaURL: mediaURL, count: count, windowSeconds: windowSeconds),
+            preferredProvider: preferredProvider, projectRoot: projectRoot)
+    }
+
     public func syncAudio(
         mediaURL: URL, otherURL: URL, preferredProvider: String?, projectRoot: URL?
     ) async throws -> GeneratedAudioSync {

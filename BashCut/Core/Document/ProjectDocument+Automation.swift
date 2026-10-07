@@ -33,6 +33,7 @@ extension ProjectDocument {
         registerReviewTimingCommands()
         registerTimelineStillsCommands()
         registerColorMeasureCommands()
+        registerBeatGridCommands()
         registerStorageCommands()
         registerLibraryCommands()
         registerAgentKitCommands()

@@ -242,6 +242,29 @@ extension CommandCatalog {
             ],
             execution: .job),
         CommandSpec(
+            "beats.grid", .read,
+            "Read the beat grid beats detect stored for a media file, in its own seconds: bpm, beatsSeconds and, when "
+                + "the provider gives them, grid {strengths (0–1 per beat), downbeats and beatsPerBar (the phase where "
+                + "the kick band hits hardest; phaseScores per phase), confidence (how much the tempo stands out, 0–1), "
+                + "fit {periodSeconds, phaseSeconds, rmsErrorMs of the beats from a straight grid}, alternates [{bpm "
+                + "half and double, relative strength}]}, and downbeatFrames on the timeline where the media plays.",
+            parameters: [mediaMedia]),
+        CommandSpec(
+            "audio.energy", .read,
+            "How a music file's energy moves, with an audio.energy provider: every step seconds levelDb, onset "
+                + "(density) and fullness (share of octave bands near the loudest), and candidates [{kind lift, drop "
+                + "or breath, seconds, magnitude dB, beatSeconds (snapped), timeline [{item, frame}]}] ranked by size, "
+                + "count per kind. Pointers to listen to, not cut points. A job.",
+            parameters: [
+                mediaMedia,
+                CommandParameter("count", .integer, "Candidates per kind (default 6)", minimum: 1, maximum: 50,
+                                 cli: .option("count")),
+                CommandParameter("windowSeconds", .number, "Seconds compared before and after (default 2)",
+                                 range: 0.5...30, cli: .option("window")),
+                provider,
+            ],
+            execution: .job),
+        CommandSpec(
             "audio.mix-measure", .read,
             "Read the mix by role without exporting: one stem each for speech (dialogue and voiceover layers and the "
                 + "sound of video clips), music and sound effects is rendered (other sounds at −120 dB, so ducking "

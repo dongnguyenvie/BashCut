@@ -509,6 +509,21 @@ Return `bpm` (20–400) and `beatsSeconds`, a nonempty, strictly increasing arra
 nonnegative times in source seconds. BashCut maps them through each timeline item's trim and speed into integer
 project frames.
 
+### `audio.beats` grid facts
+
+Besides `bpm` and `beatsSeconds`, a provider may return grid v2 facts (P0-B10); BashCut keeps the ones that check out
+and drops the rest: `strengths` (0–1 per beat), `downbeats` (beat times that start a bar) with `beatsPerBar` and
+`phaseScores` (0–1 per phase), `confidence` (0–1), `fit` (`periodSeconds`, `phaseSeconds`, `rmsErrorMs`) and
+`alternates` (`[{bpm, relative}]`, such as half and double tempo). The request may carry `beatsPerBar`. `beats
+detect` stores the whole grid per file (`beats grid`) next to the timeline grid; the timeline grid is unchanged.
+
+### `audio.energy`
+
+`mediaPath` is a music file; optional `count` (candidates per kind) and `windowSeconds`. Return `step` (seconds),
+`levelDb`, `onset` and `fullness` arrays (one value per step) and `candidates`
+`[{kind: "lift"|"drop"|"breath", seconds, magnitude, beatSeconds?}]`. They are pointers for the agent to listen to,
+not cut decisions. The built-in Audio Analysis plugin provides it (`audio energy`).
+
 ### `audio.loudness`
 
 `mediaPath` is a rendered mix. Return `integratedLUFS` (−100 to 10), `truePeakDbTP` (−100 to 20) and optional

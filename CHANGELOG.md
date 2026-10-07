@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+- **Beat grid v2 and music energy (P0-B10, PL2).** The built-in beat tracker also returns each beat's strength,
+  the downbeats (the bar phase where the kick band hits hardest), how clearly the tempo stands out, a least-squares
+  grid fit (period, phase, RMS error) and the half and double tempos with their relative strength; `beats detect`
+  keeps the grid per file and `beats grid --media M` reads it with the downbeats on the timeline (the timeline grid
+  and `setBeatGrid` are unchanged). `audio energy --media M` (new `audio.energy` capability, built in) gives the
+  level, onset density and fullness every 100 ms and lift/drop/breath candidates snapped to beats and mapped to the
+  timeline: pointers, not decisions. Built-in Audio Analysis plugin 1.2.0.
+
 - **The mix as numbers without exporting (#471, P0-B9).** `audio measure --media M --curve` adds loudness over time
   (momentary and short-term LUFS and the sample peak every 100 ms); `audio measure --timeline` renders the mix to a
   scratch file and measures it with its curve and silent stretches. `audio mix-measure` renders one stem per role

@@ -31,10 +31,12 @@ public enum ProjectCache {
         case inventory
         /// Contact sheets of the composed timeline (`timeline.sheet`), one folder per revision and request.
         case timelineSheets = "timeline-sheets"
+        /// Beat grids of source files in their own seconds (`beats.detect`, P0-B10), `<content key>.json`.
+        case beats
 
         /// Where this cache was before `.bashcut/cache/`; waveforms were already there, and analysis is newer.
         var legacyPath: String? {
-            [.waveforms, .analysis, .transcripts, .mediaStills, .inventory, .timelineSheets].contains(self)
+            [.waveforms, .analysis, .transcripts, .mediaStills, .inventory, .timelineSheets, .beats].contains(self)
                 ? nil : ".bashcut/" + rawValue
         }
     }

@@ -108,6 +108,8 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
 - `audio measure --curve` / `--timeline` give loudness over time of a file or of the rendered mix (with silent
   stretches), `audio mix-measure` reads per-role stems against each other and against the words, and `library
   analyze` stores sound landmarks; the `audio.loudness` contract has an optional `curve`.
+- `beats detect` keeps the provider's grid v2 per file (strengths, kick-phase downbeats, confidence, fit,
+  alternates; `beats grid`), and `audio energy` gives the energy curve with lift/drop/breath candidates.
 - `color measure` gives each clip's luma percentiles, saturation, tint per band and clipped/crushed shares from
   source frames or the edit as graded, the change a grade makes (with mean ΔE) and each clip's distance from the
   median clip.

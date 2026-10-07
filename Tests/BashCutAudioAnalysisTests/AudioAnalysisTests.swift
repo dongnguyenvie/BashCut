@@ -72,6 +72,43 @@ struct AudioAnalysisTests {
         #expect(zip(result.beatsSeconds, result.beatsSeconds.dropFirst()).allSatisfy { $0 < $1 })
     }
 
+    @Test("Grid v2: strengths, downbeats on the kick, a tight fit, and half and double alternates")
+    func gridFacts() throws {
+        let rate = 22_050.0, period = 0.5
+        var samples = clicks(bpm: 120, seconds: 20)
+        // A 60 Hz kick on every fourth beat, starting with the second one (index 1).
+        var time = 0.3 + period
+        while time < 20 {
+            let start = Int(time * rate)
+            for index in 0..<min(2_000, samples.count - start) {
+                samples[start + index] += 0.8 * Float(sin(2 * .pi * 60 * Double(index) / rate)) * Float(exp(-Double(index) / 600))
+            }
+            time += period * 4
+        }
+        let (result, grid) = try BeatTracker.trackGrid(samples)
+        #expect(grid.strengths.count == result.beatsSeconds.count && grid.strengths.allSatisfy { (0...1).contains($0) })
+        #expect(grid.beatsPerBar == 4 && grid.phaseScores.max() == 1)
+        let first = try #require(grid.downbeats.first)
+        #expect(abs(first - 0.8) < 0.06, "\(grid.downbeats.prefix(3))")
+        #expect(grid.rmsErrorMs < 15 && abs(grid.periodSeconds - period) < 0.01)
+        #expect(grid.alternates.map(\.bpm) == [result.bpm / 2, result.bpm * 2])
+        #expect(grid.tempoStrength > 0 && grid.tempoStrength <= 1)
+    }
+
+    @Test("Energy: level, onset and fullness per 100 ms; a lift where the music gets louder")
+    func energy() throws {
+        let rate = 22_050.0
+        let quiet = clicks(bpm: 120, seconds: 8).map { $0 * 0.05 }
+        let loud = clicks(bpm: 120, seconds: 8).enumerated().map { index, value in
+            value + 0.3 * Float(sin(2 * .pi * 220 * Double(index) / rate))
+        }
+        let result = EnergyCurve.measure(quiet + loud, beats: [7.8, 8.3], count: 2)
+        #expect(result.levelDb.count == 160 && result.onset.count == 160 && result.fullness.count == 160)
+        let lift = try #require(result.candidates.first { $0.kind == "lift" })
+        #expect(abs(lift.seconds - 8) < 0.3 && lift.magnitude > 10 && lift.beatSeconds == 7.8)
+        #expect(result.candidates.filter { $0.kind == "lift" }.count <= 2)
+    }
+
     @Test("Silence has no beats")
     func silentBeats() {
         #expect(throws: AnalysisError.self) { try BeatTracker.track([Float](repeating: 0, count: 22_050 * 5)) }
