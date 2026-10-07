@@ -1,3 +1,4 @@
+import BashCutAutomation
 import BashCutDocument
 import BashCutProject
 import BashCutStorage
@@ -59,7 +60,7 @@ struct FileSyncControllerTests {
         #expect(try await sync.checkDisk(url, dirty: true) == .conflict)
         #expect(sync.conflict)
         #expect(sync.externalProject?.name == "Again")
-        await #expect(throws: ProjectError.self) { try await sync.save(ProjectHistory(project: Project(name: "Mine")), to: url) }
+        await #expect(throws: FileConflictError.self) { try await sync.save(ProjectHistory(project: Project(name: "Mine")), to: url) }
 
         let disk = try #require(try await sync.readDisk(url))
         sync.resolve(with: disk)

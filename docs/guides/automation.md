@@ -379,6 +379,24 @@ and `previousDuration` in frames, `changedItems`, `changedTracks`, `addedTracks`
 Changed item IDs include additions, deletions, property changes and moves. A live edit token is still required.
 The preview does not reserve a revision; apply the batch with the same base revision and handle stale errors.
 
+Both the dry run and the apply return `fingerprint`, a hash of the ops and the base revision. Pass the dry run's
+value as `--expect-fingerprint` (MCP `expectFingerprint`) and the apply refuses with `-32602` and
+`data: {expected, actual}` if the ops sent differ from the ones that were reviewed.
+
+Say why an edit is made with `--why` (one sentence, up to 500 characters) and what it rests on with `--evidence`,
+entries separated by `;` (review issue IDs, transcript ranges, measurements; up to 20 of 200 characters):
+
+```bash
+bashcut timeline apply ops.json --base-rev 12 --label 'Open on the hook' \
+  --why 'The plan opens on the quote; the old first 2 s were silence' \
+  --evidence 'review:hook-late; m1 9.72–10.32 s; script check beat 1 0.4' --expect-fingerprint 3f9c…
+```
+
+They stay with the undo step (also in the saved history). `timeline changes [--limit N] [--author agent|user|…]`
+lists recent edits newest first: `step`, `label`, `author`, `why`, `evidence`, `at`, the `rev` each produced and
+`changes {counts, text, truncated}`; `undone` lists the edits redo would bring back. Edits from before this was
+recorded show only label and author. Plugins see `why` in the `edit.committed` event.
+
 
 ### Timeline operations
 

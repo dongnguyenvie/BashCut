@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 212 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 213 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -117,15 +117,26 @@ Read the revision, format and tracks, including track IDs and roles, and scale p
 - Mode: read · Runs: immediately · MCP: `bashcut_timeline_get`
 - `format`: string, one of json, text. json (default) or a compact text listing
 
-### `bashcut timeline apply <ops.json> --base-rev <baseRev> [--label <label>] [--dry-run]`
+### `bashcut timeline apply <ops.json> --base-rev <baseRev> [--label <label>] [--dry-run] [--why <why>] [--evidence <evidence>] [--expect-fingerprint <expectFingerprint>]`
 
-Atomically apply validated timeline operations as one undoable edit; returns changed false and keeps the revision when nothing changes.
+Atomically apply validated timeline operations as one undoable edit; returns changed false and keeps the revision when nothing changes. why and evidence stay with the undo step (timeline.changes lists them). Both the dry run and the apply return fingerprint (the ops and baseRev); expectFingerprint refuses an apply whose ops differ from the reviewed dry run.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_timeline_apply`
 - `ops`: array, required. Operations array (CLI: path to ops.json)
 - `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
 - `label`: string, default "Agent edit". Short description of the edit
-- `dryRun`: boolean, default false. Validate without editing; return projected duration, changed IDs and cutsInsideWord (clip edges the edit leaves inside a transcribed word)
+- `dryRun`: boolean, default false. Validate without editing; return projected duration, changed IDs, cutsInsideWord (clip edges the edit leaves inside a transcribed word) and fingerprint
+- `why`: string. Why this edit, in one sentence (up to 500 characters)
+- `evidence`: string. What it rests on, separated by ; (review issue IDs, transcript ranges, measurements; up to 20, 200 characters each)
+- `expectFingerprint`: string. The dry run's fingerprint; refuse other ops
+
+### `bashcut timeline changes [--limit <limit>] [--author <author>]`
+
+Recent edits from the undo history, newest first: step, label, author, why, evidence, at, the rev each produced and changes {counts, text, truncated}; undone lists what redo would bring back. Edits made before why was recorded have only label and author.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_timeline_changes`
+- `limit`: integer, 1…50, default 10. Most edits to list
+- `author`: string. Only this author (user, claude, codex, …), or agent for any agent
 
 ### `bashcut timeline undo --base-rev <baseRev>`
 

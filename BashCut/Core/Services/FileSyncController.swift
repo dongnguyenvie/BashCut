@@ -1,3 +1,4 @@
+import BashCutAutomation
 import BashCutProject
 import BashCutStorage
 import Foundation
@@ -72,7 +73,7 @@ public final class FileSyncController {
     /// and throws the `StorageError`.
     public func save(_ history: ProjectHistory, to fileURL: URL) async throws -> Bool {
         guard !saving else { throw ProjectError.invalid("A save is already running") }
-        guard !conflict else { throw ProjectError.invalid(String(localized: "Resolve the file conflict before editing.")) }
+        guard !conflict else { throw FileConflictError(String(localized: "Resolve the file conflict before editing.")) }
         let current = generation
         saving = true
         defer { saving = false }
@@ -137,4 +138,9 @@ public final class FileSyncController {
         externalProject = nil
         conflict = false
     }
+}
+
+extension StorageError: RPCFailureProviding {
+    /// A save refused because the file changed on disk is a file conflict (P2-G2), not bad arguments.
+    public var rpcFailure: RPCFailure { FileConflictError(localizedDescription).rpcFailure }
 }

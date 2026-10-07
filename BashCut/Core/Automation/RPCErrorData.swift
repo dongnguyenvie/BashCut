@@ -94,3 +94,11 @@ extension RPCFailure {
         return RPCFailure(code, message, data: .object(fields))
     }
 }
+
+/// The project file changed on disk and the user has not resolved the conflict yet: edits and saves wait for it.
+public struct FileConflictError: LocalizedError, RPCFailureProviding {
+    public let message: String
+    public init(_ message: String) { self.message = message }
+    public var errorDescription: String? { message }
+    public var rpcFailure: RPCFailure { RPCFailure(-32003, message, category: .fileConflict) }
+}

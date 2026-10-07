@@ -82,25 +82,6 @@ public enum CommandCatalog {
                          default: .bool(false), cli: .flag("discard-current")),
     ]
 
-    private static let editSpecs: [CommandSpec] = [
-        CommandSpec(
-            "timeline.apply", .edit, "Atomically apply validated timeline operations as one undoable edit; "
-                + "returns changed false and keeps the revision when nothing changes.",
-            parameters: [
-                CommandParameter("ops", .array, "Operations array (CLI: path to ops.json)", required: true,
-                                 sensitive: true, cli: .positionalJSONFile),
-                baseRevision,
-                CommandParameter("label", .string, "Short description of the edit", default: .string("Agent edit"),
-                                 cli: .option("label")),
-                CommandParameter("dryRun", .boolean,
-                                 "Validate without editing; return projected duration, changed IDs and cutsInsideWord "
-                                     + "(clip edges the edit leaves inside a transcribed word)",
-                                 default: .bool(false), cli: .flag("dry-run")),
-            ]),
-        CommandSpec("timeline.undo", .edit, "Undo one timeline action.", parameters: [baseRevision]),
-        CommandSpec("timeline.redo", .edit, "Redo one timeline action.", parameters: [baseRevision]),
-    ]
-
     private static let layerSpecs: [CommandSpec] = [
         CommandSpec(
             "layers.add", .edit,
