@@ -41,6 +41,7 @@ extension ProjectDocument {
         registerWorkflowCommands()
         registerSelectsCommands()
         registerVariantCommands()
+        registerPackagingCommands()
         registerStorageCommands()
         registerLibraryCommands()
         registerAgentKitCommands()

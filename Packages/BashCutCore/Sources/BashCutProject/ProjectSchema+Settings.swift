@@ -23,6 +23,17 @@ extension ProjectSchema {
                 "presets": array(
                     "Export presets, first one primary: review checks every output's platform and the Export sheet "
                         + "starts with the first", of: enumeration("Export preset", OutputPresetName.all), maxItems: 8),
+                "captions": .object([
+                    "type": .string("object"),
+                    "description": .string("Export preset → how that output carries captions (P1-F4)"),
+                    "additionalProperties": object(
+                        "Captions of one output", required: [],
+                        properties: [
+                            "mode": enumeration("Burned in, a sidecar file, both or none", OutputPackaging.captionModes),
+                            "format": enumeration("Sidecar format", OutputPackaging.captionFormats),
+                            "track": string("Caption layer ID; default the first caption layer"),
+                        ]),
+                ]),
                 "targets": .object([
                     "type": .string("object"),
                     "description": .string(

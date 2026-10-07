@@ -16,7 +16,7 @@ public enum CommandCatalog {
     public static let specs: [CommandSpec] = readSpecs + projectSpecs + editSpecs + captionSpecs + layerSpecs + styleSpecs
         + formatSpecs + clipSpecs + capabilitySpecs + analysisSpecs + reviewCutSpecs + timelineStillsSpecs + [colorMeasureSpec] + planSpecs
         + workflowSpecs + planCheckSpecs + quoteSpecs + selectsSpecs
-        + variantSpecs
+        + variantSpecs + packagingSpecs
         + sourceMediaSpecs
         + pluginSpecs + pluginViewSpecs
         + storageSpecs + agentSpecs + appSpecs + chatSpecs
@@ -178,12 +178,14 @@ public enum CommandCatalog {
         CommandSpec(
             "layers.set", .edit,
             "Change a layer's header switches like the timeline header: hide a visual layer, mute an audio layer, "
-                + "lock any layer (a locked layer refuses edits until unlocked).",
+                + "lock any layer (a locked layer refuses edits until unlocked); set a caption layer's language (P1-F4), "
+                + "which output.captions picks a layer by.",
             parameters: [
                 CommandParameter("track", .string, "Layer ID", required: true, cli: .positional),
                 CommandParameter("hidden", .boolean, "Hidden (visual layers)", cli: .option("hidden")),
                 CommandParameter("muted", .boolean, "Muted (audio layers)", cli: .option("muted")),
                 CommandParameter("locked", .boolean, "Locked", cli: .option("locked")),
+                CommandParameter("language", .string, "Language tag such as vi or en; none clears it", cli: .option("language")),
                 baseRevision,
             ]),
     ]

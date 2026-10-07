@@ -113,8 +113,8 @@ extension ProjectDocument {
     /// Sets a layer's hidden, muted or locked switch (nil leaves it as is) as one undoable edit.
     @discardableResult
     func setLayerSwitches(
-        _ trackID: String, hidden: Bool? = nil, muted: Bool? = nil, locked: Bool? = nil, author: Author = .user,
-        baseRevision: Int? = nil
+        _ trackID: String, hidden: Bool? = nil, muted: Bool? = nil, locked: Bool? = nil, language: String? = nil,
+        author: Author = .user, baseRevision: Int? = nil
     ) throws -> Int {
         guard let track = project.tracks.first(where: { $0.id == trackID }) else {
             throw ProjectError.invalid("Unknown layer \(trackID)")
@@ -123,10 +123,18 @@ extension ProjectDocument {
         if let hidden { patch["hidden"] = .bool(hidden) }
         if let muted { patch["muted"] = .bool(muted) }
         if let locked { patch["locked"] = .bool(locked) }
-        guard !patch.isEmpty else { throw ProjectError.invalid("Pass --hidden, --muted or --locked") }
-        let label = locked.map { $0 ? "Lock \(track.name)" : "Unlock \(track.name)" }
-            ?? hidden.map { $0 ? "Hide \(track.name)" : "Show \(track.name)" }
-            ?? (muted == true ? "Mute \(track.name)" : "Unmute \(track.name)")
+        if let language { patch["language"] = language == "none" ? .null : .string(language) }
+        guard !patch.isEmpty else { throw ProjectError.invalid("Pass --hidden, --muted, --locked or --language") }
+        let label: String
+        if let language {
+            label = "Language of \(track.name): \(language)"
+        } else if let locked {
+            label = locked ? "Lock \(track.name)" : "Unlock \(track.name)"
+        } else if let hidden {
+            label = hidden ? "Hide \(track.name)" : "Show \(track.name)"
+        } else {
+            label = muted == true ? "Mute \(track.name)" : "Unmute \(track.name)"
+        }
         return try commit(
             .setTrackProperties(track: trackID, patch: patch), label: label, author: author, baseRevision: baseRevision)
     }
@@ -143,8 +151,8 @@ extension ProjectDocument {
         handleAuthored("layers.set") { document, arguments, author in
             let revision = try document.setLayerSwitches(
                 arguments.string("track"), hidden: arguments.optionalBool("hidden"),
-                muted: arguments.optionalBool("muted"), locked: arguments.optionalBool("locked"), author: author,
-                baseRevision: arguments.int("baseRev"))
+                muted: arguments.optionalBool("muted"), locked: arguments.optionalBool("locked"),
+                language: arguments.optionalString("language"), author: author, baseRevision: arguments.int("baseRev"))
             return .object(["rev": .integer(revision)])
         }
         handleAuthored("layers.add") { document, arguments, author in

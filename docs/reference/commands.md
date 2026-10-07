@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 210 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 212 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -502,6 +502,23 @@ Read the export state: while one runs, its job, step, preset and path (last rece
 
 - Mode: read · Runs: immediately · MCP: `bashcut_export_status`
 
+### `bashcut export cover <frame> [--aspect <aspect>] [--size <size>]`
+
+Write a still of the composed frame for each cover aspect into render/: the asked aspects (W:H, comma separated), else each output's cover aspect from platforms get (cover.aspect, else its shape), cropped from the centre. Pick the frame from real frames (timeline sheet); look at the result.
+
+- Mode: ui · Runs: immediately · MCP: `bashcut_export_cover`
+- `frame`: integer, required, ≥ 0. Timeline frame
+- `aspect`: string. Aspects such as 16:9,9:16
+- `size`: integer, 160…3840. Long edge in pixels
+
+### `bashcut export chapters [--platform <platform>] [--write]`
+
+A chapter list from the section markers (00:00 first; an Intro at 0 when no marker is there) and each rule of the platform's chapter fact (first at 00:00, the least count, the shortest chapter) with whether it holds. With write, saves render/chapters-<platform>.txt. Caption mode per output is output.captions (preset → {mode burn|sidecar|both|none, format srt|vtt, track}); the export follows it.
+
+- Mode: ui · Runs: immediately · MCP: `bashcut_export_chapters`
+- `platform`: string. Platform whose rule applies (default youtube)
+- `write`: boolean. Save the list in render/
+
 ### `bashcut export start --preset <preset> --name <name> [--output-dir <directory>] [--include-srt] [--normalize-audio] [--bitrate <bitrate>]`
 
 Request a background video export; the user approves it in the app first. Approved exports queue behind a running one. Vertical presets default under the platform's recompression line (platforms list: bitrateMbps); bitrate overrides it. Feed shapes: feed-4x5 (1080×1350), square, portrait-3x4 (1080×1440). The export status reports the bitrate written.
@@ -820,15 +837,16 @@ Add an empty layer: text goes to the front of the picture stack, video and adjus
 - `name`: string. Display name
 - `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
 
-### `bashcut layers set <track> [--hidden <hidden>] [--muted <muted>] [--locked <locked>] --base-rev <baseRev>`
+### `bashcut layers set <track> [--hidden <hidden>] [--muted <muted>] [--locked <locked>] [--language <language>] --base-rev <baseRev>`
 
-Change a layer's header switches like the timeline header: hide a visual layer, mute an audio layer, lock any layer (a locked layer refuses edits until unlocked).
+Change a layer's header switches like the timeline header: hide a visual layer, mute an audio layer, lock any layer (a locked layer refuses edits until unlocked); set a caption layer's language (P1-F4), which output.captions picks a layer by.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_layers_set`
 - `track`: string, required. Layer ID
 - `hidden`: boolean. Hidden (visual layers)
 - `muted`: boolean. Muted (audio layers)
 - `locked`: boolean. Locked
+- `language`: string. Language tag such as vi or en; none clears it
 - `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
 
 ## adjustment

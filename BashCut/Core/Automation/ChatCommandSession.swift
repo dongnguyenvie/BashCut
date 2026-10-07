@@ -21,7 +21,7 @@ import Foundation
         "review.accept", "review.verify", "review.packet", "review.compare",
         "review.coverage", "script.check", "media.resolve-range", "captions.find",
         "selects.list", "selects.set", "selects.mark", "selects.remove", "selects.place",
-        "project.derive", "variants.create", "variants.list", "variants.diff",
+        "project.derive", "variants.create", "variants.list", "variants.diff", "export.cover", "export.chapters",
         "workflow.gates", "workflow.set-gates", "checkpoint.request", "checkpoint.status", "run.log", "run.append",
         "storage.get", "ui.select", "ui.view", "ui.source", "ui.seek", "ui.frame", "ui.frames", "ui.panel", "luts.import",
         "fonts.list", "fonts.import",
