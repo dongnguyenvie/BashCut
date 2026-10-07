@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 196 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 198 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -117,7 +117,7 @@ Atomically apply validated timeline operations as one undoable edit; returns cha
 - `ops`: array, required. Operations array (CLI: path to ops.json)
 - `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
 - `label`: string, default "Agent edit". Short description of the edit
-- `dryRun`: boolean, default false. Validate without editing; return projected duration and changed IDs
+- `dryRun`: boolean, default false. Validate without editing; return projected duration, changed IDs and cutsInsideWord (clip edges the edit leaves inside a transcribed word)
 
 ### `bashcut timeline undo --base-rev <baseRev>`
 
@@ -195,12 +195,14 @@ Queue preview proxies (smaller, quick-to-seek copies in .bashcut/cache/proxies; 
 - `media`: string. Project media ID; all video media by default
 - `force`: boolean, default false. Make proxies even for light footage, replacing existing ones
 
-### `bashcut media place --media <media> [--track <track>] [--at-frame <atFrame>] --base-rev <baseRev>`
+### `bashcut media place --media <media> [--from <from>] [--to <to>] [--track <track>] [--at-frame <atFrame>] --base-rev <baseRev>`
 
-Place project media on a layer (main by default, music for audio), with linked sound on a dialogue layer; an occupied range spills onto a free or new layer.
+Place project media on a layer (main by default, music for audio), with linked sound on a dialogue layer; an occupied range spills onto a free or new layer. With from and to (source seconds, such as media resolve-range gives), only that part is placed.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_media_place`
 - `media`: string, required. Project media ID
+- `from`: number, 0…86400. Source start in seconds
+- `to`: number, 0…86400. Source end in seconds
 - `track`: string. Layer ID; defaults to the main layer (music for audio)
 - `atFrame`: integer, ≥ 0. Timeline frame; defaults to the playhead or the end of the main layer
 - `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
@@ -214,6 +216,17 @@ Find the time offset between two recordings of the same moment (a camera and a s
 - `to`: string, required. Project media ID of the second recording
 - `item`: string. A timeline item of the first media whose in-point to map
 - `provider`: string. Provider ID overriding the project preference for one request
+
+### `bashcut media resolve-range <media> [--quote <quote>] [--words <words>] [--from <from>] [--to <to>]`
+
+A source range from what was said, in the media's stored transcript: a quote (the place its words match best; equal places listed in alternatives, in order, never ranked), word indices FIRST-LAST, or rough from/to seconds snapped outwards to the words they cut into (snap gives how far each edge moved). Returns from/to seconds and in/out frames for media place, the text, and per edge midWord, midSentence (inside a transcript phrase) and the nearest word and sentence edges before and after.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_media_resolve-range`
+- `media`: string, required. Project media ID
+- `quote`: string. Words as said
+- `words`: string. Word indices FIRST-LAST
+- `from`: number, 0…86400. Rough start, seconds
+- `to`: number, 0…86400. Rough end, seconds
 
 ### `bashcut media analyze [--media <media>] [--force] [--rate <rate>]`
 
@@ -721,6 +734,13 @@ Place captions of project media as one undoable edit, from its stored transcript
 - `to`: number, 0…86400. Transcribe only up to this source second of the media
 - `provider`: string. Provider ID overriding the project preference for one request
 - `fresh`: boolean. Transcribe again instead of using the media's stored transcript
+
+### `bashcut captions find <text>`
+
+Where words are said on the timeline: every place the text's words come in order (stored transcripts heard through the clips, else caption words), with at/end frames.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_captions_find`
+- `text`: string, required. Words to find
 
 ### `bashcut captions group [<groups.json>] [--source <source>] [--max-chars <maxChars>] [--max-seconds <maxSeconds>] [--break-gap <breakGapSeconds>] [--from <from>] [--to <to>] --base-rev <baseRev>`
 

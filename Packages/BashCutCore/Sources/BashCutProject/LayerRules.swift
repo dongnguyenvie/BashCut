@@ -191,13 +191,14 @@ public struct LayerPlanner {
     /// Places media on a layer. Video with sound on a video layer also gets a reciprocal linked item on a
     /// dialogue layer, so picture and sound edit together.
     public mutating func placeMedia(
-        _ media: Media, on trackID: String, at frame: Int, duration: Int, itemID: String = UUID().uuidString
+        _ media: Media, on trackID: String, at frame: Int, duration: Int, itemID: String = UUID().uuidString,
+        sourceIn: Int = 0
     ) throws {
         if !project.media.contains(where: { $0.id == media.id }) {
             // Callers add the media in the same edit; the scratch copy needs it to validate placements.
             project = try project.applying(.addMedia(media)).project
         }
-        var item = Item(id: itemID, media: media.id, at: frame, duration: duration)
+        var item = Item(id: itemID, media: media.id, at: frame, duration: duration, sourceIn: sourceIn)
         let target = try freeTrack(near: trackID, at: frame, duration: duration)
         guard project.track(id: target)?.kind == "video", media.hasAudio == true,
             let dialogue = project.track(role: TrackRole.dialogue, kind: "audio")
@@ -205,7 +206,7 @@ public struct LayerPlanner {
         let audioID = itemID + "-audio"
         let audioTarget = try freeTrack(near: dialogue.id, at: frame, duration: duration)
         item.fields["linkedAudio"] = .string(audioID)
-        var audio = Item(id: audioID, media: media.id, at: frame, duration: duration)
+        var audio = Item(id: audioID, media: media.id, at: frame, duration: duration, sourceIn: sourceIn)
         audio.fields["linkedVideo"] = .string(itemID)
         try add([.insert(track: audioTarget, item: audio), .insert(track: target, item: item)])
     }

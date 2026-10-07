@@ -74,6 +74,8 @@ extension ProjectDocument {
     }
 
     func registerSourceTranscriptCommands() {
+        handle("media.resolve-range") { document, arguments, _ in try await document.resolveRange(arguments) }
+        handle("captions.find") { document, arguments, _ in await document.findSpoken(try arguments.string("text")) }
         handleAuthored("media.transcribe") { document, arguments, author in
             try document.startMediaTranscribe(
                 mediaID: arguments.optionalString("media"), provider: arguments.optionalString("provider"),
@@ -118,5 +120,55 @@ extension ProjectDocument {
             return .object(["transcribed": .bool(false)])
         }
         return stored.overviewJSON
+    }
+
+    /// `media.resolve-range` (P1-D7): a quote, word indices or rough times in the media's stored transcript → word
+    /// edges with flags and boundaries. Several equal matches: the first, with the others listed in order.
+    func resolveRange(_ arguments: CommandArguments) async throws -> JSONValue {
+        let mediaID = try arguments.string("media")
+        guard let media = project.media.first(where: { $0.id == mediaID }) else { throw RPCFailure(-32602, "Unknown media \(mediaID)") }
+        guard let transcript = try await storedTranscript(mediaID) else {
+            throw RPCFailure(-32602, "\(mediaID) has no transcript yet: media transcribe first")
+        }
+        let words = transcript.words.filter { $0.event == nil }
+        do {
+            if let quote = arguments.optionalString("quote") {
+                let found = QuoteRange.find(quote, in: words)
+                guard let best = found.first else { throw RPCFailure(-32602, "The quote was not found in \(mediaID)'s transcript") }
+                var row = try QuoteRange.json(
+                    transcript, media: media, first: best.first, last: best.last, matches: found.count).object
+                row["matched"] = .number(Double(best.matched) / Double(max(1, best.last - best.first + 1)))
+                row["alternatives"] = .array(found.dropFirst().map { match in
+                    .object(["first": .integer(match.first), "last": .integer(match.last), "from": .number(words[match.first].start)])
+                })
+                return .object(row)
+            }
+            if let span = arguments.optionalString("words") {
+                let parts = span.split(separator: "-").compactMap { Int($0) }
+                guard parts.count == 2 else { throw RPCFailure(-32602, "words is FIRST-LAST, such as 12-30") }
+                return try QuoteRange.json(transcript, media: media, first: parts[0], last: parts[1])
+            }
+            return try QuoteRange.json(
+                transcript, media: media, from: arguments.optionalDouble("from"), to: arguments.optionalDouble("to"))
+        } catch let error as ProjectError {
+            throw RPCFailure(-32602, error.localizedDescription)
+        }
+    }
+
+    /// `captions.find`: where words are said on the timeline, in order (heard words, else caption words).
+    func findSpoken(_ text: String) async -> JSONValue {
+        let (spans, source) = await syncWords()
+        let timed = spans.map { CaptionWords.Timed(text: $0.text, start: Double($0.at), end: Double($0.end)) }
+        let wanted = SpeechUnits.tokens(text).count
+        let found = QuoteRange.find(text, in: timed).filter { $0.matched == wanted }
+        return .object([
+            "wordSource": .string(source),
+            "matches": .array(found.map { match in
+                .object([
+                    "at": .integer(spans[match.first].at), "end": .integer(spans[match.last].end),
+                    "text": .string(spans[match.first...match.last].map(\.text).joined(separator: " ")),
+                ])
+            }),
+        ])
     }
 }

@@ -119,3 +119,41 @@ struct ReviewInvariantsTests {
         #expect(TimelineReview.anchor(project, frame: 400) == "400")
     }
 }
+
+/// Select by quote (P1-D7).
+struct QuoteRangeTests {
+    let transcript = SourceTranscript(
+        key: "k", language: "vi", provider: [:], transcribedAt: "",
+        phrases: [SubRip.Cue(start: 1.0, end: 1.9, text: "xin chào"), SubRip.Cue(start: 2.0, end: 3.4, text: "các bạn ơi giá năm chục")],
+        words: [("xin", 1.0, 1.4), ("chào", 1.4, 1.9), ("các", 2.0, 2.3), ("bạn", 2.3, 2.6), ("ơi", 2.6, 2.8),
+                ("giá", 2.8, 3.0), ("năm", 3.0, 3.2), ("chục", 3.2, 3.4)].map {
+            CaptionWords.Timed(text: $0.0, start: $0.1, end: $0.2)
+        })
+    let media = Media(fields: [
+        "id": .string("m"), "path": .string("m.mp4"), "kind": .string("video"), "fps": FrameRate(30, 1).json,
+        "frames": .integer(300),
+    ])
+
+    @Test("A quote resolves to word edges with sentence flags and boundaries; rough times snap outwards")
+    func resolve() throws {
+        let found = QuoteRange.find("giá năm chục", in: transcript.words)
+        #expect(found.count == 1 && found[0].first == 5 && found[0].last == 7)
+        let json = try QuoteRange.json(transcript, media: media, first: 5, last: 7).object
+        #expect(json["from"] == .number(2.8) && json["to"] == .number(3.4) && json["inFrame"] == .integer(84))
+        let start = try #require(json["in"]).object
+        #expect(start["midWord"] == .bool(false) && start["midSentence"] == .bool(true))
+        #expect(start["sentenceEdgeBefore"] == .number(2.0) && start["sentenceEdgeAfter"] == .null)
+        #expect(json["out"]?.object["midSentence"] == .bool(false))
+        let rough = try QuoteRange.json(transcript, media: media, from: 1.5, to: 2.4).object
+        #expect(rough["from"] == .number(1.4) && rough["to"] == .number(2.6))
+        #expect(rough["snap"]?.object["inDelta"] == .number(-0.1) && rough["text"] == .string("chào các bạn"))
+        #expect(throws: ProjectError.self) { try QuoteRange.json(transcript, media: media, first: 7, last: 2) }
+    }
+
+    @Test("Equal matches are all returned in order; a quote that is not there finds nothing")
+    func find() {
+        let words = ["a", "b", "x", "a", "b"].enumerated().map { CaptionWords.Timed(text: $1, start: Double($0), end: Double($0) + 0.5) }
+        #expect(QuoteRange.find("a b", in: words).map(\.first) == [0, 3])
+        #expect(QuoteRange.find("q r", in: words).isEmpty)
+    }
+}

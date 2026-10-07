@@ -30,15 +30,18 @@ extension ProjectDocument {
     @discardableResult
     func placeMedia(
         _ media: Media, trackID: String? = nil, at frame: Int? = nil, itemID: String = UUID().uuidString,
-        author: Author = .user, baseRevision: Int? = nil
+        range: ClosedRange<Double>? = nil, author: Author = .user, baseRevision: Int? = nil
     ) throws -> (revision: Int, trackID: String) {
         let trackID = try trackID ?? defaultTrackID(forKind: media.kind)
-        let duration = media.placementFrames(in: project.fps)
+        // A source range (seconds) places only that part (P1-D7); otherwise the whole media.
+        let duration = range.map { Int((($0.upperBound - $0.lowerBound) * project.fps.value).rounded()) }
+            ?? media.placementFrames(in: project.fps)
+        let sourceIn = range.map { Int(($0.lowerBound * media.fps.value).rounded(.down)) } ?? 0
         guard duration > 0 else { throw ProjectError.invalid("Media is too short") }
         var planner = LayerPlanner(project)
         try planner.placeMedia(
             media, on: trackID, at: frame ?? project.insertionFrame(trackID: trackID, playhead: playhead),
-            duration: duration, itemID: itemID)
+            duration: duration, itemID: itemID, sourceIn: sourceIn)
         let revision = try commitPlan(planner, label: "Insert media", author: author, baseRevision: baseRevision)
         let used = project.tracks.first { $0.items.contains { $0.id == itemID } }?.id ?? trackID
         let audio = project.tracks.first { $0.items.contains { $0.id == itemID + "-audio" } }?.id
@@ -156,9 +159,14 @@ extension ProjectDocument {
                 throw RPCFailure(-32602, "Unknown media \(mediaID)")
             }
             let itemID = UUID().uuidString
+            var range: ClosedRange<Double>?
+            if let from = arguments.optionalDouble("from"), let to = arguments.optionalDouble("to") {
+                guard from < to else { throw RPCFailure(-32602, "from must be before to") }
+                range = from...to
+            }
             let result = try document.placeMedia(
                 media, trackID: arguments.optionalString("track"), at: arguments.optionalInt("atFrame"),
-                itemID: itemID, author: author, baseRevision: arguments.int("baseRev"))
+                itemID: itemID, range: range, author: author, baseRevision: arguments.int("baseRev"))
             return .object(["rev": .integer(result.revision), "item": .string(itemID), "track": .string(result.trackID)])
         }
         handleAuthored("timeline.move") { document, arguments, author in

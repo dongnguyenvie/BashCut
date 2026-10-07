@@ -8,7 +8,10 @@ public enum TimelineDryRun {
         let item: Item
     }
 
-    public static func evaluate(_ operation: EditOperation, on project: Project, baseRevision: Int) throws -> JSONValue {
+    /// With `transcripts`, the result also lists the clip edges the edit leaves inside a spoken word (P1-D7).
+    public static func evaluate(
+        _ operation: EditOperation, on project: Project, baseRevision: Int, transcripts: [String: SourceTranscript] = [:]
+    ) throws -> JSONValue {
         let next = try project.applying(operation, baseRevision: baseRevision).project
         func positions(_ value: Project) -> [String: Position] {
             Dictionary(uniqueKeysWithValues: value.tracks.flatMap { track in
@@ -26,7 +29,10 @@ public enum TimelineDryRun {
             "changedItems": .array(changed.map(JSONValue.string)),
             "changedTracks": .array(changedTracks.map(JSONValue.string)),
             "addedTracks": .array(next.tracks.filter { oldTracks[$0.id] == nil }.map { .string($0.id) }),
-            "removedTracks": .array(project.tracks.filter { newTracks[$0.id] == nil }.map { .string($0.id) })
+            "removedTracks": .array(project.tracks.filter { newTracks[$0.id] == nil }.map { .string($0.id) }),
+            "cutsInsideWord": .array(TimelineReview.wordCutIssues(next, transcripts: transcripts).map { issue in
+                .object(["id": .string(issue.id), "frame": .integer(issue.frame), "detail": .string(issue.detail)])
+            }),
         ])
     }
 }

@@ -149,6 +149,7 @@ extension ProjectDocument {
             let label = try arguments.string("label")
             let operation = EditOperation.group(label: label, author: author, ops: try WireOperations.decode(arguments.value("ops")))
             if arguments.bool("dryRun") {
+                await document.loadReviewTranscripts()
                 return try document.dryRunEdit(operation, author: author, baseRevision: arguments.int("baseRev"))
             }
             let result = try document.commitEdit(
