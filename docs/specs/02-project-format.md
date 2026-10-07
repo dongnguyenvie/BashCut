@@ -123,7 +123,12 @@ the project schema.
 **Generated results keep provenance, not a live plugin dependency.** Generated media, captions and beat grids may
 carry `generatedBy: {plugin, provider, version}`; loudness measurements use `audio.measuredBy`. The generated
 items and measurements stay usable when the plugin is removed or replaced, and unknown provenance fields
-round-trip unchanged.
+round-trip unchanged. Results also record what they were made from (P2-G6): captions transcribed from a media file
+and the beat grid keep `generatedBy.sourceKey`, the file's content key then (SHA-256 of its size and first and last
+MiB, namespace `media-source-v1`); a voice take keeps `voice.textHash` (and its media `generatedBy.textHash`), the
+hash of the text it says. `review run` adds an info issue when the file's key or the voice text no longer matches.
+Measurements (loudness, picture, plugin checks, delivered files) are kept per revision and review reports them
+stale when the revision moved on.
 
 **Tracks are ordered, dynamic layers.** Array order is the visual stacking order, back to front. A project may
 have as many video, adjustment, text and audio tracks as it needs; `role` is a repeatable semantic hint, not a

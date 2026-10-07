@@ -1,6 +1,7 @@
 import AVFoundation
 import BashCutAutomation
 import BashCutDocument
+import BashCutEngine
 import BashCutPlugin
 import BashCutPlugins
 import BashCutProject
@@ -42,9 +43,12 @@ extension ProjectDocument {
             )
         }
         try ensureSession(session)
+        // The file the words were heard in, so review can say when it changes later (P2-G6).
+        var keyed = provenance
+        if let key = sourceKey(mediaID) { keyed["sourceKey"] = .string(key) }
         try commit(
             project.importingCues(
-                phrases, replace: replace, provenance: provenance, media: mediaID, words: words, wordStyle: wordStyle,
+                phrases, replace: replace, provenance: keyed, media: mediaID, words: words, wordStyle: wordStyle,
                 range: range),
             label: "Generate captions", author: author)
         emitPluginEvent(.captionsGenerated, [
@@ -96,7 +100,8 @@ extension ProjectDocument {
         try commit(
             .setBeatGrid(
                 media: media.id, bpm: generated.bpm, frames: frames.sorted(),
-                provenance: generated.provenance.json),
+                provenance: generated.provenance.json.merging(
+                    sourceKey(media.id).map { ["sourceKey": .string($0)] } ?? [:]) { _, new in new }),
             label: "Detect beats", author: author)
         try? storeBeatGrid(generated, url: url, root: root)
         emitPluginEvent(.beatsDetected, [
@@ -209,7 +214,7 @@ extension ProjectDocument {
         let media = Media(fields: [
             "id": .string(mediaID), "path": .string(Self.relativePath(asset.url, root: root)),
             "kind": .string("audio"), "fps": project.fps.json, "frames": .integer(frames),
-            "generatedBy": .object(asset.provenance.json),
+            "generatedBy": .object(Self.voiceProvenance(asset, voice: voice)),
         ])
         var item = Item(media: mediaID, at: start, duration: frames)
         if let voice { item["voice"] = .object(voice) }
@@ -225,6 +230,24 @@ extension ProjectDocument {
             "item": .string(item.id), "media": .string(mediaID), "path": .string(asset.url.path),
         ])
         return item.id
+    }
+
+    /// The current content key of a media file (`SourceHash.mediaNamespace`, P2-G6); nil when it cannot be read.
+    func sourceKey(_ mediaID: String) -> String? {
+        guard let (_, _, url) = try? capabilityMedia(mediaID) else { return nil }
+        return try? ProjectCache.contentKey(for: url, namespace: SourceHash.mediaNamespace)
+    }
+
+    /// Current content keys of the media review checks results against (P2-G6).
+    func sourceMediaKeys() -> [String: String] {
+        Dictionary(uniqueKeysWithValues: project.sourceKeyedMedia.compactMap { id in sourceKey(id).map { (id, $0) } })
+    }
+
+    /// A voice take's `generatedBy`: the provider, plus the hash of the text it says.
+    static func voiceProvenance(_ asset: GeneratedPluginAsset, voice: [String: JSONValue]?) -> [String: JSONValue] {
+        var fields = asset.provenance.json
+        if let hash = voice?["textHash"] { fields["textHash"] = hash }
+        return fields
     }
 
     func capabilityMedia(_ mediaID: String) throws -> (URL, Media, URL) {

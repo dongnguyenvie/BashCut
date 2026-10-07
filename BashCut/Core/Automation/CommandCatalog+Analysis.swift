@@ -18,7 +18,9 @@ extension CommandCatalog {
             + "round number. Issues accepted with review accept carry accepted.reason and are not counted. With summary, "
             + "checks lists what this run looked at: measured, stale (an older revision), notChecked (with how to "
             + "measure), failed plugin checks (timedOut), unreliable (picture that barely changes: not a pass) and the "
-            + "review limits the project has not set.",
+            + "review limits the project has not set. Results made from a source that changed since are info issues: "
+            + "voice-text-changed (the take says other text), captions-source-changed and beats-source-changed (the "
+            + "media file changed after it was transcribed or its beats detected).",
         parameters: [
             CommandParameter("sinceRev", .integer, "Compare with the review of this revision (this session)", minimum: 0,
                              cli: .option("since-rev")),

@@ -41,6 +41,7 @@ extension ProjectSchema {
             properties: [
                 "text": string("The text the take was synthesized from"), "language": string("Content language"),
                 "provider": string("voice.synthesize provider ID"), "voice": string("provider/voice the rate store uses"),
+                "textHash": string("Hash of the text the take says (SourceHash.text); review notes when text differs"),
                 "words": array("Words heard in the take, in its seconds", of: object(
                     "A word", required: ["text", "start", "end"],
                     properties: [
