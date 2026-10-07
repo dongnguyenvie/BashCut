@@ -12,6 +12,7 @@ public enum TimelineSummary {
             "markers": .array(project.markers.map { .object($0.fields) }),
             "luts": .array(project.colorLUTs.map { .object($0.fields) }),
             "looks": .array(project.looks.map(\.json)), "styleKits": .array(project.styleKits.map(\.json)),
+            "scale": ReviewScale.all(project),
         ])
     }
 
