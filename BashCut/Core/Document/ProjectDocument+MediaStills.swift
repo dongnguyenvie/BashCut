@@ -167,7 +167,7 @@ extension ProjectDocument {
         var sheets: [JSONValue] = []
         for (index, start) in stride(from: 0, to: cells.count, by: perSheet).enumerated() {
             let page = Array(cells[start..<min(cells.count, start + perSheet)])
-            guard let image = MediaStills.sheet(page.map(\.cell), columns: columns, cellWidth: size) else {
+            guard let image = MediaStills.sheet(page.map(\.cell), columns: columns, longEdge: size) else {
                 throw RPCFailure(-32603, "The sheet is too large; lower size or columns")
             }
             let url = try write(image, name: "sheet-\(stamp)-\(index + 1).png", directory: directory)
@@ -219,7 +219,7 @@ extension ProjectDocument {
         let width = arguments.optionalInt("width") ?? 1_600
         let fps = media.fps.value
         let last = max(0, media.frames - 1)
-        let frames: [Int] = (0..<count).map { index in
+        let frames: [Int] = media.kind == "audio" ? [] : (0..<count).map { index in
             let seconds = from + (Double(index) + 0.5) * (to - from) / Double(count)
             return min(last, Int((seconds * fps).rounded(.down)))
         }

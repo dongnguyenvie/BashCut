@@ -58,16 +58,20 @@ public struct MediaCapture: Codable, Sendable, Equatable {
             }
             return nil
         }
-        if let created = try await asset.load(.creationDate) {
+        // A phone's own capture time (with its offset) before the container's creation date.
+        if let text = await string(.quickTimeMetadataCreationDate) {
+            facts.capturedAt = text
+        } else if let created = try await asset.load(.creationDate) {
             if let text = try? await created.load(.stringValue), !text.isEmpty {
                 facts.capturedAt = text
             } else if let date = try? await created.load(.dateValue) {
                 facts.capturedAt = ISO8601DateFormatter().string(from: date)
             }
         }
-        if let text = await string(.quickTimeMetadataLocationISO6709, .commonIdentifierLocation) {
+        if let text = await string(.quickTimeMetadataLocationISO6709, .quickTimeUserDataLocationISO6709, .commonIdentifierLocation) {
             facts.location = Self.location(iso6709: text)
         }
+        if facts.location == nil { facts.location = Self.userDataLocation(url) }
         facts.make = await string(.quickTimeMetadataMake, .commonIdentifierMake)
         facts.model = await string(.quickTimeMetadataModel, .commonIdentifierModel)
         facts.software = await string(.quickTimeMetadataSoftware, .commonIdentifierSoftware)
@@ -120,6 +124,39 @@ public struct MediaCapture: Codable, Sendable, Equatable {
             abs(latitude) <= 90, abs(longitude) <= 180
         else { return nil }
         return Location(latitude: latitude, longitude: longitude, altitude: match.3.flatMap { Double($0) })
+    }
+
+    /// Android phones and many cameras write the position as a `©xyz` box in the MP4's user data, which
+    /// AVFoundation does not list. The movie box sits at the start or the end of the file, so both ends are read.
+    static func userDataLocation(_ url: URL) -> Location? {
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return nil }
+        defer { try? handle.close() }
+        let window = UInt64(8 << 20)
+        guard let size = try? handle.seekToEnd() else { return nil }
+        var parts: [Data] = []
+        if (try? handle.seek(toOffset: 0)) != nil, let head = try? handle.read(upToCount: Int(window)) { parts.append(head) }
+        if size > window, (try? handle.seek(toOffset: size - window)) != nil, let tail = try? handle.read(upToCount: Int(window)) {
+            parts.append(tail)
+        }
+        return parts.lazy.compactMap(location(userData:)).first
+    }
+
+    /// The first `©xyz` box in `data`: a 16-bit length and language, then ISO 6709 text.
+    static func location(userData data: Data) -> Location? {
+        let tag = Data([0xA9, 0x78, 0x79, 0x7A])
+        var from = data.startIndex
+        while let range = data.range(of: tag, in: from..<data.endIndex) {
+            from = range.upperBound
+            guard data.endIndex - range.upperBound >= 4 else { return nil }
+            let length = Int(data[range.upperBound]) << 8 | Int(data[range.upperBound + 1])
+            let start = range.upperBound + 4
+            guard length > 0, length <= 64, start + length <= data.endIndex,
+                let text = String(data: data[start..<start + length], encoding: .utf8),
+                let location = location(iso6709: text)
+            else { continue }
+            return location
+        }
+        return nil
     }
 
     /// EXIF `2026:10:07 12:30:05` with an optional `+07:00` offset, as ISO 8601.

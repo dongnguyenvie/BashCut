@@ -87,12 +87,13 @@ public enum MediaStills {
         }
     }
 
-    /// A grid of `cells`, `columns` wide, each `cellWidth` pixels wide at the most common picture shape, pictures
-    /// fitted inside on black with their label in the bottom-left corner.
-    public static func sheet(_ cells: [Cell], columns: Int, cellWidth: Int) -> CGImage? {
+    /// A grid of `cells`, `columns` wide, each cell `longEdge` pixels on its long side at the most common picture
+    /// shape, pictures fitted inside on black with their label in the bottom-left corner.
+    public static func sheet(_ cells: [Cell], columns: Int, longEdge: Int) -> CGImage? {
         let aspects = cells.compactMap(\.image).map { Double($0.width) / Double(max(1, $0.height)) }.sorted()
         let aspect = aspects.isEmpty ? 16.0 / 9 : aspects[aspects.count / 2]
-        let cellHeight = max(16, Int((Double(cellWidth) / aspect).rounded()))
+        let cellWidth = aspect >= 1 ? longEdge : max(16, Int((Double(longEdge) * aspect).rounded()))
+        let cellHeight = aspect >= 1 ? max(16, Int((Double(longEdge) / aspect).rounded())) : longEdge
         let columns = max(1, min(columns, cells.count))
         let rows = (cells.count + columns - 1) / columns
         let gap = 4
@@ -139,14 +140,15 @@ public enum MediaStills {
         }
     }
 
-    /// Frames along the top, then a time ruler, the sound level (−60…0 dBFS) with the gaps shaded, and the words at
+    /// Frames along the top (none for sound alone), then a time ruler, the sound level (−60…0 dBFS) with the gaps shaded, and the words at
     /// their times on two alternating lines.
     public static func strip(_ strip: Strip, width: Int) -> CGImage? {
         let count = max(1, strip.frames.count)
         let aspects = strip.frames.compactMap(\.image).map { Double($0.width) / Double(max(1, $0.height)) }.sorted()
         let aspect = aspects.isEmpty ? 16.0 / 9 : aspects[aspects.count / 2]
         let cellWidth = Double(width) / Double(count)
-        let picture = max(24, (cellWidth / aspect).rounded())
+        // Sound alone has no frame row.
+        let picture = strip.frames.isEmpty ? 0 : max(24, (cellWidth / aspect).rounded())
         let ruler = 22.0, wave = 110.0, text = 44.0
         let height = Int(picture + ruler + wave + text)
         guard let context = canvas(width, height), strip.to > strip.from else { return nil }

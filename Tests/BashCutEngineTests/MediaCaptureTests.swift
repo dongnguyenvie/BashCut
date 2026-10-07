@@ -19,6 +19,13 @@ struct MediaCaptureTests {
         #expect(MediaCapture.location(iso6709: "nowhere") == nil)
         #expect(MediaCapture.exifDate("2026:10:07 12:30:05", offset: "+07:00") == "2026-10-07T12:30:05+07:00")
         #expect(MediaCapture.exifDate("bad", offset: nil) == nil)
+        // An Android `©xyz` user-data box: size, tag, 16-bit length, language, text.
+        let text = Data("+10.7769+106.7009/".utf8)
+        var box = Data([0, 0, 0, UInt8(12 + text.count), 0xA9, 0x78, 0x79, 0x7A, 0, UInt8(text.count), 0x15, 0xC7])
+        box.append(text)
+        let found = MediaCapture.location(userData: Data(repeating: 7, count: 30) + box)
+        #expect(found?.latitude == 10.7769 && found?.longitude == 106.7009)
+        #expect(MediaCapture.location(userData: Data([0xA9, 0x78, 0x79, 0x7A, 0, 3])) == nil)
     }
 
     @Test("A photo gives its time, place (south and west negative), device and turned size")
@@ -61,6 +68,19 @@ struct MediaCaptureTests {
         #expect(facts.location == nil)
         let stored = ProjectCache.record(MediaCapture.self, .inventory, key: facts.key, projectRoot: root)
         #expect(stored == facts)
+
+        // An iPhone-style file: creation date and position in the QuickTime metadata.
+        let tagged = root.appendingPathComponent("tagged.mov")
+        let location = AVMutableMetadataItem()
+        location.identifier = .quickTimeMetadataLocationISO6709
+        location.value = "+21.0285+105.8542+012.345/" as NSString
+        let created = AVMutableMetadataItem()
+        created.identifier = .quickTimeMetadataCreationDate
+        created.value = "2026-10-01T08:30:00+07:00" as NSString
+        try await PictureSamplerTests.writeMovie(to: tagged, frames: 5, metadata: [location, created], shade: { _ in 50 })
+        let taggedFacts = try await MediaCapture.facts(for: tagged, isImage: false, projectRoot: root)
+        #expect(taggedFacts.location?.latitude == 21.0285 && taggedFacts.location?.altitude == 12.345)
+        #expect(taggedFacts.capturedAt?.hasPrefix("2026-10-01T08:30:00") == true, "\(taggedFacts.capturedAt ?? "nil")")
 
         // The memo follows the file: a new file at the same path gets a new key.
         let first = try MediaCapture.key(for: url)

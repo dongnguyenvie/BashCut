@@ -63,7 +63,7 @@ struct MediaStillsTests {
             space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
         let picture = try #require(context.makeImage())
         let cells = (0..<5).map { MediaStills.Cell(image: $0 == 3 ? nil : picture, label: "\($0 + 1) clip 0:0\($0).0", group: $0 / 3) }
-        let sheet = try #require(MediaStills.sheet(cells, columns: 3, cellWidth: 160))
+        let sheet = try #require(MediaStills.sheet(cells, columns: 3, longEdge: 160))
         #expect(sheet.width == 3 * 160 + 4 * 4)
         #expect(sheet.height == 2 * 90 + 3 * 4)
 
@@ -73,6 +73,9 @@ struct MediaStillsTests {
         let image = try #require(MediaStills.strip(strip, width: 800))
         #expect(image.width == 800)
         #expect(image.height == 225 + 22 + 110 + 44)
+        let sound = MediaStills.Strip(
+            frames: [], levels: (0.1, [-30]), gaps: [], words: [], from: 0, to: 1)
+        #expect(MediaStills.strip(sound, width: 400)?.height == 22 + 110 + 44, "sound alone has no frame row")
         #expect(MediaStills.clock(75.25) == "1:15.3")
     }
 }

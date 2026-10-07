@@ -12,9 +12,10 @@ struct PictureSamplerTests {
     /// (a horizontal ramp is added unless `flat`).
     static func writeMovie(
         to url: URL, frames: Int, flat: Bool = false, width: Int = 160, height: Int = 90,
-        dot: ((Int) -> (x: Int, y: Int))? = nil, shade: (Int) -> Int
+        dot: ((Int) -> (x: Int, y: Int))? = nil, metadata: [AVMetadataItem] = [], shade: (Int) -> Int
     ) async throws {
         let writer = try AVAssetWriter(outputURL: url, fileType: .mov)
+        writer.metadata = metadata
         let input = AVAssetWriterInput(mediaType: .video, outputSettings: [
             AVVideoCodecKey: AVVideoCodecType.h264, AVVideoWidthKey: width, AVVideoHeightKey: height,
             AVVideoCompressionPropertiesKey: [AVVideoAllowFrameReorderingKey: false],
