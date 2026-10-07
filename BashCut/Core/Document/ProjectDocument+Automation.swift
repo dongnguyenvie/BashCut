@@ -143,7 +143,11 @@ extension ProjectDocument {
                 for: document.project, from: arguments.optionalInt("from") ?? 0, to: arguments.optionalInt("to"),
                 samples: arguments.optionalBool("samples") ?? true, cuts: arguments.optionalBool("cuts") ?? true)
         }
-        handle("export.status") { document, _, _ in document.exports.statusJSON }
+        handle("export.status") { document, _, _ in
+            var status = document.exports.statusJSON.object
+            status["delivered"] = .array(document.deliveredQC.map(\.json))
+            return .object(status)
+        }
     }
 
     private func registerEditCommands() {

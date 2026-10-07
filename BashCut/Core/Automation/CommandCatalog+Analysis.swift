@@ -15,7 +15,10 @@ extension CommandCatalog {
             + "the font cannot draw (glyph), and the outputs' length and shape; the rest is info unless the project "
             + "raises it. Issue IDs are anchored to clips, so they survive edits elsewhere. Each run is a round: with "
             + "sinceRev, the result also has diff {fixed, new, persisting} against the review of that revision and the "
-            + "round number. Issues accepted with review accept carry accepted.reason and are not counted.",
+            + "round number. Issues accepted with review accept carry accepted.reason and are not counted. With summary, "
+            + "checks lists what this run looked at: measured, stale (an older revision), notChecked (with how to "
+            + "measure), failed plugin checks (timedOut), unreliable (picture that barely changes: not a pass) and the "
+            + "review limits the project has not set.",
         parameters: [
             CommandParameter("sinceRev", .integer, "Compare with the review of this revision (this session)", minimum: 0,
                              cli: .option("since-rev")),
@@ -36,6 +39,33 @@ extension CommandCatalog {
             CommandParameter("reason", .string, "Why it stays", cli: .option("reason")),
             CommandParameter("remove", .boolean, "Count the issue again", cli: .flag("remove")),
             baseRevision,
+        ])
+
+    static let reviewVerifySpec = CommandSpec(
+        "review.verify", .read,
+        "Prove a fix: the issue as an earlier review of this session saw it (before, beforeRev) against now, measured "
+            + "over the issue's own range and a second around it (picture issues re-sample just that range; others "
+            + "re-run the review), status fixed or persisting, other issues nearby, and window: a still strip of the "
+            + "range with the cuts, words and levels. Loudness needs a normalized export of the revision.",
+        parameters: [CommandParameter("id", .string, "Issue ID", required: true, cli: .positional)])
+
+    static let reviewPacketSpec = CommandSpec(
+        "review.packet", .read,
+        "Write an evidence folder for a fresh critic (a sub-agent with only this folder and bc:review): README, "
+            + "plan.json (brief, plan, review profile, outputs), digest.json (what changed since the last review round), "
+            + "issues.json (with the round diff), cuts.json, word-landing.json (words against cuts and titles), hook.json, "
+            + "coverage.json (planned shots and beats), measured.json (what was and was not measured) and a contact sheet "
+            + "of every cut and title. No editor reasons are included.")
+
+    static let reviewCompareSpec = CommandSpec(
+        "review.compare", .read,
+        "A reference and our render, both imported and measured (media analyze), side by side by the same functions: "
+            + "duration, shots and shot-length median/p25/p75, cuts per minute, picture medians (luma, spread, change, "
+            + "colourfulness, sharpness), sound level median/p10/p90/range and peak, each with ours − reference. No "
+            + "verdict; a metric gets within only when the project's review.compare sets its tolerance.",
+        parameters: [
+            CommandParameter("reference", .string, "Reference media ID", required: true, cli: .option("reference")),
+            CommandParameter("ours", .string, "Our render's media ID", required: true, cli: .option("ours")),
         ])
 
     static let reviewMeasureSpec = CommandSpec(
@@ -116,7 +146,7 @@ extension CommandCatalog {
                 + "lagStartMs, lagEndMs} from matching the last export's sound to the timeline's mix every 10 s "
                 + "(positive lag = the render is later); the export must show this revision.",
             parameters: [
-                CommandParameter("events", .string, "cuts, text, sfx (comma separated; default cuts)",
+                CommandParameter("events", .string, "cuts, text, sfx, captions (comma separated; default cuts)",
                                  cli: .option("events")),
                 CommandParameter("rendered", .boolean, "Also measure the last export's timing against the timeline",
                                  cli: .flag("rendered")),

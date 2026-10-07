@@ -79,7 +79,8 @@ public enum ReviewCuts {
 /// and the distribution of those offsets. No limit says what is "on" the beat.
 public enum ReviewSync {
     public enum Event: String, CaseIterable, Sendable {
-        case cuts, text, sfx
+        /// `captions`: each caption cue's start against the nearest word edge (P1-E7: a shifted caption track).
+        case cuts, text, sfx, captions
     }
 
     /// A word on the timeline, in frames.
@@ -105,6 +106,9 @@ public enum ReviewSync {
             if kinds.contains(.text), track.kind == TrackKind.text, track.role != TrackRole.captions {
                 result += track.items.map { ($0.at, "text", $0.id) }
             }
+            if kinds.contains(.captions), track.role == TrackRole.captions {
+                result += track.items.map { ($0.at, "caption", $0.id) }
+            }
             if kinds.contains(.sfx), track.role == TrackRole.sfx {
                 result += track.items.map { ($0.at, "sfx", $0.id) }
             }
@@ -119,6 +123,7 @@ public enum ReviewSync {
             .sorted { $0.frame < $1.frame }
         let milliseconds = { (frames: Int) in JSONValue.number((Double(frames) / fps * 1_000).rounded()) }
         var beatOffsets: [Int] = [], wordOffsets: [Int] = []
+        let texts = Dictionary(project.tracks.flatMap(\.items).map { ($0.id, $0.text) }, uniquingKeysWith: { first, _ in first })
         let rows: [JSONValue] = events(project, kinds: kinds).map { event in
             var row: [String: JSONValue] = [
                 "frame": .integer(event.frame), "kind": .string(event.kind), "item": .string(event.item),
@@ -128,8 +133,14 @@ public enum ReviewSync {
                 beatOffsets.append(offset)
                 row["beat"] = .object(["frame": .integer(beat), "offsetFrames": .integer(offset), "offsetMs": milliseconds(offset)])
             }
-            if let index = nearestIndex(edges.map(\.frame), to: event.frame) {
-                let edge = edges[index], offset = event.frame - edge.frame
+            // A caption is timed against the start of the word it begins with, where that word is said nearest.
+            let first = event.kind == "caption" ? SpeechUnits.tokens(texts[event.item] ?? "").first.map(SpeechUnits.normalized) : nil
+            let matching = first.map { token in
+                edges.filter { $0.edge == "start" && SpeechUnits.normalized($0.text) == token }
+            } ?? []
+            let candidates = matching.isEmpty ? edges : matching
+            if let index = nearestIndex(candidates.map(\.frame), to: event.frame) {
+                let edge = candidates[index], offset = event.frame - edge.frame
                 wordOffsets.append(offset)
                 row["word"] = .object([
                     "frame": .integer(edge.frame), "edge": .string(edge.edge), "text": .string(edge.text),

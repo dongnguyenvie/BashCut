@@ -54,7 +54,7 @@ public enum CommandCatalog {
             ]),
         mediaListSpec,
         reviewSpec,
-        reviewMeasureSpec, reviewAcceptSpec,
+        reviewMeasureSpec, reviewAcceptSpec, reviewVerifySpec, reviewPacketSpec, reviewCompareSpec,
         reviewPictureSpec,
         reviewShotsSpec,
         reviewLayoutSpec,
@@ -63,7 +63,9 @@ public enum CommandCatalog {
         CommandSpec(
             "export.status", .read,
             "Read the export state: while one runs, its job, step, preset and path (last receipt under lastExport); "
-                + "otherwise the most recent receipt. Includes the queue (job IDs for jobs.cancel)."),
+                + "otherwise the most recent receipt. Includes the queue (job IDs for jobs.cancel) and delivered: each "
+                + "exported file of this session measured (stream starts and drift, fps and size against the preset, "
+                + "black and silent stretches), which review run reads (P1-E6)."),
         CommandSpec(
             "plugins.list", .read,
             "List installed plugins with their category, providers and project provider preferences.",

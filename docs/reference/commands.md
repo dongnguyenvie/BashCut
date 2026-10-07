@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 207 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 210 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -367,7 +367,7 @@ What the footage holds, from one call (read only; capture facts are read once pe
 
 ### `bashcut review run [--since-rev <sinceRev>] [--min-severity <minSeverity>] [--summary]`
 
-Review the timeline before export. Each issue has a severity (error: spoils the export, warning: hurts it, info: a note) and, when one exists, a fix: a command with arguments, or a hint. Errors come first. With summary, the result is {issues, summary: {errors, warnings, infos, passed}}; passed means no error. Loudness is checked from the last normalized export of this revision, black and frozen picture, jump cuts and plugin checks from the last review.measure of this revision. Issues over a stretch carry endFrame. Pacing (shot length, still picture) follows the project's review object (minShotSeconds, maxShotSeconds, maxStillSeconds) when set. With no review settings only invariants are errors: gaps and black picture on Main, a clip edge inside a transcribed word (cut-in-word), a missing font or characters the font cannot draw (glyph), and the outputs' length and shape; the rest is info unless the project raises it. Issue IDs are anchored to clips, so they survive edits elsewhere. Each run is a round: with sinceRev, the result also has diff {fixed, new, persisting} against the review of that revision and the round number. Issues accepted with review accept carry accepted.reason and are not counted.
+Review the timeline before export. Each issue has a severity (error: spoils the export, warning: hurts it, info: a note) and, when one exists, a fix: a command with arguments, or a hint. Errors come first. With summary, the result is {issues, summary: {errors, warnings, infos, passed}}; passed means no error. Loudness is checked from the last normalized export of this revision, black and frozen picture, jump cuts and plugin checks from the last review.measure of this revision. Issues over a stretch carry endFrame. Pacing (shot length, still picture) follows the project's review object (minShotSeconds, maxShotSeconds, maxStillSeconds) when set. With no review settings only invariants are errors: gaps and black picture on Main, a clip edge inside a transcribed word (cut-in-word), a missing font or characters the font cannot draw (glyph), and the outputs' length and shape; the rest is info unless the project raises it. Issue IDs are anchored to clips, so they survive edits elsewhere. Each run is a round: with sinceRev, the result also has diff {fixed, new, persisting} against the review of that revision and the round number. Issues accepted with review accept carry accepted.reason and are not counted. With summary, checks lists what this run looked at: measured, stale (an older revision), notChecked (with how to measure), failed plugin checks (timedOut), unreliable (picture that barely changes: not a pass) and the review limits the project has not set.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_review_run`
 - `sinceRev`: integer, ≥ 0. Compare with the review of this revision (this session)
@@ -391,6 +391,27 @@ Keep a warning or note on purpose, with the reason, as one undoable edit (review
 - `reason`: string. Why it stays
 - `remove`: boolean. Count the issue again
 - `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
+
+### `bashcut review verify <id>`
+
+Prove a fix: the issue as an earlier review of this session saw it (before, beforeRev) against now, measured over the issue's own range and a second around it (picture issues re-sample just that range; others re-run the review), status fixed or persisting, other issues nearby, and window: a still strip of the range with the cuts, words and levels. Loudness needs a normalized export of the revision.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_review_verify`
+- `id`: string, required. Issue ID
+
+### `bashcut review packet`
+
+Write an evidence folder for a fresh critic (a sub-agent with only this folder and bc:review): README, plan.json (brief, plan, review profile, outputs), digest.json (what changed since the last review round), issues.json (with the round diff), cuts.json, word-landing.json (words against cuts and titles), hook.json, coverage.json (planned shots and beats), measured.json (what was and was not measured) and a contact sheet of every cut and title. No editor reasons are included.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_review_packet`
+
+### `bashcut review compare --reference <reference> --ours <ours>`
+
+A reference and our render, both imported and measured (media analyze), side by side by the same functions: duration, shots and shot-length median/p25/p75, cuts per minute, picture medians (luma, spread, change, colourfulness, sharpness), sound level median/p10/p90/range and peak, each with ours − reference. No verdict; a metric gets within only when the project's review.compare sets its tolerance.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_review_compare`
+- `reference`: string, required. Reference media ID
+- `ours`: string, required. Our render's media ID
 
 ### `bashcut review picture [--from <from>] [--to <to>] [--samples <samples>] [--cuts <cuts>]`
 
@@ -438,7 +459,7 @@ Read every cut on Main: index, frame/seconds, from/to item IDs, kind (hard, or t
 Time events against the beat grid and the spoken words: per event (cuts on Main by default; text items and sfx items on request) the nearest beat and the nearest word edge (start or end, its text, whether the event falls inside the word) with offsetFrames and offsetMs (positive = after it), and for beats and words the distribution: count, mean, median, p10, p90 and counts per offset from −6 to +6 frames. Words are the stored transcripts heard through the clips (media.transcribe), else the caption words. With rendered: rendered {windows [{at, lagMs, correlation}], driftMsPerMinute, lagStartMs, lagEndMs} from matching the last export's sound to the timeline's mix every 10 s (positive lag = the render is later); the export must show this revision.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_review_sync`
-- `events`: string. cuts, text, sfx (comma separated; default cuts)
+- `events`: string. cuts, text, sfx, captions (comma separated; default cuts)
 - `rendered`: boolean. Also measure the last export's timing against the timeline
 
 ### `bashcut review window <frame> [--span <span>] [--step <step>] [--width <width>]`
@@ -477,7 +498,7 @@ One platform's facts with the project's overrides applied and every field's prov
 
 ### `bashcut export status`
 
-Read the export state: while one runs, its job, step, preset and path (last receipt under lastExport); otherwise the most recent receipt. Includes the queue (job IDs for jobs.cancel).
+Read the export state: while one runs, its job, step, preset and path (last receipt under lastExport); otherwise the most recent receipt. Includes the queue (job IDs for jobs.cancel) and delivered: each exported file of this session measured (stream starts and drift, fps and size against the preset, black and silent stretches), which review run reads (P1-E6).
 
 - Mode: read · Runs: immediately · MCP: `bashcut_export_status`
 
