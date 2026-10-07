@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 182 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 186 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -10,7 +10,7 @@ approval are explained in the [automation guide](../guides/automation.md#permiss
 
 ### `bashcut context get`
 
-Read the project path, revision, playhead and selection, and a summary of the agent knowledge: active lessons, preferences, project facts and the number of proposals; scope lists the timeline items attached to your tab's request (edit only those), with the scope guard's mode, a held edit and the user's answer to the last one (last); agentPermissions tells what you may do without asking; analysis lists running analysis jobs and the media not yet measured (media.analyze), transcribed (media.transcribe) or described (media.describe), so a plan does not use defaults where measurements are missing.
+Read the project path, revision, playhead and selection, and a summary of the agent knowledge: active lessons, preferences, project facts and the number of proposals; scope lists the timeline items attached to your tab's request (edit only those), with the scope guard's mode, a held edit and the user's answer to the last one (last); agentPermissions tells what you may do without asking; analysis lists running analysis jobs and the media not yet measured (media.analyze), transcribed (media.transcribe) or described (media.describe), so a plan does not use defaults where measurements are missing; plan summarises the brief (goal, outputs, length) and the edit plan (mode, stage, section/shot/beat counts, frozen sections).
 
 - Mode: read · Runs: immediately · MCP: `bashcut_context_get`
 
@@ -77,6 +77,21 @@ Change the open project's canvas like the format menu in the toolbar: portrait 9
 - `clips`: string, one of fit, fill. How clips meet the frame by default
 - `resolution`: string, one of 720, 1080, 2160. Short-side resolution; the current one by default
 - `outputs`: string. Comma-separated export presets (tiktok, reels, shorts, youtube-1080, youtube-4k, quick-draft, prores); none clears them
+- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
+
+### `bashcut project brief`
+
+Read the project brief: goal, audience, outputs, angle, lengthSeconds, notes as {value, status stated|inferred|confirmed, source?}, and ideas and references. Null when none.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_project_brief`
+
+### `bashcut project set-brief <value.json> [--merge] --base-rev <baseRev>`
+
+Set the brief as one undoable edit (validated: fields {value, status, source?}, ideas and references up to 100 objects); with merge, only the given fields change (null removes one). Review compares its length and outputs with the edit, as info.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_project_set-brief`
+- `value`: object, required. The brief (CLI: path to brief.json)
+- `merge`: boolean. Change only the given fields
 - `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
 
 ### `bashcut project recents`
@@ -937,6 +952,23 @@ Measure colour per clip on frames spread over each clip (samples, default 3), on
 - `graded`: boolean. Measure the edit as composed
 - `compare`: string, one of source. source: the edit without colour against it as graded
 - `by`: string, one of clip. clip: each clip's difference from the median clip
+
+## plan
+
+### `bashcut plan get`
+
+Read the edit plan: mode (create, directed, revision), stage, options, sections [{id, label, lengthSeconds {min, max}, reason, frozen}], shots [{id, section, purpose, size, move, mustShow, targetSeconds, source footage|stock|generated}], beats [{id, section, text}], decisions, ranges (the review profile values chosen, {min, max, source, reason}) and notes. Null when none.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_plan_get`
+
+### `bashcut plan set <value.json> [--merge] --base-rev <baseRev>`
+
+Set the edit plan as one undoable edit (validated shape); with merge, only the given top-level fields change (null removes one). Review compares each section's planned length with its section marker, as info. context get summarises it so work can resume from it.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_plan_set`
+- `value`: object, required. The plan (CLI: path to plan.json)
+- `merge`: boolean. Change only the given fields
+- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
 
 ## speech
 

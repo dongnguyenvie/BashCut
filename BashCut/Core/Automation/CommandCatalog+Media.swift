@@ -22,7 +22,8 @@ extension CommandCatalog {
             + "the user's answer to the last one (last); agentPermissions tells what you may do without asking; "
             + "analysis lists running analysis jobs and the media not yet measured (media.analyze), transcribed "
             + "(media.transcribe) or described (media.describe), so a plan does not use defaults where "
-            + "measurements are missing."
+            + "measurements are missing; plan summarises the brief (goal, outputs, length) and the edit plan (mode, "
+            + "stage, section/shot/beat counts, frozen sections)."
 
     /// Every command about source media (P0-A).
     static var sourceMediaSpecs: [CommandSpec] {

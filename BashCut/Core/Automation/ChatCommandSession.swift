@@ -17,6 +17,7 @@ import Foundation
         "review.window", "timeline.sheet", "color.measure", "audio.mix-measure",
         "beats.grid", "audio.energy", "review.hook", "speech.rate", "narration.windows",
         "voice.check", "voice.fit", "captions.align", "voice.voices", "captions.group", "platforms.list",
+        "project.brief", "project.set-brief", "plan.get", "plan.set",
         "storage.get", "ui.select", "ui.view", "ui.source", "ui.seek", "ui.frame", "ui.frames", "ui.panel", "luts.import",
         "fonts.list", "fonts.import",
         "knowledge.get", "knowledge.memo", "knowledge.lessons", "knowledge.add-lesson", "knowledge.update-lesson",
