@@ -39,6 +39,9 @@ final class ProjectDocument {
     var privilegedApproval: PrivilegedApprovalPrompt?
     /// An agent edit outside its attached scope, waiting for the user (#356).
     var scopeHold: AgentScopeHold?
+    /// The workflow gate waiting for the user (P1-D5), and this session's checkpoints.
+    var checkpoint: CheckpointRequest?
+    var checkpoints: [CheckpointRequest] = []
     var fileURL: URL?
     let sourceViewer = SourceViewerModel()
     let waveforms = WaveformModel()
@@ -248,6 +251,8 @@ final class ProjectDocument {
         for pending in plugins.confirmations { resolvePluginConfirm(pending.id, run: false) }
         if privilegedApproval != nil { resolvePrivilegedApproval(false) }
         resolveScopeHold(.reject)
+        resolveCheckpoint(.withdrawn)
+        checkpoints.removeAll()
         // Terminals stay open; pending session lookups end with the old project.
         let liveBookmarks = agents.liveBookmarks()
         agents.resetProjectState()

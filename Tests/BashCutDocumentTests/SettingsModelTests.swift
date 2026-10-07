@@ -102,4 +102,22 @@ struct SettingsModelTests {
         settings.clearRecentProjects()
         #expect(SettingsModel(defaults: defaults).recentProjects.isEmpty)
     }
+
+    @Test("Every workflow gate asks until the user changes it; modes and the round limit are stored (P1-D4)")
+    func workflowGates() throws {
+        let defaults = try defaults()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = SettingsModel(defaults: defaults)
+        #expect(WorkflowGate.allCases.allSatisfy { settings.gateMode($0) == .ask })
+        #expect(settings.maxReviewRounds == 3)
+        settings.setGateMode(.roughCut, .skip)
+        settings.setGateMode(.draft, .notify)
+        settings.maxReviewRounds = 2
+        let reloaded = SettingsModel(defaults: defaults)
+        #expect(reloaded.gateMode(.roughCut) == .skip && reloaded.gateMode(.draft) == .notify && reloaded.gateMode(.brief) == .ask)
+        #expect(reloaded.maxReviewRounds == 2)
+        #expect(WorkflowGate(id: "g3") == .roughCut && WorkflowGate(id: "script") == .script && WorkflowGate(id: "G9") == nil)
+        let gates = reloaded.workflowJSON.object["gates"]?.array.map(\.object) ?? []
+        #expect(gates.first { $0["id"] == .string("G3") }?["mode"] == .string("skip"))
+    }
 }

@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 186 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 192 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -969,6 +969,66 @@ Set the edit plan as one undoable edit (validated shape); with merge, only the g
 - `value`: object, required. The plan (CLI: path to plan.json)
 - `merge`: boolean. Change only the given fields
 - `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
+
+## workflow
+
+### `bashcut workflow gates`
+
+The user's workflow gates: G1 brief, G2 strategy, G3 roughCut (rough-cut sheet), G4 script (before speech is made), G5 draft (before export), each ask, notify or skip (ask unless the user changed it), and maxReviewRounds. Request each gate with checkpoint request; never decide one is approved yourself.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_workflow_gates`
+
+### `bashcut workflow set-gates [--gate <gate>] [--mode <mode>] [--max-review-rounds <maxReviewRounds>]`
+
+Change a gate or the review round limit. Agents may only make a gate ask more (skip → notify → ask); loosening a gate or changing the round limit is the user's (Settings → Agents → Workflow gates).
+
+- Mode: ui · Runs: immediately · MCP: `bashcut_workflow_set-gates`
+- `gate`: string. G1…G5 or brief, strategy, roughCut, script, draft
+- `mode`: string, one of ask, notify, skip. Gate mode
+- `maxReviewRounds`: integer, 1…10. Review round limit (user only)
+
+## checkpoint
+
+### `bashcut checkpoint request <gate> --summary <summary> [--attach <attach>]`
+
+Stop at a gate: with ask, the user sees the summary and attachments in BashCut and answers approved, changes (with a note) or rejected; poll checkpoint status until it is not awaiting_user. With notify the user is told and the run goes on; with skip nothing is shown. The answer is bound to the current revision and written to the run log; only the user can answer.
+
+- Mode: ui · Runs: immediately · MCP: `bashcut_checkpoint_request`
+- `gate`: string, required. G1…G5 or brief, strategy, roughCut, script, draft
+- `summary`: string, required. What the user is asked to approve
+- `attach`: string. Comma-separated files to show (sheets, stills); relative to the project
+
+### `bashcut checkpoint status [<id>]`
+
+A checkpoint of this session (default the last): status awaiting_user, approved, changes, rejected, skipped, notified or withdrawn, the user's note, the revision it covers and stale when the project has changed since.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_checkpoint_status`
+- `id`: string. Checkpoint ID
+
+## run
+
+### `bashcut run log [--run <run>] [--kind <kind>] [--limit <limit>]`
+
+The run log (.bashcut/run-log.jsonl, append-only): starts, stages, gates with the user's answers, review rounds (fixed, left), what was measured and not measured, notes. Read it for the hand-off report and self-learn instead of the chat.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_run_log`
+- `run`: string. current (default), all or a run number
+- `kind`: string. Only this kind
+- `limit`: integer, 1…10000. Last N entries
+
+### `bashcut run append <kind> [--stage <stage>] [--text <text>] [--round <round>] [--fixed <fixed>] [--left <left>] [--measured <measured>] [--not-measured <notMeasured>]`
+
+Append to the run log: start (opens a run), stage, round, measured, note or end. Gate entries come only from checkpoints. The revision, author and time are added.
+
+- Mode: ui · Runs: immediately · MCP: `bashcut_run_append`
+- `kind`: string, required, one of start, stage, round, measured, note, end. Entry kind
+- `stage`: string. Stage name
+- `text`: string. What happened
+- `round`: integer, 1…100. Review round
+- `fixed`: integer, ≥ 0. Issues fixed this round
+- `left`: integer, ≥ 0. Issues left
+- `measured`: string. Comma-separated checks measured
+- `notMeasured`: string. Comma-separated checks not measured
 
 ## speech
 

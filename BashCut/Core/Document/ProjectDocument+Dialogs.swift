@@ -119,6 +119,14 @@ extension ProjectDocument {
                 options: [ModalOption("deny", String(localized: "Deny"))]
             ) { [weak self] _ in self?.resolvePrivilegedApproval(false) })
         }
+        if let request = checkpoint {
+            // Answering stays with the user; an agent can only withdraw its request.
+            sheets.append(ModalSheet(
+                name: "checkpoint", title: "\(request.gate.rawValue) \(request.gate.title)",
+                message: "Only the user can approve, ask for changes or reject. " + request.summary,
+                options: [ModalOption("withdraw", String(localized: "Withdraw"))]
+            ) { [weak self] _ in self?.resolveCheckpoint(.withdrawn) })
+        }
         if let hold = scopeHold {
             // Allowing stays with the user; agents can only reject.
             sheets.append(ModalSheet(

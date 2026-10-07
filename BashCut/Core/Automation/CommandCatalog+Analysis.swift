@@ -235,6 +235,68 @@ extension CommandCatalog {
             ]),
     ]
 
+    /// Workflow gates, checkpoints and the run log (P1-D4–D6).
+    static let workflowSpecs: [CommandSpec] = [
+        CommandSpec(
+            "workflow.gates", .read,
+            "The user's workflow gates: G1 brief, G2 strategy, G3 roughCut (rough-cut sheet), G4 script (before speech "
+                + "is made), G5 draft (before export), each ask, notify or skip (ask unless the user changed it), and "
+                + "maxReviewRounds. Request each gate with checkpoint request; never decide one is approved yourself."),
+        CommandSpec(
+            "workflow.set-gates", .ui,
+            "Change a gate or the review round limit. Agents may only make a gate ask more (skip → notify → ask); "
+                + "loosening a gate or changing the round limit is the user's (Settings → Agents → Workflow gates).",
+            parameters: [
+                CommandParameter("gate", .string, "G1…G5 or brief, strategy, roughCut, script, draft", cli: .option("gate")),
+                CommandParameter("mode", .string, "Gate mode", choices: ["ask", "notify", "skip"], cli: .option("mode")),
+                CommandParameter("maxReviewRounds", .integer, "Review round limit (user only)", minimum: 1, maximum: 10,
+                                 cli: .option("max-review-rounds")),
+            ]),
+        CommandSpec(
+            "checkpoint.request", .ui,
+            "Stop at a gate: with ask, the user sees the summary and attachments in BashCut and answers approved, "
+                + "changes (with a note) or rejected; poll checkpoint status until it is not awaiting_user. With notify the "
+                + "user is told and the run goes on; with skip nothing is shown. The answer is bound to the current "
+                + "revision and written to the run log; only the user can answer.",
+            parameters: [
+                CommandParameter("gate", .string, "G1…G5 or brief, strategy, roughCut, script, draft", required: true,
+                                 cli: .positional),
+                CommandParameter("summary", .string, "What the user is asked to approve", required: true, cli: .option("summary")),
+                CommandParameter("attach", .string, "Comma-separated files to show (sheets, stills); relative to the project",
+                                 cli: .option("attach")),
+            ]),
+        CommandSpec(
+            "checkpoint.status", .read,
+            "A checkpoint of this session (default the last): status awaiting_user, approved, changes, rejected, skipped, "
+                + "notified or withdrawn, the user's note, the revision it covers and stale when the project has changed since.",
+            parameters: [CommandParameter("id", .string, "Checkpoint ID", cli: .positional)]),
+        CommandSpec(
+            "run.log", .read,
+            "The run log (.bashcut/run-log.jsonl, append-only): starts, stages, gates with the user's answers, review "
+                + "rounds (fixed, left), what was measured and not measured, notes. Read it for the hand-off report and "
+                + "self-learn instead of the chat.",
+            parameters: [
+                CommandParameter("run", .string, "current (default), all or a run number", cli: .option("run")),
+                CommandParameter("kind", .string, "Only this kind", cli: .option("kind")),
+                CommandParameter("limit", .integer, "Last N entries", minimum: 1, maximum: 10_000, cli: .option("limit")),
+            ]),
+        CommandSpec(
+            "run.append", .ui,
+            "Append to the run log: start (opens a run), stage, round, measured, note or end. Gate entries come only from "
+                + "checkpoints. The revision, author and time are added.",
+            parameters: [
+                CommandParameter("kind", .string, "Entry kind", required: true, choices: ["start", "stage", "round", "measured", "note", "end"],
+                                 cli: .positional),
+                CommandParameter("stage", .string, "Stage name", cli: .option("stage")),
+                CommandParameter("text", .string, "What happened", cli: .option("text")),
+                CommandParameter("round", .integer, "Review round", minimum: 1, maximum: 100, cli: .option("round")),
+                CommandParameter("fixed", .integer, "Issues fixed this round", minimum: 0, cli: .option("fixed")),
+                CommandParameter("left", .integer, "Issues left", minimum: 0, cli: .option("left")),
+                CommandParameter("measured", .string, "Comma-separated checks measured", cli: .option("measured")),
+                CommandParameter("notMeasured", .string, "Comma-separated checks not measured", cli: .option("not-measured")),
+            ]),
+    ]
+
     /// Platform facts the checks use (#469).
     static let platformsListSpec = CommandSpec(
         "platforms.list", .read,
