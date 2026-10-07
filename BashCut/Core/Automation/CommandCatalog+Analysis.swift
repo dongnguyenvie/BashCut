@@ -34,6 +34,22 @@ extension CommandCatalog {
         ],
         execution: .job)
 
+    static let reviewPictureSpec = CommandSpec(
+        "review.picture", .read,
+        "Read the raw picture measurement of the last review.measure: per sample {frame, seconds, luma, spread, "
+            + "change, peak} at a fixed interval and per hard cut on Main {item, fromItem, frame, before, seconds, "
+            + "difference}, with the units and the noise floors the picture checks use (floors). Values are fractions "
+            + "of full scale on a small grey thumbnail. current is false when the timeline changed since; measure "
+            + "again for this revision. No verdicts: read the numbers to find frozen stretches, flat or dark picture "
+            + "and near-identical cuts.",
+        parameters: [
+            CommandParameter("from", .integer, "First timeline frame (default 0)", minimum: 0, cli: .option("from")),
+            CommandParameter("to", .integer, "Timeline frame after the range (default: the end)", minimum: 1,
+                             cli: .option("to")),
+            CommandParameter("samples", .boolean, "Include the samples (default true)", cli: .option("samples")),
+            CommandParameter("cuts", .boolean, "Include the cuts (default true)", cli: .option("cuts")),
+        ])
+
     /// Read-only sound analysis through plugin providers; each runs as a job whose result holds the values.
 
     static let analysisSpecs: [CommandSpec] = [

@@ -114,6 +114,14 @@ extension ProjectDocument {
                 author: author, picture: arguments.optionalBool("picture") ?? true,
                 plugins: arguments.optionalBool("plugins") ?? true)
         }
+        handle("review.picture") { document, arguments, _ in
+            guard let picture = document.reviewPicture else {
+                throw RPCFailure(-32602, "No picture measurement yet: run review measure first")
+            }
+            return picture.json(
+                for: document.project, from: arguments.optionalInt("from") ?? 0, to: arguments.optionalInt("to"),
+                samples: arguments.optionalBool("samples") ?? true, cuts: arguments.optionalBool("cuts") ?? true)
+        }
         handle("export.status") { document, _, _ in document.exports.statusJSON }
     }
 

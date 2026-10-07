@@ -50,6 +50,7 @@ public enum CommandCatalog {
         CommandSpec("media.list", .read, "List project media."),
         reviewSpec,
         reviewMeasureSpec,
+        reviewPictureSpec,
         CommandSpec("captions.export", .read, "Export captions as SubRip text."),
         CommandSpec(
             "export.status", .read,
