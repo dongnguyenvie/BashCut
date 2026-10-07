@@ -122,6 +122,7 @@ extension ProjectDocument {
             "id": .string(mediaID), "path": .string(Self.relativePath(asset.url, root: root)), "kind": .string("audio"),
             "fps": project.fps.json, "frames": .integer(frames),
             "generatedBy": .object(Self.voiceProvenance(asset, voice: voice)),
+            "provenance": Self.voiceTakeProvenance(asset),
         ])
         var operations: [EditOperation] = [.addMedia(media), .setSource(item: item.id, media: mediaID, sourceIn: 0, reversed: nil)]
         if item.speed != 1 { operations.append(.setSpeed(item: item.id, speed: 1, keepDuration: true)) }

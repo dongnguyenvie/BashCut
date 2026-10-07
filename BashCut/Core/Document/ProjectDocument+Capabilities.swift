@@ -215,6 +215,7 @@ extension ProjectDocument {
             "id": .string(mediaID), "path": .string(Self.relativePath(asset.url, root: root)),
             "kind": .string("audio"), "fps": project.fps.json, "frames": .integer(frames),
             "generatedBy": .object(Self.voiceProvenance(asset, voice: voice)),
+            "provenance": Self.voiceTakeProvenance(asset),
         ])
         var item = Item(media: mediaID, at: start, duration: frames)
         if let voice { item["voice"] = .object(voice) }
@@ -241,6 +242,16 @@ extension ProjectDocument {
     /// Current content keys of the media review checks results against (P2-G6).
     func sourceMediaKeys() -> [String: String] {
         Dictionary(uniqueKeysWithValues: project.sourceKeyedMedia.compactMap { id in sourceKey(id).map { (id, $0) } })
+    }
+
+    /// A voice take's `provenance` (P2-H8): made by AI, by which provider, for which request and what it was charged.
+    static func voiceTakeProvenance(_ asset: GeneratedPluginAsset) -> JSONValue {
+        var fields = asset.provenance.json
+        fields["origin"] = .string("ai")
+        let call = PluginCallContext.current
+        if let requestID = call.requestID { fields["requestId"] = .string(requestID) }
+        if let charged = call.usage?.json["costUSD"]?.double { fields["charged"] = .number(charged) }
+        return .object(fields)
     }
 
     /// A voice take's `generatedBy`: the provider, plus the hash of the text it says.

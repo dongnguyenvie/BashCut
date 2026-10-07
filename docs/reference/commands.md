@@ -112,7 +112,7 @@ List recently opened projects (Welcome screen).
 
 ### `bashcut timeline get [--format <format>]`
 
-Read the revision, format and tracks, including track IDs and roles, and scale per video or image item: fit or fill, baseScale, zoom and maxZoom (keyframes), pixelRatio (output pixels per source pixel; over 1 is upscaled) now and at maxZoom, maxZoomNative (the largest zoom before upscaling), shown size and frameCoverage.
+Read the revision, format and tracks, including track IDs and roles, and scale per video or image item: fit or fill, baseScale, zoom and maxZoom (keyframes), pixelRatio (output pixels per source pixel; over 1 is upscaled) now and at maxZoom, maxZoomNative (the largest zoom before upscaling), shown size and frameCoverage. media lists each media's path, kind, license (with facts: commercial, redistribute, attributionRequired, shareAlike) and provenance.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_timeline_get`
 - `format`: string, one of json, text. json (default) or a compact text listing
@@ -194,9 +194,9 @@ List project media. With analysis, each media also has analysis: measured false,
 - Mode: read · Runs: immediately · MCP: `bashcut_media_list`
 - `analysis`: boolean. Add what media.analyze measured and media.transcribe heard
 
-### `bashcut media import <path> [--kind <kind>] [--place] [--track <track>] [--at-frame <atFrame>] --base-rev <baseRev>`
+### `bashcut media import <path> [--kind <kind>] [--place] [--track <track>] [--at-frame <atFrame>] [--origin <origin>] [--license <license>] [--source <source>] [--author <author>] --base-rev <baseRev>`
 
-Add a media file (path relative to the project or absolute): video, audio or a still image (PNG keeps transparency; placed for 3 s, trims to any length). With place, also put it on a layer like Import. A file already in the project, unchanged, reuses its media and returns existing true.
+Add a media file (path relative to the project or absolute): video, audio or a still image (PNG keeps transparency; placed for 3 s, trims to any length). With place, also put it on a layer like Import. A file already in the project, unchanged, reuses its media and returns existing true. origin, license, source and author record where it came from and what its licence allows (license is stored structured: id such as cc-by, version and the text; media list and timeline get report it).
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_media_import`
 - `path`: string, required, path. Media file path
@@ -204,6 +204,10 @@ Add a media file (path relative to the project or absolute): video, audio or a s
 - `place`: boolean, default false. Also place it on a layer
 - `track`: string. Layer ID for place; defaults to the main layer (music for audio)
 - `atFrame`: integer, ≥ 0. Timeline frame for place
+- `origin`: string, one of stock, ai, own, built-in. Where the file came from
+- `license`: string. Its licence as written (CC0, CC-BY 4.0, Pexels License…); stored structured with what it allows
+- `source`: string. Where it was found (URL)
+- `author`: string. Who made it, for the credit line
 - `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
 
 ### `bashcut media proxy [<media>] [--force]`
@@ -1866,7 +1870,7 @@ Usage of every library item, the saved items nobody used, and groups of duplicat
 - `kind`: string, one of audio, text-preset, sticker, effect-preset, transition-preset, look, voice. Item kind
 - `panel`: string, one of audio, text, stickers, effects, transitions, filters, voice. Only items the library panel shows
 
-### `bashcut library add [--kind <kind>] [--name <name>] [--from-result <fromResult>] [--id <id>] [--scope <scope>] [--tags <tags>] [--pack <pack>] [--params <params>] [--file <file>] [--preview <preview>] [--source <source>] [--license <license>]`
+### `bashcut library add [--kind <kind>] [--name <name>] [--from-result <fromResult>] [--id <id>] [--scope <scope>] [--origin <origin>] [--author <author>] [--tags <tags>] [--pack <pack>] [--params <params>] [--file <file>] [--preview <preview>] [--source <source>] [--license <license>]`
 
 Save a new library item in the project or on this Mac. Files are copied in. Agents saving to the user scope wait for approval. To improve an existing item, use library update. fromResult saves a candidate of a finished library search or library generate job instead (its kind, name, files, source and license; the other fields here override them).
 
@@ -1876,13 +1880,15 @@ Save a new library item in the project or on this Mac. Files are copied in. Agen
 - `fromResult`: string. A library search or generate candidate as <job>:<index> (index from 0, as the job result lists it)
 - `id`: string. Item ID: lowercase letters, digits and hyphens; from the name by default
 - `scope`: string, one of project, user, default "project". project (the open project's .bashcut/library; the default) or user (this Mac; agents need approval)
+- `origin`: string, one of stock, ai, own, built-in. Where it came from (P2-H8)
+- `author`: string. Who made it, for the credit line
 - `tags`: string. Comma-separated tags (mood, use, genre…)
 - `pack`: string. Pack or collection name the panel groups it under
 - `params`: object. What the kind needs (JSON): text-preset {textPreset, text, textStyle: {size, positionY, strokeWidth} (the item property ranges), animation: a clip motion preset}, the last two optional; sticker {emoji, textPreset} or a file (PNG, JPEG, HEIC, WebP, GIF, APNG, or a .mov/.mp4 with alpha; not Lottie) with {stickerKind: emoji|image|animated|video-alpha (from the file by default), size: width as 0.01–1 of the frame, position: center|top|bottom|left|right|top-left|top-right|bottom-left|bottom-right or {x, y} in 0–1, animation: a clip motion preset, seconds}, all optional; effect-preset (a recipe) {steps: [{op: motion|keyframes|speed|speedCurve|reverse|freeze|patch|sfx|text, …}], parameters: {name: {default, min, max}}} or the older {patch: item properties}, with its own sound as file; transition-preset {kind, duration, easing: linear|in|out|inOut, sfx: audio item ID} (or its own sound as file); look (a filter stack) {color: {exposure, contrast, saturation, lutStrength}, lutName} with an optional .cube LUT as file; audio (its file required) {role: music|sfx|ambience, seconds, bpm, loopable, lufs, truePeak}, all optional (library add measures seconds and picks a role by length; library analyze fills the rest), with mood and genre as tags
 - `file`: string, path. File to copy in (audio, image or alpha-movie sticker, a look's .cube LUT…)
 - `preview`: string, path. Preview image, GIF or audio snippet to copy in
 - `source`: string. Where it came from (URL or note)
-- `license`: string. License or terms of use
+- `license`: string. License or terms of use as written (CC0, CC-BY 4.0, Pexels License…); stored structured with what it allows
 
 ### `bashcut library update <id> [--scope <scope>] [--name <name>] [--tags <tags>] [--pack <pack>] [--params <params>] [--file <file>] [--preview <preview>] [--source <source>] [--license <license>] [--as <as>] [--into <into>]`
 
@@ -1898,7 +1904,7 @@ Improve a library item: saves a new version (the old one stays in its history). 
 - `file`: string, path. File to copy in (audio, image or alpha-movie sticker, a look's .cube LUT…)
 - `preview`: string, path. Preview image, GIF or audio snippet to copy in
 - `source`: string. Where it came from (URL or note)
-- `license`: string. License or terms of use
+- `license`: string. License or terms of use as written (CC0, CC-BY 4.0, Pexels License…); stored structured with what it allows
 - `as`: string. Save a copy under this new ID instead of a new version
 - `into`: string, one of project, user. Scope of the copy (with as); project by default
 
@@ -2018,7 +2024,7 @@ Add a pack (a folder with pack.json and files, or a .zip of one) to the project 
 
 ### `bashcut library export-pack --output <output> [--pack <pack>] [--kind <kind>] [--scope <scope>] [--name <name>]`
 
-Write library items as a pack folder (pack.json and files) to share or import elsewhere: one pack, or every item of a kind or scope.
+Write library items as a pack folder (pack.json and files) to share or import elsewhere: one pack, or every item of a kind or scope. Refuses, naming them, when an item's licence does not allow redistribution (a stock-site licence, all rights reserved); unknownLicenses lists items exported without a licence BashCut can read.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_library_export-pack`
 - `output`: string, required, path. New or empty folder to write

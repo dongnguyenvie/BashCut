@@ -950,11 +950,118 @@
           "description" : "The library item (scope:id) it was copied from",
           "type" : "string"
         },
+        "license" : {
+          "description" : "Licence (P2-H8): free text, or {id, version, text, url, attribution}",
+          "oneOf" : [
+            {
+              "maxLength" : 1000,
+              "type" : "string"
+            },
+            {
+              "description" : "Structured licence",
+              "properties" : {
+                "attribution" : {
+                  "description" : "The credit line it asks for",
+                  "type" : "string"
+                },
+                "id" : {
+                  "description" : "Licence",
+                  "enum" : [
+                    "cc0",
+                    "public-domain",
+                    "cc-by",
+                    "cc-by-sa",
+                    "cc-by-nd",
+                    "cc-by-nc",
+                    "cc-by-nc-sa",
+                    "cc-by-nc-nd",
+                    "royalty-free",
+                    "own",
+                    "all-rights-reserved",
+                    "custom",
+                    "unknown"
+                  ],
+                  "type" : "string"
+                },
+                "text" : {
+                  "description" : "As written",
+                  "type" : "string"
+                },
+                "url" : {
+                  "description" : "Licence or source page",
+                  "type" : "string"
+                },
+                "version" : {
+                  "description" : "Licence version, such as 4.0",
+                  "type" : "string"
+                }
+              },
+              "required" : [
+                "id"
+              ],
+              "type" : "object"
+            }
+          ]
+        },
         "path" : {
           "description" : "Relative to the project folder, or @assets/… in the workspace",
           "minLength" : 1,
           "pattern" : "^[^/]",
           "type" : "string"
+        },
+        "provenance" : {
+          "description" : "Where the file came from (P2-H8)",
+          "properties" : {
+            "author" : {
+              "description" : "Who made it",
+              "type" : "string"
+            },
+            "charged" : {
+              "description" : "US dollars the provider reported charging",
+              "maximum" : 1000000,
+              "minimum" : 0,
+              "type" : "number"
+            },
+            "libraryItem" : {
+              "description" : "Library item (scope:id) it was placed from",
+              "type" : "string"
+            },
+            "model" : {
+              "description" : "Model that generated it",
+              "type" : "string"
+            },
+            "origin" : {
+              "description" : "Origin",
+              "enum" : [
+                "stock",
+                "ai",
+                "own",
+                "built-in"
+              ],
+              "type" : "string"
+            },
+            "parentMedia" : {
+              "description" : "Media it was derived from",
+              "type" : "string"
+            },
+            "prompt" : {
+              "description" : "Prompt it was generated from",
+              "type" : "string"
+            },
+            "provider" : {
+              "description" : "Provider that made or found it",
+              "type" : "string"
+            },
+            "requestId" : {
+              "description" : "Stable request ID (P2-G4)",
+              "type" : "string"
+            },
+            "sourceUrl" : {
+              "description" : "Where it was found",
+              "type" : "string"
+            }
+          },
+          "type" : "object"
         },
         "width" : {
           "description" : "Pixels",

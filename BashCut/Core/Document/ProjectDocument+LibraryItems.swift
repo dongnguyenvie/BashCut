@@ -300,9 +300,11 @@ extension ProjectDocument {
             let list = tags.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
             changes["tags"] = .array(list.map(JSONValue.string))
         }
-        for key in ["pack", "source", "license"] {
+        for key in ["pack", "source"] {
             if let value = arguments.optionalString(key) { changes[key] = .string(value) }
         }
+        // Stored structured (P2-H8), with the text as written.
+        if let license = arguments.optionalString("license") { changes["license"] = LicenseTerms.parse(license).json }
         if let params = arguments["params"] { changes["params"] = params }
         return changes
     }
@@ -357,10 +359,17 @@ extension ProjectDocument {
                     reference, arguments: arguments, changes: Self.itemChanges(arguments), author: author)
             }
             let kind = LibraryKind(rawValue: try arguments.string("kind")) ?? .sticker
+            var changes = Self.itemChanges(arguments)
+            let source = arguments.optionalString("source").flatMap { $0.hasPrefix("http") ? $0 : nil }
+            if let provenance = Provenance.from(
+                origin: arguments.optionalString("origin"), sourceUrl: source, author: arguments.optionalString("author"))
+            {
+                changes["provenance"] = provenance
+            }
             return try await document.addLibraryItem(
                 kind: kind, name: try arguments.string("name"), id: arguments.optionalString("id"),
                 scope: LibraryScope(rawValue: try arguments.string("scope")) ?? .project,
-                changes: Self.itemChanges(arguments), file: Self.url(arguments, "file"),
+                changes: changes, file: Self.url(arguments, "file"),
                 preview: Self.url(arguments, "preview"), author: author)
         }
         handleAuthored("library.save-selection") { document, arguments, author in
@@ -476,6 +485,8 @@ extension ProjectDocument {
             }
             return .object([
                 "output": .string(output.path), "name": .string(name), "items": .array(items.map { .string($0.reference) }),
+                // Exported without knowing the licence allows it (P2-H8): no licence, or custom terms.
+                "unknownLicenses": .array(LibraryPack.unknownLicenses(items).map(JSONValue.string)),
             ])
         }
     }

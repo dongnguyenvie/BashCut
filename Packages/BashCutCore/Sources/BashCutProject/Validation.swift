@@ -192,6 +192,8 @@ extension Project {
                 asset.height.map({ (1...16384).contains($0) }) == true
             else { throw ProjectError.invalid("media.\(asset.id): invalid dimensions") }
         }
+        if let license = asset.fields["license"] { try LicenseTerms.validate(license, label: "media.\(asset.id)") }
+        if let provenance = asset.fields["provenance"] { try Provenance.validate(provenance, label: "media.\(asset.id)") }
         if let value = asset.fields["hasAudio"], case .bool = value { return }
         guard asset.fields["hasAudio"] == nil else {
             throw ProjectError.invalid("media.\(asset.id): hasAudio must be boolean")

@@ -89,6 +89,8 @@ public struct LibraryItem: JSONObject, Identifiable {
     /// `user`, `agent` or `plugin`; built-in items have none.
     public var creator: String? { createdBy["by"]?.string }
     public var history: [JSONValue] { fields["history"]?.array ?? [] }
+    /// The structured licence (P2-H8), mapped from free text for older items; nil when the item has none.
+    public var licenseTerms: LicenseTerms? { fields["license"].flatMap(LicenseTerms.init(json:)) }
     /// `scope:id`, unique across scopes; usage counts are keyed by it.
     public var reference: String { "\(scope.rawValue):\(id)" }
 
@@ -170,7 +172,9 @@ extension LibraryItem {
                 throw ProjectError.invalid("\(label): tags must be at most \(Self.maximumTags) texts of 1–40 characters")
             }
         }
-        for key in ["pack", "source", "license"] {
+        if let license = fields["license"] { try LicenseTerms.validate(license, label: label) }
+        if let provenance = fields["provenance"] { try Provenance.validate(provenance, label: label) }
+        for key in ["pack", "source"] {
             guard let value = fields[key] else { continue }
             guard let text = value.string, text.count <= (key == "pack" ? 80 : 1_000) else {
                 throw ProjectError.invalid("\(label): \(key) must be text")

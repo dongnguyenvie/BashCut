@@ -31,6 +31,8 @@ public indirect enum EditOperation: Codable, Sendable, Equatable {
         media: String, bpm: Double, frames: [Int], provenance: [String: JSONValue]?)
     /// Stores (or with nil removes) a media's shot description; see MediaDescription.swift.
     case setMediaDescription(media: String, description: JSONValue?)
+    /// A media's `license` and `provenance` (P2-H8): nil leaves a field as it is, JSON null removes it.
+    case setMediaRights(media: String, license: JSONValue?, provenance: JSONValue?)
     case upsertSection(id: String, label: String, atFrame: Int)
     case deleteSection(id: String)
     /// `easing` nil or `linear` is the default straight tween (see `TimelineTransition.easings`).
@@ -123,6 +125,8 @@ extension Project {
             try setBeatGrid(media: media, bpm: bpm, frames: frames, provenance: provenance)
         case .setMediaDescription(let media, let description):
             try setMediaDescription(media: media, description: description)
+        case .setMediaRights(let media, let license, let provenance):
+            try setMediaRights(media: media, license: license, provenance: provenance)
         case .upsertSection(let id, let label, let frame):
             try upsertSection(id: id, label: label, frame: frame)
         case .deleteSection(let id):

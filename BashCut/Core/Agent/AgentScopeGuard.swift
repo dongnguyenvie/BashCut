@@ -122,7 +122,7 @@ public enum AgentScopeGuard {
                 {
                     touch(transition.fromItemID)
                 }
-            case .addMedia, .addColorLUT, .setBeatGrid, .setMediaDescription:
+            case .addMedia, .addColorLUT, .setBeatGrid, .setMediaDescription, .setMediaRights:
                 break
             case .addTrack(let track, _):
                 newTracks.insert(track.id)

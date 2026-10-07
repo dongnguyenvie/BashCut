@@ -415,7 +415,8 @@ recorded show only label and author. Plugins see `why` in the `edit.committed` e
 - **Operations.** `insert`, `delete`, `split`, `trim`, `roll`, `slip`, `move`, `reorder`, `setSpeed`, `setProperties`,
   `setLinkedAudio`, track operations (`addTrack`, `moveTrack`, `setTrackProperties`, `deleteTrack`),
   `setProjectProperties`, `setProviderPreference`, `setBeatGrid`, `upsertSection`, `deleteSection`,
-  `upsertTransition`, `deleteTransition`, `addColorLUT`, `deleteColorLUT` and `setFormat` (the canvas size; the
+  `upsertTransition`, `deleteTransition`, `addColorLUT`, `deleteColorLUT`, `setMediaRights` (a media's `license` and
+  `provenance`; null removes one) and `setFormat` (the canvas size; the
   `project format` command and the toolbar's format menu use it). The agent instructions
   (`BashCut/Core/Automation/AgentInstructions.swift`) show an example of each.
 - **Frames.** All frames are integers. `atFrame` and `toFrame` are absolute timeline frames; an item's `in` is a
@@ -479,6 +480,18 @@ The library panels (Audio, Text, Stickers, Effects, Transitions, Filters, Voice)
 model (#66). An item has an `id`, a `kind` (`audio`, `text-preset`, `sticker`, `effect-preset`, `transition-preset`,
 `look`, `voice`), a `name`, `tags`, a `pack`, `source` and `license`, `createdBy` (user, agent or plugin),
 `version`, usage, an optional copied `file` and `preview`, and `params` with what the kind needs.
+
+**Licences and provenance (P2-H8).** `license` is stored structured: `{id, version?, text?, url?, attribution?}` with
+`id` one of `cc0`, `public-domain`, `cc-by`, `cc-by-sa`, `cc-by-nd`, `cc-by-nc`, `cc-by-nc-sa`, `cc-by-nc-nd`,
+`royalty-free` (stock-site licences such as Pexels or Pixabay), `own`, `all-rights-reserved`, `custom` or `unknown`.
+`--license` takes the text as written and maps it (older items keep free text, read the same way). What it allows
+(`commercial`, `redistribute`, `attributionRequired`, `shareAlike`) follows from the id; `timeline get` reports it per
+media. `provenance` says where it came from: `origin` (`stock`, `ai`, `own`, `built-in`), `sourceUrl`, `author`,
+`provider`, `model`, `prompt`, `seed`, `requestId`, `charged` (US dollars a provider reported) and `parentMedia`.
+`media import --origin --license --source --author` and `library add --origin --author` record them; `library place`
+copies an item's onto the media it adds (with `libraryItem`); voice takes and saved plugin candidates record theirs
+(generated ones are `ai`, found ones `stock`, with the prompt, request ID and charge). `library export-pack` refuses
+items whose licence does not allow redistribution and lists `unknownLicenses`.
 
 Items come from four scopes; when the same ID is in several, the first wins, and `scope:id` picks one:
 

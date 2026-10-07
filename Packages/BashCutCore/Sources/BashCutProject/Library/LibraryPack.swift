@@ -15,6 +15,11 @@ public enum LibraryPack {
             throw ProjectError.invalid("\(folder.path) is not empty; choose a new folder")
         }
         guard !items.isEmpty else { throw ProjectError.invalid("No library items to export") }
+        let refused = redistributionRefusals(items)
+        guard refused.isEmpty else {
+            throw ProjectError.invalid("These items' licences do not allow redistributing them in a pack: "
+                + refused.map { "\($0.item) (\($0.reason))" }.joined(separator: ", "))
+        }
         try manager.createDirectory(at: folder, withIntermediateDirectories: true)
         var entries: [JSONValue] = []
         var seen: Set<String> = []
@@ -41,6 +46,22 @@ public enum LibraryPack {
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
         try encoder.encode(manifest).write(to: folder.appendingPathComponent(manifestName), options: .atomic)
         return folder
+    }
+
+    /// Items whose licence does not allow redistribution (P2-H8), with the reason: a stock-site licence or all rights
+    /// reserved. Items without a licence, or with terms BashCut cannot read, are listed by `unknownLicenses`.
+    public static func redistributionRefusals(_ items: [LibraryItem]) -> [(item: String, reason: String)] {
+        items.compactMap { item in
+            guard let terms = item.licenseTerms, terms.facts.redistribute == false else { return nil }
+            return (item.id, terms.text ?? terms.id.rawValue)
+        }
+    }
+
+    /// Items exported without knowing whether their licence allows it: no licence, or custom text.
+    public static func unknownLicenses(_ items: [LibraryItem]) -> [String] {
+        items.filter { item in
+            item.scope != .builtIn && (item.licenseTerms.map { $0.facts.redistribute == nil } ?? true)
+        }.map(\.id)
     }
 
     /// What `import` found in a pack before changing anything.

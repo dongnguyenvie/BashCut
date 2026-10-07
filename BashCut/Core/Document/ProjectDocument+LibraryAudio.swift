@@ -67,8 +67,24 @@ extension ProjectDocument {
             "kind": .string("audio"), "fps": project.fps.json, "frames": .integer(frames), "hasAudio": .bool(true),
         ]
         if source.kind == .audio { fields[TransitionPreset.soundLibraryField] = .string(source.reference) }
+        fields.merge(Self.libraryRights(source)) { _, rights in rights }
         let media = Media(fields: fields)
         return project.existingMedia(like: media) ?? media
+    }
+
+    /// The `license` and `provenance` a library item gives the media placed from it (P2-H8): its licence, structured,
+    /// and its provenance with `libraryItem`, the origin (`built-in` for BashCut's items) and its source when a URL.
+    static func libraryRights(_ item: LibraryItem) -> [String: JSONValue] {
+        var fields: [String: JSONValue] = [:]
+        if let terms = item.licenseTerms { fields["license"] = terms.json }
+        var provenance = item["provenance"]?.object ?? [:]
+        provenance["libraryItem"] = .string(item.reference)
+        if item.scope == .builtIn, provenance["origin"] == nil { provenance["origin"] = .string("built-in") }
+        if provenance["sourceUrl"] == nil, let source = item["source"]?.string, source.hasPrefix("http") {
+            provenance["sourceUrl"] = .string(String(source.prefix(2_000)))
+        }
+        fields["provenance"] = .object(provenance)
+        return fields
     }
 
     /// The length of a sound file in seconds; throws when it has no sound.

@@ -81,9 +81,16 @@ extension ProjectDocument {
                 "import", "\(url.lastPathComponent) → \(document.mediaSummary(imported.media)) (automation)"
                     + (existing.map { " reusing \($0.id)" } ?? ""))
             var planner = LayerPlanner(document.project)
+            let (license, provenance) = Self.mediaRights(arguments)
             if let existing {
                 imported.media = existing
+                // Rights given again for media already here are recorded on it (P2-H8).
+                if license != nil || provenance != nil {
+                    try planner.add([.setMediaRights(media: existing.id, license: license, provenance: provenance)])
+                }
             } else {
+                if let license { imported.media.fields["license"] = license }
+                if let provenance { imported.media.fields["provenance"] = provenance }
                 try planner.add([.addMedia(imported.media)])
             }
             var result: [String: JSONValue] = ["media": .string(imported.media.id), "existing": .bool(existing != nil)]
@@ -112,6 +119,15 @@ extension ProjectDocument {
             }
             return .object(result)
         }
+    }
+
+    /// `license` (structured from the text) and `provenance` from `media import`'s rights options; nil when not given.
+    static func mediaRights(_ arguments: CommandArguments) -> (license: JSONValue?, provenance: JSONValue?) {
+        let license = arguments.optionalString("license").map { LicenseTerms.parse($0).json }
+        let provenance = Provenance.from(
+            origin: arguments.optionalString("origin"), sourceUrl: arguments.optionalString("source"),
+            author: arguments.optionalString("author"))
+        return (license, provenance)
     }
 
     /// The media kind a file's type suggests: audio, image or video.

@@ -70,6 +70,8 @@ extension EditOperation {
         case "setMediaDescription":
             let description = fields["description"].flatMap { $0 == .null ? nil : $0 }
             self = .setMediaDescription(media: try read.string("media"), description: description)
+        case "setMediaRights":
+            self = .setMediaRights(media: try read.string("media"), license: fields["license"], provenance: fields["provenance"])
         case "upsertSection":
             self = .upsertSection(
                 id: try read.string("id"), label: try read.string("label"), atFrame: try read.frame("atFrame"))
@@ -150,6 +152,11 @@ extension EditOperation {
             ])
         case .setMediaDescription(let media, let description):
             return op("setMediaDescription", ["media": .string(media), "description": description ?? .null])
+        case .setMediaRights(let media, let license, let provenance):
+            var fields: [String: JSONValue] = ["media": .string(media)]
+            if let license { fields["license"] = license }
+            if let provenance { fields["provenance"] = provenance }
+            return op("setMediaRights", fields)
         case .upsertSection(let id, let label, let frame):
             return op("upsertSection", ["id": .string(id), "label": .string(label), "atFrame": .integer(frame)])
         case .deleteSection(let id): return op("deleteSection", ["id": .string(id)])

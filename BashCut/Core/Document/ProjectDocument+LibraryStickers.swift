@@ -108,6 +108,7 @@ extension ProjectDocument {
             imported = try Self.importedImage(url: url, projectFPS: project.fps, root: root)
         }
         imported.media[TransitionPreset.soundLibraryField] = .string(item.reference)
+        imported.media.fields.merge(Self.libraryRights(item)) { _, rights in rights }
         return (project.existingMedia(like: imported.media) ?? imported.media, frames)
     }
 

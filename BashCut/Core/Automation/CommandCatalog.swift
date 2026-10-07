@@ -46,7 +46,8 @@ public enum CommandCatalog {
             "Read the revision, format and tracks, including track IDs and roles, and scale per video or image item: "
                 + "fit or fill, baseScale, zoom and maxZoom (keyframes), pixelRatio (output pixels per source pixel; "
                 + "over 1 is upscaled) now and at maxZoom, maxZoomNative (the largest zoom before upscaling), shown "
-                + "size and frameCoverage.",
+                + "size and frameCoverage. media lists each media's path, kind, license (with facts: commercial, "
+                + "redistribute, attributionRequired, shareAlike) and provenance.",
             parameters: [
                 CommandParameter(
                     "format", .string, "json (default) or a compact text listing", choices: ["json", "text"],
@@ -96,7 +97,9 @@ public enum CommandCatalog {
             "media.import", .edit,
             "Add a media file (path relative to the project or absolute): video, audio or a still image (PNG keeps "
                 + "transparency; placed for 3 s, trims to any length). With place, also put it on a layer like Import. "
-                + "A file already in the project, unchanged, reuses its media and returns existing true.",
+                + "A file already in the project, unchanged, reuses its media and returns existing true. origin, license, "
+                + "source and author record where it came from and what its licence allows (license is stored "
+                + "structured: id such as cc-by, version and the text; media list and timeline get report it).",
             parameters: [
                 CommandParameter("path", .string, "Media file path", required: true, isPath: true, cli: .positional),
                 CommandParameter("kind", .string, "Media kind; from the file type by default",
@@ -106,8 +109,7 @@ public enum CommandCatalog {
                 CommandParameter("track", .string, "Layer ID for place; defaults to the main layer (music for audio)",
                                  cli: .option("track")),
                 CommandParameter("atFrame", .integer, "Timeline frame for place", minimum: 0, cli: .option("at-frame")),
-                baseRevision,
-            ]),
+            ] + mediaRightsParameters + [baseRevision]),
         CommandSpec(
             "media.proxy", .edit,
             "Queue preview proxies (smaller, quick-to-seek copies in .bashcut/cache/proxies; export keeps the originals) "
