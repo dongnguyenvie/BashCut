@@ -39,6 +39,7 @@ extension ProjectDocument {
         registerVoiceTakeCommands()
         registerPlanCommands()
         registerWorkflowCommands()
+        registerSelectsCommands()
         registerStorageCommands()
         registerLibraryCommands()
         registerAgentKitCommands()

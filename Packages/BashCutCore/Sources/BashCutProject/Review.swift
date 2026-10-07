@@ -170,6 +170,7 @@ public enum TimelineReview {
         issues += pictureIssues(project, context: context)
         issues += outputIssues(project, context: context)
         issues += planIssues(project)
+        issues += mustKeepIssues(project)
         if let plugins = context.pluginIssues, plugins.revision == project.revision { issues += plugins.issues }
         for caption in project.tracks.filter({ $0.kind == "text" && $0.role == "captions" }).flatMap(\.items)
         where isRecognitionLoop(caption, fps: project.fps.value) {

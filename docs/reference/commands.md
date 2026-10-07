@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 198 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 203 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -1083,6 +1083,51 @@ Append to the run log: start (opens a run), stage, round, measured, note or end.
 The plan's script beats against the words heard on the timeline (stored transcripts, else caption words): per beat the share of its words heard as written, the unmatched words, where it was heard and the section marker it starts in against the planned section; overall similarity and extra heard words.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_script_check`
+
+## selects
+
+### `bashcut selects list [--status <status>]`
+
+The project's selects: source ranges {id, media, from, to (seconds), status candidate|kept|rejected, quote, reason, evidence, mustKeep, order} and counts per status. The user sees and overrides them in the Media panel (Selects).
+
+- Mode: read · Runs: immediately · MCP: `bashcut_selects_list`
+- `status`: string, one of candidate, kept, rejected. Only this status
+
+### `bashcut selects set <value.json> --base-rev <baseRev>`
+
+Add or update selects (by id; a new one without id gets one, status candidate) as one undoable edit. Give the quote, the reason and the evidence (what was measured) with each; media resolve-range gives from/to.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_selects_set`
+- `value`: array, required. Selects (CLI: path to selects.json)
+- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
+
+### `bashcut selects mark <ids> [--status <status>] [--must-keep <mustKeep>] [--reason <reason>] --base-rev <baseRev>`
+
+Change the status or mustKeep of selects (comma-separated IDs), with an optional reason, as one edit. A must-keep select no clip plays is a review warning.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_selects_mark`
+- `ids`: string, required. Select IDs
+- `status`: string, one of candidate, kept, rejected. New status
+- `mustKeep`: boolean. Must the edit keep it
+- `reason`: string. Why
+- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
+
+### `bashcut selects remove <ids> --base-rev <baseRev>`
+
+Remove selects (comma-separated IDs) as one edit.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_selects_remove`
+- `ids`: string, required. Select IDs
+- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
+
+### `bashcut selects place [--ids <ids>] [--at-frame <atFrame>] --base-rev <baseRev>`
+
+Lay the kept selects (or the given IDs) on Main in order (order, else source start), from atFrame or Main's end, as one undoable edit; returns the new item IDs.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_selects_place`
+- `ids`: string. Select IDs instead of the kept ones
+- `atFrame`: integer, ≥ 0. Timeline frame
+- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
 
 ## speech
 
