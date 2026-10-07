@@ -22,10 +22,12 @@ struct ReviewTests {
                 ])
         ).project
         let bare = TimelineReview.run(project)
-        #expect(Set(bare.map(\.id)) == ["gap-clip", "platform-none", "shot-short-clip", "coverage"])
+        #expect(Set(bare.map(\.id)) == ["gap-clip", "platform-none"])
+        #expect(bare.first { $0.id == "gap-clip" }?.facts["frames"] == .integer(30))
         project["review"] = .object(["captionLineChars": .integer(32), "minSpeechCoverage": .number(0.9)])
         let issues = TimelineReview.run(project, context: ReviewContext(targets: ReviewTargets(platforms: [.tiktok])))
-        #expect(Set(issues.map(\.id)) == ["gap-clip", "caption-caption", "safe-bottom-caption", "coverage", "shot-short-clip"])
+        #expect(Set(issues.map(\.id)) == ["gap-clip", "caption-caption", "safe-bottom-caption", "coverage"])
+        #expect(issues.allSatisfy { ["gap", "caption", "safe-bottom", "coverage"].contains($0.kind) })
     }
 
     @Test("Review flags each missing font once, at its first text item (#415)")
@@ -88,25 +90,5 @@ struct ReviewTests {
             TimelineReview.run(project).filter { $0.id.hasPrefix("overlap-") }.map(\.id))
         #expect(overlapIDs == ["overlap-close"])
         #expect(abs(TimelineReview.speechCoverage(project) - 36.0 / 44.0) < 0.0001)
-    }
-
-    @Test("Review flags captions that look like a recognition loop")
-    func recognitionLoops() throws {
-        var project = Project(name: "Loops", fps: FrameRate(30, 1))
-        func caption(_ id: String, _ text: String, at: Int, duration: Int = 60) -> Item {
-            var item = Item(id: id, at: at, duration: duration)
-            item["text"] = .string(text)
-            return item
-        }
-        let captions = [
-            caption("long", "một câu rất dài", at: 0, duration: 330),
-            caption("repeat", "à à à à", at: 400),
-            caption("half", "và nói và nói và nói", at: 500),
-            caption("fine", "không không, mình nói tiếp nhé", at: 600),
-        ]
-        project = try project.applying(
-            .group(label: "fixture", author: .user, ops: captions.map { .insert(track: "t1", item: $0) })).project
-        let loops = TimelineReview.run(project).map(\.id).filter { $0.hasPrefix("loop-") }
-        #expect(loops == ["loop-long", "loop-repeat", "loop-half"])
     }
 }

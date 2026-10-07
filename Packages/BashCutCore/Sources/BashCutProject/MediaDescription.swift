@@ -1,8 +1,9 @@
 import Foundation
 
-/// What the agent (or the user) saw in a source media, shot by shot (P0-A4): facts in a closed vocabulary, stored on
-/// the media in the project so they survive save and reopen and travel with the project. Core only checks the
-/// vocabulary and the ranges. It never pairs shots or judges them: there is no field for "cuts well to".
+/// What the agent (or the user) saw in a source media, shot by shot (P0-A4): facts as open strings (the lists below
+/// are a suggested vocabulary), free `tags` and any other fields, stored on the media in the project so they survive
+/// save and reopen and travel with the project. Core only checks the time ranges and the value types. It never
+/// pairs shots or judges them: there is no field for "cuts well to".
 public struct MediaDescription: Sendable, Equatable {
     public static let maximumShots = 5_000
 
@@ -31,6 +32,10 @@ public struct MediaDescription: Sendable, Equatable {
         /// Source seconds of the frames that were looked at.
         public var looked: [Double]
         public var note: String?
+        /// Free labels.
+        public var tags: [String] = []
+        /// Any other fields the describer sent, kept as given.
+        public var extra: [String: JSONValue] = [:]
 
         public var seconds: Double { end - start }
     }
@@ -49,7 +54,6 @@ public struct MediaDescription: Sendable, Equatable {
     /// The description stored on a media, checked against the vocabulary and the media's length in seconds.
     public init(json value: JSONValue, duration: Double) throws {
         let fields = value.object
-        try Self.allow(fields, ["shots", "describedBy", "describedAt"], in: "description")
         guard let rows = fields["shots"]?.array else { throw ProjectError.invalid("description.shots: expected array") }
         shots = try Self.shots(rows, duration: duration)
         describedBy = fields["describedBy"]?.string ?? Author.agent.rawValue
@@ -74,14 +78,13 @@ public struct MediaDescription: Sendable, Equatable {
 
     private static let shotKeys = [
         "start", "end", "size", "angle", "move", "direction", "subjects", "people", "onScreenText", "confidence",
-        "bestMoment", "looked", "note",
+        "bestMoment", "looked", "note", "tags",
     ]
 
     private static func shot(_ value: JSONValue, at index: Int, duration: Double) throws -> Shot {
         let path = "description.shots[\(index)]"
         let fields = value.object
         guard case .object = value else { throw ProjectError.invalid("\(path): expected object") }
-        try allow(fields, shotKeys, in: path)
         guard let start = fields["start"]?.double, let end = fields["end"]?.double, start.isFinite, end.isFinite,
             start >= 0, end > start, end <= duration + 0.05
         else {
@@ -91,10 +94,18 @@ public struct MediaDescription: Sendable, Equatable {
         let inside = { (seconds: Double) in seconds.isFinite && seconds >= start - 0.001 && seconds <= end + 0.001 }
         var shot = Shot(
             start: start, end: min(end, duration + 0.05), subjects: [], looked: [])
-        shot.size = try choice(fields["size"], sizes, "\(path).size")
-        shot.angle = try choice(fields["angle"], angles, "\(path).angle")
-        shot.move = try choice(fields["move"], moves, "\(path).move")
-        shot.direction = try choice(fields["direction"], directions, "\(path).direction")
+        shot.size = try label(fields["size"], "\(path).size")
+        shot.angle = try label(fields["angle"], "\(path).angle")
+        shot.move = try label(fields["move"], "\(path).move")
+        shot.direction = try label(fields["direction"], "\(path).direction")
+        shot.tags = try read(fields["tags"], "\(path).tags: up to 50 labels of 1–60 characters") { value in
+            let names = value.array.compactMap(\.string)
+            guard case .array(let values) = value, names.count == values.count, names.count <= 50,
+                names.allSatisfy({ (1...60).contains($0.count) })
+            else { return nil }
+            return names
+        } ?? []
+        shot.extra = fields.filter { !shotKeys.contains($0.key) }
         shot.subjects = try read(fields["subjects"], "\(path).subjects: up to 12 names of 1–60 characters") { value in
             let names = value.array.compactMap(\.string).map { $0.trimmingCharacters(in: .whitespaces) }
             guard case .array(let values) = value, names.count == values.count, names.count <= 12,
@@ -125,7 +136,8 @@ public struct MediaDescription: Sendable, Equatable {
         }
         let facts: [Any?] = [shot.size, shot.angle, shot.move, shot.direction, shot.people, shot.onScreenText,
                              shot.bestMoment, shot.note]
-        guard facts.contains(where: { $0 != nil }) || !shot.subjects.isEmpty else {
+        guard facts.contains(where: { $0 != nil }) || !shot.subjects.isEmpty || !shot.tags.isEmpty || !shot.extra.isEmpty
+        else {
             throw ProjectError.invalid("\(path): describe at least one fact")
         }
         return shot
@@ -140,17 +152,10 @@ public struct MediaDescription: Sendable, Equatable {
         return parsed
     }
 
-    private static func choice(_ value: JSONValue?, _ allowed: [String], _ path: String) throws -> String? {
-        guard let value, value != .null else { return nil }
-        guard let text = value.string, allowed.contains(text) else {
-            throw ProjectError.invalid("\(path): expected one of \(allowed.joined(separator: ", "))")
-        }
-        return text
-    }
-
-    private static func allow(_ fields: [String: JSONValue], _ keys: [String], in path: String) throws {
-        if let unknown = fields.keys.sorted().first(where: { !keys.contains($0) }) {
-            throw ProjectError.invalid("\(path): unknown field \(unknown) (the vocabulary is closed)")
+    /// An open label of 1–60 characters (the vocabulary lists are suggestions).
+    private static func label(_ value: JSONValue?, _ path: String) throws -> String? {
+        try read(value, "\(path): expected a label of 1–60 characters") { value in
+            value.string.flatMap { (1...60).contains($0.count) ? $0 : nil }
         }
     }
 
@@ -220,7 +225,7 @@ public struct MediaDescription: Sendable, Equatable {
 
     static func number(_ value: Double) -> JSONValue { .number((value * 1_000).rounded() / 1_000) }
 
-    /// The vocabulary, for `media.describe` callers and the schema.
+    /// The suggested vocabulary, for `media.describe` callers and the schema; any other label is accepted.
     public static var vocabularyJSON: JSONValue {
         .object([
             "size": .array(sizes.map(JSONValue.string)), "angle": .array(angles.map(JSONValue.string)),
@@ -231,9 +236,10 @@ public struct MediaDescription: Sendable, Equatable {
 
 extension MediaDescription.Shot {
     public var json: JSONValue {
-        var row: [String: JSONValue] = [
-            "start": MediaDescription.number(start), "end": MediaDescription.number(end),
-        ]
+        var row = extra
+        row["start"] = MediaDescription.number(start)
+        row["end"] = MediaDescription.number(end)
+        if !tags.isEmpty { row["tags"] = .array(tags.map(JSONValue.string)) }
         if let size { row["size"] = .string(size) }
         if let angle { row["angle"] = .string(angle) }
         if let move { row["move"] = .string(move) }

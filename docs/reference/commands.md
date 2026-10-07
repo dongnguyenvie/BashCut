@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 216 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 209 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -81,19 +81,19 @@ Change the open project's canvas like the format menu in the toolbar: portrait 9
 
 ### `bashcut project credits`
 
-What the edit owes for the media it plays (P2-H9), from each media's license and provenance: credit lines (required ones are those the licence asks for; text is the block for a description), ai {media, pictureShare, disclosures: each output platform's AI-label rule}, contentIDNotes for stock or downloaded music, and flags {nonCommercial, allRightsReserved, unknown}. Facts only, on request: nothing is added to the video. With the project's review.credits true, review run reports them as info and each export's job result carries them for its platform.
+Rights facts of the media the edit plays (P2-H9): per media {media, name, kind, license and provenance as stored, framesOnTop (frames where it is the picture on top)}, frames, and ai {media, pictureShare}. Raw facts on request; credit wording and disclosure are yours. Nothing is added to the video. With the project's review.credits true, review notes AI picture as info and each export's job result carries these facts.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_project_credits`
 
 ### `bashcut project brief`
 
-Read the project brief: goal, audience, outputs, angle, lengthSeconds, notes as {value, status stated|inferred|confirmed, source?}, and ideas and references. Null when none.
+Read the project brief: a free JSON object (the agent's notes). Null when none.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_project_brief`
 
 ### `bashcut project set-brief <value.json> [--merge] --base-rev <baseRev>`
 
-Set the brief as one undoable edit (validated: fields {value, status, source?}, ideas and references up to 100 objects); with merge, only the given fields change (null removes one). Review compares its length and outputs with the edit, as info.
+Set the brief (any JSON object) as one undoable edit; with merge, only the given fields change (null removes one). Review reads lengthSeconds {min, max} and outputs [names] when present (directly or under value) and compares them with the edit, as info.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_project_set-brief`
 - `value`: object, required. The brief (CLI: path to brief.json)
@@ -118,7 +118,7 @@ List recently opened projects (Welcome screen).
 
 ### `bashcut timeline get [--format <format>]`
 
-Read the revision, format and tracks, including track IDs and roles, and scale per video or image item: fit or fill, baseScale, zoom and maxZoom (keyframes), pixelRatio (output pixels per source pixel; over 1 is upscaled) now and at maxZoom, maxZoomNative (the largest zoom before upscaling), shown size and frameCoverage. media lists each media's path, kind, license (with facts: commercial, redistribute, attributionRequired, shareAlike) and provenance.
+Read the revision, format and tracks, including track IDs and roles, and scale per video or image item: fit or fill, baseScale, zoom and maxZoom (keyframes), pixelRatio (output pixels per source pixel; over 1 is upscaled) now and at maxZoom, maxZoomNative (the largest zoom before upscaling), shown size and frameCoverage. media lists each media's path, kind, license and provenance as stored.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_timeline_get`
 - `format`: string, one of json, text. json (default) or a compact text listing
@@ -202,7 +202,7 @@ List project media. With analysis, each media also has analysis: measured false,
 
 ### `bashcut media import <path> [--kind <kind>] [--place] [--track <track>] [--at-frame <atFrame>] [--origin <origin>] [--license <license>] [--source <source>] [--author <author>] --base-rev <baseRev>`
 
-Add a media file (path relative to the project or absolute): video, audio or a still image (PNG keeps transparency; placed for 3 s, trims to any length). With place, also put it on a layer like Import. A file already in the project, unchanged, reuses its media and returns existing true. origin, license, source and author record where it came from and what its licence allows (license is stored structured: id such as cc-by, version and the text; media list and timeline get report it).
+Add a media file (path relative to the project or absolute): video, audio or a still image (PNG keeps transparency; placed for 3 s, trims to any length). With place, also put it on a layer like Import. A file already in the project, unchanged, reuses its media and returns existing true. origin, license, source and author record where it came from (license is free text, or a JSON object with an open id and the facts you know: commercial, redistribute, attributionRequired, attribution; stored as given).
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_media_import`
 - `path`: string, required, path. Media file path
@@ -211,7 +211,7 @@ Add a media file (path relative to the project or absolute): video, audio or a s
 - `track`: string. Layer ID for place; defaults to the main layer (music for audio)
 - `atFrame`: integer, ≥ 0. Timeline frame for place
 - `origin`: string, one of stock, ai, own, built-in. Where the file came from
-- `license`: string. Its licence as written (CC0, CC-BY 4.0, Pexels License…); stored structured with what it allows
+- `license`: string. Its licence: text as written, or a JSON object {id, redistribute, commercial, attribution…}; stored as given
 - `source`: string. Where it was found (URL)
 - `author`: string. Who made it, for the credit line
 - `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
@@ -236,7 +236,7 @@ Place project media on a layer (main by default, music for audio), with linked s
 - `atFrame`: integer, ≥ 0. Timeline frame; defaults to the playhead or the end of the main layer
 - `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
 
-### `bashcut media sync --media <media> --to <to> [--item <item>] [--provider <provider>]`
+### `bashcut media sync --media <media> --to <to> [--item <item>] [--provider <provider>] [--request-id <requestId>] [--dry-run]`
 
 Find the time offset between two recordings of the same moment (a camera and a screen recording, or a render played inside a screen recording) from their sound, with an audio.sync provider. The job's result: time in `to` = time in `media` + offsetSeconds, the correlation (below 0.4: no shared sound) and each half of the overlap (steady: no clock drift). With item, also the matching source frame of `to` for that clip's in-point.
 
@@ -245,6 +245,8 @@ Find the time offset between two recordings of the same moment (a camera and a s
 - `to`: string, required. Project media ID of the second recording
 - `item`: string. A timeline item of the first media whose in-point to map
 - `provider`: string. Provider ID overriding the project preference for one request
+- `requestId`: string. Your stable ID for this request: sending it again returns the same job instead of starting (and paying for) another; the provider receives it too
+- `dryRun`: boolean, default false. Return the request as it would go to the provider (without option values), whether the provider is paid and its estimate if it gives one; nothing runs
 
 ### `bashcut media resolve-range <media> [--quote <quote>] [--words <words>] [--from <from>] [--to <to>]`
 
@@ -299,7 +301,7 @@ Correct the cut list of an analysed media: add cuts or remove candidates at sour
 - `remove`: string. Source seconds of cuts to drop, comma separated
 - `clear`: boolean. Drop earlier corrections first
 
-### `bashcut media transcribe [--media <media>] [--force] [--provider <provider>]`
+### `bashcut media transcribe [--media <media>] [--force] [--provider <provider>] [--request-id <requestId>] [--dry-run]`
 
 Transcribe whole source media once with a captions.transcribe provider and keep the transcript (by file content, in .bashcut/cache/transcripts), without placing anything on the timeline. Read it with media.transcript; captions.generate places captions from it without transcribing again, and transcript.words --heard maps its words through the clips. A transcript in the project's content language (by the given provider) is reused unless force. The job's result lists each media with status transcribed, reused or failed and its overview.
 
@@ -307,6 +309,8 @@ Transcribe whole source media once with a captions.transcribe provider and keep 
 - `media`: string. Project media ID; every video and audio media by default
 - `force`: boolean. Transcribe again even when a transcript exists
 - `provider`: string. Provider ID overriding the project preference for one request
+- `requestId`: string. Your stable ID for this request: sending it again returns the same job instead of starting (and paying for) another; the provider receives it too
+- `dryRun`: boolean, default false. Return the request as it would go to the provider (without option values), whether the provider is paid and its estimate if it gives one; nothing runs
 
 ### `bashcut media transcript --media <media> [--as <as>] [--from <from>] [--to <to>]`
 
@@ -320,7 +324,7 @@ Read the stored transcript of one media in its own seconds: language, provider, 
 
 ### `bashcut media describe [<shots.json>] --media <media> [--merge] [--clear] --base-rev <baseRev>`
 
-Store what you saw in a source media, shot by shot, as one undoable edit (it is saved with the project). Each shot: start and end in source seconds (shots may not overlap) and at least one fact in the closed vocabulary: size ECU/CU/MCU/MS/MWS/WS/EWS/insert, angle eye/high/low/top/dutch/pov/ots, move static/pan/tilt/push/pull/track/orbit/handheld/zoom/crane, direction left/right/toward/away/none, subjects (up to 12 names), people, onScreenText, confidence 0–1, bestMoment (source seconds or null), looked (source seconds of the frames you looked at), note. Unknown fields and values are rejected; there is no field for pairings or verdicts. Replaces the description unless merge (shots overlapping the new ones are replaced) or clear. Returns rev and coverage.
+Store what you saw in a source media, shot by shot, as one undoable edit (it is saved with the project). Each shot: start and end in source seconds (shots may not overlap) and at least one fact: size, angle, move, direction (open labels; suggested: size ECU/CU/MCU/MS/MWS/WS/EWS/insert, angle eye/high/low/top/dutch/pov/ots, move static/pan/tilt/push/pull/track/orbit/handheld/zoom/crane, direction left/right/toward/away/none), subjects (up to 12 names), tags, people, onScreenText, confidence 0–1, bestMoment (source seconds or null), looked (source seconds of the frames you looked at), note; any other field is kept as given. Replaces the description unless merge (shots overlapping the new ones are replaced) or clear. Returns rev and coverage.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_media_describe`
 - `shots`: array. Shots array, or {shots: […]} (CLI: path to shots.json)
@@ -388,7 +392,7 @@ What the footage holds, from one call (read only; capture facts are read once pe
 
 ### `bashcut review run [--since-rev <sinceRev>] [--min-severity <minSeverity>] [--summary]`
 
-Review the timeline before export. Each issue has a severity (error: spoils the export, warning: hurts it, info: a note) and, when one exists, a fix: a command with arguments, or a hint. Errors come first. With summary, the result is {issues, summary: {errors, warnings, infos, passed}}; passed means no error. Loudness is checked from the last normalized export of this revision, black and frozen picture, jump cuts and plugin checks from the last review.measure of this revision. Issues over a stretch carry endFrame. Pacing (shot length, still picture) follows the project's review object (minShotSeconds, maxShotSeconds, maxStillSeconds) when set. With no review settings only invariants are errors: gaps and black picture on Main, a clip edge inside a transcribed word (cut-in-word), a missing font or characters the font cannot draw (glyph), and the outputs' length and shape; the rest is info unless the project raises it. Issue IDs are anchored to clips, so they survive edits elsewhere. Each run is a round: with sinceRev, the result also has diff {fixed, new, persisting} against the review of that revision and the round number. Issues accepted with review accept carry accepted.reason and are not counted. With summary, checks lists what this run looked at: measured, stale (an older revision), notChecked (with how to measure), failed plugin checks (timedOut), unreliable (picture that barely changes: not a pass) and the review limits the project has not set. Results made from a source that changed since are info issues: voice-text-changed (the take says other text), captions-source-changed and beats-source-changed (the media file changed after it was transcribed or its beats detected).
+Review the timeline before export: issues {id, kind, severity error|warning|info, title, detail, frame, endFrame?, facts {raw numbers}, fix? {command?, arguments?, hint?}}, errors first. Invariants (gaps, black picture, cut-in-word, missing fonts or glyphs, output length and shape, true peak) are always checked; editorial checks only against the limits in the project's review object, and nothing without them. IDs are anchored to clips. With summary: {issues, summary, checks (measured, stale, notChecked, failed, unreliable, unsetLimits)}; with sinceRev also diff {fixed, new, persisting}.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_review_run`
 - `sinceRev`: integer, ≥ 0. Compare with the review of this revision (this session)
@@ -773,7 +777,7 @@ Show caption words as they are spoken (Inspector › Text › Word by word): hig
 - `color`: string. Highlight colour, #RRGGBB (default #FFD400)
 - `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
 
-### `bashcut captions generate --media <media> [--replace] [--word-style <wordStyle>] [--from <from>] [--to <to>] [--provider <provider>] [--fresh]`
+### `bashcut captions generate --media <media> [--replace] [--word-style <wordStyle>] [--from <from>] [--to <to>] [--provider <provider>] [--fresh] [--request-id <requestId>] [--dry-run]`
 
 Place captions of project media as one undoable edit, from its stored transcript (media.transcribe) or by transcribing it with a captions.transcribe provider (the whole file is kept as its transcript). Captions follow the clips where the media is heard (trim, position, speed): place the clips first. The job's result says transcript: stored, transcribed or range (only from/to transcribed).
 
@@ -785,6 +789,8 @@ Place captions of project media as one undoable edit, from its stored transcript
 - `to`: number, 0…86400. Transcribe only up to this source second of the media
 - `provider`: string. Provider ID overriding the project preference for one request
 - `fresh`: boolean. Transcribe again instead of using the media's stored transcript
+- `requestId`: string. Your stable ID for this request: sending it again returns the same job instead of starting (and paying for) another; the provider receives it too
+- `dryRun`: boolean, default false. Return the request as it would go to the provider (without option values), whether the provider is paid and its estimate if it gives one; nothing runs
 
 ### `bashcut captions find <text>`
 
@@ -807,7 +813,7 @@ Re-cut captions from word groups you choose, as one undoable edit: groups is a l
 - `to`: integer, ≥ 0. Rule mode: up to this timeline frame
 - `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
 
-### `bashcut captions align --media <media> --text <text> [--replace] [--provider <provider>] [--aligner <aligner>]`
+### `bashcut captions align --media <media> --text <text> [--replace] [--provider <provider>] [--aligner <aligner>] [--request-id <requestId>] [--dry-run]`
 
 Make captions whose text is the script and whose times come from the speech: each non-empty line of text becomes a cue, timed by matching the script's words to the media's words (its stored transcript, or a new transcription), placed through the clips that play the media as one undoable edit. With replace, captions of that media in the aligned stretch are replaced. With aligner, a captions.align provider times the words instead of the transcript. Returns cues, score (matched words over the longer count) and unmatched words with their times. A job.
 
@@ -817,6 +823,8 @@ Make captions whose text is the script and whose times come from the speech: eac
 - `replace`: boolean. Replace that media's captions in the stretch
 - `provider`: string. Provider ID overriding the project preference for one request
 - `aligner`: string. A captions.align provider to time the words instead of the transcript
+- `requestId`: string. Your stable ID for this request: sending it again returns the same job instead of starting (and paying for) another; the provider receives it too
+- `dryRun`: boolean, default false. Return the request as it would go to the provider (without option values), whether the provider is paid and its estimate if it gives one; nothing runs
 
 ## transcript
 
@@ -858,10 +866,10 @@ Change a layer's header switches like the timeline header: hide a visual layer, 
 
 ### `bashcut adjustment add [--look <look>] [--exposure <exposure>] [--contrast <contrast>] [--saturation <saturation>] [--lut-strength <lutStrength>] [--lut <lut>] [--at-frame <atFrame>] [--duration <duration>] [--track <track>] --base-rev <baseRev>`
 
-Add an adjustment item: a color grade applied to every layer below it for its frame range. Starts from a look, then the given grade values and LUT override it. Defaults to the selected clip's range, else 3 seconds at the playhead; goes on the first adjustment layer, adding one when needed.
+Add an adjustment item: a color grade applied to every layer below it for its frame range. Starts from a library look without a file, then the given grade values and LUT override it. Defaults to the selected clip's range, else 3 seconds at the playhead; goes on the first adjustment layer, adding one when needed.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_adjustment_add`
-- `look`: string, default "original". Look ID: built-in (original, vivid, muted-film, black-white) or custom from timeline get looks
+- `look`: string, default "original". Library look: built-in (original, vivid, muted-film, black-white, bright-airy, moody) or scope:id from library list --kind look
 - `exposure`: number, -10…10. Exposure in stops (0 = unchanged)
 - `contrast`: number, 0…4. Contrast multiplier (1 = unchanged)
 - `saturation`: number, 0…4. Saturation multiplier (0 = black and white, 1 = unchanged)
@@ -870,60 +878,6 @@ Add an adjustment item: a color grade applied to every layer below it for its fr
 - `atFrame`: integer, ≥ 0. First timeline frame
 - `duration`: integer, ≥ 1. Length in timeline frames
 - `track`: string. Adjustment layer ID
-- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
-
-## style
-
-### `bashcut style apply <kit> --base-rev <baseRev>`
-
-Apply a style kit as one undoable edit: a full-length adjustment item with the kit's look (replacing one an earlier kit added) and the kit's preset on captions (titles and cards keep theirs). Apply after captions exist; afterwards everything stays editable on its own.
-
-- Mode: edit · Runs: immediately · MCP: `bashcut_style_apply`
-- `kit`: string, required. Kit ID: built-in (food-review, cinematic) or custom from timeline get styleKits
-- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
-
-### `bashcut style save <id> --title <title> --look <look> [--caption-preset <captionPreset>] --base-rev <baseRev>`
-
-Save a custom style kit in the project (it appears in Filters › Style kits and works with style apply). Saving an existing custom ID replaces it; built-in IDs are reserved.
-
-- Mode: edit · Runs: immediately · MCP: `bashcut_style_save`
-- `id`: string, required. Kit ID: lowercase letters, digits and hyphens
-- `title`: string, required. Display name
-- `look`: string, required. Built-in or custom look ID
-- `captionPreset`: string, one of bold-outline, cinematic-serif, keyword-sticker, place-card, hook-title, chapter-card, default "bold-outline". Text preset given to captions
-- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
-
-### `bashcut style delete <id> --base-rev <baseRev>`
-
-Delete a custom style kit.
-
-- Mode: edit · Runs: immediately · MCP: `bashcut_style_delete`
-- `id`: string, required. Custom kit ID
-- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
-
-## looks
-
-### `bashcut looks save <id> --title <title> [--item <item>] [--exposure <exposure>] [--contrast <contrast>] [--saturation <saturation>] [--lut-strength <lutStrength>] [--lut <lut>] --base-rev <baseRev>`
-
-Save a custom look in the project (it appears in Filters › Looks and works with adjustment add). Starts from an item's grade when item is given, then the grade values override it. Saving an existing custom ID replaces it; built-in IDs are reserved.
-
-- Mode: edit · Runs: immediately · MCP: `bashcut_looks_save`
-- `id`: string, required. Look ID: lowercase letters, digits and hyphens
-- `title`: string, required. Display name
-- `item`: string. Copy the color of this item first
-- `exposure`: number, -10…10. Exposure in stops (0 = unchanged)
-- `contrast`: number, 0…4. Contrast multiplier (1 = unchanged)
-- `saturation`: number, 0…4. Saturation multiplier (0 = black and white, 1 = unchanged)
-- `lutStrength`: number, 0…1. LUT mix (0 = off, 1 = full)
-- `lut`: string. LUT ID from timeline get luts
-- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
-
-### `bashcut looks delete <id> --base-rev <baseRev>`
-
-Delete a custom look; refused while a custom style kit uses it.
-
-- Mode: edit · Runs: immediately · MCP: `bashcut_looks_delete`
-- `id`: string, required. Custom look ID
 - `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
 
 ## schema
@@ -1027,13 +981,15 @@ Whether each plugin capability (or one) can serve now: available, else reason mi
 
 ## beats
 
-### `bashcut beats detect --media <media> [--provider <provider>]`
+### `bashcut beats detect --media <media> [--provider <provider>] [--request-id <requestId>] [--dry-run]`
 
 Detect beats in audio media and set its beat grid as one undoable edit.
 
 - Mode: edit · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_beats_detect`
 - `media`: string, required. Audio media ID already placed on the timeline
 - `provider`: string. Provider ID overriding the project preference for one request
+- `requestId`: string. Your stable ID for this request: sending it again returns the same job instead of starting (and paying for) another; the provider receives it too
+- `dryRun`: boolean, default false. Return the request as it would go to the provider (without option values), whether the provider is paid and its estimate if it gives one; nothing runs
 
 ### `bashcut beats grid --media <media>`
 
@@ -1044,7 +1000,7 @@ Read the beat grid beats detect stored for a media file, in its own seconds: bpm
 
 ## audio
 
-### `bashcut audio measure [--media <media>] [--curve] [--timeline] [--provider <provider>]`
+### `bashcut audio measure [--media <media>] [--curve] [--timeline] [--provider <provider>] [--request-id <requestId>] [--dry-run]`
 
 Measure a media file's sound with an audio.loudness provider: integrated loudness (LUFS), true peak, loudness range (LU) and the energy share in the speech band (300-3000 Hz) and the presence band (1-4 kHz, where consonants carry words). With curve, loudness over time: curve {step 0.1 s, momentary (400 ms) and shortTerm (3 s) LUFS, peakDb per step}. With timeline (instead of media), the whole mix is rendered to a scratch file (no export) and measured with its curve and silences [{start, end, seconds}] where momentary loudness stays at or under −70 LUFS. The job's result holds the values.
 
@@ -1053,24 +1009,28 @@ Measure a media file's sound with an audio.loudness provider: integrated loudnes
 - `curve`: boolean. Add loudness over time
 - `timeline`: boolean. Measure the timeline's mix instead of a media file
 - `provider`: string. Provider ID overriding the project preference for one request
+- `requestId`: string. Your stable ID for this request: sending it again returns the same job instead of starting (and paying for) another; the provider receives it too
+- `dryRun`: boolean, default false. Return the request as it would go to the provider (without option values), whether the provider is paid and its estimate if it gives one; nothing runs
 
-### `bashcut audio energy --media <media> [--count <count>] [--window <windowSeconds>] [--provider <provider>]`
+### `bashcut audio energy --media <media> [--provider <provider>] [--request-id <requestId>] [--dry-run]`
 
-How a music file's energy moves, with an audio.energy provider: every step seconds levelDb, onset (density) and fullness (share of octave bands near the loudest), and candidates [{kind lift, drop or breath, seconds, magnitude dB, beatSeconds (snapped), timeline [{item, frame}]}] ranked by size, count per kind. Pointers to listen to, not cut points. A job.
+How a music file's energy moves, with an audio.energy provider: the curve every step seconds — levelDb, onset (density) and fullness (share of octave bands near the loudest) — and timeline [{item, at, fromSeconds, toSeconds}] where the file plays. Picking lifts and drops is yours. A job.
 
 - Mode: read · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_audio_energy`
 - `media`: string, required. Project media ID
-- `count`: integer, 1…50. Candidates per kind (default 6)
-- `windowSeconds`: number, 0.5…30. Seconds compared before and after (default 2)
 - `provider`: string. Provider ID overriding the project preference for one request
+- `requestId`: string. Your stable ID for this request: sending it again returns the same job instead of starting (and paying for) another; the provider receives it too
+- `dryRun`: boolean, default false. Return the request as it would go to the provider (without option values), whether the provider is paid and its estimate if it gives one; nothing runs
 
-### `bashcut audio mix-measure [--near <nearSeconds>] [--provider <provider>]`
+### `bashcut audio mix-measure [--near <nearSeconds>] [--provider <provider>] [--request-id <requestId>] [--dry-run]`
 
 Read the mix by role without exporting: one stem each for speech (dialogue and voiceover layers and the sound of video clips), music and sound effects is rendered (other sounds at −120 dB, so ducking stays as in the mix) and measured over time. Spoken blocks are those inside heard or caption words, else where the speech stem is over −70 LUFS. Returns voice, musicUnderSpeech (voice minus music, in LU) and musicInGaps as {median, p10, p90, blocks}; speechWindows with the same per window; effects per sound-effect item: loudness (loudest momentary LUFS), peakDb, voiceP95 within nearSeconds, deltaDb, masked (under that voice level), onset and peak offsets in frames to the nearest cut, beat and word edge; and each stem's integrated loudness. A job; no levels are changed.
 
 - Mode: read · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_audio_mix-measure`
 - `nearSeconds`: number, 0.1…10. Seconds around an effect read for the voice (default 1)
 - `provider`: string. Provider ID overriding the project preference for one request
+- `requestId`: string. Your stable ID for this request: sending it again returns the same job instead of starting (and paying for) another; the provider receives it too
+- `dryRun`: boolean, default false. Return the request as it would go to the provider (without option values), whether the provider is paid and its estimate if it gives one; nothing runs
 
 ## color
 
@@ -1089,13 +1049,13 @@ Measure colour per clip on frames spread over each clip (samples, default 3), on
 
 ### `bashcut plan get`
 
-Read the edit plan: mode (create, directed, revision), stage, options, sections [{id, label, lengthSeconds {min, max}, reason, frozen}], shots [{id, section, purpose, size, move, mustShow, targetSeconds, source footage|stock|generated}], beats [{id, section, text}], decisions, ranges (the review profile values chosen, {min, max, source, reason}) and notes. Null when none.
+Read the edit plan: a free JSON object (the agent's notes). Null when none.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_plan_get`
 
 ### `bashcut plan set <value.json> [--merge] --base-rev <baseRev>`
 
-Set the edit plan as one undoable edit (validated shape); with merge, only the given top-level fields change (null removes one). Review compares each section's planned length with its section marker, as info. context get summarises it so work can resume from it.
+Set the edit plan (any JSON object) as one undoable edit; with merge, only the given top-level fields change (null removes one). Core reads only sections [{id, label, lengthSeconds {min, max}, frozen}], shots and beats [{id, text, section}] when present: review compares section lengths with section markers, as info; context get summarises it so work can resume from it.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_plan_set`
 - `value`: object, required. The plan (CLI: path to plan.json)
@@ -1148,12 +1108,13 @@ The run log (.bashcut/run-log.jsonl, append-only): starts, stages, gates with th
 - `kind`: string. Only this kind
 - `limit`: integer, 1…10000. Last N entries
 
-### `bashcut run append <kind> [--stage <stage>] [--text <text>] [--round <round>] [--fixed <fixed>] [--left <left>] [--measured <measured>] [--not-measured <notMeasured>]`
+### `bashcut run append <kind> [--data <data>] [--stage <stage>] [--text <text>] [--round <round>] [--fixed <fixed>] [--left <left>] [--measured <measured>] [--not-measured <notMeasured>]`
 
-Append to the run log: start (opens a run), stage, round, measured, note or end. Gate entries come only from checkpoints. The revision, author and time are added.
+Append to the run log: an entry of any kind (start opens a run; stage, round, measured, note and end are the usual ones; gate is reserved for checkpoints) with the fields given and any data object. The revision, author and time are added.
 
 - Mode: ui · Runs: immediately · MCP: `bashcut_run_append`
-- `kind`: string, required, one of start, stage, round, measured, note, end. Entry kind
+- `kind`: string, required. Entry kind (1–40 characters; not gate)
+- `data`: object. More fields as a JSON object
 - `stage`: string. Stage name
 - `text`: string. What happened
 - `round`: integer, 1…100. Review round
@@ -1174,36 +1135,17 @@ The plan's script beats against the words heard on the timeline (stored transcri
 
 ### `bashcut selects list [--status <status>]`
 
-The project's selects: source ranges {id, media, from, to (seconds), status candidate|kept|rejected, quote, reason (why it was picked), evidence, mustKeep, order, statusReason (why its status last changed)} and counts per status. The user sees and overrides them in the Media panel (Selects).
+The project's selects: source ranges {id, media, from, to (seconds), status (free; usually candidate, kept or rejected), quote, reason (why it was picked), evidence, mustKeep, order, statusReason (why its status last changed)} and counts per status. The user sees and overrides them in the Media panel (Selects).
 
 - Mode: read · Runs: immediately · MCP: `bashcut_selects_list`
-- `status`: string, one of candidate, kept, rejected. Only this status
+- `status`: string. Only this status
 
 ### `bashcut selects set <value.json> --base-rev <baseRev>`
 
-Add or update selects (by id; a new one without id gets one, status candidate) as one undoable edit. Give the quote, the reason and the evidence (what was measured) with each; media resolve-range gives from/to.
+Add, update or remove selects (by id; a new one without id gets one, status candidate) as one undoable edit. Give the quote, the reason and the evidence (what was measured) with each; media resolve-range gives from/to. On an existing select, status or mustKeep with a reason keeps it as statusReason; {id, remove: true} removes it. A must-keep select no clip plays is a review warning.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_selects_set`
 - `value`: array, required. Selects (CLI: path to selects.json)
-- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
-
-### `bashcut selects mark <ids> [--status <status>] [--must-keep <mustKeep>] [--reason <reason>] --base-rev <baseRev>`
-
-Change the status or mustKeep of selects (comma-separated IDs), with an optional reason (kept as statusReason; the pick's reason stays), as one edit. A must-keep select no clip plays is a review warning.
-
-- Mode: edit · Runs: immediately · MCP: `bashcut_selects_mark`
-- `ids`: string, required. Select IDs
-- `status`: string, one of candidate, kept, rejected. New status
-- `mustKeep`: boolean. Must the edit keep it
-- `reason`: string. Why
-- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
-
-### `bashcut selects remove <ids> --base-rev <baseRev>`
-
-Remove selects (comma-separated IDs) as one edit.
-
-- Mode: edit · Runs: immediately · MCP: `bashcut_selects_remove`
-- `ids`: string, required. Select IDs
 - `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
 
 ### `bashcut selects place [--ids <ids>] [--at-frame <atFrame>] --base-rev <baseRev>`
@@ -1256,7 +1198,7 @@ Measure speaking rate in the content language's unit (syllables for Vietnamese, 
 
 ### `bashcut narration windows --min-seconds <minSeconds> [--rate <rate>] [--levels]`
 
-List stretches of at least minSeconds with no spoken word (heard or caption words) and no voiceover item: at/end frames and seconds, anchors {afterWord (the last word before it), firstCut, firstBeat, section, sectionStartsInside}, owner (music, footage or silence: what covers most of it), the shots on Main under it with their described facts, and with rate (units per second, in the content language's unit) a budget of units that fit. With levels, the mix is rendered once (no export) and each window gets its mixLoudness {median, p10, p90}. No length or rate is assumed.
+List stretches of at least minSeconds with no spoken word (heard or caption words) and no voiceover item: at/end frames and seconds, anchors {afterWord (the last word before it), firstCut, firstBeat, section, sectionStartsInside}, covered {music, footage} (shares 0–1 of the window), the shots on Main under it with their described facts, and with rate (units per second, in the content language's unit) a budget of units that fit. With levels, the mix is rendered once (no export) and each window gets its mixLoudness {median, p10, p90}. No length or rate is assumed.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_narration_windows`
 - `minSeconds`: number, required, 0.1…600. Shortest window listed
@@ -1288,7 +1230,7 @@ Synthesize voice takes and insert one on the Voiceover track: the take whose rat
 - `requestId`: string. Your stable ID for this request: sending it again returns the same job instead of starting (and paying for) another; the provider receives it too
 - `dryRun`: boolean, default false. Return the request as it would go to the provider (without option values), whether the provider is paid and its estimate if it gives one; nothing runs
 
-### `bashcut voice check [--item <item>] [--media <media>] [--text <text>] [--min-similarity <minSimilarity>] [--provider <provider>]`
+### `bashcut voice check [--item <item>] [--media <media>] [--text <text>] [--min-similarity <minSimilarity>] [--provider <provider>] [--request-id <requestId>] [--dry-run]`
 
 Check what a voiceover take says against the text it should say: the take (a voiceover item, or a media) is transcribed (or its stored transcript reused) and diffed word by word. Returns similarity (matched words over the longer word count), words [{text, heard, kind match|substituted|missing, start, end}], unmatched, extra (heard but not in the text) and, only with minSimilarity, passed. The text defaults to the item's voice.text. A job.
 
@@ -1298,6 +1240,8 @@ Check what a voiceover take says against the text it should say: the take (a voi
 - `text`: string. The text the take should say
 - `minSimilarity`: number, 0…1. Report passed against this similarity
 - `provider`: string. Provider ID overriding the project preference for one request
+- `requestId`: string. Your stable ID for this request: sending it again returns the same job instead of starting (and paying for) another; the provider receives it too
+- `dryRun`: boolean, default false. Return the request as it would go to the provider (without option values), whether the provider is paid and its estimate if it gives one; nothing runs
 
 ### `bashcut voice fit --item <item> [--frames <frames>] [--to-frame <toFrame>] --min-ratio <minRatio> --max-ratio <maxRatio> --base-rev <baseRev>`
 
@@ -1894,7 +1838,7 @@ Save a new library item in the project or on this Mac. Files are copied in. Agen
 - `file`: string, path. File to copy in (audio, image or alpha-movie sticker, a look's .cube LUT…)
 - `preview`: string, path. Preview image, GIF or audio snippet to copy in
 - `source`: string. Where it came from (URL or note)
-- `license`: string. License or terms of use as written (CC0, CC-BY 4.0, Pexels License…); stored structured with what it allows
+- `license`: string. License: text as written, or a JSON object {id, redistribute, commercial, attribution…}; stored as given
 
 ### `bashcut library update <id> [--scope <scope>] [--name <name>] [--tags <tags>] [--pack <pack>] [--params <params>] [--file <file>] [--preview <preview>] [--source <source>] [--license <license>] [--as <as>] [--into <into>]`
 
@@ -1910,7 +1854,7 @@ Improve a library item: saves a new version (the old one stays in its history). 
 - `file`: string, path. File to copy in (audio, image or alpha-movie sticker, a look's .cube LUT…)
 - `preview`: string, path. Preview image, GIF or audio snippet to copy in
 - `source`: string. Where it came from (URL or note)
-- `license`: string. License or terms of use as written (CC0, CC-BY 4.0, Pexels License…); stored structured with what it allows
+- `license`: string. License: text as written, or a JSON object {id, redistribute, commercial, attribution…}; stored as given
 - `as`: string. Save a copy under this new ID instead of a new version
 - `into`: string, one of project, user. Scope of the copy (with as); project by default
 
@@ -1991,7 +1935,7 @@ Play a library item's sound in BashCut (the Audio panel's play button), stopping
 - `scope`: string, one of built-in, user, project, plugin. Look only in this scope; without it project, user, plugin, then built-in
 - `stop`: boolean, default false. Stop the sound playing
 
-### `bashcut library search <query> --kind <kind> [--provider <provider>] [--limit <limit>] [--save <save>] [--scope <scope>] [--page <page>]`
+### `bashcut library search <query> --kind <kind> [--provider <provider>] [--limit <limit>] [--save <save>] [--scope <scope>] [--page <page>] [--request-id <requestId>] [--dry-run]`
 
 Ask an installed plugin that provides library.search (sounds, stickers, GIFs… from Freesound, Giphy or another source) for candidate items of a kind. Runs as a job; its result lists candidates with their fields, downloaded file and preview paths, source and license. Nothing is saved until library add --from-result <job>:<index> (or save here) copies one into the library. Network use is the plugin's.
 
@@ -2003,6 +1947,8 @@ Ask an installed plugin that provides library.search (sounds, stickers, GIFs… 
 - `save`: integer, ≥ 0. Also save the candidate with this index (from 0) when the job finishes
 - `scope`: string, one of project, user, default "project". Where save puts it: project (the default) or user (agents need approval)
 - `page`: integer, 1…1000, default 1. Result page, from 1
+- `requestId`: string. Your stable ID for this request: sending it again returns the same job instead of starting (and paying for) another; the provider receives it too
+- `dryRun`: boolean, default false. Return the request as it would go to the provider (without option values), whether the provider is paid and its estimate if it gives one; nothing runs
 
 ### `bashcut library generate <prompt> --kind <kind> [--provider <provider>] [--limit <limit>] [--save <save>] [--scope <scope>] [--params <params>] [--request-id <requestId>] [--dry-run]`
 
@@ -2030,7 +1976,7 @@ Add a pack (a folder with pack.json and files, or a .zip of one) to the project 
 
 ### `bashcut library export-pack --output <output> [--pack <pack>] [--kind <kind>] [--scope <scope>] [--name <name>]`
 
-Write library items as a pack folder (pack.json and files) to share or import elsewhere: one pack, or every item of a kind or scope. Refuses, naming them, when an item's licence does not allow redistribution (a stock-site licence, all rights reserved); unknownLicenses lists items exported without a licence BashCut can read.
+Write library items as a pack folder (pack.json and files) to share or import elsewhere: one pack, or every item of a kind or scope. Refuses, naming them, when an item's own licence says redistribute false; unknownLicenses lists items exported whose licence does not say.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_library_export-pack`
 - `output`: string, required, path. New or empty folder to write

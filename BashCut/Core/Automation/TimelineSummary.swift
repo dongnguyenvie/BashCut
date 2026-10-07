@@ -2,7 +2,7 @@ import BashCutProject
 import Foundation
 
 /// What `timeline get` returns: the layers with their items, plus everything else an agent needs to check its
-/// own edits (transitions, sections and other markers, LUTs, looks, style kits).
+/// own edits (transitions, sections and other markers, LUTs).
 public enum TimelineSummary {
     public static func json(_ project: Project) -> JSONValue {
         .object([
@@ -11,17 +11,16 @@ public enum TimelineSummary {
             "transitions": .array(project.transitions.map { .object($0.fields) }),
             "markers": .array(project.markers.map { .object($0.fields) }),
             "luts": .array(project.colorLUTs.map { .object($0.fields) }),
-            "looks": .array(project.looks.map(\.json)), "styleKits": .array(project.styleKits.map(\.json)),
             "scale": ReviewScale.all(project),
             "media": .array(project.media.map(rights)),
         ])
     }
 
-    /// Each media's path, kind, licence (with what it allows) and provenance (P2-H8); null when not recorded.
+    /// Each media's path, kind, licence and provenance as stored (P2-H8); null when not recorded.
     static func rights(_ media: Media) -> JSONValue {
         .object([
             "id": .string(media.id), "path": .string(media.path), "kind": .string(media.kind),
-            "license": media["license"].flatMap(LicenseTerms.init(json:))?.reportJSON ?? .null,
+            "license": media["license"] ?? .null,
             "provenance": media["provenance"] ?? .null,
         ])
     }

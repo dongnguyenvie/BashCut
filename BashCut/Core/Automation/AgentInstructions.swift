@@ -2,20 +2,79 @@ import BashCutProject
 import Foundation
 
 extension CommandCatalog {
-    /// Instructions given to terminal agents, rendered from the command specs.
+    /// Commands for the user, the app's own panels or plugin views, not for agents: still callable, but left out of
+    /// the agent instructions to keep them short (flexibility audit, D12/D13/A13).
+    public static let hiddenFromAgents: Set<String> = [
+        "project.close", "project.recents", "project.folder", "media.proxy", "export.otio", "edl.import",
+        "plugins.hooks", "plugins.proposal", "plugins.updates", "plugins.validate", "plugins.install", "plugins.replace",
+        "plugins.reload", "plugins.remove", "plugins.setup", "plugins.set", "plugins.views", "plugins.show-view",
+        "plugins.view", "plugins.view-event", "plugins.invoke", "plugins.health", "storage.get", "storage.clear",
+        "agent.status", "agent.setup", "agent.kit-check", "agent.kit-update", "agent.terminals", "agent.open",
+        "agent.detach", "app.update-check", "chat.status", "chat.send", "chat.attach", "chat.detach", "chat.stop",
+        "chat.commands", "chat.command", "chat.reset", "chat.transcript", "ui.open", "ui.source", "ui.panel",
+        "ui.notify", "doctor.run", "knowledge.approve", "knowledge.reject", "knowledge.remove-lesson",
+        "skills.enable", "skills.disable", "skills.remove",
+    ]
+
+    /// Instructions given to terminal agents, rendered from the command specs: each command's usage and first
+    /// sentence; `bashcut help GROUP COMMAND` and the MCP tool descriptions have the rest.
     public static let instructions: String = {
-        let commands = specs.map { spec in
+        let commands = specs.filter { !hiddenFromAgents.contains($0.name) }.map { spec in
             let note: String
             switch spec.execution {
             case .immediate: note = ""
-            case .job: note = " Runs as a background job and returns a job ID."
-            case .approval: note = " The app asks the user before running it."
+            case .job: note = " (job)"
+            case .approval: note = " (asks the user)"
             }
-            return "- `\(spec.usage)`: \(spec.summary)\(note)"
+            return "- `\(compactUsage(spec))`: \(firstSentence(spec.summary))\(note)"
         }
-        return ([preamble, color, plugins, "Commands (MCP tool `bashcut_<group>_<command>` takes the same parameters):"]
-            + commands + [operations]).joined(separator: "\n")
+        let header = "Commands (MCP tool `bashcut_<group>_<command>` takes the same parameters; `bashcut help GROUP "
+            + "COMMAND` or the MCP tool description gives the full description, parameters and result fields; (job) "
+            + "returns a job ID):"
+        return ([preamble, color, plugins, header] + commands + [operations]).joined(separator: "\n")
     }()
+
+    /// The usage with the optional parameters as one bracket of their flags: `bashcut review shots <id>
+    /// [--summary --media …]`.
+    static func compactUsage(_ spec: CommandSpec) -> String {
+        var required: [String] = [], optional: [String] = []
+        for parameter in spec.parameters {
+            let text: String
+            switch parameter.cli {
+            case .positional: text = "<\(parameter.name)>"
+            case .positionalJSONFile: text = "<\(parameter.name).json>"
+            case .positionalTextFile: text = "<\(parameter.name)-file>"
+            case .option(let flag): text = parameter.required ? "--\(flag) <\(parameter.name)>" : "--\(flag)"
+            case .flag(let flag): text = "--\(flag)"
+            }
+            if parameter.required { required.append(text) } else { optional.append(text) }
+        }
+        let options = optional.isEmpty ? [] : ["[" + optional.joined(separator: " ") + "]"]
+        return (["bashcut"] + spec.cliWords + required + options).joined(separator: " ")
+    }
+
+    /// The gist of a summary: up to its first ". ", ": " or "; " outside brackets, at most about 160 characters
+    /// (cut at a word, with "…").
+    static func firstSentence(_ text: String) -> String {
+        let characters = Array(text)
+        var depth = 0
+        var end = characters.count
+        for (index, character) in characters.enumerated() {
+            if "([{".contains(character) { depth += 1 }
+            if ")]}".contains(character) { depth = max(0, depth - 1) }
+            if depth == 0, index >= 20, ".?!:;".contains(character), index + 1 < characters.count,
+                characters[index + 1] == " "
+            {
+                end = ".?!".contains(character) ? index + 1 : index
+                break
+            }
+        }
+        var gist = String(characters[..<end])
+        if gist.count > 160, let space = gist.prefix(160).lastIndex(of: " ") {
+            gist = String(gist[..<space]).trimmingCharacters(in: CharacterSet(charactersIn: ",;(")) + "…"
+        }
+        return gist
+    }
 
     private static let preamble = """
         You are inside BashCut, a native video editor. Prefer the bashcut_* MCP tools; the bashcut CLI on PATH is the fallback.
@@ -32,9 +91,8 @@ extension CommandCatalog {
         Layers: tracks list visual layers back to front, then audio layers, which are mixed. There is exactly one
         main video layer. Items never overlap on one layer, audio media never goes on a visual layer.
         Adjustment layers (kind adjustment) hold items with only a `color` grade and no media or text; each grades
-        every layer below it while on screen. Use `adjustment add` for a grade on a range and `style apply` for a
-        whole-video style kit; there is no project-wide style setting. Save reusable grades with `looks save` and
-        recipes with `style save`; `timeline get` lists luts, looks and styleKits (built-in and custom).
+        every layer below it while on screen. Use `adjustment add` for a grade on a range; there is no project-wide
+        style setting. Reusable grades are library looks (`library list --kind look`, `library place`, `library add`).
         `schema get` returns the JSON Schema of project.bashcut.json with every field, type and range.
         Prefer `media place` and `timeline move`, which put content on a free or new layer when the range is taken;
         raw insert/move operations that overlap are rejected.
@@ -75,8 +133,17 @@ extension CommandCatalog {
     private static let color: String = {
         let keys = ColorGrade.ranges.map { "\($0.key) \($0.range.lowerBound)…\($0.range.upperBound)" }
         return "Color grades (item, adjustment or look `color`): " + keys.joined(separator: ", ")
-            + ", lut (a LUT ID). setProperties replaces the whole `color` object: send every key you want to keep."
-            + " Text items take `textPreset` (" + TextPreset.all.joined(separator: ", ") + ")."
+            + ", lut (a LUT ID). setProperties replaces the whole `color` object; patchItems merges into it. "
+            + text
+    }()
+
+    private static let text: String = {
+        let presets: String = TextPreset.all.joined(separator: ", ")
+        return "Text items take `textPreset` (built-in: \(presets); any other name uses the first's defaults) and "
+            + "open `textStyle` fields: size, positionY, positionX, align left|center|right, font, fill, stroke, "
+            + "strokeWidth, highlight, lineHeight, tracking, uppercase, background {color, opacity, padding, radius}, "
+            + "shadow {color, opacity, blur, dx, dy}. wordStyle is highlight|karaoke|reveal or {spoken, upcoming, "
+            + "past} looks of {fill, opacity}."
     }()
 
     private static let operations = """
@@ -88,7 +155,10 @@ extension CommandCatalog {
         {"op":"trim","item":"ID","edge":"end","toFrame":120,"ripple":true},
         {"op":"move","item":"ID","toTrack":"TRACK_ID","atFrame":0},
         {"op":"reorder","item":"ID","before":"OTHER_ID"}; omit before to move to the end of the main track,
-        {"op":"setProperties","item":"ID","patch":{"transform":{"zoom":1.2}}},
+        {"op":"setProperties","item":"ID","patch":{"transform":{"zoom":1.2}}} (replaces each field it names),
+        {"op":"patchItems","select":{"trackRole":"captions"},"patch":{"textStyle":{"fill":"#FFD400","size":null}}}
+        restyles many items at once: objects merge key by key (null deletes a key); select by track, trackRole,
+        trackKind, textPreset or media (all given must match), or list "items":["ID",…],
         Cycle or choose framing with setProperties patches such as
         {"op":"setProperties","item":"ID","patch":{"reframePreset":"close","transform":{"zoom":1.3,"pan":0,"tilt":0}}},
         {"op":"setLinkedAudio","video":"VIDEO_ID","audio":"AUDIO_ID"}; omit audio to unlink,
@@ -119,5 +189,9 @@ extension CommandCatalog {
         atFrame/toFrame are absolute integer timeline frames. in is an integer source frame at the media fps.
         Never hand-edit project.bashcut.json while the app is open, never overwrite original footage, and never render with ffmpeg.
         Ask the user before downloading media or installing tools. Reply in the user's language.
+        Errors carry data.category, retryable and sometimes remediation.command (the read that explains them):
+        stale_revision/file_conflict → context get and resend with the new rev; busy_* → wait or answer the dialog;
+        capability_missing → capabilities get, then ask the user to install or turn on a provider; unsupported_media →
+        this Mac cannot decode the file: ask the user to convert it to H.264 or HEVC.
         """
 }

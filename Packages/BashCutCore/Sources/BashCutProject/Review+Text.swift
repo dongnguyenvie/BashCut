@@ -67,36 +67,41 @@ extension TimelineReview {
         let top = 1 - area.top
         for (_, box) in boxes {
             let item = box.item
+            let zone: [String: JSONValue] = [
+                // Shares of the frame, y up from the bottom like positionY.
+                "box": .array([fact(box.minX / width), fact(box.minY / height), fact(box.maxX / width), fact(box.maxY / height)]),
+                "platform": .string(platform.id),
+            ]
             if vertical, box.minY < height * area.bottom {
-                let raised = area.bottom + 0.25 * box.points / height + 0.02
                 issues.append(
                     ReviewIssue(
                         id: "safe-bottom-" + item.id, title: "Text under the platform caption bar",
                         detail: "The bottom \(percent(area.bottom)) of a vertical video is covered by the \(platform.title) "
                             + "caption bar.",
-                        frame: item.at, severity: .error, fix: moveText(item, positionY: raised)))
+                        frame: item.at, severity: .error,
+                        facts: zone.merging(["bottom": .number(area.bottom)]) { $1 }))
             } else if vertical, box.maxX > width * (1 - area.sideWidth), box.minY < height * area.sideHeight {
                 issues.append(
                     ReviewIssue(
                         id: "safe-side-" + item.id, title: "Text under the side buttons",
                         detail: "The line reaches the right \(percent(area.sideWidth)) of the lower part, where "
                             + "\(platform.title)'s like/comment buttons sit.",
-                        frame: item.at, fix: ReviewFix(hint: "Shorten or split the line, lower textStyle.size, or move it.")))
+                        frame: item.at,
+                        facts: zone.merging(["sideWidth": .number(area.sideWidth), "sideHeight": .number(area.sideHeight)]) { $1 }))
             }
             if vertical, box.maxY > height * top {
                 issues.append(
                     ReviewIssue(
                         id: "safe-top-" + item.id, title: "Text under the top bar",
                         detail: "The top \(percent(area.top)) of a vertical video is covered by \(platform.title)'s tabs.",
-                        frame: item.at,
-                        fix: moveText(item, positionY: max(0, (height * top - (box.maxY - box.minY)) / height - 0.02))))
+                        frame: item.at, facts: zone.merging(["top": .number(area.top)]) { $1 }))
             }
             if !vertical, box.minY < height * area.margin || box.maxY > height * (1 - area.margin) {
                 issues.append(
                     ReviewIssue(
                         id: "title-safe-" + item.id, title: "Text outside title safe",
                         detail: "Keep text inside the central \(percent(1 - 2 * area.margin)) of the frame.", frame: item.at,
-                        fix: ReviewFix(hint: "Move it with textStyle.positionY.")))
+                        facts: zone.merging(["margin": .number(area.margin)]) { $1 }))
             }
         }
         issues += profileTextIssues(boxes, profile: profile, width: width, height: height)
@@ -153,16 +158,6 @@ extension TimelineReview {
 
     /// "16%" for 0.16.
     static func percent(_ fraction: Double) -> String { String(format: "%g%%", (fraction * 1000).rounded() / 10) }
-
-    /// `timeline.apply` that sets `textStyle.positionY`, keeping the item's other style fields.
-    static func moveText(_ item: Item, positionY: Double) -> ReviewFix {
-        var style = item["textStyle"]?.object ?? [:]
-        style["positionY"] = .number((min(0.9, max(0, positionY)) * 1000).rounded() / 1000)
-        let op: JSONValue = .object([
-            "op": .string("setProperties"), "item": .string(item.id), "patch": .object(["textStyle": .object(style)]),
-        ])
-        return ReviewFix(command: "timeline.apply", arguments: ["label": .string("Move text into the safe area"), "ops": .array([op])])
-    }
 
     /// Only when the project sets a hook window (`review.hookSeconds`, from a recipe or the user): nothing said and no
     /// text on screen inside it. Core sets no window of its own and does not judge what the text says (#467); the

@@ -65,19 +65,28 @@ extension ProjectDocument {
                 run: arguments.optionalString("run") ?? "current", kind: arguments.optionalString("kind"),
                 limit: arguments.optionalInt("limit"))
         }
-        handleAuthored("run.append") { document, arguments, author in
-            guard let log = document.runLog else { throw RPCFailure(-32602, "Save the project first") }
-            var entry: [String: JSONValue] = ["kind": .string(try arguments.string("kind")), "author": .string(author.rawValue)]
-            entry["rev"] = .integer(document.project.revision)
-            for key in ["stage", "text"] { if let value = arguments.optionalString(key) { entry[key] = .string(value) } }
-            for key in ["round", "fixed", "left"] { if let value = arguments.optionalInt(key) { entry[key] = .integer(value) } }
-            for key in ["measured", "notMeasured"] {
-                if let value = arguments.optionalString(key) {
-                    entry[key] = .array(value.split(separator: ",").map { .string($0.trimmingCharacters(in: .whitespaces)) })
-                }
-            }
-            do { return try log.append(entry) } catch { throw RPCFailure.from(error, fallbackCode: -32602) }
+        handleAuthored("run.append") { document, arguments, author in try document.appendRunLog(arguments, author: author) }
+    }
+
+    /// `run.append`: an entry of any kind but `gate`, with the given fields over `data`, the revision and the author.
+    func appendRunLog(_ arguments: CommandArguments, author: Author) throws -> JSONValue {
+        guard let log = runLog else { throw RPCFailure(-32602, "Save the project first") }
+        let kind = try arguments.string("kind")
+        guard kind.count <= 40, kind != "gate" else {
+            throw RPCFailure(-32602, "kind must be 1–40 characters and not gate (checkpoints write gate entries)")
         }
+        var entry = arguments.values["data"]?.object ?? [:]
+        entry["kind"] = .string(kind)
+        entry["author"] = .string(author.rawValue)
+        entry["rev"] = .integer(project.revision)
+        for key in ["stage", "text"] { if let value = arguments.optionalString(key) { entry[key] = .string(value) } }
+        for key in ["round", "fixed", "left"] { if let value = arguments.optionalInt(key) { entry[key] = .integer(value) } }
+        for key in ["measured", "notMeasured"] {
+            if let value = arguments.optionalString(key) {
+                entry[key] = .array(value.split(separator: ",").map { .string($0.trimmingCharacters(in: .whitespaces)) })
+            }
+        }
+        do { return try log.append(entry) } catch { throw RPCFailure.from(error, fallbackCode: -32602) }
     }
 
     /// Changes one gate and/or the round limit. Agents may only make a gate ask more (skip → notify → ask) and may not

@@ -7,15 +7,9 @@ import BashCutPlugins
 import BashCutProject
 import Foundation
 
-private let capabilityForMethod = [
-    "captions.generate": "captions.transcribe", "beats.detect": "audio.beats", "voice.speak": "voice.synthesize",
-    "audio.measure": "audio.loudness", "media.sync": "audio.sync", "media.transcribe": "captions.transcribe",
-    "audio.energy": "audio.energy", "audio.mix-measure": "audio.loudness", "voice.check": "captions.transcribe",
-    "captions.align": "captions.transcribe", "library.search": "library.search", "library.generate": "library.generate",
-]
-
 extension ProjectDocument {
-    var contentLanguage: String { project["contentLanguage"]?.string ?? "vi" }
+    /// The project's speech language; empty when not set (providers detect it, context get reports null).
+    var contentLanguage: String { project["contentLanguage"]?.string ?? "" }
 
     // MARK: Shared actions for native panels and automation
 
@@ -303,7 +297,7 @@ extension ProjectDocument {
                 return Self.capabilityJSON(report)
             }
             let declared = service.catalog(projectRoot: root).plugins.flatMap { ($0.manifest.providers ?? []).map(\.capability) }
-            let names = Set(CapabilityService.knownCapabilities + declared).sorted()
+            let names = Set(CommandCatalog.capabilities.values).union(CapabilityService.serviceCapabilities).union(declared).sorted()
             let reports = await service.checkedCapabilityStatuses(names, projectRoot: root, kind: kind)
             return .array(reports.map(Self.capabilityJSON))
         }
@@ -329,7 +323,7 @@ extension ProjectDocument {
                 range = lower...upper
             }
             let fresh = arguments.bool("fresh")
-            return try document.startCapabilityJob("captions.generate", author: author) { document in
+            return try await document.startCapabilityJob("captions.generate", author: author, arguments: arguments) { document in
                 let words = try await document.generateCaptions(
                     mediaID: media, replace: replace, provider: provider, wordStyle: wordStyle, range: range,
                     fresh: fresh, author: author)
@@ -339,20 +333,20 @@ extension ProjectDocument {
         handleAuthored("audio.measure") { document, arguments, author in
             let provider = arguments.optionalString("provider")
             if arguments.bool("timeline") {
-                return try document.startCapabilityJob("audio.measure", author: author) { document in
+                return try await document.startCapabilityJob("audio.measure", author: author, arguments: arguments) { document in
                     try await document.measureTimelineAudio(provider: provider)
                 }
             }
             guard let media = arguments.optionalString("media") else { throw RPCFailure(-32602, "Give media, or timeline") }
             let curve = arguments.bool("curve")
-            return try document.startCapabilityJob("audio.measure", author: author) { document in
+            return try await document.startCapabilityJob("audio.measure", author: author, arguments: arguments) { document in
                 try await document.measureAudio(mediaID: media, provider: provider, curve: curve)
             }
         }
         handleAuthored("audio.mix-measure") { document, arguments, author in
             let provider = arguments.optionalString("provider")
             let near = arguments.optionalDouble("nearSeconds") ?? 1
-            return try document.startCapabilityJob("audio.mix-measure", author: author) { document in
+            return try await document.startCapabilityJob("audio.mix-measure", author: author, arguments: arguments) { document in
                 try await document.measureMix(provider: provider, nearSeconds: near)
             }
         }
@@ -362,14 +356,14 @@ extension ProjectDocument {
             let item = arguments.optionalString("item")
             let provider = arguments.optionalString("provider")
             guard media != other else { throw RPCFailure(-32602, "Pick two different media items to sync") }
-            return try document.startCapabilityJob("media.sync", author: author) { document in
+            return try await document.startCapabilityJob("media.sync", author: author, arguments: arguments) { document in
                 try await document.syncMedia(mediaID: media, otherID: other, itemID: item, provider: provider)
             }
         }
         handleAuthored("beats.detect") { document, arguments, author in
             let media = try arguments.string("media")
             let provider = arguments.optionalString("provider")
-            return try document.startCapabilityJob("beats.detect", author: author) { document in
+            return try await document.startCapabilityJob("beats.detect", author: author, arguments: arguments) { document in
                 try await document.detectBeats(mediaID: media, provider: provider, author: author)
                 return .object([
                     "rev": .integer(document.project.revision),
@@ -435,7 +429,7 @@ extension ProjectDocument {
     static func capabilityJSON(_ report: CapabilityReport) -> JSONValue {
         var fields = report.json.object
         fields["commands"] = .array(
-            capabilityForMethod.filter { $0.value == report.capability }.keys.sorted().map(JSONValue.string))
+            CommandCatalog.capabilities.filter { $0.value == report.capability }.keys.sorted().map(JSONValue.string))
         return .object(fields)
     }
 
@@ -464,19 +458,23 @@ extension ProjectDocument {
         throw RPCFailure(-32602, "This request would not call a plugin provider")
     }
 
+    /// Starts a provider job for `method`. With `arguments`, its `requestId` returns the job an earlier request with
+    /// the same ID started, and `dryRun` returns the request the provider would get, without running (D8).
     func startCapabilityJob(
-        _ method: String, author: Author, requestID: String? = nil,
+        _ method: String, author: Author, arguments: CommandArguments? = nil, requestID: String? = nil,
         work: @escaping @MainActor (ProjectDocument) async throws -> JSONValue
-    ) throws -> JSONValue {
+    ) async throws -> JSONValue {
+        if arguments?.bool("dryRun") == true { return try await capabilityDryRun(work) }
+        let requestID = requestID ?? arguments?.optionalString("requestId")
         if let reused = reusedJob(method, requestID: requestID) { return reused }
         guard let root = fileURL?.deletingLastPathComponent() else { throw RPCFailure(-32602, "Open a saved project first") }
         // Fail the call, not a job a moment later, when nothing could serve it (P2-G5; health is checked in the job).
-        if let capability = capabilityForMethod[method] {
+        if let capability = CommandCatalog.capabilities[method] {
             let report = plugins.service.capabilityStatus(capability, projectRoot: root)
             if !report.available { throw CapabilityUnavailable(report) }
         }
         guard !conflict else { throw RPCFailure(-32003, "The project has a file conflict; retry later", category: .fileConflict) }
-        if let capability = capabilityForMethod[method], plugins.calling.contains(capability) {
+        if let capability = CommandCatalog.capabilities[method], plugins.calling.contains(capability) {
             throw RPCFailure(-32003, "\(capability) is already running; retry later", category: .busyRunning)
         }
         let id = jobs.start(method, author: author, requestID: requestID, work: { [weak self] _ in

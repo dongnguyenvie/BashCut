@@ -70,9 +70,6 @@ extension ProjectDocument {
         let readme = """
             # Review packet, revision \(project.revision)
 
-            Evidence for a fresh review, without the editor's reasons. Judge the edit from these files against \
-            plan.json; say what a viewer would notice, with frames.
-
             - plan.json: the brief, the plan, the review profile and the outputs
             - digest.json: what changed since the last review round
             - issues.json: measured issues, counts and the round diff

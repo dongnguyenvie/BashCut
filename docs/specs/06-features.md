@@ -48,7 +48,7 @@ A command in *italics* is planned and does not exist yet. "—" means manual onl
 |---|---|---|---|---|
 | T-1 | Tracks: magnetic Main, Overlay, Captions, Dialogue, Voiceover, Music, SFX; extra layers | P0 | Implemented | `timeline get`, `layers add` |
 | T-1a | Adjustment layers: a color grade (look, exposure/contrast/saturation, LUT) on every layer below an item for its range | P0 | Implemented | `adjustment add`, `layers add --kind adjustment` |
-| T-1b | Style kits (food review, cinematic): one undoable edit adds a full-length adjustment and restyles captions | P1 | Implemented | `style apply` |
+| T-1b | Style kits: removed (C8/C9); a library look plus a text preset, applied by a skill | P1 | Removed | `library place`, `timeline apply` |
 | T-2 | Split, ripple delete, lift, trim, roll, slip, move, snapping | P0 | Implemented | `timeline apply` (`split`, `delete`, `trim`, `roll`, `slip`, `move`), `timeline move` |
 | T-3 | Clip roles speech / b-roll / under VO, color coding; Sections band | P0 | Implemented | `timeline apply` (`setProperties`, `upsertSection`) |
 | T-4 | Linked picture and sound; borrow picture (keep the old clip's sound) | P1 | Implemented (borrow-picture gesture Planned; imported from `edl.json`) | `timeline apply` (`setLinkedAudio`) |

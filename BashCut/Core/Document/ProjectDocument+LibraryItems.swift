@@ -303,8 +303,8 @@ extension ProjectDocument {
         for key in ["pack", "source"] {
             if let value = arguments.optionalString(key) { changes[key] = .string(value) }
         }
-        // Stored structured (P2-H8), with the text as written.
-        if let license = arguments.optionalString("license") { changes["license"] = LicenseTerms.parse(license).json }
+        // Free text, or a JSON object with an open id (P2-H8).
+        if let license = arguments.optionalString("license") { changes["license"] = LicenseTerms.argument(license) }
         if let params = arguments["params"] { changes["params"] = params }
         return changes
     }

@@ -54,7 +54,7 @@ public struct GeneratedBeatGrid: Sendable {
     public var grid: [String: JSONValue] = [:]
 }
 
-/// `audio.energy` (P0-B10): level, onset density and fullness every `step` seconds, and lift/drop/breath candidates.
+/// `audio.energy` (P0-B10): level, onset density and fullness every `step` seconds.
 public struct GeneratedEnergy: Sendable {
     public let result: JSONValue
     public let provenance: PluginProvenance

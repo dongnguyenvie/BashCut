@@ -12,6 +12,13 @@ import Foundation
     var words: [String] = []
 
     func run() throws {
+        if words.first == "help", words.count > 1 {
+            guard let spec = CommandCatalog.specs.first(where: { $0.cliWords == Array(words.dropFirst()) }) else {
+                throw report(RPCFailure(-32602, "Unknown command: \(words.dropFirst().joined(separator: " "))"))
+            }
+            FileHandle.standardOutput.write(Data((CommandReference.entry(spec).joined(separator: "\n") + "\n").utf8))
+            return
+        }
         if words.isEmpty || ["help", "-h", "--help"].contains(words[0]) { throw CleanExit.helpRequest(self) }
         defer { DebugLog.flush() }
         let invocation: CommandLineParser.Invocation

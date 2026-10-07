@@ -63,14 +63,8 @@ struct ProjectSchemaTests {
             ("color out of range", { project in
                 Self.editItem(&project, "grade") { $0["color"] = .object(["saturation": .integer(9)]) }
             }),
-            ("unknown text preset", { project in
-                Self.editItem(&project, "cap") { $0["textPreset"] = .string("comic-sans") }
-            }),
-            ("bad look ID", { $0["looks"] = .array([.object(["id": .string("Bad ID"), "title": .string("x"), "color": .object([:])])]) }),
-            ("kit with unknown caption preset", { project in
-                project["styleKits"] = .array([.object([
-                    "id": .string("k"), "title": .string("K"), "look": .string("vivid"), "captionPreset": .string("nope"),
-                ])])
+            ("empty text preset", { project in
+                Self.editItem(&project, "cap") { $0["textPreset"] = .string("") }
             }),
             ("wrong schema version", { $0["schema"] = .string("bashcut.project/9") }),
         ]
@@ -137,10 +131,6 @@ struct ProjectSchemaTests {
             .upsertSection(id: "hook", label: "Hook", atFrame: 0),
             .upsertTransition(id: "cut", kind: "dissolve", from: "left", to: "right", duration: 10),
         ])).project
-        project = try project.applying(project.savingLook(
-            ColorLook(id: "warm-film", title: "Warm film", color: ["lut": .string("warm"), "lutStrength": .number(0.7)]))).project
-        project = try project.applying(project.savingStyleKit(
-            StyleKit(id: "street", title: "Street food", lookID: "warm-film", captionPreset: "bold-outline"))).project
         var planner = LayerPlanner(project)
         try planner.placeAdjustment(.adjustment(id: "grade", at: 0, duration: 60, color: ["exposure": .number(0.2)]))
         return planner.project

@@ -7,8 +7,6 @@ import Foundation
 /// instead of the chat. A `start` entry opens a new run.
 public struct RunLog: Sendable {
     public static let path = ".bashcut/run-log.jsonl"
-    /// What an agent may append; `gate` entries come only from checkpoints.
-    public static let agentKinds = ["start", "stage", "round", "measured", "note", "end"]
     /// Longest line kept, so a runaway caller cannot grow the file without bound per call.
     static let maximumLineBytes = 64 * 1_024
 

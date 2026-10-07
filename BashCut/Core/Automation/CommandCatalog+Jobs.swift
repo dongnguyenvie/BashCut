@@ -53,8 +53,8 @@ extension CommandCatalog {
     static let mediaRightsParameters = [
         CommandParameter("origin", .string, "Where the file came from", choices: ["stock", "ai", "own", "built-in"],
                          cli: .option("origin")),
-        CommandParameter("license", .string, "Its licence as written (CC0, CC-BY 4.0, Pexels License…); stored "
-                         + "structured with what it allows", cli: .option("license")),
+        CommandParameter("license", .string, "Its licence: text as written, or a JSON object {id, "
+                         + "redistribute, commercial, attribution…}; stored as given", cli: .option("license")),
         CommandParameter("source", .string, "Where it was found (URL)", cli: .option("source")),
         CommandParameter("author", .string, "Who made it, for the credit line", cli: .option("author")),
     ]

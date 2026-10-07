@@ -61,22 +61,23 @@ extension ProjectDocument {
         }
         handleAuthored("audio.energy") { document, arguments, author in
             let mediaID = try arguments.string("media")
-            let count = arguments.optionalInt("count"), window = arguments.optionalDouble("windowSeconds")
             let provider = arguments.optionalString("provider")
-            return try document.startCapabilityJob("audio.energy", author: author) { document in
+            return try await document.startCapabilityJob("audio.energy", author: author, arguments: arguments) { document in
                 let (root, media, url) = try document.capabilityMedia(mediaID)
                 let generated = try await document.plugins.running("audio.energy") {
                     try await document.plugins.service.analyzeEnergy(
-                        mediaURL: url, count: count, windowSeconds: window,
+                        mediaURL: url,
                         preferredProvider: provider ?? document.project.preferredProvider(for: "audio.energy"),
                         projectRoot: root)
                 }
                 var result = generated.result.object
-                result["candidates"] = .array((result["candidates"]?.array ?? []).map { candidate in
-                    var row = candidate.object
-                    let second = row["beatSeconds"]?.double ?? row["seconds"]?.double ?? 0
-                    row["timeline"] = .array(document.timelineFrames(of: [second], media: media))
-                    return .object(row)
+                // Where the file plays on the timeline, to place a second of the curve.
+                result["timeline"] = .array(document.project.tracks.flatMap(\.items).filter { $0.mediaID == media.id }.map { item in
+                    let start = Double(item.sourceIn) / media.fps.value
+                    return .object([
+                        "item": .string(item.id), "at": .integer(item.at), "fromSeconds": .number(start),
+                        "toSeconds": .number(start + item.sourceSeconds(afterFrames: item.duration, fps: document.project.fps)),
+                    ])
                 })
                 result["media"] = .string(mediaID)
                 result["provider"] = .object(generated.provenance.json)

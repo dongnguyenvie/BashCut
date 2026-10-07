@@ -4,23 +4,12 @@ import Foundation
 extension CommandCatalog {
     static let reviewSpec = CommandSpec(
         "review.run", .read,
-        "Review the timeline before export. Each issue has a severity (error: spoils the export, warning: hurts "
-            + "it, info: a note) and, when one exists, a fix: a command with arguments, or a hint. Errors come first. "
-            + "With summary, the result is {issues, summary: {errors, warnings, infos, passed}}; passed means no "
-            + "error. Loudness is checked from the last normalized export of this revision, black and frozen picture, "
-            + "jump cuts and plugin checks from the last review.measure of this revision. Issues over a stretch carry endFrame. "
-            + "Pacing (shot length, still picture) follows the project's review object (minShotSeconds, "
-            + "maxShotSeconds, maxStillSeconds) when set. With no review settings only invariants are errors: gaps and "
-            + "black picture on Main, a clip edge inside a transcribed word (cut-in-word), a missing font or characters "
-            + "the font cannot draw (glyph), and the outputs' length and shape; the rest is info unless the project "
-            + "raises it. Issue IDs are anchored to clips, so they survive edits elsewhere. Each run is a round: with "
-            + "sinceRev, the result also has diff {fixed, new, persisting} against the review of that revision and the "
-            + "round number. Issues accepted with review accept carry accepted.reason and are not counted. With summary, "
-            + "checks lists what this run looked at: measured, stale (an older revision), notChecked (with how to "
-            + "measure), failed plugin checks (timedOut), unreliable (picture that barely changes: not a pass) and the "
-            + "review limits the project has not set. Results made from a source that changed since are info issues: "
-            + "voice-text-changed (the take says other text), captions-source-changed and beats-source-changed (the "
-            + "media file changed after it was transcribed or its beats detected).",
+        "Review the timeline before export: issues {id, kind, severity error|warning|info, title, detail, frame, "
+            + "endFrame?, facts {raw numbers}, fix? {command?, arguments?, hint?}}, errors first. Invariants (gaps, black "
+            + "picture, cut-in-word, missing fonts or glyphs, output length and shape, true peak) are always checked; "
+            + "editorial checks only against the limits in the project's review object, and nothing without them. IDs "
+            + "are anchored to clips. With summary: {issues, summary, checks (measured, stale, notChecked, failed, "
+            + "unreliable, unsetLimits)}; with sinceRev also diff {fixed, new, persisting}.",
         parameters: [
             CommandParameter("sinceRev", .integer, "Compare with the review of this revision (this session)", minimum: 0,
                              cli: .option("since-rev")),
@@ -334,16 +323,11 @@ extension CommandCatalog {
             parameters: [mediaMedia]),
         CommandSpec(
             "audio.energy", .read,
-            "How a music file's energy moves, with an audio.energy provider: every step seconds levelDb, onset "
-                + "(density) and fullness (share of octave bands near the loudest), and candidates [{kind lift, drop "
-                + "or breath, seconds, magnitude dB, beatSeconds (snapped), timeline [{item, frame}]}] ranked by size, "
-                + "count per kind. Pointers to listen to, not cut points. A job.",
+            "How a music file's energy moves, with an audio.energy provider: the curve every step seconds — levelDb, "
+                + "onset (density) and fullness (share of octave bands near the loudest) — and timeline [{item, at, fromSeconds, "
+                + "toSeconds}] where the file plays. Picking lifts and drops is yours. A job.",
             parameters: [
                 mediaMedia,
-                CommandParameter("count", .integer, "Candidates per kind (default 6)", minimum: 1, maximum: 50,
-                                 cli: .option("count")),
-                CommandParameter("windowSeconds", .number, "Seconds compared before and after (default 2)",
-                                 range: 0.5...30, cli: .option("window")),
                 provider,
             ],
             execution: .job),

@@ -107,7 +107,7 @@ struct PictureSamplerTests {
         #expect(black0.frame == 60 && black0.endFrame == 90)
         let frozen = try #require(issues.first { $0.id.hasPrefix("still-") })
         #expect(frozen.frame == 90 && frozen.endFrame == 240)
-        #expect(issues.contains { $0.id == "jump-d" && $0.fix?.hint != nil })
+        #expect(issues.contains { $0.id == "jump-d" && $0.facts["change"] != nil })
         #expect(!issues.contains { $0.id == "jump-c" || $0.id == "jump-e" })
     }
 

@@ -17,7 +17,8 @@ import Foundation
 /// - `sfx`: a sound on an SFX layer at `t` or `frame`: `sfx` names an audio library item, or without it the preset's
 ///   own file; `volumeDb` optional.
 /// - `text`: a text item over the clip from `t` or `frame` for `duration` frames (to the clip's end by default), with
-///   `text` and `textPreset`.
+///   `text`, `textPreset` (any name), and optionally `textStyle` (an object, as on items), `wordStyle` and `keyframes`
+///   (a `MotionTemplate`: keys at `t` 0–1 or `s` seconds of the text item).
 ///
 /// `params.parameters` declares named numbers `{name: {default, min, max, label?}}`; a step value written `"$name"`
 /// takes the parameter's value (the default, or an override when applying). Frame values must stay integers.
@@ -92,7 +93,9 @@ public struct EffectRecipe: Sendable, Equatable {
         case freeze(Position)
         case patch([String: JSONValue])
         case sfx(source: String?, at: Position, volumeDb: Double?)
-        case text(String, preset: String, at: Position, duration: Int?)
+        /// `style` holds the `textStyle` and `wordStyle` given; `animation` keys at t 0–1 or seconds of the text.
+        case text(String, preset: String, at: Position, duration: Int?, style: [String: JSONValue] = [:],
+                  animation: MotionTemplate? = nil)
     }
 
     public var parameters: [Parameter]
@@ -318,24 +321,43 @@ extension EffectRecipe {
             }
             return .sfx(source: source, at: try position(fields, path: path) ?? .frame(0), volumeDb: try volume(fields, path: path))
         case "text":
-            guard let text = fields["text"]?.string, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                text.count <= 500
-            else { throw ProjectError.invalid("\(path).text must be 1–500 characters") }
-            let preset = fields["textPreset"]?.string ?? "bold-outline"
-            guard TextPreset.all.contains(preset) else {
-                throw ProjectError.invalid("\(path).textPreset must be one of \(TextPreset.all.joined(separator: ", "))")
-            }
-            var duration: Int?
-            if let value = fields["duration"] {
-                guard let frames = value.int, frames >= 1 else {
-                    throw ProjectError.invalid("\(path).duration must be a whole number of frames")
-                }
-                duration = frames
-            }
-            return .text(text, preset: preset, at: try position(fields, path: path) ?? .frame(0), duration: duration)
+            return try textStep(fields, path: path)
         default:
             throw ProjectError.invalid("\(path).op must be one of \(stepKinds.joined(separator: ", "))")
         }
+    }
+
+    /// A `text` step: the text, any preset name, and optionally `textStyle`, `wordStyle`, `keyframes` and `duration`.
+    private static func textStep(_ fields: [String: JSONValue], path: String) throws -> Step {
+        guard let text = fields["text"]?.string, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+            text.count <= 500
+        else { throw ProjectError.invalid("\(path).text must be 1–500 characters") }
+        let preset = fields["textPreset"]?.string ?? "bold-outline"
+        guard (1...80).contains(preset.count) else {
+            throw ProjectError.invalid("\(path).textPreset must be a name of 1–80 characters")
+        }
+        var style: [String: JSONValue] = [:]
+        if let textStyle = fields["textStyle"] {
+            guard case .object = textStyle else { throw ProjectError.invalid("\(path).textStyle must be an object") }
+            style["textStyle"] = textStyle
+        }
+        if let wordStyle = fields["wordStyle"] {
+            var probe = Item(id: "recipe", at: 0, duration: 1)
+            probe["wordStyle"] = wordStyle
+            try probe.validateWords()
+            style["wordStyle"] = wordStyle
+        }
+        let animation = try fields["keyframes"].map { try MotionTemplate(json: $0, label: "\(path).keyframes") }
+        var duration: Int?
+        if let value = fields["duration"] {
+            guard let frames = value.int, frames >= 1 else {
+                throw ProjectError.invalid("\(path).duration must be a whole number of frames")
+            }
+            duration = frames
+        }
+        return .text(
+            text, preset: preset, at: try position(fields, path: path) ?? .frame(0), duration: duration, style: style,
+            animation: animation)
     }
 
     /// `t` (a finite number) or `frame` (an integer), or nil when neither is given.

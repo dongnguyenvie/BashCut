@@ -4,13 +4,15 @@ import Foundation
 extension ProjectSchema {
     static var mediaLicenseSchema: JSONValue {
         .object([
-            "description": .string("Licence (P2-H8): free text, or {id, version, text, url, attribution}"),
+            "description": .string("Licence (P2-H8): free text, or an object with an open id; facts are the item's own"),
             "oneOf": .array([
                 .object(["type": .string("string"), "maxLength": .integer(1_000)]),
-                .object(fields("Structured licence", required: ["id"], properties: [
-                    "id": enumeration("Licence", LicenseTerms.Identifier.allCases.map(\.rawValue)),
+                .object(fields("Licence", required: [], properties: [
+                    "id": string("Open licence id, such as cc-by, royalty-free, own"),
                     "version": string("Licence version, such as 4.0"), "text": string("As written"),
                     "url": string("Licence or source page"), "attribution": string("The credit line it asks for"),
+                    "commercial": boolean("Commercial use allowed"), "redistribute": boolean("Redistribution allowed"),
+                    "attributionRequired": boolean("Credit required"), "shareAlike": boolean("Share-alike"),
                 ])),
             ]),
         ])

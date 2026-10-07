@@ -79,9 +79,17 @@ public enum CommandMode: String, Sendable { case read, ui, edit, privileged }
 /// Agent operations use the core `EditOperation` codec; internal operations
 /// (`group`, `restore`) are rejected at this boundary.
 public enum WireOperations {
-    public static func decode(_ value: JSONValue) throws -> [EditOperation] {
-        guard case .array(let array) = value, !array.isEmpty, array.count <= 1000 else {
+    /// With `project`, `patchItems` ops are expanded against it first (`ItemPatch`).
+    public static func decode(_ value: JSONValue, project: Project? = nil) throws -> [EditOperation] {
+        guard case .array(var array) = value, !array.isEmpty, array.count <= 1000 else {
             throw RPCFailure(-32602, "ops must be a nonempty array of at most 1000 operations")
+        }
+        if let project {
+            do {
+                array = try ItemPatch.expand(array, in: project)
+            } catch let error as ProjectError {
+                throw RPCFailure.invalid(error)
+            }
         }
         return try array.map { operation in
             do {

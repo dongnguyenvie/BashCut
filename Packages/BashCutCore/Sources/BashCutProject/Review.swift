@@ -31,13 +31,19 @@ public struct ReviewFix: Sendable, Equatable {
 }
 
 public struct ReviewIssue: Identifiable, Sendable {
+    /// Stable per check and anchor (clip, frame, platform…); a fix keeps it, so rounds can be compared.
     public let id: String
+    /// The check that made it, stable across projects (`gap`, `shot-long`, `safe-bottom`, a plugin's `provider:id`).
+    public let kind: String
+    /// The raw numbers behind the issue (seconds, frames, limits, measurements), for agents to reason on; the title
+    /// and detail are short English text for people.
+    public let facts: [String: JSONValue]
     public let title: String
     public let detail: String
     public let frame: Int
     /// Where the problem ends (exclusive), for issues that span a range of the timeline.
     public let endFrame: Int?
-    public let severity: ReviewSeverity
+    public var severity: ReviewSeverity
     public let fix: ReviewFix?
     /// The plugin whose `review.check` reported the issue; nil for built-in checks.
     public let source: String?
@@ -46,9 +52,11 @@ public struct ReviewIssue: Identifiable, Sendable {
 
     public init(
         id: String, title: String, detail: String, frame: Int, endFrame: Int? = nil, severity: ReviewSeverity = .warning,
-        fix: ReviewFix? = nil, source: String? = nil
+        fix: ReviewFix? = nil, source: String? = nil, kind: String? = nil, facts: [String: JSONValue] = [:]
     ) {
         self.id = id
+        self.kind = kind ?? Self.kind(of: id)
+        self.facts = facts
         self.title = title
         self.detail = detail
         self.frame = frame
@@ -63,11 +71,33 @@ public struct ReviewIssue: Identifiable, Sendable {
             "id": .string(id), "title": .string(title), "detail": .string(detail), "frame": .integer(frame),
             "severity": .string(severity.rawValue),
         ]
+        fields["kind"] = .string(kind)
+        if !facts.isEmpty { fields["facts"] = .object(facts) }
         if let endFrame { fields["endFrame"] = .integer(endFrame) }
         if let fix { fields["fix"] = fix.json }
         if let source { fields["source"] = .string(source) }
         if let accepted { fields["accepted"] = .object(["reason": .string(accepted)]) }
         return .object(fields)
+    }
+}
+
+extension ReviewIssue {
+    /// The built-in checks' kinds; an issue ID is its kind, or its kind, a hyphen and an anchor.
+    public static let kinds = [
+        "gap-end", "gap", "caption-lines", "caption", "font", "glyph", "cut-in-word", "loudness-unmeasured", "loudness",
+        "true-peak", "ducking", "silence", "music-gap", "picture-unmeasured", "picture-unreliable", "shot-short",
+        "shot-long", "black", "still", "jump", "safe-bottom", "safe-side", "safe-top", "title-safe", "small-text",
+        "text-overlap", "platform-none", "output-shape", "output-length", "plan-section", "brief-length",
+        "brief-outputs", "must-keep", "overlap", "coverage", "hook", "voice-text-changed", "captions-source-changed",
+        "beats-source-changed", "ai-media", "delivered-black", "delivered-drift", "delivered-fps", "delivered-silence",
+        "delivered-size",
+    ].sorted { $0.count > $1.count }
+
+    /// The longest built-in kind the ID is or starts with (then a hyphen); a plugin's `provider:id` up to the colon
+    /// and the ID's first part; else the ID itself.
+    static func kind(of id: String) -> String {
+        if let kind = kinds.first(where: { id == $0 || id.hasPrefix($0 + "-") }) { return kind }
+        return id
     }
 }
 
@@ -97,6 +127,9 @@ public struct ReviewSummary: Sendable, Equatable {
 }
 
 public enum TimelineReview {
+    /// A number for `ReviewIssue.facts`, to three decimals.
+    static func fact(_ value: Double) -> JSONValue { .number((value * 1_000).rounded() / 1_000) }
+
     public static func speechCoverage(_ project: Project) -> Double {
         guard project.duration > 0 else { return 0 }
         let voiceover = project.tracks.filter { $0.role == "voiceover" }.flatMap(\.items)
@@ -121,7 +154,8 @@ public enum TimelineReview {
     }
 
     /// Every check, errors first. Mechanical problems (gaps, missing fonts, black picture) and platform facts are
-    /// errors; editorial checks run on the project's `review` profile (#466) and are info without it (#470).
+    /// errors; editorial checks run only on the limits of the project's `review` profile (#466): with no limit set
+    /// they report nothing (the facts stay in `review.shots`, `audio.measure` and the other measurement commands).
     public static func run(_ project: Project, context: ReviewContext) -> [ReviewIssue] {
         var issues: [ReviewIssue] = []
         let main = project.tracks.first { $0.role == "main" }?.items.sorted { $0.at < $1.at } ?? []
@@ -136,8 +170,10 @@ public enum TimelineReview {
                 issues.append(
                     ReviewIssue(
                         id: "gap-" + clip.id, title: "Gap on Main",
-                        detail: "No picture between frames \(end) and \(clip.at).", frame: end, severity: .error,
-                        fix: ReviewFix(command: "timeline.close-gap", arguments: ["atFrame": .integer(end)])))
+                        detail: "No picture between frames \(end) and \(clip.at).", frame: end, endFrame: clip.at,
+                        severity: .error,
+                        fix: ReviewFix(command: "timeline.close-gap", arguments: ["atFrame": .integer(end)]),
+                        facts: ["frames": .integer(clip.at - end)]))
             }
             end = clip.end
         }
@@ -151,14 +187,6 @@ public enum TimelineReview {
                     fix: ReviewFix(hint: "Extend or add a clip on Main, or trim what runs past its end.")))
         }
         let profile = ReviewProfile(project)
-        for (left, right) in zip(main, main.dropFirst())
-        where left.mediaID == right.mediaID && left["transform"] == right["transform"] {
-            issues.append(
-                ReviewIssue(
-                    id: "framing-" + right.id, title: "Repeated framing",
-                    detail: "Adjacent cuts use the same source and transform.", frame: right.at, severity: .info,
-                    fix: ReviewFix(hint: "Change the framing of one side, put another shot between them, or keep it on purpose.")))
-        }
         issues += voiceoverIssues(project, voiceover: voiceover, speech: speech, profile: profile)
         if let limit = profile["captionLineChars"].map({ Int($0) }) {
             for text in project.tracks.filter({ $0.kind == "text" }).flatMap(\.items)
@@ -185,26 +213,15 @@ public enum TimelineReview {
         issues += provenanceIssues(project, context: context)
         issues += rightsIssues(project, context: context)
         if let plugins = context.pluginIssues, plugins.revision == project.revision { issues += plugins.issues }
-        for caption in project.tracks.filter({ $0.kind == "text" && $0.role == "captions" }).flatMap(\.items)
-        where isRecognitionLoop(caption, fps: project.fps.value) {
-            issues.append(
-                ReviewIssue(
-                    id: "loop-" + caption.id, title: "Possible recognition loop",
-                    detail: "A caption over 10 seconds or one word repeated many times: speech recognition looped and "
-                        + "its timings are smeared. Do not cut on it; transcribe the stretch again "
-                        + "(captions generate --from/--to, about 20 s at a time).",
-                    frame: caption.at, severity: .info, fix: ReviewFix(command: "captions.generate", hint: "Use --from/--to around this caption.")))
-        }
-        if project.duration > 0 {
+        if project.duration > 0, let minimum = profile["minSpeechCoverage"] {
             let coverage = speechCoverage(project)
-            let minimum = profile["minSpeechCoverage"]
-            if minimum.map({ coverage < $0 }) ?? true {
+            if coverage < minimum {
                 issues.append(
                     ReviewIssue(
-                        id: "coverage", title: "Tagged speech coverage",
-                        detail: String(format: "%.0f%% of the edit from clip roles and voiceover timing", coverage * 100)
-                            + (minimum.map { String(format: "; the project asks for %.0f%%.", $0 * 100) } ?? "."),
-                        frame: 0, severity: minimum == nil ? .info : .warning))
+                        id: "coverage", title: "Little tagged speech",
+                        detail: String(format: "%.0f%% of the edit is tagged speech or voiceover; the project asks for %.0f%%.",
+                                       coverage * 100, minimum * 100),
+                        frame: 0, facts: ["share": fact(coverage), "minimum": .number(minimum)]))
             }
         }
         return sorted(accepting(applyingSeverities(issues, project: project), project: project))
@@ -245,21 +262,6 @@ public enum TimelineReview {
                     frame: text.at, severity: .error, fix: ReviewFix(command: "fonts.import")))
         }
         return issues
-    }
-
-    /// A caption longer than 10 s, or one where a word comes 4 times in a row or makes up half of 6+ words.
-    static func isRecognitionLoop(_ caption: Item, fps: Double) -> Bool {
-        if Double(caption.duration) > 10 * fps { return true }
-        let words = caption.text.lowercased()
-            .components(separatedBy: CharacterSet.alphanumerics.inverted).filter { !$0.isEmpty }
-        var run = 1
-        for (previous, word) in zip(words, words.dropFirst()) {
-            run = previous == word ? run + 1 : 1
-            if run >= 4 { return true }
-        }
-        guard words.count >= 6 else { return false }
-        let most = Dictionary(grouping: words, by: { $0 }).values.map(\.count).max() ?? 0
-        return most * 2 >= words.count
     }
 }
 

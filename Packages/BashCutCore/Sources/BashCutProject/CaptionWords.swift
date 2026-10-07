@@ -5,12 +5,25 @@ import Foundation
 ///
 /// - `highlight`: the word being spoken takes the highlight colour (`textStyle.highlight`, default yellow);
 /// - `karaoke`: words already spoken take the highlight colour;
-/// - `reveal`: words appear as they are spoken.
+/// - `reveal`: words appear as they are spoken;
+/// - an object `{spoken, upcoming, past}`, each `{fill?, opacity?}`: any look per word state (the three names are
+///   presets of it, `presetStates`).
 ///
 /// Words are the item's text split at white space, in reading order. When `words` is missing or no longer matches
 /// the text (it was edited), timings are estimated from each word's length over the item.
 public enum CaptionWords {
     public static let styles = ["highlight", "karaoke", "reveal"]
+    public static let states = ["spoken", "upcoming", "past"]
+
+    /// The per-state looks a named style stands for; `highlight` is the item's highlight colour.
+    public static func presetStates(_ name: String, highlight: String) -> [String: [String: JSONValue]] {
+        switch name {
+        case "highlight": ["spoken": ["fill": .string(highlight)]]
+        case "karaoke": ["spoken": ["fill": .string(highlight)], "past": ["fill": .string(highlight)]]
+        case "reveal": ["upcoming": ["opacity": .number(0)]]
+        default: [:]
+        }
+    }
     public static let defaultHighlight = "#FFD400"
     public static let maximumWords = 2000
 
@@ -70,9 +83,24 @@ public enum CaptionWords {
 }
 
 extension Item {
-    /// The word display style, when the item shows its words as they are spoken.
+    /// The word display style, when the item shows its words as they are spoken: a preset name, or `custom` for
+    /// per-state looks.
     public var wordStyle: String? {
-        fields["wordStyle"]?.string.flatMap { CaptionWords.styles.contains($0) ? $0 : nil }
+        switch fields["wordStyle"] {
+        case .string(let name)?: CaptionWords.styles.contains(name) ? name : nil
+        case .object?: "custom"
+        default: nil
+        }
+    }
+
+    /// The look of each word state (`spoken`, `upcoming`, `past`) for `wordStyle`; nil when words are not shown.
+    public var wordStates: [String: [String: JSONValue]]? {
+        let highlight = self["textStyle"]?.object["highlight"]?.string ?? CaptionWords.defaultHighlight
+        switch fields["wordStyle"] {
+        case .string(let name)? where CaptionWords.styles.contains(name): return CaptionWords.presetStates(name, highlight: highlight)
+        case .object(let states)?: return states.compactMapValues(\.object)
+        default: return nil
+        }
     }
 
     /// Start and length (frames from the item's start) of each word of the text: from `words` when it matches the
@@ -121,9 +149,18 @@ extension Item {
     }
 
     func validateWords() throws {
-        if let style = fields["wordStyle"], style != .null, style.string.map(CaptionWords.styles.contains) != true {
+        switch fields["wordStyle"] {
+        case nil, .null?: break
+        case .string(let name)? where CaptionWords.styles.contains(name): break
+        case .object(let states)? where states.allSatisfy({ key, value in
+            guard CaptionWords.states.contains(key), case .object = value else { return false }
+            return true
+        }):
+            break
+        default:
             throw ProjectError.invalid(
-                "item.\(id).wordStyle: expected one of \(CaptionWords.styles.joined(separator: ", "))")
+                "item.\(id).wordStyle: expected one of \(CaptionWords.styles.joined(separator: ", ")) or "
+                    + "{spoken, upcoming, past} objects of {fill, opacity}")
         }
         guard let value = fields["words"] else { return }
         guard case .array(let list) = value, list.count <= CaptionWords.maximumWords,

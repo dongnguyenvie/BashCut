@@ -112,6 +112,7 @@ extension ProjectDocument {
                 "scope": document.agentScopeJSON,
                 "agentPermissions": document.agentPermissionsJSON, "analysis": analysis,
                 "plan": ProjectPlan.summary(document.project), "workflow": document.workflowContext,
+                "contentLanguage": document.project["contentLanguage"] ?? .null,
                 "recentFailures": document.registry.recentFailures(token: CommandCaller.token),
             ])
         }
@@ -162,7 +163,7 @@ extension ProjectDocument {
     private func registerEditCommands() {
         handleAuthored("timeline.apply") { document, arguments, author in
             let label = try arguments.string("label")
-            let ops = try WireOperations.decode(arguments.value("ops"))
+            let ops = try WireOperations.decode(arguments.value("ops"), project: document.project)
             let baseRevision = try arguments.int("baseRev")
             let fingerprint = try EditFingerprint.of(ops, baseRevision: baseRevision)
             let operation = EditOperation.group(label: label, author: author, ops: ops)

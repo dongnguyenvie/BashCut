@@ -121,9 +121,9 @@ extension ProjectDocument {
         }
     }
 
-    /// `license` (structured from the text) and `provenance` from `media import`'s rights options; nil when not given.
+    /// `license` (text, or a JSON object) and `provenance` from `media import`'s rights options; nil when not given.
     static func mediaRights(_ arguments: CommandArguments) -> (license: JSONValue?, provenance: JSONValue?) {
-        let license = arguments.optionalString("license").map { LicenseTerms.parse($0).json }
+        let license = arguments.optionalString("license").map { LicenseTerms.argument($0) }
         let provenance = Provenance.from(
             origin: arguments.optionalString("origin"), sourceUrl: arguments.optionalString("source"),
             author: arguments.optionalString("author"))

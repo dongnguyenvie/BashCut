@@ -106,6 +106,7 @@ struct LibraryCommandTests {
         #expect(search.params == [
             "query": .string("rain on a window"), "kind": .string("audio"), "provider": .string("example.sounds"),
             "limit": .integer(5), "page": .integer(2), "save": .integer(0), "scope": .string("user"),
+            "dryRun": .bool(false),
         ])
         #expect(throws: (any Error).self) { try CommandLineParser.parse(["library", "search", "rain", "--kind", "audio", "--limit", "99"]) }
         let searchSchema = try #require(CommandCatalog.spec(named: "library.search")).inputSchema.object

@@ -33,7 +33,8 @@ struct TextPresetTile: View {
                 alignment: preset == "place-card" ? .bottomLeading : .bottom)
             .background(.black.opacity(0.3))
             .overlay(alignment: .bottomTrailing) {
-                if let animation = style.animation {
+                if style.animation != nil || style.animationKeys != nil {
+                    let animation = style.animation ?? "Custom"
                     Image(systemName: "play.square").font(.system(size: 9)).foregroundStyle(.secondary).padding(4)
                         .help(LocalizedStringKey(MotionPreset.all.first { $0.id == animation }?.title ?? animation))
                 }
@@ -54,9 +55,15 @@ struct TextPresetFields: View {
         slider("Outline", key: "strokeWidth", in: 0...12, format: { "\(Int($0.rounded())) pt" })
         TextFontFields(preset: style.textPreset, style: $style.textStyle)
         Picker("Animation", selection: Binding(
-            get: { style.animation ?? "none" }, set: { style.animation = $0 == "none" ? nil : $0 })
+            get: { style.animation ?? (style.animationKeys == nil ? "none" : "custom") },
+            set: { value in
+                guard value != "custom" else { return }
+                style.animation = value == "none" ? nil : value
+                style.animationKeys = nil
+            })
         ) {
             Text("None").tag("none")
+            if style.animationKeys != nil { Text("Custom").tag("custom") }
             ForEach(MotionPreset.all.filter { $0.forText || $0.id == style.animation }) { preset in
                 Text(LocalizedStringKey(preset.title)).tag(preset.id)
             }

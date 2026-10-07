@@ -99,9 +99,9 @@ public final class ExportQueue {
                 "path": .string(result.receipt.url.path), "duration": .number(result.receipt.duration),
                 "bytes": .integer(Int(result.receipt.bytes)),
             ]
-            // What the file owes for the media it plays, for its platform (P2-H9), when the project asks for it.
+            // The rights facts of the media it plays (P2-H9), when the project asks for them.
             if ReviewProfile(request.project).credits {
-                receipt["credits"] = ProjectCredits.of(request.project, platforms: [request.preset.platform].compactMap { $0 }).json
+                receipt["credits"] = ProjectCredits.of(request.project).json
             }
             return .object(receipt)
         }, finished: { [weak self] result in

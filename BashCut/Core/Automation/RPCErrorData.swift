@@ -45,31 +45,18 @@ public enum RPCErrorCategory: String, Sendable, CaseIterable {
         }
     }
 
-    /// The factual next step for the category, when there is one: a command to run and what it tells.
+    /// The command that reads the facts behind the category, when there is one. What to do next is the agent's
+    /// (the categories are documented in the agent instructions), so there is no advice prose here.
     var remediation: JSONValue? {
-        let step = { (command: String?, hint: String) -> JSONValue in
-            var fields: [String: JSONValue] = ["hint": .string(hint)]
-            if let command { fields["command"] = .string(command) }
-            return .object(fields)
+        let command: String? = switch self {
+        case .staleRevision, .fileConflict, .outOfScope: "context.get"
+        case .busyDialog: "ui.dialog"
+        case .busyRunning: "jobs.status"
+        case .capabilityMissing: "capabilities.get"
+        case .unsupportedMedia: "media.inventory"
+        default: nil
         }
-        switch self {
-        case .staleRevision: return step("context.get", "Read the project again and resend with its rev as baseRev.")
-        case .busyDialog: return step("ui.dialog", "A dialog is open: read it, then answer or close it (ui.respond).")
-        case .busyApproval: return step(nil, "The user has not answered an earlier request yet; wait for it.")
-        case .busyRunning: return step("jobs.status", "The same work is already running; wait for it to finish.")
-        case .fileConflict: return step("context.get", "The project file changed on disk; the user resolves the conflict.")
-        case .unavailable: return step(nil, "Open BashCut (or the project) and retry.")
-        case .permission: return step(nil, "Run from a terminal BashCut opened, which has BASHCUT_SESSION_TOKEN.")
-        case .outOfScope: return step("context.get", "context get › scope lists what you may change; ask the user.")
-        case .capabilityMissing:
-            return step("capabilities.get", "No provider can serve this now. reason missing: find a plugin "
-                + "(plugins search) for the user to install; not_configured: the user turns it on or approves it; "
-                + "unhealthy: the user fixes the dependency plugins health names.")
-        case .unsupportedMedia:
-            return step("media.inventory", "This Mac cannot decode that media's video; convert it to H.264 or HEVC "
-                + "(for example ffmpeg -i in -c:v libx264 -crf 18 -c:a aac out.mp4) and import the converted file.")
-        default: return nil
-        }
+        return command.map { .object(["command": .string($0)]) }
     }
 }
 

@@ -13,7 +13,20 @@ public enum CommandCatalog {
     public static let libraryPanels = ["media", "audio", "text", "stickers", "effects", "transitions", "filters", "voice"]
     public static let exportPresets = OutputPresetName.all
 
-    public static let specs: [CommandSpec] = readSpecs + projectSpecs + editSpecs + captionSpecs + layerSpecs + styleSpecs
+    /// The plugin capability each provider-backed command runs on: `capabilities get`, the capability_missing errors
+    /// and the running-provider checks all read this one list (flexibility audit, D7).
+    public static let capabilities: [String: String] = [
+        "captions.generate": "captions.transcribe", "media.transcribe": "captions.transcribe",
+        "voice.check": "captions.transcribe", "captions.align": "captions.transcribe", "beats.detect": "audio.beats",
+        "voice.speak": "voice.synthesize", "audio.measure": "audio.loudness", "audio.mix-measure": "audio.loudness",
+        "media.sync": "audio.sync", "audio.energy": "audio.energy", "library.search": "library.search",
+        "library.generate": "library.generate",
+    ]
+
+    /// Every command, provider jobs with `requestId` and `dryRun` (flexibility audit, D8).
+    public static let specs: [CommandSpec] = declaredSpecs.map(withRequestParameters)
+
+    private static let declaredSpecs: [CommandSpec] = readSpecs + projectSpecs + editSpecs + captionSpecs + layerSpecs + styleSpecs
         + formatSpecs + clipSpecs + jobSpecs + capabilitySpecs + analysisSpecs + reviewCutSpecs + timelineStillsSpecs + [colorMeasureSpec] + planSpecs
         + workflowSpecs + planCheckSpecs + quoteSpecs + selectsSpecs
         + variantSpecs + packagingSpecs
@@ -21,6 +34,16 @@ public enum CommandCatalog {
         + pluginSpecs + pluginViewSpecs
         + storageSpecs + agentSpecs + appSpecs + chatSpecs
         + privilegedSpecs + uiSpecs + toolSpecs + knowledgeSpecs + skillSpecs + librarySpecs + fontSpecs
+
+    /// A provider job (`capabilities`) with the request ID and dry-run parameters, when it does not have them yet.
+    static func withRequestParameters(_ spec: CommandSpec) -> CommandSpec {
+        guard capabilities[spec.name] != nil, spec.execution == .job,
+            !spec.parameters.contains(where: { $0.name == "requestId" })
+        else { return spec }
+        return CommandSpec(
+            spec.name, spec.mode, spec.summary, parameters: spec.parameters + paidRequestParameters,
+            execution: spec.execution)
+    }
 
     public static let modes: [String: CommandMode] = Dictionary(uniqueKeysWithValues: specs.map { ($0.name, $0.mode) })
 
@@ -46,8 +69,7 @@ public enum CommandCatalog {
             "Read the revision, format and tracks, including track IDs and roles, and scale per video or image item: "
                 + "fit or fill, baseScale, zoom and maxZoom (keyframes), pixelRatio (output pixels per source pixel; "
                 + "over 1 is upscaled) now and at maxZoom, maxZoomNative (the largest zoom before upscaling), shown "
-                + "size and frameCoverage. media lists each media's path, kind, license (with facts: commercial, "
-                + "redistribute, attributionRequired, shareAlike) and provenance.",
+                + "size and frameCoverage. media lists each media's path, kind, license and provenance as stored.",
             parameters: [
                 CommandParameter(
                     "format", .string, "json (default) or a compact text listing", choices: ["json", "text"],
@@ -98,8 +120,9 @@ public enum CommandCatalog {
             "Add a media file (path relative to the project or absolute): video, audio or a still image (PNG keeps "
                 + "transparency; placed for 3 s, trims to any length). With place, also put it on a layer like Import. "
                 + "A file already in the project, unchanged, reuses its media and returns existing true. origin, license, "
-                + "source and author record where it came from and what its licence allows (license is stored "
-                + "structured: id such as cc-by, version and the text; media list and timeline get report it).",
+                + "source and author record where it came from (license is free text, or a JSON object with an open "
+                + "id and the facts you know: commercial, redistribute, attributionRequired, attribution; stored as "
+                + "given).",
             parameters: [
                 CommandParameter("path", .string, "Media file path", required: true, isPath: true, cli: .positional),
                 CommandParameter("kind", .string, "Media kind; from the file type by default",

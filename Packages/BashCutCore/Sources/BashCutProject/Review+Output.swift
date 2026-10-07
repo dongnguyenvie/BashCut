@@ -58,9 +58,9 @@ extension TimelineReview {
                 let value = overrides[key]
             else { return issue }
             guard let severity = ReviewSeverity(rawValue: value) else { return value == "off" ? nil : issue }
-            return ReviewIssue(
-                id: issue.id, title: issue.title, detail: issue.detail, frame: issue.frame, endFrame: issue.endFrame,
-                severity: severity, fix: issue.fix, source: issue.source)
+            var changed = issue
+            changed.severity = severity
+            return changed
         }
     }
 }

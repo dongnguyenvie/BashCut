@@ -59,96 +59,27 @@ struct AdjustmentTests {
         #expect(project.contentDuration == 120)
     }
 
-    @Test("A style kit grades the whole video, restyles captions, and replaces an earlier kit")
-    func styleKits() throws {
-        var project = try ProjectFixtures.twoClips().applying(
-            .group(label: "Captions", author: .user, ops: [
-                .insert(track: "t1", item: caption("c1", at: 0)),
-                .insert(track: "t1", item: caption("c2", at: 60, style: "cinematic-serif")),
-                .insert(track: "t1", item: caption("title", at: 90, style: "hook-title")),
-            ])
-        ).project
-        #expect(throws: ProjectError.invalid("Add clips before applying a style kit")) {
-            try Project(name: "Empty").styleKitOperations(StyleKit.builtIn[0])
-        }
-        let cinematic = try #require(project.styleKit("cinematic"))
-        project = try project.applying(
-            .group(label: "Kit", author: .user, ops: project.styleKitOperations(cinematic, itemID: "kit1"))
-        ).project
-        let grade = try #require(project.track(id: "fx1")?.items.first)
-        #expect(grade.id == "kit1" && grade.at == 0 && grade.end == 120)
-        #expect(grade["color"] == .object(try #require(project.look(cinematic.lookID)).color))
-        #expect(grade.adjustmentTitle(in: project) == "Cinematic")
-        func styles(_ project: Project) -> [String?] { project.track(id: "t1")?.items.map(\.textPreset) ?? [] }
-        #expect(styles(project) == ["cinematic-serif", "cinematic-serif", "hook-title"])
-
-        // Re-applying with a longer timeline replaces the kit item instead of stacking a second grade.
-        project = try project.applying(
-            .insert(track: "v2", item: Item(id: "late", media: "m", at: 120, duration: 30))
-        ).project
-        let food = try #require(project.styleKit("food-review"))
-        project = try project.applying(
-            .group(label: "Kit", author: .user, ops: project.styleKitOperations(food, itemID: "kit2"))
-        ).project
-        let grades = project.tracks.filter(\.isAdjustment).flatMap(\.items)
-        #expect(grades.map(\.id) == ["kit2"])
-        #expect(grades.first?.end == 150)
-        #expect(styles(project) == ["bold-outline", "bold-outline", "hook-title"])
-    }
-
-    @Test("Adjustment titles name the kit, LUT or look")
+    @Test("Adjustment titles name the LUT or the built-in look")
     func titles() throws {
         var project = Project(name: "Titles")
         project = try project.applying(.addColorLUT(ColorLUT(id: "warm", name: "Warm sunset", path: "luts/warm.cube", size: 33))).project
         #expect(Item.adjustment(at: 0, duration: 1).adjustmentTitle(in: project) == "Adjustment")
-        let muted = Item.adjustment(at: 0, duration: 1, color: try #require(project.look("muted-film")).color)
+        let look = try #require(LibraryBuiltIns.looks.first { $0.id == "muted-film" })
+        let muted = Item.adjustment(at: 0, duration: 1, color: try #require(look.params["color"]?.object))
         #expect(muted.adjustmentTitle(in: project) == "Muted film")
         let graded = Item.adjustment(at: 0, duration: 1, color: ["lut": .string("warm"), "lutStrength": .number(0.5)])
         #expect(graded.adjustmentTitle(in: project) == "Warm sunset")
-        project = try project.applying(project.savingLook(
-            ColorLook(id: "teal", title: "Teal & orange", color: ["saturation": .number(1.3)]))).project
         #expect(Item.adjustment(at: 0, duration: 1, color: ["saturation": .number(1.3)]).adjustmentTitle(in: project)
-            == "Teal & orange")
+            == "Adjustment")
     }
 
-    @Test("Custom looks and kits are saved, replaced, applied and deleted as undoable project edits")
-    func customCatalog() throws {
+    @Test("Old projects keep their looks and style kits fields as they were (C8)")
+    func legacyCatalog() throws {
         var project = try ProjectFixtures.twoClips()
-        project = try project.applying(.addColorLUT(ColorLUT(id: "warm", name: "Warm", path: "luts/warm.cube", size: 33))).project
-        let look = ColorLook(id: "warm-film", title: "Warm film", color: ["lut": .string("warm"), "saturation": .number(0.9)])
-        project = try project.applying(project.savingLook(look)).project
-        #expect(project.look("warm-film")?.color == look.color)
-        #expect(project.look("warm-film")?.isBuiltIn == false)
-        // Saving again replaces in place.
-        let brighter = ColorLook(id: "warm-film", title: "Warm film+", color: ["exposure": .number(0.2)])
-        project = try project.applying(project.savingLook(brighter)).project
-        #expect(project.customLooks.map(\.title) == ["Warm film+"])
-        project = try project.applying(project.savingLook(look)).project
-
-        let kit = StyleKit(id: "street", title: "Street food", lookID: "warm-film", captionPreset: "keyword-sticker")
-        project = try project.applying(project.savingStyleKit(kit)).project
-        #expect(project.styleKits.map(\.id) == ["food-review", "cinematic", "street"])
-        let applied = try project.applying(
-            .group(label: "Kit", author: .user, ops: project.styleKitOperations(kit, itemID: "k"))).project
-        #expect(applied.track(id: "fx1")?.items.first?["color"] == .object(look.color))
-
-        #expect(throws: ProjectError.self) { try project.savingLook(ColorLook(id: "vivid", title: "Mine", color: [:])) }
-        #expect(throws: ProjectError.self) {
-            try project.applying(project.savingLook(ColorLook(id: "x", title: "X", color: ["contrast": .integer(9)])))
-        }
-        #expect(throws: ProjectError.self) {
-            try project.applying(project.savingStyleKit(
-                StyleKit(id: "y", title: "Y", lookID: "missing", captionPreset: "bold-outline")))
-        }
-        #expect(throws: ProjectError.self) { try project.deletingLook("warm-film") }
-
-        // Deleting the LUT strips it from the look, like from clips.
-        let withoutLUT = try project.applying(.deleteColorLUT(id: "warm")).project
-        #expect(withoutLUT.look("warm-film")?.color == ["saturation": .number(0.9)])
-
-        project = try project.applying(project.deletingStyleKit("street")).project
-        project = try project.applying(project.deletingLook("warm-film")).project
-        #expect(project.customLooks.isEmpty && project.customStyleKits.isEmpty)
-        #expect(throws: ProjectError.self) { try project.deletingStyleKit("cinematic") }
+        project["looks"] = .array([.object(["id": .string("warm"), "title": .string("Warm"), "color": .object([:])])])
+        project["styleKits"] = .array([.object(["id": .string("x"), "look": .string("missing")])])
+        try project.validate()
+        let data = try JSONEncoder().encode(project)
+        #expect(try JSONDecoder().decode(Project.self, from: data)["styleKits"] == project["styleKits"])
     }
 }

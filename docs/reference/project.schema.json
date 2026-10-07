@@ -85,16 +85,8 @@
       "description" : "One described shot; at least one fact besides start and end",
       "properties" : {
         "angle" : {
-          "description" : "Camera angle",
-          "enum" : [
-            "eye",
-            "high",
-            "low",
-            "top",
-            "dutch",
-            "pov",
-            "ots"
-          ],
+          "description" : "Camera angle, e.g. eye, high, low, top, dutch, pov, ots",
+          "maxLength" : 60,
           "type" : "string"
         },
         "bestMoment" : {
@@ -110,14 +102,8 @@
           "type" : "number"
         },
         "direction" : {
-          "description" : "Where the subject moves on screen",
-          "enum" : [
-            "left",
-            "right",
-            "toward",
-            "away",
-            "none"
-          ],
+          "description" : "Where the subject moves on screen, e.g. left, right, toward, away, none",
+          "maxLength" : 60,
           "type" : "string"
         },
         "end" : {
@@ -138,19 +124,8 @@
           "type" : "array"
         },
         "move" : {
-          "description" : "Camera move",
-          "enum" : [
-            "static",
-            "pan",
-            "tilt",
-            "push",
-            "pull",
-            "track",
-            "orbit",
-            "handheld",
-            "zoom",
-            "crane"
-          ],
+          "description" : "Camera move, e.g. static, pan, tilt, push, pull, track, orbit, handheld, zoom, crane",
+          "maxLength" : 60,
           "type" : "string"
         },
         "note" : {
@@ -169,17 +144,8 @@
           "type" : "integer"
         },
         "size" : {
-          "description" : "Shot size",
-          "enum" : [
-            "ECU",
-            "CU",
-            "MCU",
-            "MS",
-            "MWS",
-            "WS",
-            "EWS",
-            "insert"
-          ],
+          "description" : "Shot size, e.g. ECU, CU, MCU, MS, MWS, WS, EWS, insert",
+          "maxLength" : 60,
           "type" : "string"
         },
         "start" : {
@@ -197,6 +163,17 @@
             "type" : "string"
           },
           "maxItems" : 12,
+          "type" : "array"
+        },
+        "tags" : {
+          "description" : "Free labels",
+          "items" : {
+            "description" : "Label",
+            "maxLength" : 60,
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "maxItems" : 50,
           "type" : "array"
         }
       },
@@ -584,10 +561,6 @@
           "minItems" : 2,
           "type" : "array"
         },
-        "styleKit" : {
-          "description" : "Adjustment: the style kit that added it; the next kit replaces it",
-          "type" : "string"
-        },
         "tag" : {
           "description" : "Editorial tags",
           "properties" : {
@@ -612,20 +585,20 @@
           "type" : "string"
         },
         "textPreset" : {
-          "description" : "Text preset (text layers); default bold-outline",
-          "enum" : [
-            "bold-outline",
-            "cinematic-serif",
-            "keyword-sticker",
-            "place-card",
-            "hook-title",
-            "chapter-card"
-          ],
+          "description" : "Text preset (text layers): built-in bold-outline, cinematic-serif, keyword-sticker, place-card, hook-title, chapter-card or any name (the first's defaults); default bold-outline",
+          "maxLength" : 80,
+          "minLength" : 1,
           "type" : "string"
         },
         "textStyle" : {
           "description" : "Text style overrides",
           "properties" : {
+            "align" : {
+              "description" : "left, center or right (the preset's by default)",
+              "maxLength" : 6,
+              "minLength" : 1,
+              "type" : "string"
+            },
             "fill" : {
               "description" : "Text colour, #RRGGBB (the preset's by default)",
               "pattern" : "^#[0-9A-Fa-f]{6}$",
@@ -641,6 +614,18 @@
               "description" : "Word-by-word highlight colour, #RRGGBB (default #FFD400)",
               "pattern" : "^#[0-9A-Fa-f]{6}$",
               "type" : "string"
+            },
+            "lineHeight" : {
+              "description" : "Line spacing as a multiple of the font size (default 1.28)",
+              "maximum" : 4,
+              "minimum" : 0.5,
+              "type" : "number"
+            },
+            "positionX" : {
+              "description" : "Horizontal anchor: left edge, centre or right edge by align",
+              "maximum" : 1,
+              "minimum" : 0,
+              "type" : "number"
             },
             "positionY" : {
               "description" : "Baseline position from the bottom, as a fraction",
@@ -664,6 +649,16 @@
               "maximum" : 50,
               "minimum" : 0,
               "type" : "number"
+            },
+            "tracking" : {
+              "description" : "Letter spacing as a share of the font size (default 0)",
+              "maximum" : 2,
+              "minimum" : -0.5,
+              "type" : "number"
+            },
+            "uppercase" : {
+              "description" : "Draw the text in capitals",
+              "type" : "boolean"
             }
           },
           "type" : "object"
@@ -763,13 +758,23 @@
           "type" : "number"
         },
         "wordStyle" : {
-          "description" : "Text: show the words as they are spoken (highlight the current word, karaoke fill, or reveal); timings come from words, or are estimated",
-          "enum" : [
-            "highlight",
-            "karaoke",
-            "reveal"
-          ],
-          "type" : "string"
+          "description" : "Text: show the words as they are spoken: a preset (highlight the current word, karaoke fill, or reveal) or {spoken, upcoming, past} looks of {fill #RRGGBB, opacity 0–1}; timings come from words, or are estimated",
+          "oneOf" : [
+            {
+              "enum" : [
+                "highlight",
+                "karaoke",
+                "reveal"
+              ],
+              "type" : "string"
+            },
+            {
+              "additionalProperties" : {
+                "type" : "object"
+              },
+              "type" : "object"
+            }
+          ]
         },
         "words" : {
           "description" : "Text: timing of each word of the text (split at white space), in frames from the item's start; set by captions generate when the provider returns word timings",
@@ -803,31 +808,6 @@
         "id",
         "at",
         "dur"
-      ],
-      "type" : "object"
-    },
-    "look" : {
-      "description" : "A reusable color grade",
-      "properties" : {
-        "color" : {
-          "$ref" : "#/$defs/color"
-        },
-        "id" : {
-          "description" : "Unique among built-in and custom looks",
-          "pattern" : "^[a-z0-9][a-z0-9-]{0,63}$",
-          "type" : "string"
-        },
-        "title" : {
-          "description" : "Display name",
-          "maxLength" : 120,
-          "minLength" : 1,
-          "type" : "string"
-        }
-      },
-      "required" : [
-        "id",
-        "title",
-        "color"
       ],
       "type" : "object"
     },
@@ -951,37 +931,38 @@
           "type" : "string"
         },
         "license" : {
-          "description" : "Licence (P2-H8): free text, or {id, version, text, url, attribution}",
+          "description" : "Licence (P2-H8): free text, or an object with an open id; facts are the item's own",
           "oneOf" : [
             {
               "maxLength" : 1000,
               "type" : "string"
             },
             {
-              "description" : "Structured licence",
+              "description" : "Licence",
               "properties" : {
                 "attribution" : {
                   "description" : "The credit line it asks for",
                   "type" : "string"
                 },
+                "attributionRequired" : {
+                  "description" : "Credit required",
+                  "type" : "boolean"
+                },
+                "commercial" : {
+                  "description" : "Commercial use allowed",
+                  "type" : "boolean"
+                },
                 "id" : {
-                  "description" : "Licence",
-                  "enum" : [
-                    "cc0",
-                    "public-domain",
-                    "cc-by",
-                    "cc-by-sa",
-                    "cc-by-nd",
-                    "cc-by-nc",
-                    "cc-by-nc-sa",
-                    "cc-by-nc-nd",
-                    "royalty-free",
-                    "own",
-                    "all-rights-reserved",
-                    "custom",
-                    "unknown"
-                  ],
+                  "description" : "Open licence id, such as cc-by, royalty-free, own",
                   "type" : "string"
+                },
+                "redistribute" : {
+                  "description" : "Redistribution allowed",
+                  "type" : "boolean"
+                },
+                "shareAlike" : {
+                  "description" : "Share-alike",
+                  "type" : "boolean"
                 },
                 "text" : {
                   "description" : "As written",
@@ -996,9 +977,6 @@
                   "type" : "string"
                 }
               },
-              "required" : [
-                "id"
-              ],
               "type" : "object"
             }
           ]
@@ -1079,7 +1057,7 @@
       "type" : "object"
     },
     "mediaDescription" : {
-      "description" : "Shot facts written by an agent or the user (media.describe), in a closed vocabulary",
+      "description" : "Shot facts written by an agent or the user (media.describe); open labels, other fields kept",
       "properties" : {
         "describedAt" : {
           "description" : "ISO 8601 time",
@@ -1121,45 +1099,6 @@
         }
       ],
       "type" : "array"
-    },
-    "styleKit" : {
-      "description" : "A one-shot recipe: a full-length adjustment with a look plus a caption preset",
-      "properties" : {
-        "captionPreset" : {
-          "description" : "Text preset given to captions",
-          "enum" : [
-            "bold-outline",
-            "cinematic-serif",
-            "keyword-sticker",
-            "place-card",
-            "hook-title",
-            "chapter-card"
-          ],
-          "type" : "string"
-        },
-        "id" : {
-          "description" : "Unique among built-in and custom kits",
-          "pattern" : "^[a-z0-9][a-z0-9-]{0,63}$",
-          "type" : "string"
-        },
-        "look" : {
-          "description" : "Built-in or custom look ID",
-          "type" : "string"
-        },
-        "title" : {
-          "description" : "Display name",
-          "maxLength" : 120,
-          "minLength" : 1,
-          "type" : "string"
-        }
-      },
-      "required" : [
-        "id",
-        "title",
-        "look",
-        "captionPreset"
-      ],
-      "type" : "object"
     },
     "track" : {
       "allOf" : [
@@ -1428,181 +1367,7 @@
       "type" : "object"
     },
     "brief" : {
-      "description" : "What the edit is for (P1-D1)",
-      "properties" : {
-        "angle" : {
-          "description" : "A brief field",
-          "properties" : {
-            "source" : {
-              "description" : "Where it came from",
-              "type" : "string"
-            },
-            "status" : {
-              "description" : "Who said it",
-              "enum" : [
-                "stated",
-                "inferred",
-                "confirmed"
-              ],
-              "type" : "string"
-            },
-            "value" : {
-              "description" : "Any JSON value"
-            }
-          },
-          "required" : [
-            "value",
-            "status"
-          ],
-          "type" : "object"
-        },
-        "audience" : {
-          "description" : "A brief field",
-          "properties" : {
-            "source" : {
-              "description" : "Where it came from",
-              "type" : "string"
-            },
-            "status" : {
-              "description" : "Who said it",
-              "enum" : [
-                "stated",
-                "inferred",
-                "confirmed"
-              ],
-              "type" : "string"
-            },
-            "value" : {
-              "description" : "Any JSON value"
-            }
-          },
-          "required" : [
-            "value",
-            "status"
-          ],
-          "type" : "object"
-        },
-        "goal" : {
-          "description" : "A brief field",
-          "properties" : {
-            "source" : {
-              "description" : "Where it came from",
-              "type" : "string"
-            },
-            "status" : {
-              "description" : "Who said it",
-              "enum" : [
-                "stated",
-                "inferred",
-                "confirmed"
-              ],
-              "type" : "string"
-            },
-            "value" : {
-              "description" : "Any JSON value"
-            }
-          },
-          "required" : [
-            "value",
-            "status"
-          ],
-          "type" : "object"
-        },
-        "ideas" : {
-          "description" : "Ideas",
-          "items" : {
-            "type" : "object"
-          },
-          "maxItems" : 100,
-          "type" : "array"
-        },
-        "lengthSeconds" : {
-          "description" : "A brief field",
-          "properties" : {
-            "source" : {
-              "description" : "Where it came from",
-              "type" : "string"
-            },
-            "status" : {
-              "description" : "Who said it",
-              "enum" : [
-                "stated",
-                "inferred",
-                "confirmed"
-              ],
-              "type" : "string"
-            },
-            "value" : {
-              "description" : "Any JSON value"
-            }
-          },
-          "required" : [
-            "value",
-            "status"
-          ],
-          "type" : "object"
-        },
-        "notes" : {
-          "description" : "A brief field",
-          "properties" : {
-            "source" : {
-              "description" : "Where it came from",
-              "type" : "string"
-            },
-            "status" : {
-              "description" : "Who said it",
-              "enum" : [
-                "stated",
-                "inferred",
-                "confirmed"
-              ],
-              "type" : "string"
-            },
-            "value" : {
-              "description" : "Any JSON value"
-            }
-          },
-          "required" : [
-            "value",
-            "status"
-          ],
-          "type" : "object"
-        },
-        "outputs" : {
-          "description" : "A brief field",
-          "properties" : {
-            "source" : {
-              "description" : "Where it came from",
-              "type" : "string"
-            },
-            "status" : {
-              "description" : "Who said it",
-              "enum" : [
-                "stated",
-                "inferred",
-                "confirmed"
-              ],
-              "type" : "string"
-            },
-            "value" : {
-              "description" : "Any JSON value"
-            }
-          },
-          "required" : [
-            "value",
-            "status"
-          ],
-          "type" : "object"
-        },
-        "references" : {
-          "description" : "Reference videos or notes",
-          "items" : {
-            "type" : "object"
-          },
-          "maxItems" : 100,
-          "type" : "array"
-        }
-      },
+      "description" : "What the edit is for (P1-D1); free JSON",
       "type" : "object"
     },
     "canvasFromFirstClip" : {
@@ -1653,14 +1418,6 @@
       "description" : "Stable project ID",
       "minLength" : 1,
       "type" : "string"
-    },
-    "looks" : {
-      "description" : "Custom looks (built-in looks are not stored)",
-      "items" : {
-        "$ref" : "#/$defs/look"
-      },
-      "maxItems" : 1000,
-      "type" : "array"
     },
     "luts" : {
       "description" : "Project .cube LUT catalog",
@@ -1772,99 +1529,7 @@
       "type" : "object"
     },
     "plan" : {
-      "description" : "How the agent means to make it (P1-D2)",
-      "properties" : {
-        "beats" : {
-          "description" : "Script beats [{id, section, text}]",
-          "items" : {
-            "type" : "object"
-          },
-          "maxItems" : 500,
-          "type" : "array"
-        },
-        "decisions" : {
-          "description" : "Decisions [{text}]",
-          "items" : {
-            "type" : "object"
-          },
-          "maxItems" : 500,
-          "type" : "array"
-        },
-        "mode" : {
-          "description" : "Mode",
-          "enum" : [
-            "create",
-            "directed",
-            "revision"
-          ],
-          "type" : "string"
-        },
-        "notes" : {
-          "description" : "Notes",
-          "type" : "string"
-        },
-        "options" : {
-          "description" : "Story options",
-          "items" : {
-            "type" : "object"
-          },
-          "type" : "array"
-        },
-        "ranges" : {
-          "additionalProperties" : {
-            "description" : "A range",
-            "properties" : {
-              "max" : {
-                "description" : "High",
-                "maximum" : 1000000000,
-                "minimum" : -1000000000,
-                "type" : "number"
-              },
-              "min" : {
-                "description" : "Low",
-                "maximum" : 1000000000,
-                "minimum" : -1000000000,
-                "type" : "number"
-              },
-              "reason" : {
-                "description" : "Why",
-                "type" : "string"
-              },
-              "source" : {
-                "description" : "Source",
-                "type" : "string"
-              }
-            },
-            "required" : [
-              "min",
-              "max"
-            ],
-            "type" : "object"
-          },
-          "description" : "Review key → the range chosen",
-          "type" : "object"
-        },
-        "sections" : {
-          "description" : "Sections [{id, label, lengthSeconds {min, max}, reason, frozen}]",
-          "items" : {
-            "type" : "object"
-          },
-          "maxItems" : 500,
-          "type" : "array"
-        },
-        "shots" : {
-          "description" : "Shot rows [{id, purpose, section, size, move, mustShow, targetSeconds, source}]",
-          "items" : {
-            "type" : "object"
-          },
-          "maxItems" : 500,
-          "type" : "array"
-        },
-        "stage" : {
-          "description" : "Current stage",
-          "type" : "string"
-        }
-      },
+      "description" : "How the agent means to make it (P1-D2); free JSON",
       "type" : "object"
     },
     "providers" : {
@@ -2085,14 +1750,6 @@
     },
     "schema" : {
       "const" : "bashcut.project/1"
-    },
-    "styleKits" : {
-      "description" : "Custom style kits (built-in kits are not stored)",
-      "items" : {
-        "$ref" : "#/$defs/styleKit"
-      },
-      "maxItems" : 1000,
-      "type" : "array"
     },
     "tracks" : {
       "description" : "Layers: visual kinds back to front, then audio",

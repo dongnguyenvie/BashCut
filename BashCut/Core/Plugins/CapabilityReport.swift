@@ -104,11 +104,11 @@ public struct CapabilityUnavailable: LocalizedError, Sendable, Equatable {
 }
 
 extension CapabilityService {
-    /// The capabilities BashCut calls itself, so `capabilities get` lists them even when nothing provides them.
-    public static let knownCapabilities = [
-        "audio.beats", "audio.energy", "audio.loudness", "audio.sync", "captions.align", "captions.transcribe",
-        "voice.synthesize", PluginAPI.librarySearch, PluginAPI.libraryGenerate, PluginAPI.reviewCheck,
-        PluginAPI.agentChat, PluginAPI.agentTerminal,
+    /// Capabilities BashCut calls besides a command's own (`CommandCatalog.capabilities`): forced alignment, which
+    /// `captions align` prefers over transcription, review checks, chat and terminal agents. `capabilities get` lists
+    /// them all even when nothing provides them.
+    public static let serviceCapabilities = [
+        "captions.align", PluginAPI.reviewCheck, PluginAPI.agentChat, PluginAPI.agentTerminal,
     ]
 
     /// Every provider of `capability` (serving `kind`) and whether it may run, without health checks.

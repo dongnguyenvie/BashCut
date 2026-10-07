@@ -373,15 +373,6 @@ struct CommandSpecTests {
         let invocation = try CommandLineParser.parse(["captions", "import", file.path, "--base-rev", "2", "--replace"])
         #expect(invocation.params == ["text": .string(srt), "baseRev": .integer(2), "replace": .bool(true)])
     }
-
-    @Test("Agent instructions list every command and no fixed track IDs")
-    func instructions() {
-        let text = CommandCatalog.instructions
-        for spec in CommandCatalog.specs { #expect(text.contains(spec.usage), "\(spec.name)") }
-        #expect(!text.contains(#""v1""#))
-        #expect(!text.contains(#""t1""#))
-        #expect(text.contains("bashcut timeline get"))
-    }
 }
 
 extension CLIBinding {

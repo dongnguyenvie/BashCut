@@ -13,10 +13,6 @@ struct LibraryItemsSection<Tile: View>: View {
     /// The kind Add… and drops make from plain files (audio, sticker images); packs are always accepted.
     var fileKind: LibraryKind?
     var columns = [GridItem(.flexible())]
-    /// Entries kept outside the library that the panel shows as items, searched and filtered with them (the
-    /// Filters panel's style kits and project looks); their context menu is `extraActions`.
-    var extraItems: [LibraryItem] = []
-    var extraActions: (LibraryItem) -> [LibraryPanelAction] = { _ in [] }
     /// Commands first in a library item's context menu (the Effects panel's Apply with…).
     var itemActions: (LibraryItem) -> [LibraryPanelAction] = { _ in [] }
     @ViewBuilder let tile: (LibraryItem) -> Tile
@@ -148,11 +144,11 @@ struct LibraryItemsSection<Tile: View>: View {
         Menu {
             Picker("Pack", selection: filter.pack) {
                 Text("All packs").tag(String?.none)
-                ForEach(Self.unique(allItems.compactMap(\.pack)), id: \.self) { Text(verbatim: $0).tag(String?.some($0)) }
+                ForEach(Self.unique(items.compactMap(\.pack)), id: \.self) { Text(verbatim: $0).tag(String?.some($0)) }
             }
             Picker("Tag", selection: filter.tag) {
                 Text("All tags").tag(String?.none)
-                ForEach(Self.unique(allItems.flatMap(\.tags)), id: \.self) { Text(verbatim: $0).tag(String?.some($0)) }
+                ForEach(Self.unique(items.flatMap(\.tags)), id: \.self) { Text(verbatim: $0).tag(String?.some($0)) }
             }
             Picker("Scope", selection: filter.scope) {
                 Text("All scopes").tag(String?.none)
@@ -172,15 +168,7 @@ struct LibraryItemsSection<Tile: View>: View {
         .help("Filter by pack, tag or scope")
     }
 
-    @ViewBuilder private func contextMenu(_ item: LibraryItem) -> some View {
-        if extraItems.contains(where: { $0.reference == item.reference }) {
-            ForEach(Array(extraActions(item).enumerated()), id: \.offset) { _, action in
-                Button(action.title, role: action.destructive ? .destructive : nil, action: action.run)
-            }
-        } else {
-            libraryMenu(item)
-        }
-    }
+    @ViewBuilder private func contextMenu(_ item: LibraryItem) -> some View { libraryMenu(item) }
 
     @ViewBuilder private func libraryMenu(_ item: LibraryItem) -> some View {
         let actions = itemActions(item)
@@ -218,10 +206,8 @@ struct LibraryItemsSection<Tile: View>: View {
         let match = LibraryCatalog.Filter(
             tag: filter.tag, scope: filter.scope.flatMap(LibraryScope.init(rawValue:)), pack: filter.pack,
             query: filter.query.isEmpty ? nil : filter.query)
-        return allItems.filter(match.matches)
+        return items.filter(match.matches)
     }
-
-    private var allItems: [LibraryItem] { extraItems + items }
 
     private func load() {
         do {
@@ -241,7 +227,6 @@ struct LibraryItemsSection<Tile: View>: View {
 /// A context menu command for an entry a panel shows beside its library items.
 struct LibraryPanelAction {
     let title: LocalizedStringKey
-    var destructive = false
     let run: () -> Void
 }
 

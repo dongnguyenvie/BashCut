@@ -79,6 +79,8 @@ public struct CommandSpec: Sendable {
     }
 
     public var mcpToolName: String { "bashcut_" + name.replacingOccurrences(of: ".", with: "_") }
+    /// The plugin capability this command runs on, if any (`CommandCatalog.capabilities`).
+    public var capability: String? { CommandCatalog.capabilities[name] }
     public var cliWords: [String] { name.split(separator: ".").map(String.init) }
 
     /// Unknown fields may contain secrets too; never persist their values after failed validation.
