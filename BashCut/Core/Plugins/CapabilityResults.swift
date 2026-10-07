@@ -33,8 +33,8 @@ public struct GeneratedPluginAsset: Sendable {
 public struct GeneratedVoiceTake: Identifiable, Sendable {
     public let asset: GeneratedPluginAsset
     public let durationSeconds: Double
-    public let score: Double
-    public let scoreSource: String
+    /// The provider's own score, when it gives one (P0-C4: BashCut no longer scores pace itself).
+    public let score: Double?
     public var id: String { asset.url.path }
 }
 
@@ -86,10 +86,11 @@ public struct GeneratedAudioSync: Sendable {
 }
 
 public extension Array where Element == GeneratedVoiceTake {
-    /// Highest score wins; equal scores prefer the earlier take so the choice is deterministic.
+    /// The provider's highest score wins; equal scores prefer the earlier take. Without provider scores, the first take.
     var best: GeneratedVoiceTake? {
         enumerated().max { lhs, rhs in
-            lhs.element.score == rhs.element.score ? lhs.offset > rhs.offset : lhs.element.score < rhs.element.score
+            let left = lhs.element.score ?? -1, right = rhs.element.score ?? -1
+            return left == right ? lhs.offset > rhs.offset : left < right
         }?.element
     }
 }

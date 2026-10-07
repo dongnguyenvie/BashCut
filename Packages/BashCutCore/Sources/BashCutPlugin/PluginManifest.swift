@@ -155,6 +155,7 @@ public struct PluginManifest: Codable, Sendable, Equatable {
         for dependency in dependencies { try dependency.validate() }
         try author?.validate()
         try validateExtensions()
+        try validateVoices()
     }
 
     /// Options, actions and hooks (plugin API 2).
@@ -220,7 +221,7 @@ public struct PluginManifest: Codable, Sendable, Equatable {
                 "contributes.library lists at most \(PluginLibraryContribution.maximumPacks) different pack folders")
         }
         for pack in libraryPacks { try pack.validate() }
-        for provider in declaredProviders {
+        for provider in providers ?? [] {
             guard let kinds = provider.kinds else { continue }
             guard PluginAPI.libraryCapabilities.contains(provider.capability) else {
                 throw PluginError.invalid("Provider \(provider.id): kinds are for library.search and library.generate")
@@ -326,6 +327,10 @@ public struct PluginProvider: Codable, Sendable, Equatable, Identifiable {
     public let timeoutSeconds: Int?
     /// Library kinds a `library.search` or `library.generate` provider serves (API 6); nil serves every kind.
     public let kinds: [String]?
+    /// Voices of a `voice.synthesize` provider (P0-C7).
+    public var voices: [PluginVoice]?
+    /// A `voice.synthesize` provider that can clone a voice from a recording; clone requests carry `cloneConsent`.
+    public var clones: Bool?
 
     public init(
         id: String, capability: String, name: String, priority: Int = 0, timeoutSeconds: Int? = nil, kinds: [String]? = nil
@@ -350,6 +355,8 @@ public struct PluginProvider: Codable, Sendable, Equatable, Identifiable {
         priority = try container.decodeIfPresent(Int.self, forKey: .priority) ?? 0
         timeoutSeconds = try container.decodeIfPresent(Int.self, forKey: .timeoutSeconds)
         kinds = try container.decodeIfPresent([String].self, forKey: .kinds)
+        voices = try container.decodeIfPresent([PluginVoice].self, forKey: .voices)
+        clones = try container.decodeIfPresent(Bool.self, forKey: .clones)
     }
 }
 

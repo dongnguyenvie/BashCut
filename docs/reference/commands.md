@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 174 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 181 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -673,6 +673,31 @@ Place captions of project media as one undoable edit, from its stored transcript
 - `provider`: string. Provider ID overriding the project preference for one request
 - `fresh`: boolean. Transcribe again instead of using the media's stored transcript
 
+### `bashcut captions group [<groups.json>] [--source <source>] [--max-chars <maxChars>] [--max-seconds <maxSeconds>] [--break-gap <breakGapSeconds>] [--from <from>] [--to <to>] --base-rev <baseRev>`
+
+Re-cut captions from word groups you choose, as one undoable edit: groups is a list of runs of word indices (from transcript words, or with source heard from transcript words --heard), each becoming one caption from its first word's start to its last word's end with its words timed; the captions those words fall in are replaced (their style kept). Rule mode instead (maxChars, maxSeconds and breakGapSeconds, all required; from/to limit it) joins words greedily. Returns rev and facts: cues [{frames, seconds, chars, cps, text}], gaps and overlaps between cues in frames. No default grouping.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_captions_group`
+- `groups`: array. Runs of word indices (CLI: path to groups.json)
+- `source`: string, one of captions, heard. captions (default) or heard
+- `maxChars`: integer, 1…500. Rule mode: longest caption in characters
+- `maxSeconds`: number, 0.1…60. Rule mode: longest caption in seconds
+- `breakGapSeconds`: number, 0…10. Rule mode: a pause this long starts a caption
+- `from`: integer, ≥ 0. Rule mode: from this timeline frame
+- `to`: integer, ≥ 0. Rule mode: up to this timeline frame
+- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
+
+### `bashcut captions align --media <media> --text <text> [--replace] [--provider <provider>] [--aligner <aligner>]`
+
+Make captions whose text is the script and whose times come from the speech: each non-empty line of text becomes a cue, timed by matching the script's words to the media's words (its stored transcript, or a new transcription), placed through the clips that play the media as one undoable edit. With replace, captions of that media in the aligned stretch are replaced. With aligner, a captions.align provider times the words instead of the transcript. Returns cues, score (matched words over the longer count) and unmatched words with their times. A job.
+
+- Mode: edit · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_captions_align`
+- `media`: string, required. Media ID whose speech times the script
+- `text`: string, required. The script, one cue per line
+- `replace`: boolean. Replace that media's captions in the stretch
+- `provider`: string. Provider ID overriding the project preference for one request
+- `aligner`: string. A captions.align provider to time the words instead of the transcript
+
 ## transcript
 
 ### `bashcut transcript words [--from <from>] [--to <to>] [--media <media>] [--heard]`
@@ -862,19 +887,6 @@ Read the beat grid beats detect stored for a media file, in its own seconds: bpm
 - Mode: read · Runs: immediately · MCP: `bashcut_beats_grid`
 - `media`: string, required. Project media ID
 
-## voice
-
-### `bashcut voice speak <text> [--takes <takes>] [--at-frame <atFrame>] [--provider <provider>] [--keep-takes]`
-
-Synthesize voice takes and insert the best take on the Voiceover track; with keepTakes, insert nothing and keep every take file so one can be chosen and placed with media.import.
-
-- Mode: edit · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_voice_speak`
-- `text`: string, required. Voiceover text in the project content language
-- `takes`: integer, 1…8, default 3. Number of takes to generate
-- `atFrame`: integer, ≥ 0. Timeline frame; defaults to the playhead
-- `provider`: string. Provider ID overriding the project preference for one request
-- `keepTakes`: boolean, default false. Keep all takes in voiceover/generated and insert none
-
 ## audio
 
 ### `bashcut audio measure [--media <media>] [--curve] [--timeline] [--provider <provider>]`
@@ -917,6 +929,74 @@ Measure colour per clip on frames spread over each clip (samples, default 3), on
 - `graded`: boolean. Measure the edit as composed
 - `compare`: string, one of source. source: the edit without colour against it as graded
 - `by`: string, one of clip. clip: each clip's difference from the median clip
+
+## speech
+
+### `bashcut speech rate [--media <media>] [--unit <unit>] [--voice <voice>]`
+
+Measure speaking rate in the content language's unit (syllables for Vietnamese, characters for Chinese, Japanese and Korean, else words): per transcribed media (media.transcribe) and speaker, each phrase's rate over its own length as p10/p50/p90, overall (all units over all phrase time) and articulation (over the time words sound); and voices: the rates measured on synthesized takes (voice speak), per voice and language, with sample count and p10/p50/p90. No normal rate is assumed.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_speech_rate`
+- `media`: string. Project media ID; every transcribed media by default
+- `unit`: string, one of syllables, words, characters. Count in this unit instead
+- `voice`: string. Only this voice (provider/voice)
+
+## narration
+
+### `bashcut narration windows --min-seconds <minSeconds> [--rate <rate>] [--levels]`
+
+List stretches of at least minSeconds with no spoken word (heard or caption words) and no voiceover item: at/end frames and seconds, anchors {afterWord (the last word before it), firstCut, firstBeat, section, sectionStartsInside}, owner (music, footage or silence: what covers most of it), the shots on Main under it with their described facts, and with rate (units per second, in the content language's unit) a budget of units that fit. With levels, the mix is rendered once (no export) and each window gets its mixLoudness {median, p10, p90}. No length or rate is assumed.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_narration_windows`
+- `minSeconds`: number, required, 0.1…600. Shortest window listed
+- `rate`: number, 0.1…50. Units per second for the text budget
+- `levels`: boolean. Render the mix to add each window's loudness
+
+## voice
+
+### `bashcut voice voices`
+
+List the voices of every voice.synthesize provider: per provider plugin, name, availability, clones (it can clone a voice; voice speak then needs cloneConsent) and the voice its plugin is set to; per voice id, language, region, style, gender, supportsRate and measuredRate (rates measured on its takes by voice speak, per language: samples, p10, p50, p90).
+
+- Mode: read · Runs: immediately · MCP: `bashcut_voice_voices`
+
+### `bashcut voice speak [<text>] [--replace <replace>] [--takes <takes>] [--at-frame <atFrame>] [--provider <provider>] [--keep-takes] [--target-rate <targetRate>] [--choose <choose>] [--clone-consent]`
+
+Synthesize voice takes and insert one on the Voiceover track: the take whose rate is closest to targetRate, the take number choose, or else the provider's best score (the first take when it gives none). Every take is reported with seconds, units (syllables, words or characters for the content language), unitsPerSecond over its sound, leadingSilence, trailingSilence, pauses and its file; the rates are kept per voice (speech rate). The item keeps voice {text, language, provider, voice}. With replace, the take goes into that item instead. With keepTakes, insert nothing and keep every take file so one can be chosen and placed with media.import.
+
+- Mode: edit · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_voice_speak`
+- `text`: string. Voiceover text in the project content language (with replace, the item's voice text by default)
+- `replace`: string. Voiceover item to put the new take into, keeping its place; its captions are timed again from the new take
+- `takes`: integer, 1…8, default 3. Number of takes to generate
+- `atFrame`: integer, ≥ 0. Timeline frame; defaults to the playhead
+- `provider`: string. Provider ID overriding the project preference for one request
+- `keepTakes`: boolean, default false. Keep all takes in voiceover/generated and insert none
+- `targetRate`: number, 0.1…50. Insert the take closest to this many units per second
+- `choose`: integer, 1…8. Insert this take (1 = first)
+- `cloneConsent`: boolean. The user agreed to clone the voice set in the plugin's options; providers that clone refuse without it
+
+### `bashcut voice check [--item <item>] [--media <media>] [--text <text>] [--min-similarity <minSimilarity>] [--provider <provider>]`
+
+Check what a voiceover take says against the text it should say: the take (a voiceover item, or a media) is transcribed (or its stored transcript reused) and diffed word by word. Returns similarity (matched words over the longer word count), words [{text, heard, kind match|substituted|missing, start, end}], unmatched, extra (heard but not in the text) and, only with minSimilarity, passed. The text defaults to the item's voice.text. A job.
+
+- Mode: read · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_voice_check`
+- `item`: string. Voiceover item ID
+- `media`: string. Media ID instead of an item
+- `text`: string. The text the take should say
+- `minSimilarity`: number, 0…1. Report passed against this similarity
+- `provider`: string. Provider ID overriding the project preference for one request
+
+### `bashcut voice fit --item <item> [--frames <frames>] [--to-frame <toFrame>] --min-ratio <minRatio> --max-ratio <maxRatio> --base-rev <baseRev>`
+
+Change a voiceover item's speed (pitch kept) so it lasts frames, or ends at toFrame, as one undoable edit, when the needed speed is within minRatio…maxRatio; otherwise nothing changes and the error gives the speed it would need. Returns speed, frames and slackFrames. No default bounds.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_voice_fit`
+- `item`: string, required. Voiceover item ID
+- `frames`: integer, ≥ 1. Length to fill, in timeline frames
+- `toFrame`: integer, ≥ 1. Timeline frame to end at
+- `minRatio`: number, required, 0.1…16. Slowest speed allowed (1 = as recorded)
+- `maxRatio`: number, required, 0.1…16. Fastest speed allowed
+- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
 
 ## storage
 

@@ -107,9 +107,10 @@ public struct CapabilityService: Sendable {
     /// Asks one provider for voice takes until `count` exist; a failure discards the takes made so far.
     public func synthesizeVoiceTakes(
         text: String, language: String, count: Int = 3, preferredProvider: String?,
-        projectRoot: URL, outputRoot: URL
+        projectRoot: URL, outputRoot: URL, cloneConsent: Bool = false
     ) async throws -> [GeneratedVoiceTake] {
-        let first = VoiceSynthesisCapability(text: text, language: language, takeCount: count, outputRoot: outputRoot)
+        let first = VoiceSynthesisCapability(
+            text: text, language: language, takeCount: count, outputRoot: outputRoot, cloneConsent: cloneConsent)
         try first.validate()
         let resolved = try await resolve(
             VoiceSynthesisCapability.capability, preferredProvider: preferredProvider, projectRoot: projectRoot)
@@ -119,7 +120,7 @@ public struct CapabilityService: Sendable {
                 let requested = count - generated.count
                 let batch = VoiceSynthesisCapability(
                     text: text, language: language, takeCount: requested, takeOffset: generated.count,
-                    outputRoot: outputRoot)
+                    outputRoot: outputRoot, cloneConsent: cloneConsent)
                 generated.append(contentsOf: try await run(batch, using: resolved).prefix(requested))
             }
             return generated
@@ -156,6 +157,14 @@ public struct CapabilityService: Sendable {
         try await run(
             LoudnessCapability(mediaURL: mediaURL, bands: bands, curve: curve), preferredProvider: preferredProvider,
             projectRoot: projectRoot)
+    }
+
+    public func alignText(
+        mediaURL: URL, text: String, language: String, preferredProvider: String?, projectRoot: URL?
+    ) async throws -> [CaptionWords.Timed] {
+        try await run(
+            CaptionsAlignCapability(mediaURL: mediaURL, text: text, language: language),
+            preferredProvider: preferredProvider, projectRoot: projectRoot)
     }
 
     public func analyzeEnergy(

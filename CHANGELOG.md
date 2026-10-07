@@ -5,6 +5,22 @@
 
 ## [Unreleased]
 
+- **Speech, script and voice (P0-C2–C9).** `speech rate` measures speaking rate in the content language's unit
+  (syllables for Vietnamese, characters for CJK, else words) per transcribed media and speaker (p10/p50/p90, overall,
+  articulation) and lists the rates measured on synthesized takes per voice. `narration windows --min-seconds S
+  [--rate R] [--levels]` lists speech-free stretches with their anchors, owner, shots, mix level and text budget.
+  `voice speak` no longer scores takes by a 2.5 words/s pace: every take is reported with its seconds, units, rate,
+  leading/trailing silence and pauses, and the take is chosen by `--target-rate`, `--choose` or the provider's score
+  (else the first). Voiceover items keep `voice {text, language, provider, voice}`; `voice speak --replace ITEM` puts
+  a new take into the item in place and times its captions again from the new take. `voice check` diffs what a take
+  says against its text (similarity, matched/substituted/missing/extra words with times; `passed` only with
+  `--min-similarity`); `voice fit` changes a voiceover's speed (pitch kept) to fill a slot within caller bounds, or
+  refuses with the speed it would need. `voice voices` lists voices by their manifest facts with measured rates;
+  `voice.synthesize` requests carry `cloneConsent`, and providers may declare `voices` and `clones`. `captions group`
+  re-cuts captions from the agent's word groups (or a rule whose limits are all given) and reports cue lengths, gaps
+  and overlaps. `captions align` makes captions whose text is the script, timed from the speech (the transcript, or
+  a new `captions.align` provider with `--aligner`).
+
 - **Hook and close as facts (#467, P0-B11).** `review hook` reads when the first words are heard, the first title,
   caption and cut appear, when each described subject and shot size first shows and how long it stays, frame 0's luma
   and ink share, and at the end the last title (hold, bounds, edges), the last words and the last cut. The review's

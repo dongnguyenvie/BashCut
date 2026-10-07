@@ -64,11 +64,15 @@ struct CommandSpecTests {
         let values = try speak.validate(["text": .string("Xin chào"), "provider": .null])
         #expect(values == ["text": .string("Xin chào"), "takes": .integer(3), "keepTakes": .bool(false)])
         for params: [String: JSONValue] in [
-            [:], ["text": .string("  ")], ["text": .string("a"), "takes": .integer(9)],
-            ["text": .string("a"), "atFrame": .integer(-1)], ["text": .string("a"), "voice": .string("x")],
-            ["text": .integer(1)],
+            ["text": .string("a"), "takes": .integer(9)], ["text": .string("a"), "atFrame": .integer(-1)],
+            ["text": .string("a"), "voice": .string("x")], ["text": .integer(1)],
         ] {
             #expect(throws: RPCFailure.self) { try speak.validate(params) }
+        }
+        // Missing and blank required strings.
+        let align = try #require(CommandCatalog.spec(named: "captions.align"))
+        for params: [String: JSONValue] in [[:], ["media": .string("m"), "text": .string("  ")], ["text": .string("a")]] {
+            #expect(throws: RPCFailure.self) { try align.validate(params) }
         }
         let export = try #require(CommandCatalog.spec(named: "export.start"))
         #expect(throws: RPCFailure.self) {

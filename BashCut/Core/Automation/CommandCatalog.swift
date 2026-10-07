@@ -209,22 +209,6 @@ public enum CommandCatalog {
                 provider,
             ],
             execution: .job),
-        CommandSpec(
-            "voice.speak", .edit,
-            "Synthesize voice takes and insert the best take on the Voiceover track; with keepTakes, insert nothing "
-                + "and keep every take file so one can be chosen and placed with media.import.",
-            parameters: [
-                CommandParameter("text", .string, "Voiceover text in the project content language", required: true,
-                                 sensitive: true, cli: .positional),
-                CommandParameter("takes", .integer, "Number of takes to generate", default: .integer(3), minimum: 1,
-                                 maximum: 8, cli: .option("takes")),
-                CommandParameter("atFrame", .integer, "Timeline frame; defaults to the playhead", minimum: 0,
-                                 cli: .option("at-frame")),
-                provider,
-                CommandParameter("keepTakes", .boolean, "Keep all takes in voiceover/generated and insert none",
-                                 default: .bool(false), cli: .flag("keep-takes")),
-            ],
-            execution: .job),
     ]
 
     private static let privilegedSpecs: [CommandSpec] = [

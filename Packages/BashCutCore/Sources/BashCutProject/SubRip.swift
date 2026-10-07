@@ -191,7 +191,7 @@ extension Project {
     }
 
     /// Source seconds of `media` that `item` plays, from its in-point through trim, speed and any speed ramp.
-    func sourceSpan(of item: Item, media: Media) -> ClosedRange<Double> {
+    public func sourceSpan(of item: Item, media: Media) -> ClosedRange<Double> {
         let start = Double(item.sourceIn) / media.fps.value
         return start...(start + item.sourceSeconds(afterFrames: item.duration, fps: fps))
     }

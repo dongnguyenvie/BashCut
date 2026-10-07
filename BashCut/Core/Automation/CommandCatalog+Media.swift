@@ -26,7 +26,8 @@ extension CommandCatalog {
 
     /// Every command about source media (P0-A).
     static var sourceMediaSpecs: [CommandSpec] {
-        mediaAnalysisSpecs + sourceTranscriptSpecs + mediaDescriptionSpecs + mediaStillsSpecs + [mediaInventorySpec]
+        mediaAnalysisSpecs + sourceTranscriptSpecs + mediaDescriptionSpecs + mediaStillsSpecs
+            + [mediaInventorySpec, speechRateSpec, narrationWindowsSpec, voiceVoicesSpec, voiceSpeakSpec] + voiceCheckSpecs
     }
 
     static let mediaInventorySpec = CommandSpec(
@@ -222,6 +223,153 @@ extension CommandCatalog {
                 CommandParameter("width", .integer, "Image width in pixels (default 1600)", minimum: 400,
                                  maximum: 8_192, cli: .option("width")),
             ]),
+    ]
+
+    /// How fast people and voices speak (P0-C2).
+    static let speechRateSpec = CommandSpec(
+        "speech.rate", .read,
+        "Measure speaking rate in the content language's unit (syllables for Vietnamese, characters for Chinese, "
+            + "Japanese and Korean, else words): per transcribed media (media.transcribe) and speaker, each phrase's "
+            + "rate over its own length as p10/p50/p90, overall (all units over all phrase time) and articulation (over "
+            + "the time words sound); and voices: the rates measured on synthesized takes (voice speak), per voice and "
+            + "language, with sample count and p10/p50/p90. No normal rate is assumed.",
+        parameters: [
+            CommandParameter("media", .string, "Project media ID; every transcribed media by default",
+                             cli: .option("media")),
+            CommandParameter("unit", .string, "Count in this unit instead", choices: SpeechUnits.Unit.allCases.map(\.rawValue),
+                             cli: .option("unit")),
+            CommandParameter("voice", .string, "Only this voice (provider/voice)", cli: .option("voice")),
+        ])
+
+    /// Where narration could go (P0-C3).
+    static let narrationWindowsSpec = CommandSpec(
+        "narration.windows", .read,
+        "List stretches of at least minSeconds with no spoken word (heard or caption words) and no voiceover item: "
+            + "at/end frames and seconds, anchors {afterWord (the last word before it), firstCut, firstBeat, section, "
+            + "sectionStartsInside}, owner (music, footage or silence: what covers most of it), the shots on Main under "
+            + "it with their described facts, and with rate (units per second, in the content language's unit) a "
+            + "budget of units that fit. With levels, the mix is rendered once (no export) and each window gets its "
+            + "mixLoudness {median, p10, p90}. No length or rate is assumed.",
+        parameters: [
+            CommandParameter("minSeconds", .number, "Shortest window listed", required: true, range: 0.1...600,
+                             cli: .option("min-seconds")),
+            CommandParameter("rate", .number, "Units per second for the text budget", range: 0.1...50, cli: .option("rate")),
+            CommandParameter("levels", .boolean, "Render the mix to add each window's loudness", cli: .flag("levels")),
+        ])
+
+    /// Voiceover takes with their measured facts (P0-C4, C6, C7).
+    static let voiceSpeakSpec = CommandSpec(
+        "voice.speak", .edit,
+        "Synthesize voice takes and insert one on the Voiceover track: the take whose rate is closest to "
+            + "targetRate, the take number choose, or else the provider's best score (the first take when it gives "
+            + "none). Every take is reported with seconds, units (syllables, words or characters for the content "
+            + "language), unitsPerSecond over its sound, leadingSilence, trailingSilence, pauses and its file; the "
+            + "rates are kept per voice (speech rate). The item keeps voice {text, language, provider, voice}. With "
+            + "replace, the take goes into that item instead. With keepTakes, insert nothing and keep every take "
+            + "file so one can be chosen and placed with media.import.",
+        parameters: [
+            CommandParameter("text", .string, "Voiceover text in the project content language (with replace, "
+                             + "the item's voice text by default)", sensitive: true, cli: .positional),
+            CommandParameter("replace", .string, "Voiceover item to put the new take into, keeping its place; "
+                             + "its captions are timed again from the new take", cli: .option("replace")),
+            CommandParameter("takes", .integer, "Number of takes to generate", default: .integer(3), minimum: 1,
+                             maximum: 8, cli: .option("takes")),
+            CommandParameter("atFrame", .integer, "Timeline frame; defaults to the playhead", minimum: 0,
+                             cli: .option("at-frame")),
+            provider,
+            CommandParameter("keepTakes", .boolean, "Keep all takes in voiceover/generated and insert none",
+                             default: .bool(false), cli: .flag("keep-takes")),
+            CommandParameter("targetRate", .number, "Insert the take closest to this many units per second",
+                             range: 0.1...50, cli: .option("target-rate")),
+            CommandParameter("choose", .integer, "Insert this take (1 = first)", minimum: 1, maximum: 8,
+                             cli: .option("choose")),
+            CommandParameter("cloneConsent", .boolean, "The user agreed to clone the voice set in the plugin's "
+                             + "options; providers that clone refuse without it", cli: .flag("clone-consent")),
+        ],
+        execution: .job)
+
+    /// Voices by their facts (P0-C7).
+    static let voiceVoicesSpec = CommandSpec(
+        "voice.voices", .read,
+        "List the voices of every voice.synthesize provider: per provider plugin, name, availability, clones (it can "
+            + "clone a voice; voice speak then needs cloneConsent) and the voice its plugin is set to; per voice id, "
+            + "language, region, style, gender, supportsRate and measuredRate (rates measured on its takes by voice "
+            + "speak, per language: samples, p10, p50, p90).")
+
+    /// Voiceover checks and script captions (P0-C5, P0-C9).
+    static let voiceCheckSpecs: [CommandSpec] = [
+        CommandSpec(
+            "voice.check", .read,
+            "Check what a voiceover take says against the text it should say: the take (a voiceover item, or a media) "
+                + "is transcribed (or its stored transcript reused) and diffed word by word. Returns similarity (matched "
+                + "words over the longer word count), words [{text, heard, kind match|substituted|missing, start, end}], "
+                + "unmatched, extra (heard but not in the text) and, only with minSimilarity, passed. The text defaults "
+                + "to the item's voice.text. A job.",
+            parameters: [
+                CommandParameter("item", .string, "Voiceover item ID", cli: .option("item")),
+                CommandParameter("media", .string, "Media ID instead of an item", cli: .option("media")),
+                CommandParameter("text", .string, "The text the take should say", sensitive: true, cli: .option("text")),
+                CommandParameter("minSimilarity", .number, "Report passed against this similarity", range: 0...1,
+                                 cli: .option("min-similarity")),
+                provider,
+            ],
+            execution: .job),
+        CommandSpec(
+            "voice.fit", .edit,
+            "Change a voiceover item's speed (pitch kept) so it lasts frames, or ends at toFrame, as one undoable edit, "
+                + "when the needed speed is within minRatio…maxRatio; otherwise nothing changes and the error gives the "
+                + "speed it would need. Returns speed, frames and slackFrames. No default bounds.",
+            parameters: [
+                CommandParameter("item", .string, "Voiceover item ID", required: true, cli: .option("item")),
+                CommandParameter("frames", .integer, "Length to fill, in timeline frames", minimum: 1, cli: .option("frames")),
+                CommandParameter("toFrame", .integer, "Timeline frame to end at", minimum: 1, cli: .option("to-frame")),
+                CommandParameter("minRatio", .number, "Slowest speed allowed (1 = as recorded)", required: true,
+                                 range: 0.1...16, cli: .option("min-ratio")),
+                CommandParameter("maxRatio", .number, "Fastest speed allowed", required: true, range: 0.1...16,
+                                 cli: .option("max-ratio")),
+                baseRevision,
+            ]),
+        CommandSpec(
+            "captions.group", .edit,
+            "Re-cut captions from word groups you choose, as one undoable edit: groups is a list of runs of word "
+                + "indices (from transcript words, or with source heard from transcript words --heard), each becoming "
+                + "one caption from its first word's start to its last word's end with its words timed; the captions "
+                + "those words fall in are replaced (their style kept). Rule mode instead (maxChars, maxSeconds and "
+                + "breakGapSeconds, all required; from/to limit it) joins words greedily. Returns rev and facts: cues "
+                + "[{frames, seconds, chars, cps, text}], gaps and overlaps between cues in frames. No default grouping.",
+            parameters: [
+                CommandParameter("groups", .array, "Runs of word indices (CLI: path to groups.json)", cli: .positionalJSONFile),
+                CommandParameter("source", .string, "captions (default) or heard", choices: ["captions", "heard"],
+                                 cli: .option("source")),
+                CommandParameter("maxChars", .integer, "Rule mode: longest caption in characters", minimum: 1, maximum: 500,
+                                 cli: .option("max-chars")),
+                CommandParameter("maxSeconds", .number, "Rule mode: longest caption in seconds", range: 0.1...60,
+                                 cli: .option("max-seconds")),
+                CommandParameter("breakGapSeconds", .number, "Rule mode: a pause this long starts a caption",
+                                 range: 0...10, cli: .option("break-gap")),
+                CommandParameter("from", .integer, "Rule mode: from this timeline frame", minimum: 0, cli: .option("from")),
+                CommandParameter("to", .integer, "Rule mode: up to this timeline frame", minimum: 0, cli: .option("to")),
+                baseRevision,
+            ]),
+        CommandSpec(
+            "captions.align", .edit,
+            "Make captions whose text is the script and whose times come from the speech: each non-empty line of text "
+                + "becomes a cue, timed by matching the script's words to the media's words (its stored transcript, or "
+                + "a new transcription), placed through the clips that play the media as one undoable edit. With "
+                + "replace, captions of that media in the aligned stretch are replaced. With aligner, a captions.align "
+                + "provider times the words instead of the transcript. Returns cues, score (matched "
+                + "words over the longer count) and unmatched words with their times. A job.",
+            parameters: [
+                CommandParameter("media", .string, "Media ID whose speech times the script", required: true,
+                                 cli: .option("media")),
+                CommandParameter("text", .string, "The script, one cue per line", required: true, sensitive: true,
+                                 cli: .option("text")),
+                CommandParameter("replace", .boolean, "Replace that media's captions in the stretch", cli: .flag("replace")),
+                provider,
+                CommandParameter("aligner", .string, "A captions.align provider to time the words instead of the "
+                                 + "transcript", cli: .option("aligner")),
+            ],
+            execution: .job),
     ]
 
     /// `captions.generate --fresh`.
