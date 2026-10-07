@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 213 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 214 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -230,7 +230,7 @@ Place project media on a layer (main by default, music for audio), with linked s
 
 Find the time offset between two recordings of the same moment (a camera and a screen recording, or a render played inside a screen recording) from their sound, with an audio.sync provider. The job's result: time in `to` = time in `media` + offsetSeconds, the correlation (below 0.4: no shared sound) and each half of the overlap (steady: no clock drift). With item, also the matching source frame of `to` for that clip's in-point.
 
-- Mode: read · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_media_sync`
+- Mode: read · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_media_sync`
 - `media`: string, required. Project media ID of the first recording
 - `to`: string, required. Project media ID of the second recording
 - `item`: string. A timeline item of the first media whose in-point to map
@@ -251,7 +251,7 @@ A source range from what was said, in the media's stored transcript: a quote (th
 
 Measure source media once and keep the record (by file content, in .bashcut/cache/analysis): file facts (codec, size, rotation, frame timing for variable frame rate, colour transfer/primaries/bit depth, track lengths), picture samples (luma, spread, change, peak as in review.picture, plus sharpness and colourfulness) with every jump searched to its exact frame as a cut candidate, and sound levels (RMS per 0.1 s, peak, stereo correlation). Read it with media.analysis. A record that exists is reused unless force. The job's result lists each media with its key and whether it was reused.
 
-- Mode: read · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_media_analyze`
+- Mode: read · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_media_analyze`
 - `media`: string. Project media ID; every video and audio media by default
 - `force`: boolean. Measure again even when a record exists (drops corrections)
 - `rate`: number, 0.5…30. Picture samples per second (default 4)
@@ -293,7 +293,7 @@ Correct the cut list of an analysed media: add cuts or remove candidates at sour
 
 Transcribe whole source media once with a captions.transcribe provider and keep the transcript (by file content, in .bashcut/cache/transcripts), without placing anything on the timeline. Read it with media.transcript; captions.generate places captions from it without transcribing again, and transcript.words --heard maps its words through the clips. A transcript in the project's content language (by the given provider) is reused unless force. The job's result lists each media with status transcribed, reused or failed and its overview.
 
-- Mode: read · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_media_transcribe`
+- Mode: read · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_media_transcribe`
 - `media`: string. Project media ID; every video and audio media by default
 - `force`: boolean. Transcribe again even when a transcript exists
 - `provider`: string. Provider ID overriding the project preference for one request
@@ -389,7 +389,7 @@ Review the timeline before export. Each issue has a severity (error: spoils the 
 
 Run the measured review for this revision and keep it, so review.run includes it: render the timeline small (two frames a second and both sides of every hard cut on Main, proxies allowed) for black or empty picture, frozen picture, long static shots and jump cuts, and run every enabled plugin review.check side by side (each at most 30 s; a failing or slow check becomes an info issue). Plugin issues carry source (the plugin ID) and IDs prefixed with the provider. A project turns checks off with review.disabledChecks (plugin or provider IDs; timeline apply setProjectProperties). The job's result has the sample count, the plugin checks that ran and the measured issues; measure again after an edit.
 
-- Mode: read · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_review_measure`
+- Mode: read · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_review_measure`
 - `picture`: boolean. Measure the picture (default true)
 - `plugins`: boolean. Run plugin review checks (default true)
 
@@ -571,7 +571,7 @@ List actions plugins add to the editor (Plugins menu, toolbar, context menus, pa
 
 Run a plugin action like clicking it, with parameters (CLI: --params '{"mode":"vivid"}'). The plugin's proposed operations are validated and applied as one undoable edit attributed to the plugin.
 
-- Mode: edit · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_plugins_run`
+- Mode: edit · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_plugins_run`
 - `action`: string, required. Action ID from plugins actions
 - `params`: object. Action parameters (JSON object)
 
@@ -635,7 +635,7 @@ Check a plugin that is not in the registry (a folder, its plugin.json, a .zip or
 
 Download a registry plugin (or its update), check its SHA-256 and manifest, and show the install approval in the Plugins sheet. With path or url instead, add a plugin that is not in the registry (Add Plugin…): a folder, its plugin.json or a .zip / .bashcutplugin file on this Mac, or a link, checked like plugins validate. Only the user can approve; the job ends when the approval is shown.
 
-- Mode: edit · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_plugins_install`
+- Mode: edit · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_plugins_install`
 - `plugin`: string. Plugin ID from plugins search (or use path)
 - `version`: string. A specific registry version; the newest compatible by default
 - `path`: string, path. Plugin folder, plugin.json, or .zip / .bashcutplugin file on this Mac
@@ -649,7 +649,7 @@ Download a registry plugin (or its update), check its SHA-256 and manifest, and 
 
 Replace… an installed plugin with a new version from a folder, its plugin.json or a .zip / .bashcutplugin file, in the same scope. The new files must have the same plugin ID; only the user can approve, like plugins install.
 
-- Mode: edit · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_plugins_replace`
+- Mode: edit · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_plugins_replace`
 - `plugin`: string, required. Plugin ID
 - `path`: string, required, path. Folder, plugin.json, or .zip / .bashcutplugin file with the new version
 
@@ -722,7 +722,7 @@ Do what a user does in a plugin view: click a button, change an input, submit a 
 
 Run a plugin capability directly with raw parameters and return the provider's raw result, for capabilities without their own command (prefer voice speak, captions generate, beats detect … when one exists). Files go to the returned outputDirectory. Plugins call this from their views and actions for capabilities listed in their manifest's uses.
 
-- Mode: edit · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_plugins_invoke`
+- Mode: edit · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_plugins_invoke`
 - `capability`: string, required. Capability ID, such as voice.synthesize
 - `provider`: string. Provider ID; the project's choice or the highest priority by default
 - `params`: object. Request parameters (JSON object)
@@ -738,10 +738,18 @@ Run plugin health checks (Plugins sheet, Check Health); all plugins by default.
 
 ### `bashcut jobs status [<job>]`
 
-Read one job (plugin call or export), or all recent jobs when job is omitted.
+Read one job (plugin call or export), or all recent jobs when job is omitted. Each job has state, progress, step and usage {provider, wallSec, units, costUSD, costSource}: units and cost only as a provider reported them, never estimated.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_jobs_status`
 - `job`: string. Job ID
+
+### `bashcut jobs wait <job> [--timeout <timeout>]`
+
+Wait until a job's state or step changes, or it finishes, up to timeout seconds; returns the job, changed and timedOut. A finished job returns at once. Use it instead of polling jobs status.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_jobs_wait`
+- `job`: string, required. Job ID
+- `timeout`: integer, 1…30, default 25. Seconds to wait at most
 
 ### `bashcut jobs cancel <job>`
 
@@ -783,7 +791,7 @@ Show caption words as they are spoken (Inspector › Text › Word by word): hig
 
 Place captions of project media as one undoable edit, from its stored transcript (media.transcribe) or by transcribing it with a captions.transcribe provider (the whole file is kept as its transcript). Captions follow the clips where the media is heard (trim, position, speed): place the clips first. The job's result says transcript: stored, transcribed or range (only from/to transcribed).
 
-- Mode: edit · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_captions_generate`
+- Mode: edit · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_captions_generate`
 - `media`: string, required. Project media ID
 - `replace`: boolean, default false. Replace this media's captions
 - `wordStyle`: string, one of highlight, karaoke, reveal, none. Show words as they are spoken (see captions.words)
@@ -817,7 +825,7 @@ Re-cut captions from word groups you choose, as one undoable edit: groups is a l
 
 Make captions whose text is the script and whose times come from the speech: each non-empty line of text becomes a cue, timed by matching the script's words to the media's words (its stored transcript, or a new transcription), placed through the clips that play the media as one undoable edit. With replace, captions of that media in the aligned stretch are replaced. With aligner, a captions.align provider times the words instead of the transcript. Returns cues, score (matched words over the longer count) and unmatched words with their times. A job.
 
-- Mode: edit · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_captions_align`
+- Mode: edit · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_captions_align`
 - `media`: string, required. Media ID whose speech times the script
 - `text`: string, required. The script, one cue per line
 - `replace`: boolean. Replace that media's captions in the stretch
@@ -994,7 +1002,7 @@ Set one keyframe like the Inspector's controls with keyframes on: property at a 
 
 Play a video clip backwards (with its linked sound): renders a reversed copy of the source it uses into the project's reversed/ folder and points the clip at it. Reversing again restores the original.
 
-- Mode: edit · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_clip_reverse`
+- Mode: edit · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_clip_reverse`
 - `item`: string. Item ID; the selected clip by default
 
 ## beats
@@ -1003,7 +1011,7 @@ Play a video clip backwards (with its linked sound): renders a reversed copy of 
 
 Detect beats in audio media and set its beat grid as one undoable edit.
 
-- Mode: edit · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_beats_detect`
+- Mode: edit · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_beats_detect`
 - `media`: string, required. Audio media ID already placed on the timeline
 - `provider`: string. Provider ID overriding the project preference for one request
 
@@ -1020,7 +1028,7 @@ Read the beat grid beats detect stored for a media file, in its own seconds: bpm
 
 Measure a media file's sound with an audio.loudness provider: integrated loudness (LUFS), true peak, loudness range (LU) and the energy share in the speech band (300-3000 Hz) and the presence band (1-4 kHz, where consonants carry words). With curve, loudness over time: curve {step 0.1 s, momentary (400 ms) and shortTerm (3 s) LUFS, peakDb per step}. With timeline (instead of media), the whole mix is rendered to a scratch file (no export) and measured with its curve and silences [{start, end, seconds}] where momentary loudness stays at or under −70 LUFS. The job's result holds the values.
 
-- Mode: read · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_audio_measure`
+- Mode: read · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_audio_measure`
 - `media`: string. Project media ID
 - `curve`: boolean. Add loudness over time
 - `timeline`: boolean. Measure the timeline's mix instead of a media file
@@ -1030,7 +1038,7 @@ Measure a media file's sound with an audio.loudness provider: integrated loudnes
 
 How a music file's energy moves, with an audio.energy provider: every step seconds levelDb, onset (density) and fullness (share of octave bands near the loudest), and candidates [{kind lift, drop or breath, seconds, magnitude dB, beatSeconds (snapped), timeline [{item, frame}]}] ranked by size, count per kind. Pointers to listen to, not cut points. A job.
 
-- Mode: read · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_audio_energy`
+- Mode: read · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_audio_energy`
 - `media`: string, required. Project media ID
 - `count`: integer, 1…50. Candidates per kind (default 6)
 - `windowSeconds`: number, 0.5…30. Seconds compared before and after (default 2)
@@ -1040,7 +1048,7 @@ How a music file's energy moves, with an audio.energy provider: every step secon
 
 Read the mix by role without exporting: one stem each for speech (dialogue and voiceover layers and the sound of video clips), music and sound effects is rendered (other sounds at −120 dB, so ducking stays as in the mix) and measured over time. Spoken blocks are those inside heard or caption words, else where the speech stem is over −70 LUFS. Returns voice, musicUnderSpeech (voice minus music, in LU) and musicInGaps as {median, p10, p90, blocks}; speechWindows with the same per window; effects per sound-effect item: loudness (loudest momentary LUFS), peakDb, voiceP95 within nearSeconds, deltaDb, masked (under that voice level), onset and peak offsets in frames to the nearest cut, beat and word edge; and each stem's integrated loudness. A job; no levels are changed.
 
-- Mode: read · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_audio_mix-measure`
+- Mode: read · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_audio_mix-measure`
 - `nearSeconds`: number, 0.1…10. Seconds around an effect read for the voice (default 1)
 - `provider`: string. Provider ID overriding the project preference for one request
 
@@ -1243,11 +1251,11 @@ List the voices of every voice.synthesize provider: per provider plugin, name, a
 
 - Mode: read · Runs: immediately · MCP: `bashcut_voice_voices`
 
-### `bashcut voice speak [<text>] [--replace <replace>] [--takes <takes>] [--at-frame <atFrame>] [--provider <provider>] [--keep-takes] [--target-rate <targetRate>] [--choose <choose>] [--clone-consent]`
+### `bashcut voice speak [<text>] [--replace <replace>] [--takes <takes>] [--at-frame <atFrame>] [--provider <provider>] [--keep-takes] [--target-rate <targetRate>] [--choose <choose>] [--clone-consent] [--request-id <requestId>] [--dry-run]`
 
 Synthesize voice takes and insert one on the Voiceover track: the take whose rate is closest to targetRate, the take number choose, or else the provider's best score (the first take when it gives none). Every take is reported with seconds, units (syllables, words or characters for the content language), unitsPerSecond over its sound, leadingSilence, trailingSilence, pauses and its file; the rates are kept per voice (speech rate). The item keeps voice {text, language, provider, voice}. With replace, the take goes into that item instead. With keepTakes, insert nothing and keep every take file so one can be chosen and placed with media.import.
 
-- Mode: edit · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_voice_speak`
+- Mode: edit · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_voice_speak`
 - `text`: string. Voiceover text in the project content language (with replace, the item's voice text by default)
 - `replace`: string. Voiceover item to put the new take into, keeping its place; its captions are timed again from the new take
 - `takes`: integer, 1…8, default 3. Number of takes to generate
@@ -1257,12 +1265,14 @@ Synthesize voice takes and insert one on the Voiceover track: the take whose rat
 - `targetRate`: number, 0.1…50. Insert the take closest to this many units per second
 - `choose`: integer, 1…8. Insert this take (1 = first)
 - `cloneConsent`: boolean. The user agreed to clone the voice set in the plugin's options; providers that clone refuse without it
+- `requestId`: string. Your stable ID for this request: sending it again returns the same job instead of starting (and paying for) another; the provider receives it too
+- `dryRun`: boolean, default false. Return the request as it would go to the provider (without option values), whether the provider is paid and its estimate if it gives one; nothing runs
 
 ### `bashcut voice check [--item <item>] [--media <media>] [--text <text>] [--min-similarity <minSimilarity>] [--provider <provider>]`
 
 Check what a voiceover take says against the text it should say: the take (a voiceover item, or a media) is transcribed (or its stored transcript reused) and diffed word by word. Returns similarity (matched words over the longer word count), words [{text, heard, kind match|substituted|missing, start, end}], unmatched, extra (heard but not in the text) and, only with minSimilarity, passed. The text defaults to the item's voice.text. A job.
 
-- Mode: read · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_voice_check`
+- Mode: read · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_voice_check`
 - `item`: string. Voiceover item ID
 - `media`: string. Media ID instead of an item
 - `text`: string. The text the take should say
@@ -1945,7 +1955,7 @@ Add a library item to the timeline as a new item: a text preset (with its stored
 
 Measure an audio library item's file and save the values as a new version: its length, integrated loudness and true peak (an audio.loudness provider, as audio measure), landmarks {onset, peak, tail} in seconds (where it passes the −70 LUFS gate, peaks and drops back under it) and, unless it is a sound effect, its tempo in BPM (an audio.beats provider, as beats detect). Runs as a job; a missing provider leaves that value and says why in notes. Agents saving to the user scope wait for approval. Tag mood and genre with library update --tags after listening or reading the analysis.
 
-- Mode: edit · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_library_analyze`
+- Mode: edit · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_library_analyze`
 - `id`: string, required. Item ID, or scope:id to pick one scope
 - `scope`: string, one of built-in, user, project, plugin. Look only in this scope; without it project, user, plugin, then built-in
 - `provider`: string. audio.loudness provider ID; the project's choice by default
@@ -1963,7 +1973,7 @@ Play a library item's sound in BashCut (the Audio panel's play button), stopping
 
 Ask an installed plugin that provides library.search (sounds, stickers, GIFs… from Freesound, Giphy or another source) for candidate items of a kind. Runs as a job; its result lists candidates with their fields, downloaded file and preview paths, source and license. Nothing is saved until library add --from-result <job>:<index> (or save here) copies one into the library. Network use is the plugin's.
 
-- Mode: edit · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_library_search`
+- Mode: edit · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_library_search`
 - `query`: string, required. What to look for
 - `kind`: string, required, one of audio, text-preset, sticker, effect-preset, transition-preset, look, voice. Item kind
 - `provider`: string. Plugin or provider ID; the first available provider that serves the kind by default
@@ -1972,11 +1982,11 @@ Ask an installed plugin that provides library.search (sounds, stickers, GIFs… 
 - `scope`: string, one of project, user, default "project". Where save puts it: project (the default) or user (agents need approval)
 - `page`: integer, 1…1000, default 1. Result page, from 1
 
-### `bashcut library generate <prompt> --kind <kind> [--provider <provider>] [--limit <limit>] [--save <save>] [--scope <scope>] [--params <params>]`
+### `bashcut library generate <prompt> --kind <kind> [--provider <provider>] [--limit <limit>] [--save <save>] [--scope <scope>] [--params <params>] [--request-id <requestId>] [--dry-run]`
 
 Ask an installed plugin that provides library.generate (AI music, stickers…) to make candidate items of a kind from a prompt. Runs as a job; its result lists candidates like library search. Nothing is saved until library add --from-result <job>:<index> (or save here) copies one into the library.
 
-- Mode: edit · Runs: as a background job (poll `jobs status`) · MCP: `bashcut_library_generate`
+- Mode: edit · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_library_generate`
 - `prompt`: string, required. What to make
 - `kind`: string, required, one of audio, text-preset, sticker, effect-preset, transition-preset, look, voice. Item kind
 - `provider`: string. Plugin or provider ID; the first available provider that serves the kind by default
@@ -1984,6 +1994,8 @@ Ask an installed plugin that provides library.generate (AI music, stickers…) t
 - `save`: integer, ≥ 0. Also save the candidate with this index (from 0) when the job finishes
 - `scope`: string, one of project, user, default "project". Where save puts it: project (the default) or user (agents need approval)
 - `params`: object. Hints for the provider (JSON), such as {"seconds": 30}
+- `requestId`: string. Your stable ID for this request: sending it again returns the same job instead of starting (and paying for) another; the provider receives it too
+- `dryRun`: boolean, default false. Return the request as it would go to the provider (without option values), whether the provider is paid and its estimate if it gives one; nothing runs
 
 ### `bashcut library import-pack <path> [--scope <scope>] [--replace]`
 

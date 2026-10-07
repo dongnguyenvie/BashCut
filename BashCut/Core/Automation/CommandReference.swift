@@ -32,7 +32,7 @@ public enum CommandReference {
     private static func runs(_ execution: CommandSpec.Execution) -> String {
         switch execution {
         case .immediate: "immediately"
-        case .job: "as a background job (poll `jobs status`)"
+        case .job: "as a background job (`jobs wait` until it ends)"
         case .approval: "after the user approves in the app"
         }
     }

@@ -288,7 +288,7 @@ extension CommandCatalog {
                              cli: .option("choose")),
             CommandParameter("cloneConsent", .boolean, "The user agreed to clone the voice set in the plugin's "
                              + "options; providers that clone refuse without it", cli: .flag("clone-consent")),
-        ],
+        ] + paidRequestParameters,
         execution: .job)
 
     /// Voices by their facts (P0-C7).

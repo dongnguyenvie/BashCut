@@ -221,7 +221,7 @@ extension ProjectDocument {
             let consent = arguments.bool("cloneConsent")
             let choice = try VoiceChoice(
                 targetRate: arguments.optionalDouble("targetRate"), index: arguments.optionalInt("choose"), count: count)
-            return try document.startCapabilityJob("voice.speak", author: author) { document in
+            let work: @MainActor (ProjectDocument) async throws -> JSONValue = { document in
                 if keepTakes, let text {
                     return try await document.generateKeptTakes(
                         text: text, count: count, provider: provider, cloneConsent: consent)
@@ -231,6 +231,9 @@ extension ProjectDocument {
                         text: text, count: count, frame: frame, provider: provider, choice: choice, replace: replace,
                         cloneConsent: consent), author: author)
             }
+            if arguments.bool("dryRun") { return try await document.capabilityDryRun(work) }
+            return try document.startCapabilityJob(
+                "voice.speak", author: author, requestID: arguments.optionalString("requestId"), work: work)
         }
         handle("voice.voices") { document, _, _ in document.voiceList() }
     }

@@ -247,7 +247,7 @@ extension CommandCatalog {
             ] + libraryProviderParameters(limit: 4) + [
                 CommandParameter("params", .object, "Hints for the provider (JSON), such as {\"seconds\": 30}",
                                  cli: .option("params")),
-            ],
+            ] + paidRequestParameters,
             execution: .job),
         CommandSpec(
             "library.import-pack", .edit,

@@ -40,7 +40,8 @@ extension CommandCatalog {
         raw insert/move operations that overlap are rejected.
         Edits need --base-rev N from the latest read. One request is one atomic apply call.
         On staleRevision, re-read and retry. Changes appear in the UI and can be undone.
-        Job commands return a job ID; poll `bashcut jobs status JOB_ID`. Their result is one undoable edit.
+        Job commands return a job ID; `bashcut jobs wait JOB_ID` returns when it moves on (repeat until it ends).
+        Their result is one undoable edit.
         Installing plugins is user-only. Add `--format text` to print text results without JSON quoting.
         Change the canvas of the open project with `bashcut project format --canvas landscape` (portrait, landscape,
         square); text sizes follow the short side, so titles keep their look. New projects fit each clip inside the
