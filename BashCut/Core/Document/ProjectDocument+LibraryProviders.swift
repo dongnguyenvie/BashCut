@@ -39,6 +39,9 @@ extension ProjectDocument {
         guard !plugins.calling.contains(request.capability) else {
             throw RPCFailure(-32003, "\(request.capability) is already running; retry later", category: .busyRunning)
         }
+        let report = plugins.service.capabilityStatus(
+            request.capability, projectRoot: fileURL?.deletingLastPathComponent(), kind: request.kind)
+        if !report.available { throw CapabilityUnavailable(report) }
         if request.save != nil, request.scope == .project, fileURL == nil {
             throw RPCFailure(-32602, "Open a saved project to save into its library, or pass --scope user")
         }

@@ -61,7 +61,10 @@ public enum RPCErrorCategory: String, Sendable, CaseIterable {
         case .unavailable: return step(nil, "Open BashCut (or the project) and retry.")
         case .permission: return step(nil, "Run from a terminal BashCut opened, which has BASHCUT_SESSION_TOKEN.")
         case .outOfScope: return step("context.get", "context get › scope lists what you may change; ask the user.")
-        case .capabilityMissing: return step("plugins.search", "No plugin provides this; find or install one.")
+        case .capabilityMissing:
+            return step("capabilities.get", "No provider can serve this now. reason missing: find a plugin "
+                + "(plugins search) for the user to install; not_configured: the user turns it on or approves it; "
+                + "unhealthy: the user fixes the dependency plugins health names.")
         case .unsupportedMedia:
             return step("media.inventory", "This Mac cannot decode that media's video; convert it to H.264 or HEVC "
                 + "(for example ffmpeg -i in -c:v libx264 -crf 18 -c:a aac out.mp4) and import the converted file.")
