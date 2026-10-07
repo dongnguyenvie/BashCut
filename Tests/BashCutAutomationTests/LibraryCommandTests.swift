@@ -96,6 +96,26 @@ struct LibraryCommandTests {
         #expect(list.params == ["panel": .string("stickers"), "pack": .string("Arrows")])
     }
 
+    @Test("Clip library commands (P2-H5): add footage, list the Media panel, generate and place a clip")
+    func clipLibraryCommands() throws {
+        let add = try CommandLineParser.parse([
+            "library", "add", "--kind", "clip", "--name", "Drone", "--file", "/tmp/drone.mp4",
+            "--params", #"{"model":"any","aspect":"9:16"}"#,
+        ])
+        #expect(add.params["kind"] == .string("clip") && add.params["file"] == .string("/tmp/drone.mp4"))
+        let list = try CommandLineParser.parse(["library", "list", "--panel", "media"])
+        #expect(list.params == ["panel": .string("media")])
+        let generate = try CommandLineParser.parse(["library", "generate", "city at dusk", "--kind", "clip"])
+        #expect(generate.params["kind"] == .string("clip"))
+        let place = try CommandLineParser.parse([
+            "library", "place", "project:drone", "--at-frame", "30", "--duration", "60", "--track", "v2", "--base-rev", "3",
+        ])
+        #expect(place.params["track"] == .string("v2") && place.params["duration"] == .integer(60))
+        let kinds = try #require(CommandCatalog.spec(named: "library.save-selection")).inputSchema.object["properties"]?
+            .object["kind"]?.object["enum"]?.array
+        #expect(kinds?.contains(.string("clip")) == false)
+    }
+
     @Test("Plugin library commands (#81): search and generate run as jobs, add saves a candidate, the sheets open")
     @MainActor func pluginLibraryCommands() throws {
         let search = try CommandLineParser.parse([

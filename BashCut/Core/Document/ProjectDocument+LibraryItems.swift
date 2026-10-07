@@ -74,6 +74,8 @@ extension ProjectDocument {
             // Counts its own use.
             let placed = try await placeLibraryAudio(item, placement)
             return (placed.revision, placed.1.itemIDs.first ?? "")
+        case .clip:
+            return try await placeLibraryClipItem(item, placement)
         default:
             throw RPCFailure(-32602, unsupported("Placing \(item.kind?.rawValue ?? "these") items", item))
         }
@@ -192,11 +194,8 @@ extension ProjectDocument {
             // A .cube on its own is a look that is just that LUT (#79).
             item["params"] = .object(item.params.merging(["color": .object([:])]) { $1 })
         }
-        if kind == .audio, let file {
-            item["params"] = .object(try await audioItemParams(item.params, file: file))
-        }
-        if kind == .sticker, let file {
-            item["params"] = .object(try await stickerItemParams(item.params, file: file))
+        if let file, let measured = try await measuredItemParams(kind, item.params, file: file) {
+            item["params"] = .object(measured)
         }
         item["createdBy"] = LibraryItem.creator(author: author, plugin: plugin)
         _ = try catalog.store(scope)
@@ -451,6 +450,7 @@ extension ProjectDocument {
                 trackID: arguments.optionalString("track"), position: position, size: arguments.optionalDouble("size"),
                 author: author, baseRevision: try arguments.int("baseRev"))
             if item.kind == .audio { return try await document.placeLibraryAudioCommand(item, placement) }
+            if item.kind == .clip { return try await document.placeLibraryClip(item, placement) }
             if document.isMediaSticker(item) { return try await document.placeLibrarySticker(item, placement) }
             let result = try await document.placeLibraryItem(item, placement, text: arguments.optionalString("text"))
             var placed: [String: JSONValue] = [

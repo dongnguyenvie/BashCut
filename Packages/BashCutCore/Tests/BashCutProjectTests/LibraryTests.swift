@@ -48,6 +48,28 @@ struct LibraryTests {
         #expect(LibraryKind.kinds(inPanel: "stickers") == [.sticker])
     }
 
+    @Test("A clip (P2-H5) needs a movie or image file, keeps any params and lists in the Media panel")
+    func clipItems() throws {
+        let noFile = LibraryItem(id: "c", kind: .clip, name: "Clip")
+        do { try noFile.validate() } catch { #expect(error.localizedDescription.contains("needs a file")) }
+        #expect((try? noFile.validate()) == nil)
+        var wrong = noFile
+        wrong["file"] = .string("files/clip.wav")
+        do { try wrong.validate() } catch { #expect(error.localizedDescription.contains("movie")) }
+        #expect((try? wrong.validate()) == nil)
+        var clip = LibraryItem(
+            id: "drone", kind: .clip, name: "Drone shot",
+            params: ["model": .string("any-model"), "aspect": .string("9:16"), "seconds": .number(5)])
+        clip["file"] = .string("files/drone.mp4")
+        try clip.validate()
+        var still = clip
+        still["file"] = .string("files/still.png")
+        try still.validate()
+        #expect(LibraryClip.isImage("files/still.png") && !LibraryClip.isImage("files/drone.mp4"))
+        #expect(LibraryKind.kinds(inPanel: "media") == [.clip])
+        #expect(clip.json().object["panel"] == .string("media"))
+    }
+
     @Test("Stores add, version, copy and remove items; built-in items stay read-only")
     func storeChanges() throws {
         defer { try? FileManager.default.removeItem(at: folder) }

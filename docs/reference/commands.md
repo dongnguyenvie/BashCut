@@ -982,7 +982,7 @@ Whether each plugin capability (or one) can serve now: available, else reason mi
 
 - Mode: read · Runs: immediately · MCP: `bashcut_capabilities_get`
 - `capability`: string. Capability ID, such as captions.transcribe; all by default
-- `kind`: string, one of audio, text-preset, sticker, effect-preset, transition-preset, look, voice. Only providers serving this library item kind
+- `kind`: string, one of audio, text-preset, sticker, effect-preset, transition-preset, look, voice, clip. Only providers serving this library item kind
 - `voices`: boolean. Add the voices of the voice providers
 
 ## beats
@@ -1758,11 +1758,11 @@ Propose a change to an agent kit skill: the line diff against the kit's SKILL.md
 
 ### `bashcut library list [--kind <kind>] [--panel <panel>] [--tag <tag>] [--scope <scope>] [--created-by <createdBy>] [--pack <pack>] [--query <query>]`
 
-List library items (Audio, Text, Stickers, Effects, Transitions, Filters, Voice) from the open project, this Mac, plugins and built-in packs, with usage. Check here before making something new.
+List library items (Media clips, Audio, Text, Stickers, Effects, Transitions, Filters, Voice) from the open project, this Mac, plugins and built-in packs, with usage. Check here before making something new.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_library_list`
-- `kind`: string, one of audio, text-preset, sticker, effect-preset, transition-preset, look, voice. Item kind
-- `panel`: string, one of audio, text, stickers, effects, transitions, filters, voice. Only items the library panel shows
+- `kind`: string, one of audio, text-preset, sticker, effect-preset, transition-preset, look, voice, clip. Item kind
+- `panel`: string, one of media, audio, text, stickers, effects, transitions, filters, voice. Only items the library panel shows
 - `tag`: string. Only items with this tag
 - `scope`: string, one of built-in, user, project, plugin. Look only in this scope; without it project, user, plugin, then built-in
 - `createdBy`: string, one of user, agent, plugin, built-in. Only items made by
@@ -1782,15 +1782,15 @@ Read one library item, with its earlier versions and file paths.
 Usage of every library item, the saved items nobody used, and groups of duplicates (same kind and content), to find what to prune or merge.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_library_stats`
-- `kind`: string, one of audio, text-preset, sticker, effect-preset, transition-preset, look, voice. Item kind
-- `panel`: string, one of audio, text, stickers, effects, transitions, filters, voice. Only items the library panel shows
+- `kind`: string, one of audio, text-preset, sticker, effect-preset, transition-preset, look, voice, clip. Item kind
+- `panel`: string, one of media, audio, text, stickers, effects, transitions, filters, voice. Only items the library panel shows
 
 ### `bashcut library add [--kind <kind>] [--name <name>] [--from-result <fromResult>] [--id <id>] [--scope <scope>] [--origin <origin>] [--author <author>] [--tags <tags>] [--pack <pack>] [--params <params>] [--file <file>] [--preview <preview>] [--source <source>] [--license <license>]`
 
 Save a new library item in the project or on this Mac. Files are copied in. Agents saving to the user scope wait for approval. To improve an existing item, use library update. fromResult saves a candidate of a finished library search or library generate job instead (its kind, name, files, source and license; the other fields here override them).
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_library_add`
-- `kind`: string, one of audio, text-preset, sticker, effect-preset, transition-preset, look, voice. Item kind (required unless fromResult)
+- `kind`: string, one of audio, text-preset, sticker, effect-preset, transition-preset, look, voice, clip. Item kind (required unless fromResult)
 - `name`: string. Display name (required unless fromResult)
 - `fromResult`: string. A library search or generate candidate as <job>:<index> (index from 0, as the job result lists it)
 - `id`: string. Item ID: lowercase letters, digits and hyphens; from the name by default
@@ -1799,8 +1799,8 @@ Save a new library item in the project or on this Mac. Files are copied in. Agen
 - `author`: string. Who made it, for the credit line
 - `tags`: string. Comma-separated tags (mood, use, genre…)
 - `pack`: string. Pack or collection name the panel groups it under
-- `params`: object. What the kind needs (JSON): text-preset {textPreset, text, textStyle: {size, positionY, strokeWidth} (the item property ranges), animation: a clip motion preset}, the last two optional; sticker {emoji, textPreset} or a file (PNG, JPEG, HEIC, WebP, GIF, APNG, or a .mov/.mp4 with alpha; not Lottie) with {stickerKind: emoji|image|animated|video-alpha (from the file by default), size: width as 0.01–1 of the frame, position: center|top|bottom|left|right|top-left|top-right|bottom-left|bottom-right or {x, y} in 0–1, animation: a clip motion preset, seconds}, all optional; effect-preset (a recipe) {steps: [{op: motion|keyframes|speed|speedCurve|reverse|freeze|patch|sfx|text, …}], parameters: {name: {default, min, max}}} or the older {patch: item properties}, with its own sound as file; transition-preset {kind, duration, easing: linear|in|out|inOut, sfx: audio item ID} (or its own sound as file); look (a filter stack) {color: {exposure, contrast, saturation, lutStrength}, lutName} with an optional .cube LUT as file; audio (its file required) {role: music|sfx|ambience, seconds, bpm, loopable, lufs, truePeak}, all optional (library add measures seconds and picks a role by length; library analyze fills the rest), with mood and genre as tags
-- `file`: string, path. File to copy in (audio, image or alpha-movie sticker, a look's .cube LUT…)
+- `params`: object. What the kind needs (JSON): text-preset {textPreset, text, textStyle: {size, positionY, strokeWidth} (the item property ranges), animation: a clip motion preset}, the last two optional; sticker {emoji, textPreset} or a file (PNG, JPEG, HEIC, WebP, GIF, APNG, or a .mov/.mp4 with alpha; not Lottie) with {stickerKind: emoji|image|animated|video-alpha (from the file by default), size: width as 0.01–1 of the frame, position: center|top|bottom|left|right|top-left|top-right|bottom-left|bottom-right or {x, y} in 0–1, animation: a clip motion preset, seconds}, all optional; effect-preset (a recipe) {steps: [{op: motion|keyframes|speed|speedCurve|reverse|freeze|patch|sfx|text, …}], parameters: {name: {default, min, max}}} or the older {patch: item properties}, with its own sound as file; transition-preset {kind, duration, easing: linear|in|out|inOut, sfx: audio item ID} (or its own sound as file); look (a filter stack) {color: {exposure, contrast, saturation, lutStrength}, lutName} with an optional .cube LUT as file; audio (its file required) {role: music|sfx|ambience, seconds, bpm, loopable, lufs, truePeak}, all optional (library add measures seconds and picks a role by length; library analyze fills the rest), with mood and genre as tags; clip (footage: a .mov/.mp4/.m4v or an image file, required) takes any keys (library add measures seconds, width, height and hasAudio; a generator's model, prompt or aspect may ride along)
+- `file`: string, path. File to copy in (audio, image or alpha-movie sticker, a look's .cube LUT, a clip's movie or image…)
 - `preview`: string, path. Preview image, GIF or audio snippet to copy in
 - `source`: string. Where it came from (URL or note)
 - `license`: string. License: text as written, or a JSON object {id, redistribute, commercial, attribution…}; stored as given
@@ -1815,8 +1815,8 @@ Improve a library item: saves a new version (the old one stays in its history). 
 - `name`: string. New display name
 - `tags`: string. Comma-separated tags (mood, use, genre…)
 - `pack`: string. Pack or collection name the panel groups it under
-- `params`: object. What the kind needs (JSON): text-preset {textPreset, text, textStyle: {size, positionY, strokeWidth} (the item property ranges), animation: a clip motion preset}, the last two optional; sticker {emoji, textPreset} or a file (PNG, JPEG, HEIC, WebP, GIF, APNG, or a .mov/.mp4 with alpha; not Lottie) with {stickerKind: emoji|image|animated|video-alpha (from the file by default), size: width as 0.01–1 of the frame, position: center|top|bottom|left|right|top-left|top-right|bottom-left|bottom-right or {x, y} in 0–1, animation: a clip motion preset, seconds}, all optional; effect-preset (a recipe) {steps: [{op: motion|keyframes|speed|speedCurve|reverse|freeze|patch|sfx|text, …}], parameters: {name: {default, min, max}}} or the older {patch: item properties}, with its own sound as file; transition-preset {kind, duration, easing: linear|in|out|inOut, sfx: audio item ID} (or its own sound as file); look (a filter stack) {color: {exposure, contrast, saturation, lutStrength}, lutName} with an optional .cube LUT as file; audio (its file required) {role: music|sfx|ambience, seconds, bpm, loopable, lufs, truePeak}, all optional (library add measures seconds and picks a role by length; library analyze fills the rest), with mood and genre as tags
-- `file`: string, path. File to copy in (audio, image or alpha-movie sticker, a look's .cube LUT…)
+- `params`: object. What the kind needs (JSON): text-preset {textPreset, text, textStyle: {size, positionY, strokeWidth} (the item property ranges), animation: a clip motion preset}, the last two optional; sticker {emoji, textPreset} or a file (PNG, JPEG, HEIC, WebP, GIF, APNG, or a .mov/.mp4 with alpha; not Lottie) with {stickerKind: emoji|image|animated|video-alpha (from the file by default), size: width as 0.01–1 of the frame, position: center|top|bottom|left|right|top-left|top-right|bottom-left|bottom-right or {x, y} in 0–1, animation: a clip motion preset, seconds}, all optional; effect-preset (a recipe) {steps: [{op: motion|keyframes|speed|speedCurve|reverse|freeze|patch|sfx|text, …}], parameters: {name: {default, min, max}}} or the older {patch: item properties}, with its own sound as file; transition-preset {kind, duration, easing: linear|in|out|inOut, sfx: audio item ID} (or its own sound as file); look (a filter stack) {color: {exposure, contrast, saturation, lutStrength}, lutName} with an optional .cube LUT as file; audio (its file required) {role: music|sfx|ambience, seconds, bpm, loopable, lufs, truePeak}, all optional (library add measures seconds and picks a role by length; library analyze fills the rest), with mood and genre as tags; clip (footage: a .mov/.mp4/.m4v or an image file, required) takes any keys (library add measures seconds, width, height and hasAudio; a generator's model, prompt or aspect may ride along)
+- `file`: string, path. File to copy in (audio, image or alpha-movie sticker, a look's .cube LUT, a clip's movie or image…)
 - `preview`: string, path. Preview image, GIF or audio snippet to copy in
 - `source`: string. Where it came from (URL or note)
 - `license`: string. License: text as written, or a JSON object {id, redistribute, commercial, attribution…}; stored as given
@@ -1869,14 +1869,14 @@ Use a library item on an existing timeline item: a text preset on a text item (i
 
 ### `bashcut library place <id> [--scope <scope>] [--at-frame <atFrame>] [--duration <duration>] [--track <track>] [--position <position>] [--size <size>] [--text <text>] --base-rev <baseRev>`
 
-Add a library item to the timeline as a new item: a text preset (with its stored textStyle and animation) or emoji sticker as text, an image, animated or video-alpha sticker (its file copied into the project's stickers/ folder once per content, imported and placed on the Overlay layer, added when missing, at size and position, as one undo step; an animated sticker shows its first frame for now and the result says so), a look as an adjustment (with its LUT added to the project in the same undo step), or audio: its file copied into the project's music/ or sfx/ folder (once per content), imported and placed on the Music layer (music, ambience) or SFX layer (sfx), the layer added when missing, as one undo step. duration trims a sound; longer than the file, a loopable sound repeats back to back and another plays once (the result says so). At the playhead by default.
+Add a library item to the timeline as a new item: a text preset (with its stored textStyle and animation) or emoji sticker as text, an image, animated or video-alpha sticker (its file copied into the project's stickers/ folder once per content, imported and placed on the Overlay layer, added when missing, at size and position, as one undo step; an animated sticker shows its first frame for now and the result says so), a look as an adjustment (with its LUT added to the project in the same undo step), or audio: its file copied into the project's music/ or sfx/ folder (once per content), imported and placed on the Music layer (music, ambience) or SFX layer (sfx), the layer added when missing, as one undo step. duration trims a sound; longer than the file, a loopable sound repeats back to back and another plays once (the result says so). A clip (footage) is copied into the project's clips/ folder (once per content), imported and placed like media place: on track or the main layer, spilling onto a free layer when the range is taken, duration trimming it, as one undo step. At the playhead by default.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_library_place`
 - `id`: string, required. Item ID, or scope:id to pick one scope
 - `scope`: string, one of built-in, user, project, plugin. Look only in this scope; without it project, user, plugin, then built-in
 - `atFrame`: integer, ≥ 0. First timeline frame
 - `duration`: integer, ≥ 1. Length in timeline frames
-- `track`: string. Layer ID; for audio, the Music or SFX layer by its role by default; for a sticker, the Overlay layer
+- `track`: string. Layer ID; for audio, the Music or SFX layer by its role by default; for a sticker, the Overlay layer; for a clip, the main layer
 - `position`: string. Sticker: center, top, bottom, left, right, top-left, top-right, bottom-left or bottom-right (inside the safe area), or x,y in 0–1 (its centre, from the top left); the sticker's default otherwise
 - `size`: number, 0.01…1. Sticker: width as a fraction of the frame width (0.3 by default)
 - `text`: string. Text for a text preset instead of its sample
@@ -1906,7 +1906,7 @@ Ask an installed plugin that provides library.search (sounds, stickers, GIFs… 
 
 - Mode: edit · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_library_search`
 - `query`: string, required. What to look for
-- `kind`: string, required, one of audio, text-preset, sticker, effect-preset, transition-preset, look, voice. Item kind
+- `kind`: string, required, one of audio, text-preset, sticker, effect-preset, transition-preset, look, voice, clip. Item kind
 - `provider`: string. Plugin or provider ID; the first available provider that serves the kind by default
 - `limit`: integer, 1…50, default 12. Most candidates to return
 - `save`: integer, ≥ 0. Also save the candidate with this index (from 0) when the job finishes
@@ -1921,7 +1921,7 @@ Ask an installed plugin that provides library.generate (AI music, stickers…) t
 
 - Mode: edit · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_library_generate`
 - `prompt`: string, required. What to make
-- `kind`: string, required, one of audio, text-preset, sticker, effect-preset, transition-preset, look, voice. Item kind
+- `kind`: string, required, one of audio, text-preset, sticker, effect-preset, transition-preset, look, voice, clip. Item kind
 - `provider`: string. Plugin or provider ID; the first available provider that serves the kind by default
 - `limit`: integer, 1…50, default 4. Most candidates to return
 - `save`: integer, ≥ 0. Also save the candidate with this index (from 0) when the job finishes
@@ -1946,7 +1946,7 @@ Write library items as a pack folder (pack.json and files) to share or import el
 - Mode: edit · Runs: immediately · MCP: `bashcut_library_export-pack`
 - `output`: string, required, path. New or empty folder to write
 - `pack`: string. Items in this pack
-- `kind`: string, one of audio, text-preset, sticker, effect-preset, transition-preset, look, voice. Item kind
+- `kind`: string, one of audio, text-preset, sticker, effect-preset, transition-preset, look, voice, clip. Item kind
 - `scope`: string, one of built-in, user, project, plugin. Look only in this scope; without it project, user, plugin, then built-in
 - `name`: string. Pack name; the pack filter or the folder name by default
 

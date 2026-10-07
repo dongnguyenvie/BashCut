@@ -125,6 +125,10 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   Vision); raw boxes, confidence and time, no labels or review checks. `review layout` face fields stay null.
 - The agent's own fields on a media (P2-H10): op `setMediaData` keeps takes, verdicts and reasons under `data`
   (`media list` shows them); core never reads them, and there are no take commands.
+- Footage in the library (P2-H5): library kind `clip` (a movie or image, free params) for generated or downloaded
+  B-roll; `library generate --kind clip` asks a provider, `library place` copies it into `clips/` and places it like
+  `media place`; the Media panel's Clips tab. Pixel effects and AI transitions stay render-then-place plugin actions
+  (P2-H11, plugins guide), with no per-frame plugin renderer.
 - `color measure` gives each clip's luma percentiles, saturation, tint per band and clipped/crushed shares from
   source frames or the edit as graded, the change a grade makes (with mean ΔE) and each clip's distance from the
   median clip.
