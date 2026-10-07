@@ -19,6 +19,9 @@ struct MediaStillsTests {
         return Int(pixel[0])
     }
 
+    /// Red level at `x, y` (top-left origin).
+    func red(_ image: CGImage, _ x: Int, _ y: Int) -> Int { grey(image, x, y) }
+
     @Test("Exact frames come back by index, upright, at the asked size")
     func exactFrames() async throws {
         let root = try TestFixtures.temporaryDirectory("media-stills")
@@ -77,5 +80,23 @@ struct MediaStillsTests {
             frames: [], levels: (0.1, [-30]), gaps: [], words: [], from: 0, to: 1)
         #expect(MediaStills.strip(sound, width: 400)?.height == 22 + 110 + 44, "sound alone has no frame row")
         #expect(MediaStills.clock(75.25) == "1:15.3")
+
+        // Zones shade the picture: the bottom caption bar of a portrait cell turns red, its middle stays black.
+        let tall = try #require(CGContext(
+            data: nil, width: 90, height: 160, bitsPerComponent: 8, bytesPerRow: 360,
+            space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        tall.setFillColor(CGColor(gray: 0, alpha: 1))
+        tall.fill(CGRect(x: 0, y: 0, width: 90, height: 160))
+        let portrait = try #require(tall.makeImage())
+        let zoned = try #require(MediaStills.sheet(
+            [MediaStills.Cell(image: portrait, label: "", group: 0, zones: SafeArea(top: 0.1, bottom: 0.2, sideWidth: 0.1, sideHeight: 0.3))],
+            columns: 1, longEdge: 160))
+        #expect(red(zoned, 20, 4 + 150) > 40)
+        #expect(red(zoned, 20, 4 + 80) < 10)
+
+        // A cut mark is a line through the strip.
+        let marked = try #require(MediaStills.strip(
+            MediaStills.Strip(frames: [], levels: nil, gaps: [], words: [], from: 0, to: 1, marks: [0.5]), width: 400))
+        #expect(red(marked, 200, 30) > 200)
     }
 }

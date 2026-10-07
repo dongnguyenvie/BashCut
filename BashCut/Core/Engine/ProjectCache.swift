@@ -29,9 +29,14 @@ public enum ProjectCache {
         case mediaStills = "media-stills"
         /// Capture facts of source files (`media.inventory`), `<content key>.json`.
         case inventory
+        /// Contact sheets of the composed timeline (`timeline.sheet`), one folder per revision and request.
+        case timelineSheets = "timeline-sheets"
 
         /// Where this cache was before `.bashcut/cache/`; waveforms were already there, and analysis is newer.
-        var legacyPath: String? { [.waveforms, .analysis, .transcripts, .mediaStills, .inventory].contains(self) ? nil : ".bashcut/" + rawValue }
+        var legacyPath: String? {
+            [.waveforms, .analysis, .transcripts, .mediaStills, .inventory, .timelineSheets].contains(self)
+                ? nil : ".bashcut/" + rawValue
+        }
     }
 
     public static func root(projectRoot: URL) -> URL {

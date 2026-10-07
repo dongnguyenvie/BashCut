@@ -48,6 +48,8 @@ final class ProjectDocument {
     var importReport: TimelineImport?
     /// The loudness the last export of this session measured, for review (#431); not saved.
     var reviewLoudness: ReviewLoudness?
+    /// The file the last export of this session wrote and the revision it shows (`review.sync --rendered`).
+    var lastRender: (url: URL, revision: Int)?
     /// The last picture measurement (`review.measure`, #432), for review; not saved.
     var reviewPicture: ReviewPicture?
     /// What plugin review checks reported on the last `review.measure` (#451); not saved.

@@ -69,6 +69,7 @@ arguments.
 | `media inventory` | read | None yet: capture time, place, device, orientation, speech and what is measured, transcribed and described, per media, folder and project |
 | `media frames` / `media frame` / `media strip` | read | None yet: exact source frames, contact sheets (with a REF row) and a filmstrip with level, gaps and words, by source time |
 | `media describe` / `media description` | edit / read | None yet: shot facts the agent saw in a source file (closed vocabulary), with their coverage |
+| `review cuts` / `review sync` / `review window` / `timeline sheet` | read | None yet: every cut with kind and framing; cuts, titles and sound effects timed against beats and words (and a render against the timeline); the frames, level and words around a frame; contact sheets of the composed edit with zones per output |
 | `review run` / `review measure` / `review picture` / `review shots` / `review layout` | read | Review, Measure picture (`review picture`: the raw samples and cuts behind the picture checks; `review shots`: the shots on Main with timing, source, framing and motion; `review layout`: rendered text bounds next to the platform zones) |
 | `captions export` | read | Text panel, Export SRT |
 | `export status` / `jobs status` | read | Export queue, job progress |

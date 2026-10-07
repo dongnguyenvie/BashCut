@@ -93,7 +93,7 @@ extension ProjectDocument {
             url: plan.url, isImage: plan.media.isImage, fps: plan.media.fps, frames: plan.frames, maximumSide: size)
     }
 
-    private func stillsDirectory() throws -> URL {
+    func stillsDirectory() throws -> URL {
         guard let root = fileURL?.deletingLastPathComponent() else { throw RPCFailure(-32602, "Open a saved project first") }
         let directory = ProjectCache.url(.mediaStills, projectRoot: root)
         try FileManager.default.createDirectory(

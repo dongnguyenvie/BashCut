@@ -96,6 +96,7 @@ extension ProjectDocument {
         }
         // The write-back above only stores the gain the export already applied, so the measurement describes it.
         recordReviewLoudness(outcome.finalMeasurement, revision: current ? project.revision : request.source.revision)
+        lastRender = (outcome.receipt.url, current ? project.revision : request.source.revision)
         DebugLog.write("export", "done \(outcome.receipt.url.path)")
         emitPluginEvent(.exportFinished, [
             "output": .string(outcome.receipt.url.path), "preset": .string(request.preset.rawValue),
