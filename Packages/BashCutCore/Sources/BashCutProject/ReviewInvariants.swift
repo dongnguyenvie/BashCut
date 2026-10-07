@@ -6,7 +6,7 @@ import Foundation
 extension TimelineReview {
     /// Each clip edge that falls inside a transcribed word of the clip's media, unless the next or previous clip on
     /// the track continues the same source there (a plain split).
-    static func wordCutIssues(_ project: Project, transcripts: [String: SourceTranscript]) -> [ReviewIssue] {
+    public static func wordCutIssues(_ project: Project, transcripts: [String: SourceTranscript]) -> [ReviewIssue] {
         let fps = project.fps.value
         var issues: [ReviewIssue] = []
         for (mediaID, transcript) in transcripts.sorted(by: { $0.key < $1.key }) {

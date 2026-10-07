@@ -255,6 +255,29 @@ extension CommandCatalog {
             ]),
     ]
 
+    /// Select by quote (P1-D7).
+    static let quoteSpecs: [CommandSpec] = [
+        CommandSpec(
+            "media.resolve-range", .read,
+            "A source range from what was said, in the media's stored transcript: a quote (the place its words match "
+                + "best; equal places listed in alternatives, in order, never ranked), word indices FIRST-LAST, or rough "
+                + "from/to seconds snapped outwards to the words they cut into (snap gives how far each edge moved). "
+                + "Returns from/to seconds and in/out frames for media place, the text, and per edge midWord, "
+                + "midSentence (inside a transcript phrase) and the nearest word and sentence edges before and after.",
+            parameters: [
+                CommandParameter("media", .string, "Project media ID", required: true, cli: .positional),
+                CommandParameter("quote", .string, "Words as said", cli: .option("quote")),
+                CommandParameter("words", .string, "Word indices FIRST-LAST", cli: .option("words")),
+                CommandParameter("from", .number, "Rough start, seconds", range: 0...86_400, cli: .option("from")),
+                CommandParameter("to", .number, "Rough end, seconds", range: 0...86_400, cli: .option("to")),
+            ]),
+        CommandSpec(
+            "captions.find", .read,
+            "Where words are said on the timeline: every place the text's words come in order (stored transcripts "
+                + "heard through the clips, else caption words), with at/end frames.",
+            parameters: [CommandParameter("text", .string, "Words to find", required: true, cli: .positional)]),
+    ]
+
     /// The plan against what was measured (P1-D3).
     static let planCheckSpecs: [CommandSpec] = [
         CommandSpec(

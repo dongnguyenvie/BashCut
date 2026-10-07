@@ -404,7 +404,7 @@ extension ProjectDocument {
 
     func dryRunEdit(_ operation: EditOperation, author: Author, baseRevision: Int) throws -> JSONValue {
         try ensureEditable(author: author)
-        return try TimelineDryRun.evaluate(operation, on: project, baseRevision: baseRevision)
+        return try TimelineDryRun.evaluate(operation, on: project, baseRevision: baseRevision, transcripts: reviewTranscripts)
     }
 
     @discardableResult

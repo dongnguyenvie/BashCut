@@ -15,7 +15,7 @@ public enum CommandCatalog {
 
     public static let specs: [CommandSpec] = readSpecs + projectSpecs + editSpecs + captionSpecs + layerSpecs + styleSpecs
         + formatSpecs + clipSpecs + capabilitySpecs + analysisSpecs + reviewCutSpecs + timelineStillsSpecs + [colorMeasureSpec] + planSpecs
-        + workflowSpecs + planCheckSpecs
+        + workflowSpecs + planCheckSpecs + quoteSpecs
         + sourceMediaSpecs
         + pluginSpecs + pluginViewSpecs
         + storageSpecs + agentSpecs + appSpecs + chatSpecs
@@ -89,7 +89,9 @@ public enum CommandCatalog {
                 baseRevision,
                 CommandParameter("label", .string, "Short description of the edit", default: .string("Agent edit"),
                                  cli: .option("label")),
-                CommandParameter("dryRun", .boolean, "Validate without editing; return projected duration and changed IDs",
+                CommandParameter("dryRun", .boolean,
+                                 "Validate without editing; return projected duration, changed IDs and cutsInsideWord "
+                                     + "(clip edges the edit leaves inside a transcribed word)",
                                  default: .bool(false), cli: .flag("dry-run")),
             ]),
         CommandSpec("timeline.undo", .edit, "Undo one timeline action.", parameters: [baseRevision]),
@@ -138,9 +140,12 @@ public enum CommandCatalog {
         CommandSpec(
             "media.place", .edit,
             "Place project media on a layer (main by default, music for audio), with linked sound on a dialogue layer; "
-                + "an occupied range spills onto a free or new layer.",
+                + "an occupied range spills onto a free or new layer. With from and to (source seconds, such as media "
+                + "resolve-range gives), only that part is placed.",
             parameters: [
                 CommandParameter("media", .string, "Project media ID", required: true, cli: .option("media")),
+                CommandParameter("from", .number, "Source start in seconds", range: 0...86_400, cli: .option("from")),
+                CommandParameter("to", .number, "Source end in seconds", range: 0...86_400, cli: .option("to")),
                 CommandParameter("track", .string, "Layer ID; defaults to the main layer (music for audio)",
                                  cli: .option("track")),
                 CommandParameter("atFrame", .integer, "Timeline frame; defaults to the playhead or the end of the main layer",
