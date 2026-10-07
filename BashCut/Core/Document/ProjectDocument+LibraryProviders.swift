@@ -19,6 +19,8 @@ struct LibraryProviderRequest {
     /// A candidate to save when the job finishes, and where.
     var save: Int?
     var scope: LibraryScope = .project
+    /// The caller's stable request ID (P2-G4).
+    var requestID: String?
 
     var method: String { capability == PluginAPI.libraryGenerate ? "library.generate" : "library.search" }
 }
@@ -40,7 +42,8 @@ extension ProjectDocument {
         if request.save != nil, request.scope == .project, fileURL == nil {
             throw RPCFailure(-32602, "Open a saved project to save into its library, or pass --scope user")
         }
-        let job = jobs.start(request.method, author: author, detail: request.text, work: { [weak self] _ in
+        let job = jobs.start(
+            request.method, author: author, detail: request.text, requestID: request.requestID, work: { [weak self] _ in
             guard let self else { throw CancellationError() }
             return try await runLibraryProvider(request, author: author)
         }, finished: { [weak self] outcome in
@@ -52,7 +55,7 @@ extension ProjectDocument {
         return job
     }
 
-    private func runLibraryProvider(_ request: LibraryProviderRequest, author: Author) async throws -> JSONValue {
+    func runLibraryProvider(_ request: LibraryProviderRequest, author: Author) async throws -> JSONValue {
         let root = fileURL?.deletingLastPathComponent()
         let service = plugins.service
         let language = contentLanguage
@@ -265,6 +268,13 @@ extension ProjectDocument {
                 request.hints = arguments["params"]?.object ?? [:]
                 request.save = arguments.optionalInt("save")
                 request.scope = LibraryScope(rawValue: arguments.optionalString("scope") ?? "project") ?? .project
+                request.requestID = arguments.optionalString("requestId")
+                if arguments.bool("dryRun") {
+                    return try await document.capabilityDryRun { document in
+                        try await document.runLibraryProvider(request, author: author)
+                    }
+                }
+                if let reused = document.reusedJob(request.method, requestID: request.requestID) { return reused }
                 let job = try document.startLibraryProviderJob(request, author: author)
                 return .object(["job": .string(job), "state": .string("running")])
             }

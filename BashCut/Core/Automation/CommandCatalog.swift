@@ -71,8 +71,21 @@ public enum CommandCatalog {
             "List installed plugins with their category, providers and project provider preferences.",
             parameters: [pluginCategory]),
         CommandSpec(
-            "jobs.status", .read, "Read one job (plugin call or export), or all recent jobs when job is omitted.",
+            "jobs.status", .read,
+            "Read one job (plugin call or export), or all recent jobs when job is omitted. Each job has state, "
+                + "progress, step and usage {provider, wallSec, units, costUSD, costSource}: units and cost only as "
+                + "a provider reported them, never estimated.",
             parameters: [CommandParameter("job", .string, "Job ID", cli: .positional)]),
+        CommandSpec(
+            "jobs.wait", .read,
+            "Wait until a job's state or step changes, or it finishes, up to timeout seconds; returns the job, "
+                + "changed and timedOut. A finished job returns at once. Use it instead of polling jobs status.",
+            parameters: [
+                CommandParameter("job", .string, "Job ID", required: true, cli: .positional),
+                CommandParameter("timeout", .integer, "Seconds to wait at most",
+                                 default: .integer(JobWaitDefaults.seconds), minimum: 1,
+                                 maximum: JobWaitDefaults.maximum, cli: .option("timeout")),
+            ]),
     ]
 
     static let leaveCurrent = [
@@ -350,4 +363,22 @@ public enum CommandCatalog {
             "plugins.health", .read, "Run plugin health checks (Plugins sheet, Check Health); all plugins by default.",
             parameters: [CommandParameter("plugin", .string, "Plugin ID", cli: .positional)]),
     ]
+}
+
+extension CommandCatalog {
+    /// For commands that may call a paid provider (P2-G4): a stable request ID and a dry run.
+    static let paidRequestParameters = [
+        CommandParameter("requestId", .string, "Your stable ID for this request: sending it again returns the same "
+                         + "job instead of starting (and paying for) another; the provider receives it too",
+                         cli: .option("request-id")),
+        CommandParameter("dryRun", .boolean, "Return the request as it would go to the provider (without option "
+                         + "values), whether the provider is paid and its estimate if it gives one; nothing runs",
+                         default: .bool(false), cli: .flag("dry-run")),
+    ]
+}
+
+/// `jobs.wait` bounds (P2-G4): the socket client waits this long plus a margin for the answer.
+public enum JobWaitDefaults {
+    public static let seconds = 25
+    public static let maximum = 30
 }

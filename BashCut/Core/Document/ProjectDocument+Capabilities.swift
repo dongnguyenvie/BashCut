@@ -257,6 +257,9 @@ extension ProjectDocument {
             }
             return .array(document.jobs.jobs.map(\.json))
         }
+        handle("jobs.wait") { document, arguments, _ in
+            try await document.waitForJob(try arguments.string("job"), seconds: try arguments.int("timeout"))
+        }
         handleAuthored("jobs.cancel") { document, arguments, _ in
             guard document.jobs.cancel(try arguments.string("job")) else {
                 throw RPCFailure(-32602, "job must name a queued or running job")
@@ -378,16 +381,42 @@ extension ProjectDocument {
         ])
     }
 
+    /// `jobs.wait` (P2-G4): the job once its state or step changes, it finishes, or `seconds` pass.
+    func waitForJob(_ id: String, seconds: Int) async throws -> JSONValue {
+        guard jobs.job(id) != nil else { throw RPCFailure(-32602, "Unknown job") }
+        guard let (job, changed) = try await jobs.wait(id, for: .seconds(seconds)) else {
+            throw RPCFailure(-32602, "The job is gone: the project was closed or switched")
+        }
+        return .object(["job": job.json, "changed": .bool(changed), "timedOut": .bool(job.isActive && !changed)])
+    }
+
+    /// The job an earlier request with the same `requestID` started (P2-G4), as `{job, state, reused}`.
+    func reusedJob(_ method: String, requestID: String?) -> JSONValue? {
+        guard let requestID, let job = jobs.job(method: method, requestID: requestID) else { return nil }
+        return .object(["job": .string(job.id), "state": .string(job.state.rawValue), "reused": .bool(true)])
+    }
+
+    /// Runs `work` with plugin calls frozen instead of sent (P2-G4) and returns the first request it would send.
+    func capabilityDryRun(_ work: @MainActor (ProjectDocument) async throws -> JSONValue) async throws -> JSONValue {
+        do {
+            _ = try await PluginCallContext.$current.withValue(PluginCallContext(dryRun: true)) { try await work(self) }
+        } catch let dryRun as PluginDryRun {
+            return .object(["dryRun": .bool(true), "request": dryRun.request])
+        }
+        throw RPCFailure(-32602, "This request would not call a plugin provider")
+    }
+
     func startCapabilityJob(
-        _ method: String, author: Author,
+        _ method: String, author: Author, requestID: String? = nil,
         work: @escaping @MainActor (ProjectDocument) async throws -> JSONValue
     ) throws -> JSONValue {
+        if let reused = reusedJob(method, requestID: requestID) { return reused }
         guard fileURL != nil else { throw RPCFailure(-32602, "Open a saved project first") }
         guard !conflict else { throw RPCFailure(-32003, "The project has a file conflict; retry later", category: .fileConflict) }
         if let capability = capabilityForMethod[method], plugins.calling.contains(capability) {
             throw RPCFailure(-32003, "\(capability) is already running; retry later", category: .busyRunning)
         }
-        let id = jobs.start(method, author: author, work: { [weak self] _ in
+        let id = jobs.start(method, author: author, requestID: requestID, work: { [weak self] _ in
             guard let self else { throw CancellationError() }
             return try await work(self)
         }, finished: { [weak self] outcome in

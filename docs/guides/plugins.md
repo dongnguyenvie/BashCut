@@ -592,6 +592,21 @@ Declaring `review.check` needs `apiVersion` 9.
 Every result is tagged with the plugin ID, plugin version and provider ID that produced it. BashCut stores
 this as provenance (for example on beat grids and loudness measurements), never as a live dependency.
 
+### Usage, cost and paid providers
+
+BashCut never prices anything: a job's `usage` shows units and cost only as the provider reports them.
+
+- Any capability result may carry `"usage": {"units": {"characters": 1200}, "costUSD": 0.18, "charged": true}`.
+  Units are summed per name over the job's calls; a cost counts only when `charged` is not `false`. Negative or
+  non-numeric amounts are ignored.
+- A request made inside a job that the caller gave a `requestId` carries `"requestId"`. The same ID sent again
+  returns the earlier job, so a provider sees one request; a provider that charges should still refuse to charge
+  twice for one `requestId`.
+- Declare `"paid": true` on a provider that charges per request. Agents then send a `requestId` and may ask for a
+  dry run first.
+- Declare `"estimates": true` when the provider answers a request with `"dryRun": true` by doing no work and
+  returning `{"estimate": {"units": {...}, "costUSD": 0.18}}`. Other providers are not called in a dry run.
+
 ## Options
 
 `options` declares settings. The app draws them natively in the Plugins sheet (**Options…**) and sends the current

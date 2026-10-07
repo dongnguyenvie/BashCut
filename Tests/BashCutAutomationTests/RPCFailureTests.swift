@@ -102,4 +102,12 @@ struct CommandCallerTests {
         #expect(seen == [token, nil, nil])
         #expect(CommandCaller.token == nil)
     }
+
+    @Test("jobs.wait gets a socket read timeout past its wait; other calls keep 10 s")
+    func waitTimeout() {
+        #expect(UnixRPCClient.readSeconds(RPCRequest(method: "jobs.status")) == 10)
+        #expect(UnixRPCClient.readSeconds(RPCRequest(method: "jobs.wait", params: ["timeout": .integer(5)])) == 15)
+        #expect(UnixRPCClient.readSeconds(RPCRequest(method: "jobs.wait")) == JobWaitDefaults.seconds + 10)
+        #expect(UnixRPCClient.readSeconds(RPCRequest(method: "jobs.wait", params: ["timeout": .integer(99)])) == 40)
+    }
 }

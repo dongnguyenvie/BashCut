@@ -735,13 +735,24 @@ Voice panels, so provider resolution, health checks, output confinement and vali
 bashcut captions generate --media MEDIA_ID --replace
 bashcut beats detect --media AUDIO_MEDIA_ID
 bashcut voice speak 'Xin chào các bạn' --takes 3 --at-frame 120
+bashcut jobs wait JOB_ID --timeout 25
 bashcut jobs status JOB_ID
 bashcut jobs cancel JOB_ID
 ```
 
-- Each returns `{"job": ID, "state": "running"}` at once. Poll `jobs status ID` until it reports `completed`,
-  `failed` or `cancelled`. A completed job's result includes the new `rev`, plus `bpm`/`beats`, or the inserted
-  voice `item` with its score and all take scores.
+- Each returns `{"job": ID, "state": "running"}` at once. `jobs wait ID` holds the call until the job's state or
+  step changes or it finishes, up to `--timeout` seconds (1–30, default 25), and returns `{job, changed,
+  timedOut}`; call it again until the state is `completed`, `failed` or `cancelled` instead of polling `jobs
+  status`. A completed job's result includes the new `rev`, plus `bpm`/`beats`, or the inserted voice `item`
+  with its score and all take scores.
+- Every job reports `progress` (0–1 or null), `step` (its current step; `detail` is the same text) and
+  `usage {provider, wallSec, units, costUSD, costSource}`. `wallSec` is the time it has run; `provider`, `units`
+  and `costUSD` appear only as plugin providers reported them (`costSource: "provider"`), never estimated, and
+  are null for BashCut's own work such as exports.
+- `voice speak` and `library generate` may call a paid provider. `--request-id ID` makes a resend return the
+  same job (`reused: true`) instead of paying again, while the job is still listed. `--dry-run` runs nothing and
+  returns the request as it would go to the provider (option values left out, only their names), `paid`, and the
+  provider's `estimate` when it gives one.
 - The result is one undoable edit attributed to the agent, with change markers and the Undo toast.
 - `voice speak --keep-takes` inserts nothing and keeps every take in `voiceover/generated`, so you can choose
   one and place it with `media import`.

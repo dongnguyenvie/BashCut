@@ -342,6 +342,10 @@ public struct PluginProvider: Codable, Sendable, Equatable, Identifiable {
     public var voices: [PluginVoice]?
     /// A `voice.synthesize` provider that can clone a voice from a recording; clone requests carry `cloneConsent`.
     public var clones: Bool?
+    /// The provider charges per request (P2-G4): agents send a stable `requestId` and may ask for a dry run first.
+    public var paid: Bool?
+    /// The provider answers a request with `dryRun: true` with `{estimate: {units, costUSD}}` and does no work.
+    public var estimates: Bool?
 
     public init(
         id: String, capability: String, name: String, priority: Int = 0, timeoutSeconds: Int? = nil, kinds: [String]? = nil
@@ -368,6 +372,8 @@ public struct PluginProvider: Codable, Sendable, Equatable, Identifiable {
         kinds = try container.decodeIfPresent([String].self, forKey: .kinds)
         voices = try container.decodeIfPresent([PluginVoice].self, forKey: .voices)
         clones = try container.decodeIfPresent(Bool.self, forKey: .clones)
+        paid = try container.decodeIfPresent(Bool.self, forKey: .paid)
+        estimates = try container.decodeIfPresent(Bool.self, forKey: .estimates)
     }
 }
 
