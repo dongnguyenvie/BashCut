@@ -70,6 +70,8 @@ extension ProjectSchema {
         var properties: [String: JSONValue] = Dictionary(uniqueKeysWithValues: ReviewProfile.numberKeys.map { key, range in
             (key, number((reviewSummaries[key] ?? key) + "; unset: no check, or the measured value as info", range))
         })
+        properties["credits"] = boolean(
+            "Report credit lines, AI disclosure and licence flags in review and export results (P2-H9); off by default")
         properties["severities"] = .object([
             "type": .string("object"),
             "description": .string(

@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 215 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 216 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -78,6 +78,12 @@ Change the open project's canvas like the format menu in the toolbar: portrait 9
 - `resolution`: string, one of 720, 1080, 2160. Short-side resolution; the current one by default
 - `outputs`: string. Comma-separated export presets (tiktok, reels, shorts, feed-4x5, square, portrait-3x4, youtube-1080, youtube-4k, quick-draft, prores); none clears them
 - `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
+
+### `bashcut project credits`
+
+What the edit owes for the media it plays (P2-H9), from each media's license and provenance: credit lines (required ones are those the licence asks for; text is the block for a description), ai {media, pictureShare, disclosures: each output platform's AI-label rule}, contentIDNotes for stock or downloaded music, and flags {nonCommercial, allRightsReserved, unknown}. Facts only, on request: nothing is added to the video. With the project's review.credits true, review run reports them as info and each export's job result carries them for its platform.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_project_credits`
 
 ### `bashcut project brief`
 

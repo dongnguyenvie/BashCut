@@ -18,6 +18,8 @@ public struct ReviewProfile: Sendable, Equatable {
     public let severities: [String: String]
     /// Overrides of platform facts when an app changes its interface: `safeArea` fields and `maxSeconds`.
     public let platform: [String: JSONValue]
+    /// Whether review reports credits, AI disclosure and rights (`review.credits`, P2-H9); off unless the user asks.
+    public let credits: Bool
 
     public init(_ project: Project) {
         let review = project["review"]?.object ?? [:]
@@ -26,6 +28,7 @@ public struct ReviewProfile: Sendable, Equatable {
         }
         severities = (review["severities"]?.object ?? [:]).compactMapValues(\.string)
         platform = review["platform"]?.object ?? [:]
+        credits = review["credits"]?.bool ?? false
     }
 
     public subscript(key: String) -> Double? { values[key] }
@@ -53,6 +56,9 @@ extension Project {
     func validateReviewSettings() throws {
         guard let value = self["review"], value != .null else { return }
         guard case .object(let review) = value else { throw ProjectError.invalid("review: expected object") }
+        if let credits = review["credits"], credits != .null, credits.bool == nil {
+            throw ProjectError.invalid("review.credits: expected true or false")
+        }
         for (key, range) in ReviewProfile.numberKeys {
             guard let field = review[key], field != .null else { continue }
             guard let number = field.double, number.isFinite, range.contains(number) else {

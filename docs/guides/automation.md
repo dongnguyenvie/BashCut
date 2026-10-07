@@ -493,6 +493,13 @@ copies an item's onto the media it adds (with `libraryItem`); voice takes and sa
 (generated ones are `ai`, found ones `stock`, with the prompt, request ID and charge). `library export-pack` refuses
 items whose licence does not allow redistribution and lists `unknownLicenses`.
 
+**Credits (P2-H9), on request only.** `project credits` builds, from the media the edit plays, the credit lines
+(those a licence requires first; `text` is the block for a description), AI use (`pictureShare`, each output
+platform's AI-label rule), Content ID notes for stock or downloaded music, and flags (`nonCommercial`,
+`allRightsReserved`, `unknown`). Nothing is added to the video. By default review and exports say nothing about
+licences; set the project's `review.credits` to `true` and `review run` reports `ai-disclosure`, `credits-required`
+and `rights-unclear` as info, and each export's job result carries `credits` for its platform.
+
 Items come from four scopes; when the same ID is in several, the first wins, and `scope:id` picks one:
 
 | Scope | Where | Writable |
