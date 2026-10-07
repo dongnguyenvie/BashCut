@@ -28,6 +28,7 @@ extension ProjectDocument {
         registerMediaAnalysisCommands()
         registerSourceTranscriptCommands()
         registerMediaDescriptionCommands()
+        registerMediaStillsCommands()
         registerStorageCommands()
         registerLibraryCommands()
         registerAgentKitCommands()

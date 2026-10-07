@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 160 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 163 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -264,6 +264,47 @@ Read media descriptions. With media: description {shots, describedBy, describedA
 
 - Mode: read · Runs: immediately · MCP: `bashcut_media_description`
 - `media`: string. Project media ID; every media by default
+
+### `bashcut media frames [--media <media>] [--at <at>] [--every <every>] [--count <count>] [--from <from>] [--to <to>] [--sheet] [--columns <columns>] [--rows <rows>] [--size <size>] [--reference <reference>] [--reference-from <referenceFrom>] [--reference-to <referenceTo>]`
+
+Read exact source frames of media as PNG files (in .bashcut/cache/media-stills; read them to look): at the given source seconds, every N seconds, or count evenly spaced (default 8, each in the middle of its part) over from…to (the whole file by default). Every media with a picture by default. frames [{path, media, frame (exact source frame index), seconds, width, height}]. With sheet: contact sheets of columns × rows cells labelled '<cell> <file> <m:ss.s>' (the colour changes with each media), sheets [{path, cells [{cell, media, frame, seconds}]}], so a cell maps back to its media and second. With reference (one media): a sheet with a REF row from that media (over referenceFrom…referenceTo) above an OURS row, cell for cell. At most 400 frames per call.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_media_frames`
+- `media`: string. Media IDs, comma separated; every media with a picture by default
+- `at`: string. Source seconds, comma separated (one media)
+- `every`: number, 0.04…3600. Seconds between frames
+- `count`: integer, 1…400. Frames per media, evenly spaced (default 8)
+- `from`: number, 0…86400. From this source second (one media)
+- `to`: number, 0…86400. Up to this source second (one media)
+- `sheet`: boolean. Contact sheets instead of one file per frame
+- `columns`: integer, 1…24. Cells per row (default 8 portrait, 6 landscape)
+- `rows`: integer, 1…24. Rows per sheet (default 3 portrait, 6 landscape)
+- `size`: integer, 64…4096. Long edge of each frame in pixels (default 320 on a sheet, 640)
+- `reference`: string. Media ID of a reference shown as a REF row
+- `referenceFrom`: number, 0…86400. Reference from this source second
+- `referenceTo`: number, 0…86400. Reference up to this source second
+
+### `bashcut media frame --media <media> [--at <at>] [--index <index>] [--edge <edge>] [--size <size>]`
+
+Write one source frame of a media as a PNG at source size (or size on the long edge): at source seconds, an exact frame index, or edge first/last (the first frame by default), for chaining, transitions or a generation reference. Returns {path, media, frame, seconds, width, height}.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_media_frame`
+- `media`: string, required. Project media ID
+- `at`: number, 0…86400. Source seconds
+- `index`: integer, ≥ 0. Source frame index
+- `edge`: string, one of first, last. first or last
+- `size`: integer, 16…16384. Long edge in pixels; the source size by default
+
+### `bashcut media strip --media <media> [--from <from>] [--to <to>] [--count <count>] [--width <width>]`
+
+Draw a filmstrip of a source range as one PNG: count frames (default 8) along the top with their time, a time ruler, the sound level (−60…0 dBFS per 0.1 s, from the media.analyze record or measured now), the media.speech-map gaps shaded (left out when speech and floor do not separate), and the stored transcript's words at their times. Returns {path, width, height, from, to, frames, levels (analysis, measured or null), gaps {shown, count or reason}, words}.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_media_strip`
+- `media`: string, required. Project media ID
+- `from`: number, 0…86400. From this source second (default 0)
+- `to`: number, 0…86400. Up to this source second (default the end)
+- `count`: integer, 1…24. Frames along the top (default 8)
+- `width`: integer, 400…8192. Image width in pixels (default 1600)
 
 ## review
 

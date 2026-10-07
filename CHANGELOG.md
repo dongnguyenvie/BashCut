@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+- **Source frames as pictures (P0-A5).** `media frames [--media A,B] [--at S,S | --every S | --count N] [--from S
+  --to S] [--sheet] [--reference M]` (`media.frames`, read) writes exact source frames as PNGs with their frame index
+  and second, or contact sheets whose cells are labelled `<cell> <file> <m:ss.s>` (colour per media) with a cell map
+  back to media and second; `--reference` adds a REF row above OURS. `media frame --media M [--at S | --index N |
+  --edge first|last]` writes one frame at source size, and `media strip --media M [--from --to]` a filmstrip with the
+  sound level, the speech-map gaps and the stored transcript's words. Files go to `.bashcut/cache/media-stills`
+  (newest 300 kept). Agents no longer need ffmpeg to look at footage.
+
 - **Shot descriptions (P0-A4).** `media describe shots.json --media M --base-rev N [--merge] [--clear]`
   (`media.describe`, edit) stores what the agent saw in a source file, shot by shot, on the media in the project
   (new optional `media.description`, op `setMediaDescription`), so it is undoable and survives save and reopen.

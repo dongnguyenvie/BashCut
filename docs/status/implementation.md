@@ -105,6 +105,10 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   and `captions generate` unless `--fresh`; `media transcribe` makes one without placing captions, `media transcript`
   reads it in source seconds (phrases, words with confidence/speaker/event/noSpeechProb when the provider gives
   them), and `transcript words --heard` maps its words through the clips playing the media now.
+- `media frames` reads exact source frames by index (PNG files, or contact sheets labelled per cell with a map back
+  to media and second, and an optional REF row), `media frame` one frame at source size, and `media strip` a
+  filmstrip with the sound level, speech-map gaps and transcript words; all by source time, in
+  `.bashcut/cache/media-stills`.
 - `media describe` stores agent-written shot facts on a media (size, angle, move, direction, subjects, people,
   on-screen text, confidence, best moment, frames looked at) in a closed vocabulary as one undoable edit;
   `media description` reads them with coverage of the `media analyze` shots, and `review shots` adds the facts of

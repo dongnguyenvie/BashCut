@@ -25,9 +25,11 @@ public enum ProjectCache {
         case analysis
         /// What was said in source files (`media.transcribe`), `<content key>.json`.
         case transcripts
+        /// Source frames, contact sheets and filmstrips for agents (`media.frames`, `media.frame`, `media.strip`).
+        case mediaStills = "media-stills"
 
         /// Where this cache was before `.bashcut/cache/`; waveforms were already there, and analysis is newer.
-        var legacyPath: String? { [.waveforms, .analysis, .transcripts].contains(self) ? nil : ".bashcut/" + rawValue }
+        var legacyPath: String? { [.waveforms, .analysis, .transcripts, .mediaStills].contains(self) ? nil : ".bashcut/" + rawValue }
     }
 
     public static func root(projectRoot: URL) -> URL {

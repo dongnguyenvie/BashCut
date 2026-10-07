@@ -14,7 +14,7 @@ public enum CommandCatalog {
     public static let exportPresets = OutputPresetName.all
 
     public static let specs: [CommandSpec] = readSpecs + projectSpecs + editSpecs + captionSpecs + layerSpecs + styleSpecs
-        + formatSpecs + clipSpecs + capabilitySpecs + analysisSpecs + mediaAnalysisSpecs + sourceTranscriptSpecs + mediaDescriptionSpecs
+        + formatSpecs + clipSpecs + capabilitySpecs + analysisSpecs + sourceMediaSpecs
         + pluginSpecs + pluginViewSpecs
         + storageSpecs + agentSpecs + appSpecs + chatSpecs
         + privilegedSpecs + uiSpecs + toolSpecs + knowledgeSpecs + skillSpecs + librarySpecs + fontSpecs

@@ -14,6 +14,11 @@ extension CommandCatalog {
                              cli: .flag("analysis"))
         ])
 
+    /// Every command about source media (P0-A).
+    static var sourceMediaSpecs: [CommandSpec] {
+        mediaAnalysisSpecs + sourceTranscriptSpecs + mediaDescriptionSpecs + mediaStillsSpecs
+    }
+
     static let mediaMedia = CommandParameter("media", .string, "Project media ID", required: true, cli: .option("media"))
 
     static let mediaAnalysisSpecs: [CommandSpec] = [
@@ -122,6 +127,76 @@ extension CommandCatalog {
                 + "vocabulary.",
             parameters: [
                 CommandParameter("media", .string, "Project media ID; every media by default", cli: .option("media"))
+            ]),
+    ]
+
+    /// Source frames as pictures (P0-A5): by source time, never through the timeline.
+    static let mediaStillsSpecs: [CommandSpec] = [
+        CommandSpec(
+            "media.frames", .read,
+            "Read exact source frames of media as PNG files (in .bashcut/cache/media-stills; read them to look): "
+                + "at the given source seconds, every N seconds, or count evenly spaced (default 8, each in the middle "
+                + "of its part) over from…to (the whole file by default). Every media with a picture by default. "
+                + "frames [{path, media, frame (exact source frame index), seconds, width, height}]. With sheet: "
+                + "contact sheets of columns × rows cells labelled '<cell> <file> <m:ss.s>' (the colour changes with "
+                + "each media), sheets [{path, cells [{cell, media, frame, seconds}]}], so a cell maps back to its "
+                + "media and second. With reference (one media): a sheet with a REF row from that media (over "
+                + "referenceFrom…referenceTo) above an OURS row, cell for cell. At most 400 frames per call.",
+            parameters: [
+                CommandParameter("media", .string, "Media IDs, comma separated; every media with a picture by default",
+                                 cli: .option("media")),
+                CommandParameter("at", .string, "Source seconds, comma separated (one media)", cli: .option("at")),
+                CommandParameter("every", .number, "Seconds between frames", range: 0.04...3_600, cli: .option("every")),
+                CommandParameter("count", .integer, "Frames per media, evenly spaced (default 8)", minimum: 1,
+                                 maximum: 400, cli: .option("count")),
+                CommandParameter("from", .number, "From this source second (one media)", range: 0...86_400,
+                                 cli: .option("from")),
+                CommandParameter("to", .number, "Up to this source second (one media)", range: 0...86_400,
+                                 cli: .option("to")),
+                CommandParameter("sheet", .boolean, "Contact sheets instead of one file per frame", cli: .flag("sheet")),
+                CommandParameter("columns", .integer, "Cells per row (default 8 portrait, 6 landscape)", minimum: 1,
+                                 maximum: 24, cli: .option("columns")),
+                CommandParameter("rows", .integer, "Rows per sheet (default 3 portrait, 6 landscape)", minimum: 1,
+                                 maximum: 24, cli: .option("rows")),
+                CommandParameter("size", .integer, "Long edge of each frame in pixels (default 320 on a sheet, 640)",
+                                 minimum: 64, maximum: 4_096, cli: .option("size")),
+                CommandParameter("reference", .string, "Media ID of a reference shown as a REF row",
+                                 cli: .option("reference")),
+                CommandParameter("referenceFrom", .number, "Reference from this source second", range: 0...86_400,
+                                 cli: .option("reference-from")),
+                CommandParameter("referenceTo", .number, "Reference up to this source second", range: 0...86_400,
+                                 cli: .option("reference-to")),
+            ]),
+        CommandSpec(
+            "media.frame", .read,
+            "Write one source frame of a media as a PNG at source size (or size on the long edge): at source "
+                + "seconds, an exact frame index, or edge first/last (the first frame by default), for chaining, "
+                + "transitions or a generation reference. Returns {path, media, frame, seconds, width, height}.",
+            parameters: [
+                mediaMedia,
+                CommandParameter("at", .number, "Source seconds", range: 0...86_400, cli: .option("at")),
+                CommandParameter("index", .integer, "Source frame index", minimum: 0, cli: .option("index")),
+                CommandParameter("edge", .string, "first or last", choices: ["first", "last"], cli: .option("edge")),
+                CommandParameter("size", .integer, "Long edge in pixels; the source size by default", minimum: 16,
+                                 maximum: 16_384, cli: .option("size")),
+            ]),
+        CommandSpec(
+            "media.strip", .read,
+            "Draw a filmstrip of a source range as one PNG: count frames (default 8) along the top with their time, "
+                + "a time ruler, the sound level (−60…0 dBFS per 0.1 s, from the media.analyze record or measured "
+                + "now), the media.speech-map gaps shaded (left out when speech and floor do not separate), and the "
+                + "stored transcript's words at their times. Returns {path, width, height, from, to, frames, levels "
+                + "(analysis, measured or null), gaps {shown, count or reason}, words}.",
+            parameters: [
+                mediaMedia,
+                CommandParameter("from", .number, "From this source second (default 0)", range: 0...86_400,
+                                 cli: .option("from")),
+                CommandParameter("to", .number, "Up to this source second (default the end)", range: 0...86_400,
+                                 cli: .option("to")),
+                CommandParameter("count", .integer, "Frames along the top (default 8)", minimum: 1, maximum: 24,
+                                 cli: .option("count")),
+                CommandParameter("width", .integer, "Image width in pixels (default 1600)", minimum: 400,
+                                 maximum: 8_192, cli: .option("width")),
             ]),
     ]
 
