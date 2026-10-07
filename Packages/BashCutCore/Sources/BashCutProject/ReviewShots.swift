@@ -78,13 +78,17 @@ public enum ReviewShots {
     /// Count, total, mean, median, minimum and maximum shot length in seconds, and cuts per minute over the span from
     /// the first shot's start to the last one's end.
     static func summary(_ shots: [Item], fps: Double) -> JSONValue {
-        let seconds = shots.map { Double($0.duration) / fps }.sorted()
-        guard let first = shots.first, let last = shots.last, !seconds.isEmpty else {
-            return .object(["count": .integer(0)])
-        }
+        guard let first = shots.first, let last = shots.last else { return .object(["count": .integer(0)]) }
+        return summary(seconds: shots.map { Double($0.duration) / fps }, span: Double(last.end - first.at) / fps)
+    }
+
+    /// The same statistics for shot lengths in seconds over `span` seconds; `media.analysis` uses them for a source
+    /// file, so a reference video and the timeline are summarised alike.
+    static func summary(seconds lengths: [Double], span: Double) -> JSONValue {
+        let seconds = lengths.sorted()
+        guard !seconds.isEmpty else { return .object(["count": .integer(0)]) }
         let middle = seconds.count / 2
         let median = seconds.count % 2 == 0 ? (seconds[middle - 1] + seconds[middle]) / 2 : seconds[middle]
-        let span = Double(last.end - first.at) / fps
         return .object([
             "count": .integer(seconds.count), "totalSeconds": .number(rounded(seconds.reduce(0, +))),
             "meanSeconds": .number(rounded(seconds.reduce(0, +) / Double(seconds.count))),

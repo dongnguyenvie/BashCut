@@ -64,7 +64,8 @@ arguments.
 | `context get` | read | Open project, selection, playhead |
 | `project get` / `project recents` | read | Welcome screen, Recent projects |
 | `timeline get [--format text\|json]` | read | Looking at the timeline, its transitions and section markers |
-| `media list` | read | Library |
+| `media list [--analysis]` / `media analyze` / `media analysis` | read | Library (`media analyze`: a measured record per source file with shots, motion, sound spans and file facts, read with `media analysis`) |
+| `media cuts` | edit | Correcting the shots found in a source file |
 | `review run` / `review measure` / `review picture` / `review shots` / `review layout` | read | Review, Measure picture (`review picture`: the raw samples and cuts behind the picture checks; `review shots`: the shots on Main with timing, source, framing and motion; `review layout`: rendered text bounds next to the platform zones) |
 | `captions export` | read | Text panel, Export SRT |
 | `export status` / `jobs status` | read | Export queue, job progress |

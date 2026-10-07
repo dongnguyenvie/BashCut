@@ -5,6 +5,16 @@
 
 ## [Unreleased]
 
+- **A measured record per media (P0-A1).** `media analyze [--media M] [--force] [--rate N]` (`media.analyze`, a
+  job) measures source files once and keeps the record by file content in `.bashcut/cache/analysis`: file facts
+  (codec, size, rotation, frame timing for variable frame rate, colour transfer, primaries and bit depth, track
+  lengths), picture samples with the `review picture` values plus sharpness and colourfulness, every jump narrowed
+  to its exact frame as a cut candidate, and sound levels per 0.1 s with peak and stereo correlation.
+  `media analysis --media M` (read) derives cuts, shots with the `review shots` fields and statistics, a
+  shot-length histogram, cuts per 10 s and active sound spans, with limits the agent chooses (`--min-score`,
+  `--activity-db`, `--bridge`). `media cuts --media M --add S --remove S` corrects the cut list;
+  `media list --analysis` shows what is measured.
+
 - **Captions and spoken words as data (P0-C1).** `captions export --as json|text` adds two formats next to
   SubRip: JSON cues with timing in frames and seconds, characters, characters per second, the gap since the previous
   cue, line count, the media they were made from and their words; `text` is one line per cue for a cheap read.
