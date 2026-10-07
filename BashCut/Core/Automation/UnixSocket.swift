@@ -84,10 +84,15 @@ private enum SocketIO {
 }
 
 public enum UnixRPCClient {
-    /// How long to wait for the answer: `jobs.wait` holds the request up to its `timeout` (at most 30 s).
+    /// How long to wait for the answer: `jobs.wait` holds the request up to its `timeout` (at most 30 s), `agent.ask`
+    /// until the user answers or its `timeout` passes.
     static func readSeconds(_ request: RPCRequest) -> Int {
-        guard request.method == "jobs.wait" else { return 10 }
-        return min(30, max(1, request.params["timeout"]?.int ?? JobWaitDefaults.seconds)) + 10
+        switch request.method {
+        case "jobs.wait": min(30, max(1, request.params["timeout"]?.int ?? JobWaitDefaults.seconds)) + 10
+        case "agent.ask":
+            min(AgentAskDefaults.maximumSeconds, max(5, request.params["timeout"]?.int ?? AgentAskDefaults.seconds)) + 10
+        default: 10
+        }
     }
 
     public static func call(_ request: RPCRequest, path: String = AutomationPaths.socket) throws

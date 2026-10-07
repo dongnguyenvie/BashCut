@@ -56,6 +56,23 @@ extension CommandCatalog {
                 + "like the chip's ×; without --items, all of them. While items are attached, the scope guard checks "
                 + "that tab's edits against them.",
             parameters: [CommandParameter("items", .string, "Item IDs, comma-separated", cli: .option("items"))]),
+        CommandSpec(
+            "agent.ask", .ui,
+            "Ask the user multiple-choice questions in a card over the caller's terminal tab, the way Claude Code's "
+                + "AskUserQuestion does (BashCut's Claude tabs route that tool here with `bashcut agent hook`). Returns once the user "
+                + "answers: answers maps each question to the chosen labels (comma-separated) or the text typed under "
+                + "Other; answered is false when the user chose to answer in the terminal, closed the tab or "
+                + "timeout passed.",
+            parameters: [
+                CommandParameter(
+                    "questions", .array,
+                    "AskUserQuestion's questions: question, header, multiSelect and options of label, description and "
+                        + "optional preview",
+                    required: true, cli: .positionalJSONFile),
+                CommandParameter("timeout", .integer, "Seconds to wait for the answer",
+                                 default: .integer(AgentAskDefaults.seconds), minimum: 5,
+                                 maximum: AgentAskDefaults.maximumSeconds, cli: .option("timeout")),
+            ]),
     ]
 
     /// Chat-agent tabs: plugins with the `agent.chat` capability (docs/specs/11-chat-agents.md), such as AI Editor.

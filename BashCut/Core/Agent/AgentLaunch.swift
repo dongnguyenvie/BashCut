@@ -40,6 +40,8 @@ public struct AgentLaunch: Sendable {
         env.merge(PluginFolders.sharedRuntimeEnvironment) { _, shared in shared }
         env["TERM"] = "xterm-256color"
         env["COLORTERM"] = "truecolor"
+        // Without a project or chosen workspace agents start in BashCut's projects folder, which may not exist yet.
+        try? FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true)
         guard let executable = find(provider.command, path: env["PATH"] ?? "") else {
             throw AgentLaunchError.notInstalled(provider.command)
         }

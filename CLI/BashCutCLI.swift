@@ -20,6 +20,7 @@ import Foundation
             return
         }
         if words.isEmpty || ["help", "-h", "--help"].contains(words[0]) { throw CleanExit.helpRequest(self) }
+        if words == ClaudeHook.words { return hook() }
         defer { DebugLog.flush() }
         let invocation: CommandLineParser.Invocation
         do { invocation = try CommandLineParser.parse(words) } catch {
@@ -38,6 +39,23 @@ import Foundation
             throw report(RPCFailure.from(error))
         }
         try write(response, format: invocation.format)
+    }
+
+    /// Claude Code's AskUserQuestion hook (`ClaudeHook`): asks in the app and prints the answers, or prints nothing
+    /// (exit 0) so Claude asks in the terminal, whatever goes wrong.
+    private func hook() {
+        defer { DebugLog.flush() }
+        guard let questions = ClaudeHook.questions(hookInput: FileHandle.standardInput.readDataToEndOfFile())
+        else { return }
+        do {
+            let response = try UnixRPCClient.call(
+                RPCRequest(
+                    method: "agent.ask", params: ["questions": .array(questions)], token: AutomationPaths.sessionToken()))
+            guard let output = ClaudeHook.output(questions: questions, result: response.result ?? .null) else { return }
+            FileHandle.standardOutput.write(output + Data([10]))
+        } catch {
+            DebugLog.write("cli", "agent.ask hook fell back to the terminal")
+        }
     }
 
     private func report(_ failure: RPCFailure) -> ExitCode {
