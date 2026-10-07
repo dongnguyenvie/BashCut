@@ -27,6 +27,9 @@ extension ProjectDocument {
         registerProxyCommands()
         registerMediaAnalysisCommands()
         registerSourceTranscriptCommands()
+        registerMediaDescriptionCommands()
+        registerMediaStillsCommands()
+        registerMediaInventoryCommands()
         registerStorageCommands()
         registerLibraryCommands()
         registerAgentKitCommands()
@@ -77,7 +80,8 @@ extension ProjectDocument {
 
     private func registerReadCommands() {
         handle("context.get") { document, _, _ in
-            .object([
+            let analysis = await document.analysisReadiness()
+            return .object([
                 "project": document.fileURL.map { .string($0.path) } ?? .null,
                 "rev": .integer(document.project.revision), "playhead": .integer(document.playhead),
                 "selection": document.selectedID.map(JSONValue.string) ?? .null,
@@ -87,7 +91,7 @@ extension ProjectDocument {
                 "busy": .bool(document.busy), "saving": .bool(document.saving),
                 "knowledge": document.agents.knowledgeStore.summary().json,
                 "scope": document.agentScopeJSON,
-                "agentPermissions": document.agentPermissionsJSON,
+                "agentPermissions": document.agentPermissionsJSON, "analysis": analysis,
             ])
         }
         handle("project.get") { document, _, _ in .object(document.project.fields) }
@@ -103,6 +107,11 @@ extension ProjectDocument {
                 if arguments.bool("analysis") {
                     fields["analysis"] = document.mediaAnalysisOverview(media)
                     fields["transcript"] = await document.mediaTranscriptOverview(media)
+                }
+                // Shots stay out of the list; media.description reads them.
+                if fields["description"] != nil {
+                    fields["description"] = arguments.bool("analysis")
+                        ? document.mediaDescriptionCoverage(media) : media.shotDescription?.summaryJSON ?? .null
                 }
                 list.append(.object(fields))
             }

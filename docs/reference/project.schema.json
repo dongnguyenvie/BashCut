@@ -81,6 +81,131 @@
       },
       "type" : "object"
     },
+    "describedShot" : {
+      "description" : "One described shot; at least one fact besides start and end",
+      "properties" : {
+        "angle" : {
+          "description" : "Camera angle",
+          "enum" : [
+            "eye",
+            "high",
+            "low",
+            "top",
+            "dutch",
+            "pov",
+            "ots"
+          ],
+          "type" : "string"
+        },
+        "bestMoment" : {
+          "description" : "Source seconds of the best moment inside the shot",
+          "maximum" : 10000000,
+          "minimum" : 0,
+          "type" : "number"
+        },
+        "confidence" : {
+          "description" : "How sure the describer is",
+          "maximum" : 1,
+          "minimum" : 0,
+          "type" : "number"
+        },
+        "direction" : {
+          "description" : "Where the subject moves on screen",
+          "enum" : [
+            "left",
+            "right",
+            "toward",
+            "away",
+            "none"
+          ],
+          "type" : "string"
+        },
+        "end" : {
+          "description" : "Source seconds",
+          "maximum" : 10000000,
+          "minimum" : 0,
+          "type" : "number"
+        },
+        "looked" : {
+          "description" : "Source seconds of the frames looked at",
+          "items" : {
+            "description" : "Seconds",
+            "maximum" : 10000000,
+            "minimum" : 0,
+            "type" : "number"
+          },
+          "maxItems" : 50,
+          "type" : "array"
+        },
+        "move" : {
+          "description" : "Camera move",
+          "enum" : [
+            "static",
+            "pan",
+            "tilt",
+            "push",
+            "pull",
+            "track",
+            "orbit",
+            "handheld",
+            "zoom",
+            "crane"
+          ],
+          "type" : "string"
+        },
+        "note" : {
+          "description" : "Free note",
+          "maxLength" : 300,
+          "type" : "string"
+        },
+        "onScreenText" : {
+          "description" : "Readable text in the picture",
+          "type" : "boolean"
+        },
+        "people" : {
+          "description" : "People in frame",
+          "maximum" : 1000,
+          "minimum" : 0,
+          "type" : "integer"
+        },
+        "size" : {
+          "description" : "Shot size",
+          "enum" : [
+            "ECU",
+            "CU",
+            "MCU",
+            "MS",
+            "MWS",
+            "WS",
+            "EWS",
+            "insert"
+          ],
+          "type" : "string"
+        },
+        "start" : {
+          "description" : "Source seconds",
+          "maximum" : 10000000,
+          "minimum" : 0,
+          "type" : "number"
+        },
+        "subjects" : {
+          "description" : "What is in the shot",
+          "items" : {
+            "description" : "Subject",
+            "maxLength" : 60,
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "maxItems" : 12,
+          "type" : "array"
+        }
+      },
+      "required" : [
+        "start",
+        "end"
+      ],
+      "type" : "object"
+    },
     "item" : {
       "description" : "A timeline item; see the layer rules for which fields it needs",
       "properties" : {
@@ -728,6 +853,9 @@
           "description" : "A movie with an alpha channel (a video sticker); previewed without a proxy",
           "type" : "boolean"
         },
+        "description" : {
+          "$ref" : "#/$defs/mediaDescription"
+        },
         "fps" : {
           "$ref" : "#/$defs/rational"
         },
@@ -782,6 +910,32 @@
         "path",
         "fps",
         "frames"
+      ],
+      "type" : "object"
+    },
+    "mediaDescription" : {
+      "description" : "Shot facts written by an agent or the user (media.describe), in a closed vocabulary",
+      "properties" : {
+        "describedAt" : {
+          "description" : "ISO 8601 time",
+          "type" : "string"
+        },
+        "describedBy" : {
+          "description" : "Author that wrote it",
+          "type" : "string"
+        },
+        "shots" : {
+          "description" : "Shots in source order; they do not overlap",
+          "items" : {
+            "$ref" : "#/$defs/describedShot"
+          },
+          "maxItems" : 5000,
+          "minItems" : 1,
+          "type" : "array"
+        }
+      },
+      "required" : [
+        "shots"
       ],
       "type" : "object"
     },

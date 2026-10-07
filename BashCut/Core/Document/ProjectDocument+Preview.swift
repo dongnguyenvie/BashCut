@@ -33,10 +33,8 @@ extension ProjectDocument {
         generator.requestedTimeToleranceBefore = .zero
         generator.requestedTimeToleranceAfter = .zero
         let captured = try await generator.image(at: project.fps.time(frame)).image
-        let image = Self.scaledAgentImage(captured, maximumDimension: maximumDimension)
-        guard let data = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]) else {
-            throw ProjectError.invalid("The current frame could not be encoded")
-        }
+        let image = MediaStills.fit(captured, maximumSide: maximumDimension)
+        let data = try MediaStills.png(image)
         let directory = ProjectCache.url(.agentContext, projectRoot: root)
         try FileManager.default.createDirectory(
             at: directory, withIntermediateDirectories: true,
@@ -44,38 +42,7 @@ extension ProjectDocument {
         let url = directory.appendingPathComponent("frame-r\(project.revision)-f\(frame)-\(maximumDimension).png")
         try data.write(to: url, options: .atomic)
         try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
-        Self.pruneAgentFrames(in: directory, keeping: 10)
+        MediaStills.prune(directory, keeping: 10)
         return AgentFrame(url: url, frame: frame, width: image.width, height: image.height)
-    }
-
-    private static func scaledAgentImage(_ image: CGImage, maximumDimension: Int) -> CGImage {
-        let largest = max(image.width, image.height)
-        guard largest > maximumDimension else { return image }
-        let scale = Double(maximumDimension) / Double(largest)
-        let width = max(1, Int((Double(image.width) * scale).rounded()))
-        let height = max(1, Int((Double(image.height) * scale).rounded()))
-        guard let context = CGContext(
-            data: nil, width: width, height: height, bitsPerComponent: 8,
-            bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
-        else { return image }
-        context.interpolationQuality = .high
-        context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
-        return context.makeImage() ?? image
-    }
-
-    private static func pruneAgentFrames(in directory: URL, keeping limit: Int) {
-        guard let values = try? FileManager.default.contentsOfDirectory(
-            at: directory, includingPropertiesForKeys: [.contentModificationDateKey],
-            options: [.skipsHiddenFiles])
-        else { return }
-        let sorted = values.filter { $0.pathExtension == "png" }.sorted { lhs, rhs in
-            let left = (try? lhs.resourceValues(forKeys: [.contentModificationDateKey]))?
-                .contentModificationDate ?? .distantPast
-            let right = (try? rhs.resourceValues(forKeys: [.contentModificationDateKey]))?
-                .contentModificationDate ?? .distantPast
-            return left > right
-        }
-        for url in sorted.dropFirst(limit) { try? FileManager.default.removeItem(at: url) }
     }
 }

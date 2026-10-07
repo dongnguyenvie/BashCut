@@ -14,7 +14,8 @@ public enum CommandCatalog {
     public static let exportPresets = OutputPresetName.all
 
     public static let specs: [CommandSpec] = readSpecs + projectSpecs + editSpecs + captionSpecs + layerSpecs + styleSpecs
-        + formatSpecs + clipSpecs + capabilitySpecs + analysisSpecs + mediaAnalysisSpecs + sourceTranscriptSpecs + pluginSpecs + pluginViewSpecs
+        + formatSpecs + clipSpecs + capabilitySpecs + analysisSpecs + sourceMediaSpecs
+        + pluginSpecs + pluginViewSpecs
         + storageSpecs + agentSpecs + appSpecs + chatSpecs
         + privilegedSpecs + uiSpecs + toolSpecs + knowledgeSpecs + skillSpecs + librarySpecs + fontSpecs
 
@@ -35,11 +36,7 @@ public enum CommandCatalog {
 
     private static let readSpecs: [CommandSpec] = [
         CommandSpec(
-            "context.get", .read,
-            "Read the project path, revision, playhead and selection, and a summary of the agent knowledge: active "
-                + "lessons, preferences, project facts and the number of proposals; scope lists the timeline items "
-                + "attached to your tab's request (edit only those), with the scope guard's mode, a held edit and "
-                + "the user's answer to the last one (last); agentPermissions tells what you may do without asking."),
+            "context.get", .read, contextSummary),
         CommandSpec("project.get", .read, "Read the whole open project document."),
         CommandSpec(
             "timeline.get", .read, "Read the revision, format and tracks, including track IDs and roles.",

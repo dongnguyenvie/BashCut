@@ -62,6 +62,15 @@ extension MediaAnalysis {
         corrections.remove.sort()
     }
 
+    /// Measured shots as source seconds between the cuts at `minScore`; nil without a picture measurement.
+    public func shotSpans(minScore: Double = Limits().minScore) -> [(start: Double, end: Double)]? {
+        guard let picture, picture.frames > 0, picture.fps > 0 else { return nil }
+        let bounds = [0] + cuts(minScore: minScore).map(\.frame) + [picture.frames]
+        return zip(bounds, bounds.dropFirst()).filter { $0.1 > $0.0 }.map {
+            (Double($0.0) / picture.fps, Double($0.1) / picture.fps)
+        }
+    }
+
     /// The samples as a `ReviewPicture`, so shot motion is computed by the same function as `review.shots`.
     var reviewPicture: ReviewPicture? {
         picture.map { picture in

@@ -25,9 +25,13 @@ public enum ProjectCache {
         case analysis
         /// What was said in source files (`media.transcribe`), `<content key>.json`.
         case transcripts
+        /// Source frames, contact sheets and filmstrips for agents (`media.frames`, `media.frame`, `media.strip`).
+        case mediaStills = "media-stills"
+        /// Capture facts of source files (`media.inventory`), `<content key>.json`.
+        case inventory
 
         /// Where this cache was before `.bashcut/cache/`; waveforms were already there, and analysis is newer.
-        var legacyPath: String? { [.waveforms, .analysis, .transcripts].contains(self) ? nil : ".bashcut/" + rawValue }
+        var legacyPath: String? { [.waveforms, .analysis, .transcripts, .mediaStills, .inventory].contains(self) ? nil : ".bashcut/" + rawValue }
     }
 
     public static func root(projectRoot: URL) -> URL {
@@ -41,7 +45,21 @@ public enum ProjectCache {
 
     /// A content key for a file: SHA-256 of `namespace`, the size and the first and last mebibyte. A moved or
     /// renamed file keeps its key; an edited one gets a new key. It reads at most two mebibytes.
+    /// Keys already read are remembered for the file's path, size and modification date, so asking again (as
+    /// `context.get` does for every media) reads nothing.
     public static func contentKey(for url: URL, namespace: String) throws -> String {
+        // Not `URL.resourceValues`: a URL keeps the values it read once.
+        let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
+        let modified = (attributes[.modificationDate] as? Date)?.timeIntervalSinceReferenceDate ?? 0
+        let stamp = "\((attributes[.size] as? NSNumber)?.int64Value ?? -1)|\(modified)|\(attributes[.systemFileNumber] ?? 0)"
+        let memo = namespace + "|" + url.standardizedFileURL.path
+        if let known = KeyMemo.shared.key(memo, stamp: stamp) { return known }
+        let key = try readContentKey(for: url, namespace: namespace)
+        KeyMemo.shared.remember(memo, stamp: stamp, key: key)
+        return key
+    }
+
+    private static func readContentKey(for url: URL, namespace: String) throws -> String {
         let handle = try FileHandle(forReadingFrom: url)
         defer { try? handle.close() }
         let size = try handle.seekToEnd()
@@ -108,5 +126,23 @@ public enum ProjectCache {
             try? cacheRoot.setResourceValues(values)
         }
         return moved
+    }
+}
+
+/// Content keys by path, valid while the file's size and modification date stay the same.
+private final class KeyMemo: @unchecked Sendable {
+    static let shared = KeyMemo()
+    private let lock = NSLock()
+    private var keys: [String: (stamp: String, key: String)] = [:]
+
+    func key(_ memo: String, stamp: String) -> String? {
+        lock.withLock { keys[memo].flatMap { $0.stamp == stamp ? $0.key : nil } }
+    }
+
+    func remember(_ memo: String, stamp: String, key: String) {
+        lock.withLock {
+            if keys.count > 10_000 { keys.removeAll() }
+            keys[memo] = (stamp, key)
+        }
     }
 }

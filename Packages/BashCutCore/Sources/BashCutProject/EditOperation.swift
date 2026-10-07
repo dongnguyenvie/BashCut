@@ -29,6 +29,8 @@ public indirect enum EditOperation: Codable, Sendable, Equatable {
     case setProviderPreference(capability: String, provider: String?)
     case setBeatGrid(
         media: String, bpm: Double, frames: [Int], provenance: [String: JSONValue]?)
+    /// Stores (or with nil removes) a media's shot description; see MediaDescription.swift.
+    case setMediaDescription(media: String, description: JSONValue?)
     case upsertSection(id: String, label: String, atFrame: Int)
     case deleteSection(id: String)
     /// `easing` nil or `linear` is the default straight tween (see `TimelineTransition.easings`).
@@ -119,6 +121,8 @@ extension Project {
             try setProviderPreference(capability: capability, provider: provider)
         case .setBeatGrid(let media, let bpm, let frames, let provenance):
             try setBeatGrid(media: media, bpm: bpm, frames: frames, provenance: provenance)
+        case .setMediaDescription(let media, let description):
+            try setMediaDescription(media: media, description: description)
         case .upsertSection(let id, let label, let frame):
             try upsertSection(id: id, label: label, frame: frame)
         case .deleteSection(let id):
@@ -258,6 +262,12 @@ extension Project {
         ]
         if let provenance { value["generatedBy"] = .object(provenance) }
         self["beatGrid"] = .object(value)
+    }
+
+    private mutating func setMediaDescription(media id: String, description: JSONValue?) throws {
+        guard let index = media.firstIndex(where: { $0.id == id }) else { throw ProjectError.invalid("Unknown media \(id)") }
+        if let description { _ = try MediaDescription(json: description, duration: media[index].durationSeconds) }
+        media[index].fields["description"] = description
     }
 
     private mutating func upsertSection(id: String, label: String, frame: Int) throws {

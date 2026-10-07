@@ -1,14 +1,15 @@
 import Foundation
 
 /// The shots on Main as data for the agent (`review.shots`, #464): timing, source, framing and speed from the
-/// timeline, and motion from a picture measurement of the same revision. No verdicts: a skill compares the numbers
-/// with the range its genre allows.
+/// timeline, motion from a picture measurement of the same revision, and the facts `media.describe` stored for the
+/// source shot it plays (`described`). No verdicts: a skill compares the numbers with the range its genre allows.
 public enum ReviewShots {
     public static func json(_ project: Project, picture: ReviewPicture? = nil, summary: Bool = false) -> JSONValue {
         let fps = project.fps.value
         let measured = picture.flatMap { $0.revision == project.revision ? $0 : nil }
         let main = project.tracks.first { $0.role == "main" }?.items.sorted { $0.at < $1.at } ?? []
         let media = Dictionary(project.media.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let descriptions = media.compactMapValues(\.shotDescription)
         let transitions = Dictionary(
             project.transitions.map { ($0.toItemID, $0) }, uniquingKeysWith: { first, _ in first })
         var previous: Item?
@@ -20,6 +21,15 @@ public enum ReviewShots {
                 "seconds": .number(rounded(Double(shot.duration) / fps)), "speed": .number(shot.speed),
             ]
             row.merge(source(shot, media: media, fps: fps)) { _, new in new }
+            if let mediaID = shot.mediaID, let asset = media[mediaID], let description = descriptions[mediaID] {
+                let span = project.sourceSpan(of: shot, media: asset)
+                if let described = description.shot(covering: span.lowerBound, to: span.upperBound) {
+                    var facts = described.factsJSON.object
+                    facts["start"] = .number(rounded(described.start))
+                    facts["end"] = .number(rounded(described.end))
+                    row["described"] = .object(facts)
+                }
+            }
             if let left = previous {
                 row["gapBefore"] = .integer(shot.at - left.end)
                 if let transition = transitions[shot.id], transition.fromItemID == left.id {
