@@ -51,6 +51,7 @@ public enum CommandCatalog {
         reviewSpec,
         reviewMeasureSpec,
         reviewPictureSpec,
+        reviewShotsSpec,
         CommandSpec("captions.export", .read, "Export captions as SubRip text."),
         CommandSpec(
             "export.status", .read,

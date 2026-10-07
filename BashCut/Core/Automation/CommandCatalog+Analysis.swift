@@ -50,6 +50,19 @@ extension CommandCatalog {
             CommandParameter("cuts", .boolean, "Include the cuts (default true)", cli: .option("cuts")),
         ])
 
+    static let reviewShotsSpec = CommandSpec(
+        "review.shots", .read,
+        "Read the shots on Main in order: index, id, at/atSeconds, duration (frames) and seconds, media, mediaKind, "
+            + "sourceIn and sourceInSeconds, zoom and transform, speed, keyframed properties, freezeFrame/reverse when "
+            + "set, gapBefore (frames since the previous shot), transitionIn {kind, duration} or the picture "
+            + "cutDifference across a hard cut, and motion {mean, peak, samples} (fractions of full scale, see "
+            + "review.picture) when review.measure ran for this revision (pictureMeasured). No verdicts. With "
+            + "summary: count, total, mean, median, min and max seconds and cuts per minute.",
+        parameters: [
+            CommandParameter("summary", .boolean, "Add count, length statistics and cuts per minute",
+                             cli: .flag("summary"))
+        ])
+
     /// Read-only sound analysis through plugin providers; each runs as a job whose result holds the values.
 
     static let analysisSpecs: [CommandSpec] = [

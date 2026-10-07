@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+- **Shot list for agents (#464).** `review shots` (`review.shots`, read) lists the shots on Main in order with their
+  timing in frames and seconds, source media and in-point, zoom and transform, speed, keyframed properties, the gap
+  before, the transition in or the picture difference across the hard cut, and the measured motion (mean and peak
+  change) when `review measure` ran for this revision. `--summary` adds count, mean/median/min/max length and cuts per
+  minute. No verdicts: a skill compares them with its genre's range.
+
 - **Raw picture data for agents (#463).** `review picture` (`review.picture`, read) returns the measurement behind the
   picture checks of the last `review measure`: every sample `{frame, seconds, luma, spread, change, peak}` and every
   hard cut on Main `{item, fromItem, frame, before, seconds, difference}`, with the units and the noise floors the

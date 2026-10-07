@@ -122,6 +122,9 @@ extension ProjectDocument {
                 for: document.project, from: arguments.optionalInt("from") ?? 0, to: arguments.optionalInt("to"),
                 samples: arguments.optionalBool("samples") ?? true, cuts: arguments.optionalBool("cuts") ?? true)
         }
+        handle("review.shots") { document, arguments, _ in
+            ReviewShots.json(document.project, picture: document.reviewPicture, summary: arguments.bool("summary"))
+        }
         handle("export.status") { document, _, _ in document.exports.statusJSON }
     }
 
