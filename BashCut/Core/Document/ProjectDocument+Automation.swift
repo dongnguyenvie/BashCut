@@ -29,6 +29,7 @@ extension ProjectDocument {
         registerSourceTranscriptCommands()
         registerMediaDescriptionCommands()
         registerMediaStillsCommands()
+        registerMediaInventoryCommands()
         registerStorageCommands()
         registerLibraryCommands()
         registerAgentKitCommands()
@@ -79,7 +80,8 @@ extension ProjectDocument {
 
     private func registerReadCommands() {
         handle("context.get") { document, _, _ in
-            .object([
+            let analysis = await document.analysisReadiness()
+            return .object([
                 "project": document.fileURL.map { .string($0.path) } ?? .null,
                 "rev": .integer(document.project.revision), "playhead": .integer(document.playhead),
                 "selection": document.selectedID.map(JSONValue.string) ?? .null,
@@ -89,7 +91,7 @@ extension ProjectDocument {
                 "busy": .bool(document.busy), "saving": .bool(document.saving),
                 "knowledge": document.agents.knowledgeStore.summary().json,
                 "scope": document.agentScopeJSON,
-                "agentPermissions": document.agentPermissionsJSON,
+                "agentPermissions": document.agentPermissionsJSON, "analysis": analysis,
             ])
         }
         handle("project.get") { document, _, _ in .object(document.project.fields) }

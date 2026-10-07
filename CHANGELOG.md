@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+- **Footage inventory and analysis readiness (P0-A6).** `media inventory [--location-grid D]` (`media.inventory`,
+  read) lists each media's capture time, GPS position, device and shown size/orientation as the file records them
+  (read once per file content, kept in `.bashcut/cache/inventory`), speech seconds and language from the stored
+  transcript, and whether it is measured, transcribed and described, with totals per folder and for the project
+  (places grouped on a grid, IDs not yet measured/transcribed/described). `context get` gains `analysis`: running
+  `media.analyze`/`media.transcribe`/`review.measure` jobs and the media not yet measured, transcribed or described.
+  Content keys are remembered per path, size, modification date and inode.
+
 - **Source frames as pictures (P0-A5).** `media frames [--media A,B] [--at S,S | --every S | --count N] [--from S
   --to S] [--sheet] [--reference M]` (`media.frames`, read) writes exact source frames as PNGs with their frame index
   and second, or contact sheets whose cells are labelled `<cell> <file> <m:ss.s>` (colour per media) with a cell map

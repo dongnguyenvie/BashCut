@@ -14,10 +14,34 @@ extension CommandCatalog {
                              cli: .flag("analysis"))
         ])
 
+    /// `context.get`, which also reports analysis readiness (P0-A6).
+    static let contextSummary =
+        "Read the project path, revision, playhead and selection, and a summary of the agent knowledge: active "
+            + "lessons, preferences, project facts and the number of proposals; scope lists the timeline items "
+            + "attached to your tab's request (edit only those), with the scope guard's mode, a held edit and "
+            + "the user's answer to the last one (last); agentPermissions tells what you may do without asking; "
+            + "analysis lists running analysis jobs and the media not yet measured (media.analyze), transcribed "
+            + "(media.transcribe) or described (media.describe), so a plan does not use defaults where "
+            + "measurements are missing."
+
     /// Every command about source media (P0-A).
     static var sourceMediaSpecs: [CommandSpec] {
-        mediaAnalysisSpecs + sourceTranscriptSpecs + mediaDescriptionSpecs + mediaStillsSpecs
+        mediaAnalysisSpecs + sourceTranscriptSpecs + mediaDescriptionSpecs + mediaStillsSpecs + [mediaInventorySpec]
     }
+
+    static let mediaInventorySpec = CommandSpec(
+        "media.inventory", .read,
+        "What the footage holds, from one call (read only; capture facts are read once per file and kept in "
+            + ".bashcut/cache/inventory). media [{id, path, folder, kind, seconds, width/height shown and orientation, "
+            + "capturedAt and location as the file records them (null when it does not), device, hasAudio, measured "
+            + "(media.analyze), transcript {language, speechSeconds, words} or null, description coverage}], folders "
+            + "and totals {media, seconds, speechSeconds, languages, measured, transcribed, described, notMeasured, "
+            + "notTranscribed, notDescribed (IDs), capturedFrom/To, locations [{latitude, longitude, media}] grouped "
+            + "on a locationGrid-degree grid, withoutLocation}. Facts only.",
+        parameters: [
+            CommandParameter("locationGrid", .number, "Degrees that group places (default 0.001, about 100 m)",
+                             range: 0...10, cli: .option("location-grid"))
+        ])
 
     static let mediaMedia = CommandParameter("media", .string, "Project media ID", required: true, cli: .option("media"))
 

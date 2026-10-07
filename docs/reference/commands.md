@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 163 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 164 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -10,7 +10,7 @@ approval are explained in the [automation guide](../guides/automation.md#permiss
 
 ### `bashcut context get`
 
-Read the project path, revision, playhead and selection, and a summary of the agent knowledge: active lessons, preferences, project facts and the number of proposals; scope lists the timeline items attached to your tab's request (edit only those), with the scope guard's mode, a held edit and the user's answer to the last one (last); agentPermissions tells what you may do without asking.
+Read the project path, revision, playhead and selection, and a summary of the agent knowledge: active lessons, preferences, project facts and the number of proposals; scope lists the timeline items attached to your tab's request (edit only those), with the scope guard's mode, a held edit and the user's answer to the last one (last); agentPermissions tells what you may do without asking; analysis lists running analysis jobs and the media not yet measured (media.analyze), transcribed (media.transcribe) or described (media.describe), so a plan does not use defaults where measurements are missing.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_context_get`
 
@@ -305,6 +305,13 @@ Draw a filmstrip of a source range as one PNG: count frames (default 8) along th
 - `to`: number, 0…86400. Up to this source second (default the end)
 - `count`: integer, 1…24. Frames along the top (default 8)
 - `width`: integer, 400…8192. Image width in pixels (default 1600)
+
+### `bashcut media inventory [--location-grid <locationGrid>]`
+
+What the footage holds, from one call (read only; capture facts are read once per file and kept in .bashcut/cache/inventory). media [{id, path, folder, kind, seconds, width/height shown and orientation, capturedAt and location as the file records them (null when it does not), device, hasAudio, measured (media.analyze), transcript {language, speechSeconds, words} or null, description coverage}], folders and totals {media, seconds, speechSeconds, languages, measured, transcribed, described, notMeasured, notTranscribed, notDescribed (IDs), capturedFrom/To, locations [{latitude, longitude, media}] grouped on a locationGrid-degree grid, withoutLocation}. Facts only.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_media_inventory`
+- `locationGrid`: number, 0…10. Degrees that group places (default 0.001, about 100 m)
 
 ## review
 

@@ -61,11 +61,12 @@ arguments.
 
 | Command | Mode | UI equivalent |
 |---|---|---|
-| `context get` | read | Open project, selection, playhead |
+| `context get` | read | Open project, selection, playhead; running analysis jobs and media not yet measured, transcribed or described |
 | `project get` / `project recents` | read | Welcome screen, Recent projects |
 | `timeline get [--format text\|json]` | read | Looking at the timeline, its transitions and section markers |
 | `media list [--analysis]` / `media analyze` / `media analysis` | read | Library (`media analyze`: a measured record per source file with shots, motion, sound spans and file facts, read with `media analysis`) |
 | `media cuts` | edit | Correcting the shots found in a source file |
+| `media inventory` | read | None yet: capture time, place, device, orientation, speech and what is measured, transcribed and described, per media, folder and project |
 | `media frames` / `media frame` / `media strip` | read | None yet: exact source frames, contact sheets (with a REF row) and a filmstrip with level, gaps and words, by source time |
 | `media describe` / `media description` | edit / read | None yet: shot facts the agent saw in a source file (closed vocabulary), with their coverage |
 | `review run` / `review measure` / `review picture` / `review shots` / `review layout` | read | Review, Measure picture (`review picture`: the raw samples and cuts behind the picture checks; `review shots`: the shots on Main with timing, source, framing and motion; `review layout`: rendered text bounds next to the platform zones) |
