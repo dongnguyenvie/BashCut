@@ -1,3 +1,4 @@
+import BashCutAutomation
 import BashCutPlugins
 import BashCutProject
 import Foundation
@@ -19,6 +20,8 @@ public struct Job: Identifiable, Sendable, Equatable {
     public internal(set) var detail: String?
     public internal(set) var result: JSONValue = .null
     public internal(set) var error: String?
+    /// A typed failure's RPC category (`capability_missing`, `unsupported_media`…), as a failed call reports it.
+    public internal(set) var errorCategory: String?
     public internal(set) var finishedAt: Date?
     /// When the work started running (a queued job waits before it).
     public internal(set) var runningAt: Date?
@@ -42,7 +45,8 @@ public struct Job: Identifiable, Sendable, Equatable {
             "id": .string(id), "method": .string(method), "author": .string(author.rawValue),
             "state": .string(state.rawValue), "progress": progress.map(JSONValue.number) ?? .null,
             "step": detail.map(JSONValue.string) ?? .null, "detail": detail.map(JSONValue.string) ?? .null,
-            "result": result, "error": error.map(JSONValue.string) ?? .null, "usage": .object(usage),
+            "result": result, "error": error.map(JSONValue.string) ?? .null,
+            "errorCategory": errorCategory.map(JSONValue.string) ?? .null, "usage": .object(usage),
             "requestId": requestID.map(JSONValue.string) ?? .null,
             "startedAt": .string(formatter.string(from: createdAt)),
             "finishedAt": finishedAt.map { .string(formatter.string(from: $0)) } ?? .null,
@@ -206,6 +210,9 @@ public final class JobCenter {
         case .failure(let error):
             jobs[index].state = cancelled || Self.isCancellation(error) ? .cancelled : .failed
             jobs[index].error = error.localizedDescription
+            if jobs[index].state == .failed, error is RPCFailure || error is any RPCFailureProviding {
+                jobs[index].errorCategory = RPCFailure.from(error).category.rawValue
+            }
         }
         let job = jobs[index]
         trimHistory()

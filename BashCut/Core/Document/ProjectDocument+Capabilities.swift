@@ -257,6 +257,22 @@ extension ProjectDocument {
             }
             return .array(document.jobs.jobs.map(\.json))
         }
+        handle("capabilities.get") { document, arguments, _ in
+            let root = document.fileURL?.deletingLastPathComponent()
+            let kind = try arguments.optionalString("kind").map {
+                guard let kind = LibraryKind(rawValue: $0) else { throw RPCFailure(-32602, "Unknown kind \($0)") }
+                return kind
+            }
+            let service = document.plugins.service
+            if let capability = arguments.optionalString("capability") {
+                let report = await service.checkedCapabilityStatus(capability, projectRoot: root, kind: kind)
+                return Self.capabilityJSON(report)
+            }
+            let declared = service.catalog(projectRoot: root).plugins.flatMap { ($0.manifest.providers ?? []).map(\.capability) }
+            let names = Set(CapabilityService.knownCapabilities + declared).sorted()
+            let reports = await service.checkedCapabilityStatuses(names, projectRoot: root, kind: kind)
+            return .array(reports.map(Self.capabilityJSON))
+        }
         handle("jobs.wait") { document, arguments, _ in
             try await document.waitForJob(try arguments.string("job"), seconds: try arguments.int("timeout"))
         }
@@ -381,6 +397,14 @@ extension ProjectDocument {
         ])
     }
 
+    /// A capability report with the commands that call it.
+    static func capabilityJSON(_ report: CapabilityReport) -> JSONValue {
+        var fields = report.json.object
+        fields["commands"] = .array(
+            capabilityForMethod.filter { $0.value == report.capability }.keys.sorted().map(JSONValue.string))
+        return .object(fields)
+    }
+
     /// `jobs.wait` (P2-G4): the job once its state or step changes, it finishes, or `seconds` pass.
     func waitForJob(_ id: String, seconds: Int) async throws -> JSONValue {
         guard jobs.job(id) != nil else { throw RPCFailure(-32602, "Unknown job") }
@@ -411,7 +435,12 @@ extension ProjectDocument {
         work: @escaping @MainActor (ProjectDocument) async throws -> JSONValue
     ) throws -> JSONValue {
         if let reused = reusedJob(method, requestID: requestID) { return reused }
-        guard fileURL != nil else { throw RPCFailure(-32602, "Open a saved project first") }
+        guard let root = fileURL?.deletingLastPathComponent() else { throw RPCFailure(-32602, "Open a saved project first") }
+        // Fail the call, not a job a moment later, when nothing could serve it (P2-G5; health is checked in the job).
+        if let capability = capabilityForMethod[method] {
+            let report = plugins.service.capabilityStatus(capability, projectRoot: root)
+            if !report.available { throw CapabilityUnavailable(report) }
+        }
         guard !conflict else { throw RPCFailure(-32003, "The project has a file conflict; retry later", category: .fileConflict) }
         if let capability = capabilityForMethod[method], plugins.calling.contains(capability) {
             throw RPCFailure(-32003, "\(capability) is already running; retry later", category: .busyRunning)

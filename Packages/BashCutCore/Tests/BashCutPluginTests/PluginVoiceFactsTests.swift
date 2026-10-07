@@ -36,4 +36,15 @@ struct PluginVoiceFactsTests {
         let blank = try manifest(capability: "voice.synthesize", provider: #", "voices": [{"id": "a", "language": ""}]"#)
         #expect(throws: PluginError.self) { try blank.validate() }
     }
+
+    @Test("Paid and estimates are provider flags (P2-G4), absent by default, and survive encoding")
+    func paid() throws {
+        let plain = try #require(try manifest(capability: "voice.synthesize", provider: "").providers?.first)
+        #expect(plain.paid == nil && plain.estimates == nil)
+        let paid = try manifest(capability: "voice.synthesize", provider: #", "paid": true, "estimates": true"#)
+        let provider = try #require(paid.providers?.first)
+        #expect(provider.paid == true && provider.estimates == true)
+        let again = try JSONDecoder().decode(PluginManifest.self, from: JSONEncoder().encode(paid))
+        #expect(again.providers?.first == provider)
+    }
 }

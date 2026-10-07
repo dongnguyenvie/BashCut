@@ -62,9 +62,7 @@ struct CommandSpecTests {
     func validation() throws {
         let speak = try #require(CommandCatalog.spec(named: "voice.speak"))
         let values = try speak.validate(["text": .string("Xin chào"), "provider": .null])
-        #expect(values == [
-            "text": .string("Xin chào"), "takes": .integer(3), "keepTakes": .bool(false), "dryRun": .bool(false),
-        ])
+        #expect(values == ["text": .string("Xin chào"), "takes": .integer(3), "keepTakes": .bool(false), "dryRun": .bool(false)])
         for params: [String: JSONValue] in [
             ["text": .string("a"), "takes": .integer(9)], ["text": .string("a"), "atFrame": .integer(-1)],
             ["text": .string("a"), "voice": .string("x")], ["text": .integer(1)],
@@ -232,9 +230,7 @@ struct CommandSpecTests {
         #expect(apply.format == "json")
 
         let speak = try CommandLineParser.parse(["voice", "speak", "--takes=2", "--", "--hello"])
-        #expect(speak.params == [
-            "text": .string("--hello"), "takes": .integer(2), "keepTakes": .bool(false), "dryRun": .bool(false),
-        ])
+        #expect(speak.params == ["text": .string("--hello"), "takes": .integer(2), "keepTakes": .bool(false), "dryRun": .bool(false)])
 
         let export = try CommandLineParser.parse([
             "export", "start", "--preset", "quick-draft", "--name", "draft", "--normalize-audio", "--output-dir", "out",

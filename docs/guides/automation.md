@@ -48,7 +48,9 @@ Common error codes:
 Every error's `data` also carries `category`, `retryable` and, where a factual next step exists, `remediation`
 (`{command?, hint}`); fields a command sets itself (such as a stale revision's `expected` and `actual`) stay.
 Categories: `malformed`, `invalid_request`, `unknown_command`, `invalid_arguments`, `permission`,
-`stale_revision`, `out_of_scope`, `unavailable`, `capability_missing`, `unsupported_media` (this Mac cannot
+`stale_revision`, `out_of_scope`, `unavailable`, `capability_missing` (no plugin provider can serve; `data.reason`
+is `missing`, `not_configured` or `unhealthy` and `data.providers` lists each provider's state, as `capabilities get`
+does), `unsupported_media` (this Mac cannot
 decode a media's video; `data.media` lists it with its codec and timeline frames), `internal`, and for `-32003`:
 `busy_dialog` (answer or close the open dialog: `ui dialog`), `busy_approval` (an earlier request waits for the
 user), `busy_running` (the same work is running), `file_conflict` and `not_available_now`. `context get` ›
@@ -757,6 +759,13 @@ bashcut jobs cancel JOB_ID
 - `voice speak --keep-takes` inserts nothing and keeps every take in `voiceover/generated`, so you can choose
   one and place it with `media import`.
 - `--provider ID` overrides the project preference for one request.
+- `bashcut capabilities get [CAPABILITY] [--kind K]` says whether each capability can serve now: `available`, or
+  `reason` `missing` (no plugin provides it: the user installs one), `not_configured` (turned off, not approved,
+  changed, outdated or missing a required plugin: the user turns it on or approves it) or `unhealthy` (a dependency
+  fails its health check). Each provider has `plugin`, `priority`, `paid`, `state` and `detail`; `commands` lists
+  the commands that call the capability. Health checks run in parallel and stop after about 8 s
+  (`healthChecked: false`). A job command whose capability cannot serve fails at the call with `capability_missing`;
+  one that fails later in its job keeps `errorCategory` on the job.
 - A capability that is already running (from the UI or another job) is rejected with a retry error.
 - Opening another project cancels and clears all jobs.
 - Installing plugins, running their dependency recipes, trusting a plugin or turning one on is never available

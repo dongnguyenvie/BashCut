@@ -1,7 +1,7 @@
 import BashCutProject
 
 extension CommandCatalog {
-    private static let libraryKinds = LibraryKind.allCases.map(\.rawValue)
+    static let libraryKinds = LibraryKind.allCases.map(\.rawValue)
     private static let libraryKind = CommandParameter(
         "kind", .string, "Item kind", choices: libraryKinds, cli: .option("kind"))
     private static let libraryPanel = CommandParameter(

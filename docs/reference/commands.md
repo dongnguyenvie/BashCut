@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 214 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 215 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -734,30 +734,6 @@ Run plugin health checks (Plugins sheet, Check Health); all plugins by default.
 - Mode: read · Runs: immediately · MCP: `bashcut_plugins_health`
 - `plugin`: string. Plugin ID
 
-## jobs
-
-### `bashcut jobs status [<job>]`
-
-Read one job (plugin call or export), or all recent jobs when job is omitted. Each job has state, progress, step and usage {provider, wallSec, units, costUSD, costSource}: units and cost only as a provider reported them, never estimated.
-
-- Mode: read · Runs: immediately · MCP: `bashcut_jobs_status`
-- `job`: string. Job ID
-
-### `bashcut jobs wait <job> [--timeout <timeout>]`
-
-Wait until a job's state or step changes, or it finishes, up to timeout seconds; returns the job, changed and timedOut. A finished job returns at once. Use it instead of polling jobs status.
-
-- Mode: read · Runs: immediately · MCP: `bashcut_jobs_wait`
-- `job`: string, required. Job ID
-- `timeout`: integer, 1…30, default 25. Seconds to wait at most
-
-### `bashcut jobs cancel <job>`
-
-Cancel a queued or running job (plugin call or export).
-
-- Mode: edit · Runs: immediately · MCP: `bashcut_jobs_cancel`
-- `job`: string, required. Job ID
-
 ## captions
 
 ### `bashcut captions export [--as <as>]`
@@ -1004,6 +980,40 @@ Play a video clip backwards (with its linked sound): renders a reversed copy of 
 
 - Mode: edit · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_clip_reverse`
 - `item`: string. Item ID; the selected clip by default
+
+## jobs
+
+### `bashcut jobs status [<job>]`
+
+Read one job (plugin call or export), or all recent jobs when job is omitted. Each job has state, progress, step and usage {provider, wallSec, units, costUSD, costSource}: units and cost only as a provider reported them, never estimated.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_jobs_status`
+- `job`: string. Job ID
+
+### `bashcut jobs wait <job> [--timeout <timeout>]`
+
+Wait until a job's state or step changes, or it finishes, up to timeout seconds; returns the job, changed and timedOut. A finished job returns at once. Use it instead of polling jobs status.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_jobs_wait`
+- `job`: string, required. Job ID
+- `timeout`: integer, 1…30, default 25. Seconds to wait at most
+
+### `bashcut jobs cancel <job>`
+
+Cancel a queued or running job (plugin call or export).
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_jobs_cancel`
+- `job`: string, required. Job ID
+
+## capabilities
+
+### `bashcut capabilities get [<capability>] [--kind <kind>]`
+
+Whether each plugin capability (or one) can serve now: available, else reason missing (no plugin provides it), not_configured (turned off, not approved, changed, outdated or missing a required plugin) or unhealthy (a dependency fails its health check). Lists each provider with plugin, priority, paid, state and detail, and the commands that call the capability. A command whose capability cannot serve fails with category capability_missing and the same reason.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_capabilities_get`
+- `capability`: string. Capability ID, such as captions.transcribe; all by default
+- `kind`: string, one of audio, text-preset, sticker, effect-preset, transition-preset, look, voice. Only providers serving this library item kind
 
 ## beats
 
