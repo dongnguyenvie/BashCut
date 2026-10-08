@@ -219,7 +219,7 @@ MAIN c-01 0:00.00-0:02.04 m-0449 speech z1.00          "Top 10 món nên ăn / �
 MAIN c-02 0:02.04-0:04.09 m-0450 speech z1.22 p40 t-30 "Một quán các bạn / KHÔNG nên ăn…"
 …
 VO   vo-1 0:26.11-0:29.20 voiceover/vo1.wav  "Trong lúc chờ lẩu sôi…"
-MUS  mu-1 0:00.00-1:49.81 @assets/nhac/inspired.mp3 duck-14  beat 117.5bpm
+MUS  mu-1 0:00.00-1:49.81 @assets/music/inspired.mp3 duck-14  beat 117.5bpm
 ```
 
 Today's output is simpler: a header line (`project <name> rev <rev> <width>x<height> <fps>fps`) and one line
