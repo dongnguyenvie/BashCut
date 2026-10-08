@@ -8,6 +8,9 @@ struct PluginManagerView: View {
     let document: ProjectDocument
     let done: () -> Void
 
+    /// The same size as Settings, so the two sheets read as one family.
+    @State private var size = SettingsView.preferredSize()
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -46,7 +49,7 @@ struct PluginManagerView: View {
             if model.installing { PluginInstallProgressView(model: model) }
             Text(model.message).font(.caption).foregroundStyle(.secondary)
         }
-        .padding(20).frame(width: 760, height: 620, alignment: .top).preferredColorScheme(.dark)
+        .padding(20).frame(width: size.width, height: size.height, alignment: .top).preferredColorScheme(.dark)
         .sheet(item: $model.pendingInstall) { pending in
             PluginInstallApprovalView(
                 pending: pending, registry: model.registry, required: model.requiredBytes(pending),
