@@ -21,7 +21,6 @@ projects/<video-name>/
 ├── fonts/                                   # .ttf/.otf/.ttc for textStyle.font, registered for the app while open
 ├── media/                                   # project-only files (images, downloaded clips, stickers)
 ├── voiceover/                               # generated/ (TTS takes), recordings/ (microphone)
-├── khao-sat/                                # survey: thong_so.json, transcript.json, contact sheets (unchanged)
 ├── subtitles/                               # exported .srt; generated/ holds transcription output
 ├── render/                                  # exported videos (not in git)
 └── .bashcut/                                # cache and runtime data
@@ -108,7 +107,7 @@ only.
 
 **Media paths are relative** to the project folder. A file inside a top-level folder link (`footage/`) is stored
 through the link (`footage/<file>`), never as a path into its target. Shared assets are written as
-`@assets/nhac/…` and resolve under the workspace's `assets` folder.
+`@assets/music/…` and resolve under the workspace's `assets` folder.
 
 **Item IDs are stable.** An item keeps its ID when it is trimmed or moved. A split keeps the ID on the left half
 and gives the right half a new ID.
