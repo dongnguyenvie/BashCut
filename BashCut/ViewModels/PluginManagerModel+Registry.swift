@@ -25,17 +25,20 @@ struct PluginListing: Identifiable {
     var id: String { entry.id }
     var category: PluginCategory { entry.pluginCategory }
 
-    var json: JSONValue {
-        var statusText: String
+    /// The status as automation names it.
+    var statusName: String {
         switch status {
-        case .available: statusText = "available"
-        case .installed: statusText = "installed"
-        case .update: statusText = "update"
-        case .shadowed: statusText = "installed-elsewhere"
-        case .incompatible: statusText = "incompatible"
+        case .available: "available"
+        case .installed: "installed"
+        case .update: "update"
+        case .shadowed: "installed-elsewhere"
+        case .incompatible: "incompatible"
         }
+    }
+
+    var json: JSONValue {
         var fields: [String: JSONValue] = [
-            "id": .string(entry.id), "name": .string(entry.name.text), "status": .string(statusText),
+            "id": .string(entry.id), "name": .string(entry.name.text), "status": .string(statusName),
             "summary": entry.summary.map { .string($0.text) } ?? .null,
             "publisher": entry.publisher.map(JSONValue.string) ?? .null,
             "author": entry.author?.json ?? .null,
@@ -163,8 +166,9 @@ extension PluginManagerModel {
     }
 
     /// Downloads and verifies a registry plugin, then shows the install approval. Nothing runs before the user
-    /// approves it.
-    func requestInstall(_ id: String, version requested: String? = nil) async throws {
+    /// approves it. While another install is in progress the request waits in `installQueue` instead.
+    @discardableResult
+    func requestInstall(_ id: String, version requested: String? = nil) async throws -> PluginInstallRequestOutcome {
         guard PluginChannel.current.allowsUserPlugins else { throw PluginError.invalid(Self.channelRefusal) }
         if registry == nil { await refreshRegistry() }
         guard let entry = registry?.entry(id) else { throw PluginError.invalid("No plugin \(id) in the registry") }
@@ -177,38 +181,52 @@ extension PluginManagerModel {
         } else {
             version = try entry.resolve(appVersion: Self.appVersion).get()
         }
-        guard downloading.insert(id).inserted else { throw PluginError.invalid("\(id) is already downloading") }
-        defer { downloading.remove(id) }
+        if let position = enqueueIfBusy(.plugin(id: id, version: requested)) { return .queued(position: position) }
+        downloading.insert(id)
+        defer {
+            downloading.remove(id)
+            advanceInstallQueue()
+        }
+        let staged = try await registryInstaller.stage(
+            entry, version: version, publisherKeys: registry?.keys(for: entry.publisher) ?? [])
+        pendingInstall = pendingRegistryInstall(staged)
+        tab = .browse
+        return .pending
+    }
+
+    /// Downloads and checks registry archives into the user plugin folder's staging area.
+    var registryInstaller: PluginArchiveInstaller {
         #if DEBUG
             // Development builds can test a local registry (`pluginRegistryURL` = file://…) end to end.
             let allowFiles = Self.registryURL.isFileURL
         #else
             let allowFiles = false
         #endif
-        let installer = PluginArchiveInstaller(stagingParent: service.roots.user, allowFileURLs: allowFiles)
-        let staged = try await installer.stage(
-            entry, version: version, publisherKeys: registry?.keys(for: entry.publisher) ?? [])
-        cancelPendingInstall()
-        let installed = plugins.first { $0.id == id && isUserInstalled($0) }
+        return PluginArchiveInstaller(stagingParent: service.roots.user, allowFileURLs: allowFiles)
+    }
+
+    /// The approval for a verified registry download: an update when the user folder has the plugin.
+    func pendingRegistryInstall(_ staged: StagedPluginArchive) -> PendingPluginInstall {
+        let installed = plugins.first { $0.id == staged.plugin.id && isUserInstalled($0) }
         var pending = PendingPluginInstall(plugin: staged.plugin, archive: staged, replacing: installed != nil)
         if !staged.plugin.manifest.dependencies.isEmpty {
             pending.preflight = .notChecked(staged.plugin, reason: "Checked after installation approval")
         }
-        pendingInstall = pending
-        tab = .browse
+        return pending
     }
 
-    /// Drops the install waiting for approval and its download.
+    /// Drops the install waiting for approval and its download, then shows the next queued one.
     func cancelPendingInstall() {
         pendingInstall?.archive?.discard()
         pendingInstall?.local?.discard()
         pendingInstall = nil
+        advanceInstallQueue()
     }
 
     /// Shows the approval to run an installed plugin's dependency recipes again.
     func requestSetup(_ plugin: InstalledPlugin) throws {
         try trust.validateSetup(of: plugin)
-        cancelPendingInstall()
+        try checkNotBusy()
         pendingInstall = PendingPluginInstall(plugin: plugin, repair: true)
         tab = .installed
         runPreflight()

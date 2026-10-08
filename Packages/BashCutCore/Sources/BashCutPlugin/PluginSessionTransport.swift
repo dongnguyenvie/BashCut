@@ -43,7 +43,7 @@ public actor PluginSessionTransport: PluginTransport {
         self.idleTimeout = idleTimeout
         self.handshakeTimeout = handshakeTimeout
         self.maximumLineBytes = maximumLineBytes
-        oneShot = PluginProcessRunner(timeout: 15, maximumOutputBytes: 256 * 1024)
+        oneShot = PluginProcessRunner(timeout: PluginProcessRunner.probeTimeout, maximumOutputBytes: 256 * 1024)
     }
 
     public func call(

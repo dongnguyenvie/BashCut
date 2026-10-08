@@ -8,19 +8,67 @@ public struct PluginRegistryDocument: Codable, Sendable, Equatable {
     public let schemaVersion: Int
     public let publishers: [String: PluginRegistryPublisher]
     public let plugins: [PluginRegistryEntry]
+    /// Plugins installed together after one approval (Recommended), in display order.
+    public let bundles: [PluginRegistryBundle]
 
-    public init(schemaVersion: Int = 1, publishers: [String: PluginRegistryPublisher] = [:], plugins: [PluginRegistryEntry]) {
+    public init(
+        schemaVersion: Int = 1, publishers: [String: PluginRegistryPublisher] = [:], plugins: [PluginRegistryEntry],
+        bundles: [PluginRegistryBundle] = []
+    ) {
         self.schemaVersion = schemaVersion
         self.publishers = publishers
         self.plugins = plugins
+        self.bundles = bundles
+    }
+
+    private enum CodingKeys: String, CodingKey { case schemaVersion, publishers, plugins, bundles }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try container.decode(Int.self, forKey: .schemaVersion)
+        publishers = try container.decode([String: PluginRegistryPublisher].self, forKey: .publishers)
+        plugins = try container.decode([PluginRegistryEntry].self, forKey: .plugins)
+        // Bundles are a convenience: a malformed one never hides the catalog.
+        bundles = (try? container.decodeIfPresent([PluginRegistryBundle].self, forKey: .bundles)) ?? []
     }
 
     public func entry(_ id: String) -> PluginRegistryEntry? { plugins.first { $0.id == id } }
+
+    public func bundle(_ id: String) -> PluginRegistryBundle? { bundles.first { $0.id == id } }
 
     /// Keys the registry lists for a third-party publisher; none for `bashcut`, whose keys only the app carries.
     public func keys(for publisher: String?) -> [String] {
         guard let publisher, publisher != "bashcut" else { return [] }
         return publishers[publisher]?.keys ?? []
+    }
+}
+
+/// A set of registry plugins offered together (`bundles.json` in the registry repo): one approval lists them with a
+/// checkbox each, then BashCut installs the checked ones in turn.
+public struct PluginRegistryBundle: Codable, Sendable, Equatable, Identifiable {
+    public struct Member: Codable, Sendable, Equatable {
+        public let id: String
+        /// Whether the plugin starts checked in the approval; true when absent.
+        public let `default`: Bool?
+
+        public init(id: String, default: Bool? = nil) {
+            self.id = id
+            self.default = `default`
+        }
+
+        public var checkedByDefault: Bool { self.default ?? true }
+    }
+
+    public let id: String
+    public let name: LocalizedText
+    public let summary: LocalizedText?
+    public let plugins: [Member]
+
+    public init(id: String, name: LocalizedText, summary: LocalizedText? = nil, plugins: [Member]) {
+        self.id = id
+        self.name = name
+        self.summary = summary
+        self.plugins = plugins
     }
 }
 

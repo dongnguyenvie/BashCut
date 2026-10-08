@@ -102,6 +102,14 @@ extension ProjectDocument {
                 options: [ModalOption("cancel", String(localized: "Cancel"))]
             ) { [weak self] _ in self?.plugins.cancelPendingInstall() })
         }
+        if ui.showPlugins, let pending = plugins.pendingBundle {
+            sheets.append(ModalSheet(
+                name: "plugin-bundle-install", title: "Install " + pending.bundle.name.text + "?",
+                message: "Only the user can approve a plugin install. Plugins: "
+                    + pending.items.map { $0.pending.plugin.id + ($0.selected ? "" : " (unchecked)") }.joined(separator: ", "),
+                options: [ModalOption("cancel", String(localized: "Cancel"))]
+            ) { [weak self] _ in self?.plugins.cancelPendingBundle() })
+        }
         sheets += pluginSheets()
         sheets += approvalSheets()
         return sheets
