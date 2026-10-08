@@ -43,6 +43,11 @@ public struct PluginProcessRunner: Sendable {
         let timeout: TimeInterval
     }
 
+    /// Time limit for one dependency probe in a health check. The first probe after a setup can import a fresh
+    /// Python environment and native libraries (byte-compiling, macOS scanning new binaries), which takes longer
+    /// than later checks; a short limit reported a dependency that had just been set up as missing.
+    public static let probeTimeout: TimeInterval = 60
+
     public let timeout: TimeInterval
     public let maximumOutputBytes: Int
     private let inheritedEnvironment: [String: String]

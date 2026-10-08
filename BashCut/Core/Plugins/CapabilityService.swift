@@ -64,7 +64,7 @@ public struct CapabilityService: Sendable {
 
     public init(
         roots: PluginRoots = .standard, transport: any PluginTransport = PluginRouter(),
-        healthTransport: any PluginTransport = PluginProcessRunner(timeout: 15, maximumOutputBytes: 256 * 1024),
+        healthTransport: any PluginTransport = PluginProcessRunner(timeout: PluginProcessRunner.probeTimeout, maximumOutputBytes: 256 * 1024),
         trust: PluginTrustStore? = nil
     ) {
         self.roots = roots

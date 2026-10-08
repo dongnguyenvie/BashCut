@@ -33,6 +33,26 @@ struct PluginRegistryTests {
         }
     }
 
+    @Test("Bundles decode in order with their defaults; a malformed one never hides the catalog")
+    func bundles() throws {
+        let plugins = #""plugins": [{"id": "a.b", "name": "A", "versions": []}]"#
+        let json = #"""
+            {"schemaVersion": 1, "publishers": {}, \#(plugins), "bundles": [
+              {"id": "starter", "name": {"en": "Recommended", "vi": "Gói đề xuất"}, "summary": "Most people need these",
+               "plugins": [{"id": "a.b", "default": true}, {"id": "c.d", "default": false}, {"id": "e.f"}]}]}
+            """#
+        let document = try PluginRegistryClient.decode(Data(json.utf8))
+        let bundle = try #require(document.bundle("starter"))
+        #expect(bundle.name.text(for: "vi") == "Gói đề xuất")
+        #expect(bundle.plugins.map(\.id) == ["a.b", "c.d", "e.f"])
+        #expect(bundle.plugins.map(\.checkedByDefault) == [true, false, true])
+        let older = try PluginRegistryClient.decode(Data(#"{"schemaVersion": 1, "publishers": {}, \#(plugins)}"#.utf8))
+        #expect(older.bundles.isEmpty && older.entry("a.b") != nil)
+        let broken = try PluginRegistryClient.decode(
+            Data(#"{"schemaVersion": 1, "publishers": {}, \#(plugins), "bundles": [{"id": 3}]}"#.utf8))
+        #expect(broken.bundles.isEmpty && broken.entry("a.b") != nil)
+    }
+
     @Test("The newest compatible version wins; reasons explain when none fits")
     func resolution() throws {
         let entry = PluginRegistryEntry(id: "a.b", name: "A", versions: [

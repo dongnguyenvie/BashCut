@@ -127,7 +127,9 @@ extension CommandCatalog {
            removed). The edit is one undo step attributed to the plugin.
         Plugins that provide capabilities (voice, captions, beats, loudness) are used by `voice speak`,
         `captions generate`, `beats detect` and export; `--provider` picks one, `plugins list` shows them.
-        Find more with `plugins search`; installing, trusting and turning plugins on are for the user only.
+        Find more with `plugins search`; installing, trusting and turning plugins on are for the user only. When the
+        user is missing plugins, suggest they type `/bc:setup`, which shows one approval for the recommended
+        bundle (`plugins bundles`). Never start an install on your own.
         """
 
     /// Color keys and ranges, from the same table validation uses.

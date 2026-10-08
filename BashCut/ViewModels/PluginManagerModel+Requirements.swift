@@ -20,10 +20,11 @@ extension PluginManagerModel {
         }
     }
 
-    /// After a successful install (not a setup), offers the plugin's missing requirements.
+    /// After a successful install (not a setup), offers the plugin's missing requirements and its setup if still needed.
     func offerMissingRequirements(after outcome: Result<JSONValue, any Error>, installing pending: PendingPluginInstall) {
         guard case .success = outcome, !pending.repair else { return }
         offerMissingRequirements(of: pending.plugin.id)
+        offerSetupIfNeeded([pending.plugin.id])
     }
 
     /// Whether the plugin may run now: ready on its own and with its requirements met.

@@ -82,7 +82,7 @@ extension PluginManagerModel {
             throw PluginError.invalid(
                 "\(url.lastPathComponent) is \(staged.plugin.id), not \(replacing.id); use Add Plugin… to add another plugin")
         }
-        present(staged, scope: scope, mode: mode)
+        try present(staged, scope: scope, mode: mode)
         return staged.plugin
     }
 
@@ -157,10 +157,16 @@ extension PluginManagerModel {
         try checkCanAdd(scope: scope)
         guard !addingLink else { throw PluginError.invalid("A plugin link is already downloading") }
         addingLink = true
-        defer { addingLink = false }
         let parent = service.roots.user
-        let staged = try await linkResolver.stage(link, stagingParent: parent)
-        present(staged, scope: scope, mode: .copy)
+        let staged: StagedLocalPlugin
+        do {
+            defer {
+                addingLink = false
+                advanceInstallQueue()
+            }
+            staged = try await linkResolver.stage(link, stagingParent: parent)
+        }
+        try present(staged, scope: scope, mode: .copy)
         return staged.plugin
     }
 
@@ -184,13 +190,18 @@ extension PluginManagerModel {
 
     private func checkCanAdd(scope: PluginInstallScope) throws {
         guard PluginChannel.current.allowsUserPlugins else { throw PluginError.invalid(Self.channelRefusal) }
+        try checkNotBusy()
         guard scope == .user || currentProjectRoot != nil else {
             throw PluginError.invalid("Open or save a project to add a plugin to it")
         }
     }
 
-    private func present(_ staged: StagedLocalPlugin, scope: PluginInstallScope, mode: PluginInstallMode) {
-        cancelPendingInstall()
+    private func present(_ staged: StagedLocalPlugin, scope: PluginInstallScope, mode: PluginInstallMode) throws {
+        // Another install may have started while this one was being checked; never show over it.
+        do { try checkNotBusy() } catch {
+            staged.discard()
+            throw error
+        }
         installScope = scope
         installMode = mode
         var pending = PendingPluginInstall(plugin: staged.plugin, local: staged, scope: scope, mode: mode)

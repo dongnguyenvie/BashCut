@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 201 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 202 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -653,6 +653,12 @@ List installed plugins with a newer compatible version in the registry.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_plugins_updates`
 
+### `bashcut plugins bundles`
+
+List the registry's plugin bundles (Plugins › Browse › Recommended): each plugin with whether it starts checked, whether this Mac can still install it or why not, and its download and setup size. Install one with plugins install --bundle.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_plugins_bundles`
+
 ### `bashcut plugins validate [<path>] [--url <url>] [--ref <ref>] [--sha256 <sha256>]`
 
 Check a plugin that is not in the registry (a folder, its plugin.json, a .zip or .bashcutplugin archive, or a link) without installing or running it: its id, version and capabilities, every problem with the field and the fix (library packs included: each pack.json and the files it names, inside the plugin), and for a link the commit or release it resolved to.
@@ -663,12 +669,14 @@ Check a plugin that is not in the registry (a folder, its plugin.json, a .zip or
 - `ref`: string. Tag, branch or commit for a GitHub repo link (release tag for a release link)
 - `sha256`: string. Expected SHA-256 of the downloaded archive
 
-### `bashcut plugins install [<plugin>] [--version <version>] [--path <path>] [--url <url>] [--ref <ref>] [--sha256 <sha256>] [--scope <scope>] [--link]`
+### `bashcut plugins install [<plugin>] [--bundle <bundle>] [--only <only>] [--version <version>] [--path <path>] [--url <url>] [--ref <ref>] [--sha256 <sha256>] [--scope <scope>] [--link]`
 
-Download a registry plugin (or its update), check its SHA-256 and manifest, and show the install approval in the Plugins sheet. With path or url instead, add a plugin that is not in the registry (Add Plugin…): a folder, its plugin.json or a .zip / .bashcutplugin file on this Mac, or a link, checked like plugins validate. Only the user can approve; the job ends when the approval is shown.
+Download a registry plugin (or its update), check its SHA-256 and manifest, and show the install approval in the Plugins sheet. With bundle instead, download every plugin of a bundle this Mac does not have and show one approval for all of them, each with a checkbox. With path or url instead, add a plugin that is not in the registry (Add Plugin…): a folder, its plugin.json or a .zip / .bashcutplugin file on this Mac, or a link, checked like plugins validate. Only the user can approve; the job ends when the approval is shown. While another install waits for approval or runs, a registry plugin or bundle is queued (approval: queued) and its approval opens after that one ends; do not ask again.
 
 - Mode: edit · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_plugins_install`
 - `plugin`: string. Plugin ID from plugins search (or use path)
+- `bundle`: string. Bundle ID from plugins bundles, such as starter
+- `only`: string. With bundle: comma-separated plugin IDs to check in the approval; each plugin's default otherwise
 - `version`: string. A specific registry version; the newest compatible by default
 - `path`: string, path. Plugin folder, plugin.json, or .zip / .bashcutplugin file on this Mac
 - `url`: string. Link to a .zip / .bashcutplugin file, a GitHub repo (or /tree/<ref>/<folder>, or its plugin.json) or a GitHub release; #sha256=<hex> pins it. A private link uses the access token saved in Add Plugin…
