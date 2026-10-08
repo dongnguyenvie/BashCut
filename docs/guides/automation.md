@@ -298,7 +298,7 @@ tool name and parameters (types, ranges, choices, defaults). It is generated fro
 | `project create --canvas` | `portrait` (default), `landscape`, `square` |
 | `project create --resolution` | `720`, `1080` (default), `2160` (short side) |
 | `project create --fps` | `29.97` (default), `30`, `24`, `60` |
-| `project create --language` | A language tag; unset (plugins detect the language) by default |
+| `project create --language` | A language tag from the user's prompt or answer; no default (unset: plugins detect the language) |
 | `project create --dir` | An existing absolute folder; defaults to the projects folder (`project folder`, `~/Movies/BashCut` unless changed), made on first use |
 | `layers add --kind` | `video`, `adjustment`, `text`, `audio` |
 | `adjustment add --look` | A library look without a LUT file: built-in `original` (default), `vivid`, `muted-film`, `black-white`, `bright-airy`, `moody`, or `scope:id` from `library list --kind look` |
@@ -559,8 +559,8 @@ project or on this Mac.
   step. Items without `textStyle` or `animation` behave as before: apply changes only the preset. The Text panel's
   cards show the stored size, position, outline, font and text colour, and Edit… changes them and the animation.
 - **Text fonts and colours** (#412): `textStyle.font` is a PostScript name, `fill`, `stroke` and `highlight` are
-  `#RRGGBB`. `fonts list [--query q] [--project] [--vietnamese]` gives the names (project fonts first, with
-  Vietnamese coverage); `fonts import <file>` copies a .ttf/.otf/.ttc into the project's `fonts/` folder, which is
+  `#RRGGBB`. `fonts list [--query q] [--project] [--language tag] [--covers]` gives the names (project fonts first;
+  `covers` says whether a font has every letter of the content language or `--language`, from macOS's locale data); `fonts import <file>` copies a .ttf/.otf/.ttc into the project's `fonts/` folder, which is
   registered for the app process whenever the project opens, so preview and export use it on any Mac and nothing is
   installed. A font that is neither installed nor in `fonts/` draws as Helvetica; `review run` reports it as
   "Missing font". Inspector › Text has the same font menu (Add Font…), text and outline colours and outline width.

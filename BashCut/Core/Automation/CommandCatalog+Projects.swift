@@ -37,8 +37,9 @@ extension CommandCatalog {
                                  choices: ["720", "1080", "2160"], cli: .option("resolution")),
                 CommandParameter("fps", .string, "Frame rate", default: .string("29.97"),
                                  choices: ["29.97", "30", "24", "60"], cli: .option("fps")),
-                CommandParameter("language", .string, "Content language tag", default: .string("vi"),
-                                 cli: .option("language")),
+                CommandParameter("language", .string,
+                                 "Content language (BCP 47) of speech and captions, from the user's prompt or answer; "
+                                     + "no default", cli: .option("language")),
             ] + leaveCurrent),
         CommandSpec(
             "project.folder", .edit,

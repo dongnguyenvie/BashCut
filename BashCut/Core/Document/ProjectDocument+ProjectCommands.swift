@@ -154,7 +154,7 @@ extension ProjectDocument {
             setup.canvas = ProjectSetup.Canvas(rawValue: canvas) ?? .portrait
             setup.resolution = Int(try arguments.string("resolution")).flatMap(ProjectSetup.Resolution.init) ?? .fullHD
             setup.rate = ProjectSetup.Rate(rawValue: try arguments.string("fps")) ?? .ntsc
-            setup.contentLanguage = try arguments.string("language")
+            setup.contentLanguage = arguments.optionalString("language") ?? ""
             let parent = arguments.optionalString("directory")
                 .map { URL(fileURLWithPath: $0, isDirectory: true).standardizedFileURL }
                 ?? document.settings.defaultProjectsFolder

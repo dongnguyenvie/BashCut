@@ -241,6 +241,7 @@ struct InspectorView: View {
                 style: Binding(
                     get: { document.selected?["textStyle"]?.object ?? [:] },
                     set: { document.patchSelected(["textStyle": .object($0)], label: "Text style", coalescing: true) }),
+                language: document.contentLanguage,
                 addFont: document.fileURL == nil ? nil : { document.importFont() })
             number(
                 "Outline", group: "textStyle", key: "strokeWidth",
