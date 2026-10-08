@@ -484,9 +484,9 @@ item; without it the revision stays the same.
 
 ## Library items
 
-The library panels (Audio, Text, Stickers, Effects, Transitions, Filters, Voice) are collections of items with one
-model (#66). An item has an `id`, a `kind` (`audio`, `text-preset`, `sticker`, `effect-preset`, `transition-preset`,
-`look`, `voice`), a `name`, `tags`, a `pack`, `source` and `license`, `createdBy` (user, agent or plugin),
+The library panels (Media clips, Audio, Text, Stickers, Effects, Transitions, Filters, Voice) are collections of items
+with one model (#66). An item has an `id`, a `kind` (`clip`, `audio`, `text-preset`, `sticker`, `effect-preset`,
+`transition-preset`, `look`, `voice`), a `name`, `tags`, a `pack`, `source` and `license`, `createdBy` (user, agent or plugin),
 `version`, usage, an optional copied `file` and `preview`, and `params` with what the kind needs.
 
 **Licences and provenance (P2-H8).** `license` is stored structured: `{id, version?, text?, url?, attribution?}` with
@@ -537,7 +537,7 @@ project or on this Mac.
   before #64 from a project library) are kept and listed in the result's `kept`.
 - `bashcut library place <id> [--at-frame] [--duration] [--track] [--text] --base-rev N` adds a text preset or emoji
   sticker as a text item, an image, animated or video sticker on the Overlay layer (see Stickers below), a look as an
-  adjustment, or an audio item as a clip (see Audio below). `library apply <id> [--item] --base-rev N` sets a text preset,
+  adjustment, an audio item as a clip (see Audio below), or a clip item as media (below). `library apply <id> [--item] --base-rev N` sets a text preset,
   an effect preset's recipe or a look's grade on an existing item. Both count a use (in `usage.json` next to
   `library.json`; the item list is not rewritten).
 - `bashcut library save-selection --kind text-preset|effect-preset|transition-preset|look|audio|sticker --name X [--item]
@@ -633,6 +633,16 @@ project or on this Mac.
     a play/stop button, badges for role, length, BPM, LUFS and loop, and **Place**; their context menu adds **Place at
     Playhead** and **Analyze Length, Loudness & Tempo**, and Edit… sets the role and the loop flag. Audio files dropped
     on the panel or chosen with Add… become items.
+- Clips (P2-H5) are footage kept in the library: a generated or downloaded B-roll shot or still. The item's `file`
+  is a .mov, .mp4, .m4v or an image; `params` are free (`library add --kind clip --name X --file shot.mp4` measures
+  `seconds`, `width`, `height` and `hasAudio`; a generator's `model`, `prompt` or `aspect` ride along). A
+  `library generate <prompt> --kind clip` provider makes them (model options are the provider's). `library place <id>
+  [--at-frame F] [--duration N] [--track T]` copies the file into the project's `clips/` folder as
+  `library-<hash>.<ext>` (once per content), imports it (reusing media for the same file, with the item's licence and
+  provenance) and places it like `media place`: on the main layer or `--track`, spilling onto a free layer when that
+  range is taken, with its sound on the dialogue layer when it has one, as one undo step. `--duration` trims it; a
+  longer one plays the clip once and the result has a `note`. The Media panel's **Clips** tab lists them: a click
+  places one at the playhead, and movies or images dropped there or chosen with Add… become items.
 - Stickers (#64) have a kind, `params.stickerKind`: `emoji` (`params.emoji`, drawn as text with `params.textPreset`),
   `image` (a PNG, JPEG, HEIC, WebP… file; transparency is kept), `animated` (a GIF, APNG or animated WebP) or
   `video-alpha` (a .mov or .mp4 with an alpha channel: HEVC with alpha or ProRes 4444 with alpha). Lottie files are

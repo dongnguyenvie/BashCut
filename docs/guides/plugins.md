@@ -779,6 +779,23 @@ and is audited as `plugin.action.<action id>` or `plugin.hook.<event>`. An `addM
 inside the project folder is stored relative to the project, so files written to `outputDirectory` can be added
 directly.
 
+### Pixel effects and AI transitions: render, then place
+
+A plugin never draws inside the compositor: BashCut does not load plugin code per frame (plugin API rule) and a
+round trip per frame would be too slow. Motion-only transitions and effects (shake, punch, whip variants) are data
+already: a transition's `motion` and effect recipes. For anything that changes pixels (glitch, grain, light leaks,
+an AI transition between two shots), the action renders the result as a file and returns operations that place it:
+
+1. Read what it needs from `context` (the selected items, `project.rev`, the media paths) or with
+   `ui frame`/`media frames` over the host channel.
+2. Render a movie into `outputDirectory`: a full-frame clip that replaces a range, or an overlay with alpha (HEVC with
+   alpha or ProRes 4444) that sits above it.
+3. Return `baseRev` and `operations`: `addMedia` for the file, then `insert` (an overlay on an Overlay layer; add one
+   with `addTrack` when missing) or `split` + `insert` to replace a range. They commit as one undoable edit.
+
+The result is ordinary media: it previews, exports and undoes like any clip, and the plugin is not needed to open the
+project again. Re-render after the edit under it changes.
+
 ## Library packs
 
 `contributes.library` (API 6) ships library packs for any library panel: music and sound effects, text styles,
@@ -1055,7 +1072,10 @@ Prefer capabilities (1, 2) over `requires`: the user keeps the choice of provide
 
 A provider of `library.search` finds items in some source (Freesound, Pexels audio, Giphy…); a provider of
 `library.generate` makes new ones from a prompt (AI music, stickers). Both return **candidates**; nothing enters the
-library until the user or an agent saves one. Declare the kinds a provider serves, so the right panels offer it:
+library until the user or an agent saves one. Declare the kinds a provider serves, so the right panels offer it.
+A video or image model serves `clip` (P2-H5): footage such as a B-roll shot, saved in the library and placed with
+`library place` like `media place`. Model choices (duration, aspect, resolution) belong in the provider's `options`
+and the generate `params` hints, not in BashCut:
 
 ```json
 "apiVersion": 6,
@@ -1069,7 +1089,7 @@ The request's `params`:
 
 | Field | Meaning |
 |---|---|
-| `kind` | The library kind wanted (`audio`, `sticker`, `look`…) |
+| `kind` | The library kind wanted (`audio`, `sticker`, `look`, `clip`…) |
 | `query` (search) / `prompt` (generate) | What the user typed |
 | `limit` | Most items to return (1–50; 12 for search and 4 for generate by default) |
 | `page` (search) | Result page, from 1 |
@@ -1086,7 +1106,7 @@ download or write them there. Give `source` (a URL or a note) and `license` so p
 `provenance {origin, sourceUrl, author, model, seed, prompt}` are kept with the saved item; without an `origin`,
 generated items are `ai` and found ones `stock`.
 Each item is checked like a saved one of its kind (an `audio` item needs a `file`, a `sticker` an `emoji` or a
-file, and so on); one bad item fails the request, and its folder is removed.
+file, a `clip` a movie or image file, and so on); one bad item fails the request, and its folder is removed.
 
 ```json
 {"items": [

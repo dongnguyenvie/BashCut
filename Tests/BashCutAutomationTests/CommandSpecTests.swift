@@ -188,7 +188,7 @@ struct CommandSpecTests {
         }
         let list = try CommandLineParser.parse(["library", "list", "--panel", "text", "--created-by", "agent"])
         #expect(list.spec.mode == .read && list.params == ["panel": .string("text"), "createdBy": .string("agent")])
-        #expect(throws: CommandLineParser.Failure.self) { try CommandLineParser.parse(["library", "list", "--panel", "media"]) }
+        #expect(throws: CommandLineParser.Failure.self) { try CommandLineParser.parse(["library", "list", "--panel", "footage"]) }
         let update = try CommandLineParser.parse(["library", "update", "built-in:bold", "--as", "bold-2", "--into", "user"])
         #expect(update.params == ["id": .string("built-in:bold"), "as": .string("bold-2"), "into": .string("user")])
         let place = try CommandLineParser.parse(["library", "place", "fire", "--at-frame", "30", "--base-rev", "4"])
