@@ -68,9 +68,12 @@ struct LibraryView: View {
                     Text(LocalizedStringKey(source.title)).tag(source)
                 }
             }
-            .pickerStyle(.segmented)
+            // A menu, not segments: five sources do not fit the 225pt panel, and a segmented control
+            // cannot shrink below its labels, so it pushed the panel past its neighbours (#484).
+            .pickerStyle(.menu)
             // The panel is too narrow for an inline label; it stays the accessibility label.
             .labelsHidden()
+            .frame(maxWidth: .infinity, alignment: .leading)
             if mediaSource == .selects {
                 SelectsListView(document: document)
             } else if mediaSource == .clips {
@@ -141,6 +144,7 @@ struct LibraryView: View {
             }
             if visibleMedia.isEmpty {
                 Text(emptyMediaMessage).foregroundStyle(.secondary).font(.caption)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
