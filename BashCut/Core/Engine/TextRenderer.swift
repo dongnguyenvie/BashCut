@@ -25,7 +25,7 @@ private final class CaptionCache: @unchecked Sendable {
     }
 }
 
-private enum CaptionPreset: String {
+enum CaptionPreset: String {
     case boldOutline = "bold-outline"
     case cinematicSerif = "cinematic-serif"
     case keywordSticker = "keyword-sticker"
@@ -38,6 +38,8 @@ private enum CaptionPreset: String {
         switch self {
         case .cinematicSerif: return "TimesNewRomanPSMT"
         case .chapterCard: return "TimesNewRomanPS-BoldMT"
+        // Heavy and condensed like social hook titles; ships with macOS and covers Vietnamese.
+        case .hookTitle: return "HelveticaNeue-CondensedBlack"
         default: return "Arial-BoldMT"
         }
     }
@@ -45,7 +47,7 @@ private enum CaptionPreset: String {
         switch self {
         case .cinematicSerif: return 0.043
         case .placeCard: return 0.045
-        case .hookTitle: return 0.082
+        case .hookTitle: return 0.085
         case .chapterCard: return 0.06
         default: return 0.055
         }
@@ -60,7 +62,7 @@ private enum CaptionPreset: String {
     }
     var strokeWidth: Double {
         switch self {
-        case .boldOutline, .hookTitle: return 4
+        case .boldOutline: return 4
         default: return 0
         }
     }
@@ -73,18 +75,45 @@ private enum CaptionPreset: String {
         }
     }
     var leftAligned: Bool { self == .placeCard }
+    /// Baseline distance in font sizes: hook titles stack their lines tight.
+    var lineSpacing: Double { self == .hookTitle ? 1.0 : 1.28 }
+    /// A soft drop shadow instead of an outline, for hook titles.
+    var shadow: [String: JSONValue]? {
+        self == .hookTitle
+            ? ["color": .string("#000000"), "opacity": .number(0.5), "blur": .number(24), "dy": .number(-6)] : nil
+    }
 }
 
-private struct CaptionDecoration {
+/// One line of a text block drawn larger and in its own colour (the keyword line of a hook title).
+struct CaptionEmphasis {
+    static let fill = "#FFD60A"
+    static let scale = 1.4
+    /// The line, counted from the top in reading order.
+    let line: Int
+    let fill: String
+    let scale: Double
+    /// A plate behind the line alone: `{color, opacity, padding, radius}` (padding and radius in font sizes).
+    let plate: [String: JSONValue]?
+}
+
+struct CaptionDecoration {
     let rect: CGRect
     let color: CGColor
     var radius: CGFloat = 0
 }
 
-private struct CaptionLineLayout {
+struct CaptionLineLayout {
     let line: CTLine
     let width: CGFloat
     let position: CGPoint
+    /// The line's font: the first run's, which is the line's own (every run of a line shares it).
+    var font: CTFont {
+        guard let run = (CTLineGetGlyphRuns(line) as? [CTRun])?.first,
+              let font = (CTRunGetAttributes(run) as NSDictionary)[kCTFontAttributeName] else {
+            return CTFontCreateWithName("Helvetica" as CFString, 12, nil)
+        }
+        return font as! CTFont  // swiftlint:disable:this force_cast
+    }
 }
 
 /// A text item's look: its preset's defaults overridden by the open `textStyle` fields (Phase 2 restyle): `align`
@@ -93,7 +122,7 @@ private struct CaptionLineLayout {
 /// behind the block), `shadow {color, opacity, blur, dx, dy}` and `accentBars [{side left|right|top|bottom, color,
 /// opacity, thickness, gap (× font size), length (share of the block's side), radius}]` (flexibility audit C1). A
 /// background or accent bars replace the preset's own plates and bars.
-private struct CaptionStyle {
+struct CaptionStyle {
     let preset: CaptionPreset
     let style: [String: JSONValue]
     let relativeSize: Double
@@ -113,7 +142,7 @@ private struct CaptionStyle {
         fontName = style["font"]?.string ?? preset.font
         baseline = style["positionY"]?.double ?? preset.baseline
         stroke = style["strokeWidth"]?.double ?? preset.strokeWidth
-        lineSpacing = style["lineHeight"]?.double ?? 1.28
+        lineSpacing = style["lineHeight"]?.double ?? preset.lineSpacing
         tracking = style["tracking"]?.double ?? 0
         uppercase = style["uppercase"]?.bool ?? false
         align = style["align"]?.string ?? (preset.leftAligned ? "left" : "center")
@@ -138,7 +167,33 @@ private struct CaptionStyle {
         guard case .array(let bars)? = style["accentBars"] else { return nil }
         return bars.map(\.object)
     }
-    var shadow: [String: JSONValue]? { style["shadow"]?.object }
+    var shadow: [String: JSONValue]? { style["shadow"]?.object ?? (style["shadow"] == nil ? preset.shadow : nil) }
+
+    /// `textStyle.emphasis {line, fill, scale, plate}`: `line` counts from the top (negative from the bottom), `scale`
+    /// × the font size. Without `line`, the last of two lines or the middle one is emphasised, and a single line is not.
+    /// Hook titles emphasise by default; `false` turns it off.
+    func emphasis(lineCount: Int) -> CaptionEmphasis? {
+        let value = style["emphasis"]
+        if value?.bool == false { return nil }
+        if case .null? = value { return nil }
+        let fields = value?.object
+        let given = fields?["line"]?.double.map { Int($0) }
+        // Without a line, a single line is not emphasised: it is the whole title.
+        guard given != nil || ((fields != nil || preset == .hookTitle) && lineCount >= 2) else { return nil }
+        let requested = given ?? (lineCount == 2 ? 1 : lineCount / 2)
+        let line = requested < 0 ? lineCount + requested : requested
+        guard lineCount > 0, (0..<lineCount).contains(line) else { return nil }
+        return CaptionEmphasis(
+            line: line, fill: fields?["fill"]?.string ?? CaptionEmphasis.fill,
+            scale: min(3, max(0.3, fields?["scale"]?.double ?? CaptionEmphasis.scale)), plate: fields?["plate"]?.object)
+    }
+
+    /// `textStyle.lineFills`: line colours in reading order, repeating (two-tone titles); nil when not set.
+    func lineFill(_ index: Int) -> String? {
+        guard case .array(let fills)? = style["lineFills"] else { return nil }
+        let colors = fills.compactMap(\.string)
+        return colors.isEmpty ? nil : colors[index % colors.count]
+    }
 }
 
 /// The `textStyle` values a renderer preset uses when an item does not set them (#380, the library's text style sheet
@@ -183,23 +238,25 @@ enum TextRenderer {
         let look = CaptionStyle(item)
         let preset = look.preset, style = look.style
         let lineTexts = look.lines(item)
-        let font = fittedFont(
-            look.fontName, size: fontSize(look.relativeSize, canvas: size), lines: lineTexts,
-            maximumWidth: size.width * 0.9, tracking: look.tracking)
-        let points = CTFontGetSize(font)
+        let fonts = lineFonts(look, lines: lineTexts, canvas: size)
+        let points = CTFontGetSize(fonts.base)
         let fill = color(style["fill"]?.string ?? preset.fill)
         let stroke = look.stroke
-        let baseline = look.baseline
-        let attributes: [NSAttributedString.Key: Any] = [
-            NSAttributedString.Key(kCTKernAttributeName as String): look.tracking * points,
-            NSAttributedString.Key(kCTFontAttributeName as String): font,
-            NSAttributedString.Key(kCTForegroundColorAttributeName as String): fill,
-            NSAttributedString.Key(kCTStrokeColorAttributeName as String): color(
-                style["stroke"]?.string ?? "#000000"),
-            NSAttributedString.Key(kCTStrokeWidthAttributeName as String): -stroke,
-        ]
+        let emphasis = look.emphasis(lineCount: lineTexts.count)
+        func attributes(_ index: Int) -> [NSAttributedString.Key: Any] {
+            let font = fonts.lines[index]
+            let emphasized = emphasis?.line == index
+            return [
+                NSAttributedString.Key(kCTKernAttributeName as String): look.tracking * CTFontGetSize(font),
+                NSAttributedString.Key(kCTFontAttributeName as String): font,
+                NSAttributedString.Key(kCTForegroundColorAttributeName as String): emphasized
+                    ? color(emphasis?.fill ?? CaptionEmphasis.fill) : look.lineFill(index).map { color($0) } ?? fill,
+                NSAttributedString.Key(kCTStrokeColorAttributeName as String): color(
+                    style["stroke"]?.string ?? "#000000"),
+                NSAttributedString.Key(kCTStrokeWidthAttributeName as String): -stroke,
+            ]
+        }
         let lineHeight = points * look.lineSpacing
-        let words = WordColoring(item: item, spoken: spoken, attributes: attributes)
         // Word indexes run in reading order; lines are laid out bottom-up.
         var firstWord: [Int] = []
         var wordCount = 0
@@ -207,16 +264,13 @@ enum TextRenderer {
             firstWord.append(wordCount)
             wordCount += CaptionWords.tokens(text).count
         }
-        let lines = Array(zip(lineTexts, firstWord)).reversed().enumerated().map { index, entry in
-            let (lineText, first) = entry
-            let line = CTLineCreateWithAttributedString(words.string(lineText, firstWord: first))
-            let width = CTLineGetTypographicBounds(line, nil, nil, nil)
-            let position = linePosition(look, width: width, index: index, spacing: (baseline, lineHeight), canvas: size)
-            return CaptionLineLayout(line: line, width: width, position: position)
+        let texts = lineTexts.indices.map { index in
+            WordColoring(item: item, spoken: spoken, attributes: attributes(index))
+                .string(lineTexts[index], firstWord: firstWord[index])
         }
+        let lines = stack(look, texts: texts, fonts: fonts.lines, canvas: size)
         let decorations = decorations(look, lines: lines, lineHeight: lineHeight, canvas: size)
-        let shadow = look.shadow ?? (preset == .hookTitle && look.style["shadow"] == nil
-            ? ["color": .string("#000000"), "blur": .number(8), "dy": .number(-5)] : nil)
+        let shadow = look.shadow
         let canvas = CGRect(origin: .zero, size: size)
         let bounds = fullCanvas ? canvas : rasterBounds(lines: lines, decorations: decorations,
             padding: abs(stroke) * points / 100 + (shadow.map { CGFloat(($0["blur"]?.double ?? 8) * 2 + 16) } ?? 2), canvas: canvas)
@@ -246,15 +300,6 @@ enum TextRenderer {
         cache.images.setObject(raster, forKey: key as NSString, cost: raster.bytes)
         return raster
     }
-    /// Where line `index` (counted from the bottom line) starts, by the style's align and positionX; the bottom
-    /// baseline sits at `baseline` of the height and lines stack upwards `lineHeight` apart.
-    private static func linePosition(
-        _ look: CaptionStyle, width: CGFloat, index: Int, spacing: (baseline: Double, lineHeight: CGFloat), canvas: CGSize
-    ) -> CGPoint {
-        CGPoint(x: look.x(width: width, canvas: canvas),
-                y: canvas.height * spacing.baseline + Double(index) * spacing.lineHeight)
-    }
-
     /// The rendered layout of a text item on a `size` canvas (#465): the fitted font size and the union of the lines'
     /// typographic and glyph bounds (with the outline) plus the preset's plates and bars, in pixels with y up from the
     /// bottom, laid out exactly as `raster` draws them. Shadows and keyframed motion are not included.
@@ -263,27 +308,14 @@ enum TextRenderer {
               !item.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
         let look = CaptionStyle(item)
         let lineTexts = look.lines(item)
-        let font = fittedFont(
-            look.fontName, size: fontSize(look.relativeSize, canvas: size), lines: lineTexts,
-            maximumWidth: size.width * 0.9, tracking: look.tracking)
-        let points = CTFontGetSize(font)
+        let fonts = lineFonts(look, lines: lineTexts, canvas: size)
+        let points = CTFontGetSize(fonts.base)
         let lineHeight = points * look.lineSpacing
-        let baseline = look.baseline
-        // The outline is centred on the glyph edge, so half its width (a share of the font size) lies outside.
-        let outline = abs(look.stroke) * points / 200
-        let attributes: [NSAttributedString.Key: Any] = [
-            NSAttributedString.Key(kCTFontAttributeName as String): font,
-            NSAttributedString.Key(kCTKernAttributeName as String): look.tracking * points,
-        ]
-        let lines = lineTexts.reversed().enumerated().map { index, text in
-            let line = CTLineCreateWithAttributedString(NSAttributedString(string: text, attributes: attributes))
-            let width = CTLineGetTypographicBounds(line, nil, nil, nil)
-            return CaptionLineLayout(
-                line: line, width: width,
-                position: linePosition(look, width: width, index: index, spacing: (baseline, lineHeight), canvas: size))
-        }
+        let lines = stack(look, texts: plainTexts(look, lines: lineTexts, fonts: fonts.lines), fonts: fonts.lines, canvas: size)
         var bounds = CGRect.null
         for layout in lines {
+            // The outline is centred on the glyph edge, so half its width (a share of the font size) lies outside.
+            let outline = abs(look.stroke) * CTFontGetSize(layout.font) / 200
             var ascent: CGFloat = 0, descent: CGFloat = 0
             CTLineGetTypographicBounds(layout.line, &ascent, &descent, nil)
             let typographic = CGRect(x: layout.position.x, y: layout.position.y - descent, width: layout.width, height: ascent + descent)
@@ -316,21 +348,16 @@ enum TextRenderer {
     /// The middle of the item's text block, where text keyframes scale and rotate it.
     static func anchor(_ item: Item, size: CGSize) -> CGPoint {
         let look = CaptionStyle(item)
-        let lines = look.lines(item)
-        let font = fittedFont(
-            look.fontName, size: fontSize(look.relativeSize, canvas: size), lines: lines,
-            maximumWidth: size.width * 0.9, tracking: look.tracking)
-        let points = CTFontGetSize(font)
-        let y = size.height * look.baseline + points * look.lineSpacing * Double(lines.count - 1) / 2 + points * 0.35
+        let texts = look.lines(item)
+        let fonts = lineFonts(look, lines: texts, canvas: size).lines
+        let lines = stack(look, texts: plainTexts(look, lines: texts, fonts: fonts), fonts: fonts, canvas: size)
+        guard let bottom = lines.first, let top = lines.last else {
+            return CGPoint(x: size.width * look.positionX, y: size.height * look.baseline)
+        }
+        // Halfway between the bottom baseline and the top line's cap height.
+        let y = (bottom.position.y + top.position.y + CTFontGetSize(top.font) * 0.7) / 2
         guard look.align != "center" else { return CGPoint(x: size.width * look.positionX, y: y) }
-        let attributes: [NSAttributedString.Key: Any] = [
-            NSAttributedString.Key(kCTFontAttributeName as String): font,
-            NSAttributedString.Key(kCTKernAttributeName as String): look.tracking * points,
-        ]
-        let widest = lines.map {
-            CTLineGetTypographicBounds(
-                CTLineCreateWithAttributedString(NSAttributedString(string: $0, attributes: attributes)), nil, nil, nil)
-        }.max() ?? 0
+        let widest = lines.map(\.width).max() ?? 0
         return CGPoint(x: look.x(width: widest, canvas: size) + widest / 2, y: y)
     }
 
@@ -355,87 +382,6 @@ enum TextRenderer {
         }.max() ?? 0
         guard widest > maximumWidth, widest > 0 else { return font }
         return CTFontCreateWithName(name as CFString, size * maximumWidth / widest, nil)
-    }
-
-    private static func rasterBounds(lines: [CaptionLineLayout], decorations: [CaptionDecoration], padding: CGFloat, canvas: CGRect) -> CGRect {
-        var bounds = CGRect.null
-        for line in lines {
-            var ascent: CGFloat = 0, descent: CGFloat = 0
-            CTLineGetTypographicBounds(line.line, &ascent, &descent, nil)
-            let typographic = CGRect(x: line.position.x, y: line.position.y - descent, width: line.width, height: ascent + descent)
-            let glyphs = CTLineGetBoundsWithOptions(line.line, .useGlyphPathBounds).offsetBy(dx: line.position.x, dy: line.position.y)
-            bounds = bounds.union(typographic.union(glyphs).insetBy(dx: -padding, dy: -padding))
-        }
-        for decoration in decorations { bounds = bounds.union(decoration.rect.insetBy(dx: -1, dy: -1)) }
-        let visible = bounds.integral.intersection(canvas)
-        return visible.isNull || visible.isEmpty ? CGRect(x: 0, y: 0, width: 1, height: 1) : visible
-    }
-
-    /// The style's own `background` plate, else the preset's plates and bars.
-    private static func decorations(
-        _ look: CaptionStyle, lines: [CaptionLineLayout], lineHeight: CGFloat, canvas: CGSize
-    ) -> [CaptionDecoration] {
-        guard let first = lines.first else { return [] }
-        if look.background != nil || look.accentBars != nil {
-            let points = lineHeight / look.lineSpacing
-            let minX = lines.map(\.position.x).min() ?? 0
-            let maxX = lines.map { $0.position.x + $0.width }.max() ?? 0
-            let top = (lines.last?.position.y ?? first.position.y) + lineHeight * 0.8
-            var box = CGRect(x: minX, y: first.position.y - lineHeight * 0.28, width: maxX - minX,
-                             height: top - first.position.y + lineHeight * 0.28)
-            var result: [CaptionDecoration] = []
-            if let background = look.background {
-                let padding = CGFloat(background["padding"]?.double ?? 0.3) * points
-                box = box.insetBy(dx: -padding, dy: -padding)
-                result.append(CaptionDecoration(
-                    rect: box, color: color(background["color"]?.string ?? "#000000", alpha: background["opacity"]?.double ?? 0.8),
-                    radius: CGFloat(background["radius"]?.double ?? 0.2) * points))
-            }
-            return result + (look.accentBars ?? []).map { accentBar($0, around: box, points: points) }
-        }
-        switch look.preset {
-        case .keywordSticker:
-            return lines.map { CaptionDecoration(rect: CGRect(x: $0.position.x - 12, y: $0.position.y - 12,
-                width: $0.width + 24, height: lineHeight + 12), color: color("#FACC15")) }
-        case .placeCard:
-            let width = min(canvas.width * 0.8, (lines.map(\.width).max() ?? 0) + 52)
-            let rect = CGRect(x: canvas.width * 0.075, y: first.position.y - 18, width: width,
-                              height: lineHeight * CGFloat(lines.count) + 30)
-            return [CaptionDecoration(rect: rect, color: CGColor(gray: 0.03, alpha: 0.86), radius: 14),
-                    CaptionDecoration(rect: CGRect(x: rect.minX, y: rect.minY, width: 8, height: rect.height), color: color("#FACC15"))]
-        case .hookTitle:
-            guard let widest = lines.max(by: { $0.width < $1.width }) else { return [] }
-            return [CaptionDecoration(rect: CGRect(x: widest.position.x, y: first.position.y - 18, width: widest.width, height: 9),
-                                      color: color("#FF3B30"))]
-        case .chapterCard:
-            let top = lines.last?.position.y ?? first.position.y - 18
-            return [CaptionDecoration(rect: CGRect(x: canvas.width * 0.25, y: first.position.y - 18, width: canvas.width * 0.5, height: 3),
-                                      color: color("#E0B43A")),
-                    CaptionDecoration(rect: CGRect(x: canvas.width * 0.38, y: top + lineHeight + 12, width: canvas.width * 0.24, height: 2),
-                                      color: color("#E0B43A"))]
-        default: return []
-        }
-    }
-    /// One accent bar beside `box` (the text block, or its plate): on `side`, `gap` font sizes away, `thickness` font
-    /// sizes thick and `length` of that side long, centred on it.
-    private static func accentBar(_ bar: [String: JSONValue], around box: CGRect, points: CGFloat) -> CaptionDecoration {
-        let thickness = CGFloat(min(2, max(0.005, bar["thickness"]?.double ?? 0.12))) * points
-        let gap = CGFloat(min(4, max(-4, bar["gap"]?.double ?? 0.2))) * points
-        let share = CGFloat(min(1, max(0, bar["length"]?.double ?? 1)))
-        let rect: CGRect
-        switch bar["side"]?.string ?? "left" {
-        case "right":
-            rect = CGRect(x: box.maxX + gap, y: box.midY - box.height * share / 2, width: thickness, height: box.height * share)
-        case "top":
-            rect = CGRect(x: box.midX - box.width * share / 2, y: box.maxY + gap, width: box.width * share, height: thickness)
-        case "bottom":
-            rect = CGRect(x: box.midX - box.width * share / 2, y: box.minY - gap - thickness, width: box.width * share, height: thickness)
-        default:
-            rect = CGRect(x: box.minX - gap - thickness, y: box.midY - box.height * share / 2, width: thickness, height: box.height * share)
-        }
-        return CaptionDecoration(
-            rect: rect, color: color(bar["color"]?.string ?? "#FACC15", alpha: bar["opacity"]?.double ?? 1),
-            radius: CGFloat(max(0, bar["radius"]?.double ?? 0)) * thickness)
     }
 
     static func color(_ hex: String, alpha: Double = 1) -> CGColor {

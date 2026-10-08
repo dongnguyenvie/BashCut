@@ -234,15 +234,56 @@ public struct LibraryCatalog: Sendable {
 /// The built-in packs the Text, Stickers, Effects, Transitions and Filters panels show (#75). Names are English UI strings to localize;
 /// IDs are stable.
 public enum LibraryBuiltIns {
-    public static let items: [LibraryItem] = textPresets + stickers + effects + transitions + looks
+    public static let items: [LibraryItem] = textTemplates + textPresets + stickers + effects + transitions + looks
+
+    /// Text looks named by how they look, not by what they are for: the same template serves as a hook, a call to
+    /// action or a label, and the video's tone picks it. Each is a renderer preset plus a full `textStyle`; the
+    /// fonts ship with macOS and cover Vietnamese.
+    public static let textTemplates: [LibraryItem] = {
+        let softShadow: JSONValue = .object([
+            "color": .string("#000000"), "opacity": .number(0.5), "blur": .number(24), "dy": .number(-6)])
+        let templates: [(String, String, String, [String: JSONValue])] = [
+            ("stacked-keyword", "Stacked Keyword", "THIS IS A\nVISUAL\nHOOK", [
+                "font": .string("HelveticaNeue-CondensedBlack"), "size": .number(0.11), "strokeWidth": .integer(0),
+                "lineHeight": .number(0.98), "uppercase": .bool(true), "shadow": softShadow,
+                "emphasis": .object(["fill": .string("#FFD60A"), "scale": .number(1.7)]),
+            ]),
+            ("headline-subline", "Headline + Subline", "10 TEXT HOOKS\nThat will double your reach", [
+                "font": .string("Verdana-Bold"), "size": .number(0.1), "strokeWidth": .integer(0),
+                "tracking": .number(0.03), "lineHeight": .number(1.05),
+                "shadow": .object(["color": .string("#000000"), "opacity": .number(0.6), "blur": .number(14), "dy": .number(-3)]),
+                "emphasis": .object(["line": .integer(-1), "fill": .string("#FFFFFF"), "scale": .number(0.42)]),
+            ]),
+            ("boxed-keyword", "Boxed Keyword", "STEAL THESE\n5\nVISUAL HOOKS", [
+                "font": .string("HelveticaNeue-CondensedBlack"), "size": .number(0.1), "strokeWidth": .integer(0),
+                "lineHeight": .number(1), "uppercase": .bool(true), "shadow": softShadow,
+                "emphasis": .object([
+                    "fill": .string("#111111"), "scale": .number(2.6),
+                    "plate": .object(["color": .string("#F2F2F2"), "padding": .number(0.1), "radius": .number(0.04)]),
+                ]),
+            ]),
+            ("two-tone-pop", "Two-Tone Pop", "STRONG\nHOOK\nCREATE", [
+                "font": .string("MarkerFelt-Wide"), "size": .number(0.12), "strokeWidth": .integer(0),
+                "lineHeight": .number(0.98), "emphasis": .bool(false),
+                "lineFills": .array([.string("#FFFFFF"), .string("#FFD60A")]),
+                "shadow": .object([
+                    "color": .string("#000000"), "opacity": .number(1), "blur": .integer(0), "dx": .integer(5), "dy": .integer(-5)]),
+            ]),
+        ]
+        return templates.map { id, name, sample, style in
+            LibraryItem(
+                id: id, kind: .textPreset, name: name, pack: "Text templates",
+                params: ["textPreset": .string("hook-title"), "text": .string(sample), "textStyle": .object(style)])
+        }
+    }()
 
     /// One per caption renderer preset (`TextPreset.all`), with the sample text the panel shows.
     public static let textPresets: [LibraryItem] = [
-        ("bold-outline", "Bold Outline", "Quá là ngon!"),
+        ("bold-outline", "Bold Outline", "So good!"),
         ("cinematic-serif", "Cinematic Serif", "a moment to remember"),
         ("keyword-sticker", "Keyword Sticker", "BEST BITE"),
-        ("place-card", "Place Card", "BẾN THÀNH · QUẬN 1"),
-        ("hook-title", "Hook Title", "ĂN GÌ HÔM NAY?"),
+        ("place-card", "Place Card", "SHIBUYA · TOKYO"),
+        ("hook-title", "Hook Title", "WHAT TO EAT\nTODAY?"),
         ("chapter-card", "Chapter Card", "CHAPTER 01"),
     ].map { id, name, sample in
         LibraryItem(

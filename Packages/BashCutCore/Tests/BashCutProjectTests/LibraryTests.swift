@@ -319,7 +319,11 @@ struct LibraryTests {
         // One text preset per caption renderer preset, in the panel's order.
         #expect(LibraryBuiltIns.textPresets.map(\.id) == TextPreset.all)
         #expect(LibraryBuiltIns.textPresets.map { $0.params["textPreset"]?.string } == TextPreset.all)
-        #expect(LibraryBuiltIns.textPresets[0].params["text"] == .string("Quá là ngon!"))
+        #expect(LibraryBuiltIns.textPresets[0].params["text"] == .string("So good!"))
+        // Text templates are looks, listed first; each carries a full text style.
+        #expect(LibraryBuiltIns.textTemplates.map(\.id) == ["stacked-keyword", "headline-subline", "boxed-keyword", "two-tone-pop"])
+        #expect(LibraryBuiltIns.textTemplates.allSatisfy { $0.params["textStyle"]?.object["font"] != nil })
+        #expect(items.prefix(4).map(\.id) == LibraryBuiltIns.textTemplates.map(\.id))
         #expect(LibraryBuiltIns.stickers.compactMap { $0.params["emoji"]?.string } == ["🔥", "😋", "👍", "💯", "⭐", "📍", "🍲", "😂"])
         #expect(LibraryBuiltIns.effects.map(\.name).prefix(2) == ["Punch in 1.3×", "Reset framing"])
         #expect(LibraryBuiltIns.effects[0].params["patch"] == .object(["transform": .object(["zoom": .number(1.3)])]))
