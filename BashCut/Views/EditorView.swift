@@ -36,7 +36,9 @@ struct EditorView: View {
             HSplitView {
                 VStack(spacing: 0) {
                     HStack(spacing: 0) {
-                        rail.frame(width: 54)
+                        // Each pane is clipped to its frame: a child wider than its pane is centred and
+                        // would otherwise draw over the neighbouring panes (#484).
+                        rail.frame(width: 54).clipped()
                         Divider()
                         Group {
                             if let id = document.ui.pluginPanel,
@@ -45,7 +47,7 @@ struct EditorView: View {
                             } else {
                                 LibraryView(document: document, pluginManager: document.plugins)
                             }
-                        }.frame(width: 225)
+                        }.frame(width: 225).clipped()
                         Divider()
                         Group {
                             if document.sourceViewer.visible {
@@ -53,9 +55,9 @@ struct EditorView: View {
                             } else {
                                 viewer
                             }
-                        }.frame(minWidth: 260, maxWidth: .infinity)
+                        }.frame(minWidth: 260, maxWidth: .infinity).clipped()
                         Divider()
-                        InspectorView(document: document).frame(width: 220)
+                        InspectorView(document: document).frame(width: 220).clipped()
                     }.disabled(document.busy)
                     Divider()
                     timelineToolbar
