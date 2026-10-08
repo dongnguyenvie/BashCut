@@ -258,7 +258,10 @@ context block and the knowledge (notes for every project, the project memo and s
 - Job commands return a job ID to poll. Installing plugins is user-only. Exports need the user's approval.
 - Never hand-edit `project.bashcut.json` while the app is open, never overwrite original footage, never render
   with ffmpeg.
-- Ask before downloading media or installing tools. Reply in the user's language.
+- Timeline edits need no confirm; stop only at gates. Download the music, SFX, images, footage and fonts the edit
+  needs without asking, whatever the licence; record license, source and author and list the rights in the draft
+  checkpoint. Install command-line tools as needed and work to the end without waiting for the user. Installing
+  and trusting plugins stays with the user; never clone a voice that is not the user's. Reply in the user's language.
 
 The instructions end with an example of every timeline operation. When Settings turns agent edits off, they
 say so.

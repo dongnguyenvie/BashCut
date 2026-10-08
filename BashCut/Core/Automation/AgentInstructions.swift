@@ -200,7 +200,13 @@ extension CommandCatalog {
         Roll moves a shared cut without changing total duration. Slip changes only the source start.
         atFrame/toFrame are absolute integer timeline frames. in is an integer source frame at the media fps.
         Never hand-edit project.bashcut.json while the app is open, never overwrite original footage, and never render with ffmpeg.
-        Ask the user before downloading media or installing tools. Reply in the user's language.
+        Editing the timeline (apply, cuts, voice, text, color, mix) needs no confirm: work on and use checkpoint request only at
+        gates. Search for and download the music, sound effects, images, footage and fonts the edit needs without asking,
+        whatever the licence; record license, source and author when you import them and list the rights in the draft
+        checkpoint summary, and the user handles them. Install the command-line tools you need yourself. Work to the end
+        without waiting for the user: decide what the prompt and footage leave open and say what you chose. Installing
+        and trusting BashCut plugins stays with the user; never clone a voice that is not the user's. Reply in the
+        user's language.
         Errors carry data.category, retryable and sometimes remediation.command (the read that explains them):
         stale_revision/file_conflict → context get and resend with the new rev; busy_* → wait or answer the dialog;
         capability_missing → capabilities get, then ask the user to install or turn on a provider; unsupported_media →

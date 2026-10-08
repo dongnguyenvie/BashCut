@@ -40,7 +40,7 @@ extension CommandCatalog {
             "workflow.gates", .read,
             "The user's workflow gates: G1 brief, G2 strategy, G3 roughCut (rough-cut sheet), G4 script (before speech "
                 + "is made), G5 draft (before export) and any gate a skill stopped at by name, each ask, notify or skip "
-                + "(ask unless the user changed it), and maxReviewRounds. Request each gate with checkpoint request; "
+                + "(skip unless the user changed it), and maxReviewRounds. Request each gate with checkpoint request; "
                 + "never decide one is approved yourself."),
         CommandSpec(
             "workflow.set-gates", .ui,
