@@ -75,6 +75,81 @@ struct TextLayoutTests {
     }
 
     /// Bounds of the pixels with visible alpha, with y up from the bottom like the layout.
+    @Test("Text templates (emphasis line, its plate, line colours) lay out as drawn, Vietnamese included",
+          arguments: LibraryBuiltIns.textTemplates.map(\.id))
+    func templates(id: String) throws {
+        let template = try #require(LibraryBuiltIns.textTemplates.first { $0.id == id })
+        for size in [CGSize(width: 1080, height: 1920), CGSize(width: 1920, height: 1080)] {
+            var item = Item(id: "template", at: 0, duration: 30)
+            item["text"] = .string("Hôm nay\nĂN GÌ Ở ĐÀ LẠT\ngiá bao nhiêu?")
+            item["textPreset"] = template.params["textPreset"]
+            // Without the shadow, ink is exactly glyphs and plates.
+            var style = try #require(template.params["textStyle"]?.object)
+            style["shadow"] = .bool(false)
+            item["textStyle"] = .object(style)
+            let layout = try #require(TextPresetStyle.layout(item, size: size))
+            let raster = try #require(TextRenderer.raster(item, size: size, fullCanvas: true))
+            let drawn = try #require(inkBounds(raster.bitmap))
+            // Display fonts at 100+ pt: their line boxes and ink differ by up to about a sixth of the font size.
+            let tolerance = max(4, layout.points * 0.17)
+            #expect(layout.lines == 3)
+            #expect(abs(layout.minX - drawn.minX) <= tolerance && abs(layout.maxX - drawn.maxX) <= tolerance)
+            #expect(abs(layout.minY - drawn.minY) <= tolerance && abs(layout.maxY - drawn.maxY) <= tolerance)
+            // Inside the frame both ways: a plate may reach past the 90% text width, not past the frame.
+            #expect(layout.minX >= 0 && layout.maxX <= size.width && layout.minY >= 0 && layout.maxY <= size.height)
+        }
+    }
+
+    @Test("The emphasis line is larger and in its own colour; false or a single line turns it off")
+    func emphasis() throws {
+        let size = CGSize(width: 1080, height: 1920)
+        func height(_ text: String, _ style: [String: JSONValue]?, preset: String = "hook-title") throws -> CGFloat {
+            var item = Item(id: "e", at: 0, duration: 30)
+            item["text"] = .string(text)
+            item["textPreset"] = .string(preset)
+            var style = style ?? [:]
+            style["shadow"] = .bool(false)
+            item["textStyle"] = .object(style)
+            let layout = try #require(TextPresetStyle.layout(item, size: size))
+            return layout.maxY - layout.minY
+        }
+        let off = try height("ONE\nTWO", ["emphasis": .bool(false)])
+        #expect(try height("ONE\nTWO", nil) > off * 1.08)
+        #expect(try height("ONE\nTWO", ["emphasis": .object(["scale": .number(2)])]) > off * 1.25)
+        // Other presets emphasise only when asked.
+        let plain = try height("ONE\nTWO", nil, preset: "bold-outline")
+        #expect(try height("ONE\nTWO", ["emphasis": .object([:])], preset: "bold-outline") > plain * 1.08)
+        let single = try height("ONE", ["emphasis": .bool(false)])
+        #expect(try height("ONE", nil) == single)
+
+        var item = Item(id: "c", at: 0, duration: 30)
+        item["text"] = .string("WHITE\nYELLOW")
+        item["textPreset"] = .string("hook-title")
+        item["textStyle"] = .object(["shadow": .bool(false), "emphasis": .bool(false),
+                                     "lineFills": .array([.string("#FF0000"), .string("#0000FF")])])
+        let raster = try #require(TextRenderer.raster(item, size: size, fullCanvas: true))
+        let colors = inkColors(raster.bitmap)
+        #expect(colors.red > 1000 && colors.blue > 1000)
+    }
+
+    /// Opaque pixels that are mostly red and mostly blue.
+    private func inkColors(_ image: CGImage) -> (red: Int, blue: Int) {
+        let width = image.width, height = image.height
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        pixels.withUnsafeMutableBytes { buffer in
+            CGContext(
+                data: buffer.baseAddress, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
+                space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            )?.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        }
+        var red = 0, blue = 0
+        for index in stride(from: 0, to: pixels.count, by: 4) where pixels[index + 3] > 250 {
+            if pixels[index] > 200 && pixels[index + 2] < 50 { red += 1 }
+            if pixels[index + 2] > 200 && pixels[index] < 50 { blue += 1 }
+        }
+        return (red, blue)
+    }
+
     private func inkBounds(_ image: CGImage) -> CGRect? {
         let width = image.width, height = image.height
         var pixels = [UInt8](repeating: 0, count: width * height * 4)
