@@ -50,7 +50,7 @@ Create a project folder (media, footage, render…) like the New Project wizard 
 - `canvas`: string, one of auto, portrait, landscape, square, default "auto". Canvas; auto starts portrait and lets the first video or image clip set the shape
 - `resolution`: string, one of 720, 1080, 2160, default "1080". Short-side resolution
 - `fps`: string, one of 29.97, 30, 24, 60, default "29.97". Frame rate
-- `language`: string, default "vi". Content language tag
+- `language`: string. Content language (BCP 47) of speech and captions, from the user's prompt or answer; no default
 - `saveCurrent`: boolean, default false. Save the open project first when it has unsaved changes
 - `discardCurrent`: boolean, default false. Drop unsaved changes of the open project
 
@@ -986,7 +986,7 @@ Cancel a queued or running job (plugin call or export).
 
 ### `bashcut capabilities get [<capability>] [--kind <kind>] [--voices]`
 
-Whether each plugin capability (or one) can serve now: available, else reason missing (no plugin provides it), not_configured (turned off, not approved, changed, outdated or missing a required plugin) or unhealthy (a dependency fails its health check). Lists each provider with plugin, priority, paid, state and detail, and the commands that call the capability. A command whose capability cannot serve fails with category capability_missing and the same reason. With voices, voices: the voices of every voice.synthesize provider (per provider plugin, name, availability, clones (voice speak then needs cloneConsent) and the voice its plugin is set to; per voice id, language, region, style, gender, supportsRate and measuredRate (rates measured on its takes, per language: samples, p10, p50, p90)); without a capability the result is then {capabilities, voices}.
+Whether each plugin capability (or one) can serve now: available, else reason missing (no plugin provides it), not_configured (turned off, not approved, changed, outdated or missing a required plugin) or unhealthy (a dependency fails its health check). Lists each provider with plugin, priority, paid, state and detail, and the commands that call the capability. A command whose capability cannot serve fails with category capability_missing and the same reason. With voices, voices: the voices of every voice.synthesize provider (per provider plugin, name, availability, clones (voice speak then needs cloneConsent) and the voice its plugin is set to; per voice id, language, region, style, gender, supportsRate, speaksContentLanguage (when the project has a content language) and measuredRate (rates measured on its takes, per language: samples, p10, p50, p90)); without a capability the result is then {capabilities, voices}.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_capabilities_get`
 - `capability`: string. Capability ID, such as captions.transcribe; all by default
@@ -1968,14 +1968,15 @@ Write library items as a pack folder (pack.json and files) to share or import el
 
 ## fonts
 
-### `bashcut fonts list [--query <query>] [--project] [--vietnamese]`
+### `bashcut fonts list [--query <query>] [--project] [--language <language>] [--covers]`
 
-List fonts for text items (Inspector › Text › Font): the project's fonts folder first, then the fonts installed on this Mac, with PostScript names (textStyle.font) and Vietnamese coverage.
+List fonts for text items (Inspector › Text › Font): the project's fonts folder first, then the fonts installed on this Mac, with PostScript names (textStyle.font) and, for the content language (or --language), whether each has every letter of it (covers).
 
 - Mode: read · Runs: immediately · MCP: `bashcut_fonts_list`
 - `query`: string. Only names or families containing this text
 - `project`: boolean, default false. Only the project's own fonts
-- `vietnamese`: boolean, default false. Only fonts with every Vietnamese letter
+- `language`: string. BCP 47 tag to check letters for; default the content language
+- `covers`: boolean, default false. Only fonts with every letter of that language
 
 ### `bashcut fonts import <path>`
 

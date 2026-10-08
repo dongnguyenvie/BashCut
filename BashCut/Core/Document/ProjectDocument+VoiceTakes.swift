@@ -270,11 +270,18 @@ extension ProjectDocument {
         }
     }
 
+    /// The language subtag of a BCP 47 tag, lowercased (`en-US` → `en`); empty for an empty tag.
+    static func baseLanguage(_ tag: String) -> String {
+        String(tag.split(whereSeparator: { $0 == "-" || $0 == "_" }).first ?? "").lowercased()
+    }
+
     /// `capabilities.get --voices` (P0-C7): every voice of the installed `voice.synthesize` providers with its facts, whether the
-    /// provider clones, the voice each plugin is set to, and the rate measured on its takes.
+    /// provider clones, the voice each plugin is set to, the rate measured on its takes and, when the
+    /// project has a content language, whether the voice speaks it.
     func voiceList() -> JSONValue {
         let catalog = plugins.service.catalog(projectRoot: fileURL?.deletingLastPathComponent())
         let rates = VoiceRateStore.shared.summary().array
+        let content = Self.baseLanguage(contentLanguage)
         var rows: [JSONValue] = []
         for plugin in catalog.plugins {
             for provider in (plugin.manifest.providers ?? []) where provider.capability == "voice.synthesize" {
@@ -292,6 +299,9 @@ extension ProjectDocument {
                             "gender": voice.gender.map(JSONValue.string) ?? .null,
                             "supportsRate": voice.supportsRate.map(JSONValue.bool) ?? .null,
                         ]
+                        if !content.isEmpty {
+                            row["speaksContentLanguage"] = .bool(Self.baseLanguage(voice.language) == content)
+                        }
                         row["measuredRate"] = .array(rates.filter { $0.object["voice"]?.string == key })
                         return .object(row)
                     }),

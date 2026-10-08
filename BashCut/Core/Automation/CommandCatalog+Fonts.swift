@@ -6,13 +6,16 @@ extension CommandCatalog {
         CommandSpec(
             "fonts.list", .read,
             "List fonts for text items (Inspector › Text › Font): the project's fonts folder first, then the fonts "
-                + "installed on this Mac, with PostScript names (textStyle.font) and Vietnamese coverage.",
+                + "installed on this Mac, with PostScript names (textStyle.font) and, for the content language (or --language), "
+                + "whether each has every letter of it (covers).",
             parameters: [
                 CommandParameter("query", .string, "Only names or families containing this text", cli: .option("query")),
                 CommandParameter("project", .boolean, "Only the project's own fonts", default: .bool(false),
                                  cli: .flag("project")),
-                CommandParameter("vietnamese", .boolean, "Only fonts with every Vietnamese letter", default: .bool(false),
-                                 cli: .flag("vietnamese")),
+                CommandParameter("language", .string, "BCP 47 tag to check letters for; default the content language",
+                                 cli: .option("language")),
+                CommandParameter("covers", .boolean, "Only fonts with every letter of that language", default: .bool(false),
+                                 cli: .flag("covers")),
             ]),
         CommandSpec(
             "fonts.import", .edit,

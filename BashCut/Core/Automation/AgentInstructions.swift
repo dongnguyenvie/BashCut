@@ -107,7 +107,8 @@ extension CommandCatalog {
         frame (bars where its shape differs; `--clips fill` crops to cover instead); a clip's `fill` (setProperties)
         overrides that, and transform zoom scales from it.
         Projects: `bashcut project create` / `project open` / `project save`; they refuse to drop unsaved work unless
-        you pass --save-current or --discard-current. Your terminal stays open when the project changes; read
+        you pass --save-current or --discard-current. A new project has no default language: pass `--language` from
+        the user's prompt or answer. Your terminal stays open when the project changes; read
         `context get` or `timeline get` before your next edit (edits fail until you do). Outside BashCut's terminals the CLI and MCP read the
         automation token file automatically; edits are attributed to "agent". Exports still need the user's approval.
         """

@@ -4,10 +4,13 @@ import BashCutProject
 import SwiftUI
 
 /// Font, text colour and outline colour of a text style (#413), shared by Inspector › Text and the text preset sheet.
-/// Unset fields show the preset's own; the font menu lists the project's fonts first, then the installed families.
+/// Unset fields show the preset's own; the font menu lists the project's fonts first, then the installed families,
+/// and marks the fonts that lack letters of the content language.
 struct TextFontFields: View {
     let preset: String?
     @Binding var style: [String: JSONValue]
+    /// The project's content language (BCP 47); empty when not set, and then no font is marked.
+    var language = ""
     /// Shows Add Font… (needs a saved project).
     var addFont: (() -> Void)?
 
@@ -46,7 +49,9 @@ struct TextFontFields: View {
     /// `family`: the title names the family too (the project's fonts are not grouped by family).
     private func button(_ item: ProjectFonts.Font, family: Bool = false) -> some View {
         let title = item.style.isEmpty ? item.postScriptName : family ? "\(item.family) \(item.style)" : item.style
-        return Button(item.vietnamese ? title : String(localized: "\(title) (no Vietnamese)")) {
+        let lacking = !language.isEmpty && item.covers(language) == false
+        let name = Locale.current.localizedString(forIdentifier: language) ?? language
+        return Button(lacking ? String(localized: "\(title) (missing \(name) letters)") : title) {
             style["font"] = .string(item.postScriptName)
         }
     }
