@@ -21,7 +21,6 @@ projects/<video-name>/
 ├── fonts/                                   # .ttf/.otf/.ttc for textStyle.font, registered for the app while open
 ├── media/                                   # project-only files (images, downloaded clips, stickers)
 ├── voiceover/                               # generated/ (TTS takes), recordings/ (microphone)
-├── khao-sat/                                # survey: thong_so.json, transcript.json, contact sheets (unchanged)
 ├── subtitles/                               # exported .srt; generated/ holds transcription output
 ├── render/                                  # exported videos (not in git)
 └── .bashcut/                                # cache and runtime data

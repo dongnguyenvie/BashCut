@@ -275,7 +275,7 @@ This tab is the manual counterpart of the `nolan-voice-clone` skill.
   links to Plugins, where the dependency probe and exact install command are shown before the user approves them.
   Switching providers does not change existing timeline items.
 - **Clone New Voice** is **Planned**: a 3-step wizard.
-  1. Pick about 8 s of audio, from media or recorded live, with the recording script from `KICH-BAN-THU-GIONG.md`
+  1. Pick about 8 s of audio, from media or recorded live, with the recording script from `voice-clone-script.md`
      on screen.
   2. Optionally remove background music with Demucs.
   3. Name the voice, add tags and test one sentence. The result is written to `assets/giong/voices.json`.

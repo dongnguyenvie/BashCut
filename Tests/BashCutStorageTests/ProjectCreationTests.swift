@@ -38,7 +38,7 @@ struct ProjectCreationTests {
         #expect(loaded.history.project["style"] == nil)
         #expect(loaded.history.project.revision == 0)
         let folder = created.url.deletingLastPathComponent()
-        for name in ["media", "voiceover", "khao-sat", "subtitles", "render", ".bashcut"] {
+        for name in ["media", "voiceover", "subtitles", "render", ".bashcut"] {
             #expect(try folder.appendingPathComponent(name).resourceValues(forKeys: [.isDirectoryKey]).isDirectory == true)
         }
         #expect(FileManager.default.fileExists(atPath: folder.appendingPathComponent(".bashcut/.gitignore").path))
