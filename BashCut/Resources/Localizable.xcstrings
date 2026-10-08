@@ -1,6 +1,13 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "%@ asks": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%@ asks" } }, "vi": { "stringUnit": { "state": "translated", "value": "%@ hỏi" } } } },
+    "Answer in Terminal": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Answer in Terminal" } }, "vi": { "stringUnit": { "state": "translated", "value": "Trả lời trong Terminal" } } } },
+    "Submit": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Submit" } }, "vi": { "stringUnit": { "state": "translated", "value": "Gửi" } } } },
+    "Choose any that apply": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Choose any that apply" } }, "vi": { "stringUnit": { "state": "translated", "value": "Chọn tất cả mục phù hợp" } } } },
+    "Notes for the agent (optional)": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Notes for the agent (optional)" } }, "vi": { "stringUnit": { "state": "translated", "value": "Ghi chú cho agent (tuỳ chọn)" } } } },
+    "Type your own answer…": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Type your own answer…" } }, "vi": { "stringUnit": { "state": "translated", "value": "Tự nhập câu trả lời…" } } } },
+    "Close this card and choose in the terminal instead": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Close this card and choose in the terminal instead" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đóng thẻ này và chọn trong terminal" } } } },
     "Clips": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Clips" } }, "vi": { "stringUnit": { "state": "translated", "value": "Clip" } } } },
     "Add clip": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Add clip" } }, "vi": { "stringUnit": { "state": "translated", "value": "Thêm clip" } } } },
     "clip": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "clip" } }, "vi": { "stringUnit": { "state": "translated", "value": "clip" } } } },

@@ -10,7 +10,7 @@ extension CommandCatalog {
         "plugins.reload", "plugins.remove", "plugins.setup", "plugins.set", "plugins.show-view",
         "plugins.view", "plugins.view-event", "plugins.invoke", "storage.get", "storage.clear",
         "agent.status", "agent.setup", "agent.kit-check", "agent.kit-update", "agent.terminals", "agent.open",
-        "agent.detach", "app.update-check", "chat.status", "chat.send", "chat.attach", "chat.detach", "chat.stop",
+        "agent.detach", "agent.ask", "app.update-check", "chat.status", "chat.send", "chat.attach", "chat.detach", "chat.stop",
         "chat.commands", "chat.command", "chat.reset", "chat.transcript", "doctor.run", "knowledge.approve",
         "knowledge.reject", "knowledge.remove-lesson", "skills.enable", "skills.disable", "skills.remove",
         // Inspector › Speed; agents use the setSpeed and setSpeedCurve ops (D10).

@@ -8,7 +8,8 @@ import Observation
 public final class SettingsModel {
     public static let recentProjectLimit = 8
 
-    /// Folder agents work in and shared media resolves against; nil uses the project folder.
+    /// Folder agents work in and shared media resolves against; nil uses the project folder, or without a project the
+    /// projects folder (~/Movies/BashCut), never the home folder.
     public var workspace: URL? {
         didSet {
             if let workspace { defaults.set(workspace.path, forKey: Keys.workspace) } else {

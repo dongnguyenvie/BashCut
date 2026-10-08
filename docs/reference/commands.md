@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 200 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 201 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -1314,6 +1314,14 @@ Remove timeline items sent to the shown terminal tab with Send to Agent (ui acti
 
 - Mode: ui · Runs: immediately · MCP: `bashcut_agent_detach`
 - `items`: string. Item IDs, comma-separated
+
+### `bashcut agent ask <questions.json> [--timeout <timeout>]`
+
+Ask the user multiple-choice questions in a card over the caller's terminal tab, the way Claude Code's AskUserQuestion does (BashCut's Claude tabs route that tool here with `bashcut agent hook`). Returns once the user answers: answers maps each question to the chosen labels (comma-separated) or the text typed under Other; answered is false when the user chose to answer in the terminal, closed the tab or timeout passed.
+
+- Mode: ui · Runs: immediately · MCP: `bashcut_agent_ask`
+- `questions`: array, required. AskUserQuestion's questions: question, header, multiSelect and options of label, description and optional preview
+- `timeout`: integer, 5…3600, default 900. Seconds to wait for the answer
 
 ## app
 
