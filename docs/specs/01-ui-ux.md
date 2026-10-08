@@ -84,10 +84,10 @@ layer grades every layer below it, so a look is a clip you can trim, move, stack
 | Captions | Text items, editable inline, styled by preset | `make_subs.py` + Pillow overlay |
 | Overlay (V2) | Banners, place cards, stickers, illustration images | `render_overlay.py`, `fxover.py` |
 | Main (V1) | **Magnetic** main track, as in CapCut: deleting a clip closes the gap | V1 in Resolve |
-| Dialogue (A1) | Location sound, linked to its Main clip by default | `tieng-hien-truong.wav` |
-| Voiceover (A2) | TTS or cloned voice | `giong-doc.wav` |
-| Music (A3) | Background music, auto-ducked under speech | `nhac-nen.wav` |
-| SFX (A4) | Sound effects | `hieu-ung.wav` |
+| Dialogue (A1) | Location sound, linked to its Main clip by default | `location-sound.wav` |
+| Voiceover (A2) | TTS or cloned voice | `voiceover.wav` |
+| Music (A3) | Background music, auto-ducked under speech | `music.wav` |
+| SFX (A4) | Sound effects | `sfx.wav` |
 
 ### 2.2 Clip roles on Main
 
@@ -176,7 +176,7 @@ Audio files can be imported and inserted into Music, SFX or Voiceover. **[Detect
 
 **Planned:**
 
-- A **Music** catalog from `assets/nhac/`, with BPM, loudness and license read from `GHI-CHU-NHAC.md`, and license
+- A **Music** catalog from `assets/music/`, with BPM, loudness and license read from `music-notes.md`, and license
   badges: ⚠ **TikTok rip, likely Content ID claimed** or ✓ **CC-BY, credit required**.
 - An **SFX** catalog from `assets/sfx/`, grouped by type: whoosh, pop, ding, riser, meme.
 - Hover preview before dragging a track to Music or SFX.
@@ -275,10 +275,10 @@ This tab is the manual counterpart of the `nolan-voice-clone` skill.
   links to Plugins, where the dependency probe and exact install command are shown before the user approves them.
   Switching providers does not change existing timeline items.
 - **Clone New Voice** is **Planned**: a 3-step wizard.
-  1. Pick about 8 s of audio, from media or recorded live, with the recording script from `KICH-BAN-THU-GIONG.md`
+  1. Pick about 8 s of audio, from media or recorded live, with the recording script from `voice-clone-script.md`
      on screen.
   2. Optionally remove background music with Demucs.
-  3. Name the voice, add tags and test one sentence. The result is written to `assets/giong/voices.json`.
+  3. Name the voice, add tags and test one sentence. The result is written to `assets/voices/voices.json`.
 
 ### 3.8 Plugins sheet 🧩
 
@@ -349,7 +349,7 @@ stored in English; the agent replies in the language you write in.
 | Survey | "Run nolan-footage-survey on this project's footage, look at the contact sheets, say plainly if coverage is missing" | Implemented |
 | Write VO | "Extract the spoken lines of Speech clips, draft continuous narration so speech covers ≥ 90 %, with a lead-in before each real line" | Implemented |
 | Review | "Run bashcut review, explain each issue and propose a fix" | Implemented |
-| Suggest FX | "Suggest effects for the selection from memos/hieu-ung-tra-cuu.md, at most 1–2 special effects" | Planned |
+| Suggest FX | "Suggest effects for the selection from memos/effects-reference.md, at most 1–2 special effects" | Planned |
 | Lessons | "Run nolan-self-learn for this session" | Planned |
 
 The dock also has a **Knowledge** sheet for the
