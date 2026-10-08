@@ -25,7 +25,7 @@ struct WorkflowGatesSettings: View {
             }
         } footer: {
             // swiftlint:disable:next line_length
-            Text("Agents stop at each gate and wait for your answer in BashCut. Agents can make a gate ask again but cannot loosen it or answer it themselves.")
+            Text("Agents wait for your answer in BashCut at a gate set to Ask me, and tell you about one set to Tell me and keep editing. Agents can make a gate ask but cannot loosen it or answer it themselves.")
         }
     }
 }

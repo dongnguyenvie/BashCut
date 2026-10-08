@@ -3,8 +3,8 @@ import Foundation
 
 /// A point where an agent's run stops for the user (P1-D4, T00 §9). Five are built in: G1 brief, G2 strategy, G3
 /// rough-cut sheet, G4 script before speech is made, G5 draft before export. Any other name is a gate too (a skill's
-/// own stop, flexibility audit A6). Each is `ask`, `notify` or `skip`, set by the user; every gate asks until the user
-/// changes it.
+/// own stop, flexibility audit A6). Each is `ask`, `notify` or `skip`, set by the user; every gate is skipped until the
+/// user changes it, so an agent's run goes on without stopping.
 public struct WorkflowGate: Hashable, Sendable {
     /// `G1`…`G5`, or the name of a gate a skill asked for.
     public let id: String
@@ -39,6 +39,9 @@ public struct WorkflowGate: Hashable, Sendable {
 
     public var isBuiltIn: Bool { Self.builtInNames[id] != nil }
 
+    /// The mode of every gate until the user changes it.
+    public static let defaultMode = Mode.skip
+
     public var name: String { Self.builtInNames[id] ?? id }
 
     public var title: String {
@@ -60,17 +63,17 @@ public struct WorkflowGate: Hashable, Sendable {
 
 extension SettingsModel {
     public func gateMode(_ gate: WorkflowGate) -> WorkflowGate.Mode {
-        workflowGatesRaw[gate.id].flatMap(WorkflowGate.Mode.init(rawValue:)) ?? .ask
+        workflowGatesRaw[gate.id].flatMap(WorkflowGate.Mode.init(rawValue:)) ?? WorkflowGate.defaultMode
     }
 
-    /// A built-in gate that asks is not stored; a skill's gate is stored even when it asks, so Settings lists it.
+    /// A built-in gate at the default mode is not stored; a skill's gate is always stored, so Settings lists it.
     public func setGateMode(_ gate: WorkflowGate, _ mode: WorkflowGate.Mode) {
-        workflowGatesRaw[gate.id] = mode == .ask && gate.isBuiltIn ? nil : mode.rawValue
+        workflowGatesRaw[gate.id] = mode == WorkflowGate.defaultMode && gate.isBuiltIn ? nil : mode.rawValue
     }
 
-    /// Lists a skill's gate in Settings (asking) the first time an agent stops at it.
+    /// Lists a skill's gate in Settings (at the default mode) the first time an agent stops at it.
     public func noteGate(_ gate: WorkflowGate) {
-        if !gate.isBuiltIn, workflowGatesRaw[gate.id] == nil { workflowGatesRaw[gate.id] = WorkflowGate.Mode.ask.rawValue }
+        if !gate.isBuiltIn, workflowGatesRaw[gate.id] == nil { workflowGatesRaw[gate.id] = WorkflowGate.defaultMode.rawValue }
     }
 
     /// The built-in gates, then the skills' gates seen so far by name.

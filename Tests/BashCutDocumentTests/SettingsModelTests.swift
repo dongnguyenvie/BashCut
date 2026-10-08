@@ -103,18 +103,21 @@ struct SettingsModelTests {
         #expect(SettingsModel(defaults: defaults).recentProjects.isEmpty)
     }
 
-    @Test("Every workflow gate asks until the user changes it; modes and the round limit are stored (P1-D4)")
+    @Test("Every workflow gate is skipped until the user changes it; modes and the round limit are stored (P1-D4)")
     func workflowGates() throws {
         let defaults = try defaults()
         defer { defaults.removePersistentDomain(forName: suite) }
         let settings = SettingsModel(defaults: defaults)
-        #expect(WorkflowGate.builtIns.allSatisfy { settings.gateMode($0) == .ask })
+        #expect(WorkflowGate.builtIns.allSatisfy { settings.gateMode($0) == .skip })
+        #expect(settings.workflowGatesRaw.isEmpty)
         #expect(settings.maxReviewRounds == 3)
         settings.setGateMode(.roughCut, .skip)
         settings.setGateMode(.draft, .notify)
+        settings.setGateMode(.script, .ask)
         settings.maxReviewRounds = 2
         let reloaded = SettingsModel(defaults: defaults)
-        #expect(reloaded.gateMode(.roughCut) == .skip && reloaded.gateMode(.draft) == .notify && reloaded.gateMode(.brief) == .ask)
+        #expect(reloaded.gateMode(.roughCut) == .skip && reloaded.gateMode(.draft) == .notify && reloaded.gateMode(.brief) == .skip)
+        #expect(reloaded.gateMode(.script) == .ask && reloaded.gateMode(.strategy) == .skip)
         #expect(reloaded.maxReviewRounds == 2)
         #expect(WorkflowGate(id: "g3") == .roughCut && WorkflowGate(id: "script") == .script && WorkflowGate(id: "G9") == nil)
         #expect(WorkflowGate(id: "music pick") == nil && WorkflowGate(id: String(repeating: "a", count: 41)) == nil)
@@ -122,13 +125,13 @@ struct SettingsModelTests {
         #expect(gates.first { $0["id"] == .string("G3") }?["mode"] == .string("skip"))
     }
 
-    @Test("A gate by any name asks, is listed after the built-ins once seen and keeps its mode (flexibility audit A6)")
+    @Test("A gate by any name is skipped, is listed after the built-ins once seen and keeps its mode (flexibility audit A6)")
     func namedGates() throws {
         let defaults = try defaults()
         defer { defaults.removePersistentDomain(forName: suite) }
         let settings = SettingsModel(defaults: defaults)
         let music = try #require(WorkflowGate(id: "music-pick"))
-        #expect(!music.isBuiltIn && music.name == "music-pick" && settings.gateMode(music) == .ask)
+        #expect(!music.isBuiltIn && music.name == "music-pick" && settings.gateMode(music) == .skip)
         #expect(settings.workflowGates == WorkflowGate.builtIns)
         settings.noteGate(music)
         #expect(SettingsModel(defaults: defaults).workflowGates == WorkflowGate.builtIns + [music])
