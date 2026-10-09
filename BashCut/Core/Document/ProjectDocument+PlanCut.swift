@@ -1,4 +1,5 @@
 import BashCutAutomation
+import BashCutEngine
 import BashCutProject
 import Foundation
 
@@ -52,6 +53,45 @@ extension ProjectDocument {
         do { return try PlanCut.decode(value) } catch let error as ProjectError { throw RPCFailure.invalid(error) }
     }
 
+    /// The library text presets the titles name (renderer presets need none), and an error for a name that is
+    /// neither.
+    func planTextPresets(_ spec: PlanCut.Spec) -> ([String: LibraryTextPreset], [PlanCut.Problem]) {
+        var presets: [String: LibraryTextPreset] = [:]
+        var problems: [PlanCut.Problem] = []
+        let catalog = libraryCatalog
+        let named = spec.titles.map { ($0.id, $0.preset) } + [("captions", spec.captions?.preset)]
+        for (entry, preset) in named {
+            guard let name = preset, !TextPreset.all.contains(name), presets[name] == nil else { continue }
+            if let item = try? catalog.item(name), item.kind == .textPreset, let look = try? textPreset(item) {
+                presets[name] = look
+            } else {
+                problems.append(PlanCut.Problem(
+                    id: "unknown-preset", severity: "error", entry: entry,
+                    detail: "No text preset \(name): use \(TextPreset.all.joined(separator: ", ")) or a text-preset ID "
+                        + "from library list --kind text-preset"))
+            }
+        }
+        return (presets, problems)
+    }
+
+    /// Titles whose font lacks letters of the project's content language, or is not on this Mac.
+    func planFontProblems(_ after: Project) -> [PlanCut.Problem] {
+        after.tracks.flatMap(\.items).compactMap { item -> PlanCut.Problem? in
+            guard let entry = item.fields[PlanCut.tag]?.string, item["text"] != nil else { return nil }
+            let font = item["textStyle"]?.object["font"]?.string ?? TextPresetStyle.font(item.textPreset)
+            if !ProjectFonts.isAvailable(font) {
+                return PlanCut.Problem(
+                    id: "font-missing", severity: "error", entry: entry,
+                    detail: "Font \(font) is not on this Mac (it would draw as Helvetica): pick one from fonts list")
+            }
+            guard !contentLanguage.isEmpty, ProjectFonts.covers(font, language: contentLanguage) == false else { return nil }
+            return PlanCut.Problem(
+                id: "font-language", severity: "error", entry: entry,
+                detail: "Font \(font) lacks letters of \(contentLanguage): pick one from fonts list --covers, such as "
+                    + "System-CondensedBlack or Arial-BoldMT", facts: ["font": .string(font)])
+        }
+    }
+
     struct PlanCutCheck {
         var built: (planner: LayerPlanner, placements: [PlanCut.Placement], kept: [String])?
         var problems: [PlanCut.Problem]
@@ -66,22 +106,36 @@ extension ProjectDocument {
             if let stored = try? await storedTranscript(mediaID) { transcripts[mediaID] = stored }
         }
         let (clips, resolveProblems) = PlanCut.resolve(spec, project: project, transcripts: transcripts)
-        var problems = resolveProblems
+        let (textPresets, presetProblems) = planTextPresets(spec)
+        var problems = resolveProblems + presetProblems
         var result: [String: JSONValue] = ["baseRev": .integer(project.revision)]
         var built: (planner: LayerPlanner, placements: [PlanCut.Placement], kept: [String])?
         do {
-            built = try PlanCut.build(spec, clips: clips, on: project)
+            built = try PlanCut.build(spec, clips: clips, on: project, textPresets: textPresets, transcripts: transcripts)
         } catch {
             problems.append(PlanCut.Problem(id: "cannot-build", severity: "error", entry: nil, detail: "\(error)"))
         }
         if let built {
             let after = built.planner.project
             let facts = PlanCut.facts(spec, clips: clips, placements: built.placements, on: after)
-            problems += facts.problems
+            problems += facts.problems + planFontProblems(built.planner.project)
             let fps = after.fps.value
             result["duration"] = .number((Double(after.duration) / fps * 100).rounded() / 100)
             result["clips"] = .array(facts.clips)
             if !facts.titles.isEmpty { result["titles"] = .array(facts.titles) }
+            if spec.captions != nil {
+                let cues = after.tracks.flatMap(\.items).filter { $0.fields[PlanCut.tag] == .string("captions") }
+                result["captions"] = .integer(cues.count)
+                // Clips picked by quote or words already report a missing transcript.
+                let timed = spec.clips.filter { $0.role == "speech" && $0.quote == nil && $0.words == nil }
+                for media in Set(timed.map(\.media)).sorted()
+                where transcripts[media] == nil {
+                    problems.append(PlanCut.Problem(
+                        id: "no-transcript", severity: "warning", entry: nil,
+                        detail: "Media \(media) has no stored transcript, so its speech gets no captions: media "
+                            + "transcribe --media \(media) first", facts: ["media": .string(media)]))
+                }
+            }
             result["sections"] = .array(after.sectionMarkers.enumerated().map { index, marker in
                 let end = index + 1 < after.sectionMarkers.count ? after.sectionMarkers[index + 1].at : after.duration
                 return .object([

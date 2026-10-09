@@ -968,13 +968,14 @@ Read one job (plugin call or export), or all recent jobs when job is omitted. Ea
 - Mode: read · Runs: immediately · MCP: `bashcut_jobs_status`
 - `job`: string. Job ID
 
-### `bashcut jobs wait <job> [--timeout <timeout>]`
+### `bashcut jobs wait <job> [--timeout <timeout>] [--done]`
 
-Wait until a job's state or step changes, or it finishes, up to timeout seconds; returns the job, changed and timedOut. A finished job returns at once. Use it instead of polling jobs status. Several job IDs (comma-separated) wait until all have finished: {jobs, finished, timedOut}.
+Wait until a job's state or step changes, or it finishes, up to timeout seconds; returns the job, changed and timedOut. With done, only when it finishes. A finished job returns at once. Use it instead of polling jobs status. Several job IDs (comma-separated) wait until all have finished: {jobs, finished, timedOut}.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_jobs_wait`
 - `job`: string, required. Job ID, or several comma-separated
-- `timeout`: integer, 1…30, default 25. Seconds to wait at most
+- `timeout`: integer, 1…110, default 25. Seconds to wait at most
+- `done`: boolean, default false. Return only when the job has finished (or timeout passed), not on a step change
 
 ### `bashcut jobs cancel <job>`
 
@@ -1094,7 +1095,7 @@ A checkpoint of this session (default the last): status awaiting_user, approved,
 
 - Mode: read · Runs: immediately · MCP: `bashcut_checkpoint_status`
 - `id`: string. Checkpoint ID
-- `wait`: integer, 1…30. Seconds to wait for the user's answer
+- `wait`: integer, 1…110. Seconds to wait for the user's answer
 
 ## run
 
@@ -1152,14 +1153,14 @@ A script against the words heard on the timeline (stored transcripts, else capti
 
 ### `bashcut plan check [<cut.json>]`
 
-Check the edit list before building it, without changing anything: each clip's source range (quotes resolved in the stored transcript, edges inside a word or sentence, how much of the quote was heard), where it lands, its described shot and orientation; each title's chars per second; problems {id, severity error|warning|info, entry, detail, facts} (quote not found, unknown media, source played twice, same media and size back to back, media against the canvas shape); and the review of the edit as it would be (the project's review profile; picture and loudness need a render and are not measured). ok is false while an error stands. plan.cut is {clips: [{id, media, quote | words FIRST-LAST | from/to seconds (whole media when none; seconds for a still), section, speed, volumeDb, cover: [{media, from, seconds}] (pictures shown over the clip's sound, muted, the last filling the rest)}], titles: [{id, text, clip + offset seconds | at seconds, seconds, preset, style {item properties}}], music: {media, from, volumeDb}}.
+Check the edit list before building it, without changing anything: each clip's source range (quotes resolved in the stored transcript, edges inside a word or sentence, how much of the quote was heard), where it lands, its described shot and orientation; each title's chars per second; problems {id, severity error|warning|info, entry, detail, facts} (quote not found, unknown media, source played twice, same media and size back to back, media against the canvas shape); and the review of the edit as it would be (the project's review profile; picture and loudness need a render and are not measured). ok is false while an error stands. plan.cut is {clips: [{id, media, quote | words FIRST-LAST | from/to seconds (whole media when none; seconds for a still), section, speed, volumeDb, role (speech, broll, underVO; speech by default for quote or words), cover: [{media, from, seconds}] (pictures shown over the clip's sound, muted, the last filling the rest)}], titles: [{id, text, clip + offset seconds | at seconds, seconds, preset, style}], captions: {from: speech, wordStyle highlight|karaoke|reveal, preset, style} (captions from the stored transcripts of the clips' media, cut with them), music: {media, from, volumeDb, duckDb (level under speech)}}. A title's preset is a renderer preset (bold-outline, cinematic-serif, keyword-sticker, place-card, hook-title, chapter-card) or a library text-preset ID (templates such as stacked-keyword, boxed-keyword, headline-subline, two-tone-pop; library list --kind text-preset); its style gives text style fields over the preset's: font (a PostScript name or System-[Condensed|Compressed]Bold|Heavy|Black; fonts list --covers), size (share of the short side), fill, stroke, strokeWidth, positionX, positionY, align, uppercase, lineHeight, tracking, background {color, opacity, padding, radius}, shadow {color, opacity, blur, dx, dy}; other keys are item properties. Over bright or busy footage give a stroke or a background. A font missing letters of the content language is an error.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_plan_check`
 - `cut`: object. The list {clips, titles, music} (CLI: path to cut.json); plan.cut when omitted
 
 ### `bashcut plan apply [<cut.json>] [--dry-run] [--why <why>] [--evidence <evidence>] --base-rev <baseRev>`
 
-Build the edit list as one undoable edit: clips on Main in order (sound linked on the dialogue layer), section markers, titles and the music bed, each tagged planCut. Applying again replaces only what an earlier apply built (changes made to those items since are lost; other layers are kept but not re-timed); Main must hold nothing else. Refuses while plan.check has an error. With cut, the list is also saved as plan.cut in the same edit. dryRun returns the check. plan.cut is {clips: [{id, media, quote | words FIRST-LAST | from/to seconds (whole media when none; seconds for a still), section, speed, volumeDb, cover: [{media, from, seconds}] (pictures shown over the clip's sound, muted, the last filling the rest)}], titles: [{id, text, clip + offset seconds | at seconds, seconds, preset, style {item properties}}], music: {media, from, volumeDb}}.
+Build the edit list as one undoable edit: clips on Main in order (sound linked on the dialogue layer), section markers, titles and the music bed, each tagged planCut. Applying again replaces only what an earlier apply built (changes made to those items since are lost; other layers are kept but not re-timed); Main must hold nothing else. Refuses while plan.check has an error. With cut, the list is also saved as plan.cut in the same edit. dryRun returns the check. plan.cut is {clips: [{id, media, quote | words FIRST-LAST | from/to seconds (whole media when none; seconds for a still), section, speed, volumeDb, role (speech, broll, underVO; speech by default for quote or words), cover: [{media, from, seconds}] (pictures shown over the clip's sound, muted, the last filling the rest)}], titles: [{id, text, clip + offset seconds | at seconds, seconds, preset, style}], captions: {from: speech, wordStyle highlight|karaoke|reveal, preset, style} (captions from the stored transcripts of the clips' media, cut with them), music: {media, from, volumeDb, duckDb (level under speech)}}. A title's preset is a renderer preset (bold-outline, cinematic-serif, keyword-sticker, place-card, hook-title, chapter-card) or a library text-preset ID (templates such as stacked-keyword, boxed-keyword, headline-subline, two-tone-pop; library list --kind text-preset); its style gives text style fields over the preset's: font (a PostScript name or System-[Condensed|Compressed]Bold|Heavy|Black; fonts list --covers), size (share of the short side), fill, stroke, strokeWidth, positionX, positionY, align, uppercase, lineHeight, tracking, background {color, opacity, padding, radius}, shadow {color, opacity, blur, dx, dy}; other keys are item properties. Over bright or busy footage give a stroke or a background. A font missing letters of the content language is an error.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_plan_apply`
 - `cut`: object. The list {clips, titles, music} (CLI: path to cut.json); plan.cut when omitted

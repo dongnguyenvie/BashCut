@@ -162,9 +162,19 @@ extension CommandCatalog {
             "cut", .object, "The list {clips, titles, music} (CLI: path to cut.json); plan.cut when omitted",
             cli: .positionalJSONFile)
         let shape = "plan.cut is {clips: [{id, media, quote | words FIRST-LAST | from/to seconds (whole media when "
-            + "none; seconds for a still), section, speed, volumeDb, cover: [{media, from, seconds}] (pictures shown over the "
-            + "clip's sound, muted, the last filling the rest)}], titles: [{id, text, clip + offset seconds | at "
-            + "seconds, seconds, preset, style {item properties}}], music: {media, from, volumeDb}}."
+            + "none; seconds for a still), section, speed, volumeDb, role (speech, broll, underVO; speech by default "
+            + "for quote or words), cover: [{media, from, seconds}] (pictures shown over the clip's sound, muted, the "
+            + "last filling the rest)}], titles: [{id, text, clip + offset seconds | at seconds, seconds, preset, "
+            + "style}], captions: {from: speech, wordStyle highlight|karaoke|reveal, preset, style} (captions from the "
+            + "stored transcripts of the clips' media, cut with them), music: {media, from, volumeDb, duckDb (level "
+            + "under speech)}}. A title's preset is a renderer "
+            + "preset (" + TextPreset.all.joined(separator: ", ") + ") or a library text-preset ID (templates such "
+            + "as stacked-keyword, boxed-keyword, headline-subline, two-tone-pop; library list --kind text-preset); "
+            + "its style gives text style fields over the preset's: font (a PostScript name or System-[Condensed|"
+            + "Compressed]Bold|Heavy|Black; fonts list --covers), size (share of the short side), fill, stroke, "
+            + "strokeWidth, positionX, positionY, align, uppercase, lineHeight, tracking, background {color, opacity, "
+            + "padding, radius}, shadow {color, opacity, blur, dx, dy}; other keys are item properties. Over bright "
+            + "or busy footage give a stroke or a background. A font missing letters of the content language is an error."
         return [
             CommandSpec(
                 "plan.check", .read,

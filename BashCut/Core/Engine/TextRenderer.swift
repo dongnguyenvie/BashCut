@@ -38,8 +38,8 @@ enum CaptionPreset: String {
         switch self {
         case .cinematicSerif: return "TimesNewRomanPSMT"
         case .chapterCard: return "TimesNewRomanPS-BoldMT"
-        // Heavy and condensed like social hook titles; ships with macOS and covers Vietnamese.
-        case .hookTitle: return "HelveticaNeue-CondensedBlack"
+        // Heavy and condensed like social hook titles; every Mac has it and it stacks Vietnamese tone marks right.
+        case .hookTitle: return "System-CondensedBlack"
         default: return "Arial-BoldMT"
         }
     }
@@ -370,7 +370,7 @@ enum TextRenderer {
     /// The font at `size`, made smaller when the widest line would not fit `maximumWidth`, so a title never runs
     /// off the frame.
     static func fittedFont(_ name: String, size: CGFloat, lines: [String], maximumWidth: CGFloat, tracking: Double = 0) -> CTFont {
-        let font = CTFontCreateWithName(name as CFString, size, nil)
+        let font = ProjectFonts.font(name, size: size)
         let attributes: [NSAttributedString.Key: Any] = [
             NSAttributedString.Key(kCTFontAttributeName as String): font,
             NSAttributedString.Key(kCTKernAttributeName as String): tracking * size,
@@ -381,7 +381,7 @@ enum TextRenderer {
                 nil)
         }.max() ?? 0
         guard widest > maximumWidth, widest > 0 else { return font }
-        return CTFontCreateWithName(name as CFString, size * maximumWidth / widest, nil)
+        return ProjectFonts.font(name, size: size * maximumWidth / widest)
     }
 
     static func color(_ hex: String, alpha: Double = 1) -> CGColor {

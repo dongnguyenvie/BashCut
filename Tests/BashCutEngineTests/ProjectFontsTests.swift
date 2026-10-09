@@ -1,3 +1,4 @@
+import CoreText
 import Foundation
 import Testing
 @testable import BashCutEngine
@@ -40,5 +41,15 @@ struct ProjectFontsTests {
     func availability() {
         #expect(ProjectFonts.isAvailable("Arial-BoldMT"))
         #expect(!ProjectFonts.isAvailable("BashCutNoSuchFont-Bold"))
+    }
+
+    @Test("System- names draw with the Mac's system font at that width and weight, and cover Vietnamese")
+    func systemFonts() {
+        #expect(ProjectFonts.isAvailable("System-CondensedBlack") && !ProjectFonts.isAvailable("System-Wide"))
+        let font = ProjectFonts.font("System-CondensedBlack", size: 40)
+        #expect((CTFontCopyFullName(font) as String).contains("Condensed Black"))
+        #expect(ProjectFonts.covers("System-CondensedBlack", language: "vi") == true)
+        #expect(ProjectFonts.missingCharacters("System-Black", text: "BẮT HEO RỪNG Ở").isEmpty)
+        #expect(ProjectFonts.installed.first?.postScriptName == "System-Regular")
     }
 }

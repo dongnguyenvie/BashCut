@@ -24,12 +24,47 @@ public enum ProjectFonts {
         public func json(language: String? = nil) -> JSONValue {
             var value: [String: JSONValue] = [
                 "name": .string(postScriptName), "family": .string(family), "style": .string(style),
-                "source": .string(file == nil ? "installed" : "project"),
+                "source": .string(file != nil ? "project" : postScriptName.hasPrefix(ProjectFonts.systemPrefix) ? "system" : "installed"),
             ]
             if let file { value["file"] = .string(file.lastPathComponent) }
             if let language, let covers = covers(language) { value["covers"] = .bool(covers) }
             return .object(value)
         }
+    }
+
+    /// Names that draw with the Mac's own San Francisco: `System-` + an optional width (Condensed, Compressed,
+    /// Expanded) + a weight (Regular, Medium, Semibold, Bold, Heavy, Black), such as `System-CondensedBlack`. Every
+    /// Mac has it, and it places Vietnamese stacked tone marks correctly (Helvetica Neue's condensed faces do not).
+    public static let systemPrefix = "System-"
+    static let systemWeights: [(String, CGFloat)] = [
+        ("Regular", 0), ("Medium", 0.23), ("Semibold", 0.3), ("Bold", 0.4), ("Heavy", 0.56), ("Black", 0.62),
+    ]
+    static let systemWidths: [(String, CGFloat)] = [("", 0), ("Condensed", -0.2), ("Compressed", -0.3), ("Expanded", 0.2)]
+
+    /// Every `System-…` name, widths then weights.
+    public static let systemNames: [String] = systemWidths.flatMap { width in
+        systemWeights.map { systemPrefix + width.0 + $0.0 }
+    }
+
+    /// The font `name` draws with at `size`: a `System-…` name or a PostScript name (Helvetica when unknown).
+    public static func font(_ name: String, size: CGFloat) -> CTFont {
+        guard let traits = systemTraits(name), let base = CTFontCreateUIFontForLanguage(.system, size, nil) else {
+            return CTFontCreateWithName(name as CFString, size, nil)
+        }
+        let attributes = [kCTFontTraitsAttribute: [kCTFontWeightTrait: traits.weight, kCTFontWidthTrait: traits.width]]
+        let descriptor = CTFontDescriptorCreateCopyWithAttributes(CTFontCopyFontDescriptor(base), attributes as CFDictionary)
+        return CTFontCreateWithFontDescriptor(descriptor, size, nil)
+    }
+
+    static func systemTraits(_ name: String) -> (weight: CGFloat, width: CGFloat)? {
+        guard name.hasPrefix(systemPrefix) else { return nil }
+        let rest = name.dropFirst(systemPrefix.count)
+        for (widthName, width) in systemWidths where rest.hasPrefix(widthName) {
+            if let weight = systemWeights.first(where: { $0.0 == rest.dropFirst(widthName.count) }) {
+                return (weight.1, width)
+            }
+        }
+        return nil
     }
 
     private static let lock = NSLock()
@@ -88,16 +123,20 @@ public enum ProjectFonts {
         return own + installed.filter { !ownNames.contains($0.postScriptName) }
     }
 
-    /// The fonts installed on this Mac, read once (about a thousand; reading them takes a moment).
+    /// The `System-…` fonts, then the fonts installed on this Mac, read once (about a thousand; reading them takes
+    /// a moment).
     public static let installed: [Font] = {
         let names = (CTFontManagerCopyAvailablePostScriptNames() as? [String] ?? []).filter { !$0.hasPrefix(".") }
-        return names.sorted().map(installedFont)
+        let system = systemNames.map { name in
+            Font(postScriptName: name, family: "System", style: String(name.dropFirst(systemPrefix.count)), file: nil)
+        }
+        return system + names.sorted().map(installedFont)
     }()
 
     /// Whether `name` resolves to that font rather than the Helvetica fallback.
     /// The characters of `text` that `name` has no glyphs for, each once, in order (spaces and line breaks aside).
     public static func missingCharacters(_ name: String, text: String) -> String {
-        let font = CTFontCreateWithName(name as CFString, 12, nil)
+        let font = font(name, size: 12)
         var seen = Set<Character>()
         var missing = ""
         for character in text where !character.isWhitespace && seen.insert(character).inserted {
@@ -115,8 +154,7 @@ public enum ProjectFonts {
             return known
         }
         lock.unlock()
-        let font = CTFontCreateWithName(name as CFString, 12, nil)
-        let found = CTFontCopyPostScriptName(font) as String == name
+        let found = systemTraits(name) != nil || CTFontCopyPostScriptName(font(name, size: 12)) as String == name
         lock.lock()
         availability[name] = found
         lock.unlock()
@@ -152,8 +190,7 @@ public enum ProjectFonts {
             return known
         }
         lock.unlock()
-        let font = CTFontCreateWithName(name as CFString, 12, nil)
-        let covered = CFCharacterSetIsSupersetOfSet(CTFontCopyCharacterSet(font), letters)
+        let covered = CFCharacterSetIsSupersetOfSet(CTFontCopyCharacterSet(font(name, size: 12)), letters)
         lock.lock()
         coverage[key] = covered
         lock.unlock()

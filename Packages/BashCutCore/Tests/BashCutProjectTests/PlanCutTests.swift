@@ -106,6 +106,57 @@ struct PlanCutTests {
         #expect(rebuilt.sectionMarkers.isEmpty)
     }
 
+    @Test("A title takes a library preset's look by ID; style fields go into textStyle over it")
+    func titleLooks() throws {
+        let project = project()
+        let cut = try spec(#"""
+            {"clips":[{"id":"a","media":"m","from":0,"to":4}],
+            "titles":[{"id":"t","text":"BẮT HEO","clip":"a","seconds":2,"preset":"stacked-keyword",
+            "style":{"stroke":"#000000","strokeWidth":8,"opacity":0.9}},
+            {"id":"u","text":"Nhãn","at":1,"seconds":1,"preset":"bold-outline","style":{"textStyle":{"size":0.05}}}]}
+            """#)
+        #expect(cut.titles[0].textStyle["strokeWidth"] == .integer(8) && cut.titles[0].style["opacity"] == .number(0.9))
+        let template = try #require(LibraryBuiltIns.textTemplates.first { $0.id == "stacked-keyword" })
+        let built = try PlanCut.build(
+            cut, clips: PlanCut.resolve(cut, project: project, transcripts: [:]).clips, on: project,
+            textPresets: ["stacked-keyword": try LibraryTextPreset(params: template.params)])
+        let items = built.planner.project.tracks.flatMap(\.items)
+        let title = try #require(items.first { $0.id == "plan-t" })
+        let style = title["textStyle"]?.object ?? [:]
+        #expect(title.textPreset == "hook-title" && style["font"] == .string("System-CondensedBlack"))
+        #expect(style["strokeWidth"] == .integer(8) && style["uppercase"] == .bool(true))
+        #expect(title["opacity"] == .number(0.9))
+        let label = try #require(items.first { $0.id == "plan-u" })
+        #expect(label.textPreset == "bold-outline" && label["textStyle"]?.object["size"] == .number(0.05))
+    }
+
+    @Test("Captions come from the transcript through the built clips, in their style; speech clips are tagged, music ducks")
+    func captionsAndMix() throws {
+        var project = project()
+        let cut = try spec(#"""
+            {"clips":[{"id":"a","media":"m","quote":"giá năm chục"},{"id":"b","media":"m","from":8,"to":10,"role":"broll"}],
+            "captions":{"from":"speech","preset":"bold-outline","style":{"size":0.05,"positionY":0.2}},
+            "music":{"media":"song","duckDb":-20}}
+            """#)
+        let resolved = PlanCut.resolve(cut, project: project, transcripts: ["m": transcript]).clips
+        let built = try PlanCut.build(cut, clips: resolved, on: project, transcripts: ["m": transcript])
+        let after = built.planner.project
+        let items = after.tracks.flatMap(\.items)
+        let cues = items.filter { $0.fields[PlanCut.tag] == .string("captions") }
+        // Only the quoted words (2.8–3.4 s) play, so one cue, cut to them, at the clip's start.
+        #expect(cues.count == 1 && cues[0].at == 0 && cues[0].textPreset == "bold-outline")
+        #expect(cues[0]["textStyle"]?.object["size"] == .number(0.05) && cues[0]["captionMedia"] == .string("m"))
+        #expect(items.first { $0.id == "plan-a" }?["tag"]?.object["role"] == .string("speech"))
+        #expect(items.first { $0.id == "plan-b" }?["tag"]?.object["role"] == .string("broll"))
+        #expect(after.track(role: TrackRole.music)?["duckUnderSpeechDb"] == .number(-20))
+
+        // Applying again replaces the captions it made instead of adding more.
+        project = try project.applying(.group(label: "Plan", author: .user, ops: built.planner.operations)).project
+        let again = try PlanCut.build(cut, clips: resolved, on: project, transcripts: ["m": transcript]).planner.project
+        #expect(again.tracks.flatMap(\.items).filter { $0.fields[PlanCut.tag] == .string("captions") }.count == 1)
+        #expect(throws: ProjectError.self) { try spec(#"{"clips":[{"media":"m"}],"captions":{"from":"script"}}"#) }
+    }
+
     @Test("Apply refuses a Main that holds items it did not build")
     func foreignItems() throws {
         var project = project()

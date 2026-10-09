@@ -12,8 +12,11 @@ extension PlanCut {
 
     /// The operations that replace what an earlier apply built with `clips`, `spec.titles` and `spec.music`;
     /// `planner.project` is the edit as it would be, `kept` the items the apply leaves alone.
+    /// `textPresets`: the library text presets (templates) titles name by ID, beyond the renderer's own presets;
+    /// `transcripts`: the stored transcripts captions are made from, by media ID.
     public static func build(
-        _ spec: Spec, clips: [Resolved], on project: Project
+        _ spec: Spec, clips: [Resolved], on project: Project, textPresets: [String: LibraryTextPreset] = [:],
+        transcripts: [String: SourceTranscript] = [:]
     ) throws -> (planner: LayerPlanner, placements: [Placement], kept: [String]) {
         var planner = LayerPlanner(project)
         try removeBuilt(clips: clips, from: project, in: &planner)
@@ -25,9 +28,17 @@ extension PlanCut {
         }
         var placements = try placeClips(clips, main: main.id, in: &planner)
         let total = placements.last?.end ?? 0
-        placements += try placeTitles(spec.titles, anchors: placements, in: &planner)
+        if let captions = spec.captions {
+            try placeCaptions(captions, clips: clips, transcripts: transcripts, textPresets: textPresets, in: &planner)
+        }
+        placements += try placeTitles(spec.titles, anchors: placements, textPresets: textPresets, in: &planner)
         if let music = spec.music, total > 0, let placed = try placeMusic(music, length: total, in: &planner) {
             placements.append(placed)
+            if let duck = music.duckDb {
+                let track = try planner.project.requireTrack(role: TrackRole.music)
+                try planner.add([.setTrackProperties(
+                    track: track.id, patch: ["duckingEnabled": .bool(true), "duckUnderSpeechDb": .number(duck)])])
+            }
         }
         let others = planner.project.tracks.flatMap(\.items).filter { $0.fields[tag] == nil }.map(\.id)
         return (planner, placements, others)
@@ -65,6 +76,7 @@ extension PlanCut {
             }
             var patch: [String: JSONValue] = [tag: .string(clip.id)]
             if let section = clip.section { patch[sectionTag] = .string(section) }
+            if let role = clip.role { patch["tag"] = .object(["role": .string(role)]) }
             let slot = Slot(
                 at: cursor, span: max(1, Int(((resolved.to - resolved.from) * fps).rounded())),
                 sourceIn: media.isImage ? 0 : Int((resolved.from * media.fps.value).rounded(.down)), patch: patch)
@@ -117,6 +129,7 @@ extension PlanCut {
                 id: "plan-\(clip.id)-cover\(index + 1)", media: picture.id, at: cursor, duration: length,
                 sourceIn: picture.isImage ? 0 : Int((shot.from * picture.fps.value).rounded(.down)))
             for (key, value) in slot.patch { item[key] = value }
+            item["tag"] = .object(["role": .string("broll")])
             if picture.hasAudio == true { item["muted"] = .bool(true) }
             try planner.place(item, on: main)
             cursor += length
@@ -124,8 +137,11 @@ extension PlanCut {
         return end
     }
 
-    /// Titles on the captions layer (spilling onto another text layer where one is already shown).
-    static func placeTitles(_ titles: [Title], anchors: [Placement], in planner: inout LayerPlanner) throws -> [Placement] {
+    /// Titles on the captions layer (spilling onto another text layer where one is already shown): the renderer
+    /// preset or the library preset's look, then the title's own style over it.
+    static func placeTitles(
+        _ titles: [Title], anchors: [Placement], textPresets: [String: LibraryTextPreset], in planner: inout LayerPlanner
+    ) throws -> [Placement] {
         guard !titles.isEmpty else { return [] }
         let fps = planner.project.fps.value
         let captions = try planner.project.requireTrack(role: TrackRole.captions)
@@ -135,13 +151,66 @@ extension PlanCut {
             let start = anchor.map { $0.at + Int((title.offset * fps).rounded()) } ?? Int(((title.at ?? 0) * fps).rounded())
             var item = Item(id: "plan-" + title.id, at: max(0, start), duration: max(1, Int((title.seconds * fps).rounded())))
             item["text"] = .string(title.text)
-            if let preset = title.preset { item["textPreset"] = .string(preset) }
-            for (key, value) in title.style where !["id", "at", "dur", "in", "media"].contains(key) { item[key] = value }
+            for (key, value) in try look(
+                for: item, (title.preset, title.style, title.textStyle), textPresets: textPresets, project: planner.project)
+            {
+                item[key] = value
+            }
             item[tag] = .string(title.id)
             try planner.place(item, on: captions.id)
             placements.append(Placement(id: title.id, at: item.at, end: item.end))
         }
         return placements
+    }
+
+    /// The properties that give text `item` a renderer preset or a library preset's look, then `style` (item
+    /// properties) and `textStyle` over it.
+    static func look(
+        for item: Item, _ look: (preset: String?, style: [String: JSONValue], textStyle: [String: JSONValue]),
+        textPresets: [String: LibraryTextPreset], project: Project
+    ) throws -> [String: JSONValue] {
+        let (preset, style, textStyle) = look
+        var patch: [String: JSONValue] = [:]
+        if let preset, let library = textPresets[preset], !TextPreset.all.contains(preset) {
+            patch = try library.patch(for: item, project: project)
+        } else if let preset {
+            patch["textPreset"] = .string(preset)
+        }
+        for (key, value) in style where !["id", "at", "dur", "in", "media", "text", "textStyle", tag].contains(key) {
+            patch[key] = value
+        }
+        if !textStyle.isEmpty {
+            let base = patch["textStyle"]?.object ?? item["textStyle"]?.object ?? [:]
+            patch["textStyle"] = .object(base.merging(textStyle) { $1 })
+        }
+        return patch
+    }
+
+    /// Captions from the stored transcript of each media whose sound the clips play, through the built clips (as
+    /// `captions generate` would make them), in the captions' preset and style, tagged `captions`.
+    static func placeCaptions(
+        _ captions: Captions, clips: [Resolved], transcripts: [String: SourceTranscript],
+        textPresets: [String: LibraryTextPreset], in planner: inout LayerPlanner
+    ) throws {
+        var heard: [String] = []
+        for resolved in clips where !heard.contains(resolved.clip.media) { heard.append(resolved.clip.media) }
+        for media in heard {
+            guard let transcript = transcripts[media] else { continue }
+            let before = Set(planner.project.tracks.flatMap(\.items).map(\.id))
+            // Only cues inside what the plan built: other clips of the same media keep their captions.
+            let operation = try planner.project.importingCues(
+                transcript.phrases, replace: false, provenance: transcript.provider, media: media,
+                words: transcript.words, wordStyle: captions.wordStyle)
+            try planner.add([operation])
+            let added = planner.project.tracks.flatMap(\.items).filter { !before.contains($0.id) }
+            for item in added {
+                var patch = try look(
+                    for: item, (captions.preset, captions.style, captions.textStyle), textPresets: textPresets,
+                    project: planner.project)
+                patch[tag] = .string("captions")
+                try planner.add([.setProperties(item: item.id, patch: patch)])
+            }
+        }
     }
 
     /// The music bed from frame 0, as long as the clips (or what the file has left).

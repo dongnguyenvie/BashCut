@@ -22,6 +22,9 @@ public enum PlanCut {
         public var section: String?
         public var speed: Double
         public var volumeDb: Double?
+        /// The speech coverage role its items are tagged with (speech, broll, underVO); speech by default for a
+        /// clip picked by quote or words.
+        public var role: String?
         /// Pictures shown over the clip's sound, in order (B-roll); the last one fills what is left.
         public var cover: [Cover] = []
     }
@@ -40,21 +43,42 @@ public enum PlanCut {
         public var offset: Double
         public var at: Double?
         public var seconds: Double
+        /// A renderer preset (`TextPreset.all`) or a library text preset's ID.
         public var preset: String?
+        /// Item properties other than the text style.
         public var style: [String: JSONValue]
+        /// Text style fields (font, size, fill, stroke…), over the preset's.
+        public var textStyle: [String: JSONValue] = [:]
     }
+
+    /// The `textStyle` fields a title's `style` may give directly.
+    public static let textStyleKeys = ItemProperty.all.filter { $0.group == "textStyle" }.map(\.key)
+        + ["background", "shadow", "emphasis", "lineFills", "accentBars"]
 
     public struct Music: Sendable {
         public var media: String
         public var from: Double
         public var volumeDb: Double?
+        /// The music layer's level under speech (its ducking), in dB.
+        public var duckDb: Double?
+    }
+
+    /// Captions from what the clips say (their media's stored transcripts), in a preset and style.
+    public struct Captions: Sendable {
+        public var wordStyle: String?
+        public var preset: String?
+        public var style: [String: JSONValue] = [:]
+        public var textStyle: [String: JSONValue] = [:]
     }
 
     public struct Spec: Sendable {
         public var clips: [Clip]
         public var titles: [Title]
         public var music: Music?
+        public var captions: Captions?
     }
+
+    static let roles = ["speech", "broll", "underVO"]
 
     /// A clip's source range once resolved, with the facts behind it.
     public struct Resolved: Sendable {
@@ -105,9 +129,34 @@ public enum PlanCut {
         var music: Music?
         if case .object(let row)? = root["music"] {
             guard let media = row["media"]?.string else { throw ProjectError.invalid("music: give media") }
-            music = Music(media: media, from: max(0, row["from"]?.double ?? 0), volumeDb: row["volumeDb"]?.double)
+            let duck = row["duckDb"]?.double
+            if let duck, !(-60...0).contains(duck) { throw ProjectError.invalid("music.duckDb: -60…0") }
+            music = Music(media: media, from: max(0, row["from"]?.double ?? 0), volumeDb: row["volumeDb"]?.double, duckDb: duck)
         }
-        return Spec(clips: clips, titles: titles, music: music)
+        return Spec(clips: clips, titles: titles, music: music, captions: try decodeCaptions(root["captions"]))
+    }
+
+    /// `captions: {from: "speech", wordStyle, preset, style}`; null or false: none.
+    static func decodeCaptions(_ value: JSONValue?) throws -> Captions? {
+        guard let value, value != .null, value != .bool(false) else { return nil }
+        let row = value.object
+        guard (row["from"]?.string ?? "speech") == "speech" else {
+            throw ProjectError.invalid("captions.from: speech (captions from what the clips say)")
+        }
+        let wordStyle = row["wordStyle"]?.string
+        if let wordStyle, !CaptionWords.styles.contains(wordStyle) {
+            throw ProjectError.invalid("captions.wordStyle: \(CaptionWords.styles.joined(separator: ", "))")
+        }
+        let (style, textStyle) = splitStyle(row["style"]?.object ?? [:])
+        return Captions(wordStyle: wordStyle, preset: row["preset"]?.string, style: style, textStyle: textStyle)
+    }
+
+    /// Text style fields (straight or nested as `textStyle`) apart from item properties.
+    static func splitStyle(_ style: [String: JSONValue]) -> (item: [String: JSONValue], text: [String: JSONValue]) {
+        let keys = Set(textStyleKeys)
+        var text = style["textStyle"]?.object ?? [:]
+        for (key, value) in style where keys.contains(key) { text[key] = value }
+        return (style.filter { !keys.contains($0.key) && $0.key != "textStyle" }, text)
     }
 
     /// Entry IDs: given or numbered, unique across clips and titles.
@@ -143,10 +192,13 @@ public enum PlanCut {
         let speed = row["speed"]?.double ?? 1
         guard Project.speedRange.contains(speed) else { throw ProjectError.invalid("Clip \(id): speed 0.1…16") }
         let cover = try (row["cover"]?.array ?? []).map { try decodeCover($0.object, clip: id) }
+        let role = row["role"]?.string
+        if let role, !roles.contains(role) { throw ProjectError.invalid("Clip \(id): role is \(roles.joined(separator: ", "))") }
         guard cover.isEmpty || speed == 1 else { throw ProjectError.invalid("Clip \(id): a covered clip plays at 1×") }
         return Clip(
             id: id, media: media, quote: quote, words: words, from: from, to: to, seconds: seconds,
-            section: row["section"]?.string, speed: speed, volumeDb: row["volumeDb"]?.double, cover: cover)
+            section: row["section"]?.string, speed: speed, volumeDb: row["volumeDb"]?.double,
+            role: role ?? (quote != nil || words != nil ? "speech" : nil), cover: cover)
     }
 
     static func decodeCover(_ shot: [String: JSONValue], clip id: String) throws -> Cover {
@@ -165,9 +217,10 @@ public enum PlanCut {
         let clip = row["clip"]?.string, at = row["at"]?.double
         guard (clip == nil) != (at == nil) else { throw ProjectError.invalid("Title \(id): give clip (with offset) or at") }
         if let clip, !clips.contains(where: { $0.id == clip }) { throw ProjectError.invalid("Title \(id): no clip \(clip)") }
+        let (style, textStyle) = splitStyle(row["style"]?.object ?? [:])
         return Title(
             id: id, text: text, clip: clip, offset: row["offset"]?.double ?? 0, at: at, seconds: seconds,
-            preset: row["preset"]?.string, style: row["style"]?.object ?? [:])
+            preset: row["preset"]?.string, style: style, textStyle: textStyle)
     }
 
     static func orientation(_ width: Int, _ height: Int) -> String {
