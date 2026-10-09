@@ -12,7 +12,7 @@ did not answer the hook, while the agent reported it as passing. The causes were
 | Stage skills skipped, nothing noticed | Skill reads are self-reported (`run append stage`), never checked |
 | `review run` said 0 issues with an empty profile | `ReviewSummary.passed` is `errors == 0`; `unsetLimits` is reported but does not affect it |
 | "Two messages", ending ≠ hook | Only a fresh critic caught it, and the critic is optional ("when you can") |
-| `bashcut.vlog:product-ad` missed | Plugin skills are not Claude Code skills; reaching one takes 3 hops (`edit-workflow` → `vlog:plan` → recipe table), each skippable |
+| `bashcut.vlog:product-ad` missed | Plugin skills are Claude Code skills only inside an open project's folder (`.claude/skills/<plugin-id>--<name>`, #377); a new edit starts outside one, so reaching a recipe takes 3 hops (`edit-workflow` → `vlog:plan` → recipe table), each skippable |
 | Recipe rules forgotten by stage 7–10 | They live only in the agent's context, read once at the start |
 | Guessed channel name and subject | The kit says "never end a turn on a question"; `product-ad` says "ask, never guess" |
 | No stop at all | Every gate `skip` by default, and nothing replaces a skipped gate |
@@ -34,7 +34,7 @@ did not answer the hook, while the agent reported it as passing. The causes were
 
 | The user | Path |
 |---|---|
-| names a recipe ("dùng bashcut.vlog:product-ad", or a slash command, §9) | recipe → writes plan data → `bc:edit-workflow` from stage 1 |
+| names a recipe ("dùng bashcut.vlog:product-ad", or `/bashcut.vlog--product-ad` in an agent started in the project folder) | recipe → writes plan data → `bc:edit-workflow` from stage 1 |
 | asks generally ("làm video quảng cáo cho kênh X") | `bc:edit-workflow` stage 0 picks the recipe from its routing table (§8) and reads it with `skills get` |
 | has no plugin | `bc:edit-workflow` with kit defaults; the hand-off report names the missing recipe (`plugins search`) |
 
@@ -177,8 +177,8 @@ Replaces both "never end a turn on a question" (kit) and "ask, never guess" (rec
   `AgentInstructions.swift`, which every agent gets from the MCP server regardless of the entry skill.
 - A recipe skill states its own rules and the plan data it writes; it does not repeat the process.
 - `context get` › `workflow.next`: `{stage, skill, skillRead}` — the one skill to read now.
-- Optional, later: `agent kit-update` exposes enabled plugin skills' descriptions to Claude Code
-  (`/bc-vlog:product-ad`), so a request can match a recipe directly.
+- Optional, later: plugin skills are linked per project today (#377). Linking them at user level too (next to the
+  kit) would let a request match a recipe before any project exists.
 
 ## 10. Work
 
