@@ -13,10 +13,10 @@ public enum WorkflowChecklist {
         ("sound", "bc:audio-mix"), ("captions", "bc:captions-text"), ("colour", "bc:color-grade"),
         ("effects", "bc:effects"), ("review", "bc:review"), ("export", "bc:edit-workflow"), ("learn", "bc:self-learn"),
     ]
-    /// Skills of stages a plan may add besides the fixed ones; they are listed before review.
+    /// Default skills of stages a plan may add besides the fixed ones (a plan stage's `skill` wins).
     static let extraSkills = [
         "motion-graphics": "bc:motion-graphics", "stock": "bc:stock-images", "stock-images": "bc:stock-images",
-        "library": "bc:library",
+        "library": "bc:library", "visuals": "bc:visual-plan",
     ]
     /// Stages every edit goes through unless the plan marks one `required: false`.
     public static let requiredByDefault: Set<String> = ["intake", "survey", "story", "rough-cut", "review", "export"]
@@ -111,13 +111,31 @@ public enum WorkflowChecklist {
         return .object(result)
     }
 
-    /// The kit's stages with any other stage the plan names inserted before review.
+    /// The kit's stages with any other stage the plan names: right after the stage its `after` names (a fixed stage
+    /// or another added one; several after the same stage keep their name order), else before review. A plan puts a
+    /// stage where its work belongs, such as a visual plan after the cut is locked.
     static func stageTable(_ planStages: [String: JSONValue]) -> [(id: String, skill: String)] {
         var table = stages
         let fixed = Set(stages.map(\.id))
-        let extras = planStages.keys.filter { !fixed.contains($0) }.sorted()
+        var pending = planStages.keys.filter { !fixed.contains($0) }.sorted()
+        // Passes until nothing more can be placed, so an added stage may follow another added one.
+        var placedAfter: [String: Int] = [:]
+        while true {
+            let placeable = pending.filter { id in
+                guard let anchor = planStages[id]?.object["after"]?.string, anchor != id else { return false }
+                return table.contains { $0.id == anchor }
+            }
+            guard !placeable.isEmpty else { break }
+            for id in placeable {
+                let anchor = planStages[id]?.object["after"]?.string ?? ""
+                let index = (table.firstIndex { $0.id == anchor } ?? table.count - 1) + 1 + (placedAfter[anchor] ?? 0)
+                table.insert((id, extraSkills[id] ?? ""), at: min(index, table.count))
+                placedAfter[anchor, default: 0] += 1
+            }
+            pending.removeAll { placeable.contains($0) }
+        }
         let reviewIndex = table.firstIndex { $0.id == "review" } ?? table.count
-        table.insert(contentsOf: extras.map { ($0, extraSkills[$0] ?? "") }, at: reviewIndex)
+        table.insert(contentsOf: pending.map { ($0, extraSkills[$0] ?? "") }, at: reviewIndex)
         return table
     }
 

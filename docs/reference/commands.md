@@ -1113,7 +1113,7 @@ Append to the run log: an entry of any kind (start opens a run; stage, skill, au
 - Mode: ui · Runs: immediately · MCP: `bashcut_run_append`
 - `kind`: string, required. Entry kind (1–40 characters; not gate)
 - `data`: object. More fields as a JSON object
-- `stage`: string. Stage ID (intake, survey, story, rough-cut, rhythm, voiceover, sound, captions, colour, effects, review, export, learn)
+- `stage`: string. Stage ID (intake, survey, story, rough-cut, rhythm, voiceover, sound, captions, colour, effects, review, export, learn, or one the plan adds)
 - `status`: string, one of done, skipped. Stage status
 - `evidence`: string. What proves the stage done, ;-separated (files, job IDs, issue IDs)
 - `reason`: string. Why the stage was skipped
