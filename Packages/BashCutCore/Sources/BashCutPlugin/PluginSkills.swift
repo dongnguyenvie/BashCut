@@ -132,11 +132,14 @@ public enum PluginSkills {
 
     /// `<plugin>-<skill>` (`vlog-product-ad` for `bashcut.vlog`): the folder name and the front matter name agents
     /// see, so `/vlog-product-ad` names its plugin. `<plugin>` is the last part of the plugin ID; a valid Claude Code
-    /// skill name (lowercase letters, digits and `-`, at most 64 characters).
+    /// skill name (lowercase letters, digits and `-`, at most 64 characters). A skill already named after its plugin
+    /// keeps its name.
     public static func linkName(pluginID: String, skill: String) -> String {
         let last = pluginID.split(separator: ".").last.map(String.init) ?? pluginID
         let plugin = String(last.lowercased().map { $0.isLetter || $0.isNumber ? $0 : "-" })
-        return String("\(plugin)-\(skill)".prefix(64))
+        // A skill already named after its plugin (`whisper-captions`) is not prefixed twice.
+        let name = skill == plugin || skill.hasPrefix(plugin + "-") ? skill : "\(plugin)-\(skill)"
+        return String(name.prefix(64))
     }
 
     /// The front matter fields of a SKILL.md (`---` lines of `key: value` at the top), quotes removed.
