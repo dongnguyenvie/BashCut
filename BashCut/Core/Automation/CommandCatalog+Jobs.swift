@@ -12,9 +12,10 @@ extension CommandCatalog {
         CommandSpec(
             "jobs.wait", .read,
             "Wait until a job's state or step changes, or it finishes, up to timeout seconds; returns the job, "
-                + "changed and timedOut. A finished job returns at once. Use it instead of polling jobs status.",
+                + "changed and timedOut. A finished job returns at once. Use it instead of polling jobs status. Several "
+                + "job IDs (comma-separated) wait until all have finished: {jobs, finished, timedOut}.",
             parameters: [
-                CommandParameter("job", .string, "Job ID", required: true, cli: .positional),
+                CommandParameter("job", .string, "Job ID, or several comma-separated", required: true, cli: .positional),
                 CommandParameter("timeout", .integer, "Seconds to wait at most",
                                  default: .integer(JobWaitDefaults.seconds), minimum: 1,
                                  maximum: JobWaitDefaults.maximum, cli: .option("timeout")),

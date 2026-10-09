@@ -183,6 +183,13 @@ extension ProjectDocument {
     }
 
     func images(of snapshot: CompositionSnapshot, frames: [Int], maximumSide: Int) async throws -> [Int: CGImage] {
+        // Like ui.frame: video this Mac cannot decode (AV1, VP9) is an error, never handed to the image generator,
+        // whose asset reader raises an Objective-C exception on it and takes the app down.
+        var undecodable: [UndecodableMedia] = []
+        for frame in frames {
+            for media in snapshot.undecodable(at: frame) where !undecodable.contains(media) { undecodable.append(media) }
+        }
+        if !undecodable.isEmpty { throw UndecodableMediaError(undecodable) }
         let generator = AVAssetImageGenerator(asset: snapshot.composition)
         generator.videoComposition = snapshot.videoComposition
         generator.appliesPreferredTrackTransform = true

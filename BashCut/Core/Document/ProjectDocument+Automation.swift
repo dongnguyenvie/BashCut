@@ -42,6 +42,7 @@ extension ProjectDocument {
         registerPlanCommands()
         registerWorkflowCommands()
         registerSelectsCommands()
+        registerPlanCutCommands()
         registerVariantCommands()
         registerPackagingCommands()
         registerStorageCommands()

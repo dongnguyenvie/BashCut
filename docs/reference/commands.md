@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 203 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 205 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -204,10 +204,10 @@ List project media. With analysis, each media also has analysis: measured false,
 
 ### `bashcut media import <path> [--kind <kind>] [--place] [--track <track>] [--at-frame <atFrame>] [--origin <origin>] [--license <license>] [--source <source>] [--author <author>] --base-rev <baseRev>`
 
-Add a media file (path relative to the project or absolute): video, audio or a still image (PNG keeps transparency; placed for 3 s, trims to any length). With place, also put it on a layer like Import. A file already in the project, unchanged, reuses its media and returns existing true. origin, license, source and author record where it came from (license is free text, or a JSON object with an open id and the facts you know: commercial, redistribute, attributionRequired, attribution; stored as given). proxy reports the preview copy: converting with a job when this Mac cannot decode the video (AV1, VP9) and BashCut converts it to H.264 in media/converted.
+Add a media file (path relative to the project or absolute): video, audio or a still image (PNG keeps transparency; placed for 3 s, trims to any length). A folder adds every video, audio and image file directly inside it, in name order, as one edit: {files [{path, media, kind, seconds, existing}], added}; import a folder once rather than file by file. With place (one file), also put it on a layer like Import. A file already in the project, unchanged, reuses its media and returns existing true. origin, license, source and author record where it came from (license is free text, or a JSON object with an open id and the facts you know: commercial, redistribute, attributionRequired, attribution; stored as given). proxy reports the preview copy: converting with a job when this Mac cannot decode the video (AV1, VP9) and BashCut converts it to H.264 in media/converted.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_media_import`
-- `path`: string, required, path. Media file path
+- `path`: string, required, path. Media file or folder path
 - `kind`: string, one of video, audio, image. Media kind; from the file type by default
 - `place`: boolean, default false. Also place it on a layer
 - `track`: string. Layer ID for place; defaults to the main layer (music for audio)
@@ -970,10 +970,10 @@ Read one job (plugin call or export), or all recent jobs when job is omitted. Ea
 
 ### `bashcut jobs wait <job> [--timeout <timeout>]`
 
-Wait until a job's state or step changes, or it finishes, up to timeout seconds; returns the job, changed and timedOut. A finished job returns at once. Use it instead of polling jobs status.
+Wait until a job's state or step changes, or it finishes, up to timeout seconds; returns the job, changed and timedOut. A finished job returns at once. Use it instead of polling jobs status. Several job IDs (comma-separated) wait until all have finished: {jobs, finished, timedOut}.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_jobs_wait`
-- `job`: string, required. Job ID
+- `job`: string, required. Job ID, or several comma-separated
 - `timeout`: integer, 1…30, default 25. Seconds to wait at most
 
 ### `bashcut jobs cancel <job>`
@@ -1088,12 +1088,13 @@ Stop at a gate: with ask, the user sees the summary and attachments in BashCut a
 - `summary`: string, required. What the user is asked to approve
 - `attach`: string. Comma-separated files to show (sheets, stills); relative to the project
 
-### `bashcut checkpoint status [<id>]`
+### `bashcut checkpoint status [<id>] [--wait <wait>]`
 
-A checkpoint of this session (default the last): status awaiting_user, approved, changes, rejected, skipped, notified or withdrawn, the user's note, the revision it covers and stale when the project has changed since.
+A checkpoint of this session (default the last): status awaiting_user, approved, changes, rejected, skipped, notified or withdrawn, the user's note, the revision it covers and stale when the project has changed since. With wait, the call returns as soon as the user answers, or after that many seconds: wait instead of polling.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_checkpoint_status`
 - `id`: string. Checkpoint ID
+- `wait`: integer, 1…30. Seconds to wait for the user's answer
 
 ## run
 
@@ -1146,6 +1147,26 @@ A script against the words heard on the timeline (stored transcripts, else capti
 - Mode: read · Runs: immediately · MCP: `bashcut_script_check`
 - `beats`: array. Beats [{id, text, section}] as JSON
 - `text`: string. The whole script as one beat
+
+## plan
+
+### `bashcut plan check [<cut.json>]`
+
+Check the edit list before building it, without changing anything: each clip's source range (quotes resolved in the stored transcript, edges inside a word or sentence, how much of the quote was heard), where it lands, its described shot and orientation; each title's chars per second; problems {id, severity error|warning|info, entry, detail, facts} (quote not found, unknown media, source played twice, same media and size back to back, media against the canvas shape); and the review of the edit as it would be (the project's review profile; picture and loudness need a render and are not measured). ok is false while an error stands. plan.cut is {clips: [{id, media, quote | words FIRST-LAST | from/to seconds (whole media when none; seconds for a still), section, speed, volumeDb, cover: [{media, from, seconds}] (pictures shown over the clip's sound, muted, the last filling the rest)}], titles: [{id, text, clip + offset seconds | at seconds, seconds, preset, style {item properties}}], music: {media, from, volumeDb}}.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_plan_check`
+- `cut`: object. The list {clips, titles, music} (CLI: path to cut.json); plan.cut when omitted
+
+### `bashcut plan apply [<cut.json>] [--dry-run] [--why <why>] [--evidence <evidence>] --base-rev <baseRev>`
+
+Build the edit list as one undoable edit: clips on Main in order (sound linked on the dialogue layer), section markers, titles and the music bed, each tagged planCut. Applying again replaces only what an earlier apply built (changes made to those items since are lost; other layers are kept but not re-timed); Main must hold nothing else. Refuses while plan.check has an error. With cut, the list is also saved as plan.cut in the same edit. dryRun returns the check. plan.cut is {clips: [{id, media, quote | words FIRST-LAST | from/to seconds (whole media when none; seconds for a still), section, speed, volumeDb, cover: [{media, from, seconds}] (pictures shown over the clip's sound, muted, the last filling the rest)}], titles: [{id, text, clip + offset seconds | at seconds, seconds, preset, style {item properties}}], music: {media, from, volumeDb}}.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_plan_apply`
+- `cut`: object. The list {clips, titles, music} (CLI: path to cut.json); plan.cut when omitted
+- `dryRun`: boolean. Check without editing
+- `why`: string. Why this edit, in one sentence (up to 500 characters)
+- `evidence`: string. What it rests on, separated by ;
+- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
 
 ## selects
 

@@ -291,7 +291,10 @@ extension ProjectDocument {
         }
         handle("capabilities.get") { document, arguments, _ in try await document.capabilitiesJSON(arguments) }
         handle("jobs.wait") { document, arguments, _ in
-            try await document.waitForJob(try arguments.string("job"), seconds: try arguments.int("timeout"))
+            let ids = try arguments.string("job").split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty }
+            guard ids.count > 1 else { return try await document.waitForJob(ids.first ?? "", seconds: try arguments.int("timeout")) }
+            return try await document.waitForJobs(ids, seconds: try arguments.int("timeout"))
         }
         handleAuthored("jobs.cancel") { document, arguments, _ in
             guard document.jobs.cancel(try arguments.string("job")) else {
@@ -429,6 +432,23 @@ extension ProjectDocument {
             throw RPCFailure(-32602, "The job is gone: the project was closed or switched")
         }
         return .object(["job": job.json, "changed": .bool(changed), "timedOut": .bool(job.isActive && !changed)])
+    }
+
+    /// `jobs.wait` with several jobs: until every one has finished, or `seconds` passed; `{jobs, finished, timedOut}`.
+    func waitForJobs(_ ids: [String], seconds: Int) async throws -> JSONValue {
+        for id in ids where jobs.job(id) == nil { throw RPCFailure(-32602, "Unknown job \(id)") }
+        let deadline = ContinuousClock.now + .seconds(seconds)
+        while let active = ids.first(where: { jobs.job($0)?.isActive == true }), ContinuousClock.now < deadline {
+            let left = ContinuousClock.now.duration(to: deadline)
+            guard try await jobs.wait(active, for: left) != nil else {
+                throw RPCFailure(-32602, "The job is gone: the project was closed or switched")
+            }
+        }
+        let list = ids.compactMap { jobs.job($0) }
+        return .object([
+            "jobs": .array(list.map(\.json)), "finished": .integer(list.filter { !$0.isActive }.count),
+            "timedOut": .bool(list.contains { $0.isActive }),
+        ])
     }
 
     /// The job an earlier request with the same `requestID` started (P2-G4), as `{job, state, reused}`.

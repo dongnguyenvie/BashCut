@@ -17,7 +17,7 @@ import Foundation
         "review.window", "timeline.sheet", "color.measure", "audio.mix-measure",
         "beats.grid", "audio.energy", "media.subjects", "media.ocr", "speech.rate", "narration.windows",
         "voice.check", "voice.fit", "captions.align", "captions.group", "platforms.get",
-        "project.data", "project.set-data",
+        "project.data", "project.set-data", "plan.check", "plan.apply",
         "review.accept", "review.verify", "review.packet", "review.compare",
         "review.coverage", "script.check", "media.resolve-range", "captions.find",
         "selects.list", "selects.set", "selects.place",

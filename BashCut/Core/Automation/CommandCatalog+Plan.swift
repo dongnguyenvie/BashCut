@@ -72,8 +72,13 @@ extension CommandCatalog {
         CommandSpec(
             "checkpoint.status", .read,
             "A checkpoint of this session (default the last): status awaiting_user, approved, changes, rejected, skipped, "
-                + "notified or withdrawn, the user's note, the revision it covers and stale when the project has changed since.",
-            parameters: [CommandParameter("id", .string, "Checkpoint ID", cli: .positional)]),
+                + "notified or withdrawn, the user's note, the revision it covers and stale when the project has changed since. "
+                + "With wait, the call returns as soon as the user answers, or after that many seconds: wait instead of polling.",
+            parameters: [
+                CommandParameter("id", .string, "Checkpoint ID", cli: .positional),
+                CommandParameter("wait", .integer, "Seconds to wait for the user's answer", minimum: 1,
+                                 maximum: JobWaitDefaults.maximum, cli: .option("wait")),
+            ]),
         CommandSpec(
             "run.log", .read,
             "The run log (.bashcut/run-log.jsonl, append-only): starts, stages, gates with the user's answers, review "
@@ -150,6 +155,43 @@ extension CommandCatalog {
                 CommandParameter("text", .string, "The whole script as one beat", cli: .option("text")),
             ]),
     ]
+
+    /// The edit as one list: check it without touching the timeline, then build it as one edit.
+    static let planCutSpecs: [CommandSpec] = {
+        let cut = CommandParameter(
+            "cut", .object, "The list {clips, titles, music} (CLI: path to cut.json); plan.cut when omitted",
+            cli: .positionalJSONFile)
+        let shape = "plan.cut is {clips: [{id, media, quote | words FIRST-LAST | from/to seconds (whole media when "
+            + "none; seconds for a still), section, speed, volumeDb, cover: [{media, from, seconds}] (pictures shown over the "
+            + "clip's sound, muted, the last filling the rest)}], titles: [{id, text, clip + offset seconds | at "
+            + "seconds, seconds, preset, style {item properties}}], music: {media, from, volumeDb}}."
+        return [
+            CommandSpec(
+                "plan.check", .read,
+                "Check the edit list before building it, without changing anything: each clip's source range "
+                    + "(quotes resolved in the stored transcript, edges inside a word or sentence, how much of the "
+                    + "quote was heard), where it lands, its described shot and orientation; each title's chars per "
+                    + "second; problems {id, severity error|warning|info, entry, detail, facts} (quote not found, "
+                    + "unknown media, source played twice, same media and size back to back, media against the canvas "
+                    + "shape); and the review of the edit as it would be (the project's review profile; picture and "
+                    + "loudness need a render and are not measured). ok is false while an error stands. " + shape,
+                parameters: [cut]),
+            CommandSpec(
+                "plan.apply", .edit,
+                "Build the edit list as one undoable edit: clips on Main in order (sound linked on the dialogue "
+                    + "layer), section markers, titles and the music bed, each tagged planCut. Applying again replaces "
+                    + "only what an earlier apply built (changes made to those items since are lost; other layers are "
+                    + "kept but not re-timed); Main must hold nothing else. Refuses while plan.check has an error. "
+                    + "With cut, the list is also saved as plan.cut in the same edit. dryRun returns the check. " + shape,
+                parameters: [
+                    cut,
+                    CommandParameter("dryRun", .boolean, "Check without editing", cli: .flag("dry-run")),
+                    CommandParameter("why", .string, "Why this edit, in one sentence (up to 500 characters)", cli: .option("why")),
+                    CommandParameter("evidence", .string, "What it rests on, separated by ;", cli: .option("evidence")),
+                    baseRevision,
+                ]),
+        ]
+    }()
 
     /// Select by quote (P1-D7).
     static let quoteSpecs: [CommandSpec] = [

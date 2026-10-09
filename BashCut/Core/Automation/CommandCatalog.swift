@@ -29,7 +29,7 @@ public enum CommandCatalog {
     private static let declaredSpecs: [CommandSpec] = readSpecs + projectSpecs + editSpecs + captionSpecs + layerSpecs + styleSpecs
         + formatSpecs + clipSpecs + jobSpecs + capabilitySpecs + analysisSpecs + [reviewSyncSpec] + timelineStillsSpecs
         + [colorMeasureSpec] + planSpecs
-        + workflowSpecs + planCheckSpecs + quoteSpecs + selectsSpecs
+        + workflowSpecs + planCheckSpecs + planCutSpecs + quoteSpecs + selectsSpecs
         + variantSpecs + packagingSpecs
         + sourceMediaSpecs
         + pluginSpecs + pluginViewSpecs
@@ -127,14 +127,16 @@ public enum CommandCatalog {
         CommandSpec(
             "media.import", .edit,
             "Add a media file (path relative to the project or absolute): video, audio or a still image (PNG keeps "
-                + "transparency; placed for 3 s, trims to any length). With place, also put it on a layer like Import. "
+                + "transparency; placed for 3 s, trims to any length). A folder adds every video, audio and image file "
+                + "directly inside it, in name order, as one edit: {files [{path, media, kind, seconds, existing}], "
+                + "added}; import a folder once rather than file by file. With place (one file), also put it on a layer like Import. "
                 + "A file already in the project, unchanged, reuses its media and returns existing true. origin, license, "
                 + "source and author record where it came from (license is free text, or a JSON object with an open "
                 + "id and the facts you know: commercial, redistribute, attributionRequired, attribution; stored as "
                 + "given). proxy reports the preview copy: converting with a job when this Mac cannot decode the "
                 + "video (AV1, VP9) and BashCut converts it to H.264 in media/converted.",
             parameters: [
-                CommandParameter("path", .string, "Media file path", required: true, isPath: true, cli: .positional),
+                CommandParameter("path", .string, "Media file or folder path", required: true, isPath: true, cli: .positional),
                 CommandParameter("kind", .string, "Media kind; from the file type by default",
                                  choices: ["video", "audio", "image"], cli: .option("kind")),
                 CommandParameter("place", .boolean, "Also place it on a layer", default: .bool(false),
