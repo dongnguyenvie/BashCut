@@ -7,7 +7,7 @@
   },
   "version": "1.0.0",
   "apiVersion": 2,
-  "entrypoint": "bin/provider",
+  "entrypoint": "bin/bashcut-vision",
   "capabilities": ["vision.faces", "vision.text"],
   "providers": [
     {"id": "bashcut.vision.faces", "capability": "vision.faces", "name": "Faces and people (built in)", "priority": 0},

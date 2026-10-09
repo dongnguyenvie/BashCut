@@ -23,8 +23,9 @@ for name in $core_plugins; do
     plugin_dir="$bundle/Resources/Plugins/bashcut.$name"
     mkdir -p "$plugin_dir/bin"
     cp "Plugins/$name/plugin.json" "$plugin_dir/plugin.json"
+    rm -f "$plugin_dir/bin/provider"
     cp "$bin_dir/bashcut-$name" "$plugin_dir/bin/.provider.new"
-    mv -f "$plugin_dir/bin/.provider.new" "$plugin_dir/bin/provider"
+    mv -f "$plugin_dir/bin/.provider.new" "$plugin_dir/bin/bashcut-$name"
 done
 # SwiftPM resource bundles go in Contents/Resources: codesign rejects anything else at the bundle root.
 for resource in "$bin_dir"/*.bundle; do
@@ -68,7 +69,7 @@ if [ -z "$identity" ]; then
 fi
 for name in $core_plugins; do
     codesign --force --sign "$identity" --identifier "app.bashcut.$name" \
-        "$bundle/Resources/Plugins/bashcut.$name/bin/provider" 2>&1 \
+        "$bundle/Resources/Plugins/bashcut.$name/bin/bashcut-$name" 2>&1 \
         | { grep -v "replacing existing signature" >&2 || true; }
 done
 codesign --force --sign "$identity" --identifier app.bashcut.cli "$bundle/MacOS/bashcut" 2>&1 \

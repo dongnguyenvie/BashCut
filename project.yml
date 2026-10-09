@@ -61,7 +61,9 @@ targets:
         product: BashCutAutomation
       - package: MCPSwiftSDK
         product: MCP
-  # Core plugin: the provider executable of Plugins/audio-analysis, embedded in Contents/Resources/Plugins
+  # Core plugin: the provider executable of Plugins/audio-analysis (bin/bashcut-audio-analysis, its plugin.json
+  # entrypoint; each core plugin's executable has its own name, or an archive fails on two products named alike),
+  # embedded in Contents/Resources/Plugins
   # (Contents/PlugIns is for code bundles; codesign rejects a plain plugin folder there).
   AudioAnalysisProvider:
     type: tool
@@ -69,7 +71,7 @@ targets:
     sources: [Plugins/audio-analysis/Sources/Provider]
     settings:
       base:
-        PRODUCT_NAME: provider
+        PRODUCT_NAME: bashcut-audio-analysis
         SKIP_INSTALL: YES
         CODE_SIGN_ENTITLEMENTS: BashCut/Helper.entitlements
     dependencies:
@@ -82,7 +84,7 @@ targets:
     sources: [Plugins/vision/Sources/Provider]
     settings:
       base:
-        PRODUCT_NAME: provider
+        PRODUCT_NAME: bashcut-vision
         SKIP_INSTALL: YES
         CODE_SIGN_ENTITLEMENTS: BashCut/Helper.entitlements
     dependencies:
