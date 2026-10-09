@@ -84,7 +84,9 @@ struct PluginSkillsTests {
         let skill = try #require(found.skills.first)
         #expect(skill.name == "transcribe" && skill.id == "example.captions:transcribe")
         #expect(skill.description == "Use when speech needs captions.")
-        #expect(skill.linkName == "example.captions--transcribe")
+        #expect(skill.linkName == "captions-transcribe")
+        #expect(PluginSkills.linkName(pluginID: "bashcut.vlog", skill: "product-ad") == "vlog-product-ad")
+        #expect(PluginSkills.linkName(pluginID: "bashcut.whisper-captions", skill: "whisper-captions") == "whisper-captions")
         #expect(skill.file.lastPathComponent == "SKILL.md" && FileManager.default.fileExists(atPath: skill.file.path))
         #expect(skill.pluginName == "Example Captions")
     }

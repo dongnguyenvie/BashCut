@@ -239,7 +239,9 @@ public enum CommandCatalog {
             "Request a background video export; the user approves it in the app first. Approved exports queue behind a running one. "
                 + "Vertical presets default under the platform's recompression line (platforms list: bitrateMbps); "
                 + "bitrate overrides it. Feed shapes: feed-4x5 (1080×1350), square, portrait-3x4 (1080×1440). The "
-                + "export status reports the bitrate written.",
+                + "export status reports the bitrate written. An agent's export with any preset but quick-draft needs "
+                + "a draft audit with verdict pass of the current timeline (run append audit --point draft) or the "
+                + "user's G5 approval at this revision: else audit_missing.",
             parameters: [
                 CommandParameter("preset", .string, "Export preset", required: true, choices: exportPresets,
                                  cli: .option("preset")),

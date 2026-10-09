@@ -1,6 +1,7 @@
 import BashCutAgent
 import BashCutAutomation
 import BashCutProject
+import BashCutStorage
 import Foundation
 
 /// Skills commands (#71): the agent kit's and the plugins' skills read-only, and the project's and every project's
@@ -14,7 +15,7 @@ extension ProjectDocument {
             return .array(KnowledgeSkillRef.Origin.allCases.filter { origin == nil || $0 == origin }
                 .flatMap { document.skillsJSON($0) })
         }
-        handle("skills.get") { document, arguments, _ in
+        handle("skills.get") { document, arguments, author in
             document.agents.loadKnowledge()
             let name = try arguments.string("name")
             let origins = try Self.skillOrigin(arguments.optionalString("scope")).map { [$0] }
@@ -29,6 +30,7 @@ extension ProjectDocument {
                       case .object(var fields)? = document.skillsJSON(origin).first(where: { $0.name == id })
                 else { continue }
                 fields["text"] = .string(text)
+                document.logSkillRead(id, origin: origin, author: author)
                 return .object(fields)
             }
             throw RPCFailure(-32602, "No skill named \(name)")
@@ -85,6 +87,19 @@ extension ProjectDocument {
             }
             return .object(["id": .string(lesson.id), "title": .string(lesson.title), "diff": .string(lesson.fix)])
         }
+    }
+
+    /// Records a skill read in the run log (spec 13 §6.1), as BashCut saw it: kit skills as `bc:<name>`, the way the
+    /// checklist and the kit hook name them. Nothing is logged before the first save, and a failed write never fails
+    /// the read.
+    private func logSkillRead(_ name: String, origin: KnowledgeSkillRef.Origin, author: Author?) {
+        guard let log = runLog else { return }
+        let entry: [String: JSONValue] = [
+            "kind": .string("skill"), "name": .string(WorkflowChecklist.skillName(name, origin: origin.rawValue)),
+            "origin": .string(origin.rawValue), "author": .string(author?.rawValue ?? "unknown"),
+            "rev": .integer(project.revision), "verified": .bool(true), "via": .string("skills.get"),
+        ]
+        do { try log.append(entry) } catch { DebugLog.write("runlog", "skill read not logged: \(error)") }
     }
 
     /// The skills of one origin as `skills list` shows them.

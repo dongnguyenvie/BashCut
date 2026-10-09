@@ -96,7 +96,7 @@ struct ReviewInvariantsTests {
         let framing = kept.first { $0.id == "shot-short-c" }
         #expect(framing?.accepted == "same angle on purpose")
         #expect(framing?.json.object["accepted"]?.object["reason"] == .string("same angle on purpose"))
-        let summary = ReviewSummary(kept)
+        let summary = ReviewSummary(kept, coverage: .object([:]))
         #expect(summary.accepted == 1 && summary.warnings == kept.filter { $0.severity == .warning }.count - 1)
         #expect(summary.errors == 1)
         #expect(TimelineReview.blockingExport(project, issues: kept).map(\.id) == ["gap-b"])

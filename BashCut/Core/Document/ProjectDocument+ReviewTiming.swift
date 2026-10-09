@@ -10,7 +10,7 @@ import Foundation
 extension ProjectDocument {
     func registerReviewTimingCommands() {
         handle("review.compare") { document, arguments, _ in try document.compareReview(arguments) }
-        handle("review.packet") { document, _, _ in try await document.reviewPacket() }
+        handle("review.packet") { document, arguments, _ in try await document.reviewPacket(arguments) }
         handle("review.verify") { document, arguments, _ in try await document.verifyReviewIssue(arguments) }
         handleAuthored("review.accept") { document, arguments, author in try document.acceptReviewIssue(arguments, author: author) }
         handle("review.shots") { document, arguments, _ in

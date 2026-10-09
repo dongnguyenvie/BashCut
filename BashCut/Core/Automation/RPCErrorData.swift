@@ -19,6 +19,10 @@ public enum RPCErrorCategory: String, Sendable, CaseIterable {
     case fileConflict = "file_conflict"
     case capabilityMissing = "capability_missing"
     case unsupportedMedia = "unsupported_media"
+    /// A workflow guard (spec 13 §7): a final export without a passing draft audit, or G2 without a strategy audit.
+    case auditMissing = "audit_missing"
+    /// A workflow guard: G2 before the plan's recipe skill was read.
+    case recipeUnread = "recipe_unread"
     case internalError = "internal"
 
     /// Whether the same request can succeed later without changing it.

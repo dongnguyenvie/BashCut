@@ -73,9 +73,10 @@ extension ProjectDocument {
         }
         let list = JSONValue.array(issues.map(\.json))
         guard arguments.bool("summary") || previous != nil else { return list }
+        let checks = TimelineReview.coverage(project, context: reviewContext())
         var result: [String: JSONValue] = [
-            "issues": list, "summary": ReviewSummary(all).json, "rev": .integer(project.revision),
-            "round": .integer(reviewRounds.count), "checks": TimelineReview.coverage(project, context: reviewContext()),
+            "issues": list, "summary": ReviewSummary(all, coverage: checks).json, "rev": .integer(project.revision),
+            "round": .integer(reviewRounds.count), "checks": checks,
         ]
         if let previous, let previous {
             var diff = ReviewRounds.diff(before: previous.issues, after: all).object

@@ -58,7 +58,9 @@ extension CommandCatalog {
             "Stop at a gate: with ask, the user sees the summary and attachments in BashCut and answers approved, "
                 + "changes (with a note) or rejected; poll checkpoint status until it is not awaiting_user. With notify the "
                 + "user is told and the run goes on; with skip nothing is shown. The answer is bound to the current "
-                + "revision and written to the run log; only the user can answer.",
+                + "revision and written to the run log; only the user can answer. G2 needs a strategy audit (run append "
+                + "audit --point strategy) and, when plan.recipe is set, its skill read: else audit_missing or "
+                + "recipe_unread.",
             parameters: [
                 CommandParameter("gate", .string, "G1…G5, brief, strategy, roughCut, script, draft, or any name (1–40 "
                                  + "letters, digits, ., -, _) for a stop of your own", required: true,
@@ -84,13 +86,33 @@ extension CommandCatalog {
             ]),
         CommandSpec(
             "run.append", .ui,
-            "Append to the run log: an entry of any kind (start opens a run; stage, round, measured, note and end are "
-                + "the usual ones; gate is reserved for checkpoints) with the fields given and any data object. The "
-                + "revision, author and time are added.",
+            "Append to the run log: an entry of any kind (start opens a run; stage, skill, audit, round, measured, note "
+                + "and end are the usual ones; gate is reserved for checkpoints) with the fields given and any data "
+                + "object. The revision, author and time are added. stage: --status done needs --evidence (else it is "
+                + "stored unverified), skipped needs --reason; the rough-cut stage while G2 is skip needs what G2 needs. "
+                + "skill: a skill you read (stored verified: false unless the kit hook writes it with --verified-by "
+                + "hook; skills get records plugin and kit skill reads itself). audit: an auditor's verdict at a point "
+                + "(strategy after the story, draft before export, process at the end), bound to the current timeline.",
             parameters: [
                 CommandParameter("kind", .string, "Entry kind (1–40 characters; not gate)", required: true, cli: .positional),
                 CommandParameter("data", .object, "More fields as a JSON object", cli: .option("data")),
-                CommandParameter("stage", .string, "Stage name", cli: .option("stage")),
+                CommandParameter("stage", .string, "Stage ID (intake, survey, story, rough-cut, rhythm, voiceover, sound, "
+                                 + "captions, colour, effects, review, export, learn)", cli: .option("stage")),
+                CommandParameter("status", .string, "Stage status", choices: WorkflowChecklist.stageStatuses,
+                                 cli: .option("status")),
+                CommandParameter("evidence", .string, "What proves the stage done, ;-separated (files, job IDs, issue IDs)",
+                                 cli: .option("evidence")),
+                CommandParameter("reason", .string, "Why the stage was skipped", cli: .option("reason")),
+                CommandParameter("name", .string, "Skill read (bc:rough-cut, bashcut.vlog:product-ad)", cli: .option("name")),
+                CommandParameter("origin", .string, "Skill origin: kit, plugin, project or user (default from the name)",
+                                 choices: ["kit", "plugin", "project", "user"], cli: .option("origin")),
+                CommandParameter("verifiedBy", .string, "Set only by the kit's skill hook", choices: ["hook"],
+                                 cli: .option("verified-by")),
+                CommandParameter("point", .string, "Audit point", choices: WorkflowChecklist.auditPoints, cli: .option("point")),
+                CommandParameter("verdict", .string, "Audit verdict", choices: WorkflowChecklist.verdicts, cli: .option("verdict")),
+                CommandParameter("findings", .integer, "Audit findings", minimum: 0, maximum: 1_000, cli: .option("findings")),
+                CommandParameter("by", .string, "Who audited: a fresh critic or the agent itself (default self)",
+                                 choices: WorkflowChecklist.auditors, cli: .option("by")),
                 CommandParameter("text", .string, "What happened", cli: .option("text")),
                 CommandParameter("round", .integer, "Review round", minimum: 1, maximum: 100, cli: .option("round")),
                 CommandParameter("fixed", .integer, "Issues fixed this round", minimum: 0, cli: .option("fixed")),
@@ -98,6 +120,15 @@ extension CommandCatalog {
                 CommandParameter("measured", .string, "Comma-separated checks measured", cli: .option("measured")),
                 CommandParameter("notMeasured", .string, "Comma-separated checks not measured", cli: .option("not-measured")),
             ]),
+        CommandSpec(
+            "run.checklist", .read,
+            "The run's checklist, derived from the plan and the run log (never hand-written): stages [{id, skill (the "
+                + "plan's stages.<id>.skill, else the kit's), skillRead (recorded by BashCut or the kit hook; "
+                + "skillReadUnverified when only you reported it), status pending|started|done|skipped|n/a, required, "
+                + "evidence, reason, unverified (done without evidence), by (n/a from the recipe or plan), rules}], "
+                + "audits {strategy, draft, process: verdict or null}, auditDetails {verdict, by critic|self, findings, "
+                + "rev, current}, recipe {skill, read} and open: what still needs attention; start the hand-off report "
+                + "from it."),
     ]
 
     /// The plan against what was measured (P1-D3).

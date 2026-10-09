@@ -153,10 +153,7 @@ extension Project {
             try setItemProperties(id: id, patch: patch)
         case .setLinkedAudio(let video, let audio):
             try setLinkedAudio(videoID: video, audioID: audio)
-        case .delete(let id, let ripple):
-            let linked = try linkedItemID(id)
-            try deleteItem(id: id, ripple: ripple)
-            if let linked { try deleteItem(id: linked, ripple: ripple) }
+        case .delete(let id, let ripple): try deleteLinked(id, ripple: ripple)
         case .split(let id, let frame, let newID):
             let linked = try linkedItemID(id)
             try splitItem(id: id, frame: frame, newID: newID)
@@ -386,7 +383,7 @@ extension Project {
         }
     }
 
-    private mutating func deleteItem(id: String, ripple: Bool) throws {
+    mutating func deleteItem(id: String, ripple: Bool) throws {
         let (track, index) = try location(id)
         let item = tracks[track].items.remove(at: index)
         if ripple { try shift(track: track, from: item.end, by: -item.duration) }

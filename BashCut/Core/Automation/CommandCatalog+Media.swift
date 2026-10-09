@@ -23,7 +23,10 @@ extension CommandCatalog {
             + "analysis lists running analysis jobs and the media not yet measured (media.analyze), transcribed "
             + "(media.transcribe) or described (media.describe), so a plan does not use defaults where "
             + "measurements are missing; plan summarises the brief (goal, outputs, length) and the edit plan (mode, "
-            + "stage, section/shot/beat counts, frozen sections); recentFailures lists your session's failed requests "
+            + "stage, section/shot/beat counts, frozen sections, recipe, promise, checks count, requiredStages, naStages); "
+            + "workflow has the gates, the checkpoint, checklist (each stage's status, audit verdicts, open points; "
+            + "run checklist has it all) and next {stage, skill, skillRead, recipe when unread}: the one skill to read "
+            + "now; recentFailures lists your session's failed requests "
             + "of the last 15 minutes (method, code, category, message) and repeated, how many in a row at the newest "
             + "end share a method and category: stop and rethink after repeated ones."
 

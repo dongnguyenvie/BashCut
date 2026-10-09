@@ -9,15 +9,28 @@ extension CommandCatalog {
             + "picture, cut-in-word, missing fonts or glyphs, output length and shape, true peak) are always checked; "
             + "editorial checks only against the limits in the project's review object, and nothing without them. IDs "
             + "are anchored to clips. With summary: {issues, summary, checks (measured, stale, notChecked, failed, "
-            + "unreliable, unsetLimits)}; with sinceRev also diff {fixed, new, persisting}.",
+            + "unreliable, unsetLimits)} and summary.status: fail (errors), incomplete (no errors, but a limit unset or "
+            + "a check not run) or pass (passed is status == pass; the CLI exits 0, 1 or 2); with sinceRev also diff "
+            + "{fixed, new, persisting}.",
         parameters: [
             CommandParameter("sinceRev", .integer, "Compare with the review of this revision (this session)", minimum: 0,
                              cli: .option("since-rev")),
             CommandParameter("minSeverity", .string, "Leave out issues less severe than this",
                              choices: ReviewSeverity.allCases.map(\.rawValue), cli: .option("min-severity")),
-            CommandParameter("summary", .boolean, "Wrap the issues with counts and a pass flag",
+            CommandParameter("summary", .boolean, "Wrap the issues with counts and a status",
                              cli: .flag("summary")),
         ])
+
+    /// The CLI's exit status for a successful call: `review run --summary` exits 1 on fail and 2 on incomplete
+    /// (spec 13 §6.3), every other result 0. Error statuses are `RPCFailure.exitStatus` (64 and up).
+    public static func exitStatus(method: String, result: JSONValue?) -> Int32 {
+        guard method == "review.run" else { return 0 }
+        switch result?.object["summary"]?.object["status"]?.string {
+        case "fail": return 1
+        case "incomplete": return 2
+        default: return 0
+        }
+    }
 
     static let reviewAcceptSpec = CommandSpec(
         "review.accept", .edit,
@@ -46,7 +59,14 @@ extension CommandCatalog {
             + "plan.json (brief, plan, review profile, outputs), digest.json (what changed since the last review round), "
             + "issues.json (with the round diff), shots.json (review.shots with summary), word-landing.json (words against "
             + "cuts and titles), coverage.json (described shot per clip, script beats heard), measured.json (what was and was not "
-            + "measured) and a contact sheet of every cut and title. No editor reasons are included.")
+            + "measured), checks.json (the kit's generic checks, plan.checks and plan.promise) and a contact sheet of every "
+            + "cut and title. No editor reasons are included. point picks the audit: draft (default, this folder), "
+            + "strategy (brief with inferred fields, plan, checks, a sheet when the timeline has one, missing) or process "
+            + "(run checklist, run log, timeline changes).",
+        parameters: [
+            CommandParameter("point", .string, "Audit point (default draft)", choices: WorkflowChecklist.auditPoints,
+                             cli: .option("point")),
+        ])
 
     static let reviewCompareSpec = CommandSpec(
         "review.compare", .read,

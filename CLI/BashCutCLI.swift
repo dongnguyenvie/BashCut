@@ -39,6 +39,8 @@ import Foundation
             throw report(RPCFailure.from(error))
         }
         try write(response, format: invocation.format)
+        let status = CommandCatalog.exitStatus(method: invocation.spec.name, result: response.result)
+        if status != 0 { throw ExitCode(status) }
     }
 
     /// Claude Code's AskUserQuestion hook (`ClaudeHook`): asks in the app and prints the answers, or prints nothing

@@ -4,12 +4,17 @@ import Foundation
 /// sound count once, because the core edit already carries the partner along.
 public enum SelectionEdits {
     /// The selected items that still exist, in timeline order, without the linked partner of an item already listed.
+    /// When both halves of a linked pair are selected the picture stands for them, since deleting only the sound
+    /// keeps the picture.
     public static func roots(_ ids: [String], in project: Project) -> [Item] {
         let wanted = Set(ids)
         let items = project.tracks.flatMap(\.items).filter { wanted.contains($0.id) }
             .sorted { ($0.at, $0.id) < ($1.at, $1.id) }
         var covered = Set<String>()
         return items.filter { item in
+            if let video = item["linkedVideo"]?.string, wanted.contains(video), items.contains(where: { $0.id == video }) {
+                return false
+            }
             guard !covered.contains(item.id) else { return false }
             covered.insert(item.id)
             if let linked = item.linkedItemID { covered.insert(linked) }
