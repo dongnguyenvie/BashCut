@@ -138,6 +138,27 @@ struct WorkflowChecklistTests {
         #expect(WorkflowChecklist.strategyGuard(recipe, entries: [read])?.category == "audit_missing")
     }
 
+    @Test("A plan stage goes right after the stage its after names, chained or not, else before review")
+    func stagePlacement() throws {
+        let plan: JSONValue = .object([
+            "stages": .object([
+                "visuals": .object(["after": .string("voiceover")]),
+                "visuals-check": .object(["after": .string("visuals"), "skill": .string("bashcut.vlog:plan")]),
+                "b-roll": .object(["after": .string("voiceover")]),
+                "motion-graphics": .object(["required": .bool(true)]),
+                "orphan": .object(["after": .string("nowhere")]),
+            ]),
+        ])
+        let checklist = WorkflowChecklist.json(try project(plan: plan), entries: [])
+        let ids = (checklist.object["stages"]?.array ?? []).compactMap { $0.object["id"]?.string }
+        let voiceover = try #require(ids.firstIndex(of: "voiceover"))
+        #expect(Array(ids[voiceover...].prefix(5)) == ["voiceover", "b-roll", "visuals", "visuals-check", "sound"])
+        let review = try #require(ids.firstIndex(of: "review"))
+        #expect(Array(ids[(review - 2)..<review]) == ["motion-graphics", "orphan"])
+        #expect(rows(checklist)["visuals"]?["skill"] == .string("bc:visual-plan"))
+        #expect(rows(checklist)["visuals-check"]?["skill"] == .string("bashcut.vlog:plan"))
+    }
+
     @Test("The plan summary carries the recipe, promise, checks and required or n/a stages")
     func planSummary() throws {
         let project = try project(plan: .object([

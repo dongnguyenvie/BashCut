@@ -66,7 +66,10 @@ writes only what differs from the defaults, so plans stay small.
 
 - `promise` is generic (every video opens a question and must close it), not an ad field. The kit's critic checks it
   for every recipe; this replaces the ad-only "hook and CTA as a pair".
-- `stages` keys are the stage ids of §5. `required: false` with `why` marks a stage `n/a` up front.
+- `stages` keys are the stage ids of §5. `required: false` with `why` marks a stage `n/a` up front. A key that is
+  not a fixed stage adds one (`{"skill": "bc:visual-plan", "after": "voiceover"}`): it goes right after the stage
+  `after` names (a fixed one or another added one), else before review, so a recipe or the agent puts new work where
+  it belongs without a BashCut change.
 - `checks`: at most ~8 per recipe, one line each. The kit's generic checks (§6) are always added; a recipe adds only
   its own.
 - `askAtIntake`: brief fields the recipe will not guess (§8).

@@ -97,7 +97,7 @@ extension CommandCatalog {
                 CommandParameter("kind", .string, "Entry kind (1–40 characters; not gate)", required: true, cli: .positional),
                 CommandParameter("data", .object, "More fields as a JSON object", cli: .option("data")),
                 CommandParameter("stage", .string, "Stage ID (intake, survey, story, rough-cut, rhythm, voiceover, sound, "
-                                 + "captions, colour, effects, review, export, learn)", cli: .option("stage")),
+                                 + "captions, colour, effects, review, export, learn, or one the plan adds)", cli: .option("stage")),
                 CommandParameter("status", .string, "Stage status", choices: WorkflowChecklist.stageStatuses,
                                  cli: .option("status")),
                 CommandParameter("evidence", .string, "What proves the stage done, ;-separated (files, job IDs, issue IDs)",
