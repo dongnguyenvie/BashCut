@@ -23,6 +23,7 @@ import Foundation
         "selects.list", "selects.set", "selects.place",
         "project.derive", "variants.create", "variants.list", "variants.diff", "export.cover", "export.chapters",
         "workflow.gates", "workflow.set-gates", "checkpoint.request", "checkpoint.status", "run.log", "run.append",
+        "run.checklist",
         "storage.get", "ui.select", "ui.view", "ui.action", "ui.seek", "ui.frame", "ui.frames", "luts.import",
         "fonts.list", "fonts.import",
         "knowledge.get", "knowledge.memo", "knowledge.lessons", "knowledge.add-lesson", "knowledge.update-lesson",

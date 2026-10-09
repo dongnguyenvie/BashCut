@@ -37,11 +37,35 @@ extension ProjectDocument {
     /// The run log of the saved project; nil before the first save.
     var runLog: RunLog? { fileURL.map { RunLog(projectRoot: $0.deletingLastPathComponent()) } }
 
-    /// `context.get`'s `workflow`: the gate modes, the round limit and the checkpoint waiting for the user.
+    /// `context.get`'s `workflow`: the gate modes, the round limit, the checkpoint waiting for the user, the
+    /// checklist in short and the next stage with the one skill to read now (spec 13 §5, §9).
     var workflowContext: JSONValue {
         var row = settings.workflowJSON.object
         row["checkpoint"] = checkpoint?.json(currentRevision: project.revision) ?? .null
+        let checklist = runChecklist
+        row["checklist"] = WorkflowChecklist.compact(checklist)
+        row["next"] = WorkflowChecklist.next(checklist)
         return .object(row)
+    }
+
+    /// `run.checklist`: derived from the plan and the run log (empty before the first save).
+    var runChecklist: JSONValue { WorkflowChecklist.json(project, entries: runLog?.entries() ?? []) }
+
+    /// A workflow guard's failure (spec 13 §7) as an error with its category and the command that fixes it.
+    static func guardFailure(_ failure: WorkflowChecklist.GuardFailure) -> RPCFailure {
+        RPCFailure(
+            -32003, failure.message,
+            category: failure.category == "recipe_unread" ? .recipeUnread : .auditMissing,
+            data: ["remediation": .object(["command": .string(failure.command)])])
+    }
+
+    /// Before G2, and before the rough cut when G2 is skipped: agents need the recipe read and a strategy audit. The
+    /// user is never blocked.
+    func checkStrategyGuard(author: Author) throws {
+        guard author != .user, let log = runLog,
+            let failure = WorkflowChecklist.strategyGuard(project, entries: log.entries())
+        else { return }
+        throw Self.guardFailure(failure)
     }
 
     func registerWorkflowCommands() {
@@ -66,27 +90,68 @@ extension ProjectDocument {
                 limit: arguments.optionalInt("limit"))
         }
         handleAuthored("run.append") { document, arguments, author in try document.appendRunLog(arguments, author: author) }
+        handle("run.checklist") { document, _, _ in document.runChecklist }
     }
 
     /// `run.append`: an entry of any kind but `gate`, with the given fields over `data`, the revision and the author.
+    /// `stage` takes a status (done with evidence, else stored unverified; skipped with a reason), `skill` a name
+    /// (verified only from the kit hook), `audit` a point, verdict, findings and auditor (spec 13 §5, §6).
     func appendRunLog(_ arguments: CommandArguments, author: Author) throws -> JSONValue {
         guard let log = runLog else { throw RPCFailure(-32602, "Save the project first") }
         let kind = try arguments.string("kind")
         guard kind.count <= 40, kind != "gate" else {
             throw RPCFailure(-32602, "kind must be 1–40 characters and not gate (checkpoints write gate entries)")
         }
-        var entry = arguments.values["data"]?.object ?? [:]
+        var entry = Self.runLogFields(arguments)
         entry["kind"] = .string(kind)
         entry["author"] = .string(author.rawValue)
         entry["rev"] = .integer(project.revision)
-        for key in ["stage", "text"] { if let value = arguments.optionalString(key) { entry[key] = .string(value) } }
-        for key in ["round", "fixed", "left"] { if let value = arguments.optionalInt(key) { entry[key] = .integer(value) } }
+        switch kind {
+        case "stage": try completeStageEntry(&entry, author: author)
+        case "skill":
+            guard let name = entry["name"]?.string, !name.isEmpty else { throw RPCFailure(-32602, "A skill entry needs --name") }
+            entry["origin"] = entry["origin"] ?? .string(name.hasPrefix("bc:") ? "kit" : name.contains(":") ? "plugin" : "project")
+            entry["verified"] = .bool(arguments.optionalString("verifiedBy") == "hook")
+        case "audit":
+            guard entry["point"] != nil, entry["verdict"] != nil else {
+                throw RPCFailure(-32602, "An audit entry needs --point and --verdict")
+            }
+            entry["by"] = entry["by"] ?? .string("self")
+            entry["timeline"] = .string(WorkflowChecklist.timelineFingerprint(project))
+        default: break
+        }
+        do { return try log.append(entry) } catch { throw RPCFailure.from(error, fallbackCode: -32602) }
+    }
+
+    /// The `data` object with the named fields over it: strings, counts, comma lists and `;`-separated evidence.
+    private static func runLogFields(_ arguments: CommandArguments) -> [String: JSONValue] {
+        var entry = arguments.values["data"]?.object ?? [:]
+        for key in ["stage", "text", "status", "reason", "name", "origin", "point", "verdict", "by"] {
+            if let value = arguments.optionalString(key) { entry[key] = .string(value) }
+        }
+        for key in ["round", "fixed", "left", "findings"] { if let value = arguments.optionalInt(key) { entry[key] = .integer(value) } }
         for key in ["measured", "notMeasured"] {
             if let value = arguments.optionalString(key) {
                 entry[key] = .array(value.split(separator: ",").map { .string($0.trimmingCharacters(in: .whitespaces)) })
             }
         }
-        do { return try log.append(entry) } catch { throw RPCFailure.from(error, fallbackCode: -32602) }
+        let evidence = (arguments.optionalString("evidence") ?? "").split(separator: ";")
+            .map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        if !evidence.isEmpty { entry["evidence"] = .array(evidence.map(JSONValue.string)) }
+        return entry
+    }
+
+    /// A stage entry: done without evidence is unverified, skipped needs a reason, and the rough cut while G2 is
+    /// skip meets the strategy guard.
+    private func completeStageEntry(_ entry: inout [String: JSONValue], author: Author) throws {
+        guard entry["stage"]?.string != nil else { throw RPCFailure(-32602, "A stage entry needs --stage") }
+        if entry["status"] == .string("done"), entry["evidence"] == nil { entry["unverified"] = .bool(true) }
+        if entry["status"] == .string("skipped"), (entry["reason"]?.string ?? "").isEmpty {
+            throw RPCFailure(-32602, "A skipped stage needs --reason")
+        }
+        if entry["stage"] == .string("rough-cut"), entry["status"] != .string("skipped"), settings.gateMode(.strategy) == .skip {
+            try checkStrategyGuard(author: author)
+        }
     }
 
     /// Changes one gate and/or the round limit. Agents may only make a gate ask more (skip → notify → ask) and may not
@@ -113,6 +178,7 @@ extension ProjectDocument {
         guard let gate = WorkflowGate(id: try arguments.string("gate")) else {
             throw RPCFailure(-32602, "A gate is G1…G5, brief, strategy, roughCut, script, draft or a name of 1–40 letters, digits, ., - or _")
         }
+        if gate == .strategy { try checkStrategyGuard(author: author) }
         settings.noteGate(gate)
         let root = fileURL?.deletingLastPathComponent()
         let attachments = (arguments.optionalString("attach") ?? "").split(separator: ",").map { part -> URL in

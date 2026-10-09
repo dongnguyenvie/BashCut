@@ -32,7 +32,8 @@ public enum ProjectPlan {
     }
 
     /// A short summary for `context.get`: the brief's goal and outputs with their status, and the plan's mode, stage,
-    /// section and shot counts and frozen sections.
+    /// section and shot counts, frozen sections, and what a recipe wrote: `recipe` (its skill), `promise`, the count
+    /// of `checks`, `requiredStages` and `naStages` (stages marked `required: false`).
     public static func summary(_ project: Project) -> JSONValue {
         var result: [String: JSONValue] = [:]
         if let brief = project["brief"]?.object {
@@ -48,6 +49,15 @@ public enum ProjectPlan {
             row["stage"] = plan["stage"] ?? .null
             row["beats"] = .integer(beats)
             row["frozen"] = .array(frozen)
+            // What a recipe wrote (spec 13 §4), so its rules survive a context reset without re-reading it.
+            if let recipe = plan["recipe"]?.object["skill"] { row["recipe"] = recipe }
+            if let promise = plan["promise"], promise != .null { row["promise"] = promise }
+            if let checks = plan["checks"]?.array { row["checks"] = .integer(checks.count) }
+            let stages = plan["stages"]?.object ?? [:]
+            let required = stages.filter { $0.value.object["required"] == .bool(true) }.keys.sorted()
+            let skipped = stages.filter { $0.value.object["required"] == .bool(false) }.keys.sorted()
+            if !required.isEmpty { row["requiredStages"] = .array(required.map(JSONValue.string)) }
+            if !skipped.isEmpty { row["naStages"] = .array(skipped.map(JSONValue.string)) }
             result["plan"] = .object(row)
         }
         return .object(result)
