@@ -36,6 +36,22 @@ struct LinkedEditingTests {
         #expect(restored == project)
     }
 
+    @Test("Deleting a clip's linked sound keeps its picture, unlinked; deleting the picture still takes its sound")
+    func deleteLinkedSound() throws {
+        let project = try fixture()
+        let result = try project.applying(.delete(item: "a", ripple: true))
+        let items = result.project.tracks.flatMap(\.items)
+        #expect(items.first { $0.id == "a" } == nil)
+        let video = try #require(items.first { $0.id == "v" })
+        #expect(video.linkedItemID == nil && video.at == 0 && video.duration == 60)
+        #expect(throws: Never.self) { try result.project.validate() }
+        var restored = try result.project.applying(result.inverse).project
+        restored.revision = project.revision
+        #expect(restored == project)
+        let both = try project.applying(.delete(item: "v", ripple: false)).project
+        #expect(both.tracks.allSatisfy { $0.items.isEmpty })
+    }
+
     @Test("Unlink stops edit propagation")
     func unlink() throws {
         var project = try fixture()
