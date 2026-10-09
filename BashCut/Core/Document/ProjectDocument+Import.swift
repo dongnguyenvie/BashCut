@@ -108,10 +108,12 @@ extension ProjectDocument {
             // Reusing media without placing it is an empty plan: it keeps the revision (#347).
             result["rev"] = .integer(
                 try document.commitPlan(planner, label: "Import media", author: author, baseRevision: base))
-            if existing == nil {
-                document.requestProxiesAfterImport([imported.media.id], author: author)
-                document.emitMediaImported([imported.media.id], author: author)
+            // Waits for the probe only: an agent sees `converting` (with the job to wait for) when this Mac cannot
+            // decode the video, also when importing such media again.
+            if let proxy = try? await document.requestProxies(mediaIDs: [imported.media.id], author: author).first {
+                result["proxy"] = proxy
             }
+            if existing == nil { document.emitMediaImported([imported.media.id], author: author) }
             if let item = result["item"]?.string {
                 result["track"] = document.project.tracks.first { $0.items.contains { $0.id == item } }.map { .string($0.id) }
                 result["linkedAudio"] = document.project.tracks.flatMap(\.items).first { $0.id == item }?

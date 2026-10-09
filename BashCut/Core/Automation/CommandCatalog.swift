@@ -131,7 +131,8 @@ public enum CommandCatalog {
                 + "A file already in the project, unchanged, reuses its media and returns existing true. origin, license, "
                 + "source and author record where it came from (license is free text, or a JSON object with an open "
                 + "id and the facts you know: commercial, redistribute, attributionRequired, attribution; stored as "
-                + "given).",
+                + "given). proxy reports the preview copy: converting with a job when this Mac cannot decode the "
+                + "video (AV1, VP9) and BashCut converts it to H.264 in media/converted.",
             parameters: [
                 CommandParameter("path", .string, "Media file path", required: true, isPath: true, cli: .positional),
                 CommandParameter("kind", .string, "Media kind; from the file type by default",
@@ -146,8 +147,9 @@ public enum CommandCatalog {
             "media.proxy", .edit,
             "Queue preview proxies (smaller, quick-to-seek copies in .bashcut/cache/proxies; export keeps the originals) "
                 + "for heavy video media, or one media item. Imports queue them automatically. Returns a status per "
-                + "media: queued with its job ID, exists, not-needed, skipped, or unsupported (with codec and reason) "
-                + "when this Mac cannot decode the video.",
+                + "media: queued with its job ID, exists, not-needed, skipped, converting (with codec and job) when "
+                + "this Mac cannot decode the video and ffmpeg converts it to H.264 in media/converted (the media then "
+                + "reads the copy), or unsupported (with codec and reason) when there is no ffmpeg.",
             parameters: [
                 CommandParameter("media", .string, "Project media ID; all video media by default", cli: .positional),
                 CommandParameter("force", .boolean, "Make proxies even for light footage, replacing existing ones",

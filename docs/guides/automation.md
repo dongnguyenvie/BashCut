@@ -723,11 +723,16 @@ written to `.bashcut/cache/proxies/<media id>.mov`. The viewer reads proxies; ex
 Proxies are made one at a time as `media.proxy` jobs, and the preview switches to each one as it lands.
 
 - `bashcut media proxy [MEDIA_ID] [--force]` queues them by hand and returns a status per media: `queued`
-  (with its job ID), `exists`, `not-needed`, `skipped`, or `unsupported` (with `codec` and `reason`) when this Mac
-  cannot decode the video. The Media panel's **Create Preview Proxy** menu does the same with `--force`.
+  (with its job ID), `exists`, `not-needed`, `skipped`, `converting` (see below) or `unsupported` (with `codec` and
+  `reason`). The Media panel's **Create Preview Proxy** menu does the same with `--force`.
 - BashCut turns on the macOS VP9 (and, where the Mac has it, AV1) decoder at launch. Video the Mac still cannot
-  decode imports and analyzes, but the viewer shows black there, `ui frame` on those frames and `export start`
-  fail with `unsupported_media`; convert the file to H.264 or HEVC.
+  decode (AV1 on an M1 or M2, for example) is converted on import: a `media.convert` job runs the system's ffmpeg
+  (Homebrew, `/usr/local/bin` or `PATH`) to write an H.264 copy with the same frames and frame times to
+  `media/converted/<media id>.mov`, then points the media at it (one undo step; `originalPath` keeps the original,
+  which is never changed). `media import` reports this as `proxy: {status: "converting", job}`. Until the copy
+  lands, the viewer shows black there and `ui frame` on those frames and `export start` fail with
+  `unsupported_media`; sound and analysis work from the original. Without ffmpeg the status is `unsupported`:
+  install it and run `media proxy MEDIA_ID`.
 - `media list` reports each media's `proxy` state: `none`, `queued` or `ready`.
 
 ## Dialogs and UI actions

@@ -2092,6 +2092,12 @@
         "vi": { "stringUnit": { "state": "translated", "value": "Đã xếp hàng xuất video" } }
       }
     },
+    "Converted %@ so this Mac can play it": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Converted %@ so this Mac can play it" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đã chuyển đổi %@ để máy Mac này phát được" } }
+      }
+    },
     "Media paths now go through the footage link; save to keep them": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Media paths now go through the footage link; save to keep them" } },

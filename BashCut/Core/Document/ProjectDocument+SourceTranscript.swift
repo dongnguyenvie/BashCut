@@ -9,7 +9,7 @@ import Foundation
 /// captions from it; `transcript.words --heard` maps it through the clips.
 extension ProjectDocument {
     nonisolated static func transcriptKey(_ url: URL) async throws -> String {
-        try ProjectCache.contentKey(for: url, namespace: "media-transcript-v\(SourceTranscript.version)")
+        try SourceTranscript.cacheKey(for: url)
     }
 
     /// The stored transcript of `mediaID` for its file as it is now, or nil.
