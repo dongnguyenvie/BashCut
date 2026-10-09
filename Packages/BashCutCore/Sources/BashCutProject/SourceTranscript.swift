@@ -34,6 +34,12 @@ public struct SourceTranscript: Codable, Sendable, Equatable {
         self.words = words.sorted { $0.start < $1.start }
     }
 
+    /// The same transcript for another file with the same sound and times (a converted copy), under its key.
+    public func keyed(_ key: String) -> SourceTranscript {
+        SourceTranscript(
+            key: key, language: language, provider: provider, transcribedAt: transcribedAt, phrases: phrases, words: words)
+    }
+
     /// Which facts the provider gave: word times from the provider or none (phrases only), and whether any word
     /// carries a confidence, speaker, event or no-speech probability.
     public var precision: JSONValue {

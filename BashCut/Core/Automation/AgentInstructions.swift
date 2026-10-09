@@ -208,7 +208,10 @@ extension CommandCatalog {
         gates. Search for and download the music, sound effects, images, footage and fonts the edit needs without asking,
         whatever the licence; record license, source and author when you import them and list the rights in the draft
         checkpoint summary, and the user handles them. Install the command-line tools you need yourself. Work to the end
-        without waiting for the user: decide what the prompt and footage leave open and say what you chose. Installing
+        without waiting for the user: decide what the prompt and footage leave open and say what you chose. After one
+        round of questions at intake, never end a turn on a question or a request to the user: fix a failed step
+        yourself or take the best fallback, finish, and list what waits on the user in the final summary ("ask the
+        user" in a skill or hint means that). Installing
         and trusting BashCut plugins stays with the user; never clone a voice that is not the user's. Reply in the
         user's language.
         Errors carry data.category, retryable and sometimes remediation.command. Retry only retryable ones, after the
@@ -216,8 +219,11 @@ extension CommandCatalog {
         resend with the new rev; busy_dialog → ui dialog, answer it; busy_approval/busy_running → wait;
         capability_missing → data.reason missing (plugins search; the user installs), not_configured (the user turns it
         on; quote detail) or unhealthy (the user fixes detail); go on with what does not need it; unsupported_media →
-        do not judge its black picture, ask the user to convert it to H.264/HEVC; audit_missing/recipe_unread → run
-        remediation.command. recentFailures.repeated ≥ 2: stop, rethink or ask.
+        this Mac cannot decode the video (AV1, VP9): do not judge its black picture; BashCut converts it itself (media
+        import answers proxy.status converting with a job: transcribe meanwhile, wait with jobs status, then read
+        frames; unsupported because ffmpeg is missing → install ffmpeg, then media proxy MEDIA);
+        audit_missing/recipe_unread → run remediation.command. recentFailures.repeated ≥ 2: stop repeating it, try
+        another way or skip that step, and report it.
         Scope: an edit outside the attached items fails with -32004; never retry or work around it. held: true → the
         user is asked: wait for scope.last.outcome (applied → re-read; rejected → ask; failed stale → re-read, resend if
         still wanted); no held → stop and ask; -32003 while held → wait. agentPermissions in context get (edits,
