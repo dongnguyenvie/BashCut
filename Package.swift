@@ -9,10 +9,10 @@ let package = Package(
     products: [.executable(name: "BashCutApp", targets: ["BashCut"]),
                .executable(name: "bashcut", targets: ["BashCutCLI"]),
                .executable(name: "bashcut-mcp", targets: ["BashCutMCP"]),
-               // Core plugin copied into BashCut.app/Contents/PlugIns/bashcut.audio-analysis/bin/provider.
+               // Core plugin copied into BashCut.app/Contents/Resources/Plugins/bashcut.audio-analysis/bin/bashcut-audio-analysis.
                .executable(name: "bashcut-audio-analysis", targets: ["bashcut-audio-analysis"]),
                .library(name: "BashCutAudioAnalysis", targets: ["BashCutAudioAnalysis"]),
-               // Core plugin copied into BashCut.app/Contents/Resources/Plugins/bashcut.vision/bin/provider.
+               // Core plugin copied into BashCut.app/Contents/Resources/Plugins/bashcut.vision/bin/bashcut-vision.
                .executable(name: "bashcut-vision", targets: ["bashcut-vision"]),
                .library(name: "BashCutVisionAnalysis", targets: ["BashCutVisionAnalysis"]),
                .library(name: "BashCutEngine", targets: ["BashCutEngine"]),

@@ -7,7 +7,7 @@
   },
   "version": "1.2.0",
   "apiVersion": 2,
-  "entrypoint": "bin/provider",
+  "entrypoint": "bin/bashcut-audio-analysis",
   "capabilities": ["audio.loudness", "audio.beats", "audio.sync", "audio.energy"],
   "providers": [
     {"id": "bashcut.audio-analysis.loudness", "capability": "audio.loudness", "name": "BS.1770 loudness (built in)", "priority": 0},
