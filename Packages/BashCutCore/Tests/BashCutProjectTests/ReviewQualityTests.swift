@@ -58,12 +58,17 @@ struct ReviewQualityTests {
         #expect(issues.first?.fix?.arguments["atFrame"] == .integer(0))
         let ranks = issues.map(\.severity)
         #expect(ranks == ranks.sorted())
-        let summary = ReviewSummary(issues)
+        let summary = ReviewSummary(issues, coverage: TimelineReview.coverage(project, context: ReviewContext()))
         #expect(summary.errors == 1)
-        #expect(!summary.passed)
+        #expect(!summary.passed && summary.status == .fail)
         #expect(issues.first?.json.object["severity"] == .string("error"))
         #expect(issues.first?.json.object["fix"]?.object["command"] == .string("timeline.close-gap"))
-        #expect(ReviewSummary([]).passed)
+        // No errors, but limits unset or checks not run: incomplete, not passed (spec 13 §6.3).
+        let bare = ReviewSummary([], coverage: TimelineReview.coverage(project, context: ReviewContext()))
+        #expect(bare.status == .incomplete && !bare.passed)
+        #expect(bare.json.object["status"] == .string("incomplete") && bare.json.object["passed"] == .bool(false))
+        let full = ReviewSummary([], coverage: .object(["unsetLimits": .array([]), "notChecked": .array([])]))
+        #expect(full.status == .pass && full.passed)
     }
 
     @Test("Loudness against the export's own target: unmeasured is info, off target and hot peaks are errors (#431, P0-K2)")

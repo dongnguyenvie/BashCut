@@ -75,6 +75,9 @@ struct ReviewMechanicsTests {
         let bare = TimelineReview.coverage(project, context: ReviewContext()).object
         #expect(bare["notChecked"]?.array.contains { $0.string?.hasPrefix("picture") == true } == true)
         #expect(bare["unsetLimits"]?.array.contains(.string("maxShotSeconds")) == true)
+        // An empty profile reports nothing, and that is incomplete, never a pass.
+        let empty = TimelineReview.run(project, context: ReviewContext())
+        #expect(ReviewSummary(empty, coverage: .object(bare)).status == (empty.contains { $0.severity == .error } ? .fail : .incomplete))
         let frozen = ReviewPictureTests().picture(project) { _ in (0.5, 0.2, 0.001) }
         let context = ReviewContext(picture: frozen)
         #expect(TimelineReview.coverage(project, context: context).object["unreliable"]?.array.count == 1)

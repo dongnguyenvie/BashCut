@@ -101,27 +101,37 @@ extension ReviewIssue {
     }
 }
 
-/// What `review.run` reports besides the issues: counts per severity and whether nothing blocks an export.
+/// What `review.run` reports besides the issues: counts per severity and the result (spec 13 §6.3) — `fail` with an
+/// error, `incomplete` when nothing failed but the editorial checks did not all run (a review limit unset or a check
+/// not measured, from `TimelineReview.coverage`), else `pass`.
 public struct ReviewSummary: Sendable, Equatable {
+    public enum Status: String, Sendable { case pass, fail, incomplete }
+
     public let errors: Int
     public let warnings: Int
     public let infos: Int
     /// Warnings and notes the project accepted with a reason; not in the other counts.
     public let accepted: Int
-    public var passed: Bool { errors == 0 }
+    public let status: Status
+    /// Kept for older callers: true only when `status` is pass.
+    public var passed: Bool { status == .pass }
 
-    public init(_ issues: [ReviewIssue]) {
+    /// `coverage` is `TimelineReview.coverage`; its `unsetLimits` and `notChecked` make a review without errors
+    /// incomplete.
+    public init(_ issues: [ReviewIssue], coverage: JSONValue) {
         let open = issues.filter { $0.accepted == nil }
         errors = open.filter { $0.severity == .error }.count
         warnings = open.filter { $0.severity == .warning }.count
         infos = open.filter { $0.severity == .info }.count
         accepted = issues.count - open.count
+        let unchecked = ["unsetLimits", "notChecked"].contains { !(coverage.object[$0]?.array ?? []).isEmpty }
+        status = errors > 0 ? .fail : unchecked ? .incomplete : .pass
     }
 
     public var json: JSONValue {
         .object([
             "errors": .integer(errors), "warnings": .integer(warnings), "infos": .integer(infos),
-            "accepted": .integer(accepted), "passed": .bool(passed),
+            "accepted": .integer(accepted), "passed": .bool(passed), "status": .string(status.rawValue),
         ])
     }
 }
