@@ -9,8 +9,8 @@ struct MediaPathResolverTests {
         let project = URL(fileURLWithPath: "/tmp/project")
         let workspace = URL(fileURLWithPath: "/tmp/workspace")
         let resolved = try MediaPathResolver.resolve(
-            "@assets/nhac/song.wav", projectRoot: project, workspaceRoot: workspace)
-        #expect(resolved.path == "/tmp/workspace/assets/nhac/song.wav")
+            "@assets/music/song.wav", projectRoot: project, workspaceRoot: workspace)
+        #expect(resolved.path == "/tmp/workspace/assets/music/song.wav")
         #expect(
             try MediaPathResolver.resolve("media/local.mov", projectRoot: project).path
                 == "/tmp/project/media/local.mov")

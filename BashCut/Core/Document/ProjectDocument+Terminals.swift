@@ -5,7 +5,7 @@ import BashCutProject
 import Foundation
 
 extension ProjectDocument {
-    /// `agent terminals|open|detach`: the dock's terminal tabs, built-in and from `agent.terminal` plugins
+    /// `agent terminals|open|detach|ask`: the dock's terminal tabs, built-in and from `agent.terminal` plugins
     /// (docs/specs/12-terminal-agents.md), from the CLI and MCP.
     func registerTerminalCommands() {
         handle("agent.terminals") { document, _, _ in
@@ -49,6 +49,12 @@ extension ProjectDocument {
             return .object([
                 "terminal": .string(session.provider.id.rawValue), "scope": .array(session.scope.map(\.json)),
             ])
+        }
+        handle("agent.ask") { document, arguments, _ in
+            guard let token = CommandCaller.token, let session = document.agents.sessions.first(where: { $0.token == token })
+            else { throw RPCFailure(-32602, "agent ask needs a terminal tab in BashCut's agent dock") }
+            let prompt = try AgentQuestionPrompt(questions: arguments.values["questions"]?.array ?? [])
+            return await document.agents.ask(prompt, in: session, seconds: try arguments.int("timeout"))
         }
         handle("agent.open") { document, arguments, _ in
             let agents = document.agents

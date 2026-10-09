@@ -159,12 +159,18 @@ private struct EffectPlanBuilder {
             try planner.add([.setProperties(item: target, patch: patch)])
         case .sfx(let source, let position, let volume):
             try sound(source, at: position, volumeDb: volume)
-        case .text(let text, let preset, let position, let duration):
+        case .text(let text, let preset, let position, let duration, let style, let animation):
             let (item, _) = try current()
             let start = min(max(0, position.frame(length: item.duration)), item.duration - 1)
             var overlay = Item(at: item.at + start, duration: max(1, duration ?? item.duration - start))
             overlay["text"] = .string(text)
             overlay["textPreset"] = .string(preset)
+            for (key, value) in style { overlay[key] = value }
+            if let animation {
+                overlay["keyframes"] = try animation.motion(
+                    duration: overlay.duration, width: project.width, height: project.height, fps: project.fps
+                ).json
+            }
             overlay[EffectRecipe.textField] = .string(target)
             try planner.place(overlay, on: project.requireTrack(role: TrackRole.captions).id)
         }

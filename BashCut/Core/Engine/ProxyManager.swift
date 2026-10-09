@@ -24,6 +24,8 @@ public struct ProxyManager: Sendable {
         public let height: Int
         public let bitsPerSecond: Float
         public let needsProxy: Bool
+        /// False when this Mac cannot decode the video, so no proxy can be made from it either.
+        public var decodable = true
     }
 
     public static let longSide = 960
@@ -48,11 +50,12 @@ public struct ProxyManager: Sendable {
             .naturalSize, .preferredTransform, .estimatedDataRate, .formatDescriptions)
         let rect = CGRect(origin: .zero, size: size).applying(transform)
         let codec = descriptions.first.map { CMFormatDescriptionGetMediaSubType($0) } ?? 0
+        let decodable = try await VideoDecoders.undecodableCodec(track) == nil
         let needsProxy = max(abs(rect.width), abs(rect.height)) > policy.maximumDimension
             || rate > policy.maximumBitsPerSecond || policy.heavyCodecs.contains(codec)
         return Probe(
             codec: Self.fourCC(codec), width: Int(abs(rect.width)), height: Int(abs(rect.height)),
-            bitsPerSecond: rate, needsProxy: needsProxy)
+            bitsPerSecond: rate, needsProxy: needsProxy, decodable: decodable)
     }
 
     /// Writes the proxy for `source` to `destination` (through a temporary file, so a cancelled or failed
@@ -170,7 +173,5 @@ public struct ProxyManager: Sendable {
         }
     }
 
-    private static func fourCC(_ code: FourCharCode) -> String {
-        String(bytes: [24, 16, 8, 0].map { UInt8((code >> $0) & 0xFF) }, encoding: .ascii) ?? "?"
-    }
+    private static func fourCC(_ code: FourCharCode) -> String { VideoDecoders.fourCC(code) }
 }

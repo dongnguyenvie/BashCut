@@ -114,7 +114,7 @@ public enum AgentScopeGuard {
             case .setLinkedAudio(let video, let audio):
                 touch(video)
                 if let audio { touch(audio) }
-            case .upsertTransition(_, _, let from, let to, _, _):
+            case .upsertTransition(_, _, let from, let to, _, _, _):
                 if !allowed.contains(from), !allowed.contains(to) { touch(from) }
             case .deleteTransition(let id):
                 if let transition = project.transitions.first(where: { $0.id == id }),
@@ -122,7 +122,8 @@ public enum AgentScopeGuard {
                 {
                     touch(transition.fromItemID)
                 }
-            case .addMedia, .addColorLUT, .setBeatGrid:
+            case .addMedia, .addColorLUT, .setBeatGrid, .setMediaDescription, .setMediaRights,
+                .setMediaData:
                 break
             case .addTrack(let track, _):
                 newTracks.insert(track.id)

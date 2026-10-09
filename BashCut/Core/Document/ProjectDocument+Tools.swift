@@ -26,18 +26,26 @@ extension ProjectDocument {
         }
         handle("fonts.list") { document, arguments, _ in
             let query = arguments.optionalString("query")?.lowercased()
-            let vietnamese = arguments.optionalBool("vietnamese") ?? false
+            let language = arguments.optionalString("language") ?? document.contentLanguage
+            let known = language.isEmpty ? nil : ProjectFonts.alphabet(language).map { _ in language }
+            let covering = arguments.optionalBool("covers") ?? false
+            if covering, known == nil {
+                throw RPCFailure(-32602, language.isEmpty
+                    ? "--covers needs a language: pass --language or set the project's content language"
+                    : "Unknown language \(language)")
+            }
             let fonts = ProjectFonts.list(
                 projectRoot: document.fileURL?.deletingLastPathComponent(), installed: !(arguments.optionalBool("project") ?? false))
                 .filter { font in
-                    (!vietnamese || font.vietnamese)
+                    (!covering || font.covers(language) == true)
                         && query.map { font.postScriptName.lowercased().contains($0) || font.family.lowercased().contains($0) }
                             ?? true
                 }
-            return .array(fonts.map(\.json))
+            return .array(fonts.map { $0.json(language: known) })
         }
         handle("fonts.import") { document, arguments, _ in
-            .array(try document.importFont(from: URL(fileURLWithPath: arguments.string("path"))).map(\.json))
+            let language = document.contentLanguage.isEmpty ? nil : document.contentLanguage
+            return .array(try document.importFont(from: URL(fileURLWithPath: arguments.string("path"))).map { $0.json(language: language) })
         }
         handleAuthored("edl.import") { document, arguments, _ in
             let source = URL(fileURLWithPath: try arguments.string("path")).standardizedFileURL
@@ -64,20 +72,22 @@ extension ProjectDocument {
                 ])
             })
         }
-        handle("plugins.health") { document, arguments, _ in
-            document.plugins.refresh(projectRoot: document.fileURL?.deletingLastPathComponent())
-            var selected = document.plugins.plugins
-            if let id = arguments.optionalString("plugin") {
-                selected = selected.filter { $0.id == id }
-                guard !selected.isEmpty else { throw RPCFailure(-32602, "Unknown plugin \(id)") }
-            }
-            var results: [JSONValue] = []
-            for plugin in selected {
-                results.append(Self.healthJSON(await document.plugins.checkHealthNow(plugin)))
-            }
-            return .array(results)
-        }
         registerKnowledgeCommands()
+    }
+
+    /// Health checks run now (`plugins.list --health`): every plugin's, or one's.
+    func pluginHealthJSON(_ id: String?) async throws -> JSONValue {
+        plugins.refresh(projectRoot: fileURL?.deletingLastPathComponent())
+        var selected = plugins.plugins
+        if let id {
+            selected = selected.filter { $0.id == id }
+            guard !selected.isEmpty else { throw RPCFailure(-32602, "Unknown plugin \(id)") }
+        }
+        var results: [JSONValue] = []
+        for plugin in selected {
+            results.append(Self.healthJSON(await plugins.checkHealthNow(plugin)))
+        }
+        return .array(results)
     }
 
     private static func healthJSON(_ health: PluginHealth) -> JSONValue {

@@ -57,9 +57,12 @@ extension Project {
         }
         try validateProjectFlags()
         try validateAudioSettings()
+        try validateOutputSettings()
+        try validateReviewSettings()
+        try validateSelects()
+        try validateOutputCaptions()
         try validateMarkers()
         try validateColorLUTs()
-        try validateStyleCatalog()
         let lutIDs = Set(colorLUTs.map(\.id))
         let mediaByID = Dictionary(media.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         var ids = Set<String>()
@@ -103,6 +106,28 @@ extension Project {
 }
 
 extension Project {
+    /// `output.presets` (#441): at most 8 known export presets.
+    fileprivate func validateOutputSettings() throws {
+        guard let value = self["output"] else { return }
+        guard case .object(let output) = value else { throw ProjectError.invalid("output: expected object") }
+        if let targets = output["targets"], targets != .null {
+            guard case .object(let map) = targets, map.keys.allSatisfy(OutputPresetName.all.contains),
+                map.values.allSatisfy({ target in
+                    let fields = target.object
+                    return (fields["integratedLUFS"]?.double).map { (-30 ... -5).contains($0) } ?? (fields["integratedLUFS"] == nil)
+                        && ((fields["truePeakDbTP"]?.double).map { (-12...0).contains($0) } ?? (fields["truePeakDbTP"] == nil))
+                })
+            else { throw ProjectError.invalid("output.targets: preset → {integratedLUFS −30…−5, truePeakDbTP −12…0}") }
+        }
+        guard let presets = output["presets"] else { return }
+        guard case .array(let names) = presets, names.count <= 8,
+            names.allSatisfy({ $0.string.map(OutputPresetName.all.contains) == true })
+        else {
+            throw ProjectError.invalid(
+                "output.presets: expected at most 8 of \(OutputPresetName.all.joined(separator: ", "))")
+        }
+    }
+
     fileprivate func validateAudioSettings() throws {
         guard let value = self["audio"] else { return }
         guard case .object(let audio) = value else {
@@ -155,11 +180,18 @@ extension Track {
 
 extension Project {
     private func validateMetadata(_ asset: Media) throws {
+        if let description = asset.fields["description"], description != .null {
+            do { _ = try MediaDescription(json: description, duration: asset.durationSeconds) } catch {
+                throw ProjectError.invalid("media.\(asset.id).\(error.localizedDescription)")
+            }
+        }
         if asset.fields["width"] != nil || asset.fields["height"] != nil {
             guard asset.width.map({ (1...16384).contains($0) }) == true,
                 asset.height.map({ (1...16384).contains($0) }) == true
             else { throw ProjectError.invalid("media.\(asset.id): invalid dimensions") }
         }
+        if let license = asset.fields["license"] { try LicenseTerms.validate(license, label: "media.\(asset.id)") }
+        if let provenance = asset.fields["provenance"] { try Provenance.validate(provenance, label: "media.\(asset.id)") }
         if let value = asset.fields["hasAudio"], case .bool = value { return }
         guard asset.fields["hasAudio"] == nil else {
             throw ProjectError.invalid("media.\(asset.id): hasAudio must be boolean")
@@ -191,8 +223,10 @@ extension Project {
             try validateSourceRange(item, on: track, media: asset)
         } else if item.fields["text"]?.string == nil {
             throw ProjectError.invalid("item.\(item.id): text required")
-        } else if let preset = item.fields["textPreset"], preset.string.map(TextPreset.all.contains) != true {
-            throw ProjectError.invalid("item.\(item.id).textPreset: expected one of \(TextPreset.all.joined(separator: ", "))")
+        } else if let preset = item.fields["textPreset"], preset.string.map({ (1...80).contains($0.count) }) != true {
+            // Open (Phase 2 restyle): a built-in name picks its defaults; any other name renders with the first
+            // preset's defaults plus the item's textStyle.
+            throw ProjectError.invalid("item.\(item.id).textPreset: expected a name of 1–80 characters")
         }
     }
 
@@ -286,9 +320,8 @@ extension Project {
             guard transitionIsValid(transition, cuts: cuts) else {
                 throw ProjectError.invalid("transition.\(transition.id): invalid cut or duration")
             }
-            if let easing = transition.fields["easing"], easing.string.map(TimelineTransition.easings.contains) != true {
-                throw ProjectError.invalid(
-                    "transition.\(transition.id): easing must be one of \(TimelineTransition.easings.joined(separator: ", "))")
+            do { try transition.checkKindAndEasing() } catch let ProjectError.invalid(message) {
+                throw ProjectError.invalid("transition.\(transition.id): \(message)")
             }
         }
     }

@@ -60,6 +60,11 @@ public struct ItemProperty: Sendable {
         .init("textStyle", "fill", .color, "Text colour, #RRGGBB (the preset's by default)"),
         .init("textStyle", "stroke", .color, "Outline colour, #RRGGBB (default black)"),
         .init("textStyle", "highlight", .color, "Word-by-word highlight colour, #RRGGBB (default #FFD400)"),
+        .init("textStyle", "align", .text(maxLength: 6), "left, center or right (the preset's by default)"),
+        .init("textStyle", "positionX", .number(0...1), "Horizontal anchor: left edge, centre or right edge by align"),
+        .init("textStyle", "lineHeight", .number(0.5...4), "Line spacing as a multiple of the font size (default 1.28)"),
+        .init("textStyle", "tracking", .number(-0.5...2), "Letter spacing as a share of the font size (default 0)"),
+        .init("textStyle", "uppercase", .boolean, "Draw the text in capitals"),
     ] + ColorGrade.ranges.map { .init("color", $0.key, .number($0.range), ColorGrade.summaries[$0.key] ?? "") }
 }
 
@@ -169,9 +174,11 @@ public enum ProjectSchema {
                 "markers": array("Timeline markers", of: ref("marker"), maxItems: 10_000),
                 "transitions": array("Transitions on adjacent video cuts", of: ref("transition"), maxItems: 10_000),
                 "luts": array("Project .cube LUT catalog", of: ref("lut"), maxItems: 1_000),
-                "looks": array("Custom looks (built-in looks are not stored)", of: ref("look"), maxItems: 1_000),
-                "styleKits": array("Custom style kits (built-in kits are not stored)", of: ref("styleKit"), maxItems: 1_000),
                 "audio": ref("audio"),
+                "output": outputSchema,
+                "review": reviewSchema,
+                "brief": planSchemas["brief"] ?? .null,
+                "plan": planSchemas["plan"] ?? .null,
                 "beatGrid": object(
                     "Beat grid of one audio media", required: ["media", "bpm", "frames"],
                     properties: [
@@ -186,7 +193,7 @@ public enum ProjectSchema {
         root["$schema"] = .string("https://json-schema.org/draft/2020-12/schema")
         root["$id"] = .string("https://bashcut.app/schema/\(Project.schema).json")
         root["title"] = .string("BashCut project")
-        root["$defs"] = .object(definitions)
+        root["$defs"] = .object(definitions.merging(mediaDescriptionDefinitions) { first, _ in first })
         return .object(root)
     }
 
@@ -217,6 +224,12 @@ public enum ProjectSchema {
                     "hasAudio": boolean("Whether the file has sound"),
                     "alpha": boolean("A movie with an alpha channel (a video sticker); previewed without a proxy"),
                     TransitionPreset.soundLibraryField: string("The library item (scope:id) it was copied from"),
+                    "description": ref("mediaDescription"),
+                    "license": mediaLicenseSchema, "provenance": mediaProvenanceSchema,
+                    "data": .object([
+                        "type": .string("object"),
+                        "description": .string("The agent's own fields (P2-H10: takes, verdicts, reasons); free JSON, set by setMediaData"),
+                    ]),
                 ])),
             "track": track,
             "item": .object(item),
@@ -234,10 +247,18 @@ public enum ProjectSchema {
                 required: ["id", "kind", "from", "to", "duration"],
                 properties: [
                     "id": string("Stable ID", minLength: 1),
-                    "kind": enumeration("Transition kind", TimelineTransition.renderedKinds),
+                    "kind": string(
+                        "Transition kind: " + TimelineTransition.renderedKinds.joined(separator: ", ")
+                            + ", or any name with motion", pattern: "^[a-z][a-z0-9-]{0,63}$"),
                     "from": string("Outgoing item ID"), "to": string("Incoming item ID"),
                     "duration": integer("Timeline frames", minimum: 1),
-                    "easing": enumeration("How the tween runs; linear when absent", TimelineTransition.easings),
+                    "easing": string("How the tween runs: " + TimelineTransition.easingSummary + "; linear when absent"),
+                    "motion": .object([
+                        "type": .string("object"),
+                        "description": .string(
+                            "The tween as data: outgoing and incoming {property: [values]} over the tween; properties "
+                                + TransitionMotion.ranges.keys.sorted().joined(separator: ", ")),
+                    ]),
                 ])),
             "lut": .object(fields(
                 "A .cube file in the project luts folder", required: ["id", "name", "path", "size"],
@@ -248,32 +269,7 @@ public enum ProjectSchema {
                     ColorLUT.libraryHashField: string("SHA-256 of the library look's .cube it was copied from"),
                     ColorLUT.libraryItemField: string("The library look (scope:id) it was copied from"),
                 ])),
-            "look": .object(fields(
-                "A reusable color grade", required: ["id", "title", "color"],
-                properties: [
-                    "id": string("Unique among built-in and custom looks", pattern: StyleCatalog.idPattern),
-                    "title": string("Display name", minLength: 1, maxLength: 120), "color": ref("color"),
-                ])),
-            "styleKit": .object(fields(
-                "A one-shot recipe: a full-length adjustment with a look plus a caption preset",
-                required: ["id", "title", "look", "captionPreset"],
-                properties: [
-                    "id": string("Unique among built-in and custom kits", pattern: StyleCatalog.idPattern),
-                    "title": string("Display name", minLength: 1, maxLength: 120),
-                    "look": string("Built-in or custom look ID"),
-                    "captionPreset": enumeration("Text preset given to captions", TextPreset.all),
-                ])),
-            "audio": .object(fields(
-                "Mix settings and the last loudness measurement", required: [],
-                properties: [
-                    "targetLUFS": number("Normalization target", -30 ... -5),
-                    "normalizeEnabled": boolean("Two-pass normalization on export"),
-                    "mixGainDb": number("Master gain", -60...24),
-                    "measuredLUFS": number("Measured integrated loudness", -100...10),
-                    "truePeakDbTP": number("Measured true peak", -100...20),
-                    "loudnessRangeLU": number("Measured loudness range", 0...100),
-                    "measurementVerified": boolean("The final file was re-measured"),
-                ])),
+            "audio": audioSchema,
         ]
     }
 
@@ -325,7 +321,9 @@ public enum ProjectSchema {
             "in": integer("Source in-point, in media frames", minimum: 0),
             "media": string("Media ID (video and audio layers)"),
             "text": string("Caption or title text (text layers)"),
-            "textPreset": enumeration("Text preset (text layers); default bold-outline", TextPreset.all),
+            "textPreset": string(
+                "Text preset (text layers): built-in " + TextPreset.all.joined(separator: ", ")
+                    + " or any name (the first's defaults); default bold-outline", minLength: 1, maxLength: 80),
             "freezeFrame": integer("Video: source frame held for the whole item", minimum: 0),
             "reframePreset": string("Framing preset ID, or custom"),
             "linkedAudio": string("Video: ID of its linked sound item"),
@@ -372,8 +370,7 @@ public enum ProjectSchema {
                                     "type": .string("number"), "minimum": .number(range.lowerBound),
                                     "maximum": .number(range.upperBound),
                                 ]),
-                                "ease": enumeration("Change to the next key; default inOut",
-                                                    ItemMotion.Ease.allCases.map(\.rawValue)),
+                                "ease": string("Change to the next key: " + ItemMotion.Ease.summary + "; default inOut"),
                             ]),
                         ]),
                     ]))
@@ -392,10 +389,15 @@ public enum ProjectSchema {
                     ]),
                 ]),
             ]),
-            "wordStyle": enumeration(
-                "Text: show the words as they are spoken (highlight the current word, karaoke fill, or reveal); "
-                    + "timings come from words, or are estimated", CaptionWords.styles),
-            "styleKit": string("Adjustment: the style kit that added it; the next kit replaces it"),
+            "wordStyle": .object([
+                "description": .string("Text: show the words as they are spoken: a preset (highlight the current "
+                    + "word, karaoke fill, or reveal) or {spoken, upcoming, past} looks of {fill #RRGGBB, opacity 0–1}; "
+                    + "timings come from words, or are estimated"),
+                "oneOf": .array([
+                    .object(["type": .string("string"), "enum": .array(CaptionWords.styles.map(JSONValue.string))]),
+                    .object(["type": .string("object"), "additionalProperties": .object(["type": .string("object")])]),
+                ]),
+            ]),
             "tag": .object([
                 "type": .string("object"), "description": .string("Editorial tags"),
                 "properties": .object([
@@ -415,6 +417,7 @@ public enum ProjectSchema {
         for property in ItemProperty.all where property.group == nil {
             properties[property.key] = schema(for: property)
         }
+        properties["voice"] = voiceItemSchema
         return fields("A timeline item; see the layer rules for which fields it needs", required: ["id", "at", "dur"],
                       properties: properties)
     }
@@ -437,7 +440,7 @@ public enum ProjectSchema {
 
     // MARK: Builders
 
-    private static func fields(
+    static func fields(
         _ summary: String, required: [String], properties: [String: JSONValue]
     ) -> [String: JSONValue] {
         var value: [String: JSONValue] = [
@@ -447,20 +450,20 @@ public enum ProjectSchema {
         return value
     }
 
-    private static func object(_ summary: String, required: [String], properties: [String: JSONValue]) -> JSONValue {
+    static func object(_ summary: String, required: [String], properties: [String: JSONValue]) -> JSONValue {
         .object(fields(summary, required: required, properties: properties))
     }
 
-    private static func ref(_ name: String) -> JSONValue { .object(["$ref": .string("#/$defs/\(name)")]) }
+    static func ref(_ name: String) -> JSONValue { .object(["$ref": .string("#/$defs/\(name)")]) }
 
-    private static func array(_ summary: String, of items: JSONValue, minItems: Int? = nil, maxItems: Int? = nil) -> JSONValue {
+    static func array(_ summary: String, of items: JSONValue, minItems: Int? = nil, maxItems: Int? = nil) -> JSONValue {
         var value: [String: JSONValue] = ["type": .string("array"), "description": .string(summary), "items": items]
         if let minItems { value["minItems"] = .integer(minItems) }
         if let maxItems { value["maxItems"] = .integer(maxItems) }
         return .object(value)
     }
 
-    private static func string(
+    static func string(
         _ summary: String, minLength: Int? = nil, maxLength: Int? = nil, pattern: String? = nil
     ) -> JSONValue {
         var value: [String: JSONValue] = ["type": .string("string"), "description": .string(summary)]
@@ -470,31 +473,9 @@ public enum ProjectSchema {
         return .object(value)
     }
 
-    private static func enumeration(_ summary: String, _ values: [String]) -> JSONValue {
+    static func enumeration(_ summary: String, _ values: [String]) -> JSONValue {
         .object([
             "type": .string("string"), "description": .string(summary), "enum": .array(values.map(JSONValue.string)),
         ])
-    }
-
-    private static func integer(_ summary: String, minimum: Int? = nil, maximum: Int? = nil) -> JSONValue {
-        var value: [String: JSONValue] = ["type": .string("integer"), "description": .string(summary)]
-        if let minimum { value["minimum"] = .integer(minimum) }
-        if let maximum { value["maximum"] = .integer(maximum) }
-        return .object(value)
-    }
-
-    private static func number(_ summary: String, _ range: ClosedRange<Double>) -> JSONValue {
-        .object([
-            "type": .string("number"), "description": .string(summary),
-            "minimum": bound(range.lowerBound), "maximum": bound(range.upperBound),
-        ])
-    }
-
-    private static func bound(_ value: Double) -> JSONValue {
-        value.rounded() == value && abs(value) < 1e15 ? .integer(Int(value)) : .number(value)
-    }
-
-    private static func boolean(_ summary: String) -> JSONValue {
-        .object(["type": .string("boolean"), "description": .string(summary)])
     }
 }

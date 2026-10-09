@@ -74,6 +74,8 @@ extension ProjectDocument {
             // Counts its own use.
             let placed = try await placeLibraryAudio(item, placement)
             return (placed.revision, placed.1.itemIDs.first ?? "")
+        case .clip:
+            return try await placeLibraryClipItem(item, placement)
         default:
             throw RPCFailure(-32602, unsupported("Placing \(item.kind?.rawValue ?? "these") items", item))
         }
@@ -108,7 +110,7 @@ extension ProjectDocument {
             guard target["text"] != nil else { throw RPCFailure(-32602, "\(itemID) is not a text item") }
             // The preset, the stored style and animation in one undo step (#380).
             do { patch = try textPreset(item).patch(for: target, project: project) } catch {
-                throw RPCFailure(-32602, error.localizedDescription)
+                throw RPCFailure.from(error, fallbackCode: -32602)
             }
         default:
             throw RPCFailure(-32602, unsupported("Applying \(item.kind?.rawValue ?? "these") items", item))
@@ -192,11 +194,8 @@ extension ProjectDocument {
             // A .cube on its own is a look that is just that LUT (#79).
             item["params"] = .object(item.params.merging(["color": .object([:])]) { $1 })
         }
-        if kind == .audio, let file {
-            item["params"] = .object(try await audioItemParams(item.params, file: file))
-        }
-        if kind == .sticker, let file {
-            item["params"] = .object(try await stickerItemParams(item.params, file: file))
+        if let file, let measured = try await measuredItemParams(kind, item.params, file: file) {
+            item["params"] = .object(measured)
         }
         item["createdBy"] = LibraryItem.creator(author: author, plugin: plugin)
         _ = try catalog.store(scope)
@@ -268,7 +267,7 @@ extension ProjectDocument {
             params = try LibrarySelection.params(
                 kind, item: item, transition: transition, sound: sound ?? effectSound?.media, lut: grade?.lut,
                 soundItem: effectSound?.item, project: project)
-        } catch { throw RPCFailure(-32602, error.localizedDescription) }
+        } catch { throw RPCFailure.from(error, fallbackCode: -32602) }
         if let grade { return (params, grade.file) }
         let ownSound = kind == .effectPreset
             ? params["steps"]?.array.contains { $0.object["op"]?.string == "sfx" && $0.object["sfx"] == nil } == true
@@ -300,9 +299,11 @@ extension ProjectDocument {
             let list = tags.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
             changes["tags"] = .array(list.map(JSONValue.string))
         }
-        for key in ["pack", "source", "license"] {
+        for key in ["pack", "source"] {
             if let value = arguments.optionalString(key) { changes[key] = .string(value) }
         }
+        // Free text, or a JSON object with an open id (P2-H8).
+        if let license = arguments.optionalString("license") { changes["license"] = LicenseTerms.argument(license) }
         if let params = arguments["params"] { changes["params"] = params }
         return changes
     }
@@ -357,10 +358,17 @@ extension ProjectDocument {
                     reference, arguments: arguments, changes: Self.itemChanges(arguments), author: author)
             }
             let kind = LibraryKind(rawValue: try arguments.string("kind")) ?? .sticker
+            var changes = Self.itemChanges(arguments)
+            let source = arguments.optionalString("source").flatMap { $0.hasPrefix("http") ? $0 : nil }
+            if let provenance = Provenance.from(
+                origin: arguments.optionalString("origin"), sourceUrl: source, author: arguments.optionalString("author"))
+            {
+                changes["provenance"] = provenance
+            }
             return try await document.addLibraryItem(
                 kind: kind, name: try arguments.string("name"), id: arguments.optionalString("id"),
                 scope: LibraryScope(rawValue: try arguments.string("scope")) ?? .project,
-                changes: Self.itemChanges(arguments), file: Self.url(arguments, "file"),
+                changes: changes, file: Self.url(arguments, "file"),
                 preview: Self.url(arguments, "preview"), author: author)
         }
         handleAuthored("library.save-selection") { document, arguments, author in
@@ -436,12 +444,13 @@ extension ProjectDocument {
             let position: StickerPosition?
             do {
                 position = try arguments.optionalString("position").map { try StickerPosition(text: $0, label: "position") }
-            } catch { throw RPCFailure(-32602, error.localizedDescription) }
+            } catch { throw RPCFailure.from(error, fallbackCode: -32602) }
             let placement = LibraryPlacement(
                 frame: arguments.optionalInt("atFrame"), duration: arguments.optionalInt("duration"),
                 trackID: arguments.optionalString("track"), position: position, size: arguments.optionalDouble("size"),
                 author: author, baseRevision: try arguments.int("baseRev"))
             if item.kind == .audio { return try await document.placeLibraryAudioCommand(item, placement) }
+            if item.kind == .clip { return try await document.placeLibraryClip(item, placement) }
             if document.isMediaSticker(item) { return try await document.placeLibrarySticker(item, placement) }
             let result = try await document.placeLibraryItem(item, placement, text: arguments.optionalString("text"))
             var placed: [String: JSONValue] = [
@@ -476,6 +485,8 @@ extension ProjectDocument {
             }
             return .object([
                 "output": .string(output.path), "name": .string(name), "items": .array(items.map { .string($0.reference) }),
+                // Exported without knowing the licence allows it (P2-H8): no licence, or custom terms.
+                "unknownLicenses": .array(LibraryPack.unknownLicenses(items).map(JSONValue.string)),
             ])
         }
     }

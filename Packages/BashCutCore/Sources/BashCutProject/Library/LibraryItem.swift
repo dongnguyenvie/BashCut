@@ -1,6 +1,6 @@
 import Foundation
 
-// The library (#66): every left-rail panel (Audio, Text, Stickers, Effects, Transitions, Filters, Voice) is a
+// The library (#66): every left-rail panel (Media, Audio, Text, Stickers, Effects, Transitions, Filters, Voice) is a
 // collection of items with one model. Items come from four scopes: built-in (shipped with the app, read-only),
 // user (this Mac), project (`.bashcut/library` in the project folder, so they travel with it) and plugin (read-only,
 // removed with the plugin). Improving an item saves a new version or a copy; nothing is overwritten silently.
@@ -14,6 +14,8 @@ public enum LibraryKind: String, CaseIterable, Sendable {
     case transitionPreset = "transition-preset"
     case look
     case voice
+    /// Footage: a movie or still placed as media (P2-H5).
+    case clip
 
     /// The library panel (`CommandCatalog.libraryPanels`) that lists this kind.
     public var panel: String {
@@ -25,6 +27,7 @@ public enum LibraryKind: String, CaseIterable, Sendable {
         case .transitionPreset: "transitions"
         case .look: "filters"
         case .voice: "voice"
+        case .clip: "media"
         }
     }
 
@@ -89,6 +92,8 @@ public struct LibraryItem: JSONObject, Identifiable {
     /// `user`, `agent` or `plugin`; built-in items have none.
     public var creator: String? { createdBy["by"]?.string }
     public var history: [JSONValue] { fields["history"]?.array ?? [] }
+    /// The structured licence (P2-H8), mapped from free text for older items; nil when the item has none.
+    public var licenseTerms: LicenseTerms? { fields["license"].flatMap(LicenseTerms.init(json:)) }
     /// `scope:id`, unique across scopes; usage counts are keyed by it.
     public var reference: String { "\(scope.rawValue):\(id)" }
 
@@ -170,7 +175,9 @@ extension LibraryItem {
                 throw ProjectError.invalid("\(label): tags must be at most \(Self.maximumTags) texts of 1–40 characters")
             }
         }
-        for key in ["pack", "source", "license"] {
+        if let license = fields["license"] { try LicenseTerms.validate(license, label: label) }
+        if let provenance = fields["provenance"] { try Provenance.validate(provenance, label: label) }
+        for key in ["pack", "source"] {
             guard let value = fields[key] else { continue }
             guard let text = value.string, text.count <= (key == "pack" ? 80 : 1_000) else {
                 throw ProjectError.invalid("\(label): \(key) must be text")
@@ -193,6 +200,8 @@ extension LibraryItem {
         }
     }
 
+    // One case per kind.
+    // swiftlint:disable:next cyclomatic_complexity
     private func validateParams(_ kind: LibraryKind, label: String) throws {
         switch kind {
         case .audio:
@@ -222,6 +231,9 @@ extension LibraryItem {
             }
         case .voice:
             break
+        case .clip:
+            // A movie or an image; params are free (measured length and size, a provider's keys).
+            try LibraryClip.validate(file: file, label: label)
         }
     }
 

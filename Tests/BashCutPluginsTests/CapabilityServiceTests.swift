@@ -9,7 +9,7 @@ import Testing
 @testable import BashCutPlugins
 
 /// A temporary project with fake shell plugins. Nothing touches the user's catalog, models or network.
-private struct PluginSandbox {
+struct PluginSandbox {
     let root = FileManager.default.temporaryDirectory.appendingPathComponent("capability-\(UUID().uuidString)")
     var project: URL { root.appendingPathComponent("project", isDirectory: true) }
     var service: CapabilityService {
@@ -26,7 +26,8 @@ private struct PluginSandbox {
 
     /// `body` runs after `$id`, `$out` (request output directory) and `$provider` are parsed from the request.
     func addPlugin(
-        _ id: String, providers: [PluginProvider], body: String, healthy: Bool = true, userScope: Bool = false
+        _ id: String, providers: [PluginProvider], body: String, healthy: Bool = true, userScope: Bool = false,
+        apiVersion: Int = 1
     ) throws {
         let directory = (userScope ? root.appendingPathComponent("user") : project.appendingPathComponent(".bashcut/plugins"))
             .appendingPathComponent(id, isDirectory: true)
@@ -48,7 +49,7 @@ private struct PluginSandbox {
                 probe: PluginCommand(executable: "bashcut-test-missing-binary")),
         ]
         let manifest = PluginManifest(
-            id: id, name: LocalizedText(["en": id]), version: "2.1.0", entrypoint: "provider.sh",
+            id: id, name: LocalizedText(["en": id]), version: "2.1.0", apiVersion: apiVersion, entrypoint: "provider.sh",
             capabilities: Array(Set(providers.map(\.capability))), providers: providers,
             dependencies: dependencies)
         try JSONEncoder().encode(manifest).write(to: directory.appendingPathComponent("plugin.json"))
@@ -149,9 +150,11 @@ struct CapabilityServiceTests {
         let sandbox = try PluginSandbox()
         defer { sandbox.cleanup() }
         let media = try sandbox.media()
-        await #expect(throws: PluginError.invalid("Install a plugin that provides audio.beats")) {
+        let missing = await #expect(throws: CapabilityUnavailable.self) {
             try await sandbox.service.detectBeats(mediaURL: media, preferredProvider: nil, projectRoot: sandbox.project)
         }
+        #expect(missing?.report.reason == .missing)
+        #expect(missing?.localizedDescription == "Install a plugin that provides audio.beats")
         try sandbox.addPlugin(
             "test.beats", providers: [PluginProvider(id: "bad", capability: "audio.beats", name: "B")],
             body: #"printf '{"id":"%s","result":{"bpm":120,"beatsSeconds":[1.0,0.5]}}\n' "$id""#)
@@ -160,7 +163,7 @@ struct CapabilityServiceTests {
         }
     }
 
-    @Test("Voice takes are validated audio, scored, and discardable while keeping the chosen take")
+    @Test("Voice takes are validated audio, keep the provider's score, and are discardable while keeping the chosen take")
     func voiceTakes() async throws {
         let sandbox = try PluginSandbox()
         defer { sandbox.cleanup() }
@@ -177,12 +180,32 @@ struct CapabilityServiceTests {
             text: "Xin chào các bạn", language: "vi", count: 2, preferredProvider: nil,
             projectRoot: sandbox.project, outputRoot: sandbox.project.appendingPathComponent("voiceover/generated"))
         #expect(takes.count == 2)
-        #expect(takes.allSatisfy { $0.scoreSource == "provider" && abs($0.durationSeconds - 1) < 0.05 })
+        #expect(takes.allSatisfy { $0.score != nil && abs($0.durationSeconds - 1) < 0.05 })
         let best = try #require(takes.best)
         #expect(best.score == 0.9)
         CapabilityService.discardVoiceTakes(takes, keeping: best.asset.url)
         #expect(FileManager.default.fileExists(atPath: best.asset.url.path))
         #expect(takes.filter { $0.id != best.id }.allSatisfy { !FileManager.default.fileExists(atPath: $0.asset.url.path) })
+    }
+
+    @Test("Without provider scores no pace formula ranks the takes: the first take is the best")
+    func unscoredTakes() async throws {
+        let sandbox = try PluginSandbox()
+        defer { sandbox.cleanup() }
+        let tone = sandbox.root.appendingPathComponent("tone.wav")
+        try TestFixtures.writeTone(to: tone, seconds: 1)
+        try sandbox.addPlugin(
+            "test.voice", providers: [PluginProvider(id: "test.tts", capability: "voice.synthesize", name: "T")],
+            body: """
+                cp '\(tone.path)' "$out/a.wav"
+                cp '\(tone.path)' "$out/b.wav"
+                printf '{"id":"%s","result":{"takes":[{"audioPath":"a.wav"},{"audioPath":"b.wav"}]}}\\n' "$id"
+                """)
+        let takes = try await sandbox.service.synthesizeVoiceTakes(
+            text: "Xin chào", language: "vi", count: 2, preferredProvider: nil, projectRoot: sandbox.project,
+            outputRoot: sandbox.project.appendingPathComponent("voiceover/generated"), cloneConsent: true)
+        #expect(takes.allSatisfy { $0.score == nil })
+        #expect(takes.best?.id == takes.first?.id)
     }
 
     @Test("Loudness measurements carry provenance")
@@ -283,7 +306,7 @@ struct CapabilityServiceTests {
 }
 
 /// Answers every call with `result` and records what it was asked; every plugin reports ready.
-private actor RecordingTransport: PluginTransport {
+actor RecordingTransport: PluginTransport {
     let result: JSONValue
     private(set) var calls: [(method: String, provider: String?, params: JSONValue)] = []
 
@@ -300,7 +323,7 @@ private actor RecordingTransport: PluginTransport {
 }
 
 /// A capability defined only in this test: the service needs nothing else to run it.
-private struct EchoCapability: CapabilityAdapter {
+struct EchoCapability: CapabilityAdapter {
     static let capability = "text.echo"
     let text: String
     var outputRoot: URL?

@@ -62,13 +62,17 @@ struct CommandSpecTests {
     func validation() throws {
         let speak = try #require(CommandCatalog.spec(named: "voice.speak"))
         let values = try speak.validate(["text": .string("Xin chào"), "provider": .null])
-        #expect(values == ["text": .string("Xin chào"), "takes": .integer(3), "keepTakes": .bool(false)])
+        #expect(values == ["text": .string("Xin chào"), "takes": .integer(3), "dryRun": .bool(false)])
         for params: [String: JSONValue] in [
-            [:], ["text": .string("  ")], ["text": .string("a"), "takes": .integer(9)],
-            ["text": .string("a"), "atFrame": .integer(-1)], ["text": .string("a"), "voice": .string("x")],
-            ["text": .integer(1)],
+            ["text": .string("a"), "takes": .integer(9)], ["text": .string("a"), "atFrame": .integer(-1)],
+            ["text": .string("a"), "voice": .string("x")], ["text": .integer(1)],
         ] {
             #expect(throws: RPCFailure.self) { try speak.validate(params) }
+        }
+        // Missing and blank required strings.
+        let align = try #require(CommandCatalog.spec(named: "captions.align"))
+        for params: [String: JSONValue] in [[:], ["media": .string("m"), "text": .string("  ")], ["text": .string("a")]] {
+            #expect(throws: RPCFailure.self) { try align.validate(params) }
         }
         let export = try #require(CommandCatalog.spec(named: "export.start"))
         #expect(throws: RPCFailure.self) {
@@ -184,7 +188,7 @@ struct CommandSpecTests {
         }
         let list = try CommandLineParser.parse(["library", "list", "--panel", "text", "--created-by", "agent"])
         #expect(list.spec.mode == .read && list.params == ["panel": .string("text"), "createdBy": .string("agent")])
-        #expect(throws: CommandLineParser.Failure.self) { try CommandLineParser.parse(["library", "list", "--panel", "media"]) }
+        #expect(throws: CommandLineParser.Failure.self) { try CommandLineParser.parse(["library", "list", "--panel", "footage"]) }
         let update = try CommandLineParser.parse(["library", "update", "built-in:bold", "--as", "bold-2", "--into", "user"])
         #expect(update.params == ["id": .string("built-in:bold"), "as": .string("bold-2"), "into": .string("user")])
         let place = try CommandLineParser.parse(["library", "place", "fire", "--at-frame", "30", "--base-rev", "4"])
@@ -226,7 +230,7 @@ struct CommandSpecTests {
         #expect(apply.format == "json")
 
         let speak = try CommandLineParser.parse(["voice", "speak", "--takes=2", "--", "--hello"])
-        #expect(speak.params == ["text": .string("--hello"), "takes": .integer(2), "keepTakes": .bool(false)])
+        #expect(speak.params == ["text": .string("--hello"), "takes": .integer(2), "dryRun": .bool(false)])
 
         let export = try CommandLineParser.parse([
             "export", "start", "--preset", "quick-draft", "--name", "draft", "--normalize-audio", "--output-dir", "out",
@@ -283,8 +287,10 @@ struct CommandSpecTests {
         let revert = try CommandLineParser.parse(["knowledge", "revert", "0f1e2d3c"])
         #expect(revert.spec.mode == .edit && revert.params == ["id": .string("0f1e2d3c")])
         #expect(try CommandLineParser.parse(["knowledge", "approve", "l-1a2b3c4d"]).spec.mode == .edit)
-        let speakKept = try CommandLineParser.parse(["voice", "speak", "Xin chào", "--keep-takes"])
-        #expect(speakKept.params["keepTakes"] == .bool(true))
+        let speakChosen = try CommandLineParser.parse(["voice", "speak", "Xin chào", "--choose", "2"])
+        #expect(speakChosen.params["choose"] == .integer(2))
+        #expect(try CommandLineParser.parse(["voice", "place", "voiceover/generated/a/take-1.wav"]).params
+            == ["take": .string("voiceover/generated/a/take-1.wav")])
         let inspector = try CommandLineParser.parse(["ui", "view", "--inspector", "color"])
         #expect(inspector.params == ["inspector": .string("color")])
 
@@ -368,15 +374,6 @@ struct CommandSpecTests {
         try Data(srt.utf8).write(to: file)
         let invocation = try CommandLineParser.parse(["captions", "import", file.path, "--base-rev", "2", "--replace"])
         #expect(invocation.params == ["text": .string(srt), "baseRev": .integer(2), "replace": .bool(true)])
-    }
-
-    @Test("Agent instructions list every command and no fixed track IDs")
-    func instructions() {
-        let text = CommandCatalog.instructions
-        for spec in CommandCatalog.specs { #expect(text.contains(spec.usage), "\(spec.name)") }
-        #expect(!text.contains(#""v1""#))
-        #expect(!text.contains(#""t1""#))
-        #expect(text.contains("bashcut timeline get"))
     }
 }
 

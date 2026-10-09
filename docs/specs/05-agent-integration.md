@@ -61,14 +61,26 @@ arguments.
 
 | Command | Mode | UI equivalent |
 |---|---|---|
-| `context get` | read | Open project, selection, playhead |
+| `context get` | read | Open project, selection, playhead; running analysis jobs and media not yet measured, transcribed or described |
 | `project get` / `project recents` | read | Welcome screen, Recent projects |
 | `timeline get [--format text\|json]` | read | Looking at the timeline, its transitions and section markers |
-| `media list` | read | Library |
-| `review run` | read | Review |
+| `media list [--analysis]` / `media analyze` / `media analysis` | read | Library (`media analyze`: a measured record per source file with shots, motion, sound spans and file facts, read with `media analysis`) |
+| `media cuts` | edit | Correcting the shots found in a source file |
+| `media inventory` | read | None yet: capture time, place, device, orientation, speech and what is measured, transcribed and described, per media, folder and project |
+| `media frames` / `media frame` / `media strip` | read | None yet: exact source frames, contact sheets (with a REF row) and a filmstrip with level, gaps and words, by source time |
+| `media describe` / `media description` | edit / read | None yet: shot facts the agent saw in a source file (open labels and tags, a suggested vocabulary), with their coverage |
+| `audio measure --curve\|--timeline` / `audio mix-measure` | read | None yet: loudness over time of a file or of the mix, and the mix by role (voice, music under speech and in gaps, sound effects against the voice) |
+| `speech rate` / `narration windows` / `capabilities get voice.synthesize --voices` | read | None yet: speaking rate per speaker and voice, speech-free windows with a text budget, voices by facts |
+| `voice check` / `voice fit` / `captions group` / `captions align` | read / edit | Voice panel takes, captions: check a take against its text, fit it to a slot, re-cut captions from word groups, captions from a script |
+| `platforms get [id] [--facts]` | read | None yet: platform facts (zones, length, loudness) with the project's overrides and each output's loudness target; one platform with an id |
+| `beats grid` / `audio energy` | read | None yet: the stored beat grid with strengths, downbeats, fit and alternates; the music's energy curve (level, onset, fullness); the agent picks lifts and drops |
+| `color measure` | read | None yet: colour of each clip as numbers, source or graded, the change a grade makes and the distance from the median clip |
+| `ui frames --compare graded\|source` | read | The viewer's Compare toggle, as one before/after grid per frame |
+| `review sync [--bins]` / `review window` / `timeline sheet` | read | None yet: cuts, titles and sound effects timed against beats and words (and a render against the timeline); the frames, level and words around a frame; contact sheets of the composed edit with zones per output |
+| `review run` / `review measure` / `review picture` / `review shots` / `review layout` | read | Review, Measure picture (`review picture`: the raw samples and cuts behind the picture checks; `review shots [--from F --to F]`: the shots on Main with timing, source, framing, motion and each cut's kind and framing on both sides; `review layout [--from F --to F] [--ink]`: rendered text bounds next to the platform zones, and the composed frame's luma and ink) |
 | `captions export` | read | Text panel, Export SRT |
 | `export status` / `jobs status` | read | Export queue, job progress |
-| `plugins list` / `plugins health` | read | Plugins sheet, Check Health |
+| `plugins list [--health] [--views]` | read | Plugins sheet, Check Health, the plugin panels in the left rail |
 | `plugins search` / `plugins updates` | read | Plugins › Browse and Updates |
 | `plugins actions` / `plugins hooks` / `plugins options <plugin>` | read | Plugin actions wherever they appear, Hook Activity, Options… |
 | `doctor run` | read | Doctor sheet |
@@ -78,10 +90,10 @@ arguments.
 | `ui frame [frame]` | read | Ask's attach viewer frame: the viewer picture at a frame as a PNG path |
 | `ui actions` | read | Every toolbar button, menu item and shortcut, with its enabled state |
 | `ui dialog` | read | Every open alert, file panel, sheet and popover |
-| `ui respond <option> [--path]` / `ui open <dialog>` | ui | Answering or opening a dialog |
-| `ui select` / `ui seek` / `ui panel` / `ui notify` | ui | Pointing something out to the user |
+| `ui respond <option> [--path]` / `ui action open <dialog>` | ui | Answering or opening a dialog |
+| `ui select` / `ui seek` / `ui action panel <panel>` / `ui action notify <message>` | ui | Pointing something out to the user |
 | `ui view [--zoom 10…140] [--snap] [--safe-area] [--compare] [--agent-dock] [--inspector <tab>] [--knowledge-section <section>] [--reveal <frame>]` | ui | Zoom slider and ⌘=/⌘−, Snap, Safe area, Compare, Agent button, Inspector tabs, Knowledge window sidebar, scrolling |
-| `ui source <media> [--in N] [--out N]` | ui | Clicking a Library thumbnail (source viewer) |
+| `ui action source <media> [--in N] [--out N]` | ui | Clicking a Library thumbnail (source viewer) |
 
 ### Edit commands
 
@@ -98,7 +110,7 @@ arguments.
 | `captions import <file.srt>` | edit | Text panel, Import SRT |
 | `captions generate --media <id>` | edit, job | Auto Captions |
 | `beats detect --media <id>` | edit, job | Detect Beats |
-| `voice speak "<text>" [--takes N] [--keep-takes]` | edit, job | Voice panel, Generate + Insert; `--keep-takes` keeps every take for the take list |
+| `voice speak "<text>" [--takes N] [--choose N] [--replace ITEM]` / `voice place <take> [--at-frame N \| --replace ITEM]` | edit, job / edit | Voice panel, Generate, then Insert a take; without `--choose` or `--replace` every take is measured and kept |
 | `jobs cancel <job>` | edit | Cancelling a job or queued export |
 | `plugins run <action> [--params '{…}']` | edit, job | A plugin action in the Plugins menu, toolbar, a context menu, a panel or the inspector, with its parameter sheet |
 | `plugins proposal <id> --decision apply\|discard` | edit | Reviewing an edit a plugin hook proposed |
@@ -141,7 +153,7 @@ Anything the user can click or press in the editor is an agent command:
   `ui action` runs.
 - View state (zoom, toggles, scroll position, inspector tab) is `ui view`.
 - Dialogs go through `ModalCenter`, so every alert, file panel, sheet and popover is visible to `ui dialog`
-  and can be answered with `ui respond` or opened with `ui open`.
+  and can be answered with `ui respond` or opened with `ui action open`.
 
 The export approval and plugin-install sheets only offer `deny` or `cancel` to agents; approving stays with
 the user. `ui action` refuses while a dialog is open, and actions that open an alert or panel (`project.new`,
@@ -207,7 +219,7 @@ MAIN c-01 0:00.00-0:02.04 m-0449 speech z1.00          "Top 10 món nên ăn / �
 MAIN c-02 0:02.04-0:04.09 m-0450 speech z1.22 p40 t-30 "Một quán các bạn / KHÔNG nên ăn…"
 …
 VO   vo-1 0:26.11-0:29.20 voiceover/vo1.wav  "Trong lúc chờ lẩu sôi…"
-MUS  mu-1 0:00.00-1:49.81 @assets/nhac/inspired.mp3 duck-14  beat 117.5bpm
+MUS  mu-1 0:00.00-1:49.81 @assets/music/inspired.mp3 duck-14  beat 117.5bpm
 ```
 
 Today's output is simpler: a header line (`project <name> rev <rev> <width>x<height> <fps>fps`) and one line
@@ -246,7 +258,10 @@ context block and the knowledge (notes for every project, the project memo and s
 - Job commands return a job ID to poll. Installing plugins is user-only. Exports need the user's approval.
 - Never hand-edit `project.bashcut.json` while the app is open, never overwrite original footage, never render
   with ffmpeg.
-- Ask before downloading media or installing tools. Reply in the user's language.
+- Timeline edits need no confirm; stop only at gates. Download the music, SFX, images, footage and fonts the edit
+  needs without asking, whatever the licence; record license, source and author and list the rights in the draft
+  checkpoint. Install command-line tools as needed and work to the end without waiting for the user. Installing
+  and trusting plugins stays with the user; never clone a voice that is not the user's. Reply in the user's language.
 
 The instructions end with an example of every timeline operation. When Settings turns agent edits off, they
 say so.

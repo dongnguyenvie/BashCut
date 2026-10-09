@@ -33,8 +33,8 @@ public struct GeneratedPluginAsset: Sendable {
 public struct GeneratedVoiceTake: Identifiable, Sendable {
     public let asset: GeneratedPluginAsset
     public let durationSeconds: Double
-    public let score: Double
-    public let scoreSource: String
+    /// The provider's own score, when it gives one (P0-C4: BashCut no longer scores pace itself).
+    public let score: Double?
     public var id: String { asset.url.path }
 }
 
@@ -48,6 +48,23 @@ public struct GeneratedPluginCaptions: Sendable {
 public struct GeneratedBeatGrid: Sendable {
     public let bpm: Double
     public let beatSeconds: [Double]
+    public let provenance: PluginProvenance
+    /// Grid v2 facts the provider gave (P0-B10), checked: strengths, downbeats, beatsPerBar, phaseScores,
+    /// confidence, fit, alternates. Empty for a provider that gives only beats.
+    public var grid: [String: JSONValue] = [:]
+}
+
+/// `audio.energy` (P0-B10): level, onset density and fullness every `step` seconds.
+public struct GeneratedEnergy: Sendable {
+    public let result: JSONValue
+    public let provenance: PluginProvenance
+}
+
+/// `vision.faces` / `vision.text` (P2-H6, P2-H7): the sampled pictures, each `{seconds, faces, people}` or
+/// `{seconds, text}`.
+public struct GeneratedVision: Sendable {
+    public let step: Double
+    public let frames: [JSONValue]
     public let provenance: PluginProvenance
 }
 
@@ -77,10 +94,11 @@ public struct GeneratedAudioSync: Sendable {
 }
 
 public extension Array where Element == GeneratedVoiceTake {
-    /// Highest score wins; equal scores prefer the earlier take so the choice is deterministic.
+    /// The provider's highest score wins; equal scores prefer the earlier take. Without provider scores, the first take.
     var best: GeneratedVoiceTake? {
         enumerated().max { lhs, rhs in
-            lhs.element.score == rhs.element.score ? lhs.offset > rhs.offset : lhs.element.score < rhs.element.score
+            let left = lhs.element.score ?? -1, right = rhs.element.score ?? -1
+            return left == right ? lhs.offset > rhs.offset : left < right
         }?.element
     }
 }

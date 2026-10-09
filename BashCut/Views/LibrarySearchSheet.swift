@@ -118,7 +118,7 @@ struct LibrarySearchSheet: View {
 
     /// License, source and tags, as given.
     private func details(_ candidate: LibraryCandidate) -> String {
-        [candidate.item["license"]?.string, candidate.item["source"]?.string, candidate.item.tags.joined(separator: ", ")]
+        [candidate.item.licenseTerms?.displayName, candidate.item["source"]?.string, candidate.item.tags.joined(separator: ", ")]
             .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
     }
 }

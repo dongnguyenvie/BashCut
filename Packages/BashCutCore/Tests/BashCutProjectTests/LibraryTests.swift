@@ -30,7 +30,7 @@ struct LibraryTests {
         let bad: [(LibraryItem, String)] = [
             (LibraryItem(id: "Bad ID", kind: .sticker, name: "x", params: ["emoji": .string("x")]), "lowercase"),
             (LibraryItem(id: "s", kind: .sticker, name: "Sticker"), "params.emoji"),
-            (LibraryItem(id: "t", kind: .textPreset, name: "T", params: ["textPreset": .string("comic")]), "textPreset"),
+            (LibraryItem(id: "t", kind: .textPreset, name: "T", params: ["textPreset": .string("")]), "textPreset"),
             (LibraryItem(id: "e", kind: .effectPreset, name: "E"), "params.patch"),
             (LibraryItem(id: "a", kind: .audio, name: "A"), "file"),
             (LibraryItem(id: "l", kind: .look, name: "L", params: ["color": .object(["contrast": .integer(9)])]), "contrast"),
@@ -46,6 +46,28 @@ struct LibraryTests {
         #expect(throws: ProjectError.self) { try escaping.validate() }
         #expect(LibraryKind.textPreset.panel == "text")
         #expect(LibraryKind.kinds(inPanel: "stickers") == [.sticker])
+    }
+
+    @Test("A clip (P2-H5) needs a movie or image file, keeps any params and lists in the Media panel")
+    func clipItems() throws {
+        let noFile = LibraryItem(id: "c", kind: .clip, name: "Clip")
+        do { try noFile.validate() } catch { #expect(error.localizedDescription.contains("needs a file")) }
+        #expect((try? noFile.validate()) == nil)
+        var wrong = noFile
+        wrong["file"] = .string("files/clip.wav")
+        do { try wrong.validate() } catch { #expect(error.localizedDescription.contains("movie")) }
+        #expect((try? wrong.validate()) == nil)
+        var clip = LibraryItem(
+            id: "drone", kind: .clip, name: "Drone shot",
+            params: ["model": .string("any-model"), "aspect": .string("9:16"), "seconds": .number(5)])
+        clip["file"] = .string("files/drone.mp4")
+        try clip.validate()
+        var still = clip
+        still["file"] = .string("files/still.png")
+        try still.validate()
+        #expect(LibraryClip.isImage("files/still.png") && !LibraryClip.isImage("files/drone.mp4"))
+        #expect(LibraryKind.kinds(inPanel: "media") == [.clip])
+        #expect(clip.json().object["panel"] == .string("media"))
     }
 
     @Test("Stores add, version, copy and remove items; built-in items stay read-only")
@@ -297,12 +319,16 @@ struct LibraryTests {
         // One text preset per caption renderer preset, in the panel's order.
         #expect(LibraryBuiltIns.textPresets.map(\.id) == TextPreset.all)
         #expect(LibraryBuiltIns.textPresets.map { $0.params["textPreset"]?.string } == TextPreset.all)
-        #expect(LibraryBuiltIns.textPresets[0].params["text"] == .string("Quá là ngon!"))
+        #expect(LibraryBuiltIns.textPresets[0].params["text"] == .string("So good!"))
+        // Text templates are looks, listed first; each carries a full text style.
+        #expect(LibraryBuiltIns.textTemplates.map(\.id) == ["stacked-keyword", "headline-subline", "boxed-keyword", "two-tone-pop"])
+        #expect(LibraryBuiltIns.textTemplates.allSatisfy { $0.params["textStyle"]?.object["font"] != nil })
+        #expect(items.prefix(4).map(\.id) == LibraryBuiltIns.textTemplates.map(\.id))
         #expect(LibraryBuiltIns.stickers.compactMap { $0.params["emoji"]?.string } == ["🔥", "😋", "👍", "💯", "⭐", "📍", "🍲", "😂"])
         #expect(LibraryBuiltIns.effects.map(\.name).prefix(2) == ["Punch in 1.3×", "Reset framing"])
         #expect(LibraryBuiltIns.effects[0].params["patch"] == .object(["transform": .object(["zoom": .number(1.3)])]))
         #expect(LibraryBuiltIns.transitions.map(\.id) == ["soft-dissolve", "quick-whip", "zoom-punch"])
-        #expect(LibraryBuiltIns.looks.map(\.id) == ColorLook.builtIn.map(\.id) + ["bright-airy", "moody"])
+        #expect(LibraryBuiltIns.looks.map(\.id) == ["original", "vivid", "muted-film", "black-white", "bright-airy", "moody"])
         #expect(Set(items.compactMap(\.kind)) == [.textPreset, .sticker, .effectPreset, .transitionPreset, .look])
     }
 

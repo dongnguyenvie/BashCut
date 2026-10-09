@@ -38,8 +38,9 @@ extension CommandCatalog {
             execution: .job),
         CommandSpec(
             "plugins.hooks", .read,
-            "List plugin hook subscriptions, the delivery queue (limit, running, queued, debouncing), the recent hook runs "
-                + "and hook edits waiting for review."),
+            "List plugin hook subscriptions, the delivery queue (limit, running, queued, debouncing), the recent hook runs, "
+                + "hook edits waiting for review, and reviewChecks: the review.check providers with whether this "
+                + "project enables them (project review.disabledChecks) and whether they can run."),
         CommandSpec(
             "plugins.proposal", .edit,
             "Apply or discard an edit a plugin hook proposed (Settings decides whether hook edits wait for review).",
@@ -74,6 +75,11 @@ extension CommandCatalog {
             ]),
         CommandSpec("plugins.updates", .read, "List installed plugins with a newer compatible version in the registry."),
         CommandSpec(
+            "plugins.bundles", .read,
+            "List the registry's plugin bundles (Plugins › Browse › Recommended): each plugin with whether it starts "
+                + "checked, whether this Mac can still install it or why not, and its download and setup size. Install one "
+                + "with plugins install --bundle."),
+        CommandSpec(
             "plugins.validate", .read,
             "Check a plugin that is not in the registry (a folder, its plugin.json, a .zip or .bashcutplugin archive, or a "
                 + "link) without installing or running it: its id, version and capabilities, every problem with the field "
@@ -87,11 +93,18 @@ extension CommandCatalog {
         CommandSpec(
             "plugins.install", .edit,
             "Download a registry plugin (or its update), check its SHA-256 and manifest, and show the install approval in "
-                + "the Plugins sheet. With path or url instead, add a plugin that is not in the registry (Add Plugin…): a "
-                + "folder, its plugin.json or a .zip / .bashcutplugin file on this Mac, or a link, checked like plugins "
-                + "validate. Only the user can approve; the job ends when the approval is shown.",
+                + "the Plugins sheet. With bundle instead, download every plugin of a bundle this Mac does not have and show "
+                + "one approval for all of them, each with a checkbox. With path or url instead, add a plugin that is not "
+                + "in the registry (Add Plugin…): a folder, its plugin.json or a .zip / .bashcutplugin file on this Mac, or "
+                + "a link, checked like plugins validate. Only the user can approve; the job ends when the approval is "
+                + "shown. While another install waits for approval or runs, a registry plugin or bundle is queued "
+                + "(approval: queued) and its approval opens after that one ends; do not ask again.",
             parameters: [
                 CommandParameter("plugin", .string, "Plugin ID from plugins search (or use path)", cli: .positional),
+                CommandParameter("bundle", .string, "Bundle ID from plugins bundles, such as starter", cli: .option("bundle")),
+                CommandParameter("only", .string,
+                                 "With bundle: comma-separated plugin IDs to check in the approval; each plugin's default otherwise",
+                                 cli: .option("only")),
                 CommandParameter("version", .string, "A specific registry version; the newest compatible by default",
                                  cli: .option("version")),
                 CommandParameter("path", .string, "Plugin folder, plugin.json, or .zip / .bashcutplugin file on this Mac",

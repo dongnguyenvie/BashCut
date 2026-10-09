@@ -16,15 +16,18 @@ public enum ProjectFonts {
         public let style: String
         /// The file in the project's fonts folder; nil for an installed font.
         public let file: URL?
-        /// Has the letters Vietnamese needs (ă â đ ê ô ơ ư and the stacked tone marks such as ệ ữ ở).
-        public let vietnamese: Bool
 
-        public var json: JSONValue {
+        /// Whether the font has every letter `language` is written with; nil for a language macOS does not know.
+        public func covers(_ language: String) -> Bool? { ProjectFonts.covers(postScriptName, language: language) }
+
+        /// `language`: adds `covers` for that language when macOS knows its letters.
+        public func json(language: String? = nil) -> JSONValue {
             var value: [String: JSONValue] = [
                 "name": .string(postScriptName), "family": .string(family), "style": .string(style),
-                "vietnamese": .bool(vietnamese), "source": .string(file == nil ? "installed" : "project"),
+                "source": .string(file == nil ? "installed" : "project"),
             ]
             if let file { value["file"] = .string(file.lastPathComponent) }
+            if let language, let covers = covers(language) { value["covers"] = .bool(covers) }
             return .object(value)
         }
     }
@@ -32,6 +35,8 @@ public enum ProjectFonts {
     private static let lock = NSLock()
     nonisolated(unsafe) private static var registered: [URL] = []
     nonisolated(unsafe) private static var availability: [String: Bool] = [:]
+    nonisolated(unsafe) private static var coverage: [String: Bool] = [:]
+    nonisolated(unsafe) private static var alphabets: [String: CFCharacterSet?] = [:]
 
     /// The font files in `projectRoot/fonts`, sorted by name.
     public static func files(projectRoot: URL) -> [URL] {
@@ -90,6 +95,19 @@ public enum ProjectFonts {
     }()
 
     /// Whether `name` resolves to that font rather than the Helvetica fallback.
+    /// The characters of `text` that `name` has no glyphs for, each once, in order (spaces and line breaks aside).
+    public static func missingCharacters(_ name: String, text: String) -> String {
+        let font = CTFontCreateWithName(name as CFString, 12, nil)
+        var seen = Set<Character>()
+        var missing = ""
+        for character in text where !character.isWhitespace && seen.insert(character).inserted {
+            let units = Array(String(character).utf16)
+            var glyphs = [CGGlyph](repeating: 0, count: units.count)
+            if !CTFontGetGlyphsForCharacters(font, units, &glyphs, units.count) { missing.append(character) }
+        }
+        return missing
+    }
+
     public static func isAvailable(_ name: String) -> Bool {
         lock.lock()
         if let known = availability[name] {
@@ -120,15 +138,46 @@ public enum ProjectFonts {
     private static func describe(_ font: CTFont, file: URL?) -> Font {
         Font(
             postScriptName: CTFontCopyPostScriptName(font) as String, family: CTFontCopyFamilyName(font) as String,
-            style: CTFontCopyName(font, kCTFontStyleNameKey) as String? ?? "", file: file,
-            vietnamese: coversVietnamese(font))
+            style: CTFontCopyName(font, kCTFontStyleNameKey) as String? ?? "", file: file)
     }
 
-    private static let vietnameseSample = "ăâđêôơưĂÂĐÊÔƠƯệữởấằẫỳ"
+    /// Whether font `name` has every letter of `language` (a BCP 47 tag such as vi, fr or ja: its exemplar
+    /// characters in upper and lower case, with accents and tone marks); nil when macOS does not know the language.
+    public static func covers(_ name: String, language: String) -> Bool? {
+        guard let letters = alphabet(language) else { return nil }
+        let key = name + "|" + language
+        lock.lock()
+        if let known = coverage[key] {
+            lock.unlock()
+            return known
+        }
+        lock.unlock()
+        let font = CTFontCreateWithName(name as CFString, 12, nil)
+        let covered = CFCharacterSetIsSupersetOfSet(CTFontCopyCharacterSet(font), letters)
+        lock.lock()
+        coverage[key] = covered
+        lock.unlock()
+        return covered
+    }
 
-    static func coversVietnamese(_ font: CTFont) -> Bool {
-        let set = CTFontCopyCharacterSet(font)
-        return vietnameseSample.unicodeScalars.allSatisfy { CFCharacterSetIsLongCharacterMember(set, $0.value) }
+    /// The letters `language` is written with, from the locale data; nil for a tag whose language macOS does not know.
+    public static func alphabet(_ language: String) -> CFCharacterSet? {
+        lock.lock()
+        if let known = alphabets[language] {
+            lock.unlock()
+            return known
+        }
+        lock.unlock()
+        let code = Locale(identifier: language).language.languageCode?.identifier ?? ""
+        let letters: CFCharacterSet? = Locale.LanguageCode.isoLanguageCodes.contains(Locale.LanguageCode(code))
+            ? CFLocaleCreate(nil, CFLocaleIdentifier(rawValue: language as CFString))
+                .flatMap { CFLocaleGetValue($0, .exemplarCharacterSet) }
+                .map { unsafeBitCast($0, to: CFCharacterSet.self) }
+            : nil
+        lock.lock()
+        alphabets[language] = .some(letters)
+        lock.unlock()
+        return letters
     }
 
     public struct FontError: LocalizedError {

@@ -19,6 +19,8 @@ struct LibraryProviderRequest {
     /// A candidate to save when the job finishes, and where.
     var save: Int?
     var scope: LibraryScope = .project
+    /// The caller's stable request ID (P2-G4).
+    var requestID: String?
 
     var method: String { capability == PluginAPI.libraryGenerate ? "library.generate" : "library.search" }
 }
@@ -35,12 +37,16 @@ extension ProjectDocument {
         finished: @escaping @MainActor (Result<JSONValue, any Error>) -> Void = { _ in }
     ) throws -> String {
         guard !plugins.calling.contains(request.capability) else {
-            throw RPCFailure(-32003, "\(request.capability) is already running; retry later")
+            throw RPCFailure(-32003, "\(request.capability) is already running; retry later", category: .busyRunning)
         }
+        let report = plugins.service.capabilityStatus(
+            request.capability, projectRoot: fileURL?.deletingLastPathComponent(), kind: request.kind)
+        if !report.available { throw CapabilityUnavailable(report) }
         if request.save != nil, request.scope == .project, fileURL == nil {
             throw RPCFailure(-32602, "Open a saved project to save into its library, or pass --scope user")
         }
-        let job = jobs.start(request.method, author: author, detail: request.text, work: { [weak self] _ in
+        let job = jobs.start(
+            request.method, author: author, detail: request.text, requestID: request.requestID, work: { [weak self] _ in
             guard let self else { throw CancellationError() }
             return try await runLibraryProvider(request, author: author)
         }, finished: { [weak self] outcome in
@@ -52,7 +58,7 @@ extension ProjectDocument {
         return job
     }
 
-    private func runLibraryProvider(_ request: LibraryProviderRequest, author: Author) async throws -> JSONValue {
+    func runLibraryProvider(_ request: LibraryProviderRequest, author: Author) async throws -> JSONValue {
         let root = fileURL?.deletingLastPathComponent()
         let service = plugins.service
         let language = contentLanguage
@@ -73,7 +79,8 @@ extension ProjectDocument {
                 throw RPCFailure(-32602, "No candidate \(index) to save; the provider returned \(found.candidates.count)")
             }
             result["saved"] = try await saveLibraryCandidate(
-                found.candidates[index], provider: result["provider"], scope: request.scope, author: author)
+                found.candidates[index], provider: result["provider"], scope: request.scope, author: author,
+                prompt: request.capability == PluginAPI.libraryGenerate ? request.text : nil)
         } catch {
             // The candidates stay usable with library add --from-result.
             result["saveError"] = .string(error.localizedDescription)
@@ -85,19 +92,54 @@ extension ProjectDocument {
 
     /// Saves a candidate as a new item in `scope` (`library add --from-result`): its fields with `changes` over them, its
     /// file and preview copied in, the provider as `provenance` and the plugin in `createdBy`.
+    /// `job` is the finished search or generate job; without one (saving inside that job) the request ID and charge
+    /// come from the running job's call context.
     func saveLibraryCandidate(
         _ candidate: LibraryCandidate, provider: JSONValue?, scope: LibraryScope, author: Author,
-        changes overrides: [String: JSONValue] = [:], name: String? = nil, id: String? = nil
+        changes overrides: [String: JSONValue] = [:], name: String? = nil, id: String? = nil, job: Job? = nil,
+        prompt: String? = nil
     ) async throws -> JSONValue {
         guard let kind = candidate.item.kind else { throw RPCFailure(-32602, "The candidate has no kind") }
         var changes = candidate.changes
-        if let provider { changes["provenance"] = provider }
+        let call = PluginCallContext.current
+        let charged = job.map { $0.usage.json["costUSD"]?.double } ?? call.usage?.json["costUSD"]?.double
+        if let provider {
+            changes["provenance"] = Self.candidateProvenance(
+                candidate, provider: provider,
+                prompt: prompt ?? (job?.method == "library.generate" ? job?.detail : nil),
+                requestID: job?.requestID ?? call.requestID, charged: charged)
+        }
         changes.merge(overrides) { $1 }
         let name = name ?? candidate.item.name
         return try await addLibraryItem(
             kind: kind, name: name, id: id ?? (try freeLibraryID(for: name, fallback: candidate.item.id)), scope: scope,
             changes: changes, file: candidate.fileURL, preview: candidate.previewURL, author: author,
             plugin: provider?.object["plugin"]?.string)
+    }
+
+    /// What a saved candidate came from (P2-H8): the provider (plugin, provider, version, capability), what the
+    /// provider said about it (origin, sourceUrl, author, model, seed), the prompt, request ID and what the job was
+    /// charged. The origin is `ai` for generated items and `stock` for found ones unless the provider says otherwise.
+    static func candidateProvenance(
+        _ candidate: LibraryCandidate, provider: JSONValue, prompt: String?, requestID: String?, charged: Double?
+    ) -> JSONValue {
+        var fields = provider.object
+        let sent = candidate.item["provenance"]?.object ?? [:]
+        for key in ["origin", "sourceUrl", "author", "model", "seed", "prompt"] where sent[key] != nil {
+            fields[key] = sent[key]
+        }
+        if let origin = fields["origin"]?.string, !Provenance.origins.contains(origin) { fields["origin"] = nil }
+        if fields["origin"] == nil {
+            fields["origin"] = .string(fields["capability"]?.string == PluginAPI.libraryGenerate ? "ai" : "stock")
+        }
+        if fields["sourceUrl"] == nil, let source = candidate.item["source"]?.string, source.hasPrefix("http") {
+            fields["sourceUrl"] = .string(String(source.prefix(2_000)))
+        }
+        if fields["author"] == nil, let author = candidate.item["author"]?.string { fields["author"] = .string(String(author.prefix(200))) }
+        if fields["prompt"] == nil, let prompt { fields["prompt"] = .string(String(prompt.prefix(4_000))) }
+        if let requestID { fields["requestId"] = .string(requestID) }
+        if let charged { fields["charged"] = .number(charged) }
+        return .object(fields)
     }
 
     /// `library add --from-result <job>:<index>`.
@@ -116,7 +158,7 @@ extension ProjectDocument {
         }
         let candidate: LibraryCandidate
         do { candidate = try LibraryCandidate(jobResult: job.result, index: index) } catch {
-            throw RPCFailure(-32602, error.localizedDescription)
+            throw RPCFailure.from(error, fallbackCode: -32602)
         }
         if let kind = arguments.optionalString("kind"), kind != candidate.item.kind?.rawValue {
             throw RPCFailure(-32602, "Candidate \(index) is \(candidate.item.kind?.rawValue ?? "unknown"), not \(kind)")
@@ -126,7 +168,7 @@ extension ProjectDocument {
         return try await saveLibraryCandidate(
             candidate, provider: job.result.object["provider"],
             scope: LibraryScope(rawValue: arguments.optionalString("scope") ?? "project") ?? .project, author: author,
-            changes: overrides, name: arguments.optionalString("name"), id: arguments.optionalString("id"))
+            changes: overrides, name: arguments.optionalString("name"), id: arguments.optionalString("id"), job: job)
     }
 
     /// An ID from `name` (or `fallback`) that no library item has yet.
@@ -213,7 +255,8 @@ extension ProjectDocument {
         let provider = jobs.job(jobID)?.result.object["provider"]
         Task {
             do {
-                _ = try await saveLibraryCandidate(candidate, provider: provider, scope: request.scope, author: .user)
+                _ = try await saveLibraryCandidate(
+                    candidate, provider: provider, scope: request.scope, author: .user, job: jobs.job(jobID))
                 ui.librarySearch?.saved.insert(index)
                 message = String(localized: "Saved “\(candidate.item.name)” in the library")
             } catch {
@@ -265,6 +308,13 @@ extension ProjectDocument {
                 request.hints = arguments["params"]?.object ?? [:]
                 request.save = arguments.optionalInt("save")
                 request.scope = LibraryScope(rawValue: arguments.optionalString("scope") ?? "project") ?? .project
+                request.requestID = arguments.optionalString("requestId")
+                if arguments.bool("dryRun") {
+                    return try await document.capabilityDryRun { document in
+                        try await document.runLibraryProvider(request, author: author)
+                    }
+                }
+                if let reused = document.reusedJob(request.method, requestID: request.requestID) { return reused }
                 let job = try document.startLibraryProviderJob(request, author: author)
                 return .object(["job": .string(job), "state": .string("running")])
             }

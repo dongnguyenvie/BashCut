@@ -213,7 +213,22 @@ class MCPHandshakeTests(unittest.TestCase):
             self.assertEqual(requests[0]['params'], arguments)
 
 
+# What each code means when the thrower names no category (P2-G2, RPCErrorData.swift).
+CATEGORIES = {-32002: ('stale_revision', True), -32003: ('busy_running', True), -32001: ('permission', False),
+              -32602: ('invalid_arguments', False), -32603: ('internal', False)}
+
+
 class MCPProcessTests(unittest.TestCase):
+    def assertTypedFailure(self, actual, failure):
+        """The failure as sent, with the P2-G2 category and retryable added to its data (remediation when one exists)."""
+        error = actual['error']
+        self.assertEqual((error['code'], error['message']), (failure['code'], failure['message']))
+        data = dict(error['data'])
+        category, retryable = CATEGORIES[failure['code']]
+        self.assertEqual((data.pop('category'), data.pop('retryable')), (category, retryable))
+        data.pop('remediation', None)
+        self.assertEqual(data, failure['data'])
+
     def test_cli_error_codes_and_data(self):
         with tempfile.TemporaryDirectory(prefix='bc-errors-', dir='/tmp') as directory:
             for code, status in [(-32002, 75), (-32003, 69), (-32001, 77), (-32602, 64), (-32603, 70)]:
@@ -228,7 +243,7 @@ class MCPProcessTests(unittest.TestCase):
                             capture_output=True, timeout=5)
                     self.assertEqual(result.returncode, status)
                     self.assertEqual(result.stdout, b'')
-                    self.assertEqual(json.loads(result.stderr), {'error': failure})
+                    self.assertTypedFailure(json.loads(result.stderr), failure)
                     self.assertNotIn('secret-canary', log.read_text())
 
     def test_eof_flushes_private_logs_without_echoing_tool_names(self):
@@ -275,8 +290,8 @@ class MCPProcessTests(unittest.TestCase):
                         'name': 'bashcut_timeline_undo', 'arguments': {'baseRev': 1}}})
                     failed = receive()['result']
                     self.assertTrue(failed['isError'])
-                    self.assertEqual(failed['structuredContent'], {'error': failure})
-                    self.assertEqual(json.loads(failed['content'][0]['text']), {'error': failure})
+                    self.assertTypedFailure(failed['structuredContent'], failure)
+                    self.assertTypedFailure(json.loads(failed['content'][0]['text']), failure)
                 send({'jsonrpc': '2.0', 'id': 2, 'method': 'tools/call', 'params': {
                     'name': 'secret-canary-tool', 'arguments': {'text': 'secret-canary-argument'}}})
                 response = receive()

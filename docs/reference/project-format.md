@@ -109,17 +109,10 @@ it, in preview and export alike; layers above it, such as captions, are not grad
 New adjustment tracks (ID prefix `fx`) go above the video tracks and below text. `adjustment add` places an item
 on the first adjustment track, adding one when needed, and spills overlaps onto another adjustment track.
 
-A style kit (`style apply`) is not stored as a setting. Applying one is a single undoable edit: it deletes
-adjustment items an earlier kit added (marked `styleKit: "<kit id>"`), adds a full-length adjustment item with
-the kit's look, and sets the kit's `captionPreset` as the `textPreset` of every caption on a `captions` text track
-that has no preset or another kit's caption preset (titles, place cards and other presets keep theirs).
-
-**Looks and style kits** come built in (looks `original`, `vivid`, `muted-film`, `black-white`; kits
-`food-review`, `cinematic`) or from the project. Custom ones are stored in the top-level `looks`
-(`{id, title, color}`) and `styleKits` (`{id, title, look, captionPreset}`) arrays, managed with `looks save`,
-`looks delete`, `style save` and `style delete`. IDs are lowercase letters, digits and hyphens, unique across
-built-in and custom entries. A kit's look must exist, and a look cannot be deleted while a custom kit uses it.
-Deleting a LUT removes it from clips, adjustments and custom looks alike.
+**Looks** are library `look` items (built-in `original`, `vivid`, `muted-film`, `black-white`, `bright-airy`,
+`moody`, or saved in the project or user library); there is no project-level look catalog and no style kit.
+Projects saved before this keep their top-level `looks` and `styleKits` arrays as unknown fields; opening one copies
+each of its `looks` into the project library once. Deleting a LUT removes it from clips and adjustments.
 
 ```json
 {"id": "fx1", "kind": "adjustment", "role": "adjustment", "name": "Adjustment 1", "items": [
@@ -136,11 +129,36 @@ longest side against the frame (bars on the other sides), **fill** covers the fr
 (fit); a project without the field fills, as every project did before it existed, so older zoom values keep their
 look. `transform.zoom` scales from that base size, and `pan` / `tilt` move it in output pixels.
 
+## Motion and style as data
+
+- **Ease.** Keyframe `ease` and transition `easing` are one type: `linear`, `in`, `out`, `inOut` (keyframes also
+  `hold`) or `"cubic-bezier(x1,y1,x2,y2)"` with x1 and x2 in 0…1.
+- **Keyframes** animate `zoom`, `pan`, `tilt`, `rotation`, `opacity`, `volume` and numeric style fields as
+  `group.field` paths: `color.exposure`, `color.contrast`, `color.saturation`, `color.lutStrength` on clips and
+  adjustment layers; `textStyle.size`, `positionX`, `positionY`, `strokeWidth`, `lineHeight`, `tracking` on text.
+- **Transitions** keep `kind`, `duration`, optional `easing` and optional `motion`
+  `{"outgoing": {property: [values]}, "incoming": {…}}`. Properties: `zoom`, `panX`/`panY` (share of the frame,
+  right/up), `rotation` (degrees, counterclockwise), `opacity`, `exposure` (EV), `scaleX` and `reveal` (share of
+  the width shown from the left); 2–16 values spread evenly over the eased tween. The built-in kinds (`dissolve`,
+  `whip`, `blink`, `zoom`, `spin`, `shutter`, `wipe`) are rows of the same table; any other kind needs `motion`.
+- **Text style** is open: besides the declared `textStyle` fields, the renderer reads `background {color, opacity,
+  padding, radius}`, `shadow {color, opacity, blur, dx, dy}` and `accentBars [{side left|right|top|bottom, color,
+  opacity, thickness, gap, length, radius}]` (thickness and gap in font sizes, defaults 0.12 and 0.2; length a share
+  of the side; bars sit beside the text block or its plate). A background or accent bars replace the preset's own
+  plates and bars. `emphasis {line, fill, scale, plate {color, opacity, padding, radius}}` draws one line `scale`
+  times larger in its own colour (`line` from the top, negative from the bottom; without it the last of two lines or
+  the middle one), optionally on its own plate; it is fitted to the frame on its own, the other lines without it.
+  `hook-title` emphasises by default once it has two lines; `false` turns it off. `lineFills [colors]` colours the
+  lines in turn. A block taller than the frame allows is moved back inside it, as a wide line shrinks to fit.
+- **Text templates** are built-in library text presets named by their look, not their use (`stacked-keyword`,
+  `headline-subline`, `boxed-keyword`, `two-tone-pop`): a renderer preset plus a full `textStyle`. The same template
+  serves as a hook, a call to action or a label; the agent picks it for the video.
+
 ## Schema and versioning
 
 [project.schema.json](project.schema.json) is a JSON Schema (draft 2020-12) of the whole file. It is generated,
 never edited by hand: `ProjectSchema` builds it from the same declarations validation uses (`TrackKind`,
-`ItemProperty`, `ColorGrade`, `TextPreset`, the look and kit catalogs). Agents read it with `schema get`. Fields
+`ItemProperty`, `ColorGrade`, `TextPreset`, `ItemMotion`, `TransitionMotion`). Agents read it with `schema get`. Fields
 it does not declare are still allowed, because unknown fields round-trip; rules that span several fields (layer
 bands, overlaps, links, transitions) are enforced by `Project.validate()` and described in the schema text.
 

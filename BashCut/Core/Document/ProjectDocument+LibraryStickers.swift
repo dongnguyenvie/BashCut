@@ -17,7 +17,7 @@ extension ProjectDocument {
     func stickerItemParams(_ params: [String: JSONValue], file: URL) async throws -> [String: JSONValue] {
         let kind: String
         do { kind = try LibrarySticker.kind(ofFile: file.lastPathComponent, label: file.lastPathComponent) } catch {
-            throw RPCFailure(-32602, error.localizedDescription)
+            throw RPCFailure.from(error, fallbackCode: -32602)
         }
         var params = params
         if kind == "video-alpha" {
@@ -31,7 +31,7 @@ extension ProjectDocument {
             return params
         }
         do { return try LibrarySticker.imageParams(params, file: file) } catch {
-            throw RPCFailure(-32602, error.localizedDescription)
+            throw RPCFailure.from(error, fallbackCode: -32602)
         }
     }
 
@@ -74,7 +74,7 @@ extension ProjectDocument {
     private func librarySticker(_ item: LibraryItem) throws -> LibrarySticker {
         guard item.kind == .sticker else { throw RPCFailure(-32602, "\(item.reference) is not a sticker") }
         do { return try LibrarySticker(params: item.params, file: item.file, label: item.reference) } catch {
-            throw RPCFailure(-32602, error.localizedDescription)
+            throw RPCFailure.from(error, fallbackCode: -32602)
         }
     }
 
@@ -108,6 +108,7 @@ extension ProjectDocument {
             imported = try Self.importedImage(url: url, projectFPS: project.fps, root: root)
         }
         imported.media[TransitionPreset.soundLibraryField] = .string(item.reference)
+        imported.media.fields.merge(Self.libraryRights(item)) { _, rights in rights }
         return (project.existingMedia(like: imported.media) ?? imported.media, frames)
     }
 
@@ -122,7 +123,7 @@ extension ProjectDocument {
             placed = try project.stickerPlacePlan(
                 media, sticker: sticker, at: placement.frame ?? playhead, duration: placement.duration,
                 position: placement.position, size: placement.size, trackID: placement.trackID)
-        } catch { throw RPCFailure(-32602, error.localizedDescription) }
+        } catch { throw RPCFailure.from(error, fallbackCode: -32602) }
         let isNew = !project.media.contains { $0.id == media.id }
         let revision = try commitPlan(
             placed.planner, label: String(localized: "Add sticker"), author: placement.author,
@@ -163,7 +164,7 @@ extension ProjectDocument {
         }
         if item["text"] != nil {
             do { return (try LibrarySelection.sticker(item, media: nil, project: project), nil) } catch {
-                throw RPCFailure(-32602, error.localizedDescription)
+                throw RPCFailure.from(error, fallbackCode: -32602)
             }
         }
         guard let media = item.mediaID.flatMap({ mediaID in project.media.first { $0.id == mediaID } }) else {
@@ -176,7 +177,7 @@ extension ProjectDocument {
         let frames = media.isImage ? LibrarySticker.probeImage(file)?.frames ?? 1 : 1
         do {
             return (try LibrarySelection.sticker(item, media: media, project: project, frames: frames), file)
-        } catch { throw RPCFailure(-32602, error.localizedDescription) }
+        } catch { throw RPCFailure.from(error, fallbackCode: -32602) }
     }
 
     // MARK: Removing

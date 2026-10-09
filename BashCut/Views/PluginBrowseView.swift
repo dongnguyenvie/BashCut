@@ -43,6 +43,9 @@ struct PluginBrowseView: View {
                 Label(model.registry == nil ? error : "Showing the saved catalog: \(error)",
                       systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.orange)
             }
+            if !updatesOnly, query.isEmpty, model.browseCapability == nil, model.browseCategory == nil {
+                ForEach(model.offeredBundles) { bundle in PluginBundleCard(model: model, bundle: bundle) }
+            }
             if !updatesOnly, model.registry?.plugins.isEmpty == false { PluginCategoryBar(model: model, query: query) }
             if listings.isEmpty {
                 ContentUnavailableView {
@@ -149,7 +152,8 @@ private struct PluginListingRow: View {
                         Text(ByteCountFormatter.string(fromByteCount: Int64(size), countStyle: .file)).font(.caption2)
                     }
                     if let extra = listing.version?.downloadBytes, extra > 0 {
-                        Text("+ " + ByteCountFormatter.string(fromByteCount: Int64(extra), countStyle: .file) + " setup")
+                        Text(String(format: String(localized: "+ %@ setup"),
+                                    ByteCountFormatter.string(fromByteCount: Int64(extra), countStyle: .file)))
                             .font(.caption2)
                     }
                 }.foregroundStyle(.secondary)

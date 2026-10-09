@@ -1,10 +1,35 @@
 import DequeModule
 import Foundation
 
+/// Why an edit was made, as its author stated it (P2-G3): a sentence and short evidence references (a review issue
+/// ID, a transcript range, a measurement). Kept with the undo step and listed by `timeline.changes`.
+public struct EditNote: Codable, Sendable, Equatable {
+    public var why: String?
+    public var evidence: [String]
+
+    public init(why: String? = nil, evidence: [String] = []) {
+        self.why = why
+        self.evidence = evidence
+    }
+
+    public var isEmpty: Bool { (why ?? "").isEmpty && evidence.isEmpty }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        why = try container.decodeIfPresent(String.self, forKey: .why)
+        evidence = try container.decodeIfPresent([String].self, forKey: .evidence) ?? []
+    }
+}
+
 public struct HistoryEntry: Codable, Sendable {
     public let label: String
     public let author: Author
     public let operation: EditOperation
+    /// The author's reason and evidence, when given.
+    public var note: EditNote?
+    /// When the edit was made and the revision it produced; nil in journals written before P2-G3.
+    public var date: Date?
+    public var revision: Int?
 
     /// The project before this step, when the step stores a snapshot inverse (every `applying` does).
     public var before: Project? {
@@ -53,6 +78,9 @@ public struct ProjectHistory: Codable, Sendable {
         let author: Author
         var operation: EditOperation?
         var delta: JSONValue?
+        var note: EditNote?
+        var date: Date?
+        var revision: Int?
     }
 
     /// Oldest first, like the stacks; walked newest first so each delta's base is already known.
@@ -61,7 +89,8 @@ public struct ProjectHistory: Codable, Sendable {
         var stored: [StoredEntry] = []
         stored.reserveCapacity(entries.count)
         for entry in entries.reversed() {
-            var value = StoredEntry(label: entry.label, author: entry.author)
+            var value = StoredEntry(
+                label: entry.label, author: entry.author, note: entry.note, date: entry.date, revision: entry.revision)
             if case .restore(let snapshot) = entry.operation {
                 value.delta = ProjectDelta.encode(snapshot, from: base)
                 base = snapshot
@@ -89,7 +118,9 @@ public struct ProjectHistory: Codable, Sendable {
             } else {
                 throw ProjectError.invalid("History entry has neither an operation nor a delta")
             }
-            entries.append(HistoryEntry(label: value.label, author: value.author, operation: operation))
+            entries.append(HistoryEntry(
+                label: value.label, author: value.author, operation: operation, note: value.note, date: value.date,
+                revision: value.revision))
         }
         return entries.reversed()
     }
@@ -105,10 +136,11 @@ public struct ProjectHistory: Codable, Sendable {
     /// the same key and author less than a second ago and nothing else changed the project since.
     /// The kept entry's snapshot inverse still restores the state before the first merged edit.
     /// An operation that changes nothing leaves the project, its revision and both stacks alone and returns false.
+    /// `note` is kept with the step; a merged edit keeps the first step's note.
     @discardableResult
     public mutating func apply(
         _ operation: EditOperation, label: String, author: Author = .user,
-        baseRevision: Int? = nil, coalescingKey: String? = nil, now: Date = Date()
+        baseRevision: Int? = nil, coalescingKey: String? = nil, note: EditNote? = nil, now: Date = Date()
     ) throws -> Bool {
         let result = try project.applying(operation, baseRevision: baseRevision)
         guard result.changed else { return false }
@@ -118,7 +150,9 @@ public struct ProjectHistory: Codable, Sendable {
                 && now.timeIntervalSince(last.date) < 1
         }
         if !merges {
-            undoStack.append(HistoryEntry(label: label, author: author, operation: result.inverse))
+            undoStack.append(HistoryEntry(
+                label: label, author: author, operation: result.inverse, note: note.flatMap { $0.isEmpty ? nil : $0 },
+                date: now, revision: result.project.revision))
             if undoStack.count > Self.maximumDepth { undoStack.removeFirst(undoStack.count - Self.maximumDepth) }
         }
         redoStack.removeAll()
@@ -132,7 +166,7 @@ public struct ProjectHistory: Codable, Sendable {
         guard let entry = undoStack.last else { return }
         let result = try project.applying(entry.operation)
         undoStack.removeLast()
-        redoStack.append(HistoryEntry(label: entry.label, author: entry.author, operation: result.inverse))
+        redoStack.append(entry.replacing(operation: result.inverse))
         project = result.project
     }
 
@@ -141,7 +175,14 @@ public struct ProjectHistory: Codable, Sendable {
         guard let entry = redoStack.last else { return }
         let result = try project.applying(entry.operation)
         redoStack.removeLast()
-        undoStack.append(HistoryEntry(label: entry.label, author: entry.author, operation: result.inverse))
+        undoStack.append(entry.replacing(operation: result.inverse))
         project = result.project
+    }
+}
+
+extension HistoryEntry {
+    /// The same step with the other direction's operation, as undo and redo move it between the stacks.
+    func replacing(operation: EditOperation) -> HistoryEntry {
+        HistoryEntry(label: label, author: author, operation: operation, note: note, date: date, revision: revision)
     }
 }

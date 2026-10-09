@@ -72,7 +72,7 @@ extension ProjectDocument {
             }
             var cleared: [JSONValue] = []
             for entry in matches {
-                do { try await document.clearStorage(entry) } catch { throw RPCFailure(-32003, error.localizedDescription) }
+                do { try await document.clearStorage(entry) } catch { throw RPCFailure(-32003, error.localizedDescription, category: .busyRunning) }
                 cleared.append(Self.storageJSON(entry))
             }
             return .object(["cleared": .array(cleared), "bytes": .integer(Int(matches.reduce(0) { $0 + $1.bytes }))])

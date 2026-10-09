@@ -2,7 +2,7 @@ import BashCutProject
 
 extension CommandCatalog {
     private static let motionPresets: String = MotionPreset.all.map(\.id).joined(separator: ", ")
-    private static let eases: String = ItemMotion.Ease.allCases.map(\.rawValue).joined(separator: ", ")
+    private static let eases: String = ItemMotion.Ease.summary
     private static let motionSummary: String =
         "Animate a clip, image or text over its length (Inspector › Animation): a preset (\(motionPresets); none "
         + "removes the animation) sized to the item, or keyframes JSON {property: [{frame, value, ease?}, …]} with "
@@ -14,6 +14,39 @@ extension CommandCatalog {
 
     /// Caption import (generation is with the plugin capabilities).
     static let captionSpecs: [CommandSpec] = [
+        CommandSpec(
+            "captions.export", .read,
+            "Export the captions (text on text layers, in time order) as: srt (default), SubRip text; json as "
+                + "{revision, fps, cues} with per cue index, item, track, trackRole, at/end/duration (frames), atSeconds, "
+                + "endSeconds, seconds, text, lines, chars (line breaks read as one space), cps, gapBefore (frames since "
+                + "the previous cue ended, negative when they overlap), captionMedia, wordStyle, wordTiming "
+                + "(transcribed or estimated from word length) and words [{text, at, end, atSeconds, endSeconds, "
+                + "source}]; text, one line per cue: #index start–end seconds cps | text (print it with --format text).",
+            parameters: [
+                CommandParameter("as", .string, "srt (default), json or text", choices: ["srt", "json", "text"],
+                                 cli: .option("as"))
+            ]),
+        CommandSpec(
+            "transcript.words", .read,
+            "Read every word on the caption layers in timeline order: index, text, at/end (frames), atSeconds, "
+                + "endSeconds, item and cue (captions export numbering), timing (transcribed or estimated from word "
+                + "length), gapBefore (frames since the previous word ended) and, for captions made from a media, "
+                + "source {media, clip, start, end} in that media's seconds through the clip heard there now (null "
+                + "when no clip of it plays there: captions do not move with their clips). count is the words "
+                + "returned, total the words on the caption layers. With heard, the words come from the stored "
+                + "transcripts (media.transcribe) of the media the timeline plays instead: each word inside a clip "
+                + "that plays it, at that clip's frames (trim, speed), with item = the clip, timing source and the "
+                + "provider's confidence/speaker/event/noSpeechProb; transcribed and untranscribed list the media.",
+            parameters: [
+                CommandParameter("from", .integer, "Only words ending after this timeline frame", minimum: 0,
+                                 cli: .option("from")),
+                CommandParameter("to", .integer, "Only words starting before this timeline frame", minimum: 0,
+                                 cli: .option("to")),
+                CommandParameter("media", .string, "Only captions made from (or with heard, words of) this media ID",
+                                 cli: .option("media")),
+                CommandParameter("heard", .boolean, "Words of the source transcripts heard through the clips now",
+                                 cli: .flag("heard")),
+            ]),
         CommandSpec(
             "captions.import", .edit, "Import UTF-8 SubRip captions as one undoable edit.",
             parameters: [
@@ -74,8 +107,7 @@ extension CommandCatalog {
                                  + "and keeps the other keys", cli: .option("focus")),
                 CommandParameter("focusTo", .string, "With focus: move to this rectangle by the item's last frame",
                                  cli: .option("focus-to")),
-                CommandParameter("ease", .string, "With focus-to: the move's ease",
-                                 choices: ItemMotion.Ease.allCases.map(\.rawValue), cli: .option("ease")),
+                CommandParameter("ease", .string, "With focus-to: the move's ease (" + eases + ")", cli: .option("ease")),
                 baseRevision,
             ]),
         CommandSpec(
@@ -91,8 +123,7 @@ extension CommandCatalog {
                 CommandParameter("value", .number, "Value", cli: .option("value")),
                 CommandParameter("atFrame", .integer, "Timeline frame inside the item; the playhead by default",
                                  minimum: 0, cli: .option("at-frame")),
-                CommandParameter("ease", .string, "Change to the next key", choices: ItemMotion.Ease.allCases.map(\.rawValue),
-                                 cli: .option("ease")),
+                CommandParameter("ease", .string, "Change to the next key: " + eases, cli: .option("ease")),
                 CommandParameter("remove", .boolean, "Remove the key at that frame", default: .bool(false),
                                  cli: .flag("remove")),
                 baseRevision,

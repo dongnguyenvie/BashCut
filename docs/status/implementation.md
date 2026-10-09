@@ -18,7 +18,7 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
 | M2 Agent dock and automation | Mostly done | Claude/Codex/Shell terminals, socket, CLI, MCP; real authenticated agent runs only partly smoke-tested |
 | M3 Text, captions, export | Mostly done | Export queue (E-1) done; no bundled transcription provider; first all-in-app vlog not yet recorded |
 | M4 Audio and voice | Partial | Ducking, loudness, voice takes, beats, framing, music/SFX library done; voice cloning open |
-| M5 Color, transitions, review | Mostly done | LUTs, transitions, review, resume and handoff done; measured review checks open |
+| M5 Color, transitions, review | Mostly done | LUTs, transitions, review (severity, fixes, loudness, text safe area, hook), resume and handoff done; picture checks open |
 | M6 Extensions | Partial | OTIO export, voiceover recording, constant speed, ramps, keyframes done; effects, Demucs open |
 
 ## Implemented
@@ -80,7 +80,8 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
 
 ### Media & proxies
 
-- Original-media import with probing, offline badges and metadata; thumbnails with debounced, quantized
+- Original-media import with probing, offline badges and metadata (a video's frames end at its last picture, not
+  at sound running past it); thumbnails with debounced, quantized
   hover-scrub and source-time feedback.
 - `@assets/...` media resolves through the configured workspace everywhere (thumbnails, source viewer, plugin
   inputs, preview, export); validation rejects unknown namespaces and traversal.
@@ -99,7 +100,71 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
 - SRT add, replace and export from the Text library and the CLI, with Unicode and multiline cues, rational-FPS
   conversion and one-step undo.
 - Auto Captions resolves a healthy `captions.transcribe` provider, sends the media path and language, validates
-  bounded UTF-8 SRT output and imports it atomically with provider provenance.
+  bounded UTF-8 SRT output and imports it atomically with provider provenance. A whole-file transcription is kept
+  as the media's source transcript (by file content, `.bashcut/cache/transcripts`) and reused by later Auto Captions
+  and `captions generate` unless `--fresh`; `media transcribe` makes one without placing captions, `media transcript`
+  reads it in source seconds (phrases, words with confidence/speaker/event/noSpeechProb when the provider gives
+  them), and `transcript words --heard` maps its words through the clips playing the media now.
+- `audio measure --curve` / `--timeline` give loudness over time of a file or of the rendered mix (with silent
+  stretches), `audio mix-measure` reads per-role stems against each other and against the words, and `library
+  analyze` stores sound landmarks; the `audio.loudness` contract has an optional `curve`.
+- Speech and voice: `speech rate`, `narration windows`, measured takes from `voice speak` placed by the agent with
+  `voice place` (no pace formula, no automatic pick), `voice speak --replace`, `voice check`, `voice fit`, voices by
+  facts (`capabilities get --voices`) with clone consent,
+  `captions group` and `captions align`.
+- Review profile (#466, #470): editorial limits only from the project's `review` object (validated), neutral info
+  without them; zones checked against every output with overrides (#469, `platforms get`); loudness per export
+  preset (`output.targets`, P0-K2); no creative constants in fixes (#468).
+- The opening and close are read with `review shots`/`review layout --from/--to`, `review layout --ink` and
+  `transcript words --from/--to`; the review's hook check runs only with a project `review.hookSeconds` and no
+  longer judges what the opening text says.
+- `beats detect` keeps the provider's grid v2 per file (strengths, kick-phase downbeats, confidence, fit,
+  alternates; `beats grid`), and `audio energy` gives the energy curve (picking lifts and drops is the agent's).
+- What is in the picture (P2-H6, P2-H7): `media subjects` (face and person boxes) and `media ocr` (on-screen text
+  lines) sample one picture every `--step` source seconds through the built-in `bashcut.vision` plugin (Apple
+  Vision); raw boxes, confidence and time, no labels or review checks. `review layout` face fields stay null.
+- The agent's own fields on a media (P2-H10): op `setMediaData` keeps takes, verdicts and reasons under `data`
+  (`media list` shows them); core never reads them, and there are no take commands.
+- Footage in the library (P2-H5): library kind `clip` (a movie or image, free params) for generated or downloaded
+  B-roll; `library generate --kind clip` asks a provider, `library place` copies it into `clips/` and places it like
+  `media place`; the Media panel's Clips tab. Pixel effects and AI transitions stay render-then-place plugin actions
+  (P2-H11, plugins guide), with no per-frame plugin renderer.
+- `color measure` gives each clip's luma percentiles, saturation, tint per band and clipped/crushed shares from
+  source frames or the edit as graded, the change a grade makes (with mean ΔE) and each clip's distance from the
+  median clip.
+- `ui frame --phone|--width` renders the viewer at viewer size and `ui frames --compare graded|source` makes a
+  before/after grid; `review layout` adds reading speed, speech, caption overlap, template repeats, density, the
+  pictures on screen and measured contrast (`--contrast`); every video/image item has `scale` facts (fit/fill, zoom,
+  pixels per source pixel, `maxZoomNative`, coverage) in `timeline get` and `review shots`.
+- `review shots` reads the edit as a sequence (cut facts with kind and framing on both sides, shares from shot
+  descriptions, rhythm overall and per section, keyframe camera moves; `--from/--to` for a range, `--media` for a
+  source file), `review sync` times cuts, titles and sound effects against beats and words and a render against the
+  timeline, `review window` and `timeline sheet` show the composed edit as pictures without exporting.
+- Flexibility audit, deferred items (2026-10-08): `review cuts` and `review hook` folded into `review shots`,
+  `review layout --from/--to/--ink` and `transcript words`; no runs or low-variance runs (`--run-length`/`--max-cv`
+  gone); `review sync` bins only with `--bins`; `platforms list` → `platforms get [id]`; `project brief`/`set-brief`
+  and `plan get`/`set` → `project data KEY` / `project set-data KEY`; `clip speed*` user-only (ops `setSpeed`,
+  `setSpeedCurve`); `ui open/panel/source/notify` → `ui action open|panel|source|notify TARGET`; `plugins health`/
+  `views` → `plugins list --health/--views`; `voice voices` → `capabilities get --voices`; gates by any name;
+  `review coverage` gives the described shot per clip (the agent joins its plan); `script check --beats/--text`;
+  `voice speak` measures and keeps takes, `voice place` puts one on the timeline. Restyle: one ease type with
+  `cubic-bezier(…)`, transitions as data (`motion`, any kind), keyframes on `color.*` and numeric `textStyle.*`,
+  `textStyle.accentBars`.
+- `media inventory` lists capture facts (time, GPS, device, shown size) read once per file content
+  (`.bashcut/cache/inventory`), speech seconds and language, and what is measured, transcribed and described, per
+  media, folder and project; `context get` adds `analysis` (running analysis jobs, media not measured, transcribed or
+  described). Content keys are remembered per path, size, date and inode, so these reads cost nothing once known.
+- `media frames` reads exact source frames by index (PNG files, or contact sheets labelled per cell with a map back
+  to media and second, and an optional REF row), `media frame` one frame at source size, and `media strip` a
+  filmstrip with the sound level, speech-map gaps and transcript words; all by source time, in
+  `.bashcut/cache/media-stills`.
+- `media describe` stores agent-written shot facts on a media (size, angle, move, direction, subjects, people,
+  on-screen text, tags, confidence, best moment, frames looked at) as open labels (the lists are a suggested
+  vocabulary; unknown fields are kept) as one undoable edit;
+  `media description` reads them with coverage of the `media analyze` shots, and `review shots` adds the facts of
+  the source shot each clip plays (`described`).
+- `media speech-map` calibrates sound spans from the `media analyze` levels (Otsu split, separation in dB and eta,
+  `separation: none` when floor and sound do not separate) and compares them with the stored transcript's words.
 
 ### Audio & voice
 
@@ -113,6 +178,14 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
 - Direct voiceover recording asks for microphone permission, writes 48 kHz mono WAV under the project, shows
   duration and input level, and inserts at the playhead.
 - Review warns when voiceover comes within 0.3 s of tagged speech on any layer.
+- Review issues carry a severity and a fix (command or hint); `review run --summary` adds counts and a pass flag.
+  Sound checks: loudness from the last normalized export of the revision, ducking off under speech, dead air, music
+  drop-outs. Text checks: vertical safe area (caption bar, side buttons, top bar), title safe, minimum size, caption
+  lines, overlap. Hook check for the first 3 s.
+- Platform targets (#441): `output.presets` names the export presets a project is made for (format menu ›
+  Platform, `project format --outputs`). The first one's platform (TikTok, Reels, Shorts, YouTube) sets the safe
+  zones, smallest text and longest length the review checks, the viewer's safe-area overlay and the Export sheet's
+  preset. `review.hookSeconds` and `review.severities` (check ID or prefix → severity or `off`) tune the review.
 
 ### Color & transitions
 
@@ -225,7 +298,7 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   CLI and MCP.
 - 48 commands declared once as `CommandSpec`s, which generate validation, the CLI parser, MCP tools and agent
   instructions. Every button, menu item and shortcut is a `UIAction` (`ui actions`, `ui action <id|shortcut>`);
-  every alert, panel and sheet goes through `ModalCenter` (`ui dialog`, `ui respond`, `ui open`).
+  every alert, panel and sheet goes through `ModalCenter` (`ui dialog`, `ui respond`, `ui action open`).
 - Agent edits keep a before/after diff, show ◆ markers and an Undo/Show Changes toast, and restore the latest diff
   after reopen. Edits are recorded in a metadata-only audit log.
 - Privileged exports need a live token and an in-app approval sheet showing the concrete output; agents can only
@@ -256,7 +329,7 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   capability is one `CapabilityAdapter`; calls go through a `PluginTransport`, with `PluginProcessRunner` as the
   one-shot process transport (one bounded child per request, filtered environment, process-group cancellation).
 - `captions.generate`, `beats.detect` and `voice.speak` run as background jobs with `jobs.status`/`jobs.cancel`
-  and apply one undoable agent-attributed edit; `plugins.list` and `plugins health` report providers,
+  and apply one undoable agent-attributed edit; `plugins list` (with `--health`) reports providers,
   availability and diagnostics. See [plugins.md](../guides/plugins.md).
 - Plugin API 2: an API window (`minApiVersion`/`maxApiVersion`), SHA-256 trust pins with user-only Trust and
   enable switches (states ready, disabled, untrusted, changed, outdated), native `options` per user or project,
@@ -281,8 +354,11 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   coalesced changes, streamed renders at most every 60 ms, answers parsed off the main actor. View and session
   action requests get the host channel (`PluginCommandSession`, author `plugin`). `requires` with semver ranges
   (`needs-plugin`, registry install offers requirements), `uses` + `plugins.invoke`, `features`. Commands
-  `plugins views|view|view-event|show-view|invoke`. Session lines are read with `JSONValue(parsing:)`. Example:
+  `plugins list --views`, `plugins view|view-event|show-view|invoke`. Session lines are read with `JSONValue(parsing:)`. Example:
   `bashcut-plugins/samples/views-example`; perf: `PluginViewPerfTests`, `PluginViewSessionPerfTests`.
+- Plugin API 9 (#451): `review.check` (`ReviewCheckCapability`): every ready provider runs on `review.measure`,
+  side by side, 30 s each; failures become info issues with `source`; `review.disabledChecks` per project;
+  `plugins hooks` lists `reviewChecks`. Tests: `ReviewCheckTests`.
 - Plugin actions with `confirm` wait in their job for a non-blocking `plugin-confirm` sheet (agents can only cancel)
   instead of a modal alert that stopped command handling.
 - Catalog refresh performance (#103): discovery keeps manifests in a `PluginCatalogCache` and reads a plugin again
@@ -490,8 +566,8 @@ and fails above 50 ms.
 - **M3–M6:** bundled transcription provider and real-engine acceptance, music/SFX library with BPM and license
   badges, voice cloning, expanded legacy effect/overlay/SFX import, effect recipes, keyframes,
   Demucs, and more interchange validation. Resolve remains reserved.
-- **Review and loudness:** coverage uses explicit speech tags and voiceover timing; it does not measure silence or
-  transcribe untagged audio. Export loudness is measured only when normalization is on (the core `bashcut.audio-analysis` plugin provides it).
+- **Review and loudness:** coverage uses explicit speech tags and voiceover timing; dead air is found from layer
+  coverage, not measured audio, and untagged audio is not transcribed. Picture checks sample the rendered timeline only on `review.measure` (two frames a second, small grey thumbnails), kept for the session; plugin `review.check` providers (API 9) also run only there, each for at most 30 s. Export loudness is measured only when normalization is on (the core `bashcut.audio-analysis` plugin provides it).
 - **Editing scope:** ripple affects the edited track and its linked counterpart only. Source insert/overwrite
   targets Main. Unknown future effects round-trip but are not rendered.
 - **History:** full-snapshot undo is capped at 200 steps; `history.jsonl` stores one atomic checkpoint, and an

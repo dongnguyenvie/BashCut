@@ -9,14 +9,24 @@ public struct CompositionSnapshot: @unchecked Sendable {
     /// snapshots with the same value differ only in their video composition and audio mix, so a player can take the
     /// new ones without loading the composition again. Nil: unknown, never reused.
     public let structure: Int?
+    /// Items whose video this Mac cannot decode. Preview leaves them out (black, sound still plays); an export
+    /// build throws `UndecodableMediaError` instead.
+    public let undecodable: [UndecodableMedia]
 
     public init(
-        composition: AVComposition, videoComposition: AVVideoComposition, audioMix: AVAudioMix, structure: Int? = nil
+        composition: AVComposition, videoComposition: AVVideoComposition, audioMix: AVAudioMix, structure: Int? = nil,
+        undecodable: [UndecodableMedia] = []
     ) {
         self.composition = composition
         self.videoComposition = videoComposition
         self.audioMix = audioMix
         self.structure = structure
+        self.undecodable = undecodable
+    }
+
+    /// The undecodable media an item shows at timeline `frame`, if any.
+    public func undecodable(at frame: Int) -> [UndecodableMedia] {
+        undecodable.filter { $0.start <= frame && frame < $0.end }
     }
 }
 
@@ -46,8 +56,9 @@ public actor CompositionBuilder {
     /// The scale at zoom 1: fitting shows the whole picture inside the canvas (bars on the other sides), filling
     /// covers the canvas and crops what does not fit.
     public static func baseScale(source: CGSize, canvas: CGSize, fill: Bool) -> Double {
-        let horizontal = canvas.width / abs(source.width), vertical = canvas.height / abs(source.height)
-        return fill ? max(horizontal, vertical) : min(horizontal, vertical)
+        ReviewScale.baseScale(
+            sourceWidth: source.width, sourceHeight: source.height, canvasWidth: canvas.width,
+            canvasHeight: canvas.height, fill: fill)
     }
 
     // This coordinates media loading, video lanes, audio parameters and frame instructions.
@@ -88,6 +99,7 @@ public actor CompositionBuilder {
         // One source decision, still conversion and asset signature check per media in this snapshot.
         // Keep this local: a later build must discover newly created proxies or replaced originals.
         var loadedMedia: [String: LoadedAsset] = [:]
+        var undecodable: [UndecodableMedia] = []
         let transitionFrom = Dictionary(uniqueKeysWithValues: project.transitions.map { ($0.fromItemID, $0) })
         let transitionTo = Dictionary(uniqueKeysWithValues: project.transitions.map { ($0.toItemID, $0) })
         for track in project.tracks where track.kind == "video" || track.kind == "audio" {
@@ -116,7 +128,10 @@ public actor CompositionBuilder {
                 } ?? normalSourceRange
                 let destination = project.fps.time(item.at)
                 let ramp = rampPlans.plan(for: item, mediaFPS: media.fps, fps: project.fps)
-                if track.kind == "video" {
+                if track.kind == "video", let codec = asset.undecodableCodec {
+                    undecodable.append(
+                        UndecodableMedia(mediaID: mediaID, path: media.path, codec: codec, start: item.at, end: item.end))
+                } else if track.kind == "video" {
                     guard let source = asset.video else {
                         throw ProjectError.invalid("No video track in \(media.path)")
                     }
@@ -142,10 +157,11 @@ public actor CompositionBuilder {
                         zoom: properties["zoom"]?.double ?? 1, pan: properties["pan"]?.double ?? 0,
                         tilt: properties["tilt"]?.double ?? 0, rotation: properties["rotation"]?.double ?? 0)
                     let motion = item.pictureMotion.map { LayerMotion(motion: $0, item: item, fps: project.fps.value) }
+                    let style = StyleMotion(item: item, fps: project.fps.value)
                     let incoming = transitionTo[item.id].map {
                         RenderTransition(
                             kind: $0.kind, startFrame: item.at, duration: $0.duration,
-                            incoming: true, fps: project.fps.value, easing: $0.easing)
+                            incoming: true, fps: project.fps.value, easing: $0.easing, motion: $0.motion)
                     }
                     let lut = try loadLUT(for: item)
                     let crop = SourceCrop(
@@ -156,7 +172,7 @@ public actor CompositionBuilder {
                             layer: FrameLayer(
                                 trackID: target.trackID, transform: transform,
                                 properties: item.fields, transition: incoming, lut: lut,
-                                motion: motion.map { ($0, placement) }, crop: crop)))
+                                motion: motion.map { ($0, placement) }, crop: crop, style: style)))
                     if let transition = transitionFrom[item.id] {
                         let hold = try visualLanes.take(
                             layer: track.id, start: item.end, end: item.end + transition.duration, composition: composition)
@@ -179,8 +195,9 @@ public actor CompositionBuilder {
                                     transition: RenderTransition(
                                         kind: transition.kind, startFrame: item.end,
                                         duration: transition.duration, incoming: false,
-                                        fps: project.fps.value, easing: transition.easing), lut: lut,
-                                    motion: motion.map { ($0, placement) }, crop: crop)))
+                                        fps: project.fps.value, easing: transition.easing, motion: transition.motion),
+                                    lut: lut,
+                                    motion: motion.map { ($0, placement) }, crop: crop, style: style)))
                     }
                 }
                 // Main sound remains attached in the spike until separate linked dialogue editing lands.
@@ -207,6 +224,7 @@ public actor CompositionBuilder {
                 }
             }
         }
+        if purpose == .export, !undecodable.isEmpty { throw UndecodableMediaError(undecodable) }
         let targetDuration = project.fps.time(project.duration)
         if composition.duration < targetDuration {
             composition.insertEmptyTimeRange(
@@ -229,7 +247,9 @@ public actor CompositionBuilder {
                 timedLayers += (visualByTrack[track.id] ?? []).map { ($0.start, $0.end, .video($0.layer)) }
             } else if track.isAdjustment {
                 for item in track.items {
-                    let layer = AdjustmentLayer(properties: item.fields, lut: try loadLUT(for: item))
+                    let layer = AdjustmentLayer(
+                        properties: item.fields, lut: try loadLUT(for: item),
+                        style: StyleMotion(item: item, fps: project.fps.value))
                     timedLayers.append((item.at, item.end, .adjustment(layer)))
                 }
             } else if track.kind == "text" {
@@ -258,7 +278,8 @@ public actor CompositionBuilder {
         let audio = AVMutableAudioMix()
         audio.inputParameters = audioLanes.parameters
         return CompositionSnapshot(
-            composition: composition, videoComposition: video, audioMix: audio, structure: Self.structure(of: composition))
+            composition: composition, videoComposition: video, audioMix: audio, structure: Self.structure(of: composition),
+            undecodable: undecodable)
     }
 
     /// A hash of every track (ID and media type) and segment (source file and its state on disk, source track, source

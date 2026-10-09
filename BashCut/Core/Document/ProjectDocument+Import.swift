@@ -81,9 +81,16 @@ extension ProjectDocument {
                 "import", "\(url.lastPathComponent) → \(document.mediaSummary(imported.media)) (automation)"
                     + (existing.map { " reusing \($0.id)" } ?? ""))
             var planner = LayerPlanner(document.project)
+            let (license, provenance) = Self.mediaRights(arguments)
             if let existing {
                 imported.media = existing
+                // Rights given again for media already here are recorded on it (P2-H8).
+                if license != nil || provenance != nil {
+                    try planner.add([.setMediaRights(media: existing.id, license: license, provenance: provenance)])
+                }
             } else {
+                if let license { imported.media.fields["license"] = license }
+                if let provenance { imported.media.fields["provenance"] = provenance }
                 try planner.add([.addMedia(imported.media)])
             }
             var result: [String: JSONValue] = ["media": .string(imported.media.id), "existing": .bool(existing != nil)]
@@ -101,10 +108,12 @@ extension ProjectDocument {
             // Reusing media without placing it is an empty plan: it keeps the revision (#347).
             result["rev"] = .integer(
                 try document.commitPlan(planner, label: "Import media", author: author, baseRevision: base))
-            if existing == nil {
-                document.requestProxiesAfterImport([imported.media.id], author: author)
-                document.emitMediaImported([imported.media.id], author: author)
+            // Waits for the probe only: an agent sees `converting` (with the job to wait for) when this Mac cannot
+            // decode the video, also when importing such media again.
+            if let proxy = try? await document.requestProxies(mediaIDs: [imported.media.id], author: author).first {
+                result["proxy"] = proxy
             }
+            if existing == nil { document.emitMediaImported([imported.media.id], author: author) }
             if let item = result["item"]?.string {
                 result["track"] = document.project.tracks.first { $0.items.contains { $0.id == item } }.map { .string($0.id) }
                 result["linkedAudio"] = document.project.tracks.flatMap(\.items).first { $0.id == item }?
@@ -112,6 +121,15 @@ extension ProjectDocument {
             }
             return .object(result)
         }
+    }
+
+    /// `license` (text, or a JSON object) and `provenance` from `media import`'s rights options; nil when not given.
+    static func mediaRights(_ arguments: CommandArguments) -> (license: JSONValue?, provenance: JSONValue?) {
+        let license = arguments.optionalString("license").map { LicenseTerms.argument($0) }
+        let provenance = Provenance.from(
+            origin: arguments.optionalString("origin"), sourceUrl: arguments.optionalString("source"),
+            author: arguments.optionalString("author"))
+        return (license, provenance)
     }
 
     /// The media kind a file's type suggests: audio, image or video.
@@ -145,8 +163,7 @@ extension ProjectDocument {
         guard kind == "audio" || video != nil else { throw ProjectError.invalid("No video track") }
         let nominal = try await video?.load(.nominalFrameRate) ?? Float(projectFPS.value)
         let fps = normalizedFrameRate(nominal)
-        let duration = try await asset.load(.duration)
-        let sourceFrames = Int((duration.seconds * fps.value).rounded(.down))
+        let sourceFrames = try await MediaFrames.sourceFrames(of: asset, fps: fps)
         let frames = Int((Double(sourceFrames) / fps.value * projectFPS.value).rounded(.down))
         guard frames > 0 else { throw ProjectError.invalid("Video is too short") }
         let id = UUID().uuidString

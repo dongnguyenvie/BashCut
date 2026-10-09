@@ -14,46 +14,6 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
     func windowWillClose(_ notification: Notification) { closed() }
 }
 
-@MainActor @Observable final class TerminalSession: Identifiable, AgentScopeOwner {
-    let id = UUID()
-    let provider: any AgentProvider
-    let token: String
-    /// Items sent with Send to Agent (#356), shown as chips over the terminal until removed. Allow for this
-    /// request lasts until the scope changes.
-    var scope: [AgentScopeItem] = [] {
-        didSet {
-            scopeAllowed = false
-            if scope.isEmpty { scopeExtra = [] }
-        }
-    }
-    var scopeAllowed = false
-    var scopeExtra: Set<String> = []
-    var scopeLast: JSONValue?
-    let launchedAt = Date()
-    let view = LocalProcessTerminalView(frame: .zero)
-    var title: String
-    /// SF Symbol for the tab.
-    let icon: String
-    init(provider: any AgentProvider, token: String, launch: AgentLaunch, icon: String) {
-        self.provider = provider
-        self.token = token
-        self.icon = icon
-        title = provider.title
-        view.menu = EditMenus.terminalContextMenu(for: view)
-        view.startProcess(
-            executable: launch.executable, args: launch.arguments,
-            environment: launch.environment.map { "\($0.key)=\($0.value)" },
-            currentDirectory: launch.directory)
-    }
-    /// Presses Return in the terminal, sending what is in the agent's input.
-    func submit() { view.send(source: view, data: [13][...]) }
-    func runCommand(_ text: String) { view.send(source: view, data: Array((text + "\n").utf8)[...]) }
-    func close() {
-        view.send(source: view, data: [3][...])
-        view.terminate()
-    }
-}
-
 @MainActor @Observable final class AgentDockModel {
     unowned let document: ProjectDocument
     var sessions: [TerminalSession] = []
@@ -105,8 +65,7 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
     }
     var isDetached: Bool { detachedWindow != nil }
     var directory: URL {
-        settings.workspace ?? document.fileURL?.deletingLastPathComponent()
-            ?? FileManager.default.homeDirectoryForCurrentUser
+        settings.workspace ?? document.fileURL?.deletingLastPathComponent() ?? settings.defaultProjectsFolder
     }
     /// Knowledge lives in the open project and the user's folder, not in the workspace (#100); the workspace and
     /// home folder are only searched for memos older builds left there.
@@ -196,7 +155,7 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
                 toolsDirectory: toolsDirectory, prompt: prompt)
             let launch = try AgentLaunch.make(
                 provider: provider, workspace: directory, context: context,
-                resumeID: resumeID(for: provider), kit: document.agentKitLaunch(), pluginSkills: document.plugins.skills,
+                resumeID: resumeID(for: provider), kit: document.agentKitLaunch(), pluginSkills: document.agentPluginSkills(),
                 environment: document.currentAgentEnvironment)
             let session = TerminalSession(provider: provider, token: token, launch: launch, icon: icon)
             sessions.append(session)

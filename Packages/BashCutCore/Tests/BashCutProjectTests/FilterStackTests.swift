@@ -56,12 +56,7 @@ struct FilterStackTests {
         try LibraryItem(
             id: "older", kind: .look, name: "Older", params: ["color": .object(["lut": .string("x"), "saturation": .integer(0)])]
         ).validate()
-        // Built-in looks: the same IDs and grades as the built-in project looks, plus a few more.
         for item in LibraryBuiltIns.looks { try item.validate() }
-        for look in ColorLook.builtIn {
-            let item = try #require(LibraryBuiltIns.looks.first { $0.id == look.id })
-            #expect(try FilterStack(params: item.params).color == look.color)
-        }
     }
 
     @Test("A look without a LUT places and applies its grade as before")

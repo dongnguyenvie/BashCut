@@ -1,6 +1,54 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "%@ still needs setup: review Install Dependencies": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%@ still needs setup: review Install Dependencies" } }, "vi": { "stringUnit": { "state": "translated", "value": "%@ vẫn cần cài thêm: xem lại Install Dependencies" } } } },
+    "+ %@ setup": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "+ %@ setup" } }, "vi": { "stringUnit": { "state": "translated", "value": "+ %@ cài thêm" } } } },
+    "Up to about %@ with every plugin checked": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Up to about %@ with every plugin checked" } }, "vi": { "stringUnit": { "state": "translated", "value": "Tối đa khoảng %@ nếu chọn tất cả plugin" } } } },
+    "Install…": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Install…" } }, "vi": { "stringUnit": { "state": "translated", "value": "Cài đặt…" } } } },
+    "Install (%d)": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Install (%d)" } }, "vi": { "stringUnit": { "state": "translated", "value": "Cài đặt (%d)" } } } },
+    "Sets up: %@": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Sets up: %@" } }, "vi": { "stringUnit": { "state": "translated", "value": "Cài thêm: %@" } } } },
+    "Installing trusts the checked plugins' exact files and runs their setup one after another. The plugins and their setup commands run with your user permissions; plugin edits are validated and undoable.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Installing trusts the checked plugins' exact files and runs their setup one after another. The plugins and their setup commands run with your user permissions; plugin edits are validated and undoable." } }, "vi": { "stringUnit": { "state": "translated", "value": "Cài đặt nghĩa là tin cậy đúng các file của những plugin được chọn và chạy phần cài thêm của từng plugin lần lượt. Plugin và các lệnh cài thêm chạy với quyền người dùng của bạn; chỉnh sửa của plugin được kiểm tra và có thể hoàn tác." } } } },
+    "Not in the plugin registry": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Not in the plugin registry" } }, "vi": { "stringUnit": { "state": "translated", "value": "Không có trong kho plugin" } } } },
+    "Everything in %@ is installed": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Everything in %@ is installed" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đã cài đủ mọi plugin trong %@" } } } },
+    "Choose at least one plugin": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Choose at least one plugin" } }, "vi": { "stringUnit": { "state": "translated", "value": "Chọn ít nhất một plugin" } } } },
+    "%@: %d of %d": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%@: %d of %d" } }, "vi": { "stringUnit": { "state": "translated", "value": "%@: %d / %d" } } } },
+    "Installing %@…": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Installing %@…" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đang cài %@…" } } } },
+    "Stopped after installing %d of %d plugins": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Stopped after installing %d of %d plugins" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đã dừng sau khi cài %d / %d plugin" } } } },
+    "%@ is installed": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%@ is installed" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đã cài xong %@" } } } },
+    "Installed %d of %d plugins. %@": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Installed %d of %d plugins. %@" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đã cài %d / %d plugin. %@" } } } },
+    "Next: %@": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Next: %@" } }, "vi": { "stringUnit": { "state": "translated", "value": "Tiếp theo: %@" } } } },
+    "Install %@…": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Install %@…" } }, "vi": { "stringUnit": { "state": "translated", "value": "Cài %@…" } } } },
+    "%@ asks": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%@ asks" } }, "vi": { "stringUnit": { "state": "translated", "value": "%@ hỏi" } } } },
+    "Answer in Terminal": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Answer in Terminal" } }, "vi": { "stringUnit": { "state": "translated", "value": "Trả lời trong Terminal" } } } },
+    "Submit": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Submit" } }, "vi": { "stringUnit": { "state": "translated", "value": "Gửi" } } } },
+    "Choose any that apply": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Choose any that apply" } }, "vi": { "stringUnit": { "state": "translated", "value": "Chọn tất cả mục phù hợp" } } } },
+    "Notes for the agent (optional)": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Notes for the agent (optional)" } }, "vi": { "stringUnit": { "state": "translated", "value": "Ghi chú cho agent (tuỳ chọn)" } } } },
+    "Type your own answer…": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Type your own answer…" } }, "vi": { "stringUnit": { "state": "translated", "value": "Tự nhập câu trả lời…" } } } },
+    "Close this card and choose in the terminal instead": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Close this card and choose in the terminal instead" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đóng thẻ này và chọn trong terminal" } } } },
+    "Clips": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Clips" } }, "vi": { "stringUnit": { "state": "translated", "value": "Clip" } } } },
+    "Add clip": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Add clip" } }, "vi": { "stringUnit": { "state": "translated", "value": "Thêm clip" } } } },
+    "clip": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "clip" } }, "vi": { "stringUnit": { "state": "translated", "value": "clip" } } } },
+    "Brief": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Brief" } }, "vi": { "stringUnit": { "state": "translated", "value": "Brief" } } } },
+    "Story and plan": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Story and plan" } }, "vi": { "stringUnit": { "state": "translated", "value": "Câu chuyện và kế hoạch" } } } },
+    "Rough-cut sheet": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Rough-cut sheet" } }, "vi": { "stringUnit": { "state": "translated", "value": "Bảng dựng thô" } } } },
+    "Script before voiceover": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Script before voiceover" } }, "vi": { "stringUnit": { "state": "translated", "value": "Kịch bản trước khi lồng tiếng" } } } },
+    "Draft before export": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Draft before export" } }, "vi": { "stringUnit": { "state": "translated", "value": "Bản nháp trước khi xuất" } } } },
+    "Workflow gates": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Workflow gates" } }, "vi": { "stringUnit": { "state": "translated", "value": "Các điểm duyệt" } } } },
+    "Ask me": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Ask me" } }, "vi": { "stringUnit": { "state": "translated", "value": "Hỏi tôi" } } } },
+    "Tell me": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Tell me" } }, "vi": { "stringUnit": { "state": "translated", "value": "Báo tôi" } } } },
+    "Skip": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Skip" } }, "vi": { "stringUnit": { "state": "translated", "value": "Bỏ qua" } } } },
+    "Most review rounds": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Most review rounds" } }, "vi": { "stringUnit": { "state": "translated", "value": "Số vòng review tối đa" } } } },
+    "Agents wait for your answer in BashCut at a gate set to Ask me, and tell you about one set to Tell me and keep editing. Agents can make a gate ask but cannot loosen it or answer it themselves.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Agents wait for your answer in BashCut at a gate set to Ask me, and tell you about one set to Tell me and keep editing. Agents can make a gate ask but cannot loosen it or answer it themselves." } }, "vi": { "stringUnit": { "state": "translated", "value": "Ở điểm duyệt đặt Hỏi tôi, agent chờ bạn trả lời trong BashCut; ở điểm đặt Báo tôi, agent báo cho bạn rồi tiếp tục chỉnh sửa. Agent có thể bật việc hỏi nhưng không thể nới lỏng hay tự trả lời." } } } },
+    "%@ is waiting for your answer. Revision %lld.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%@ is waiting for your answer. Revision %lld." } }, "vi": { "stringUnit": { "state": "translated", "value": "%1$@ đang chờ bạn trả lời. Phiên bản %2$lld." } } } },
+    "Note for the agent (optional)": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Note for the agent (optional)" } }, "vi": { "stringUnit": { "state": "translated", "value": "Ghi chú cho agent (không bắt buộc)" } } } },
+    "Ask for changes": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Ask for changes" } }, "vi": { "stringUnit": { "state": "translated", "value": "Yêu cầu sửa" } } } },
+    "Withdraw": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Withdraw" } }, "vi": { "stringUnit": { "state": "translated", "value": "Rút lại" } } } },
+    "Selects": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Selects" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đoạn chọn" } } } },
+    "%lld kept of %lld": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%lld kept of %lld" } }, "vi": { "stringUnit": { "state": "translated", "value": "Giữ %1$lld trên %2$lld" } } } },
+    "Place kept": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Place kept" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đặt các đoạn giữ" } } } },
+    "No selects yet. Agents propose them with selects set.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "No selects yet. Agents propose them with selects set." } }, "vi": { "stringUnit": { "state": "translated", "value": "Chưa có đoạn chọn. Agent đề xuất bằng selects set." } } } },
+    "Must keep": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Must keep" } }, "vi": { "stringUnit": { "state": "translated", "value": "Bắt buộc giữ" } } } },
+    "Keep": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Keep" } }, "vi": { "stringUnit": { "state": "translated", "value": "Giữ" } } } },
     "By %@": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "By %@" } }, "vi": { "stringUnit": { "state": "translated", "value": "Tác giả: %@" } } } },
     "Font": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Font" } }, "vi": { "stringUnit": { "state": "translated", "value": "Phông chữ" } } } },
     "Preset (%@)": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Preset (%@)" } }, "vi": { "stringUnit": { "state": "translated", "value": "Mặc định (%@)" } } } },
@@ -8,7 +56,7 @@
     "%@ is not available and draws as Helvetica": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%@ is not available and draws as Helvetica" } }, "vi": { "stringUnit": { "state": "translated", "value": "Không có %@ nên chữ hiện bằng Helvetica" } } } },
     "Text colour": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Text colour" } }, "vi": { "stringUnit": { "state": "translated", "value": "Màu chữ" } } } },
     "Outline colour": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Outline colour" } }, "vi": { "stringUnit": { "state": "translated", "value": "Màu viền" } } } },
-    "%@ (no Vietnamese)": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%@ (no Vietnamese)" } }, "vi": { "stringUnit": { "state": "translated", "value": "%@ (thiếu tiếng Việt)" } } } },
+    "%@ (missing %@ letters)": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%1$@ (missing %2$@ letters)" } }, "vi": { "stringUnit": { "state": "translated", "value": "%1$@ (thiếu chữ %2$@)" } } } },
     "Use the preset's colour": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Use the preset's colour" } }, "vi": { "stringUnit": { "state": "translated", "value": "Dùng màu mặc định" } } } },
     "Save the project before adding a font": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Save the project before adding a font" } }, "vi": { "stringUnit": { "state": "translated", "value": "Hãy lưu dự án trước khi thêm phông chữ" } } } },
     "Font added: %@": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Font added: %@" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đã thêm phông chữ: %@" } } } },
@@ -268,7 +316,10 @@
     "System": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "System" } }, "vi": { "stringUnit": { "state": "translated", "value": "Theo hệ thống" } } } },
     "The project file is no longer available": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "The project file is no longer available" } }, "vi": { "stringUnit": { "state": "translated", "value": "Tệp dự án không còn tồn tại" } } } },
     "This plugin has no external dependencies.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "This plugin has no external dependencies." } }, "vi": { "stringUnit": { "state": "translated", "value": "Plugin này không cần phụ thuộc bên ngoài." } } } },
-    "TikTok / Reels 9:16": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "TikTok / Reels 9:16" } }, "vi": { "stringUnit": { "state": "translated", "value": "TikTok / Reels 9:16" } } } },
+    "Instagram Reels 9:16": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Instagram Reels 9:16" } }, "vi": { "stringUnit": { "state": "translated", "value": "Instagram Reels 9:16" } } } },
+    "Platform": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Platform" } }, "vi": { "stringUnit": { "state": "translated", "value": "Nền tảng" } } } },
+    "TikTok 9:16": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "TikTok 9:16" } }, "vi": { "stringUnit": { "state": "translated", "value": "TikTok 9:16" } } } },
+    "YouTube Shorts 9:16": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "YouTube Shorts 9:16" } }, "vi": { "stringUnit": { "state": "translated", "value": "YouTube Shorts 9:16" } } } },
     "Timing estimated from word length": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Timing estimated from word length" } }, "vi": { "stringUnit": { "state": "translated", "value": "Thời gian ước lượng theo độ dài chữ" } } } },
     "Timing from speech": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Timing from speech" } }, "vi": { "stringUnit": { "state": "translated", "value": "Thời gian theo giọng nói" } } } },
     "Transcribing…": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Transcribing…" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đang nhận dạng…" } } } },
@@ -450,7 +501,7 @@
     "Removed": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Removed" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đã xóa" } } } },
     "Shared plugin runtimes": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Shared plugin runtimes" } }, "vi": { "stringUnit": { "state": "translated", "value": "Runtime dùng chung của plugin" } } } },
     "Shared plugin downloads": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Shared plugin downloads" } }, "vi": { "stringUnit": { "state": "translated", "value": "Tệp tải về dùng chung của plugin" } } } },
-    "Runtimes shared by plugins are deleted. Plugins that use them must be set up again with Install Dependencies… in Plugins.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Runtimes shared by plugins are deleted. Plugins that use them must be set up again with Install Dependencies… in Plugins." } }, "vi": { "stringUnit": { "state": "translated", "value": "Runtime dùng chung của các plugin sẽ bị xóa. Các plugin dùng chúng phải cài lại bằng Cài dependency… trong Plugin." } } } },
+    "Runtimes shared by plugins and agents are deleted. Plugins need Install Dependencies… again; agents download theirs again.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Runtimes shared by plugins and agents are deleted. Plugins need Install Dependencies… again; agents download theirs again." } }, "vi": { "stringUnit": { "state": "translated", "value": "Runtime dùng chung của plugin và agent sẽ bị xóa. Plugin phải chạy lại Cài dependency…; agent sẽ tự tải lại." } } } },
     "%@ — plugin": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%@ — plugin" } }, "vi": { "stringUnit": { "state": "translated", "value": "%@ — plugin" } } } },
     "Not installed — left over from a removed plugin": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Not installed — left over from a removed plugin" } }, "vi": { "stringUnit": { "state": "translated", "value": "Chưa cài — còn sót lại từ plugin đã gỡ" } } } },
     "Checking the plugin's files…": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Checking the plugin's files…" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đang kiểm tra các tệp của plugin…" } } } },
@@ -2041,6 +2092,12 @@
         "vi": { "stringUnit": { "state": "translated", "value": "Đã xếp hàng xuất video" } }
       }
     },
+    "Converted %@ so this Mac can play it": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Converted %@ so this Mac can play it" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đã chuyển đổi %@ để máy Mac này phát được" } }
+      }
+    },
     "Media paths now go through the footage link; save to keep them": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Media paths now go through the footage link; save to keep them" } },
@@ -3485,12 +3542,6 @@
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "match" } },
         "vi": { "stringUnit": { "state": "translated", "value": "khớp" } }
-      }
-    },
-    "pace": {
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "pace" } },
-        "vi": { "stringUnit": { "state": "translated", "value": "nhịp" } }
       }
     },
     "Music": {
@@ -5838,6 +5889,18 @@
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Show in Finder" } },
         "vi": { "stringUnit": { "state": "translated", "value": "Mở trong Finder" } }
+      }
+    },
+    "Measure picture": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Measure picture" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đo hình ảnh" } }
+      }
+    },
+    "From plugin %@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "From plugin %@" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Từ plugin %@" } }
       }
     },
     "Measure again": {

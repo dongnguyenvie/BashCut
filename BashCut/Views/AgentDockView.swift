@@ -65,6 +65,11 @@ struct AgentDockView: View {
                 TerminalPanel(session: session).id(session.id)
                     .padding(.leading, 6).padding(.top, 4)
                     .background(Color(nsColor: session.view.nativeBackgroundColor))
+                    .overlay(alignment: .bottom) {
+                        if let question = session.question {
+                            AgentQuestionCard(prompt: question, agent: session.title).id(ObjectIdentifier(question))
+                        }
+                    }
             } else {
                 VStack(spacing: 14) {
                     Image(systemName: "terminal").font(.largeTitle).foregroundStyle(.cyan)

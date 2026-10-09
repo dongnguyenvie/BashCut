@@ -31,40 +31,28 @@ public enum BeatTracker {
     /// The tempo the beats keep: a least-squares line through beat number and time, numbering beats by the median
     /// spacing so a skipped beat does not bend it. Frame times are quantized to the hop; the line averages that out.
     static func keptTempo(_ times: [Double]) -> Double {
+        let period = fit(times).period
         let gaps = zip(times, times.dropFirst()).map { $1 - $0 }.sorted()
-        let median = gaps[gaps.count / 2]
-        // Number each beat from the one before it, so the median's own quantization does not accumulate.
-        var numbers: [Double] = [0]
-        for (previous, time) in zip(times, times.dropFirst()) {
-            numbers.append(numbers[numbers.count - 1] + max(1, ((time - previous) / median).rounded()))
-        }
-        let count = Double(times.count)
-        let meanNumber = numbers.reduce(0, +) / count
-        let meanTime = times.reduce(0, +) / count
-        let covariance = zip(numbers, times).reduce(0) { $0 + ($1.0 - meanNumber) * ($1.1 - meanTime) }
-        let variance = numbers.reduce(0) { $0 + ($1 - meanNumber) * ($1 - meanNumber) }
-        let period = variance > 0 ? covariance / variance : median
-        return 60 / (period > 0 ? period : median)
+        return 60 / (period > 0 ? period : gaps[gaps.count / 2])
     }
 
     // MARK: Onsets
 
-    /// Positive change of log-compressed magnitude spectra between frames, minus a local mean, one value per hop.
-    static func onsetEnvelope(_ samples: [Float]) -> [Float] {
-        guard samples.count >= frameSize else { return [] }
+    /// Calls `visit` with each hop's magnitude spectrum (Hann window, `frameSize` samples, `frameSize / 2` bins).
+    static func spectra(_ samples: [Float], visit: (Int, [Float]) -> Void) {
+        guard samples.count >= frameSize else { return }
         let log2n = vDSP_Length(log2(Double(frameSize)))
-        guard let setup = vDSP_create_fftsetup(log2n, FFTRadix(kFFTRadix2)) else { return [] }
+        guard let setup = vDSP_create_fftsetup(log2n, FFTRadix(kFFTRadix2)) else { return }
         defer { vDSP_destroy_fftsetup(setup) }
         var window = [Float](repeating: 0, count: frameSize)
         vDSP_hann_window(&window, vDSP_Length(frameSize), Int32(vDSP_HANN_NORM))
         let bins = frameSize / 2
-        var previous = [Float](repeating: 0, count: bins)
-        var flux: [Float] = []
         var frame = [Float](repeating: 0, count: frameSize)
         var real = [Float](repeating: 0, count: bins)
         var imaginary = [Float](repeating: 0, count: bins)
         var magnitude = [Float](repeating: 0, count: bins)
         var start = 0
+        var index = 0
         while start + frameSize <= samples.count {
             samples.withUnsafeBufferPointer { buffer in
                 vDSP_vmul(buffer.baseAddress! + start, 1, window, 1, &frame, 1, vDSP_Length(frameSize))
@@ -81,15 +69,27 @@ public enum BeatTracker {
                     vDSP_zvabs(&split, 1, &magnitude, 1, vDSP_Length(bins))
                 }
             }
+            visit(index, magnitude)
+            start += hop
+            index += 1
+        }
+    }
+
+    /// Positive change of log-compressed magnitude spectra between frames, minus a local mean, one value per hop.
+    /// `bins` limits it to a band (the kick band for downbeats).
+    static func onsetEnvelope(_ samples: [Float], bins band: Range<Int>? = nil) -> [Float] {
+        let bins = band ?? 1..<(frameSize / 2)
+        var previous = [Float](repeating: 0, count: frameSize / 2)
+        var flux: [Float] = []
+        spectra(samples) { index, magnitude in
             // log(1 + γ|X|) compresses dynamics so quiet onsets count too.
             var value: Float = 0
-            for bin in 1..<bins {
+            for bin in bins {
                 let current = log1p(100 * magnitude[bin])
                 value += max(0, current - previous[bin])
                 previous[bin] = current
             }
-            flux.append(start == 0 ? 0 : value)
-            start += hop
+            flux.append(index == 0 ? 0 : value)
         }
         // Subtract a ~0.5 s moving average and keep the positive part.
         let radius = Int(envelopeRate * 0.25)
@@ -114,12 +114,11 @@ public enum BeatTracker {
 
     /// Beat period in envelope frames: the autocorrelation lag with the most energy, weighted by a log-normal
     /// prior around 120 BPM so half and double tempos lose ties.
-    static func tempoPeriod(_ envelope: [Float], minimumBPM: Double, maximumBPM: Double) -> Double? {
-        let minimumLag = Int((60 / maximumBPM * envelopeRate).rounded(.down))
-        let maximumLag = Int((60 / minimumBPM * envelopeRate).rounded(.up))
-        guard envelope.count > maximumLag + 1, minimumLag >= 1 else { return nil }
+    /// The envelope's autocorrelation for lags 0 through `maximumLag + 1` envelope frames.
+    static func autocorrelation(_ envelope: [Float], maximumLag: Int) -> [Float] {
         var correlation = [Float](repeating: 0, count: maximumLag + 2)
         let length = envelope.count - maximumLag - 1
+        guard length > 0 else { return correlation }
         envelope.withUnsafeBufferPointer { buffer in
             for lag in 0...(maximumLag + 1) {
                 var value: Float = 0
@@ -127,6 +126,14 @@ public enum BeatTracker {
                 correlation[lag] = value
             }
         }
+        return correlation
+    }
+
+    static func tempoPeriod(_ envelope: [Float], minimumBPM: Double, maximumBPM: Double) -> Double? {
+        let minimumLag = Int((60 / maximumBPM * envelopeRate).rounded(.down))
+        let maximumLag = Int((60 / minimumBPM * envelopeRate).rounded(.up))
+        guard envelope.count > maximumLag + 1, minimumLag >= 1 else { return nil }
+        let correlation = autocorrelation(envelope, maximumLag: maximumLag)
         guard correlation[0] > 0 else { return nil }
         var best = -1
         var bestScore = -Double.infinity

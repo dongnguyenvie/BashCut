@@ -64,7 +64,7 @@ public struct CapabilityService: Sendable {
 
     public init(
         roots: PluginRoots = .standard, transport: any PluginTransport = PluginRouter(),
-        healthTransport: any PluginTransport = PluginProcessRunner(timeout: 15, maximumOutputBytes: 256 * 1024),
+        healthTransport: any PluginTransport = PluginProcessRunner(timeout: PluginProcessRunner.probeTimeout, maximumOutputBytes: 256 * 1024),
         trust: PluginTrustStore? = nil
     ) {
         self.roots = roots
@@ -107,9 +107,10 @@ public struct CapabilityService: Sendable {
     /// Asks one provider for voice takes until `count` exist; a failure discards the takes made so far.
     public func synthesizeVoiceTakes(
         text: String, language: String, count: Int = 3, preferredProvider: String?,
-        projectRoot: URL, outputRoot: URL
+        projectRoot: URL, outputRoot: URL, cloneConsent: Bool = false
     ) async throws -> [GeneratedVoiceTake] {
-        let first = VoiceSynthesisCapability(text: text, language: language, takeCount: count, outputRoot: outputRoot)
+        let first = VoiceSynthesisCapability(
+            text: text, language: language, takeCount: count, outputRoot: outputRoot, cloneConsent: cloneConsent)
         try first.validate()
         let resolved = try await resolve(
             VoiceSynthesisCapability.capability, preferredProvider: preferredProvider, projectRoot: projectRoot)
@@ -119,7 +120,7 @@ public struct CapabilityService: Sendable {
                 let requested = count - generated.count
                 let batch = VoiceSynthesisCapability(
                     text: text, language: language, takeCount: requested, takeOffset: generated.count,
-                    outputRoot: outputRoot)
+                    outputRoot: outputRoot, cloneConsent: cloneConsent)
                 generated.append(contentsOf: try await run(batch, using: resolved).prefix(requested))
             }
             return generated
@@ -151,10 +152,41 @@ public struct CapabilityService: Sendable {
     }
 
     public func analyzeLoudness(
-        mediaURL: URL, bands: Bool, preferredProvider: String?, projectRoot: URL?
+        mediaURL: URL, bands: Bool, curve: Bool = false, preferredProvider: String?, projectRoot: URL?
     ) async throws -> GeneratedLoudnessMeasurement {
         try await run(
-            LoudnessCapability(mediaURL: mediaURL, bands: bands), preferredProvider: preferredProvider, projectRoot: projectRoot)
+            LoudnessCapability(mediaURL: mediaURL, bands: bands, curve: curve), preferredProvider: preferredProvider,
+            projectRoot: projectRoot)
+    }
+
+    public func alignText(
+        mediaURL: URL, text: String, language: String, preferredProvider: String?, projectRoot: URL?
+    ) async throws -> [CaptionWords.Timed] {
+        try await run(
+            CaptionsAlignCapability(mediaURL: mediaURL, text: text, language: language),
+            preferredProvider: preferredProvider, projectRoot: projectRoot)
+    }
+
+    public func analyzeEnergy(
+        mediaURL: URL, preferredProvider: String?, projectRoot: URL?
+    ) async throws -> GeneratedEnergy {
+        try await run(
+            EnergyCapability(mediaURL: mediaURL),
+            preferredProvider: preferredProvider, projectRoot: projectRoot)
+    }
+
+    public func detectSubjects(
+        _ sampling: VisionSampling, preferredProvider: String?, projectRoot: URL?
+    ) async throws -> GeneratedVision {
+        try await run(FacesCapability(sampling), preferredProvider: preferredProvider, projectRoot: projectRoot)
+    }
+
+    public func recognizeText(
+        _ sampling: VisionSampling, languages: [String], preferredProvider: String?, projectRoot: URL?
+    ) async throws -> GeneratedVision {
+        try await run(
+            TextRecognitionCapability(sampling, languages: languages), preferredProvider: preferredProvider,
+            projectRoot: projectRoot)
     }
 
     public func syncAudio(
@@ -188,37 +220,23 @@ public struct CapabilityService: Sendable {
     public func resolve(
         _ capability: String, preferredProvider: String?, projectRoot: URL?, kind: LibraryKind? = nil
     ) async throws -> ResolvedPluginProvider {
-        func matches(_ provider: PluginProvider) -> Bool {
-            provider.capability == capability && (kind.map(provider.serves) ?? true)
-        }
-        let declaring = catalog(projectRoot: projectRoot).plugins.filter { plugin in
-            (plugin.manifest.providers ?? []).contains(where: matches)
-        }
-        guard !declaring.isEmpty else {
-            throw PluginError.invalid(
-                "Install a plugin that provides \(capability)" + (kind.map { " for \($0.rawValue) items" } ?? ""))
-        }
-        let all = catalog(projectRoot: projectRoot).plugins
-        let problems = declaring.contains { !$0.manifest.requirements.isEmpty }
-            ? PluginRequirements.problems(all) { (knownAvailability($0) ?? availability($0)) == .ready } : [:]
-        let candidates = declaring.filter { availability($0) == .ready && problems[$0.id] == nil }
-        guard !candidates.isEmpty else {
-            let reasons = declaring.map { "\($0.manifest.displayName): \(problems[$0.id] ?? availability($0).detail)" }
-            throw PluginError.invalid("No enabled provider for \(capability). " + reasons.joined(separator: "; "))
-        }
-        let ready = await withTaskGroup(of: InstalledPlugin?.self, returning: [InstalledPlugin].self) { group in
-            for plugin in candidates {
-                group.addTask { await health(plugin).state == .ready ? plugin : nil }
-            }
-            var values: [InstalledPlugin] = []
-            for await value in group { if let value { values.append(value) } }
+        var report = capabilityStatus(capability, projectRoot: projectRoot, kind: kind)
+        guard report.reason == nil else { throw CapabilityUnavailable(report) }
+        let runnable = Set(report.providers.filter { $0.state == .ready }.map(\.plugin))
+        let candidates = catalog(projectRoot: projectRoot).plugins.filter { runnable.contains($0.id) }
+        let checked = await withTaskGroup(of: PluginHealth.self, returning: [String: PluginHealth].self) { group in
+            for plugin in candidates { group.addTask { await health(plugin) } }
+            var values: [String: PluginHealth] = [:]
+            for await value in group { values[value.pluginID] = value }
             return values
         }
-        let available = Set(ready.flatMap { $0.manifest.providers ?? [] }.filter(matches).map(\.id))
+        report.healthChecked = true
+        report.mark(checked)
+        let available = Set(report.providers.filter { $0.state == .ready }.map(\.provider))
         guard let resolved = PluginProviderResolver.resolve(
             capability: capability, projectPreference: preferredProvider,
             userPreference: nil, plugins: candidates, availableProviderIDs: available)
-        else { throw PluginError.invalid("No healthy provider is available for \(capability)") }
+        else { throw CapabilityUnavailable(report) }
         return resolved
     }
 }

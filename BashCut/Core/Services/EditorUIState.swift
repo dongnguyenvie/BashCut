@@ -36,6 +36,8 @@ public final class EditorUIState {
     public var pluginPanelViews: [String: String] = [:]
     /// The plugin view shown in a sheet (`<plugin>/<view>`, plugin API 8 `location: sheet`).
     public var pluginSheet: String?
+    /// One of `UIAction.mediaSources`: what the Media panel lists.
+    public var mediaSource = "footage"
     /// Search and filters of each library panel, by panel name.
     public var libraryFilters: [String: LibraryPanelFilter] = [:]
     /// The library item sheet: Save selection as…, Duplicate & Edit… or Rename….

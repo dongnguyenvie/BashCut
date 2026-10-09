@@ -19,7 +19,7 @@ extension ProjectDocument {
         handle("plugins.search") { document, arguments, _ in
             await document.plugins.refreshRegistry(force: arguments.bool("refresh"))
             guard document.plugins.registry != nil else {
-                throw RPCFailure(-32003, document.plugins.registryError ?? "The plugin registry is unavailable")
+                throw RPCFailure(-32003, document.plugins.registryError ?? "The plugin registry is unavailable", category: .unavailable)
             }
             let listings = document.plugins.listings(
                 query: arguments.optionalString("query") ?? "", capability: arguments.optionalString("capability"),
@@ -33,6 +33,22 @@ extension ProjectDocument {
         handle("plugins.updates") { document, _, _ in
             await document.plugins.refreshRegistry()
             return .array(document.plugins.updates.map(\.json))
+        }
+        handle("plugins.bundles") { document, _, _ in
+            await document.plugins.refreshRegistry()
+            guard let registry = document.plugins.registry else {
+                throw RPCFailure(-32003, document.plugins.registryError ?? "The plugin registry is unavailable", category: .unavailable)
+            }
+            return .object([
+                "bundles": .array(registry.bundles.map { bundle in
+                    .object([
+                        "id": .string(bundle.id), "name": .string(bundle.name.text),
+                        "summary": bundle.summary.map { .string($0.text) } ?? .null,
+                        "plugins": .array(document.plugins.members(of: bundle).map(\.json)),
+                    ])
+                }),
+                "stale": document.plugins.registryError.map(JSONValue.string) ?? .null,
+            ])
         }
         handle("plugins.validate") { document, arguments, _ in
             switch try PluginSourceArgument(arguments) {
@@ -64,7 +80,7 @@ extension ProjectDocument {
             let plugin = try document.requirePlugin(arguments.string("plugin"))
             do {
                 try document.plugins.removePlugin(plugin, deleteData: arguments.bool("data"))
-            } catch { throw RPCFailure(-32602, error.localizedDescription) }
+            } catch { throw RPCFailure.from(error, fallbackCode: -32602) }
             return .object(["removed": .string(plugin.id), "data": .bool(arguments.bool("data"))])
         }
         handleAuthored("plugins.setup") { document, arguments, _ in
@@ -80,6 +96,8 @@ extension ProjectDocument {
 
     /// `plugins install`: a registry plugin by ID, or a plugin from a path or link.
     private func installPluginCommand(_ arguments: CommandArguments, author: Author) throws -> JSONValue {
+        if let bundle = arguments.optionalString("bundle") { return try installBundleCommand(bundle, arguments, author: author) }
+        guard arguments.optionalString("only") == nil else { throw RPCFailure(-32602, "only is for bundle") }
         if let source = try PluginSourceArgument(arguments) {
             guard arguments.optionalString("plugin") == nil, arguments.optionalString("version") == nil else {
                 throw RPCFailure(-32602, "Give either a registry plugin or a path/url, not both")
@@ -100,9 +118,36 @@ extension ProjectDocument {
         let job = jobs.start("plugins.install", author: author, detail: id, work: { [weak self] reporter in
             guard let self else { throw CancellationError() }
             reporter.detail("Downloading \(id)")
-            try await plugins.requestInstall(id, version: version)
+            let outcome = try await plugins.requestInstall(id, version: version)
             ui.showPlugins = true
-            return .object(["plugin": .string(id), "approval": .string("pending")])
+            return .object(["plugin": .string(id)].merging(outcome.json) { $1 })
+        }, finished: { [weak self] outcome in
+            guard case .failure(let error) = outcome, !JobCenter.isCancellation(error) else { return }
+            self?.message = id + ": " + error.localizedDescription
+        })
+        return .object(["job": .string(job), "state": .string("running")])
+    }
+
+    /// `plugins install --bundle`: downloads the bundle's plugins as a job, then shows its one approval.
+    private func installBundleCommand(_ id: String, _ arguments: CommandArguments, author: Author) throws -> JSONValue {
+        guard arguments.optionalString("plugin") == nil, arguments.optionalString("version") == nil,
+              try PluginSourceArgument(arguments) == nil, arguments.optionalString("scope") == nil, !arguments.bool("link")
+        else { throw RPCFailure(-32602, "Give a bundle alone (with only), not a plugin, path or url") }
+        let only = arguments.optionalString("only").map { text in
+            text.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        }
+        let job = jobs.start("plugins.install", author: author, detail: id, work: { [weak self] reporter in
+            guard let self else { throw CancellationError() }
+            reporter.detail("Downloading \(id)")
+            let outcome = try await plugins.requestBundle(id, only: only)
+            if outcome != .nothingToInstall { ui.showPlugins = true }
+            var fields: [String: JSONValue] = ["bundle": .string(id)]
+            if outcome == .pending, let pending = plugins.pendingBundle {
+                fields["checked"] = .array(pending.items.filter(\.selected).map { .string($0.id) })
+                fields["unchecked"] = .array(pending.items.filter { !$0.selected }.map { .string($0.id) })
+                fields["skipped"] = .array(pending.skipped.map { .object(["plugin": .string($0.id), "reason": .string($0.reason)]) })
+            }
+            return .object(fields.merging(outcome.json) { $1 })
         }, finished: { [weak self] outcome in
             guard case .failure(let error) = outcome, !JobCenter.isCancellation(error) else { return }
             self?.message = id + ": " + error.localizedDescription
@@ -158,7 +203,7 @@ enum PluginSourceArgument {
             self = .path(URL(fileURLWithPath: path))
         case (nil, let url?):
             do { self = .link(try PluginLink(parsing: url, ref: ref, sha256: sha256)) } catch {
-                throw RPCFailure(-32602, error.localizedDescription)
+                throw RPCFailure.from(error, fallbackCode: -32602)
             }
         default:
             throw RPCFailure(-32602, "Give either a path or a url, not both")

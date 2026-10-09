@@ -19,7 +19,9 @@ extension ProjectDocument {
 
     /// Queues preview proxies for video media: the listed IDs, or every video when nil. Without `force`,
     /// media that already has a proxy or is light enough to preview directly (see `ProxyManager.Policy`)
-    /// is skipped. Returns one status per media: `queued` (with its job), `exists`, `not-needed` or `skipped`.
+    /// is skipped. Video this Mac cannot decode is converted instead (`requestConversion`). Returns one status per
+    /// media: `queued` (with its job), `exists`, `not-needed`, `skipped`, `converting` (with its job and `codec`), or
+    /// `unsupported` (with `codec` and `reason`) when it cannot be converted either.
     @discardableResult
     func requestProxies(mediaIDs: [String]? = nil, force: Bool = false, author: Author = .user) async throws
         -> [JSONValue]
@@ -52,8 +54,15 @@ extension ProjectDocument {
                 result["status"] = .string("exists")
                 continue
             }
+            let probe = try? await manager.probe(source)
+            if let probe, !probe.decodable {
+                result.merge(requestConversion(of: media, source: source, codec: probe.codec, root: root, author: author)) {
+                    $1
+                }
+                continue
+            }
             if !force {
-                guard let probe = try? await manager.probe(source) else {
+                guard let probe else {
                     result["status"] = .string("skipped")
                     continue
                 }

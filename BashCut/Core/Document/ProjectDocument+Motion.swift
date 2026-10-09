@@ -1,4 +1,5 @@
 import BashCutAutomation
+import BashCutEngine
 import BashCutProject
 import Foundation
 
@@ -61,6 +62,14 @@ extension ProjectDocument {
         case "opacity": return item["opacity"]?.double ?? 1
         case "volume": return item["volumeDb"]?.double ?? 0
         case "zoom": return item["transform"]?.object["zoom"]?.double ?? 1
+        case let path where path.contains("."):
+            let parts = path.split(separator: ".", maxSplits: 1).map(String.init)
+            if let value = item[parts[0]]?.object[parts[1]]?.double { return value }
+            if parts[0] == "textStyle" {
+                let defaults = TextPresetStyle.defaults(item.textPreset).merging(["positionX": 0.5, "lineHeight": 1.28]) { $1 }
+                return defaults[parts[1]] ?? 0
+            }
+            return ["contrast": 1, "saturation": 1, "lutStrength": 1][parts[1]] ?? 0
         default: return item["transform"]?.object[property]?.double ?? 0
         }
     }
@@ -169,7 +178,7 @@ extension ProjectDocument {
                     throw RPCFailure(-32602, "keyframes must be a JSON object")
                 }
                 let motion: ItemMotion
-                do { motion = try ItemMotion(json: json) } catch { throw RPCFailure(-32602, error.localizedDescription) }
+                do { motion = try ItemMotion(json: json) } catch { throw RPCFailure.from(error, fallbackCode: -32602) }
                 revision = try document.setMotion(motion, item: id, author: author, baseRevision: base)
             } else if let preset = arguments.optionalString("preset") {
                 revision = try document.applyMotionPreset(preset, item: id, author: author, baseRevision: base)

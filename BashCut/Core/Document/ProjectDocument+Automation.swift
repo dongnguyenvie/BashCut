@@ -3,6 +3,7 @@ import BashCutDocument
 import BashCutEngine
 import BashCutInterchange
 import BashCutProject
+import BashCutStorage
 import Foundation
 
 extension ProjectDocument {
@@ -25,6 +26,24 @@ extension ProjectDocument {
         registerAdjustmentCommands()
         registerImportCommands()
         registerProxyCommands()
+        registerMediaAnalysisCommands()
+        registerSourceTranscriptCommands()
+        registerMediaDescriptionCommands()
+        registerMediaStillsCommands()
+        registerMediaInventoryCommands()
+        registerReviewTimingCommands()
+        registerTimelineStillsCommands()
+        registerColorMeasureCommands()
+        registerBeatGridCommands()
+        registerVisionCommands()
+        registerSpeechRateCommands()
+        registerVoiceCheckCommands()
+        registerVoiceTakeCommands()
+        registerPlanCommands()
+        registerWorkflowCommands()
+        registerSelectsCommands()
+        registerVariantCommands()
+        registerPackagingCommands()
         registerStorageCommands()
         registerLibraryCommands()
         registerAgentKitCommands()
@@ -65,17 +84,25 @@ extension ProjectDocument {
         }
     }
 
-    /// Edit and privileged commands: the registry has already rejected requests without a session token.
+    /// Edit and privileged commands: the registry has already rejected requests without a session token. A result
+    /// object of a command that changed the project carries `changes`, a bounded digest of what changed (P2-G1).
     func handleAuthored(_ method: String, _ body: @escaping AuthoredCommandBody) {
         handle(method) { document, arguments, author in
             guard let author else { throw RPCFailure(-32001, "A live agent session token is required") }
-            return try await body(document, arguments, author)
+            let before = document.project
+            let result = try await body(document, arguments, author)
+            guard case .object(var fields) = result, fields["changes"] == nil,
+                document.project.revision != before.revision, document.project["id"] == before["id"]
+            else { return result }
+            fields["changes"] = ChangeDigest.json(before: before, after: document.project)
+            return .object(fields)
         }
     }
 
     private func registerReadCommands() {
         handle("context.get") { document, _, _ in
-            .object([
+            let analysis = await document.analysisReadiness()
+            return .object([
                 "project": document.fileURL.map { .string($0.path) } ?? .null,
                 "rev": .integer(document.project.revision), "playhead": .integer(document.playhead),
                 "selection": document.selectedID.map(JSONValue.string) ?? .null,
@@ -85,7 +112,10 @@ extension ProjectDocument {
                 "busy": .bool(document.busy), "saving": .bool(document.saving),
                 "knowledge": document.agents.knowledgeStore.summary().json,
                 "scope": document.agentScopeJSON,
-                "agentPermissions": document.agentPermissionsJSON,
+                "agentPermissions": document.agentPermissionsJSON, "analysis": analysis,
+                "plan": ProjectPlan.summary(document.project), "workflow": document.workflowContext,
+                "contentLanguage": document.project["contentLanguage"] ?? .null,
+                "recentFailures": document.registry.recentFailures(token: CommandCaller.token),
             ])
         }
         handle("project.get") { document, _, _ in .object(document.project.fields) }
@@ -93,35 +123,78 @@ extension ProjectDocument {
             arguments.optionalString("format") == "text"
                 ? .string(TimelineSummary.text(document.project)) : TimelineSummary.json(document.project)
         }
-        handle("media.list") { document, _, _ in
-            .array(document.project.media.map { media in
+        handle("media.list") { document, arguments, _ in
+            var list: [JSONValue] = []
+            for media in document.project.media {
                 var fields = media.fields
                 fields["proxy"] = .string(document.proxyState(media).rawValue)
-                return .object(fields)
-            })
+                if arguments.bool("analysis") {
+                    fields["analysis"] = document.mediaAnalysisOverview(media)
+                    fields["transcript"] = await document.mediaTranscriptOverview(media)
+                }
+                // Shots stay out of the list; media.description reads them.
+                if fields["description"] != nil {
+                    fields["description"] = arguments.bool("analysis")
+                        ? document.mediaDescriptionCoverage(media) : media.shotDescription?.summaryJSON ?? .null
+                }
+                list.append(.object(fields))
+            }
+            return .array(list)
         }
-        handle("review.run") { document, _, _ in
-            .array(
-                TimelineReview.run(document.project, fontAvailable: ProjectFonts.isAvailable).map { issue in
-                    .object([
-                        "id": .string(issue.id), "title": .string(issue.title),
-                        "detail": .string(issue.detail), "frame": .integer(issue.frame),
-                    ])
-                })
+        handle("review.run") { document, arguments, _ in try await document.runReview(arguments) }
+        handleAuthored("review.measure") { document, arguments, author in
+            try document.startReviewMeasure(
+                author: author, picture: arguments.optionalBool("picture") ?? true,
+                plugins: arguments.optionalBool("plugins") ?? true)
         }
-        handle("export.status") { document, _, _ in document.exports.statusJSON }
+        handle("review.picture") { document, arguments, _ in
+            guard let picture = document.reviewPicture else {
+                throw RPCFailure(-32602, "No picture measurement yet: run review measure first")
+            }
+            return picture.json(
+                for: document.project, from: arguments.optionalInt("from") ?? 0, to: arguments.optionalInt("to"),
+                samples: arguments.optionalBool("samples") ?? true, cuts: arguments.optionalBool("cuts") ?? true)
+        }
+        handle("export.status") { document, _, _ in
+            var status = document.exports.statusJSON.object
+            status["delivered"] = .array(document.deliveredQC.map(\.json))
+            return .object(status)
+        }
     }
 
     private func registerEditCommands() {
         handleAuthored("timeline.apply") { document, arguments, author in
             let label = try arguments.string("label")
-            let operation = EditOperation.group(label: label, author: author, ops: try WireOperations.decode(arguments.value("ops")))
+            let ops = try WireOperations.decode(arguments.value("ops"), project: document.project)
+            let baseRevision = try arguments.int("baseRev")
+            let fingerprint = try EditFingerprint.of(ops, baseRevision: baseRevision)
+            let operation = EditOperation.group(label: label, author: author, ops: ops)
             if arguments.bool("dryRun") {
-                return try document.dryRunEdit(operation, author: author, baseRevision: arguments.int("baseRev"))
+                await document.loadReviewTranscripts()
+                guard case .object(var fields) = try document.dryRunEdit(operation, author: author, baseRevision: baseRevision)
+                else { throw RPCFailure(-32603, "Dry run returned no object") }
+                fields["fingerprint"] = .string(fingerprint)
+                return .object(fields)
+            }
+            if let expected = arguments.optionalString("expectFingerprint"), expected != fingerprint {
+                throw RPCFailure(-32602, "The ops or baseRev differ from the dry run that was reviewed", data: .object([
+                    "expected": .string(expected), "actual": .string(fingerprint),
+                    "remediation": .object([
+                        "command": .string("timeline.apply"),
+                        "hint": .string("Dry-run these ops, review the result, then apply with its fingerprint."),
+                    ]),
+                ]))
             }
             let result = try document.commitEdit(
-                operation, label: label, author: author, baseRevision: arguments.int("baseRev"))
-            return .object(["rev": .integer(result.revision), "changed": .bool(result.changed)])
+                operation, label: label, author: author, baseRevision: baseRevision, note: try Self.editNote(arguments))
+            return .object([
+                "rev": .integer(result.revision), "changed": .bool(result.changed), "fingerprint": .string(fingerprint),
+            ])
+        }
+        handle("timeline.changes") { document, arguments, _ in
+            TimelineChanges.json(
+                history: document.history, limit: try arguments.int("limit"), author: arguments.optionalString("author"),
+                isAgent: \.isAgent)
         }
         handleAuthored("timeline.undo") { document, arguments, author in
             .object(["rev": .integer(try document.commitUndo(author: author, baseRevision: arguments.int("baseRev")))])
@@ -129,6 +202,19 @@ extension ProjectDocument {
         handleAuthored("timeline.redo") { document, arguments, author in
             .object(["rev": .integer(try document.commitRedo(author: author, baseRevision: arguments.int("baseRev")))])
         }
+    }
+
+    /// `why` and `evidence` of an edit command (P2-G3), bounded so the history journal stays small.
+    static func editNote(_ arguments: CommandArguments) throws -> EditNote? {
+        let why = arguments.optionalString("why")?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let evidence = (arguments.optionalString("evidence") ?? "").split(separator: ";")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+        guard (why?.count ?? 0) <= 500 else { throw RPCFailure(-32602, "why must be at most 500 characters") }
+        guard evidence.count <= 20, evidence.allSatisfy({ $0.count <= 200 }) else {
+            throw RPCFailure(-32602, "evidence takes at most 20 entries of 200 characters each")
+        }
+        let note = EditNote(why: why?.isEmpty == true ? nil : why, evidence: evidence)
+        return note.isEmpty ? nil : note
     }
 
     /// Resolves an export name and optional directory against the saved project's folder.
@@ -153,8 +239,16 @@ extension ProjectDocument {
             }
             let (name, directory) = try document.exportDestination(arguments)
             guard document.project.duration > 0 else { throw RPCFailure(-32602, "The timeline is empty") }
+            // A final export by an agent needs a passing draft audit of this timeline or the user's G5 approval
+            // (spec 13 §7), whatever agentPermissions say; drafts and the user are never blocked.
+            if author != .user, preset != .quickDraft, let log = document.runLog,
+                let failure = WorkflowChecklist.draftGuard(document.project, entries: log.entries())
+            {
+                throw Self.guardFailure(failure)
+            }
             let includeSubRip = arguments.bool("includeSRT")
             let normalizeAudio = arguments.bool("normalizeAudio")
+            let bitRate = arguments.optionalDouble("bitrate").map { Int($0 * 1_000_000) }
             let output = directory.appendingPathComponent(name).appendingPathExtension(preset.fileExtension)
             // Fail before asking the user to approve an export that cannot start.
             let reserved = document.exports.queue.reservedOutputs
@@ -171,12 +265,13 @@ extension ProjectDocument {
                     "captions": includeSubRip ? "include .srt" : "burned in only",
                     "normalization": normalizeAudio ? "two-pass LUFS" : "off",
                     "output": output.path, "preset": preset.title,
+                    "bitrate": bitRate.map { "\(Double($0) / 1_000_000) Mbps" } ?? "preset default",
                 ]
             ) { [weak document] in
                 guard let document else { throw RPCFailure(-32000, "Editor closed") }
                 try document.startExportAuthorized(
                     name: name, preset: preset, directory: directory, includeSubRip: includeSubRip,
-                    normalizeAudio: normalizeAudio, author: author)
+                    normalizeAudio: normalizeAudio, author: author, videoBitRate: bitRate)
             }
             if !approval.autoApproved {
                 document.message = String(localized: "Waiting for approval: export.start")
@@ -240,23 +335,16 @@ extension ProjectDocument {
             if let frame, frame >= document.project.duration {
                 throw RPCFailure(-32602, "frame must be within the timeline")
             }
-            let capture = try await document.captureAgentFrame(at: frame)
+            var maximum = 1_280
+            if let width = arguments.bool("phone") ? 390 : arguments.optionalInt("width") {
+                let project = document.project
+                maximum = Int((Double(width) * Double(max(project.width, project.height)) / Double(max(1, project.width))).rounded())
+            }
+            let capture = try await document.captureAgentFrame(at: frame, maximumDimension: maximum)
             return .object([
                 "path": .string(capture.url.path), "frame": .integer(capture.frame),
                 "width": .integer(capture.width), "height": .integer(capture.height),
             ])
-        }
-        handle("ui.panel") { document, arguments, _ in
-            let name = try arguments.string("panel")
-            guard let tab = LibraryTab(panelName: name) else {
-                throw RPCFailure(-32602, "Unknown panel \(name)")
-            }
-            document.showLibraryTab(tab)
-            return .bool(true)
-        }
-        handle("ui.notify") { document, arguments, _ in
-            document.message = String(try arguments.string("message").prefix(2000))
-            return .bool(true)
         }
     }
 

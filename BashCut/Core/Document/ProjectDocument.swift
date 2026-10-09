@@ -39,6 +39,9 @@ final class ProjectDocument {
     var privilegedApproval: PrivilegedApprovalPrompt?
     /// An agent edit outside its attached scope, waiting for the user (#356).
     var scopeHold: AgentScopeHold?
+    /// The workflow gate waiting for the user (P1-D5), and this session's checkpoints.
+    var checkpoint: CheckpointRequest?
+    var checkpoints: [CheckpointRequest] = []
     var fileURL: URL?
     let sourceViewer = SourceViewerModel()
     let waveforms = WaveformModel()
@@ -46,6 +49,20 @@ final class ProjectDocument {
     let fileSync = FileSyncController()
     /// Report of the timeline import that created the open project.
     var importReport: TimelineImport?
+    /// The loudness the last export of this session measured, for review (#431); not saved.
+    var reviewLoudness: ReviewLoudness?
+    /// The file the last export of this session wrote and the revision it shows (`review.sync --rendered`).
+    var lastRender: (url: URL, revision: Int)?
+    /// The last picture measurement (`review.measure`, #432), for review; not saved.
+    var reviewPicture: ReviewPicture?
+    /// What plugin review checks reported on the last `review.measure` (#451); not saved.
+    var reviewPluginIssues: ReviewPluginIssues?
+    /// Stored transcripts of the media the timeline plays, loaded by `review.run` for cuts inside words (P1-E1).
+    var reviewTranscripts: [String: SourceTranscript] = [:]
+    /// The issues of each `review.run` this session, by revision (P1-E2); not saved.
+    var reviewRounds: [(revision: Int, issues: [ReviewIssue], project: Project)] = []
+    /// The exported files of this session measured (P1-E6), one per preset; not saved.
+    var deliveredQC: [DeliveredFacts] = []
     var sessionID = UUID()
     /// Socket server, command registry and the external-agent token file.
     let automation: AutomationController
@@ -209,6 +226,7 @@ final class ProjectDocument {
         }
         restoreLatestAgentChangeFromHistory()
         relinkOlderMediaPaths(projectRoot: url.deletingLastPathComponent())
+        copyProjectLooksToLibrary()
         rebuild()
         emitPluginEvent(.projectOpened, [
             "path": .string(url.path), "name": .string(project.name), "rev": .integer(project.revision),
@@ -240,6 +258,11 @@ final class ProjectDocument {
         for pending in plugins.confirmations { resolvePluginConfirm(pending.id, run: false) }
         if privilegedApproval != nil { resolvePrivilegedApproval(false) }
         resolveScopeHold(.reject)
+        resolveCheckpoint(.withdrawn)
+        checkpoints.removeAll()
+        reviewTranscripts = [:]
+        reviewRounds = []
+        deliveredQC = []
         // Terminals stay open; pending session lookups end with the old project.
         let liveBookmarks = agents.liveBookmarks()
         agents.resetProjectState()
@@ -329,10 +352,11 @@ extension ProjectDocument {
     }
 
     /// `commit`, also reporting whether the edit changed anything. An edit that changes nothing keeps the
-    /// revision, adds no undo step, leaves the agent diff alone and emits no plugin event.
+    /// revision, adds no undo step, leaves the agent diff alone and emits no plugin event. `note` (why and evidence)
+    /// stays with the undo step.
     func commitEdit(
         _ operation: EditOperation, label: String, author: Author = .user, baseRevision: Int? = nil,
-        coalescingKey: String? = nil
+        coalescingKey: String? = nil, note: EditNote? = nil
     ) throws -> (revision: Int, changed: Bool) {
         let scope = try checkAgentScope(
             operation, label: label, author: author, baseRevision: baseRevision, coalescingKey: coalescingKey)
@@ -342,7 +366,8 @@ extension ProjectDocument {
         do {
             try ensureEditable(author: author)
             changed = try history.apply(
-                operation, label: label, author: author, baseRevision: baseRevision, coalescingKey: coalescingKey)
+                operation, label: label, author: author, baseRevision: baseRevision, coalescingKey: coalescingKey,
+                note: note)
         } catch {
             DebugLog.write(
                 "edit", "REJECTED edit by \(author) base=\(baseRevision.map(String.init) ?? "-") "
@@ -363,7 +388,9 @@ extension ProjectDocument {
             }
             message = String(format: String(localized: "Canvas set to %@ to match the first clip"), name)
         }
-        emitPluginEvent(.editCommitted, editEventPayload(label: label, author: author, before: before))
+        var payload = editEventPayload(label: label, author: author, before: before)
+        if let why = note?.why, !why.isEmpty { payload["why"] = .string(why) }
+        emitPluginEvent(.editCommitted, payload)
         DebugLog.write(
             "edit", "edit by \(author) rev \(before.revision)→\(project.revision) op=\(Self.describe(operation))"
                 + (before.tracks.map(\.id) == project.tracks.map(\.id) ? "" : " layers: \(layoutSummary())"))
@@ -385,7 +412,7 @@ extension ProjectDocument {
 
     func dryRunEdit(_ operation: EditOperation, author: Author, baseRevision: Int) throws -> JSONValue {
         try ensureEditable(author: author)
-        return try TimelineDryRun.evaluate(operation, on: project, baseRevision: baseRevision)
+        return try TimelineDryRun.evaluate(operation, on: project, baseRevision: baseRevision, transcripts: reviewTranscripts)
     }
 
     @discardableResult
@@ -431,7 +458,7 @@ extension ProjectDocument {
     private func ensureEditable(author: Author) throws {
         // External reloads resolve conflicts themselves; everything else waits for the user.
         guard author == .external || !conflict else {
-            throw ProjectError.invalid(String(localized: "Resolve the file conflict before editing."))
+            throw FileConflictError(String(localized: "Resolve the file conflict before editing."))
         }
         if author.isAgent, busy || timelineGestureActive {
             throw AutomationBusy()
@@ -453,7 +480,7 @@ extension ProjectDocument {
 /// Thrown when an agent edit arrives while the user is mid-gesture or a long operation runs.
 struct AutomationBusy: LocalizedError, RPCFailureProviding {
     var errorDescription: String? { rpcFailure.message }
-    var rpcFailure: RPCFailure { RPCFailure(-32003, "The editor is busy or has a file conflict; retry later") }
+    var rpcFailure: RPCFailure { RPCFailure(-32003, "The editor is busy or has a file conflict; retry later", category: .busyRunning) }
 }
 
 extension Author {

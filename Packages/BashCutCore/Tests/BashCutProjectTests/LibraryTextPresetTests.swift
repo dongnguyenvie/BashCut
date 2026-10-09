@@ -23,7 +23,7 @@ struct LibraryTextPresetTests {
         try #require(project.tracks.flatMap(\.items).first { $0.id == id })
     }
 
-    @Test("Save selection keeps the declared textStyle fields (font and colours too, #414) and a motion preset; placing gives them back")
+    @Test("Save selection keeps the whole textStyle (font, colours, open fields) and a motion preset; placing gives them back")
     func roundTrip() throws {
         var styled = text([
             "size": .number(0.0712345), "positionY": .number(0.4), "strokeWidth": .integer(6),
@@ -40,7 +40,7 @@ struct LibraryTextPresetTests {
             "textStyle": .object([
                 "size": .number(0.0712), "positionY": .number(0.4), "strokeWidth": .integer(6),
                 "highlight": .string("#FF0000"), "font": .string("Montserrat-ExtraBold"), "fill": .string("#FFD400"),
-                "stroke": .string("#000000"),
+                "stroke": .string("#000000"), "unknown": .string("dropped"),
             ]),
         ])
         try LibraryItem(id: "styled", kind: .textPreset, name: "Styled", params: params).validate()
@@ -56,16 +56,39 @@ struct LibraryTextPresetTests {
         #expect(LibraryTextPreset(item: placed, project: base).params() == params.merging(["text": .string("Other")]) { $1 })
     }
 
-    @Test("Hand-made keys are not an animation; a preset at another length is not either")
+    @Test("Hand-made keys and a preset at another length are kept as a template that fits the new length (C10)")
     func keysThatAreNotAPreset() throws {
         var item = text()
         let base = try project(item)
-        item["keyframes"] = ItemMotion(keys: ["opacity": [.init(frame: 0, value: 0.5)]]).json
-        #expect(LibraryTextPreset(item: item, project: base).animation == nil)
+        item["keyframes"] = ItemMotion(keys: ["opacity": [.init(frame: 0, value: 0.5), .init(frame: 59, value: 1)]]).json
+        let style = LibraryTextPreset(item: item, project: base)
+        #expect(style.animation == nil)
+        #expect(style.params()["animation"] == .object(["opacity": .array([
+            .object(["t": .number(0), "value": .number(0.5)]), .object(["t": .number(1), "value": .number(1)]),
+        ])]))
+        var longer = Item(id: "l", at: 0, duration: 120)
+        let patch = try LibraryTextPreset(params: style.params()).patch(for: longer, project: base)
+        for (key, value) in patch { longer[key] = value }
+        #expect(longer.motion?.keys["opacity"]?.map(\.frame) == [0, 119])
         item["keyframes"] = try MotionPreset.motion(
             "fade-in-out", duration: 30, width: base.width, height: base.height, fps: base.fps).json
         #expect(LibraryTextPreset(item: item, project: base).animation == nil)
-        #expect(LibraryTextPreset(item: item, project: nil).animation == nil)
+        #expect(LibraryTextPreset(item: item, project: base).animationKeys != nil)
+    }
+
+    @Test("Open preset names, open style fields and word styles are kept")
+    func openFields() throws {
+        let params: [String: JSONValue] = [
+            "textPreset": .string("my-lower-third"),
+            "textStyle": .object(["background": .object(["color": .string("#000000"), "opacity": .number(0.6)])]),
+            "wordStyle": .object(["spoken": .object(["fill": .string("#FFD400")])]),
+        ]
+        let style = try LibraryTextPreset(params: params)
+        #expect(style.params() == params)
+        let base = try project(text())
+        let patch = try style.patch(for: item(base), project: base)
+        #expect(patch["wordStyle"] == params["wordStyle"])
+        #expect(patch["textPreset"] == .string("my-lower-third"))
     }
 
     @Test("Apply sets the preset, the stored style over the item's and the animation in one undoable edit")
@@ -104,7 +127,8 @@ struct LibraryTextPresetTests {
             ["textStyle": .object(["positionY": .string("top")])],
             ["textStyle": .object(["font": .string("")])],
             ["textStyle": .object(["fill": .string("yellow")])],
-            ["textStyle": .object(["outline": .string("#000000")])],
+            ["wordStyle": .string("wiggle")],
+            ["animation": .object(["spin": .array([])])],
             ["animation": .string("spin")],
             ["text": .integer(1)],
         ]

@@ -15,6 +15,8 @@ public struct StoredExportMetrics: Codable, Sendable, Equatable {
     public let loudnessVerified: Bool
     public let appliedGainDb: Double?
     public let completedAt: Date
+    /// Review issues the project kept with a reason when it was exported (P1-E2), by issue ID.
+    public var acceptedIssues: [String: String]?
 
     public init(
         path: String, preset: String, duration: Double, bytes: Int64, cutCount: Int,

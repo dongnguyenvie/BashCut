@@ -3,7 +3,8 @@ import BashCutProject
 import Foundation
 
 /// `captions.transcribe`: the plugin writes an SRT file for a media file into the request folder, and optionally a
-/// JSON file of word timings (`wordsPath`: `[{"text", "start", "end"}]` in seconds) for word-by-word captions. With
+/// JSON file of word timings (`wordsPath`: `[{"text", "start", "end"}]` in seconds, optionally with `confidence`,
+/// `speaker`, `event` and `noSpeechProb` per word) for word-by-word captions and the source transcript. With
 /// `startSeconds`/`endSeconds` only that stretch of the media is asked for; times stay in media seconds (a provider
 /// that ignores the range transcribes everything and the host keeps the range).
 public struct TranscriptionCapability: CapabilityAdapter {

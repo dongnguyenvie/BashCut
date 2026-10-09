@@ -45,6 +45,20 @@ Common error codes:
 | `-32601` | Unknown command |
 | `-32602` | Invalid or missing parameters, or a rejected edit |
 
+Every error's `data` also carries `category`, `retryable` and, where a factual next step exists, `remediation`
+(`{command?, hint}`); fields a command sets itself (such as a stale revision's `expected` and `actual`) stay.
+Categories: `malformed`, `invalid_request`, `unknown_command`, `invalid_arguments`, `permission`,
+`stale_revision`, `out_of_scope`, `unavailable`, `capability_missing` (no plugin provider can serve; `data.reason`
+is `missing`, `not_configured` or `unhealthy` and `data.providers` lists each provider's state, as `capabilities get`
+does), `unsupported_media` (this Mac cannot
+decode a media's video; `data.media` lists it with its codec and timeline frames), `internal`, and for `-32003`:
+`busy_dialog` (answer or close the open dialog: `ui dialog`), `busy_approval` (an earlier request waits for the
+user), `busy_running` (the same work is running), `file_conflict`, `not_available_now`, and the two workflow guards
+for agents (never the user): `audit_missing` (a final export without a passing draft audit of the current timeline
+or the user's G5 approval, or G2 without a strategy audit) and `recipe_unread` (G2 before the plan's recipe skill
+was read), each with `remediation.command` such as `review packet --point draft`. `context get` ›
+`recentFailures` lists your session's failures of the last 15 minutes and how many in a row repeat.
+
 ## Terminal dock
 
 Open a terminal with **Agent → + → Claude terminal / Codex terminal / Shell terminal**. Each tab is a real
@@ -246,7 +260,13 @@ Print every usage line (also shown by `bashcut --help`) with:
 
 ```sh
 bashcut help
+bashcut help review shots   # one command: description, mode, parameters (works without the app)
 ```
+
+The agent instructions list each command a terminal agent uses with its usage and the first sentence of its
+description (about 8k tokens); commands for the user, panels and plugin views (chat, plugin install and views,
+storage, agent setup, knowledge approval, skill switches, `clip speed`/`clip speed-curve` (agents use the `setSpeed`
+and `setSpeedCurve` ops)) are left out but still work.
 
 Add `--format text` to any command to print string results without JSON quoting. MCP tools take the same
 parameter names as the JSON-RPC `params` (`baseRev`, `atFrame`, …); the CLI spells them as options
@@ -281,17 +301,15 @@ tool name and parameters (types, ranges, choices, defaults). It is generated fro
 | `project create --canvas` | `portrait` (default), `landscape`, `square` |
 | `project create --resolution` | `720`, `1080` (default), `2160` (short side) |
 | `project create --fps` | `29.97` (default), `30`, `24`, `60` |
-| `project create --language` | A language tag; defaults to `vi` |
+| `project create --language` | A language tag from the user's prompt or answer; no default (unset: plugins detect the language) |
 | `project create --dir` | An existing absolute folder; defaults to the projects folder (`project folder`, `~/Movies/BashCut` unless changed), made on first use |
 | `layers add --kind` | `video`, `adjustment`, `text`, `audio` |
-| `adjustment add --look`, `style save --look` | Built-in `original` (default), `vivid`, `muted-film`, `black-white`, or a custom look ID from `timeline get` |
-| `style apply <kit>` | Built-in `food-review` (vivid, Bold Outline), `cinematic` (muted film, Cinematic Serif), or a custom kit ID |
+| `adjustment add --look` | A library look without a LUT file: built-in `original` (default), `vivid`, `muted-film`, `black-white`, `bright-airy`, `moody`, or `scope:id` from `library list --kind look` |
 | Grade options | `--exposure` −10…10, `--contrast` 0…4, `--saturation` 0…4, `--lut-strength` 0…1 (decimals allowed), `--lut` a LUT ID |
-| `style save --caption-preset` | `bold-outline` (default), `cinematic-serif`, `keyword-sticker`, `place-card`, `hook-title`, `chapter-card` |
 | `media import --kind` | `video` (default), `audio` |
 | `export start --preset` | `tiktok`, `youtube-1080`, `youtube-4k`, `quick-draft`, `prores` |
-| `ui open <dialog>` | `new-project`, `export`, `export-report`, `agent-changes`, `review`, `history`, `plugins`, `settings`, `doctor`, `knowledge`, `ask`, `sections`, `external-changes`, `plugin-proposals` |
-| `ui panel <panel>` | `media`, `audio`, `text`, `stickers`, `effects`, `transitions`, `filters`, `voice` |
+| `ui action open <dialog>` | `new-project`, `export`, `export-report`, `agent-changes`, `review`, `history`, `plugins`, `settings`, `doctor`, `knowledge`, `ask`, `sections`, `external-changes`, `plugin-proposals` |
+| `ui action panel <panel>` | `media`, `audio`, `text`, `stickers`, `effects`, `transitions`, `filters`, `voice` |
 | `ui view --zoom` | 1–600 pixels per second; `--zoom-anchor` is the frame kept in place (the playhead by default) |
 | `ui view --snap`, `--safe-area`, `--compare`, `--agent-dock` | `on` / `off` (also `true`/`false`, `yes`/`no`, `1`/`0`) |
 | `ui view --inspector` | `video`, `audio`, `text`, `color`, `speed` |
@@ -341,8 +359,7 @@ The app enforces that rule (the scope guard, #356). Every edit a chat or termina
   half, or an item from an edit the user allowed) run.
 - `insert` runs when the new item lies inside the scope's span (first start to last end, where the items are now).
   A transition runs when either of its clips is in scope.
-- Media and LUT imports, beat grids and new layers run. Changes to existing layers, project settings (looks, style
-  kits), format, sections, LUT deletes and `restore` are project-wide and always count as outside.
+- Media and LUT imports, beat grids and new layers run. Changes to existing layers, project settings, format, sections, LUT deletes and `restore` are project-wide and always count as outside.
 - Ripple shifts, undo/redo and dry runs are not checked. An edit with a stale base revision fails with `-32002`
   before the guard looks at it.
 
@@ -371,6 +388,24 @@ and `previousDuration` in frames, `changedItems`, `changedTracks`, `addedTracks`
 Changed item IDs include additions, deletions, property changes and moves. A live edit token is still required.
 The preview does not reserve a revision; apply the batch with the same base revision and handle stale errors.
 
+Both the dry run and the apply return `fingerprint`, a hash of the ops and the base revision. Pass the dry run's
+value as `--expect-fingerprint` (MCP `expectFingerprint`) and the apply refuses with `-32602` and
+`data: {expected, actual}` if the ops sent differ from the ones that were reviewed.
+
+Say why an edit is made with `--why` (one sentence, up to 500 characters) and what it rests on with `--evidence`,
+entries separated by `;` (review issue IDs, transcript ranges, measurements; up to 20 of 200 characters):
+
+```bash
+bashcut timeline apply ops.json --base-rev 12 --label 'Open on the hook' \
+  --why 'The plan opens on the quote; the old first 2 s were silence' \
+  --evidence 'review:hook-late; m1 9.72–10.32 s; script check beat 1 0.4' --expect-fingerprint 3f9c…
+```
+
+They stay with the undo step (also in the saved history). `timeline changes [--limit N] [--author agent|user|…]`
+lists recent edits newest first: `step`, `label`, `author`, `why`, `evidence`, `at`, the `rev` each produced and
+`changes {counts, text, truncated}`; `undone` lists the edits redo would bring back. Edits from before this was
+recorded show only label and author. Plugins see `why` in the `edit.committed` event.
+
 
 ### Timeline operations
 
@@ -386,7 +421,9 @@ The preview does not reserve a revision; apply the batch with the same base revi
 - **Operations.** `insert`, `delete`, `split`, `trim`, `roll`, `slip`, `move`, `reorder`, `setSpeed`, `setProperties`,
   `setLinkedAudio`, track operations (`addTrack`, `moveTrack`, `setTrackProperties`, `deleteTrack`),
   `setProjectProperties`, `setProviderPreference`, `setBeatGrid`, `upsertSection`, `deleteSection`,
-  `upsertTransition`, `deleteTransition`, `addColorLUT`, `deleteColorLUT` and `setFormat` (the canvas size; the
+  `upsertTransition`, `deleteTransition`, `addColorLUT`, `deleteColorLUT`, `setMediaRights` (a media's `license` and
+  `provenance`; null removes one), `setMediaData` (the agent's own fields on a media under `data`, such as take
+  numbers and verdicts; each key replaces, null removes; core never reads them) and `setFormat` (the canvas size; the
   `project format` command and the toolbar's format menu use it). The agent instructions
   (`BashCut/Core/Automation/AgentInstructions.swift`) show an example of each.
 - **Frames.** All frames are integers. `atFrame` and `toFrame` are absolute timeline frames; an item's `in` is a
@@ -396,10 +433,14 @@ The preview does not reserve a revision; apply the batch with the same base revi
 - **Sections and LUTs** keep stable IDs. A LUT catalog entry uses a project-relative `luts/*.cube` path and a 3D
   size from 2 through 64. Apply it with `setProperties` on `color.lut`, with optional `color.lutStrength` from 0
   through 1.
-- **Transitions.** `upsertTransition` takes stable `from`/`to` clip IDs, a kind (`dissolve`, `whip`, `blink`,
-  `zoom`, `spin`, `shutter` or `wipe`), an integer-frame `duration` and an optional `easing` (`linear`, the default,
-  `in`, `out` or `inOut`; preview and export shape the tween the same way). The clips must be adjacent on one video
-  track. `deleteTransition` restores a hard cut; moving or deleting either clip removes a transition that no
+- **Transitions.** `upsertTransition` takes stable `from`/`to` clip IDs, a kind, an integer-frame `duration`, an
+  optional `easing` (`linear`, the default, `in`, `out`, `inOut` or `"cubic-bezier(x1,y1,x2,y2)"` with x1 and x2 in
+  0…1, the same ease type keyframes use) and an optional `motion`. The built-in kinds (`dissolve`, `whip`, `blink`,
+  `zoom`, `spin`, `shutter`, `wipe`) are rows of data; any other kind (lowercase letters, digits, dashes) needs a
+  `motion`: `{"outgoing": {…}, "incoming": {…}}`, each side mapping `zoom`, `panX`/`panY` (share of the frame,
+  right/up), `rotation` (degrees, counterclockwise), `opacity`, `exposure` (EV), `scaleX` (horizontal squeeze) or
+  `reveal` (share of the width shown from the left) to 2–16 values spread evenly over the eased tween. Preview and
+  export draw it the same way. The clips must be adjacent on one video track. `deleteTransition` restores a hard cut; moving or deleting either clip removes a transition that no
   longer describes a valid cut.
 - **Roll.** `{"op": "roll", "item": "ID", "edge": "end", "toFrame": 75}` moves the shared cut with exactly one
   adjacent clip; `edge: "start"` uses the preceding clip. Both clips must stay nonempty and within source
@@ -446,10 +487,29 @@ item; without it the revision stays the same.
 
 ## Library items
 
-The library panels (Audio, Text, Stickers, Effects, Transitions, Filters, Voice) are collections of items with one
-model (#66). An item has an `id`, a `kind` (`audio`, `text-preset`, `sticker`, `effect-preset`, `transition-preset`,
-`look`, `voice`), a `name`, `tags`, a `pack`, `source` and `license`, `createdBy` (user, agent or plugin),
+The library panels (Media clips, Audio, Text, Stickers, Effects, Transitions, Filters, Voice) are collections of items
+with one model (#66). An item has an `id`, a `kind` (`clip`, `audio`, `text-preset`, `sticker`, `effect-preset`,
+`transition-preset`, `look`, `voice`), a `name`, `tags`, a `pack`, `source` and `license`, `createdBy` (user, agent or plugin),
 `version`, usage, an optional copied `file` and `preview`, and `params` with what the kind needs.
+
+**Licences and provenance (P2-H8).** `license` is stored structured: `{id, version?, text?, url?, attribution?}` with
+`id` one of `cc0`, `public-domain`, `cc-by`, `cc-by-sa`, `cc-by-nd`, `cc-by-nc`, `cc-by-nc-sa`, `cc-by-nc-nd`,
+`royalty-free` (stock-site licences such as Pexels or Pixabay), `own`, `all-rights-reserved`, `custom` or `unknown`.
+`--license` takes the text as written and maps it (older items keep free text, read the same way). What it allows
+(`commercial`, `redistribute`, `attributionRequired`, `shareAlike`) follows from the id; `timeline get` reports it per
+media. `provenance` says where it came from: `origin` (`stock`, `ai`, `own`, `built-in`), `sourceUrl`, `author`,
+`provider`, `model`, `prompt`, `seed`, `requestId`, `charged` (US dollars a provider reported) and `parentMedia`.
+`media import --origin --license --source --author` and `library add --origin --author` record them; `library place`
+copies an item's onto the media it adds (with `libraryItem`); voice takes and saved plugin candidates record theirs
+(generated ones are `ai`, found ones `stock`, with the prompt, request ID and charge). `library export-pack` refuses
+items whose licence does not allow redistribution and lists `unknownLicenses`.
+
+**Credits (P2-H9), on request only.** `project credits` builds, from the media the edit plays, the credit lines
+(those a licence requires first; `text` is the block for a description), AI use (`pictureShare`, each output
+platform's AI-label rule), Content ID notes for stock or downloaded music, and flags (`nonCommercial`,
+`allRightsReserved`, `unknown`). Nothing is added to the video. By default review and exports say nothing about
+licences; set the project's `review.credits` to `true` and `review run` reports `ai-disclosure`, `credits-required`
+and `rights-unclear` as info, and each export's job result carries `credits` for its platform.
 
 Items come from four scopes; when the same ID is in several, the first wins, and `scope:id` picks one:
 
@@ -466,8 +526,7 @@ Built-in packs: **Text styles** (`bold-outline`, `cinematic-serif`, `keyword-sti
 `zoom-punch-in`), **Speed** effects (`speed-ramp`, `slow-motion`), **Transitions** presets (`soft-dissolve`, `quick-whip`,
 `zoom-punch`) and **Looks** (`original`, `vivid`, `muted-film`, `black-white`, `bright-airy`, `moody`). Their IDs are
 reserved. The Text, Stickers, Effects, Transitions and Filters panels show them first, then the items saved in the
-project or on this Mac. The Filters panel also lists the style kits and the project's own looks (`style save`,
-`looks save`) among its items; clicking a kit runs `style apply`.
+project or on this Mac.
 
 - `bashcut library list [--panel text] [--kind sticker] [--tag food] [--scope user] [--created-by agent] [--pack X]
   [--query word]` lists items with their usage; `library get <id>` adds the earlier versions and the file path.
@@ -481,7 +540,7 @@ project or on this Mac. The Filters panel also lists the style kits and the proj
   before #64 from a project library) are kept and listed in the result's `kept`.
 - `bashcut library place <id> [--at-frame] [--duration] [--track] [--text] --base-rev N` adds a text preset or emoji
   sticker as a text item, an image, animated or video sticker on the Overlay layer (see Stickers below), a look as an
-  adjustment, or an audio item as a clip (see Audio below). `library apply <id> [--item] --base-rev N` sets a text preset,
+  adjustment, an audio item as a clip (see Audio below), or a clip item as media (below). `library apply <id> [--item] --base-rev N` sets a text preset,
   an effect preset's recipe or a look's grade on an existing item. Both count a use (in `usage.json` next to
   `library.json`; the item list is not rewritten).
 - `bashcut library save-selection --kind text-preset|effect-preset|transition-preset|look|audio|sticker --name X [--item]
@@ -503,8 +562,8 @@ project or on this Mac. The Filters panel also lists the style kits and the proj
   step. Items without `textStyle` or `animation` behave as before: apply changes only the preset. The Text panel's
   cards show the stored size, position, outline, font and text colour, and Edit… changes them and the animation.
 - **Text fonts and colours** (#412): `textStyle.font` is a PostScript name, `fill`, `stroke` and `highlight` are
-  `#RRGGBB`. `fonts list [--query q] [--project] [--vietnamese]` gives the names (project fonts first, with
-  Vietnamese coverage); `fonts import <file>` copies a .ttf/.otf/.ttc into the project's `fonts/` folder, which is
+  `#RRGGBB`. `fonts list [--query q] [--project] [--language tag] [--covers]` gives the names (project fonts first;
+  `covers` says whether a font has every letter of the content language or `--language`, from macOS's locale data); `fonts import <file>` copies a .ttf/.otf/.ttc into the project's `fonts/` folder, which is
   registered for the app process whenever the project opens, so preview and export use it on any Mac and nothing is
   installed. A font that is neither installed nor in `fonts/` draws as Helvetica; `review run` reports it as
   "Missing font". Inspector › Text has the same font menu (Add Font…), text and outline colours and outline width.
@@ -577,6 +636,16 @@ project or on this Mac. The Filters panel also lists the style kits and the proj
     a play/stop button, badges for role, length, BPM, LUFS and loop, and **Place**; their context menu adds **Place at
     Playhead** and **Analyze Length, Loudness & Tempo**, and Edit… sets the role and the loop flag. Audio files dropped
     on the panel or chosen with Add… become items.
+- Clips (P2-H5) are footage kept in the library: a generated or downloaded B-roll shot or still. The item's `file`
+  is a .mov, .mp4, .m4v or an image; `params` are free (`library add --kind clip --name X --file shot.mp4` measures
+  `seconds`, `width`, `height` and `hasAudio`; a generator's `model`, `prompt` or `aspect` ride along). A
+  `library generate <prompt> --kind clip` provider makes them (model options are the provider's). `library place <id>
+  [--at-frame F] [--duration N] [--track T]` copies the file into the project's `clips/` folder as
+  `library-<hash>.<ext>` (once per content), imports it (reusing media for the same file, with the item's licence and
+  provenance) and places it like `media place`: on the main layer or `--track`, spilling onto a free layer when that
+  range is taken, with its sound on the dialogue layer when it has one, as one undo step. `--duration` trims it; a
+  longer one plays the clip once and the result has a `note`. The Media panel's **Clips** tab lists them: a click
+  places one at the playhead, and movies or images dropped there or chosen with Add… become items.
 - Stickers (#64) have a kind, `params.stickerKind`: `emoji` (`params.emoji`, drawn as text with `params.textPreset`),
   `image` (a PNG, JPEG, HEIC, WebP… file; transparency is kept), `animated` (a GIF, APNG or animated WebP) or
   `video-alpha` (a .mov or .mp4 with an alpha channel: HEVC with alpha or ProRes 4444 with alpha). Lottie files are
@@ -639,7 +708,7 @@ Each panel (Audio, Text, Stickers, Effects, Transitions, Filters) shows its item
 filters, badges for agent-made and project or Mac items, plugin packs grouped under the plugin's name, **Add…** (and
 drops) for files and packs, **Save selection as…**, **Search…** and **Generate…** when a plugin provides them for the
 panel's kinds (the sheet runs `library search`/`library generate`, previews each candidate and saves it with **Save**;
-`ui open library-search|library-generate` opens it for the open panel and `ui respond run|save-<index>|close` answers
+`ui action open library-search|library-generate` opens it for the open panel and `ui respond run|save-<index>|close` answers
 it), and a context menu: Duplicate & Edit (`update --as`), Rename (`update --name`), Move (`move`), Show Source &
 License (`get`), Show in Finder and Remove (`remove`). `ui view --library-query X --library-pack P --library-tag T
 --library-scope user` sets the open panel's search and filters (`libraryFilter` in the view state); the item sheet
@@ -654,8 +723,16 @@ written to `.bashcut/cache/proxies/<media id>.mov`. The viewer reads proxies; ex
 Proxies are made one at a time as `media.proxy` jobs, and the preview switches to each one as it lands.
 
 - `bashcut media proxy [MEDIA_ID] [--force]` queues them by hand and returns a status per media: `queued`
-  (with its job ID), `exists`, `not-needed` or `skipped`. The Media panel's **Create Preview Proxy** menu does
-  the same with `--force`.
+  (with its job ID), `exists`, `not-needed`, `skipped`, `converting` (see below) or `unsupported` (with `codec` and
+  `reason`). The Media panel's **Create Preview Proxy** menu does the same with `--force`.
+- BashCut turns on the macOS VP9 (and, where the Mac has it, AV1) decoder at launch. Video the Mac still cannot
+  decode (AV1 on an M1 or M2, for example) is converted on import: a `media.convert` job runs the system's ffmpeg
+  (Homebrew, `/usr/local/bin` or `PATH`) to write an H.264 copy with the same frames and frame times to
+  `media/converted/<media id>.mov`, then points the media at it (one undo step; `originalPath` keeps the original,
+  which is never changed). `media import` reports this as `proxy: {status: "converting", job}`. Until the copy
+  lands, the viewer shows black there and `ui frame` on those frames and `export start` fail with
+  `unsupported_media`; sound and analysis work from the original. Without ffmpeg the status is `unsupported`:
+  install it and run `media proxy MEDIA_ID`.
 - `media list` reports each media's `proxy` state: `none`, `queued` or `ready`.
 
 ## Dialogs and UI actions
@@ -691,7 +768,7 @@ bashcut ui respond --path /path/to/project
 - Actions that open an alert or panel (`project.new`, `project.open`, `project.import-media`) return at once
   so you can answer the dialog.
 - `ui respond --dialog ID` answers only if that dialog is topmost.
-- `ui open` refuses while another dialog is open, and some sheets only open when they apply (for example
+- `ui action open` refuses while another dialog is open, and some sheets only open when they apply (for example
   `export` needs a nonempty timeline).
 - The export approval and plugin-install sheets offer agents only `deny` or `cancel`. Approving stays with
   the user.
@@ -704,18 +781,40 @@ Voice panels, so provider resolution, health checks, output confinement and vali
 ```sh
 bashcut captions generate --media MEDIA_ID --replace
 bashcut beats detect --media AUDIO_MEDIA_ID
-bashcut voice speak 'Xin chào các bạn' --takes 3 --at-frame 120
+bashcut voice speak 'Xin chào các bạn' --takes 3
+bashcut voice place voiceover/generated/…/take-2.wav --at-frame 120
+bashcut jobs wait JOB_ID --timeout 25
 bashcut jobs status JOB_ID
 bashcut jobs cancel JOB_ID
 ```
 
-- Each returns `{"job": ID, "state": "running"}` at once. Poll `jobs status ID` until it reports `completed`,
-  `failed` or `cancelled`. A completed job's result includes the new `rev`, plus `bpm`/`beats`, or the inserted
-  voice `item` with its score and all take scores.
+- Each returns `{"job": ID, "state": "running"}` at once. `jobs wait ID` holds the call until the job's state or
+  step changes or it finishes, up to `--timeout` seconds (1–30, default 25), and returns `{job, changed,
+  timedOut}`; call it again until the state is `completed`, `failed` or `cancelled` instead of polling `jobs
+  status`. A completed job's result includes the new `rev`, plus `bpm`/`beats`, or the measured voice `takes`
+  (and the `item` a chosen take went into).
+- Every job reports `progress` (0–1 or null), `step` (its current step; `detail` is the same text) and
+  `usage {provider, wallSec, units, costUSD, costSource}`. `wallSec` is the time it has run; `provider`, `units`
+  and `costUSD` appear only as plugin providers reported them (`costSource: "provider"`), never estimated, and
+  are null for BashCut's own work such as exports.
+- Every provider job may call a paid provider. `--request-id ID` makes a resend return the
+  same job (`reused: true`) instead of paying again, while the job is still listed. `--dry-run` runs nothing and
+  returns the request as it would go to the provider (option values left out, only their names), `paid`, and the
+  provider's `estimate` when it gives one.
 - The result is one undoable edit attributed to the agent, with change markers and the Undo toast.
-- `voice speak --keep-takes` inserts nothing and keeps every take in `voiceover/generated`, so you can choose
-  one and place it with `media import`.
+- `voice speak` measures every take (seconds, units, unitsPerSecond, silences, pauses, the provider's score) and
+  keeps them all in `voiceover/generated` with a `<take>.json` provenance sidecar; pick one and put it on the
+  Voiceover track with `voice place TAKE [--at-frame N | --replace ITEM]`. `--choose N` inserts take N at once;
+  `--replace ITEM` puts take `--choose` (default 1) into that item and times its captions again.
 - `--provider ID` overrides the project preference for one request.
+- `bashcut capabilities get [CAPABILITY] [--kind K] [--voices]` says whether each capability can serve now: `available`, or
+  `reason` `missing` (no plugin provides it: the user installs one), `not_configured` (turned off, not approved,
+  changed, outdated or missing a required plugin: the user turns it on or approves it) or `unhealthy` (a dependency
+  fails its health check). Each provider has `plugin`, `priority`, `paid`, `state` and `detail`; `commands` lists
+  the commands that call the capability; `--voices` adds every voice provider's voices with their facts and measured
+  rates. Health checks run in parallel and stop after about 8 s
+  (`healthChecked: false`). A job command whose capability cannot serve fails at the call with `capability_missing`;
+  one that fails later in its job keeps `errorCategory` on the job.
 - A capability that is already running (from the UI or another job) is rejected with a retry error.
 - Opening another project cancels and clears all jobs.
 - Installing plugins, running their dependency recipes, trusting a plugin or turning one on is never available

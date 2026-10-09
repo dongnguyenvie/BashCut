@@ -252,7 +252,7 @@ extension ProjectDocument {
         let none = String(localized: "Not given")
         var lines = [
             String(localized: "Source: \(item["source"]?.string ?? none)"),
-            String(localized: "License: \(item["license"]?.string ?? none)"),
+            String(localized: "License: \(item.licenseTerms?.displayName ?? none)"),
             String(localized: "Made by: \(Self.creatorTitle(item))"),
             String(localized: "Version \(String(item.version)) · \(Self.scopeTitle(item.scope))"),
         ]
@@ -331,6 +331,7 @@ extension ProjectDocument {
         case .audio: [.audio]
         case .sticker: [.image, .movie]
         case .look: [UTType(filenameExtension: "cube")].compactMap { $0 }
+        case .clip: [.image, .movie]
         default: []
         }
     }
@@ -349,6 +350,7 @@ extension ProjectDocument {
         case .transitionPreset: String(localized: "transition")
         case .look: String(localized: "look")
         case .voice: String(localized: "voice")
+        case .clip: String(localized: "clip")
         }
     }
 

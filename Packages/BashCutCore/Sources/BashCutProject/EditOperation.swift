@@ -29,10 +29,18 @@ public indirect enum EditOperation: Codable, Sendable, Equatable {
     case setProviderPreference(capability: String, provider: String?)
     case setBeatGrid(
         media: String, bpm: Double, frames: [Int], provenance: [String: JSONValue]?)
+    /// Stores (or with nil removes) a media's shot description; see MediaDescription.swift.
+    case setMediaDescription(media: String, description: JSONValue?)
+    /// A media's `license` and `provenance` (P2-H8): nil leaves a field as it is, JSON null removes it.
+    case setMediaRights(media: String, license: JSONValue?, provenance: JSONValue?)
+    /// The agent's own fields under a media's `data` (P2-H10); a key replaces, null removes; core never reads them.
+    case setMediaData(media: String, patch: [String: JSONValue])
     case upsertSection(id: String, label: String, atFrame: Int)
     case deleteSection(id: String)
     /// `easing` nil or `linear` is the default straight tween (see `TimelineTransition.easings`).
-    case upsertTransition(id: String, kind: String, from: String, to: String, duration: Int, easing: String? = nil)
+    /// `motion` (a `TransitionMotion` object) makes any kind; without it the kind must be a built-in one.
+    case upsertTransition(
+        id: String, kind: String, from: String, to: String, duration: Int, easing: String? = nil, motion: JSONValue? = nil)
     case deleteTransition(id: String)
     case addColorLUT(ColorLUT)
     case deleteColorLUT(id: String)
@@ -119,13 +127,20 @@ extension Project {
             try setProviderPreference(capability: capability, provider: provider)
         case .setBeatGrid(let media, let bpm, let frames, let provenance):
             try setBeatGrid(media: media, bpm: bpm, frames: frames, provenance: provenance)
+        case .setMediaDescription(let media, let description):
+            try setMediaDescription(media: media, description: description)
+        case .setMediaRights(let media, let license, let provenance):
+            try setMediaRights(media: media, license: license, provenance: provenance)
+        case .setMediaData(let media, let patch):
+            try setMediaData(media: media, patch: patch)
         case .upsertSection(let id, let label, let frame):
             try upsertSection(id: id, label: label, frame: frame)
         case .deleteSection(let id):
             try deleteSection(id: id)
-        case .upsertTransition(let id, let kind, let from, let to, let duration, let easing):
-            try upsertTransition(
-                TimelineTransition(id: id, kind: kind, from: from, to: to, duration: duration, easing: easing))
+        case .upsertTransition(let id, let kind, let from, let to, let duration, let easing, let motion):
+            var transition = TimelineTransition(id: id, kind: kind, from: from, to: to, duration: duration, easing: easing)
+            transition.fields["motion"] = motion
+            try upsertTransition(transition)
         case .deleteTransition(let id):
             try deleteTransition(id: id)
         case .addColorLUT(let lut):
@@ -138,10 +153,7 @@ extension Project {
             try setItemProperties(id: id, patch: patch)
         case .setLinkedAudio(let video, let audio):
             try setLinkedAudio(videoID: video, audioID: audio)
-        case .delete(let id, let ripple):
-            let linked = try linkedItemID(id)
-            try deleteItem(id: id, ripple: ripple)
-            if let linked { try deleteItem(id: linked, ripple: ripple) }
+        case .delete(let id, let ripple): try deleteLinked(id, ripple: ripple)
         case .split(let id, let frame, let newID):
             let linked = try linkedItemID(id)
             try splitItem(id: id, frame: frame, newID: newID)
@@ -260,6 +272,12 @@ extension Project {
         self["beatGrid"] = .object(value)
     }
 
+    private mutating func setMediaDescription(media id: String, description: JSONValue?) throws {
+        guard let index = media.firstIndex(where: { $0.id == id }) else { throw ProjectError.invalid("Unknown media \(id)") }
+        if let description { _ = try MediaDescription(json: description, duration: media[index].durationSeconds) }
+        media[index].fields["description"] = description
+    }
+
     private mutating func upsertSection(id: String, label: String, frame: Int) throws {
         let clean = label.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !id.isEmpty, !clean.isEmpty, clean.count <= 120, (0...duration).contains(frame) else {
@@ -365,7 +383,7 @@ extension Project {
         }
     }
 
-    private mutating func deleteItem(id: String, ripple: Bool) throws {
+    mutating func deleteItem(id: String, ripple: Bool) throws {
         let (track, index) = try location(id)
         let item = tracks[track].items.remove(at: index)
         if ripple { try shift(track: track, from: item.end, by: -item.duration) }

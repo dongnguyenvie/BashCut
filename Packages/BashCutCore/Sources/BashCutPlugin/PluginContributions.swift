@@ -1,30 +1,6 @@
 import BashCutProject
 import Foundation
 
-/// Host plugin API versions. Changes are additive: a host serves every version from `minimum` to `current`.
-/// Version 2 adds `options`, `contributes` (actions and hooks) and the `session` transport. Version 3 adds option
-/// `choiceLabels` and the `file` option type, the `BASHCUT_PLUGIN_DATA`/`BASHCUT_PLUGIN_CACHE` folders and
-/// `::progress` lines from install recipes. Version 4 adds the `secret` option type and the session host channel
-/// (`event` and `call` lines during a request), used by the `agent.chat` capability. Version 5 adds the
-/// `agent.terminal` capability and the manifest's `terminal` object. Version 6 adds `contributes.library` (library
-/// packs), the `library.search` and `library.generate` capabilities and provider `kinds`. Version 7 adds
-/// `contributes.skills` (agent skills). Version 8 adds `contributes.container`/`views`, `requires`, `uses` and `features`
-/// (`PluginComposition.swift`); from then on it goes up at most once per release, and smaller additions are features.
-public enum PluginAPI {
-    public static let minimum = 1
-    public static let current = 8
-    /// The chat-agent capability; its requests carry a host channel (API 4).
-    public static let agentChat = "agent.chat"
-    /// An agent CLI in a dock terminal tab (API 5); its manifest has a `terminal` object.
-    public static let agentTerminal = "agent.terminal"
-    /// Finds library items online or elsewhere for a panel (API 6); providers may list the `kinds` they serve.
-    public static let librarySearch = "library.search"
-    /// Makes new library items from a prompt (API 6); providers may list the `kinds` they serve.
-    public static let libraryGenerate = "library.generate"
-    /// The capabilities whose providers return library item candidates.
-    public static let libraryCapabilities = [librarySearch, libraryGenerate]
-}
-
 /// How the dock shows a terminal agent (`agent.terminal`, API 5) and what its CLI may inherit.
 public struct PluginTerminal: Codable, Sendable, Equatable {
     /// SF Symbol name for the tab.
@@ -278,11 +254,13 @@ public struct PluginContributions: Codable, Sendable, Equatable {
     /// The plugin's rail icon and panel, and the declarative views in it (API 8).
     public let container: PluginContainerContribution?
     public let views: [PluginViewContribution]?
+    /// A newer platform table (P1-F1, API 9): a JSON file inside the plugin, in BashCut's `platforms list` format.
+    public let platforms: String?
 
     public init(
         actions: [PluginActionContribution]? = nil, hooks: [PluginHookContribution]? = nil,
         library: [PluginLibraryContribution]? = nil, skills: [PluginSkillContribution]? = nil,
-        container: PluginContainerContribution? = nil, views: [PluginViewContribution]? = nil
+        container: PluginContainerContribution? = nil, views: [PluginViewContribution]? = nil, platforms: String? = nil
     ) {
         self.actions = actions
         self.hooks = hooks
@@ -290,10 +268,12 @@ public struct PluginContributions: Codable, Sendable, Equatable {
         self.skills = skills
         self.container = container
         self.views = views
+        self.platforms = platforms
     }
 
     public var isEmpty: Bool {
-        [actions?.count, hooks?.count, library?.count, skills?.count, views?.count].allSatisfy { ($0 ?? 0) == 0 } && container == nil
+        [actions?.count, hooks?.count, library?.count, skills?.count, views?.count].allSatisfy { ($0 ?? 0) == 0 }
+            && container == nil && platforms == nil
     }
 }
 

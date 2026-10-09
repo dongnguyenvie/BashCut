@@ -67,6 +67,14 @@ extension EditOperation {
             if case .object(let value) = fields["generatedBy"] { provenance = value }
             self = .setBeatGrid(
                 media: try read.string("media"), bpm: bpm, frames: values.compactMap(\.int), provenance: provenance)
+        case "setMediaDescription":
+            let description = fields["description"].flatMap { $0 == .null ? nil : $0 }
+            self = .setMediaDescription(media: try read.string("media"), description: description)
+        case "setMediaRights":
+            self = .setMediaRights(media: try read.string("media"), license: fields["license"], provenance: fields["provenance"])
+        case "setMediaData":
+            guard case .object(let patch) = fields["patch"] else { throw ProjectError.invalid("patch object is required") }
+            self = .setMediaData(media: try read.string("media"), patch: patch)
         case "upsertSection":
             self = .upsertSection(
                 id: try read.string("id"), label: try read.string("label"), atFrame: try read.frame("atFrame"))
@@ -74,7 +82,8 @@ extension EditOperation {
         case "upsertTransition":
             self = .upsertTransition(
                 id: try read.string("id"), kind: try read.string("kind"), from: try read.string("from"),
-                to: try read.string("to"), duration: try read.frame("duration"), easing: fields["easing"]?.string)
+                to: try read.string("to"), duration: try read.frame("duration"), easing: fields["easing"]?.string,
+                motion: fields["motion"].flatMap { $0 == .null ? nil : $0 })
         case "deleteTransition": self = .deleteTransition(id: try read.string("id"))
         case "addColorLUT": self = .addColorLUT(ColorLUT(fields: try read.object("lut")))
         case "deleteColorLUT": self = .deleteColorLUT(id: try read.string("id"))
@@ -145,15 +154,25 @@ extension EditOperation {
                 "media": .string(media), "bpm": .number(bpm), "frames": .array(frames.map(JSONValue.integer)),
                 "generatedBy": provenance.map(JSONValue.object) ?? .null,
             ])
+        case .setMediaDescription(let media, let description):
+            return op("setMediaDescription", ["media": .string(media), "description": description ?? .null])
+        case .setMediaRights(let media, let license, let provenance):
+            var fields: [String: JSONValue] = ["media": .string(media)]
+            if let license { fields["license"] = license }
+            if let provenance { fields["provenance"] = provenance }
+            return op("setMediaRights", fields)
+        case .setMediaData(let media, let patch):
+            return op("setMediaData", ["media": .string(media), "patch": .object(patch)])
         case .upsertSection(let id, let label, let frame):
             return op("upsertSection", ["id": .string(id), "label": .string(label), "atFrame": .integer(frame)])
         case .deleteSection(let id): return op("deleteSection", ["id": .string(id)])
-        case .upsertTransition(let id, let kind, let from, let to, let duration, let easing):
+        case .upsertTransition(let id, let kind, let from, let to, let duration, let easing, let motion):
             var fields: [String: JSONValue] = [
                 "id": .string(id), "kind": .string(kind), "from": .string(from), "to": .string(to),
                 "duration": .integer(duration),
             ]
             if let easing { fields["easing"] = .string(easing) }
+            if let motion { fields["motion"] = motion }
             return op("upsertTransition", fields)
         case .deleteTransition(let id): return op("deleteTransition", ["id": .string(id)])
         case .addColorLUT(let lut): return op("addColorLUT", ["lut": .object(lut.fields)])

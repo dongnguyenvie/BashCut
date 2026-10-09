@@ -2,6 +2,7 @@ import AVKit
 import AppKit
 import BashCutAutomation
 import BashCutDocument
+import BashCutEngine
 import BashCutProject
 import SwiftUI
 
@@ -19,6 +20,8 @@ extension EditorView {
                     }
                 }
             }
+            Divider()
+            platformMenu
             Divider()
             ForEach([false, true], id: \.self) { fill in
                 Button {
@@ -40,6 +43,31 @@ extension EditorView {
         .disabled(document.fileURL == nil)
         .help("Change the canvas")
     }
+    /// The platform the project is made for (`project format --outputs`): review and the safe-area overlay follow
+    /// it, and the Export sheet starts with its preset (#441).
+    var platformMenu: some View {
+        Menu("Platform") {
+            let current = document.outputPresets.first
+            ForEach([ExportPreset.tiktok, .reels, .shorts, .youtube1080, .youtube4K], id: \.self) { preset in
+                Button {
+                    // Picking a platform makes it primary and keeps the other outputs.
+                    let rest = document.project.outputPresets.filter { ExportPreset(argument: $0) != preset }
+                    do { try document.setOutputPresets([preset.argument] + rest) } catch {
+                        document.message = error.localizedDescription
+                    }
+                } label: {
+                    if current == preset { Label(LocalizedStringKey(preset.title), systemImage: "checkmark") } else {
+                        Text(LocalizedStringKey(preset.title))
+                    }
+                }
+            }
+            Divider()
+            Button("None") {
+                do { try document.setOutputPresets([]) } catch { document.message = error.localizedDescription }
+            }.disabled(current == nil)
+        }
+    }
+
     func canvasTitle(_ canvas: ProjectSetup.Canvas) -> LocalizedStringKey {
         switch canvas {
         case .portrait: "Portrait 9:16"
@@ -137,23 +165,29 @@ extension EditorView {
                     let aspect = Double(document.project.width) / Double(document.project.height)
                     let height = min(geo.size.height, geo.size.width / aspect)
                     let width = height * aspect
+                    // No output set: only the frame and a title-safe guide (#469).
+                    let area = document.layoutPlatform?.safeArea ?? SafeArea()
                     Group {
                         if aspect < 1 {
-                            // Vertical video: TikTok/Reels cover the bottom and the right edge.
+                            // Vertical video: the platform covers the bottom, the right edge and the top (#441).
                             ZStack(alignment: .bottomTrailing) {
                                 Rectangle().strokeBorder(
                                     .red.opacity(0.6), style: StrokeStyle(lineWidth: 1, dash: [5]))
-                                Rectangle().fill(.red.opacity(0.15)).frame(height: height * 0.16)
+                                Rectangle().fill(.red.opacity(0.15)).frame(height: height * area.bottom)
                                 Rectangle().fill(.red.opacity(0.15)).frame(
-                                    width: width * 0.14, height: height * 0.46)
+                                    width: width * area.sideWidth, height: height * area.sideHeight)
+                                VStack {
+                                    Rectangle().fill(.red.opacity(0.15)).frame(height: height * area.top)
+                                    Spacer()
+                                }
                             }
                         } else {
-                            // Landscape and square: keep titles inside the central 90% (title safe).
+                            // Landscape and square: keep titles inside title safe.
                             ZStack {
                                 Rectangle().strokeBorder(.red.opacity(0.35), lineWidth: 1)
                                 Rectangle().strokeBorder(
                                     .red.opacity(0.6), style: StrokeStyle(lineWidth: 1, dash: [5])
-                                ).frame(width: width * 0.9, height: height * 0.9)
+                                ).frame(width: width * (1 - 2 * area.margin), height: height * (1 - 2 * area.margin))
                             }
                         }
                     }.frame(width: width, height: height).position(

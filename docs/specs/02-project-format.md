@@ -21,7 +21,6 @@ projects/<video-name>/
 ├── fonts/                                   # .ttf/.otf/.ttc for textStyle.font, registered for the app while open
 ├── media/                                   # project-only files (images, downloaded clips, stickers)
 ├── voiceover/                               # generated/ (TTS takes), recordings/ (microphone)
-├── khao-sat/                                # survey: thong_so.json, transcript.json, contact sheets (unchanged)
 ├── subtitles/                               # exported .srt; generated/ holds transcription output
 ├── render/                                  # exported videos (not in git)
 └── .bashcut/                                # cache and runtime data
@@ -108,7 +107,7 @@ only.
 
 **Media paths are relative** to the project folder. A file inside a top-level folder link (`footage/`) is stored
 through the link (`footage/<file>`), never as a path into its target. Shared assets are written as
-`@assets/nhac/…` and resolve under the workspace's `assets` folder.
+`@assets/music/…` and resolve under the workspace's `assets` folder.
 
 **Item IDs are stable.** An item keeps its ID when it is trimmed or moved. A split keeps the ID on the left half
 and gives the right half a new ID.
@@ -123,7 +122,12 @@ the project schema.
 **Generated results keep provenance, not a live plugin dependency.** Generated media, captions and beat grids may
 carry `generatedBy: {plugin, provider, version}`; loudness measurements use `audio.measuredBy`. The generated
 items and measurements stay usable when the plugin is removed or replaced, and unknown provenance fields
-round-trip unchanged.
+round-trip unchanged. Results also record what they were made from (P2-G6): captions transcribed from a media file
+and the beat grid keep `generatedBy.sourceKey`, the file's content key then (SHA-256 of its size and first and last
+MiB, namespace `media-source-v1`); a voice take keeps `voice.textHash` (and its media `generatedBy.textHash`), the
+hash of the text it says. `review run` adds an info issue when the file's key or the voice text no longer matches.
+Measurements (loudness, picture, plugin checks, delivered files) are kept per revision and review reports them
+stale when the revision moved on.
 
 **Tracks are ordered, dynamic layers.** Array order is the visual stacking order, back to front. A project may
 have as many video, adjustment, text and audio tracks as it needs; `role` is a repeatable semantic hint, not a

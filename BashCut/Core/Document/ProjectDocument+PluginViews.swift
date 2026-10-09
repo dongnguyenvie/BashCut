@@ -81,10 +81,11 @@ extension ProjectDocument {
     private func panelPlugin(_ id: String) throws -> InstalledPlugin {
         let plugin = try requirePlugin(id)
         guard plugin.manifest.container != nil || !plugin.manifest.views.isEmpty else {
-            throw RPCFailure(-32602, "\(id) has no views; see plugins views")
+            throw RPCFailure(-32602, "\(id) has no views; see plugins list --views")
         }
         guard plugins.isReady(plugin) else {
-            throw RPCFailure(-32003, "\(plugin.manifest.displayName): \(plugins.currentAvailability(plugin).detail)")
+            throw RPCFailure(
+                -32003, "\(plugin.manifest.displayName): \(plugins.currentAvailability(plugin).detail)", category: .notAvailableNow)
         }
         return plugin
     }
@@ -113,16 +114,18 @@ extension ProjectDocument {
         return .string(text)
     }
 
+    /// Plugins with panels or views, the open panel and sheet, and the host's plugin features (`plugins.list --views`).
+    func pluginViewsJSON() -> JSONValue {
+        .object([
+            "panels": .array(pluginViews.viewPlugins.map(pluginPanelJSON)),
+            "sheet": ui.pluginSheet.map(JSONValue.string) ?? .null,
+            "open": ui.pluginPanel.map(JSONValue.string) ?? .null,
+            "features": .array(PluginFeature.all.map(JSONValue.string)),
+            "apiVersion": .integer(PluginAPI.current),
+        ])
+    }
+
     func registerPluginViewCommands() {
-        handle("plugins.views") { document, _, _ in
-            .object([
-                "panels": .array(document.pluginViews.viewPlugins.map(document.pluginPanelJSON)),
-                "sheet": document.ui.pluginSheet.map(JSONValue.string) ?? .null,
-                "open": document.ui.pluginPanel.map(JSONValue.string) ?? .null,
-                "features": .array(PluginFeature.all.map(JSONValue.string)),
-                "apiVersion": .integer(PluginAPI.current),
-            ])
-        }
         handleAuthored("plugins.view") { document, arguments, _ in
             let plugin = try document.panelPlugin(arguments.string("plugin"))
             let model = try document.viewModel(plugin, arguments)

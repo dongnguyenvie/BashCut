@@ -7,7 +7,8 @@ app renders natively. Since plugin API 6 they can ship library packs for any lib
 library items (see [Library packs](#library-packs) and [Library search and generate](#library-search-and-generate)),
 since API 7 agent skills that teach agents to use them ([Agent skills](#agent-skills)), and since API 8 their own
 panel in the left rail, dock tabs and sheets with declarative views, and the use of other plugins
-([Plugin panels and views](#plugin-panels-and-views), [Using other plugins](#using-other-plugins)). A plugin is a separate
+([Plugin panels and views](#plugin-panels-and-views), [Using other plugins](#using-other-plugins)), and since API 9
+their own review checks ([`review.check`](#reviewcheck)). A plugin is a separate
 executable that BashCut starts for
 each request; no third-party code is loaded into the app process. Project data, timeline validation, undo
 history and rendering stay in the app, so a missing plugin never prevents a project from opening. The design
@@ -63,7 +64,7 @@ checked manifest, an entrypoint that already speaks the protocol and smoke tests
 | `id` | Yes | Reverse-domain style: lowercase letters and digits in at least two parts separated by `.` or `-` (`example.voice`) |
 | `name` | Yes | Display name, up to 80 characters; [localized text](#localized-text) |
 | `version` | Yes | Semantic version, such as `1.2.0` or `1.2.0-beta.1` |
-| `apiVersion` | Yes | `1` to `8`; see [API versions](#api-versions) |
+| `apiVersion` | Yes | `1` to `9`; see [API versions](#api-versions) |
 | `minApiVersion` / `maxApiVersion` | No | The host API window the plugin works with; `minApiVersion` defaults to `apiVersion` |
 | `entrypoint` | Yes | Relative path inside the bundle to an executable file; no leading `/` and no `..` |
 | `capabilities` | Yes | List of unique capability IDs (lowercase, segments separated by `.` or `-`); may be empty only when `contributes` is not |
@@ -96,7 +97,7 @@ and dependency names stay plain strings.
 
 ## API versions
 
-The host serves every plugin API version from `PluginAPI.minimum` (1) to `PluginAPI.current` (8); changes are
+The host serves every plugin API version from `PluginAPI.minimum` (1) to `PluginAPI.current` (9); changes are
 additive, so older manifests keep working. Version 2 adds `options`, `contributes` and the `session` transport.
 Version 3 adds option `choiceLabels` and the `file` option type, the `BASHCUT_PLUGIN_DATA`/`BASHCUT_PLUGIN_CACHE`
 folders and `::progress` lines from install recipes. Version 4 adds the `secret` option type, the session host
@@ -104,7 +105,8 @@ channel (`event` and `call` lines) and the `agent.chat` capability. Version 5 ad
 and the manifest's `terminal` object. Version 6 adds `contributes.library` (library packs), the `library.search` and
 `library.generate` capabilities and provider `kinds`. Version 7 adds `contributes.skills` (agent skills). Version 8 adds plugin UI and composition:
 `contributes.container` and `contributes.views` (a panel in the left rail with declarative views), `requires`, `uses`
-with the `plugins.invoke` host call, the host channel for views and session actions, and `features`. From version 8
+with the `plugins.invoke` host call, the host channel for views and session actions, and `features`. Version 9 adds
+the `review.check` capability. From version 8
 on, the API version goes up at most once per BashCut release; smaller differences between hosts are
 [host features](#host-features). A manifest
 that uses a feature with an older `apiVersion` is
@@ -118,7 +120,7 @@ the lower of the plugin's `apiVersion` and the host's current version.
 
 Host features (API 8) are names for what a BashCut can do, so a plugin asks for exactly what it uses instead of a whole
 API version: `container`, `views`, `requires`, `invoke`, and `views.<component>` for each view component (`views.list`,
-`views.audio`, `views.imageCompare`, …). The session `hello` carries `"features": […]` and `plugins views` lists them.
+`views.audio`, `views.imageCompare`, …). The session `hello` carries `"features": […]` and `plugins list --views` lists them.
 A manifest's `features` names the ones the plugin cannot work without; a BashCut without one lists the plugin as
 outdated ("Update BashCut"). For optional features, read `features` from `hello` and adapt instead.
 
@@ -280,7 +282,7 @@ Agents and scripts:
 - `bashcut plugins replace <id> --path <path>` shows the approval to update a plugin from a new folder or zip.
 - `bashcut plugins reload <id>` restarts a plugin and checks its files again; it reports `availability` (`changed`
   until the user trusts the new files). `plugins list` reports a linked plugin's folder as `linked`.
-- `bashcut ui open add-plugin` opens the Add Plugin sheet.
+- `bashcut ui action open add-plugin` opens the Add Plugin sheet.
 
 To share a private plugin with a team, push it to a private GitHub repo and share the link (each person adds a
 token once), send the zip (`ditto -c -k --keepParent my-plugin my-plugin.zip`) or commit
@@ -405,6 +407,11 @@ Rules for the shared folders:
 - Never run `uv cache clean` or otherwise empty them from a setup script: other plugins use them.
 - Fall back to your own folders when the variables are not set (an older BashCut).
 
+Agent terminals (Claude, Codex and plugin agents launched by BashCut) get the same `BASHCUT_SHARED_DATA` and
+`BASHCUT_SHARED_CACHE`, with `UV_PYTHON_INSTALL_DIR` and `UV_CACHE_DIR` set to their `python` and `uv` subfolders, so
+the agent kit's scripts (`uv run`, `uvx`) reuse the same Python and packages. The folders are fixed; there is no
+setting to move them, so Settings › Storage always knows what to clean up.
+
 Plugin processes run as the user, without a sandbox, so the shared folders are a convention, not a boundary: any
 plugin a user trusts can already write anywhere the user can. One plugin's venv lives in its own data folder, which
 other plugins are not told about. `PATH`
@@ -428,6 +435,7 @@ builds the request parameters and validates the result.
 | `audio.sync` | `media sync` | `mediaPath`, `otherPath` | `offsetSeconds`, `correlation`, optional `halves`, `overlapStartSeconds`, `overlapEndSeconds` |
 | `library.search` (API 6) | A library panel's Search…, `library search` | `kind`, `query`, `limit`, `page`, `language`, `outputDirectory` | `items`: up to `limit` library item objects; see [Library search and generate](#library-search-and-generate) |
 | `library.generate` (API 6) | A library panel's Generate…, `library generate` | `kind`, `prompt`, `limit`, `params` (hints), `language`, `outputDirectory` | `items`, as for `library.search` |
+| `review.check` (API 9) | `review measure`, the Review sheet's Measure | `project`, `revision`, `fps`, `duration`, `width`, `height`, `projectRoot` | `issues`; see [`review.check`](#reviewcheck) |
 
 ### Output files
 
@@ -442,9 +450,20 @@ symlinks are followed, and the file must exist. If the call fails, BashCut delet
   through 1. A provider that only makes one file can return `{"audioPath": …}` instead.
 - When the provider returns fewer takes than requested, BashCut calls it again with a higher `takeOffset` until
   the count is filled. If any call fails, the takes made so far are discarded.
-- Each file must be valid audio with a positive duration. Without a `score`, BashCut scores the take by pace:
-  1 at about 2.5 words per second, falling toward 0 as it drifts from that.
-- The highest-scoring take wins; ties go to the earlier take.
+- Each file must be valid audio with a positive duration. BashCut does not score takes itself (P0-C4): it measures
+  each take (seconds, units per second in the content language's unit, leading and trailing silence, pauses) and
+  reports them with the provider's `score`; the caller picks (`voice place`, or `--choose`).
+- Every request carries `cloneConsent` (true only when the person asked to clone a voice). A provider that clones from
+  a recording must refuse a clone request without it.
+- A provider may describe its voices in the manifest (P0-C7), so agents pick by facts (`capabilities get voice.synthesize --voices`):
+  `"voices": [{"id", "language", "region"?, "style"?, "gender"?, "supportsRate"?}]` and `"clones": true` when it can
+  clone. Only `voice.synthesize` providers may declare them; IDs are unique and every voice has a language.
+
+### `captions.align`
+
+`mediaPath` and `text` (with `language`): force-align the known text to the speech. Return `words`
+`[{text, start, end}]` in media seconds, one per word of the text in order; `score` and `unmatched` are optional.
+`captions align --aligner <provider>` uses it; without one, BashCut matches the text to the media's transcript words.
 
 ### `captions.transcribe`
 
@@ -459,6 +478,20 @@ Optionally also return `wordsPath`: a JSON file in the output folder, `[{"text",
 time in the media's seconds (at most 8 MiB). BashCut stores the words that fall inside each placed caption as its
 `words` (frames from the caption's start), which word-by-word captions (`wordStyle`, `captions words`) follow.
 Without it, word timings are estimated from word length.
+
+Each word may also carry what the provider knows about it; BashCut keeps these in the media's source transcript
+(`media transcript`, `transcript words --heard`) and leaves out values outside their range:
+
+| Field | Meaning |
+|---|---|
+| `confidence` (or `probability`) | 0–1, how sure the recogniser is of the word |
+| `speaker` | A speaker label, up to 64 characters |
+| `event` | A non-speech sound the "word" stands for, such as `laughter` or `music` |
+| `noSpeechProb` | 0–1, the chance the word's stretch holds no speech |
+
+A whole-file transcription (no range) is kept as the media's source transcript, by file content, in
+`.bashcut/cache/transcripts`. `captions generate` and `media transcribe` reuse it while the file, the content
+language and (when one is named) the provider stay the same, so a provider is called once per file.
 
 With `startSeconds` and `endSeconds` (`captions generate --from/--to`), transcribe only that stretch of the media and
 keep the times in the media's seconds. BashCut cuts the cues and words to the range and, with `replace`, removes only
@@ -478,6 +511,12 @@ no setup. It is an ordinary out-of-process plugin built from Swift with AVFounda
 - `audio.sync`: cross-correlation of the two files' loudness envelopes (100 per second), coarse over every overlap
   of at least half the shorter file, then fine around the best lag, and again on each half of the overlap.
 
+`bashcut.vision` (source in `Plugins/vision/`) is built the same way on Apple Vision (P2-H6, P2-H7). It samples one
+upright picture every `step` source seconds and reports raw boxes, confidence and time, with no labels:
+
+- `vision.faces`: face rectangles and whole-body person rectangles (`media subjects`).
+- `vision.text`: lines of on-screen text with the accurate recognizer (`media ocr`).
+
 The providers have priority 0, so an installed provider with a higher priority, or one chosen for the project,
 takes over. Core plugins can be turned off but not removed; a registry copy with a higher version replaces one.
 
@@ -486,6 +525,30 @@ takes over. Core plugins can be turned off but not removed; a registry copy with
 Return `bpm` (20–400) and `beatsSeconds`, a nonempty, strictly increasing array of up to 100,000 finite,
 nonnegative times in source seconds. BashCut maps them through each timeline item's trim and speed into integer
 project frames.
+
+### `audio.beats` grid facts
+
+Besides `bpm` and `beatsSeconds`, a provider may return grid v2 facts (P0-B10); BashCut keeps the ones that check out
+and drops the rest: `strengths` (0–1 per beat), `downbeats` (beat times that start a bar) with `beatsPerBar` and
+`phaseScores` (0–1 per phase), `confidence` (0–1), `fit` (`periodSeconds`, `phaseSeconds`, `rmsErrorMs`) and
+`alternates` (`[{bpm, relative}]`, such as half and double tempo). The request may carry `beatsPerBar`. `beats
+detect` stores the whole grid per file (`beats grid`) next to the timeline grid; the timeline grid is unchanged.
+
+### `audio.energy`
+
+`mediaPath` is a music file. Return `step` (seconds) and `levelDb`, `onset` and `fullness` arrays (one value per
+step). BashCut passes the curve on as measured; picking lifts, drops and breaths from it is the agent's, so any
+`candidates` a provider returns are ignored. The built-in Audio Analysis plugin provides it (`audio energy`).
+
+### `vision.faces` and `vision.text`
+
+The request has `mediaPath` (a video or an image), `step` (source seconds between pictures), optional `fromSeconds`
+and `toSeconds`, and for `vision.text` optional `languages` (BCP 47, in order). Return `frames`, at most 3,600, each
+with `seconds` (finite, nonnegative: the second the picture shows) and the lists `faces` and `people`
+(`vision.faces`) or `text` (`vision.text`). Each entry has `box` `[x, y, width, height]` as shares (0–1) of the upright
+picture from its top left and a finite `confidence`; a `text` entry also has `string`. Fields a provider adds (a
+landmark, mouth movement) are passed on; BashCut adds the source `frame` and where the media plays on the timeline.
+Which face matters, or whether a line is a caption, is the agent's.
 
 ### `audio.loudness`
 
@@ -501,6 +564,12 @@ With `bands: true` (`audio measure`), also return `speechShare` and `presenceSha
 file's energy in the speech band (300–3000 Hz) and in the presence band (1–4 kHz). A provider that leaves them out
 still answers `audio measure` without them.
 
+With `curve: true` (`audio measure --curve` and `--timeline`, `audio mix-measure`, `library analyze`), also return
+`curve`: `{"step": 0.1, "momentary": […], "shortTerm": […], "peakDb": […]}`, momentary (400 ms) and short-term (3 s)
+loudness in LUFS and the sample peak in dBFS every `step` seconds from the start (window `i` starts at `i × step`;
+−100 for silence). A silent file (a stem with nothing in it) is then not an error: report −100 LUFS. Without a
+curve, the commands that need one say the provider gave none.
+
 ### `audio.sync`
 
 `mediaPath` and `otherPath` are two recordings of the same moment. Return `offsetSeconds` (time in `otherPath` =
@@ -508,10 +577,49 @@ time in `mediaPath` + offset, finite, under a day) and `correlation` (−1 to 1)
 `{offsetSeconds, correlation}` matches of the first and second half of the overlap (BashCut reports them as steady
 when they agree within 0.02 s), and the overlap in the first file's seconds.
 
+### `review.check`
+
+A plugin's own review of the timeline: a model-scored hook, contrast, brand rules. Every ready provider of every
+enabled plugin runs, side by side, when the user or an agent measures the review (`review measure`); `review run`
+then lists its issues with the built-in ones for that revision. The request has the whole project (`project`, the
+same JSON as `project get`; requests over 1 MB fail, as for any request), its `revision`, `fps`, `duration` in
+frames, `width`, `height` and `projectRoot`. Return at most 50 issues:
+
+```json
+{"issues": [{"id": "hook", "title": "Weak hook", "detail": "No face or number in the first 2 s",
+             "frame": 0, "endFrame": 60, "severity": "warning",
+             "fix": {"command": "timeline.apply", "arguments": {"label": "…", "ops": []}, "hint": "Open on a face"}}]}
+```
+
+`id` (1–64 characters), `title` (1–120) and `frame` are required; `detail` (up to 1000 characters), `endFrame`,
+`severity` (`error`, `warning` — the default — or `info`) and `fix` (a command with arguments, a hint, or both) are
+optional. Frames are clamped to the timeline. BashCut prefixes each ID with the provider ID (`<provider>:<id>`) and
+adds `source` (the plugin ID), which the Review sheet shows as *From plugin …*. A check has 30 seconds (less when its
+provider sets a lower `timeoutSeconds`); a check that fails, returns a malformed result or runs out of time becomes
+one info issue, "Plugin check failed", and never stops the others or the built-in checks. A project turns checks off
+with `review.disabledChecks`, a list of plugin or provider IDs (`timeline apply` with `setProjectProperties`);
+`plugins hooks` lists the checks under `reviewChecks` with `enabled` (for this project) and `active` (can run now).
+Declaring `review.check` needs `apiVersion` 9.
+
 ### Provenance
 
 Every result is tagged with the plugin ID, plugin version and provider ID that produced it. BashCut stores
 this as provenance (for example on beat grids and loudness measurements), never as a live dependency.
+
+### Usage, cost and paid providers
+
+BashCut never prices anything: a job's `usage` shows units and cost only as the provider reports them.
+
+- Any capability result may carry `"usage": {"units": {"characters": 1200}, "costUSD": 0.18, "charged": true}`.
+  Units are summed per name over the job's calls; a cost counts only when `charged` is not `false`. Negative or
+  non-numeric amounts are ignored.
+- A request made inside a job that the caller gave a `requestId` carries `"requestId"`. The same ID sent again
+  returns the earlier job, so a provider sees one request; a provider that charges should still refuse to charge
+  twice for one `requestId`.
+- Declare `"paid": true` on a provider that charges per request. Agents then send a `requestId` and may ask for a
+  dry run first.
+- Declare `"estimates": true` when the provider answers a request with `"dryRun": true` by doing no work and
+  returning `{"estimate": {"units": {...}, "costUSD": 0.18}}`. Other providers are not called in a dry run.
 
 ## Options
 
@@ -670,6 +778,23 @@ with `pluginData` as **one undoable edit by author `plugin`**: it gets the agent
 and is audited as `plugin.action.<action id>` or `plugin.hook.<event>`. An `addMedia` path that is absolute and
 inside the project folder is stored relative to the project, so files written to `outputDirectory` can be added
 directly.
+
+### Pixel effects and AI transitions: render, then place
+
+A plugin never draws inside the compositor: BashCut does not load plugin code per frame (plugin API rule) and a
+round trip per frame would be too slow. Motion-only transitions and effects (shake, punch, whip variants) are data
+already: a transition's `motion` and effect recipes. For anything that changes pixels (glitch, grain, light leaks,
+an AI transition between two shots), the action renders the result as a file and returns operations that place it:
+
+1. Read what it needs from `context` (the selected items, `project.rev`, the media paths) or with
+   `ui frame`/`media frames` over the host channel.
+2. Render a movie into `outputDirectory`: a full-frame clip that replaces a range, or an overlay with alpha (HEVC with
+   alpha or ProRes 4444) that sits above it.
+3. Return `baseRev` and `operations`: `addMedia` for the file, then `insert` (an overlay on an Overlay layer; add one
+   with `addTrack` when missing) or `split` + `insert` to replace a range. They commit as one undoable edit.
+
+The result is ordinary media: it previews, exports and undoes like any clip, and the plugin is not needed to open the
+project again. Re-render after the edit under it changes.
 
 ## Library packs
 
@@ -890,7 +1015,7 @@ overlays, inspector tabs, drag and drop from a view, and updates the plugin send
 
 ### Commands
 
-`plugins views` lists the plugins with panels or views, each view's location and whether it is shown, tools, skills,
+`plugins list --views` lists the plugins with panels or views, each view's location and whether it is shown, tools, skills,
 requirements, uses and the host features. `plugins show-view <plugin> --view id` shows a view where it lives (the
 sheet is dialog `plugin-view` in `ui dialog`; `ui respond close` closes it).
 `plugins view <plugin> [--view id] [--open]` renders a view and returns its components with the input values;
@@ -902,14 +1027,14 @@ sheet is dialog `plugin-view` in `ui dialog`; `ui respond close` closes it).
 A plugin can build on what other plugins provide. Prefer the first way that works:
 
 1. **Call a BashCut command** over the [host channel](#host-channel-api-4) from a view or action request:
-   `voice.speak` to generate speech, `captions.generate`, `beats.detect`, `media.import`, `media.place`,
+   `voice.speak` to generate measured takes and `voice.place` to put one on the timeline, `captions.generate`, `beats.detect`, `media.import`, `media.place`,
    `timeline.apply`, … BashCut picks the provider the user chose (VieNeu-TTS or any other `voice.synthesize`
    plugin), checks the request, stores files in the project and records the edit with the plugin as author. Your
    plugin never needs to know which plugin did the work.
 
    ```json
    {"type": "call", "id": "<request id>", "callId": "c1", "method": "voice.speak",
-    "params": {"text": "Xin chào", "keepTakes": true}}
+    "params": {"text": "Xin chào"}}
    ```
 
 2. **`plugins.invoke`** for a capability that has no BashCut command (a capability another plugin defined, such as
@@ -947,7 +1072,10 @@ Prefer capabilities (1, 2) over `requires`: the user keeps the choice of provide
 
 A provider of `library.search` finds items in some source (Freesound, Pexels audio, Giphy…); a provider of
 `library.generate` makes new ones from a prompt (AI music, stickers). Both return **candidates**; nothing enters the
-library until the user or an agent saves one. Declare the kinds a provider serves, so the right panels offer it:
+library until the user or an agent saves one. Declare the kinds a provider serves, so the right panels offer it.
+A video or image model serves `clip` (P2-H5): footage such as a B-roll shot, saved in the library and placed with
+`library place` like `media place`. Model choices (duration, aspect, resolution) belong in the provider's `options`
+and the generate `params` hints, not in BashCut:
 
 ```json
 "apiVersion": 6,
@@ -961,7 +1089,7 @@ The request's `params`:
 
 | Field | Meaning |
 |---|---|
-| `kind` | The library kind wanted (`audio`, `sticker`, `look`…) |
+| `kind` | The library kind wanted (`audio`, `sticker`, `look`, `clip`…) |
 | `query` (search) / `prompt` (generate) | What the user typed |
 | `limit` | Most items to return (1–50; 12 for search and 4 for generate by default) |
 | `page` (search) | Result page, from 1 |
@@ -973,9 +1101,12 @@ The request's `params`:
 The result is `{"items": [...]}`, at most `limit` library item objects. `kind` may be left out (it is the one asked
 for; another kind is refused) and so may `id` (a missing, invalid or repeated one becomes `candidate-<n>`).
 `file` and `preview` must be files in `outputDirectory` (absolute or relative to it, inside it after symlinks):
-download or write them there. Give `source` (a URL or a note) and `license` so people can check them before use.
+download or write them there. Give `source` (a URL or a note) and `license` so people can check them before use;
+`license` may be text (mapped to a structured licence) or `{id, version, url, attribution}`. `author` and
+`provenance {origin, sourceUrl, author, model, seed, prompt}` are kept with the saved item; without an `origin`,
+generated items are `ai` and found ones `stock`.
 Each item is checked like a saved one of its kind (an `audio` item needs a `file`, a `sticker` an `emoji` or a
-file, and so on); one bad item fails the request, and its folder is removed.
+file, a `clip` a movie or image file, and so on); one bad item fails the request, and its folder is removed.
 
 ```json
 {"items": [
@@ -1109,7 +1240,8 @@ later:
 - Calls on a request without a host channel get the error "This request cannot call BashCut".
 - Call params and results are limited to 1 MiB.
 - Views and actions (API 8) call as author `plugin`, with one command token per plugin, limited to the chat-agent
-  commands plus `plugins.run`, `plugins.invoke`, `plugins.views` and `ui.notify`. Edits are validated and undoable
+  commands plus `plugins.run`, `plugins.invoke` and `plugins.show-view`; `ui.action` only for `notify`, `panel` and
+  `source` (`{"action": "notify", "target": "Done"}` shows a status message). Edits are validated and undoable
   and the history shows the plugin as their author. An action that edits through calls should return no
   `operations` of its own.
 
@@ -1124,7 +1256,8 @@ is in [11 — Chat agents](../specs/11-chat-agents.md).
 
 - **`turn`** sends:
   - `tools`: the BashCut commands the agent may call, as `{name, method, description, inputSchema}`. Everything
-    except `agent.*`, `chat.*` and `ui.notify`.
+    on the chat allow-list (no `agent.*`, `chat.*`, plugin administration or `clip.speed*`; `ui.action` only for
+    `panel` and `source`).
   - `instructions` and `context`: a generic editing preamble, the command instructions, the project context
     and the timeline summary.
   - `kit`: the agent kit, as `{root, skillsFolder, version, skills: [{name, description}]}`.
@@ -1186,12 +1319,12 @@ Everything above is available to agents through the CLI and MCP (`bashcut_plugin
 | Command | Mode | UI equivalent |
 |---|---|---|
 | `plugins list` | read | Plugins sheet: availability, transport, actions, hooks, options, library packs, skills, provider kinds, container, views, requires (with state), uses |
-| `plugins views` | read | The plugin icons in the left rail and their panels: views, tools, skills, requirements, uses; the host features |
+| `plugins list --views` | read | The plugin icons in the left rail and their panels: views, tools, skills, requirements, uses; the host features |
 | `plugins show-view <plugin> --view <id>` | ui | Opening a view where it lives: the rail panel, its dock tab or its sheet |
 | `plugins view <plugin> [--view id] [--open]` | ui | Opening a view; returns its components and input values |
 | `plugins view-event <plugin> --node <id> [--type …] [--value …]` | ui | Clicking, typing or selecting in a plugin view |
 | `plugins invoke <capability> [--provider P] [--params '{…}']` | edit, job | None: a capability's raw result, for capabilities without a command |
-| `plugins health [plugin]` | read | Check Health |
+| `plugins list --health [--plugin ID]` | read | Check Health |
 | `plugins actions [text] [--plugin id]` | read | Every contributed action (or those matching the text or plugin) with placements, `when`, shortcut, a JSON Schema for its params, whether it is enabled now and when it last ran |
 | `plugins run <action> [--params '{…}']` | edit, job | Clicking the action and filling its sheet |
 | `plugins hooks` | read | Hook Activity: subscriptions, the delivery queue (limit, running, queued, debouncing), recent runs, waiting proposals |
@@ -1213,7 +1346,7 @@ parameters or `confirm` opens its sheet (dialog `plugin-action`); answer it with
 `plugin-confirm` sheet (unless the user already ran it from the parameter sheet, which shows the text, or Settings
 allows all agent actions). Waiting never blocks the app: commands keep being answered, `jobs status` shows the job
 running, and `ui dialog` lists the sheet. Only the user can choose Run; automation can only answer `cancel` (or
-`jobs cancel` the job). Cancelling starts no plugin request. `ui open plugin-proposals` opens the review sheet.
+`jobs cancel` the job). Cancelling starts no plugin request. `ui action open plugin-proposals` opens the review sheet.
 
 ## Dependencies and health
 

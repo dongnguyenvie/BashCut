@@ -79,6 +79,8 @@ public struct CommandSpec: Sendable {
     }
 
     public var mcpToolName: String { "bashcut_" + name.replacingOccurrences(of: ".", with: "_") }
+    /// The plugin capability this command runs on, if any (`CommandCatalog.capabilities`).
+    public var capability: String? { CommandCatalog.capabilities[name] }
     public var cliWords: [String] { name.split(separator: ".").map(String.init) }
 
     /// Unknown fields may contain secrets too; never persist their values after failed validation.
@@ -203,6 +205,14 @@ public struct CommandArguments: Sendable {
     public func optionalInt(_ name: String) -> Int? { values[name]?.int }
     public func optionalDouble(_ name: String) -> Double? { values[name]?.double }
     public func bool(_ name: String) -> Bool { values[name] == .bool(true) }
+    /// Timeline frames `from`..<`to` when either is given (`to` open-ended to the largest frame); nil otherwise.
+    public func frameRange() throws -> Range<Int>? {
+        let from = optionalInt("from"), to = optionalInt("to")
+        guard from != nil || to != nil else { return nil }
+        let lower = from ?? 0, upper = to ?? Int.max
+        guard lower < upper else { throw RPCFailure(-32602, "from must be before to") }
+        return lower..<upper
+    }
     /// nil when the parameter was not given.
     public func optionalBool(_ name: String) -> Bool? {
         guard case .bool(let value) = values[name] else { return nil }

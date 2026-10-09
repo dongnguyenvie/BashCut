@@ -5,24 +5,51 @@ import Foundation
 ///
 /// - `highlight`: the word being spoken takes the highlight colour (`textStyle.highlight`, default yellow);
 /// - `karaoke`: words already spoken take the highlight colour;
-/// - `reveal`: words appear as they are spoken.
+/// - `reveal`: words appear as they are spoken;
+/// - an object `{spoken, upcoming, past}`, each `{fill?, opacity?}`: any look per word state (the three names are
+///   presets of it, `presetStates`).
 ///
 /// Words are the item's text split at white space, in reading order. When `words` is missing or no longer matches
 /// the text (it was edited), timings are estimated from each word's length over the item.
 public enum CaptionWords {
     public static let styles = ["highlight", "karaoke", "reveal"]
+    public static let states = ["spoken", "upcoming", "past"]
+
+    /// The per-state looks a named style stands for; `highlight` is the item's highlight colour.
+    public static func presetStates(_ name: String, highlight: String) -> [String: [String: JSONValue]] {
+        switch name {
+        case "highlight": ["spoken": ["fill": .string(highlight)]]
+        case "karaoke": ["spoken": ["fill": .string(highlight)], "past": ["fill": .string(highlight)]]
+        case "reveal": ["upcoming": ["opacity": .number(0)]]
+        default: [:]
+        }
+    }
     public static let defaultHighlight = "#FFD400"
     public static let maximumWords = 2000
 
-    /// One word with its time in seconds of the media it was heard in (transcription output).
-    public struct Timed: Sendable, Equatable {
+    /// One word with its time in seconds of the media it was heard in (transcription output), plus what the
+    /// provider knows about it when it says: `confidence` (0–1), `speaker`, `event` (a non-speech sound such as
+    /// laughter or music) and `noSpeechProb` (0–1, the chance its stretch holds no speech).
+    public struct Timed: Codable, Sendable, Equatable {
         public let text: String
         public let start: Double
         public let end: Double
-        public init(text: String, start: Double, end: Double) {
+        public var confidence: Double?
+        public var speaker: String?
+        public var event: String?
+        public var noSpeechProb: Double?
+
+        public init(
+            text: String, start: Double, end: Double, confidence: Double? = nil, speaker: String? = nil,
+            event: String? = nil, noSpeechProb: Double? = nil
+        ) {
             self.text = text
             self.start = start
             self.end = end
+            self.confidence = confidence
+            self.speaker = speaker
+            self.event = event
+            self.noSpeechProb = noSpeechProb
         }
     }
 
@@ -31,7 +58,8 @@ public enum CaptionWords {
         text.split(whereSeparator: { $0.isWhitespace }).map(String.init)
     }
 
-    /// Reads a word-timings file: `[{"text"|"word", "start", "end"}]` in seconds.
+    /// Reads a word-timings file: `[{"text"|"word", "start", "end"}]` in seconds, with the optional `confidence`
+    /// (or `probability`), `speaker`, `event` and `noSpeechProb`; values out of range are left out.
     public static func decode(_ data: Data) throws -> [Timed] {
         guard data.count <= 8 * 1024 * 1024,
             let value = try? JSONDecoder().decode(JSONValue.self, from: data), case .array(let list) = value,
@@ -43,15 +71,36 @@ public enum CaptionWords {
                 !text.isEmpty, let start = fields["start"]?.double, let end = fields["end"]?.double,
                 start.isFinite, end.isFinite, start >= 0, end >= start
             else { return nil }
-            return Timed(text: text, start: start, end: end)
+            let unit = { (value: JSONValue?) in value?.double.flatMap { (0...1).contains($0) ? $0 : nil } }
+            let label = { (value: JSONValue?) in
+                value?.string.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.flatMap { $0.isEmpty ? nil : String($0.prefix(64)) }
+            }
+            return Timed(
+                text: text, start: start, end: end, confidence: unit(fields["confidence"] ?? fields["probability"]),
+                speaker: label(fields["speaker"]), event: label(fields["event"]), noSpeechProb: unit(fields["noSpeechProb"]))
         }
     }
 }
 
 extension Item {
-    /// The word display style, when the item shows its words as they are spoken.
+    /// The word display style, when the item shows its words as they are spoken: a preset name, or `custom` for
+    /// per-state looks.
     public var wordStyle: String? {
-        fields["wordStyle"]?.string.flatMap { CaptionWords.styles.contains($0) ? $0 : nil }
+        switch fields["wordStyle"] {
+        case .string(let name)?: CaptionWords.styles.contains(name) ? name : nil
+        case .object?: "custom"
+        default: nil
+        }
+    }
+
+    /// The look of each word state (`spoken`, `upcoming`, `past`) for `wordStyle`; nil when words are not shown.
+    public var wordStates: [String: [String: JSONValue]]? {
+        let highlight = self["textStyle"]?.object["highlight"]?.string ?? CaptionWords.defaultHighlight
+        switch fields["wordStyle"] {
+        case .string(let name)? where CaptionWords.styles.contains(name): return CaptionWords.presetStates(name, highlight: highlight)
+        case .object(let states)?: return states.compactMapValues(\.object)
+        default: return nil
+        }
     }
 
     /// Start and length (frames from the item's start) of each word of the text: from `words` when it matches the
@@ -100,9 +149,18 @@ extension Item {
     }
 
     func validateWords() throws {
-        if let style = fields["wordStyle"], style != .null, style.string.map(CaptionWords.styles.contains) != true {
+        switch fields["wordStyle"] {
+        case nil, .null?: break
+        case .string(let name)? where CaptionWords.styles.contains(name): break
+        case .object(let states)? where states.allSatisfy({ key, value in
+            guard CaptionWords.states.contains(key), case .object = value else { return false }
+            return true
+        }):
+            break
+        default:
             throw ProjectError.invalid(
-                "item.\(id).wordStyle: expected one of \(CaptionWords.styles.joined(separator: ", "))")
+                "item.\(id).wordStyle: expected one of \(CaptionWords.styles.joined(separator: ", ")) or "
+                    + "{spoken, upcoming, past} objects of {fill, opacity}")
         }
         guard let value = fields["words"] else { return }
         guard case .array(let list) = value, list.count <= CaptionWords.maximumWords,

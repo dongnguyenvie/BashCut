@@ -1,11 +1,11 @@
 import BashCutProject
 
 extension CommandCatalog {
-    private static let libraryKinds = LibraryKind.allCases.map(\.rawValue)
+    static let libraryKinds = LibraryKind.allCases.map(\.rawValue)
     private static let libraryKind = CommandParameter(
         "kind", .string, "Item kind", choices: libraryKinds, cli: .option("kind"))
     private static let libraryPanel = CommandParameter(
-        "panel", .string, "Only items the library panel shows", choices: libraryPanels.filter { $0 != "media" },
+        "panel", .string, "Only items the library panel shows", choices: libraryPanels,
         cli: .option("panel"))
     private static let libraryID = CommandParameter(
         "id", .string, "Item ID, or scope:id to pick one scope", required: true, cli: .positional)
@@ -33,15 +33,18 @@ extension CommandCatalog {
                 + "inOut, sfx: audio item ID} (or its own sound as file); look (a filter stack) {color: {exposure, contrast, "
                 + "saturation, lutStrength}, lutName} with an optional .cube LUT as file; audio (its file required) {role: "
                 + "music|sfx|ambience, seconds, bpm, loopable, lufs, truePeak}, all optional (library add measures seconds "
-                + "and picks a role by length; library analyze fills the rest), with mood and genre as tags",
+                + "and picks a role by length; library analyze fills the rest), with mood and genre as tags; clip (footage: a "
+                + ".mov/.mp4/.m4v or an image file, required) takes any keys (library add measures seconds, width, "
+                + "height and hasAudio; a generator's model, prompt or aspect may ride along)",
             cli: .option("params")),
         CommandParameter(
-            "file", .string, "File to copy in (audio, image or alpha-movie sticker, a look's .cube LUT…)", isPath: true,
+            "file", .string, "File to copy in (audio, image or alpha-movie sticker, a look's .cube LUT, a clip's movie or image…)", isPath: true,
             cli: .option("file")),
         CommandParameter("preview", .string, "Preview image, GIF or audio snippet to copy in", isPath: true,
                          cli: .option("preview")),
         CommandParameter("source", .string, "Where it came from (URL or note)", cli: .option("source")),
-        CommandParameter("license", .string, "License or terms of use", cli: .option("license")),
+        CommandParameter("license", .string, "License: text as written, or a JSON object {id, "
+                         + "redistribute, commercial, attribution…}; stored as given", cli: .option("license")),
     ]
 
     /// The provider, count and saving options of library search and library generate (#81).
@@ -65,7 +68,7 @@ extension CommandCatalog {
     static let librarySpecs: [CommandSpec] = [
         CommandSpec(
             "library.list", .read,
-            "List library items (Audio, Text, Stickers, Effects, Transitions, Filters, Voice) from the open project, "
+            "List library items (Media clips, Audio, Text, Stickers, Effects, Transitions, Filters, Voice) from the open project, "
                 + "this Mac, plugins and built-in packs, with usage. Check here before making something new.",
             parameters: [
                 libraryKind, libraryPanel,
@@ -101,6 +104,9 @@ extension CommandCatalog {
                 CommandParameter("id", .string, "Item ID: lowercase letters, digits and hyphens; from the name by default",
                                  cli: .option("id")),
                 writableScope,
+                CommandParameter("origin", .string, "Where it came from (P2-H8)", choices: ["stock", "ai", "own", "built-in"],
+                                 cli: .option("origin")),
+                CommandParameter("author", .string, "Who made it, for the credit line", cli: .option("author")),
             ] + itemFields),
         CommandSpec(
             "library.update", .edit,
@@ -182,13 +188,15 @@ extension CommandCatalog {
                 + "project's music/ or sfx/ folder (once per content), imported and placed on the Music layer (music, "
                 + "ambience) or SFX layer (sfx), the layer added when missing, as one undo step. duration trims a sound; "
                 + "longer than the file, a loopable sound repeats back to back and another plays once (the result says so). "
-                + "At the playhead by default.",
+                + "A clip (footage) is copied into the project's clips/ folder (once per content), imported and placed "
+                + "like media place: on track or the main layer, spilling onto a free layer when the range is taken, "
+                + "duration trimming it, as one undo step. At the playhead by default.",
             parameters: [
                 libraryID, libraryScope,
                 CommandParameter("atFrame", .integer, "First timeline frame", minimum: 0, cli: .option("at-frame")),
                 CommandParameter("duration", .integer, "Length in timeline frames", minimum: 1, cli: .option("duration")),
                 CommandParameter("track", .string, "Layer ID; for audio, the Music or SFX layer by its role by default; "
-                                 + "for a sticker, the Overlay layer", cli: .option("track")),
+                                 + "for a sticker, the Overlay layer; for a clip, the main layer", cli: .option("track")),
                 CommandParameter(
                     "position", .string,
                     "Sticker: center, top, bottom, left, right, top-left, top-right, bottom-left or bottom-right (inside "
@@ -202,7 +210,8 @@ extension CommandCatalog {
         CommandSpec(
             "library.analyze", .edit,
             "Measure an audio library item's file and save the values as a new version: its length, integrated "
-                + "loudness and true peak (an audio.loudness provider, as audio measure) and, unless it is a sound effect, "
+                + "loudness and true peak (an audio.loudness provider, as audio measure), landmarks {onset, peak, tail} "
+                + "in seconds (where it passes the −70 LUFS gate, peaks and drops back under it) and, unless it is a sound effect, "
                 + "its tempo in BPM (an audio.beats provider, as beats detect). Runs as a job; a missing provider leaves "
                 + "that value and says why in notes. Agents saving to the user scope wait for approval. Tag mood and "
                 + "genre with library update --tags after listening or reading the analysis.",
@@ -246,7 +255,7 @@ extension CommandCatalog {
             ] + libraryProviderParameters(limit: 4) + [
                 CommandParameter("params", .object, "Hints for the provider (JSON), such as {\"seconds\": 30}",
                                  cli: .option("params")),
-            ],
+            ] + paidRequestParameters,
             execution: .job),
         CommandSpec(
             "library.import-pack", .edit,
@@ -261,7 +270,8 @@ extension CommandCatalog {
         CommandSpec(
             "library.export-pack", .edit,
             "Write library items as a pack folder (pack.json and files) to share or import elsewhere: one pack, or "
-                + "every item of a kind or scope.",
+                + "every item of a kind or scope. Refuses, naming them, when an item's own licence says "
+                + "redistribute false; unknownLicenses lists items exported whose licence does not say.",
             parameters: [
                 CommandParameter("output", .string, "New or empty folder to write", required: true, isPath: true,
                                  cli: .option("output")),

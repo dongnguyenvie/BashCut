@@ -6,8 +6,9 @@ import Foundation
 /// `role` is `music`, `sfx` or `ambience`; music and ambience place on the Music layer, sound effects on the SFX layer.
 /// Without a role, a file shorter than `sfxSeconds` places as a sound effect and a longer one as music. `seconds` is
 /// the file's length, `bpm` its tempo (`beats detect`), `lufs` its integrated loudness and `truePeak` its true peak
-/// in dBTP (`audio measure`), and `loopable` says the end joins its start, so placing it longer than the file repeats
-/// it. Other keys round-trip.
+/// in dBTP (`audio measure`), `landmarks` the seconds where it becomes audible (`onset`), peaks (`peak`) and fades
+/// under the −70 LUFS gate (`tail`) (`library analyze`), and `loopable` says the end joins its start, so placing it
+/// longer than the file repeats it. Other keys round-trip.
 public struct LibraryAudio: Sendable, Equatable {
     public static let roles = ["music", "sfx", "ambience"]
     public static let bpmRange = 20.0...400.0
@@ -25,6 +26,9 @@ public struct LibraryAudio: Sendable, Equatable {
     public var loopable: Bool?
     public var lufs: Double?
     public var truePeak: Double?
+    /// Seconds from the file's start: `onset`, `peak`, `tail`.
+    public var landmarks: [String: Double]?
+    public static let landmarkNames = ["onset", "peak", "tail"]
 
     public init(
         role: String? = nil, seconds: Double? = nil, bpm: Double? = nil, loopable: Bool? = nil, lufs: Double? = nil,
@@ -50,6 +54,14 @@ public struct LibraryAudio: Sendable, Equatable {
         bpm = try Self.number(params, "bpm", in: Self.bpmRange, label: label)
         lufs = try Self.number(params, "lufs", in: Self.lufsRange, label: label)
         truePeak = try Self.number(params, "truePeak", in: Self.truePeakRange, label: label)
+        if let value = params["landmarks"] {
+            let fields = value.object
+            let values = fields.compactMapValues(\.double)
+            guard case .object = value, values.count == fields.count, Set(values.keys).isSubset(of: Self.landmarkNames),
+                values.values.allSatisfy({ $0.isFinite && (0...Self.maximumSeconds).contains($0) })
+            else { throw ProjectError.invalid("\(label): params.landmarks must hold onset, peak and tail in seconds") }
+            landmarks = values
+        }
         if let value = params["loopable"] {
             guard case .bool(let loopable) = value else {
                 throw ProjectError.invalid("\(label): params.loopable must be true or false")
@@ -71,7 +83,8 @@ public struct LibraryAudio: Sendable, Equatable {
     /// The params as a library item stores them, merged over `params` so unknown keys stay.
     public func params(merging params: [String: JSONValue] = [:]) -> [String: JSONValue] {
         var params = params
-        for key in ["role", "seconds", "bpm", "loopable", "lufs", "truePeak"] { params[key] = nil }
+        for key in ["role", "seconds", "bpm", "loopable", "lufs", "truePeak", "landmarks"] { params[key] = nil }
+        if let landmarks { params["landmarks"] = .object(landmarks.mapValues { Self.rounded($0, places: 2) }) }
         if let role { params["role"] = .string(role) }
         if let seconds { params["seconds"] = Self.rounded(seconds, places: 3) }
         if let bpm { params["bpm"] = Self.rounded(bpm, places: 1) }
@@ -100,7 +113,7 @@ public struct LibraryAudio: Sendable, Equatable {
     /// The project folder a library sound of `role` is copied into.
     public static func projectFolder(_ role: String) -> String { role == "sfx" ? "sfx" : "music" }
 
-    /// The changes `library analyze` saves as a new version: `measured` (seconds, bpm, lufs, truePeak; nil keeps
+    /// The changes `library analyze` saves as a new version: `measured` (seconds, bpm, lufs, truePeak, landmarks; nil keeps
     /// the stored value) merged over the item's params.
     public static func analysisChanges(_ item: LibraryItem, measured: LibraryAudio) throws -> [String: JSONValue] {
         var audio = try LibraryAudio(params: item.params, label: item.reference)
@@ -108,6 +121,7 @@ public struct LibraryAudio: Sendable, Equatable {
         audio.bpm = measured.bpm ?? audio.bpm
         audio.lufs = measured.lufs ?? audio.lufs
         audio.truePeak = measured.truePeak ?? audio.truePeak
+        audio.landmarks = measured.landmarks ?? audio.landmarks
         return ["params": .object(audio.params(merging: item.params))]
     }
 

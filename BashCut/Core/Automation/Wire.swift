@@ -41,6 +41,11 @@ public struct RPCFailure: Error, Codable, Sendable, LocalizedError {
         }
         return RPCFailure(error is DecodingError ? -32700 : fallbackCode, error.localizedDescription)
     }
+    /// A project error as invalid arguments, except a stale revision, which keeps -32002 and its expected/actual.
+    public static func invalid(_ error: ProjectError) -> RPCFailure {
+        if case .staleRevision = error { return from(error) }
+        return RPCFailure.from(error, fallbackCode: -32602)
+    }
     /// sysexits-compatible process statuses; the original RPC code remains in the JSON error.
     public var exitStatus: Int32 {
         switch code {
@@ -74,15 +79,23 @@ public enum CommandMode: String, Sendable { case read, ui, edit, privileged }
 /// Agent operations use the core `EditOperation` codec; internal operations
 /// (`group`, `restore`) are rejected at this boundary.
 public enum WireOperations {
-    public static func decode(_ value: JSONValue) throws -> [EditOperation] {
-        guard case .array(let array) = value, !array.isEmpty, array.count <= 1000 else {
+    /// With `project`, `patchItems` ops are expanded against it first (`ItemPatch`).
+    public static func decode(_ value: JSONValue, project: Project? = nil) throws -> [EditOperation] {
+        guard case .array(var array) = value, !array.isEmpty, array.count <= 1000 else {
             throw RPCFailure(-32602, "ops must be a nonempty array of at most 1000 operations")
+        }
+        if let project {
+            do {
+                array = try ItemPatch.expand(array, in: project)
+            } catch let error as ProjectError {
+                throw RPCFailure.invalid(error)
+            }
         }
         return try array.map { operation in
             do {
                 return try EditOperation(json: operation)
             } catch let error as ProjectError {
-                throw RPCFailure(-32602, error.localizedDescription)
+                throw RPCFailure.invalid(error)
             }
         }
     }

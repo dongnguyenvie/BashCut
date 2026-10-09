@@ -82,10 +82,11 @@ def plugin_bench():
         report("    plugins.options", rest, size, first)
         # Health runs the plugin's dependency probes as processes: fewer samples, and the result says whether
         # they ran (ready) or were skipped (untrusted, disabled, outdated).
-        first, rest, size = timed("plugins.health", {"plugin": identifier}, runs=5)
-        _, health, _ = rpc("plugins.health", {"plugin": identifier})
+        first, rest, size = timed("plugins.list", {"health": True, "plugin": identifier}, runs=5)
+        _, listed, _ = rpc("plugins.list", {"health": True, "plugin": identifier})
+        health = listed["health"]
         state = health[0].get("state", "?") if isinstance(health, list) and health else "?"
-        report(f"    plugins.health ({state})", rest, size, first)
+        report(f"    plugins.list --health ({state})", rest, size, first)
     return plugins
 
 

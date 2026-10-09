@@ -154,9 +154,10 @@ struct PluginContributionCapabilityTests {
         let trust = PluginTrustStore(url: root.appendingPathComponent("trust.json"))
         let service = service(ScriptedTransport(result: .object([:])), trust: trust)
         #expect(service.availability(plugin) == .untrusted)
-        await #expect(throws: PluginError.self) {
+        let untrusted = await #expect(throws: CapabilityUnavailable.self) {
             try await service.resolve("audio.beats", preferredProvider: nil, projectRoot: nil)
         }
+        #expect(untrusted?.report.reason == .notConfigured)
         let adapter = PluginActionCapability(
             action: "example.toolkit.grade", params: [:], options: [:], context: .object([:]), projectRoot: nil,
             outputRoot: nil)

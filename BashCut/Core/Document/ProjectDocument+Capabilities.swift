@@ -1,45 +1,68 @@
 import AVFoundation
 import BashCutAutomation
 import BashCutDocument
+import BashCutEngine
 import BashCutPlugin
 import BashCutPlugins
 import BashCutProject
 import Foundation
 
-private let capabilityForMethod = [
-    "captions.generate": "captions.transcribe", "beats.detect": "audio.beats", "voice.speak": "voice.synthesize",
-    "audio.measure": "audio.loudness", "media.sync": "audio.sync",
-]
-
 extension ProjectDocument {
-    var contentLanguage: String { project["contentLanguage"]?.string ?? "vi" }
+    /// The project's speech language; empty when not set (providers detect it, context get reports null).
+    var contentLanguage: String { project["contentLanguage"]?.string ?? "" }
 
     // MARK: Shared actions for native panels and automation
 
-    /// Transcribes one project media item and imports the SRT as one undoable edit.
-    /// With `range` (source seconds), only that stretch is transcribed and replaced.
+    /// Transcribes one project media item and imports its captions as one undoable edit. The whole file is
+    /// transcribed once and kept as its source transcript (`media.transcribe`); later calls place captions from it
+    /// unless `fresh`, or when it was made in another language or by another provider than `provider`.
+    /// With `range` (source seconds), only that stretch is replaced; without a stored transcript only that stretch
+    /// is transcribed (and not kept). Returns how the words were found: `stored`, `transcribed` or `range`.
+    @discardableResult
     func generateCaptions(
         mediaID: String, replace: Bool, provider: String? = nil, wordStyle: String? = nil,
-        range: ClosedRange<Double>? = nil, author: Author = .user
-    ) async throws {
-        let (root, _, url) = try capabilityMedia(mediaID)
+        range: ClosedRange<Double>? = nil, fresh: Bool = false, author: Author = .user
+    ) async throws -> String {
         let session = sessionID
-        let generated = try await plugins.running("captions.transcribe") {
+        let phrases: [SubRip.Cue], words: [CaptionWords.Timed], provenance: [String: JSONValue], how: String
+        if !fresh, let stored = try await reusableTranscript(mediaID, provider: provider) {
+            (phrases, words, provenance, how) = (stored.phrases, stored.words, stored.provider, "stored")
+        } else if range == nil {
+            let transcript = try await transcribeSource(mediaID, provider: provider)
+            (phrases, words, provenance, how) = (transcript.phrases, transcript.words, transcript.provider, "transcribed")
+        } else {
+            let generated = try await transcribe(mediaID, provider: provider, range: range)
+            (phrases, words, provenance, how) = (
+                try SubRip.cues(generated.text), generated.words, generated.provenance.json, "range"
+            )
+        }
+        try ensureSession(session)
+        // The file the words were heard in, so review can say when it changes later (P2-G6).
+        var keyed = provenance
+        if let key = sourceKey(mediaID) { keyed["sourceKey"] = .string(key) }
+        try commit(
+            project.importingCues(
+                phrases, replace: replace, provenance: keyed, media: mediaID, words: words, wordStyle: wordStyle,
+                range: range),
+            label: "Generate captions", author: author)
+        emitPluginEvent(.captionsGenerated, [
+            "media": .string(mediaID), "provider": .object(provenance), "rev": .integer(project.revision),
+        ])
+        return how
+    }
+
+    /// Runs `captions.transcribe` on one media (or the `range` of it, in source seconds).
+    func transcribe(
+        _ mediaID: String, provider: String?, range: ClosedRange<Double>? = nil
+    ) async throws -> GeneratedPluginCaptions {
+        let (root, _, url) = try capabilityMedia(mediaID)
+        return try await plugins.running("captions.transcribe") {
             try await plugins.service.transcribe(
                 mediaURL: url, language: contentLanguage, range: range,
                 preferredProvider: provider ?? project.preferredProvider(for: "captions.transcribe"),
                 projectRoot: root,
                 outputRoot: root.appendingPathComponent("subtitles/generated", isDirectory: true))
         }
-        try ensureSession(session)
-        try commit(
-            project.importingSubRip(
-                generated.text, replace: replace, provenance: generated.provenance.json, media: mediaID,
-                words: generated.words, wordStyle: wordStyle, range: range),
-            label: "Generate captions", author: author)
-        emitPluginEvent(.captionsGenerated, [
-            "media": .string(mediaID), "provider": .object(generated.provenance.json), "rev": .integer(project.revision),
-        ])
     }
 
     /// Detects beats in an audio media item and maps them through its timeline items to integer frames.
@@ -71,20 +94,22 @@ extension ProjectDocument {
         try commit(
             .setBeatGrid(
                 media: media.id, bpm: generated.bpm, frames: frames.sorted(),
-                provenance: generated.provenance.json),
+                provenance: generated.provenance.json.merging(
+                    sourceKey(media.id).map { ["sourceKey": .string($0)] } ?? [:]) { _, new in new }),
             label: "Detect beats", author: author)
+        try? storeBeatGrid(generated, url: url, root: root)
         emitPluginEvent(.beatsDetected, [
             "media": .string(media.id), "bpm": .number(generated.bpm), "beats": .integer(frames.count),
         ])
     }
 
     /// Loudness, loudness range and speech-band shares of one media item.
-    func measureAudio(mediaID: String, provider: String? = nil) async throws -> JSONValue {
+    func measureAudio(mediaID: String, provider: String? = nil, curve: Bool = false) async throws -> JSONValue {
         let (root, media, url) = try capabilityMedia(mediaID)
         let generated = try await plugins.running("audio.loudness") {
             try await plugins.service.analyzeLoudness(
-                mediaURL: url, bands: true, preferredProvider: provider ?? project.preferredProvider(for: "audio.loudness"),
-                projectRoot: root)
+                mediaURL: url, bands: true, curve: curve,
+                preferredProvider: provider ?? project.preferredProvider(for: "audio.loudness"), projectRoot: root)
         }
         guard case .object(var fields) = generated.measurement.json else { return generated.measurement.json }
         fields["media"] = .string(media.id)
@@ -139,8 +164,10 @@ extension ProjectDocument {
         return .object(fields)
     }
 
+    /// `cloneConsent`: the person asking agreed to clone a voice; the Voice panel passes it for the user, agents only
+    /// when told to.
     func generateVoiceTakes(
-        text: String, count: Int = 3, provider: String? = nil
+        text: String, count: Int = 3, provider: String? = nil, cloneConsent: Bool = false
     ) async throws -> [GeneratedVoiceTake] {
         guard let root = fileURL?.deletingLastPathComponent() else {
             throw ProjectError.invalid("Open a project before generating voiceover")
@@ -150,7 +177,8 @@ extension ProjectDocument {
             try await plugins.service.synthesizeVoiceTakes(
                 text: text, language: contentLanguage, count: count,
                 preferredProvider: provider ?? project.preferredProvider(for: "voice.synthesize"),
-                projectRoot: root, outputRoot: root.appendingPathComponent("voiceover/generated", isDirectory: true))
+                projectRoot: root, outputRoot: root.appendingPathComponent("voiceover/generated", isDirectory: true),
+                cloneConsent: cloneConsent)
         }
         guard session == sessionID else {
             CapabilityService.discardVoiceTakes(takes)
@@ -162,13 +190,22 @@ extension ProjectDocument {
     /// Inserts one generated take on the Voiceover track and returns the new item ID.
     @discardableResult
     func insertVoiceTake(
-        _ asset: GeneratedPluginAsset, at frame: Int? = nil, author: Author = .user
+        _ asset: GeneratedPluginAsset, at frame: Int? = nil, voice: [String: JSONValue]? = nil, author: Author = .user
+    ) async throws -> String {
+        try await insertVoiceTake(
+            VoiceTakeFile(asset, voice: voice), at: frame, voice: voice, author: author)
+    }
+
+    /// Inserts a take file with its recorded provenance on the Voiceover track and returns the new item ID.
+    @discardableResult
+    func insertVoiceTake(
+        _ take: VoiceTakeFile, at frame: Int?, voice: [String: JSONValue]?, author: Author
     ) async throws -> String {
         guard let root = fileURL?.deletingLastPathComponent() else {
             throw ProjectError.invalid("Open a project before generating voiceover")
         }
         let session = sessionID
-        let mediaAsset = AVURLAsset(url: asset.url)
+        let mediaAsset = AVURLAsset(url: take.url)
         let duration = try await mediaAsset.load(.duration)
         let hasAudio = try await !mediaAsset.loadTracks(withMediaType: .audio).isEmpty
         try ensureSession(session)
@@ -178,11 +215,12 @@ extension ProjectDocument {
         guard start >= 0 else { throw ProjectError.invalid("Voiceover start frame must not be negative") }
         let mediaID = UUID().uuidString
         let media = Media(fields: [
-            "id": .string(mediaID), "path": .string(Self.relativePath(asset.url, root: root)),
+            "id": .string(mediaID), "path": .string(Self.relativePath(take.url, root: root)),
             "kind": .string("audio"), "fps": project.fps.json, "frames": .integer(frames),
-            "generatedBy": .object(asset.provenance.json),
+            "generatedBy": .object(take.generatedBy), "provenance": take.provenance,
         ])
-        let item = Item(media: mediaID, at: start, duration: frames)
+        var item = Item(media: mediaID, at: start, duration: frames)
+        if let voice { item["voice"] = .object(voice) }
         let track = try project.requireTrack(role: TrackRole.voiceover, kind: "audio")
         try commit(
             .group(
@@ -192,12 +230,40 @@ extension ProjectDocument {
         selectedID = item.id
         selectedTrackID = track.id
         emitPluginEvent(.voiceGenerated, [
-            "item": .string(item.id), "media": .string(mediaID), "path": .string(asset.url.path),
+            "item": .string(item.id), "media": .string(mediaID), "path": .string(take.url.path),
         ])
         return item.id
     }
 
-    private func capabilityMedia(_ mediaID: String) throws -> (URL, Media, URL) {
+    /// The current content key of a media file (`SourceHash.mediaNamespace`, P2-G6); nil when it cannot be read.
+    func sourceKey(_ mediaID: String) -> String? {
+        guard let (_, _, url) = try? capabilityMedia(mediaID) else { return nil }
+        return try? ProjectCache.contentKey(for: url, namespace: SourceHash.mediaNamespace)
+    }
+
+    /// Current content keys of the media review checks results against (P2-G6).
+    func sourceMediaKeys() -> [String: String] {
+        Dictionary(uniqueKeysWithValues: project.sourceKeyedMedia.compactMap { id in sourceKey(id).map { (id, $0) } })
+    }
+
+    /// A voice take's `provenance` (P2-H8): made by AI, by which provider, for which request and what it was charged.
+    static func voiceTakeProvenance(_ asset: GeneratedPluginAsset) -> JSONValue {
+        var fields = asset.provenance.json
+        fields["origin"] = .string("ai")
+        let call = PluginCallContext.current
+        if let requestID = call.requestID { fields["requestId"] = .string(requestID) }
+        if let charged = call.usage?.json["costUSD"]?.double { fields["charged"] = .number(charged) }
+        return .object(fields)
+    }
+
+    /// A voice take's `generatedBy`: the provider, plus the hash of the text it says.
+    static func voiceProvenance(_ asset: GeneratedPluginAsset, voice: [String: JSONValue]?) -> [String: JSONValue] {
+        var fields = asset.provenance.json
+        if let hash = voice?["textHash"] { fields["textHash"] = hash }
+        return fields
+    }
+
+    func capabilityMedia(_ mediaID: String) throws -> (URL, Media, URL) {
         guard let root = fileURL?.deletingLastPathComponent() else {
             throw ProjectError.invalid("Open a saved project first")
         }
@@ -215,17 +281,17 @@ extension ProjectDocument {
     // MARK: Automation
 
     func registerCapabilityCommands() {
-        handle("plugins.list") { document, arguments, _ in
-            await document.plugins.loadCachedRegistry()
-            let category = arguments.optionalString("category").flatMap(PluginCategory.init(rawValue:))
-            return document.pluginCatalogJSON(category: category)
-        }
+        handle("plugins.list") { document, arguments, _ in try await document.pluginsList(arguments) }
         handle("jobs.status") { document, arguments, _ in
             if let id = arguments.optionalString("job") {
                 guard let job = document.jobs.job(id) else { throw RPCFailure(-32602, "Unknown job") }
                 return job.json
             }
             return .array(document.jobs.jobs.map(\.json))
+        }
+        handle("capabilities.get") { document, arguments, _ in try await document.capabilitiesJSON(arguments) }
+        handle("jobs.wait") { document, arguments, _ in
+            try await document.waitForJob(try arguments.string("job"), seconds: try arguments.int("timeout"))
         }
         handleAuthored("jobs.cancel") { document, arguments, _ in
             guard document.jobs.cancel(try arguments.string("job")) else {
@@ -245,18 +311,32 @@ extension ProjectDocument {
                 guard upper > lower else { throw RPCFailure(-32602, "to must be after from") }
                 range = lower...upper
             }
-            return try document.startCapabilityJob("captions.generate", author: author) { document in
-                try await document.generateCaptions(
+            let fresh = arguments.bool("fresh")
+            return try await document.startCapabilityJob("captions.generate", author: author, arguments: arguments) { document in
+                let words = try await document.generateCaptions(
                     mediaID: media, replace: replace, provider: provider, wordStyle: wordStyle, range: range,
-                    author: author)
-                return .object(["rev": .integer(document.project.revision)])
+                    fresh: fresh, author: author)
+                return .object(["rev": .integer(document.project.revision), "transcript": .string(words)])
             }
         }
         handleAuthored("audio.measure") { document, arguments, author in
-            let media = try arguments.string("media")
             let provider = arguments.optionalString("provider")
-            return try document.startCapabilityJob("audio.measure", author: author) { document in
-                try await document.measureAudio(mediaID: media, provider: provider)
+            if arguments.bool("timeline") {
+                return try await document.startCapabilityJob("audio.measure", author: author, arguments: arguments) { document in
+                    try await document.measureTimelineAudio(provider: provider)
+                }
+            }
+            guard let media = arguments.optionalString("media") else { throw RPCFailure(-32602, "Give media, or timeline") }
+            let curve = arguments.bool("curve")
+            return try await document.startCapabilityJob("audio.measure", author: author, arguments: arguments) { document in
+                try await document.measureAudio(mediaID: media, provider: provider, curve: curve)
+            }
+        }
+        handleAuthored("audio.mix-measure") { document, arguments, author in
+            let provider = arguments.optionalString("provider")
+            let near = arguments.optionalDouble("nearSeconds") ?? 1
+            return try await document.startCapabilityJob("audio.mix-measure", author: author, arguments: arguments) { document in
+                try await document.measureMix(provider: provider, nearSeconds: near)
             }
         }
         handleAuthored("media.sync") { document, arguments, author in
@@ -265,75 +345,26 @@ extension ProjectDocument {
             let item = arguments.optionalString("item")
             let provider = arguments.optionalString("provider")
             guard media != other else { throw RPCFailure(-32602, "Pick two different media items to sync") }
-            return try document.startCapabilityJob("media.sync", author: author) { document in
+            return try await document.startCapabilityJob("media.sync", author: author, arguments: arguments) { document in
                 try await document.syncMedia(mediaID: media, otherID: other, itemID: item, provider: provider)
             }
         }
         handleAuthored("beats.detect") { document, arguments, author in
             let media = try arguments.string("media")
             let provider = arguments.optionalString("provider")
-            return try document.startCapabilityJob("beats.detect", author: author) { document in
+            return try await document.startCapabilityJob("beats.detect", author: author, arguments: arguments) { document in
                 try await document.detectBeats(mediaID: media, provider: provider, author: author)
                 return .object([
                     "rev": .integer(document.project.revision),
                     "bpm": document.project.beatBPM.map(JSONValue.number) ?? .null,
                     "beats": .integer(document.project.beatFrames.count),
+                    "grid": (try? document.storedBeatGrid(media))?.object["grid"] ?? .null,
                 ])
             }
         }
-        handleAuthored("voice.speak") { document, arguments, author in
-            let text = try arguments.string("text")
-            let count = try arguments.int("takes")
-            let frame = arguments.optionalInt("atFrame")
-            let provider = arguments.optionalString("provider")
-            let keepTakes = arguments.bool("keepTakes")
-            return try document.startCapabilityJob("voice.speak", author: author) { document in
-                if keepTakes { return try await document.generateKeptTakes(text: text, count: count, provider: provider) }
-                return try await document.speak(text: text, count: count, frame: frame, provider: provider, author: author)
-            }
-        }
     }
 
-    /// Generates takes, inserts the best-scoring one and removes the rest.
-    private func speak(
-        text: String, count: Int, frame: Int?, provider: String?, author: Author
-    ) async throws -> JSONValue {
-        let takes = try await generateVoiceTakes(text: text, count: count, provider: provider)
-        guard let best = takes.best else { throw ProjectError.invalid("Voice provider returned no takes") }
-        let itemID: String
-        do {
-            itemID = try await insertVoiceTake(best.asset, at: frame, author: author)
-        } catch {
-            CapabilityService.discardVoiceTakes(takes)
-            throw error
-        }
-        CapabilityService.discardVoiceTakes(takes, keeping: best.asset.url)
-        return .object([
-            "rev": .integer(project.revision), "item": .string(itemID),
-            "score": .number(best.score), "scoreSource": .string(best.scoreSource),
-            "takes": .array(takes.map { .object(["score": .number($0.score), "seconds": .number($0.durationSeconds)]) }),
-        ])
-    }
-
-    /// Generates takes and keeps every file (like the Voice panel's take list) without inserting one.
-    private func generateKeptTakes(text: String, count: Int, provider: String?) async throws -> JSONValue {
-        let takes = try await generateVoiceTakes(text: text, count: count, provider: provider)
-        let root = fileURL?.deletingLastPathComponent()
-        return .object([
-            "best": takes.best.map { .string($0.asset.url.path) } ?? .null,
-            "takes": .array(takes.map { take in
-                .object([
-                    "path": .string(take.asset.url.path),
-                    "projectPath": root.map { .string(MediaPathResolver.projectPath(for: take.asset.url, projectRoot: $0)) }
-                        ?? .null,
-                    "score": .number(take.score), "scoreSource": .string(take.scoreSource),
-                    "seconds": .number(take.durationSeconds),
-                ])
-            }),
-        ])
-    }
-
-    private func pluginCatalogJSON(category: PluginCategory? = nil) -> JSONValue {
+    func pluginCatalogJSON(category: PluginCategory? = nil) -> JSONValue {
         let result = plugins.service.catalog(projectRoot: fileURL?.deletingLastPathComponent())
         let listed = result.plugins.filter { category == nil || plugins.category(of: $0) == category }
         return .object([
@@ -383,16 +414,59 @@ extension ProjectDocument {
         ])
     }
 
-    private func startCapabilityJob(
-        _ method: String, author: Author,
-        work: @escaping @MainActor (ProjectDocument) async throws -> JSONValue
-    ) throws -> JSONValue {
-        guard fileURL != nil else { throw RPCFailure(-32602, "Open a saved project first") }
-        guard !conflict else { throw RPCFailure(-32003, "The project has a file conflict; retry later") }
-        if let capability = capabilityForMethod[method], plugins.calling.contains(capability) {
-            throw RPCFailure(-32003, "\(capability) is already running; retry later")
+    /// A capability report with the commands that call it.
+    static func capabilityJSON(_ report: CapabilityReport) -> JSONValue {
+        var fields = report.json.object
+        fields["commands"] = .array(
+            CommandCatalog.capabilities.filter { $0.value == report.capability }.keys.sorted().map(JSONValue.string))
+        return .object(fields)
+    }
+
+    /// `jobs.wait` (P2-G4): the job once its state or step changes, it finishes, or `seconds` pass.
+    func waitForJob(_ id: String, seconds: Int) async throws -> JSONValue {
+        guard jobs.job(id) != nil else { throw RPCFailure(-32602, "Unknown job") }
+        guard let (job, changed) = try await jobs.wait(id, for: .seconds(seconds)) else {
+            throw RPCFailure(-32602, "The job is gone: the project was closed or switched")
         }
-        let id = jobs.start(method, author: author, work: { [weak self] _ in
+        return .object(["job": job.json, "changed": .bool(changed), "timedOut": .bool(job.isActive && !changed)])
+    }
+
+    /// The job an earlier request with the same `requestID` started (P2-G4), as `{job, state, reused}`.
+    func reusedJob(_ method: String, requestID: String?) -> JSONValue? {
+        guard let requestID, let job = jobs.job(method: method, requestID: requestID) else { return nil }
+        return .object(["job": .string(job.id), "state": .string(job.state.rawValue), "reused": .bool(true)])
+    }
+
+    /// Runs `work` with plugin calls frozen instead of sent (P2-G4) and returns the first request it would send.
+    func capabilityDryRun(_ work: @MainActor (ProjectDocument) async throws -> JSONValue) async throws -> JSONValue {
+        do {
+            _ = try await PluginCallContext.$current.withValue(PluginCallContext(dryRun: true)) { try await work(self) }
+        } catch let dryRun as PluginDryRun {
+            return .object(["dryRun": .bool(true), "request": dryRun.request])
+        }
+        throw RPCFailure(-32602, "This request would not call a plugin provider")
+    }
+
+    /// Starts a provider job for `method`. With `arguments`, its `requestId` returns the job an earlier request with
+    /// the same ID started, and `dryRun` returns the request the provider would get, without running (D8).
+    func startCapabilityJob(
+        _ method: String, author: Author, arguments: CommandArguments? = nil, requestID: String? = nil,
+        work: @escaping @MainActor (ProjectDocument) async throws -> JSONValue
+    ) async throws -> JSONValue {
+        if arguments?.bool("dryRun") == true { return try await capabilityDryRun(work) }
+        let requestID = requestID ?? arguments?.optionalString("requestId")
+        if let reused = reusedJob(method, requestID: requestID) { return reused }
+        guard let root = fileURL?.deletingLastPathComponent() else { throw RPCFailure(-32602, "Open a saved project first") }
+        // Fail the call, not a job a moment later, when nothing could serve it (P2-G5; health is checked in the job).
+        if let capability = CommandCatalog.capabilities[method] {
+            let report = plugins.service.capabilityStatus(capability, projectRoot: root)
+            if !report.available { throw CapabilityUnavailable(report) }
+        }
+        guard !conflict else { throw RPCFailure(-32003, "The project has a file conflict; retry later", category: .fileConflict) }
+        if let capability = CommandCatalog.capabilities[method], plugins.calling.contains(capability) {
+            throw RPCFailure(-32003, "\(capability) is already running; retry later", category: .busyRunning)
+        }
+        let id = jobs.start(method, author: author, requestID: requestID, work: { [weak self] _ in
             guard let self else { throw CancellationError() }
             return try await work(self)
         }, finished: { [weak self] outcome in

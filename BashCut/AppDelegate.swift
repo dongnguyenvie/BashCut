@@ -1,6 +1,7 @@
 import AppKit
 import BashCutAutomation
 import BashCutDocument
+import BashCutEngine
 import BashCutPlugin
 import BashCutStorage
 import SwiftUI
@@ -14,6 +15,7 @@ import SwiftUI
     private var pendingOpen: URL?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        VideoDecoders.enable()
         let executable = Bundle.main.executableURL
         let built = executable.flatMap { try? FileManager.default.attributesOfItem(atPath: $0.path)[.modificationDate] as? Date }
         DebugLog.write(

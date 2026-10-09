@@ -24,7 +24,7 @@ extension ProjectStorage {
         let destination = parent.appendingPathComponent(setup.folderName, isDirectory: true)
         try manager.createDirectory(at: stage, withIntermediateDirectories: false)
         defer { try? manager.removeItem(at: stage) }
-        for name in ["media", "voiceover", "khao-sat", "subtitles", "render", ".bashcut"] {
+        for name in ["media", "voiceover", "subtitles", "render", ".bashcut"] {
             try manager.createDirectory(at: stage.appendingPathComponent(name), withIntermediateDirectories: false)
         }
         ProjectCacheIgnore.ensure(in: stage.appendingPathComponent(".bashcut"))

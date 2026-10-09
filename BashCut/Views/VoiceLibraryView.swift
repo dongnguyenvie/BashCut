@@ -124,15 +124,16 @@ struct VoiceLibraryView: View {
     }
 
     private func score(_ take: GeneratedVoiceTake) -> String {
-        let label = take.scoreSource == "provider" ? String(localized: "match") : String(localized: "pace")
-        return String(format: "%@ %.0f%% · %.1fs", label, take.score * 100, take.durationSeconds)
+        guard let score = take.score else { return String(format: "%.1fs", take.durationSeconds) }
+        return String(format: "%@ %.0f%% · %.1fs", String(localized: "match"), score * 100, take.durationSeconds)
     }
 
     private func generate() {
         discardPending()
         Task {
             do {
-                takes = try await document.generateVoiceTakes(text: text)
+                // The user generates here and chose any clone reference themselves.
+                takes = try await document.generateVoiceTakes(text: text, cloneConsent: true)
                 selectedTake = bestTakeID ?? takes.first?.id ?? ""
                 message = String(localized: "Choose a take to insert")
             } catch { message = error.localizedDescription }

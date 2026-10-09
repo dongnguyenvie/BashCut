@@ -19,20 +19,26 @@ public enum CommandReference {
         for group in groups {
             lines += ["", "## \(group)"]
             for spec in specs where spec.cliWords[0] == group {
-                lines += ["", "### `\(spec.usage)`", "", spec.summary, ""]
-                lines.append("- Mode: \(spec.mode.rawValue) · Runs: \(runs(spec.execution)) · MCP: `\(spec.mcpToolName)`")
-                for parameter in spec.parameters {
-                    lines.append("- `\(parameter.name)`: \(details(parameter)). \(parameter.summary)")
-                }
+                lines += ["", "### `\(spec.usage)`", ""] + entry(spec).dropFirst(2)
             }
         }
         return lines.joined(separator: "\n") + "\n"
     }
 
+    /// One command: usage, description, mode and parameters (`bashcut help GROUP COMMAND` prints it).
+    public static func entry(_ spec: CommandSpec) -> [String] {
+        var lines = [spec.usage, "", spec.summary, ""]
+        lines.append("- Mode: \(spec.mode.rawValue) · Runs: \(runs(spec.execution)) · MCP: `\(spec.mcpToolName)`")
+        for parameter in spec.parameters {
+            lines.append("- `\(parameter.name)`: \(details(parameter)). \(parameter.summary)")
+        }
+        return lines
+    }
+
     private static func runs(_ execution: CommandSpec.Execution) -> String {
         switch execution {
         case .immediate: "immediately"
-        case .job: "as a background job (poll `jobs status`)"
+        case .job: "as a background job (`jobs wait` until it ends)"
         case .approval: "after the user approves in the app"
         }
     }

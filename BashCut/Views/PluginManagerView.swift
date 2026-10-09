@@ -8,6 +8,9 @@ struct PluginManagerView: View {
     let document: ProjectDocument
     let done: () -> Void
 
+    /// The same size as Settings, so the two sheets read as one family.
+    @State private var size = SettingsView.preferredSize()
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -44,10 +47,21 @@ struct PluginManagerView: View {
                 }
             }
             if model.installing { PluginInstallProgressView(model: model) }
+            if !model.installQueue.isEmpty {
+                Text(String(format: String(localized: "Next: %@"), model.installQueue.map(\.name).joined(separator: ", ")))
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             Text(model.message).font(.caption).foregroundStyle(.secondary)
+                .sheet(item: $model.pendingBundle, onDismiss: model.advanceInstallQueue) { pending in
+                    PluginBundleApprovalView(
+                        pending: Binding(get: { model.pendingBundle ?? pending }, set: { model.pendingBundle = $0 }),
+                        registry: model.registry, required: model.requiredBytes(model.pendingBundle ?? pending),
+                        blocker: model.installBlocker(model.pendingBundle ?? pending),
+                        approve: model.installPendingBundle, cancel: model.cancelPendingBundle)
+                }
         }
-        .padding(20).frame(width: 760, height: 620, alignment: .top).preferredColorScheme(.dark)
-        .sheet(item: $model.pendingInstall) { pending in
+        .padding(20).frame(width: size.width, height: size.height, alignment: .top).preferredColorScheme(.dark)
+        .sheet(item: $model.pendingInstall, onDismiss: model.advanceInstallQueue) { pending in
             PluginInstallApprovalView(
                 pending: pending, registry: model.registry, required: model.requiredBytes(pending),
                 blocker: model.installBlocker(pending), replaces: pending.local == nil ? pending.replacing : model.replaces(pending),
@@ -68,6 +82,13 @@ struct PluginManagerView: View {
             } actions: {
                 if PluginChannel.current.allowsUserPlugins {
                     Button("Browse Plugins") { model.tab = .browse }
+                    if let bundle = model.offeredBundles.first {
+                        Button(String(format: String(localized: "Install %@…"), bundle.name.text)) {
+                            Task {
+                                do { try await model.requestBundle(bundle.id) } catch { model.message = error.localizedDescription }
+                            }
+                        }.buttonStyle(.borderedProminent).disabled(model.installBusy)
+                    }
                     Button("Add Plugin…", action: model.addPlugin)
                 }
             }.frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -265,12 +286,7 @@ private struct PluginRow: View {
     }
 
     /// A dependency is missing and has an install recipe.
-    private var needsSetup: Bool {
-        guard let health = model.health[plugin.id] else { return false }
-        return health.dependencies.contains { status in
-            status.state != .available && plugin.manifest.dependencies.contains { $0.id == status.id && $0.install != nil }
-        }
-    }
+    private var needsSetup: Bool { model.needsSetup(plugin) }
 
     private func hookDescription(_ hook: PluginHookContribution) -> String {
         hook.proposesEdits ? String(format: String(localized: "%@ (edits)"), hook.event) : hook.event
@@ -461,35 +477,5 @@ private struct PluginInstallApprovalView: View {
             Text("SHA-256 " + archive.version.sha256).font(.caption2.monospaced()).foregroundStyle(.secondary)
                 .textSelection(.enabled)
         }.padding(8).frame(maxWidth: .infinity, alignment: .leading).background(.white.opacity(0.04)).cornerRadius(6)
-    }
-}
-
-/// Install or setup progress: the current step, a bar when the recipe reports `::progress`, Cancel and the output.
-private struct PluginInstallProgressView: View {
-    @Bindable var model: PluginManagerModel
-    @State private var showLog = false
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                if let progress = model.installProgress {
-                    ProgressView(value: progress) { Text(model.installStep).font(.caption) }
-                } else {
-                    ProgressView { Text(model.installStep).font(.caption) }.progressViewStyle(.linear)
-                }
-                Button("Cancel", role: .cancel, action: model.cancelInstall).disabled(model.installJob == nil)
-            }
-            if let last = model.installLog.last {
-                Text(last).font(.caption2.monospaced()).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
-            }
-            if !model.installLog.isEmpty {
-                RowDisclosureGroup("Output", isExpanded: $showLog) {
-                    ScrollView {
-                        Text(model.installLog.suffix(200).joined(separator: "\n")).font(.caption2.monospaced())
-                            .frame(maxWidth: .infinity, alignment: .leading).textSelection(.enabled)
-                    }.frame(height: 120)
-                }.font(.caption)
-            }
-        }.padding(8).background(.white.opacity(0.04)).cornerRadius(6)
     }
 }

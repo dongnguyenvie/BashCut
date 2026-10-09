@@ -37,10 +37,11 @@ private enum SocketIO {
         withUnsafeMutableBytes(of: &address.sun_path) { $0.copyBytes(from: bytes) }
         return address
     }
-    static func configure(_ descriptor: Int32) {
+    /// `seconds` bounds each read and write; a call that waits on purpose (`jobs.wait`) gets longer.
+    static func configure(_ descriptor: Int32, seconds: Int = 10) {
         var noSignal: Int32 = 1
         setsockopt(descriptor, SOL_SOCKET, SO_NOSIGPIPE, &noSignal, socklen_t(MemoryLayout<Int32>.size))
-        var timeout = timeval(tv_sec: 10, tv_usec: 0)
+        var timeout = timeval(tv_sec: seconds, tv_usec: 0)
         setsockopt(descriptor, SOL_SOCKET, SO_RCVTIMEO, &timeout, socklen_t(MemoryLayout<timeval>.size))
         setsockopt(descriptor, SOL_SOCKET, SO_SNDTIMEO, &timeout, socklen_t(MemoryLayout<timeval>.size))
         _ = fcntl(descriptor, F_SETFD, FD_CLOEXEC)
@@ -83,13 +84,24 @@ private enum SocketIO {
 }
 
 public enum UnixRPCClient {
+    /// How long to wait for the answer: `jobs.wait` holds the request up to its `timeout` (at most 30 s), `agent.ask`
+    /// until the user answers or its `timeout` passes.
+    static func readSeconds(_ request: RPCRequest) -> Int {
+        switch request.method {
+        case "jobs.wait": min(30, max(1, request.params["timeout"]?.int ?? JobWaitDefaults.seconds)) + 10
+        case "agent.ask":
+            min(AgentAskDefaults.maximumSeconds, max(5, request.params["timeout"]?.int ?? AgentAskDefaults.seconds)) + 10
+        default: 10
+        }
+    }
+
     public static func call(_ request: RPCRequest, path: String = AutomationPaths.socket) throws
         -> RPCResponse
     {
         let descriptor = Darwin.socket(AF_UNIX, SOCK_STREAM, 0)
         guard descriptor >= 0 else { throw RPCFailure(-32000, "Cannot create socket") }
         defer { Darwin.close(descriptor) }
-        SocketIO.configure(descriptor)
+        SocketIO.configure(descriptor, seconds: readSeconds(request))
         var address = try SocketIO.address(path)
         let connected = withUnsafePointer(to: &address) { pointer in
             pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) {
@@ -126,7 +138,7 @@ private final class AcceptLoop: @unchecked Sendable {
                 guard client >= 0 else { continue }
                 SocketIO.configure(client)
                 guard slots.wait(timeout: .now()) == .success else {
-                    Self.reply(RPCResponse(id: .null, error: RPCFailure(-32003, "Too many automation clients")), client)
+                    Self.reply(RPCResponse(id: .null, error: RPCFailure(-32003, "Too many automation clients", category: .unavailable).typed), client)
                     Darwin.close(client)
                     continue
                 }
@@ -161,7 +173,7 @@ private final class AcceptLoop: @unchecked Sendable {
         do {
             request = try JSONDecoder().decode(RPCRequest.self, from: SocketIO.readLine(client))
         } catch {
-            reply(RPCResponse(id: .null, error: RPCFailure(-32600, "Invalid JSON-RPC request")), client)
+            reply(RPCResponse(id: .null, error: RPCFailure(-32600, "Invalid JSON-RPC request").typed), client)
             return
         }
         let box = ResponseBox()

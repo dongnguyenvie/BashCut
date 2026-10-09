@@ -70,12 +70,51 @@ extension CapabilityService {
                 params = .object(fields)
             }
         }
+        let call = PluginCallContext.current
+        if let requestID = call.requestID, case .object(var fields) = params {
+            fields["requestId"] = .string(requestID)
+            params = .object(fields)
+        }
+        if call.dryRun { throw try await dryRun(Adapter.capability, params: params, using: resolved) }
         let result = try await transport.call(
             plugin: resolved.plugin, method: Adapter.capability, provider: resolved.provider.id, params: params)
+        call.usage?.record(provider: resolved.plugin.id + "/" + resolved.provider.id, usage: result.object["usage"])
         let output = try await adapter.output(
             from: result, context: CapabilityContext(provenance: PluginProvenance(resolved), outputDirectory: directory))
         succeeded = true
         return output
+    }
+
+    /// The request `run` would send, without the plugin's option values (they can hold keys), and the provider's
+    /// estimate when it gives one: it is asked with `dryRun: true` and must do no work.
+    private func dryRun(_ capability: String, params: JSONValue, using resolved: ResolvedPluginProvider) async throws
+        -> PluginDryRun
+    {
+        var sent = params.object
+        let options = sent.removeValue(forKey: "options")?.object.keys.sorted() ?? []
+        var estimate: JSONValue = .null
+        if resolved.provider.estimates == true, case .object(var fields) = params {
+            fields["dryRun"] = .bool(true)
+            let answer = try await transport.call(
+                plugin: resolved.plugin, method: capability, provider: resolved.provider.id, params: .object(fields))
+            estimate = Self.estimate(answer.object["estimate"])
+        }
+        return PluginDryRun(request: .object([
+            "capability": .string(capability), "plugin": .string(resolved.plugin.id),
+            "provider": .string(resolved.provider.id), "paid": .bool(resolved.provider.paid ?? false),
+            "params": .object(sent), "options": .array(options.map(JSONValue.string)),
+            "estimate": estimate, "estimateSource": estimate == .null ? .null : .string("provider"),
+        ]))
+    }
+
+    /// A provider's estimate, keeping only `units` (name → amount) and `costUSD`; nil fields stay out.
+    static func estimate(_ value: JSONValue?) -> JSONValue {
+        guard let fields = value?.object else { return .null }
+        var kept: [String: JSONValue] = [:]
+        let units = (fields["units"]?.object ?? [:]).compactMapValues { PluginUsageRecorder.amount($0).map(JSONValue.number) }
+        if !units.isEmpty { kept["units"] = .object(units) }
+        if let cost = fields["costUSD"].flatMap(PluginUsageRecorder.amount) { kept["costUSD"] = .number(cost) }
+        return kept.isEmpty ? .null : .object(kept)
     }
 
     static func makeRequestDirectory(in outputRoot: URL) throws -> URL {

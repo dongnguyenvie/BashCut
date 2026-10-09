@@ -12,10 +12,7 @@ extension AgentKnowledgeStore {
 
     /// The link names BashCut made for plugin skills in this project.
     public func linkedPluginSkills() -> [String] {
-        guard let ledger = pluginSkillLedger, let data = try? Data(contentsOf: ledger),
-            let names = try? JSONDecoder().decode([String].self, from: data)
-        else { return [] }
-        return names
+        pluginSkillLedger.map(Self.linkedNames) ?? []
     }
 
     /// Links `skills` into the project's agent folders and removes the links BashCut made for skills no longer in
@@ -24,9 +21,46 @@ extension AgentKnowledgeStore {
     @discardableResult
     public func syncPluginSkills(_ skills: [PluginSkill]) throws -> [String] {
         guard let project, let ledger = pluginSkillLedger else { return [] }
-        let manager = FileManager.default
         let folders = [".claude/skills", ".agents/skills"].map { project.appendingPathComponent($0, isDirectory: true) }
-        let previous = Set(linkedPluginSkills())
+        return try Self.syncPluginSkillLinks(skills, folders: folders, ledger: ledger)
+    }
+
+    /// The user's own agent folders that get plugin skills, so `/` offers a recipe before any project exists: each
+    /// Claude Code configuration folder where the kit's marketplace is registered (`~/.claude`, `$CLAUDE_CONFIG_DIR`
+    /// and other `~/.claude-*` folders) and Codex's `~/.agents/skills` once the kit's `bc-*` skills are linked there.
+    /// Folders of agents the user never set up with the kit are left alone.
+    public static func userPluginSkillFolders(home: URL, variables: [String: String]) -> [URL] {
+        let manager = FileManager.default
+        var configs = [home.appendingPathComponent(".claude", isDirectory: true)]
+        if let custom = variables["CLAUDE_CONFIG_DIR"], !custom.isEmpty {
+            configs.append(URL(fileURLWithPath: (custom as NSString).expandingTildeInPath, isDirectory: true))
+        }
+        let others = (try? manager.contentsOfDirectory(atPath: home.path)) ?? []
+        configs += others.filter { $0.hasPrefix(".claude-") }.sorted().map { home.appendingPathComponent($0, isDirectory: true) }
+        var folders: [URL] = []
+        for config in configs where !folders.contains(config.appendingPathComponent("skills", isDirectory: true)) {
+            let marketplaces = config.appendingPathComponent("plugins/known_marketplaces.json")
+            guard let text = try? String(contentsOf: marketplaces, encoding: .utf8),
+                text.contains("\"\(AgentKitSetup.marketplace)\"")
+            else { continue }
+            folders.append(config.appendingPathComponent("skills", isDirectory: true))
+        }
+        let codex = home.appendingPathComponent(".agents/skills", isDirectory: true)
+        let codexEntries = (try? manager.contentsOfDirectory(atPath: codex.path)) ?? []
+        if codexEntries.contains(where: { $0.hasPrefix("bc-") }) { folders.append(codex) }
+        return folders
+    }
+
+    /// Links `skills` into the user's agent folders (`userPluginSkillFolders`) with its own ledger, the same way as a
+    /// project's. Returns the link names now in place.
+    @discardableResult
+    public static func syncUserPluginSkills(_ skills: [PluginSkill], folders: [URL], ledger: URL) throws -> [String] {
+        try syncPluginSkillLinks(skills, folders: folders, ledger: ledger)
+    }
+
+    private static func syncPluginSkillLinks(_ skills: [PluginSkill], folders: [URL], ledger: URL) throws -> [String] {
+        let manager = FileManager.default
+        let previous = Set(linkedNames(ledger))
         let wanted = Dictionary(skills.map { ($0.linkName, $0.folder) }, uniquingKeysWith: { first, _ in first })
         var linked = Set<String>()
         for folder in folders {
@@ -46,6 +80,12 @@ extension AgentKnowledgeStore {
             try manager.createDirectory(at: ledger.deletingLastPathComponent(), withIntermediateDirectories: true)
             try JSONEncoder().encode(names).write(to: ledger, options: .atomic)
         }
+        return names
+    }
+
+    private static func linkedNames(_ ledger: URL) -> [String] {
+        guard let data = try? Data(contentsOf: ledger), let names = try? JSONDecoder().decode([String].self, from: data)
+        else { return [] }
         return names
     }
 

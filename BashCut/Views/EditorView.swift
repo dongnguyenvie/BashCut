@@ -36,7 +36,9 @@ struct EditorView: View {
             HSplitView {
                 VStack(spacing: 0) {
                     HStack(spacing: 0) {
-                        rail.frame(width: 54)
+                        // Each pane is clipped to its frame: a child wider than its pane is centred and
+                        // would otherwise draw over the neighbouring panes (#484).
+                        rail.frame(width: 54).clipped()
                         Divider()
                         Group {
                             if let id = document.ui.pluginPanel,
@@ -45,7 +47,7 @@ struct EditorView: View {
                             } else {
                                 LibraryView(document: document, pluginManager: document.plugins)
                             }
-                        }.frame(width: 225)
+                        }.frame(width: 225).clipped()
                         Divider()
                         Group {
                             if document.sourceViewer.visible {
@@ -53,9 +55,9 @@ struct EditorView: View {
                             } else {
                                 viewer
                             }
-                        }.frame(minWidth: 260, maxWidth: .infinity)
+                        }.frame(minWidth: 260, maxWidth: .infinity).clipped()
                         Divider()
-                        InspectorView(document: document).frame(width: 220)
+                        InspectorView(document: document).frame(width: 220).clipped()
                     }.disabled(document.busy)
                     Divider()
                     timelineToolbar
@@ -117,6 +119,9 @@ struct EditorView: View {
         }
         .sheet(item: $document.privilegedApproval) { prompt in
             PrivilegedApprovalView(prompt: prompt, resolve: document.resolvePrivilegedApproval)
+        }
+        .sheet(item: $document.checkpoint) { request in
+            CheckpointView(request: request, resolve: document.resolveCheckpoint)
         }
         .sheet(item: $document.scopeHold) { hold in
             AgentScopeHoldView(hold: hold, resolve: document.resolveScopeHold)
@@ -303,30 +308,17 @@ struct EditorView: View {
                 Spacer()
                 Button("Done") { document.ui.showReview = false }
             }
-            Text("Review checks the timeline. Loudness is measured during normalized export; silence analysis is not available yet.").font(
-                .caption
-            ).foregroundStyle(.secondary)
-            let issues = TimelineReview.run(document.project, fontAvailable: ProjectFonts.isAvailable)
+            Text(
+                "Review checks the timeline, text placement, the hook and sound. Loudness comes from the last normalized "
+                    + "export of this revision."
+            ).font(.caption).foregroundStyle(.secondary)
+            let issues = document.reviewIssues()
             if issues.isEmpty { Label("No timeline issues found", systemImage: "checkmark.circle") }
-            ForEach(issues) { issue in
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(issue.title).font(.headline)
-                    Text(issue.detail).font(.caption)
-                    HStack {
-                        Button("Jump") {
-                            document.preview.seek(issue.frame)
-                            document.ui.showReview = false
-                        }
-                        Button("Ask agent to fix") {
-                            document.ui.showAgentDock = true
-                            document.agents.fillInput("Fix this review issue: " + issue.detail)
-                            document.ui.showReview = false
-                        }.disabled(document.agents.current == nil && document.agents.chatPluginID == nil)
-                    }
-                }.padding(8).frame(maxWidth: .infinity, alignment: .leading).background(
-                    .orange.opacity(0.08)
-                ).cornerRadius(6)
-            }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(issues) { issue in reviewRow(issue) }
+                }
+            }.frame(maxHeight: 520)
         }.padding(20).frame(width: 560).preferredColorScheme(.dark)
     }
     private var history: some View {

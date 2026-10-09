@@ -103,6 +103,30 @@ public struct LayerMotion: Sendable {
     }
 }
 
+/// An item's keyed style fields (`color.*`, `textStyle.*`, flexibility audit C13) with what the compositor needs to
+/// evaluate them at a composition time.
+public struct StyleMotion: Sendable {
+    public let motion: ItemMotion
+    public let startFrame: Int
+    public let duration: Int
+    public let fps: Double
+
+    /// The style keys of `item`, or nil when it has none.
+    public init?(item: Item, fps: Double) {
+        guard let motion = item.motion?.style else { return nil }
+        self.motion = motion
+        startFrame = item.at
+        duration = item.duration
+        self.fps = fps
+    }
+
+    /// `fields` with the keyed style fields at `seconds` of composition time, kept inside the item.
+    public func fields(_ fields: [String: JSONValue], at seconds: Double) -> [String: JSONValue] {
+        let frame = min(Double(max(0, duration - 1)), max(0, seconds * fps - Double(startFrame)))
+        return motion.styled(fields, at: frame)
+    }
+}
+
 public struct PictureMotionValues: Sendable {
     public let zoom: Double
     public let pan: Double

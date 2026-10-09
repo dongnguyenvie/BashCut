@@ -40,22 +40,24 @@ extension ProjectDocument {
     @discardableResult
     func startExportAuthorized(
         name: String, preset: ExportPreset, directory: URL, includeSubRip: Bool,
-        normalizeAudio: Bool = false, author: Author = .user
+        normalizeAudio: Bool = false, author: Author = .user, videoBitRate: Int? = nil
     ) throws -> String {
         guard !preview.isMaintainingCache else { throw AutomationBusy() }
         guard let root = fileURL?.deletingLastPathComponent() else {
             throw ProjectError.invalid("Save the project before exporting")
         }
+        try checkExportable()
         if normalizeAudio {
             plugins.refresh(projectRoot: root)
             guard !plugins.providers(for: "audio.loudness").isEmpty else {
                 throw ProjectError.invalid("Install a plugin that provides audio.loudness")
             }
         }
-        let request = try ExportRequest(
+        var request = try ExportRequest(
             project: project, root: root, workspace: settings.workspace, name: name, preset: preset,
             directory: directory, includeSubRip: includeSubRip, normalizeAudio: normalizeAudio,
             reserved: exports.queue.reservedOutputs)
+        request.videoBitRate = videoBitRate
         let queued = exports.isRunning
         let session = sessionID
         let name = request.output.lastPathComponent
@@ -89,12 +91,29 @@ extension ProjectDocument {
         return job
     }
 
+    /// Refuses an export of video this Mac cannot decode, or while issues `review.blockExport` names are open.
+    private func checkExportable() throws {
+        // The export build refuses these too; checking the preview's build here fails the request, not a later job.
+        if let undecodable = preview.currentBuild?.undecodable, !undecodable.isEmpty {
+            throw UndecodableMediaError(undecodable)
+        }
+        let blocking = TimelineReview.blockingExport(project, issues: reviewIssues())
+        if !blocking.isEmpty {
+            throw ProjectError.invalid("review.blockExport stops the export while these are open: "
+                + blocking.map(\.id).joined(separator: ", "))
+        }
+    }
+
     private func finishExport(_ request: ExportRequest, outcome: ExportOutcome) {
-        if project.revision == request.source.revision,
-            let audio = ExportController.normalizedAudio(outcome, current: project["audio"])
-        {
+        let current = project.revision == request.source.revision
+        if current, let audio = ExportController.normalizedAudio(outcome, current: project["audio"]) {
             apply(.setProjectProperties(patch: ["audio": audio]), label: "Normalize audio")
         }
+        // The write-back above only stores the gain the export already applied, so the measurement describes it.
+        recordReviewLoudness(
+            outcome.finalMeasurement, revision: current ? project.revision : request.source.revision, preset: request.preset)
+        lastRender = (outcome.receipt.url, current ? project.revision : request.source.revision)
+        measureDelivered(request, url: outcome.receipt.url, revision: current ? project.revision : request.source.revision)
         DebugLog.write("export", "done \(outcome.receipt.url.path)")
         emitPluginEvent(.exportFinished, [
             "output": .string(outcome.receipt.url.path), "preset": .string(request.preset.rawValue),
@@ -103,5 +122,23 @@ extension ProjectDocument {
         message = String(localized: "Export complete")
         // Keep the report for later when more exports are waiting.
         if !exports.isRunning { ui.showExportReport = true }
+    }
+
+    /// Measures the written file in the background (P1-E6); review reads it for the revision it shows.
+    private func measureDelivered(_ request: ExportRequest, url: URL, revision: Int) {
+        let preset = request.preset.argument
+        let fps = request.project.fps.value
+        let size = (request.project.width, request.project.height)
+        Task { [weak self] in
+            do {
+                let facts = try await DeliveredQC.measure(url, revision: revision, preset: preset, expectedFps: fps, expectedSize: size)
+                guard let self else { return }
+                deliveredQC.removeAll { $0.preset == preset }
+                deliveredQC.append(facts)
+                DebugLog.write("export", "qc \(preset): drift \(facts.drift ?? 0) black \(facts.black.count) silence \(facts.silence.count)")
+            } catch {
+                DebugLog.write("export", "qc failed: \(error.localizedDescription)")
+            }
+        }
     }
 }

@@ -6,8 +6,9 @@ import BashCutPlugin
 import BashCutProject
 import Foundation
 
-/// Editor buttons, menu items and shortcuts run through `run(_:)`; `ui.action` runs the same code
-/// for agents, and `ui.view` reads or sets the view state (zoom, toggles, timeline scroll).
+/// Editor buttons, menu items and shortcuts run through `run(_:)`; `ui.action` runs the same code for agents (and
+/// opens dialogs, library panels and the source viewer, or shows a status message), and `ui.view` reads or sets the
+/// view state (zoom, toggles, timeline scroll).
 extension ProjectDocument {
     /// Whether the action's button is enabled right now.
     func canPerform(_ action: UIAction) -> Bool { // swiftlint:disable:this cyclomatic_complexity
@@ -200,39 +201,58 @@ extension ProjectDocument {
             })
         }
         handleAuthored("ui.action") { document, arguments, author in
-            try document.performFromAutomation(arguments.string("action"), author: author)
+            let action = try arguments.string("action")
+            guard let target = arguments.optionalString("target") else {
+                if ["open", "panel", "source", "notify"].contains(action) {
+                    throw RPCFailure(-32602, "\(action) needs a target")
+                }
+                return try document.performFromAutomation(action, author: author)
+            }
+            switch action {
+            case "open": return try document.openDialogFromAutomation(target)
+            case "panel":
+                guard let tab = LibraryTab(panelName: target) else { throw RPCFailure(-32602, "Unknown panel \(target)") }
+                document.showLibraryTab(tab)
+                return .bool(true)
+            case "source": return try document.showSource(target, in: arguments.optionalInt("in"), out: arguments.optionalInt("out"))
+            case "notify":
+                document.message = String(target.prefix(2000))
+                return .bool(true)
+            default: throw RPCFailure(-32602, "\(action) takes no target; a target goes with open, panel, source or notify")
+            }
         }
         handle("ui.view") { document, arguments, _ in
             try document.updateView(arguments)
             return document.viewStateJSON()
         }
-        handle("ui.source") { document, arguments, _ in
-            let mediaID = try arguments.string("media")
-            guard let media = document.project.media.first(where: { $0.id == mediaID }) else {
-                throw RPCFailure(-32602, "Unknown media \(mediaID)")
-            }
-            document.previewSource(media)
-            guard document.sourceViewer.media?.id == mediaID else { throw RPCFailure(-32602, document.message) }
-            let last = max(1, media.frames)
-            let start = min(arguments.optionalInt("in") ?? 0, last - 1)
-            document.sourceViewer.inFrame = start
-            document.sourceViewer.outFrame = min(max(start + 1, arguments.optionalInt("out") ?? last), last)
-            document.sourceViewer.seek(start)
-            return document.viewStateJSON()
+    }
+
+    /// `ui.action source MEDIA`: the media in the source viewer with in/out marked.
+    private func showSource(_ mediaID: String, in inFrame: Int?, out outFrame: Int?) throws -> JSONValue {
+        guard let media = project.media.first(where: { $0.id == mediaID }) else {
+            throw RPCFailure(-32602, "Unknown media \(mediaID)")
         }
+        previewSource(media)
+        guard sourceViewer.media?.id == mediaID else { throw RPCFailure(-32602, message) }
+        let last = max(1, media.frames)
+        let start = min(inFrame ?? 0, last - 1)
+        sourceViewer.inFrame = start
+        sourceViewer.outFrame = min(max(start + 1, outFrame ?? last), last)
+        sourceViewer.seek(start)
+        return viewStateJSON()
     }
 
     private func performFromAutomation(_ name: String, author: Author) throws -> JSONValue {
         let candidates = UIAction.matching(name)
         if let open = ModalCenter.shared.current {
-            throw RPCFailure(-32003, "Answer the open dialog \(open.name) first (ui.dialog)")
+            throw RPCFailure(-32003, "Answer the open dialog \(open.name) first (ui.dialog)", category: .busyDialog)
         }
         guard let first = candidates.first else {
             if let result = try performPluginActionFromAutomation(name, author: author) { return result }
             throw RPCFailure(-32602, "Unknown action or shortcut \(name); see ui.actions")
         }
         guard let action = candidates.first(where: canPerform) else {
-            throw RPCFailure(-32003, "\(first.id) is not available now")
+            throw RPCFailure(-32003, "\(first.id) is not available now", category: .notAvailableNow)
         }
         if action.mayShowModal {
             // The alert or panel blocks until answered; return now so the agent can answer it. Start it from
@@ -277,10 +297,16 @@ extension ProjectDocument {
         if let section = arguments.optionalString("settingsSection") { ui.settingsSection = section }
         if let search = arguments.optionalString("settingsSearch") { ui.settingsSearch = search }
         if let section = arguments.optionalString("knowledgeSection") { ui.knowledgeSection = section }
+        if let source = arguments.optionalString("mediaSource") { ui.mediaSource = source }
         if let tab = arguments.optionalString("pluginsTab").flatMap(PluginSheetTab.init(rawValue:)) { plugins.tab = tab }
         if let category = arguments.optionalString("pluginsCategory") {
             plugins.browseCategory = PluginCategory(rawValue: category)
         }
+        updateLibraryFilter(arguments)
+    }
+
+    /// The open library panel's search and filters.
+    private func updateLibraryFilter(_ arguments: CommandArguments) {
         let panel = ui.libraryTab.panelName
         var filter = ui.libraryFilters[panel] ?? LibraryPanelFilter()
         if let query = arguments.optionalString("libraryQuery") { filter.query = query }
@@ -312,6 +338,7 @@ extension ProjectDocument {
             "selectedItems": .array(selectedIDs.map(JSONValue.string)),
             "selectedTrack": selectedTrackID.map(JSONValue.string) ?? .null,
             "libraryPanel": .string(ui.libraryTab.panelName), "libraryFilter": libraryFilterJSON(),
+            "mediaSource": .string(ui.mediaSource),
             "inspector": .string(ui.inspectorTab),
             "settingsSection": .string(ui.settingsSection), "settingsSearch": .string(ui.settingsSearch),
             "knowledgeSection": .string(ui.knowledgeSection),

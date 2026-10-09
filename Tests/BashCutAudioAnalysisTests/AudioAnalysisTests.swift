@@ -27,6 +27,19 @@ struct AudioAnalysisTests {
         #expect(throws: AnalysisError.self) { try LoudnessMeter.measure([[Float](repeating: 0, count: 48_000)]) }
     }
 
+    @Test("The curve follows the sound every 100 ms; silence is allowed when asked")
+    func curve() throws {
+        let sound = [Float](repeating: 0, count: 48_000) + sine(amplitude: 0.1, seconds: 4)
+        let curve = LoudnessMeter.curve([sound])
+        #expect(curve.momentary.count == 47 && curve.peakDb.count == 50)
+        #expect(curve.momentary[0] == -100 && curve.peakDb[5] == -100)
+        #expect(abs(curve.momentary[20] - -23) < 0.3)
+        #expect(abs(curve.peakDb[30] - -20) < 0.2)
+        #expect(abs((curve.shortTerm.last ?? 0) - -23) < 0.3)
+        let silent = try LoudnessMeter.measure([[Float](repeating: 0, count: 48_000)], allowSilence: true)
+        #expect(silent.integratedLUFS == -100)
+    }
+
     @Test("True peak sees an inter-sample peak the samples miss")
     func interSamplePeak() throws {
         // A quarter-rate sine sampled at ±45° never hits its crest: samples read −3 dB, the wave is at 0 dB.
@@ -57,6 +70,43 @@ struct AudioAnalysisTests {
         let gaps = zip(result.beatsSeconds, result.beatsSeconds.dropFirst()).map { $1 - $0 }
         #expect(gaps.allSatisfy { abs($0 - 60 / bpm) < 0.05 })
         #expect(zip(result.beatsSeconds, result.beatsSeconds.dropFirst()).allSatisfy { $0 < $1 })
+    }
+
+    @Test("Grid v2: strengths, downbeats on the kick, a tight fit, and half and double alternates")
+    func gridFacts() throws {
+        let rate = 22_050.0, period = 0.5
+        var samples = clicks(bpm: 120, seconds: 20)
+        // A 60 Hz kick on every fourth beat, starting with the second one (index 1).
+        var time = 0.3 + period
+        while time < 20 {
+            let start = Int(time * rate)
+            for index in 0..<min(2_000, samples.count - start) {
+                samples[start + index] += 0.8 * Float(sin(2 * .pi * 60 * Double(index) / rate)) * Float(exp(-Double(index) / 600))
+            }
+            time += period * 4
+        }
+        let (result, grid) = try BeatTracker.trackGrid(samples)
+        #expect(grid.strengths.count == result.beatsSeconds.count && grid.strengths.allSatisfy { (0...1).contains($0) })
+        #expect(grid.beatsPerBar == 4 && grid.phaseScores.max() == 1)
+        let first = try #require(grid.downbeats.first)
+        #expect(abs(first - 0.8) < 0.06, "\(grid.downbeats.prefix(3))")
+        #expect(grid.rmsErrorMs < 15 && abs(grid.periodSeconds - period) < 0.01)
+        #expect(grid.alternates.map(\.bpm) == [result.bpm / 2, result.bpm * 2])
+        #expect(grid.tempoStrength > 0 && grid.tempoStrength <= 1)
+    }
+
+    @Test("Energy: level, onset and fullness per 100 ms; a lift where the music gets louder")
+    func energy() throws {
+        let rate = 22_050.0
+        let quiet = clicks(bpm: 120, seconds: 8).map { $0 * 0.05 }
+        let loud = clicks(bpm: 120, seconds: 8).enumerated().map { index, value in
+            value + 0.3 * Float(sin(2 * .pi * 220 * Double(index) / rate))
+        }
+        let result = EnergyCurve.measure(quiet + loud, beats: [7.8, 8.3], count: 2)
+        #expect(result.levelDb.count == 160 && result.onset.count == 160 && result.fullness.count == 160)
+        let lift = try #require(result.candidates.first { $0.kind == "lift" })
+        #expect(abs(lift.seconds - 8) < 0.3 && lift.magnitude > 10 && lift.beatSeconds == 7.8)
+        #expect(result.candidates.filter { $0.kind == "lift" }.count <= 2)
     }
 
     @Test("Silence has no beats")

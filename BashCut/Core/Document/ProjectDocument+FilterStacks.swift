@@ -22,7 +22,7 @@ extension ProjectDocument {
         let planner: LayerPlanner
         do {
             planner = try project.filterStackPlacePlan(stack, lut: lut, item: adjustment, on: placement.trackID)
-        } catch { throw RPCFailure(-32602, error.localizedDescription) }
+        } catch { throw RPCFailure.from(error, fallbackCode: -32602) }
         let revision = try commitPlan(
             planner, label: item.name, author: placement.author, baseRevision: placement.baseRevision)
         selectedID = adjustment.id
@@ -36,14 +36,14 @@ extension ProjectDocument {
         let lut = try await filterStackLUT(item, stack)
         let planner: LayerPlanner
         do { planner = try project.filterStackApplyPlan(stack, lut: lut, to: itemID) } catch {
-            throw RPCFailure(-32602, error.localizedDescription)
+            throw RPCFailure.from(error, fallbackCode: -32602)
         }
         return try commitPlan(planner, label: item.name, author: author, baseRevision: baseRevision)
     }
 
     private func filterStack(_ item: LibraryItem) throws -> FilterStack {
         do { return try FilterStack(params: item.params, label: item.reference) } catch {
-            throw RPCFailure(-32602, error.localizedDescription)
+            throw RPCFailure.from(error, fallbackCode: -32602)
         }
     }
 

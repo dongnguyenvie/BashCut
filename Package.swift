@@ -12,6 +12,9 @@ let package = Package(
                // Core plugin copied into BashCut.app/Contents/PlugIns/bashcut.audio-analysis/bin/provider.
                .executable(name: "bashcut-audio-analysis", targets: ["bashcut-audio-analysis"]),
                .library(name: "BashCutAudioAnalysis", targets: ["BashCutAudioAnalysis"]),
+               // Core plugin copied into BashCut.app/Contents/Resources/Plugins/bashcut.vision/bin/provider.
+               .executable(name: "bashcut-vision", targets: ["bashcut-vision"]),
+               .library(name: "BashCutVisionAnalysis", targets: ["BashCutVisionAnalysis"]),
                .library(name: "BashCutEngine", targets: ["BashCutEngine"]),
                .library(name: "BashCutStorage", targets: ["BashCutStorage"]),
                .library(name: "BashCutAutomation", targets: ["BashCutAutomation"]),
@@ -51,6 +54,9 @@ let package = Package(
         .target(name: "BashCutAudioAnalysis", path: "Plugins/audio-analysis/Sources/Analysis"),
         .executableTarget(name: "bashcut-audio-analysis", dependencies: ["BashCutAudioAnalysis"],
                           path: "Plugins/audio-analysis/Sources/Provider"),
+        .target(name: "BashCutVisionAnalysis", path: "Plugins/vision/Sources/Analysis"),
+        .executableTarget(name: "bashcut-vision", dependencies: ["BashCutVisionAnalysis"],
+                          path: "Plugins/vision/Sources/Provider"),
         .executableTarget(name: "BashCut", dependencies: [
             "BashCutEngine", "BashCutStorage", "BashCutDocument", "BashCutAgent", "BashCutAutomation", "BashCutPlugins",
             .product(name: "BashCutProject", package: "BashCutCore"),
@@ -75,6 +81,7 @@ let package = Package(
             .product(name: "BashCutProject", package: "BashCutCore"),
             .product(name: "BashCutPlugin", package: "BashCutCore")]),
         .testTarget(name: "BashCutAudioAnalysisTests", dependencies: ["BashCutAudioAnalysis"]),
+        .testTarget(name: "BashCutVisionAnalysisTests", dependencies: ["BashCutVisionAnalysis", "BashCutTestSupport"]),
         .testTarget(name: "BashCutDocumentTests", dependencies: ["BashCutDocument", "BashCutEngine", "BashCutStorage",
             "BashCutAudioAnalysis", "BashCutPlugins",
             "BashCutAutomation", "BashCutTestSupport",

@@ -12,7 +12,15 @@ import Foundation
     var words: [String] = []
 
     func run() throws {
+        if words.first == "help", words.count > 1 {
+            guard let spec = CommandCatalog.specs.first(where: { $0.cliWords == Array(words.dropFirst()) }) else {
+                throw report(RPCFailure(-32602, "Unknown command: \(words.dropFirst().joined(separator: " "))"))
+            }
+            FileHandle.standardOutput.write(Data((CommandReference.entry(spec).joined(separator: "\n") + "\n").utf8))
+            return
+        }
         if words.isEmpty || ["help", "-h", "--help"].contains(words[0]) { throw CleanExit.helpRequest(self) }
+        if words == ClaudeHook.words { return hook() }
         defer { DebugLog.flush() }
         let invocation: CommandLineParser.Invocation
         do { invocation = try CommandLineParser.parse(words) } catch {
@@ -31,12 +39,31 @@ import Foundation
             throw report(RPCFailure.from(error))
         }
         try write(response, format: invocation.format)
+        let status = CommandCatalog.exitStatus(method: invocation.spec.name, result: response.result)
+        if status != 0 { throw ExitCode(status) }
+    }
+
+    /// Claude Code's AskUserQuestion hook (`ClaudeHook`): asks in the app and prints the answers, or prints nothing
+    /// (exit 0) so Claude asks in the terminal, whatever goes wrong.
+    private func hook() {
+        defer { DebugLog.flush() }
+        guard let questions = ClaudeHook.questions(hookInput: FileHandle.standardInput.readDataToEndOfFile())
+        else { return }
+        do {
+            let response = try UnixRPCClient.call(
+                RPCRequest(
+                    method: "agent.ask", params: ["questions": .array(questions)], token: AutomationPaths.sessionToken()))
+            guard let output = ClaudeHook.output(questions: questions, result: response.result ?? .null) else { return }
+            FileHandle.standardOutput.write(output + Data([10]))
+        } catch {
+            DebugLog.write("cli", "agent.ask hook fell back to the terminal")
+        }
     }
 
     private func report(_ failure: RPCFailure) -> ExitCode {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
-        if var data = try? encoder.encode(failure.payload) {
+        if var data = try? encoder.encode(failure.typed.payload) {
             data.append(10)
             FileHandle.standardError.write(data)
         }

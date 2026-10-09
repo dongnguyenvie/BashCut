@@ -32,7 +32,19 @@ extension ProjectDocument {
     }
 
     func registerCaptionCommands() {
-        handle("captions.export") { document, _, _ in .string(try SubRip.encode(document.project)) }
+        handle("captions.export") { document, arguments, _ in
+            switch arguments.optionalString("as") ?? "srt" {
+            case "json": return TimelineTranscript.captionsJSON(document.project)
+            case "text": return .string(TimelineTranscript.captionsText(document.project))
+            default: return .string(try SubRip.encode(document.project))
+            }
+        }
+        handle("transcript.words") { document, arguments, _ in
+            let from = arguments.optionalInt("from") ?? 0, to = arguments.optionalInt("to")
+            let media = arguments.optionalString("media")
+            if arguments.bool("heard") { return await document.heardWords(from: from, to: to, media: media) }
+            return TimelineTranscript.wordsJSON(document.project, from: from, to: to, media: media)
+        }
         handleAuthored("captions.import") { document, arguments, author in
             let revision = try document.commit(
                 document.project.importingSubRip(try arguments.string("text"), replace: arguments.bool("replace")),

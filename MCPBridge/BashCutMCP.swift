@@ -30,7 +30,8 @@ private func result(_ response: MCPBridgeResponse) -> CallTool.Result {
     CallTool.Result(content: [.text(text: response.text, annotations: nil, _meta: nil)], isError: false)
 }
 
-private func failure(_ error: RPCFailure) -> CallTool.Result {
+private func failure(_ untyped: RPCFailure) -> CallTool.Result {
+    let error = untyped.typed
     let encoded = (try? JSONEncoder().encode(error.payload)).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
     return .init(content: [.text(text: encoded, annotations: nil, _meta: nil)],
                  structuredContent: value(error.payload), isError: true)

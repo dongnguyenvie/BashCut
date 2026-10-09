@@ -17,6 +17,8 @@ public struct ExportReport: Sendable {
     public let speechCoverage: Double
     public let completedAt: Date
     public let comparison: ExportMetricDelta?
+    /// Review issues the project kept with a reason (`review.accepted`), by issue ID.
+    public var acceptedIssues: [String: String] = [:]
 
     public init(
         receipt: ExportReceipt, preset: ExportPreset, cutCount: Int, captionCount: Int,
@@ -38,7 +40,7 @@ public struct ExportReport: Sendable {
     }
 
     public var storedMetrics: StoredExportMetrics {
-        StoredExportMetrics(
+        var metrics = StoredExportMetrics(
             path: receipt.url.path, preset: preset.rawValue, duration: receipt.duration,
             bytes: receipt.bytes, cutCount: cutCount, captionCount: captionCount,
             includedSubRip: includedSubRip, speechCoverage: speechCoverage,
@@ -47,6 +49,8 @@ public struct ExportReport: Sendable {
             loudnessRangeLU: loudness?.loudnessRangeLU,
             loudnessVerified: loudnessVerified, appliedGainDb: appliedGainDb,
             completedAt: completedAt)
+        metrics.acceptedIssues = acceptedIssues.isEmpty ? nil : acceptedIssues
+        return metrics
     }
 
     public init?(snapshot: ExportHistorySnapshot) {
@@ -69,6 +73,7 @@ public struct ExportReport: Sendable {
             loudnessVerified: metrics.loudnessVerified, appliedGainDb: metrics.appliedGainDb,
             speechCoverage: metrics.speechCoverage, completedAt: metrics.completedAt,
             comparison: snapshot.comparison)
+        acceptedIssues = metrics.acceptedIssues ?? [:]
     }
 }
 
@@ -85,6 +90,10 @@ extension ExportReport {
                 "includedSRT": .bool(includedSubRip),
                 "speechCoverage": .number(speechCoverage),
                 "completedAt": .string(ISO8601DateFormatter().string(from: completedAt)),
+                "acceptedIssues": .object(acceptedIssues.mapValues(JSONValue.string)),
+                // What was written, audio included (P1-F2).
+                "bitrateMbps": receipt.duration > 0
+                    ? .number((Double(receipt.bytes) * 8 / receipt.duration / 10_000).rounded() / 100) : .null,
             ]
             if let comparison = comparison {
                 var values: [String: JSONValue] = [

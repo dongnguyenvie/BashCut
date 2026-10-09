@@ -1,14 +1,9 @@
 import BashCutProject
 import SwiftUI
 
-/// The Filters panel: looks (filter stacks, #79), style kits and the project's own looks in the shared library UI,
-/// plus the project's 3D LUTs.
+/// The Filters panel: library looks (filter stacks, #79) in the shared library UI, plus the project's 3D LUTs.
 struct FilterLibraryView: View {
     @Bindable var document: ProjectDocument
-
-    /// The params key that marks a style kit, and the one that marks a project look, among the panel's entries.
-    private static let styleKitKey = "styleKit"
-    private static let projectLookKey = "projectLook"
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -25,8 +20,7 @@ struct FilterLibraryView: View {
                     : "A look grades the selected clip or adjustment."
             ).font(.caption).foregroundStyle(.secondary)
             LibraryItemsSection(
-                document: document, kinds: [.look], saveKinds: [.look], fileKind: .look, extraItems: entries,
-                extraActions: actions
+                document: document, kinds: [.look], saveKinds: [.look], fileKind: .look
             ) { item in
                 Button { use(item) } label: {
                     VStack(alignment: .leading, spacing: 2) {
@@ -37,9 +31,7 @@ struct FilterLibraryView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .disabled(isDisabled(item))
-                .help(item.params[Self.styleKitKey] == nil
-                    ? Text(verbatim: "") : Text("Grades the whole video and restyles every caption in one undoable step."))
+                .disabled(document.fileURL == nil)
             }
             Divider()
             HStack {
@@ -72,53 +64,12 @@ struct FilterLibraryView: View {
         }
     }
 
-    /// Style kits and the project's own looks (`style save`, `looks save`), shown with the library's looks. IDs carry
-    /// a colon, which library IDs never have, so they never clash with an item.
-    private var entries: [LibraryItem] {
-        let kits = document.project.styleKits.map { kit in
-            LibraryItem(
-                id: "kit:\(kit.id)", kind: .look, name: kit.title, pack: "Style kits",
-                params: [Self.styleKitKey: .string(kit.id)], scope: kit.isBuiltIn ? .builtIn : .project)
-        }
-        let looks = document.project.customLooks.map { look in
-            LibraryItem(
-                id: "look:\(look.id)", kind: .look, name: look.title, pack: "Project looks",
-                params: ["color": .object(look.color), Self.projectLookKey: .string(look.id)], scope: .project)
-        }
-        return kits + looks
-    }
-
-    private func actions(_ item: LibraryItem) -> [LibraryPanelAction] {
-        let project = document.project
-        if let kit = item.params[Self.styleKitKey]?.string.flatMap(project.styleKit), !kit.isBuiltIn {
-            return [LibraryPanelAction(title: "Delete style kit", destructive: true) { document.deleteCustomStyleKit(kit) }]
-        }
-        if let look = item.params[Self.projectLookKey]?.string.flatMap(project.look) {
-            return [LibraryPanelAction(title: "Delete look", destructive: true) { document.deleteCustomLook(look) }]
-        }
-        return []
-    }
-
     private func use(_ item: LibraryItem) {
-        let project = document.project
-        if let kit = item.params[Self.styleKitKey]?.string.flatMap(project.styleKit) {
-            document.runStyleKit(kit)
-        } else if let look = item.params[Self.projectLookKey]?.string.flatMap(project.look) {
-            document.applyLook(look)
-        } else if document.selected == nil {
-            document.placeFromLibrary(item)
-        } else {
-            document.applyFromLibrary(item)
-        }
-    }
-
-    private func isDisabled(_ item: LibraryItem) -> Bool {
-        item.params[Self.styleKitKey] != nil ? document.project.contentDuration == 0 : document.fileURL == nil
+        if document.selected == nil { document.placeFromLibrary(item) } else { document.applyFromLibrary(item) }
     }
 
     private func summary(_ item: LibraryItem) -> String? {
-        if item.params[Self.styleKitKey] != nil { return String(localized: "Style kit") }
-        return item.file != nil ? String(localized: "With LUT") : nil
+        item.file != nil ? String(localized: "With LUT") : nil
     }
 }
 

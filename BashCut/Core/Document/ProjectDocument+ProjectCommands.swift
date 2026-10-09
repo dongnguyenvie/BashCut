@@ -1,4 +1,5 @@
 import BashCutAutomation
+import BashCutEngine
 import BashCutProject
 import BashCutStorage
 import Foundation
@@ -73,28 +74,60 @@ extension ProjectDocument {
             baseRevision: baseRevision)
     }
 
+    /// The export presets the project is made for (`output.presets`, #441): format menu › Platform and
+    /// `project format --outputs`. Unknown names are refused; an empty list clears them.
+    @discardableResult
+    func setOutputPresets(_ presets: [String], author: Author = .user, baseRevision: Int? = nil) throws -> Int {
+        if let unknown = presets.first(where: { ExportPreset(argument: $0) == nil }) {
+            throw RPCFailure(-32602, "Unknown export preset \(unknown); use \(OutputPresetName.all.joined(separator: ", "))")
+        }
+        let names = presets.compactMap { ExportPreset(argument: $0)?.argument }
+        guard names != project.outputPresets else { return project.revision }
+        var output = project["output"]?.object ?? [:]
+        output["presets"] = .array(names.map(JSONValue.string))
+        return try commit(
+            .setProjectProperties(patch: ["output": .object(output)]), label: "Change output platform", author: author,
+            baseRevision: baseRevision)
+    }
+
     func projectResult() -> JSONValue {
         .object(["project": fileURL.map { .string($0.path) } ?? .null, "rev": .integer(project.revision)])
     }
 
+    /// `project format`: canvas, clip fill and output presets, each its own undoable edit.
+    func formatCommand(_ arguments: CommandArguments, author: Author) throws -> JSONValue {
+        let canvas = arguments.optionalString("canvas")
+        let clips = arguments.optionalString("clips")
+        let outputs = arguments.optionalString("outputs")
+        guard canvas != nil || clips != nil || outputs != nil else {
+            throw RPCFailure(-32602, "Give canvas, clips, outputs or several")
+        }
+        var baseRevision: Int? = try arguments.int("baseRev")
+        if let canvas {
+            guard let value = ProjectSetup.Canvas(rawValue: canvas) else { throw RPCFailure(-32602, "Unknown canvas") }
+            try setCanvas(
+                value, shortSide: arguments.optionalString("resolution").flatMap(Int.init), author: author,
+                baseRevision: baseRevision)
+            baseRevision = nil
+        }
+        if let clips {
+            try setClipFill(clips == "fill", author: author, baseRevision: baseRevision)
+            baseRevision = nil
+        }
+        if let outputs {
+            let names = outputs.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+            try setOutputPresets(names, author: author, baseRevision: baseRevision)
+        }
+        return .object([
+            "outputs": .array(project.outputPresets.map(JSONValue.string)),
+            "rev": .integer(project.revision), "width": .integer(project.width),
+            "height": .integer(project.height), "clips": .string(project.clipsFill ? "fill" : "fit"),
+        ])
+    }
+
     func registerProjectCommands() {
         handleAuthored("project.format") { document, arguments, author in
-            let canvas = arguments.optionalString("canvas")
-            let clips = arguments.optionalString("clips")
-            guard canvas != nil || clips != nil else { throw RPCFailure(-32602, "Give canvas, clips or both") }
-            var baseRevision: Int? = try arguments.int("baseRev")
-            if let canvas {
-                guard let value = ProjectSetup.Canvas(rawValue: canvas) else { throw RPCFailure(-32602, "Unknown canvas") }
-                try document.setCanvas(
-                    value, shortSide: arguments.optionalString("resolution").flatMap(Int.init), author: author,
-                    baseRevision: baseRevision)
-                baseRevision = nil
-            }
-            if let clips { try document.setClipFill(clips == "fill", author: author, baseRevision: baseRevision) }
-            return .object([
-                "rev": .integer(document.project.revision), "width": .integer(document.project.width),
-                "height": .integer(document.project.height), "clips": .string(document.project.clipsFill ? "fill" : "fit"),
-            ])
+            try document.formatCommand(arguments, author: author)
         }
         handleAuthored("project.open") { document, arguments, _ in
             let path = try arguments.string("path")
@@ -121,7 +154,7 @@ extension ProjectDocument {
             setup.canvas = ProjectSetup.Canvas(rawValue: canvas) ?? .portrait
             setup.resolution = Int(try arguments.string("resolution")).flatMap(ProjectSetup.Resolution.init) ?? .fullHD
             setup.rate = ProjectSetup.Rate(rawValue: try arguments.string("fps")) ?? .ntsc
-            setup.contentLanguage = try arguments.string("language")
+            setup.contentLanguage = arguments.optionalString("language") ?? ""
             let parent = arguments.optionalString("directory")
                 .map { URL(fileURLWithPath: $0, isDirectory: true).standardizedFileURL }
                 ?? document.settings.defaultProjectsFolder

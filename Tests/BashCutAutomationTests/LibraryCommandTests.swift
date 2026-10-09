@@ -96,6 +96,26 @@ struct LibraryCommandTests {
         #expect(list.params == ["panel": .string("stickers"), "pack": .string("Arrows")])
     }
 
+    @Test("Clip library commands (P2-H5): add footage, list the Media panel, generate and place a clip")
+    func clipLibraryCommands() throws {
+        let add = try CommandLineParser.parse([
+            "library", "add", "--kind", "clip", "--name", "Drone", "--file", "/tmp/drone.mp4",
+            "--params", #"{"model":"any","aspect":"9:16"}"#,
+        ])
+        #expect(add.params["kind"] == .string("clip") && add.params["file"] == .string("/tmp/drone.mp4"))
+        let list = try CommandLineParser.parse(["library", "list", "--panel", "media"])
+        #expect(list.params == ["panel": .string("media")])
+        let generate = try CommandLineParser.parse(["library", "generate", "city at dusk", "--kind", "clip"])
+        #expect(generate.params["kind"] == .string("clip"))
+        let place = try CommandLineParser.parse([
+            "library", "place", "project:drone", "--at-frame", "30", "--duration", "60", "--track", "v2", "--base-rev", "3",
+        ])
+        #expect(place.params["track"] == .string("v2") && place.params["duration"] == .integer(60))
+        let kinds = try #require(CommandCatalog.spec(named: "library.save-selection")).inputSchema.object["properties"]?
+            .object["kind"]?.object["enum"]?.array
+        #expect(kinds?.contains(.string("clip")) == false)
+    }
+
     @Test("Plugin library commands (#81): search and generate run as jobs, add saves a candidate, the sheets open")
     @MainActor func pluginLibraryCommands() throws {
         let search = try CommandLineParser.parse([
@@ -106,6 +126,7 @@ struct LibraryCommandTests {
         #expect(search.params == [
             "query": .string("rain on a window"), "kind": .string("audio"), "provider": .string("example.sounds"),
             "limit": .integer(5), "page": .integer(2), "save": .integer(0), "scope": .string("user"),
+            "dryRun": .bool(false),
         ])
         #expect(throws: (any Error).self) { try CommandLineParser.parse(["library", "search", "rain", "--kind", "audio", "--limit", "99"]) }
         let searchSchema = try #require(CommandCatalog.spec(named: "library.search")).inputSchema.object
@@ -129,7 +150,7 @@ struct LibraryCommandTests {
             #expect(ChatCommandSession.allowedMethods.contains(method))
         }
         #expect(CommandCatalog.dialogs.contains("library-search") && CommandCatalog.dialogs.contains("library-generate"))
-        let open = try CommandLineParser.parse(["ui", "open", "library-search"])
-        #expect(open.params["dialog"] == .string("library-search"))
+        let open = try CommandLineParser.parse(["ui", "action", "open", "library-search"])
+        #expect(open.params == ["action": .string("open"), "target": .string("library-search")])
     }
 }

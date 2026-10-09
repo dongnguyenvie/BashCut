@@ -216,40 +216,6 @@ public struct TimelineMarker: JSONObject, Identifiable {
     public var label: String { fields["label"]?.string ?? "" }
 }
 
-public struct TimelineTransition: JSONObject, Identifiable {
-    public static let renderedKinds = ["dissolve", "whip", "blink", "zoom", "spin", "shutter", "wipe"]
-    /// How the tween runs over the transition (#77): `linear` (the default, stored as no field), or the keyframe
-    /// curves `in`, `out` and `inOut`.
-    public static let easings = ["linear", "in", "out", "inOut"]
-    public static let defaultEasing = "linear"
-    public var fields: [String: JSONValue]
-    public init(fields: [String: JSONValue]) { self.fields = fields }
-    public init(
-        id: String = UUID().uuidString, kind: String, from: String, to: String, duration: Int, easing: String? = nil
-    ) {
-        fields = [
-            "id": .string(id), "kind": .string(kind), "from": .string(from),
-            "to": .string(to), "duration": .integer(duration),
-        ]
-        if let easing, easing != Self.defaultEasing { fields["easing"] = .string(easing) }
-    }
-    public var id: String { fields["id"]?.string ?? "" }
-    public var kind: String { fields["kind"]?.string ?? "" }
-    public var fromItemID: String { fields["from"]?.string ?? "" }
-    public var toItemID: String { fields["to"]?.string ?? "" }
-    public var duration: Int { fields["duration"]?.int ?? 0 }
-    public var easing: String { fields["easing"]?.string ?? Self.defaultEasing }
-
-    /// `linear` (0...1, clamped) shaped by `easing`; an unknown easing stays linear. Preview and export share it.
-    public static func eased(_ linear: Double, easing: String) -> Double {
-        let t = min(1, max(0, linear))
-        guard easing != defaultEasing, easings.contains(easing), let ease = ItemMotion.Ease(rawValue: easing) else {
-            return t
-        }
-        return ease.apply(t)
-    }
-}
-
 public struct ColorLUT: JSONObject, Identifiable {
     public var fields: [String: JSONValue]
     public init(fields: [String: JSONValue]) { self.fields = fields }
@@ -324,11 +290,11 @@ public struct Project: JSONObject {
             }
         }
     }
-    public init(name: String, fps: FrameRate = FrameRate(), contentLanguage: String = "vi") {
+    public init(name: String, fps: FrameRate = FrameRate(), contentLanguage: String? = nil) {
         self.init(fields: [
             "schema": .string(Self.schema), "id": .string(UUID().uuidString),
             "name": .string(name), "rev": .integer(0),
-            "contentLanguage": .string(contentLanguage), "media": .array([]),
+            "media": .array([]),
             "format": .object([
                 "width": .integer(1080), "height": .integer(1920),
                 "fps": fps.json, "sampleRate": .integer(48000),
@@ -336,6 +302,7 @@ public struct Project: JSONObject {
             "transitions": .array([]), "markers": .array([]), "targets": .object([:]),
             "audio": .object(["targetLUFS": .integer(-14), "normalizeEnabled": .bool(true)]),
         ])
+        if let contentLanguage, !contentLanguage.isEmpty { self["contentLanguage"] = .string(contentLanguage) }
         var music = Track(id: "a3", kind: "audio", role: "music")
         music["duckingEnabled"] = .bool(true)
         music["duckUnderSpeechDb"] = .integer(-14)
@@ -375,7 +342,10 @@ public struct Project: JSONObject {
     public func existingMedia(like candidate: Media) -> Media? {
         media.first { existing in
             existing.id != candidate.id && existing.path == candidate.path
-                && candidate.fields.allSatisfy { key, value in key == "id" || existing.fields[key] == value }
+                && candidate.fields.allSatisfy { key, value in
+                    // Rights describe the file, not this use of it: media placed before they were recorded is reused.
+                    ["id", "license", "provenance"].contains(key) || existing.fields[key] == value
+                }
         }
     }
     public var markers: [TimelineMarker] {

@@ -1,9 +1,10 @@
 import Foundation
 
-/// A transition preset's params (#77): kind + duration + easing + an optional sound effect at the cut.
+/// A transition preset's params (#77): kind + duration + easing + an optional motion (C5, any kind as data) + an
+/// optional sound effect at the cut.
 ///
 /// `kind` is required. `duration` (timeline frames) falls back to the cut's current transition or a default length,
-/// and is never longer than the shorter clip. `easing` is one of `TimelineTransition.easings` (linear when absent).
+/// and is never longer than the shorter clip. `easing` is a `TimelineTransition` easing (linear when absent).
 /// `sfx` names an audio library item (`id` or `scope:id`); without it, a preset's own `file` is its sound.
 public struct TransitionPreset: Sendable, Equatable {
     public static let maximumDuration = 600
@@ -15,12 +16,15 @@ public struct TransitionPreset: Sendable, Equatable {
     public var kind: String
     public var duration: Int?
     public var easing: String?
+    /// A `TransitionMotion` object; required for a kind that is not built in.
+    public var motion: JSONValue?
     public var sfx: String?
 
-    public init(kind: String, duration: Int? = nil, easing: String? = nil, sfx: String? = nil) {
+    public init(kind: String, duration: Int? = nil, easing: String? = nil, motion: JSONValue? = nil, sfx: String? = nil) {
         self.kind = kind
         self.duration = duration
         self.easing = easing
+        self.motion = motion
         self.sfx = sfx
     }
 
@@ -37,11 +41,16 @@ public struct TransitionPreset: Sendable, Equatable {
             duration = frames
         }
         if let value = params["easing"] {
-            guard let easing = value.string, TimelineTransition.easings.contains(easing) else {
-                throw ProjectError.invalid(
-                    "\(label): params.easing must be one of \(TimelineTransition.easings.joined(separator: ", "))")
+            guard let easing = value.string, TimelineTransition.isEasing(easing) else {
+                throw ProjectError.invalid("\(label): params.easing must be one of \(TimelineTransition.easingSummary)")
             }
             self.easing = easing
+        }
+        if let value = params["motion"] {
+            do { _ = try TransitionMotion(json: value) } catch let ProjectError.invalid(message) {
+                throw ProjectError.invalid("\(label): params.\(message)")
+            }
+            motion = value
         }
         if let value = params["sfx"] {
             let id = value.string.map { $0.split(separator: ":", maxSplits: 1).last.map(String.init) ?? $0 }
@@ -57,6 +66,7 @@ public struct TransitionPreset: Sendable, Equatable {
         var params: [String: JSONValue] = ["kind": .string(kind)]
         if let duration { params["duration"] = .integer(duration) }
         if let easing, easing != TimelineTransition.defaultEasing { params["easing"] = .string(easing) }
+        if let motion { params["motion"] = motion }
         if let sfx { params["sfx"] = .string(sfx) }
         return params
     }
@@ -92,8 +102,8 @@ extension Project {
     /// with `sound` (audio media, new or already in the project), a sound effect from the cut on an SFX layer
     /// (added when the project has none). It replaces a sound an earlier preset placed at this cut.
     public func transitionPresetPlan(_ preset: TransitionPreset, at itemID: String, sound: Media? = nil) throws -> LayerPlanner {
-        guard TimelineTransition.renderedKinds.contains(preset.kind) else {
-            throw ProjectError.invalid("BashCut cannot render the transition kind \(preset.kind) yet")
+        guard TimelineTransition.renderedKinds.contains(preset.kind) || preset.motion != nil else {
+            throw ProjectError.invalid("The transition kind \(preset.kind) is not built in: give params.motion")
         }
         guard let cut = videoCut(beside: itemID) else {
             throw ProjectError.invalid("\(itemID) is not a video clip beside a cut")
@@ -105,7 +115,8 @@ extension Project {
         var planner = LayerPlanner(self)
         try planner.add([
             .upsertTransition(
-                id: id, kind: preset.kind, from: cut.from.id, to: cut.to.id, duration: duration, easing: preset.easing),
+                id: id, kind: preset.kind, from: cut.from.id, to: cut.to.id, duration: duration, easing: preset.easing,
+                motion: preset.motion),
         ])
         guard let sound else { return planner }
         guard sound.kind == "audio" else { throw ProjectError.invalid("A transition sound must be audio") }

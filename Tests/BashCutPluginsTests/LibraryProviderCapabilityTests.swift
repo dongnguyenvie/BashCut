@@ -129,10 +129,11 @@ struct LibraryProviderCapabilityTests {
                 PluginProvider(id: "test.sounds.search", capability: PluginAPI.librarySearch, name: "S", kinds: ["audio"]),
             ], body: Self.sounds)
         let service = sandbox.service
-        await #expect(throws: PluginError.self) {
+        let unserved = await #expect(throws: CapabilityUnavailable.self) {
             try await service.searchLibrary(
                 kind: .sticker, query: "cat", provider: nil, projectRoot: sandbox.project, outputRoot: sandbox.candidates)
         }
+        #expect(unserved?.localizedDescription == "Install a plugin that provides library.search for sticker items")
         await #expect(throws: PluginError.self) {
             try await service.searchLibrary(
                 kind: .audio, query: "rain", provider: "other.plugin", projectRoot: sandbox.project,

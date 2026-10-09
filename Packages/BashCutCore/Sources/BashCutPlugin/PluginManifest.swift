@@ -155,6 +155,7 @@ public struct PluginManifest: Codable, Sendable, Equatable {
         for dependency in dependencies { try dependency.validate() }
         try author?.validate()
         try validateExtensions()
+        try validateVoices()
     }
 
     /// Options, actions and hooks (plugin API 2).
@@ -175,12 +176,16 @@ public struct PluginManifest: Codable, Sendable, Equatable {
         guard !usesAPI4 || apiVersion >= 4 else {
             throw PluginError.invalid("secret options and agent.chat need apiVersion 4")
         }
+        guard !capabilities.contains(PluginAPI.reviewCheck) || apiVersion >= 9 else {
+            throw PluginError.invalid("review.check needs apiVersion 9")
+        }
         guard !capabilities.contains(PluginAPI.agentChat) || transport == .session else {
             throw PluginError.invalid("agent.chat needs the session transport")
         }
         try validateTerminal()
         try validateLibrary()
         try validateSkills()
+        try validatePlatformTable()
         try validateComposition()
         guard Set(options.map(\.id)).count == options.count, options.count <= 64 else {
             throw PluginError.invalid("Option ids must be unique (at most 64)")
@@ -217,7 +222,7 @@ public struct PluginManifest: Codable, Sendable, Equatable {
                 "contributes.library lists at most \(PluginLibraryContribution.maximumPacks) different pack folders")
         }
         for pack in libraryPacks { try pack.validate() }
-        for provider in declaredProviders {
+        for provider in providers ?? [] {
             guard let kinds = provider.kinds else { continue }
             guard PluginAPI.libraryCapabilities.contains(provider.capability) else {
                 throw PluginError.invalid("Provider \(provider.id): kinds are for library.search and library.generate")
@@ -230,6 +235,16 @@ public struct PluginManifest: Codable, Sendable, Equatable {
                         + LibraryKind.allCases.map(\.rawValue).joined(separator: ", ") + ")")
             }
         }
+    }
+
+    /// The platform table file (plugin API 9): a relative path inside the plugin.
+    private func validatePlatformTable() throws {
+        guard let path = contributes?.platforms else { return }
+        guard apiVersion >= 9 else { throw PluginError.invalid("contributes.platforms needs apiVersion 9") }
+        let components = NSString(string: path).pathComponents
+        guard path.hasSuffix(".json"), path.count <= 512, !path.hasPrefix("/"), !path.hasPrefix("~"),
+            !components.contains("..")
+        else { throw PluginError.invalid("contributes.platforms must be a .json file inside the plugin bundle") }
     }
 
     /// Agent skills (plugin API 7).
@@ -323,6 +338,14 @@ public struct PluginProvider: Codable, Sendable, Equatable, Identifiable {
     public let timeoutSeconds: Int?
     /// Library kinds a `library.search` or `library.generate` provider serves (API 6); nil serves every kind.
     public let kinds: [String]?
+    /// Voices of a `voice.synthesize` provider (P0-C7).
+    public var voices: [PluginVoice]?
+    /// A `voice.synthesize` provider that can clone a voice from a recording; clone requests carry `cloneConsent`.
+    public var clones: Bool?
+    /// The provider charges per request (P2-G4): agents send a stable `requestId` and may ask for a dry run first.
+    public var paid: Bool?
+    /// The provider answers a request with `dryRun: true` with `{estimate: {units, costUSD}}` and does no work.
+    public var estimates: Bool?
 
     public init(
         id: String, capability: String, name: String, priority: Int = 0, timeoutSeconds: Int? = nil, kinds: [String]? = nil
@@ -347,6 +370,10 @@ public struct PluginProvider: Codable, Sendable, Equatable, Identifiable {
         priority = try container.decodeIfPresent(Int.self, forKey: .priority) ?? 0
         timeoutSeconds = try container.decodeIfPresent(Int.self, forKey: .timeoutSeconds)
         kinds = try container.decodeIfPresent([String].self, forKey: .kinds)
+        voices = try container.decodeIfPresent([PluginVoice].self, forKey: .voices)
+        clones = try container.decodeIfPresent(Bool.self, forKey: .clones)
+        paid = try container.decodeIfPresent(Bool.self, forKey: .paid)
+        estimates = try container.decodeIfPresent(Bool.self, forKey: .estimates)
     }
 }
 

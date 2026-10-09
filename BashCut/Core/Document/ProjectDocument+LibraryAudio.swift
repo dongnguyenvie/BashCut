@@ -67,8 +67,24 @@ extension ProjectDocument {
             "kind": .string("audio"), "fps": project.fps.json, "frames": .integer(frames), "hasAudio": .bool(true),
         ]
         if source.kind == .audio { fields[TransitionPreset.soundLibraryField] = .string(source.reference) }
+        fields.merge(Self.libraryRights(source)) { _, rights in rights }
         let media = Media(fields: fields)
         return project.existingMedia(like: media) ?? media
+    }
+
+    /// The `license` and `provenance` a library item gives the media placed from it (P2-H8): its licence, structured,
+    /// and its provenance with `libraryItem`, the origin (`built-in` for BashCut's items) and its source when a URL.
+    static func libraryRights(_ item: LibraryItem) -> [String: JSONValue] {
+        var fields: [String: JSONValue] = [:]
+        if let terms = item.licenseTerms { fields["license"] = terms.json }
+        var provenance = item["provenance"]?.object ?? [:]
+        provenance["libraryItem"] = .string(item.reference)
+        if item.scope == .builtIn, provenance["origin"] == nil { provenance["origin"] = .string("built-in") }
+        if provenance["sourceUrl"] == nil, let source = item["source"]?.string, source.hasPrefix("http") {
+            provenance["sourceUrl"] = .string(String(source.prefix(2_000)))
+        }
+        fields["provenance"] = .object(provenance)
+        return fields
     }
 
     /// The length of a sound file in seconds; throws when it has no sound.
@@ -91,14 +107,14 @@ extension ProjectDocument {
     private func libraryAudio(_ item: LibraryItem) throws -> LibraryAudio {
         guard item.kind == .audio else { throw RPCFailure(-32602, "\(item.reference) is not an audio library item") }
         do { return try LibraryAudio(params: item.params, label: item.reference) } catch {
-            throw RPCFailure(-32602, error.localizedDescription)
+            throw RPCFailure.from(error, fallbackCode: -32602)
         }
     }
 
     /// A new audio item's params: its length measured from `file` and, without a role, one from that length.
     func audioItemParams(_ params: [String: JSONValue], file: URL) async throws -> [String: JSONValue] {
         var audio: LibraryAudio
-        do { audio = try LibraryAudio(params: params) } catch { throw RPCFailure(-32602, error.localizedDescription) }
+        do { audio = try LibraryAudio(params: params) } catch { throw RPCFailure.from(error, fallbackCode: -32602) }
         let seconds = try await Self.soundSeconds(file, label: file.lastPathComponent)
         audio.seconds = audio.seconds ?? seconds
         audio.role = audio.placementRole(seconds: seconds)
@@ -123,7 +139,7 @@ extension ProjectDocument {
             placed = try project.audioPlacePlan(
                 sound, role: role, loopable: audio.loopable == true, at: placement.frame ?? playhead,
                 duration: placement.duration, trackID: placement.trackID)
-        } catch { throw RPCFailure(-32602, error.localizedDescription) }
+        } catch { throw RPCFailure.from(error, fallbackCode: -32602) }
         let revision = try commitPlan(
             placed.planner, label: item.name, author: placement.author, baseRevision: placement.baseRevision)
         selectedTrackID = placed.trackID
@@ -168,11 +184,17 @@ extension ProjectDocument {
         do {
             let loudness = try await plugins.running("audio.loudness") {
                 try await plugins.service.analyzeLoudness(
-                    mediaURL: url, preferredProvider: provider ?? project.preferredProvider(for: "audio.loudness"),
-                    projectRoot: root)
+                    mediaURL: url, bands: false, curve: true,
+                    preferredProvider: provider ?? project.preferredProvider(for: "audio.loudness"), projectRoot: root)
             }
             measured.lufs = loudness.measurement.integratedLUFS
             measured.truePeak = loudness.measurement.truePeakDbTP
+            if let curve = Self.curve(loudness.measurement) {
+                measured.landmarks = MixMeasure.landmarks(curve)
+                if measured.landmarks == nil { notes["landmarks"] = .string("The sound never passes −70 LUFS") }
+            } else {
+                notes["landmarks"] = .string("The audio.loudness provider gave no curve")
+            }
         } catch {
             notes["lufs"] = .string(error.localizedDescription)
         }
@@ -196,7 +218,7 @@ extension ProjectDocument {
         }
         let changes: [String: JSONValue]
         do { changes = try LibraryAudio.analysisChanges(item, measured: measured) } catch {
-            throw RPCFailure(-32602, error.localizedDescription)
+            throw RPCFailure.from(error, fallbackCode: -32602)
         }
         let saved = try await libraryChange(
             "library.analyze", scope: item.scope, author: author, arguments: ["id": item.reference, "name": item.name]
@@ -291,7 +313,7 @@ extension ProjectDocument {
         }
         let params: [String: JSONValue]
         do { params = try LibrarySelection.audio(media, trackRole: trackRole) } catch {
-            throw RPCFailure(-32602, error.localizedDescription)
+            throw RPCFailure.from(error, fallbackCode: -32602)
         }
         let file = try MediaPathResolver.resolve(media.path, projectRoot: root, workspaceRoot: settings.workspace)
         return (params, file)
