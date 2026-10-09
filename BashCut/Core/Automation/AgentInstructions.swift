@@ -98,7 +98,7 @@ extension CommandCatalog {
         Prefer `media place` and `timeline move`, which put content on a free or new layer when the range is taken;
         raw insert/move operations that overlap are rejected.
         Edits need --base-rev N from the latest read. One request is one atomic apply call.
-        On staleRevision, re-read and retry. Changes appear in the UI and can be undone.
+        Changes appear in the UI and can be undone.
         Job commands return a job ID; `bashcut jobs wait JOB_ID` returns when it moves on (repeat until it ends).
         Their result is one undoable edit.
         Installing plugins is user-only. Add `--format text` to print text results without JSON quoting.
@@ -211,9 +211,20 @@ extension CommandCatalog {
         without waiting for the user: decide what the prompt and footage leave open and say what you chose. Installing
         and trusting BashCut plugins stays with the user; never clone a voice that is not the user's. Reply in the
         user's language.
-        Errors carry data.category, retryable and sometimes remediation.command (the read that explains them):
-        stale_revision/file_conflict → context get and resend with the new rev; busy_* → wait or answer the dialog;
-        capability_missing → capabilities get, then ask the user to install or turn on a provider; unsupported_media →
-        this Mac cannot decode the file: ask the user to convert it to H.264 or HEVC.
+        Errors carry data.category, retryable and sometimes remediation.command. Retry only retryable ones, after the
+        remediation; never resend invalid_arguments unchanged. stale_revision (-32002)/file_conflict → context get,
+        resend with the new rev; busy_dialog → ui dialog, answer it; busy_approval/busy_running → wait;
+        capability_missing → data.reason missing (plugins search; the user installs), not_configured (the user turns it
+        on; quote detail) or unhealthy (the user fixes detail); go on with what does not need it; unsupported_media →
+        do not judge its black picture, ask the user to convert it to H.264/HEVC; audit_missing/recipe_unread → run
+        remediation.command. recentFailures.repeated ≥ 2: stop, rethink or ask.
+        Scope: an edit outside the attached items fails with -32004; never retry or work around it. held: true → the
+        user is asked: wait for scope.last.outcome (applied → re-read; rejected → ask; failed stale → re-read, resend if
+        still wanted); no held → stop and ask; -32003 while held → wait. agentPermissions in context get (edits,
+        autoApprove, scopeGuard, allowAll) is the user's. Library first: library list --kind K before building a style,
+        effect, transition, look, sound or sticker. Read a plugin's skill (skills get ID) before using its feature.
+        Record stages: run append stage --stage S --status done --evidence "a;b" (skipped: --reason); run checklist and
+        context get › workflow.next name the next stage and skill. An agent's final export needs a passing draft audit
+        of the current timeline (or the user's G5 approval); G2 needs a strategy audit and the plan's recipe read.
         """
 }

@@ -13,8 +13,12 @@ struct AgentInstructionsTests {
             #expect(listed == !CommandCatalog.hiddenFromAgents.contains(spec.name), "\(spec.name)")
         }
         #expect(CommandCatalog.hiddenFromAgents.isSubset(of: Set(CommandCatalog.specs.map(\.name))))
-        // About 8k tokens (flexibility audit, D15): full descriptions are in `bashcut help` and the MCP tools.
-        #expect(text.count < 34_000)
+        // About 8k tokens (flexibility audit, D15): full descriptions are in `bashcut help` and the MCP tools. The
+        // tool rules moved here from the kit's edit-workflow skill (spec 13 §9) every agent reads anyway.
+        #expect(text.count < 36_000)
+        for rule in ["-32004", "held: true", "capability_missing", "agentPermissions", "Library first", "audit_missing"] {
+            #expect(text.contains(rule), "\(rule)")
+        }
         #expect(!text.contains(#""v1""#))
         #expect(!text.contains(#""t1""#))
         #expect(text.contains("bashcut timeline get"))
