@@ -89,4 +89,41 @@ struct PluginSkillLinkTests {
         try AgentKitInstall.syncSkills(of: nil, into: folder)
         #expect(destination(folder.appendingPathComponent("example.captions--transcribe")) == nil)
     }
+
+    @Test("The user's agent folders get plugin skills only where the kit is set up")
+    func userFolders() throws {
+        let (root, _, _) = try scratch()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let home = root.appendingPathComponent("home", isDirectory: true)
+        let manager = FileManager.default
+        func registerKit(_ config: String) throws {
+            let plugins = home.appendingPathComponent("\(config)/plugins", isDirectory: true)
+            try manager.createDirectory(at: plugins, withIntermediateDirectories: true)
+            try #"{"bashcut-agent-kit": {}}"#.write(
+                to: plugins.appendingPathComponent("known_marketplaces.json"), atomically: true, encoding: .utf8)
+        }
+        try registerKit(".claude")
+        try registerKit(".claude-work")
+        try manager.createDirectory(at: home.appendingPathComponent(".claude-other/plugins"), withIntermediateDirectories: true)
+        try manager.createDirectory(at: home.appendingPathComponent(".agents/skills"), withIntermediateDirectories: true)
+        // Codex without the kit's skills is left alone.
+        var folders = AgentKnowledgeStore.userPluginSkillFolders(home: home, variables: [:])
+        #expect(folders.map(\.path) == [".claude/skills", ".claude-work/skills"].map { home.appendingPathComponent($0).path })
+        try manager.createSymbolicLink(
+            at: home.appendingPathComponent(".agents/skills/bc-review"), withDestinationURL: root)
+        folders = AgentKnowledgeStore.userPluginSkillFolders(home: home, variables: [:])
+        #expect(folders.last?.path == home.appendingPathComponent(".agents/skills").path)
+
+        let transcribe = try skill("transcribe", in: root)
+        let ledger = root.appendingPathComponent("support/BashCut/plugin-skills.json")
+        #expect(try AgentKnowledgeStore.syncUserPluginSkills([transcribe], folders: folders, ledger: ledger)
+            == ["example.captions--transcribe"])
+        for folder in folders {
+            #expect(destination(folder.appendingPathComponent("example.captions--transcribe")) == transcribe.folder.path)
+        }
+        #expect(try AgentKnowledgeStore.syncUserPluginSkills([], folders: folders, ledger: ledger).isEmpty)
+        for folder in folders { #expect(destination(folder.appendingPathComponent("example.captions--transcribe")) == nil) }
+        #expect(destination(home.appendingPathComponent(".agents/skills/bc-review")) != nil)
+        #expect(!manager.fileExists(atPath: ledger.path))
+    }
 }

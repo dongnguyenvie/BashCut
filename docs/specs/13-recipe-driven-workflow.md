@@ -177,8 +177,9 @@ Replaces both "never end a turn on a question" (kit) and "ask, never guess" (rec
   `AgentInstructions.swift`, which every agent gets from the MCP server regardless of the entry skill.
 - A recipe skill states its own rules and the plan data it writes; it does not repeat the process.
 - `context get` › `workflow.next`: `{stage, skill, skillRead}` — the one skill to read now.
-- Optional, later: plugin skills are linked per project today (#377). Linking them at user level too (next to the
-  kit) would let a request match a recipe before any project exists.
+- Plugin skills are also linked into the user's agent folders where the kit is set up (each Claude Code config
+  folder with the kit's marketplace, and `~/.agents/skills` once `bc-*` links exist), so `/` offers a recipe before any
+  project exists; the project folder then gets no copy, so `/` lists each skill once.
 
 ## 10. Work
 
