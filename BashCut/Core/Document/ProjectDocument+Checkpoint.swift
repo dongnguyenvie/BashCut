@@ -109,9 +109,9 @@ extension ProjectDocument {
         switch kind {
         case "stage": try completeStageEntry(&entry, author: author)
         case "skill":
-            guard let name = entry["name"]?.string, !name.isEmpty else { throw RPCFailure(-32602, "A skill entry needs --name") }
-            entry["origin"] = entry["origin"] ?? .string(name.hasPrefix("bc:") ? "kit" : name.contains(":") ? "plugin" : "project")
-            entry["verified"] = .bool(arguments.optionalString("verifiedBy") == "hook")
+            guard try completeSkillEntry(&entry, hook: arguments.optionalString("verifiedBy") == "hook") else {
+                return .object(["ignored": .bool(true), "name": entry["name"] ?? .null])
+            }
         case "audit":
             guard entry["point"] != nil, entry["verdict"] != nil else {
                 throw RPCFailure(-32602, "An audit entry needs --point and --verdict")
@@ -121,6 +121,22 @@ extension ProjectDocument {
         default: break
         }
         do { return try log.append(entry) } catch { throw RPCFailure.from(error, fallbackCode: -32602) }
+    }
+
+    /// Fills a `skill` entry; false when the kit hook reported a skill that is not BashCut's (nothing is written).
+    private func completeSkillEntry(_ entry: inout [String: JSONValue], hook: Bool) throws -> Bool {
+        guard let name = entry["name"]?.string, !name.isEmpty else { throw RPCFailure(-32602, "A skill entry needs --name") }
+        // A plugin skill loaded by its agent name (`vlog-product-ad`) is recorded by its ID (`bashcut.vlog:product-ad`).
+        if let plugin = plugins.skills.first(where: { $0.linkName == name }) {
+            entry["name"] = .string(plugin.id)
+            entry["origin"] = .string("plugin")
+        } else if hook, !name.hasPrefix("bc:"), !name.contains(":") {
+            // The hook sees every skill an agent loads; only BashCut's own are recorded.
+            return false
+        }
+        entry["origin"] = entry["origin"] ?? .string(name.hasPrefix("bc:") ? "kit" : name.contains(":") ? "plugin" : "project")
+        entry["verified"] = .bool(hook)
+        return true
     }
 
     /// The `data` object with the named fields over it: strings, counts, comma lists and `;`-separated evidence.

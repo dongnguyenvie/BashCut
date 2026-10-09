@@ -1,5 +1,6 @@
 import BashCutAgent
 import BashCutAutomation
+import BashCutDocument
 import BashCutPlugin
 import Foundation
 
@@ -22,19 +23,27 @@ extension ProjectDocument {
         agents.knowledge.pluginSkills = plugins.skills
         let userFolders = AgentKnowledgeStore.userPluginSkillFolders(
             home: FileManager.default.homeDirectoryForCurrentUser, variables: ProcessInfo.processInfo.environment)
+        let skills = agentPluginSkills()
         do {
-            let ledger = Self.libraryApplicationSupport.appendingPathComponent("BashCut/plugin-skills.json")
-            let linked = try AgentKnowledgeStore.syncUserPluginSkills(plugins.skills, folders: userFolders, ledger: ledger)
+            let ledger = StorageUsage.supportFolder.appendingPathComponent("plugin-skills.json")
+            let linked = try AgentKnowledgeStore.syncUserPluginSkills(skills, folders: userFolders, ledger: ledger)
             DebugLog.write("plugin", "plugin skills linked for the user: \(linked.count) in \(userFolders.count) folders")
         } catch {
             DebugLog.write("plugin", "plugin skills not linked for the user: \(error.localizedDescription)")
         }
         guard fileURL != nil else { return }
         do {
-            let linked = try agents.knowledgeStore.syncPluginSkills(userFolders.isEmpty ? plugins.skills : [])
+            let linked = try agents.knowledgeStore.syncPluginSkills(userFolders.isEmpty ? skills : [])
             DebugLog.write("plugin", "plugin skills linked in the project: \(linked.count)")
         } catch {
             DebugLog.write("plugin", "plugin skills not linked: \(error.localizedDescription)")
         }
+    }
+
+    /// The plugin skills as agents get them: wrappers named `<plugin>-<skill>` in BashCut's `AgentSkills` folder, so
+    /// `/` shows which plugin each one comes from (`PluginSkillWrappers`).
+    func agentPluginSkills() -> [PluginSkill] {
+        PluginSkillWrappers.prepare(
+            plugins.skills, root: StorageUsage.supportFolder.appendingPathComponent("AgentSkills", isDirectory: true))
     }
 }

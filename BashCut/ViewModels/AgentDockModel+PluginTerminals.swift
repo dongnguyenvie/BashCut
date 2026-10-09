@@ -62,7 +62,7 @@ extension AgentDockModel {
         let result = try await document.plugins.service.terminal(params, using: try await resolveTerminal(plugin))
         let launch = try PluginTerminalLaunch(result: result, pluginDirectory: plugin.directory, agentFolder: folder)
         if let skills = launch.skillsFolder {
-            try AgentKitInstall.syncSkills(of: kit, into: skills, plugins: document.plugins.skills)
+            try AgentKitInstall.syncSkills(of: kit, into: skills, plugins: document.agentPluginSkills())
         }
         DebugLog.write("agents", "\(pluginID) terminal: \(launch.executable) with \(launch.arguments.count) argument(s)")
         return try start(

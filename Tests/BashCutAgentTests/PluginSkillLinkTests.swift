@@ -34,9 +34,9 @@ struct PluginSkillLinkTests {
         try store.writeSkill(named: "food-cut", text: "# Food\n")
 
         let linked = try store.syncPluginSkills([transcribe, style])
-        #expect(linked == ["example.captions--caption-style", "example.captions--transcribe"])
+        #expect(linked == ["captions-caption-style", "captions-transcribe"])
         for folder in [".claude/skills", ".agents/skills"] {
-            let link = project.appendingPathComponent("\(folder)/example.captions--transcribe")
+            let link = project.appendingPathComponent("\(folder)/captions-transcribe")
             #expect(destination(link) == transcribe.folder.path)
             #expect(FileManager.default.fileExists(atPath: link.appendingPathComponent("SKILL.md").path))
         }
@@ -44,13 +44,13 @@ struct PluginSkillLinkTests {
         #expect(store.skills().map(\.name) == ["food-cut"])
 
         // The plugin stops shipping one skill (or is disabled): only BashCut's link goes.
-        #expect(try store.syncPluginSkills([transcribe]) == ["example.captions--transcribe"])
-        #expect(destination(project.appendingPathComponent(".claude/skills/example.captions--caption-style")) == nil)
+        #expect(try store.syncPluginSkills([transcribe]) == ["captions-transcribe"])
+        #expect(destination(project.appendingPathComponent(".claude/skills/captions-caption-style")) == nil)
         #expect(store.skills().first?.name == "food-cut")
 
         // Nothing left: the links and the ledger go; the project's own skill stays.
         #expect(try store.syncPluginSkills([]).isEmpty)
-        #expect(destination(project.appendingPathComponent(".agents/skills/example.captions--transcribe")) == nil)
+        #expect(destination(project.appendingPathComponent(".agents/skills/captions-transcribe")) == nil)
         #expect(!FileManager.default.fileExists(atPath: project.appendingPathComponent(".bashcut/plugin-skills.json").path))
         #expect(store.skills().first.map { $0.enabled && $0.claude && $0.codex } == true)
     }
@@ -60,12 +60,12 @@ struct PluginSkillLinkTests {
         let (root, project, store) = try scratch()
         defer { try? FileManager.default.removeItem(at: root) }
         let transcribe = try skill("transcribe", in: root)
-        let own = project.appendingPathComponent(".claude/skills/example.captions--transcribe", isDirectory: true)
+        let own = project.appendingPathComponent(".claude/skills/captions-transcribe", isDirectory: true)
         try FileManager.default.createDirectory(at: own, withIntermediateDirectories: true)
 
-        #expect(try store.syncPluginSkills([transcribe]) == ["example.captions--transcribe"])
+        #expect(try store.syncPluginSkills([transcribe]) == ["captions-transcribe"])
         #expect(destination(own) == nil && FileManager.default.fileExists(atPath: own.path))
-        #expect(destination(project.appendingPathComponent(".agents/skills/example.captions--transcribe")) != nil)
+        #expect(destination(project.appendingPathComponent(".agents/skills/captions-transcribe")) != nil)
         try store.syncPluginSkills([])
         #expect(FileManager.default.fileExists(atPath: own.path))
     }
@@ -85,9 +85,9 @@ struct PluginSkillLinkTests {
         let folder = root.appendingPathComponent("agent/.agents/skills", isDirectory: true)
         let transcribe = try skill("transcribe", in: root)
         try AgentKitInstall.syncSkills(of: nil, into: folder, plugins: [transcribe])
-        #expect(destination(folder.appendingPathComponent("example.captions--transcribe")) == transcribe.folder.path)
+        #expect(destination(folder.appendingPathComponent("captions-transcribe")) == transcribe.folder.path)
         try AgentKitInstall.syncSkills(of: nil, into: folder)
-        #expect(destination(folder.appendingPathComponent("example.captions--transcribe")) == nil)
+        #expect(destination(folder.appendingPathComponent("captions-transcribe")) == nil)
     }
 
     @Test("The user's agent folders get plugin skills only where the kit is set up")
@@ -117,13 +117,34 @@ struct PluginSkillLinkTests {
         let transcribe = try skill("transcribe", in: root)
         let ledger = root.appendingPathComponent("support/BashCut/plugin-skills.json")
         #expect(try AgentKnowledgeStore.syncUserPluginSkills([transcribe], folders: folders, ledger: ledger)
-            == ["example.captions--transcribe"])
+            == ["captions-transcribe"])
         for folder in folders {
-            #expect(destination(folder.appendingPathComponent("example.captions--transcribe")) == transcribe.folder.path)
+            #expect(destination(folder.appendingPathComponent("captions-transcribe")) == transcribe.folder.path)
         }
         #expect(try AgentKnowledgeStore.syncUserPluginSkills([], folders: folders, ledger: ledger).isEmpty)
-        for folder in folders { #expect(destination(folder.appendingPathComponent("example.captions--transcribe")) == nil) }
+        for folder in folders { #expect(destination(folder.appendingPathComponent("captions-transcribe")) == nil) }
         #expect(destination(home.appendingPathComponent(".agents/skills/bc-review")) != nil)
         #expect(!manager.fileExists(atPath: ledger.path))
+    }
+
+    @Test("Wrappers give agents the plugin's name in the skill name and keep its other files")
+    func wrappers() throws {
+        let (root, _, _) = try scratch()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let transcribe = try skill("transcribe", in: root)
+        let references = transcribe.folder.appendingPathComponent("references", isDirectory: true)
+        try FileManager.default.createDirectory(at: references, withIntermediateDirectories: true)
+        let wrappersRoot = root.appendingPathComponent("support/AgentSkills", isDirectory: true)
+
+        let wrapped = try #require(PluginSkillWrappers.prepare([transcribe], root: wrappersRoot).first)
+        #expect(wrapped.folder.path == wrappersRoot.appendingPathComponent("captions-transcribe").path)
+        #expect(wrapped.id == transcribe.id && wrapped.linkName == "captions-transcribe")
+        let text = try String(contentsOf: wrapped.file, encoding: .utf8)
+        #expect(text.contains("name: captions-transcribe") && text.contains("description: Test."))
+        #expect(destination(wrapped.folder.appendingPathComponent("references")) == references.path)
+
+        #expect(PluginSkillWrappers.prepare([], root: wrappersRoot).isEmpty)
+        #expect(!FileManager.default.fileExists(atPath: wrapped.folder.path))
+        #expect(FileManager.default.fileExists(atPath: transcribe.file.path))
     }
 }
