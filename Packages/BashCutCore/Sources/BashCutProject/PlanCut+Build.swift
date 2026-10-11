@@ -220,6 +220,10 @@ extension PlanCut {
                     for: item, (captions.preset, captions.style, captions.textStyle), textPresets: textPresets,
                     project: planner.project)
                 patch[tag] = .string("captions")
+                let text = captions.replace.reduce(item.text) { text, pair in
+                    text.replacingOccurrences(of: pair.from, with: pair.to, options: .caseInsensitive)
+                }
+                if text != item.text { patch["text"] = .string(text) }
                 try planner.add([.setProperties(item: item.id, patch: patch)])
             }
         }

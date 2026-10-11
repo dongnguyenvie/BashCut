@@ -72,6 +72,8 @@ public enum PlanCut {
         public var preset: String?
         public var style: [String: JSONValue] = [:]
         public var textStyle: [String: JSONValue] = [:]
+        /// Words the transcript got wrong and what the captions say instead ("Tết Sịch" → "Texas"), longest first.
+        public var replace: [(from: String, to: String)] = []
     }
 
     public struct Spec: Sendable {
@@ -158,7 +160,16 @@ public enum PlanCut {
             throw ProjectError.invalid("captions.wordStyle: \(CaptionWords.styles.joined(separator: ", "))")
         }
         let (style, textStyle) = splitStyle(row["style"]?.object ?? [:])
-        return Captions(wordStyle: wordStyle, preset: row["preset"]?.string, style: style, textStyle: textStyle)
+        var replace: [(from: String, to: String)] = []
+        if let value = row["replace"], value != .null {
+            guard case .object(let pairs) = value, pairs.count <= 100,
+                pairs.allSatisfy({ !$0.key.isEmpty && $0.value.string != nil })
+            else { throw ProjectError.invalid("captions.replace: {\"heard words\": \"what to show\"}, at most 100") }
+            replace = pairs.map { ($0.key, $0.value.string ?? "") }
+                .sorted { $0.from.count == $1.from.count ? $0.from < $1.from : $0.from.count > $1.from.count }
+        }
+        return Captions(
+            wordStyle: wordStyle, preset: row["preset"]?.string, style: style, textStyle: textStyle, replace: replace)
     }
 
     /// Text style fields (straight or nested as `textStyle`) apart from item properties.

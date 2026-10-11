@@ -254,7 +254,15 @@ extension Project {
                 let first = heard.partitioningIndex { $0.start >= cue.start - margin - longest }
                 let last = heard.partitioningIndex { $0.start > cue.end + margin }
                 let near = first < last ? Array(heard[first..<last]) : []
-                items.append(SubRip.caption(cue.text, at: at, duration: end - at).attachingWords(near) {
+                // A cue the clip plays only part of says only the words heard inside the clip, not the whole line.
+                var text = cue.text
+                if cue.start < sourceStart - 0.05 || cue.end > sourceEnd + 0.05, !near.isEmpty {
+                    let low = max(cue.start, sourceStart), high = min(cue.end, sourceEnd)
+                    let inside = near.filter { (($0.start + $0.end) / 2) >= low && (($0.start + $0.end) / 2) <= high }
+                    guard !inside.isEmpty else { continue }
+                    text = inside.map { $0.text.trimmingCharacters(in: .whitespaces) }.joined(separator: " ")
+                }
+                items.append(SubRip.caption(text, at: at, duration: end - at).attachingWords(near) {
                     frame(min(max($0, sourceStart), sourceEnd))
                 })
             }

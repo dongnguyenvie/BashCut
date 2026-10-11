@@ -172,7 +172,13 @@ extension ProjectDocument {
                 detail: "Review limits this edit needs are unset, so review run stays incomplete: "
                     + unset.joined(separator: ", ") + ". Choose each from the recipe's ranges in plan.cut.review "
                     + "(written on plan apply) or project set-data review",
-                facts: ["unsetLimits": .array(unset.map(JSONValue.string))]))
+                facts: [
+                    "unsetLimits": .array(unset.map(JSONValue.string)),
+                    // What each limit can hold (seconds, a share 0–1, characters, a contrast ratio), not a choice.
+                    "accepts": .object(Dictionary(uniqueKeysWithValues: unset.compactMap { key in
+                        ReviewProfile.numberKeys[key].map { (key, JSONValue.string("\($0.lowerBound)…\($0.upperBound)")) }
+                    })),
+                ]))
         }
         guard let review else { return problems }
         var copy = project

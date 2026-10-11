@@ -106,8 +106,8 @@ extension ProjectDocument {
     /// `stage` takes a status (done with evidence, else stored unverified; skipped with a reason), `skill` a name
     /// (verified only from the kit hook), `audit` a point, verdict, findings and auditor (spec 13 §5, §6).
     func appendRunLog(_ arguments: CommandArguments, author: Author) throws -> JSONValue {
-        guard let log = runLog else { throw RPCFailure(-32602, "Save the project first") }
         let kind = try arguments.string("kind")
+        guard let log = runLog else { return try holdSkillRead(kind, arguments, author: author) }
         guard kind.count <= 40, kind != "gate" else {
             throw RPCFailure(-32602, "kind must be 1–40 characters and not gate (checkpoints write gate entries)")
         }
@@ -130,6 +130,35 @@ extension ProjectDocument {
         default: break
         }
         do { return try log.append(entry) } catch { throw RPCFailure.from(error, fallbackCode: -32602) }
+    }
+
+    /// A skill read reported before the project exists, kept for the next project that opens; other kinds need one.
+    private func holdSkillRead(_ kind: String, _ arguments: CommandArguments, author: Author) throws -> JSONValue {
+        guard kind == "skill" else { throw RPCFailure(-32602, "Save the project first") }
+        var entry = Self.runLogFields(arguments)
+        entry["kind"] = .string(kind)
+        entry["author"] = .string(author.rawValue)
+        guard try completeSkillEntry(&entry, hook: arguments.optionalString("verifiedBy") == "hook") else {
+            return .object(["ignored": .bool(true), "name": entry["name"] ?? .null])
+        }
+        holdRunEntry(entry)
+        return .object(["held": .bool(true), "name": entry["name"] ?? .null])
+    }
+
+    /// Keeps an entry made before a project was open (at most the last 20).
+    func holdRunEntry(_ entry: [String: JSONValue]) {
+        pendingRunEntries.append(entry)
+        if pendingRunEntries.count > 20 { pendingRunEntries.removeFirst(pendingRunEntries.count - 20) }
+    }
+
+    /// Writes the held entries to the run log of the project that just opened.
+    func flushPendingRunEntries() {
+        guard !pendingRunEntries.isEmpty, let log = runLog else { return }
+        for var entry in pendingRunEntries {
+            entry["rev"] = .integer(project.revision)
+            do { try log.append(entry) } catch { DebugLog.write("runlog", "held entry not logged: \(error)") }
+        }
+        pendingRunEntries.removeAll()
     }
 
     /// Records a stage BashCut itself can prove (`plan.apply` built the rough cut, `review.run` passed, an export

@@ -153,7 +153,8 @@ struct PlanCutTests {
         var project = project()
         let cut = try spec(#"""
             {"clips":[{"id":"a","media":"m","quote":"giá năm chục"},{"id":"b","media":"m","from":8,"to":10,"role":"broll"}],
-            "captions":{"from":"speech","preset":"bold-outline","style":{"size":0.05,"positionY":0.2}},
+            "captions":{"from":"speech","preset":"bold-outline","style":{"size":0.05,"positionY":0.2},
+                        "replace":{"năm chục":"50"}},
             "music":{"media":"song","duckDb":-20}}
             """#)
         let resolved = PlanCut.resolve(cut, project: project, transcripts: ["m": transcript]).clips
@@ -163,6 +164,8 @@ struct PlanCutTests {
         let cues = items.filter { $0.fields[PlanCut.tag] == .string("captions") }
         // Only the quoted words (2.8–3.4 s) play, so one cue, cut to them, at the clip's start.
         #expect(cues.count == 1 && cues[0].at == 0 && cues[0].textPreset == "bold-outline")
+        // Its text is the words heard, not the whole phrase, with the transcript's slip replaced.
+        #expect(cues[0].text == "giá 50")
         #expect(cues[0]["textStyle"]?.object["size"] == .number(0.05) && cues[0]["captionMedia"] == .string("m"))
         #expect(items.first { $0.id == "plan-a" }?["tag"]?.object["role"] == .string("speech"))
         #expect(items.first { $0.id == "plan-b" }?["tag"]?.object["role"] == .string("broll"))

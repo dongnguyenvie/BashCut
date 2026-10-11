@@ -131,4 +131,21 @@ struct CaptionWordTests {
         #expect(right.wordTimings.map(\.at) == [-30, 10])
         #expect(right.spokenWord(at: 5) == 0 && right.spokenWord(at: 10) == 1)
     }
+
+    @Test("A line the clip plays only part of says only the words heard in the clip")
+    func clippedCueText() throws {
+        let words = ["a", "b", "c", "d", "e", "f"].enumerated().map { index, text in
+            CaptionWords.Timed(text: text, start: Double(index), end: Double(index) + 0.9)
+        }
+        let cue = SubRip.Cue(start: 0, end: 6, text: "a b c d e f")
+        let clip = Item(id: "a", media: "m", at: 0, duration: 60, sourceIn: 60)
+        let project = try Project(name: "Words", fps: FrameRate(30, 1)).applying(.group(
+            label: "Setup", author: .user, ops: [
+                .addMedia(ProjectFixtures.media(
+                    "m", path: "m.mov", frames: 300, fps: FrameRate(30, 1), kind: "audio", hasAudio: true)),
+                .insert(track: "a1", item: clip),
+            ])).project
+        let placed = project.placedCues([cue], in: project.audibleClips("m"), words: words)
+        #expect(placed.map(\.text) == ["c d"])
+    }
 }

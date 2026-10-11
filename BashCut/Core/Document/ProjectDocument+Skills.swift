@@ -107,12 +107,15 @@ extension ProjectDocument {
     /// checklist and the kit hook name them. Nothing is logged before the first save, and a failed write never fails
     /// the read.
     private func logSkillRead(_ name: String, origin: KnowledgeSkillRef.Origin, author: Author?) {
-        guard let log = runLog else { return }
         let entry: [String: JSONValue] = [
             "kind": .string("skill"), "name": .string(WorkflowChecklist.skillName(name, origin: origin.rawValue)),
             "origin": .string(origin.rawValue), "author": .string(author?.rawValue ?? "unknown"),
             "rev": .integer(project.revision), "verified": .bool(true), "via": .string("skills.get"),
         ]
+        guard let log = runLog else {
+            holdRunEntry(entry)
+            return
+        }
         do { try log.append(entry) } catch { DebugLog.write("runlog", "skill read not logged: \(error)") }
     }
 
