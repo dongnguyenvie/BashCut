@@ -134,9 +134,11 @@ extension ProjectDocument {
 
     /// `media.import` of a folder: every video, audio and image file directly inside it, in name order, as one edit
     /// (files already in the project are reused); nothing is placed.
-    func importFolder(_ folder: URL, root: URL, arguments: CommandArguments, author: Author) async throws -> JSONValue {
+    func importFolder(
+        _ folder: URL, root: URL, arguments: CommandArguments, author: Author, only: [URL]? = nil
+    ) async throws -> JSONValue {
         guard !arguments.bool("place") else { throw RPCFailure(-32602, "place takes one file; import the folder, then place") }
-        let files = try FileManager.default.contentsOfDirectory(
+        let files = try only ?? FileManager.default.contentsOfDirectory(
             at: folder, includingPropertiesForKeys: [.isRegularFileKey], options: [.skipsHiddenFiles]
         ).filter { url in
             guard (try? url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true,

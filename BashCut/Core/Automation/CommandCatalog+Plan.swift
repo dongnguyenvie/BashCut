@@ -170,7 +170,7 @@ extension CommandCatalog {
         let shape = "plan.cut is {clips: [{id, media, quote | words FIRST-LAST | from/to seconds (whole media when "
             + "none; seconds for a still; from or to next to a quote or words moves that edge, and a patched quote "
             + "drops the old edges), section, speed, volumeDb, role (speech, broll, underVO; speech by default "
-            + "for quote or words), zoom, pan, tilt (its picture's framing: a punch-in such as zoom 1.15 "
+            + "for quote, words or seconds holding transcribed words), zoom, pan, tilt (its picture's framing: a punch-in such as zoom 1.15 "
             + "breaks a jump cut between two clips of one camera), cover: [{media, from, seconds, zoom, pan, tilt}] "
             + "(pictures shown over the clip's sound, muted, the last filling the rest)}], titles: [{id, text, clip "
             + "or section (+ offset seconds) | at, seconds (to "

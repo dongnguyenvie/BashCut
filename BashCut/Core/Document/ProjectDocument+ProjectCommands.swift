@@ -160,7 +160,10 @@ extension ProjectDocument {
             let parent = arguments.optionalString("directory")
                 .map { URL(fileURLWithPath: $0, isDirectory: true).standardizedFileURL }
                 ?? document.settings.defaultProjectsFolder
-            let footage = arguments.optionalString("footage").map { URL(fileURLWithPath: $0, isDirectory: true) }
+            // A footage file links its folder; with import, only that file comes in.
+            let given = arguments.optionalString("footage").map { URL(fileURLWithPath: $0) }
+            let file = given.flatMap { url in (try? Self.isFolder(url)) == false ? url : nil }
+            let footage = given.map { file == nil ? URL(fileURLWithPath: $0.path, isDirectory: true) : $0.deletingLastPathComponent() }
             let importing = arguments.bool("importFootage")
             if importing, footage == nil { throw RPCFailure(-32602, "import needs a footage folder") }
             try await document.leaveCurrentProject(arguments)
@@ -170,7 +173,7 @@ extension ProjectDocument {
                 _ = try await document.createProject(setup, in: parent, footage: footage)
             }
             guard importing, let footage else { return document.projectResult() }
-            return try await document.importCreatedFootage(footage, author: author)
+            return try await document.importCreatedFootage(footage, only: file.map { [$0] }, author: author)
         }
         handleAuthored("project.folder") { document, arguments, _ in
             let path = arguments.optionalString("path")
@@ -199,10 +202,11 @@ extension ProjectDocument {
     /// `project create --import`: the footage folder imported as media, then transcription and picture analysis
     /// started for every media, so the survey can begin while they run. A job that cannot start (no transcription
     /// plugin) is reported in its place; the project stays created either way.
-    func importCreatedFootage(_ footage: URL, author: Author) async throws -> JSONValue {
+    func importCreatedFootage(_ footage: URL, only: [URL]?, author: Author) async throws -> JSONValue {
         guard let root = fileURL?.deletingLastPathComponent() else { return projectResult() }
         let imported = try await importFolder(
-            footage, root: root, arguments: CommandArguments(["baseRev": .integer(project.revision)]), author: author)
+            footage, root: root, arguments: CommandArguments(["baseRev": .integer(project.revision)]), author: author,
+            only: only)
         var jobs: [String: JSONValue] = [:]
         do {
             jobs["transcribe"] = try await startMediaTranscribe(mediaID: nil, provider: nil, force: false, author: author)

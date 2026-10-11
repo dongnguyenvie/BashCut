@@ -86,7 +86,10 @@ extension PlanCut {
                 facts["requested"] = .object(["from": .number(from), "to": .number(to)])
             }
         }
-        return (Resolved(clip: clip, from: range.from, to: range.to, facts: facts), [])
+        // A range with transcribed words in it plays speech, like a clip picked by quote.
+        var tagged = clip
+        if tagged.role == nil, !(facts["text"]?.string ?? "").isEmpty { tagged.role = "speech" }
+        return (Resolved(clip: tagged, from: range.from, to: range.to, facts: facts), [])
     }
 
     static func resolveQuote(

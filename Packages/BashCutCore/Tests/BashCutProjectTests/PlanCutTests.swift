@@ -338,5 +338,9 @@ struct PlanCutTests {
         let clean = try spec(#"{"clips":[{"media":"m","from":2.0,"to":3.2}]}"#)
         let kept = try #require(PlanCut.resolve(clean, project: project(), transcripts: ["m": transcript]).clips.first)
         #expect(kept.from == 2.0 && kept.facts["requested"] == nil)
+        // Seconds holding transcribed words play speech, like a quote; silent seconds keep no role.
+        #expect(kept.clip.role == "speech")
+        let silent = try spec(#"{"clips":[{"media":"m","from":10,"to":12}]}"#)
+        #expect(PlanCut.resolve(silent, project: project(), transcripts: ["m": transcript]).clips.first?.clip.role == nil)
     }
 }

@@ -31,7 +31,8 @@ extension CommandCatalog {
                                  "Absolute parent folder for the new project folder; defaults to the projects folder "
                                      + "(see project folder)",
                                  isPath: true, cli: .option("dir")),
-                CommandParameter("footage", .string, "Footage folder to link (never modified)", isPath: true,
+                CommandParameter("footage", .string, "Footage folder to link (never modified), or one file: its folder is "
+                                 + "linked and import takes only that file", isPath: true,
                                  cli: .option("footage")),
                 CommandParameter("canvas", .string,
                                  "Canvas; auto starts portrait and lets the first video or image clip set the shape",
