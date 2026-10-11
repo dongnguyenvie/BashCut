@@ -34,10 +34,17 @@ extension ProjectDocument {
             var json = check.json.object
             json["rev"] = .integer(result.revision)
             json["changed"] = .bool(result.changed)
-            json["review"] = nil
+            // What the build left to fix, without the info rows: the review run of the new revision.
+            json["review"] = .array((check.json.object["review"]?.array ?? []).filter {
+                $0.object["severity"]?.string != ReviewSeverity.info.rawValue
+            })
             json["items"] = .array(document.project.tracks.flatMap(\.items)
                 .filter { $0.fields[PlanCut.tag] != nil && $0.fields["linkedVideo"] == nil }
                 .map { .object(["item": .string($0.id), "entry": $0.fields[PlanCut.tag] ?? .null]) })
+            // The storyboard of the new revision in the same call (timeline sheet --cuts --text).
+            if arguments.bool("sheet"), !arguments.bool("dryRun") {
+                json["sheet"] = try await document.timelineSheet(CommandArguments(["cuts": .bool(true), "text": .bool(true)]))
+            }
             return .object(json)
         }
     }
@@ -92,6 +99,39 @@ extension ProjectDocument {
         }
     }
 
+    /// Style values that cannot be meant: an outline under 1 pt (`strokeWidth` is in points, unlike `size`); one
+    /// problem per entry (captions share one).
+    func planStyleProblems(_ after: Project) -> [PlanCut.Problem] {
+        after.tracks.flatMap(\.items).compactMap { item -> PlanCut.Problem? in
+            guard let entry = item.fields[PlanCut.tag]?.string,
+                let width = item["textStyle"]?.object["strokeWidth"]?.double, width > 0, width < 1
+            else { return nil }
+            return PlanCut.Problem(
+                id: "stroke-units", severity: "warning", entry: entry,
+                detail: "strokeWidth is in points (0–50), not a share like size: \(width) draws no visible outline; "
+                    + "give it in points as the inspector's Outline (0–12 pt), or use a background", facts: ["strokeWidth": .number(width)])
+        }
+        .reduce(into: [PlanCut.Problem]()) { result, problem in
+            if !result.contains(where: { $0.entry == problem.entry }) { result.append(problem) }
+        }
+    }
+
+    /// Each title's smallest line as a share of the frame's short side (`textShare`), the measure review.minTextSize
+    /// uses, so a template that shrinks a line shows before the build.
+    func planTitleSizes(_ titles: [JSONValue], on after: Project) -> [JSONValue] {
+        let context = reviewContext()
+        let items = after.tracks.flatMap(\.items)
+        return titles.map { title in
+            var fields = title.object
+            guard let id = fields["id"]?.string,
+                let item = items.first(where: { $0.fields[PlanCut.tag] == .string(id) && $0["text"] != nil }),
+                let share = TimelineReview.smallestTextShare(item, in: after, context: context)
+            else { return title }
+            fields["textShare"] = .number((share * 1_000).rounded() / 1_000)
+            return .object(fields)
+        }
+    }
+
     struct PlanCutCheck {
         var built: (planner: LayerPlanner, placements: [PlanCut.Placement], kept: [String])?
         var problems: [PlanCut.Problem]
@@ -118,11 +158,11 @@ extension ProjectDocument {
         if let built {
             let after = built.planner.project
             let facts = PlanCut.facts(spec, clips: clips, placements: built.placements, on: after)
-            problems += facts.problems + planFontProblems(built.planner.project)
+            problems += facts.problems + planFontProblems(after) + planStyleProblems(after)
             let fps = after.fps.value
             result["duration"] = .number((Double(after.duration) / fps * 100).rounded() / 100)
             result["clips"] = .array(facts.clips)
-            if !facts.titles.isEmpty { result["titles"] = .array(facts.titles) }
+            if !facts.titles.isEmpty { result["titles"] = .array(planTitleSizes(facts.titles, on: after)) }
             if spec.captions != nil {
                 let cues = after.tracks.flatMap(\.items).filter { $0.fields[PlanCut.tag] == .string("captions") }
                 result["captions"] = .integer(cues.count)
@@ -154,6 +194,12 @@ extension ProjectDocument {
             context.transcripts = transcripts
             let review = TimelineReview.run(after, context: context).filter { $0.accepted == nil }
             result["review"] = .array(review.map(\.json))
+        }
+        if ReviewProfile(project).values.isEmpty {
+            problems.append(PlanCut.Problem(
+                id: "review-profile-unset", severity: "warning", entry: nil,
+                detail: "The project has no review limits, so review run stays incomplete and checks no text size, "
+                    + "contrast or shot length: set them from the recipe's ranges with project set-data review"))
         }
         result["problems"] = .array(problems.map(\.json))
         result["ok"] = .bool(!problems.contains { $0.severity == "error" })

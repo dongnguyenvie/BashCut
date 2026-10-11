@@ -173,6 +173,16 @@ struct ReviewQualityTests {
         #expect(ids(issues, "small-text-") == ["small-text-tiny"])
         #expect(ids(issues, "caption-lines-") == ["caption-lines-lines"])
         #expect(ids(issues, "text-overlap-") == ["text-overlap-over"])
+        // A template's shrunk line counts: a 2-line title at 0.05 whose last line draws at 0.42×.
+        var shrunk = project
+        set(&shrunk, track: "t1", [
+            text("sub", "TIÊU ĐỀ\nLike • Đăng ký", style: [
+                "size": .number(0.05), "emphasis": .object(["line": .number(-1), "scale": .number(0.42)]),
+            ])
+        ])
+        #expect(ids(run(shrunk), "small-text-") == ["small-text-sub"])
+        let share = TimelineReview.smallestTextShare(shrunk.tracks.first { $0.id == "t1" }!.items[0], in: shrunk, context: ReviewContext())
+        #expect(abs((share ?? 0) - 0.021) < 0.001)
         // Text size and lines are the project's limits: none without them.
         let bare = run(project, profiled: false)
         #expect(ids(bare, "small-text-").isEmpty && ids(bare, "caption-lines-").isEmpty)

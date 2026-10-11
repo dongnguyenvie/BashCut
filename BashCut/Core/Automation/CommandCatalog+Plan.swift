@@ -172,7 +172,7 @@ extension CommandCatalog {
             + "as stacked-keyword, boxed-keyword, headline-subline, two-tone-pop; library list --kind text-preset); "
             + "its style gives text style fields over the preset's: font (a PostScript name or System-[Condensed|"
             + "Compressed]Bold|Heavy|Black; fonts list --covers), size (share of the short side), fill, stroke, "
-            + "strokeWidth, positionX, positionY, align, uppercase, lineHeight, tracking, background {color, opacity, "
+            + "strokeWidth (points, 0–50), positionX, positionY, align, uppercase, lineHeight, tracking, background {color, opacity, "
             + "padding, radius}, shadow {color, opacity, blur, dx, dy}; other keys are item properties. Over bright "
             + "or busy footage give a stroke or a background. A font missing letters of the content language is an error."
         return [
@@ -181,10 +181,12 @@ extension CommandCatalog {
                 "Check the edit list before building it, without changing anything: each clip's source range "
                     + "(quotes resolved in the stored transcript, edges inside a word or sentence, how much of the "
                     + "quote was heard), where it lands, its described shot and orientation; each title's chars per "
-                    + "second; problems {id, severity error|warning|info, entry, detail, facts} (quote not found, "
+                    + "second and textShare (its smallest line as a share of the short side, the measure of "
+                    + "review.minTextSize); problems {id, severity error|warning|info, entry, detail, facts} (quote not found, "
                     + "unknown media, source played twice, same media and size back to back, media against the canvas "
-                    + "shape); and the review of the edit as it would be (the project's review profile; picture and "
-                    + "loudness need a render and are not measured). ok is false while an error stands. " + shape,
+                    + "shape, stroke-units, review-profile-unset); and the review of the edit as it would be (the "
+                    + "project's review profile; picture and loudness need a render and are not measured). ok is false "
+                    + "while an error stands. " + shape,
                 parameters: [cut]),
             CommandSpec(
                 "plan.apply", .edit,
@@ -192,10 +194,14 @@ extension CommandCatalog {
                     + "layer), section markers, titles and the music bed, each tagged planCut. Applying again replaces "
                     + "only what an earlier apply built (changes made to those items since are lost; other layers are "
                     + "kept but not re-timed); Main must hold nothing else. Refuses while plan.check has an error. "
-                    + "With cut, the list is also saved as plan.cut in the same edit. dryRun returns the check. " + shape,
+                    + "With cut, the list is also saved as plan.cut in the same edit. dryRun returns the check. The "
+                    + "result has the review's errors and warnings of the built edit (no info rows; picture and "
+                    + "loudness need review measure); sheet adds the storyboard (timeline sheet --cuts --text) of the "
+                    + "new revision. " + shape,
                 parameters: [
                     cut,
                     CommandParameter("dryRun", .boolean, "Check without editing", cli: .flag("dry-run")),
+                    CommandParameter("sheet", .boolean, "Also lay the new revision out on a contact sheet", cli: .flag("sheet")),
                     CommandParameter("why", .string, "Why this edit, in one sentence (up to 500 characters)", cli: .option("why")),
                     CommandParameter("evidence", .string, "What it rests on, separated by ;", cli: .option("evidence")),
                     baseRevision,

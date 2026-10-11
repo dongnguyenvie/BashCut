@@ -221,7 +221,11 @@ extension ProjectDocument {
             }
             let reported = await pluginIssues
             guard let self else { throw CancellationError() }
-            if let measured { self.reviewPicture = measured }
+            if var picture = measured {
+                if self.project.revision == project.revision { picture.textContrast = try await self.measureTextContrast() }
+                measured = picture
+                self.reviewPicture = picture
+            }
             if usePlugins { self.reviewPluginIssues = ReviewPluginIssues(revision: project.revision, issues: reported) }
             let found = self.reviewIssues().filter { issue in
                 issue.source != nil || Self.pictureIssuePrefixes.contains(where: issue.id.hasPrefix)
@@ -237,6 +241,27 @@ extension ProjectDocument {
             self?.message = "review.measure: " + error.localizedDescription
         })
         return .object(["job": .string(id), "state": .string("running")])
+    }
+
+    /// Contrast of the text on screen against the picture behind it: every title, and at most eight captions spread
+    /// over the edit (they share one look).
+    func measureTextContrast() async throws -> [String: ReviewPicture.TextContrast] {
+        guard case .array(let rows)? = ReviewLayout.json(
+            project, context: reviewContext(), frame: nil, range: nil, words: nil
+        ).object["items"] else { return [:] }
+        let captions = rows.filter { $0.object["trackRole"]?.string == TrackRole.captions }
+        let step = max(1, captions.count / 8)
+        let picked = rows.filter { $0.object["trackRole"]?.string != TrackRole.captions }
+            + captions.enumerated().filter { $0.offset % step == 0 }.prefix(8).map(\.element)
+        guard !picked.isEmpty else { return [:] }
+        var result: [String: ReviewPicture.TextContrast] = [:]
+        for row in try await measureContrast(Array(picked.prefix(48)), frame: nil) {
+            guard let id = row.object["id"]?.string, let contrast = row.object["contrast"]?.object,
+                let ratio = contrast["ratio"]?.double, let frame = contrast["frame"]?.int
+            else { continue }
+            result[id] = ReviewPicture.TextContrast(ratio: ratio, frame: frame)
+        }
+        return result
     }
 
     /// Plugin and provider IDs whose review checks this project turns off (`review.disabledChecks`).
@@ -263,7 +288,7 @@ extension ProjectDocument {
     }
 
     /// Issue IDs the picture checks make (`Review+Picture.swift`).
-    static let pictureIssuePrefixes = ["black-", "still-", "jump-", "shot-"]
+    static let pictureIssuePrefixes = ["black-", "still-", "jump-", "shot-", "text-contrast"]
 
     /// Keeps the loudness a finished export measured, for the revision it now describes.
     func recordReviewLoudness(_ measurement: LoudnessMeasurement?, revision: Int, preset: ExportPreset) {

@@ -87,3 +87,16 @@ struct KnowledgeSkillsTests {
         #expect(SkillFrontMatter("# No front matter").body == "# No front matter")
     }
 }
+
+/// `skills get --section`: a skill split at its `## ` headings.
+struct SkillSectionsTests {
+    @Test("Sections split at ## headings outside code fences; the front matter is left out")
+    func sections() {
+        let text = "---\nname: x\ndescription: y\n---\n# Title\nintro\n## Plan data\nrows\n```sh\n## not a heading\n```\n"
+            + "## Review profile\nranges\n"
+        let sections = SkillFrontMatter.sections(text)
+        #expect(sections.map(\.heading) == ["Intro", "Plan data", "Review profile"])
+        #expect(sections[1].text.contains("## not a heading") && !sections[0].text.contains("name: x"))
+        #expect(sections[2].text == "## Review profile\nranges\n\n")
+    }
+}

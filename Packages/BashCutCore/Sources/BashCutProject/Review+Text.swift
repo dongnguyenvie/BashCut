@@ -17,6 +17,29 @@ extension TimelineReview {
         let minX, maxX, minY, maxY: Double
         /// Whether the box is the renderer's layout rather than an estimate.
         var measured = false
+        /// The smallest line's font size: an emphasised line drawn under 1× (`textStyle.emphasis.scale`, such as a
+        /// template's subline) is smaller than `points`.
+        var smallestPoints: Double { points * min(1, Self.emphasisScale(item, lines: lines) ?? 1) }
+
+        /// The scale of the emphasised line when one is drawn, as the renderer clamps it (0.3…3).
+        static func emphasisScale(_ item: Item, lines: Int) -> Double? {
+            guard lines >= 2, let emphasis = item["textStyle"]?.object["emphasis"]?.object,
+                let scale = emphasis["scale"]?.double
+            else { return nil }
+            if let line = emphasis["line"]?.double.map({ Int($0) }) {
+                let index = line < 0 ? lines + line : line
+                guard (0..<lines).contains(index) else { return nil }
+            }
+            return min(3, max(0.3, scale))
+        }
+    }
+
+    /// The smallest line of a text item as a share of the frame's short side, as `review.minTextSize` measures it.
+    public static func smallestTextShare(_ item: Item, in project: Project, context: ReviewContext) -> Double? {
+        let width = Double(project.width)
+        let height = Double(project.height)
+        guard width > 0, height > 0, !item.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+        return textBox(item, width: width, height: height, context: context).smallestPoints / min(width, height)
     }
 
     static func textBox(_ item: Item, width: Double, height: Double, context: ReviewContext) -> TextBox {
@@ -116,12 +139,15 @@ extension TimelineReview {
     ) -> [ReviewIssue] {
         var issues: [ReviewIssue] = []
         for (track, box) in boxes {
-            if let minimum = profile["minTextSize"], box.points / min(width, height) < minimum {
+            if let minimum = profile["minTextSize"], box.smallestPoints / min(width, height) < minimum {
+                let line = box.smallestPoints < box.points ? "Its emphasised line draws" : "It draws"
                 issues.append(
                     ReviewIssue(
                         id: "small-text-" + box.item.id, title: "Text smaller than the project's minimum",
-                        detail: "It draws below \(percent(minimum)) of the frame's short side (review.minTextSize).",
-                        frame: box.item.at, fix: ReviewFix(hint: "Shorten the line or raise textStyle.size.")))
+                        detail: "\(line) below \(percent(minimum)) of the frame's short side (review.minTextSize).",
+                        frame: box.item.at,
+                        fix: ReviewFix(hint: "Shorten the line, raise textStyle.size or the emphasis scale."),
+                        facts: ["share": fact(box.smallestPoints / min(width, height)), "minTextSize": .number(minimum)]))
             }
             if let lines = profile["captionMaxLines"].map({ Int($0) }), track.role == TrackRole.captions, box.lines > lines {
                 issues.append(

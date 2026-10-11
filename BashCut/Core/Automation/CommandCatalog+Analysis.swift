@@ -83,7 +83,9 @@ extension CommandCatalog {
         "review.measure", .read,
         "Run the measured review for this revision and keep it, so review.run includes it: render the timeline "
             + "small (two frames a second and both sides of every hard cut on Main, proxies allowed) for black or "
-            + "empty picture, frozen picture, long static shots and jump cuts, and run every enabled plugin "
+            + "empty picture, frozen picture, long static shots and jump cuts, the contrast of every title and up to "
+            + "eight captions against the picture behind them (review.minTextContrast, a WCAG ratio; unset: the "
+            + "lowest as info), and run every enabled plugin "
             + "review.check side by side (each at most 30 s; a failing or slow check becomes an info issue). Plugin "
             + "issues carry source (the plugin ID) and IDs prefixed with the provider. A project turns checks off "
             + "with review.disabledChecks (plugin or provider IDs; timeline apply setProjectProperties). The job's "

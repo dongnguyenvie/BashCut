@@ -13,7 +13,7 @@ import Foundation
         "clip.motion", "clip.keyframe", "clip.reverse", "beats.detect", "voice.speak", "voice.place",
         "audio.measure", "media.sync", "media.analyze", "media.analysis", "media.cuts", "media.transcribe",
         "media.transcript", "media.speech-map", "media.describe", "media.description",
-        "media.frames", "media.frame", "media.strip", "media.inventory", "review.sync",
+        "media.frames", "media.frame", "media.strip", "media.inventory", "media.digest", "review.sync",
         "review.window", "timeline.sheet", "color.measure", "audio.mix-measure",
         "beats.grid", "audio.energy", "media.subjects", "media.ocr", "speech.rate", "narration.windows",
         "voice.check", "voice.fit", "captions.align", "captions.group", "platforms.get",

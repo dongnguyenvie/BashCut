@@ -19,7 +19,7 @@ extension CommandCatalog {
     static let skillSpecs: [CommandSpec] = [
         CommandSpec(
             "skills.list", .read,
-            "List skills: this project's, the ones for every project (user), the ones trusted and enabled plugins ship "
+            "List the skills agents can read. Scopes: this project's, the ones for every project (user), the ones trusted and enabled plugins ship "
                 + "(plugin, read-only, named <plugin-id>:<name>) and the agent kit's (read-only), with whether agents "
                 + "get them (enabled), their description and path.",
             parameters: [CommandParameter("scope", .string, "Only this scope", choices: skillScopes, cli: .option("scope"))]),
@@ -27,11 +27,15 @@ extension CommandCatalog {
             "skills.get", .read,
             "Read a skill's SKILL.md. Without scope, the project's skill wins over the one for every project, then a "
                 + "plugin's (<plugin-id>:<name>; with scope plugin a bare name works when one plugin has it), then the "
-                + "kit's. To change a plugin's skill, save a copy with skills save.",
+                + "kit's. To change a plugin's skill, save a copy with skills save. sections lists its ## headings; "
+                + "section returns only the sections whose heading contains one of the given words (comma-separated), "
+                + "and still counts as reading the skill.",
             parameters: [
                 CommandParameter("name", .string, "Skill name; a plugin's is <plugin-id>:<name>", required: true,
                                  cli: .positional),
                 CommandParameter("scope", .string, "Where to look", choices: skillScopes, cli: .option("scope")),
+                CommandParameter("section", .string, "Only these sections: words of their headings, comma-separated",
+                                 cli: .option("section")),
             ]),
         CommandSpec(
             "skills.save", .edit,

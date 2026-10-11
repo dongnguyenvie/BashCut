@@ -42,7 +42,7 @@ extension CommandCatalog {
             ]),
         CommandSpec(
             "plugins.invoke", .edit,
-            "Run a plugin capability directly with raw parameters and return the provider's raw result, for capabilities "
+            "Run a plugin capability directly with raw parameters. It returns the provider's raw result, for capabilities "
                 + "without their own command (prefer voice speak, captions generate, beats detect … when one exists). "
                 + "Files go to the returned outputDirectory. Plugins call this from their views and actions for "
                 + "capabilities listed in their manifest's uses.",

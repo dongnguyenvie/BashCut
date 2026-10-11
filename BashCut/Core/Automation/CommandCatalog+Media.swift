@@ -33,7 +33,7 @@ extension CommandCatalog {
     /// Every command about source media (P0-A).
     static var sourceMediaSpecs: [CommandSpec] {
         mediaAnalysisSpecs + sourceTranscriptSpecs + mediaDescriptionSpecs + mediaStillsSpecs
-            + [mediaInventorySpec, speechRateSpec, narrationWindowsSpec, voiceSpeakSpec, voicePlaceSpec] + voiceCheckSpecs
+            + [mediaInventorySpec, mediaDigestSpec, speechRateSpec, narrationWindowsSpec, voiceSpeakSpec, voicePlaceSpec] + voiceCheckSpecs
     }
 
     static let mediaInventorySpec = CommandSpec(
@@ -48,6 +48,24 @@ extension CommandCatalog {
         parameters: [
             CommandParameter("locationGrid", .number, "Degrees that group places (default 0.001, about 100 m)",
                              range: 0...10, cli: .option("location-grid"))
+        ])
+
+    static let mediaDigestSpec = CommandSpec(
+        "media.digest", .read,
+        "Footage facts in one read. A header (seconds, size, speech share, counts), "
+            + "then in time order the described shots (`shot FROM-TO size angle move | subjects | note | best T`, from "
+            + "media describe), each transcript phrase (`START text`, with `[again T]` when a phrase within 120 s says "
+            + "nearly the same words: a possible retake) and the measured cuts no description covers. Whether a line "
+            + "is a retake or a cue to the camera is yours to judge. Reads stored analysis, descriptions and "
+            + "transcripts only (run media analyze, media transcribe and media describe first). The whole project's "
+            + "digest is also written to analysis/digest.json. as json returns {media, name, seconds, size, cuts, "
+            + "speechSeconds, shots [{from, to, size, angle, move, subjects, note, best}], phrases [[start, end, text, "
+            + "againAt?]]}.",
+        parameters: [
+            CommandParameter("media", .string, "Only this media", cli: .option("media")),
+            CommandParameter("from", .number, "From this source second", range: 0...1_000_000, cli: .option("from")),
+            CommandParameter("to", .number, "To this source second", range: 0...1_000_000, cli: .option("to")),
+            CommandParameter("as", .string, "text (default) or json", choices: ["text", "json"], cli: .option("as")),
         ])
 
     static let mediaMedia = CommandParameter("media", .string, "Project media ID", required: true, cli: .option("media"))
@@ -388,8 +406,8 @@ extension CommandCatalog {
     static let sourceTranscriptSpecs: [CommandSpec] = [
         CommandSpec(
             "media.transcribe", .read,
-            "Transcribe whole source media once with a captions.transcribe provider and keep the transcript (by file "
-                + "content, in .bashcut/cache/transcripts), without placing anything on the timeline. Read it with "
+            "Transcribe whole source media once and keep the transcript. A captions.transcribe provider makes it, stored by "
+                + "file content in .bashcut/cache/transcripts; nothing is placed on the timeline. Read it with "
                 + "media.transcript; captions.generate places captions from it without transcribing again, and "
                 + "transcript.words --heard maps its words through the clips. A transcript in the project's content "
                 + "language (by the given provider) is reused unless force. The job's result lists each media with "
