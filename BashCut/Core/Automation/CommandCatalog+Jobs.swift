@@ -17,9 +17,10 @@ extension CommandCatalog {
                 + "{jobs, finished, timedOut}.",
             parameters: [
                 CommandParameter("job", .string, "Job ID, or several comma-separated", required: true, cli: .positional),
-                CommandParameter("timeout", .integer, "Seconds to wait at most",
+                CommandParameter("timeout", .integer, "Seconds to wait at most; more than "
+                                 + "\(JobWaitDefaults.maximum) waits \(JobWaitDefaults.maximum) (waitedAtMost says so): call again",
                                  default: .integer(JobWaitDefaults.seconds), minimum: 1,
-                                 maximum: JobWaitDefaults.maximum, cli: .option("timeout")),
+                                 maximum: 86_400, cli: .option("timeout")),
                 CommandParameter("done", .boolean, "Return only when the job has finished (or timeout passed), "
                                  + "not on a step change", default: .bool(false), cli: .flag("done")),
             ]),
@@ -59,6 +60,14 @@ extension CommandCatalog {
 }
 
 extension CommandCatalog {
+    /// `export start --wait --save`: the finished job in the same call, then the project saved.
+    static let exportWaitParameters = [
+        CommandParameter("wait", .boolean, "When it starts at once, wait up to 100 s for it to finish and return the job",
+                         default: .bool(false), cli: .flag("wait")),
+        CommandParameter("save", .boolean, "Save the project after a waited export lands", default: .bool(false),
+                         cli: .flag("save")),
+    ]
+
     /// Where a media file came from and what its licence allows (P2-H8), recorded on `media import`.
     static let mediaRightsParameters = [
         CommandParameter("origin", .string, "Where the file came from", choices: ["stock", "ai", "own", "built-in"],
@@ -71,7 +80,7 @@ extension CommandCatalog {
 }
 
 /// `jobs.wait` bounds (P2-G4): the socket client waits this long plus a margin for the answer. The maximum keeps
-/// the call inside an agent shell's usual 2-minute command limit.
+/// the call inside an agent shell's usual 2-minute command limit; a longer timeout is cut to it, not refused.
 public enum JobWaitDefaults {
     public static let seconds = 25
     public static let maximum = 110

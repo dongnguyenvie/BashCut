@@ -432,7 +432,9 @@ extension CommandCatalog {
                 + "confidence, speakers, events, noSpeechProb), then as words: wordList [{index, text, start, end, "
                 + "gapBefore, confidence?, speaker?, event?, noSpeechProb?}]; phrases (default): phraseList [{index, "
                 + "start, end, seconds, text, words, confidence (mean), gapBefore}]; json: both; text: one line per "
-                + "phrase (#index start–end seconds | text; print it with --format text). from/to keep what overlaps.",
+                + "phrase (#index start–end seconds | text; print it with --format text). from/to keep what overlaps; "
+                + "ranges reads several windows in one call: text joins them under \"== A–B\" lines, other formats "
+                + "return {media, ranges: [one result per window]}.",
             parameters: [
                 mediaMedia,
                 CommandParameter("as", .string, "phrases (default), words, json or text",
@@ -440,6 +442,8 @@ extension CommandCatalog {
                 CommandParameter("from", .number, "Only from this source second", range: 0...86_400,
                                  cli: .option("from")),
                 CommandParameter("to", .number, "Only up to this source second", range: 0...86_400, cli: .option("to")),
+                CommandParameter("ranges", .string, "Several windows instead of from/to: A:B,C:D in source seconds",
+                                 cli: .option("ranges")),
             ]),
     ]
 }

@@ -20,7 +20,11 @@ extension CommandCatalog {
             parameters: leaveCurrent),
         CommandSpec(
             "project.create", .edit,
-            "Create a project folder (media, footage, render…) like the New Project wizard and open it.",
+            "Create a project folder (media, footage, render…) like the New Project wizard and open it. With "
+                + "import, also import every video, audio and image file in footage (as media import FOLDER) and start "
+                + "media transcribe and media analyze for them: the result adds import (files, converting) and jobs "
+                + "{transcribe, analyze} (a job ID, or {error} when it could not start), so one call readies the "
+                + "footage for a survey.",
             parameters: [
                 CommandParameter("name", .string, "Project name", required: true, cli: .option("name")),
                 CommandParameter("directory", .string,
@@ -40,6 +44,9 @@ extension CommandCatalog {
                 CommandParameter("language", .string,
                                  "Content language (BCP 47) of speech and captions, from the user's prompt or answer; "
                                      + "no default", cli: .option("language")),
+                CommandParameter("importFootage", .boolean,
+                                 "Import the footage folder's files and start transcription and picture analysis",
+                                 default: .bool(false), cli: .flag("import")),
             ] + leaveCurrent),
         CommandSpec(
             "project.folder", .edit,

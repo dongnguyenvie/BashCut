@@ -56,6 +56,29 @@ extension ProjectDocument {
     /// `review.run`: the issues with the session's transcripts loaded, kept as a round; with `sinceRev`, what the
     /// round fixed, added and left against the review of that revision (P1-E2).
     func runReview(_ arguments: CommandArguments, author: Author = .user) async throws -> JSONValue {
+        let measured = arguments.bool("measure") ? try await measureForReview(author: author) : nil
+        let result = try await reviewResult(arguments, author: author)
+        guard let measured, case .object(var object) = result else { return result }
+        object["measured"] = measured
+        return .object(object)
+    }
+
+    /// `review run --measure`: measures this revision when it was not (or waits for a measure already running),
+    /// up to `UnixRPCClient`'s allowance for the call.
+    func measureForReview(author: Author) async throws -> JSONValue? {
+        guard project.duration > 0 else { return nil }
+        let running = jobs.jobs.first { $0.method == "review.measure" && $0.isActive }
+        guard running != nil || reviewPicture?.revision != project.revision else { return nil }
+        let id: String
+        if let running { id = running.id } else {
+            guard let started = try startReviewMeasure(author: author).object["job"]?.string else { return nil }
+            id = started
+        }
+        let waited = try await waitForJobs([id], seconds: 100).object
+        return .object(["job": .string(id), "timedOut": waited["timedOut"] ?? .bool(false)])
+    }
+
+    private func reviewResult(_ arguments: CommandArguments, author: Author) async throws -> JSONValue {
         await loadReviewTranscripts()
         let all = reviewIssues()
         let previous = arguments.optionalInt("sinceRev").map { revision in reviewRounds.last { $0.revision == revision } }

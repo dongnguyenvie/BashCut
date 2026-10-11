@@ -102,6 +102,9 @@ extension ProjectDocument {
                 throw RPCFailure(-32602, "Media \(mediaID) has no transcript: run media transcribe --media \(mediaID) first")
             }
             let format = SourceTranscript.Format(rawValue: arguments.optionalString("as") ?? "phrases") ?? .phrases
+            if let ranges = arguments.optionalString("ranges") {
+                return try Self.transcriptWindows(transcript, media: mediaID, format: format, ranges: ranges)
+            }
             let from = arguments.optionalDouble("from") ?? 0, to = arguments.optionalDouble("to")
             if let to, to <= from { throw RPCFailure(-32602, "to must be after from") }
             guard case .object(var result) = transcript.json(format, from: from, to: to) else {
@@ -110,6 +113,31 @@ extension ProjectDocument {
             result["media"] = .string(mediaID)
             return .object(result)
         }
+    }
+
+    /// `media.transcript --ranges A:B,C:D`: several windows of one transcript in one call.
+    static func transcriptWindows(
+        _ transcript: SourceTranscript, media: String, format: SourceTranscript.Format, ranges: String
+    ) throws -> JSONValue {
+        let windows = try ranges.split(separator: ",").map { part -> (Double, Double) in
+            let bounds = part.split(whereSeparator: { $0 == ":" || $0 == "-" || $0 == "–" })
+                .compactMap { Double($0.trimmingCharacters(in: .whitespaces)) }
+            guard bounds.count == 2, bounds[0] >= 0, bounds[1] > bounds[0] else {
+                throw RPCFailure(-32602, "ranges must be A:B,C:D with A < B in source seconds; got \(part)")
+            }
+            return (bounds[0], bounds[1])
+        }
+        guard !windows.isEmpty, windows.count <= 50 else { throw RPCFailure(-32602, "ranges takes 1 to 50 windows") }
+        let label = { (window: (Double, Double)) in String(format: "%g–%g s", window.0, window.1) }
+        if format == .text {
+            return .string(windows.map { window in
+                "== \(label(window))\n" + (transcript.json(.text, from: window.0, to: window.1).string ?? "")
+            }.joined(separator: "\n"))
+        }
+        return .object([
+            "media": .string(media),
+            "ranges": .array(windows.map { transcript.json(format, from: $0.0, to: $0.1) }),
+        ])
     }
 
     /// `transcript.words --heard`: stored transcripts of the media the timeline plays, mapped through the clips.

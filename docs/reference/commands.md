@@ -39,9 +39,9 @@ Close the open project and show the Welcome screen, like File › Close Project.
 - `saveCurrent`: boolean, default false. Save the open project first when it has unsaved changes
 - `discardCurrent`: boolean, default false. Drop unsaved changes of the open project
 
-### `bashcut project create --name <name> [--dir <directory>] [--footage <footage>] [--canvas <canvas>] [--resolution <resolution>] [--fps <fps>] [--language <language>] [--save-current] [--discard-current]`
+### `bashcut project create --name <name> [--dir <directory>] [--footage <footage>] [--canvas <canvas>] [--resolution <resolution>] [--fps <fps>] [--language <language>] [--import] [--save-current] [--discard-current]`
 
-Create a project folder (media, footage, render…) like the New Project wizard and open it.
+Create a project folder (media, footage, render…) like the New Project wizard and open it. With import, also import every video, audio and image file in footage (as media import FOLDER) and start media transcribe and media analyze for them: the result adds import (files, converting) and jobs {transcribe, analyze} (a job ID, or {error} when it could not start), so one call readies the footage for a survey.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_project_create`
 - `name`: string, required. Project name
@@ -51,6 +51,7 @@ Create a project folder (media, footage, render…) like the New Project wizard 
 - `resolution`: string, one of 720, 1080, 2160, default "1080". Short-side resolution
 - `fps`: string, one of 29.97, 30, 24, 60, default "29.97". Frame rate
 - `language`: string. Content language (BCP 47) of speech and captions, from the user's prompt or answer; no default
+- `importFootage`: boolean, default false. Import the footage folder's files and start transcription and picture analysis
 - `saveCurrent`: boolean, default false. Save the open project first when it has unsaved changes
 - `discardCurrent`: boolean, default false. Drop unsaved changes of the open project
 
@@ -342,15 +343,16 @@ Transcribe whole source media once and keep the transcript. A captions.transcrib
 - `requestId`: string. Your stable ID for this request: sending it again returns the same job instead of starting (and paying for) another; the provider receives it too
 - `dryRun`: boolean, default false. Return the request as it would go to the provider (without option values), whether the provider is paid and its estimate if it gives one; nothing runs
 
-### `bashcut media transcript --media <media> [--as <as>] [--from <from>] [--to <to>]`
+### `bashcut media transcript --media <media> [--as <as>] [--from <from>] [--to <to>] [--ranges <ranges>]`
 
-Read the stored transcript of one media in its own seconds: language, provider, transcribedAt, speechSeconds, firstSpeech/lastSpeech, precision (wordTimes provider or none, and whether words carry confidence, speakers, events, noSpeechProb), then as words: wordList [{index, text, start, end, gapBefore, confidence?, speaker?, event?, noSpeechProb?}]; phrases (default): phraseList [{index, start, end, seconds, text, words, confidence (mean), gapBefore}]; json: both; text: one line per phrase (#index start–end seconds | text; print it with --format text). from/to keep what overlaps.
+Read the stored transcript of one media in its own seconds: language, provider, transcribedAt, speechSeconds, firstSpeech/lastSpeech, precision (wordTimes provider or none, and whether words carry confidence, speakers, events, noSpeechProb), then as words: wordList [{index, text, start, end, gapBefore, confidence?, speaker?, event?, noSpeechProb?}]; phrases (default): phraseList [{index, start, end, seconds, text, words, confidence (mean), gapBefore}]; json: both; text: one line per phrase (#index start–end seconds | text; print it with --format text). from/to keep what overlaps; ranges reads several windows in one call: text joins them under "== A–B" lines, other formats return {media, ranges: [one result per window]}.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_media_transcript`
 - `media`: string, required. Project media ID
 - `as`: string, one of words, phrases, json, text. phrases (default), words, json or text
 - `from`: number, 0…86400. Only from this source second
 - `to`: number, 0…86400. Only up to this source second
+- `ranges`: string. Several windows instead of from/to: A:B,C:D in source seconds
 
 ### `bashcut media describe [<shots.json>] --media <media> [--merge] [--clear] --base-rev <baseRev>`
 
@@ -430,11 +432,12 @@ Footage facts in one read. A header (seconds, size, speech share, counts), then 
 
 ## review
 
-### `bashcut review run [--since-rev <sinceRev>] [--min-severity <minSeverity>] [--summary]`
+### `bashcut review run [--measure] [--since-rev <sinceRev>] [--min-severity <minSeverity>] [--summary]`
 
-Review the timeline before export: issues {id, kind, severity error|warning|info, title, detail, frame, endFrame?, facts {raw numbers}, fix? {command?, arguments?, hint?}}, errors first. Invariants (gaps, black picture, cut-in-word, missing fonts or glyphs, output length and shape, true peak) are always checked; editorial checks only against the limits in the project's review object, and nothing without them. IDs are anchored to clips. With summary: {issues, summary, checks (measured, stale, notChecked, failed, unreliable, unsetLimits: only limits a check of this timeline reads, atExport: loudness until a normalized export measures it)} and summary.status: fail (errors), incomplete (no errors, but a limit unset or a check not run; atExport does not count) or pass (passed is status == pass; the CLI exits 0, 1 or 2); a pass by an agent is recorded as the review stage; with sinceRev also diff {fixed, new, persisting}.
+Review the timeline before export: issues {id, kind, severity error|warning|info, title, detail, frame, endFrame?, facts {raw numbers}, fix? {command?, arguments?, hint?}}, errors first. Invariants (gaps, black picture, cut-in-word, missing fonts or glyphs, output length and shape, true peak) are always checked; editorial checks only against the limits in the project's review object, and nothing without them. IDs are anchored to clips. With summary: {issues, summary, checks (measured, stale, notChecked, failed, unreliable, unsetLimits: only limits a check of this timeline reads, atExport: loudness until a normalized export measures it)} and summary.status: fail (errors), incomplete (no errors, but a limit unset or a check not run; atExport does not count) or pass (passed is status == pass; the CLI exits 0, 1 or 2); a pass by an agent is recorded as the review stage; with sinceRev also diff {fixed, new, persisting}. With measure, a revision not measured yet is measured first (review.measure, waited for up to 100 s; measured {job, timedOut} says so), so one call measures and reviews.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_review_run`
+- `measure`: boolean. Run review measure first when this revision is not measured, and wait for it
 - `sinceRev`: integer, ≥ 0. Compare with the review of this revision (this session)
 - `minSeverity`: string, one of error, warning, info. Leave out issues less severe than this
 - `summary`: boolean. Wrap the issues with counts and a status
@@ -571,9 +574,9 @@ A chapter list from the section markers (00:00 first; an Intro at 0 when no mark
 - `platform`: string. Platform whose rule applies (default youtube)
 - `write`: boolean. Save the list in render/
 
-### `bashcut export start --preset <preset> --name <name> [--output-dir <directory>] [--include-srt] [--normalize-audio] [--bitrate <bitrate>]`
+### `bashcut export start --preset <preset> --name <name> [--output-dir <directory>] [--include-srt] [--normalize-audio] [--bitrate <bitrate>] [--wait] [--save]`
 
-Request a background video export; the user approves it in the app first. Approved exports queue behind a running one. Vertical presets default under the platform's recompression line (platforms list: bitrateMbps); bitrate overrides it. Feed shapes: feed-4x5 (1080×1350), square, portrait-3x4 (1080×1440). The export status reports the bitrate written. Started at once (no approval needed), the result has job: wait with jobs wait JOB --done. An agent's export with any preset but quick-draft needs a draft audit with verdict pass of the current timeline (run append audit --point draft) or the user's G5 approval at this revision: else audit_missing.
+Request a background video export; the user approves it in the app first. Approved exports queue behind a running one. Vertical presets default under the platform's recompression line (platforms list: bitrateMbps); bitrate overrides it. Feed shapes: feed-4x5 (1080×1350), square, portrait-3x4 (1080×1440). The export status reports the bitrate written. Started at once (no approval needed), the result has job: wait with jobs wait JOB --done, or pass wait to get the finished job (up to 100 s; save also saves the project once it lands). An agent's export with any preset but quick-draft needs a draft audit with verdict pass of the current timeline (run append audit --point draft) or the user's G5 approval at this revision: else audit_missing.
 
 - Mode: privileged · Runs: after the user approves in the app · MCP: `bashcut_export_start`
 - `preset`: string, required, one of tiktok, reels, shorts, feed-4x5, square, portrait-3x4, youtube-1080, youtube-4k, quick-draft, prores. Export preset
@@ -582,6 +585,8 @@ Request a background video export; the user approves it in the app first. Approv
 - `includeSRT`: boolean, default false. Also write a SubRip file
 - `normalizeAudio`: boolean, default false. Run two-pass LUFS normalization with a plugin
 - `bitrate`: number, 0.5…200. Video bit rate in Mbps instead of the preset's
+- `wait`: boolean, default false. When it starts at once, wait up to 100 s for it to finish and return the job
+- `save`: boolean, default false. Save the project after a waited export lands
 
 ### `bashcut export otio --name <name> [--output-dir <directory>]`
 
@@ -985,7 +990,7 @@ Wait until a job's state or step changes, or it finishes, up to timeout seconds;
 
 - Mode: read · Runs: immediately · MCP: `bashcut_jobs_wait`
 - `job`: string, required. Job ID, or several comma-separated
-- `timeout`: integer, 1…110, default 25. Seconds to wait at most
+- `timeout`: integer, 1…86400, default 25. Seconds to wait at most; more than 110 waits 110 (waitedAtMost says so): call again
 - `done`: boolean, default false. Return only when the job has finished (or timeout passed), not on a step change
 
 ### `bashcut jobs cancel <job>`

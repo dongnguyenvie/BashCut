@@ -238,6 +238,17 @@ extension ProjectDocument {
         return (name, directory)
     }
 
+    /// `export start --wait`: the finished job (or `timedOut`), and with `save` the project saved once it landed.
+    private func waitForExport(_ job: String, save: Bool) async throws -> [String: JSONValue] {
+        let waited = try await waitForJobDone(job, seconds: 100).object
+        var result: [String: JSONValue] = ["finished": waited["job"] ?? .null, "timedOut": waited["timedOut"] ?? .bool(false)]
+        if save, waited["timedOut"] == .bool(false), dirty {
+            try await saveNow()
+            result["saved"] = .bool(true)
+        }
+        return result
+    }
+
     private func registerPrivilegedCommands() {
         handleAuthored("export.start") { document, arguments, author in
             guard let preset = ExportPreset(argument: try arguments.string("preset")) else {
@@ -285,7 +296,10 @@ extension ProjectDocument {
                 document.message = String(localized: "Waiting for approval: export.start")
             }
             var json = approval.json(output: output).object
-            if let job = started.id { json["job"] = .string(job) }
+            json["job"] = started.id.map(JSONValue.string)
+            if let job = started.id, arguments.bool("wait") {
+                json.merge(try await document.waitForExport(job, save: arguments.bool("save"))) { $1 }
+            }
             return .object(json)
         }
         handleAuthored("export.otio") { document, arguments, author in

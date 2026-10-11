@@ -33,7 +33,9 @@ extension ProjectDocument {
             if let fileURL { try await storage.discardRecovery(at: fileURL) }
             DebugLog.write("project", "discarded unsaved changes of \(fileURL?.path ?? "unsaved project")")
         } else {
-            throw RPCFailure(-32602, "The open project has unsaved changes; pass saveCurrent or discardCurrent")
+            throw RPCFailure(
+                -32602, "The open project \(fileURL?.deletingLastPathComponent().lastPathComponent ?? "") has unsaved "
+                    + "changes; pass saveCurrent or discardCurrent (CLI --save-current or --discard-current)")
         }
     }
 
@@ -146,7 +148,7 @@ extension ProjectDocument {
             document.closeToWelcome()
             return document.projectResult()
         }
-        handleAuthored("project.create") { document, arguments, _ in
+        handleAuthored("project.create") { document, arguments, author in
             var setup = ProjectSetup()
             setup.name = try arguments.string("name")
             let canvas = try arguments.string("canvas")
@@ -159,11 +161,16 @@ extension ProjectDocument {
                 .map { URL(fileURLWithPath: $0, isDirectory: true).standardizedFileURL }
                 ?? document.settings.defaultProjectsFolder
             let footage = arguments.optionalString("footage").map { URL(fileURLWithPath: $0, isDirectory: true) }
+            let importing = arguments.bool("importFootage")
+            if importing, footage == nil { throw RPCFailure(-32602, "import needs a footage folder") }
             try await document.leaveCurrentProject(arguments)
             document.busy = true
-            defer { document.busy = false }
-            _ = try await document.createProject(setup, in: parent, footage: footage)
-            return document.projectResult()
+            do {
+                defer { document.busy = false }
+                _ = try await document.createProject(setup, in: parent, footage: footage)
+            }
+            guard importing, let footage else { return document.projectResult() }
+            return try await document.importCreatedFootage(footage, author: author)
         }
         handleAuthored("project.folder") { document, arguments, _ in
             let path = arguments.optionalString("path")
@@ -187,6 +194,27 @@ extension ProjectDocument {
             try await document.saveNow()
             return document.projectResult()
         }
+    }
+
+    /// `project create --import`: the footage folder imported as media, then transcription and picture analysis
+    /// started for every media, so the survey can begin while they run. A job that cannot start (no transcription
+    /// plugin) is reported in its place; the project stays created either way.
+    func importCreatedFootage(_ footage: URL, author: Author) async throws -> JSONValue {
+        guard let root = fileURL?.deletingLastPathComponent() else { return projectResult() }
+        let imported = try await importFolder(
+            footage, root: root, arguments: CommandArguments(["baseRev": .integer(project.revision)]), author: author)
+        var jobs: [String: JSONValue] = [:]
+        do {
+            jobs["transcribe"] = try await startMediaTranscribe(mediaID: nil, provider: nil, force: false, author: author)
+                .object["job"] ?? .null
+        } catch { jobs["transcribe"] = .object(["error": .string(error.localizedDescription)]) }
+        do {
+            jobs["analyze"] = try startMediaAnalyze(mediaID: nil, force: false, rate: nil, author: author).object["job"] ?? .null
+        } catch { jobs["analyze"] = .object(["error": .string(error.localizedDescription)]) }
+        var result = projectResult().object
+        result["import"] = .object(imported.object.filter { $0.key != "rev" })
+        result["jobs"] = .object(jobs)
+        return .object(result)
     }
 
     // MARK: External agents

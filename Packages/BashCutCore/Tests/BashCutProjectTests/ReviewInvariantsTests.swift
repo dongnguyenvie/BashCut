@@ -41,6 +41,9 @@ struct ReviewInvariantsTests {
         #expect(found[0].detail.contains("0.20 s into “xin”"))
         let full = TimelineReview.run(cut, context: { var context = ReviewContext(); context.transcripts = transcripts; return context }())
         #expect(full.filter { $0.severity == .error }.map(\.id) == ["cut-in-word-x-in", "cut-in-word-x-out"])
+        // Ending one whole frame before "chào" ends (1.867 of 1.9 s) is frame rounding, not a cut word.
+        let (short, _) = self.project([Item(id: "y", media: "m", at: 0, duration: 26, sourceIn: 30)])
+        #expect(TimelineReview.wordCutIssues(short, transcripts: transcripts).isEmpty)
     }
 
     @Test("Characters a font cannot draw are an error, once per font and set of characters")

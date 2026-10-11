@@ -260,6 +260,14 @@ struct PlanCutTests {
         #expect(throws: ProjectError.self) { try PlanCut.patch(list, with: .array([])) }
     }
 
+    @Test("A clip's in edge rounds down and its out edge up to whole frames, so it keeps its last word whole")
+    func wholeFrames() throws {
+        let cut = try spec(#"{"clips":[{"id":"a","media":"m","from":1.02,"to":1.88}]}"#)
+        let built = try PlanCut.build(cut, clips: PlanCut.resolve(cut, project: project(), transcripts: [:]).clips, on: project())
+        let clip = try #require(built.planner.project.track(role: TrackRole.main, kind: "video")?.items.first)
+        #expect(clip.sourceIn == 30 && clip.duration == 27)
+    }
+
     @Test("Review limits ride with the list as an object")
     func reviewLimits() throws {
         let limits = try spec(#"{"clips":[{"media":"m","from":0,"to":1}],"review":{"minTextSize":0.04}}"#).review
@@ -273,6 +281,10 @@ struct PlanCutTests {
         let clip = try #require(PlanCut.resolve(cut, project: project(), transcripts: ["m": transcript]).clips.first)
         #expect(clip.from == 2.0 && clip.to == 3.2)
         #expect(clip.facts["requested"]?.object["from"] == .number(2.1))
+        // An edge within a frame of the word's far edge stays out of the word instead of taking it whole.
+        let nudged = try spec(#"{"clips":[{"media":"m","from":1.89,"to":2.31}]}"#)
+        let near = try #require(PlanCut.resolve(nudged, project: project(), transcripts: ["m": transcript]).clips.first)
+        #expect(near.from == 1.9 && near.to == 2.3)
         let clean = try spec(#"{"clips":[{"media":"m","from":2.0,"to":3.2}]}"#)
         let kept = try #require(PlanCut.resolve(clean, project: project(), transcripts: ["m": transcript]).clips.first)
         #expect(kept.from == 2.0 && kept.facts["requested"] == nil)

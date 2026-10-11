@@ -2,12 +2,14 @@ import Foundation
 
 /// The checks that are errors with no review settings (P1-E1), besides gaps, black picture, missing fonts and the
 /// platform's length and shape: a clip edge that cuts through a spoken word, and text with characters its font cannot
-/// draw. Neither has a threshold beyond measurement precision: a word cut by less than one frame is timing noise.
+/// draw. Neither has a threshold beyond measurement precision: a word cut by at most one frame is timing noise.
 extension TimelineReview {
     /// Each clip edge that falls inside a transcribed word of the clip's media, unless the next or previous clip on
     /// the track continues the same source there (a plain split).
     public static func wordCutIssues(_ project: Project, transcripts: [String: SourceTranscript]) -> [ReviewIssue] {
         let fps = project.fps.value
+        // Up to one frame (plus rounding) inside a word is timing noise: edges sit on whole frames, words do not.
+        let slack = 1 / fps + 0.001
         var issues: [ReviewIssue] = []
         for (mediaID, transcript) in transcripts.sorted(by: { $0.key < $1.key }) {
             let words = transcript.words.filter { $0.event == nil && $0.end > $0.start }
@@ -28,7 +30,7 @@ extension TimelineReview {
                              (edge: "out", source: span.upperBound, skip: continuesAfter)]
                 for edge in edges where !edge.skip {
                     guard let word = words.first(where: {
-                        $0.start + 1 / fps <= edge.source && edge.source <= $0.end - 1 / fps
+                        $0.start + slack < edge.source && edge.source < $0.end - slack
                     }) else { continue }
                     let into = edge.source - word.start
                     issues.append(

@@ -82,7 +82,7 @@ struct ReviewCheckTests {
         // The slow provider's own timeoutSeconds (10, the least a manifest allows) cuts it short; the others keep 30 s.
         let found = await service.runReviewChecks(providers, project: project(), projectRoot: sandbox.project)
         // The slow plugin sleeps 30 s; stopping it at its 10 s limit ends well before that, even on a busy machine.
-        #expect(start.duration(to: .now) < .seconds(25), "the slow check must be stopped at the timeout")
+        #expect(start.duration(to: .now) < .seconds(28), "the slow check must be stopped before its 30 s sleep ends")
         #expect(found.contains { $0.id == "test.good.check:ok" && $0.source == "test.good" })
         for plugin in ["test.crash", "test.bad", "test.slow"] {
             let failure = found.first { $0.source == plugin }

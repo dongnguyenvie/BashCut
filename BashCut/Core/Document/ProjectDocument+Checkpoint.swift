@@ -179,15 +179,17 @@ extension ProjectDocument {
     }
 
     /// Records a stage BashCut itself can prove (`plan.apply` built the rough cut, `review.run` passed, an export
-    /// landed), so the agent does not spend a turn on `run append`. Agents only; written once per stage and revision,
-    /// and the rough cut only when the strategy guard would let the agent record it.
+    /// landed), so the agent does not spend a turn on `run append`. Agents only; review and export once per revision,
+    /// the other stages once, and the rough cut only when the strategy guard would let the agent record it.
     func logAutoStage(_ stage: String, evidence: [String], author: Author) {
         guard author != .user, let log = runLog else { return }
         let entries = log.entries()
-        if entries.contains(where: {
-            $0["kind"]?.string == "stage" && $0["stage"]?.string == stage && $0["status"]?.string == "done"
-                && $0["rev"] == .integer(project.revision)
-        }) { return }
+        // Once per revision for review and export (a pass or an export proves that revision); the building stages
+        // once, while their latest entry is still BashCut's own done, so every plan apply does not log them again.
+        let latest = entries.last { $0["kind"]?.string == "stage" && $0["stage"]?.string == stage }
+        if let latest, latest["status"]?.string == "done",
+            latest["rev"] == .integer(project.revision) || (latest["auto"] == .bool(true) && !["review", "export"].contains(stage))
+        { return }
         if stage == "rough-cut", settings.gateMode(.strategy) == .skip,
             WorkflowChecklist.strategyGuard(project, entries: entries) != nil
         { return }

@@ -293,11 +293,19 @@ extension ProjectDocument {
         handle("jobs.wait") { document, arguments, _ in
             let ids = try arguments.string("job").split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
                 .filter { !$0.isEmpty }
-            let seconds = try arguments.int("timeout")
-            guard ids.count == 1 else { return try await document.waitForJobs(ids, seconds: seconds) }
-            return arguments.bool("done")
-                ? try await document.waitForJobDone(ids[0], seconds: seconds)
-                : try await document.waitForJob(ids[0], seconds: seconds)
+            let asked = try arguments.int("timeout")
+            let seconds = min(asked, JobWaitDefaults.maximum)
+            let result: JSONValue
+            if ids.count != 1 {
+                result = try await document.waitForJobs(ids, seconds: seconds)
+            } else {
+                result = arguments.bool("done")
+                    ? try await document.waitForJobDone(ids[0], seconds: seconds)
+                    : try await document.waitForJob(ids[0], seconds: seconds)
+            }
+            guard asked > seconds, case .object(var object) = result else { return result }
+            object["waitedAtMost"] = .integer(seconds)
+            return .object(object)
         }
         handleAuthored("jobs.cancel") { document, arguments, _ in
             guard document.jobs.cancel(try arguments.string("job")) else {

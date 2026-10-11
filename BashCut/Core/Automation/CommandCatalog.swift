@@ -241,7 +241,8 @@ public enum CommandCatalog {
                 + "Vertical presets default under the platform's recompression line (platforms list: bitrateMbps); "
                 + "bitrate overrides it. Feed shapes: feed-4x5 (1080×1350), square, portrait-3x4 (1080×1440). The "
                 + "export status reports the bitrate written. Started at once (no approval needed), the result has job: "
-                + "wait with jobs wait JOB --done. An agent's export with any preset but quick-draft needs "
+                + "wait with jobs wait JOB --done, or pass wait to get the finished job (up to 100 s; save also saves "
+                + "the project once it lands). An agent's export with any preset but quick-draft needs "
                 + "a draft audit with verdict pass of the current timeline (run append audit --point draft) or the "
                 + "user's G5 approval at this revision: else audit_missing.",
             parameters: [
@@ -255,7 +256,7 @@ public enum CommandCatalog {
                                  default: .bool(false), cli: .flag("normalize-audio")),
                 CommandParameter("bitrate", .number, "Video bit rate in Mbps instead of the preset's", range: 0.5...200,
                                  cli: .option("bitrate")),
-            ],
+            ] + exportWaitParameters,
             execution: .approval),
         CommandSpec(
             "export.otio", .privileged, "Request an OpenTimelineIO export; the user approves it in the app first.",

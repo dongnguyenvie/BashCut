@@ -13,8 +13,11 @@ extension CommandCatalog {
             + "normalized export measures it)} and summary.status: fail (errors), incomplete (no errors, but a limit "
             + "unset or a check not run; atExport does not count) or pass (passed is status == pass; the CLI exits 0, "
             + "1 or 2); a pass by an agent is recorded as the review stage; with sinceRev also diff "
-            + "{fixed, new, persisting}.",
+            + "{fixed, new, persisting}. With measure, a revision not measured yet is measured first (review.measure, "
+            + "waited for up to 100 s; measured {job, timedOut} says so), so one call measures and reviews.",
         parameters: [
+            CommandParameter("measure", .boolean, "Run review measure first when this revision is not measured, and "
+                             + "wait for it", cli: .flag("measure")),
             CommandParameter("sinceRev", .integer, "Compare with the review of this revision (this session)", minimum: 0,
                              cli: .option("since-rev")),
             CommandParameter("minSeverity", .string, "Leave out issues less severe than this",

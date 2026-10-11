@@ -86,9 +86,13 @@ extension PlanCut {
             var patch: [String: JSONValue] = [tag: .string(clip.id)]
             if let section = clip.section { patch[sectionTag] = .string(section) }
             if let role = clip.role { patch["tag"] = .object(["role": .string(role)]) }
+            // The in edge rounds down and the out edge up to whole frames, so a clip given at word edges keeps the
+            // whole of its first and last word (rounding the length could end it a frame inside the last one).
+            let sourceIn = media.isImage ? 0 : Int((resolved.from * media.fps.value).rounded(.down))
+            let start = media.isImage ? resolved.from : Double(sourceIn) / media.fps.value
             let slot = Slot(
-                at: cursor, span: max(1, Int(((resolved.to - resolved.from) * fps).rounded())),
-                sourceIn: media.isImage ? 0 : Int((resolved.from * media.fps.value).rounded(.down)), patch: patch)
+                at: cursor, span: max(1, Int(((resolved.to - start) * fps - 1e-6).rounded(.up))),
+                sourceIn: sourceIn, patch: patch)
             let end = clip.cover.isEmpty
                 ? try placeOwn(clip, media: media, slot: slot, main: main, in: &planner)
                 : try placeCovered(clip, media: media, slot: slot, main: main, in: &planner)
