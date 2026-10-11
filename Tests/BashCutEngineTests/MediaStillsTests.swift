@@ -66,6 +66,31 @@ struct MediaStillsTests {
             withText: try frame(text: false), without: try frame(text: false), rect: CGRect(x: 0, y: 0, width: 1, height: 1)) == nil)
     }
 
+    @Test("Text on its own plate is measured against the plate, not the picture behind the plate")
+    func plateContrast() throws {
+        func frame(text: Bool) throws -> CGImage {
+            let context = try #require(CGContext(
+                data: nil, width: 100, height: 100, bitsPerComponent: 8, bytesPerRow: 400,
+                space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+            context.setFillColor(CGColor(srgbRed: 0.9, green: 0.85, blue: 0.7, alpha: 1))
+            context.fill(CGRect(x: 0, y: 0, width: 100, height: 100))
+            if text {
+                context.setFillColor(CGColor(srgbRed: 0, green: 0, blue: 0, alpha: 1))
+                context.fill(CGRect(x: 10, y: 10, width: 80, height: 30))
+                context.setFillColor(CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 1))
+                context.fill(CGRect(x: 20, y: 20, width: 40, height: 10))
+            }
+            return try #require(context.makeImage())
+        }
+        let rect = CGRect(x: 0, y: 0, width: 1, height: 1)
+        let plated = try #require(MediaStills.contrast(
+            withText: try frame(text: true), without: try frame(text: false), rect: rect, plate: true))
+        #expect(plated.ratio > 20 && plated.pixels == 400 && plated.background < 0.01)
+        let mixed = try #require(MediaStills.contrast(
+            withText: try frame(text: true), without: try frame(text: false), rect: rect))
+        #expect(mixed.ratio < plated.ratio / 4)
+    }
+
     @Test("Fitting keeps the picture upright")
     func fit() throws {
         let context = try #require(CGContext(

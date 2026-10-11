@@ -31,7 +31,16 @@ extension PlanCut {
         if let captions = spec.captions {
             try placeCaptions(captions, clips: clips, transcripts: transcripts, textPresets: textPresets, in: &planner)
         }
-        placements += try placeTitles(spec.titles, anchors: placements, textPresets: textPresets, in: &planner)
+        var sections: [String: Placement] = [:]
+        for resolved in clips {
+            guard let section = resolved.clip.section, let placed = placements.first(where: { $0.id == resolved.clip.id })
+            else { continue }
+            let span = sections[section]
+            sections[section] = Placement(
+                id: section, at: min(span?.at ?? placed.at, placed.at), end: max(span?.end ?? placed.end, placed.end))
+        }
+        placements += try placeTitles(
+            spec.titles, anchors: placements, sections: sections, textPresets: textPresets, in: &planner)
         if let music = spec.music, total > 0, let placed = try placeMusic(music, length: total, in: &planner) {
             placements.append(placed)
             if let duck = music.duckDb {
@@ -140,16 +149,19 @@ extension PlanCut {
     /// Titles on the captions layer (spilling onto another text layer where one is already shown): the renderer
     /// preset or the library preset's look, then the title's own style over it.
     static func placeTitles(
-        _ titles: [Title], anchors: [Placement], textPresets: [String: LibraryTextPreset], in planner: inout LayerPlanner
+        _ titles: [Title], anchors: [Placement], sections: [String: Placement] = [:],
+        textPresets: [String: LibraryTextPreset], in planner: inout LayerPlanner
     ) throws -> [Placement] {
         guard !titles.isEmpty else { return [] }
         let fps = planner.project.fps.value
         let captions = try planner.project.requireTrack(role: TrackRole.captions)
         var placements: [Placement] = []
         for title in titles {
-            let anchor = title.clip.flatMap { id in anchors.first { $0.id == id } }
+            let anchor = title.clip.flatMap { id in anchors.first { $0.id == id } } ?? title.section.flatMap { sections[$0] }
             let start = anchor.map { $0.at + Int((title.offset * fps).rounded()) } ?? Int(((title.at ?? 0) * fps).rounded())
-            var item = Item(id: "plan-" + title.id, at: max(0, start), duration: max(1, Int((title.seconds * fps).rounded())))
+            // Without seconds a title lasts to the end of its clip or section.
+            let length = title.seconds.map { Int(($0 * fps).rounded()) } ?? ((anchor?.end ?? start) - start)
+            var item = Item(id: "plan-" + title.id, at: max(0, start), duration: max(1, length))
             item["text"] = .string(title.text)
             for (key, value) in try look(
                 for: item, (title.preset, title.style, title.textStyle), textPresets: textPresets, project: planner.project)

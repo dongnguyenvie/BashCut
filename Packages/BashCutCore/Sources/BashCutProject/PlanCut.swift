@@ -42,7 +42,10 @@ public enum PlanCut {
         public var clip: String?
         public var offset: Double
         public var at: Double?
-        public var seconds: Double
+        /// A section ID: the title starts with the section's first clip (plus `offset`).
+        public var section: String?
+        /// How long it shows; nil: to the end of its clip or section.
+        public var seconds: Double?
         /// A renderer preset (`TextPreset.all`) or a library text preset's ID.
         public var preset: String?
         /// Item properties other than the text style.
@@ -211,15 +214,20 @@ public enum PlanCut {
 
     static func decodeTitle(_ row: [String: JSONValue], id: String, clips: [Clip]) throws -> Title {
         guard let text = row["text"]?.string, !text.isEmpty else { throw ProjectError.invalid("Title \(id): give text") }
-        guard let seconds = row["seconds"]?.double, seconds > 0 else {
-            throw ProjectError.invalid("Title \(id): give seconds (how long it shows)")
+        let seconds = row["seconds"]?.double
+        if let seconds, seconds <= 0 { throw ProjectError.invalid("Title \(id): seconds must be above 0") }
+        let clip = row["clip"]?.string, at = row["at"]?.double, section = row["section"]?.string
+        guard [clip != nil, at != nil, section != nil].filter({ $0 }).count == 1 else {
+            throw ProjectError.invalid("Title \(id): give one of clip (with offset), section (with offset) or at")
         }
-        let clip = row["clip"]?.string, at = row["at"]?.double
-        guard (clip == nil) != (at == nil) else { throw ProjectError.invalid("Title \(id): give clip (with offset) or at") }
         if let clip, !clips.contains(where: { $0.id == clip }) { throw ProjectError.invalid("Title \(id): no clip \(clip)") }
+        if let section, !clips.contains(where: { $0.section == section }) {
+            throw ProjectError.invalid("Title \(id): no clip is in section \(section)")
+        }
+        if at != nil, seconds == nil { throw ProjectError.invalid("Title \(id): give seconds with at (how long it shows)") }
         let (style, textStyle) = splitStyle(row["style"]?.object ?? [:])
         return Title(
-            id: id, text: text, clip: clip, offset: row["offset"]?.double ?? 0, at: at, seconds: seconds,
+            id: id, text: text, clip: clip, offset: row["offset"]?.double ?? 0, at: at, section: section, seconds: seconds,
             preset: row["preset"]?.string, style: style, textStyle: textStyle)
     }
 

@@ -71,6 +71,24 @@ struct PlanCutTests {
         #expect(untranscribed.contains { $0.id == "no-transcript" && $0.entry == "a" })
     }
 
+    @Test("A title on a section starts with its first clip and, without seconds, lasts to the section's end")
+    func sectionTitles() throws {
+        let project = project()
+        let cut = try spec(#"""
+            {"clips":[{"id":"a","media":"m","from":0,"to":2,"section":"hook"},{"id":"b","media":"m","from":5,"to":7,"section":"body"},
+            {"id":"c","media":"m","from":13,"to":15,"section":"body"}],
+            "titles":[{"id":"t","text":"Thân bài","section":"body","offset":0.5},{"id":"u","text":"Clip","clip":"a"}]}
+            """#)
+        let built = try PlanCut.build(cut, clips: PlanCut.resolve(cut, project: project, transcripts: [:]).clips, on: project)
+        let items = built.planner.project.tracks.flatMap(\.items)
+        let section = try #require(items.first { $0.id == "plan-t" })
+        let clip = try #require(items.first { $0.id == "plan-u" })
+        #expect(section.at == 75 && section.end == 180)
+        #expect(clip.at == 0 && clip.end == 60)
+        #expect(throws: ProjectError.self) { try spec(#"{"clips":[{"media":"m","section":"x"}],"titles":[{"text":"y","at":1}]}"#) }
+        #expect(throws: ProjectError.self) { try spec(#"{"clips":[{"media":"m"}],"titles":[{"text":"y","section":"nope"}]}"#) }
+    }
+
     @Test("Apply lays clips in order with sections, titles on their clip and a music bed, all tagged, as one edit")
     func building() throws {
         var project = project()

@@ -50,6 +50,7 @@ extension ProjectDocument {
         let ids = arguments.optionalString("media").map { $0.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) } }
         let selected = try ids.map { list in try list.map { try analysisSource($0).media } }
             ?? project.media.filter { $0.kind != "audio" }
+        try requireConverted(selected)
         let at = try Self.seconds(arguments.optionalString("at"))
         let range = (arguments.optionalDouble("from"), arguments.optionalDouble("to"))
         guard selected.count == 1 || (at.isEmpty && range == (nil, nil)) else {
@@ -183,6 +184,7 @@ extension ProjectDocument {
     func mediaFrame(_ arguments: CommandArguments) async throws -> JSONValue {
         let source = try analysisSource(try arguments.string("media"))
         let media = source.media
+        try requireConverted([media])
         let last = max(0, media.frames - 1)
         let frame: Int
         switch (arguments.optionalDouble("at"), arguments.optionalInt("index"), arguments.optionalString("edge")) {
@@ -212,6 +214,7 @@ extension ProjectDocument {
     func mediaStrip(_ arguments: CommandArguments) async throws -> JSONValue {
         let source = try analysisSource(try arguments.string("media"))
         let media = source.media
+        try requireConverted([media])
         let from = max(0, arguments.optionalDouble("from") ?? 0)
         let to = min(media.durationSeconds, arguments.optionalDouble("to") ?? media.durationSeconds)
         guard to > from, !media.isImage else { throw RPCFailure(-32602, "from must be before to, inside a video or audio media") }

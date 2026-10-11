@@ -27,9 +27,10 @@ extension PlanCut {
         let titles = spec.titles.compactMap { title -> JSONValue? in
             guard let placement = placements.first(where: { $0.id == title.id }) else { return nil }
             let characters = title.text.filter { !$0.isWhitespace }.count
+            let seconds = Double(placement.end - placement.at) / project.fps.value
             return .object([
                 "id": .string(title.id), "text": .string(title.text), "at": rounded(Double(placement.at) / project.fps.value),
-                "seconds": .number(title.seconds), "charsPerSecond": rounded(Double(characters) / title.seconds),
+                "seconds": rounded(seconds), "charsPerSecond": rounded(Double(characters) / max(seconds, 0.01)),
             ])
         }
         return (rows, titles, problems)
