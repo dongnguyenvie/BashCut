@@ -62,7 +62,7 @@ struct PlanCutTests {
         let (clips, problems) = PlanCut.resolve(cut, project: project, transcripts: ["m": transcript])
         #expect(clips.map(\.clip.id) == ["a", "c"])
         #expect(clips[0].from == 2.8 && clips[0].to == 3.4 && clips[0].facts["matched"] == .number(1))
-        #expect(clips[1].from == 2.9 && clips[1].to == 4)
+        #expect(clips[1].from == 2.8 && clips[1].to == 4, "2.9 s cut into “giá” (2.8–3.0 s)")
         let byID = Dictionary(grouping: problems, by: \.id)
         #expect(byID["quote-not-found"]?.first?.entry == "b" && byID["quote-not-found"]?.first?.severity == "error")
         #expect(byID["unknown-media"]?.first?.entry == "d")
@@ -265,5 +265,16 @@ struct PlanCutTests {
         let limits = try spec(#"{"clips":[{"media":"m","from":0,"to":1}],"review":{"minTextSize":0.04}}"#).review
         #expect(limits?["minTextSize"] == .number(0.04))
         #expect(throws: ProjectError.self) { try spec(#"{"clips":[{"media":"m","from":0,"to":1}],"review":3}"#) }
+    }
+
+    @Test("Rough seconds that cut into a word move out to its edges; the times given stay as requested")
+    func roughSecondsSnap() throws {
+        let cut = try spec(#"{"clips":[{"media":"m","from":2.1,"to":3.1}]}"#)
+        let clip = try #require(PlanCut.resolve(cut, project: project(), transcripts: ["m": transcript]).clips.first)
+        #expect(clip.from == 2.0 && clip.to == 3.2)
+        #expect(clip.facts["requested"]?.object["from"] == .number(2.1))
+        let clean = try spec(#"{"clips":[{"media":"m","from":2.0,"to":3.2}]}"#)
+        let kept = try #require(PlanCut.resolve(clean, project: project(), transcripts: ["m": transcript]).clips.first)
+        #expect(kept.from == 2.0 && kept.facts["requested"] == nil)
     }
 }

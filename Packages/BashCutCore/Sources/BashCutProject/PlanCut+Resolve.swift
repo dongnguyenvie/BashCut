@@ -1,7 +1,7 @@
 import Foundation
 
-/// Each clip's source range: quotes and word indices through the media's stored transcript, rough seconds kept as
-/// given (their edges reported against the transcript), stills for their seconds.
+/// Each clip's source range: quotes and word indices through the media's stored transcript, rough seconds moved out
+/// of any word they cut into (the times given kept as `requested`), stills for their seconds.
 extension PlanCut {
     public static func resolve(
         _ spec: Spec, project: Project, transcripts: [String: SourceTranscript]
@@ -56,13 +56,17 @@ extension PlanCut {
                 detail: String(format: "%@ runs %.2f s; the clip asks %.2f–%.2f s", media.id, media.durationSeconds, from, to))])
         }
         var facts: [String: JSONValue] = [:]
+        var range = (from: from, to: to)
         if let transcript {
-            // Rough times are kept as given; the snapped edges are only reported.
+            // An edge inside a spoken word moves out to that word's edge (the check reports edges there too), so the
+            // build never cuts a word; `requested` keeps the times as given.
             facts = try QuoteRange.json(transcript, media: media, from: from, to: to).object
-            facts["from"] = .number(from)
-            facts["to"] = .number(to)
+            range = (facts["from"]?.double ?? from, facts["to"]?.double ?? to)
+            if abs(range.from - from) > 0.0005 || abs(range.to - to) > 0.0005 {
+                facts["requested"] = .object(["from": .number(from), "to": .number(to)])
+            }
         }
-        return (Resolved(clip: clip, from: from, to: to, facts: facts), [])
+        return (Resolved(clip: clip, from: range.from, to: range.to, facts: facts), [])
     }
 
     static func resolveQuote(
