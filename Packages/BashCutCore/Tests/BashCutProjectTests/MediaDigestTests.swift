@@ -23,6 +23,14 @@ struct MediaDigestTests {
             media: "m", name: "a.mp4", seconds: 400, size: "1920x1080", cuts: [5, 12], shots: [], phrases: phrases,
             speechSeconds: 7)
         #expect(digest.phrases.map(\.againAt) == [4.0, nil, nil, nil])
+        // Different lines that share short words are not retakes.
+        let lines = MediaDigest(
+            media: "m", name: "a.mp4", seconds: 100, size: nil, cuts: nil, shots: [],
+            phrases: [
+                SubRip.Cue(start: 21, end: 23, text: "cho mình để mình cạo lông anh"),
+                SubRip.Cue(start: 84.8, end: 87, text: "để mình cạo lông bây giờ"),
+            ], speechSeconds: nil)
+        #expect(lines.phrases.allSatisfy { $0.againAt == nil })
     }
 
     @Test("Text: header, then described shots and phrases in time order and the cuts no shot covers")

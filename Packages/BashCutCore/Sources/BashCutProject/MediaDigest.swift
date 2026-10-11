@@ -25,8 +25,10 @@ public struct MediaDigest: Sendable {
 
     /// Phrases within this many seconds of each other can be retakes.
     public static let retakeWindow = 120.0
-    /// Share of shared words (of the shorter phrase) from which two phrases count as the same line.
-    public static let retakeOverlap = 0.6
+    /// Shared words over all words of both phrases (Jaccard) from which two phrases count as the same line, and the
+    /// fewest shared words: languages of short words (Vietnamese) share many words between different lines.
+    public static let retakeOverlap = 0.7
+    public static let retakeSharedWords = 4
 
     public init(
         media: String, name: String, seconds: Double, size: String?, cuts: [Double]?, shots: [MediaDescription.Shot],
@@ -52,9 +54,9 @@ public struct MediaDigest: Sendable {
         for index in phrases.indices where sets[index].count >= 4 {
             for later in phrases.indices.dropFirst(index + 1) {
                 guard phrases[later].start - phrases[index].start <= retakeWindow else { break }
-                let shorter = min(sets[index].count, sets[later].count)
-                guard shorter >= 4 else { continue }
-                if Double(sets[index].intersection(sets[later]).count) / Double(shorter) >= retakeOverlap {
+                let shared = sets[index].intersection(sets[later]).count
+                guard shared >= retakeSharedWords else { continue }
+                if Double(shared) / Double(sets[index].union(sets[later]).count) >= retakeOverlap {
                     marked[index].againAt = phrases[later].start
                     break
                 }
