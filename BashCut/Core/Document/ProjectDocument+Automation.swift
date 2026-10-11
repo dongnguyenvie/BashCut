@@ -242,8 +242,8 @@ extension ProjectDocument {
     private func waitForExport(_ job: String, save: Bool) async throws -> [String: JSONValue] {
         let waited = try await waitForJobDone(job, seconds: 100).object
         var result: [String: JSONValue] = ["finished": waited["job"] ?? .null, "timedOut": waited["timedOut"] ?? .bool(false)]
-        if save, waited["timedOut"] == .bool(false), dirty {
-            try await saveNow()
+        if save, waited["timedOut"] == .bool(false) {
+            if dirty { try await saveNow() }
             result["saved"] = .bool(true)
         }
         return result
