@@ -21,7 +21,7 @@ extension PlanCut {
                 problems.append(Problem(id: "range-invalid", severity: "error", entry: clip.id, detail: "\(error)"))
             }
         }
-        problems += coverProblems(spec, project: project) + overlaps(resolved)
+        problems += spec.unknownFields + coverProblems(spec, project: project) + overlaps(resolved)
         return (resolved, problems)
     }
 

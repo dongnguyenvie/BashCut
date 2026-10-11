@@ -118,7 +118,9 @@ extension PlanCut {
         if clip.speed != 1 { try planner.add([.setSpeed(item: id, speed: clip.speed, keepDuration: false)]) }
         var patch = slot.patch
         if let volume = clip.volumeDb { patch["volumeDb"] = .number(volume) }
-        try planner.add([.setProperties(item: id, patch: patch)])
+        var picture = patch
+        if !clip.transform.isEmpty { picture["transform"] = .object(clip.transform) }
+        try planner.add([.setProperties(item: id, patch: picture)])
         let placed = planner.project.tracks.flatMap(\.items).first { $0.id == id }
         if let partner = placed?.linkedItemID { try planner.add([.setProperties(item: partner, patch: patch)]) }
         return placed?.end ?? slot.at + slot.span
@@ -143,6 +145,7 @@ extension PlanCut {
                 sourceIn: picture.isImage ? 0 : Int((shot.from * picture.fps.value).rounded(.down)))
             for (key, value) in slot.patch { item[key] = value }
             item["tag"] = .object(["role": .string("broll")])
+            if !shot.transform.isEmpty { item["transform"] = .object(shot.transform) }
             if picture.hasAudio == true { item["muted"] = .bool(true) }
             try planner.place(item, on: main)
             cursor += length

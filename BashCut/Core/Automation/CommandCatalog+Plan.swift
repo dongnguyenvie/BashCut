@@ -169,8 +169,10 @@ extension CommandCatalog {
             cli: .option("patch"))
         let shape = "plan.cut is {clips: [{id, media, quote | words FIRST-LAST | from/to seconds (whole media when "
             + "none; seconds for a still), section, speed, volumeDb, role (speech, broll, underVO; speech by default "
-            + "for quote or words), cover: [{media, from, seconds}] (pictures shown over the clip's sound, muted, the "
-            + "last filling the rest)}], titles: [{id, text, clip or section (+ offset seconds) | at, seconds (to "
+            + "for quote or words), zoom, pan, tilt (its picture's framing: a punch-in such as zoom 1.15 "
+            + "breaks a jump cut between two clips of one camera), cover: [{media, from, seconds, zoom, pan, tilt}] "
+            + "(pictures shown over the clip's sound, muted, the last filling the rest)}], titles: [{id, text, clip "
+            + "or section (+ offset seconds) | at, seconds (to "
             + "the end of its clip or section when left out; needed with at), preset, style}], captions: {from: "
             + "speech, wordStyle highlight|karaoke|reveal, preset, style, replace: {\"misheard words\": \"right "
             + "words\"} (names the transcript got wrong; a line a clip plays only part of shows only the words heard)} "
@@ -195,7 +197,8 @@ extension CommandCatalog {
                     + "second and textShare (its smallest line as a share of the short side, the measure of "
                     + "review.minTextSize); problems {id, severity error|warning|info, entry, detail, facts} (quote not found, "
                     + "unknown media, source played twice, same media and size back to back, media against the canvas "
-                    + "shape, stroke-units, review-profile-unset with facts.unsetLimits: every review limit the "
+                    + "shape, stroke-units, unknown-field for a field nothing reads, "
+                    + "review-profile-unset with facts.unsetLimits: every review limit the "
                     + "built edit needs and nobody set); and the review of the edit as it would be (the "
                     + "project's review profile; picture and loudness need a render and are not measured). ok is false "
                     + "while an error stands. " + shape,

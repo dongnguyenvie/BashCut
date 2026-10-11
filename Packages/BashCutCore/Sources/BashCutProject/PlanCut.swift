@@ -27,6 +27,8 @@ public enum PlanCut {
         public var role: String?
         /// Pictures shown over the clip's sound, in order (B-roll); the last one fills what is left.
         public var cover: [Cover] = []
+        /// `zoom`, `pan`, `tilt` for its own picture (a punch-in), as the item's `transform`.
+        public var transform: [String: JSONValue] = [:]
     }
 
     /// A picture laid over a clip's sound: source seconds `from` of `media`, for `seconds` (the last: the rest).
@@ -34,6 +36,7 @@ public enum PlanCut {
         public var media: String
         public var from: Double
         public var seconds: Double?
+        public var transform: [String: JSONValue] = [:]
     }
 
     public struct Title: Sendable {
@@ -83,6 +86,8 @@ public enum PlanCut {
         public var captions: Captions?
         /// Review limits merged over the project's `review` on apply (the recipe's ranges, chosen with the plan).
         public var review: [String: JSONValue]?
+        /// Fields the list gave that nothing reads (`unknown-field` warnings), so a typo is not silently ignored.
+        public var unknownFields: [Problem] = []
     }
 
     static let roles = ["speech", "broll", "underVO"]
@@ -145,7 +150,60 @@ public enum PlanCut {
             guard case .object(let limits) = value else { throw ProjectError.invalid("plan.cut.review: expected {limit: number}") }
             review = limits
         }
-        return Spec(clips: clips, titles: titles, music: music, captions: try decodeCaptions(root["captions"]), review: review)
+        var spec = Spec(clips: clips, titles: titles, music: music, captions: try decodeCaptions(root["captions"]), review: review)
+        spec.unknownFields = unknownFields(clipValues, titles: root["titles"]?.array ?? [], ids: clips.map(\.id) + titles.map(\.id))
+        return spec
+    }
+
+    static let clipKeys: Set<String> = [
+        "id", "media", "quote", "words", "from", "to", "seconds", "section", "speed", "volumeDb", "role", "cover",
+    ]
+    static let coverKeys: Set<String> = ["media", "from", "seconds"]
+    static let titleKeys: Set<String> = ["id", "text", "clip", "offset", "at", "section", "seconds", "preset", "style"]
+    /// Picture framing a clip or cover may give (a punch-in or reframe), with their item ranges.
+    static let transformKeys: [String: ClosedRange<Double>] = ["zoom": 0.01...100, "pan": -65536...65536, "tilt": -65536...65536]
+    /// Notes an agent leaves on an entry; read by nobody, never warned about.
+    static let noteKeys: Set<String> = ["note", "notes", "why", "reason", "comment"]
+
+    static func unknownFields(_ clips: [JSONValue], titles: [JSONValue], ids: [String]) -> [Problem] {
+        var problems: [Problem] = []
+        let warn = { (entry: String, keys: [String], known: Set<String>) in
+            guard !keys.isEmpty else { return }
+            problems.append(Problem(
+                id: "unknown-field", severity: "warning", entry: entry,
+                detail: "Not read, so it changes nothing: \(keys.joined(separator: ", ")); fields here: "
+                    + known.sorted().joined(separator: ", "),
+                facts: ["fields": .array(keys.map(JSONValue.string))]))
+        }
+        let picture = Set(transformKeys.keys)
+        for (index, value) in clips.enumerated() {
+            let row = value.object
+            let entry = index < ids.count ? ids[index] : "c\(index + 1)"
+            warn(entry, row.keys.filter { !clipKeys.contains($0) && !picture.contains($0) && !noteKeys.contains($0) }.sorted(),
+                 clipKeys.union(picture))
+            for shot in row["cover"]?.array ?? [] {
+                warn(entry, shot.object.keys.filter { !coverKeys.contains($0) && !picture.contains($0) && !noteKeys.contains($0) }
+                    .sorted(), coverKeys.union(picture))
+            }
+        }
+        for (index, value) in titles.enumerated() {
+            let entry = clips.count + index < ids.count ? ids[clips.count + index] : "t\(index + 1)"
+            warn(entry, value.object.keys.filter { !titleKeys.contains($0) && !noteKeys.contains($0) }.sorted(), titleKeys)
+        }
+        return problems
+    }
+
+    /// `zoom`, `pan`, `tilt` of a clip or cover, checked against their ranges.
+    static func decodeTransform(_ row: [String: JSONValue], entry: String) throws -> [String: JSONValue] {
+        var transform: [String: JSONValue] = [:]
+        for (key, range) in transformKeys.sorted(by: { $0.key < $1.key }) {
+            guard let value = row[key], value != .null else { continue }
+            guard let number = value.double, range.contains(number) else {
+                throw ProjectError.invalid("\(entry): \(key) must be a number in \(range.lowerBound)…\(range.upperBound)")
+            }
+            transform[key] = .number(number)
+        }
+        return transform
     }
 
     /// `captions: {from: "speech", wordStyle, preset, style}`; null or false: none.
@@ -219,7 +277,8 @@ public enum PlanCut {
         return Clip(
             id: id, media: media, quote: quote, words: words, from: from, to: to, seconds: seconds,
             section: row["section"]?.string, speed: speed, volumeDb: row["volumeDb"]?.double,
-            role: role ?? (quote != nil || words != nil ? "speech" : nil), cover: cover)
+            role: role ?? (quote != nil || words != nil ? "speech" : nil), cover: cover,
+            transform: try decodeTransform(row, entry: "Clip \(id)"))
     }
 
     static func decodeCover(_ shot: [String: JSONValue], clip id: String) throws -> Cover {
@@ -227,7 +286,9 @@ public enum PlanCut {
             throw ProjectError.invalid("Clip \(id): each cover needs media and from (source seconds)")
         }
         if let length = shot["seconds"]?.double, length <= 0 { throw ProjectError.invalid("Clip \(id): cover seconds above 0") }
-        return Cover(media: media, from: from, seconds: shot["seconds"]?.double)
+        return Cover(
+            media: media, from: from, seconds: shot["seconds"]?.double,
+            transform: try decodeTransform(shot, entry: "Clip \(id) cover"))
     }
 
     static func decodeTitle(_ row: [String: JSONValue], id: String, clips: [Clip]) throws -> Title {
