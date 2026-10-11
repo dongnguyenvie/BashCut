@@ -39,6 +39,10 @@ struct FailedRequest {
     private var failures: [FailedRequest] = []
     static let failureMemory = 30
     private let logger: (@Sendable (String, String) -> Void)?
+    /// The open project's revision, set by the document; `baseRev: "last"` resolves against what each token saw.
+    public var currentRevision: (@MainActor () -> Int?)?
+    /// The project revision as of each token's last successful command.
+    private var seenRevision: [String: Int] = [:]
     public init(audit: @escaping @Sendable (AuditEvent) -> Void = { _ in }) {
         logger = nil
         self.audit = audit
@@ -70,6 +74,7 @@ struct FailedRequest {
     public func revoke(_ token: String) {
         tokens.removeValue(forKey: token)
         switchedProject.removeValue(forKey: token)
+        seenRevision.removeValue(forKey: token)
     }
 
     /// After the open project changes, every live token must read the new project (`context get`, `timeline get` or
@@ -86,6 +91,20 @@ struct FailedRequest {
     public func revokeAll() {
         tokens.removeAll()
         switchedProject.removeAll()
+        seenRevision.removeAll()
+    }
+
+    /// `baseRev: "last"` is the revision as of the caller's last successful command, so an agent need not read the
+    /// project just to learn the revision its own edit produced. A change by anyone else since then still makes the
+    /// edit stale.
+    private func resolvingLastRevision(_ params: [String: JSONValue], token: String?) throws -> [String: JSONValue] {
+        guard params["baseRev"] == .string(CommandCatalog.lastRevision) else { return params }
+        guard let token, let seen = seenRevision[token] else {
+            throw RPCFailure(-32602, "baseRev last needs an earlier command of this session; read context get first")
+        }
+        var params = params
+        params["baseRev"] = .integer(seen)
+        return params
     }
     /// `automatic` marks requests run without a prompt because the user turned confirmation off.
     public func recordApproval(method: String, author: Author, approved: Bool, automatic: Bool = false) {
@@ -122,10 +141,12 @@ struct FailedRequest {
             if Self.projectReads.contains(request.method), let token = request.token {
                 switchedProject.removeValue(forKey: token)
             }
-            let arguments = CommandArguments(try spec.validate(request.params))
+            let params = try resolvingLastRevision(request.params, token: request.token)
+            let arguments = CommandArguments(try spec.validate(params))
             let result = try await CommandCaller.$token.withValue(author == nil ? nil : request.token) {
                 try await handler(arguments, author)
             }
+            if let token = request.token, author != nil, let revision = currentRevision?() { seenRevision[token] = revision }
             if Self.projectSwitches.contains(request.method), let token = request.token {
                 switchedProject.removeValue(forKey: token)
             }

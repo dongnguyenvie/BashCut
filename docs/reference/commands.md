@@ -77,7 +77,7 @@ Change the open project's canvas like the format menu in the toolbar: portrait 9
 - `clips`: string, one of fit, fill. How clips meet the frame by default
 - `resolution`: string, one of 720, 1080, 2160. Short-side resolution; the current one by default
 - `outputs`: string. Comma-separated export presets (tiktok, reels, shorts, feed-4x5, square, portrait-3x4, youtube-1080, youtube-4k, quick-draft, prores); none clears them
-- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
+- `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
 
 ### `bashcut project credits`
 
@@ -100,7 +100,7 @@ Set a top-level project field to a JSON object as one undoable edit; with merge,
 - `key`: string, required. brief, plan or your own key
 - `value`: object, required. The object (CLI: path to a JSON file)
 - `merge`: boolean. Change only the given fields
-- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
+- `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
 
 ### `bashcut project derive [--ids <ids>] [--dir <directory>]`
 
@@ -131,7 +131,7 @@ Atomically apply validated timeline operations as one undoable edit; returns cha
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_timeline_apply`
 - `ops`: array, required. Operations array (CLI: path to ops.json)
-- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
+- `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
 - `label`: string, default "Agent edit". Short description of the edit
 - `dryRun`: boolean, default false. Validate without editing; return projected duration, changed IDs, cutsInsideWord (clip edges the edit leaves inside a transcribed word) and fingerprint
 - `why`: string. Why this edit, in one sentence (up to 500 characters)
@@ -151,14 +151,14 @@ Recent edits from the undo history, newest first: step, label, author, why, evid
 Undo one timeline action.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_timeline_undo`
-- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
+- `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
 
 ### `bashcut timeline redo --base-rev <baseRev>`
 
 Redo one timeline action.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_timeline_redo`
-- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
+- `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
 
 ### `bashcut timeline move <item> --track <track> --at-frame <atFrame> --base-rev <baseRev>`
 
@@ -168,7 +168,7 @@ Move an item and its linked partner; an occupied range spills onto a free or new
 - `item`: string, required. Item ID
 - `track`: string, required. Destination layer ID
 - `atFrame`: integer, required, ≥ 0. Timeline frame
-- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
+- `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
 
 ### `bashcut timeline close-gap --at-frame <atFrame> [--track <track>] --base-rev <baseRev>`
 
@@ -177,7 +177,7 @@ Delete an empty gap on a layer (the main layer by default): later clips on that 
 - Mode: edit · Runs: immediately · MCP: `bashcut_timeline_close-gap`
 - `atFrame`: integer, required, ≥ 0. A frame inside the gap
 - `track`: string. Layer ID; defaults to the main layer
-- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
+- `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
 
 ### `bashcut timeline sheet [--at <at>] [--cuts] [--text] [--entries <entries>] [--every <every>] [--size <size>] [--columns <columns>] [--rows <rows>] [--outputs <outputs>]`
 
@@ -217,7 +217,7 @@ Add a media file (path relative to the project or absolute): video, audio or a s
 - `license`: string. Its licence: text as written, or a JSON object {id, redistribute, commercial, attribution…}; stored as given
 - `source`: string. Where it was found (URL)
 - `author`: string. Who made it, for the credit line
-- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
+- `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
 
 ### `bashcut media proxy [<media>] [--force]`
 
@@ -237,7 +237,7 @@ Place project media on a layer (main by default, music for audio), with linked s
 - `to`: number, 0…86400. Source end in seconds
 - `track`: string. Layer ID; defaults to the main layer (music for audio)
 - `atFrame`: integer, ≥ 0. Timeline frame; defaults to the playhead or the end of the main layer
-- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
+- `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
 
 ### `bashcut media subjects --media <media> [--step <step>] [--from <from>] [--to <to>] [--provider <provider>] [--request-id <requestId>] [--dry-run]`
 
@@ -354,14 +354,14 @@ Read the stored transcript of one media in its own seconds: language, provider, 
 
 ### `bashcut media describe [<shots.json>] --media <media> [--merge] [--clear] --base-rev <baseRev>`
 
-Store what you saw in a source media, shot by shot, as one undoable edit (it is saved with the project). Each shot: start and end in source seconds (shots may not overlap) and at least one fact: size, angle, move, direction (open labels; suggested: size ECU/CU/MCU/MS/MWS/WS/EWS/insert, angle eye/high/low/top/dutch/pov/ots, move static/pan/tilt/push/pull/track/orbit/handheld/zoom/crane, direction left/right/toward/away/none), subjects (up to 12 names), tags, people, onScreenText, confidence 0–1, bestMoment (source seconds or null), looked (source seconds of the frames you looked at), note; any other field is kept as given. Replaces the description unless merge (shots overlapping the new ones are replaced) or clear. Returns rev and coverage.
+Store what you saw in a source media, shot by shot, as one undoable edit (it is saved with the project). Each shot: start and end in source seconds (shots may not overlap) and at least one fact: size, angle, move, direction (open labels; suggested: size ECU/CU/MCU/MS/MWS/WS/EWS/insert, angle eye/high/low/top/dutch/pov/ots, move static/pan/tilt/push/pull/track/orbit/handheld/zoom/crane, direction left/right/toward/away/none), subjects (up to 12 names), tags, people, onScreenText, confidence 0–1, bestMoment (source seconds or null), looked (source seconds of the frames you looked at), note; any other field is kept as given. Replaces the description unless merge (shots overlapping the new ones are replaced) or clear. Obvious slips are repaired and listed in adjusted: numbers as text ("659 s"), subjects as one comma-separated string, labels and notes over their length, a best moment or looked frames outside the shot, a shot running into the next (it ends where the next starts); what cannot be repaired is reported for every shot at once. Returns rev, coverage and adjusted.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_media_describe`
 - `shots`: array. Shots array, or {shots: […]} (CLI: path to shots.json)
 - `media`: string, required. Project media ID
 - `merge`: boolean. Keep stored shots that the new ones do not overlap
 - `clear`: boolean. Remove the description
-- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
+- `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
 
 ### `bashcut media description [--media <media>]`
 
@@ -432,7 +432,7 @@ Footage facts in one read. A header (seconds, size, speech share, counts), then 
 
 ### `bashcut review run [--since-rev <sinceRev>] [--min-severity <minSeverity>] [--summary]`
 
-Review the timeline before export: issues {id, kind, severity error|warning|info, title, detail, frame, endFrame?, facts {raw numbers}, fix? {command?, arguments?, hint?}}, errors first. Invariants (gaps, black picture, cut-in-word, missing fonts or glyphs, output length and shape, true peak) are always checked; editorial checks only against the limits in the project's review object, and nothing without them. IDs are anchored to clips. With summary: {issues, summary, checks (measured, stale, notChecked, failed, unreliable, unsetLimits)} and summary.status: fail (errors), incomplete (no errors, but a limit unset or a check not run) or pass (passed is status == pass; the CLI exits 0, 1 or 2); with sinceRev also diff {fixed, new, persisting}.
+Review the timeline before export: issues {id, kind, severity error|warning|info, title, detail, frame, endFrame?, facts {raw numbers}, fix? {command?, arguments?, hint?}}, errors first. Invariants (gaps, black picture, cut-in-word, missing fonts or glyphs, output length and shape, true peak) are always checked; editorial checks only against the limits in the project's review object, and nothing without them. IDs are anchored to clips. With summary: {issues, summary, checks (measured, stale, notChecked, failed, unreliable, unsetLimits: only limits a check of this timeline reads, atExport: loudness until a normalized export measures it)} and summary.status: fail (errors), incomplete (no errors, but a limit unset or a check not run; atExport does not count) or pass (passed is status == pass; the CLI exits 0, 1 or 2); a pass by an agent is recorded as the review stage; with sinceRev also diff {fixed, new, persisting}.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_review_run`
 - `sinceRev`: integer, ≥ 0. Compare with the review of this revision (this session)
@@ -455,7 +455,7 @@ Keep a warning or note on purpose, with the reason, as one undoable edit (review
 - `id`: string, required. Issue ID from review run
 - `reason`: string. Why it stays
 - `remove`: boolean. Count the issue again
-- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
+- `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
 
 ### `bashcut review verify <id>`
 
@@ -788,7 +788,7 @@ Import UTF-8 SubRip captions as one undoable edit.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_captions_import`
 - `text`: string, required. SubRip text (CLI: path to a .srt file)
-- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
+- `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
 - `replace`: boolean, default false. Replace existing captions
 
 ### `bashcut captions words [<item>] --style <style> [--all] [--color <color>] --base-rev <baseRev>`
@@ -800,7 +800,7 @@ Show caption words as they are spoken (Inspector › Text › Word by word): hig
 - `style`: string, required, one of highlight, karaoke, reveal, none. Word style
 - `all`: boolean, default false. Every caption on the caption layers
 - `color`: string. Highlight colour, #RRGGBB (default #FFD400)
-- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
+- `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
 
 ### `bashcut captions generate --media <media> [--replace] [--word-style <wordStyle>] [--from <from>] [--to <to>] [--provider <provider>] [--fresh] [--request-id <requestId>] [--dry-run]`
 
@@ -836,7 +836,7 @@ Re-cut captions from word groups you choose, as one undoable edit: groups is a l
 - `breakGapSeconds`: number, 0…10. Rule mode: a pause this long starts a caption
 - `from`: integer, ≥ 0. Rule mode: from this timeline frame
 - `to`: integer, ≥ 0. Rule mode: up to this timeline frame
-- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
+- `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
 
 ### `bashcut captions align --media <media> --text <text> [--replace] [--provider <provider>] [--aligner <aligner>] [--request-id <requestId>] [--dry-run]`
 
@@ -873,7 +873,7 @@ Add an empty layer: text goes to the front of the picture stack, video and adjus
 - `kind`: string, required, one of video, adjustment, text, audio. Layer kind
 - `role`: string. Role such as overlay, captions, music or sfx; never main
 - `name`: string. Display name
-- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
+- `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
 
 ### `bashcut layers set <track> [--hidden <hidden>] [--muted <muted>] [--locked <locked>] [--language <language>] --base-rev <baseRev>`
 
@@ -885,7 +885,7 @@ Change a layer's header switches like the timeline header: hide a visual layer, 
 - `muted`: boolean. Muted (audio layers)
 - `locked`: boolean. Locked
 - `language`: string. Language tag such as vi or en; none clears it
-- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
+- `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
 
 ## adjustment
 
@@ -903,7 +903,7 @@ Add an adjustment item: a color grade applied to every layer below it for its fr
 - `atFrame`: integer, ≥ 0. First timeline frame
 - `duration`: integer, ≥ 1. Length in timeline frames
 - `track`: string. Adjustment layer ID
-- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
+- `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
 
 ## schema
 
@@ -924,7 +924,7 @@ Change a clip's constant speed like Inspector › Speed. By default the clip kee
 - `speed`: number, required, 0.1…16. Speed, for example 0.5, 1.5 or 2
 - `keepDuration`: boolean, default false. Keep the clip's length instead
 - `preservePitch`: boolean. Keep the voice pitch (on by default)
-- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
+- `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
 
 ### `bashcut clip speed-curve [<item>] [--preset <preset>] [--points <points>] [--keep-duration] --base-rev <baseRev>`
 
@@ -935,7 +935,7 @@ Give a clip a speed ramp (CapCut Curve) like Inspector › Speed › Curve: a pr
 - `preset`: string, one of montage, hero, bullet, jump-cut, flash-in, flash-out, none. Preset name, or none
 - `points`: string. Custom points as JSON, e.g. [[0,1],[0.5,3],[1,1]]
 - `keepDuration`: boolean, default false. Keep the clip's length instead
-- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
+- `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
 
 ### `bashcut clip motion [<item>] [--preset <preset>] [--keyframes <keyframes>] [--focus <focus>] [--focus-to <focusTo>] [--ease <ease>] --base-rev <baseRev>`
 
@@ -948,7 +948,7 @@ Animate a clip, image or text over its length (Inspector › Animation): a prese
 - `focus`: string. Frame a rectangle of a video clip's picture: x,y,width,height in source pixels from the top left (media.list width/height); sets zoom, pan and tilt and keeps the other keys
 - `focusTo`: string. With focus: move to this rectangle by the item's last frame
 - `ease`: string. With focus-to: the move's ease (linear, in, out, inOut, hold or cubic-bezier(x1,y1,x2,y2))
-- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
+- `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
 
 ### `bashcut clip keyframe [<item>] [--property <property>] [--value <value>] [--at-frame <atFrame>] [--ease <ease>] [--remove] --base-rev <baseRev>`
 
@@ -961,7 +961,7 @@ Set one keyframe like the Inspector's controls with keyframes on: property at a 
 - `atFrame`: integer, ≥ 0. Timeline frame inside the item; the playhead by default
 - `ease`: string. Change to the next key: linear, in, out, inOut, hold or cubic-bezier(x1,y1,x2,y2)
 - `remove`: boolean, default false. Remove the key at that frame
-- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
+- `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
 
 ### `bashcut clip reverse [<item>]`
 
@@ -1164,7 +1164,7 @@ A script against the words heard on the timeline (stored transcripts, else capti
 
 ### `bashcut plan check [<cut.json>] [--patch <patch>]`
 
-Check the edit list before building it, without changing anything: each clip's source range (quotes resolved in the stored transcript, edges inside a word or sentence, how much of the quote was heard), where it lands, its described shot and orientation; each title's chars per second and textShare (its smallest line as a share of the short side, the measure of review.minTextSize); problems {id, severity error|warning|info, entry, detail, facts} (quote not found, unknown media, source played twice, same media and size back to back, media against the canvas shape, stroke-units, review-profile-unset); and the review of the edit as it would be (the project's review profile; picture and loudness need a render and are not measured). ok is false while an error stands. plan.cut is {clips: [{id, media, quote | words FIRST-LAST | from/to seconds (whole media when none; seconds for a still), section, speed, volumeDb, role (speech, broll, underVO; speech by default for quote or words), cover: [{media, from, seconds}] (pictures shown over the clip's sound, muted, the last filling the rest)}], titles: [{id, text, clip or section (+ offset seconds) | at, seconds (to the end of its clip or section when left out; needed with at), preset, style}], captions: {from: speech, wordStyle highlight|karaoke|reveal, preset, style} (captions from the stored transcripts of the clips' media, cut with them), music: {media, from, volumeDb, duckDb (level under speech)}}. A title's preset is a renderer preset (bold-outline, cinematic-serif, keyword-sticker, place-card, hook-title, chapter-card) or a library text-preset ID (templates such as stacked-keyword, boxed-keyword, headline-subline, two-tone-pop; library list --kind text-preset); its style gives text style fields over the preset's: font (a PostScript name or System-[Condensed|Compressed]Bold|Heavy|Black; fonts list --covers), size (share of the short side), fill, stroke, strokeWidth (points, 0–50), positionX, positionY, align, uppercase, lineHeight, tracking, background {color, opacity, padding, radius}, shadow {color, opacity, blur, dx, dy}; other keys are item properties. Over bright or busy footage give a stroke or a background. A font missing letters of the content language is an error.
+Check the edit list before building it, without changing anything: each clip's source range (quotes resolved in the stored transcript, edges inside a word or sentence, how much of the quote was heard), where it lands, its described shot and orientation; each title's chars per second and textShare (its smallest line as a share of the short side, the measure of review.minTextSize); problems {id, severity error|warning|info, entry, detail, facts} (quote not found, unknown media, source played twice, same media and size back to back, media against the canvas shape, stroke-units, review-profile-unset with facts.unsetLimits: every review limit the built edit needs and nobody set); and the review of the edit as it would be (the project's review profile; picture and loudness need a render and are not measured). ok is false while an error stands. plan.cut is {clips: [{id, media, quote | words FIRST-LAST | from/to seconds (whole media when none; seconds for a still), section, speed, volumeDb, role (speech, broll, underVO; speech by default for quote or words), cover: [{media, from, seconds}] (pictures shown over the clip's sound, muted, the last filling the rest)}], titles: [{id, text, clip or section (+ offset seconds) | at, seconds (to the end of its clip or section when left out; needed with at), preset, style}], captions: {from: speech, wordStyle highlight|karaoke|reveal, preset, style} (captions from the stored transcripts of the clips' media, cut with them), music: {media, from, volumeDb, duckDb (level under speech)}, review: {limit: number} (review limits such as minTextSize, minTextContrast, minShotSeconds, chosen from the recipe's ranges; merged over the project's review on apply)}. A title's preset is a renderer preset (bold-outline, cinematic-serif, keyword-sticker, place-card, hook-title, chapter-card) or a library text-preset ID (templates such as stacked-keyword, boxed-keyword, headline-subline, two-tone-pop; library list --kind text-preset); its style gives text style fields over the preset's: font (a PostScript name or System-[Condensed|Compressed]Bold|Heavy|Black; fonts list --covers), size (share of the short side), fill, stroke, strokeWidth (points, 0–50), positionX, positionY, align, uppercase, lineHeight, tracking, background {color, opacity, padding, radius}, shadow {color, opacity, blur, dx, dy}; other keys are item properties. Over bright or busy footage give a stroke or a background. A font missing letters of the content language is an error.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_plan_check`
 - `cut`: object. The list {clips, titles, music} (CLI: path to cut.json); plan.cut when omitted
@@ -1172,7 +1172,7 @@ Check the edit list before building it, without changing anything: each clip's s
 
 ### `bashcut plan apply [<cut.json>] [--patch <patch>] [--dry-run] [--sheet] [--why <why>] [--evidence <evidence>] --base-rev <baseRev>`
 
-Build the edit list as one undoable edit: clips on Main in order (sound linked on the dialogue layer), section markers, titles and the music bed, each tagged planCut. Applying again replaces only what an earlier apply built (changes made to those items since are lost; other layers are kept but not re-timed); Main must hold nothing else. Refuses while plan.check has an error. With cut or patch, the list is also saved as plan.cut in the same edit (a revision: --patch with only what changes, then nothing else to write). dryRun returns the check. The result has the review's errors and warnings of the built edit (no info rows; picture and loudness need review measure); sheet adds the storyboard (timeline sheet --cuts --text) of the new revision. plan.cut is {clips: [{id, media, quote | words FIRST-LAST | from/to seconds (whole media when none; seconds for a still), section, speed, volumeDb, role (speech, broll, underVO; speech by default for quote or words), cover: [{media, from, seconds}] (pictures shown over the clip's sound, muted, the last filling the rest)}], titles: [{id, text, clip or section (+ offset seconds) | at, seconds (to the end of its clip or section when left out; needed with at), preset, style}], captions: {from: speech, wordStyle highlight|karaoke|reveal, preset, style} (captions from the stored transcripts of the clips' media, cut with them), music: {media, from, volumeDb, duckDb (level under speech)}}. A title's preset is a renderer preset (bold-outline, cinematic-serif, keyword-sticker, place-card, hook-title, chapter-card) or a library text-preset ID (templates such as stacked-keyword, boxed-keyword, headline-subline, two-tone-pop; library list --kind text-preset); its style gives text style fields over the preset's: font (a PostScript name or System-[Condensed|Compressed]Bold|Heavy|Black; fonts list --covers), size (share of the short side), fill, stroke, strokeWidth (points, 0–50), positionX, positionY, align, uppercase, lineHeight, tracking, background {color, opacity, padding, radius}, shadow {color, opacity, blur, dx, dy}; other keys are item properties. Over bright or busy footage give a stroke or a background. A font missing letters of the content language is an error.
+Build the edit list as one undoable edit: clips on Main in order (sound linked on the dialogue layer), section markers, titles and the music bed, each tagged planCut. Applying again replaces only what an earlier apply built (changes made to those items since are lost; other layers are kept but not re-timed); Main must hold nothing else. Refuses while plan.check has an error. With cut or patch, the list is also saved as plan.cut in the same edit (a revision: --patch with only what changes, then nothing else to write); plan.cut.review is merged into the project's review in the same edit. dryRun returns the check. The result has the review's errors and warnings of the built edit (no info rows; picture and loudness need review measure); sheet adds the storyboard (timeline sheet --cuts --text) of the new revision. plan.cut is {clips: [{id, media, quote | words FIRST-LAST | from/to seconds (whole media when none; seconds for a still), section, speed, volumeDb, role (speech, broll, underVO; speech by default for quote or words), cover: [{media, from, seconds}] (pictures shown over the clip's sound, muted, the last filling the rest)}], titles: [{id, text, clip or section (+ offset seconds) | at, seconds (to the end of its clip or section when left out; needed with at), preset, style}], captions: {from: speech, wordStyle highlight|karaoke|reveal, preset, style} (captions from the stored transcripts of the clips' media, cut with them), music: {media, from, volumeDb, duckDb (level under speech)}, review: {limit: number} (review limits such as minTextSize, minTextContrast, minShotSeconds, chosen from the recipe's ranges; merged over the project's review on apply)}. A title's preset is a renderer preset (bold-outline, cinematic-serif, keyword-sticker, place-card, hook-title, chapter-card) or a library text-preset ID (templates such as stacked-keyword, boxed-keyword, headline-subline, two-tone-pop; library list --kind text-preset); its style gives text style fields over the preset's: font (a PostScript name or System-[Condensed|Compressed]Bold|Heavy|Black; fonts list --covers), size (share of the short side), fill, stroke, strokeWidth (points, 0–50), positionX, positionY, align, uppercase, lineHeight, tracking, background {color, opacity, padding, radius}, shadow {color, opacity, blur, dx, dy}; other keys are item properties. Over bright or busy footage give a stroke or a background. A font missing letters of the content language is an error.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_plan_apply`
 - `cut`: object. The list {clips, titles, music} (CLI: path to cut.json); plan.cut when omitted
@@ -1181,7 +1181,7 @@ Build the edit list as one undoable edit: clips on Main in order (sound linked o
 - `sheet`: boolean. Also lay the new revision out on a contact sheet
 - `why`: string. Why this edit, in one sentence (up to 500 characters)
 - `evidence`: string. What it rests on, separated by ;
-- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
+- `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
 
 ## selects
 
@@ -1198,7 +1198,7 @@ Add, update or remove selects (by id; a new one without id gets one, status cand
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_selects_set`
 - `value`: array, required. Selects (CLI: path to selects.json)
-- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
+- `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
 
 ### `bashcut selects place [--ids <ids>] [--at-frame <atFrame>] --base-rev <baseRev>`
 
@@ -1207,7 +1207,7 @@ Lay the kept selects (or the given IDs) in order (order, else source start), fro
 - Mode: edit · Runs: immediately · MCP: `bashcut_selects_place`
 - `ids`: string. Select IDs instead of the kept ones
 - `atFrame`: integer, ≥ 0. Timeline frame
-- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
+- `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
 
 ## variants
 
@@ -1306,7 +1306,7 @@ Change a voiceover item's speed (pitch kept) so it lasts frames, or ends at toFr
 - `toFrame`: integer, ≥ 1. Timeline frame to end at
 - `minRatio`: number, required, 0.1…16. Slowest speed allowed (1 = as recorded)
 - `maxRatio`: number, required, 0.1…16. Fastest speed allowed
-- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
+- `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
 
 ## storage
 
@@ -1570,7 +1570,7 @@ Check a .cube LUT, copy it into the project's luts folder and add it (Filters pa
 - Mode: edit · Runs: immediately · MCP: `bashcut_luts_import`
 - `path`: string, required, path. .cube file
 - `name`: string. Display name; defaults to the file name
-- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
+- `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
 
 ## edl
 
@@ -1935,7 +1935,7 @@ Use a library item on an existing timeline item: a text preset on a text item (i
 - `set`: string. Effect preset parameters: name=value pairs (strength=1.5,frames=12) or a JSON object
 - `from`: integer, ≥ 0. Effect preset: first timeline frame of the part of the clip to change
 - `to`: integer, ≥ 1. Effect preset: timeline frame after that part (the clip's end by default)
-- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
+- `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
 
 ### `bashcut library place <id> [--scope <scope>] [--at-frame <atFrame>] [--duration <duration>] [--track <track>] [--position <position>] [--size <size>] [--text <text>] --base-rev <baseRev>`
 
@@ -1950,7 +1950,7 @@ Add a library item to the timeline as a new item: a text preset (with its stored
 - `position`: string. Sticker: center, top, bottom, left, right, top-left, top-right, bottom-left or bottom-right (inside the safe area), or x,y in 0–1 (its centre, from the top left); the sticker's default otherwise
 - `size`: number, 0.01…1. Sticker: width as a fraction of the frame width (0.3 by default)
 - `text`: string. Text for a text preset instead of its sample
-- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
+- `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
 
 ### `bashcut library analyze <id> [--scope <scope>] [--provider <provider>]`
 

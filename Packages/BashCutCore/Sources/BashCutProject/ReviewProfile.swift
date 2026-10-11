@@ -53,7 +53,7 @@ public struct ReviewProfile: Sendable, Equatable {
 extension Project {
     /// The `review` object: known numbers within their ranges, severities from the known values, platform overrides
     /// as fractions. Unknown keys round-trip.
-    func validateReviewSettings() throws {
+    public func validateReviewSettings() throws {
         guard let value = self["review"], value != .null else { return }
         guard case .object(let review) = value else { throw ProjectError.invalid("review: expected object") }
         if let credits = review["credits"], credits != .null, credits.bool == nil {

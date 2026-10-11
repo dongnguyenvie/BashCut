@@ -50,9 +50,6 @@ public enum CommandCatalog {
 
     public static func spec(named name: String) -> CommandSpec? { specs.first { $0.name == name } }
 
-    static let baseRevision = CommandParameter(
-        "baseRev", .integer, "Current project revision from timeline.get", required: true, minimum: 0,
-        cli: .option("base-rev"))
     static let provider = CommandParameter(
         "provider", .string, "Provider ID overriding the project preference for one request", cli: .option("provider"))
     private static let outputName = CommandParameter(

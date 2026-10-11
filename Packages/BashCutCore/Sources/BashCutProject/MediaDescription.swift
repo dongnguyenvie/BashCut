@@ -81,7 +81,7 @@ public struct MediaDescription: Sendable, Equatable {
         "bestMoment", "looked", "note", "tags",
     ]
 
-    private static func shot(_ value: JSONValue, at index: Int, duration: Double) throws -> Shot {
+    static func shot(_ value: JSONValue, at index: Int, duration: Double) throws -> Shot {
         let path = "description.shots[\(index)]"
         let fields = value.object
         guard case .object = value else { throw ProjectError.invalid("\(path): expected object") }

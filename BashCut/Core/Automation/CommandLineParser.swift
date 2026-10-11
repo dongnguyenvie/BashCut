@@ -120,6 +120,7 @@ public enum CommandLineParser {
             return .number(number)
         }
         guard parameter.kind == .integer else { return .string(text) }
+        if parameter.name == "baseRev", text == CommandCatalog.lastRevision { return .string(text) }
         guard let number = Int(text) else { throw Failure(message: "\(parameter.name) must be an integer") }
         return .integer(number)
     }

@@ -79,6 +79,8 @@ public enum PlanCut {
         public var titles: [Title]
         public var music: Music?
         public var captions: Captions?
+        /// Review limits merged over the project's `review` on apply (the recipe's ranges, chosen with the plan).
+        public var review: [String: JSONValue]?
     }
 
     static let roles = ["speech", "broll", "underVO"]
@@ -136,7 +138,12 @@ public enum PlanCut {
             if let duck, !(-60...0).contains(duck) { throw ProjectError.invalid("music.duckDb: -60…0") }
             music = Music(media: media, from: max(0, row["from"]?.double ?? 0), volumeDb: row["volumeDb"]?.double, duckDb: duck)
         }
-        return Spec(clips: clips, titles: titles, music: music, captions: try decodeCaptions(root["captions"]))
+        var review: [String: JSONValue]?
+        if let value = root["review"], value != .null {
+            guard case .object(let limits) = value else { throw ProjectError.invalid("plan.cut.review: expected {limit: number}") }
+            review = limits
+        }
+        return Spec(clips: clips, titles: titles, music: music, captions: try decodeCaptions(root["captions"]), review: review)
     }
 
     /// `captions: {from: "speech", wordStyle, preset, style}`; null or false: none.

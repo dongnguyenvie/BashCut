@@ -11,6 +11,7 @@ extension ProjectDocument {
     typealias AuthoredCommandBody = @MainActor (ProjectDocument, CommandArguments, Author) async throws -> JSONValue
 
     func startAutomation() {
+        registry.currentRevision = { [weak self] in self?.project.revision }
         registerReadCommands()
         registerProjectCommands()
         registerCaptionCommands()
@@ -97,6 +98,7 @@ extension ProjectDocument {
                 document.project.revision != before.revision, document.project["id"] == before["id"]
             else { return result }
             fields["changes"] = ChangeDigest.json(before: before, after: document.project)
+            if fields["rev"] == nil { fields["rev"] = .integer(document.project.revision) }
             return .object(fields)
         }
     }

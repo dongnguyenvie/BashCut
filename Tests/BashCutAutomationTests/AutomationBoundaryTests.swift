@@ -58,4 +58,29 @@ import Testing
         }
         #expect(throws: RPCFailure.self) { try AutomationOutputPath.resolve("chat.md", projectRoot: nil) }
     }
+
+    @Test("baseRev last is the revision as of the caller's last command; anyone else's edit since makes it stale")
+    func lastRevision() async {
+        let registry = CommandRegistry()
+        var revision = 4
+        registry.currentRevision = { revision }
+        var seen: [Int] = []
+        registry.register("timeline.undo") { arguments, _ in
+            let base = try arguments.int("baseRev")
+            seen.append(base)
+            guard base == revision else { throw RPCFailure(-32002, "stale") }
+            revision += 1
+            return .null
+        }
+        registry.register("context.get") { _, _ in .null }
+        let token = registry.issueToken(author: .agent)
+        let undo = RPCRequest(method: "timeline.undo", params: ["baseRev": .string("last")], token: token)
+        #expect(await registry.handle(undo).error?.code == -32602, "nothing seen yet")
+        _ = await registry.handle(RPCRequest(method: "context.get", token: token))
+        #expect(await registry.handle(undo).error == nil)
+        #expect(await registry.handle(undo).error == nil, "its own edit moved the revision it saw")
+        revision += 1
+        #expect(await registry.handle(undo).error?.code == -32002, "someone else edited since")
+        #expect(seen == [4, 5, 6])
+    }
 }

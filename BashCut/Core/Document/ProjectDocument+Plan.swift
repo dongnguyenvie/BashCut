@@ -45,6 +45,9 @@ extension ProjectDocument {
             let revision = try commit(
                 .setProjectProperties(patch: [key: next]), label: label, author: author,
                 baseRevision: arguments.int("baseRev"))
+            if key == "brief", case .object(let brief) = next, !brief.isEmpty {
+                logAutoStage("intake", evidence: ["brief set: " + brief.keys.sorted().joined(separator: ", ")], author: author)
+            }
             return .object(["rev": .integer(revision), key: project[key] ?? .null])
         } catch let error as ProjectError {
             throw RPCFailure.invalid(error)

@@ -22,12 +22,15 @@ extension ProjectDocument {
                 ]))
             }
             var operations = built.planner.operations
+            var properties: [String: JSONValue] = [:]
             let given = [arguments["cut"], arguments["patch"]].contains { $0 != nil && $0 != .null }
             if given, let cut = try document.planCutValue(arguments) {
                 var plan = document.project["plan"]?.object ?? [:]
                 plan["cut"] = cut
-                operations.insert(.setProjectProperties(patch: ["plan": .object(plan)]), at: 0)
+                properties["plan"] = .object(plan)
             }
+            if let review = document.planReview(spec) { properties["review"] = .object(review) }
+            if !properties.isEmpty { operations.insert(.setProjectProperties(patch: properties), at: 0) }
             let label = "Apply edit list"
             let result = try document.commitEdit(
                 .group(label: label, author: author, ops: operations), label: label, author: author,
@@ -35,6 +38,10 @@ extension ProjectDocument {
             var json = check.json.object
             json["rev"] = .integer(result.revision)
             let clips = spec.clips.count
+            let sections = Set(spec.clips.compactMap(\.section)).count
+            document.logAutoStage("story", evidence: [
+                "plan.cut: \(clips) clips in \(sections) sections", "plan check ok at rev \(baseRevision)",
+            ], author: author)
             document.logAutoStage("rough-cut", evidence: ["plan.apply rev \(result.revision)", "\(clips) clips"], author: author)
             if spec.captions != nil {
                 document.logAutoStage("captions", evidence: ["plan.apply rev \(result.revision) captions from plan.cut"], author: author)
@@ -71,6 +78,12 @@ extension ProjectDocument {
             ]))
         }
         do { return try PlanCut.decode(value) } catch let error as ProjectError { throw RPCFailure.invalid(error) }
+    }
+
+    /// The project's review limits with `plan.cut.review` merged over them; nil when the plan sets none.
+    func planReview(_ spec: PlanCut.Spec) -> [String: JSONValue]? {
+        guard let limits = spec.review, !limits.isEmpty else { return nil }
+        return (project["review"]?.object ?? [:]).merging(limits) { $1 }
     }
 
     /// The library text presets the titles name (renderer presets need none), and an error for a name that is
@@ -145,6 +158,32 @@ extension ProjectDocument {
         }
     }
 
+    /// The limits a review of the built edit reads and nobody set, listed at once so they are chosen with the plan;
+    /// and `plan.cut.review` values out of range.
+    func planReviewProblems(_ review: [String: JSONValue]?, built: Project?) -> [PlanCut.Problem] {
+        var problems: [PlanCut.Problem] = []
+        var profiled = built ?? project
+        if let review { profiled["review"] = .object(review) }
+        let profile = ReviewProfile(profiled)
+        let unset = TimelineReview.applicableLimits(profiled).filter { profile[$0] == nil }
+        if !unset.isEmpty {
+            problems.append(PlanCut.Problem(
+                id: "review-profile-unset", severity: "warning", entry: nil,
+                detail: "Review limits this edit needs are unset, so review run stays incomplete: "
+                    + unset.joined(separator: ", ") + ". Choose each from the recipe's ranges in plan.cut.review "
+                    + "(written on plan apply) or project set-data review",
+                facts: ["unsetLimits": .array(unset.map(JSONValue.string))]))
+        }
+        guard let review else { return problems }
+        var copy = project
+        copy["review"] = .object(review)
+        do { try copy.validateReviewSettings() } catch {
+            problems.append(PlanCut.Problem(
+                id: "review-invalid", severity: "error", entry: nil, detail: "plan.cut." + error.localizedDescription))
+        }
+        return problems
+    }
+
     struct PlanCutCheck {
         var built: (planner: LayerPlanner, placements: [PlanCut.Placement], kept: [String])?
         var problems: [PlanCut.Problem]
@@ -168,8 +207,10 @@ extension ProjectDocument {
         } catch {
             problems.append(PlanCut.Problem(id: "cannot-build", severity: "error", entry: nil, detail: "\(error)"))
         }
+        let review = planReview(spec)
         if let built {
-            let after = built.planner.project
+            var after = built.planner.project
+            if let review { after["review"] = .object(review) }
             let facts = PlanCut.facts(spec, clips: clips, placements: built.placements, on: after)
             problems += facts.problems + planFontProblems(after) + planStyleProblems(after)
             let fps = after.fps.value
@@ -208,12 +249,7 @@ extension ProjectDocument {
             let review = TimelineReview.run(after, context: context).filter { $0.accepted == nil }
             result["review"] = .array(review.map(\.json))
         }
-        if ReviewProfile(project).values.isEmpty {
-            problems.append(PlanCut.Problem(
-                id: "review-profile-unset", severity: "warning", entry: nil,
-                detail: "The project has no review limits, so review run stays incomplete and checks no text size, "
-                    + "contrast or shot length: set them from the recipe's ranges with project set-data review"))
-        }
+        problems += planReviewProblems(review, built: built?.planner.project)
         result["problems"] = .array(problems.map(\.json))
         result["ok"] = .bool(!problems.contains { $0.severity == "error" })
         return PlanCutCheck(built: built, problems: problems, json: .object(result))

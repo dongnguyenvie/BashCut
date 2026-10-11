@@ -75,6 +75,10 @@ struct ReviewMechanicsTests {
         let bare = TimelineReview.coverage(project, context: ReviewContext()).object
         #expect(bare["notChecked"]?.array.contains { $0.string?.hasPrefix("picture") == true } == true)
         #expect(bare["unsetLimits"]?.array.contains(.string("maxShotSeconds")) == true)
+        // Limits no check of this timeline reads are not asked for, and loudness waits for the export.
+        #expect(bare["unsetLimits"]?.array.contains(.string("maxMusicGapSeconds")) == false)
+        #expect(bare["unsetLimits"]?.array.contains(.string("captionMaxLines")) == false)
+        #expect(bare["atExport"]?.array.count == 1 && bare["notChecked"]?.array.contains { $0.string?.hasPrefix("loudness") == true } == false)
         // An empty profile reports nothing, and that is incomplete, never a pass.
         let empty = TimelineReview.run(project, context: ReviewContext())
         #expect(ReviewSummary(empty, coverage: .object(bare)).status == (empty.contains { $0.severity == .error } ? .fail : .incomplete))

@@ -14,13 +14,16 @@ extension ProjectDocument {
                 throw RPCFailure(-32602, "Unknown media \(mediaID)")
             }
             var description: JSONValue?
+            var adjusted: [String] = []
             if arguments.bool("clear") {
                 guard media.fields["description"] != nil else { throw RPCFailure(-32602, "Media \(mediaID) is not described") }
             } else {
                 guard let value = arguments["shots"] else { throw RPCFailure(-32602, "Give shots, or clear") }
                 let rows = value.object["shots"]?.array ?? value.array
                 do {
-                    var shots = try MediaDescription.shots(rows, duration: media.durationSeconds)
+                    let given = try MediaDescription.lenientShots(rows, duration: media.durationSeconds)
+                    var shots = given.shots
+                    adjusted = given.adjusted
                     if arguments.bool("merge"), let stored = media.shotDescription { shots = try stored.merging(shots) }
                     description = MediaDescription(
                         shots: shots, describedBy: author.rawValue,
@@ -35,9 +38,11 @@ extension ProjectDocument {
                 label: description == nil ? "Clear media description" : "Describe media", author: author,
                 baseRevision: arguments.int("baseRev"))
             var result: [String: JSONValue] = ["rev": .integer(revision), "media": .string(mediaID)]
+            if !adjusted.isEmpty { result["adjusted"] = .array(adjusted.map(JSONValue.string)) }
             if let described = document.project.media.first(where: { $0.id == mediaID }) {
                 result["coverage"] = document.mediaDescriptionCoverage(described)
             }
+            document.logSurveyWhenDescribed(author: author)
             return .object(result)
         }
         handle("media.description") { document, arguments, _ in
@@ -53,6 +58,16 @@ extension ProjectDocument {
             }
             return document.mediaDescriptionOverview()
         }
+    }
+
+    /// Records the survey stage once every media is described.
+    func logSurveyWhenDescribed(author: Author) {
+        let overview = mediaDescriptionOverview().object
+        guard let total = overview["totalMedia"]?.int, total > 0, overview["describedMedia"]?.int == total else { return }
+        logAutoStage("survey", evidence: [
+            "media describe: \(total) media described",
+            "\(overview["coveredShots"]?.int ?? 0)/\(overview["measuredShots"]?.int ?? 0) measured shots covered",
+        ], author: author)
     }
 
     /// Coverage of one media: described false, or the description's shots and share, and against the measured

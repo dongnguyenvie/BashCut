@@ -2,7 +2,9 @@ import Foundation
 
 /// What a review run actually looked at (P1-E5): checks measured for this revision, measured for an older one
 /// (stale), not checked at all, plugin checks that failed or timed out, picture checks that cannot be trusted because
-/// the picture barely changes, and the review limits the project has not set. A review without these is not a pass.
+/// the picture barely changes, and the review limits the project has not set (only those a check of this timeline
+/// reads: no music, no music-gap limit). A review without these is not a pass. Loudness is measured by a normalized
+/// export, so before one it is listed in `atExport`, which does not hold a review back.
 extension TimelineReview {
     /// Every picture sample is still: black, frozen and jump checks cannot tell a static edit from a broken one.
     static func pictureUnreliable(_ project: Project, context: ReviewContext) -> Bool {
@@ -21,6 +23,7 @@ extension TimelineReview {
 
     public static func coverage(_ project: Project, context: ReviewContext) -> JSONValue {
         var measured: [String] = [], stale: [String] = [], notChecked: [String] = [], failed: [JSONValue] = []
+        var atExport: [String] = []
         let state = { (name: String, revision: Int?, how: String) in
             switch revision {
             case project.revision?: measured.append(name)
@@ -29,7 +32,9 @@ extension TimelineReview {
             }
         }
         state("picture", context.picture?.revision, "review measure")
-        state("loudness", context.loudness?.revision, "a normalized export")
+        if context.loudness?.revision == project.revision { measured.append("loudness") } else {
+            atExport.append("loudness (a normalized export measures it)")
+        }
         state("plugin checks", context.pluginIssues?.revision, "review measure")
         for issue in context.pluginIssues?.issues ?? [] where issue.id.hasSuffix(":failed") {
             failed.append(.object([
@@ -48,9 +53,32 @@ extension TimelineReview {
         return .object([
             "revision": .integer(project.revision), "measured": .array(measured.map(JSONValue.string)),
             "stale": .array(stale.map(JSONValue.string)), "notChecked": .array(notChecked.map(JSONValue.string)),
-            "failed": .array(failed),
+            "failed": .array(failed), "atExport": .array(atExport.map(JSONValue.string)),
             "unreliable": .array(pictureUnreliable(project, context: context) ? [.string("picture: it barely changes")] : []),
-            "unsetLimits": .array(ReviewProfile.numberKeys.keys.filter { profile[$0] == nil }.sorted().map(JSONValue.string)),
+            "unsetLimits": .array(applicableLimits(project).filter { profile[$0] == nil }.map(JSONValue.string)),
         ])
+    }
+
+    /// The review limits a check of this timeline reads, sorted: picture limits always; sound limits with audible
+    /// items, the music gap with a music bed, the voiceover margin with voiceover, speech coverage with tagged speech
+    /// or voiceover, text limits with text, caption lines with captions.
+    public static func applicableLimits(_ project: Project) -> [String] {
+        let items = { (filter: (Track) -> Bool) in project.tracks.filter(filter).contains { !$0.items.isEmpty } }
+        let audio = items { $0.kind == "audio" && $0["muted"] != .bool(true) }
+        let voiceover = items { $0.role == TrackRole.voiceover }
+        let speech = voiceover || project.tracks.contains { track in
+            track.items.contains { $0["tag"]?.object["role"]?.string == "speech" }
+        }
+        var keys: Set<String> = [
+            "minShotSeconds", "maxShotSeconds", "maxStillSeconds", "hookSeconds", "stillMotion", "jumpCutChange",
+            "blackMinSeconds",
+        ]
+        if audio { keys.formUnion(["maxSilenceSeconds", "loudnessToleranceLU"]) }
+        if items({ $0.kind == "audio" && $0.role == TrackRole.music }) { keys.insert("maxMusicGapSeconds") }
+        if voiceover { keys.insert("voiceoverMarginSeconds") }
+        if speech { keys.insert("minSpeechCoverage") }
+        if items({ $0.kind == "text" }) { keys.formUnion(["minTextSize", "minTextContrast", "captionLineChars"]) }
+        if items({ $0.kind == "text" && $0.role == TrackRole.captions }) { keys.insert("captionMaxLines") }
+        return keys.filter { ReviewProfile.numberKeys[$0] != nil }.sorted()
     }
 }

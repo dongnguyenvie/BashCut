@@ -256,4 +256,11 @@ struct PlanCutTests {
         #expect(patched.object["music"] == nil)
         #expect(throws: ProjectError.self) { try PlanCut.patch(list, with: .array([])) }
     }
+
+    @Test("Review limits ride with the list as an object")
+    func reviewLimits() throws {
+        let limits = try spec(#"{"clips":[{"media":"m","from":0,"to":1}],"review":{"minTextSize":0.04}}"#).review
+        #expect(limits?["minTextSize"] == .number(0.04))
+        #expect(throws: ProjectError.self) { try spec(#"{"clips":[{"media":"m","from":0,"to":1}],"review":3}"#) }
+    }
 }

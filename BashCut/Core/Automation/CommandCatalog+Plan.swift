@@ -174,7 +174,9 @@ extension CommandCatalog {
             + "the end of its clip or section when left out; needed with at), preset, style}], captions: {from: "
             + "speech, wordStyle highlight|karaoke|reveal, preset, style} (captions from the "
             + "stored transcripts of the clips' media, cut with them), music: {media, from, volumeDb, duckDb (level "
-            + "under speech)}}. A title's preset is a renderer "
+            + "under speech)}, review: {limit: number} (review limits such as minTextSize, minTextContrast, "
+            + "minShotSeconds, chosen from the recipe's ranges; merged over the project's review on apply)}. A title's "
+            + "preset is a renderer "
             + "preset (" + TextPreset.all.joined(separator: ", ") + ") or a library text-preset ID (templates such "
             + "as stacked-keyword, boxed-keyword, headline-subline, two-tone-pop; library list --kind text-preset); "
             + "its style gives text style fields over the preset's: font (a PostScript name or System-[Condensed|"
@@ -191,7 +193,8 @@ extension CommandCatalog {
                     + "second and textShare (its smallest line as a share of the short side, the measure of "
                     + "review.minTextSize); problems {id, severity error|warning|info, entry, detail, facts} (quote not found, "
                     + "unknown media, source played twice, same media and size back to back, media against the canvas "
-                    + "shape, stroke-units, review-profile-unset); and the review of the edit as it would be (the "
+                    + "shape, stroke-units, review-profile-unset with facts.unsetLimits: every review limit the "
+                    + "built edit needs and nobody set); and the review of the edit as it would be (the "
                     + "project's review profile; picture and loudness need a render and are not measured). ok is false "
                     + "while an error stands. " + shape,
                 parameters: [cut, patch]),
@@ -202,7 +205,8 @@ extension CommandCatalog {
                     + "only what an earlier apply built (changes made to those items since are lost; other layers are "
                     + "kept but not re-timed); Main must hold nothing else. Refuses while plan.check has an error. "
                     + "With cut or patch, the list is also saved as plan.cut in the same edit (a revision: --patch with "
-                    + "only what changes, then nothing else to write). dryRun returns the check. The "
+                    + "only what changes, then nothing else to write); plan.cut.review is merged into the project's "
+                    + "review in the same edit. dryRun returns the check. The "
                     + "result has the review's errors and warnings of the built edit (no info rows; picture and "
                     + "loudness need review measure); sheet adds the storyboard (timeline sheet --cuts --text) of the "
                     + "new revision. " + shape,

@@ -158,7 +158,11 @@ extension CommandCatalog {
                 + "direction left/right/toward/away/none), subjects (up to 12 names), tags, people, onScreenText, "
                 + "confidence 0–1, bestMoment (source seconds or null), looked (source seconds of the frames you "
                 + "looked at), note; any other field is kept as given. Replaces the description unless "
-                + "merge (shots overlapping the new ones are replaced) or clear. Returns rev and coverage.",
+                + "merge (shots overlapping the new ones are replaced) or clear. Obvious slips are repaired and listed "
+                + "in adjusted: numbers as text (\"659 s\"), subjects as one comma-separated string, labels and notes "
+                + "over their length, a best moment or looked frames outside the shot, a shot running into the next "
+                + "(it ends where the next starts); what cannot be repaired is reported for every shot at once. "
+                + "Returns rev, coverage and adjusted.",
             parameters: [
                 CommandParameter("shots", .array, "Shots array, or {shots: […]} (CLI: path to shots.json)",
                                  cli: .positionalJSONFile),
