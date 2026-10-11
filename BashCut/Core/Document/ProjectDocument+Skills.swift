@@ -112,6 +112,7 @@ extension ProjectDocument {
             "origin": .string(origin.rawValue), "author": .string(author?.rawValue ?? "unknown"),
             "rev": .integer(project.revision), "verified": .bool(true), "via": .string("skills.get"),
         ]
+        rememberSkillRead(entry)
         guard let log = runLog else {
             holdRunEntry(entry)
             return

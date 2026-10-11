@@ -48,6 +48,9 @@ final class ProjectDocument {
     /// Skill reads made before any project was open (an agent reads its recipe before `project create`), written to
     /// the run log of the next project that opens.
     var pendingRunEntries: [[String: JSONValue]] = []
+    /// Skill reads of the last half hour, whichever project was open, so a project created or opened right after
+    /// (an agent reads its recipe, then creates the project) has them in its run log.
+    var recentSkillReads: [(date: Date, entry: [String: JSONValue])] = []
     let sourceViewer = SourceViewerModel()
     let waveforms = WaveformModel()
     /// Saves, autosaves and the disk watch for the open file.

@@ -121,6 +121,7 @@ extension ProjectDocument {
             guard try completeSkillEntry(&entry, hook: arguments.optionalString("verifiedBy") == "hook") else {
                 return .object(["ignored": .bool(true), "name": entry["name"] ?? .null])
             }
+            rememberSkillRead(entry)
         case "audit":
             guard entry["point"] != nil, entry["verdict"] != nil else {
                 throw RPCFailure(-32602, "An audit entry needs --point and --verdict")
@@ -141,8 +142,16 @@ extension ProjectDocument {
         guard try completeSkillEntry(&entry, hook: arguments.optionalString("verifiedBy") == "hook") else {
             return .object(["ignored": .bool(true), "name": entry["name"] ?? .null])
         }
+        rememberSkillRead(entry)
         holdRunEntry(entry)
         return .object(["held": .bool(true), "name": entry["name"] ?? .null])
+    }
+
+    /// Keeps a skill read for the next project that opens within half an hour.
+    func rememberSkillRead(_ entry: [String: JSONValue], now: Date = Date()) {
+        recentSkillReads.removeAll { now.timeIntervalSince($0.date) > 1_800 }
+        recentSkillReads.append((now, entry))
+        if recentSkillReads.count > 20 { recentSkillReads.removeFirst(recentSkillReads.count - 20) }
     }
 
     /// Keeps an entry made before a project was open (at most the last 20).
@@ -153,8 +162,16 @@ extension ProjectDocument {
 
     /// Writes the held entries to the run log of the project that just opened.
     func flushPendingRunEntries() {
-        guard !pendingRunEntries.isEmpty, let log = runLog else { return }
-        for var entry in pendingRunEntries {
+        guard let log = runLog else { return }
+        // Recent reads made while another project was open, unless this log already has them.
+        let logged = Set(log.entries().filter { $0["kind"]?.string == "skill" }.compactMap { $0["name"]?.string })
+        let held = Set(pendingRunEntries.compactMap { $0["name"]?.string })
+        var carried = Set<String>()
+        let recent = recentSkillReads.map(\.entry).filter { entry in
+            guard let name = entry["name"]?.string, !logged.contains(name), !held.contains(name) else { return false }
+            return carried.insert(name).inserted
+        }
+        for var entry in pendingRunEntries + recent {
             entry["rev"] = .integer(project.revision)
             do { try log.append(entry) } catch { DebugLog.write("runlog", "held entry not logged: \(error)") }
         }
