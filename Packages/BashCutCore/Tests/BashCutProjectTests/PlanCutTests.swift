@@ -33,7 +33,7 @@ struct PlanCutTests {
         try PlanCut.decode(JSONDecoder().decode(JSONValue.self, from: Data(json.utf8)))
     }
 
-    @Test("The list needs clips with one way to pick their range; IDs are unique and titles anchor to a clip")
+    @Test("The list needs clips with one way to pick their range (from/to may move a quote's edges); IDs are unique and titles anchor to a clip")
     func decoding() throws {
         let good = try spec(#"""
             {"clips":[{"media":"m","quote":"giá năm chục"},{"id":"b","media":"m","from":5,"to":7}],
@@ -42,7 +42,8 @@ struct PlanCutTests {
         #expect(good.clips.map(\.id) == ["c1", "b"] && good.titles.first?.id == "t1")
         for bad in [
             #"{"clips":[]}"#,
-            #"{"clips":[{"media":"m","quote":"a","from":1,"to":2}]}"#,
+            #"{"clips":[{"media":"m","quote":"a","words":"1-2"}]}"#,
+            #"{"clips":[{"media":"m","quote":"a","from":2,"to":1}]}"#,
             #"{"clips":[{"media":"m","from":3,"to":2}]}"#,
             #"{"clips":[{"id":"a","media":"m"},{"id":"a","media":"m"}]}"#,
             #"{"clips":[{"media":"m"}],"titles":[{"text":"x","clip":"nope","seconds":1}]}"#,
@@ -284,6 +285,19 @@ struct PlanCutTests {
         #expect(warned.map { $0.entry ?? "" } == ["b", "b", "t"])
         #expect(warned.map { $0.facts["fields"] } == [.array([.string("scale")]), .array([.string("crop")]), .array([.string("postion")])])
         #expect(throws: ProjectError.self) { try spec(#"{"clips":[{"media":"m","from":0,"to":1,"zoom":0}]}"#) }
+    }
+
+    @Test("from or to on a quote moves that edge (snapped out of words); a patched quote drops the old edges")
+    func quoteEdges() throws {
+        let cut = try spec(#"{"clips":[{"id":"a","media":"m","quote":"các bạn ơi","to":3.1}]}"#)
+        let clip = try #require(PlanCut.resolve(cut, project: project(), transcripts: ["m": transcript]).clips.first)
+        #expect(clip.from == 2.0 && clip.to == 3.2)
+        #expect(clip.facts["quoted"]?.object["to"] == .number(2.8))
+        let list = try JSONDecoder().decode(JSONValue.self, from: Data(#"{"clips":[{"id":"a","media":"m","quote":"xin","to":3.1}]}"#.utf8))
+        let patched = try PlanCut.patch(list, with: .object(["clips": .object(["a": .object(["quote": .string("giá năm chục")])])]))
+        #expect(patched.object["clips"]?.array.first?.object["to"] == nil)
+        let moved = try PlanCut.patch(list, with: .object(["clips": .object(["a": .object(["from": .number(0.9)])])]))
+        #expect(moved.object["clips"]?.array.first?.object["quote"] == .string("xin"))
     }
 
     @Test("Review limits ride with the list as an object")

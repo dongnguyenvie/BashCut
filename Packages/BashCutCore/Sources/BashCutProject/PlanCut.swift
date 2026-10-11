@@ -16,6 +16,7 @@ public enum PlanCut {
         public var media: String
         public var quote: String?
         public var words: (first: Int, last: Int)?
+        /// Source seconds; with a quote or words, an edge of that range moved here (either alone).
         public var from: Double?
         public var to: Double?
         public var seconds: Double?
@@ -261,11 +262,12 @@ public enum PlanCut {
             return (first: parts[0], last: parts[1])
         }
         let from = row["from"]?.double, to = row["to"]?.double, seconds = row["seconds"]?.double
-        guard [quote != nil, words != nil, from != nil || to != nil].filter({ $0 }).count <= 1 else {
-            throw ProjectError.invalid("Clip \(id): give one of quote, words or from/to")
-        }
-        if from != nil || to != nil {
+        guard quote == nil || words == nil else { throw ProjectError.invalid("Clip \(id): give quote or words, not both") }
+        if quote == nil, words == nil, from != nil || to != nil {
             guard let from, let to, from >= 0, to > from else { throw ProjectError.invalid("Clip \(id): from < to, in seconds") }
+        } else if let from, let to, to <= from {
+            // With a quote or words, from/to move that range's edges (either alone).
+            throw ProjectError.invalid("Clip \(id): from < to, in seconds")
         }
         if let seconds, seconds <= 0 { throw ProjectError.invalid("Clip \(id): seconds must be above 0") }
         let speed = row["speed"]?.double ?? 1

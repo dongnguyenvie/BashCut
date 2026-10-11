@@ -40,7 +40,7 @@ extension PlanCut {
             let index = entries.firstIndex { $0.object["id"]?.string == id }
             switch (index, change) {
             case (let index?, .null): entries.remove(at: index)
-            case (let index?, _): entries[index] = merge(entries[index], change)
+            case (let index?, _): entries[index] = merge(reselected(entries[index], by: change), change)
             case (nil, .object(var fields)):
                 fields["id"] = .string(id)
                 entries.append(stripNulls(.object(fields)))
@@ -48,6 +48,16 @@ extension PlanCut {
             }
         }
         return entries
+    }
+
+    /// A clip patched with a new quote or words is picked by that alone: its old quote, words and from/to go,
+    /// unless the patch gives them too (from/to then move the new range's edges).
+    static func reselected(_ entry: JSONValue, by change: JSONValue) -> JSONValue {
+        guard case .object(var fields) = entry, case .object(let changes) = change,
+            changes["quote"] != nil || changes["words"] != nil
+        else { return entry }
+        for key in ["quote", "words", "from", "to"] where changes[key] == nil { fields.removeValue(forKey: key) }
+        return .object(fields)
     }
 
     /// A new value with the null members of its objects left out (a patch's null means "remove", never "store null").

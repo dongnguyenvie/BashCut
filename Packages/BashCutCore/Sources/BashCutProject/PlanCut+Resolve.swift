@@ -38,11 +38,28 @@ extension PlanCut {
                 id: "no-transcript", severity: "error", entry: clip.id,
                 detail: "\(media.id) has no transcript: media transcribe --media \(media.id), or give from/to")])
         }
+        let found: (Resolved?, [Problem])
         if let span = clip.words {
-            let facts = try QuoteRange.json(transcript, media: media, first: span.first, last: span.last).object
-            return (ranged(clip, facts), [])
+            found = (ranged(clip, try QuoteRange.json(transcript, media: media, first: span.first, last: span.last).object), [])
+        } else {
+            found = try resolveQuote(clip, quote: clip.quote ?? "", media: media, transcript: transcript)
         }
-        return try resolveQuote(clip, quote: clip.quote ?? "", media: media, transcript: transcript)
+        guard let quoted = found.0, clip.from != nil || clip.to != nil else { return found }
+        return (try movedEdges(quoted, media: media, transcript: transcript), found.1)
+    }
+
+    /// A quote or words range with `from`/`to` given too: those edges move there (snapped out of words like seconds),
+    /// the quote's own range kept as `quoted`.
+    static func movedEdges(_ quoted: Resolved, media: Media, transcript: SourceTranscript) throws -> Resolved {
+        let from = quoted.clip.from ?? quoted.from, to = quoted.clip.to ?? quoted.to
+        guard to > from else {
+            throw ProjectError.invalid(String(format: "from %.2f must be before to %.2f (the quote runs %.2f–%.2f)",
+                                              from, to, quoted.from, quoted.to))
+        }
+        var facts = try QuoteRange.json(transcript, media: media, from: from, to: to).object
+        for key in ["matched", "alternatives", "matches"] { facts[key] = quoted.facts[key] ?? facts[key] }
+        facts["quoted"] = .object(["from": .number(quoted.from), "to": .number(quoted.to)])
+        return Resolved(clip: quoted.clip, from: facts["from"]?.double ?? from, to: facts["to"]?.double ?? to, facts: facts)
     }
 
     static func resolveSeconds(
