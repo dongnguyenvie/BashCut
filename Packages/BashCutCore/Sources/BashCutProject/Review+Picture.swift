@@ -21,8 +21,37 @@ extension TimelineReview {
             issues += blackIssues(project, picture: measured, profile: profile)
             issues += stillIssues(project, picture: measured, profile: profile)
             issues += jumpCutIssues(project, picture: measured, profile: profile)
+            issues += textContrastIssues(project, picture: measured, profile: profile)
         }
         return issues
+    }
+
+    /// Text against the picture behind it, from `review.measure`: under `review.minTextContrast` a warning per item;
+    /// without the limit, the lowest measured ratio as info.
+    static func textContrastIssues(_ project: Project, picture: ReviewPicture, profile: ReviewProfile) -> [ReviewIssue] {
+        let items = Dictionary(project.tracks.flatMap(\.items).map { ($0.id, $0) }) { first, _ in first }
+        let measured = picture.textContrast.filter { items[$0.key] != nil }.sorted { $0.value.ratio < $1.value.ratio }
+        let ratio = { (value: Double) in String(format: "%.2f:1", value) }
+        guard let minimum = profile["minTextContrast"] else {
+            guard let lowest = measured.first, let item = items[lowest.key] else { return [] }
+            return [
+                ReviewIssue(
+                    id: "text-contrast", title: "Lowest text contrast \(ratio(lowest.value.ratio))",
+                    detail: "\"\(item.text.prefix(40))\" measured against the picture behind it; set "
+                        + "review.minTextContrast to judge it.", frame: lowest.value.frame, severity: .info,
+                    facts: ["item": .string(lowest.key), "ratio": fact(lowest.value.ratio)])
+            ]
+        }
+        return measured.filter { $0.value.ratio < minimum }.compactMap { id, value in
+            guard let item = items[id] else { return nil }
+            return ReviewIssue(
+                id: "text-contrast-" + id, title: "Text hard to read on its picture",
+                detail: "\"\(item.text.prefix(40))\" has contrast \(ratio(value.ratio)) against the picture behind it; "
+                    + "the project's minimum is \(ratio(minimum)) (review.minTextContrast).",
+                frame: value.frame,
+                fix: ReviewFix(hint: "Add a background or a stroke of several points, or move the text to a calmer part."),
+                facts: ["ratio": fact(value.ratio), "minTextContrast": .number(minimum)])
+        }
     }
 
     /// Shots on Main against the project's `minShotSeconds`/`maxShotSeconds` (nothing without them). With

@@ -244,7 +244,7 @@ public enum LibraryBuiltIns {
             "color": .string("#000000"), "opacity": .number(0.5), "blur": .number(24), "dy": .number(-6)])
         let templates: [(String, String, String, [String: JSONValue])] = [
             ("stacked-keyword", "Stacked Keyword", "THIS IS A\nVISUAL\nHOOK", [
-                "font": .string("HelveticaNeue-CondensedBlack"), "size": .number(0.11), "strokeWidth": .integer(0),
+                "font": .string("System-CondensedBlack"), "size": .number(0.11), "strokeWidth": .integer(0),
                 "lineHeight": .number(0.98), "uppercase": .bool(true), "shadow": softShadow,
                 "emphasis": .object(["fill": .string("#FFD60A"), "scale": .number(1.7)]),
             ]),
@@ -255,7 +255,7 @@ public enum LibraryBuiltIns {
                 "emphasis": .object(["line": .integer(-1), "fill": .string("#FFFFFF"), "scale": .number(0.42)]),
             ]),
             ("boxed-keyword", "Boxed Keyword", "STEAL THESE\n5\nVISUAL HOOKS", [
-                "font": .string("HelveticaNeue-CondensedBlack"), "size": .number(0.1), "strokeWidth": .integer(0),
+                "font": .string("System-CondensedBlack"), "size": .number(0.1), "strokeWidth": .integer(0),
                 "lineHeight": .number(1), "uppercase": .bool(true), "shadow": softShadow,
                 "emphasis": .object([
                     "fill": .string("#111111"), "scale": .number(2.6),

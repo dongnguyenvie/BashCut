@@ -68,7 +68,7 @@ extension CommandCatalog {
     static let librarySpecs: [CommandSpec] = [
         CommandSpec(
             "library.list", .read,
-            "List library items (Media clips, Audio, Text, Stickers, Effects, Transitions, Filters, Voice) from the open project, "
+            "List library items. Kinds: Media clips, Audio, Text, Stickers, Effects, Transitions, Filters, Voice; from the open project, "
                 + "this Mac, plugins and built-in packs, with usage. Check here before making something new.",
             parameters: [
                 libraryKind, libraryPanel,

@@ -12,12 +12,16 @@ extension CommandCatalog {
         CommandSpec(
             "jobs.wait", .read,
             "Wait until a job's state or step changes, or it finishes, up to timeout seconds; returns the job, "
-                + "changed and timedOut. A finished job returns at once. Use it instead of polling jobs status.",
+                + "changed and timedOut. With done, only when it finishes. A finished job returns at once. Use it "
+                + "instead of polling jobs status. Several job IDs (comma-separated) wait until all have finished: "
+                + "{jobs, finished, timedOut}.",
             parameters: [
-                CommandParameter("job", .string, "Job ID", required: true, cli: .positional),
+                CommandParameter("job", .string, "Job ID, or several comma-separated", required: true, cli: .positional),
                 CommandParameter("timeout", .integer, "Seconds to wait at most",
                                  default: .integer(JobWaitDefaults.seconds), minimum: 1,
                                  maximum: JobWaitDefaults.maximum, cli: .option("timeout")),
+                CommandParameter("done", .boolean, "Return only when the job has finished (or timeout passed), "
+                                 + "not on a step change", default: .bool(false), cli: .flag("done")),
             ]),
         CommandSpec(
             "capabilities.get", .read,
@@ -66,8 +70,9 @@ extension CommandCatalog {
     ]
 }
 
-/// `jobs.wait` bounds (P2-G4): the socket client waits this long plus a margin for the answer.
+/// `jobs.wait` bounds (P2-G4): the socket client waits this long plus a margin for the answer. The maximum keeps
+/// the call inside an agent shell's usual 2-minute command limit.
 public enum JobWaitDefaults {
     public static let seconds = 25
-    public static let maximum = 30
+    public static let maximum = 110
 }

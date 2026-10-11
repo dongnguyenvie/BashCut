@@ -38,8 +38,11 @@ extension TimelineReview {
                                 format: "The clip %@ %.2f s into “%@” (%.2f–%.2f s in the source).",
                                 edge.edge == "in" ? "starts" : "ends", into, word.text, word.start, word.end),
                             frame: edge.edge == "in" ? clip.at : max(clip.at, clip.end - 1), severity: .error,
-                            fix: ReviewFix(hint: "Trim the edge to a word boundary (transcript words --heard gives the "
-                                + "edges), or cover the cut with other sound and say why.")))
+                            fix: ReviewFix(hint: String(
+                                format: "Move the %@ edge to %.2f s (before the word) or %.2f s (after it) in the source "
+                                    + "(a plan.cut clip's %@), or cover the cut with other sound and say why.",
+                                edge.edge, word.start, word.end, edge.edge == "in" ? "from" : "to")),
+                            facts: ["before": fact(word.start), "after": fact(word.end), "edge": .string(edge.edge)]))
                 }
             }
         }

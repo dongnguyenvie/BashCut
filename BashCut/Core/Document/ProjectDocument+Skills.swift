@@ -29,7 +29,21 @@ extension ProjectDocument {
                 guard let text = knowledge.text(of: ref),
                       case .object(var fields)? = document.skillsJSON(origin).first(where: { $0.name == id })
                 else { continue }
-                fields["text"] = .string(text)
+                let sections = SkillFrontMatter.sections(text)
+                fields["sections"] = .array(sections.map { .string($0.heading) })
+                if let asked = arguments.optionalString("section") {
+                    let wanted = asked.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
+                    let picked = sections.filter { section in
+                        wanted.contains { !$0.isEmpty && section.heading.lowercased().contains($0) }
+                    }
+                    guard !picked.isEmpty else {
+                        throw RPCFailure(-32602, "No section of \(id) matches \(asked); its sections: "
+                            + sections.map(\.heading).joined(separator: " | "))
+                    }
+                    fields["text"] = .string(picked.map(\.text).joined(separator: "\n"))
+                } else {
+                    fields["text"] = .string(text)
+                }
                 document.logSkillRead(id, origin: origin, author: author)
                 return .object(fields)
             }

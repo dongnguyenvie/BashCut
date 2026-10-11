@@ -108,6 +108,6 @@ struct CommandCallerTests {
         #expect(UnixRPCClient.readSeconds(RPCRequest(method: "jobs.status")) == 10)
         #expect(UnixRPCClient.readSeconds(RPCRequest(method: "jobs.wait", params: ["timeout": .integer(5)])) == 15)
         #expect(UnixRPCClient.readSeconds(RPCRequest(method: "jobs.wait")) == JobWaitDefaults.seconds + 10)
-        #expect(UnixRPCClient.readSeconds(RPCRequest(method: "jobs.wait", params: ["timeout": .integer(99)])) == 40)
+        #expect(UnixRPCClient.readSeconds(RPCRequest(method: "jobs.wait", params: ["timeout": .integer(999)])) == JobWaitDefaults.maximum + 10)
     }
 }

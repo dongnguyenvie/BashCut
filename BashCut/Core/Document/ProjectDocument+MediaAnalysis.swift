@@ -35,6 +35,7 @@ extension ProjectDocument {
             return .object(["job": .string(running.id), "state": .string("running")])
         }
         let selected = try mediaID.map { [try analysisSource($0).media] } ?? project.media.filter { !$0.isImage }
+        try requireConverted(selected)
         let workspace = settings.workspace
         let id = jobs.start("media.analyze", author: author, work: { reporter in
             var results: [JSONValue] = []

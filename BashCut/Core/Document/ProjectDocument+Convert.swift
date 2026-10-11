@@ -48,6 +48,24 @@ extension ProjectDocument {
         return result
     }
 
+    /// The running conversion of `media`, if any.
+    func conversionJob(of media: Media) -> String? {
+        let label = URL(fileURLWithPath: media.path).lastPathComponent
+        return jobs.jobs.first { $0.method == Self.convertMethod && $0.isActive && $0.detail == label }?.id
+    }
+
+    /// Refuses work that decodes the picture of media still being converted (its file is AV1 or VP9 until the job
+    /// lands): busy with the job to wait for, instead of empty frames or a one-shot analysis.
+    func requireConverted(_ media: [Media]) throws {
+        guard let (media, job) = media.lazy.compactMap({ item in self.conversionJob(of: item).map { (item, $0) } }).first
+        else { return }
+        throw RPCFailure(
+            -32003, "Media \(media.id) is being converted to a format this Mac decodes (job \(job)): jobs wait \(job) "
+                + "--done, then ask again", category: .busyRunning,
+            data: ["job": .string(job), "media": .string(media.id),
+                   "remediation": .object(["command": .string("jobs.wait"), "job": .string(job)])])
+    }
+
     /// Points media `mediaID` at its converted copy (one undo step), then queues a proxy if the copy needs one.
     private func useConvertedCopy(mediaID: String, copy: URL, root: URL, author: Author) {
         guard let index = project.media.firstIndex(where: { $0.id == mediaID }) else { return }

@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 203 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 206 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -204,10 +204,10 @@ List project media. With analysis, each media also has analysis: measured false,
 
 ### `bashcut media import <path> [--kind <kind>] [--place] [--track <track>] [--at-frame <atFrame>] [--origin <origin>] [--license <license>] [--source <source>] [--author <author>] --base-rev <baseRev>`
 
-Add a media file (path relative to the project or absolute): video, audio or a still image (PNG keeps transparency; placed for 3 s, trims to any length). With place, also put it on a layer like Import. A file already in the project, unchanged, reuses its media and returns existing true. origin, license, source and author record where it came from (license is free text, or a JSON object with an open id and the facts you know: commercial, redistribute, attributionRequired, attribution; stored as given). proxy reports the preview copy: converting with a job when this Mac cannot decode the video (AV1, VP9) and BashCut converts it to H.264 in media/converted.
+Add a media file (path relative to the project or absolute): video, audio or a still image (PNG keeps transparency; placed for 3 s, trims to any length). A folder adds every video, audio and image file directly inside it, in name order, as one edit: {files [{path, media, kind, seconds, existing}], added}; import a folder once rather than file by file. With place (one file), also put it on a layer like Import. A file already in the project, unchanged, reuses its media and returns existing true. origin, license, source and author record where it came from (license is free text, or a JSON object with an open id and the facts you know: commercial, redistribute, attributionRequired, attribution; stored as given). proxy reports the preview copy: converting with a job when this Mac cannot decode the video (AV1, VP9) and BashCut converts it to H.264 in media/converted.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_media_import`
-- `path`: string, required, path. Media file path
+- `path`: string, required, path. Media file or folder path
 - `kind`: string, one of video, audio, image. Media kind; from the file type by default
 - `place`: boolean, default false. Also place it on a layer
 - `track`: string. Layer ID for place; defaults to the main layer (music for audio)
@@ -332,7 +332,7 @@ Correct the cut list of an analysed media: add cuts or remove candidates at sour
 
 ### `bashcut media transcribe [--media <media>] [--force] [--provider <provider>] [--request-id <requestId>] [--dry-run]`
 
-Transcribe whole source media once with a captions.transcribe provider and keep the transcript (by file content, in .bashcut/cache/transcripts), without placing anything on the timeline. Read it with media.transcript; captions.generate places captions from it without transcribing again, and transcript.words --heard maps its words through the clips. A transcript in the project's content language (by the given provider) is reused unless force. The job's result lists each media with status transcribed, reused or failed and its overview.
+Transcribe whole source media once and keep the transcript. A captions.transcribe provider makes it, stored by file content in .bashcut/cache/transcripts; nothing is placed on the timeline. Read it with media.transcript; captions.generate places captions from it without transcribing again, and transcript.words --heard maps its words through the clips. A transcript in the project's content language (by the given provider) is reused unless force. The job's result lists each media with status transcribed, reused or failed and its overview.
 
 - Mode: read · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_media_transcribe`
 - `media`: string. Project media ID; every video and audio media by default
@@ -417,6 +417,16 @@ What the footage holds, from one call (read only; capture facts are read once pe
 - Mode: read · Runs: immediately · MCP: `bashcut_media_inventory`
 - `locationGrid`: number, 0…10. Degrees that group places (default 0.001, about 100 m)
 
+### `bashcut media digest [--media <media>] [--from <from>] [--to <to>] [--as <as>]`
+
+Footage facts in one read. A header (seconds, size, speech share, counts), then in time order the described shots (`shot FROM-TO size angle move | subjects | note | best T`, from media describe), each transcript phrase (`START text`, with `[again T]` when a phrase within 120 s says nearly the same words: a possible retake) and the measured cuts no description covers. Whether a line is a retake or a cue to the camera is yours to judge. Reads stored analysis, descriptions and transcripts only (run media analyze, media transcribe and media describe first). The whole project's digest is also written to analysis/digest.json. as json returns {media, name, seconds, size, cuts, speechSeconds, shots [{from, to, size, angle, move, subjects, note, best}], phrases [[start, end, text, againAt?]]}.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_media_digest`
+- `media`: string. Only this media
+- `from`: number, 0…1000000. From this source second
+- `to`: number, 0…1000000. To this source second
+- `as`: string, one of text, json. text (default) or json
+
 ## review
 
 ### `bashcut review run [--since-rev <sinceRev>] [--min-severity <minSeverity>] [--summary]`
@@ -430,7 +440,7 @@ Review the timeline before export: issues {id, kind, severity error|warning|info
 
 ### `bashcut review measure [--picture <picture>] [--plugins <plugins>]`
 
-Run the measured review for this revision and keep it, so review.run includes it: render the timeline small (two frames a second and both sides of every hard cut on Main, proxies allowed) for black or empty picture, frozen picture, long static shots and jump cuts, and run every enabled plugin review.check side by side (each at most 30 s; a failing or slow check becomes an info issue). Plugin issues carry source (the plugin ID) and IDs prefixed with the provider. A project turns checks off with review.disabledChecks (plugin or provider IDs; timeline apply setProjectProperties). The job's result has the sample count, the plugin checks that ran and the measured issues; measure again after an edit.
+Run the measured review for this revision and keep it, so review.run includes it: render the timeline small (two frames a second and both sides of every hard cut on Main, proxies allowed) for black or empty picture, frozen picture, long static shots and jump cuts, the contrast of every title and up to eight captions against the picture behind them (review.minTextContrast, a WCAG ratio; unset: the lowest as info), and run every enabled plugin review.check side by side (each at most 30 s; a failing or slow check becomes an info issue). Plugin issues carry source (the plugin ID) and IDs prefixed with the provider. A project turns checks off with review.disabledChecks (plugin or provider IDs; timeline apply setProjectProperties). The job's result has the sample count, the plugin checks that ran and the measured issues; measure again after an edit.
 
 - Mode: read · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_review_measure`
 - `picture`: boolean. Measure the picture (default true)
@@ -562,7 +572,7 @@ A chapter list from the section markers (00:00 first; an Intro at 0 when no mark
 
 ### `bashcut export start --preset <preset> --name <name> [--output-dir <directory>] [--include-srt] [--normalize-audio] [--bitrate <bitrate>]`
 
-Request a background video export; the user approves it in the app first. Approved exports queue behind a running one. Vertical presets default under the platform's recompression line (platforms list: bitrateMbps); bitrate overrides it. Feed shapes: feed-4x5 (1080×1350), square, portrait-3x4 (1080×1440). The export status reports the bitrate written. An agent's export with any preset but quick-draft needs a draft audit with verdict pass of the current timeline (run append audit --point draft) or the user's G5 approval at this revision: else audit_missing.
+Request a background video export; the user approves it in the app first. Approved exports queue behind a running one. Vertical presets default under the platform's recompression line (platforms list: bitrateMbps); bitrate overrides it. Feed shapes: feed-4x5 (1080×1350), square, portrait-3x4 (1080×1440). The export status reports the bitrate written. Started at once (no approval needed), the result has job: wait with jobs wait JOB --done. An agent's export with any preset but quick-draft needs a draft audit with verdict pass of the current timeline (run append audit --point draft) or the user's G5 approval at this revision: else audit_missing.
 
 - Mode: privileged · Runs: after the user approves in the app · MCP: `bashcut_export_start`
 - `preset`: string, required, one of tiktok, reels, shorts, feed-4x5, square, portrait-3x4, youtube-1080, youtube-4k, quick-draft, prores. Export preset
@@ -755,7 +765,7 @@ Do what a user does in a plugin view: click a button, change an input, submit a 
 
 ### `bashcut plugins invoke <capability> [--provider <provider>] [--params <params>]`
 
-Run a plugin capability directly with raw parameters and return the provider's raw result, for capabilities without their own command (prefer voice speak, captions generate, beats detect … when one exists). Files go to the returned outputDirectory. Plugins call this from their views and actions for capabilities listed in their manifest's uses.
+Run a plugin capability directly with raw parameters. It returns the provider's raw result, for capabilities without their own command (prefer voice speak, captions generate, beats detect … when one exists). Files go to the returned outputDirectory. Plugins call this from their views and actions for capabilities listed in their manifest's uses.
 
 - Mode: edit · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_plugins_invoke`
 - `capability`: string, required. Capability ID, such as voice.synthesize
@@ -968,13 +978,14 @@ Read one job (plugin call or export), or all recent jobs when job is omitted. Ea
 - Mode: read · Runs: immediately · MCP: `bashcut_jobs_status`
 - `job`: string. Job ID
 
-### `bashcut jobs wait <job> [--timeout <timeout>]`
+### `bashcut jobs wait <job> [--timeout <timeout>] [--done]`
 
-Wait until a job's state or step changes, or it finishes, up to timeout seconds; returns the job, changed and timedOut. A finished job returns at once. Use it instead of polling jobs status.
+Wait until a job's state or step changes, or it finishes, up to timeout seconds; returns the job, changed and timedOut. With done, only when it finishes. A finished job returns at once. Use it instead of polling jobs status. Several job IDs (comma-separated) wait until all have finished: {jobs, finished, timedOut}.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_jobs_wait`
-- `job`: string, required. Job ID
-- `timeout`: integer, 1…30, default 25. Seconds to wait at most
+- `job`: string, required. Job ID, or several comma-separated
+- `timeout`: integer, 1…110, default 25. Seconds to wait at most
+- `done`: boolean, default false. Return only when the job has finished (or timeout passed), not on a step change
 
 ### `bashcut jobs cancel <job>`
 
@@ -1088,12 +1099,13 @@ Stop at a gate: with ask, the user sees the summary and attachments in BashCut a
 - `summary`: string, required. What the user is asked to approve
 - `attach`: string. Comma-separated files to show (sheets, stills); relative to the project
 
-### `bashcut checkpoint status [<id>]`
+### `bashcut checkpoint status [<id>] [--wait <wait>]`
 
-A checkpoint of this session (default the last): status awaiting_user, approved, changes, rejected, skipped, notified or withdrawn, the user's note, the revision it covers and stale when the project has changed since.
+A checkpoint of this session (default the last): status awaiting_user, approved, changes, rejected, skipped, notified or withdrawn, the user's note, the revision it covers and stale when the project has changed since. With wait, the call returns as soon as the user answers, or after that many seconds: wait instead of polling.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_checkpoint_status`
 - `id`: string. Checkpoint ID
+- `wait`: integer, 1…110. Seconds to wait for the user's answer
 
 ## run
 
@@ -1146,6 +1158,27 @@ A script against the words heard on the timeline (stored transcripts, else capti
 - Mode: read · Runs: immediately · MCP: `bashcut_script_check`
 - `beats`: array. Beats [{id, text, section}] as JSON
 - `text`: string. The whole script as one beat
+
+## plan
+
+### `bashcut plan check [<cut.json>]`
+
+Check the edit list before building it, without changing anything: each clip's source range (quotes resolved in the stored transcript, edges inside a word or sentence, how much of the quote was heard), where it lands, its described shot and orientation; each title's chars per second and textShare (its smallest line as a share of the short side, the measure of review.minTextSize); problems {id, severity error|warning|info, entry, detail, facts} (quote not found, unknown media, source played twice, same media and size back to back, media against the canvas shape, stroke-units, review-profile-unset); and the review of the edit as it would be (the project's review profile; picture and loudness need a render and are not measured). ok is false while an error stands. plan.cut is {clips: [{id, media, quote | words FIRST-LAST | from/to seconds (whole media when none; seconds for a still), section, speed, volumeDb, role (speech, broll, underVO; speech by default for quote or words), cover: [{media, from, seconds}] (pictures shown over the clip's sound, muted, the last filling the rest)}], titles: [{id, text, clip or section (+ offset seconds) | at, seconds (to the end of its clip or section when left out; needed with at), preset, style}], captions: {from: speech, wordStyle highlight|karaoke|reveal, preset, style} (captions from the stored transcripts of the clips' media, cut with them), music: {media, from, volumeDb, duckDb (level under speech)}}. A title's preset is a renderer preset (bold-outline, cinematic-serif, keyword-sticker, place-card, hook-title, chapter-card) or a library text-preset ID (templates such as stacked-keyword, boxed-keyword, headline-subline, two-tone-pop; library list --kind text-preset); its style gives text style fields over the preset's: font (a PostScript name or System-[Condensed|Compressed]Bold|Heavy|Black; fonts list --covers), size (share of the short side), fill, stroke, strokeWidth (points, 0–50), positionX, positionY, align, uppercase, lineHeight, tracking, background {color, opacity, padding, radius}, shadow {color, opacity, blur, dx, dy}; other keys are item properties. Over bright or busy footage give a stroke or a background. A font missing letters of the content language is an error.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_plan_check`
+- `cut`: object. The list {clips, titles, music} (CLI: path to cut.json); plan.cut when omitted
+
+### `bashcut plan apply [<cut.json>] [--dry-run] [--sheet] [--why <why>] [--evidence <evidence>] --base-rev <baseRev>`
+
+Build the edit list as one undoable edit: clips on Main in order (sound linked on the dialogue layer), section markers, titles and the music bed, each tagged planCut. Applying again replaces only what an earlier apply built (changes made to those items since are lost; other layers are kept but not re-timed); Main must hold nothing else. Refuses while plan.check has an error. With cut, the list is also saved as plan.cut in the same edit. dryRun returns the check. The result has the review's errors and warnings of the built edit (no info rows; picture and loudness need review measure); sheet adds the storyboard (timeline sheet --cuts --text) of the new revision. plan.cut is {clips: [{id, media, quote | words FIRST-LAST | from/to seconds (whole media when none; seconds for a still), section, speed, volumeDb, role (speech, broll, underVO; speech by default for quote or words), cover: [{media, from, seconds}] (pictures shown over the clip's sound, muted, the last filling the rest)}], titles: [{id, text, clip or section (+ offset seconds) | at, seconds (to the end of its clip or section when left out; needed with at), preset, style}], captions: {from: speech, wordStyle highlight|karaoke|reveal, preset, style} (captions from the stored transcripts of the clips' media, cut with them), music: {media, from, volumeDb, duckDb (level under speech)}}. A title's preset is a renderer preset (bold-outline, cinematic-serif, keyword-sticker, place-card, hook-title, chapter-card) or a library text-preset ID (templates such as stacked-keyword, boxed-keyword, headline-subline, two-tone-pop; library list --kind text-preset); its style gives text style fields over the preset's: font (a PostScript name or System-[Condensed|Compressed]Bold|Heavy|Black; fonts list --covers), size (share of the short side), fill, stroke, strokeWidth (points, 0–50), positionX, positionY, align, uppercase, lineHeight, tracking, background {color, opacity, padding, radius}, shadow {color, opacity, blur, dx, dy}; other keys are item properties. Over bright or busy footage give a stroke or a background. A font missing letters of the content language is an error.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_plan_apply`
+- `cut`: object. The list {clips, titles, music} (CLI: path to cut.json); plan.cut when omitted
+- `dryRun`: boolean. Check without editing
+- `sheet`: boolean. Also lay the new revision out on a contact sheet
+- `why`: string. Why this edit, in one sentence (up to 500 characters)
+- `evidence`: string. What it rests on, separated by ;
+- `baseRev`: integer, required, ≥ 0. Current project revision from timeline.get
 
 ## selects
 
@@ -1728,18 +1761,19 @@ Put an entry back to how it was before a change from knowledge history: a remove
 
 ### `bashcut skills list [--scope <scope>]`
 
-List skills: this project's, the ones for every project (user), the ones trusted and enabled plugins ship (plugin, read-only, named <plugin-id>:<name>) and the agent kit's (read-only), with whether agents get them (enabled), their description and path.
+List the skills agents can read. Scopes: this project's, the ones for every project (user), the ones trusted and enabled plugins ship (plugin, read-only, named <plugin-id>:<name>) and the agent kit's (read-only), with whether agents get them (enabled), their description and path.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_skills_list`
 - `scope`: string, one of project, user, plugin, kit. Only this scope
 
-### `bashcut skills get <name> [--scope <scope>]`
+### `bashcut skills get <name> [--scope <scope>] [--section <section>]`
 
-Read a skill's SKILL.md. Without scope, the project's skill wins over the one for every project, then a plugin's (<plugin-id>:<name>; with scope plugin a bare name works when one plugin has it), then the kit's. To change a plugin's skill, save a copy with skills save.
+Read a skill's SKILL.md. Without scope, the project's skill wins over the one for every project, then a plugin's (<plugin-id>:<name>; with scope plugin a bare name works when one plugin has it), then the kit's. To change a plugin's skill, save a copy with skills save. sections lists its ## headings; section returns only the sections whose heading contains one of the given words (comma-separated), and still counts as reading the skill.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_skills_get`
 - `name`: string, required. Skill name; a plugin's is <plugin-id>:<name>
 - `scope`: string, one of project, user, plugin, kit. Where to look
+- `section`: string. Only these sections: words of their headings, comma-separated
 
 ### `bashcut skills save <name> <text-file> [--scope <scope>] [--session <session>]`
 
@@ -1791,7 +1825,7 @@ Propose a change to an agent kit skill: the line diff against the kit's SKILL.md
 
 ### `bashcut library list [--kind <kind>] [--panel <panel>] [--tag <tag>] [--scope <scope>] [--created-by <createdBy>] [--pack <pack>] [--query <query>]`
 
-List library items (Media clips, Audio, Text, Stickers, Effects, Transitions, Filters, Voice) from the open project, this Mac, plugins and built-in packs, with usage. Check here before making something new.
+List library items. Kinds: Media clips, Audio, Text, Stickers, Effects, Transitions, Filters, Voice; from the open project, this Mac, plugins and built-in packs, with usage. Check here before making something new.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_library_list`
 - `kind`: string, one of audio, text-preset, sticker, effect-preset, transition-preset, look, voice, clip. Item kind

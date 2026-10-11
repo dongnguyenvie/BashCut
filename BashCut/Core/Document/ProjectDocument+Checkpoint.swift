@@ -78,8 +78,17 @@ extension ProjectDocument {
         }
         handle("checkpoint.status") { document, arguments, _ in
             let id = arguments.optionalString("id")
-            guard let request = id.map({ id in document.checkpoints.last { $0.id == id } }) ?? document.checkpoints.last else {
+            let find = { id.map { id in document.checkpoints.last { $0.id == id } } ?? document.checkpoints.last }
+            guard var request = find() else {
                 throw RPCFailure(-32602, id.map { "No checkpoint \($0) in this session" } ?? "No checkpoint in this session")
+            }
+            // With wait, hold the call while the user has not answered, instead of the agent polling.
+            let deadline = ContinuousClock.now + .seconds(arguments.optionalInt("wait") ?? 0)
+            let checkpointID = request.id
+            while request.status == .awaitingUser, ContinuousClock.now < deadline {
+                try await Task.sleep(for: .milliseconds(250))
+                guard let next = document.checkpoints.last(where: { $0.id == checkpointID }) else { break }
+                request = next
             }
             return request.json(currentRevision: document.project.revision)
         }

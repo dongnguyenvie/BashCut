@@ -99,8 +99,10 @@ extension CommandCatalog {
         raw insert/move operations that overlap are rejected.
         Edits need --base-rev N from the latest read. One request is one atomic apply call.
         Changes appear in the UI and can be undone.
-        Job commands return a job ID; `bashcut jobs wait JOB_ID` returns when it moves on (repeat until it ends).
-        Their result is one undoable edit.
+        Job commands return a job ID; `bashcut jobs wait JOB_ID --done --timeout 100` returns when it ends;
+        `jobs wait ID1,ID2,…` waits for several at once. Their result is one undoable edit.
+        Each call is a turn: batch (`media import FOLDER`; sheets, not `ui frame` one by one; `checkpoint status
+        --wait 100`; `context get` on start, not per command). Build a cut as plan.cut: `plan check`, then `plan apply`.
         Installing plugins is user-only. Add `--format text` to print text results without JSON quoting.
         Change the canvas of the open project with `bashcut project format --canvas landscape` (portrait, landscape,
         square); text sizes follow the short side, so titles keep their look. New projects fit each clip inside the

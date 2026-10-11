@@ -76,7 +76,9 @@ import Foundation
             return
         }
         let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+        // Pretty in a terminal; compact when read by a program or an agent, where indentation only costs tokens.
+        encoder.outputFormatting = isatty(STDOUT_FILENO) == 1
+            ? [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes] : [.sortedKeys, .withoutEscapingSlashes]
         var data = try encoder.encode(response.result ?? .null)
         data.append(10)
         FileHandle.standardOutput.write(data)

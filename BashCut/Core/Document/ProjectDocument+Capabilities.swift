@@ -291,7 +291,13 @@ extension ProjectDocument {
         }
         handle("capabilities.get") { document, arguments, _ in try await document.capabilitiesJSON(arguments) }
         handle("jobs.wait") { document, arguments, _ in
-            try await document.waitForJob(try arguments.string("job"), seconds: try arguments.int("timeout"))
+            let ids = try arguments.string("job").split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty }
+            let seconds = try arguments.int("timeout")
+            guard ids.count == 1 else { return try await document.waitForJobs(ids, seconds: seconds) }
+            return arguments.bool("done")
+                ? try await document.waitForJobDone(ids[0], seconds: seconds)
+                : try await document.waitForJob(ids[0], seconds: seconds)
         }
         handleAuthored("jobs.cancel") { document, arguments, _ in
             guard document.jobs.cancel(try arguments.string("job")) else {
@@ -420,15 +426,6 @@ extension ProjectDocument {
         fields["commands"] = .array(
             CommandCatalog.capabilities.filter { $0.value == report.capability }.keys.sorted().map(JSONValue.string))
         return .object(fields)
-    }
-
-    /// `jobs.wait` (P2-G4): the job once its state or step changes, it finishes, or `seconds` pass.
-    func waitForJob(_ id: String, seconds: Int) async throws -> JSONValue {
-        guard jobs.job(id) != nil else { throw RPCFailure(-32602, "Unknown job") }
-        guard let (job, changed) = try await jobs.wait(id, for: .seconds(seconds)) else {
-            throw RPCFailure(-32602, "The job is gone: the project was closed or switched")
-        }
-        return .object(["job": job.json, "changed": .bool(changed), "timedOut": .bool(job.isActive && !changed)])
     }
 
     /// The job an earlier request with the same `requestID` started (P2-G4), as `{job, state, reused}`.

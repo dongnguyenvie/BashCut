@@ -1887,6 +1887,12 @@
           "minimum" : 0,
           "type" : "number"
         },
+        "minTextContrast" : {
+          "description" : "minTextContrast; unset: no check, or the measured value as info",
+          "maximum" : 21,
+          "minimum" : 1,
+          "type" : "number"
+        },
         "minTextSize" : {
           "description" : "Text smaller than this share of the frame's short side is flagged; unset: no check, or the measured value as info",
           "maximum" : 0.5,

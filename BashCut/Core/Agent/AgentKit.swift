@@ -146,8 +146,9 @@ public struct AgentKitInstall: Sendable {
         return installed
     }
 
-    /// A skills-only Claude Code plugin for BashCut's own Claude tabs (`--plugin-dir`). The tabs already get the
-    /// BashCut MCP server with their session token, so the kit's own `.mcp.json` is left out.
+    /// A Claude Code plugin of the kit's skills and sub-agents (`agents/`) for BashCut's own Claude tabs
+    /// (`--plugin-dir`). The tabs already get the BashCut MCP server with their session token, so the kit's own
+    /// `.mcp.json` is left out.
     public func claudePlugin(for kit: AgentKit) throws -> URL {
         let manager = FileManager.default
         let folder = support.appendingPathComponent("agent-kit-claude", isDirectory: true)
@@ -160,6 +161,13 @@ public struct AgentKitInstall: Sendable {
         let data = try JSONSerialization.data(withJSONObject: manifest, options: [.sortedKeys])
         try data.write(to: manifestFolder.appendingPathComponent("plugin.json"), options: .atomic)
         try Self.link(folder.appendingPathComponent("skills"), to: kit.skillsFolder)
+        let agents = kit.root.appendingPathComponent("agents", isDirectory: true)
+        let agentsLink = folder.appendingPathComponent("agents")
+        if manager.fileExists(atPath: agents.path) {
+            try Self.link(agentsLink, to: agents)
+        } else if Self.isLink(agentsLink) {
+            try? manager.removeItem(at: agentsLink)
+        }
         return folder
     }
 

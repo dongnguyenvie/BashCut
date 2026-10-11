@@ -15,11 +15,24 @@ extension ProjectDocument {
     /// The stored transcript of `mediaID` for its file as it is now, or nil.
     func storedTranscript(_ mediaID: String) async throws -> SourceTranscript? {
         let source = try analysisSource(mediaID)
-        let key = try await Self.transcriptKey(source.url)
-        guard let record = ProjectCache.record(SourceTranscript.self, .transcripts, key: key, projectRoot: source.root),
-            record.version == SourceTranscript.version, record.key == key
-        else { return nil }
-        return record
+        var urls = [source.url]
+        // A converted media (AV1, VP9 → H.264) keeps the sound and timing of its original: a transcript made from the
+        // original before the conversion finished still holds.
+        if let original = source.media.fields["originalPath"]?.string,
+            let url = try? MediaPathResolver.resolve(original, projectRoot: source.root, workspaceRoot: settings.workspace),
+            url != source.url, FileManager.default.fileExists(atPath: url.path)
+        {
+            urls.append(url)
+        }
+        for url in urls {
+            let key = try await Self.transcriptKey(url)
+            if let record = ProjectCache.record(SourceTranscript.self, .transcripts, key: key, projectRoot: source.root),
+                record.version == SourceTranscript.version, record.key == key
+            {
+                return record
+            }
+        }
+        return nil
     }
 
     /// The stored transcript when it is in the content language and, when `provider` is given, made by it (the

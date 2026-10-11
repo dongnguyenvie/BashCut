@@ -75,7 +75,7 @@ extension ProjectDocument {
                 x: (bounds["x"]?.double ?? 0) / width, y: (bounds["y"]?.double ?? 0) / height,
                 width: (bounds["width"]?.double ?? 0) / width, height: (bounds["height"]?.double ?? 0) / height)
             if let first = with[at], let second = without[at],
-                let measured = MediaStills.contrast(withText: first, without: second, rect: rect)
+                let measured = MediaStills.contrast(withText: first, without: second, rect: rect, plate: plated(fields["id"]?.string))
             {
                 fields["contrast"] = .object([
                     "ratio": .number((measured.ratio * 100).rounded() / 100), "frame": .integer(at),
@@ -90,6 +90,14 @@ extension ProjectDocument {
             }
             return .object(fields)
         }
+    }
+
+    /// Whether text item `id` stands on its own box (`textStyle.background` at opacity 0.5 or more).
+    func plated(_ id: String?) -> Bool {
+        guard let id, let item = project.tracks.flatMap(\.items).first(where: { $0.id == id }),
+            let box = item["textStyle"]?.object["background"]?.object
+        else { return false }
+        return (box["opacity"]?.double ?? 1) >= 0.5
     }
 
     /// Before and after in one grid (P0-B5): the frame without colour or the source frame, next to the edit.
@@ -183,6 +191,13 @@ extension ProjectDocument {
     }
 
     func images(of snapshot: CompositionSnapshot, frames: [Int], maximumSide: Int) async throws -> [Int: CGImage] {
+        // Like ui.frame: video this Mac cannot decode (AV1, VP9) is an error, never handed to the image generator,
+        // whose asset reader raises an Objective-C exception on it and takes the app down.
+        var undecodable: [UndecodableMedia] = []
+        for frame in frames {
+            for media in snapshot.undecodable(at: frame) where !undecodable.contains(media) { undecodable.append(media) }
+        }
+        if !undecodable.isEmpty { throw UndecodableMediaError(undecodable) }
         let generator = AVAssetImageGenerator(asset: snapshot.composition)
         generator.videoComposition = snapshot.videoComposition
         generator.appliesPreferredTrackTransform = true

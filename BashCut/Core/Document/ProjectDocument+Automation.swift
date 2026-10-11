@@ -31,6 +31,7 @@ extension ProjectDocument {
         registerMediaDescriptionCommands()
         registerMediaStillsCommands()
         registerMediaInventoryCommands()
+        registerMediaDigestCommands()
         registerReviewTimingCommands()
         registerTimelineStillsCommands()
         registerColorMeasureCommands()
@@ -42,6 +43,7 @@ extension ProjectDocument {
         registerPlanCommands()
         registerWorkflowCommands()
         registerSelectsCommands()
+        registerPlanCutCommands()
         registerVariantCommands()
         registerPackagingCommands()
         registerStorageCommands()
@@ -259,6 +261,8 @@ extension ProjectDocument {
                     name, preset: preset, directory: directory, includeSubRip: includeSubRip, reserved: reserved)
                 throw RPCFailure(-32602, "\(name) is already exported or queued; use another name such as \(free)")
             }
+            // Filled when the export starts at once (auto-approved), so the caller can `jobs wait --done` on it.
+            let started = StartedJob()
             let approval = try document.queuePrivilegedApproval(
                 method: "export.start", author: author,
                 arguments: [
@@ -269,14 +273,16 @@ extension ProjectDocument {
                 ]
             ) { [weak document] in
                 guard let document else { throw RPCFailure(-32000, "Editor closed") }
-                try document.startExportAuthorized(
+                started.id = try document.startExportAuthorized(
                     name: name, preset: preset, directory: directory, includeSubRip: includeSubRip,
                     normalizeAudio: normalizeAudio, author: author, videoBitRate: bitRate)
             }
             if !approval.autoApproved {
                 document.message = String(localized: "Waiting for approval: export.start")
             }
-            return approval.json(output: output)
+            var json = approval.json(output: output).object
+            if let job = started.id { json["job"] = .string(job) }
+            return .object(json)
         }
         handleAuthored("export.otio") { document, arguments, author in
             let (name, directory) = try document.exportDestination(arguments)

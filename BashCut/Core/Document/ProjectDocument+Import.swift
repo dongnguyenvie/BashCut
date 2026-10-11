@@ -72,7 +72,7 @@ extension ProjectDocument {
             }
             let path = try arguments.string("path")
             let url = URL(fileURLWithPath: path, relativeTo: root).standardizedFileURL
-            guard FileManager.default.fileExists(atPath: url.path) else { throw RPCFailure(-32602, "No file at \(url.path)") }
+            if try Self.isFolder(url) { return try await document.importFolder(url, root: root, arguments: arguments, author: author) }
             let kind = arguments.optionalString("kind") ?? Self.kind(of: url)
             let base = try arguments.int("baseRev")
             var imported = try await Self.importedMedia(url: url, kind: kind, projectFPS: document.project.fps, root: root)
@@ -121,6 +121,70 @@ extension ProjectDocument {
             }
             return .object(result)
         }
+    }
+
+    /// Whether `url` is a folder; throws when nothing is there.
+    static func isFolder(_ url: URL) throws -> Bool {
+        var isFolder: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isFolder) else {
+            throw RPCFailure(-32602, "No file at \(url.path)")
+        }
+        return isFolder.boolValue
+    }
+
+    /// `media.import` of a folder: every video, audio and image file directly inside it, in name order, as one edit
+    /// (files already in the project are reused); nothing is placed.
+    func importFolder(_ folder: URL, root: URL, arguments: CommandArguments, author: Author) async throws -> JSONValue {
+        guard !arguments.bool("place") else { throw RPCFailure(-32602, "place takes one file; import the folder, then place") }
+        let files = try FileManager.default.contentsOfDirectory(
+            at: folder, includingPropertiesForKeys: [.isRegularFileKey], options: [.skipsHiddenFiles]
+        ).filter { url in
+            guard (try? url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true,
+                let type = UTType(filenameExtension: url.pathExtension)
+            else { return false }
+            return type.conforms(to: .audiovisualContent) || type.conforms(to: .image)
+        }.sorted { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending }
+        guard !files.isEmpty else { throw RPCFailure(-32602, "No video, audio or image files in \(folder.path)") }
+        let (license, provenance) = Self.mediaRights(arguments)
+        let forcedKind = arguments.optionalString("kind")
+        var planner = LayerPlanner(project)
+        var rows: [JSONValue] = []
+        var added: [String] = []
+        for url in files {
+            let kind = forcedKind ?? Self.kind(of: url)
+            var imported: (media: Media, frames: Int)
+            do {
+                let result = try await Self.importedMedia(url: url, kind: kind, projectFPS: project.fps, root: root)
+                imported = (result.media, result.frames)
+            } catch {
+                rows.append(.object(["path": .string(url.lastPathComponent), "error": .string(error.localizedDescription)]))
+                continue
+            }
+            let existing = planner.project.existingMedia(like: imported.media)
+            if let existing {
+                imported.media = existing
+                if license != nil || provenance != nil {
+                    try planner.add([.setMediaRights(media: existing.id, license: license, provenance: provenance)])
+                }
+            } else {
+                if let license { imported.media.fields["license"] = license }
+                if let provenance { imported.media.fields["provenance"] = provenance }
+                try planner.add([.addMedia(imported.media)])
+                added.append(imported.media.id)
+            }
+            rows.append(.object([
+                "path": .string(url.lastPathComponent), "media": .string(imported.media.id), "kind": .string(imported.media.kind),
+                "seconds": .number((imported.media.durationSeconds * 100).rounded() / 100), "existing": .bool(existing != nil),
+            ]))
+        }
+        DebugLog.write("import", "folder \(folder.lastPathComponent): \(files.count) files, \(added.count) new (automation)")
+        let revision = try commitPlan(planner, label: "Import folder", author: author, baseRevision: try arguments.int("baseRev"))
+        let proxies = added.isEmpty ? [] : (try? await requestProxies(mediaIDs: added, author: author)) ?? []
+        if !added.isEmpty { emitMediaImported(added, author: author) }
+        return .object([
+            "rev": .integer(revision), "files": .array(rows), "added": .integer(added.count),
+            "converting": .array(proxies.filter { $0.object["status"]?.string == "converting" }),
+        ])
     }
 
     /// `license` (text, or a JSON object) and `provenance` from `media import`'s rights options; nil when not given.

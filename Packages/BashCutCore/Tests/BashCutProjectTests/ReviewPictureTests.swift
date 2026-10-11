@@ -46,6 +46,27 @@ struct ReviewPictureTests {
         #expect(issues.contains { $0.id == "picture-unmeasured" })
     }
 
+    @Test("Text contrast: the lowest as info without a limit; under review.minTextContrast a warning per item")
+    func textContrast() throws {
+        var project = try project([("a", "m", 90)])
+        var titles = Track(id: "titles", kind: "text", role: "overlay")
+        titles.items = [Item(id: "hook", at: 0, duration: 30), Item(id: "cta", at: 60, duration: 30)]
+        titles.items[0]["text"] = .string("HEO RỪNG")
+        titles.items[1]["text"] = .string("Đăng ký")
+        project.tracks.append(titles)
+        var measured = picture(project) { _ in (0.5, 0.2, 0.05) }
+        measured.textContrast = ["hook": .init(ratio: 1.75, frame: 15), "cta": .init(ratio: 6.2, frame: 75)]
+        let bare = TimelineReview.run(project, context: ReviewContext(picture: measured))
+        let note = bare.first { $0.id == "text-contrast" }
+        #expect(note?.severity == .info && note?.frame == 15 && note?.facts["item"] == .string("hook"))
+        project["review"] = .object(["minTextContrast": .number(3)])
+        measured = ReviewPicture(revision: project.revision, interval: measured.interval, samples: measured.samples, cuts: [:])
+        measured.textContrast = ["hook": .init(ratio: 1.75, frame: 15), "cta": .init(ratio: 6.2, frame: 75)]
+        let judged = TimelineReview.run(project, context: ReviewContext(picture: measured))
+        #expect(judged.filter { $0.id.hasPrefix("text-contrast") }.map(\.id) == ["text-contrast-hook"])
+        #expect(judged.first { $0.id == "text-contrast-hook" }?.severity == .warning)
+    }
+
     @Test("Black picture: inside the edit an error with its range; at the end (a fade) info")
     func black() throws {
         let project = try project([("a", "m", 300)])

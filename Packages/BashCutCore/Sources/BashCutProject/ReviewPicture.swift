@@ -35,6 +35,20 @@ public struct ReviewPicture: Sendable, Equatable {
     /// item after the cut.
     public let cuts: [String: Double]
 
+    /// Contrast of a text item against the picture behind it: the WCAG ratio (1–21) and the frame measured.
+    public struct TextContrast: Sendable, Equatable {
+        public let ratio: Double
+        public let frame: Int
+
+        public init(ratio: Double, frame: Int) {
+            self.ratio = ratio
+            self.frame = frame
+        }
+    }
+
+    /// Measured text contrast by item ID.
+    public var textContrast: [String: TextContrast] = [:]
+
     public init(revision: Int, interval: Int, samples: [Sample], cuts: [String: Double]) {
         self.revision = revision
         self.interval = max(1, interval)

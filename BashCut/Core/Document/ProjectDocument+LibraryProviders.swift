@@ -322,12 +322,6 @@ extension ProjectDocument {
     }
 }
 
-/// The ID of a job its `finished` callback needs, set once `start` returns it.
-@MainActor
-private final class StartedJob {
-    var id: String?
-}
-
 private extension Optional {
     func orThrow(_ message: String) throws -> Wrapped {
         guard let self else { throw RPCFailure(-32602, message) }

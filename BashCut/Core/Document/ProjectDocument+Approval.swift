@@ -17,6 +17,12 @@ struct PrivilegedRequest {
     }
 }
 
+/// The ID of a job a closure started: a privileged action that ran at once, or a job its `finished` callback needs.
+@MainActor
+final class StartedJob {
+    var id: String?
+}
+
 extension ProjectDocument {
     func queuePrivilegedApproval(
         method: String, author: Author, arguments: [String: String],

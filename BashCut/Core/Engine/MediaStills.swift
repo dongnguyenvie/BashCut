@@ -55,7 +55,9 @@ public enum MediaStills {
 
     /// Contrast of text against what is behind it, measured: inside `rect` (fractions of the frame from the top-left),
     /// the pixels that differ between the frame with text and without it are the text; their WCAG relative luminance
-    /// in the frame with text against the same pixels without it gives the ratio (1–21). Nil when no pixel changed.
+    /// in the frame with text against the same pixels without it gives the ratio (1–21). Text on its own plate
+    /// (`plate`: a background box) changes the whole box, so the changed pixels split at the middle of their
+    /// luminance: the larger part is the plate, which is what the letters stand on. Nil when no pixel changed.
     public struct Contrast: Sendable, Equatable {
         /// Mean text luminance against the mean of what was behind it.
         public let ratio: Double
@@ -68,7 +70,7 @@ public enum MediaStills {
         public let darkRatio: Double
     }
 
-    public static func contrast(withText: CGImage, without: CGImage, rect: CGRect) -> Contrast? {
+    public static func contrast(withText: CGImage, without: CGImage, rect: CGRect, plate: Bool = false) -> Contrast? {
         let width = withText.width, height = withText.height
         guard let first = pixels(withText, width: width, height: height),
             let second = pixels(without, width: width, height: height)
@@ -86,7 +88,16 @@ public enum MediaStills {
             }
         }
         guard !text.isEmpty else { return nil }
-        let behind = background / Double(text.count)
+        var behind = background / Double(text.count)
+        if plate, let lowest = text.min(), let highest = text.max() {
+            let middle = (lowest + highest) / 2
+            let dark = text.filter { $0 < middle }, light = text.filter { $0 >= middle }
+            if !dark.isEmpty, !light.isEmpty {
+                let (box, letters) = dark.count >= light.count ? (dark, light) : (light, dark)
+                behind = box.reduce(0, +) / Double(box.count)
+                text = letters
+            }
+        }
         let ratio = { (value: Double) in (max(value, behind) + 0.05) / (min(value, behind) + 0.05) }
         let sorted = text.sorted()
         let mean = text.reduce(0, +) / Double(text.count)

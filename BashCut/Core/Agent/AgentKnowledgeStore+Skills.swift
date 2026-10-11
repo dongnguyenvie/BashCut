@@ -256,3 +256,22 @@ extension AgentKnowledgeStore {
         try manager.createSymbolicLink(atPath: link.path, withDestinationPath: "../../.bashcut/skills/\(name)")
     }
 }
+
+extension SkillFrontMatter {
+    /// The `## ` sections of a skill, each with its text up to the next one; the part before the first is "Intro"
+    /// (front matter left out).
+    public static func sections(_ text: String) -> [(heading: String, text: String)] {
+        var body = Substring(text)
+        if body.hasPrefix("---\n"), let end = body.dropFirst(4).range(of: "\n---\n") { body = body[end.upperBound...] }
+        var sections: [(heading: String, text: String)] = [("Intro", "")]
+        var inFence = false
+        for line in body.split(separator: "\n", omittingEmptySubsequences: false) {
+            if line.hasPrefix("```") { inFence.toggle() }
+            if !inFence, line.hasPrefix("## ") {
+                sections.append((String(line.dropFirst(3)).trimmingCharacters(in: .whitespaces), ""))
+            }
+            sections[sections.count - 1].text += line + "\n"
+        }
+        return sections.filter { !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+    }
+}
