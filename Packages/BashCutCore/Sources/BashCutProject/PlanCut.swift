@@ -62,6 +62,19 @@ public enum PlanCut {
     public static let textStyleKeys = ItemProperty.all.filter { $0.group == "textStyle" }.map(\.key)
         + ["background", "shadow", "emphasis", "lineFills", "accentBars"]
 
+    /// A sound effect on the SFX layer: at a clip's or title's start (`on`), a section's start or `at` seconds, plus
+    /// `offset` (negative: before it, so a whoosh peaks on the cut), for `seconds` or the whole file.
+    public struct Sound: Sendable {
+        public var id: String
+        public var media: String
+        public var on: String?
+        public var section: String?
+        public var at: Double?
+        public var offset: Double
+        public var seconds: Double?
+        public var volumeDb: Double?
+    }
+
     public struct Music: Sendable {
         public var media: String
         public var from: Double
@@ -87,6 +100,7 @@ public enum PlanCut {
         public var captions: Captions?
         /// Review limits merged over the project's `review` on apply (the recipe's ranges, chosen with the plan).
         public var review: [String: JSONValue]?
+        public var sfx: [Sound] = []
         /// Fields the list gave that nothing reads (`unknown-field` warnings), so a typo is not silently ignored.
         public var unknownFields: [Problem] = []
     }
@@ -152,7 +166,12 @@ public enum PlanCut {
             review = limits
         }
         var spec = Spec(clips: clips, titles: titles, music: music, captions: try decodeCaptions(root["captions"]), review: review)
+        spec.sfx = try (root["sfx"]?.array ?? []).enumerated().map { index, value in
+            try decodeSound(value.object, id: ids.take(value.object["id"]?.string, "s", index), entries: clips.map(\.id) + titles.map(\.id),
+                            sections: Set(clips.compactMap(\.section)))
+        }
         spec.unknownFields = unknownFields(clipValues, titles: root["titles"]?.array ?? [], ids: clips.map(\.id) + titles.map(\.id))
+            + unknownSoundFields(root["sfx"]?.array ?? [], ids: spec.sfx.map(\.id))
         return spec
     }
 
@@ -160,6 +179,38 @@ public enum PlanCut {
         "id", "media", "quote", "words", "from", "to", "seconds", "section", "speed", "volumeDb", "role", "cover",
     ]
     static let coverKeys: Set<String> = ["media", "from", "seconds"]
+    static let soundKeys: Set<String> = ["id", "media", "on", "section", "at", "offset", "seconds", "volumeDb"]
+
+    static func unknownSoundFields(_ sounds: [JSONValue], ids: [String]) -> [Problem] {
+        zip(sounds, ids).compactMap { value, id in
+            let keys = value.object.keys.filter { !soundKeys.contains($0) && !noteKeys.contains($0) }.sorted()
+            guard !keys.isEmpty else { return nil }
+            return Problem(
+                id: "unknown-field", severity: "warning", entry: id,
+                detail: "Not read, so it changes nothing: \(keys.joined(separator: ", ")); fields here: "
+                    + soundKeys.sorted().joined(separator: ", "),
+                facts: ["fields": .array(keys.map(JSONValue.string))])
+        }
+    }
+
+    static func decodeSound(
+        _ row: [String: JSONValue], id: String, entries: [String], sections: Set<String>
+    ) throws -> Sound {
+        guard let media = row["media"]?.string, !media.isEmpty else { throw ProjectError.invalid("Sound \(id): give media") }
+        let on = row["on"]?.string, section = row["section"]?.string, at = row["at"]?.double
+        guard [on != nil, section != nil, at != nil].filter({ $0 }).count == 1 else {
+            throw ProjectError.invalid("Sound \(id): give one of on (a clip or title ID), section or at (seconds)")
+        }
+        if let on, !entries.contains(on) { throw ProjectError.invalid("Sound \(id): no clip or title \(on)") }
+        if let section, !sections.contains(section) { throw ProjectError.invalid("Sound \(id): no clip is in section \(section)") }
+        if let at, at < 0 { throw ProjectError.invalid("Sound \(id): at must be 0 or more") }
+        let seconds = row["seconds"]?.double
+        if let seconds, seconds <= 0 { throw ProjectError.invalid("Sound \(id): seconds must be above 0") }
+        return Sound(
+            id: id, media: media, on: on, section: section, at: at, offset: row["offset"]?.double ?? 0, seconds: seconds,
+            volumeDb: row["volumeDb"]?.double)
+    }
+
     static let titleKeys: Set<String> = ["id", "text", "clip", "offset", "at", "section", "seconds", "preset", "style"]
     /// Picture framing a clip or cover may give (a punch-in or reframe), with their item ranges.
     static let transformKeys: [String: ClosedRange<Double>] = ["zoom": 0.01...100, "pan": -65536...65536, "tilt": -65536...65536]

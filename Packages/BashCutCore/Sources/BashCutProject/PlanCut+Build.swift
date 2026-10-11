@@ -41,6 +41,7 @@ extension PlanCut {
         }
         placements += try placeTitles(
             spec.titles, anchors: placements, sections: sections, textPresets: textPresets, in: &planner)
+        placements += try placeSounds(spec.sfx, anchors: placements, sections: sections, length: total, in: &planner)
         if let music = spec.music, total > 0, let placed = try placeMusic(music, length: total, in: &planner) {
             placements.append(placed)
             if let duck = music.duckDb {
@@ -234,6 +235,34 @@ extension PlanCut {
                 try planner.add([.setProperties(item: item.id, patch: patch)])
             }
         }
+    }
+
+    /// Sound effects on the SFX layer (spilling onto another where one already plays), each at its anchor plus
+    /// offset, for its seconds or the whole file, never past the edit's end.
+    static func placeSounds(
+        _ sounds: [Sound], anchors: [Placement], sections: [String: Placement], length total: Int,
+        in planner: inout LayerPlanner
+    ) throws -> [Placement] {
+        guard !sounds.isEmpty, total > 0 else { return [] }
+        let fps = planner.project.fps.value
+        let track = try planner.project.requireTrack(role: TrackRole.sfx)
+        var placements: [Placement] = []
+        for sound in sounds {
+            guard let media = planner.project.media.first(where: { $0.id == sound.media }) else { continue }
+            let anchor = sound.on.flatMap { id in anchors.first { $0.id == id }?.at }
+                ?? sound.section.flatMap { sections[$0]?.at } ?? Int(((sound.at ?? 0) * fps).rounded())
+            let start = max(0, anchor + Int((sound.offset * fps).rounded()))
+            guard start < total else { continue }
+            let wanted = Int(((sound.seconds ?? media.durationSeconds) * fps).rounded())
+            let duration = max(1, min(wanted, Int((media.durationSeconds * fps).rounded(.down)), total - start))
+            let id = "plan-" + sound.id
+            try planner.placeMedia(media, on: track.id, at: start, duration: duration, itemID: id, sourceIn: 0)
+            var patch: [String: JSONValue] = [tag: .string(sound.id)]
+            if let volume = sound.volumeDb { patch["volumeDb"] = .number(volume) }
+            try planner.add([.setProperties(item: id, patch: patch)])
+            placements.append(Placement(id: sound.id, at: start, end: start + duration))
+        }
+        return placements
     }
 
     /// The music bed from frame 0, as long as the clips (or what the file has left).

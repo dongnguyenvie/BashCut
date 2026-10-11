@@ -300,6 +300,24 @@ struct PlanCutTests {
         #expect(moved.object["clips"]?.array.first?.object["quote"] == .string("xin"))
     }
 
+    @Test("Sound effects go on the SFX layer at a clip's or title's start plus offset, clipped to the edit")
+    func soundEffects() throws {
+        let cut = try spec(#"""
+            {"clips":[{"id":"a","media":"m","from":0,"to":2,"section":"hook"},{"id":"b","media":"m","from":5,"to":7}],
+            "titles":[{"id":"t","text":"Hi","clip":"b","offset":0.5,"seconds":1}],
+            "sfx":[{"id":"w","media":"song","on":"b","offset":-0.2,"seconds":0.5,"volumeDb":-6},
+                   {"media":"song","on":"t","seconds":0.3},{"media":"song","at":3.9,"seconds":2,"pitch":1}]}
+            """#)
+        let resolved = PlanCut.resolve(cut, project: project(), transcripts: [:])
+        #expect(resolved.problems.contains { $0.id == "unknown-field" && $0.entry == "s3" })
+        let built = try PlanCut.build(cut, clips: resolved.clips, on: project()).planner.project
+        let sfx = try #require(built.track(role: TrackRole.sfx)).items.sorted { $0.at < $1.at }
+        #expect(sfx.map(\.id) == ["plan-w", "plan-s2", "plan-s3"])
+        #expect(sfx.map(\.at) == [54, 75, 117] && sfx.map(\.duration) == [15, 9, 3])
+        #expect(sfx[0].fields["volumeDb"] == .number(-6) && sfx[0].fields[PlanCut.tag] == .string("w"))
+        #expect(throws: ProjectError.self) { try spec(#"{"clips":[{"media":"m","from":0,"to":1}],"sfx":[{"media":"song","on":"nope"}]}"#) }
+    }
+
     @Test("Review limits ride with the list as an object")
     func reviewLimits() throws {
         let limits = try spec(#"{"clips":[{"media":"m","from":0,"to":1}],"review":{"minTextSize":0.04}}"#).review

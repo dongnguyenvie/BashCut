@@ -22,6 +22,9 @@ extension PlanCut {
             }
         }
         problems += spec.unknownFields + coverProblems(spec, project: project) + overlaps(resolved)
+        for sound in spec.sfx where !project.media.contains(where: { $0.id == sound.media }) {
+            problems.append(Problem(id: "unknown-media", severity: "error", entry: sound.id, detail: "No sound media \(sound.media) in the project"))
+        }
         return (resolved, problems)
     }
 
