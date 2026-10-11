@@ -22,7 +22,8 @@ extension ProjectDocument {
                 ]))
             }
             var operations = built.planner.operations
-            if let cut = arguments["cut"], cut != .null {
+            let given = [arguments["cut"], arguments["patch"]].contains { $0 != nil && $0 != .null }
+            if given, let cut = try document.planCutValue(arguments) {
                 var plan = document.project["plan"]?.object ?? [:]
                 plan["cut"] = cut
                 operations.insert(.setProjectProperties(patch: ["plan": .object(plan)]), at: 0)
@@ -33,6 +34,11 @@ extension ProjectDocument {
                 baseRevision: baseRevision, note: try Self.editNote(arguments))
             var json = check.json.object
             json["rev"] = .integer(result.revision)
+            let clips = spec.clips.count
+            document.logAutoStage("rough-cut", evidence: ["plan.apply rev \(result.revision)", "\(clips) clips"], author: author)
+            if spec.captions != nil {
+                document.logAutoStage("captions", evidence: ["plan.apply rev \(result.revision) captions from plan.cut"], author: author)
+            }
             json["changed"] = .bool(result.changed)
             // What the build left to fix, without the info rows: the review run of the new revision.
             json["review"] = .array((check.json.object["review"]?.array ?? []).filter {
@@ -49,9 +55,16 @@ extension ProjectDocument {
         }
     }
 
-    /// The list from `cut`, else `plan.cut`.
-    func planCutSpec(_ arguments: CommandArguments) throws -> PlanCut.Spec {
+    /// The list from `cut`, else `plan.cut`, with `patch` merged over it.
+    func planCutValue(_ arguments: CommandArguments) throws -> JSONValue? {
         let value = arguments["cut"].flatMap { $0 == .null ? nil : $0 } ?? project["plan"]?.object["cut"]
+        guard let value, let patch = arguments["patch"], patch != .null else { return value }
+        do { return try PlanCut.patch(value, with: patch) } catch let error as ProjectError { throw RPCFailure.invalid(error) }
+    }
+
+    /// The list from `cut`, else `plan.cut`, with `patch` merged over it.
+    func planCutSpec(_ arguments: CommandArguments) throws -> PlanCut.Spec {
+        let value = try planCutValue(arguments)
         guard let value else {
             throw RPCFailure(-32602, "No edit list: give cut (a JSON file) or set plan.cut", data: .object([
                 "remediation": .object(["command": .string("project.set-data"), "hint": .string("plan --merge with {cut: …}")]),

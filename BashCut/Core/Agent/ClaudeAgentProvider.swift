@@ -3,7 +3,8 @@ import Foundation
 
 /// Claude Code with the BashCut MCP server and instructions appended to its system prompt, without permission
 /// prompts, and with AskUserQuestion answered in a card over the tab (`bashcut agent hook`, `agent.ask`).
-/// Uses the CLI login: `ANTHROPIC_API_KEY` is never passed through.
+/// Uses the CLI login: `ANTHROPIC_API_KEY` is never passed through. With `onlyBashCutMCP` the user's other MCP servers
+/// are left out (`--strict-mcp-config`), so their tools and instructions do not ride along on every turn.
 public struct ClaudeAgentProvider: AgentProvider {
     public init() {}
     public let id = AgentProviderID.claude
@@ -18,8 +19,9 @@ public struct ClaudeAgentProvider: AgentProvider {
         AgentCommandLine(
             arguments: (request.resumeID.isEmpty ? [] : ["--resume", request.resumeID])
                 + ["--dangerously-skip-permissions",
-                   "--mcp-config", Self.mcpConfig(command: request.mcpExecutable),
-                   "--settings", Self.askHookSettings(cli: Self.cli(request)),
+                   "--mcp-config", Self.mcpConfig(command: request.mcpExecutable)]
+                + (request.onlyBashCutMCP ? ["--strict-mcp-config"] : [])
+                + ["--settings", Self.askHookSettings(cli: Self.cli(request)),
                    "--append-system-prompt", request.context.prompt]
                 + (request.kit.map { ["--plugin-dir", $0.claudePlugin.path] } ?? []))
     }

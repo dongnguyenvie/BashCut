@@ -132,6 +132,27 @@ extension ProjectDocument {
         do { return try log.append(entry) } catch { throw RPCFailure.from(error, fallbackCode: -32602) }
     }
 
+    /// Records a stage BashCut itself can prove (`plan.apply` built the rough cut, `review.run` passed, an export
+    /// landed), so the agent does not spend a turn on `run append`. Agents only; written once per stage and revision,
+    /// and the rough cut only when the strategy guard would let the agent record it.
+    func logAutoStage(_ stage: String, evidence: [String], author: Author) {
+        guard author != .user, let log = runLog else { return }
+        let entries = log.entries()
+        if entries.contains(where: {
+            $0["kind"]?.string == "stage" && $0["stage"]?.string == stage && $0["status"]?.string == "done"
+                && $0["rev"] == .integer(project.revision)
+        }) { return }
+        if stage == "rough-cut", settings.gateMode(.strategy) == .skip,
+            WorkflowChecklist.strategyGuard(project, entries: entries) != nil
+        { return }
+        let entry: [String: JSONValue] = [
+            "kind": .string("stage"), "stage": .string(stage), "status": .string("done"),
+            "evidence": .array(evidence.map(JSONValue.string)), "author": .string(author.rawValue),
+            "rev": .integer(project.revision), "auto": .bool(true),
+        ]
+        do { try log.append(entry) } catch { DebugLog.write("runlog", "auto stage not logged: \(error)") }
+    }
+
     /// Fills a `skill` entry; false when the kit hook reported a skill that is not BashCut's (nothing is written).
     private func completeSkillEntry(_ entry: inout [String: JSONValue], hook: Bool) throws -> Bool {
         guard let name = entry["name"]?.string, !name.isEmpty else { throw RPCFailure(-32602, "A skill entry needs --name") }

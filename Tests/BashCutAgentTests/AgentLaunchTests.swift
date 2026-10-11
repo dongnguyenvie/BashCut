@@ -44,6 +44,12 @@ struct AgentLaunchTests {
         #expect(launch.environment["UV_CACHE_DIR"] == PluginFolders.sharedCache.appendingPathComponent("uv").path)
         #expect(launch.environment["UV_PYTHON_INSTALL_DIR"] == PluginFolders.sharedData.appendingPathComponent("python").path)
         #expect(launch.directory == root.path)
+        #expect(!launch.arguments.contains("--strict-mcp-config"), "the user's MCP servers load unless asked")
+        let lean = try AgentLaunch.make(
+            provider: ClaudeAgentProvider(), workspace: root, context: context, onlyBashCutMCP: true,
+            environment: ["PATH": ""])
+        let strict = try #require(lean.arguments.firstIndex(of: "--strict-mcp-config"))
+        #expect(lean.arguments[strict - 2] == "--mcp-config", "only the BashCut server given beside it")
     }
 
     @Test("Session bookmarks persist separately per canonical project")

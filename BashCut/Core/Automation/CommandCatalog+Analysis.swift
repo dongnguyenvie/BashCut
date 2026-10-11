@@ -50,8 +50,10 @@ extension CommandCatalog {
         "Prove a fix: the issue as an earlier review of this session saw it (before, beforeRev) against now, measured "
             + "over the issue's own range and a second around it (picture issues re-sample just that range; others "
             + "re-run the review), status fixed or persisting, other issues nearby, and window: a still strip of the "
-            + "range with the cuts, words and levels. Loudness needs a normalized export of the revision.",
-        parameters: [CommandParameter("id", .string, "Issue ID", required: true, cli: .positional)])
+            + "range with the cuts, words and levels. Loudness needs a normalized export of the revision. Several IDs "
+            + "(comma-separated) or all (the errors and warnings of the last earlier review) are proved in one call: "
+            + "fixed and persisting counts, a row per issue (a window only for what persists) and new issues.",
+        parameters: [CommandParameter("id", .string, "Issue ID, ID1,ID2,… or all", required: true, cli: .positional)])
 
     static let reviewPacketSpec = CommandSpec(
         "review.packet", .read,
@@ -220,6 +222,9 @@ extension CommandCatalog {
                 CommandParameter("at", .string, "Frames, comma separated; first and last allowed", cli: .option("at")),
                 CommandParameter("cuts", .boolean, "A cell at the start of every shot on Main", cli: .flag("cuts")),
                 CommandParameter("text", .boolean, "A cell in the middle of every title", cli: .flag("text")),
+                CommandParameter("entries", .string, "plan.cut entry IDs, comma separated (c2,t1): a cell in the middle "
+                                 + "of each item built for them, to look at only what a revision changed",
+                                 cli: .option("entries")),
                 CommandParameter("every", .number, "Seconds between cells", range: 0.1...3_600, cli: .option("every")),
                 CommandParameter("size", .integer, "Long edge of each cell in pixels (default 320)", minimum: 64,
                                  maximum: 2_048, cli: .option("size")),

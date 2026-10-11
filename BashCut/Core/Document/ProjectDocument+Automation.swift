@@ -143,7 +143,9 @@ extension ProjectDocument {
             }
             return .array(list)
         }
-        handle("review.run") { document, arguments, _ in try await document.runReview(arguments) }
+        handle("review.run") { document, arguments, author in
+            try await document.runReview(arguments, author: author ?? .user)
+        }
         handleAuthored("review.measure") { document, arguments, author in
             try document.startReviewMeasure(
                 author: author, picture: arguments.optionalBool("picture") ?? true,

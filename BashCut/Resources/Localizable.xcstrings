@@ -1408,6 +1408,7 @@
         "vi": { "stringUnit": { "state": "translated", "value": "Nạp bộ kỹ năng agent trong tab Claude và Codex" } }
       }
     },
+    "Only BashCut's MCP server in Claude tabs": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Only BashCut's MCP server in Claude tabs" } }, "vi": { "stringUnit": { "state": "translated", "value": "Chỉ dùng MCP server của BashCut trong tab Claude" } } } },
     "Agent kit": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Agent kit" } },

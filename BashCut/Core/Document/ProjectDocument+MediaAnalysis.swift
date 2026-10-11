@@ -28,20 +28,27 @@ extension ProjectDocument {
     }
 
     /// Measures the listed media (every video and audio media when nil) one after another, reusing stored records
-    /// unless `force`. Images are skipped.
+    /// unless `force`. Images are skipped. Media still being converted are measured once their conversion lands, so
+    /// the agent can ask right after import and work from the transcript meanwhile.
     func startMediaAnalyze(mediaID: String?, force: Bool, rate: Double?, author: Author) throws -> JSONValue {
         guard let root = fileURL?.deletingLastPathComponent() else { throw RPCFailure(-32602, "Open a saved project first") }
         if let running = jobs.jobs.first(where: { $0.method == "media.analyze" && $0.isActive }) {
             return .object(["job": .string(running.id), "state": .string("running")])
         }
         let selected = try mediaID.map { [try analysisSource($0).media] } ?? project.media.filter { !$0.isImage }
-        try requireConverted(selected)
         let workspace = settings.workspace
-        let id = jobs.start("media.analyze", author: author, work: { reporter in
+        let id = jobs.start("media.analyze", author: author, work: { [weak self] reporter in
+            while let self, let converting = selected.lazy.compactMap({ self.conversionJob(of: $0) }).first {
+                reporter.detail("waiting for conversion \(converting)")
+                try await Task.sleep(for: .milliseconds(500))
+            }
+            // A conversion points the media at its converted copy: measure the media as they are now.
+            let current = selected.map { media in self?.project.media.first { $0.id == media.id } ?? media }
             var results: [JSONValue] = []
-            for (index, media) in selected.enumerated() {
+            for (index, media) in current.enumerated() {
                 try Task.checkCancellation()
-                reporter.progress(Double(index) / Double(max(1, selected.count)), detail: media.id)
+                let share = 1 / Double(max(1, current.count))
+                reporter.progress(Double(index) * share, detail: media.id)
                 var row: [String: JSONValue] = ["media": .string(media.id)]
                 defer { results.append(.object(row)) }
                 guard let url = try? MediaPathResolver.resolve(media.path, projectRoot: root, workspaceRoot: workspace),
@@ -58,7 +65,8 @@ extension ProjectDocument {
                 }
                 let record = try await MediaAnalyzer.measure(
                     url, key: key, fps: media.fps, frames: media.frames,
-                    pictureURL: ProxyMediaSource.proxyURL(for: media, root: root), samplesPerSecond: rate ?? 4)
+                    pictureURL: ProxyMediaSource.proxyURL(for: media, root: root), samplesPerSecond: rate ?? 4,
+                    progress: reporter.progressHandler(range: Double(index) * share...Double(index + 1) * share))
                 try MediaAnalyzer.save(record, projectRoot: root)
                 row["status"] = .string("measured")
                 row["overview"] = record.overviewJSON

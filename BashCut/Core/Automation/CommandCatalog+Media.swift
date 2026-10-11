@@ -78,7 +78,8 @@ extension CommandCatalog {
                 + "track lengths), picture samples (luma, spread, change, peak as in review.picture, plus sharpness and "
                 + "colourfulness) with every jump searched to its exact frame as a cut candidate, and sound levels "
                 + "(RMS per 0.1 s, peak, stereo correlation). Read it with media.analysis. A record that exists is "
-                + "reused unless force. The job's result lists each media with its key and whether it was reused.",
+                + "reused unless force. Ask right after import: media still being converted are measured when the conversion lands. "
+                + "The job's result lists each media with its key and whether it was reused.",
             parameters: [
                 CommandParameter("media", .string, "Project media ID; every video and audio media by default",
                                  cli: .option("media")),

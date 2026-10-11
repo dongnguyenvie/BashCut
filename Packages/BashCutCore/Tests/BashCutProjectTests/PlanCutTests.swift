@@ -225,4 +225,35 @@ struct PlanCutTests {
             try spec(#"{"clips":[{"media":"m","from":0,"to":1,"speed":2,"cover":[{"media":"m","from":3}]}]}"#)
         }
     }
+
+    @Test("A patch names only what changes: entries by ID merge, null removes, unknown IDs are added")
+    func patch() throws {
+        let list = JSONValue.object([
+            "clips": .array([
+                .object(["id": .string("c1"), "media": .string("m"), "from": .number(0), "to": .number(2)]),
+                .object(["id": .string("c2"), "media": .string("m"), "quote": .string("xin chào"),
+                         "cover": .array([.object(["media": .string("m"), "from": .number(5)])])]),
+            ]),
+            "titles": .array([.object(["id": .string("t1"), "text": .string("Hook"), "style": .object(["size": .number(0.05)])])]),
+            "music": .object(["media": .string("song"), "volumeDb": .number(-18)]),
+        ])
+        let patched = try PlanCut.patch(list, with: .object([
+            "clips": .object([
+                "c1": .null,
+                "c2": .object(["cover": .array([.object(["media": .string("m"), "from": .number(9)])])]),
+                "c3": .object(["media": .string("m"), "from": .number(10), "to": .number(11), "speed": .null]),
+            ]),
+            "titles": .object(["t1": .object(["style": .object(["background": .object(["opacity": .number(0.6)])])])]),
+            "music": .null,
+        ]))
+        let clips = patched.object["clips"]?.array ?? []
+        #expect(clips.map { $0.object["id"]?.string } == ["c2", "c3"])
+        #expect(clips[0].object["quote"] == .string("xin chào"), "untouched fields stay")
+        #expect(clips[0].object["cover"]?.array.first?.object["from"] == .number(9), "a list inside an entry is replaced")
+        #expect(clips[1].object["speed"] == nil, "null is never stored")
+        let style = patched.object["titles"]?.array.first?.object["style"]?.object
+        #expect(style?["size"] == .number(0.05) && style?["background"]?.object["opacity"] == .number(0.6))
+        #expect(patched.object["music"] == nil)
+        #expect(throws: ProjectError.self) { try PlanCut.patch(list, with: .array([])) }
+    }
 }
