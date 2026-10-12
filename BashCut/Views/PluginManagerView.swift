@@ -65,7 +65,7 @@ struct PluginManagerView: View {
             PluginInstallApprovalView(
                 pending: pending, registry: model.registry, required: model.requiredBytes(pending),
                 blocker: model.installBlocker(pending), replaces: pending.local == nil ? pending.replacing : model.replaces(pending),
-                shadowNote: model.shadowNote(pending),
+                shadowNote: model.shadowNote(pending), model: model,
                 scope: pending.local == nil || model.currentProjectRoot == nil ? nil : $model.installScope,
                 mode: pending.local?.sourceFolder == nil ? nil : $model.installMode,
                 approve: model.installPendingPlugin, cancel: model.cancelPendingInstall)
@@ -152,6 +152,8 @@ extension PluginManagerView {
 /// "By <author>", a link when the author has a web page.
 struct PluginAuthorLabel: View {
     let author: PluginAuthor
+    /// Caption size instead of the small row size (the install sheet).
+    var prominent = false
 
     var body: some View {
         let text = String(format: String(localized: "By %@"), author.name)
@@ -162,7 +164,7 @@ struct PluginAuthorLabel: View {
                 Text(text)
             }
         }
-        .font(.caption2).foregroundStyle(.secondary)
+        .font(prominent ? .callout : .caption2).foregroundStyle(.secondary)
     }
 }
 
@@ -352,6 +354,7 @@ private struct PluginInstallApprovalView: View {
     let replaces: Bool
     /// Which copy runs when the same plugin is installed elsewhere.
     let shadowNote: String?
+    let model: PluginManagerModel
     /// Where an install from this Mac goes; nil when there is no choice.
     let scope: Binding<PluginInstallScope>?
     /// Copy or Link (developer mode) for a plugin folder; nil for an archive or a download.
@@ -368,6 +371,7 @@ private struct PluginInstallApprovalView: View {
                     plugin.manifest.displayName),
                 systemImage: "puzzlepiece.extension"
             ).font(.title2)
+            if let author = plugin.manifest.author { PluginAuthorLabel(author: author, prominent: true) }
             if let archive = pending.archive { download(archive) }
             if let local = pending.local { localSource(local) }
             if !plugin.manifest.capabilities.isEmpty {
@@ -381,6 +385,7 @@ private struct PluginInstallApprovalView: View {
             }
             if !plugin.manifest.skills.isEmpty {
                 Text("Teaches agents: \(PluginManagerView.skillNames(plugin))")
+                PluginSkillReviewSection(pending: pending, installed: model.plugin(plugin.id), model: model)
             }
             if plugin.manifest.dependencies.isEmpty {
                 Text("This plugin has no external dependencies.")

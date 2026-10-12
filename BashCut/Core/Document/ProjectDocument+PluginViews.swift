@@ -137,6 +137,7 @@ extension ProjectDocument {
                 return Self.viewJSON(plugin, model, try await model.perform(nil))
             } catch { throw RPCFailure(-32603, error.localizedDescription) }
         }
+        registerPluginOverlayCommands()
         handleAuthored("plugins.show-view") { document, arguments, _ in
             let plugin = try document.panelPlugin(arguments.string("plugin"))
             let id = try arguments.string("view")
@@ -178,6 +179,30 @@ extension ProjectDocument {
                 }
             })
             return .object(["job": .string(job), "state": .string("running")])
+        }
+    }
+}
+
+extension ProjectDocument {
+    /// `plugins.overlays` and `plugins.set-overlays` (#407).
+    func registerPluginOverlayCommands() {
+        handle("plugins.overlays") { document, arguments, _ in
+            let only = arguments.optionalString("plugin")
+            let sets = document.ui.pluginOverlaySets.filter { only == nil || $0.key == only }
+            return .object(sets.mapValues { .array($0.map(\.json)) })
+        }
+        handleAuthored("plugins.set-overlays") { document, arguments, _ in
+            let plugin = try document.requirePlugin(arguments.string("plugin"))
+            let overlays: [PluginOverlay]
+            let value = try arguments.value("overlays")
+            do { overlays = try PluginOverlay.parse(value) } catch {
+                throw RPCFailure(-32602, error.localizedDescription)
+            }
+            guard overlays.isEmpty || document.plugins.isReady(plugin) else {
+                throw RPCFailure(-32003, "\(plugin.manifest.displayName) is not ready", category: .notAvailableNow)
+            }
+            document.ui.setPluginOverlays(plugin.id, overlays)
+            return .object(["plugin": .string(plugin.id), "overlays": .integer(overlays.count)])
         }
     }
 }

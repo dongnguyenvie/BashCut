@@ -122,3 +122,60 @@ struct CommandCallerTests {
         #expect(invocation.params["timeout"] == .integer(500))
     }
 }
+
+/// Socket lines parsed with `JSONValue(parsing:)` give what the `Decodable` forms gave.
+struct RPCParseTests {
+    @Test("Requests and responses parse to the same values as JSONDecoder, and malformed lines fail")
+    func sameAsDecodable() throws {
+        let request = RPCRequest(
+            id: .integer(7), method: "timeline.apply",
+            params: ["ops": .array([.object(["at": .integer(30), "gain": .number(0.5), "on": .bool(true)])]), "x": .null],
+            token: "t")
+        let line = try JSONEncoder().encode(request)
+        let parsed = try RPCRequest.parse(line)
+        let decoded = try JSONDecoder().decode(RPCRequest.self, from: line)
+        #expect(parsed.id == decoded.id && parsed.method == decoded.method && parsed.params == decoded.params)
+        #expect(parsed.token == "t" && decoded.token == "t")
+        let noToken = try RPCRequest.parse(Data(#"{"jsonrpc":"2.0","id":"a","method":"m","params":{"n":1.0}}"#.utf8))
+        #expect(noToken.token == nil && noToken.params["n"] == .integer(1) && noToken.id == .string("a"))
+        for bad in [#"{"jsonrpc":"2.0","id":1,"method":"m"}"#, "not json", #"{"jsonrpc":"2.0","id":1,"method":"m","params":{},"token":3}"#] {
+            #expect(throws: RPCFailure.self) { try RPCRequest.parse(Data(bad.utf8)) }
+        }
+
+        let failure = RPCFailure(-32004, "Blocked", data: .object(["outOfScope": .array([.string("w")])]))
+        for response in [
+            RPCResponse(id: .integer(1), result: .object(["rev": .integer(3), "share": .number(0.25)])),
+            RPCResponse(id: .integer(2), error: failure), RPCResponse(id: .null),
+        ] {
+            let line = try JSONEncoder().encode(response)
+            let parsed = try RPCResponse.parse(line)
+            let decoded = try JSONDecoder().decode(RPCResponse.self, from: line)
+            #expect(parsed.id == decoded.id && parsed.result == decoded.result)
+            #expect(parsed.error?.code == decoded.error?.code && parsed.error?.message == decoded.error?.message)
+            #expect(parsed.error?.data == decoded.error?.data)
+        }
+        #expect((try? RPCResponse.parse(Data("{".utf8))) == nil)
+        #expect(throws: RPCFailure.self) { try RPCResponse.parse(Data(#"{"id":1}"#.utf8)) }
+    }
+
+    @Test("Parsing a large answer is faster than Decodable", .enabled(if: ProcessInfo.processInfo.environment["BASHCUT_PERF"] == "1"))
+    func speed() throws {
+        let items = (0..<20_000).map { index in
+            JSONValue.object(["id": .string("v\(index)"), "at": .integer(index * 30), "gain": .number(0.5), "on": .bool(true)])
+        }
+        let line = try JSONEncoder().encode(RPCResponse(id: .integer(1), result: .object(["items": .array(items)])))
+        func time(_ body: () throws -> Void) rethrows -> Double {
+            var samples: [Double] = []
+            for _ in 0..<5 {
+                let start = DispatchTime.now().uptimeNanoseconds
+                try body()
+                samples.append(Double(DispatchTime.now().uptimeNanoseconds - start) / 1e6)
+            }
+            return samples.sorted()[2]
+        }
+        let decodable = try time { _ = try JSONDecoder().decode(RPCResponse.self, from: line) }
+        let parsing = try time { _ = try RPCResponse.parse(line) }
+        print("RPC response \(line.count / 1_000) KB: Decodable \(decodable) ms, parse \(parsing) ms")
+        #expect(parsing < decodable)
+    }
+}

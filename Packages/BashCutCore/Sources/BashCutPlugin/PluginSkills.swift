@@ -184,3 +184,23 @@ public enum PluginSkills {
         }
     }
 }
+
+extension PluginManifest {
+    /// Whether BashCut ever runs the plugin; a skill or library pack without an entrypoint never does (#506).
+    public var runsCode: Bool { !entrypoint.isEmpty }
+
+    /// A plugin without an entrypoint (#506, host feature `skillsOnly`) ships data only: agent skills and library
+    /// packs, nothing BashCut would run (no capabilities, actions, hooks, views, options, dependencies or session).
+    func validateDataOnly() throws {
+        guard apiVersion >= 7, !skills.isEmpty || !libraryPacks.isEmpty else {
+            throw PluginError.invalid("A plugin without an entrypoint must ship contributes.skills or contributes.library (apiVersion 7)")
+        }
+        let runs = !capabilities.isEmpty || !(providers ?? []).isEmpty || !dependencies.isEmpty || !(options ?? []).isEmpty
+            || transport == .session || terminal != nil || !actions.isEmpty || !hooks.isEmpty || !views.isEmpty
+            || contributes?.platforms != nil
+        guard !runs else {
+            throw PluginError.invalid(
+                "A plugin without an entrypoint can only ship skills and library packs; add an entrypoint for the rest")
+        }
+    }
+}

@@ -19,7 +19,8 @@ public struct PluginFingerprint: Codable, Sendable, Equatable {
     public init(plugin: InstalledPlugin) throws {
         let tree = try Self.tree(plugin.directory)
         let manifest = try Data(contentsOf: plugin.directory.appendingPathComponent("plugin.json"))
-        let entrypoint = try Data(contentsOf: plugin.entrypointURL())
+        // A skill or library pack has no entrypoint (#506); its files are all in the tree digest.
+        let entrypoint = try plugin.manifest.runsCode ? Data(contentsOf: plugin.entrypointURL()) : Data()
         self.init(
             manifestSHA256: Self.hex(manifest), entrypointSHA256: Self.hex(entrypoint),
             treeSHA256: tree)

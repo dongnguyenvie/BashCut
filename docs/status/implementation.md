@@ -68,6 +68,7 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   linear, ease-in/out/in-out and hold keys. Presets: slow zoom in/out and pans (Ken Burns), and fade, pop, slide-up
   and zoom-punch for text. Inspector › Animation, the diamond key at the playhead, and sliders that set keys once a
   property is animated; `clip motion` and `clip keyframe`. Split and start trims keep keys on the same picture.
+  Crop sides and the corner radius (`crop.*`) key too; Inspector › Video › Crop.
 - Volume keyframes: the `volume` property (dB, replacing `volumeDb`) on audio items and clips with sound, stacked
   with fades and ducking. The audio mix gets a point at each key plus steps between keys, so eases and the dB curve
   hold with AVAudioMix's linear ramps. Inspector › Audio › Keyframe volume at playhead; `clip keyframe --property
@@ -122,7 +123,23 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   alternates; `beats grid`), and `audio energy` gives the energy curve (picking lifts and drops is the agent's).
 - What is in the picture (P2-H6, P2-H7): `media subjects` (face and person boxes) and `media ocr` (on-screen text
   lines) sample one picture every `--step` source seconds through the built-in `bashcut.vision` plugin (Apple
-  Vision); raw boxes, confidence and time, no labels or review checks. `review layout` face fields stay null.
+  Vision); raw boxes, confidence and time, no labels. The boxes are kept per file content
+  (`.bashcut/cache/subjects/`, merged across runs).
+- Multi-selection follow-ups (#357): Inspector multi-edit of opacity, volume, fill and framing; selection drags on the
+  magnetic layer move a block (`timeline move-items --before`); copy/paste through the macOS pasteboard across
+  projects and windows.
+- Item backdrop (P3-J7): `backdrop {kind blur|color, color, blur, dim}` fills a fitted picture's bars with a blurred,
+  filled copy of its own frame or a colour; `clip backdrop`, Inspector › Video › Backdrop.
+- Two fonts in one title: `textStyle.lines` (per-line font, scale, fill, stroke), `text line-style`, Inspector ›
+  Text › Lines.
+- `clip reframe` (P3-J1) crops a clip or image to its subject from those boxes (measuring missing ones first):
+  `locked`, `cut` (hold keys when the subject drifts) or `follow` (smoothed pan/tilt keys), every limit a
+  parameter (anchor, zoom, confidence, gate, minimum subject share, drift, hold, smoothing). Below the gate it fits
+  the whole picture or refuses, never a blind centre crop; it returns the coverage, the framings and a source/edit
+  preview grid. One undo step.
+- `review layout` gives each text item's `faceOverlap` (the largest share of a face box it covers, with the clip,
+  frame and confidence) from the stored boxes of the clips under it, and an overlay picture's at a frame; null when
+  no boxes are stored. With `review.maxFaceOverlap` set, review reports `text-face` issues.
 - The agent's own fields on a media (P2-H10): op `setMediaData` keeps takes, verdicts and reasons under `data`
   (`media list` shows them); core never reads them, and there are no take commands.
 - Footage in the library (P2-H5): library kind `clip` (a movie or image, free params) for generated or downloaded

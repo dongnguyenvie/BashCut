@@ -116,11 +116,13 @@ struct InspectorView: View {
                 get: { document.project.fills(item) },
                 set: { document.patchSelected(["fill": .bool($0)], label: "Fill frame") }))
                 .help("Fill crops the clip to cover the frame; off shows it whole with bars")
+            if item.mediaID != nil { BackdropControls(document: document, item: item) }
             number("Zoom", group: "transform", key: "zoom", defaultValue: 1, range: 0.25...3)
             number("Pan", group: "transform", key: "pan", defaultValue: 0, range: -600...600)
             number("Tilt", group: "transform", key: "tilt", defaultValue: 0, range: -600...600)
             number("Rotation", group: "transform", key: "rotation", defaultValue: 0, range: -180...180)
             number("Opacity", key: "opacity", defaultValue: 1, range: 0...1)
+            if item.mediaID != nil { cropControls(item) }
             Divider()
             MotionControls(document: document, item: item, forText: false)
         case "Audio":
@@ -227,6 +229,7 @@ struct InspectorView: View {
                     set: { document.patchSelected(["textStyle": .object($0)], label: "Text style", coalescing: true) }),
                 language: document.contentLanguage,
                 addFont: document.fileURL == nil ? nil : { document.importFont() })
+            TextLineStyleControls(document: document, item: item)
             number(
                 "Outline", group: "textStyle", key: "strokeWidth",
                 defaultValue: TextPresetStyle.defaults(item.textPreset)["strokeWidth"] ?? 0, range: 0...12)
@@ -267,14 +270,14 @@ struct InspectorView: View {
         number("Saturation", group: "color", key: "saturation", defaultValue: 1, range: 0...2)
     }
 
-    private func number(
+    func number(
         _ title: String, group: String? = nil, key: String, defaultValue: Double,
         range: ClosedRange<Double>, integer: Bool = false
     ) -> some View {
-        // Transform, opacity and volume are animatable: once the item has keys for one, the control reads and sets
-        // the key at the playhead.
+        // Transform, opacity, volume and crop are animatable: once the item has keys for one, the control reads and
+        // sets the key at the playhead.
         let animatable = group == "transform" || (group == nil && key == "opacity") ? key
-            : group == nil && key == "volumeDb" ? "volume" : nil
+            : group == nil && key == "volumeDb" ? "volume" : group == "crop" ? "crop." + key : nil
         func isAnimated() -> Bool { animatable.flatMap { document.selected?.motion?.keys[$0] } != nil }
         let binding = Binding<Double>(
             get: {
@@ -440,39 +443,6 @@ private struct SpeedControls: View {
 
     /// Slider values snap to 0.05× steps.
     static func rounded(_ value: Double) -> Double { (value * 20).rounded() / 20 }
-}
-
-/// Several clips selected: their count and extent, a shared Mute switch and the bulk actions.
-struct MultiSelectionInspector: View {
-    let document: ProjectDocument
-
-    var body: some View {
-        let items = document.selectedItems
-        VStack(alignment: .leading, spacing: 12) {
-            Text(String(format: String(localized: "%d clips selected"), items.count)).font(.callout.bold())
-            if let start = items.map(\.at).min(), let end = items.map(\.end).max() {
-                Text(String(format: "%d–%d frames", start, end)).foregroundStyle(.secondary)
-            }
-            if items.contains(where: { $0.mediaID != nil }) {
-                Toggle(
-                    "Mute",
-                    isOn: Binding(
-                        get: { SelectionEdits.allMuted(document.selectedIDs, in: document.project) },
-                        set: { _ in document.run(.muteClips) }))
-            }
-            Divider()
-            HStack {
-                Button("Copy") { document.run(.copyClips) }
-                Button("Cut") { document.run(.cutClips) }
-            }
-            HStack {
-                Button("Delete") { document.run(.delete) }
-                Button("Lift") { document.run(.lift) }
-            }
-            Button("Send to Agent") { document.run(.sendToAgent) }
-            Text("Drag any selected clip to move them all. Esc clears the selection.").foregroundStyle(.secondary)
-        }
-    }
 }
 
 extension InspectorView {

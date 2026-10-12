@@ -126,7 +126,14 @@ extension ProjectDocument {
             rows.append((item.at + item.duration / 2, id))
         }
         guard !rows.isEmpty, rows.count <= 40 else { throw RPCFailure(-32602, "Give 1–40 frames or items") }
-        let width = arguments.optionalInt("width") ?? 390
+        return try await frameGrid(rows, mode: mode, width: arguments.optionalInt("width") ?? 390)
+    }
+
+    /// The grid of `compareFrames`: each row's frame without colour (graded) or its source frame (source: of the
+    /// clip on Main, or of `sourceItem`), next to the edit.
+    func frameGrid(
+        _ rows: [(frame: Int, item: String?)], mode: String, width: Int, sourceItem: String? = nil
+    ) async throws -> JSONValue {
         let longEdge = Int((Double(width) * Double(max(project.width, project.height)) / Double(max(1, project.width))).rounded())
         let edited = try await timelineImages(rows.map(\.frame), maximumSide: longEdge)
         var before: [Int: CGImage] = [:]
@@ -138,7 +145,7 @@ extension ProjectDocument {
             let snapshot = try await engine.build(ungraded, root: root, workspace: settings.workspace, purpose: .preview)
             before = try await images(of: snapshot, frames: rows.map(\.frame), maximumSide: longEdge)
         } else {
-            (before, sources) = try await sourceFrames(rows.map(\.frame), maximumSide: longEdge)
+            (before, sources) = try await sourceFrames(rows.map(\.frame), maximumSide: longEdge, item: sourceItem)
         }
         let fps = project.fps.value
         let cells = rows.flatMap { row in
@@ -166,9 +173,11 @@ extension ProjectDocument {
         ])
     }
 
-    /// The source frame the clip on Main shows at each timeline frame (no reframe, no grade), and its source second.
-    private func sourceFrames(_ frames: [Int], maximumSide: Int) async throws -> ([Int: CGImage], [Int: Double]) {
-        let main = project.tracks.first { $0.role == TrackRole.main }?.items ?? []
+    /// The source frame the clip on Main (or `item`) shows at each timeline frame (no reframe, no grade), and its
+    /// source second.
+    private func sourceFrames(_ frames: [Int], maximumSide: Int, item: String? = nil) async throws -> ([Int: CGImage], [Int: Double]) {
+        let main = item.map { id in project.tracks.flatMap(\.items).filter { $0.id == id } }
+            ?? project.tracks.first { $0.role == TrackRole.main }?.items ?? []
         var images: [Int: CGImage] = [:], seconds: [Int: Double] = [:]
         for frame in frames {
             guard let clip = main.first(where: { $0.at <= frame && frame < $0.end }), let mediaID = clip.mediaID,

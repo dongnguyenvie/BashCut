@@ -18,6 +18,7 @@ struct TimelineView: NSViewRepresentable {
         let selectedTrackID: String?
         let waveforms: Int
         let agentChanges: Int
+        let overlays: Int
         let size: CGSize
     }
 
@@ -58,7 +59,7 @@ struct TimelineView: NSViewRepresentable {
         let key = ContentKey(
             session: document.sessionID, revision: project.revision, scale: scale, selectedID: document.selectedID,
             selectedIDs: document.selectedIDs, selectedTrackID: document.selectedTrackID, waveforms: document.waveforms.values.count,
-            agentChanges: document.agentChangedIDs.count, size: size)
+            agentChanges: document.agentChangedIDs.count, overlays: document.ui.pluginOverlayRevision, size: size)
         if key != canvas.lastContent {
             if key.session != canvas.lastContent?.session || key.revision != canvas.lastContent?.revision {
                 canvas.filmstripURLs.removeAll()
@@ -77,10 +78,12 @@ struct TimelineView: NSViewRepresentable {
             canvas.selectedID = document.selectedID
             canvas.selectedIDs = Set(document.selectedIDs)
             canvas.drawnAgentChanges = document.agentChangedIDs
+            canvas.overlays = document.ui.pluginOverlays
             canvas.setFrameSize(size)
             // An edit or a selection change repaints only the clips it touched.
             if let previous, previous.session == key.session, previous.scale == key.scale, previous.size == key.size,
                 previous.selectedTrackID == key.selectedTrackID, previous.waveforms == key.waveforms,
+                previous.overlays == key.overlays,
                 let rects = canvas.changedRects(since: drawn) {
                 rects.forEach(canvas.setNeedsDisplay)
             } else {

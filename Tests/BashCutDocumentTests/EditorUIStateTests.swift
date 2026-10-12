@@ -1,9 +1,31 @@
 import BashCutAutomation
 import BashCutDocument
+import BashCutPlugin
+import BashCutProject
 import Testing
 
 @MainActor
 struct EditorUIStateTests {
+    @Test("Plugin overlays replace per plugin, bump the revision only on change, and clear (#407)")
+    func pluginOverlays() throws {
+        let ui = EditorUIState()
+        let marks = try PluginOverlay.parse(.array([
+            .object(["id": .string("m"), "kind": .string("marker"), "start": .integer(10)]),
+        ]))
+        ui.setPluginOverlays("a.one", marks)
+        ui.setPluginOverlays("b.two", marks)
+        let revision = ui.pluginOverlayRevision
+        ui.setPluginOverlays("a.one", marks)
+        #expect(ui.pluginOverlayRevision == revision)
+        #expect(ui.pluginOverlays.timeline.count == 2)
+        ui.setPluginOverlays("a.one", [])
+        #expect(Array(ui.pluginOverlaySets.keys) == ["b.two"] && ui.pluginOverlayRevision == revision + 1)
+        ui.clearPluginOverlays(keeping: { $0 == "b.two" })
+        #expect(ui.pluginOverlayRevision == revision + 1)
+        ui.clearPluginOverlays()
+        #expect(ui.pluginOverlays.isEmpty && ui.pluginOverlaySets.isEmpty)
+    }
+
     @Test("Zoom stays inside the timeline zoom range")
     func zoomClamps() {
         let ui = EditorUIState()

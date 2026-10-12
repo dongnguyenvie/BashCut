@@ -82,4 +82,43 @@ struct PluginViewPerfTests {
                      chained.median, broken.median))
         #expect(chained.median < 50)
     }
+
+    /// Plugin overlays (#407): 4 plugins × 500 overlays on a one-hour timeline at 30 fps. A scroll step or a partial
+    /// redraw looks up the overlays in about 20 s of frames; playback filters the regions once per frame.
+    @Test("Overlay lookups for scrolling and playback stay far below a frame")
+    func overlays() throws {
+        var sets: [String: [PluginOverlay]] = [:]
+        for plugin in 0..<4 {
+            let items: [JSONValue] = (0..<PluginOverlay.maximumPerPlugin).map { index in
+                let start = (index * 211 + plugin * 37) % 108_000
+                switch index % 3 {
+                case 0:
+                    return .object(["id": .string("r\(index)"), "kind": .string("range"), "start": .integer(start),
+                                    "end": .integer(start + 30 + index % 400), "label": .string("Range \(index)")])
+                case 1:
+                    return .object(["id": .string("m\(index)"), "kind": .string("marker"), "start": .integer(start)])
+                default:
+                    return .object(["id": .string("g\(index)"), "kind": .string("region"), "start": .integer(start),
+                                    "end": .integer(start + 90),
+                                    "rect": .object(["x": .number(0.1), "y": .number(0.1), "width": .number(0.3),
+                                                     "height": .number(0.3)])])
+                }
+            }
+            sets["perf.p\(plugin)"] = try PluginOverlay.parse(.array(items))
+        }
+        var index = PluginOverlayIndex([:])
+        let build = Self.time(10) { index = PluginOverlayIndex(sets) }
+        var found = 0
+        let scroll = Self.time(20) {
+            for step in 0..<100 { found = index.timeline(in: (step * 1000)..<(step * 1000 + 600)).count }
+        }
+        let playback = Self.time(20) { for frame in 0..<100 { found = index.regions(at: frame * 1000).count } }
+        print(String(
+            format: "[perf] overlays 2000 (4 plugins): index build %.2f ms; 100 timeline lookups %.3f ms (%.4f ms each); "
+                + "100 viewer region filters %.3f ms (%.4f ms per frame)",
+            build.median, scroll.median, scroll.median / 100, playback.median, playback.median / 100))
+        _ = found
+        #expect(scroll.median / 100 < 0.5)
+        #expect(playback.median / 100 < 0.5)
+    }
 }

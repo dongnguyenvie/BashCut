@@ -11,11 +11,36 @@ public enum PluginFeature {
     public static let views = "views"
     public static let requires = "requires"
     public static let invoke = "invoke"
+    /// The `plugins.option` host call for the plugin's own options (#411).
+    public static let optionsSet = "options.set"
+
+    /// `providers[].maxTakes` on `voice.synthesize` providers (#410).
+    public static let voiceMaxTakes = "voice.maxTakes"
+    /// `views[].when` on inspector views (#405).
+    public static let inspectorWhen = "inspector.when"
+
+    /// `viewUpdate` lines outside a request (#409).
+    public static let viewUpdate = "viewUpdate"
+
+    /// Plugin overlays on the timeline and viewer (#407).
+    public static let overlays = "overlays"
+
+    /// Dragging files from list rows and images onto the timeline and the Media panel (#408).
+    public static let viewsDrag = "views.drag"
+
+    /// Skill and library packs without an entrypoint (#506).
+    public static let skillsOnly = "skillsOnly"
+
+    /// Features that are not a view component or place.
+    static let named = [
+        container, views, requires, invoke, optionsSet, voiceMaxTakes, inspectorWhen, viewUpdate, overlays, viewsDrag,
+        skillsOnly,
+    ]
 
     /// Every feature this host provides: `views.<component>` for each view component it can draw and
     /// `location.<place>` for each place a view can live.
     public static var all: [String] {
-        [container, views, requires, invoke] + PluginViewNode.Kind.allCases.map { "views." + $0.rawValue }
+        named + PluginViewNode.Kind.allCases.map { "views." + $0.rawValue }
             + PluginViewLocation.allCases.map { "location." + $0.rawValue }
     }
 
@@ -59,13 +84,22 @@ public struct PluginViewContribution: Codable, Sendable, Equatable, Identifiable
     public let location: PluginViewLocation?
     /// SF Symbol for a dock tab; the container's icon by default.
     public let icon: String?
+    /// For an inspector view: a [when condition](PluginWhen) on the selection (`selection.kind == text`,
+    /// `media.kind == video`); the view is not asked to render for items it does not match (#405, `inspector.when`).
+    public let when: String?
 
-    public init(id: String, title: LocalizedText, location: PluginViewLocation? = nil, icon: String? = nil) {
+    public init(
+        id: String, title: LocalizedText, location: PluginViewLocation? = nil, icon: String? = nil, when: String? = nil
+    ) {
         self.id = id
         self.title = title
         self.location = location
         self.icon = icon
+        self.when = when
     }
+
+    /// The parsed `when`, nil when there is none.
+    public var condition: PluginWhen? { when.flatMap { try? PluginWhen(parsing: $0) } }
 
     public static let maximumViews = 8
 
@@ -80,6 +114,10 @@ public struct PluginViewContribution: Codable, Sendable, Equatable, Identifiable
             guard icon.range(of: "^[a-z0-9]+(?:\\.[a-z0-9]+)*$", options: .regularExpression) != nil, icon.count <= 64 else {
                 throw PluginError.invalid("View \(id) icon must be an SF Symbol name")
             }
+        }
+        if let when {
+            guard place == .inspector else { throw PluginError.invalid("View \(id): when is for inspector views") }
+            _ = try PluginWhen(parsing: when)
         }
     }
 }

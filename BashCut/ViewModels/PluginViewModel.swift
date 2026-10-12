@@ -14,8 +14,31 @@ import Foundation
     /// Most nested `plugins.invoke` calls a request may have running at once.
     static let maximumInvokes = 4
     private var invoking: [String: Int] = [:]
+    /// View updates plugins send outside a request (#409).
+    private var updates: PluginViewUpdates.Subscription?
 
-    init(document: ProjectDocument) { self.document = document }
+    init(document: ProjectDocument) {
+        self.document = document
+        updates = PluginViewUpdates.shared.subscribe { [weak self] update in
+            Task { @MainActor in self?.pushed(update) }
+        }
+    }
+
+    /// A view update outside a request: drawn only in a view on screen of a ready plugin; others are dropped. An
+    /// overlay set (#407) replaces the plugin's overlays; a bad one is dropped (the host call reports why).
+    private func pushed(_ update: PluginViewUpdate) {
+        guard let view = update.view else {
+            guard let plugin = document.plugins.plugin(update.pluginID), document.plugins.isReady(plugin),
+                let overlays = try? PluginOverlay.parse(update.answer.object["overlays"] ?? .null)
+            else { return }
+            document.ui.setPluginOverlays(plugin.id, overlays)
+            return
+        }
+        guard let model = models[update.pluginID + "/" + view], model.visible,
+            let plugin = document.plugins.plugin(update.pluginID), document.plugins.isReady(plugin)
+        else { return }
+        model.pushed(update.answer)
+    }
 
     /// Ready plugins with a rail container, in catalog order.
     var containers: [InstalledPlugin] {
@@ -88,6 +111,7 @@ import Foundation
 
     /// Ends every plugin's command token and forgets views of plugins that are gone (project closed or switched).
     func reset() {
+        document.ui.clearPluginOverlays()
         for session in sessions.values { session.revoke(in: document.registry) }
         sessions = [:]
         models = models.filter { key, _ in containers.contains { key.hasPrefix($0.id + "/") } }
@@ -121,14 +145,35 @@ import Foundation
         _ method: String, _ params: JSONValue, plugin: InstalledPlugin
     ) async -> Result<JSONValue, PluginCallFailure> {
         if method == "plugins.invoke" { return await invoke(params.object, plugin: plugin) }
-        if method == "plugins.show-view", params.object["plugin"]?.string != plugin.id {
-            return .failure(PluginCallFailure(code: -32601, message: "A plugin can only show its own views"))
+        if let refusal = PluginCommandSession.ownPluginRefusal(method, params: params.object, caller: plugin.id) {
+            return .failure(PluginCallFailure(code: -32601, message: refusal))
         }
+        if method == "plugins.option" { return setOwnOption(params.object, plugin: plugin) }
         let session = sessions[plugin.id] ?? PluginCommandSession()
         sessions[plugin.id] = session
         let response = await session.perform(method, params: params.object, registry: document.registry)
         if let failure = response.error { return .failure(PluginCallFailure(code: failure.code, message: failure.message)) }
         return .success(response.result ?? .null)
+    }
+
+    /// `plugins.option` from a plugin for one of its own options (#411): never a secret; user-scope values are saved
+    /// for this Mac, project-scope values are an undoable project edit by author `plugin`. Answers like the command.
+    private func setOwnOption(_ params: [String: JSONValue], plugin: InstalledPlugin) -> Result<JSONValue, PluginCallFailure> {
+        guard let id = params["option"]?.string,
+            let option = (plugin.manifest.options ?? []).first(where: { $0.id == id })
+        else {
+            return .failure(PluginCallFailure(
+                code: -32602, message: "Unknown option \(params["option"]?.string ?? "") for \(plugin.id)"))
+        }
+        do {
+            let value = try PluginOptionPolicy.ownValue(params["value"], for: option)
+            try document.setPluginOption(plugin, option: id, value: value, author: .plugin, ownPlugin: true)
+            return .success(.object([
+                "value": document.pluginOptionValues(plugin)[id] ?? .null, "rev": .integer(document.project.revision),
+            ]))
+        } catch {
+            return .failure(PluginCallFailure(code: -32602, message: error.localizedDescription))
+        }
     }
 
     /// `plugins.invoke` from a plugin: only capabilities its manifest lists in `uses`.
@@ -176,6 +221,9 @@ import Foundation
     /// The newest streamed render not drawn yet, and whether a draw is scheduled.
     @ObservationIgnored private var streamedRender: JSONValue?
     @ObservationIgnored private var streamFlush: Task<Void, Never>?
+    /// The newest view update sent outside a request (#409) not drawn yet, and whether a draw is scheduled.
+    @ObservationIgnored private var pushedAnswer: JSONValue?
+    @ObservationIgnored private var pushFlush: Task<Void, Never>?
     static let maximumQueue = 16
     /// Streamed renders are drawn at most this often; the ones in between are skipped.
     static let streamInterval: Duration = .milliseconds(60)
@@ -192,8 +240,38 @@ import Foundation
     var visible = false {
         didSet {
             guard visible != oldValue else { return }
-            if visible, tree == nil || error != nil { load() } else { scheduleRefresh() }
+            if visible, !following, tree == nil || error != nil { load() } else { scheduleRefresh() }
         }
+    }
+
+    /// An Inspector view (#405) follows the selection: the newest selection renders after `selectionDebounce` without
+    /// a newer one, and a render still running for an older selection is cancelled.
+    @ObservationIgnored private let follow = PluginLatestRequest()
+    @ObservationIgnored private var following = false
+    static let selectionDebounce: Duration = .milliseconds(120)
+
+    /// The Inspector shows another item (or the same item's media changed): forget the old answer and render for the
+    /// new selection, at once when the view just appeared. `matches` false (the view's `when` fails): show nothing
+    /// and ask the plugin nothing.
+    func followSelection(matches: Bool) {
+        let first = !visible
+        forget()
+        following = true
+        visible = true
+        guard matches else {
+            follow.cancel()
+            return
+        }
+        follow.schedule(after: first ? .zero : Self.selectionDebounce) { [weak self] in
+            _ = try? await self?.run(nil)
+        }
+    }
+
+    /// The Inspector no longer shows the view.
+    func stopFollowing() {
+        follow.cancel()
+        following = false
+        visible = false
     }
 
     func load() { Task { _ = try? await run(nil) } }
@@ -302,6 +380,31 @@ import Foundation
         streamFlush?.cancel()
         streamFlush = nil
         streamedRender = nil
+        pushFlush?.cancel()
+        pushFlush = nil
+        pushedAnswer = nil
+    }
+
+    /// A view answer the plugin sent outside a request (#409), drawn at most every `streamInterval` like streamed
+    /// renders (the ones in between are skipped). While a request runs it only redraws, like a streamed render; its
+    /// answer then decides the values and state.
+    func pushed(_ answer: JSONValue) {
+        pushedAnswer = answer
+        guard pushFlush == nil else { return }
+        let generation = self.generation
+        pushFlush = Task { [weak self] in
+            try? await Task.sleep(for: Self.streamInterval)
+            guard let self, !Task.isCancelled, self.generation == generation else { return }
+            self.pushFlush = nil
+            guard let answer = self.pushedAnswer else { return }
+            self.pushedAnswer = nil
+            guard let next = try? await Self.parse(answer), self.generation == generation, self.visible else { return }
+            if self.busy {
+                self.tree = PluginViewTree(title: next.title ?? self.tree?.title, body: next.body, state: self.tree?.state)
+            } else {
+                self.apply(next, typing: nil)
+            }
+        }
     }
 
     /// Reads an answer off the main actor (a large view takes milliseconds to check).

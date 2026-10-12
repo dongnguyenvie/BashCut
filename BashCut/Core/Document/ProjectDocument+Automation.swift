@@ -38,6 +38,7 @@ extension ProjectDocument {
         registerColorMeasureCommands()
         registerBeatGridCommands()
         registerVisionCommands()
+        registerPictureCommands()
         registerSpeechRateCommands()
         registerVoiceCheckCommands()
         registerVoiceTakeCommands()
@@ -48,12 +49,14 @@ extension ProjectDocument {
         registerPlanCutCommands()
         registerVariantCommands()
         registerPackagingCommands()
+        registerLedgerCommands()
         registerStorageCommands()
         registerLibraryCommands()
         registerAgentKitCommands()
         registerAppCommands()
         registerChatAgentCommands()
         registerChatScopeCommands()
+        registerFollowUpCommands()
         registerTerminalCommands()
         registerPrivilegedCommands()
         registerUICommands()
@@ -155,6 +158,7 @@ extension ProjectDocument {
                 plugins: arguments.optionalBool("plugins") ?? true)
         }
         handle("review.picture") { document, arguments, _ in
+            await document.restoreReviewMeasurements()
             guard let picture = document.reviewPicture else {
                 throw RPCFailure(-32602, "No picture measurement yet: run review measure first")
             }
@@ -183,6 +187,7 @@ extension ProjectDocument {
                 else { throw RPCFailure(-32603, "Dry run returned no object") }
                 fields["fingerprint"] = .string(fingerprint)
                 if !warnings.isEmpty { fields["warnings"] = .array(warnings) }
+                if let scope = document.agentScopePreview(operation, author: author) { fields["outsideScope"] = scope }
                 return .object(fields)
             }
             if let expected = arguments.optionalString("expectFingerprint"), expected != fingerprint {
@@ -465,7 +470,7 @@ extension ProjectDocument {
         let changes = project.itemChanges(from: before)
         agentChange = AgentChangeRecord(
             author: author, label: label, beforeRevision: before.revision,
-            afterRevision: project.revision, changes: changes)
+            afterRevision: project.revision, changes: changes, command: CommandCaller.method)
         agentChangedIDs = Set(changes.compactMap { $0.after == nil ? nil : $0.itemID })
     }
 

@@ -191,6 +191,35 @@
           "minimum" : 0,
           "type" : "integer"
         },
+        "backdrop" : {
+          "description" : "Video picture: what fills the frame around it (fit clips, off-aspect photos) instead of black",
+          "properties" : {
+            "blur" : {
+              "description" : "Blur radius as a share of the frame's short side (kind blur; default 0.05)",
+              "maximum" : 0.5,
+              "minimum" : 0,
+              "type" : "number"
+            },
+            "color" : {
+              "description" : "Backdrop colour #RRGGBB (kind color; default black)",
+              "pattern" : "^#[0-9A-Fa-f]{6}$",
+              "type" : "string"
+            },
+            "dim" : {
+              "description" : "Darkens the backdrop: 0 unchanged, 1 black (default 0)",
+              "maximum" : 1,
+              "minimum" : 0,
+              "type" : "number"
+            },
+            "kind" : {
+              "description" : "Video picture: what fills the frame around a fitted picture: blur (a blurred, filled copy of itself) or color",
+              "maxLength" : 5,
+              "minLength" : 1,
+              "type" : "string"
+            }
+          },
+          "type" : "object"
+        },
         "brandRoles" : {
           "additionalProperties" : {
             "enum" : [
@@ -387,6 +416,141 @@
                   },
                   "value" : {
                     "maximum" : 4,
+                    "minimum" : 0,
+                    "type" : "number"
+                  }
+                },
+                "required" : [
+                  "frame",
+                  "value"
+                ],
+                "type" : "object"
+              },
+              "maxItems" : 1000,
+              "minItems" : 1,
+              "type" : "array"
+            },
+            "crop.bottom" : {
+              "description" : "Like the item's crop.bottom; video clips and images",
+              "items" : {
+                "properties" : {
+                  "ease" : {
+                    "description" : "Change to the next key: linear, in, out, inOut, hold or cubic-bezier(x1,y1,x2,y2); default inOut",
+                    "type" : "string"
+                  },
+                  "frame" : {
+                    "type" : "integer"
+                  },
+                  "value" : {
+                    "maximum" : 0.95,
+                    "minimum" : 0,
+                    "type" : "number"
+                  }
+                },
+                "required" : [
+                  "frame",
+                  "value"
+                ],
+                "type" : "object"
+              },
+              "maxItems" : 1000,
+              "minItems" : 1,
+              "type" : "array"
+            },
+            "crop.left" : {
+              "description" : "Like the item's crop.left; video clips and images",
+              "items" : {
+                "properties" : {
+                  "ease" : {
+                    "description" : "Change to the next key: linear, in, out, inOut, hold or cubic-bezier(x1,y1,x2,y2); default inOut",
+                    "type" : "string"
+                  },
+                  "frame" : {
+                    "type" : "integer"
+                  },
+                  "value" : {
+                    "maximum" : 0.95,
+                    "minimum" : 0,
+                    "type" : "number"
+                  }
+                },
+                "required" : [
+                  "frame",
+                  "value"
+                ],
+                "type" : "object"
+              },
+              "maxItems" : 1000,
+              "minItems" : 1,
+              "type" : "array"
+            },
+            "crop.radius" : {
+              "description" : "Like the item's crop.radius; video clips and images",
+              "items" : {
+                "properties" : {
+                  "ease" : {
+                    "description" : "Change to the next key: linear, in, out, inOut, hold or cubic-bezier(x1,y1,x2,y2); default inOut",
+                    "type" : "string"
+                  },
+                  "frame" : {
+                    "type" : "integer"
+                  },
+                  "value" : {
+                    "maximum" : 0.5,
+                    "minimum" : 0,
+                    "type" : "number"
+                  }
+                },
+                "required" : [
+                  "frame",
+                  "value"
+                ],
+                "type" : "object"
+              },
+              "maxItems" : 1000,
+              "minItems" : 1,
+              "type" : "array"
+            },
+            "crop.right" : {
+              "description" : "Like the item's crop.right; video clips and images",
+              "items" : {
+                "properties" : {
+                  "ease" : {
+                    "description" : "Change to the next key: linear, in, out, inOut, hold or cubic-bezier(x1,y1,x2,y2); default inOut",
+                    "type" : "string"
+                  },
+                  "frame" : {
+                    "type" : "integer"
+                  },
+                  "value" : {
+                    "maximum" : 0.95,
+                    "minimum" : 0,
+                    "type" : "number"
+                  }
+                },
+                "required" : [
+                  "frame",
+                  "value"
+                ],
+                "type" : "object"
+              },
+              "maxItems" : 1000,
+              "minItems" : 1,
+              "type" : "array"
+            },
+            "crop.top" : {
+              "description" : "Like the item's crop.top; video clips and images",
+              "items" : {
+                "properties" : {
+                  "ease" : {
+                    "description" : "Change to the next key: linear, in, out, inOut, hold or cubic-bezier(x1,y1,x2,y2); default inOut",
+                    "type" : "string"
+                  },
+                  "frame" : {
+                    "type" : "integer"
+                  },
+                  "value" : {
+                    "maximum" : 0.95,
                     "minimum" : 0,
                     "type" : "number"
                   }
@@ -863,6 +1027,40 @@
               "maximum" : 4,
               "minimum" : 0.5,
               "type" : "number"
+            },
+            "lines" : {
+              "description" : "Each line's own look in reading order (two fonts in one title); null keeps the block's",
+              "items" : {
+                "additionalProperties" : false,
+                "properties" : {
+                  "fill" : {
+                    "pattern" : "^#[0-9A-Fa-f]{6}$",
+                    "type" : "string"
+                  },
+                  "font" : {
+                    "description" : "Font PostScript name (family and weight)",
+                    "maxLength" : 128,
+                    "minLength" : 1,
+                    "type" : "string"
+                  },
+                  "scale" : {
+                    "description" : "Size × the block's font size",
+                    "maximum" : 5,
+                    "minimum" : 0.2,
+                    "type" : "number"
+                  },
+                  "stroke" : {
+                    "pattern" : "^#[0-9A-Fa-f]{6}$",
+                    "type" : "string"
+                  }
+                },
+                "type" : [
+                  "object",
+                  "null"
+                ]
+              },
+              "maxItems" : 50,
+              "type" : "array"
             },
             "positionX" : {
               "description" : "Horizontal anchor: left edge, centre or right edge by align",
@@ -1951,6 +2149,12 @@
         "loudnessToleranceLU" : {
           "description" : "Loudness further than this from the export's target is flagged; unset: no check, or the measured value as info",
           "maximum" : 20,
+          "minimum" : 0,
+          "type" : "number"
+        },
+        "maxFaceOverlap" : {
+          "description" : "maxFaceOverlap; unset: no check, or the measured value as info",
+          "maximum" : 1,
           "minimum" : 0,
           "type" : "number"
         },

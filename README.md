@@ -119,6 +119,31 @@ shows in Show Changes and can be undone. See [Automation](docs/guides/automation
 - **Agent permissions**: choose what agents may do without asking (edits, exports, plugin actions), or allow
   everything
 
+### Skills
+
+The agent kit's skills show as `bc:<name>` in Claude Code and Codex:
+
+- `bc:edit-workflow`: the whole edit from intake to export, with gates, a checklist and audits; read it first
+- `bc:footage-survey`: inventory, contact sheets and shot descriptions before cutting
+- `bc:rough-cut`: selects by quote, retakes, padding and long → short
+- `bc:beat-cut`: cuts on the beat or on sentences, rhythm checked by measurement, punch-ins
+- `bc:audio-mix`: the mix measured by role, levels, ducking, music, SFX and loudness per output
+- `bc:voiceover`: narration sized to its windows, text-to-speech takes checked and re-taken in place, dubbing
+- `bc:captions-text`: captions, word timings, titles, cards and fonts that draw the language
+- `bc:color-grade`: measured grading, looks and LUTs
+- `bc:effects`: which effect fits which moment, with native transitions, speed and reframes
+- `bc:visual-plan`: what the viewer sees on every line of a talking video
+- `bc:motion-graphics`: designed graphics over footage (cards, counters, kinetic type)
+- `bc:stock-images`: stock photos, video and icons placed as illustration
+- `bc:style-study`: a reference style measured and turned into a memo, a look and text presets
+- `bc:library`: making, harvesting and pruning library items
+- `bc:review`: the critic loop before export
+- `bc:self-learn`: lessons, preferences and facts in BashCut's knowledge
+- `bc:setup`: installs the recommended plugins (only when you type `/bc:setup`)
+
+Topic recipes (`bashcut.vlog:plan`, travel, food, explainer, hook script, publish…) ship with the Vlog plugin in
+[bashcut-plugins](https://github.com/dongnguyenvie/bashcut-plugins) and load as plugin skills.
+
 ### Automation
 
 - The `bashcut` CLI and MCP server cover every UI action, dialog, shortcut and view: 140 commands, with dry runs,

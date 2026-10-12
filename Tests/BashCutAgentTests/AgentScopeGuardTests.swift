@@ -97,4 +97,75 @@ struct AgentScopeGuardTests {
         scope[0].id = "gone"
         #expect(AgentScopeGuard.span(scope, in: project) == 360..<540)
     }
+
+    @Test("Ripple shifts of later clips are not checked: ripple delete or trim of a scope clip, closing its gap")
+    func rippleShifts() throws {
+        #expect(try check([.delete(item: "v", ripple: true)]).isInScope)
+        #expect(try check([.trim(item: "v", edge: .end, toFrame: 500, ripple: true)]).isInScope)
+        // Rippling an outside clip names only that clip, not the scope clips it shifts.
+        #expect(try check([.delete(item: "w", ripple: true)]).items == ["w"])
+        // Lift the scope clip, then close the gap it left: the tail moves together across the span.
+        var (project, scope) = try setup()
+        project.markers = [TimelineMarker(at: 540, kind: "section", label: "End")]
+        project = try project.applying(.delete(item: "v", ripple: false)).project
+        let close = try project.closingGap(on: "v1", containing: 400)
+        #expect(AgentScopeGuard.check(close, scope: scope, in: project).isInScope)
+        // Moving the last clip away from the scope is no ripple: it is checked.
+        let away = EditOperation.group(label: "Move", author: .agent, ops: [.move(item: "x", toTrack: "v1", atFrame: 900)])
+        #expect(AgentScopeGuard.check(away, scope: scope, in: project).items == ["x"])
+        // Moving one clip of a tail is checked too.
+        let (whole, _) = try setup()
+        let one = EditOperation.group(label: "Move", author: .agent, ops: [.move(item: "w", toTrack: "v1", atFrame: 10)])
+        #expect(AgentScopeGuard.check(one, scope: scope, in: whole).items == ["w"])
+    }
+
+    @Test("Undo and redo are checked as the change between the two states")
+    func undoRedo() throws {
+        let (project, scope) = try setup()
+        var history = ProjectHistory(project: project)
+        let check = { (undo: Bool) -> AgentScopeCheck in
+            let target = try #require((undo ? history.lastUndo : history.redoEntries.last)?.before)
+            return AgentScopeGuard.check(from: history.project, to: target, scope: scope)
+        }
+        // Undoing an in-scope ripple delete brings the clip back and shifts the tail: in scope; so is its redo.
+        try history.apply(.delete(item: "v", ripple: true), label: "Delete", author: .agent)
+        #expect(try check(true).isInScope)
+        try history.undo()
+        #expect(try check(false).isInScope)
+        try history.redo()
+        try history.undo()
+        // Undoing the user's change to another clip, or a project setting, reaches outside.
+        try history.apply(.setProperties(item: "w", patch: ["opacity": .number(0.5)]), label: "Fade", author: .user)
+        #expect(try check(true).items == ["w"])
+        try history.undo()
+        #expect(try check(false).items == ["w"])
+        try history.redo()
+        try history.apply(.setProjectProperties(patch: ["looks": .array([])]), label: "Looks", author: .user)
+        #expect(try check(true).projectWide == ["project settings"])
+        try history.undo()
+        try history.undo()
+        // A title the agent added inside the span goes away on undo: in scope only when it was made in scope.
+        var late = Item(id: "late", at: 900, duration: 30)
+        late["text"] = .string("Hi")
+        try history.apply(.insert(track: "t1", item: late), label: "Add", author: .agent)
+        #expect(try check(true).items == ["late"])
+        #expect(AgentScopeGuard.check(
+            from: history.project, to: try #require(history.lastUndo?.before), scope: scope, extra: ["late"]).isInScope)
+        // A new empty layer coming or going is never held; a layer's settings are project-wide.
+        try history.apply(.addTrack(track: Track(id: "t9", kind: "text", role: "titles"), atIndex: 0), label: "Layer", author: .agent)
+        #expect(try check(true).isInScope)
+        try history.apply(.setTrackProperties(track: "a1", patch: ["muted": .bool(true)]), label: "Mute", author: .user)
+        #expect(try check(true).projectWide == ["layer Dialogue"])
+    }
+
+    @Test("A dry run's check is the apply's: the same parts outside, every time")
+    func dryRun() throws {
+        let (project, scope) = try setup()
+        let operation = EditOperation.group(label: "Edit", author: .agent, ops: [
+            .setProperties(item: "x", patch: ["opacity": .number(0.5)]), .setFormat(width: 1080, height: 1920),
+        ])
+        let first = AgentScopeGuard.check(operation, scope: scope, in: project)
+        #expect(first.items == ["x"] && first.projectWide == ["project format"])
+        #expect(AgentScopeGuard.check(operation, scope: scope, in: project) == first)
+    }
 }

@@ -1,5 +1,6 @@
 import BashCutAgent
 import BashCutAutomation
+import BashCutPlugin
 import BashCutProject
 import BashCutStorage
 import Foundation
@@ -9,6 +10,7 @@ import Foundation
 /// approval.
 extension ProjectDocument {
     func registerSkillCommands() {
+        handleAuthored("skills.export") { document, arguments, _ in try document.exportSkills(arguments) }
         handle("skills.list") { document, arguments, _ in
             document.agents.loadKnowledge()
             let origin = try Self.skillOrigin(arguments.optionalString("scope"))
@@ -175,6 +177,36 @@ extension ProjectDocument {
         if let linked = plugins.skills.first(where: { $0.linkName == name }) { return linked.id }
         let matches = plugins.skills.filter { $0.name == name }
         return matches.count == 1 ? matches[0].id : nil
+    }
+
+    /// `skills.export` (#506): saved skills copied out, as plain folders or a skill pack plugin.
+    private func exportSkills(_ arguments: CommandArguments) throws -> JSONValue {
+        agents.loadKnowledge()
+        guard let scope = KnowledgeScope(rawValue: arguments.optionalString("scope") ?? "user") else {
+            throw RPCFailure(-32602, "scope must be project or user")
+        }
+        let saved = agents.knowledge.skills(scope)
+        let wanted = arguments["skills"].map { $0.array.compactMap(\.string) }
+        if let missing = wanted?.first(where: { name in !saved.contains { $0.name == name } }) {
+            throw RPCFailure(-32602, "No \(scope.rawValue) skill named \(missing)")
+        }
+        let chosen = saved.filter { wanted?.contains($0.name) ?? true }
+        guard !chosen.isEmpty else { throw RPCFailure(-32602, "No \(scope.rawValue) skills to export") }
+        var metadata: PluginSkillPack.Metadata?
+        if arguments.bool("asPlugin") {
+            let id = try arguments.string("id")
+            metadata = PluginSkillPack.Metadata(
+                id: id, name: arguments.optionalString("name") ?? id, version: arguments.optionalString("version") ?? "0.1.0",
+                author: arguments.optionalString("author").map { PluginAuthor(name: $0) })
+        }
+        let output = URL(fileURLWithPath: try arguments.string("output")).standardizedFileURL
+        do {
+            try PluginSkillPack.export(chosen.map { $0.file.deletingLastPathComponent() }, metadata: metadata, to: output)
+        } catch { throw RPCFailure(-32602, error.localizedDescription) }
+        return .object([
+            "output": .string(output.path), "skills": .array(chosen.map { .string($0.name) }),
+            "plugin": metadata.map { .string($0.id) } ?? .null,
+        ])
     }
 
     private static func skillOrigin(_ value: String?) throws -> KnowledgeSkillRef.Origin? {

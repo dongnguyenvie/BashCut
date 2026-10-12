@@ -17,7 +17,8 @@ extension CommandCatalog {
                                  cli: .option("label")),
                 CommandParameter("dryRun", .boolean,
                                  "Validate without editing; return projected duration, changed IDs, cutsInsideWord "
-                                     + "(clip edges the edit leaves inside a transcribed word) and fingerprint",
+                                     + "(clip edges the edit leaves inside a transcribed word), fingerprint and, when "
+                                     + "the attached scope would hold or refuse the edit, outsideScope",
                                  default: .bool(false), cli: .flag("dry-run")),
                 CommandParameter("why", .string, "Why this edit, in one sentence (up to 500 characters)",
                                  cli: .option("why")),

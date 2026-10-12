@@ -132,7 +132,7 @@ public struct PluginArchiveInstaller: Sendable {
         try? manager.removeItem(at: unpacked)
         try? Self.run("/usr/bin/xattr", ["-dr", "com.apple.quarantine", named.path])
         let plugin = InstalledPlugin(manifest: manifest, directory: named)
-        _ = try plugin.entrypointURL()
+        try plugin.checkEntrypoint()
         return plugin
     }
 

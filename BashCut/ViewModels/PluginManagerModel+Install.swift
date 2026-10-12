@@ -52,7 +52,7 @@ extension PluginManagerModel {
             } else {
                 try manager.copyItem(at: source, to: staged)
             }
-            _ = try InstalledPlugin(manifest: manifest, directory: staged).entrypointURL()
+            try InstalledPlugin(manifest: manifest, directory: staged).checkEntrypoint()
         }.value
         let stagedPlugin = InstalledPlugin(manifest: manifest, directory: staged)
         for (index, (dependency, recipe)) in recipes.enumerated() {

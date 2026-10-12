@@ -160,6 +160,7 @@ extension EditorView {
                     .foregroundStyle(.white).shadow(radius: 2)
                 }.allowsHitTesting(false)
             }
+            PluginViewerOverlays(document: document)
             if document.ui.showSafeArea {
                 GeometryReader { geo in
                     let aspect = Double(document.project.width) / Double(document.project.height)

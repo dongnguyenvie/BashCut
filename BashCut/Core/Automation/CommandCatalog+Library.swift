@@ -41,6 +41,10 @@ extension CommandCatalog {
         CommandParameter(
             "file", .string, "File to copy in (audio, image or alpha-movie sticker, a look's .cube LUT, a clip's movie or image…)", isPath: true,
             cli: .option("file")),
+        CommandParameter(
+            "profile", .string,
+            "The reference profile it was made from (bc:style-study): a file path, URL or knowledge fact key; empty "
+                + "clears it", cli: .option("profile")),
         CommandParameter("preview", .string, "Preview image, GIF or audio snippet to copy in", isPath: true,
                          cli: .option("preview")),
         CommandParameter("source", .string, "Where it came from (URL or note)", cli: .option("source")),

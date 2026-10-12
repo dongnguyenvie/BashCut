@@ -5,27 +5,55 @@ import Foundation
 /// `review.check` (API 9): a plugin's own review of the timeline (a model-scored hook, contrast, brand rules). The
 /// request carries the project and its folder; the result is `issues` in the shape `review.run` returns. Issue IDs
 /// are prefixed with the provider ID and carry the plugin as `source`.
+///
+/// A request is at most 1 MiB, so a project whose JSON is over `inlineProjectBytes` is not sent inline: it is
+/// written once to a private file, `projectFile` gives its path, and the file is removed when every check is done.
 public struct ReviewCheckCapability: CapabilityAdapter {
     public static let capability = PluginAPI.reviewCheck
     /// At most this many issues from one check; the rest are dropped.
     public static let maximumIssues = 50
+    /// The largest project JSON sent inline; the rest of the request (options included) must fit in what is left of
+    /// the 1 MiB request limit.
+    public static let inlineProjectBytes = 512 * 1024
 
     public let project: Project
     public let projectRoot: URL?
+    /// The project's JSON on disk, instead of inline, for a project over `inlineProjectBytes`.
+    public let projectFile: URL?
 
-    public init(project: Project, projectRoot: URL?) {
+    public init(project: Project, projectRoot: URL?, projectFile: URL? = nil) {
         self.project = project
         self.projectRoot = projectRoot
+        self.projectFile = projectFile
     }
 
     public func params(outputDirectory: URL?) -> JSONValue {
         var fields: [String: JSONValue] = [
-            "project": .object(project.fields), "revision": .integer(project.revision),
+            "revision": .integer(project.revision),
             "fps": .number(project.fps.value), "duration": .integer(project.duration),
             "width": .integer(project.width), "height": .integer(project.height),
         ]
+        if let projectFile {
+            fields["projectFile"] = .string(projectFile.path)
+        } else {
+            fields["project"] = .object(project.fields)
+        }
         if let projectRoot { fields["projectRoot"] = .string(projectRoot.path) }
         return .object(fields)
+    }
+
+    /// Writes the project's JSON to a new private folder when it is too large to send inline; nil when it fits.
+    /// The caller removes the file's folder when the checks are done.
+    static func projectFile(for project: Project) throws -> URL? {
+        let data = try JSONEncoder().encode(JSONValue.object(project.fields))
+        guard data.count > inlineProjectBytes else { return nil }
+        let folder = FileManager.default.temporaryDirectory
+            .appendingPathComponent("bashcut-review-check-" + UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: folder, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+        let file = folder.appendingPathComponent("project.json")
+        try data.write(to: file, options: .atomic)
+        return file
     }
 
     public func output(from result: JSONValue, context: CapabilityContext) async throws -> [ReviewIssue] {
@@ -86,7 +114,17 @@ extension CapabilityService {
     public func runReviewChecks(
         _ providers: [ResolvedPluginProvider], project: Project, projectRoot: URL?, timeout: TimeInterval = 30
     ) async -> [ReviewIssue] {
-        let adapter = ReviewCheckCapability(project: project, projectRoot: projectRoot)
+        guard !providers.isEmpty else { return [] }
+        let projectFile: URL?
+        do {
+            projectFile = try ReviewCheckCapability.projectFile(for: project)
+        } catch {
+            return providers.map { resolved in
+                Self.failedCheck(resolved, reason: "could not be given the project (\(error.localizedDescription))")
+            }
+        }
+        defer { if let projectFile { try? FileManager.default.removeItem(at: projectFile.deletingLastPathComponent()) } }
+        let adapter = ReviewCheckCapability(project: project, projectRoot: projectRoot, projectFile: projectFile)
         return await withTaskGroup(of: (Int, [ReviewIssue]).self) { group in
             for (index, resolved) in providers.enumerated() {
                 let limit = min(timeout, resolved.provider.timeoutSeconds.map(TimeInterval.init) ?? timeout)
@@ -96,11 +134,7 @@ extension CapabilityService {
                     } catch {
                         let reason = error is ReviewCheckTimeout
                             ? String(format: "did not finish within %.0f s", limit) : error.localizedDescription
-                        return (index, [ReviewIssue(
-                            id: resolved.provider.id + ":failed", title: "Plugin check failed",
-                            detail: "\(resolved.provider.name) (\(resolved.plugin.manifest.displayName)) \(reason); "
-                                + "its issues are missing from this review.",
-                            frame: 0, severity: .info, source: resolved.plugin.id)])
+                        return (index, [Self.failedCheck(resolved, reason: reason)])
                     }
                 }
             }
@@ -108,6 +142,15 @@ extension CapabilityService {
             for await result in group { results.append(result) }
             return results.sorted { $0.0 < $1.0 }.flatMap(\.1)
         }
+    }
+
+    /// The info issue a check that failed becomes.
+    static func failedCheck(_ resolved: ResolvedPluginProvider, reason: String) -> ReviewIssue {
+        ReviewIssue(
+            id: resolved.provider.id + ":failed", title: "Plugin check failed",
+            detail: "\(resolved.provider.name) (\(resolved.plugin.manifest.displayName)) \(reason); "
+                + "its issues are missing from this review.",
+            frame: 0, severity: .info, source: resolved.plugin.id)
     }
 
     /// The work's result, or `ReviewCheckTimeout` after `seconds`; the work is cancelled (its process terminated).

@@ -38,13 +38,34 @@ extension ProjectDocument {
         }
     }
 
+    /// Quick Edit › Other…: `send` sends the typed request on the selected clips like the Send button.
+    private func quickEditSheet() -> ModalSheet? {
+        guard ui.showQuickEdit else { return nil }
+        let draft = ui.quickEditDraft
+        return ModalSheet(
+            name: "quick-edit", title: "Quick edit", message: draft.isEmpty ? nil : draft,
+            options: [ModalOption("send", String(localized: "Send")), Self.close]
+        ) { [weak self] option in
+            guard let self else { return }
+            if option == "send" {
+                guard !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                    throw ModalError("The request is empty; write it in the sheet first")
+                }
+                try quickEdit(.custom, text: draft)
+                ui.quickEditDraft = ""
+            }
+            ui.showQuickEdit = false
+        }
+    }
+
     func openSheets() -> [ModalSheet] {
         var sheets: [ModalSheet] = []
         func closing(_ name: String, _ title: String, when open: Bool, _ close: @escaping @MainActor () -> Void) {
             guard open else { return }
             sheets.append(ModalSheet(name: name, title: title, options: [Self.close]) { _ in close() })
         }
-        sheets.append(contentsOf: [askSheet(), libraryEditorSheet(), effectApplySheet(), librarySearchSheet()].compactMap { $0 })
+        sheets.append(contentsOf: [askSheet(), quickEditSheet(), libraryEditorSheet(), effectApplySheet(), librarySearchSheet()]
+            .compactMap { $0 })
         closing("sections", "Sections", when: ui.showSections) { [weak self] in self?.ui.showSections = false }
         closing("commands", "Command palette", when: ui.showCommands) { [weak self] in self?.ui.showCommands = false }
         closing("shortcuts", "Keyboard shortcuts", when: ui.showShortcuts) { [weak self] in
@@ -90,18 +111,7 @@ extension ProjectDocument {
                 if option == "close" { ui.showExternalChanges = false } else { resolveConflict(loadDisk: option == "load-disk") }
             })
         }
-        if ui.showPlugins, let pending = plugins.pendingInstall {
-            // Installing runs the plugin's dependency recipes; only the user can approve it.
-            sheets.append(ModalSheet(
-                name: "plugin-install",
-                title: (pending.repair ? "Set up " : (pending.local == nil ? pending.replacing : plugins.replaces(pending))
-                    ? "Update " : "Install ")
-                    + pending.plugin.manifest.displayName + "?",
-                message: "Only the user can approve a plugin install."
-                    + (plugins.mode(of: pending) == .link ? " It is installed as a link (developer mode)." : ""),
-                options: [ModalOption("cancel", String(localized: "Cancel"))]
-            ) { [weak self] _ in self?.plugins.cancelPendingInstall() })
-        }
+        if ui.showPlugins, let pending = plugins.pendingInstall { sheets.append(pluginInstallSheet(pending)) }
         if ui.showPlugins, let pending = plugins.pendingBundle {
             sheets.append(ModalSheet(
                 name: "plugin-bundle-install", title: "Install " + pending.bundle.name.text + "?",
@@ -113,6 +123,25 @@ extension ProjectDocument {
         sheets += pluginSheets()
         sheets += approvalSheets()
         return sheets
+    }
+
+    /// The plugin install approval as `ui dialog` shows it: who wrote the plugin and what its skills change.
+    private func pluginInstallSheet(_ pending: PendingPluginInstall) -> ModalSheet {
+        // Installing runs the plugin's dependency recipes; only the user can approve it.
+        let verb = pending.repair ? "Set up "
+            : (pending.local == nil ? pending.replacing : plugins.replaces(pending)) ? "Update " : "Install "
+        var message = "Only the user can approve a plugin install."
+        if let author = pending.plugin.manifest.author {
+            message += " By " + author.name + (author.url.map { " (\($0))" } ?? "") + "."
+        }
+        if let review = plugins.skillReviews[pending.id] {
+            message += " Skills changed: \(review.skills.count), lines to check: \(review.flaggedCount)."
+        }
+        if plugins.mode(of: pending) == .link { message += " It is installed as a link (developer mode)." }
+        return ModalSheet(
+            name: "plugin-install", title: verb + pending.plugin.manifest.displayName + "?", message: message,
+            options: [ModalOption("cancel", String(localized: "Cancel"))]
+        ) { [weak self] _ in self?.plugins.cancelPendingInstall() }
     }
 
     /// Decisions only the user can approve: a privileged agent action and an edit outside the attached scope.
@@ -141,7 +170,7 @@ extension ProjectDocument {
                 name: "agent-scope", title: "\(hold.agent) wants to edit outside the attached clips",
                 message: "This edit also changes: \(hold.outside). Only the user can allow it.",
                 options: [ModalOption(AgentScopeChoice.reject.rawValue, String(localized: "Reject"))]
-            ) { [weak self] _ in self?.resolveScopeHold(.reject) })
+            ) { [weak self] _ in self?.resolveScopeHold(.reject, byUser: false) })
         }
         return sheets
     }
@@ -252,6 +281,7 @@ extension ProjectDocument {
             "export-report": ({ $0.exports.report != nil }, "No export report yet", \.showExportReport),
             "export-progress": ({ $0.exports.isRunning }, "No export is running", \.showExportProgress),
             "agent-changes": ({ $0.agentChange != nil }, "No agent change to show", \.showAgentChanges),
+            "quick-edit": ({ !$0.selectedItems.isEmpty }, "Select the clips first", \.showQuickEdit),
             "external-changes": ({ $0.conflict }, "The project file has no conflicting change", \.showExternalChanges),
             "plugin-proposals": ({ !$0.plugins.proposals.isEmpty }, "No plugin edits to review", \.showPluginProposals),
         ]

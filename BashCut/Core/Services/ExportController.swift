@@ -75,17 +75,20 @@ public final class ExportController {
             captionCount: request.source.tracks.first(where: { $0.role == TrackRole.captions })?.items.count ?? 0,
             includedSubRip: request.includesSubRip, loudness: outcome.finalMeasurement,
             loudnessVerified: outcome.verified, appliedGainDb: outcome.appliedGainDb,
-            speechCoverage: TimelineReview.speechCoverage(request.source, transcripts: request.transcripts),
+            speechCoverage: outcome.speechCoverage,
             completedAt: Date(),
             comparison: nil)
         report.acceptedIssues = (request.source["review"]?.object["accepted"]?.object ?? [:])
             .compactMapValues { $0.object["reason"]?.string }
-        if let snapshot = try? history.record(report.storedMetrics, projectRoot: request.root) {
+        if let snapshot = try? history.record(report.storedMetrics, projectRoot: request.root, project: request.source) {
             self.report = ExportReport(snapshot: snapshot) ?? report
         } else {
             self.report = report
         }
     }
+
+    /// The project's export ledger (P3-I2).
+    public var ledger: ExportHistoryStore { history }
 
     /// `export.status`: while an export runs, the top-level fields describe it and the last receipt
     /// moves to `lastExport`.

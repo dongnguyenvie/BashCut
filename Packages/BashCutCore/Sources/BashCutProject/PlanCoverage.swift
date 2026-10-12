@@ -45,7 +45,7 @@ public enum PlanCoverage {
 
     /// Each beat ({id, text, section}; default the plan's beats) aligned to the words heard on the timeline: the share
     /// of its words heard as written, where it was heard, and in which section marker it starts against the section
-    /// the beat names.
+    /// the beat names; the beat's `onScreen` note (given, else the plan beat with that id) when it has one.
     public static func scriptCheck(
         _ project: Project, words: [ReviewSync.WordSpan], beats given: [[String: JSONValue]]? = nil
     ) -> JSONValue {
@@ -60,6 +60,11 @@ public enum PlanCoverage {
         var labels: [String: String] = [:]
         for section in project["plan"]?.object["sections"]?.array.map(\.object) ?? [] {
             if let id = section["id"]?.string, let label = section["label"]?.string { labels[id] = label }
+        }
+        // A beat's ON SCREEN note rides along so one call shows what is heard and what the plan wants seen.
+        var notes: [String: JSONValue] = [:]
+        for beat in project["plan"]?.object["beats"]?.array.map(\.object) ?? [] {
+            if let id = beat["id"]?.string, let note = beat["onScreen"], note != .null { notes[id] = note }
         }
         var index = 0
         let rows: [JSONValue] = zip(beats, texts).map { beat, text in
@@ -83,6 +88,7 @@ public enum PlanCoverage {
                         planned == marker.id || planned == marker.label || labels[planned] == marker.label)
                 }
             }
+            if let note = beat["onScreen"] ?? beat["id"]?.string.flatMap({ notes[$0] }), note != .null { row["onScreen"] = note }
             row["unmatched"] = .array(part.filter { $0.kind != "match" }.map { .string($0.text) })
             return .object(row)
         }

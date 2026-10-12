@@ -22,6 +22,25 @@ struct PluginOptionPolicyTests {
         #expect(PluginOptionPolicy.scope(of: ordinary[1], in: ordinary) == .project)
     }
 
+    @Test("A plugin sets its own non-secret options, even with secrets; never a secret (#411)")
+    func ownPlugin() throws {
+        try PluginOptionPolicy.validateEdit(options: options, author: .plugin, ownPlugin: true)
+        #expect(throws: (any Error).self) { try PluginOptionPolicy.validateEdit(options: options, author: .plugin) }
+        #expect(throws: (any Error).self) {
+            try PluginOptionPolicy.validateEdit(options: options, author: .agent, ownPlugin: true)
+        }
+        #expect(throws: (any Error).self) { try PluginOptionPolicy.ownValue(.string("sk-1"), for: options[3]) }
+        #expect(try PluginOptionPolicy.ownValue(.string("gpt"), for: options[2]) == .string("gpt"))
+        #expect(try PluginOptionPolicy.ownValue(nil, for: options[2]) == nil)
+        #expect(try PluginOptionPolicy.ownValue(.null, for: options[2]) == nil)
+        let takes = PluginOption(id: "takes", title: "Takes", type: .integer, minimum: 1, maximum: 8)
+        #expect(try PluginOptionPolicy.ownValue(.string("3"), for: takes) == .integer(3))
+        #expect(try PluginOptionPolicy.ownValue(.integer(2), for: takes) == .integer(2))
+        #expect(throws: (any Error).self) { try PluginOptionPolicy.ownValue(.integer(9), for: takes) }
+        let voice = PluginOption(id: "voice", title: "Voice", type: .enumeration, choices: ["a", "b"])
+        #expect(throws: (any Error).self) { try PluginOptionPolicy.ownValue(.string("c"), for: voice) }
+    }
+
     @Test("A key never follows a changed provider or endpoint, nor falls back to a legacy key")
     func binding() throws {
         let store = PluginSecretStore(keychain: false)

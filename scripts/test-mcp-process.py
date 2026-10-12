@@ -150,6 +150,7 @@ class MCPHandshakeTests(unittest.TestCase):
         self.assertNotIn('error', response)
         self.assertEqual(response['id'], request_id)
         self.assertEqual(response['result']['serverInfo']['name'], 'bashcut-mcp')
+        self.assertIn('bc:edit-workflow', response['result']['instructions'])
 
     def test_codex_initialize_then_tools_list(self):
         with mcp_session(self) as session:

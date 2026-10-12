@@ -81,9 +81,9 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
     }
 
     /// Keeps the dock's Knowledge badge current: loads the open project's knowledge, then reloads when files change.
-    func refreshKnowledgeBadge() {
+    func refreshKnowledgeBadge() async {
         guard knowledge.store?.project == knowledgeStore.project, knowledge.store != nil else { return loadKnowledge() }
-        knowledge.refreshIfChanged()
+        await knowledge.refreshIfChanged()
     }
     var toolsDirectory: String { Bundle.main.executableURL?.deletingLastPathComponent().path ?? "" }
     /// Whether starting this agent continues its last conversation for the project.

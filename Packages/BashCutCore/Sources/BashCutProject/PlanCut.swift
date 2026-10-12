@@ -60,7 +60,7 @@ public enum PlanCut {
 
     /// The `textStyle` fields a title's `style` may give directly.
     public static let textStyleKeys = ItemProperty.all.filter { $0.group == "textStyle" }.map(\.key)
-        + ["background", "shadow", "emphasis", "lineFills", "accentBars"]
+        + ["background", "shadow", "emphasis", "lineFills", "accentBars", "lines"]
 
     /// A sound effect on the SFX layer: at a clip's or title's start (`on`), a section's start or `at` seconds, plus
     /// `offset` (negative: before it, so a whoosh peaks on the cut), for `seconds` or the whole file.

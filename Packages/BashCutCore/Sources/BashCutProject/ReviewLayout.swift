@@ -22,11 +22,11 @@ public enum ReviewLayout {
         var result: [String: JSONValue] = [
             "width": .integer(project.width), "height": .integer(project.height),
             "platform": context.targets.layoutPlatform(for: project)?.json ?? .null, "items": .array(rows),
-            "density": TextFacts.density(all, project: project), "facesProvider": .bool(false),
+            "density": TextFacts.density(all, project: project), "facesProvider": .bool(!context.subjects.isEmpty),
         ]
         if let frame {
             result["frame"] = .integer(frame)
-            result["pictures"] = TextFacts.pictures(project, at: frame)
+            result["pictures"] = TextFacts.pictures(project, at: frame, subjects: context.subjects)
         }
         return .object(result)
     }

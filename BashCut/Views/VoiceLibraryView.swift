@@ -22,7 +22,10 @@ struct VoiceLibraryView: View {
             providerPicker
             FindPluginButton(document: document, capability: "voice.synthesize")
             ProviderOptionsView(document: document, capability: "voice.synthesize", providerID: provider)
-            Button(pluginManager.calling.contains("voice.synthesize") ? "Generating…" : "Generate → 3 takes") {
+            Button(pluginManager.calling.contains("voice.synthesize")
+                ? String(localized: "Generating…")
+                : takeCount == 1 ? String(localized: "Generate → 1 take") : String(localized: "Generate → 3 takes")
+            ) {
                 generate()
             }
             .buttonStyle(.borderedProminent)
@@ -67,8 +70,24 @@ struct VoiceLibraryView: View {
         }
     }
 
+    /// Takes the chosen provider (or the automatic one, the highest priority) gives per line: 3, or its `maxTakes`.
+    private var takeCount: Int {
+        let choices = pluginManager.providers(for: "voice.synthesize")
+        let chosen = choices.first { $0.provider.id == provider } ?? choices.first
+        return chosen?.provider.takes(3) ?? 3
+    }
+
     @ViewBuilder private var takeList: some View {
-        if !takes.isEmpty {
+        if takes.count == 1, let take = takes.first {
+            // One take (a provider with maxTakes 1): nothing to choose.
+            HStack(spacing: 8) {
+                Button { play(take) } label: { Image(systemName: "play.fill") }
+                    .buttonStyle(.borderless).accessibilityLabel("Preview take")
+                Spacer()
+                Text(score(take)).font(.system(size: 10, design: .monospaced)).foregroundStyle(.secondary)
+            }
+            Button("Insert take into Voiceover", action: insertSelected).buttonStyle(.borderedProminent)
+        } else if !takes.isEmpty {
             ForEach(Array(takes.enumerated()), id: \.element.id) { index, take in
                 takeRow(take, index: index)
             }
@@ -133,9 +152,9 @@ struct VoiceLibraryView: View {
         Task {
             do {
                 // The user generates here and chose any clone reference themselves.
-                takes = try await document.generateVoiceTakes(text: text, cloneConsent: true)
+                takes = try await document.generateVoiceTakes(text: text, count: takeCount, cloneConsent: true)
                 selectedTake = bestTakeID ?? takes.first?.id ?? ""
-                message = String(localized: "Choose a take to insert")
+                message = takes.count == 1 ? "" : String(localized: "Choose a take to insert")
             } catch { message = error.localizedDescription }
         }
     }

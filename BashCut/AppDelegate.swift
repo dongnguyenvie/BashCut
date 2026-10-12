@@ -72,7 +72,7 @@ import SwiftUI
             return .terminateCancel
         }
         if document.privilegedApproval != nil { document.resolvePrivilegedApproval(false) }
-        document.resolveScopeHold(.reject)
+        document.resolveScopeHold(.reject, byUser: false)
         document.agents.closeAll()
         document.removeExternalAgentToken()
         Task {

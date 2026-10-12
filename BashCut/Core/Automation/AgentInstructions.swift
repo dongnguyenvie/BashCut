@@ -10,11 +10,21 @@ extension CommandCatalog {
         "plugins.reload", "plugins.remove", "plugins.setup", "plugins.set", "plugins.show-view",
         "plugins.view", "plugins.view-event", "plugins.invoke", "storage.get", "storage.clear",
         "agent.status", "agent.setup", "agent.kit-check", "agent.kit-update", "agent.terminals", "agent.open",
-        "agent.detach", "agent.ask", "app.update-check", "app.update", "chat.status", "chat.send", "chat.attach", "chat.detach", "chat.stop",
+        "agent.detach", "agent.ask", "agent.quick-edit", "run.status",
+        "app.update-check", "app.update", "chat.status", "chat.send", "chat.attach", "chat.detach", "chat.stop",
         "chat.commands", "chat.command", "chat.reset", "chat.transcript", "doctor.run", "knowledge.approve",
         "knowledge.reject", "knowledge.remove-lesson", "skills.enable", "skills.disable", "skills.remove",
         // Inspector › Speed; agents use the setSpeed and setSpeedCurve ops (D10).
         "clip.speed", "clip.speed-curve",
+        // Dragging a selection, Inspector › Text › Lines and › Backdrop; agents use the move and reorder ops and
+        // setProperties of textStyle.lines and backdrop.
+        "timeline.move-items", "text.line-style", "clip.backdrop",
+        // Plugin overlays (plugins set them for themselves) and packaging saved skills as a plugin (#407, #506).
+        "plugins.overlays", "plugins.set-overlays", "skills.export",
+        // Learning facts (P3-I1–I5) the kit's self-learn and publish skills call by name: the ledger, outcomes,
+        // verdicts and claims are read after a run, not while editing.
+        "export.history", "export.link", "project.history", "outcomes.import", "outcomes.map", "knowledge.verdicts",
+        "knowledge.claims", "knowledge.set-claim",
     ]
 
     /// Instructions given to terminal agents, rendered from the command specs: each command's usage and first
@@ -30,8 +40,8 @@ extension CommandCatalog {
             return "- `\(compactUsage(spec))`: \(firstSentence(spec.summary))\(note)"
         }
         let header = "Commands (MCP tool `bashcut_<group>_<command>` takes the same parameters; `bashcut help GROUP "
-            + "COMMAND` or the MCP tool description gives the full description, parameters and result fields; (job) "
-            + "returns a job ID):"
+            + "COMMAND` or the MCP tool description has the full text, parameters and results; (job) returns "
+            + "a job ID):"
         return ([preamble, color, plugins, header] + commands + [operations]).joined(separator: "\n")
     }()
 
@@ -88,7 +98,7 @@ extension CommandCatalog {
         Track IDs and roles are dynamic:
         always take them from `bashcut timeline get`, never assume IDs such as v1 or t1. `timeline get` also lists
         transitions and markers (sections). To look at the result, `bashcut ui frame [FRAME]` renders the viewer
-        picture at a frame to a PNG and returns its path; read that image.
+        picture at a frame to a PNG; read that image.
         Layers: tracks list visual layers back to front, then audio layers, which are mixed. There is one
         main video layer. Items never overlap on one layer, audio media never goes on a visual layer.
         Adjustment layers (kind adjustment) hold items with only a `color` grade and no media or text; each grades
@@ -104,7 +114,7 @@ extension CommandCatalog {
         Each call is a turn: batch (`media import FOLDER`; sheets, not `ui frame` one by one; `checkpoint status
         --wait 100`; `context get` on start, not per command). Build a cut (or voiceover lines and graphics) as plan.cut:
         `plan check`, then `plan apply`.
-        Installing plugins is user-only. `--format text` prints results without JSON quoting.
+        `--format text` prints results without JSON quoting.
         `project format --canvas landscape|portrait|square` changes the canvas (text sizes follow the short side).
         Clips fit inside the frame; a clip's `fill` (setProperties) or `--clips fill` crops to cover; zoom scales from it.
         Projects: `bashcut project create` / `project open` / `project save`; they refuse to drop unsaved work unless
@@ -150,12 +160,13 @@ extension CommandCatalog {
             + "shadow {color, opacity, blur, dx, dy}, accentBars [{side left|right|top|bottom, color, opacity, "
             + "thickness, gap (× font size), length (share of the side), radius}], emphasis {line (from the top, "
             + "negative from the bottom), fill, scale, plate {color, opacity, padding, radius}} or false (one line larger "
-            + "in its own colour; hook-title emphasises by default), lineFills [colors] (line colours, repeating). "
+            + "in its own colour; hook-title emphasises by default), lineFills [colors] (line colours, repeating), "
+            + "lines [{font, scale, fill, stroke}] (per line). "
             + "Text templates are library items (`library list --kind text-preset`): pick the look for the video, "
             + "whatever the text is for. wordStyle is highlight|karaoke|reveal "
             + "or {spoken, upcoming, past} looks of {fill, opacity}. Keyframes also animate textStyle.size, positionX, "
-            + "positionY, strokeWidth, lineHeight, tracking on text and color.exposure, contrast, saturation, "
-            + "lutStrength on clips and adjustment layers."
+            + "positionY, strokeWidth, lineHeight, tracking on text, color.exposure, contrast, saturation, "
+            + "lutStrength on clips and adjustment layers and crop.left…bottom, radius on clips."
     }()
 
     private static let operations = """
@@ -170,7 +181,8 @@ extension CommandCatalog {
         {"op":"patchItems","select":{"trackRole":"captions"},"patch":{"textStyle":{"fill":"#FFD400","size":null}}}
         restyles many items at once: objects merge key by key (null deletes a key); select by track, trackRole,
         trackKind, textPreset or media (all given must match), or list "items":["ID",…],
-        framing: setProperties {"reframePreset":"close","transform":{"zoom":1.3,"pan":0,"tilt":0}},
+        framing: setProperties {"reframePreset":"close","transform":{"zoom":1.3,"pan":0,"tilt":0}}; bars of a fit
+        picture: {"backdrop":{"kind":"blur"}} (or "color" with "color"),
         {"op":"setLinkedAudio","video":"VIDEO_ID","audio":"AUDIO_ID"}; omit audio to unlink,
         {"op":"setSpeed","item":"ID","speed":2}; the clip and its linked sound get 2x and half the length, later
         clips on their layers move up; add "keepDuration":true to keep the length (prefer this over a speed patch),

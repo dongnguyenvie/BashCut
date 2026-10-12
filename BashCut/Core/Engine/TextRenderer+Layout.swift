@@ -6,19 +6,25 @@ import Foundation
 /// How a text block lays out: each line's font, the lines stacked bottom-up, and the plates and bars around them.
 extension TextRenderer {
     /// Each line's font in reading order, and the block's base font: the style's font fitted to the frame by the
-    /// other lines, the emphasis line `scale` times larger and fitted on its own.
+    /// lines that use it as is; the emphasis line (`scale` times larger) and lines with their own font or scale
+    /// (`textStyle.lines`) are fitted on their own.
     static func lineFonts(_ look: CaptionStyle, lines: [String], canvas: CGSize) -> (base: CTFont, lines: [CTFont]) {
         let emphasis = look.emphasis(lineCount: lines.count)
-        // The emphasis line is fitted on its own, so it does not shrink the rest.
-        let others = lines.indices.filter { $0 != emphasis?.line }.map { lines[$0] }
+        let scales = lines.indices.map { index in
+            (emphasis?.line == index ? emphasis?.scale ?? 1 : 1) * TextLineStyles.scale(look.style, line: index)
+        }
+        let names = lines.indices.map { look.fontName(line: $0) }
+        // A line drawn in its own font or size is fitted on its own, so it does not shrink the rest.
+        let plain = lines.indices.filter { scales[$0] == 1 && names[$0] == look.fontName }
         let base = fittedFont(
-            look.fontName, size: fontSize(look.relativeSize, canvas: canvas), lines: others,
+            look.fontName, size: fontSize(look.relativeSize, canvas: canvas), lines: plain.map { lines[$0] },
             maximumWidth: canvas.width * 0.9, tracking: look.tracking)
-        guard let emphasis else { return (base, Array(repeating: base, count: lines.count)) }
-        let large = fittedFont(
-            look.fontName, size: CTFontGetSize(base) * emphasis.scale, lines: [lines[emphasis.line]],
-            maximumWidth: canvas.width * 0.9, tracking: look.tracking)
-        return (base, lines.indices.map { $0 == emphasis.line ? large : base })
+        return (base, lines.indices.map { index in
+            guard !plain.contains(index) else { return base }
+            return fittedFont(
+                names[index], size: CTFontGetSize(base) * scales[index], lines: [lines[index]],
+                maximumWidth: canvas.width * 0.9, tracking: look.tracking)
+        })
     }
 
     /// Lays out `texts` (reading order) bottom-up, placed by the style's align and positionX: the bottom baseline

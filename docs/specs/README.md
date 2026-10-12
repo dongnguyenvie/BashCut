@@ -26,6 +26,7 @@ for how-to guides, see the [docs index](../README.md).
 | 08 | [Conventions](08-conventions.md) | Language, Swift style, project-model rules, tests, verification, git |
 | 09 | [Roadmap](09-roadmap.md) | Milestones M0–M6, reserved Resolve work, risks, open questions |
 | 10 | [Refactor plan](10-refactor-plan.md) | Audit findings and refactor rounds R0–R6 |
+| 14 | [Webview plugin views](14-webview-plugin-views.md) | Research for #406: design, security review, cost, no-go for now |
 
 ## Status markers
 

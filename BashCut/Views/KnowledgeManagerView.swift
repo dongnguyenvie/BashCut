@@ -32,7 +32,7 @@ struct KnowledgeManagerView: View {
             // Agents change knowledge with commands or by editing the files; show their changes while open.
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(1.5))
-                model.refreshIfChanged()
+                await model.refreshIfChanged()
             }
         }
     }
@@ -227,6 +227,10 @@ private struct KnowledgeLessonRow: View {
             HStack(spacing: 6) {
                 KnowledgeChip(text: Self.statusTitle(lesson.status), color: Self.statusColor(lesson.status))
                 KnowledgeChip(text: KnowledgeSourceLine.scopeTitle(lesson.scope), color: .gray)
+                if let occurrences = lesson.occurrences, occurrences > 1 {
+                    KnowledgeChip(text: String(format: String(localized: "Seen %d×"), occurrences), color: .purple)
+                        .help(KnowledgeEvidenceText.sightings(lesson))
+                }
                 KnowledgeRelativeDate(date: lesson.updated).font(.caption2).foregroundStyle(.secondary)
             }
             if !lesson.fix.isEmpty {
@@ -314,6 +318,10 @@ private struct KnowledgeLessonEditor: View {
                         if model.isNew(lesson) { KnowledgeNewBadge(text: String(localized: "New")) }
                     }
                     KnowledgeSourceLine(source: lesson.source, scope: lesson.scope, updated: lesson.updated)
+                    if lesson.occurrences != nil {
+                        Text(KnowledgeEvidenceText.sightings(lesson)).font(.caption).foregroundStyle(.secondary)
+                            .textSelection(.enabled)
+                    }
                 }
                 Spacer()
                 if lesson.status == .proposed {

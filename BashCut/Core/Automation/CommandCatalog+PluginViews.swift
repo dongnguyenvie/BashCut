@@ -55,6 +55,21 @@ extension CommandCatalog {
                                  cli: .option("params")),
             ],
             execution: .job),
+        CommandSpec(
+            "plugins.overlays", .read,
+            "List the overlays plugins draw on the timeline and viewer (ranges, markers and viewer regions with their "
+                + "frames, label and colour), by plugin.",
+            parameters: [CommandParameter("plugin", .string, "Only this plugin", cli: .positional)]),
+        CommandSpec(
+            "plugins.set-overlays", .ui,
+            "Replace a plugin's overlays on the timeline and viewer (not saved with the project); an empty list clears "
+                + "them. Plugins call this for their own overlays: [{id, kind: range|marker|region, start, end, track, "
+                + "rect {x,y,width,height} 0–1, label, color, style}].",
+            parameters: [
+                viewPlugin,
+                CommandParameter("overlays", .array, "The overlay set (JSON array); [] clears", required: true,
+                                 cli: .option("overlays")),
+            ]),
     ]
 }
 

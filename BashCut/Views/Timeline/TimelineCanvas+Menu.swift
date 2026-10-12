@@ -45,6 +45,7 @@ extension TimelineCanvas {
         for action in [UIAction.copyClips, .cutClips, .pasteClips, .muteClips] { menu.addItem(actionItem(action)) }
         menu.addItem(.separator())
         menu.addItem(actionItem(.sendToAgent))
+        menu.addItem(QuickEditChoice.menuItem(document))
         return menu
     }
 
@@ -94,6 +95,7 @@ extension TimelineCanvas {
         }
         menu.addItem(.separator())
         menu.addItem(actionItem(.sendToAgent))
+        menu.addItem(QuickEditChoice.menuItem(document))
         menu.addItem(.separator())
         let locked = track.isLocked
         let title = String(format: String(localized: locked ? "Unlock %@" : "Lock %@"), track.name)

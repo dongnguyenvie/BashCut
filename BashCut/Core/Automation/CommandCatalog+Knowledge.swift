@@ -28,7 +28,7 @@ extension CommandCatalog {
     /// Agent knowledge (Agent Knowledge sheet): memos and project skills, and the structured lessons, preferences,
     /// project facts, proposals and history with revert (#67, #70) stored as JSON in `.bashcut/knowledge/` and
     /// `Application Support/BashCut/Knowledge/`.
-    static let knowledgeSpecs: [CommandSpec] = memoSpecs + lessonSpecs + valueSpecs + reviewSpecs
+    static let knowledgeSpecs: [CommandSpec] = memoSpecs + lessonSpecs + valueSpecs + claimSpecs + reviewSpecs
 
     private static let memoSpecs: [CommandSpec] = [
         CommandSpec(
@@ -84,7 +84,8 @@ extension CommandCatalog {
         CommandSpec(
             "knowledge.lessons", .read,
             "List lessons the agent learned (symptom, cause, fix), from this project and for every project, newest "
-                + "first. Read the active ones before editing; proposed ones wait for the user's review.",
+                + "first. Each has occurrences (times seen), lastSeen and sources (projects it was seen in) when "
+                + "counted. Read the active ones before editing; proposed ones wait for the user's review.",
             parameters: [
                 readScope,
                 CommandParameter("status", .string, "Only this status", choices: lessonStatuses,
@@ -109,12 +110,14 @@ extension CommandCatalog {
                 ]),
         CommandSpec(
             "knowledge.update-lesson", .edit,
-            "Change a lesson's fields or status (proposed, active, disabled). Agents changing a lesson for every "
-                + "project need approval.",
+            "Change a lesson's fields or status, or count a sighting (seen). Status is proposed, active or disabled; "
+                + "seen adds 1 to occurrences, sets lastSeen and adds this project to sources. Agents changing a lesson for every "
+                + "project need approval; seen alone does not.",
             parameters: [lessonID, CommandParameter("title", .string, "Short title", cli: .option("title"))]
                 + lessonFields + [
                     CommandParameter("status", .string, "New status", choices: lessonStatuses,
                                      cli: .option("status")),
+                    CommandParameter("seen", .boolean, "The problem happened again: count it", cli: .flag("seen")),
                     session,
                 ]),
         CommandSpec(
@@ -126,27 +129,68 @@ extension CommandCatalog {
     private static let valueSpecs: [CommandSpec] = [
         CommandSpec(
             "knowledge.prefs", .read,
-            "Read the user's preferences (taste: length, pace, voice, caption style, music…). A project value wins "
-                + "over the one for every project.",
+            "Read the user's preferences (taste: length, pace, voice, caption style, music…). Each has confirmedBy "
+                + "(user: said or approved by the user; inferred: an agent's guess). A project value wins over the one "
+                + "for every project.",
             parameters: [CommandParameter("key", .string, "Only this key", cli: .positional), readScope]),
         CommandSpec(
             "knowledge.set-pref", .edit,
             "Set or remove a preference: for every project (default) or only this project. An agent's change for every "
                 + "project waits in the Knowledge inbox (approval proposed) unless the user lets agents act without "
-                + "confirmation.",
+                + "confirmation. creator.* keys are the creator's profile (name, handle, channel, platforms, language, "
+                + "niche, audience, tone, cta, voiceSamples as media IDs, disclosure; lists comma-separated), shown as "
+                + "one object in context get; an agent's creator.* change for every project always waits for approval.",
             parameters: [
                 valueKey, valueText, removeValue,
                 CommandParameter("scope", .string, "user (default) or project", default: .string("user"),
                                  choices: knowledgeScopes, cli: .option("scope")),
+                CommandParameter("confirmedBy", .string, "user when the user said it, inferred when you guessed it "
+                                 + "(default for agents)", choices: ["user", "inferred"],
+                                 cli: .option("confirmed-by")),
                 session,
             ]),
         CommandSpec(
             "knowledge.facts", .read,
-            "Read this project's facts (people, places, footage notes, what was approved).",
+            "Read this project's facts (people, places, footage notes, what was approved). Each has evidence "
+                + "{source, measure, n, status measured|estimated|user} when given.",
             parameters: [CommandParameter("key", .string, "Only this key", cli: .positional)]),
         CommandSpec(
-            "knowledge.set-fact", .edit, "Set or remove a fact about this project. Needs a saved project.",
-            parameters: [valueKey, valueText, removeValue, session]),
+            "knowledge.set-fact", .edit,
+            "Set or remove a fact about this project. Give where it comes from: source (URL, file, frame, the user), "
+                + "measure (the command or result path that gave it), n (sample size) and status. Plans and skills "
+                + "refer to a fact by its key. Needs a saved project.",
+            parameters: [
+                valueKey, valueText, removeValue,
+                CommandParameter("source", .string, "Where it comes from: a URL, a file, a frame, user",
+                                 cli: .option("source")),
+                CommandParameter("measure", .string, "The measurement that gave it (review.measure pace.median, "
+                                 + "media analyze C0042)", cli: .option("measure")),
+                CommandParameter("n", .integer, "Sample size behind it", minimum: 0, maximum: 100_000_000,
+                                 cli: .option("n")),
+                CommandParameter("status", .string, "measured, estimated or user (said by the user)",
+                                 choices: ["measured", "estimated", "user"], cli: .option("status")),
+                session,
+            ]),
+    ]
+
+    private static let claimSpecs: [CommandSpec] = [
+        CommandSpec(
+            "knowledge.claims", .read,
+            "Read this project's claims ledger: {key, text, source, author} for each number, price, superlative or "
+                + "name the video states. Review lists those in titles and the voiceover that no claim's text covers "
+                + "(unsourced-claim, info)."),
+        CommandSpec(
+            "knowledge.set-claim", .edit,
+            "Record a claim the video makes and its source, or remove it: text as the video states it (\"528 ha\", "
+                + "\"rẻ nhất\", \"Phở Thìn\"), source a URL, a frame (MEDIA@SECONDS), a file or user. Needs a saved "
+                + "project.",
+            parameters: [
+                valueKey,
+                CommandParameter("text", .string, "The claim as stated; required unless remove is set", cli: .option("text")),
+                CommandParameter("source", .string, "URL, MEDIA@SECONDS, a file, or user; required unless remove is set",
+                                 cli: .option("source")),
+                removeValue, session,
+            ]),
     ]
 
     private static let reviewSpecs: [CommandSpec] = [
@@ -187,6 +231,21 @@ extension CommandCatalog {
                                  cli: .option("target")),
                 CommandParameter("limit", .integer, "Number of changes", default: .integer(50), minimum: 1,
                                  maximum: 500, cli: .option("limit")),
+            ]),
+        CommandSpec(
+            "knowledge.verdicts", .read,
+            "What the user did with agents' changes in this project, as BashCut saw it: keep (dismissed the change "
+                + "notice, or the next edit left the agent's items alone), undo, edit (the next edit changed the same "
+                + "items) and reject (the scope guard's Reject). Returns total, counts {subject: {verdict: n}} by the "
+                + "command that made the change (timeline.apply, library.apply, library.place, plan.apply…; edit when "
+                + "unknown) and the newest rows {verdict, signal, subject, label, agent, rev, items, date}. Facts only: "
+                + "no reasons.",
+            parameters: [
+                CommandParameter("verdict", .string, "Only this verdict", choices: ["keep", "undo", "reject", "edit"],
+                                 cli: .option("verdict")),
+                CommandParameter("subject", .string, "Only changes made by this command", cli: .option("subject")),
+                CommandParameter("limit", .integer, "Rows to return (counts cover all)", default: .integer(20),
+                                 minimum: 0, maximum: 500, cli: .option("limit")),
             ]),
         CommandSpec(
             "knowledge.revert", .edit,

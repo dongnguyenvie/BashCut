@@ -64,6 +64,32 @@ extension ProjectDocument {
         }
     }
 
+    /// Files dropped on the Media panel (#408): added to the project like `media import` without `--place` (media
+    /// already in the project is reused), as one undoable edit.
+    func importFilesToMedia(_ urls: [URL]) {
+        guard let root = fileURL?.deletingLastPathComponent(), !urls.isEmpty else { return }
+        busy = true
+        Task {
+            defer { busy = false }
+            do {
+                var planner = LayerPlanner(project)
+                var mediaIDs: [String] = []
+                for url in urls {
+                    let imported = try await Self.importedMedia(url: url, kind: Self.kind(of: url), projectFPS: project.fps, root: root)
+                    guard planner.project.existingMedia(like: imported.media) == nil else { continue }
+                    try planner.add([.addMedia(imported.media)])
+                    mediaIDs.append(imported.media.id)
+                }
+                guard !mediaIDs.isEmpty else { return }
+                try commitPlan(planner, label: "Import media", author: .user, baseRevision: nil)
+                requestProxiesAfterImport(mediaIDs, author: .user)
+                emitMediaImported(mediaIDs, author: .user)
+            } catch {
+                message = error.localizedDescription
+            }
+        }
+    }
+
     /// Automation: adds one media file to the project and optionally places it like the UI import does.
     func registerImportCommands() {
         handleAuthored("media.import") { document, arguments, author in
