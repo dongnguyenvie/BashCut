@@ -135,7 +135,7 @@ Atomically apply validated timeline operations as one undoable edit; returns cha
 - `ops`: array, required. Operations array (CLI: path to ops.json)
 - `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
 - `label`: string, default "Agent edit". Short description of the edit
-- `dryRun`: boolean, default false. Validate without editing; return projected duration, changed IDs, cutsInsideWord (clip edges the edit leaves inside a transcribed word) and fingerprint
+- `dryRun`: boolean, default false. Validate without editing; return projected duration, changed IDs, cutsInsideWord (clip edges the edit leaves inside a transcribed word), fingerprint and, when the attached scope would hold or refuse the edit, outsideScope
 - `why`: string. Why this edit, in one sentence (up to 500 characters)
 - `evidence`: string. What it rests on, separated by ; (review issue IDs, transcript ranges, measurements; up to 20, 200 characters each)
 - `expectFingerprint`: string. The dry run's fingerprint; refuse other ops

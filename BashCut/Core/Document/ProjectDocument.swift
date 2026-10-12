@@ -456,9 +456,10 @@ extension ProjectDocument {
         if let baseRevision, baseRevision != project.revision {
             throw ProjectError.staleRevision(expected: baseRevision, actual: project.revision)
         }
-        let before = project
+        let scope = try checkAgentScopeStep(undo: undo, author: author), before = project
         if undo { try history.undo() } else { try history.redo() }
         didCommit(from: before, author: author, label: undo ? "Undo" : "Redo")
+        recordScopeEdit(scope, before: before)
         emitPluginEvent(
             undo ? .editUndone : .editRedone, editEventPayload(label: undo ? "Undo" : "Redo", author: author, before: before))
         DebugLog.write("edit", "\(undo ? "undo" : "redo") by \(author) rev \(before.revision)→\(project.revision)")
