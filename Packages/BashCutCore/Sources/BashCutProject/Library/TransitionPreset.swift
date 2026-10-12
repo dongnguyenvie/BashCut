@@ -70,6 +70,11 @@ public struct TransitionPreset: Sendable, Equatable {
             }
             sfx = value.string
         }
+        try readSound(params, label: label)
+    }
+
+    /// The sound's offset from the cut and its volume.
+    private mutating func readSound(_ params: [String: JSONValue], label: String) throws {
         if let value = params["sfxOffset"] {
             guard let frames = value.int, Self.sfxOffsetRange.contains(frames) else {
                 throw ProjectError.invalid("\(label): params.sfxOffset must be whole frames from −600 to 600")

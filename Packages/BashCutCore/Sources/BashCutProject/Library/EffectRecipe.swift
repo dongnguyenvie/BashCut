@@ -440,8 +440,9 @@ extension EffectRecipe {
     public static func editorText(_ params: [String: JSONValue]) -> String {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
-        guard let data = try? encoder.encode(JSONValue.object(params)) else { return "{}" }
-        return String(decoding: data, as: UTF8.self)
+        guard let data = try? encoder.encode(JSONValue.object(params)), let text = String(data: data, encoding: .utf8)
+        else { return "{}" }
+        return text
     }
 
     /// The params the recipe editor's `text` holds, checked like `library update --params`: a JSON object that is a
