@@ -116,6 +116,8 @@ struct EditorUIStateTests {
     @Test("Library panels match the `ui.panel` choices")
     func libraryPanels() {
         #expect(CommandCatalog.libraryPanels == LibraryTab.allCases.map(\.panelName))
+        // Every Media panel source can be chosen with ui view --media-source, library clips too (P2-H5).
+        #expect(UIAction.mediaSources == ["footage", "project", "shared", "selects", "clips"])
         #expect(LibraryTab(panelName: "voice") == .voice)
         #expect(LibraryTab(panelName: "Voice") == nil)
     }

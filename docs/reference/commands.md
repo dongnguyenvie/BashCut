@@ -1716,7 +1716,7 @@ Run an editor action like the user: by ID (timeline.split, timeline.zoom-in, pla
 
 ### `bashcut ui view [--zoom <zoom>] [--zoom-anchor <zoomAnchor>] [--snap <snap>] [--safe-area <safeArea>] [--viewer-zoom <viewerZoom>] [--compare <compare>] [--agent-dock <agentDock>] [--reveal <reveal>] [--inspector <inspector>] [--settings-section <settingsSection>] [--settings-search <settingsSearch>] [--knowledge-section <knowledgeSection>] [--plugins-tab <pluginsTab>] [--plugins-category <pluginsCategory>] [--media-source <mediaSource>] [--library-query <libraryQuery>] [--library-pack <libraryPack>] [--library-tag <libraryTag>] [--library-scope <libraryScope>]`
 
-Read the editor view state, or change it: timeline zoom (pixels per second), viewer zoom, snapping, safe area, color compare, agent dock, inspector tab, Settings section and search, Knowledge section, Plugins tab and Browse category, the Media panel's source (footage, project, shared, selects), the open library panel's search and filters, and scroll the timeline to a frame.
+Read the editor view state, or change it: timeline zoom (pixels per second), viewer zoom, snapping, safe area, color compare, agent dock, inspector tab, Settings section and search, Knowledge section, Plugins tab and Browse category, the Media panel's source (footage, project, shared, selects, clips), the open library panel's search and filters, and scroll the timeline to a frame.
 
 - Mode: ui · Runs: immediately · MCP: `bashcut_ui_view`
 - `zoom`: integer, 1…600. Timeline zoom in pixels per second
@@ -1733,7 +1733,7 @@ Read the editor view state, or change it: timeline zoom (pixels per second), vie
 - `knowledgeSection`: string, one of inbox, lessons, prefs, facts, notes, skills, history. Knowledge window section (open it with ui.action open knowledge)
 - `pluginsTab`: string, one of installed, browse, updates, activity. Plugins sheet tab (open it with ui.action open plugins)
 - `pluginsCategory`: string, one of all, agents, captions, voice, audio, color, effects, export, utilities. Category Plugins › Browse shows; all shows every one
-- `mediaSource`: string, one of footage, project, shared, selects. What the Media panel lists
+- `mediaSource`: string, one of footage, project, shared, selects, clips. What the Media panel lists
 - `libraryQuery`: string. Search text of the open library panel; empty clears it
 - `libraryPack`: string. Pack the open library panel shows; empty shows all
 - `libraryTag`: string. Tag the open library panel shows; empty shows all

@@ -5,6 +5,7 @@
 
 ## [Unreleased]
 
+- **`ui view --media-source clips`.** The Media panel's Clips source (library footage) could not be chosen from the CLI or MCP.
 - **`plan check` names the built edit's review errors.** The check already reviewed the edit as it would be built but only listed it under `review`, so an agent reading `problems` found captions under TikTok's caption bar only after rendering every graphic and building; one problem `review-errors` (warning) now counts them by kind with the first one's detail. `bashcut --version` answers like `app version` instead of "Unknown command".
 - **Export sheet Cover row fits.** The cover title field showed its title as a second label and shrank to a few characters, and Save Cover at Playhead was cut off; the field and preset sit on one line and the button under them. The multi-selection Inspector's frame range is in Vietnamese too.
 - **`ui action open quick-edit`.** The Quick Edit › Other… sheet could not be opened from the CLI or MCP ("Unknown dialog"), though `ui dialog` and `ui respond` handled it.
