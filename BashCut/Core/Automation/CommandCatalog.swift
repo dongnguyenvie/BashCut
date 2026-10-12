@@ -84,10 +84,10 @@ public enum CommandCatalog {
         CommandSpec(
             "export.status", .read,
             "Read the export state: while one runs, its job, step, preset and path (last receipt under lastExport); "
-                + "otherwise the most recent receipt (clips on Main, cuts: the joins between them, transitions "
-                + "included). Includes the queue (job IDs for jobs.cancel) and delivered: each "
-                + "exported file of this session measured (stream starts and drift, fps and size against the preset, "
-                + "black and silent stretches), which review run reads (P1-E6)."),
+                + "after a failed export, state failed with its error and path (receipt under lastExport); otherwise "
+                + "the most recent receipt (clips on Main, cuts: the joins between them, transitions included). Includes "
+                + "the queue (job IDs for jobs.cancel) and delivered: each exported file of this session measured (stream "
+                + "starts and drift, fps and size against the preset, black and silent stretches), which review run reads (P1-E6)."),
         CommandSpec(
             "plugins.list", .read,
             "List installed plugins with their category, providers and project provider preferences. With health, "

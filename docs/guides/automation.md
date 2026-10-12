@@ -923,7 +923,9 @@ by default) overrides it; no command can change either. When you turn it on, req
   queued or running export.
 - **Status.** `export status` lists the queue with job IDs. While an export runs, its top-level fields (`job`,
   `step`, `progress`, `preset`, `path`, `includedSRT`) describe that export and the previous receipt moves to
-  `lastExport`. Otherwise it returns the most recent receipt: path, preset, duration, bytes, cuts, captions and
+  `lastExport`. After an export of this session failed (not cancelled), `state` is `failed` with `error`,
+  `failedAt`, the `preset` and `path` it was writing, and the previous receipt under `lastExport`, until a later
+  export finishes. Otherwise it returns the most recent receipt: path, preset, duration, bytes, cuts, captions and
   companion-SRT state. Poll it after an approved request.
 - **Captions.** An export asked to include SubRip writes no `.srt` when the timeline has no captions.
 - **Loudness.** `--normalize-audio` needs an installed, healthy `audio.loudness` plugin and runs the two-pass

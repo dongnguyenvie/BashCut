@@ -576,7 +576,7 @@ Read the platform facts review uses: per platform (TikTok, Reels, Shorts, YouTub
 
 ### `bashcut export status`
 
-Read the export state: while one runs, its job, step, preset and path (last receipt under lastExport); otherwise the most recent receipt (clips on Main, cuts: the joins between them, transitions included). Includes the queue (job IDs for jobs.cancel) and delivered: each exported file of this session measured (stream starts and drift, fps and size against the preset, black and silent stretches), which review run reads (P1-E6).
+Read the export state: while one runs, its job, step, preset and path (last receipt under lastExport); after a failed export, state failed with its error and path (receipt under lastExport); otherwise the most recent receipt (clips on Main, cuts: the joins between them, transitions included). Includes the queue (job IDs for jobs.cancel) and delivered: each exported file of this session measured (stream starts and drift, fps and size against the preset, black and silent stretches), which review run reads (P1-E6).
 
 - Mode: read · Runs: immediately · MCP: `bashcut_export_status`
 
