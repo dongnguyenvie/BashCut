@@ -5,6 +5,7 @@
 
 ## [Unreleased]
 
+- **Converted footage keeps its name and its place.** A clip converted on import (AV1, VP9) showed as `<media id>.mov` on the timeline, in the Media and Selects panels and the viewer's source label, and was listed under Project instead of Footage; it now shows the imported file's name and stays under Footage.
 - **Two Vietnamese strings.** The agent change notice ("%lld timeline changes") and the Inspector's frame range of the selected item were always in English.
 - **Text › Lines shows what a line inherits.** A line without its own font or colours showed the preset's font ("Preset (Arial Black)") and colours, while it draws with the title's own; it now shows *Title's look (System-Black)* and the title's colours.
 - **Plugin views can list a capability's providers.** A view's host call `capabilities.get` was refused (not on the plugin command boundary), so the Views Example's Voice tab offered only "BashCut's choice" even with VieNeu TTS installed; plugin views and actions may now call it.

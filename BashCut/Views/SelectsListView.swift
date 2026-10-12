@@ -66,7 +66,7 @@ struct SelectsListView: View {
     }
 
     private func mediaName(_ id: String) -> String {
-        document.project.media.first { $0.id == id }.map { URL(fileURLWithPath: $0.path).lastPathComponent } ?? id
+        document.project.media.first { $0.id == id }.map(\.fileName) ?? id
     }
 
     private func mark(_ select: ProjectSelect, status: String? = nil, mustKeep: Bool? = nil) {

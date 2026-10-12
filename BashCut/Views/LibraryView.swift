@@ -119,8 +119,8 @@ struct LibraryView: View {
                                 media: media, root: document.fileURL?.deletingLastPathComponent(),
                                 workspace: document.settings.workspace)
                         }.buttonStyle(.plain).help("Open source viewer")
-                            .accessibilityLabel("Preview " + URL(fileURLWithPath: media.path).lastPathComponent)
-                        Text(URL(fileURLWithPath: media.path).lastPathComponent).font(.caption2).lineLimit(1)
+                            .accessibilityLabel("Preview " + media.fileName)
+                        Text(media.fileName).font(.caption2).lineLimit(1)
                         Text(mediaSummary(media))
                             .font(.system(size: 9, design: .monospaced)).foregroundStyle(.secondary)
                         HStack(spacing: 6) {
@@ -189,7 +189,7 @@ struct LibraryView: View {
             ForEach(document.project.media.filter { $0["kind"] == .string("audio") }) { media in
                 HStack {
                     Image(systemName: "waveform")
-                    Text(URL(fileURLWithPath: media.path).lastPathComponent).lineLimit(1)
+                    Text(media.fileName).lineLimit(1)
                     Spacer()
                     Button("Insert") { document.appendMedia(media, track: audioTrack) }.disabled(audioTrack.isEmpty)
                 }.font(.caption)
@@ -212,7 +212,7 @@ struct LibraryView: View {
             Text("Beat Detection").font(.headline)
             Picker("Source", selection: $beatSource) {
                 ForEach(document.project.media.filter { $0["kind"] == .string("audio") }) { media in
-                    Text(URL(fileURLWithPath: media.path).lastPathComponent).tag(media.id)
+                    Text(media.fileName).tag(media.id)
                 }
             }
             Picker("Provider", selection: $beatProvider) {
@@ -266,7 +266,7 @@ struct LibraryView: View {
             Text("Auto Captions").font(.headline)
             Picker("Source", selection: $captionSource) {
                 ForEach(document.project.media) { media in
-                    Text(URL(fileURLWithPath: media.path).lastPathComponent).tag(media.id)
+                    Text(media.fileName).tag(media.id)
                 }
             }
             Picker("Provider", selection: $captionProvider) {
@@ -354,7 +354,7 @@ private extension LibraryView {
         document.project.media.filter {
             $0["kind"] != .string("audio")
                 && source(for: $0) == mediaSource
-                && (search.isEmpty || $0.path.localizedCaseInsensitiveContains(search))
+                && (search.isEmpty || "\($0.path) \($0.fileName)".localizedCaseInsensitiveContains(search))
         }
     }
 
@@ -369,10 +369,11 @@ private extension LibraryView {
     }
 
     func source(for media: Media) -> MediaLibrarySource {
-        if media.path.hasPrefix("@assets/") { return .shared }
+        let path = media["originalPath"]?.string ?? media.path  // a converted copy counts where its original is
+        if path.hasPrefix("@assets/") { return .shared }
         guard let root = document.fileURL?.deletingLastPathComponent(),
             let resolved = try? MediaPathResolver.resolve(
-                media.path, projectRoot: root, workspaceRoot: document.settings.workspace)
+                path, projectRoot: root, workspaceRoot: document.settings.workspace)
         else { return .project }
         let footage = root.appendingPathComponent("footage").resolvingSymlinksInPath().standardizedFileURL
         let candidate = resolved.resolvingSymlinksInPath().standardizedFileURL

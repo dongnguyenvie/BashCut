@@ -121,6 +121,9 @@ public struct Media: JSONObject, Identifiable {
         return value
     }
     public var durationSeconds: Double { Double(frames) / fps.value }
+    /// The file name to show: the imported file's, also after a conversion pointed `path` at
+    /// `media/converted/<id>.mov` (`originalPath` keeps the original).
+    public var fileName: String { URL(fileURLWithPath: fields["originalPath"]?.string ?? path).lastPathComponent }
     /// A still image: held for as long as its items last, up to `Media.imageMaximumSeconds` (its `frames`).
     public var isImage: Bool { kind == "image" }
     public static let imageMaximumSeconds = 3600.0

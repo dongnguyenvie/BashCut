@@ -31,7 +31,7 @@ struct ViewerModeSwitch: View {
 
     private var sourceTitle: String {
         guard let media = source.media else { return String(localized: "Source") }
-        return String(localized: "Source") + " · " + Self.shortName(URL(fileURLWithPath: media.path).lastPathComponent)
+        return String(localized: "Source") + " · " + Self.shortName(media.fileName)
     }
 
     /// Long camera file names keep their start and end, so the switch stays one compact row.
