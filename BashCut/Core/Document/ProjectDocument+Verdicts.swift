@@ -31,8 +31,9 @@ extension ProjectDocument {
             agent: change.author.rawValue, rev: change.afterRevision, items: Array(change.changedIDs)))
     }
 
-    /// The user undoes an agent's step (the latest one, or an older one further back).
-    func recordUndoVerdict(_ step: HistoryEntry, before: Project) {
+    /// The user undoes an agent's step (the latest one, or an older one further back); called before the undo.
+    func recordUndoVerdict(by author: Author, before: Project) {
+        guard !author.isAgent, author != .external, let step = history.lastUndo, step.author.isAgent else { return }
         let change = openAgentChange.flatMap { $0.label == step.label && $0.author == step.author ? $0 : nil }
         recordVerdict(KnowledgeVerdict(
             verdict: .undo, signal: .undo, subject: change?.command, label: step.label, agent: step.author.rawValue,
@@ -41,8 +42,10 @@ extension ProjectDocument {
 
     /// The user's first edit after an agent's change: on the same items it is an edit of the change, otherwise the
     /// change stays (kept).
-    func recordNextEditVerdict(before: Project) {
-        guard let change = agentChange, change.afterRevision == before.revision else { return }
+    func recordNextEditVerdict(by author: Author, label: String, before: Project) {
+        guard author != .external, !["Undo", "Redo"].contains(label), let change = agentChange,
+            change.afterRevision == before.revision
+        else { return }
         let touched = Set(project.itemChanges(from: before).map(\.itemID)).intersection(change.changedIDs)
         recordVerdict(KnowledgeVerdict(
             verdict: touched.isEmpty ? .keep : .edit, signal: touched.isEmpty ? .nextEdit : .edit,
