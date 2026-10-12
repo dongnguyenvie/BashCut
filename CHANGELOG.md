@@ -5,6 +5,7 @@
 
 ## [Unreleased]
 
+- **`ui action open quick-edit`.** The Quick Edit › Other… sheet could not be opened from the CLI or MCP ("Unknown dialog"), though `ui dialog` and `ui respond` handled it.
 - **The result card counts the exported file's issues.** The card counted the review issues when the export landed, before the file itself was measured, so a black or silent stretch in it (`delivered-…`) was missing: the card said "No issues left" while `run status` and `review run` listed an error. It counts again once the file is measured.
 - **Converted footage keeps its name and its place.** A clip converted on import (AV1, VP9) showed as `<media id>.mov` on the timeline, in the Media and Selects panels and the viewer's source label, and was listed under Project instead of Footage; it now shows the imported file's name and stays under Footage.
 - **Two Vietnamese strings.** The agent change notice ("%lld timeline changes") and the Inspector's frame range of the selected item were always in English.
