@@ -589,7 +589,10 @@ panel shows the kit in use and the saved kits (a click applies one); New Project
   those `textStyle` fields and its motion preset when its keyframes are exactly one at the item's length (hand-made
   keys are not saved). `library place` sets them on the new item; `library apply` sets the preset, then the stored
   `textStyle` over the item's own (fields it does not store stay) and the animation at the item's length, as one undo
-  step. Items without `textStyle` or `animation` behave as before: apply changes only the preset. The Text panel's
+  step. A preset whose `textStyle.font` is one of the project's own fonts (`fonts import`) is saved with that font
+  file as its `file`, in any scope (and gets it when moved to This Mac); placing or applying it in a project without
+  the font copies the file into that project's `fonts/` folder first. Items without `textStyle` or `animation`
+  behave as before: apply changes only the preset. The Text panel's
   cards show the stored size, position, outline, font and text colour, and Edit… changes them and the animation.
 - **Text fonts and colours** (#412): `textStyle.font` is a PostScript name, `fill`, `stroke` and `highlight` are
   `#RRGGBB`. `fonts list [--query q] [--project] [--language tag] [--covers]` gives the names (project fonts first;

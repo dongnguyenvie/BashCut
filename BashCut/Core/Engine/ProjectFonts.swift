@@ -115,6 +115,23 @@ public enum ProjectFonts {
         return fonts(in: target)
     }
 
+    /// The file in the project's fonts folder that holds `name` (a PostScript name); nil for an installed or unknown
+    /// font. A text preset saved to the library keeps this file, so the preset draws the same in another project.
+    public static func file(named name: String, projectRoot: URL) -> URL? {
+        files(projectRoot: projectRoot).first { file in fonts(in: file).contains { $0.postScriptName == name } }
+    }
+
+    /// Brings a library text preset's font file into the project at `projectRoot` when the project lacks `name`:
+    /// copied into its fonts folder and registered, like `fonts import`. Returns the fonts added; empty when the
+    /// project has the font already or `file` does not hold `name` (the preset's font changed since it was saved).
+    @discardableResult
+    public static func adopt(_ file: URL, name: String, projectRoot: URL) throws -> [Font] {
+        guard extensions.contains(file.pathExtension.lowercased()), self.file(named: name, projectRoot: projectRoot) == nil,
+            fonts(in: file).contains(where: { $0.postScriptName == name })
+        else { return [] }
+        return try importFont(from: file, projectRoot: projectRoot)
+    }
+
     /// The project's fonts first, then the installed ones (without the project's names).
     public static func list(projectRoot: URL?, installed includeInstalled: Bool = true) -> [Font] {
         let own = (projectRoot.map(files) ?? []).flatMap(fonts(in:))
