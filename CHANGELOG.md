@@ -5,6 +5,7 @@
 
 ## [Unreleased]
 
+- **Waveforms in the Audio panel.** Each audio library item shows its peak envelope under its name, read in the background with the timeline's waveform analysis and cached in `~/Library/Caches/BashCut/LibraryWaveforms`.
 - **Library paging.** `library list --offset N --limit M` returns one page as `{items, total, offset, limit, next}` (`next` is the following page's offset, null after the last; limit 1–500, 50 with offset alone); without them it still returns every match as an array. The library panels draw the first 60 matches and a **Show more** link adds 60 at a time; a new search or filter starts again.
 - **Transition sounds: offset and volume.** A transition preset takes `sfxOffset` (timeline frames from the cut, −600 to 600; negative starts the sound before the cut so a whoosh can peak on it) and `sfxVolumeDb` (−60 to 12 dB, set as the sound clip's `volumeDb`). `library apply` places the sound there (never before frame 0), `library save-selection --kind transition-preset` reads both back from the sound at the cut, and the preset sheet (Edit…) shows them under Sound.
 - **`library update --file` measures the new file.** An audio item's length, a sticker's kind, size and frame count and a clip's length, size and sound are measured from the new file like `library add` does, and values measured from the old one (an audio item's tempo, loudness and landmarks) are dropped instead of describing the wrong file; the result lists `measured` and `cleared` (run `library analyze` again for loudness and tempo).

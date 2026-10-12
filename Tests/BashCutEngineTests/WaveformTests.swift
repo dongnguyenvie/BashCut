@@ -45,6 +45,16 @@ struct WaveformTests {
         #expect(changed != first)
     }
 
+    @Test("Bars keep the loudest peak of each stretch, for any count")
+    func bars() {
+        let waveform = AudioWaveform(duration: 1, peaks: [0.1, 0.9, 0.2, 0.4, 0.3, 0.5])
+        #expect(waveform.bars(3) == [0.9, 0.4, 0.5])
+        #expect(waveform.bars(12).count == 12)
+        #expect(waveform.bars(1) == [0.9])
+        #expect(waveform.bars(0).isEmpty)
+        #expect(AudioWaveform(duration: 1, peaks: []).bars(4).isEmpty)
+    }
+
     @Test("Peak queries clamp to time bounds and reject invalid intervals")
     func peakRanges() {
         let waveform = AudioWaveform(duration: 4, peaks: [0.1, 0.8, 0.3, 0.2])
