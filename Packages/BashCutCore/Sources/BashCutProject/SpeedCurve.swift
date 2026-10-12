@@ -169,3 +169,22 @@ extension Item {
             : curve.integral(to: 1) * clipSeconds + (seconds - clipSeconds) * curve.points[curve.points.count - 1].speed
     }
 }
+
+extension Item {
+    /// The source frame of `media` the clip shows `frames` timeline frames into it (clamped to the clip and the
+    /// media): what a freeze frame there holds (`clip freeze`, an effect's `freeze` step).
+    public func sourceFrame(at frames: Int, media: Media, fps: FrameRate) -> Int {
+        let local = min(max(0, frames), max(0, duration - 1))
+        let elapsed = sourceSeconds(afterFrames: local, fps: fps)
+        return min(max(0, media.frames - 1), sourceIn + Int((elapsed * media.fps.value).rounded(.down)))
+    }
+
+    /// Where the freeze frame `freezeFrame` falls along the clip, as a fraction 0–1 of its length (nil when it is
+    /// not frozen): the inverse of `sourceFrame(at:)` for a constant speed.
+    public func freezePosition(media: Media, fps: FrameRate) -> Double? {
+        guard let frozen = fields["freezeFrame"]?.int else { return nil }
+        let consumed = sourceSeconds(afterFrames: max(1, duration - 1), fps: fps) * media.fps.value
+        guard consumed > 0 else { return 0 }
+        return min(1, max(0, Double(frozen - sourceIn) / consumed))
+    }
+}

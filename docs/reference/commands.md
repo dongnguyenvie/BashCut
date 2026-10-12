@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 209 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 210 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -980,6 +980,16 @@ Play a video clip backwards (with its linked sound): renders a reversed copy of 
 - Mode: edit · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_clip_reverse`
 - `item`: string. Item ID; the selected clip by default
 
+### `bashcut clip freeze [<item>] [--at-frame <atFrame>] [--off] --base-rev <baseRev>`
+
+Hold one frame of a video clip for its whole length, like the clip menu's Freeze Frame (ui action clip.freeze): the frame the clip shows at atFrame (the playhead by default), as one undo step; freezing a frozen clip picks again from its source; off removes the freeze. A frozen clip has no speed and cannot be reversed. Returns freezeFrame, the source frame held.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_clip_freeze`
+- `item`: string. Item ID; the selected clip by default
+- `atFrame`: integer, ≥ 0. Timeline frame inside the clip; the playhead by default
+- `off`: boolean, default false. Remove the freeze frame
+- `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
+
 ## jobs
 
 ### `bashcut jobs status [<job>]`
@@ -1954,7 +1964,7 @@ Remove a project or user library item and its files. Built-in and plugin items c
 
 ### `bashcut library save-selection --kind <kind> --name <name> [--id <id>] [--item <item>] [--media <media>] [--scope <scope>] [--tags <tags>] [--pack <pack>]`
 
-Save what is selected on the timeline as a new library item (the panels' Save selection as…): a text item's preset, text, textStyle (size, position, outline) and motion preset when its keyframes are one, a clip's effect as a recipe (reverse, speed or speed ramp, framing, keyframes scaled to the clip's length, and the sound effect at its start; a still of the clip as its preview), the transition at the selected clip (kind, duration, easing and the sound a preset placed there), or a grade as a look: the full filter stack, with the project LUT it uses copied in as the look's file, or an audio clip (or project audio media) as an audio item: its file copied in, its length, and music or sfx from its layer, or an overlay item as a sticker: an image or alpha movie with its file, size, position and length, or an emoji text item with its text preset.
+Save what is selected on the timeline as a new library item (the panels' Save selection as…): a text item's preset, text, textStyle (size, position, outline) and motion preset when its keyframes are one, a clip's effect as a recipe (reverse, freeze frame, speed or speed ramp, framing, keyframes scaled to the clip's length, and the sound effect at its start; a still of the clip as its preview), the transition at the selected clip (kind, duration, easing and the sound a preset placed there), or a grade as a look: the full filter stack, with the project LUT it uses copied in as the look's file, or an audio clip (or project audio media) as an audio item: its file copied in, its length, and music or sfx from its layer, or an overlay item as a sticker: an image or alpha movie with its file, size, position and length, or an emoji text item with its text preset.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_library_save-selection`
 - `kind`: string, required, one of text-preset, effect-preset, transition-preset, look, audio, sticker. What to save

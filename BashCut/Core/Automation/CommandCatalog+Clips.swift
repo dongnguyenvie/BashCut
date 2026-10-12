@@ -149,5 +149,18 @@ extension CommandCatalog {
                 + "the project's reversed/ folder and points the clip at it. Reversing again restores the original.",
             parameters: [CommandParameter("item", .string, "Item ID; the selected clip by default", cli: .positional)],
             execution: .job),
+        CommandSpec(
+            "clip.freeze", .edit,
+            "Hold one frame of a video clip for its whole length, like the clip menu's Freeze Frame (ui action "
+                + "clip.freeze): the frame the clip shows at atFrame (the playhead by default), as one undo step; "
+                + "freezing a frozen clip picks again from its source; off removes the freeze. A frozen clip has no "
+                + "speed and cannot be reversed. Returns freezeFrame, the source frame held.",
+            parameters: [
+                CommandParameter("item", .string, "Item ID; the selected clip by default", cli: .positional),
+                CommandParameter("atFrame", .integer, "Timeline frame inside the clip; the playhead by default",
+                                 minimum: 0, cli: .option("at-frame")),
+                CommandParameter("off", .boolean, "Remove the freeze frame", default: .bool(false), cli: .flag("off")),
+                baseRevision,
+            ]),
     ]
 }

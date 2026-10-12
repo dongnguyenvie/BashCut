@@ -303,6 +303,26 @@ struct EffectRecipeTests {
         #expect(keys?["opacity"]?.first?.position.frame(length: 60) == 17)
         #expect(throws: ProjectError.self) { try LibrarySelection.params(.effectPreset, item: Item(at: 0, duration: 30)) }
     }
+
+    @Test("A freeze frame is saved where it is along the clip and freezes the same place on another clip")
+    func saveFreezeRoundTrip() throws {
+        let project = try Self.project()
+        let media = try #require(project.media.first)
+        let clip = try #require(project.tracks.flatMap(\.items).first { $0.id == "c" })
+        // Frame 45 of the 60-frame clip (source in 30) holds source frame 75.
+        #expect(clip.sourceFrame(at: 45, media: media, fps: project.fps) == 75)
+        #expect(clip.sourceFrame(at: 500, media: media, fps: project.fps) == 89)
+        var frozen = clip
+        frozen["freezeFrame"] = .integer(75)
+        let t = try #require(frozen.freezePosition(media: media, fps: project.fps))
+        #expect(abs(t - 45.0 / 59.0) < 1e-6)
+        let params = try LibrarySelection.params(.effectPreset, item: frozen, project: project)
+        let steps = try EffectRecipe(params: params).resolvedSteps()
+        guard case .freeze(let position) = try #require(steps.first) else { Issue.record("no freeze step"); return }
+        #expect(position.frame(length: 60) == 45)
+        let applied = try Self.applied(try EffectRecipe(params: params), to: project).item
+        #expect(applied["freezeFrame"] == .integer(75))
+    }
 }
 
 private extension Item {

@@ -129,7 +129,7 @@ extension CommandCatalog {
             "library.save-selection", .edit,
             "Save what is selected on the timeline as a new library item (the panels' Save selection as…): a text "
                 + "item's preset, text, textStyle (size, position, outline) and motion preset when its keyframes are one, "
-                + "a clip's effect as a recipe (reverse, speed or speed ramp, framing, keyframes scaled to the "
+                + "a clip's effect as a recipe (reverse, freeze frame, speed or speed ramp, framing, keyframes scaled to the "
                 + "clip's length, and the sound effect at its start; a still of the clip as its preview), the transition "
                 + "at the selected clip (kind, duration, easing and the sound a preset placed there), or a grade as a look: "
                 + "the full filter stack, with the project LUT it uses copied in as the look's file, or an audio clip (or "

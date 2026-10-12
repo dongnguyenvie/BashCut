@@ -151,9 +151,7 @@ private struct EffectPlanBuilder {
         case .freeze(let position):
             let (item, _) = try current()
             let media = try media(of: item, for: "freeze")
-            let local = min(max(0, position.frame(length: item.duration)), item.duration - 1)
-            let elapsed = item.sourceSeconds(afterFrames: local, fps: project.fps)
-            let source = min(max(0, media.frames - 1), item.sourceIn + Int((elapsed * media.fps.value).rounded(.down)))
+            let source = item.sourceFrame(at: position.frame(length: item.duration), media: media, fps: project.fps)
             try planner.add([.setProperties(item: target, patch: ["freezeFrame": .integer(source)])])
         case .patch(let patch):
             try planner.add([.setProperties(item: target, patch: patch)])

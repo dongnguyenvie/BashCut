@@ -69,23 +69,51 @@ extension ProjectDocument {
         apply(.setLinkedAudio(video: videoID, audio: nil), label: "Unlink audio")
     }
 
+    /// The clip menu's and Inspector's Freeze Frame (`ui action clip.freeze`): holds the frame under the playhead, or
+    /// removes the freeze when the clip already has one.
     func toggleFreezeSelected() {
         guard let item = selected else { return }
-        if item.fields["freezeFrame"] != nil {
-            apply(.setProperties(item: item.id, patch: ["freezeFrame": .null]), label: "Remove freeze frame")
-            return
+        do {
+            try freezeClip(item.id, off: item.fields["freezeFrame"] != nil)
+        } catch { message = error.localizedDescription }
+    }
+
+    /// Holds one source frame of a video clip for its whole length (`clip freeze`), as one undo step: the frame the
+    /// clip shows at the timeline frame `atFrame` (the playhead by default), or removes the freeze with `off`.
+    /// Returns the revision and the source frame held (nil when removed).
+    @discardableResult
+    func freezeClip(
+        _ id: String? = nil, atFrame: Int? = nil, off: Bool = false, author: Author = .user, baseRevision: Int? = nil
+    ) throws -> (revision: Int, source: Int?) {
+        guard let id = id ?? selectedID,
+            let track = project.tracks.first(where: { $0.items.contains { $0.id == id } }),
+            let item = track.items.first(where: { $0.id == id })
+        else { throw ProjectError.invalid("Select a video clip to freeze") }
+        if off {
+            guard item.fields["freezeFrame"] != nil else { throw ProjectError.invalid("\(id) has no freeze frame") }
+            let revision = try commit(
+                .setProperties(item: id, patch: ["freezeFrame": .null]), label: "Remove freeze frame", author: author,
+                baseRevision: baseRevision)
+            return (revision, nil)
         }
-        guard let media = project.media.first(where: { $0.id == item.mediaID }),
-            (item.at..<item.end).contains(playhead)
-        else {
-            message = String(localized: "Move the playhead inside the selected video clip.")
-            return
+        guard track.kind == TrackKind.video, let media = project.media.first(where: { $0.id == item.mediaID }),
+            media.kind == "video"
+        else { throw ProjectError.invalid("\(id) is not a video clip; only video clips can freeze") }
+        let frame = atFrame ?? playhead
+        guard (item.at..<item.end).contains(frame) else {
+            throw ProjectError.invalid(
+                atFrame == nil
+                    ? String(localized: "Move the playhead inside the selected video clip.")
+                    : "Frame \(frame) is outside \(id) (\(item.at)–\(item.end - 1))")
         }
-        let elapsed = item.sourceSeconds(afterFrames: playhead - item.at, fps: project.fps)
-        let source = item.sourceIn + Int((elapsed * media.fps.value).rounded(.down))
-        apply(
-            .setProperties(item: item.id, patch: ["freezeFrame": .integer(source)]),
-            label: "Freeze frame")
+        // A frozen clip shows its held frame; freezing it again picks from its unfrozen source.
+        var unfrozen = item
+        unfrozen.fields["freezeFrame"] = nil
+        let source = unfrozen.sourceFrame(at: frame - item.at, media: media, fps: project.fps)
+        let revision = try commit(
+            .setProperties(item: id, patch: ["freezeFrame": .integer(source)]), label: "Freeze frame", author: author,
+            baseRevision: baseRevision)
+        return (revision, source)
     }
 
     func addRecordedVoice(_ url: URL) async throws {

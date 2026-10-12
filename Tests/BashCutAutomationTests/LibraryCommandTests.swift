@@ -5,6 +5,18 @@ import Testing
 
 /// The library commands on the CLI and MCP.
 struct LibraryCommandTests {
+    @Test("clip freeze is the clip menu's Freeze Frame on the CLI and over MCP, with a frame and off")
+    @MainActor func clipFreeze() throws {
+        let freeze = try CommandLineParser.parse(["clip", "freeze", "c1", "--at-frame", "45", "--base-rev", "2"])
+        #expect(freeze.spec.name == "clip.freeze")
+        #expect(freeze.params == ["item": .string("c1"), "atFrame": .integer(45), "off": .bool(false), "baseRev": .integer(2)])
+        let off = try CommandLineParser.parse(["clip", "freeze", "c1", "--off", "--base-rev", "3"])
+        #expect(off.params["off"] == .bool(true))
+        let spec = try #require(CommandCatalog.spec(named: "clip.freeze"))
+        #expect(spec.mode == .edit)
+        #expect(ChatCommandSession.allowedMethods.contains("clip.freeze"))
+    }
+
     @Test("library apply takes effect preset overrides and a from/to range on the CLI and over MCP")
     func libraryApplyEffect() throws {
         let apply = try CommandLineParser.parse([
