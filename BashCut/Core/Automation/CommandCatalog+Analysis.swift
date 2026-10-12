@@ -375,6 +375,19 @@ extension CommandCatalog {
                                  + "the provider picks)", cli: .option("languages")),
             ], execution: .job),
         CommandSpec(
+            "image.cutout", .ui,
+            "Remove a picture's background with a vision.cutout provider (built in: Apple Vision): the subject (a "
+                + "mascot, a product, a person) on a transparent background as a PNG in the project's generated "
+                + "folder. source is an image file (relative to the project or absolute) or a library sticker ID. "
+                + "Returns path, projectPath, width, height, instances (subjects found) and coverage (share of the "
+                + "picture kept). Look at it, then library add --kind sticker --file it (or library update the "
+                + "sticker) to use it. A job.",
+            parameters: [
+                CommandParameter("source", .string, "Image file or library sticker ID", required: true, cli: .positional),
+                CommandParameter("crop", .boolean, "Crop to the subject", default: .bool(false), cli: .flag("crop")),
+                provider,
+            ], execution: .job),
+        CommandSpec(
             "audio.mix-measure", .read,
             "Read the mix by role without exporting: one stem each for speech (dialogue and voiceover layers and the "
                 + "sound of video clips), music and sound effects is rendered (other sounds at −120 dB, so ducking "

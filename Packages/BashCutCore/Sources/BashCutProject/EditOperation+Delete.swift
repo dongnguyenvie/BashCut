@@ -5,13 +5,14 @@ extension Project {
     /// unlinked and deleted alone.
     mutating func deleteLinked(_ id: String, ripple: Bool) throws {
         let (track, index) = try location(id)
+        var moved = Set<String>()
         if let video = tracks[track].items[index].fields["linkedVideo"]?.string {
             if let picture = try? location(video) { tracks[picture.0].items[picture.1].fields["linkedAudio"] = nil }
-            try deleteItem(id: id, ripple: ripple)
+            try deleteItem(id: id, ripple: ripple, moved: &moved)
             return
         }
         let linked = try linkedItemID(id)
-        try deleteItem(id: id, ripple: ripple)
-        if let linked { try deleteItem(id: linked, ripple: ripple) }
+        try deleteItem(id: id, ripple: ripple, moved: &moved)
+        if let linked { try deleteItem(id: linked, ripple: ripple, moved: &moved) }
     }
 }

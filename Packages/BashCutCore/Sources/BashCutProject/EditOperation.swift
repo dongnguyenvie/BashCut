@@ -166,8 +166,9 @@ extension Project {
             }
         case .trim(let id, let edge, let frame, let ripple):
             let linked = try linkedItemID(id)
-            try trimItem(id: id, edge: edge, frame: frame, ripple: ripple)
-            if let linked { try trimItem(id: linked, edge: edge, frame: frame, ripple: ripple) }
+            var moved = Set<String>()
+            try trimItem(id: id, edge: edge, frame: frame, ripple: ripple, moved: &moved)
+            if let linked { try trimItem(id: linked, edge: edge, frame: frame, ripple: ripple, moved: &moved) }
         case .move(let id, let destination, let frame):
             let linked = try linkedItemID(id)
             let linkedTrackID: String?
@@ -386,10 +387,10 @@ extension Project {
         }
     }
 
-    mutating func deleteItem(id: String, ripple: Bool) throws {
+    mutating func deleteItem(id: String, ripple: Bool, moved: inout Set<String>) throws {
         let (track, index) = try location(id)
         let item = tracks[track].items.remove(at: index)
-        if ripple { try shift(track: track, from: item.end, by: -item.duration) }
+        if ripple { try shift(track: track, from: item.end, by: -item.duration, moved: &moved) }
     }
 
     private mutating func splitItem(id: String, frame: Int, newID: String) throws {
@@ -414,7 +415,7 @@ extension Project {
         tracks[track].items.insert(right, at: index + 1)
     }
 
-    mutating func trimItem(id: String, edge: Edge, frame: Int, ripple: Bool) throws {
+    mutating func trimItem(id: String, edge: Edge, frame: Int, ripple: Bool, moved: inout Set<String>) throws {
         let (track, index) = try location(id)
         let original = tracks[track].items[index]
         var trimmed = original
@@ -441,7 +442,7 @@ extension Project {
         if ripple {
             try shift(
                 track: track, from: original.end, by: trimmed.duration - original.duration,
-                markersFrom: edge == .start ? max(frame, original.at) : original.end)
+                markersFrom: edge == .start ? max(frame, original.at) : original.end, moved: &moved)
         }
     }
 

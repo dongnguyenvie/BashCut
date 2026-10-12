@@ -8,7 +8,7 @@ extension ProjectDocument {
     func registerPlanCutCommands() {
         handle("plan.check") { document, arguments, _ in
             let spec = try document.planCutSpec(arguments)
-            return try await document.checkPlanCut(spec).json
+            return try await document.checkPlanCut(spec, words: arguments.bool("words")).json
         }
         handleAuthored("plan.apply") { document, arguments, author in
             let spec = try document.planCutSpec(arguments)
@@ -37,12 +37,16 @@ extension ProjectDocument {
                 baseRevision: baseRevision, note: try Self.editNote(arguments))
             var json = check.json.object
             json["rev"] = .integer(result.revision)
-            let clips = spec.clips.count
-            let sections = Set(spec.clips.compactMap(\.section)).count
+            let clips = spec.clips.count, lines = spec.voiceover.count
+            let sections = Set(spec.clips.compactMap(\.section) + spec.voiceover.compactMap(\.section)).count
+            let made = lines > 0 && clips == 0 ? "\(lines) voiceover lines" : "\(clips) clips"
             document.logAutoStage("story", evidence: [
-                "plan.cut: \(clips) clips in \(sections) sections", "plan check ok at rev \(baseRevision)",
+                "plan.cut: \(made) in \(sections) sections", "plan check ok at rev \(baseRevision)",
             ], author: author)
-            document.logAutoStage("rough-cut", evidence: ["plan.apply rev \(result.revision)", "\(clips) clips"], author: author)
+            document.logAutoStage("rough-cut", evidence: ["plan.apply rev \(result.revision)", made], author: author)
+            if lines > 0 {
+                document.logAutoStage("voiceover", evidence: ["plan.apply rev \(result.revision)", "\(lines) lines"], author: author)
+            }
             if spec.captions != nil {
                 document.logAutoStage("captions", evidence: ["plan.apply rev \(result.revision) captions from plan.cut"], author: author)
             }
@@ -66,8 +70,11 @@ extension ProjectDocument {
     /// item IDs and the sheet's cells cost thousands of tokens on every later turn, so they come only with --full;
     /// a clip's problems, the review and the sheet's image paths stay.
     static func briefApply(_ json: [String: JSONValue]) -> JSONValue {
-        var brief = json.filter { !["clips", "changes", "items", "sheet"].contains($0.key) }
+        var brief = json.filter { !["clips", "changes", "items", "sheet", "lines", "graphics"].contains($0.key) }
         brief["clips"] = .integer(json["clips"]?.array.count ?? 0)
+        for key in ["lines", "graphics"] where !(json[key]?.array ?? []).isEmpty {
+            brief[key] = .integer(json[key]?.array.count ?? 0)
+        }
         if let sheet = json["sheet"]?.object {
             brief["sheet"] = .array((sheet["sheets"]?.array ?? []).compactMap { $0.object["path"] })
         }
@@ -210,18 +217,20 @@ extension ProjectDocument {
     }
 
     /// Resolves, builds on a scratch copy and reviews the result; nothing changes.
-    func checkPlanCut(_ spec: PlanCut.Spec) async throws -> PlanCutCheck {
+    func checkPlanCut(_ spec: PlanCut.Spec, words: Bool = false) async throws -> PlanCutCheck {
         var transcripts: [String: SourceTranscript] = [:]
         for mediaID in Set(spec.clips.map(\.media)).sorted() {
             if let stored = try? await storedTranscript(mediaID) { transcripts[mediaID] = stored }
         }
         let (clips, resolveProblems) = PlanCut.resolve(spec, project: project, transcripts: transcripts)
+        let takes = await planLineTakes(spec)
         let (textPresets, presetProblems) = planTextPresets(spec)
         var problems = resolveProblems + presetProblems
         var result: [String: JSONValue] = ["baseRev": .integer(project.revision)]
         var built: (planner: LayerPlanner, placements: [PlanCut.Placement], kept: [String])?
         do {
-            built = try PlanCut.build(spec, clips: clips, on: project, textPresets: textPresets, transcripts: transcripts)
+            built = try PlanCut.build(
+                spec, clips: clips, on: project, textPresets: textPresets, transcripts: transcripts, takes: takes)
         } catch {
             problems.append(PlanCut.Problem(id: "cannot-build", severity: "error", entry: nil, detail: "\(error)"))
         }
@@ -234,6 +243,9 @@ extension ProjectDocument {
             let fps = after.fps.value
             result["duration"] = .number((Double(after.duration) / fps * 100).rounded() / 100)
             result["clips"] = .array(facts.clips)
+            let lineFacts = Self.lineFacts(spec, takes: takes, placements: built.placements, on: after, words: words)
+            problems += lineFacts.problems
+            result.merge(lineFacts.fields) { $1 }
             if !facts.titles.isEmpty { result["titles"] = .array(planTitleSizes(facts.titles, on: after)) }
             if spec.captions != nil {
                 let cues = after.tracks.flatMap(\.items).filter { $0.fields[PlanCut.tag] == .string("captions") }
@@ -271,5 +283,36 @@ extension ProjectDocument {
         result["problems"] = .array(problems.map(\.json))
         result["ok"] = .bool(!problems.contains { $0.severity == "error" })
         return PlanCutCheck(built: built, problems: problems, json: .object(result))
+    }
+
+    /// The voiceover lines' and graphics' rows of plan check (with `words`, the words heard during each graphic),
+    /// and their problems.
+    static func lineFacts(
+        _ spec: PlanCut.Spec, takes: [String: PlanCut.LineTake], placements: [PlanCut.Placement], on after: Project,
+        words: Bool
+    ) -> (problems: [PlanCut.Problem], fields: [String: JSONValue]) {
+        var result: [String: JSONValue] = [:]
+        guard !spec.voiceover.isEmpty || !spec.graphics.isEmpty else { return ([], result) }
+        let more = PlanCut.lineAndGraphicFacts(spec, takes: takes, placements: placements, on: after)
+        var problems = more.problems
+        if !more.lines.isEmpty { result["lines"] = .array(more.lines) }
+        var graphics = more.graphics
+        if words {
+            let heard = graphicWords(spec, takes: takes, placements: placements, fps: after.fps.value)
+            graphics = graphics.map { row in
+                guard case .object(var fields) = row, let id = fields["id"]?.string, let list = heard[id] else { return row }
+                fields["words"] = list
+                return .object(fields)
+            }
+        }
+        if !graphics.isEmpty { result["graphics"] = .array(graphics) }
+        guard spec.captions != nil else { return (problems, result) }
+        for line in spec.voiceover where takes[line.id]?.words.isEmpty == true {
+            problems.append(PlanCut.Problem(
+                id: "no-transcript", severity: "warning", entry: line.id,
+                detail: "The line's take has no stored transcript, so it gets no captions: voice lines transcribes the "
+                    + "takes it makes (or voice check the take)"))
+        }
+        return (problems, result)
     }
 }

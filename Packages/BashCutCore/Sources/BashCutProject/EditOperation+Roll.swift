@@ -25,7 +25,8 @@ extension Project {
         guard frame > left.at, frame < right.end else {
             throw ProjectError.invalid("A rolling trim must leave both clips nonempty")
         }
-        try trimItem(id: left.id, edge: .end, frame: frame, ripple: false)
-        try trimItem(id: right.id, edge: .start, frame: frame, ripple: false)
+        var moved = Set<String>()
+        try trimItem(id: left.id, edge: .end, frame: frame, ripple: false, moved: &moved)
+        try trimItem(id: right.id, edge: .start, frame: frame, ripple: false, moved: &moved)
     }
 }

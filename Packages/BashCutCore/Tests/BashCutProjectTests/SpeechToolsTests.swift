@@ -102,4 +102,36 @@ struct SpeechToolsTests {
         #expect(facts["gaps"]?.array.first?.object["frames"] == .integer(2))
         #expect(throws: ProjectError.self) { _ = try CaptionGrouping.operation(project, words: words, groups: [[1, 0]], author: .agent) }
     }
+
+    @Test("Numbers spell out the way they are said, in Vietnamese and English")
+    func numberWords() {
+        #expect(NumberWords.spelled("528", language: "vi") == ["năm", "trăm", "hai", "mươi", "tám"])
+        #expect(NumberWords.spelled("15", language: "vi") == ["mười", "năm"])
+        #expect(NumberWords.spelled("105", language: "vi") == ["một", "trăm", "lẻ", "năm"])
+        #expect(NumberWords.spelled("2.005", language: "vi") == ["hai", "nghìn", "không", "trăm", "lẻ", "năm"])
+        #expect(NumberWords.spelled("7,5", language: "vi") == ["bảy", "phẩy", "năm"])
+        #expect(NumberWords.spelled("50%", language: "vi") == ["năm", "mươi", "phần", "trăm"])
+        #expect(NumberWords.spelled("1,250", language: "en") == ["one", "thousand", "two", "hundred", "fifty"])
+        #expect(NumberWords.spelled("hello", language: "vi") == nil)
+        #expect(NumberWords.language(of: "Hồ Tây rộng") == "vi" && NumberWords.language(of: "Lake area") == "en")
+    }
+
+    @Test("A spelled-out number in the script matches the digits a recognizer wrote, in either common spelling")
+    func numbersMatchDigits() {
+        let heard = [("Hồ", 0.0, 0.2), ("Tây", 0.2, 0.4), ("rộng", 0.4, 0.6), ("528", 0.6, 1.6), ("hecta.", 1.6, 2.0)].map {
+            CaptionWords.Timed(text: $0.0, start: $0.1, end: $0.2)
+        }
+        let result = TextAlignment.align("Hồ Tây rộng năm trăm hai mươi tám héc ta.", to: heard)
+        #expect(result.words.filter { $0.kind == "match" }.count == 8)
+        let tam = result.words.first { $0.text == "tám" }
+        #expect(tam?.kind == "match" && (tam?.start ?? 0) >= 1.4 && (tam?.end ?? 0) <= 1.6, "a fifth of the numeral's time")
+        let variant = TextAlignment.align("hai mươi mốt", to: [CaptionWords.Timed(text: "21", start: 0, end: 1)])
+        #expect(variant.similarity == 1, "mốt and một are one number")
+        let digits = TextAlignment.align("Giá 50 nghìn", to: [("Giá", 0.0, 0.3), ("50", 0.3, 0.6), ("nghìn", 0.6, 0.9)].map {
+            CaptionWords.Timed(text: $0.0, start: $0.1, end: $0.2)
+        })
+        #expect(digits.similarity == 1, "digits in the script stay digits")
+        let joined = TextAlignment.align("ba phẩy năm km", to: [CaptionWords.Timed(text: "3,5km", start: 0, end: 1)])
+        #expect(joined.similarity == 1, "a unit written onto the number")
+    }
 }

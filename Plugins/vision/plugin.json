@@ -5,13 +5,14 @@
     "en": "Vision",
     "vi": "Phân tích hình ảnh"
   },
-  "version": "1.0.0",
+  "version": "1.1.0",
   "apiVersion": 2,
   "entrypoint": "bin/bashcut-vision",
-  "capabilities": ["vision.faces", "vision.text"],
+  "capabilities": ["vision.faces", "vision.text", "vision.cutout"],
   "providers": [
     {"id": "bashcut.vision.faces", "capability": "vision.faces", "name": "Faces and people (built in)", "priority": 0},
-    {"id": "bashcut.vision.text", "capability": "vision.text", "name": "On-screen text (built in)", "priority": 0}
+    {"id": "bashcut.vision.text", "capability": "vision.text", "name": "On-screen text (built in)", "priority": 0},
+    {"id": "bashcut.vision.cutout", "capability": "vision.cutout", "name": "Background removal (built in)", "priority": 0}
   ],
   "dependencies": []
 }

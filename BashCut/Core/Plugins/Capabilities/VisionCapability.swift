@@ -96,3 +96,38 @@ public struct TextRecognitionCapability: CapabilityAdapter {
             step: sampling.step, frames: try VisionSampling.frames(result, lists: ["text"]), provenance: context.provenance)
     }
 }
+
+/// `vision.cutout`: a picture's subject on a transparent background, written as a PNG into the request folder.
+public struct CutoutCapability: CapabilityAdapter {
+    public static let capability = "vision.cutout"
+    public let imageURL: URL
+    public let crop: Bool
+    public let outputRoot: URL?
+
+    public init(imageURL: URL, crop: Bool, outputRoot: URL) {
+        self.imageURL = imageURL
+        self.crop = crop
+        self.outputRoot = outputRoot
+    }
+
+    public func validate() throws {
+        guard FileManager.default.fileExists(atPath: imageURL.path) else { throw PluginError.invalid("The picture is unavailable") }
+    }
+
+    public func params(outputDirectory: URL?) -> JSONValue {
+        var values: [String: JSONValue] = ["imagePath": .string(imageURL.path), "crop": .bool(crop)]
+        if let outputDirectory { values["outputDirectory"] = .string(outputDirectory.path) }
+        return .object(values)
+    }
+
+    public func output(from result: JSONValue, context: CapabilityContext) async throws -> GeneratedCutout {
+        guard let path = result.object["path"]?.string, let width = result.object["width"]?.int,
+            let height = result.object["height"]?.int, width > 0, height > 0
+        else { throw PluginError.invalid("Cutout plugin returned no picture") }
+        let url = try context.confinedOutput(path, label: "Cutout plugin")
+        let coverage = result.object["coverage"]?.double.flatMap { (0...1).contains($0) ? $0 : nil }
+        return GeneratedCutout(
+            url: url, width: width, height: height, instances: result.object["instances"]?.int, coverage: coverage,
+            provenance: context.provenance)
+    }
+}

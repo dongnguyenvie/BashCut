@@ -18,9 +18,10 @@ public enum CommandCatalog {
     public static let capabilities: [String: String] = [
         "captions.generate": "captions.transcribe", "media.transcribe": "captions.transcribe",
         "voice.check": "captions.transcribe", "captions.align": "captions.transcribe", "beats.detect": "audio.beats",
-        "voice.speak": "voice.synthesize", "audio.measure": "audio.loudness", "audio.mix-measure": "audio.loudness",
+        "voice.speak": "voice.synthesize", "voice.lines": "voice.synthesize",
+        "audio.measure": "audio.loudness", "audio.mix-measure": "audio.loudness",
         "media.sync": "audio.sync", "audio.energy": "audio.energy", "library.search": "library.search",
-        "library.generate": "library.generate", "media.subjects": "vision.faces", "media.ocr": "vision.text",
+        "library.generate": "library.generate", "media.subjects": "vision.faces", "media.ocr": "vision.text", "image.cutout": "vision.cutout",
     ]
 
     /// Every command, provider jobs with `requestId` and `dryRun` (flexibility audit, D8).

@@ -19,6 +19,7 @@ extension ProjectDocument {
                 }
             }
         }
+        handleAuthored("image.cutout") { document, arguments, author in try await document.startCutout(arguments, author: author) }
         handleAuthored("media.ocr") { document, arguments, author in
             let provider = arguments.optionalString("provider")
             let languages = (arguments.optionalString("languages") ?? "").split(separator: ",")
@@ -31,6 +32,39 @@ extension ProjectDocument {
                         projectRoot: root)
                 }
             }
+        }
+    }
+
+    /// `image.cutout`: an image file or a library sticker's file through a `vision.cutout` provider.
+    func startCutout(_ arguments: CommandArguments, author: Author) async throws -> JSONValue {
+        guard let root = fileURL?.deletingLastPathComponent() else { throw RPCFailure(-32602, "Open a saved project first") }
+        let source = try arguments.string("source")
+        let file = source.hasPrefix("/") ? URL(fileURLWithPath: source) : root.appendingPathComponent(source)
+        let url: URL
+        if FileManager.default.fileExists(atPath: file.path) {
+            url = file.standardizedFileURL
+        } else if let item = try? libraryCatalog.item(source), let found = libraryCatalog.fileURL(of: item) {
+            url = found
+        } else {
+            throw RPCFailure(-32602, "\(source) is neither an image file nor a library item with a file")
+        }
+        let crop = arguments.bool("crop")
+        let provider = arguments.optionalString("provider")
+        return try await startCapabilityJob("image.cutout", author: author, arguments: arguments) { document in
+            let generated = try await document.plugins.running(CutoutCapability.capability) {
+                try await document.plugins.service.cutout(
+                    imageURL: url, crop: crop,
+                    preferredProvider: provider ?? document.project.preferredProvider(for: CutoutCapability.capability),
+                    projectRoot: root, outputRoot: root.appendingPathComponent("generated/cutouts", isDirectory: true))
+            }
+            return .object([
+                "path": .string(generated.url.path),
+                "projectPath": .string(MediaPathResolver.projectPath(for: generated.url, projectRoot: root)),
+                "width": .integer(generated.width), "height": .integer(generated.height),
+                "instances": generated.instances.map(JSONValue.integer) ?? .null,
+                "coverage": generated.coverage.map(JSONValue.number) ?? .null,
+                "provider": .object(generated.provenance.json),
+            ])
         }
     }
 

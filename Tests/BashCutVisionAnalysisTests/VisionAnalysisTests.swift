@@ -85,4 +85,33 @@ struct VisionAnalysisTests {
             try await VisionFrames.forEach(.init(path: video.path, from: 0, step: 0.0001), maximumPixels: 64) { _, _ in }
         }
     }
+
+    @Test("A cutout keeps the subject and makes the background transparent; a crop fits the subject")
+    func cutout() throws {
+        let context = try #require(CGContext(
+            data: nil, width: 800, height: 800, bitsPerComponent: 8, bytesPerRow: 0,
+            space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        context.setFillColor(CGColor(red: 0.92, green: 0.92, blue: 0.9, alpha: 1))
+        context.fill(CGRect(x: 0, y: 0, width: 800, height: 800))
+        context.setFillColor(CGColor(red: 0.9, green: 0.47, blue: 0.12, alpha: 1))
+        context.fillEllipse(in: CGRect(x: 250, y: 300, width: 300, height: 300))
+        context.setFillColor(CGColor(red: 0.16, green: 0.35, blue: 0.78, alpha: 1))
+        context.fill(CGRect(x: 330, y: 100, width: 140, height: 220))
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let input = folder.appendingPathComponent("mascot.png")
+        let destination = try #require(CGImageDestinationCreateWithURL(input as CFURL, UTType.png.identifier as CFString, 1, nil))
+        CGImageDestinationAddImage(destination, try #require(context.makeImage()), nil)
+        #expect(CGImageDestinationFinalize(destination))
+
+        let whole = try VisionCutout.cutout(input: input, output: folder.appendingPathComponent("whole.png"), crop: false)
+        #expect(whole.width == 800 && whole.height == 800 && whole.instances >= 1)
+        #expect(whole.coverage > 0.05 && whole.coverage < 0.5, "the figure covers about a sixth of the picture")
+        let source = try #require(CGImageSourceCreateWithURL(folder.appendingPathComponent("whole.png") as CFURL, nil))
+        let picture = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
+        #expect([.premultipliedLast, .premultipliedFirst, .last, .first].contains(picture.alphaInfo), "the PNG has alpha")
+        let cropped = try VisionCutout.cutout(input: input, output: folder.appendingPathComponent("crop.png"), crop: true)
+        #expect(cropped.width < 500 && cropped.height < 600 && cropped.coverage > whole.coverage)
+    }
 }

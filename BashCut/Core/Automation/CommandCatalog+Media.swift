@@ -33,7 +33,8 @@ extension CommandCatalog {
     /// Every command about source media (P0-A).
     static var sourceMediaSpecs: [CommandSpec] {
         mediaAnalysisSpecs + sourceTranscriptSpecs + mediaDescriptionSpecs + mediaStillsSpecs
-            + [mediaInventorySpec, mediaDigestSpec, speechRateSpec, narrationWindowsSpec, voiceSpeakSpec, voicePlaceSpec] + voiceCheckSpecs
+            + [mediaInventorySpec, mediaDigestSpec, speechRateSpec, narrationWindowsSpec, voiceSpeakSpec, voiceLinesSpec,
+               voicePlaceSpec] + voiceCheckSpecs
     }
 
     static let mediaInventorySpec = CommandSpec(
@@ -313,6 +314,34 @@ extension CommandCatalog {
         ] + paidRequestParameters,
         execution: .job)
 
+    /// Every line of a script voiced and checked in one job: what `plan.cut.voiceover` plays.
+    static let voiceLinesSpec = CommandSpec(
+        "voice.lines", .edit,
+        "Voice every line of a script in one job: per line, takes are synthesized and kept (like voice speak), each "
+            + "is transcribed and diffed against its text, and with minSimilarity a line whose takes all fall below "
+            + "it is voiced again (retries). Lines default to plan.cut.voiceover; a line that already has a kept take "
+            + "at or above minSimilarity is not voiced again unless force. Nothing goes on the timeline: plan apply "
+            + "plays each line's best kept take (or the take its entry names), with captions timed by its words. "
+            + "Returns per line id, status (made, kept or failed), best {projectPath, similarity, seconds, "
+            + "unitsPerSecond}, takes (how many were made) and unmatched words of the best take when it is under 1.",
+        parameters: [
+            CommandParameter("lines", .array, "Lines [{id, text}] (CLI: path to a JSON file); plan.cut.voiceover when "
+                             + "omitted", cli: .positionalJSONFile),
+            CommandParameter("takes", .integer, "Takes per line per try", default: .integer(2), minimum: 1, maximum: 8,
+                             cli: .option("takes")),
+            CommandParameter("minSimilarity", .number, "A take passes at this similarity; lines with none passing are "
+                             + "voiced again", range: 0...1, cli: .option("min-similarity")),
+            CommandParameter("retries", .integer, "Extra tries for a line with no passing take", default: .integer(1),
+                             minimum: 0, maximum: 3, cli: .option("retries")),
+            CommandParameter("only", .string, "Comma-separated line IDs to voice", cli: .option("only")),
+            CommandParameter("force", .boolean, "Voice lines that already have a passing kept take", default: .bool(false),
+                             cli: .flag("force")),
+            provider,
+            CommandParameter("cloneConsent", .boolean, "The user agreed to clone the voice set in the plugin's "
+                             + "options; providers that clone refuse without it", cli: .flag("clone-consent")),
+        ] + paidRequestParameters,
+        execution: .job)
+
     /// A kept take on the timeline (flexibility audit D4).
     static let voicePlaceSpec = CommandSpec(
         "voice.place", .edit,
@@ -335,9 +364,12 @@ extension CommandCatalog {
                 + "is transcribed (or its stored transcript reused) and diffed word by word. Returns similarity (matched "
                 + "words over the longer word count), words [{text, heard, kind match|substituted|missing, start, end}], "
                 + "unmatched, extra (heard but not in the text) and, only with minSimilarity, passed. The text defaults "
-                + "to the item's voice.text. A job.",
+                + "to the item's voice.text. With items (or all), several voiceover items in one job: checks [{item, "
+                + "similarity, unmatched, passed}] without the word lists. A job.",
             parameters: [
                 CommandParameter("item", .string, "Voiceover item ID", cli: .option("item")),
+                CommandParameter("items", .string, "Comma-separated voiceover item IDs, or all (every item with voice text)",
+                                 cli: .option("items")),
                 CommandParameter("media", .string, "Media ID instead of an item", cli: .option("media")),
                 CommandParameter("text", .string, "The text the take should say", sensitive: true, cli: .option("text")),
                 CommandParameter("minSimilarity", .number, "Report passed against this similarity", range: 0...1,

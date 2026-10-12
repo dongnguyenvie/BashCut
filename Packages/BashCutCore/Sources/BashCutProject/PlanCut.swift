@@ -91,10 +91,46 @@ public enum PlanCut {
         public var textStyle: [String: JSONValue] = [:]
         /// Words the transcript got wrong and what the captions say instead ("Tết Sịch" → "Texas"), longest first.
         public var replace: [(from: String, to: String)] = []
+        /// The longest caption line for voiceover lines, in characters: a longer line is broken into several cues.
+        public var maxChars: Int?
+    }
+
+    /// A voiceover line: what it says and the take that says it (`voice.lines` keeps takes; a path picks one, else
+    /// the kept take of this text that matched it best). Lines play one after another on the Voiceover layer from
+    /// frame 0 (or `at` seconds), `pause` seconds apart.
+    public struct Line: Sendable {
+        public var id: String
+        public var text: String
+        /// What the captions show for the line when it differs from what is said (digits for a spelled-out number).
+        public var caption: String?
+        public var take: String?
+        public var section: String?
+        public var at: Double?
+        public var pause: Double
+        public var volumeDb: Double?
+    }
+
+    /// A picture placed full canvas over a span: an entry's (`on`: a clip, line, title or graphic), a section's, or
+    /// `at` seconds, plus `offset`; for `seconds`, until the end of entry `until`, else to the end of its anchor. On
+    /// the Overlay layer, or Main (`track: main`) as the picture of an edit made of graphics. `render` holds a
+    /// graphics plugin's inputs (BashCut does not read them).
+    public struct Graphic: Sendable {
+        public var id: String
+        public var media: String?
+        public var on: String?
+        public var section: String?
+        public var at: Double?
+        public var offset: Double
+        public var seconds: Double?
+        public var until: String?
+        public var main: Bool
+        public var from: Double
     }
 
     public struct Spec: Sendable {
         public var clips: [Clip]
+        public var voiceover: [Line] = []
+        public var graphics: [Graphic] = []
         public var titles: [Title]
         public var music: Music?
         public var captions: Captions?
@@ -143,15 +179,32 @@ public enum PlanCut {
 
     public static func decode(_ value: JSONValue) throws -> Spec {
         guard case .object(let root) = value else { throw ProjectError.invalid("plan.cut must be an object {clips, titles, music}") }
-        guard case .array(let clipValues)? = root["clips"], !clipValues.isEmpty else {
-            throw ProjectError.invalid("plan.cut.clips must list at least one clip")
+        let clipValues = root["clips"]?.array ?? []
+        let lineValues = root["voiceover"]?.array ?? []
+        guard !clipValues.isEmpty || !lineValues.isEmpty else {
+            throw ProjectError.invalid("plan.cut must list at least one clip or one voiceover line")
         }
         var ids = IDs()
         let clips = try clipValues.enumerated().map { index, value in
             try decodeClip(value.object, id: ids.take(value.object["id"]?.string, "c", index))
         }
+        let lines = try lineValues.enumerated().map { index, value in
+            try decodeLine(value.object, id: ids.take(value.object["id"]?.string, "l", index))
+        }
+        let sections = Set(clips.compactMap(\.section) + lines.compactMap(\.section))
         let titles = try (root["titles"]?.array ?? []).enumerated().map { index, value in
-            try decodeTitle(value.object, id: ids.take(value.object["id"]?.string, "t", index), clips: clips)
+            try decodeTitle(
+                value.object, id: ids.take(value.object["id"]?.string, "t", index), entries: clips.map(\.id) + lines.map(\.id),
+                sections: sections)
+        }
+        let graphicValues = root["graphics"]?.array ?? []
+        var graphicIDs: [String] = []
+        for (index, value) in graphicValues.enumerated() {
+            graphicIDs.append(try ids.take(value.object["id"]?.string, "g", index))
+        }
+        let anchors = clips.map(\.id) + lines.map(\.id) + titles.map(\.id) + graphicIDs
+        let graphics = try zip(graphicValues, graphicIDs).map { value, id in
+            try decodeGraphic(value.object, id: id, entries: anchors, sections: sections)
         }
         var music: Music?
         if case .object(let row)? = root["music"] {
@@ -166,12 +219,15 @@ public enum PlanCut {
             review = limits
         }
         var spec = Spec(clips: clips, titles: titles, music: music, captions: try decodeCaptions(root["captions"]), review: review)
+        spec.voiceover = lines
+        spec.graphics = graphics
         spec.sfx = try (root["sfx"]?.array ?? []).enumerated().map { index, value in
-            try decodeSound(value.object, id: ids.take(value.object["id"]?.string, "s", index), entries: clips.map(\.id) + titles.map(\.id),
-                            sections: Set(clips.compactMap(\.section)))
+            try decodeSound(value.object, id: ids.take(value.object["id"]?.string, "s", index), entries: anchors, sections: sections)
         }
         spec.unknownFields = unknownFields(clipValues, titles: root["titles"]?.array ?? [], ids: clips.map(\.id) + titles.map(\.id))
             + unknownSoundFields(root["sfx"]?.array ?? [], ids: spec.sfx.map(\.id))
+            + unknownEntryFields(lineValues, ids: lines.map(\.id), known: lineKeys)
+            + unknownEntryFields(graphicValues, ids: graphicIDs, known: graphicKeys)
         return spec
     }
 
@@ -180,35 +236,25 @@ public enum PlanCut {
     ]
     static let coverKeys: Set<String> = ["media", "from", "seconds"]
     static let soundKeys: Set<String> = ["id", "media", "on", "section", "at", "offset", "seconds", "volumeDb"]
+    static let lineKeys: Set<String> = ["id", "text", "caption", "take", "section", "at", "pause", "volumeDb"]
+    static let graphicKeys: Set<String> = [
+        "id", "media", "on", "section", "at", "offset", "seconds", "until", "track", "from", "render",
+    ]
 
     static func unknownSoundFields(_ sounds: [JSONValue], ids: [String]) -> [Problem] {
-        zip(sounds, ids).compactMap { value, id in
-            let keys = value.object.keys.filter { !soundKeys.contains($0) && !noteKeys.contains($0) }.sorted()
+        unknownEntryFields(sounds, ids: ids, known: soundKeys)
+    }
+
+    static func unknownEntryFields(_ entries: [JSONValue], ids: [String], known: Set<String>) -> [Problem] {
+        zip(entries, ids).compactMap { value, id in
+            let keys = value.object.keys.filter { !known.contains($0) && !noteKeys.contains($0) }.sorted()
             guard !keys.isEmpty else { return nil }
             return Problem(
                 id: "unknown-field", severity: "warning", entry: id,
                 detail: "Not read, so it changes nothing: \(keys.joined(separator: ", ")); fields here: "
-                    + soundKeys.sorted().joined(separator: ", "),
+                    + known.sorted().joined(separator: ", "),
                 facts: ["fields": .array(keys.map(JSONValue.string))])
         }
-    }
-
-    static func decodeSound(
-        _ row: [String: JSONValue], id: String, entries: [String], sections: Set<String>
-    ) throws -> Sound {
-        guard let media = row["media"]?.string, !media.isEmpty else { throw ProjectError.invalid("Sound \(id): give media") }
-        let on = row["on"]?.string, section = row["section"]?.string, at = row["at"]?.double
-        guard [on != nil, section != nil, at != nil].filter({ $0 }).count == 1 else {
-            throw ProjectError.invalid("Sound \(id): give one of on (a clip or title ID), section or at (seconds)")
-        }
-        if let on, !entries.contains(on) { throw ProjectError.invalid("Sound \(id): no clip or title \(on)") }
-        if let section, !sections.contains(section) { throw ProjectError.invalid("Sound \(id): no clip is in section \(section)") }
-        if let at, at < 0 { throw ProjectError.invalid("Sound \(id): at must be 0 or more") }
-        let seconds = row["seconds"]?.double
-        if let seconds, seconds <= 0 { throw ProjectError.invalid("Sound \(id): seconds must be above 0") }
-        return Sound(
-            id: id, media: media, on: on, section: section, at: at, offset: row["offset"]?.double ?? 0, seconds: seconds,
-            volumeDb: row["volumeDb"]?.double)
     }
 
     static let titleKeys: Set<String> = ["id", "text", "clip", "offset", "at", "section", "seconds", "preset", "style"]
@@ -263,7 +309,7 @@ public enum PlanCut {
         guard let value, value != .null, value != .bool(false) else { return nil }
         let row = value.object
         guard (row["from"]?.string ?? "speech") == "speech" else {
-            throw ProjectError.invalid("captions.from: speech (captions from what the clips say)")
+            throw ProjectError.invalid("captions.from: speech (captions from what the clips and voiceover lines say)")
         }
         let wordStyle = row["wordStyle"]?.string
         if let wordStyle, !CaptionWords.styles.contains(wordStyle) {
@@ -278,8 +324,11 @@ public enum PlanCut {
             replace = pairs.map { ($0.key, $0.value.string ?? "") }
                 .sorted { $0.from.count == $1.from.count ? $0.from < $1.from : $0.from.count > $1.from.count }
         }
+        let maxChars = row["maxChars"]?.int
+        if let maxChars, !(8...120).contains(maxChars) { throw ProjectError.invalid("captions.maxChars: 8…120 characters") }
         return Captions(
-            wordStyle: wordStyle, preset: row["preset"]?.string, style: style, textStyle: textStyle, replace: replace)
+            wordStyle: wordStyle, preset: row["preset"]?.string, style: style, textStyle: textStyle, replace: replace,
+            maxChars: maxChars)
     }
 
     /// Text style fields (straight or nested as `textStyle`) apart from item properties.
@@ -344,17 +393,17 @@ public enum PlanCut {
             transform: try decodeTransform(shot, entry: "Clip \(id) cover"))
     }
 
-    static func decodeTitle(_ row: [String: JSONValue], id: String, clips: [Clip]) throws -> Title {
+    static func decodeTitle(_ row: [String: JSONValue], id: String, entries: [String], sections: Set<String>) throws -> Title {
         guard let text = row["text"]?.string, !text.isEmpty else { throw ProjectError.invalid("Title \(id): give text") }
         let seconds = row["seconds"]?.double
         if let seconds, seconds <= 0 { throw ProjectError.invalid("Title \(id): seconds must be above 0") }
         let clip = row["clip"]?.string, at = row["at"]?.double, section = row["section"]?.string
         guard [clip != nil, at != nil, section != nil].filter({ $0 }).count == 1 else {
-            throw ProjectError.invalid("Title \(id): give one of clip (with offset), section (with offset) or at")
+            throw ProjectError.invalid("Title \(id): give one of clip (a clip or line, with offset), section (with offset) or at")
         }
-        if let clip, !clips.contains(where: { $0.id == clip }) { throw ProjectError.invalid("Title \(id): no clip \(clip)") }
-        if let section, !clips.contains(where: { $0.section == section }) {
-            throw ProjectError.invalid("Title \(id): no clip is in section \(section)")
+        if let clip, !entries.contains(clip) { throw ProjectError.invalid("Title \(id): no clip or line \(clip)") }
+        if let section, !sections.contains(section) {
+            throw ProjectError.invalid("Title \(id): no clip or line is in section \(section)")
         }
         if at != nil, seconds == nil { throw ProjectError.invalid("Title \(id): give seconds with at (how long it shows)") }
         let (style, textStyle) = splitStyle(row["style"]?.object ?? [:])

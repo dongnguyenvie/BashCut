@@ -113,3 +113,96 @@ extension PlanCut {
             facts: ["media": .string(shape), "canvas": .string(canvas)])]
     }
 }
+
+// MARK: Voiceover lines and graphics
+
+extension PlanCut {
+    /// Per line: where it plays, its take and how well the take says the text; per graphic: its span, layer and
+    /// media (`short` when the movie ends before the span); a line without a take, a graphic without media and,
+    /// in an edit without clips, stretches of Main with no picture.
+    public static func lineAndGraphicFacts(
+        _ spec: Spec, takes: [String: LineTake], placements: [Placement], on project: Project
+    ) -> (lines: [JSONValue], graphics: [JSONValue], problems: [Problem]) {
+        let fps = project.fps.value
+        var problems: [Problem] = []
+        let lines = spec.voiceover.map { line -> JSONValue in
+            var row: [String: JSONValue] = ["id": .string(line.id)]
+            if let section = line.section { row["section"] = .string(section) }
+            if let placed = placements.first(where: { $0.id == line.id }) {
+                row["at"] = rounded(Double(placed.at) / fps)
+                row["seconds"] = rounded(Double(placed.end - placed.at) / fps)
+            }
+            if let take = takes[line.id] {
+                row["take"] = take.media.fields["path"] ?? .null
+                for (key, value) in take.facts { row[key] = value }
+            } else {
+                problems.append(Problem(
+                    id: "no-take", severity: "error", entry: line.id,
+                    detail: "No kept take says this line: voice lines makes takes for plan.cut.voiceover (or give take, "
+                        + "a path voice speak kept)", facts: ["text": .string(line.text)]))
+            }
+            return .object(row)
+        }
+        let graphics = spec.graphics.map { graphicRow($0, placements: placements, on: project, problems: &problems) }
+        if spec.clips.isEmpty, let main = project.track(role: TrackRole.main) {
+            let gaps = pictureGaps(main, length: project.duration)
+            if !gaps.isEmpty {
+                problems.append(Problem(
+                    id: "picture-gap", severity: "warning", entry: nil,
+                    detail: "Main shows nothing (black) in \(gaps.count) stretch(es): cover them with graphics on track main",
+                    facts: ["gaps": .array(gaps.map { .object(["at": rounded(Double($0.lowerBound) / fps),
+                                                              "end": rounded(Double($0.upperBound) / fps)]) })]))
+            }
+        }
+        return (lines, graphics, problems)
+    }
+
+    /// A graphic's span, layer and media, and what is wrong with it.
+    static func graphicRow(
+        _ graphic: Graphic, placements: [Placement], on project: Project, problems: inout [Problem]
+    ) -> JSONValue {
+        let fps = project.fps.value
+        var row: [String: JSONValue] = ["id": .string(graphic.id), "track": .string(graphic.main ? "main" : "overlay")]
+        if let media = graphic.media { row["media"] = .string(media) }
+        guard let placed = placements.first(where: { $0.id == graphic.id }) else {
+            problems.append(Problem(
+                id: "graphic-unplaced", severity: "error", entry: graphic.id,
+                detail: "Its anchor is not placed before it (anchor a graphic only to entries listed earlier) or its span is empty"))
+            return .object(row)
+        }
+        row["at"] = rounded(Double(placed.at) / fps)
+        row["seconds"] = rounded(Double(placed.end - placed.at) / fps)
+        guard let id = graphic.media else {
+            problems.append(Problem(
+                id: "graphic-no-media", severity: "error", entry: graphic.id,
+                detail: "Give media: the rendered movie's media ID (a graphics plugin's plan command renders the "
+                    + "entry's render inputs to this span and fills it in)", facts: ["seconds": row["seconds"] ?? .null]))
+            return .object(row)
+        }
+        guard let media = project.media.first(where: { $0.id == id }) else {
+            problems.append(Problem(id: "unknown-media", severity: "error", entry: graphic.id, detail: "No graphic media \(id) in the project"))
+            return .object(row)
+        }
+        if !media.isImage, let asked = placed.asked, asked > placed.end - placed.at + 1 {
+            row["short"] = rounded(Double(asked) / fps)
+            problems.append(Problem(
+                id: "graphic-short", severity: "warning", entry: graphic.id,
+                detail: String(format: "The movie ends %.2f s into a %.2f s span: render it longer or shorten the span",
+                               Double(placed.end - placed.at) / fps, Double(asked) / fps)))
+        }
+        return .object(row)
+    }
+
+    /// Stretches of `[0, length)` no item of `track` covers.
+    static func pictureGaps(_ track: Track, length: Int) -> [Range<Int>] {
+        var gaps: [Range<Int>] = []
+        var cursor = 0
+        for item in track.items.sorted(by: { $0.at < $1.at }) {
+            if item.at > cursor { gaps.append(cursor..<min(item.at, length)) }
+            cursor = max(cursor, item.end)
+            if cursor >= length { break }
+        }
+        if cursor < length { gaps.append(cursor..<length) }
+        return gaps.filter { !$0.isEmpty }
+    }
+}

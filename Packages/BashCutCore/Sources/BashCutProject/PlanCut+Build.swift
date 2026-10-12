@@ -8,6 +8,8 @@ extension PlanCut {
         public var id: String
         public var at: Int
         public var end: Int
+        /// Frames a graphic's span asked for, when its movie is shorter.
+        public var asked: Int?
     }
 
     /// The operations that replace what an earlier apply built with `clips`, `spec.titles` and `spec.music`;
@@ -16,10 +18,10 @@ extension PlanCut {
     /// `transcripts`: the stored transcripts captions are made from, by media ID.
     public static func build(
         _ spec: Spec, clips: [Resolved], on project: Project, textPresets: [String: LibraryTextPreset] = [:],
-        transcripts: [String: SourceTranscript] = [:]
+        transcripts: [String: SourceTranscript] = [:], takes: [String: LineTake] = [:]
     ) throws -> (planner: LayerPlanner, placements: [Placement], kept: [String]) {
         var planner = LayerPlanner(project)
-        try removeBuilt(clips: clips, from: project, in: &planner)
+        try removeBuilt(clips: clips, lines: spec.voiceover, from: project, in: &planner)
         let main = try planner.project.requireTrack(role: TrackRole.main)
         guard main.items.isEmpty else {
             throw ProjectError.invalid(
@@ -27,20 +29,25 @@ extension PlanCut {
                     + "(\(main.items.prefix(5).map(\.id).joined(separator: ", "))): delete them first, or edit them with timeline apply")
         }
         var placements = try placeClips(clips, main: main.id, in: &planner)
-        let total = placements.last?.end ?? 0
+        let lines = try placeLines(spec.voiceover, takes: takes, in: &planner)
+        placements += lines
+        let total = max(placements.map(\.end).max() ?? 0, lineEnd(spec.voiceover, placements: lines, fps: planner.project.fps.value))
         if let captions = spec.captions {
             try placeCaptions(captions, clips: clips, transcripts: transcripts, textPresets: textPresets, in: &planner)
+            try placeLineCaptions(captions, lines: spec.voiceover, takes: takes, textPresets: textPresets, in: &planner)
         }
         var sections: [String: Placement] = [:]
-        for resolved in clips {
-            guard let section = resolved.clip.section, let placed = placements.first(where: { $0.id == resolved.clip.id })
-            else { continue }
+        let sectioned = clips.map { ($0.clip.id, $0.clip.section) } + spec.voiceover.map { ($0.id, $0.section) }
+        for (id, section) in sectioned {
+            guard let section, let placed = placements.first(where: { $0.id == id }) else { continue }
             let span = sections[section]
             sections[section] = Placement(
                 id: section, at: min(span?.at ?? placed.at, placed.at), end: max(span?.end ?? placed.end, placed.end))
         }
+        try markLineSections(spec.voiceover, clips: clips, sections: sections, in: &planner)
         placements += try placeTitles(
             spec.titles, anchors: placements, sections: sections, textPresets: textPresets, in: &planner)
+        placements += try placeGraphics(spec.graphics, anchors: placements, sections: sections, main: main.id, in: &planner)
         placements += try placeSounds(spec.sfx, anchors: placements, sections: sections, length: total, in: &planner)
         if let music = spec.music, total > 0, let placed = try placeMusic(music, length: total, in: &planner) {
             placements.append(placed)
@@ -56,9 +63,9 @@ extension PlanCut {
 
     /// Deletes the section markers an earlier apply set (markers must stay inside the edit, so they go first), then
     /// the items it built (a linked partner goes with its item).
-    static func removeBuilt(clips: [Resolved], from project: Project, in planner: inout LayerPlanner) throws {
+    static func removeBuilt(clips: [Resolved], lines: [Line] = [], from project: Project, in planner: inout LayerPlanner) throws {
         let built = project.tracks.flatMap(\.items).filter { $0.fields[tag] != nil }
-        let sectionIDs = Set(clips.compactMap(\.clip.section))
+        let sectionIDs = Set(clips.compactMap(\.clip.section)).union(lines.compactMap(\.section))
             .union(plannedSections(project).map(\.id))
             .union(built.compactMap { $0.fields[sectionTag]?.string })
         for marker in planner.project.sectionMarkers where sectionIDs.contains(marker.id) {
@@ -283,5 +290,184 @@ extension PlanCut {
         if let volume = music.volumeDb { patch["volumeDb"] = .number(volume) }
         try planner.add([.setProperties(item: id, patch: patch)])
         return Placement(id: "music", at: 0, end: duration)
+    }
+}
+
+// MARK: Voiceover lines and graphics
+
+extension PlanCut {
+    /// A line's take as the caller found it: its media (added in the same edit when the project has none for the
+    /// file), the voice facts its item keeps, the words heard in it (seconds of the take) and facts for the check.
+    public struct LineTake: Sendable {
+        public var media: Media
+        public var voice: [String: JSONValue]
+        public var words: [CaptionWords.Timed]
+        public var facts: [String: JSONValue]
+
+        public init(media: Media, voice: [String: JSONValue], words: [CaptionWords.Timed], facts: [String: JSONValue] = [:]) {
+            self.media = media
+            self.voice = voice
+            self.words = words
+            self.facts = facts
+        }
+    }
+
+    /// The lines on the Voiceover layer one after another from frame 0 (or each one's `at`), `pause` apart; a line
+    /// without a take is left out (plan check reports it).
+    static func placeLines(_ lines: [Line], takes: [String: LineTake], in planner: inout LayerPlanner) throws -> [Placement] {
+        guard !lines.isEmpty else { return [] }
+        let fps = planner.project.fps.value
+        let track = try planner.project.requireTrack(role: TrackRole.voiceover, kind: "audio")
+        var placements: [Placement] = []
+        var cursor = 0
+        for line in lines {
+            if let at = line.at { cursor = Int((at * fps).rounded()) }
+            guard let take = takes[line.id] else { continue }
+            let length = Int((take.media.durationSeconds * fps).rounded(.down))
+            guard length > 0 else { continue }
+            if !planner.project.media.contains(where: { $0.id == take.media.id }) {
+                try planner.add([.addMedia(take.media)])
+            }
+            var item = Item(id: "plan-" + line.id, media: take.media.id, at: cursor, duration: length)
+            item[tag] = .string(line.id)
+            if let section = line.section { item[sectionTag] = .string(section) }
+            if !take.voice.isEmpty { item["voice"] = .object(take.voice) }
+            if let volume = line.volumeDb { item["volumeDb"] = .number(volume) }
+            try planner.place(item, on: track.id)
+            placements.append(Placement(id: line.id, at: cursor, end: cursor + length))
+            cursor += length + Int((line.pause * fps).rounded())
+        }
+        return placements
+    }
+
+    /// Where the voiceover ends, with the last placed line's pause.
+    static func lineEnd(_ lines: [Line], placements: [Placement], fps: Double) -> Int {
+        guard let last = placements.last, let line = lines.first(where: { $0.id == last.id }) else { return 0 }
+        return last.end + Int((line.pause * fps).rounded())
+    }
+
+    /// Section markers at the first line of each section no clip opened.
+    static func markLineSections(
+        _ lines: [Line], clips: [Resolved], sections: [String: Placement], in planner: inout LayerPlanner
+    ) throws {
+        let opened = Set(clips.compactMap(\.clip.section))
+        let labels = Dictionary(plannedSections(planner.project).map { ($0.id, $0.label) }, uniquingKeysWith: { first, _ in first })
+        var seen = Set<String>()
+        var markers: [EditOperation] = []
+        for line in lines {
+            guard let section = line.section, !opened.contains(section), seen.insert(section).inserted,
+                let span = sections[section]
+            else { continue }
+            markers.append(.upsertSection(id: section, label: labels[section] ?? section, atFrame: span.at))
+        }
+        try planner.add(markers)
+    }
+
+    /// Captions with each line's own text (its `caption` when given), timed by the words heard in its take.
+    static func placeLineCaptions(
+        _ captions: Captions, lines: [Line], takes: [String: LineTake], textPresets: [String: LibraryTextPreset],
+        in planner: inout LayerPlanner
+    ) throws {
+        for line in lines {
+            guard let take = takes[line.id], !take.words.isEmpty,
+                planner.project.tracks.contains(where: { $0.items.contains { $0.fields[tag] == .string(line.id) } })
+            else { continue }
+            let text = line.caption ?? line.text
+            let script = captions.maxChars.map { captionLines(text, maxChars: $0) } ?? text
+            let aligned = TextAlignment.cues(script: script, heard: take.words)
+            guard !aligned.cues.isEmpty else { continue }
+            let before = Set(planner.project.tracks.flatMap(\.items).map(\.id))
+            try planner.add([planner.project.importingCues(
+                aligned.cues, provenance: ["aligned": .string("voice")], media: take.media.id, words: aligned.words,
+                wordStyle: captions.wordStyle)])
+            for item in planner.project.tracks.flatMap(\.items) where !before.contains(item.id) {
+                var patch = try look(
+                    for: item, (captions.preset, captions.style, captions.textStyle), textPresets: textPresets,
+                    project: planner.project)
+                patch[tag] = .string("captions")
+                try planner.add([.setProperties(item: item.id, patch: patch)])
+            }
+        }
+    }
+
+    /// `text` broken into lines of at most `maxChars` characters at word gaps, one cue each; a line breaks early
+    /// after a comma or a full stop once it holds half the limit. A word longer than the limit stays whole.
+    static func captionLines(_ text: String, maxChars: Int) -> String {
+        var lines: [String] = []
+        var current = ""
+        for word in text.split(whereSeparator: \.isWhitespace).map(String.init) {
+            if !current.isEmpty, current.count + 1 + word.count > maxChars {
+                lines.append(current)
+                current = word
+            } else {
+                current = current.isEmpty ? word : current + " " + word
+            }
+            if let last = word.last, ",.;:!?".contains(last), current.count * 2 >= maxChars {
+                lines.append(current)
+                current = ""
+            }
+        }
+        if !current.isEmpty { lines.append(current) }
+        return lines.joined(separator: "\n")
+    }
+
+    /// The span a graphic asks for, in timeline frames: its anchor's start plus offset, for its seconds, until an
+    /// entry's end, else to its anchor's end.
+    static func graphicSpan(
+        _ graphic: Graphic, anchors: [Placement], sections: [String: Placement], fps: Double
+    ) -> Placement? {
+        let anchor = graphic.on.flatMap { id in anchors.first { $0.id == id } } ?? graphic.section.flatMap { sections[$0] }
+        guard anchor != nil || graphic.at != nil else { return nil }
+        let start = max(0, (anchor?.at ?? Int(((graphic.at ?? 0) * fps).rounded())) + Int((graphic.offset * fps).rounded()))
+        let end: Int
+        if let seconds = graphic.seconds {
+            end = start + Int((seconds * fps).rounded())
+        } else if let until = graphic.until {
+            guard let entry = anchors.first(where: { $0.id == until }) else { return nil }
+            end = entry.end
+        } else {
+            end = anchor?.end ?? start
+        }
+        return end > start ? Placement(id: graphic.id, at: start, end: end) : nil
+    }
+
+    /// Graphics full canvas on the Overlay layer (spilling onto another overlay where one already shows) or on
+    /// Main, each for its span or what its movie has left after `from`. A graphic without media gets its span only
+    /// (plan check reports it, so a graphics plugin can render it to that length).
+    static func placeGraphics(
+        _ graphics: [Graphic], anchors: [Placement], sections: [String: Placement], main: String,
+        in planner: inout LayerPlanner
+    ) throws -> [Placement] {
+        guard !graphics.isEmpty else { return [] }
+        let fps = planner.project.fps.value
+        var placements: [Placement] = []
+        for graphic in graphics {
+            guard let span = graphicSpan(graphic, anchors: anchors + placements, sections: sections, fps: fps) else { continue }
+            guard let id = graphic.media, let media = planner.project.media.first(where: { $0.id == id }) else {
+                placements.append(span)
+                continue
+            }
+            let sourceIn = media.isImage ? 0 : Int((graphic.from * media.fps.value).rounded(.down))
+            let available = media.isImage ? span.end - span.at
+                : Int(((media.durationSeconds - graphic.from) * fps).rounded(.down))
+            let length = max(1, min(span.end - span.at, available))
+            var item = Item(id: "plan-" + graphic.id, media: media.id, at: span.at, duration: length, sourceIn: sourceIn)
+            item[tag] = .string(graphic.id)
+            item["tag"] = .object(["role": .string("graphic")])
+            if media.hasAudio == true { item["muted"] = .bool(true) }
+            try planner.place(item, on: graphic.main ? main : try overlayTrack(in: &planner))
+            let asked = span.end - span.at
+            placements.append(Placement(id: graphic.id, at: span.at, end: span.at + length, asked: asked > length ? asked : nil))
+        }
+        return placements
+    }
+
+    /// The first video layer with the overlay role, added above Main when there is none.
+    static func overlayTrack(in planner: inout LayerPlanner) throws -> String {
+        if let track = planner.project.track(role: TrackRole.overlay, kind: "video") { return track.id }
+        let main = try planner.project.requireTrack(role: TrackRole.main)
+        let track = planner.project.overflowTrack(from: main)
+        try planner.add([.addTrack(track: track, atIndex: planner.project.overflowIndex(for: main, role: TrackRole.overlay))])
+        return track.id
     }
 }
