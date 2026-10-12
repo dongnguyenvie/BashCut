@@ -415,13 +415,16 @@ public enum TrackRole {
     public static let main = "main"
     public static let overlay = "overlay"
     public static let captions = "captions"
+    /// Text placed on purpose (hooks, place cards, CTAs): kept off the captions layer, which the `.srt`, caption
+    /// styling and review read as speech.
+    public static let titles = "titles"
     public static let dialogue = "dialogue"
     public static let voiceover = "voiceover"
     public static let music = "music"
     public static let sfx = "sfx"
     public static let adjustment = "adjustment"
     /// The roles BashCut assigns; any other nonempty role is allowed.
-    public static let known = [main, overlay, adjustment, captions, dialogue, voiceover, music, sfx]
+    public static let known = [main, overlay, adjustment, captions, titles, dialogue, voiceover, music, sfx]
 }
 
 extension Project {

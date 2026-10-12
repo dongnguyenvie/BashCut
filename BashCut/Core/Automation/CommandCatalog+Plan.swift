@@ -29,7 +29,7 @@ extension CommandCatalog {
                 CommandParameter("key", .string, "brief, plan or your own key", required: true, cli: .positional),
                 CommandParameter("value", .object, "The object (CLI: path to a JSON file)", required: true,
                                  cli: .positionalJSONFile),
-                CommandParameter("merge", .boolean, "Change only the given fields", cli: .flag("merge")),
+                CommandParameter("merge", .boolean, "Merge into the stored value: objects key by key (null deletes), arrays and values replace", cli: .flag("merge")),
                 baseRevision,
             ]),
     ]
@@ -280,7 +280,8 @@ extension CommandCatalog {
             "selects.place", .edit,
             "Lay the kept selects (or the given IDs) in order (order, else source start), from atFrame or the first "
                 + "one's layer end, as one undoable edit: pictures on Main, sound-only media on the dialogue layer (else "
-                + "music); returns the new item IDs.",
+                + "music). An edge inside a transcribed word widens to the word's edge (listed in widened); returns "
+                + "the new item IDs.",
             parameters: [
                 CommandParameter("ids", .string, "Select IDs instead of the kept ones", cli: .option("ids")),
                 CommandParameter("atFrame", .integer, "Timeline frame", minimum: 0, cli: .option("at-frame")),

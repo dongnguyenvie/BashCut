@@ -32,9 +32,18 @@ extension ProjectDocument {
         handleAuthored("selects.place") { document, arguments, author in
             let ids = arguments.optionalString("ids").map { Set($0.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }) }
             let chosen = document.project.selects.filter { ids?.contains($0.id) ?? ($0.status == "kept") }
+            var transcripts: [String: SourceTranscript] = [:]
+            for media in Set(chosen.map(\.media)) {
+                if let stored = try? await document.storedTranscript(media) { transcripts[media] = stored }
+            }
             let result = try document.placeSelects(
-                chosen, at: arguments.optionalInt("atFrame"), author: author, baseRevision: arguments.int("baseRev"))
-            return .object(["rev": .integer(result.revision), "items": .array(result.items.map(JSONValue.string))])
+                chosen, at: arguments.optionalInt("atFrame"), author: author, baseRevision: arguments.int("baseRev"),
+                transcripts: transcripts)
+            var fields: [String: JSONValue] = [
+                "rev": .integer(result.revision), "items": .array(result.items.map(JSONValue.string)),
+            ]
+            if !result.widened.isEmpty { fields["widened"] = .array(result.widened) }
+            return .object(fields)
         }
     }
 
@@ -50,11 +59,13 @@ extension ProjectDocument {
     }
 
     /// Lays `selects` in their order (`order`, else source start), from `frame` or the first one's layer end, one
-    /// edit: pictures on Main, sound-only media (a podcast, a voice memo) on the dialogue layer.
+    /// edit: pictures on Main, sound-only media (a podcast, a voice memo) on the dialogue layer. With `transcripts`,
+    /// an edge inside a spoken word widens to the word's edge, and `widened` lists each one moved.
     @discardableResult
     func placeSelects(
-        _ selects: [ProjectSelect], at frame: Int?, author: Author = .user, baseRevision: Int? = nil
-    ) throws -> (revision: Int, items: [String]) {
+        _ selects: [ProjectSelect], at frame: Int?, author: Author = .user, baseRevision: Int? = nil,
+        transcripts: [String: SourceTranscript] = [:]
+    ) throws -> (revision: Int, items: [String], widened: [JSONValue]) {
         guard !selects.isEmpty else { throw RPCFailure(-32602, "No selects to place (mark some kept, or give ids)") }
         let ordered = try selects.sorted(by: { ($0.order, $0.from) < ($1.order, $1.from) }).map { select in
             guard let media = project.media.first(where: { $0.id == select.media }) else {
@@ -65,17 +76,28 @@ extension ProjectDocument {
         var planner = LayerPlanner(project)
         var cursor = frame ?? project.insertionFrame(trackID: ordered[0].track, playhead: playhead)
         var items: [String] = []
+        var widened: [JSONValue] = []
         for (select, media, track) in ordered {
-            let duration = Int(((select.to - select.from) * project.fps.value).rounded())
+            var (from, to) = (select.from, select.to)
+            if let transcript = transcripts[select.media] {
+                (from, to) = transcript.outsideWords(from: from, to: to, slack: 1 / project.fps.value + 0.001)
+                if from != select.from || to != select.to {
+                    widened.append(.object([
+                        "select": .string(select.id), "from": .number(from), "to": .number(to),
+                        "was": .array([.number(select.from), .number(select.to)]),
+                    ]))
+                }
+            }
+            let duration = Int(((to - from) * project.fps.value).rounded())
             guard duration > 0 else { continue }
             let id = UUID().uuidString
             try planner.placeMedia(
                 media, on: track, at: cursor, duration: duration, itemID: id,
-                sourceIn: Int((select.from * media.fps.value).rounded(.down)))
+                sourceIn: Int((from * media.fps.value).rounded(.down)))
             items.append(id)
             cursor += duration
         }
         let revision = try commitPlan(planner, label: "Place selects", author: author, baseRevision: baseRevision)
-        return (revision, items)
+        return (revision, items, widened)
     }
 }

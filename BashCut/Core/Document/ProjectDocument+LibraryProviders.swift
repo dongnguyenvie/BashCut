@@ -36,26 +36,23 @@ extension ProjectDocument {
         _ request: LibraryProviderRequest, author: Author,
         finished: @escaping @MainActor (Result<JSONValue, any Error>) -> Void = { _ in }
     ) throws -> String {
-        guard !plugins.calling.contains(request.capability) else {
-            throw RPCFailure(-32003, "\(request.capability) is already running; retry later", category: .busyRunning)
-        }
         let report = plugins.service.capabilityStatus(
             request.capability, projectRoot: fileURL?.deletingLastPathComponent(), kind: request.kind)
         if !report.available { throw CapabilityUnavailable(report) }
         if request.save != nil, request.scope == .project, fileURL == nil {
             throw RPCFailure(-32602, "Open a saved project to save into its library, or pass --scope user")
         }
-        let job = jobs.start(
-            request.method, author: author, detail: request.text, requestID: request.requestID, work: { [weak self] _ in
-            guard let self else { throw CancellationError() }
-            return try await runLibraryProvider(request, author: author)
-        }, finished: { [weak self] outcome in
-            if case .failure(let error) = outcome, !JobCenter.isCancellation(error) {
-                self?.message = request.method + ": " + error.localizedDescription
-            }
-            finished(outcome)
-        })
-        return job
+        return startCapabilityTurn(
+            request.capability, method: request.method, author: author, detail: request.text,
+            requestID: request.requestID, work: { [weak self] _ in
+                guard let self else { throw CancellationError() }
+                return try await runLibraryProvider(request, author: author)
+            }, finished: { [weak self] outcome in
+                if case .failure(let error) = outcome, !JobCenter.isCancellation(error) {
+                    self?.message = request.method + ": " + error.localizedDescription
+                }
+                finished(outcome)
+            }).id
     }
 
     func runLibraryProvider(_ request: LibraryProviderRequest, author: Author) async throws -> JSONValue {

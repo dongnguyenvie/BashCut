@@ -468,17 +468,45 @@ extension ProjectDocument {
             if !report.available { throw CapabilityUnavailable(report) }
         }
         guard !conflict else { throw RPCFailure(-32003, "The project has a file conflict; retry later", category: .fileConflict) }
-        if let capability = CommandCatalog.capabilities[method], plugins.calling.contains(capability) {
-            throw RPCFailure(-32003, "\(capability) is already running; retry later", category: .busyRunning)
-        }
-        let id = jobs.start(method, author: author, requestID: requestID, work: { [weak self] _ in
+        let jobWork: @MainActor (JobReporter) async throws -> JSONValue = { [weak self] _ in
             guard let self else { throw CancellationError() }
             return try await work(self)
-        }, finished: { [weak self] outcome in
+        }
+        let finished: @MainActor (Result<JSONValue, any Error>) -> Void = { [weak self] outcome in
             guard case .failure(let error) = outcome, !JobCenter.isCancellation(error) else { return }
             self?.message = method + ": " + error.localizedDescription
-        })
+        }
         message = author.rawValue.capitalized + ": " + method
-        return .object(["job": .string(id), "state": .string("running")])
+        guard let capability = CommandCatalog.capabilities[method] else {
+            let id = jobs.start(method, author: author, requestID: requestID, work: jobWork, finished: finished)
+            return .object(["job": .string(id), "state": .string("running")])
+        }
+        let (id, queued) = startCapabilityTurn(
+            capability, method: method, author: author, requestID: requestID, work: jobWork, finished: finished)
+        return .object(["job": .string(id), "state": .string(queued ? "queued" : "running")])
+    }
+
+    /// Starts a job that calls `capability`, one at a time: a second request queues behind the first instead of
+    /// failing busy, so the agent waits on both job IDs rather than polling and retrying. `queued` when it waits.
+    func startCapabilityTurn(
+        _ capability: String, method: String, author: Author, detail: String? = nil, requestID: String?,
+        work: @escaping @MainActor (JobReporter) async throws -> JSONValue,
+        finished: @escaping @MainActor (Result<JSONValue, any Error>) -> Void
+    ) -> (id: String, queued: Bool) {
+        let previous = capabilityTurns[capability]
+        let id = jobs.enqueue(method, author: author, detail: detail, requestID: requestID)
+        let turn = Task { @MainActor [weak self] in
+            await previous?.value
+            while self?.plugins.calling.contains(capability) == true { try? await Task.sleep(for: .milliseconds(200)) }
+            guard self?.jobs.job(id)?.state == .queued else { return }
+            self?.jobs.run(id, work: work, finished: finished)
+            while self?.jobs.job(id)?.isActive == true { try? await Task.sleep(for: .milliseconds(200)) }
+        }
+        capabilityTurns[capability] = turn
+        Task { @MainActor [weak self] in
+            await turn.value
+            if self?.capabilityTurns[capability] == turn { self?.capabilityTurns[capability] = nil }
+        }
+        return (id, previous != nil || plugins.calling.contains(capability))
     }
 }

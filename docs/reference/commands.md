@@ -100,7 +100,7 @@ Set a top-level project field to a JSON object as one undoable edit; with merge,
 - Mode: edit · Runs: immediately · MCP: `bashcut_project_set-data`
 - `key`: string, required. brief, plan or your own key
 - `value`: object, required. The object (CLI: path to a JSON file)
-- `merge`: boolean. Change only the given fields
+- `merge`: boolean. Merge into the stored value: objects key by key (null deletes), arrays and values replace
 - `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
 
 ### `bashcut project derive [--ids <ids>] [--dir <directory>]`
@@ -1208,7 +1208,7 @@ Add, update or remove selects (by id; a new one without id gets one, status cand
 
 ### `bashcut selects place [--ids <ids>] [--at-frame <atFrame>] --base-rev <baseRev>`
 
-Lay the kept selects (or the given IDs) in order (order, else source start), from atFrame or the first one's layer end, as one undoable edit: pictures on Main, sound-only media on the dialogue layer (else music); returns the new item IDs.
+Lay the kept selects (or the given IDs) in order (order, else source start), from atFrame or the first one's layer end, as one undoable edit: pictures on Main, sound-only media on the dialogue layer (else music). An edge inside a transcribed word widens to the word's edge (listed in widened); returns the new item IDs.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_selects_place`
 - `ids`: string. Select IDs instead of the kept ones

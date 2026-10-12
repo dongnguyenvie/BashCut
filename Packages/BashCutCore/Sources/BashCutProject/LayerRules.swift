@@ -180,6 +180,16 @@ public struct LayerPlanner {
         return overflow.id
     }
 
+    /// The layer titles go on: the first text layer with the titles role, added at the front of the picture when
+    /// there is none.
+    public mutating func titleTrack() throws -> String {
+        if let track = project.track(role: TrackRole.titles, kind: "text") { return track.id }
+        var track = Track(id: project.newTrackID(kind: "text"), kind: "text", role: TrackRole.titles)
+        track.name = "Titles"
+        try add([.addTrack(track: track, atIndex: project.defaultTrackIndex(kind: "text"))])
+        return track.id
+    }
+
     /// Places an item on `trackID`, or on a free layer next to it. Returns the layer used.
     @discardableResult
     public mutating func place(_ item: Item, on trackID: String) throws -> String {

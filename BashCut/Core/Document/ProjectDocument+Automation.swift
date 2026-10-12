@@ -175,11 +175,13 @@ extension ProjectDocument {
             let baseRevision = try arguments.int("baseRev")
             let fingerprint = try EditFingerprint.of(ops, baseRevision: baseRevision)
             let operation = EditOperation.group(label: label, author: author, ops: ops)
+            let warnings = ProjectSchema.unreadFieldWarnings(ops)
             if arguments.bool("dryRun") {
                 await document.loadReviewTranscripts()
                 guard case .object(var fields) = try document.dryRunEdit(operation, author: author, baseRevision: baseRevision)
                 else { throw RPCFailure(-32603, "Dry run returned no object") }
                 fields["fingerprint"] = .string(fingerprint)
+                if !warnings.isEmpty { fields["warnings"] = .array(warnings) }
                 return .object(fields)
             }
             if let expected = arguments.optionalString("expectFingerprint"), expected != fingerprint {
@@ -193,9 +195,11 @@ extension ProjectDocument {
             }
             let result = try document.commitEdit(
                 operation, label: label, author: author, baseRevision: baseRevision, note: try Self.editNote(arguments))
-            return .object([
+            var fields: [String: JSONValue] = [
                 "rev": .integer(result.revision), "changed": .bool(result.changed), "fingerprint": .string(fingerprint),
-            ])
+            ]
+            if !warnings.isEmpty { fields["warnings"] = .array(warnings) }
+            return .object(fields)
         }
         handle("timeline.changes") { document, arguments, _ in
             TimelineChanges.json(
