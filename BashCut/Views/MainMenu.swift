@@ -83,6 +83,7 @@ import BashCutPlugin
             String(localized: "Export Report…"), target: self,
             enabled: { [weak self] in self?.document.exports.report != nil },
             handler: { [weak self] in self?.document.ui.showExportReport = true }))
+        menu.addItem(item(.showRunPanel, String(localized: "Show Agent Run")))
         return wrap(menu)
     }
 
@@ -120,6 +121,7 @@ import BashCutPlugin
         menu.addItem(item(.muteClips, String(localized: "Mute or Unmute Clips")))
         menu.addItem(.separator())
         menu.addItem(item(.sendToAgent, String(localized: "Send to Agent")))
+        menu.addItem(quickEditMenu())
         menu.addItem(item(.askAgent, String(localized: "Ask Agent About Selection…")))
         return wrap(menu)
     }
@@ -338,6 +340,21 @@ import BashCutPlugin
 
     private func link(_ title: String, _ url: URL) -> NSMenuItem {
         ActionMenuItem(title, target: self) { NSWorkspace.shared.open(url) }
+    }
+
+    /// Clip › Quick Edit: the one-click requests on the selection (#449).
+    private func quickEditMenu() -> NSMenuItem {
+        let menu = NSMenu(title: String(localized: "Quick Edit"))
+        for kind in QuickEditChoice.kinds + [.custom] {
+            menu.addItem(ActionMenuItem(
+                QuickEditChoice.title(kind), target: self,
+                enabled: { [weak self] in
+                    guard let document = self?.document else { return false }
+                    return !document.selectedItems.isEmpty && document.agents.canDeliver
+                },
+                handler: { [weak self] in if let document = self?.document { QuickEditChoice.run(kind, in: document) } }))
+        }
+        return submenu(menu)
     }
 
     /// An item for `action` with the shortcut `UIAction` declares; `checked` shows a check mark.

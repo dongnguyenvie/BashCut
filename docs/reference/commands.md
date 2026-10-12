@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 209 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 211 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -433,15 +433,17 @@ Footage facts in one read. A header (seconds, size, speech share, counts), then 
 
 ## review
 
-### `bashcut review run [--measure] [--since-rev <sinceRev>] [--min-severity <minSeverity>] [--summary]`
+### `bashcut review run [--measure] [--since-rev <sinceRev>] [--min-severity <minSeverity>] [--summary] [--from <from>] [--to <to>]`
 
-Review the timeline before export: issues {id, kind, severity error|warning|info, title, detail, frame, endFrame?, facts {raw numbers}, fix? {command?, arguments?, hint?}}, errors first. Invariants (gaps, black picture, cut-in-word, missing fonts or glyphs, output length and shape, true peak) are always checked; editorial checks only against the limits in the project's review object, and nothing without them. IDs are anchored to clips. With summary: {issues, summary, checks (measured, stale, notChecked, failed, unreliable, unsetLimits: only limits a check of this timeline reads, atExport: loudness until a normalized export measures it)} and summary.status: fail (errors), incomplete (no errors, but a limit unset or a check not run; atExport does not count) or pass (passed is status == pass; the CLI exits 0, 1 or 2); a pass by an agent is recorded as the review stage; with sinceRev also diff {fixed, new, persisting}. With measure, a revision not measured yet is measured first (review.measure, waited for up to 100 s; measured {job, timedOut} says so), so one call measures and reviews.
+Review the timeline before export: issues {id, kind, severity error|warning|info, title, detail, frame, endFrame?, facts {raw numbers}, fix? {command?, arguments?, hint?}}, errors first. Invariants (gaps, black picture, cut-in-word, missing fonts or glyphs, output length and shape, true peak) are always checked; editorial checks only against the limits in the project's review object, and nothing without them. IDs are anchored to clips. With summary: {issues, summary, checks (measured, stale, notChecked, failed, unreliable, unsetLimits: only limits a check of this timeline reads, atExport: loudness until a normalized export measures it)} and summary.status: fail (errors), incomplete (no errors, but a limit unset or a check not run; atExport does not count) or pass (passed is status == pass; the CLI exits 0, 1 or 2); a pass by an agent is recorded as the review stage; with sinceRev also diff {fixed, new, persisting}. With measure, a revision not measured yet is measured first (review.measure, waited for up to 100 s; measured {job, timedOut} says so), so one call measures and reviews. With from/to only the issues touching those frames are listed and counted (range in the result; a pass is not the review stage), the check after a quick edit.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_review_run`
 - `measure`: boolean. Run review measure first when this revision is not measured, and wait for it
 - `sinceRev`: integer, ≥ 0. Compare with the review of this revision (this session)
 - `minSeverity`: string, one of error, warning, info. Leave out issues less severe than this
 - `summary`: boolean. Wrap the issues with counts and a status
+- `from`: integer, ≥ 0. Only issues that touch frames from here (with to: [from, to))
+- `to`: integer, ≥ 1. Only issues that touch frames before this one
 
 ### `bashcut review measure [--picture <picture>] [--plugins <plugins>]`
 
@@ -1142,15 +1144,15 @@ The run log (.bashcut/run-log.jsonl, append-only): starts, stages, gates with th
 - `kind`: string. Only this kind
 - `limit`: integer, 1…10000. Last N entries
 
-### `bashcut run append <kind> [--data <data>] [--stage <stage>] [--status <status>] [--evidence <evidence>] [--reason <reason>] [--name <name>] [--origin <origin>] [--verified-by <verifiedBy>] [--point <point>] [--verdict <verdict>] [--findings <findings>] [--by <by>] [--text <text>] [--round <round>] [--fixed <fixed>] [--left <left>] [--measured <measured>] [--not-measured <notMeasured>]`
+### `bashcut run append <kind> [--data <data>] [--stage <stage>] [--status <status>] [--evidence <evidence>] [--reason <reason>] [--name <name>] [--origin <origin>] [--verified-by <verifiedBy>] [--point <point>] [--verdict <verdict>] [--findings <findings>] [--by <by>] [--text <text>] [--progress <progress>] [--eta <eta>] [--round <round>] [--fixed <fixed>] [--left <left>] [--measured <measured>] [--not-measured <notMeasured>]`
 
-Append to the run log: an entry of any kind (start opens a run; stage, skill, audit, round, measured, note and end are the usual ones; gate is reserved for checkpoints) with the fields given and any data object. The revision, author and time are added. stage: --status done needs --evidence (else it is stored unverified), skipped needs --reason; the rough-cut stage while G2 is skip needs what G2 needs. skill: a skill you read (stored verified: false unless the kit hook writes it with --verified-by hook; skills get records plugin and kit skill reads itself). audit: an auditor's verdict at a point (strategy after the story, draft before export, process at the end), bound to the current timeline. BashCut writes these stages itself (auto: true): rough-cut and captions on plan apply, review on a review run that passes, export when an export lands.
+Append to the run log: an entry of any kind (start opens a run; stage, skill, audit, round, measured, note and end are the usual ones; gate is reserved for checkpoints) with the fields given and any data object. The revision, author and time are added. stage: --status done needs --evidence (else it is stored unverified), skipped needs --reason; the rough-cut stage while G2 is skip needs what G2 needs. skill: a skill you read (stored verified: false unless the kit hook writes it with --verified-by hook; skills get records plugin and kit skill reads itself). audit: an auditor's verdict at a point (strategy after the story, draft before export, process at the end), bound to the current timeline. BashCut writes these stages itself (auto: true): rough-cut and captions on plan apply, review on a review run that passes, export when an export lands. The run panel the user watches shows the latest stage entry as the current stage (status started, the default) with its text, progress and eta: one short call as each stage starts, such as run append stage --stage cut --text "Cutting 12 shots" --eta 120 (cut, color and audio mean rough-cut, colour and sound).
 
 - Mode: ui · Runs: immediately · MCP: `bashcut_run_append`
 - `kind`: string, required. Entry kind (1–40 characters; not gate)
 - `data`: object. More fields as a JSON object
-- `stage`: string. Stage ID (intake, survey, story, rough-cut, rhythm, voiceover, sound, captions, colour, effects, review, export, learn, or one the plan adds)
-- `status`: string, one of done, skipped. Stage status
+- `stage`: string. Stage ID (intake, survey, story, rough-cut, rhythm, voiceover, sound, captions, colour, effects, review, export, learn, or one the plan adds; cut and color work too)
+- `status`: string, one of started, done, skipped. Stage status
 - `evidence`: string. What proves the stage done, ;-separated (files, job IDs, issue IDs)
 - `reason`: string. Why the stage was skipped
 - `name`: string. Skill read (bc:rough-cut, bashcut.vlog:product-ad)
@@ -1160,12 +1162,20 @@ Append to the run log: an entry of any kind (start opens a run; stage, skill, au
 - `verdict`: string, one of pass, changes, fail. Audit verdict
 - `findings`: integer, 0…1000. Audit findings
 - `by`: string, one of critic, self. Who audited: a fresh critic or the agent itself (default self)
-- `text`: string. What happened
+- `text`: string. What happened; for a stage, the step the run panel shows
+- `progress`: number, 0…1. Stage started: how far it is, 0–1
+- `eta`: integer, 0…86400. Stage started: seconds it still needs, your estimate
 - `round`: integer, 1…100. Review round
 - `fixed`: integer, ≥ 0. Issues fixed this round
 - `left`: integer, ≥ 0. Issues left
 - `measured`: string. Comma-separated checks measured
 - `notMeasured`: string. Comma-separated checks not measured
+
+### `bashcut run status`
+
+What the run panel shows: progress {run, startedAt, elapsed, current, text, progress, remaining (the ETA counted down), stageElapsed, finished, exportedAt, stages [{id, status pending|active|started|done|skipped, seconds, text}]} from the run log, and once the run exported result {path, duration, cuts, lufs, truePeakDbTP, loudnessVerified, review {errors, warnings, accepted} on the current timeline, outputs [{path, preset, duration, bytes, exists, completedAt}] newest first, recipe, thumbnail}; progress is null before the first stage entry of the run.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_run_status`
 
 ### `bashcut run checklist`
 
@@ -1425,6 +1435,15 @@ Ask the user multiple-choice questions in a card over the caller's terminal tab,
 - Mode: ui · Runs: immediately · MCP: `bashcut_agent_ask`
 - `questions`: array, required. AskUserQuestion's questions: question, header, multiSelect and options of label, description and optional preview
 - `timeout`: integer, 5…3600, default 900. Seconds to wait for the answer
+
+### `bashcut agent quick-edit <kind> [--text <text>] [--items <items>]`
+
+A quick edit on the selected clips (or --items) like the Quick Edit menu next to Send to Agent: the open agent (else the first chat agent) gets the request with those clips as its scope (lower music adds the music under them) and is asked to review only that range afterwards (review run --from --to). faster, remove, music-lower, caption and punch-in are worded by BashCut, with --text added; custom sends --text. Returns {kind, sentTo, items, range, request}; a chat agent still working is an error.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_agent_quick-edit`
+- `kind`: string, required, one of faster, remove, music-lower, caption, punch-in, custom. What to do
+- `text`: string. The request for custom, or a note added to the others
+- `items`: string. Item IDs, comma-separated (default the selection)
 
 ## app
 

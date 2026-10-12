@@ -105,7 +105,24 @@ Rules: `done` without `--evidence` is stored as `unverified`; `skipped` needs `-
 needs attention; the hand-off report starts from it.
 
 Stage ids (fixed, matching the kit's table): `intake, survey, story, rough-cut, rhythm, voiceover, sound, captions,
-colour, effects, review, export, learn`.
+colour, effects, review, export, learn`. `cut`, `color` and `audio` are taken for `rough-cut`, `colour` and `sound`.
+
+**Run panel (#447).** The same stage entries drive the panel the user watches over the editor: the stages
+(survey → export, plus any the plan adds or the log names; `required: false` ones hidden), the current one (the latest
+stage entry when it is not done or skipped), the elapsed time of the run and of the stage, and the agent's step text,
+progress and ETA. The agent reports a stage as it starts with one short call, `run append stage --stage cut --text
+"Cutting 12 shots" [--progress 0.4] [--eta 120]` (status `started`, the default); BashCut's own auto entries (plan
+apply, a passing review, an export) need no call. `run status` returns what the panel shows (`progress`, and
+`result` once the run exported). There is no second progress store: the panel is derived from the run log.
+
+**Result card (#448).** When the export stage is done and nothing started after it, the panel becomes the result
+card: a still of the newest export (written to `.bashcut/cache/run-result.jpg`), its duration, loudness and cuts,
+the review issues still open on the current timeline, every file the run exported (from the export history since
+the run started, newest first), and Open, Reveal, Export another format… (`ui action export.open-output`,
+`export.reveal-output`, `show.export`), Fix N remaining issues and Try another recipe (`ui action run.fix-issues`,
+`run.another-recipe`: a request worded by BashCut, sent to the open agent like a typed message). An agent export
+during a run shows the card instead of the export report sheet; `run.dismiss` closes it until the next run and
+`run.show` (File › Show Agent Run) brings it back.
 
 ## 6. What makes it trustworthy
 

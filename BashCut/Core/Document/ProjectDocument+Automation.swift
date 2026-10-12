@@ -54,6 +54,7 @@ extension ProjectDocument {
         registerAppCommands()
         registerChatAgentCommands()
         registerChatScopeCommands()
+        registerFollowUpCommands()
         registerTerminalCommands()
         registerPrivilegedCommands()
         registerUICommands()

@@ -81,6 +81,9 @@ public struct ExportHistoryStore: Sendable {
         return ExportHistorySnapshot(current: current, comparison: comparison)
     }
 
+    /// Every recorded export, oldest first (the last `limit`).
+    public func all(projectRoot: URL) throws -> [StoredExportMetrics] { try read(projectRoot: projectRoot) }
+
     private func read(projectRoot: URL) throws -> [StoredExportMetrics] {
         let url = historyURL(projectRoot: projectRoot)
         guard FileManager.default.fileExists(atPath: url.path) else { return [] }
