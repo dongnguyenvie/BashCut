@@ -90,27 +90,40 @@ extension ProjectDocument {
         if reviewRounds.last?.revision == project.revision { reviewRounds.removeLast() }
         reviewRounds.append((project.revision, all, project))
         reviewRounds = Array(reviewRounds.suffix(20))
-        var issues = all
+        let range = try Self.reviewRange(arguments)
+        let inRange = range.map { range in all.filter { TimelineReview.issue($0, overlaps: range) } } ?? all
+        var issues = inRange
         if let minimum = arguments.optionalString("minSeverity").flatMap(ReviewSeverity.init(rawValue:)) {
             issues = issues.filter { $0.severity <= minimum }
         }
         let list = JSONValue.array(issues.map(\.json))
         guard arguments.bool("summary") || previous != nil else { return list }
         let checks = TimelineReview.coverage(project, context: reviewContext())
-        let summary = ReviewSummary(all, coverage: checks)
-        if summary.status == .pass {
+        let summary = ReviewSummary(inRange, coverage: checks)
+        // A range is a look at one part (a quick edit's check), not the review stage of the whole edit.
+        if summary.status == .pass, range == nil {
             logAutoStage("review", evidence: ["review run rev \(project.revision): pass"], author: author)
         }
         var result: [String: JSONValue] = [
             "issues": list, "summary": summary.json, "rev": .integer(project.revision),
             "round": .integer(reviewRounds.count), "checks": checks,
         ]
+        if let range { result["range"] = .object(["from": .integer(range.lowerBound), "to": .integer(range.upperBound)]) }
         if let previous, let previous {
             var diff = ReviewRounds.diff(before: previous.issues, after: all).object
             diff["sinceRev"] = .integer(previous.revision)
             result["diff"] = .object(diff)
         }
         return .object(result)
+    }
+
+    /// `review run --from --to`: the frames `[from, to)` whose issues the call lists; nil for the whole edit.
+    static func reviewRange(_ arguments: CommandArguments) throws -> Range<Int>? {
+        let from = arguments.optionalInt("from"), to = arguments.optionalInt("to")
+        guard from != nil || to != nil else { return nil }
+        let start = from ?? 0, end = to ?? Int.max
+        guard end > start else { throw RPCFailure(-32602, "--to must be after --from") }
+        return start..<end
     }
 
     /// `review.verify` (P1-E3): the issue as the last review of an earlier revision saw it, measured again now over
