@@ -14,6 +14,10 @@ full field sketch are in [02 — Project format](../specs/02-project-format.md);
 | `.bashcut/cache/proxies/<media id>.mov` | Preview proxies (see [Media paths](#media-paths)) |
 | `.bashcut/plugins/` | Project-scoped plugins, which override user and bundled ones |
 | `.bashcut/.gitignore` | Lists the folders BashCut can make again (see [Storage on disk](#storage-on-disk)) |
+| `.bashcut/export-history.json` | The export ledger: each finished export with its ID, revision, fingerprint and post links |
+| `.bashcut/exports/<id>.json` | The sections and caption words of an export, for `outcomes map` |
+| `.bashcut/outcomes/<id>.json` | An export's imported retention curve and totals |
+| `.bashcut/knowledge/verdicts.jsonl` | The user's verdicts on agents' changes (`knowledge verdicts`) |
 
 A project file with another name (for example a test fixture) gets its own cache folder, `.bashcut-<file name>/`.
 
@@ -39,7 +43,7 @@ shared plugin runtimes and downloads as their own rows.
 
 | Kind | Where | Contents |
 |---|---|---|
-| Project data | `<project>/project.bashcut.json`, `.bashcut/history.jsonl`, `.bashcut/autosave/`, `.bashcut/library/`, `.bashcut/plugins/`, `.bashcut/skills/`, `.bashcut/agent-memory.md`, `.bashcut/knowledge/`, `.bashcut/chat/`, `.bashcut/export-history.json` | The edit and what belongs to this project; keep and sync it |
+| Project data | `<project>/project.bashcut.json`, `.bashcut/history.jsonl`, `.bashcut/autosave/`, `.bashcut/library/`, `.bashcut/plugins/`, `.bashcut/skills/`, `.bashcut/agent-memory.md`, `.bashcut/knowledge/`, `.bashcut/chat/`, `.bashcut/export-history.json`, `.bashcut/exports/`, `.bashcut/outcomes/` | The edit and what belongs to this project; keep and sync it |
 | Project cache | `.bashcut/cache/`: `proxies/`, `waveforms/`, `ramp-audio/`, `stills/`, `loudness/`, `agent-context/` | Made again on demand; listed in `.bashcut/.gitignore` and excluded from Time Machine |
 | User config | `~/Library/Application Support/BashCut/`: `Plugins/`, `PluginData/<id>/`, `PluginData/_shared/` (runtimes such as Python, shared by plugins), `plugin-trust.json`, `Library/`, `Knowledge/`, `agent-workspace*/`, `audit.jsonl`, `automation.sock` | Installed plugins, their settings and environments, trust grants, the user library and knowledge for every project (memo, lessons, preferences) |
 | User cache | `~/Library/Caches/BashCut/`: `PluginData/<id>/` (downloaded models), `PluginData/_shared/` (package caches shared by plugins), `Registry/` (the plugin catalog copy) | Fetched again when missing; not backed up by Time Machine |

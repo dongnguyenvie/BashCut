@@ -900,6 +900,24 @@ by default) overrides it; no command can change either. When you turn it on, req
   `normalizationGainDb` and whether the final measurement was verified; other exports return `lufs: null`.
 - **OTIO.** `export otio` writes OpenTimelineIO JSON. It keeps integer-frame timing, source ranges and rates,
   layered overlaps, text generators, section markers, speed effects and BashCut metadata.
+- **Ledger.** Every finished export is kept in `.bashcut/export-history.json` (the last 100) with an ID (`x-…`),
+  the revision, preset, path and length, and a fingerprint of the edit: looks, caption and title presets, music,
+  transitions, clip count, average and median cut, the hook (first cut and first text in seconds, the first
+  text, the first media, cuts and caption words in the first 3 s) and the sections. Its sections and caption words
+  in timeline seconds go to `.bashcut/exports/<id>.json`. `export history [--limit] [--full]` lists them newest
+  first; `export link --url URL --platform tiktok --posted-at 2026-10-13 [--export ID]` records where one was
+  posted (the latest by default). `project history [--limit N]` reads the last N projects (the open one first):
+  their exports, links and the fingerprint of the latest export (or the open timeline), and how many projects
+  used each look, preset, music file and transition, with the hook and cut numbers per project, for variety
+  checks and the creator's own medians.
+- **Outcomes.** `outcomes import FILE [--export ID] [--platform] [--totals JSON]` reads a retention curve and totals
+  from the platform's analytics: CSV with a header (a time column, or a `Video position (%)` column that becomes
+  seconds, and a retention column; `--time-column` and `--retention-column` name them) or JSON (`{curve: [{t |
+  position, retention}], totals: {views…}}`). It is stored in `.bashcut/outcomes/<export id>.json`. `outcomes map
+  [--export] [--top] [--window]` lays it over the export's sections: retention at each section's start and end, the
+  raw change, the largest drop (with the caption words within 4 s), the largest lift, the replay peak and the viewers
+  at its start, then the largest drops of the whole curve. Values the file lacks stay `null`; nothing is called good
+  or bad.
 
 ## Model APIs
 

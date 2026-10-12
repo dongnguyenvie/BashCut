@@ -80,12 +80,15 @@ public final class ExportController {
             comparison: nil)
         report.acceptedIssues = (request.source["review"]?.object["accepted"]?.object ?? [:])
             .compactMapValues { $0.object["reason"]?.string }
-        if let snapshot = try? history.record(report.storedMetrics, projectRoot: request.root) {
+        if let snapshot = try? history.record(report.storedMetrics, projectRoot: request.root, project: request.source) {
             self.report = ExportReport(snapshot: snapshot) ?? report
         } else {
             self.report = report
         }
     }
+
+    /// The project's export ledger (P3-I2).
+    public var ledger: ExportHistoryStore { history }
 
     /// `export.status`: while an export runs, the top-level fields describe it and the last receipt
     /// moves to `lastExport`.

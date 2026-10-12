@@ -48,6 +48,7 @@ extension ProjectDocument {
         registerPlanCutCommands()
         registerVariantCommands()
         registerPackagingCommands()
+        registerLedgerCommands()
         registerStorageCommands()
         registerLibraryCommands()
         registerAgentKitCommands()

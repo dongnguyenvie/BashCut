@@ -80,6 +80,7 @@ arguments.
 | `review run` / `review measure` / `review picture` / `review shots` / `review layout` | read | Review, Measure picture (`review picture`: the raw samples and cuts behind the picture checks; `review shots [--from F --to F]`: the shots on Main with timing, source, framing, motion and each cut's kind and framing on both sides; `review layout [--from F --to F] [--ink]`: rendered text bounds next to the platform zones, and the composed frame's luma and ink) |
 | `captions export` | read | Text panel, Export SRT |
 | `export status` / `jobs status` | read | Export queue, job progress |
+| `export history` / `project history` / `outcomes map` | read | — (CLI/MCP only: the export ledger, recent projects' fingerprints, outcomes per section) |
 | `plugins list [--health] [--views]` | read | Plugins sheet, Check Health, the plugin panels in the left rail |
 | `plugins search` / `plugins updates` | read | Plugins › Browse and Updates |
 | `plugins actions` / `plugins hooks` / `plugins options <plugin>` | read | Plugin actions wherever they appear, Hook Activity, Options… |
@@ -129,6 +130,7 @@ arguments.
 | Command | Mode | UI equivalent |
 |---|---|---|
 | `export start --preset … --name …` | privileged | Export |
+| `export link --url …` / `outcomes import FILE` | edit | — (CLI/MCP only: post links and analytics per export) |
 | `export otio --name …` | privileged | Export › OTIO |
 
 ### Planned commands

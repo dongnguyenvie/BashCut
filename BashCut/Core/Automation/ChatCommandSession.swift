@@ -22,6 +22,7 @@ import Foundation
         "review.coverage", "script.check", "media.resolve-range", "captions.find",
         "selects.list", "selects.set", "selects.place",
         "project.derive", "variants.create", "variants.list", "variants.diff", "export.cover", "export.chapters",
+        "export.history", "export.link", "project.history", "outcomes.import", "outcomes.map",
         "workflow.gates", "workflow.set-gates", "checkpoint.request", "checkpoint.status", "run.log", "run.append",
         "run.checklist",
         "storage.get", "ui.select", "ui.view", "ui.action", "ui.seek", "ui.frame", "ui.frames", "luts.import",
