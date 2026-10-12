@@ -296,6 +296,9 @@ struct LibraryItemEditorSheet: View {
                     BrandKitFields(document: document, params: Binding(
                         get: { request.brand ?? [:] }, set: { request.brand = $0 }))
                 }
+                if request.recipe != nil {
+                    EffectRecipeFields(text: Binding(get: { request.recipe ?? "{}" }, set: { request.recipe = $0 }))
+                }
                 if request.textPreset != nil {
                     TextPresetFields(style: Binding(
                         get: { request.textPreset ?? LibraryTextPreset(textPreset: "bold-outline") },
@@ -332,7 +335,8 @@ struct LibraryItemEditorSheet: View {
         case .rename:
             request.transition != nil ? "Edit transition" : request.look != nil ? "Edit look"
                 : request.audio != nil ? "Edit audio" : request.sticker?.isMedia == true ? "Edit sticker"
-                : request.textPreset != nil ? "Edit text style" : request.brand != nil ? "Edit brand kit" : "Rename"
+                : request.textPreset != nil ? "Edit text style" : request.brand != nil ? "Edit brand kit"
+                : request.recipe != nil ? "Edit effect" : "Rename"
         }
     }
 }

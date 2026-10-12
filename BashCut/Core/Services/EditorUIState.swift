@@ -218,6 +218,8 @@ public struct LibraryEditorRequest: Identifiable {
     public var textPreset: LibraryTextPreset?
     /// A brand kit's params, edited in the sheet (#453); nil for other kinds.
     public var brand: [String: JSONValue]?
+    /// An effect preset's recipe as JSON text, edited in the sheet; nil for other kinds.
+    public var recipe: String?
 
     public init(
         mode: Mode, name: String, tags: [String] = [], pack: String? = nil, scope: LibraryScope,

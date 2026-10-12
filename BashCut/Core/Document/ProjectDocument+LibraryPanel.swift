@@ -43,6 +43,7 @@ extension ProjectDocument {
         request.sticker = editableSticker(item)
         request.textPreset = editableTextPreset(item)
         request.brand = item.kind == .brand ? item.params : nil
+        request.recipe = item.kind == .effectPreset ? EffectRecipe.editorText(item.params) : nil
         ui.libraryEditor = request
     }
 
@@ -57,6 +58,7 @@ extension ProjectDocument {
         request.sticker = editableSticker(item)
         request.textPreset = editableTextPreset(item)
         request.brand = item.kind == .brand ? item.params : nil
+        request.recipe = item.kind == .effectPreset ? EffectRecipe.editorText(item.params) : nil
         ui.libraryEditor = request
     }
 
@@ -137,6 +139,9 @@ extension ProjectDocument {
         if let sticker = request.sticker { changes["params"] = .object(sticker.params(merging: item.params)) }
         if let text = request.textPreset { changes["params"] = .object(text.params(merging: item.params)) }
         if let brand = request.brand { changes["params"] = .object(brand) }
+        if let recipe = request.recipe, let params = try? EffectRecipe.params(editorText: recipe) {
+            changes["params"] = .object(params)
+        }
         return changes
     }
 
@@ -147,6 +152,12 @@ extension ProjectDocument {
         guard !name.isEmpty else {
             message = String(localized: "Give the item a name")
             return
+        }
+        if let recipe = request.recipe {
+            do { _ = try EffectRecipe.params(editorText: recipe) } catch {
+                message = error.localizedDescription
+                return
+            }
         }
         ui.libraryEditor = nil
         let tags = request.tags.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }

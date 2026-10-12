@@ -323,6 +323,19 @@ struct EffectRecipeTests {
         let applied = try Self.applied(try EffectRecipe(params: params), to: project).item
         #expect(applied["freezeFrame"] == .integer(75))
     }
+
+    @Test("The recipe editor shows a recipe as JSON and checks what it saves")
+    func editorText() throws {
+        let params = try Self.recipe([["op": .string("speed"), "speed": .integer(2)]]).params
+        let text = EffectRecipe.editorText(params)
+        #expect(text.contains("\"steps\""))
+        #expect(try EffectRecipe.params(editorText: text) == params)
+        #expect(throws: ProjectError.self) { try EffectRecipe.params(editorText: "{steps") }
+        #expect(throws: ProjectError.self) { try EffectRecipe.params(editorText: "[1]") }
+        #expect(throws: ProjectError.self) {
+            try EffectRecipe.params(editorText: #"{"steps":[{"op":"spin"}]}"#)
+        }
+    }
 }
 
 private extension Item {

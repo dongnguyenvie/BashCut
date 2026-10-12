@@ -432,3 +432,29 @@ extension EffectRecipe {
         }
     }
 }
+
+// MARK: Editing as text
+
+extension EffectRecipe {
+    /// An effect preset's params as the recipe editor shows them: indented JSON with sorted keys.
+    public static func editorText(_ params: [String: JSONValue]) -> String {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+        guard let data = try? encoder.encode(JSONValue.object(params)) else { return "{}" }
+        return String(decoding: data, as: UTF8.self)
+    }
+
+    /// The params the recipe editor's `text` holds, checked like `library update --params`: a JSON object that is a
+    /// valid recipe (or the older `{patch}`). Throws with what is wrong.
+    public static func params(editorText text: String, label: String = "effect preset") throws -> [String: JSONValue] {
+        let value: JSONValue
+        do { value = try JSONDecoder().decode(JSONValue.self, from: Data(text.utf8)) } catch {
+            throw ProjectError.invalid("\(label): the recipe is not valid JSON")
+        }
+        guard case .object(let params) = value else {
+            throw ProjectError.invalid("\(label): the recipe must be a JSON object such as {\"steps\": […]}")
+        }
+        _ = try EffectRecipe(params: params, label: label)
+        return params
+    }
+}
