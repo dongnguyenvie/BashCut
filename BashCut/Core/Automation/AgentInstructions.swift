@@ -14,8 +14,9 @@ extension CommandCatalog {
         "app.update-check", "app.update", "chat.status", "chat.send", "chat.attach", "chat.detach", "chat.stop",
         "chat.commands", "chat.command", "chat.reset", "chat.transcript", "doctor.run", "knowledge.approve",
         "knowledge.reject", "knowledge.remove-lesson", "skills.enable", "skills.disable", "skills.remove",
-        // Inspector › Speed; agents use the setSpeed and setSpeedCurve ops (D10).
-        "clip.speed", "clip.speed-curve",
+        // Inspector › Speed; agents use the setSpeed and setSpeedCurve ops (D10). Freeze Frame: setProperties of
+        // freezeFrame, or an effect preset's freeze step.
+        "clip.speed", "clip.speed-curve", "clip.freeze",
         // Dragging a selection, Inspector › Text › Lines and › Backdrop; agents use the move and reorder ops and
         // setProperties of textStyle.lines and backdrop.
         "timeline.move-items", "text.line-style", "clip.backdrop",
