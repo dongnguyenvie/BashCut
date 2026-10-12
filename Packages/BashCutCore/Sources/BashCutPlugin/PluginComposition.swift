@@ -46,8 +46,10 @@ public struct PluginContainerContribution: Codable, Sendable, Equatable {
     }
 }
 
-/// Where a plugin view lives: in the plugin's rail panel, as a tab in the agent dock, or in a sheet opened on demand.
-public enum PluginViewLocation: String, Codable, Sendable, CaseIterable { case panel, dock, sheet }
+/// Where a plugin view lives: in the plugin's rail panel, as a tab in the agent dock, in a sheet opened on demand, or
+/// in the Inspector under the selected item's controls (rendered again whenever the selection changes; its request
+/// `context` carries the selection and its media, and a view with an empty body shows nothing there).
+public enum PluginViewLocation: String, Codable, Sendable, CaseIterable { case panel, dock, sheet, inspector }
 
 /// A plugin view (API 8). The plugin draws it by answering `view.render` and `view.event` with a component tree; see
 /// `PluginViewTree`. `location` says where it shows (the rail panel by default).

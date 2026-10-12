@@ -48,26 +48,10 @@ struct InspectorView: View {
                             if tab == "Color" { colorControls }
                         } else {
                             details(item)
+                            PluginInspectorViews(document: document, item: item)
                         }
                         Divider()
-                        Button("Trim start to playhead") {
-                            document.apply(
-                                .trim(item: item.id, edge: .start, toFrame: document.playhead, ripple: true),
-                                label: "Trim start")
-                        }
-                        Button("Trim end to playhead") {
-                            document.apply(
-                                .trim(item: item.id, edge: .end, toFrame: document.playhead, ripple: true),
-                                label: "Trim end")
-                        }
-                        Button("Roll start to playhead") {
-                            document.apply(
-                                .roll(item: item.id, edge: .start, toFrame: document.playhead), label: "Roll cut")
-                        }
-                        Button("Roll end to playhead") {
-                            document.apply(
-                                .roll(item: item.id, edge: .end, toFrame: document.playhead), label: "Roll cut")
-                        }
+                        trimButtons(item)
                         if item.mediaID != nil {
                             TextField(
                                 "Source in (frames)",
@@ -487,6 +471,25 @@ struct MultiSelectionInspector: View {
             }
             Button("Send to Agent") { document.run(.sendToAgent) }
             Text("Drag any selected clip to move them all. Esc clears the selection.").foregroundStyle(.secondary)
+        }
+    }
+}
+
+extension InspectorView {
+    /// Trim and roll the selected item's edges to the playhead.
+    @ViewBuilder func trimButtons(_ item: Item) -> some View {
+        Button("Trim start to playhead") {
+            document.apply(
+                .trim(item: item.id, edge: .start, toFrame: document.playhead, ripple: true), label: "Trim start")
+        }
+        Button("Trim end to playhead") {
+            document.apply(.trim(item: item.id, edge: .end, toFrame: document.playhead, ripple: true), label: "Trim end")
+        }
+        Button("Roll start to playhead") {
+            document.apply(.roll(item: item.id, edge: .start, toFrame: document.playhead), label: "Roll cut")
+        }
+        Button("Roll end to playhead") {
+            document.apply(.roll(item: item.id, edge: .end, toFrame: document.playhead), label: "Roll cut")
         }
     }
 }

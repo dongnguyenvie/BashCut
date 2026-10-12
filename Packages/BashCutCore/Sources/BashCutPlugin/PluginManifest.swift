@@ -292,7 +292,7 @@ public struct PluginManifest: Codable, Sendable, Equatable {
         try container?.validate()
         if !views.isEmpty {
             guard container != nil || !views.contains(where: { $0.place == .panel }) else {
-                throw PluginError.invalid("Panel views need contributes.container (dock and sheet views do not)")
+                throw PluginError.invalid("Panel views need contributes.container (dock, sheet and inspector views do not)")
             }
             guard transportKind == .session else {
                 throw PluginError.invalid("contributes.views needs \"transport\": \"session\"")

@@ -918,7 +918,7 @@ the panel's frame from the manifest, so every plugin gets the same parts:
 | `container.title` | Optional [localized text](#localized-text), at most 24 characters; the plugin name by default |
 | `views[].id` | A short key, unique; at most 8 views |
 | `views[].title` | Localized text, at most 40 characters |
-| `views[].location` | Where the view lives: `panel` (default), `dock` or `sheet` |
+| `views[].location` | Where the view lives: `panel` (default), `dock`, `sheet` or `inspector` |
 | `views[].icon` | Optional SF Symbol for a dock tab or sheet; the container's icon by default |
 
 A container alone (no views) is a panel of the plugin's tools and skills. Views need the `session` transport.
@@ -930,12 +930,16 @@ A container alone (no views) is a panel of the plugin's tools and skills. Views 
 | `panel` | The plugin's panel in the left rail (225 pt wide); a picker switches between several | The rail icon | Browsing, tools next to the timeline |
 | `dock` | A tab in the agent dock on the right, next to the agent tabs (330–500 pt wide) | The tab, always there while the plugin is ready | Wider work: libraries, take lists, long forms |
 | `sheet` | A sheet over the editor with a Close button (Esc) | `plugins show-view`, the panel's **Views** list, or the plugin itself | A short task: a form, a confirmation with choices |
+| `inspector` | The Inspector (220 pt wide), under the controls of one selected item, on every tab | Selecting an item; rendered from scratch when the selection or its media changes | Settings of what is selected: a generated graphic's inputs, a take's options |
 
-Only `panel` views need `contributes.container`; a plugin may have dock or sheet views without a rail icon. The panel's
+Only `panel` views need `contributes.container`; a plugin may have dock, sheet or inspector views without a rail
+icon. An inspector view reads the selection from its request's `context` (`selection`, `media` with its `data`) and
+answers an empty `body` for items it has nothing to say about: it then takes no room. The panel's
 **Plugin** section lists the plugin's dock and sheet views with a button that opens each. A plugin opens its own views
 from a view or action request with the host call `plugins.show-view` (`{"plugin": "<its id>", "view": "<id>"}`); it
 cannot open another plugin's. A view answer with `"close": true` closes its sheet (a finished form).
-`location.panel`, `location.dock` and `location.sheet` are [host features](#host-features).
+`location.panel`, `location.dock`, `location.sheet` and `location.inspector` are [host features](#host-features). A host
+older than `location.inspector` refuses a manifest with an inspector view, so ship one only to apps that list it.
 
 ### View requests
 

@@ -7,7 +7,7 @@
 
 The project is built in the running app (it is launched from build/BashCut.app when needed) with the same
 commands agents use, so `make` doubles as an end-to-end test of the automation surface. Media is generated with
-ffmpeg; nothing here is committed. The default folder is build/sample-project/bashcut-sample.
+ffmpeg; nothing here is committed. The default folder is .local/projects/sample-project/bashcut-sample (gitignored).
 
 What the timeline covers (see docs/guides/sample-project.md):
   Main      linked clips with sound (link icon, speech/underVO colors), a LUT and color grade, a reframed
@@ -319,8 +319,8 @@ def check(project_dir: Path, heavy: bool):
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("command", nargs="?", default="make", choices=["make", "check", "open"])
-    parser.add_argument("--dir", type=Path, default=REPO / "build" / "sample-project",
-                        help="parent folder (default: build/sample-project)")
+    parser.add_argument("--dir", type=Path, default=REPO / ".local" / "projects" / "sample-project",
+                        help="parent folder (default: .local/projects/sample-project)")
     parser.add_argument("--light", action="store_true", help="skip the 4K HEVC clip (faster, no proxy)")
     parser.add_argument("--discard-current", action="store_true",
                         help="discard unsaved changes in the project open in BashCut")
