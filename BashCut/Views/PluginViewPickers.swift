@@ -72,7 +72,10 @@ struct PluginFontPickerView: View {
     var body: some View {
         let value = model.values[node.id]?.string ?? ""
         let own = ProjectFontCatalog.shared.fonts
-        LabeledContent {
+        // The label above the menu: beside it, a long label in a narrow column (the Inspector) left the menu a few
+        // pixels wide.
+        VStack(alignment: .leading, spacing: 3) {
+            Text(verbatim: node.string("label") ?? "").font(.caption).foregroundStyle(.secondary)
             Menu(value.isEmpty ? String(localized: "Choose a font") : value) {
                 if !own.isEmpty {
                     Section("Project") {
@@ -94,9 +97,7 @@ struct PluginFontPickerView: View {
                         }
                     }
                 }
-            }.disabled(node.bool("disabled"))
-        } label: {
-            Text(verbatim: node.string("label") ?? "").font(.caption).foregroundStyle(.secondary)
+            }.disabled(node.bool("disabled")).frame(maxWidth: .infinity, alignment: .leading)
         }
         if !value.isEmpty, !byFamily, !ProjectFonts.isAvailable(value) {
             Label("\(value) is not available and draws as Helvetica", systemImage: "exclamationmark.triangle")
