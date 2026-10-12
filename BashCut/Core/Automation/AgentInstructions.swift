@@ -19,6 +19,8 @@ extension CommandCatalog {
         // Dragging a selection, Inspector › Text › Lines and › Backdrop; agents use the move and reorder ops and
         // setProperties of textStyle.lines and backdrop.
         "timeline.move-items", "text.line-style", "clip.backdrop",
+        // Plugin overlays (plugins set them for themselves) and packaging saved skills as a plugin (#407, #506).
+        "plugins.overlays", "plugins.set-overlays", "skills.export",
     ]
 
     /// Instructions given to terminal agents, rendered from the command specs: each command's usage and first
