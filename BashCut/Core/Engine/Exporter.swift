@@ -45,7 +45,8 @@ public actor Exporter {
         if !audioTracks.isEmpty {
             let audio = AVAssetReaderAudioMixOutput(
                 audioTracks: audioTracks, audioSettings: Self.measurementPCM)
-            audio.alwaysCopiesSampleData = false
+            // The limiter changes samples in place, so they must be our copy.
+            audio.alwaysCopiesSampleData = settings?.limiterCeilingDb != nil
             audio.audioMix = snapshot.audioMix
             let input = AVAssetWriterInput(
                 mediaType: .audio,
@@ -66,8 +67,9 @@ public actor Exporter {
         }
         writer.startSession(atSourceTime: .zero)
         progress(0)
+        let limiter = settings?.limiterCeilingDb.map { LimiterBox(PeakLimiter(ceilingDb: $0, sampleRate: 48000, channels: 2)) }
         try await transferSamples(
-            pairs, snapshot: snapshot, reader: reader, writer: writer,
+            pairs, snapshot: snapshot, reader: reader, writer: writer, limiter: limiter,
             progress: progress)
         writer.endSession(atSourceTime: snapshot.composition.duration)
         await writer.finishWriting()
@@ -131,7 +133,7 @@ public actor Exporter {
 
     private func transferSamples(
         _ pairs: [(AVAssetReaderOutput, AVAssetWriterInput)],
-        snapshot: CompositionSnapshot, reader: AVAssetReader, writer: AVAssetWriter,
+        snapshot: CompositionSnapshot, reader: AVAssetReader, writer: AVAssetWriter, limiter: LimiterBox? = nil,
         progress: @escaping @Sendable (Double) -> Void
     ) async throws {
         let end = snapshot.composition.duration
@@ -143,6 +145,7 @@ public actor Exporter {
             }, ready: { input.isReadyForMoreMediaData }, next: {
                 guard let sample = output.copyNextSampleBuffer() ?? tail?.closing() else { return nil }
                 tail?.last = sample
+                if output is AVAssetReaderAudioMixOutput { limiter?.limiter.process(sample) }
                 guard input.append(sample) else {
                     throw writer.error ?? ProjectError.invalid("Cannot write sample")
                 }
@@ -159,6 +162,12 @@ public actor Exporter {
         }, interrupt: { reader.cancelReading() })
         try await transfer.run()
     }
+}
+
+/// The limiter's state, carried across the audio lane's callbacks (one lane, one queue at a time).
+final class LimiterBox: @unchecked Sendable {
+    var limiter: PeakLimiter
+    init(_ limiter: PeakLimiter) { self.limiter = limiter }
 }
 
 /// The composition output sends a held picture (freeze frame, still, the last source picture) as one sample. When the

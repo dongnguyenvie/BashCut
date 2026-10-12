@@ -96,14 +96,16 @@ public struct LoudnessMeasurement: Sendable, Equatable {
 }
 
 public enum LoudnessNormalizer {
+    /// The gain that brings the mix to `targetLUFS`: capped so peaks stay under `peakCeilingDbTP`, or, with
+    /// `limited` (a limiter holds the peaks), the whole gain.
     public static func correction(
-        measurement: LoudnessMeasurement, targetLUFS: Double = -14, peakCeilingDbTP: Double = -1
+        measurement: LoudnessMeasurement, targetLUFS: Double = -14, peakCeilingDbTP: Double = -1, limited: Bool = false
     ) throws -> Double {
         guard targetLUFS.isFinite, (-30 ... -5).contains(targetLUFS),
             peakCeilingDbTP.isFinite, (-12...0).contains(peakCeilingDbTP)
         else { throw PluginError.invalid("Invalid loudness normalization target") }
         let loudnessGain = targetLUFS - measurement.integratedLUFS
         let peakHeadroom = peakCeilingDbTP - measurement.truePeakDbTP
-        return max(-60, min(24, min(loudnessGain, peakHeadroom)))
+        return max(-60, min(24, limited ? loudnessGain : min(loudnessGain, peakHeadroom)))
     }
 }

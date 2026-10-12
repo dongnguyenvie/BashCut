@@ -125,10 +125,13 @@ public struct ExportSettings: Sendable {
     public let preset: ExportPreset
     /// Overrides the preset's video bit rate (`export start --bitrate`).
     public let videoBitRate: Int?
+    /// Sample-peak ceiling of a look-ahead limiter on the mix, in dBFS (a normalized export); nil: no limiter.
+    public let limiterCeilingDb: Double?
 
-    public init(preset: ExportPreset, videoBitRate: Int? = nil) {
+    public init(preset: ExportPreset, videoBitRate: Int? = nil, limiterCeilingDb: Double? = nil) {
         self.preset = preset
         self.videoBitRate = videoBitRate
+        self.limiterCeilingDb = limiterCeilingDb
     }
 
     public var effectiveVideoBitRate: Int? { preset.videoCodec == .h264 ? videoBitRate ?? preset.videoBitRate : nil }

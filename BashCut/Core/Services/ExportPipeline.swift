@@ -74,7 +74,7 @@ public struct ExportPipeline: Sendable {
             mediaURL: temporary, preferredProvider: preferred, projectRoot: request.root)
         let target = request.source.loudnessTarget(preset: request.preset.argument, platform: request.preset.platform)
         let correction = try LoudnessNormalizer.correction(
-            measurement: measured.measurement, targetLUFS: target.lufs, peakCeilingDbTP: target.truePeak)
+            measurement: measured.measurement, targetLUFS: target.lufs, peakCeilingDbTP: target.truePeak, limited: true)
         let currentMixGain = request.project.mixGainDb
         let mixGain = max(-60, min(24, currentMixGain + correction))
         let appliedGain = mixGain - currentMixGain
@@ -83,7 +83,11 @@ public struct ExportPipeline: Sendable {
         let normalized = try request.project.applying(.setProjectProperties(patch: ["audio": .object(audio)])).project
         let normalizedSnapshot = try await engine.build(
             normalized, root: request.root, workspace: request.workspace, purpose: .export)
-        let receipt = try await export(normalizedSnapshot, to: request.output, request, 0.20...0.96, progress)
+        // The full gain, with a limiter holding sample peaks a margin under the true-peak ceiling (inter-sample
+        // peaks and the AAC encoder add up to about a decibel).
+        let receipt = try await export(
+            normalizedSnapshot, to: request.output, request, 0.20...0.96, progress,
+            limiterCeilingDb: target.truePeak - Self.truePeakMargin)
         progress(0.96, String(localized: "Verifying loudness…"))
         let final: LoudnessMeasurement
         let verified: Bool
@@ -104,11 +108,14 @@ public struct ExportPipeline: Sendable {
             mixGainDb: mixGain, appliedGainDb: appliedGain)
     }
 
+    static let truePeakMargin = 1.0
+
     private func export(
         _ snapshot: CompositionSnapshot, to url: URL, _ request: ExportRequest, _ range: ClosedRange<Double>,
-        _ progress: @escaping @Sendable (Double, String?) -> Void
+        _ progress: @escaping @Sendable (Double, String?) -> Void, limiterCeilingDb: Double? = nil
     ) async throws -> ExportReceipt {
-        try await engine.export(snapshot, to: url, settings: ExportSettings(preset: request.preset, videoBitRate: request.videoBitRate)) { value in
+        let settings = ExportSettings(preset: request.preset, videoBitRate: request.videoBitRate, limiterCeilingDb: limiterCeilingDb)
+        return try await engine.export(snapshot, to: url, settings: settings) { value in
             progress(range.lowerBound + value * (range.upperBound - range.lowerBound), nil)
         }
     }
