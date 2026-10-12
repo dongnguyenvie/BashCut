@@ -211,6 +211,21 @@ extension CommandCatalog {
                                  maximum: 500, cli: .option("limit")),
             ]),
         CommandSpec(
+            "knowledge.verdicts", .read,
+            "What the user did with agents' changes in this project, as BashCut saw it: keep (dismissed the change "
+                + "notice, or the next edit left the agent's items alone), undo, edit (the next edit changed the same "
+                + "items) and reject (the scope guard's Reject). Returns total, counts {subject: {verdict: n}} by the "
+                + "command that made the change (timeline.apply, library.apply, library.place, plan.apply…; edit when "
+                + "unknown) and the newest rows {verdict, signal, subject, label, agent, rev, items, date}. Facts only: "
+                + "no reasons.",
+            parameters: [
+                CommandParameter("verdict", .string, "Only this verdict", choices: ["keep", "undo", "reject", "edit"],
+                                 cli: .option("verdict")),
+                CommandParameter("subject", .string, "Only changes made by this command", cli: .option("subject")),
+                CommandParameter("limit", .integer, "Rows to return (counts cover all)", default: .integer(20),
+                                 minimum: 0, maximum: 500, cli: .option("limit")),
+            ]),
+        CommandSpec(
             "knowledge.revert", .edit,
             "Put an entry back to how it was before a change from knowledge history: a removed entry comes back, an "
                 + "added one goes, an edit is undone (later changes to the same entry too). History records the revert. "

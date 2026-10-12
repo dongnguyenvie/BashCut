@@ -110,6 +110,13 @@ SwiftTerm terminal. Claude and Codex use your installed CLI and its existing log
     (`history.jsonl`). The Knowledge window's **History** section shows the diff; **Revert…** or `knowledge revert
     <change-id>` puts the entry back to how it was before that change, undoing later changes to it too, and is
     recorded as a change of its own. Rejecting a preference proposal changed nothing, so it has nothing to revert.
+  - **Verdicts** (`knowledge verdicts [--verdict] [--subject] [--limit]`): what you did with agents' changes in
+    this project, as BashCut saw it, in `.bashcut/knowledge/verdicts.jsonl`: `keep` (you dismissed the change
+    notice, or your next edit left the agent's items alone), `undo` (you undid the agent's step, also an older one),
+    `edit` (your next edit changed the same items) and `reject` (Reject on an edit the scope guard held; Allow is a
+    `keep`). Each row names the command that made the change (`timeline.apply`, `library.apply`, `library.place`,
+    `plan.apply`…, or `edit`), its label, the agent, the revision and the items; counts are per command and
+    verdict. Facts only: `bc:self-learn` decides what they mean.
   - **Skills** (`skills list [--scope project|user|plugin|kit]`, `get`, `save`, `enable`, `disable`, `remove`,
     `propose`): the agent kit's skills are read-only; `skills propose <name> <file> --summary TEXT` sends the line diff against
     the kit's SKILL.md to the Inbox as a lesson for every project tagged `kit`. Skills you or agents write live in the

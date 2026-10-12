@@ -33,6 +33,8 @@ struct AgentScopeHold: Identifiable {
     /// The tab's title and what lies outside the scope, for the sheet.
     let agent: String
     let outside: String
+    /// The command that made it (P3-I1).
+    var command: String? = CommandCaller.method
 }
 
 /// The buttons of the held-edit sheet; the raw values are the `ui respond` option IDs.
@@ -57,7 +59,7 @@ extension ProjectDocument {
     /// Rejects the held edit when the session that made it ends or loses edit access.
     func rejectScopeHold(from token: String? = nil) {
         guard let hold = scopeHold, token == nil || hold.token == token else { return }
-        resolveScopeHold(.reject)
+        resolveScopeHold(.reject, byUser: false)
     }
 
     /// The chat or terminal tab a live session token belongs to.
@@ -111,7 +113,7 @@ extension ProjectDocument {
 
     /// The user's answer to a held edit: Allow Once or Allow for This Request apply it now (on the current project),
     /// Reject drops it. `context get` reports the outcome to the agent as `scope.last`.
-    func resolveScopeHold(_ choice: AgentScopeChoice) {
+    func resolveScopeHold(_ choice: AgentScopeChoice, byUser: Bool = true) {
         guard let hold = scopeHold else { return }
         scopeHold = nil
         let owner = scopeOwner(for: hold.token)
@@ -119,6 +121,9 @@ extension ProjectDocument {
         switch choice {
         case .reject:
             outcome["outcome"] = .string("rejected")
+            if byUser { recordVerdict(KnowledgeVerdict(
+                verdict: .reject, signal: .scopeGuard, subject: hold.command, label: hold.label,
+                agent: hold.author.rawValue)) }
             message = String(format: String(localized: "Rejected an edit by %@ outside the attached clips"), hold.agent)
         case .allowOnce, .allowRequest:
             if choice == .allowRequest { owner?.scopeAllowed = true }
@@ -131,6 +136,9 @@ extension ProjectDocument {
                         coalescingKey: hold.coalescingKey)
                 }
                 if let owner { recordScopeEdit(AgentScopeDecision(owner: owner), before: before) }
+                recordVerdict(KnowledgeVerdict(
+                    verdict: .keep, signal: .scopeGuard, subject: hold.command, label: hold.label,
+                    agent: hold.author.rawValue, rev: result.revision))
                 outcome["outcome"] = .string("applied")
                 outcome["rev"] = .integer(result.revision)
             } catch {

@@ -465,7 +465,7 @@ extension ProjectDocument {
         let changes = project.itemChanges(from: before)
         agentChange = AgentChangeRecord(
             author: author, label: label, beforeRevision: before.revision,
-            afterRevision: project.revision, changes: changes)
+            afterRevision: project.revision, changes: changes, command: CommandCaller.method)
         agentChangedIDs = Set(changes.compactMap { $0.after == nil ? nil : $0.itemID })
     }
 

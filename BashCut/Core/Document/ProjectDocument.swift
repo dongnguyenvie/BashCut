@@ -267,7 +267,7 @@ final class ProjectDocument {
         plugins.pendingAction = nil
         for pending in plugins.confirmations { resolvePluginConfirm(pending.id, run: false) }
         if privilegedApproval != nil { resolvePrivilegedApproval(false) }
-        resolveScopeHold(.reject)
+        resolveScopeHold(.reject, byUser: false)
         resolveCheckpoint(.withdrawn)
         checkpoints.removeAll()
         reviewTranscripts = [:]
@@ -457,6 +457,9 @@ extension ProjectDocument {
             throw ProjectError.staleRevision(expected: baseRevision, actual: project.revision)
         }
         let before = project
+        if undo, !author.isAgent, author != .external, let step = history.lastUndo, step.author.isAgent {
+            recordUndoVerdict(step, before: before)
+        }
         if undo { try history.undo() } else { try history.redo() }
         didCommit(from: before, author: author, label: undo ? "Undo" : "Redo")
         emitPluginEvent(
@@ -480,6 +483,7 @@ extension ProjectDocument {
             markAgentChanges(from: before, author: author, label: label)
             message = author.rawValue.capitalized + ": " + label
         } else {
+            if author != .external, !["Undo", "Redo"].contains(label) { recordNextEditVerdict(before: before) }
             clearAgentChange()
         }
         dirty = true

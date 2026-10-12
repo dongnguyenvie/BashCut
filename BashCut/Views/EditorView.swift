@@ -124,7 +124,7 @@ struct EditorView: View {
             CheckpointView(request: request, resolve: document.resolveCheckpoint)
         }
         .sheet(item: $document.scopeHold) { hold in
-            AgentScopeHoldView(hold: hold, resolve: document.resolveScopeHold)
+            AgentScopeHoldView(hold: hold, resolve: { document.resolveScopeHold($0) })
         }
         .sheet(isPresented: Bindable(document.ui).showAgentChanges) {
             if let change = document.agentChange {

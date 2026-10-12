@@ -244,6 +244,17 @@ extension ProjectDocument {
                 target: arguments.optionalString("target"), limit: arguments.optionalInt("limit") ?? 50)
                 .map(Self.json))
         }
+        handle("knowledge.verdicts") { document, arguments, _ in
+            guard document.fileURL != nil else { throw RPCFailure(-32602, "Save the project first") }
+            let verdict = try arguments.optionalString("verdict").map { name in
+                guard let kind = KnowledgeVerdict.Kind(rawValue: name) else {
+                    throw RPCFailure(-32602, "verdict must be keep, undo, reject or edit")
+                }
+                return kind
+            }
+            return document.agents.knowledgeStore.verdictsJSON(
+                verdict: verdict, subject: arguments.optionalString("subject"), limit: arguments.optionalInt("limit") ?? 20)
+        }
         handleAuthored("knowledge.revert") { document, arguments, author in
             let store = document.agents.knowledgeStore
             let change = try store.change(arguments.string("id"))
