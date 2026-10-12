@@ -69,7 +69,7 @@ extension ProjectDocument {
             if !exports.isRunning { ui.showExportProgress = false }
             switch result {
             case .success(let outcome):
-                finishExport(request, outcome: outcome)
+                finishExport(request, outcome: outcome, author: author)
                 logAutoStage("export", evidence: [
                     request.output.path, "\(preset.rawValue) export finished",
                     normalizeAudio ? "loudness measured and normalized" : "loudness not measured (no normalize-audio)",
@@ -111,7 +111,7 @@ extension ProjectDocument {
         }
     }
 
-    private func finishExport(_ request: ExportRequest, outcome: ExportOutcome) {
+    private func finishExport(_ request: ExportRequest, outcome: ExportOutcome, author: Author) {
         let current = project.revision == request.source.revision
         guard request.withoutRoles.isEmpty else {
             // A version without some of the sound is not the edit's mix: its loudness and QC stay out of review.
@@ -121,7 +121,7 @@ extension ProjectDocument {
                 "rev": .integer(request.source.revision),
             ])
             message = String(localized: "Export complete")
-            if !exports.isRunning { ui.showExportReport = true }
+            if !exports.isRunning, !showsRunResult(author) { ui.showExportReport = true }
             return
         }
         // The export's loudness gain stays in the file it wrote: storing it in the project bumped the revision (the
@@ -138,7 +138,15 @@ extension ProjectDocument {
         ])
         message = String(localized: "Export complete")
         // Keep the report for later when more exports are waiting.
-        if !exports.isRunning { ui.showExportReport = true }
+        if !exports.isRunning, !showsRunResult(author) { ui.showExportReport = true }
+    }
+
+    /// An agent's export while the run panel shows: the panel turns into the result card instead of a sheet over
+    /// the editor (#448).
+    private func showsRunResult(_ author: Author) -> Bool {
+        guard author != .user else { return false }
+        runPanel.refresh()
+        return runPanel.tracksRun
     }
 
     /// Measures the written file in the background (P1-E6); review reads it for the revision it shows.

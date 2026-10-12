@@ -355,6 +355,10 @@ items (`--add` keeps the current selection). Delete, Lift, Copy, Cut, Paste and 
 `clip.copy`, `clip.cut`, `clip.paste`, `clip.mute`) act on the whole selection as one undo step;
 `timeline.select-all` and `timeline.deselect` change it.
 
+`agent quick-edit faster|remove|music-lower|caption|punch-in|custom [--text] [--items]` (Quick Edit next to Send to
+Agent) sends a one-click request on the selection to the open agent with those items as its scope, ending with a
+review of their range (`review run --from A --to B` lists and counts only the issues touching those frames).
+
 `ui action clip.send-to-agent` (Send to Agent) attaches the selected items to the open agent's request, and
 `chat attach --items a,b` / `chat detach [--items a]` do the same for a chat agent; `agent detach [--items a]`
 removes them from the shown terminal tab. While items are attached, `context get` lists the caller's own tab's items

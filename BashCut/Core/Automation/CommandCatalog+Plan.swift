@@ -101,12 +101,16 @@ extension CommandCatalog {
                 + "hook; skills get records plugin and kit skill reads itself). audit: an auditor's verdict at a point "
                 + "(strategy after the story, draft before export, process at the end), bound to the current timeline. "
                 + "BashCut writes these stages itself (auto: true): rough-cut and captions on plan apply, review on a "
-                + "review run that passes, export when an export lands.",
+                + "review run that passes, export when an export lands. The run panel the user watches shows the "
+                + "latest stage entry as the current stage (status started, the default) with its text, progress and "
+                + "eta: one short call as each stage starts, such as run append stage --stage cut --text \"Cutting 12 "
+                + "shots\" --eta 120 (cut, color and audio mean rough-cut, colour and sound).",
             parameters: [
                 CommandParameter("kind", .string, "Entry kind (1–40 characters; not gate)", required: true, cli: .positional),
                 CommandParameter("data", .object, "More fields as a JSON object", cli: .option("data")),
                 CommandParameter("stage", .string, "Stage ID (intake, survey, story, rough-cut, rhythm, voiceover, sound, "
-                                 + "captions, colour, effects, review, export, learn, or one the plan adds)", cli: .option("stage")),
+                                 + "captions, colour, effects, review, export, learn, or one the plan adds; cut and "
+                                 + "color work too)", cli: .option("stage")),
                 CommandParameter("status", .string, "Stage status", choices: WorkflowChecklist.stageStatuses,
                                  cli: .option("status")),
                 CommandParameter("evidence", .string, "What proves the stage done, ;-separated (files, job IDs, issue IDs)",
@@ -122,13 +126,24 @@ extension CommandCatalog {
                 CommandParameter("findings", .integer, "Audit findings", minimum: 0, maximum: 1_000, cli: .option("findings")),
                 CommandParameter("by", .string, "Who audited: a fresh critic or the agent itself (default self)",
                                  choices: WorkflowChecklist.auditors, cli: .option("by")),
-                CommandParameter("text", .string, "What happened", cli: .option("text")),
+                CommandParameter("text", .string, "What happened; for a stage, the step the run panel shows", cli: .option("text")),
+                CommandParameter("progress", .number, "Stage started: how far it is, 0–1", range: 0...1, cli: .option("progress")),
+                CommandParameter("eta", .integer, "Stage started: seconds it still needs, your estimate", minimum: 0,
+                                 maximum: 86_400, cli: .option("eta")),
                 CommandParameter("round", .integer, "Review round", minimum: 1, maximum: 100, cli: .option("round")),
                 CommandParameter("fixed", .integer, "Issues fixed this round", minimum: 0, cli: .option("fixed")),
                 CommandParameter("left", .integer, "Issues left", minimum: 0, cli: .option("left")),
                 CommandParameter("measured", .string, "Comma-separated checks measured", cli: .option("measured")),
                 CommandParameter("notMeasured", .string, "Comma-separated checks not measured", cli: .option("not-measured")),
             ]),
+        CommandSpec(
+            "run.status", .read,
+            "What the run panel shows: progress {run, startedAt, elapsed, current, text, progress, remaining (the ETA "
+                + "counted down), stageElapsed, finished, exportedAt, stages [{id, status pending|active|started|done|"
+                + "skipped, seconds, text}]} from the run log, and once the run exported result {path, duration, cuts, "
+                + "lufs, truePeakDbTP, loudnessVerified, review {errors, warnings, accepted} on the current timeline, "
+                + "outputs [{path, preset, duration, bytes, exists, completedAt}] newest first, recipe, thumbnail}; "
+                + "progress is null before the first stage entry of the run."),
         CommandSpec(
             "run.checklist", .read,
             "The run's checklist, derived from the plan and the run log (never hand-written): stages [{id, skill (the "

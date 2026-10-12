@@ -10,7 +10,8 @@ extension CommandCatalog {
         "plugins.reload", "plugins.remove", "plugins.setup", "plugins.set", "plugins.show-view",
         "plugins.view", "plugins.view-event", "plugins.invoke", "storage.get", "storage.clear",
         "agent.status", "agent.setup", "agent.kit-check", "agent.kit-update", "agent.terminals", "agent.open",
-        "agent.detach", "agent.ask", "app.update-check", "app.update", "chat.status", "chat.send", "chat.attach", "chat.detach", "chat.stop",
+        "agent.detach", "agent.ask", "agent.quick-edit", "run.status",
+        "app.update-check", "app.update", "chat.status", "chat.send", "chat.attach", "chat.detach", "chat.stop",
         "chat.commands", "chat.command", "chat.reset", "chat.transcript", "doctor.run", "knowledge.approve",
         "knowledge.reject", "knowledge.remove-lesson", "skills.enable", "skills.disable", "skills.remove",
         // Inspector › Speed; agents use the setSpeed and setSpeedCurve ops (D10).
@@ -88,7 +89,7 @@ extension CommandCatalog {
         Track IDs and roles are dynamic:
         always take them from `bashcut timeline get`, never assume IDs such as v1 or t1. `timeline get` also lists
         transitions and markers (sections). To look at the result, `bashcut ui frame [FRAME]` renders the viewer
-        picture at a frame to a PNG and returns its path; read that image.
+        picture at a frame to a PNG; read that image.
         Layers: tracks list visual layers back to front, then audio layers, which are mixed. There is one
         main video layer. Items never overlap on one layer, audio media never goes on a visual layer.
         Adjustment layers (kind adjustment) hold items with only a `color` grade and no media or text; each grades
@@ -104,7 +105,7 @@ extension CommandCatalog {
         Each call is a turn: batch (`media import FOLDER`; sheets, not `ui frame` one by one; `checkpoint status
         --wait 100`; `context get` on start, not per command). Build a cut (or voiceover lines and graphics) as plan.cut:
         `plan check`, then `plan apply`.
-        Installing plugins is user-only. `--format text` prints results without JSON quoting.
+        `--format text` prints results without JSON quoting.
         `project format --canvas landscape|portrait|square` changes the canvas (text sizes follow the short side).
         Clips fit inside the frame; a clip's `fill` (setProperties) or `--clips fill` crops to cover; zoom scales from it.
         Projects: `bashcut project create` / `project open` / `project save`; they refuse to drop unsaved work unless

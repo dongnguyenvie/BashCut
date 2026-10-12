@@ -88,6 +88,7 @@ final class ProjectDocument {
     let ui = EditorUIState()
     @ObservationIgnored lazy var agents = AgentDockModel(document: self)
     @ObservationIgnored lazy var chatAgents = ChatAgents(document: self)
+    @ObservationIgnored lazy var runPanel = RunPanelModel(document: self) // The run panel and result card (#447, #448).
     @ObservationIgnored lazy var plugins = PluginManagerModel()
     @ObservationIgnored lazy var pluginViews = PluginViews(document: self)
     @ObservationIgnored lazy var pluginHooks = PluginHookDispatcher(document: self)

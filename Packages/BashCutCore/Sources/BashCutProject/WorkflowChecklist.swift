@@ -23,7 +23,7 @@ public enum WorkflowChecklist {
     public static let auditPoints = ["strategy", "draft", "process"]
     public static let verdicts = ["pass", "changes", "fail"]
     public static let auditors = ["critic", "self"]
-    public static let stageStatuses = ["done", "skipped"]
+    public static let stageStatuses = ["started", "done", "skipped"]
 
     /// The kit's generic checks (§6.2), added to every video's draft and strategy audit before a recipe's own.
     public static let genericChecks: [JSONValue] = [
