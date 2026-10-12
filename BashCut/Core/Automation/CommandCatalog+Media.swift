@@ -461,8 +461,9 @@ extension CommandCatalog {
             "media.transcript", .read,
             "Read the stored transcript of one media in its own seconds: language, provider, transcribedAt, "
                 + "speechSeconds, firstSpeech/lastSpeech, precision (wordTimes provider or none, and whether words carry "
-                + "confidence, speakers, events, noSpeechProb), then as words: wordList [{index, text, start, end, "
-                + "gapBefore, confidence?, speaker?, event?, noSpeechProb?}]; phrases (default): phraseList [{index, "
+                + "confidence, speakers, events, noSpeechProb, avgLogprob, compressionRatio), then as words: wordList "
+                + "[{index, text, start, end, gapBefore, confidence?, speaker?, event?, noSpeechProb?, avgLogprob?, "
+                + "compressionRatio?}]; phrases (default): phraseList [{index, "
                 + "start, end, seconds, text, words, confidence (mean), gapBefore}]; json: both; text: one line per "
                 + "phrase (#index start–end seconds | text; print it with --format text). from/to keep what overlaps; "
                 + "ranges reads several windows in one call: text joins them under \"== A–B\" lines, other formats "
