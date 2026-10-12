@@ -160,6 +160,8 @@ extension ProjectDocument {
                 guard let self else { return }
                 deliveredQC.removeAll { $0.preset == preset }
                 deliveredQC.append(facts)
+                // The result card counted the issues before this file was measured (black or silent stretches).
+                runPanel.refresh(force: true)
                 DebugLog.write("export", "qc \(preset): drift \(facts.drift ?? 0) black \(facts.black.count) silence \(facts.silence.count)")
             } catch {
                 DebugLog.write("export", "qc failed: \(error.localizedDescription)")
