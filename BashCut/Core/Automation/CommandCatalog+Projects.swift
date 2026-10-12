@@ -49,6 +49,9 @@ extension CommandCatalog {
                 CommandParameter("importFootage", .boolean,
                                  "Import the footage folder's files and start transcription and picture analysis",
                                  default: .bool(false), cli: .flag("import")),
+                CommandParameter("brand", .string,
+                                 "A brand kit from the library (this Mac, a plugin or built in) to apply to the new "
+                                     + "project, as library apply", cli: .option("brand")),
             ] + leaveCurrent),
         CommandSpec(
             "project.folder", .edit,

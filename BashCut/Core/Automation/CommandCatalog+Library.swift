@@ -164,6 +164,8 @@ extension CommandCatalog {
                 + "overrides its parameters; when a reverse step needs a new reversed copy it runs as a job), a look's grade "
                 + "(adding its LUT to the project when it has one, in the same undo step), or a transition preset at the cut "
                 + "beside a video clip (its kind, duration and easing, plus its sound on an SFX layer, as one undo step). "
+                + "A brand kit applies to the whole project and needs no item: it sets the project's brand (palette, fonts, "
+                + "logo, mascot, voice, disclosure) and restyles every text item with brandRoles, as one undo step. "
                 + "Defaults to the selected item.",
             parameters: [
                 libraryID, libraryScope,

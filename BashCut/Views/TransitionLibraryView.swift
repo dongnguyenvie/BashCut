@@ -98,6 +98,9 @@ struct TransitionLibraryView: View {
         case "zoom": "plus.magnifyingglass"
         case "spin": "arrow.clockwise"
         case "shutter": "camera.aperture"
+        case "swing": "rotate.3d"
+        case "glitch": "waveform.path.ecg"
+        case "halftone": "circle.grid.3x3.fill"
         default: "rectangle.split.2x1"
         }
     }

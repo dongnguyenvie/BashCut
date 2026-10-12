@@ -6,15 +6,18 @@ import Foundation
 ///
 /// Properties: `zoom` (scale around the frame centre, 1 = unchanged), `panX` and `panY` (offset as a share of the
 /// frame width and height; right and up), `rotation` (degrees, counterclockwise), `opacity` (0–1), `exposure` (EV),
-/// `scaleX` (horizontal squeeze around the centre, 1 = unchanged) and `reveal` (share of the width shown, from the
-/// left; a wipe). A property a side does not list stays unchanged.
+/// `scaleX` (horizontal squeeze around the centre, 1 = unchanged), `reveal` (share of the width shown, from the
+/// left; a wipe), `swing` (degrees turned about the left edge in perspective, positive = the right edge goes away),
+/// `rgbSplit` (red and blue shifted apart by this share of the width; a glitch) and `halftone` (dot spacing as a share
+/// of the width; 0 = off). A property a side does not list stays unchanged.
 public struct TransitionMotion: Sendable, Equatable {
     public var outgoing: [String: [Double]]
     public var incoming: [String: [Double]]
 
     public static let ranges: [String: ClosedRange<Double>] = [
         "zoom": 0.01...100, "panX": -10...10, "panY": -10...10, "rotation": -3600...3600, "opacity": 0...1,
-        "exposure": -10...10, "scaleX": 0...100, "reveal": 0...1,
+        "exposure": -10...10, "scaleX": 0...100, "reveal": 0...1, "swing": -89...89, "rgbSplit": 0...0.2,
+        "halftone": 0...0.1,
     ]
 
     public init(outgoing: [String: [Double]] = [:], incoming: [String: [Double]] = [:]) {
@@ -34,6 +37,19 @@ public struct TransitionMotion: Sendable, Equatable {
         "spin": TransitionMotion(outgoing: ["rotation": [0, -90]], incoming: ["rotation": [90, 0], "opacity": [0, 1]]),
         "shutter": TransitionMotion(outgoing: ["scaleX": [1, 0]], incoming: ["scaleX": [0, 1]]),
         "wipe": TransitionMotion(incoming: ["reveal": [0, 1]]),
+        // The next card swings in about its left edge while the last one falls back (explainer card swap).
+        "swing": TransitionMotion(
+            outgoing: ["zoom": [1, 0.92], "exposure": [0, -1]],
+            incoming: ["swing": [70, 0], "opacity": [0, 1, 1]]),
+        // Red and blue tear apart in uneven jumps, the picture jitters, and the cut lands mid-way.
+        "glitch": TransitionMotion(
+            outgoing: ["rgbSplit": [0, 0.02, 0.006, 0.05, 0.03], "panX": [0, 0.015, -0.02, 0.01, 0.03]],
+            incoming: ["rgbSplit": [0.04, 0.012, 0.05, 0.015, 0], "panX": [-0.03, 0.02, -0.01, 0.008, 0],
+                       "opacity": [0, 0, 1, 1, 1]]),
+        // The picture breaks into print dots that grow, then the next resolves out of dots.
+        "halftone": TransitionMotion(
+            outgoing: ["halftone": [0.004, 0.035]],
+            incoming: ["halftone": [0.035, 0.004], "opacity": [0, 1]]),
     ]
 
     /// `motion` when given, else the built-in row of `kind`, else a dissolve.

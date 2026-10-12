@@ -49,6 +49,7 @@ A command in *italics* is planned and does not exist yet. "—" means manual onl
 | T-1 | Tracks: magnetic Main, Overlay, Captions, Dialogue, Voiceover, Music, SFX; extra layers | P0 | Implemented | `timeline get`, `layers add` |
 | T-1a | Adjustment layers: a color grade (look, exposure/contrast/saturation, LUT) on every layer below an item for its range | P0 | Implemented | `adjustment add`, `layers add --kind adjustment` |
 | T-1b | Style kits: removed (C8/C9); a library look plus a text preset, applied by a skill | P1 | Removed | `library place`, `timeline apply` |
+| T-1c | Brand kits (#453): palette, fonts, logo, mascot, voice, disclosure; applying one restyles text tied to brand roles | P1 | Implemented | `library add --kind brand`, `library apply`, `project create --brand` |
 | T-2 | Split, ripple delete, lift, trim, roll, slip, move, snapping | P0 | Implemented | `timeline apply` (`split`, `delete`, `trim`, `roll`, `slip`, `move`), `timeline move` |
 | T-3 | Clip roles speech / b-roll / under VO, color coding; Sections band | P0 | Implemented | `timeline apply` (`setProperties`, `upsertSection`) |
 | T-4 | Linked picture and sound; borrow picture (keep the old clip's sound) | P1 | Implemented (borrow-picture gesture Planned; imported from `edl.json`) | `timeline apply` (`setLinkedAudio`) |
@@ -92,7 +93,7 @@ A command in *italics* is planned and does not exist yet. "—" means manual onl
 
 | # | Feature | Priority | Status | Agent |
 |---|---|---|---|---|
-| F-1 | Transitions: dissolve, whip, blink, zoom, spin, shutter, wipe as data rows; any kind with its own `motion`; easing incl. cubic-bezier | P1 | Implemented | `timeline apply` (`upsertTransition`) |
+| F-1 | Transitions: dissolve, whip, blink, zoom, spin, shutter, wipe, swing, glitch, halftone as data rows; any kind with its own `motion`; easing incl. cubic-bezier | P1 | Implemented | `timeline apply` (`upsertTransition`) |
 | F-2 | Transitions: spin, shutter, wipe | P2 | Implemented | `timeline apply` (`upsertTransition`) |
 | F-3 | Clip effects: zoom punch, shake, flash, glitch, film look | P2 | Planned | *`timeline apply` (`setProperties`)* |
 | F-4 | Overlays: banner, callout, place card, REC frame, progress bar, stickers | P2 | Implemented (emoji stickers only; the rest Planned) | `timeline apply` (`insert`) |

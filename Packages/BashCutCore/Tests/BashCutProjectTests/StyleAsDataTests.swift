@@ -51,6 +51,12 @@ struct StyleAsDataTests {
         let blink = try #require(TransitionMotion.builtIns["blink"])
         #expect(blink.value("exposure", incoming: false, at: 0.5) == 4)
         #expect(Set(TransitionMotion.builtIns.keys) == Set(TimelineTransition.renderedKinds))
+        let swing = try #require(TransitionMotion.builtIns["swing"])
+        #expect(swing.value("swing", incoming: true, at: 0) == 70 && swing.value("swing", incoming: true, at: 1) == 0)
+        let glitch = try #require(TransitionMotion.builtIns["glitch"])
+        #expect(glitch.value("rgbSplit", incoming: false, at: 0.75) == 0.05)
+        #expect(TransitionMotion.builtIns["halftone"]?.value("halftone", incoming: true, at: 1) == 0.004)
+        _ = try TransitionMotion(json: .object(["incoming": .object(["rgbSplit": .array([.number(0.1), .number(0)])])]))
 
         let push: JSONValue = .object([
             "outgoing": .object(["panY": .array([.number(0), .number(1)])]),
@@ -75,6 +81,8 @@ struct StyleAsDataTests {
             .object(["incoming": .object(["spin": .array([.number(0), .number(1)])])]),
             .object(["incoming": .object(["opacity": .array([.number(0)])])]),
             .object(["incoming": .object(["opacity": .array([.number(0), .number(2)])])]),
+            .object(["incoming": .object(["swing": .array([.number(0), .number(90)])])]),
+            .object(["incoming": .object(["halftone": .array([.number(0), .number(0.5)])])]),
             .object(["sideways": .object([:])]),
         ] {
             #expect(throws: ProjectError.self) { try TransitionMotion(json: bad) }

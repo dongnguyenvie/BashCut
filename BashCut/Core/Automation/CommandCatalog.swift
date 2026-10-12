@@ -10,7 +10,7 @@ public enum CommandCatalog {
         "doctor", "knowledge", "ask", "sections", "external-changes", "plugin-proposals", "commands", "shortcuts",
         "add-plugin", "library-search", "library-generate",
     ]
-    public static let libraryPanels = ["media", "audio", "text", "stickers", "effects", "transitions", "filters", "voice"]
+    public static let libraryPanels = ["media", "audio", "text", "stickers", "effects", "transitions", "filters", "voice", "brand"]
     public static let exportPresets = OutputPresetName.all
 
     /// The plugin capability each provider-backed command runs on: `capabilities get`, the capability_missing errors

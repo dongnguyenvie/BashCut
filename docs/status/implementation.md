@@ -200,7 +200,7 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   operations; preview and export share one Core Image renderer. LUT files stay on disk when their catalog entry is
   undone.
 - A synchronized vertical Before/After split in the viewer that bypasses color and LUTs only.
-- Undoable transitions (dissolve, whip, blink, zoom, spin, shutter, wipe) with adjustable duration; preview and
+- Undoable transitions (dissolve, whip, blink, zoom, spin, shutter, wipe, swing, glitch, halftone) with adjustable duration; preview and
   export share the same tweening, and transitions are removed when edits separate their clips.
 
 ### Library
@@ -254,6 +254,11 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   source, license and provenance. Panels show Search…/Generate… when a plugin provides them for their kinds (the
   `library-search` dialog: preview, play and Save). Not yet: a provider-side paging UI, and a scaffold template in
   `bashcut-plugins`.
+- Brand kits (#453): `brand` items (palette, heading/body fonts, logo and mascot poses as sticker references, voice,
+  disclosure). `library apply` sets the project's `brand` and restyles text with `brandRoles` in one undo step; text
+  presets carry `brandRoles`; the Brand panel (kit in use, saved kits, New Brand Kit…, Edit…, Remove), New Project's
+  Brand kit picker and `project create --brand`. Graphics (HyperFrames) and recipes read `project get` › `brand`. Not
+  yet: background removal for mascot images, and built-in text presets tied to roles.
 - Library performance: use counts live in `usage.json` (an older `usage` field in `library.json` is read until the
   next save moves it), stored files keep their `fileSHA256`, and changes, packs, stats and use counting run on the
   `LibraryWorker` actor, off the main actor and one at a time.

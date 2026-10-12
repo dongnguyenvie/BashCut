@@ -55,7 +55,7 @@ extension ProjectDocument {
         return (Int(abs(size.width).rounded()), Int(abs(size.height).rounded()))
     }
 
-    nonisolated private static func hasAlpha(_ description: CMFormatDescription) -> Bool {
+    nonisolated static func hasAlpha(_ description: CMFormatDescription) -> Bool {
         if let flag = CMFormatDescriptionGetExtension(
             description, extensionKey: kCMFormatDescriptionExtension_ContainsAlphaChannel) as? Bool, flag
         {

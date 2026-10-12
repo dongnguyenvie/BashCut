@@ -5,7 +5,9 @@ import Foundation
 /// placed by default), an optional `textStyle` (the item's own style over the preset's: any `textStyle` field — the
 /// declared ones of `ItemProperty.all` are checked with the same rules, others such as `background` and `shadow` are
 /// kept as given), `wordStyle` (as on items) and `animation` (a `MotionPreset` id, or a `MotionTemplate` object of
-/// keys at t 0–1 or seconds). Items without `textStyle` or `animation` behave as before. Other keys round-trip.
+/// keys at t 0–1 or seconds) and `brandRoles` (textStyle paths tied to brand kit roles, #453: placed text takes the
+/// project's kit and follows it when the kit changes). Items without `textStyle` or `animation` behave as before.
+/// Other keys round-trip.
 public struct LibraryTextPreset: Sendable, Equatable {
     /// The declared `textStyle` fields: every item `textStyle` property.
     public static let styleKeys: [String] = ItemProperty.all.filter { $0.group == "textStyle" }.map(\.key)
@@ -20,6 +22,8 @@ public struct LibraryTextPreset: Sendable, Equatable {
     public var animation: String?
     /// Hand-made keys, when the animation is not a preset.
     public var animationKeys: MotionTemplate?
+    /// textStyle path → brand role (#453); nil when the preset does not follow a brand kit.
+    public var brandRoles: JSONValue?
 
     public init(
         textPreset: String, text: String? = nil, textStyle: [String: JSONValue] = [:], animation: String? = nil,
@@ -44,6 +48,10 @@ public struct LibraryTextPreset: Sendable, Equatable {
             self.text = text
         }
         textStyle = try params["textStyle"].map { try Self.style($0, label: label) } ?? [:]
+        if let roles = params["brandRoles"], roles != .null {
+            try LibraryBrand.validateRoles(roles, label: "\(label): params.brandRoles")
+            brandRoles = roles
+        }
         if let value = params["wordStyle"], value != .null {
             var probe = Item(id: "preset", at: 0, duration: 1)
             probe["wordStyle"] = value
@@ -94,6 +102,7 @@ public struct LibraryTextPreset: Sendable, Equatable {
             }
         }
         if let value = item["wordStyle"], value != .null { wordStyle = value }
+        if let roles = item["brandRoles"], roles != .null { brandRoles = roles }
         guard let motion = item.motion else { return }
         if let project {
             animation = MotionPreset.all.first { preset in
@@ -124,11 +133,12 @@ public struct LibraryTextPreset: Sendable, Equatable {
     /// The params as a library item stores them, merged over `params` so unknown keys stay.
     public func params(merging params: [String: JSONValue] = [:]) -> [String: JSONValue] {
         var params = params
-        for key in ["textPreset", "text", "textStyle", "wordStyle", "animation"] { params[key] = nil }
+        for key in ["textPreset", "text", "textStyle", "wordStyle", "animation", "brandRoles"] { params[key] = nil }
         params["textPreset"] = .string(textPreset)
         if let text { params["text"] = .string(text) }
         if !textStyle.isEmpty { params["textStyle"] = .object(textStyle) }
         if let wordStyle { params["wordStyle"] = wordStyle }
+        if let brandRoles { params["brandRoles"] = brandRoles }
         if let animation { params["animation"] = .string(animation) } else if let animationKeys {
             params["animation"] = animationKeys.json
         }
@@ -137,12 +147,16 @@ public struct LibraryTextPreset: Sendable, Equatable {
 
     /// The properties that give the text `item` (on `project`) this style: the preset, the stored style over the
     /// item's own `textStyle` (other fields such as a caption highlight stay) and, with an animation, its keys at
-    /// the item's length. Without a stored style or animation, only the preset, as before #380.
+    /// the item's length. Without a stored style or animation, only the preset, as before #380. With brand roles,
+    /// the item keeps them and takes the project's brand kit values (#453).
     public func patch(for item: Item, project: Project) throws -> [String: JSONValue] {
         var patch: [String: JSONValue] = ["textPreset": .string(textPreset)]
-        if !textStyle.isEmpty {
-            patch["textStyle"] = .object((item["textStyle"]?.object ?? [:]).merging(textStyle) { $1 })
+        var style = (item["textStyle"]?.object ?? [:]).merging(textStyle) { $1 }
+        if let roles = brandRoles?.object {
+            patch["brandRoles"] = .object(roles)
+            if let brand = project.brand { style = brand.restyled(style, roles: roles) }
         }
+        if !textStyle.isEmpty || style != (item["textStyle"]?.object ?? [:]) { patch["textStyle"] = .object(style) }
         if let wordStyle { patch["wordStyle"] = wordStyle }
         if let animation {
             patch["keyframes"] = try MotionPreset.motion(

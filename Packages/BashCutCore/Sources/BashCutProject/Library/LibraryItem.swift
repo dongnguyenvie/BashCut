@@ -16,6 +16,8 @@ public enum LibraryKind: String, CaseIterable, Sendable {
     case voice
     /// Footage: a movie or still placed as media (P2-H5).
     case clip
+    /// A brand kit (#453): palette, fonts, logo, mascot, voice and disclosure, applied to the whole project.
+    case brand
 
     /// The library panel (`CommandCatalog.libraryPanels`) that lists this kind.
     public var panel: String {
@@ -28,6 +30,7 @@ public enum LibraryKind: String, CaseIterable, Sendable {
         case .look: "filters"
         case .voice: "voice"
         case .clip: "media"
+        case .brand: "brand"
         }
     }
 
@@ -234,6 +237,8 @@ extension LibraryItem {
         case .clip:
             // A movie or an image; params are free (measured length and size, a provider's keys).
             try LibraryClip.validate(file: file, label: label)
+        case .brand:
+            _ = try LibraryBrand(params: params, label: "\(label): params")
         }
     }
 

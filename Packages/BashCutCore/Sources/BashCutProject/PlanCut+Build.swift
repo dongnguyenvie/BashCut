@@ -203,6 +203,11 @@ extension PlanCut {
             let base = patch["textStyle"]?.object ?? item["textStyle"]?.object ?? [:]
             patch["textStyle"] = .object(base.merging(textStyle) { $1 })
         }
+        // Text tied to brand roles (a library preset's or the style's brandRoles) takes the project's kit (#453).
+        if let roles = patch["brandRoles"]?.object, let brand = project.brand {
+            let base = patch["textStyle"]?.object ?? item["textStyle"]?.object ?? [:]
+            patch["textStyle"] = .object(brand.restyled(base, roles: roles))
+        }
         return patch
     }
 

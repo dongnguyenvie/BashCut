@@ -19,6 +19,21 @@ struct LibraryCommandTests {
         #expect(properties?["set"] != nil && properties?["from"] != nil && properties?["to"] != nil)
     }
 
+    @Test("Brand kits (#453): add with params, apply without an item, start a project with one")
+    func brandCommands() throws {
+        let add = try CommandLineParser.parse([
+            "library", "add", "--kind", "brand", "--name", "Acme",
+            "--params", ##"{"palette":{"accent":"#FFB000"},"fonts":{"heading":"BeVietnamPro-Black"}}"##,
+        ])
+        #expect(add.params["kind"] == .string("brand"))
+        #expect(add.params["params"]?.object["palette"]?.object["accent"] == .string("#FFB000"))
+        let apply = try CommandLineParser.parse(["library", "apply", "acme", "--base-rev", "2"])
+        #expect(apply.params == ["id": .string("acme"), "baseRev": .integer(2)])
+        let create = try CommandLineParser.parse(["project", "create", "--name", "Ad", "--brand", "user:acme"])
+        #expect(create.params["brand"] == .string("user:acme"))
+        #expect(CommandCatalog.libraryPanels.contains("brand"))
+    }
+
     @Test("Audio library commands (#78): analyze, preview, place with a length and save-selection from media")
     @MainActor func audioLibraryCommands() throws {
         let analyze = try CommandLineParser.parse(["library", "analyze", "user:bed", "--provider", "ebur128"])
