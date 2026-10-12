@@ -5,6 +5,7 @@
 
 ## [Unreleased]
 
+- **`plan check` names the built edit's review errors.** The check already reviewed the edit as it would be built but only listed it under `review`, so an agent reading `problems` found captions under TikTok's caption bar only after rendering every graphic and building; one problem `review-errors` (warning) now counts them by kind with the first one's detail. `bashcut --version` answers like `app version` instead of "Unknown command".
 - **Export sheet Cover row fits.** The cover title field showed its title as a second label and shrank to a few characters, and Save Cover at Playhead was cut off; the field and preset sit on one line and the button under them. The multi-selection Inspector's frame range is in Vietnamese too.
 - **`ui action open quick-edit`.** The Quick Edit › Other… sheet could not be opened from the CLI or MCP ("Unknown dialog"), though `ui dialog` and `ui respond` handled it.
 - **The result card counts the exported file's issues.** The card counted the review issues when the export landed, before the file itself was measured, so a black or silent stretch in it (`delivered-…`) was missing: the card said "No issues left" while `run status` and `review run` listed an error. It counts again once the file is measured.

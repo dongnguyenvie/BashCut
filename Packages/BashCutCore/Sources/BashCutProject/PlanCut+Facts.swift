@@ -157,6 +157,21 @@ extension PlanCut {
         return (lines, graphics, problems)
     }
 
+    /// The review errors of the edit as it would be built, as one problem, so a check that reads only `problems` sees
+    /// them before rendering and building (captions under a platform's caption bar, a cut inside a word…).
+    public static func reviewErrorsProblem(_ review: [ReviewIssue]) -> Problem? {
+        let errors = review.filter { $0.severity == .error }
+        guard let first = errors.first else { return nil }
+        var kinds: [String: Int] = [:]
+        for issue in errors { kinds[issue.kind, default: 0] += 1 }
+        let counts = kinds.sorted { $0.key < $1.key }.map { "\($0.key) ×\($0.value)" }.joined(separator: ", ")
+        return Problem(
+            id: "review-errors", severity: "warning", entry: nil,
+            detail: "The edit as built has \(errors.count) review error(s) (\(counts)); the first: \(first.title): "
+                + "\(first.detail) Fix them in this list before building (review holds each one).",
+            facts: ["kinds": .object(kinds.mapValues { .integer($0) }), "first": first.json])
+    }
+
     /// A graphic's span, layer and media, and what is wrong with it.
     static func graphicRow(
         _ graphic: Graphic, placements: [Placement], on project: Project, problems: inout [Problem]
