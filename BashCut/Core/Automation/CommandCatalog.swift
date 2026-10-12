@@ -34,7 +34,7 @@ public enum CommandCatalog {
         + variantSpecs + packagingSpecs
         + sourceMediaSpecs
         + pluginSpecs + pluginViewSpecs
-        + storageSpecs + agentSpecs + appSpecs + chatSpecs
+        + storageSpecs + agentSpecs + quickEditSpecs + appSpecs + chatSpecs
         + privilegedSpecs + uiSpecs + toolSpecs + knowledgeSpecs + skillSpecs + librarySpecs + fontSpecs
 
     /// A provider job (`capabilities`) with the request ID and dry-run parameters, when it does not have them yet.
@@ -68,7 +68,7 @@ public enum CommandCatalog {
             "Read the revision, format and tracks, including track IDs and roles, and scale per video or image item: "
                 + "fit or fill, baseScale, zoom and maxZoom (keyframes), pixelRatio (output pixels per source pixel; "
                 + "over 1 is upscaled) now and at maxZoom, maxZoomNative (the largest zoom before upscaling), shown "
-                + "size and frameCoverage. media lists each media's path, kind, license and provenance as stored.",
+                + "size, frameCoverage and backdrop (blur, color or null). media lists each media's path, kind, license and provenance as stored.",
             parameters: [
                 CommandParameter(
                     "format", .string, "json (default) or a compact text listing", choices: ["json", "text"],

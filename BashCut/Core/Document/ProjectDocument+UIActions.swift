@@ -48,10 +48,14 @@ extension ProjectDocument {
         case .showExportProgress, .cancelExport: return exports.isRunning
         case .dismissExportNotice: return exports.notice != nil
         case .clearRecentProjects: return !settings.recentProjects.isEmpty
+        case .showRunPanel: return runPanel.canShow
+        case .dismissRunPanel: return runPanel.visible
+        case .fixRunIssues: return (runPanel.result?.issuesLeft ?? 0) > 0 && agents.canDeliver
+        case .tryAnotherRecipe: return runPanel.result != nil && agents.canDeliver
         case .selectAll: return project.tracks.contains { !$0.items.isEmpty }
         case .deselect: return !selectedIDs.isEmpty
         case .copyClips, .cutClips, .sendToAgent: return !selectedItems.isEmpty
-        case .pasteClips: return hasProject && clipboard != nil
+        case .pasteClips: return hasProject && (clipboard != nil || Self.pasteboardHasClips)
         case .muteClips: return selectedItems.contains { $0.mediaID != nil }
         case .showHistory, .showReview, .showPlugins, .showDoctor, .showSettings, .showAgentKit, .showSections,
             .showCommands, .showShortcuts, .showUpdates, .showAbout, .toggleAgentDock,
@@ -172,6 +176,10 @@ extension ProjectDocument {
         case .openExportOutput: if let url = exports.report?.receipt.url { NSWorkspace.shared.open(url) }
         case .revealExportOutput:
             if let url = exports.report?.receipt.url { NSWorkspace.shared.activateFileViewerSelecting([url]) }
+        case .showRunPanel: runPanel.show()
+        case .dismissRunPanel: runPanel.dismiss()
+        case .fixRunIssues: try fixRunIssues()
+        case .tryAnotherRecipe: try tryAnotherRecipe()
         case .cancelExport: exports.cancelActive()
         case .dismissExportNotice: exports.dismissNotice()
         case .clearRecentProjects: settings.clearRecentProjects()

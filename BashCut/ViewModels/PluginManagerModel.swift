@@ -147,6 +147,8 @@ enum PluginText {
     var skills: [PluginSkill] = []
     /// Skills that could not be read, also in `diagnostics`.
     var skillProblems: [String] = []
+    /// `skills(of:)` per plugin installation and version, until the next catalog refresh.
+    @ObservationIgnored var skillsByPlugin: [String: [PluginSkill]] = [:]
     /// Called when `skills` changes, so the document links them for agents and lists them in their knowledge.
     @ObservationIgnored var onSkillsChanged: (@MainActor () -> Void)?
     /// When each action last started, so MCP lists recently used actions first (#98).

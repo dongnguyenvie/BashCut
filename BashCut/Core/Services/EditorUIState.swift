@@ -98,6 +98,9 @@ public final class EditorUIState {
     /// Software Update opened by itself for a new release: it shows what is known without checking again.
     public var updatesPrompt = false
     public var showAsk = false
+    /// Quick Edit › Other…: the request typed for the selected clips (#449).
+    public var showQuickEdit = false
+    public var quickEditDraft = ""
     public var showSections = false
     /// The command palette (⇧⌘P) and the keyboard-shortcuts sheet (⌘/), both built from the menu bar.
     public var showCommands = false
@@ -159,6 +162,7 @@ public final class EditorUIState {
     /// Closes the sheets that describe the previous project when another one opens.
     public func closeProjectSheets() {
         showExportReport = false
+        showQuickEdit = false
         showExportProgress = false
         showAgentChanges = false
         showExternalChanges = false

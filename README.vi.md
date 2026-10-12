@@ -117,6 +117,32 @@ Show Changes và hoàn tác được. Xem [Tự động hóa](docs/guides/automa
 - **Quyền của agent**: chọn những gì agent được làm mà không cần hỏi (sửa, xuất video, hành động plugin), hoặc cho
   phép tất cả
 
+### Skill
+
+Các skill của agent kit hiện dưới dạng `bc:<tên>` trong Claude Code và Codex:
+
+- `bc:edit-workflow`: cả quy trình dựng từ lúc nhận yêu cầu tới khi xuất, có cổng duyệt, checklist và audit; đọc
+  skill này trước
+- `bc:footage-survey`: kiểm kê, contact sheet và mô tả từng shot trước khi cắt
+- `bc:rough-cut`: chọn đoạn theo câu nói, bỏ take hỏng, chừa đệm và cắt dài thành ngắn
+- `bc:beat-cut`: cắt theo beat hoặc theo câu, đo nhịp để kiểm tra, punch-in
+- `bc:audio-mix`: đo âm theo vai trò, chỉnh mức, ducking, nhạc, SFX và loudness cho từng bản xuất
+- `bc:voiceover`: lời đọc vừa khoảng trống, take giọng đọc AI được kiểm tra và đọc lại tại chỗ, lồng tiếng
+- `bc:captions-text`: phụ đề, thời điểm từng chữ, tiêu đề, thẻ chữ và font hiển thị đúng ngôn ngữ
+- `bc:color-grade`: chỉnh màu có đo đạc, look và LUT
+- `bc:effects`: hiệu ứng nào hợp khoảnh khắc nào, bằng chuyển cảnh, tốc độ và reframe có sẵn
+- `bc:visual-plan`: người xem thấy gì trên từng câu của video nói chuyện
+- `bc:motion-graphics`: đồ hoạ thiết kế phủ lên footage (thẻ, bộ đếm số, chữ chuyển động)
+- `bc:stock-images`: ảnh, video stock và icon làm hình minh hoạ
+- `bc:style-study`: đo một phong cách mẫu rồi biến thành ghi chú, look và text preset
+- `bc:library`: tạo, giữ lại và dọn các mục thư viện
+- `bc:review`: vòng soát lỗi trước khi xuất
+- `bc:self-learn`: bài học, sở thích và thông tin trong phần Kiến thức của BashCut
+- `bc:setup`: cài các plugin nên dùng (chỉ khi bạn gõ `/bc:setup`)
+
+Các công thức theo chủ đề (`bashcut.vlog:plan`, du lịch, ăn uống, video giải thích, viết hook, đăng bài…) đi kèm
+plugin Vlog trong [bashcut-plugins](https://github.com/dongnguyenvie/bashcut-plugins) và được nạp như skill của plugin.
+
 ### Tự động hoá
 
 - CLI `bashcut` và MCP server bao trọn mọi thao tác, hộp thoại, phím tắt và chế độ xem: 140 lệnh, có chạy thử, kiểm

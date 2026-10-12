@@ -21,6 +21,11 @@ public struct ExportOutcome: Sendable {
     public let verified: Bool
     public let mixGainDb: Double?
     public let appliedGainDb: Double?
+    /// The report's speech coverage of the exported edit and, when the project asks for them, the rights facts of
+    /// its media (P2-H9). Made with the export, off the main actor, so finishing an export does not stall the UI
+    /// (#350).
+    public var speechCoverage = 0.0
+    public var credits: JSONValue?
 }
 
 /// Renders one `ExportRequest`: build, render, optional two-pass loudness normalization, SubRip.
@@ -38,11 +43,13 @@ public struct ExportPipeline: Sendable {
     public func run(
         _ request: ExportRequest, progress: @escaping @Sendable (Double, String?) -> Void
     ) async throws -> ExportOutcome {
-        let outcome = try await render(request, progress: progress)
+        var outcome = try await render(request, progress: progress)
         try Task.checkCancellation()
         if let text = request.captionText, let subRip = request.subRip {
             try text.write(to: subRip, atomically: true, encoding: .utf8)
         }
+        outcome.speechCoverage = TimelineReview.speechCoverage(request.source, transcripts: request.transcripts)
+        if ReviewProfile(request.project).credits { outcome.credits = ProjectCredits.of(request.project).json }
         progress(1, nil)
         return outcome
     }

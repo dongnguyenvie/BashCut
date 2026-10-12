@@ -78,10 +78,13 @@ enum ToolList {
 }
 
 @main enum BashCutMCP {
+    /// Sent once at initialize; kept to one line because clients put it in every conversation's context.
+    static let instructions = "For any edit request, read the `bc:edit-workflow` skill first."
+
     static func main() async throws {
         defer { DebugLog.flush() }
         let server = Server(
-            name: "bashcut-mcp", version: "0.1.0",
+            name: "bashcut-mcp", version: "0.1.0", instructions: instructions,
             capabilities: .init(tools: .init()))
         await server.withMethodHandler(ListTools.self) { _ in
             let plugins = actionTools(listed: true).map {

@@ -40,7 +40,7 @@ shared plugin runtimes and downloads as their own rows.
 | Kind | Where | Contents |
 |---|---|---|
 | Project data | `<project>/project.bashcut.json`, `.bashcut/history.jsonl`, `.bashcut/autosave/`, `.bashcut/library/`, `.bashcut/plugins/`, `.bashcut/skills/`, `.bashcut/agent-memory.md`, `.bashcut/knowledge/`, `.bashcut/chat/`, `.bashcut/export-history.json` | The edit and what belongs to this project; keep and sync it |
-| Project cache | `.bashcut/cache/`: `proxies/`, `waveforms/`, `ramp-audio/`, `stills/`, `loudness/`, `agent-context/` | Made again on demand; listed in `.bashcut/.gitignore` and excluded from Time Machine |
+| Project cache | `.bashcut/cache/`: `proxies/`, `waveforms/`, `ramp-audio/`, `stills/`, `loudness/`, `agent-context/`, `analysis/`, `transcripts/`, `review-packets/`, `review-measurements/` (the review's picture and loudness measurements, `<content key>-picture.json` / `-loudness.json`, keyed by the project without its revision number and the media files' size and date, so a restart keeps them and any edit misses them) | Made again on demand; listed in `.bashcut/.gitignore` and excluded from Time Machine |
 | User config | `~/Library/Application Support/BashCut/`: `Plugins/`, `PluginData/<id>/`, `PluginData/_shared/` (runtimes such as Python, shared by plugins), `plugin-trust.json`, `Library/`, `Knowledge/`, `agent-workspace*/`, `audit.jsonl`, `automation.sock` | Installed plugins, their settings and environments, trust grants, the user library and knowledge for every project (memo, lessons, preferences) |
 | User cache | `~/Library/Caches/BashCut/`: `PluginData/<id>/` (downloaded models), `PluginData/_shared/` (package caches shared by plugins), `Registry/` (the plugin catalog copy) | Fetched again when missing; not backed up by Time Machine |
 | Logs | `~/Library/Logs/BashCut/debug.log` | Shared by the app, CLI and MCP bridge |
@@ -129,13 +129,19 @@ longest side against the frame (bars on the other sides), **fill** covers the fr
 (fit); a project without the field fills, as every project did before it existed, so older zoom values keep their
 look. `transform.zoom` scales from that base size, and `pan` / `tilt` move it in output pixels.
 
+A fitted picture leaves bars; the item's optional `backdrop` fills them instead of black: `{"kind": "blur"}` draws a
+blurred copy of the same frame scaled to fill (`blur`: radius as a share of the frame's short side, default 0.05),
+`{"kind": "color", "color": "#RRGGBB"}` a colour; `dim` (0–1) darkens either. The backdrop belongs to the clip:
+transitions, grade and opacity apply to it too (`clip backdrop`, Inspector › Video › Backdrop).
+
 ## Motion and style as data
 
 - **Ease.** Keyframe `ease` and transition `easing` are one type: `linear`, `in`, `out`, `inOut` (keyframes also
   `hold`) or `"cubic-bezier(x1,y1,x2,y2)"` with x1 and x2 in 0…1.
 - **Keyframes** animate `zoom`, `pan`, `tilt`, `rotation`, `opacity`, `volume` and numeric style fields as
   `group.field` paths: `color.exposure`, `color.contrast`, `color.saturation`, `color.lutStrength` on clips and
-  adjustment layers; `textStyle.size`, `positionX`, `positionY`, `strokeWidth`, `lineHeight`, `tracking` on text.
+  adjustment layers; `textStyle.size`, `positionX`, `positionY`, `strokeWidth`, `lineHeight`, `tracking` on text;
+  `crop.left`, `crop.right`, `crop.top`, `crop.bottom` and `crop.radius` (rounded corners) on clips and images.
 - **Transitions** keep `kind`, `duration`, optional `easing` and optional `motion`
   `{"outgoing": {property: [values]}, "incoming": {…}}`. Properties: `zoom`, `panX`/`panY` (share of the frame,
   right/up), `rotation` (degrees, counterclockwise), `opacity`, `exposure` (EV), `scaleX`, `reveal` (share of
@@ -151,7 +157,11 @@ look. `transform.zoom` scales from that base size, and `pan` / `tilt` move it in
   times larger in its own colour (`line` from the top, negative from the bottom; without it the last of two lines or
   the middle one), optionally on its own plate; it is fitted to the frame on its own, the other lines without it.
   `hook-title` emphasises by default once it has two lines; `false` turns it off. `lineFills [colors]` colours the
-  lines in turn. A block taller than the frame allows is moved back inside it, as a wide line shrinks to fit.
+  lines in turn. `lines [{font, scale, fill, stroke} | null]` gives each line, in reading order, its own font
+  (PostScript name, so family and weight), size (`scale` × the block's, 0.2–5, after the emphasis scale) and colours:
+  two fonts in one title. A line with its own font or scale is fitted on its own; `null` and lines past the list keep
+  the block's look (`text line-style`). A block taller than the frame allows is moved back inside it, as a wide line
+  shrinks to fit.
 - **Text templates** are built-in library text presets named by their look, not their use (`stacked-keyword`,
   `headline-subline`, `boxed-keyword`, `two-tone-pop`): a renderer preset plus a full `textStyle`. The same template
   serves as a hook, a call to action or a label; the agent picks it for the video.

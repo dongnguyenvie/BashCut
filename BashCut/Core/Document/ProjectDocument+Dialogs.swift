@@ -38,13 +38,34 @@ extension ProjectDocument {
         }
     }
 
+    /// Quick Edit › Other…: `send` sends the typed request on the selected clips like the Send button.
+    private func quickEditSheet() -> ModalSheet? {
+        guard ui.showQuickEdit else { return nil }
+        let draft = ui.quickEditDraft
+        return ModalSheet(
+            name: "quick-edit", title: "Quick edit", message: draft.isEmpty ? nil : draft,
+            options: [ModalOption("send", String(localized: "Send")), Self.close]
+        ) { [weak self] option in
+            guard let self else { return }
+            if option == "send" {
+                guard !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                    throw ModalError("The request is empty; write it in the sheet first")
+                }
+                try quickEdit(.custom, text: draft)
+                ui.quickEditDraft = ""
+            }
+            ui.showQuickEdit = false
+        }
+    }
+
     func openSheets() -> [ModalSheet] {
         var sheets: [ModalSheet] = []
         func closing(_ name: String, _ title: String, when open: Bool, _ close: @escaping @MainActor () -> Void) {
             guard open else { return }
             sheets.append(ModalSheet(name: name, title: title, options: [Self.close]) { _ in close() })
         }
-        sheets.append(contentsOf: [askSheet(), libraryEditorSheet(), effectApplySheet(), librarySearchSheet()].compactMap { $0 })
+        sheets.append(contentsOf: [askSheet(), quickEditSheet(), libraryEditorSheet(), effectApplySheet(), librarySearchSheet()]
+            .compactMap { $0 })
         closing("sections", "Sections", when: ui.showSections) { [weak self] in self?.ui.showSections = false }
         closing("commands", "Command palette", when: ui.showCommands) { [weak self] in self?.ui.showCommands = false }
         closing("shortcuts", "Keyboard shortcuts", when: ui.showShortcuts) { [weak self] in
@@ -260,6 +281,7 @@ extension ProjectDocument {
             "export-report": ({ $0.exports.report != nil }, "No export report yet", \.showExportReport),
             "export-progress": ({ $0.exports.isRunning }, "No export is running", \.showExportProgress),
             "agent-changes": ({ $0.agentChange != nil }, "No agent change to show", \.showAgentChanges),
+            "quick-edit": ({ !$0.selectedItems.isEmpty }, "Select the clips first", \.showQuickEdit),
             "external-changes": ({ $0.conflict }, "The project file has no conflicting change", \.showExternalChanges),
             "plugin-proposals": ({ !$0.plugins.proposals.isEmpty }, "No plugin edits to review", \.showPluginProposals),
         ]

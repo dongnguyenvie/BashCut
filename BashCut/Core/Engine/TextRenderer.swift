@@ -188,6 +188,12 @@ struct CaptionStyle {
             scale: min(3, max(0.3, fields?["scale"]?.double ?? CaptionEmphasis.scale)), plate: fields?["plate"]?.object)
     }
 
+    /// `textStyle.lines[index]` (text phase 2): that line's own font, scale, fill and stroke; nil when it has none.
+    func line(_ index: Int) -> [String: JSONValue]? { TextLineStyles.style(style, line: index) }
+
+    /// The font name of line `index`: its own, else the block's.
+    func fontName(line index: Int) -> String { line(index)?["font"]?.string ?? fontName }
+
     /// `textStyle.lineFills`: line colours in reading order, repeating (two-tone titles); nil when not set.
     func lineFill(_ index: Int) -> String? {
         guard case .array(let fills)? = style["lineFills"] else { return nil }
@@ -246,13 +252,14 @@ enum TextRenderer {
         func attributes(_ index: Int) -> [NSAttributedString.Key: Any] {
             let font = fonts.lines[index]
             let emphasized = emphasis?.line == index
+            let own = look.line(index)
             return [
                 NSAttributedString.Key(kCTKernAttributeName as String): look.tracking * CTFontGetSize(font),
                 NSAttributedString.Key(kCTFontAttributeName as String): font,
-                NSAttributedString.Key(kCTForegroundColorAttributeName as String): emphasized
-                    ? color(emphasis?.fill ?? CaptionEmphasis.fill) : look.lineFill(index).map { color($0) } ?? fill,
+                NSAttributedString.Key(kCTForegroundColorAttributeName as String): own?["fill"]?.string.map { color($0) }
+                    ?? (emphasized ? color(emphasis?.fill ?? CaptionEmphasis.fill) : look.lineFill(index).map { color($0) } ?? fill),
                 NSAttributedString.Key(kCTStrokeColorAttributeName as String): color(
-                    style["stroke"]?.string ?? "#000000"),
+                    own?["stroke"]?.string ?? style["stroke"]?.string ?? "#000000"),
                 NSAttributedString.Key(kCTStrokeWidthAttributeName as String): -stroke,
             ]
         }
@@ -437,9 +444,14 @@ extension ProjectFonts {
     /// The font a text item draws with (its `textStyle.font`, else its preset's) and the characters of its text that
     /// font has no glyphs for (P1-E1); nil when every character is covered or the font itself is missing.
     public static func missingGlyphs(_ item: Item) -> (font: String, characters: String)? {
-        let name = item["textStyle"]?.object["font"]?.string ?? CaptionPreset(item.textPreset).font
-        guard isAvailable(name) else { return nil }
-        let characters = missingCharacters(name, text: item.text)
-        return characters.isEmpty ? nil : (name, characters)
+        let look = CaptionStyle(item)
+        // Each line with its own font (`textStyle.lines`) is checked against that font.
+        for (index, text) in item.text.components(separatedBy: "\n").enumerated() {
+            let name = look.fontName(line: index)
+            guard isAvailable(name) else { continue }
+            let characters = missingCharacters(name, text: text)
+            if !characters.isEmpty { return (name, characters) }
+        }
+        return nil
     }
 }

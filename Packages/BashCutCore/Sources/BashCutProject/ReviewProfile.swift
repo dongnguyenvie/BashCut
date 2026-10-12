@@ -10,7 +10,7 @@ public struct ReviewProfile: Sendable, Equatable {
         "hookSeconds": 0.1...60, "maxSilenceSeconds": 0.1...600, "maxMusicGapSeconds": 0.1...600,
         "voiceoverMarginSeconds": 0...10, "captionLineChars": 1...500, "captionMaxLines": 1...20,
         "stillMotion": 0...1, "jumpCutChange": 0...1, "blackMinSeconds": 0.01...600, "loudnessToleranceLU": 0...20,
-        "minTextSize": 0.001...0.5, "minSpeechCoverage": 0...1, "minTextContrast": 1...21,
+        "minTextSize": 0.001...0.5, "minSpeechCoverage": 0...1, "minTextContrast": 1...21, "maxFaceOverlap": 0...1,
     ]
     public static let severityValues = ["error", "warning", "info", "off"]
 

@@ -2,6 +2,7 @@ import CoreText
 import Foundation
 import Testing
 @testable import BashCutEngine
+import BashCutProject
 
 @Suite("Project fonts (#415)", .serialized)
 struct ProjectFontsTests {
@@ -35,6 +36,40 @@ struct ProjectFontsTests {
         let fake = root.appendingPathComponent("fake.ttf")
         try Data("not a font".utf8).write(to: fake)
         #expect(throws: ProjectFonts.FontError.self) { try ProjectFonts.importFont(from: fake, projectRoot: root) }
+    }
+
+    @Test("A text preset saved to This Mac carries its project font file into another project")
+    func presetFontTravels() throws {
+        let scratch = FileManager.default.temporaryDirectory.appendingPathComponent("preset-font-\(UUID().uuidString)")
+        defer {
+            ProjectFonts.activate(projectRoot: nil)
+            try? FileManager.default.removeItem(at: scratch)
+        }
+        let first = scratch.appendingPathComponent("first"), second = scratch.appendingPathComponent("second")
+        for folder in [first, second] { try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true) }
+        try ProjectFonts.importFont(from: Self.systemFont, projectRoot: first)
+        let own = try #require(ProjectFonts.file(named: "Georgia-Bold", projectRoot: first))
+        #expect(own.lastPathComponent == "Georgia Bold.ttf" && ProjectFonts.file(named: "Georgia", projectRoot: first) == nil)
+
+        // Saved to the user library with the font file, as the app does for a preset naming a project font.
+        let user = LibraryStore(root: scratch.appendingPathComponent("user"), scope: .user)
+        let preset = LibraryItem(id: "serif-title", kind: .textPreset, name: "Serif title", params: [
+            "textPreset": .string("bold-outline"), "textStyle": .object(["font": .string("Georgia-Bold")]),
+        ])
+        let saved = try user.add(preset, file: own)
+        let stored = try #require(saved.file.map(user.url(of:)))
+        #expect(FileManager.default.fileExists(atPath: stored.path))
+
+        // Used in another project: copied into its fonts folder once.
+        #expect(ProjectFonts.file(named: "Georgia-Bold", projectRoot: second) == nil)
+        #expect(try ProjectFonts.adopt(stored, name: "Georgia-Bold", projectRoot: second).map(\.postScriptName) == ["Georgia-Bold"])
+        #expect(ProjectFonts.file(named: "Georgia-Bold", projectRoot: second) != nil)
+        #expect(try ProjectFonts.adopt(stored, name: "Georgia-Bold", projectRoot: second).isEmpty)
+        // A preset whose font changed since it was saved does not bring the old file.
+        let third = scratch.appendingPathComponent("third")
+        try FileManager.default.createDirectory(at: third, withIntermediateDirectories: true)
+        #expect(try ProjectFonts.adopt(stored, name: "Avenir-Black", projectRoot: third).isEmpty)
+        #expect(ProjectFonts.files(projectRoot: third).isEmpty)
     }
 
     @Test("A name that resolves to the fallback is not available")

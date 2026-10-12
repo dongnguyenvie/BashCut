@@ -12,10 +12,16 @@ public final class FrameInstruction: NSObject, AVVideoCompositionInstructionProt
     public let requiredSourceTrackIDs: [NSValue]?
     public let passthroughTrackID = kCMPersistentTrackID_Invalid
     public let layers: [VisualLayer]
+    /// The build's failure log; the exporter reads it when AVFoundation reports only a generic error.
+    public let failures: RenderFailures?
+    /// The project frame rate, to name the frame that failed.
+    public let fps: Double
 
-    public init(range: CMTimeRange, layers: [VisualLayer]) {
+    public init(range: CMTimeRange, layers: [VisualLayer], failures: RenderFailures? = nil, fps: Double = 30) {
         timeRange = range
         self.layers = layers
+        self.failures = failures
+        self.fps = fps
         containsTweening = layers.contains {
             switch $0 {
             case .video(let layer): layer.transition != nil || layer.motion != nil || layer.style != nil
@@ -110,15 +116,25 @@ public struct FrameLayer: @unchecked Sendable {
     public let motion: (LayerMotion, ClipPlacement)?
     /// The visible part of the source frame, cut before the transform.
     public let crop: SourceCrop?
+    /// The decoded size and orientation the crop is cut in, when `crop.*` keys change it over time.
+    public let animatedCrop: (naturalSize: CGSize, orientation: CGAffineTransform)?
+    /// What fills the frame around the picture (`backdrop`); nil leaves it to the layers below.
+    public let backdrop: ClipBackdrop?
     /// Keyed `color.*` fields.
     public let style: StyleMotion?
+    /// The item and media this layer shows, named when its frame cannot be read.
+    public let source: LayerSource?
     public init(
         trackID: CMPersistentTrackID, transform: CGAffineTransform,
         properties: [String: JSONValue] = [:], transition: RenderTransition? = nil,
         lut: CubeLUT? = nil, motion: (LayerMotion, ClipPlacement)? = nil, crop: SourceCrop? = nil,
-        style: StyleMotion? = nil
+        style: StyleMotion? = nil, animatedCrop: (naturalSize: CGSize, orientation: CGAffineTransform)? = nil,
+        backdrop: ClipBackdrop? = nil, source: LayerSource? = nil
     ) {
         self.style = style
+        self.backdrop = backdrop
+        self.animatedCrop = animatedCrop
+        self.source = source
         self.trackID = trackID
         self.transform = transform
         self.properties = properties
@@ -161,10 +177,15 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
     public func renderContextChanged(_ newRenderContext: AVVideoCompositionRenderContext) {}
 
     public func startRequest(_ request: AVAsynchronousVideoCompositionRequest) {
-        guard let instruction = request.videoCompositionInstruction as? FrameInstruction,
-            let output = request.renderContext.newPixelBuffer()
-        else {
-            request.finish(with: NSError(domain: "BashCutCompositor", code: 1))
+        guard let instruction = request.videoCompositionInstruction as? FrameInstruction else {
+            request.finish(with: NSError(domain: "BashCutCompositor", code: 1, userInfo: [
+                NSLocalizedDescriptionKey: "Render failed at \(request.compositionTime.seconds) s: no BashCut instruction",
+            ]))
+            return
+        }
+        let frame = Int((request.compositionTime.seconds * instruction.fps + 0.001).rounded(.down))
+        guard let output = request.renderContext.newPixelBuffer() else {
+            fail(request, instruction, RenderFrameError(frame: frame, reason: "no output pixel buffer"), code: 1)
             return
         }
         let size = request.renderContext.size
@@ -174,31 +195,12 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
             switch layer {
             case .video(let video):
                 guard let source = request.sourceFrame(byTrackID: video.trackID) else {
-                    request.finish(with: NSError(domain: "BashCutCompositor.MissingFrame", code: 2))
+                    fail(request, instruction, RenderFrameError(
+                        frame: frame, reason: "source frame missing", source: video.source), code: 2)
                     return
                 }
-                let time = request.compositionTime.seconds
-                let motion = video.motion?.0.sample(at: time)
-                let transform = video.motion.flatMap { layer in motion?.transform(layer.1) } ?? video.transform
-                var sourceImage = CIImage(cvPixelBuffer: source)
-                if let crop = video.crop { sourceImage = crop.apply(to: sourceImage) }
-                sourceImage = sourceImage.transformed(by: transform)
-                var transitionOpacity = 1.0
-                if let transition = video.transition {
-                    (sourceImage, transitionOpacity) = applyTransition(
-                        to: sourceImage, transition: transition,
-                        time: request.compositionTime.seconds, bounds: bounds)
-                }
-                let properties = video.style?.fields(video.properties, at: time) ?? video.properties
-                sourceImage = Self.graded(sourceImage, properties: properties, lut: video.lut)
-                let opacity = (motion?.opacity ?? video.properties["opacity"]?.double ?? 1)
-                    * transitionOpacity
-                if opacity != 1 {
-                    sourceImage = sourceImage.applyingFilter(
-                        "CIColorMatrix",
-                        parameters: ["inputAVector": CIVector(x: 0, y: 0, z: 0, w: opacity)])
-                }
-                image = sourceImage.composited(over: image)
+                image = Self.picture(video, source: source, time: request.compositionTime.seconds, bounds: bounds)
+                    .composited(over: image)
             case .adjustment(let adjustment):
                 let properties = adjustment.style?.fields(adjustment.properties, at: request.compositionTime.seconds)
                     ?? adjustment.properties
@@ -217,6 +219,51 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
             image.cropped(to: bounds), to: output, bounds: bounds,
             colorSpace: CGColorSpaceCreateDeviceRGB())
         request.finish(withComposedVideoFrame: output)
+    }
+
+    /// One clip's picture at `time`: cut (crop, keyed or not), placed, over its backdrop, through its transition,
+    /// graded and faded.
+    static func picture(_ video: FrameLayer, source: CVPixelBuffer, time: Double, bounds: CGRect) -> CIImage {
+        let motion = video.motion?.0.sample(at: time)
+        let transform = video.motion.flatMap { layer in motion?.transform(layer.1) } ?? video.transform
+        let decoded = CIImage(cvPixelBuffer: source)
+        var sourceImage = decoded
+        let properties = video.style?.fields(video.properties, at: time) ?? video.properties
+        if let geometry = video.animatedCrop {
+            if let crop = SourceCrop(
+                fields: properties, naturalSize: geometry.naturalSize, orientation: geometry.orientation) {
+                sourceImage = crop.apply(to: sourceImage)
+            }
+        } else if let crop = video.crop {
+            sourceImage = crop.apply(to: sourceImage)
+        }
+        sourceImage = sourceImage.transformed(by: transform)
+        // The backdrop is part of the clip's picture: transitions, grade and opacity apply to both.
+        if let backdrop = video.backdrop { sourceImage = sourceImage.composited(over: backdrop.image(source: decoded)) }
+        var transitionOpacity = 1.0
+        if let transition = video.transition {
+            (sourceImage, transitionOpacity) = applyTransition(
+                to: sourceImage, transition: transition, time: time, bounds: bounds)
+        }
+        sourceImage = Self.graded(sourceImage, properties: properties, lut: video.lut)
+        let opacity = (motion?.opacity ?? video.properties["opacity"]?.double ?? 1)
+            * transitionOpacity
+        if opacity != 1 {
+            sourceImage = sourceImage.applyingFilter(
+                "CIColorMatrix",
+                parameters: ["inputAVector": CIVector(x: 0, y: 0, z: 0, w: opacity)])
+        }
+        return sourceImage
+    }
+
+    /// Records `error` in the build's failure log and finishes the request with it.
+    private func fail(
+        _ request: AVAsynchronousVideoCompositionRequest, _ instruction: FrameInstruction, _ error: RenderFrameError,
+        code: Int
+    ) {
+        instruction.failures?.record(error)
+        let domain = code == 2 ? "BashCutCompositor.MissingFrame" : "BashCutCompositor"
+        request.finish(with: NSError(domain: domain, code: code, userInfo: error.userInfo))
     }
 
     /// A text overlay moved by its keyframes: zoom and rotation around the text's own position, pan and tilt, opacity.
@@ -262,7 +309,7 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
     /// The transition's motion at this time (C5: every kind is data): exposure, halftone dots and the RGB split, then
     /// zoom, horizontal squeeze and rotation around the frame centre with the pan, the perspective swing about the left
     /// edge, then the reveal from the left. Preview and export share it.
-    private func applyTransition(
+    private static func applyTransition(
         to input: CIImage, transition: RenderTransition, time: Double, bounds: CGRect
     ) -> (CIImage, Double) {
         let progress = transition.progress(at: time)
