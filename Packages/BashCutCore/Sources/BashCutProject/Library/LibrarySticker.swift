@@ -2,8 +2,8 @@ import Foundation
 import ImageIO
 
 /// A sticker item's params (#64). `stickerKind` is `emoji` (`emoji`, drawn as text with `textPreset`), `image` (a
-/// PNG, JPEG, HEIC, WebP… file; transparency kept), `animated` (a GIF, APNG or animated WebP; the engine shows its
-/// first frame for now) or `video-alpha` (a movie with an alpha channel: HEVC with alpha or ProRes 4444). Without
+/// PNG, JPEG, HEIC, WebP… file; transparency kept), `animated` (a GIF, APNG or animated WebP; placed as a movie with
+/// alpha made from its frames) or `video-alpha` (a movie with an alpha channel: HEVC with alpha or ProRes 4444). Without
 /// `stickerKind`, an item with `emoji` is an emoji sticker and one with a file is told by the file's extension.
 ///
 /// Optional placing defaults: `size` (the sticker's width as a fraction of the frame width), `position` (a named
