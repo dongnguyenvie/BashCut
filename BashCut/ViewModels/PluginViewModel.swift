@@ -121,14 +121,35 @@ import Foundation
         _ method: String, _ params: JSONValue, plugin: InstalledPlugin
     ) async -> Result<JSONValue, PluginCallFailure> {
         if method == "plugins.invoke" { return await invoke(params.object, plugin: plugin) }
-        if method == "plugins.show-view", params.object["plugin"]?.string != plugin.id {
-            return .failure(PluginCallFailure(code: -32601, message: "A plugin can only show its own views"))
+        if let refusal = PluginCommandSession.ownPluginRefusal(method, params: params.object, caller: plugin.id) {
+            return .failure(PluginCallFailure(code: -32601, message: refusal))
         }
+        if method == "plugins.option" { return setOwnOption(params.object, plugin: plugin) }
         let session = sessions[plugin.id] ?? PluginCommandSession()
         sessions[plugin.id] = session
         let response = await session.perform(method, params: params.object, registry: document.registry)
         if let failure = response.error { return .failure(PluginCallFailure(code: failure.code, message: failure.message)) }
         return .success(response.result ?? .null)
+    }
+
+    /// `plugins.option` from a plugin for one of its own options (#411): never a secret; user-scope values are saved
+    /// for this Mac, project-scope values are an undoable project edit by author `plugin`. Answers like the command.
+    private func setOwnOption(_ params: [String: JSONValue], plugin: InstalledPlugin) -> Result<JSONValue, PluginCallFailure> {
+        guard let id = params["option"]?.string,
+            let option = (plugin.manifest.options ?? []).first(where: { $0.id == id })
+        else {
+            return .failure(PluginCallFailure(
+                code: -32602, message: "Unknown option \(params["option"]?.string ?? "") for \(plugin.id)"))
+        }
+        do {
+            let value = try PluginOptionPolicy.ownValue(params["value"], for: option)
+            try document.setPluginOption(plugin, option: id, value: value, author: .plugin, ownPlugin: true)
+            return .success(.object([
+                "value": document.pluginOptionValues(plugin)[id] ?? .null, "rev": .integer(document.project.revision),
+            ]))
+        } catch {
+            return .failure(PluginCallFailure(code: -32602, message: error.localizedDescription))
+        }
     }
 
     /// `plugins.invoke` from a plugin: only capabilities its manifest lists in `uses`.

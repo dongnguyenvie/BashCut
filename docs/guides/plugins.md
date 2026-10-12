@@ -119,7 +119,7 @@ the lower of the plugin's `apiVersion` and the host's current version.
 ### Host features
 
 Host features (API 8) are names for what a BashCut can do, so a plugin asks for exactly what it uses instead of a whole
-API version: `container`, `views`, `requires`, `invoke`, and `views.<component>` for each view component (`views.list`,
+API version: `container`, `views`, `requires`, `invoke`, `options.set` (the `plugins.option` host call), and `views.<component>` for each view component (`views.list`,
 `views.audio`, `views.imageCompare`, …). The session `hello` carries `"features": […]` and `plugins list --views` lists them.
 A manifest's `features` names the ones the plugin cannot work without; a BashCut without one lists the plugin as
 outdated ("Update BashCut"). For optional features, read `features` from `hello` and adapt instead.
@@ -1257,8 +1257,15 @@ later:
 - Calls on a request without a host channel get the error "This request cannot call BashCut".
 - Call params and results are limited to 1 MiB.
 - Views and actions (API 8) call as author `plugin`, with one command token per plugin, limited to the chat-agent
-  commands plus `plugins.run`, `plugins.invoke` and `plugins.show-view`; `ui.action` only for `notify`, `panel` and
-  `source` (`{"action": "notify", "target": "Done"}` shows a status message). Edits are validated and undoable
+  commands plus `plugins.run`, `plugins.invoke`, `plugins.show-view` and `plugins.option`; `ui.action` only for
+  `notify`, `panel` and `source` (`{"action": "notify", "target": "Done"}` shows a status message).
+- `plugins.option` (`{"plugin": "<its id>", "option", "value"}`) sets one of the calling plugin's own options, so a
+  view's "Use" button can choose the `voice` the Voice panel and every later request see, without a copy in plugin
+  data. `value` is text read like `plugins option --value` (`on`, `12`, a choice) or JSON of the option's type;
+  `null` or no value resets it. A plugin cannot set another plugin's options or any `secret` option (the user sets
+  secrets in Settings); a plugin with secrets may still set its other options. User-scope values are saved for this
+  Mac; project-scope values are an undoable project edit by author `plugin`. The answer is `{"value", "rev"}` Host
+  feature `options.set`. Edits are validated and undoable
   and the history shows the plugin as their author. An action that edits through calls should return no
   `operations` of its own.
 

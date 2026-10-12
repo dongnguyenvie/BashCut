@@ -142,9 +142,12 @@ extension ProjectDocument {
         return values
     }
 
-    func setPluginOption(_ plugin: InstalledPlugin, option id: String, value: JSONValue?, author: Author) throws {
+    /// `ownPlugin`: the plugin sets its own option over the host channel (#411; never a secret).
+    func setPluginOption(
+        _ plugin: InstalledPlugin, option id: String, value: JSONValue?, author: Author, ownPlugin: Bool = false
+    ) throws {
         let options = plugin.manifest.options ?? []
-        try PluginOptionPolicy.validateEdit(options: options, author: author)
+        try PluginOptionPolicy.validateEdit(options: options, author: author, ownPlugin: ownPlugin)
         guard let option = options.first(where: { $0.id == id }) else {
             throw ProjectError.invalid("Unknown option \(id) for \(plugin.id)")
         }

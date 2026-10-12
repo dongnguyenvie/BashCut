@@ -26,6 +26,7 @@ struct PluginViewPickerTests {
         #expect(PluginViewNode.Kind.colorPicker.isInteractive && PluginViewNode.Kind.fontPicker.isInput)
         #expect(PluginFeature.all.contains("views.colorPicker"))
         #expect(PluginFeature.all.contains("views.fontPicker"))
+        #expect(PluginFeature.all.contains("options.set"))
     }
 
     @Test("Pickers without an id, a colour that is not hex or an unknown by are refused", arguments: [

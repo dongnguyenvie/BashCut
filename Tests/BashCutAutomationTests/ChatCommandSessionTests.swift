@@ -47,4 +47,21 @@ import Testing
         #expect(ChatCommandSession.allows("ui.action", params: ["action": .string("notify")],
                                           methods: PluginCommandSession.allowedMethods, actions: PluginCommandSession.allowedUIActions))
     }
+
+    @Test("Plugins set and show only their own options and views; the caller answers plugins.option (#411)")
+    @MainActor func ownPluginCalls() async {
+        let mine: [String: JSONValue] = ["plugin": .string("example.voice"), "option": .string("voice")]
+        let theirs: [String: JSONValue] = ["plugin": .string("other.plugin"), "option": .string("voice")]
+        #expect(PluginCommandSession.allowedMethods.contains("plugins.option"))
+        #expect(PluginCommandSession.ownPluginRefusal("plugins.option", params: mine, caller: "example.voice") == nil)
+        #expect(PluginCommandSession.ownPluginRefusal("plugins.option", params: theirs, caller: "example.voice") != nil)
+        #expect(PluginCommandSession.ownPluginRefusal("plugins.option", params: [:], caller: "example.voice") != nil)
+        #expect(PluginCommandSession.ownPluginRefusal("plugins.show-view", params: theirs, caller: "example.voice") != nil)
+        #expect(PluginCommandSession.ownPluginRefusal("timeline.get", params: theirs, caller: "example.voice") == nil)
+        // The session itself never runs it with its plugin token: the generic handler cannot tell which plugin calls.
+        let registry = CommandRegistry()
+        let session = PluginCommandSession()
+        #expect(await session.perform("plugins.option", params: mine, registry: registry).error?.code == -32601)
+        #expect(await session.perform("plugins.invoke", params: [:], registry: registry).error?.code == -32601)
+    }
 }

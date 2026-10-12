@@ -11,11 +11,16 @@ public enum PluginFeature {
     public static let views = "views"
     public static let requires = "requires"
     public static let invoke = "invoke"
+    /// The `plugins.option` host call for the plugin's own options (#411).
+    public static let optionsSet = "options.set"
+
+    /// Features that are not a view component or place.
+    static let named = [container, views, requires, invoke, optionsSet]
 
     /// Every feature this host provides: `views.<component>` for each view component it can draw and
     /// `location.<place>` for each place a view can live.
     public static var all: [String] {
-        [container, views, requires, invoke] + PluginViewNode.Kind.allCases.map { "views." + $0.rawValue }
+        named + PluginViewNode.Kind.allCases.map { "views." + $0.rawValue }
             + PluginViewLocation.allCases.map { "location." + $0.rawValue }
     }
 
