@@ -40,6 +40,13 @@ struct AgentRequestTemplate: Identifiable {
                     Zoom in on [the important steps].
                     """)),
             AgentRequestTemplate(
+                id: "explainer", title: String(localized: "Explainer"), systemImage: "lightbulb",
+                text: String(localized: """
+                    Make an explainer video about [topic] for [TikTok / YouTube], about [length] long, \
+                    with [voiceover / music only]. Explain it in [4–6] parts with cards, numbers and \
+                    [a map / a chart / a checklist]. Facts from [source].
+                    """)),
+            AgentRequestTemplate(
                 id: "captions", title: String(localized: "Captions"), systemImage: "captions.bubble",
                 text: String(localized: """
                     Add [Vietnamese / English] captions for the speech, [white with a shadow / bold yellow], \
