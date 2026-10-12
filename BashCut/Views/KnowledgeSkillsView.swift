@@ -72,15 +72,21 @@ struct KnowledgeSkillsSection: View {
     }
 
     private var addRow: some View {
-        HStack(spacing: 6) {
-            TextField("new-skill-name", text: $model.newSkillName).textFieldStyle(.roundedBorder)
-                .onSubmit(model.createSkill)
-            Picker("Scope", selection: $model.newSkillScope) {
-                Text("This project").tag(KnowledgeScope.project)
-                Text("Every project").tag(KnowledgeScope.user)
-            }.labelsHidden().fixedSize().disabled(!model.hasProject)
-            Button("Add", action: model.createSkill)
-                .disabled(model.newSkillName.trimmingCharacters(in: .whitespaces).isEmpty)
+        let typed = !model.newSkillName.trimmingCharacters(in: .whitespaces).isEmpty
+        let valid = AgentKnowledgeStore.isValidSkillName(model.newSkillName)
+        return VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 6) {
+                TextField("new-skill-name", text: $model.newSkillName).textFieldStyle(.roundedBorder)
+                    .onSubmit { if valid { model.createSkill() } }
+                Picker("Scope", selection: $model.newSkillScope) {
+                    Text("This project").tag(KnowledgeScope.project)
+                    Text("Every project").tag(KnowledgeScope.user)
+                }.labelsHidden().fixedSize().disabled(!model.hasProject)
+                Button("Add", action: model.createSkill).disabled(!valid)
+            }
+            if typed, !valid {
+                Text("Use lowercase words joined by hyphens").font(.caption).foregroundStyle(.secondary)
+            }
         }
     }
 }
@@ -233,14 +239,10 @@ private struct PluginSkillCopyButtons: View {
     }
 }
 
-/// A light Markdown rendering of a SKILL.md: front matter as fields, headings, lists, code blocks and paragraphs
-/// with inline styling.
+/// A light Markdown rendering of a SKILL.md: front matter as fields, headings, bullet and numbered lists, quotes,
+/// rules, code blocks and paragraphs with inline styling (blocks from `SkillMarkdown`).
 struct SkillMarkdownPreview: View {
     let text: String
-
-    private enum Block: Hashable {
-        case heading(Int, String), bullet(String), code(String), paragraph(String)
-    }
 
     var body: some View {
         let front = SkillFrontMatter(text)
@@ -256,22 +258,34 @@ struct SkillMarkdownPreview: View {
                 }.padding(8).frame(maxWidth: .infinity, alignment: .leading)
                     .background(RoundedRectangle(cornerRadius: 6).fill(Color.secondary.opacity(0.1)))
             }
-            ForEach(Array(Self.blocks(front.body).enumerated()), id: \.offset) { _, block in
+            ForEach(Array(SkillMarkdown.blocks(front.body).enumerated()), id: \.offset) { _, block in
                 view(block)
             }
         }.frame(maxWidth: .infinity, alignment: .leading).textSelection(.enabled)
     }
 
-    @ViewBuilder private func view(_ block: Block) -> some View {
+    @ViewBuilder private func view(_ block: SkillMarkdown.Block) -> some View {
         switch block {
         case .heading(let level, let text):
             Text(Self.inline(text)).font(level == 1 ? .title2.bold() : level == 2 ? .title3.bold() : .headline)
                 .padding(.top, 4)
         case .bullet(let text):
             HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text("•").foregroundStyle(.secondary)
+                Text(verbatim: "•").foregroundStyle(.secondary)
                 Text(Self.inline(text))
             }
+        case .numbered(let number, let text):
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(verbatim: "\(number).").foregroundStyle(.secondary).monospacedDigit()
+                Text(Self.inline(text))
+            }
+        case .quote(let text):
+            HStack(alignment: .top, spacing: 8) {
+                RoundedRectangle(cornerRadius: 1).fill(Color.secondary.opacity(0.5)).frame(width: 3)
+                Text(Self.inline(text)).foregroundStyle(.secondary)
+            }.fixedSize(horizontal: false, vertical: true)
+        case .rule:
+            Divider().padding(.vertical, 2)
         case .code(let text):
             Text(text).font(.system(size: 11, design: .monospaced)).padding(8)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -284,50 +298,5 @@ struct SkillMarkdownPreview: View {
     private static func inline(_ text: String) -> AttributedString {
         (try? AttributedString(
             markdown: text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(text)
-    }
-
-    private static func blocks(_ body: String) -> [Block] {
-        var blocks: [Block] = []
-        var paragraph: [String] = []
-        var code: [String]?
-        func flush() {
-            if !paragraph.isEmpty { blocks.append(.paragraph(paragraph.joined(separator: " "))) }
-            paragraph = []
-        }
-        for line in body.components(separatedBy: "\n") {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            if trimmed.hasPrefix("```") {
-                if let lines = code { blocks.append(.code(lines.joined(separator: "\n"))) } else { flush() }
-                code = code == nil ? [] : nil
-            } else if code != nil {
-                code?.append(line)
-            } else if trimmed.isEmpty {
-                flush()
-            } else if line.first?.isWhitespace == true, paragraph.isEmpty, case .bullet(let item)? = blocks.last {
-                // An indented line continues the list item above it.
-                blocks[blocks.count - 1] = .bullet(item + " " + trimmed)
-            } else if let block = lineBlock(trimmed, after: blocks.last) {
-                flush()
-                if case .code = block, case .code(let table)? = blocks.last, table.hasPrefix("|") { blocks.removeLast() }
-                blocks.append(block)
-            } else {
-                paragraph.append(trimmed)
-            }
-        }
-        if let code { blocks.append(.code(code.joined(separator: "\n"))) }
-        flush()
-        return blocks
-    }
-
-    /// A heading, list item or table row; nil for paragraph text. Table rows join the table above them.
-    private static func lineBlock(_ line: String, after previous: Block?) -> Block? {
-        if line.hasPrefix("#"), let hashes = line.firstIndex(where: { $0 != "#" }), line[hashes] == " " {
-            return .heading(line.distance(from: line.startIndex, to: hashes),
-                            String(line[hashes...]).trimmingCharacters(in: .whitespaces))
-        }
-        if line.hasPrefix("- ") || line.hasPrefix("* ") { return .bullet(String(line.dropFirst(2))) }
-        guard line.hasPrefix("|") else { return nil }
-        if case .code(let table)? = previous, table.hasPrefix("|") { return .code(table + "\n" + line) }
-        return .code(line)
     }
 }
