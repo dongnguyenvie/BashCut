@@ -50,6 +50,23 @@ struct KnowledgeEntriesTests {
         #expect(store.history().count == 4 && store.history(limit: 2).count == 2)
     }
 
+    @Test("A lesson keeps an optional self-check question; empty clears it and older files read without it (#524)")
+    func check() throws {
+        let (store, root) = try store()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let plain = try store.addLesson(title: "Hold the wordmark", scope: .project, source: source())
+        #expect(plain.check == nil)
+        let file = root.appendingPathComponent("project/.bashcut/knowledge/lessons.json")
+        #expect(try !String(contentsOf: file, encoding: .utf8).contains("\"check\""))
+        let asked = try store.addLesson(
+            title: "Hold after the title lands", evidence: "\"stay one second after the first title appears\"",
+            check: "Does every moment the viewer should remember get a full still hold?", scope: .project, source: source())
+        #expect(try store.lesson(asked.id).check?.hasPrefix("Does every moment") == true)
+        let cleared = try store.updateLesson(asked.id, LessonPatch(check: ""), source: source("user", 1))
+        #expect(cleared.check == nil)
+        #expect(KnowledgeFilter(query: "remember").apply([asked]).map(\.id) == [asked.id])
+    }
+
     @Test("Proposals are approved into active lessons or rejected out of the file")
     func proposals() throws {
         let (store, root) = try store()

@@ -373,6 +373,8 @@ public struct Project: JSONObject {
         storage["beatGrid"]?.object["frames"]?.array.compactMap(\.int) ?? []
     }
     public var beatBPM: Double? { storage["beatGrid"]?.object["bpm"]?.double }
+    /// The music media the timeline beat grid was measured from.
+    public var beatGridMediaID: String? { storage["beatGrid"]?.object["media"]?.string }
     /// Whether clips fill the frame (cropping) by default instead of fitting inside it; a clip's `fill` overrides it.
     /// Projects from before the setting existed fill.
     public var clipsFill: Bool { storage["clipFill"] != .bool(false) }

@@ -247,8 +247,7 @@ public enum CommandCatalog {
                 + "the project once it lands). An agent's export with any preset but quick-draft needs "
                 + "a draft audit with verdict pass of the current timeline (run append audit --point draft) or the "
                 + "user's G5 approval at this revision: else audit_missing. A name already on disk or queued gets "
-                + "the next free suffix (name-2…; the result says renamedFrom); overwrite replaces the files on disk "
-                + "(moved to the Trash) instead.",
+                + "the next free suffix (name-2…; the result says renamedFrom); " + exportOverwriteAndWithout,
             parameters: [
                 CommandParameter("preset", .string, "Export preset", required: true, choices: exportPresets,
                                  cli: .option("preset")),
@@ -258,6 +257,7 @@ public enum CommandCatalog {
                                  cli: .flag("include-srt")),
                 CommandParameter("normalizeAudio", .boolean, "Run two-pass LUFS normalization with a plugin",
                                  default: .bool(false), cli: .flag("normalize-audio")),
+                exportWithout,
             ] + exportFileParameters + exportWaitParameters,
             execution: .approval),
         CommandSpec(
@@ -374,4 +374,15 @@ public enum CommandCatalog {
         CommandSpec("project.recents", .read, "List recently opened projects (Welcome screen)."),
         CommandSpec("doctor.run", .read, "Run the Doctor checks (workspace, tools, plugins) and return the results."),
     ]
+}
+
+extension CommandCatalog {
+    /// `export start --without` (#520).
+    static let exportOverwriteAndWithout = "overwrite replaces the files on disk (moved to the Trash) instead. "
+        + exportWithoutSummary
+    static let exportWithoutSummary = "without leaves audio layers of those roles out of this file (music: the same cut "
+        + "with voice and sound effects only, for a platform's own sound); its loudness and QC stay out of review."
+    static let exportWithout = CommandParameter(
+        "without", .string, "Audio roles to leave out (music, sfx, voiceover, dialogue)",
+        cli: .option("without"))
 }

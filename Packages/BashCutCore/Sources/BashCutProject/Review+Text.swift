@@ -6,8 +6,10 @@ import Foundation
 /// are estimated the way `TextRenderer` lays text out: the font is the preset (or `textStyle.size`) share of the
 /// frame's short side, shrunk so the widest line fits 90 % of the width; the last line's baseline sits at `positionY`
 /// from the bottom and lines stack upwards 1.28 em apart, with glyph widths at 0.55 em per character. The side-zone
-/// check stays a warning. Keyframed text motion is not followed. The zones come from the project's output platforms
-/// (`ReviewTargets.layoutPlatform`, #441, #469); text size and caption lines from its `review` profile (#466).
+/// check stays a warning. Keyframed text motion is not followed for position; for size, keyed `zoom` and
+/// `textStyle.size` scale the measured line by the smallest scale the text holds for half a second (`keyedScale`,
+/// #521). The zones come from the project's output platforms (`ReviewTargets.layoutPlatform`, #441, #469); text size
+/// and caption lines from its `review` profile (#466).
 extension TimelineReview {
     struct TextBox {
         let item: Item
@@ -39,7 +41,29 @@ extension TimelineReview {
         let width = Double(project.width)
         let height = Double(project.height)
         guard width > 0, height > 0, !item.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
-        return textBox(item, width: width, height: height, context: context).smallestPoints / min(width, height)
+        let box = textBox(item, width: width, height: height, context: context)
+        return box.smallestPoints * keyedScale(item, fps: project.fps.value) / min(width, height)
+    }
+
+    /// The smallest scale a text item holds for at least half a second (or its whole length when shorter) through
+    /// its keyed `zoom` and `textStyle.size` (against the stored size); 1 without such keys. A pop-in that starts
+    /// small and settles does not count, a title keyed down to 40 % does.
+    public static func keyedScale(_ item: Item, fps: Double) -> Double {
+        guard let json = item["keyframes"], let motion = try? ItemMotion(json: json),
+            motion.keys["zoom"] != nil || motion.keys["textStyle.size"] != nil, item.duration > 0
+        else { return 1 }
+        let stored = item["textStyle"]?.object["size"]?.double
+        let samples = (0..<item.duration).map { frame -> Double in
+            var scale = motion.value("zoom", at: Double(frame)) ?? 1
+            if let stored, stored > 0, let size = motion.value("textStyle.size", at: Double(frame)) { scale *= size / stored }
+            return max(0, scale)
+        }
+        let window = min(samples.count, max(1, Int((fps / 2).rounded())))
+        var smallest = Double.infinity
+        for start in 0...(samples.count - window) {
+            smallest = min(smallest, samples[start..<(start + window)].max() ?? 1)
+        }
+        return smallest.isFinite ? smallest : 1
     }
 
     static func textBox(_ item: Item, width: Double, height: Double, context: ReviewContext) -> TextBox {
@@ -83,7 +107,7 @@ extension TimelineReview {
                         frame: 0, severity: .info,
                         fix: ReviewFix(command: "project.format", hint: "Set the outputs with project format --outputs.")))
             }
-            return issues + profileTextIssues(boxes, profile: profile, width: width, height: height)
+            return issues + profileTextIssues(boxes, profile: profile, width: width, height: height, fps: project.fps.value)
                 + overlappingText(boxes.map(\.box))
         }
         let area = platform.safeArea
@@ -127,7 +151,7 @@ extension TimelineReview {
                         facts: zone.merging(["margin": .number(area.margin)]) { $1 }))
             }
         }
-        issues += profileTextIssues(boxes, profile: profile, width: width, height: height)
+        issues += profileTextIssues(boxes, profile: profile, width: width, height: height, fps: project.fps.value)
         issues += overlappingText(boxes.map(\.box))
         return issues
     }
@@ -135,19 +159,27 @@ extension TimelineReview {
     /// Text size and caption lines against the project's `review.minTextSize` and `review.captionMaxLines`; neither is
     /// checked without them.
     static func profileTextIssues(
-        _ boxes: [(track: Track, box: TextBox)], profile: ReviewProfile, width: Double, height: Double
+        _ boxes: [(track: Track, box: TextBox)], profile: ReviewProfile, width: Double, height: Double, fps: Double
     ) -> [ReviewIssue] {
         var issues: [ReviewIssue] = []
         for (track, box) in boxes {
-            if let minimum = profile["minTextSize"], box.smallestPoints / min(width, height) < minimum {
-                let line = box.smallestPoints < box.points ? "Its emphasised line draws" : "It draws"
+            let scale = keyedScale(box.item, fps: fps)
+            let share = box.smallestPoints * scale / min(width, height)
+            if let minimum = profile["minTextSize"], share < minimum {
+                var line = box.smallestPoints < box.points ? "Its emphasised line draws" : "It draws"
+                if scale < 1 { line += " (keyed down to \(percent(scale)) for half a second or more)" }
+                var facts: [String: JSONValue] = ["share": fact(share), "minTextSize": .number(minimum)]
+                if scale < 1 {
+                    facts["styleShare"] = fact(box.smallestPoints / min(width, height))
+                    facts["keyedScale"] = fact(scale)
+                }
                 issues.append(
                     ReviewIssue(
                         id: "small-text-" + box.item.id, title: "Text smaller than the project's minimum",
                         detail: "\(line) below \(percent(minimum)) of the frame's short side (review.minTextSize).",
                         frame: box.item.at,
-                        fix: ReviewFix(hint: "Shorten the line, raise textStyle.size or the emphasis scale."),
-                        facts: ["share": fact(box.smallestPoints / min(width, height)), "minTextSize": .number(minimum)]))
+                        fix: ReviewFix(hint: "Shorten the line, raise textStyle.size, the emphasis scale or its keyed zoom."),
+                        facts: facts))
             }
             if let lines = profile["captionMaxLines"].map({ Int($0) }), track.role == TrackRole.captions, box.lines > lines {
                 issues.append(

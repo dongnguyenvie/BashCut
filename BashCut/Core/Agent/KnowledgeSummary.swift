@@ -29,11 +29,13 @@ public struct KnowledgeSummary: Sendable, Equatable {
         }
         return .object([
             "lessons": .array(lessons.map { lesson in
-                .object([
+                var row: [String: JSONValue] = [
                     "id": .string(lesson.id), "title": .string(Self.clip(lesson.title)),
                     "fix": .string(Self.clip(lesson.fix)), "tags": .array(lesson.tags.map(JSONValue.string)),
                     "scope": .string(lesson.scope.rawValue),
-                ])
+                ]
+                if let check = lesson.check { row["check"] = .string(Self.clip(check)) }
+                return .object(row)
             }),
             "prefs": .array(prefs.map(value)), "facts": .array(facts.map(value)),
             "omitted": .object([
@@ -55,6 +57,7 @@ public struct KnowledgeSummary: Sendable, Equatable {
             lines += lessons.map { lesson in
                 "- \(lesson.id) (\(lesson.scope.rawValue)) \(Self.clip(lesson.title))"
                     + (lesson.fix.isEmpty ? "" : " → \(Self.clip(lesson.fix))")
+                    + (lesson.check.map { " (check: \(Self.clip($0)))" } ?? "")
             }
             if omittedLessons > 0 { lines.append("- … \(omittedLessons) more (`bashcut knowledge lessons --status active`)") }
         }

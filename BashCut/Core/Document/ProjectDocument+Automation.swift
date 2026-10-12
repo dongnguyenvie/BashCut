@@ -267,6 +267,19 @@ extension ProjectDocument {
     }
 
     /// Moves an earlier export's files to the Trash before it is written again.
+    /// Audio roles an export leaves out (`without`: music, sfx, voiceover or dialogue, comma separated).
+    static func exportWithoutRoles(_ list: String?) throws -> Set<String> {
+        guard let list else { return [] }
+        let allowed: Set<String> = [TrackRole.music, TrackRole.sfx, TrackRole.voiceover, TrackRole.dialogue]
+        return try Set(list.split(separator: ",").map { name in
+            let role = name.trimmingCharacters(in: .whitespaces)
+            guard allowed.contains(role) else {
+                throw RPCFailure(-32602, "Unknown sound role \(role): use \(allowed.sorted().joined(separator: ", "))")
+            }
+            return role
+        })
+    }
+
     private static func trash(_ files: [URL]) throws {
         for url in files { try FileManager.default.trashItem(at: url, resultingItemURL: nil) }
     }
@@ -288,6 +301,7 @@ extension ProjectDocument {
             let includeSubRip = arguments.bool("includeSRT")
             let normalizeAudio = arguments.bool("normalizeAudio")
             let bitRate = arguments.optionalDouble("bitrate").map { Int($0 * 1_000_000) }
+            let without = try Self.exportWithoutRoles(arguments.optionalString("without"))
             let (name, replaced) = document.exportName(
                 asked, preset: preset, directory: directory, includeSubRip: includeSubRip,
                 overwrite: arguments.bool("overwrite"))
@@ -303,13 +317,14 @@ extension ProjectDocument {
                     "normalization": normalizeAudio ? "two-pass LUFS" : "off",
                     "output": output.path, "preset": preset.title,
                     "bitrate": bitRate.map { "\(Double($0) / 1_000_000) Mbps" } ?? "preset default",
+                    "sound": without.isEmpty ? "full mix" : "without " + without.sorted().joined(separator: ", "),
                 ]
             ) { [weak document] in
                 guard let document else { throw RPCFailure(-32000, "Editor closed") }
                 try Self.trash(replaced)
                 started.id = try document.startExportAuthorized(
                     name: name, preset: preset, directory: directory, includeSubRip: includeSubRip,
-                    normalizeAudio: normalizeAudio, author: author, videoBitRate: bitRate)
+                    normalizeAudio: normalizeAudio, author: author, videoBitRate: bitRate, withoutRoles: without)
             }
             if !approval.autoApproved {
                 document.message = String(localized: "Waiting for approval: export.start")

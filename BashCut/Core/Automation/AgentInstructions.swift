@@ -89,22 +89,22 @@ extension CommandCatalog {
         always take them from `bashcut timeline get`, never assume IDs such as v1 or t1. `timeline get` also lists
         transitions and markers (sections). To look at the result, `bashcut ui frame [FRAME]` renders the viewer
         picture at a frame to a PNG and returns its path; read that image.
-        Layers: tracks list visual layers back to front, then audio layers, which are mixed. There is exactly one
+        Layers: tracks list visual layers back to front, then audio layers, which are mixed. There is one
         main video layer. Items never overlap on one layer, audio media never goes on a visual layer.
         Adjustment layers (kind adjustment) hold items with only a `color` grade and no media or text; each grades
         every layer below it while on screen. Use `adjustment add` for a grade on a range; there is no project-wide
         style setting. Reusable grades are library looks (`library list --kind look`, `library place`, `library add`).
         Brand kit: `library apply BRAND` (no --item) sets brand, restyles brandRoles text.
-        `schema get` returns the JSON Schema of project.bashcut.json with every field, type and range.
-        Prefer `media place` and `timeline move`, which put content on a free or new layer when the range is taken;
-        raw insert/move operations that overlap are rejected.
+        `schema get`: the JSON Schema of project.bashcut.json (fields, types, ranges).
+        Prefer `media place` and `timeline move` (they use a free or new layer when the range is taken); overlapping
+        raw insert/move operations are rejected.
         Edits need --base-rev N from the latest read. One request is one atomic apply call.
-        Job commands return a job ID; `bashcut jobs wait JOB_ID --done --timeout 100` returns when it ends;
+        Jobs: `bashcut jobs wait JOB_ID --done --timeout 100` returns when it ends;
         `jobs wait ID1,ID2,…` waits for several at once. Their result is one undoable edit.
         Each call is a turn: batch (`media import FOLDER`; sheets, not `ui frame` one by one; `checkpoint status
         --wait 100`; `context get` on start, not per command). Build a cut (or voiceover lines and graphics) as plan.cut:
         `plan check`, then `plan apply`.
-        Installing plugins is user-only. `--format text` prints text results without JSON quoting.
+        Installing plugins is user-only. `--format text` prints results without JSON quoting.
         `project format --canvas landscape|portrait|square` changes the canvas (text sizes follow the short side).
         Clips fit inside the frame; a clip's `fill` (setProperties) or `--clips fill` crops to cover; zoom scales from it.
         Projects: `bashcut project create` / `project open` / `project save`; they refuse to drop unsaved work unless

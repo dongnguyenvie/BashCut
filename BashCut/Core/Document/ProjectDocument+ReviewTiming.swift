@@ -43,11 +43,13 @@ extension ProjectDocument {
         }
         handle("review.sync") { document, arguments, _ in
             var kinds: Set<ReviewSync.Event> = [.cuts]
+            var impacts = false
             if let list = arguments.optionalString("events") {
-                kinds = try Set(list.split(separator: ",").map { name in
-                    let trimmed = name.trimmingCharacters(in: .whitespaces)
-                    guard let event = ReviewSync.Event(rawValue: trimmed) else {
-                        throw RPCFailure(-32602, "Unknown event \(trimmed): use cuts, text, sfx or captions")
+                let names = list.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+                impacts = names.contains("impacts")
+                kinds = try Set(names.filter { $0 != "impacts" }.map { name in
+                    guard let event = ReviewSync.Event(rawValue: name) else {
+                        throw RPCFailure(-32602, "Unknown event \(name): use cuts, text, sfx, captions or impacts")
                     }
                     return event
                 })
@@ -55,6 +57,14 @@ extension ProjectDocument {
             let (words, source) = await document.syncWords()
             var result = ReviewSync.json(document.project, words: words, kinds: kinds, bins: arguments.bool("bins")).object
             result["wordSource"] = .string(source)
+            if impacts {
+                let window = arguments.optionalInt("impactFrames") ?? 12
+                result["impacts"] = ReviewImpacts.impactsJSON(document.project, window: window, beatStrengths: document.timelineBeatStrengths())
+            }
+            if kinds.contains(.sfx) {
+                let gap = min(30, max(0.1, arguments.optionalDouble("runGapSeconds") ?? 2))
+                result["sfxRuns"] = ReviewImpacts.sfxRunsJSON(document.project, gapSeconds: gap)
+            }
             if arguments.bool("rendered") { result["rendered"] = try await document.renderDrift() }
             return .object(result)
         }

@@ -13,7 +13,10 @@ extension CommandCatalog {
         CommandParameter("symptom", .string, "What went wrong or what was noticed", cli: .option("symptom")),
         CommandParameter("cause", .string, "Why it happened", cli: .option("cause")),
         CommandParameter("fix", .string, "What to do next time", cli: .option("fix")),
-        CommandParameter("evidence", .string, "What shows it (frames, files, the user's words)", cli: .option("evidence")),
+        CommandParameter("evidence", .string, "What shows it (frames, files, the user's words quoted)",
+                         cli: .option("evidence")),
+        CommandParameter("check", .string, "Question to ask before the next draft (empty clears)",
+                         cli: .option("check")),
         CommandParameter("tags", .string, "Comma-separated tags (captions, audio, pacing…)", cli: .option("tags")),
     ]
     private static let valueKey = CommandParameter("key", .string, "Key", required: true, cli: .positional)

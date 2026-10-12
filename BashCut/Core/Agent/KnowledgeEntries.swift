@@ -31,6 +31,8 @@ public struct KnowledgeLesson: Codable, Hashable, Sendable, Identifiable {
     /// What to do next time.
     public var fix: String
     public var evidence: String
+    /// A question the agent asks itself before showing the next draft (#524); nil when the lesson has none.
+    public var check: String?
     public var tags: [String]
     public var status: LessonStatus
     public var source: KnowledgeSource
@@ -38,11 +40,12 @@ public struct KnowledgeLesson: Codable, Hashable, Sendable, Identifiable {
     /// The file it was read from; not stored.
     public var scope: KnowledgeScope = .project
 
-    enum CodingKeys: String, CodingKey { case id, title, symptom, cause, fix, evidence, tags, status, source, updated }
+    enum CodingKeys: String, CodingKey { case id, title, symptom, cause, fix, evidence, check, tags, status, source, updated }
 
     public init(
         id: String, title: String, symptom: String = "", cause: String = "", fix: String = "", evidence: String = "",
-        tags: [String] = [], status: LessonStatus = .active, source: KnowledgeSource, scope: KnowledgeScope = .project
+        check: String? = nil, tags: [String] = [], status: LessonStatus = .active, source: KnowledgeSource,
+        scope: KnowledgeScope = .project
     ) {
         self.id = id
         self.title = title
@@ -50,6 +53,7 @@ public struct KnowledgeLesson: Codable, Hashable, Sendable, Identifiable {
         self.cause = cause
         self.fix = fix
         self.evidence = evidence
+        self.check = check.flatMap { $0.isEmpty ? nil : $0 }
         self.tags = tags
         self.status = status
         self.source = source
@@ -66,6 +70,7 @@ public struct KnowledgeLesson: Codable, Hashable, Sendable, Identifiable {
         cause = try container.decodeIfPresent(String.self, forKey: .cause) ?? ""
         fix = try container.decodeIfPresent(String.self, forKey: .fix) ?? ""
         evidence = try container.decodeIfPresent(String.self, forKey: .evidence) ?? ""
+        check = try container.decodeIfPresent(String.self, forKey: .check).flatMap { $0.isEmpty ? nil : $0 }
         tags = try container.decodeIfPresent([String].self, forKey: .tags) ?? []
         status = try container.decodeIfPresent(LessonStatus.self, forKey: .status) ?? .active
         source = try container.decodeIfPresent(KnowledgeSource.self, forKey: .source)
@@ -76,25 +81,35 @@ public struct KnowledgeLesson: Codable, Hashable, Sendable, Identifiable {
 
 /// Fields to change in a lesson; nil leaves a field as it is.
 public struct LessonPatch: Sendable {
-    public var title, symptom, cause, fix, evidence: String?
+    public var title, symptom, cause, fix, evidence, check: String?
     public var tags: [String]?
     public var status: LessonStatus?
 
     public init(
         title: String? = nil, symptom: String? = nil, cause: String? = nil, fix: String? = nil,
-        evidence: String? = nil, tags: [String]? = nil, status: LessonStatus? = nil
+        evidence: String? = nil, check: String? = nil, tags: [String]? = nil, status: LessonStatus? = nil
     ) {
         self.title = title
         self.symptom = symptom
         self.cause = cause
         self.fix = fix
         self.evidence = evidence
+        self.check = check
         self.tags = tags
         self.status = status
     }
 
+    /// Sets the text fields the patch names, besides the title (an empty check removes it).
+    func applyText(to lesson: inout KnowledgeLesson) {
+        if let symptom { lesson.symptom = symptom }
+        if let cause { lesson.cause = cause }
+        if let fix { lesson.fix = fix }
+        if let evidence { lesson.evidence = evidence }
+        if let check { lesson.check = check.isEmpty ? nil : check }
+    }
+
     public var isEmpty: Bool {
-        [title, symptom, cause, fix, evidence].allSatisfy { $0 == nil } && tags == nil && status == nil
+        [title, symptom, cause, fix, evidence, check].allSatisfy { $0 == nil } && tags == nil && status == nil
     }
 }
 
@@ -186,7 +201,7 @@ public enum KnowledgeEntry: Codable, Hashable, Sendable {
         switch self {
         case .lesson(let lesson):
             [("Title", lesson.title), ("Symptom", lesson.symptom), ("Cause", lesson.cause), ("Fix", lesson.fix),
-             ("Evidence", lesson.evidence), ("Tags", lesson.tags.joined(separator: ", ")),
+             ("Evidence", lesson.evidence), ("Check", lesson.check ?? ""), ("Tags", lesson.tags.joined(separator: ", ")),
              ("Status", lesson.status.rawValue)]
                 .filter { !$0.1.isEmpty }
                 .map { "\($0.0): \($0.1)" }.joined(separator: "\n")

@@ -158,10 +158,22 @@ extension CommandCatalog {
             + "from −6 to +6 frames). Words are the stored transcripts heard through the clips (media.transcribe), "
             + "else the caption words. With rendered: rendered {windows [{at, lagMs, correlation}], "
             + "driftMsPerMinute, lagStartMs, lagEndMs} from matching the last export's sound to the timeline's mix "
-            + "every 10 s (positive lag = the render is later); the export must show this revision.",
+            + "every 10 s (positive lag = the render is later); the export must show this revision. "
+            + "impacts adds impacts {summary {count, perMinute, minSpacingSeconds, minSpacingBeats, "
+            + "onStrongestQuarterOfBeats}, events [{frame, frames, source transition|keyframes|overlay, item, kind or "
+            + "changes {property: [from, to]} or media, beat {frame, offsetFrames, strength}, secondsSincePrevious, "
+            + "beatsSincePrevious}]}: changes to the whole picture lasting at most impactFrames (transitions on Main, "
+            + "fast zoom/pan/tilt/rotation/opacity/exposure keys on Main clips and adjustment layers, short pictures "
+            + "over Main). sfx adds sfxRuns [{media, count, items, frames, gainsDb, intervalsFrames, constantGain, "
+            + "constantSpacing}]: three or more placements of one sound file with starts at most runGapSeconds apart. "
+            + "No limit is applied.",
         parameters: [
-            CommandParameter("events", .string, "cuts, text, sfx, captions (comma separated; default cuts)",
+            CommandParameter("events", .string, "cuts, text, sfx, captions, impacts (comma separated; default cuts)",
                              cli: .option("events")),
+            CommandParameter("impactFrames", .integer, "Longest impact, frames (default 12)",
+                             minimum: 1, maximum: 120, cli: .option("impact-frames")),
+            CommandParameter("runGapSeconds", .number, "Largest gap in an sfx run, s (default 2)",
+                             cli: .option("run-gap-seconds")),
             CommandParameter("bins", .boolean, "Add p10/p90 and counts per offset", cli: .flag("bins")),
             CommandParameter("rendered", .boolean, "Also measure the last export's timing against the timeline",
                              cli: .flag("rendered")),

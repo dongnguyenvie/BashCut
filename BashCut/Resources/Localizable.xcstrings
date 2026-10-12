@@ -18,6 +18,12 @@
     "The download failed": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "The download failed" } }, "vi": { "stringUnit": { "state": "translated", "value": "Tải về thất bại" } } } },
     "The last update did not finish; see %@": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "The last update did not finish; see %@" } }, "vi": { "stringUnit": { "state": "translated", "value": "Lần cập nhật trước chưa xong; xem %@" } } } },
     "The project could not be saved, so BashCut was not updated": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "The project could not be saved, so BashCut was not updated" } }, "vi": { "stringUnit": { "state": "translated", "value": "Không lưu được project nên BashCut chưa được cập nhật" } } } },
+    "The same cut with voice and sound effects only, to add a platform's own sound": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "The same cut with voice and sound effects only, to add a platform's own sound" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Cùng bản dựng, chỉ giữ giọng nói và hiệu ứng âm thanh, để thêm nhạc của nền tảng" } }
+      }
+    },
     "Up to about %@ with every plugin checked": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Up to about %@ with every plugin checked" } }, "vi": { "stringUnit": { "state": "translated", "value": "Tối đa khoảng %@ nếu chọn tất cả plugin" } } } },
     "Install…": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Install…" } }, "vi": { "stringUnit": { "state": "translated", "value": "Cài đặt…" } } } },
     "Install (%d)": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Install (%d)" } }, "vi": { "stringUnit": { "state": "translated", "value": "Cài đặt (%d)" } } } },
@@ -45,6 +51,12 @@
     "Update Now": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Update Now" } }, "vi": { "stringUnit": { "state": "translated", "value": "Cập nhật ngay" } } } },
     "Updating Homebrew…": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Updating Homebrew…" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đang cập nhật Homebrew…" } } } },
     "Waiting for approval: app.update": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Waiting for approval: app.update" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đang chờ duyệt: app.update" } } } },
+    "Without music": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Without music" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Không có nhạc nền" } }
+      }
+    },
     "clip": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "clip" } }, "vi": { "stringUnit": { "state": "translated", "value": "clip" } } } },
     "Brief": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Brief" } }, "vi": { "stringUnit": { "state": "translated", "value": "Brief" } } } },
     "Story and plan": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Story and plan" } }, "vi": { "stringUnit": { "state": "translated", "value": "Câu chuyện và kế hoạch" } } } },

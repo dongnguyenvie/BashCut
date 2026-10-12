@@ -13,6 +13,7 @@ struct ExportView: View {
     @State private var directory: URL?
     @State private var includeSubRip = false
     @State private var normalizeAudio = false
+    @State private var withoutMusic = false
     @State private var targetLUFS = -14.0
     @State private var loudnessProvider = ""
 
@@ -57,6 +58,9 @@ struct ExportView: View {
                 }
                 Toggle("Include .srt captions", isOn: $includeSubRip)
                     .disabled(document.project.tracks.first(where: { $0.role == "captions" })?.items.isEmpty != false)
+                Toggle("Without music", isOn: $withoutMusic)
+                    .disabled(!document.project.tracks.contains { $0.role == TrackRole.music && !$0.items.isEmpty })
+                    .help("The same cut with voice and sound effects only, to add a platform's own sound")
                 Toggle("Normalize audio", isOn: $normalizeAudio)
                     .disabled(loudnessProviders.isEmpty)
                 if normalizeAudio {
@@ -188,7 +192,7 @@ struct ExportView: View {
         }
         document.startExport(
             name: name, preset: preset, directory: directory, includeSubRip: includeSubRip,
-            normalizeAudio: normalizeAudio)
+            normalizeAudio: normalizeAudio, withoutRoles: withoutMusic ? [TrackRole.music] : [])
     }
 }
 

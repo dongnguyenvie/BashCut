@@ -25,12 +25,12 @@ extension ProjectDocument {
 
     func startExport(
         name: String, preset: ExportPreset, directory: URL, includeSubRip: Bool,
-        normalizeAudio: Bool = false
+        normalizeAudio: Bool = false, withoutRoles: Set<String> = []
     ) {
         do {
             try startExportAuthorized(
                 name: name, preset: preset, directory: directory, includeSubRip: includeSubRip,
-                normalizeAudio: normalizeAudio)
+                normalizeAudio: normalizeAudio, withoutRoles: withoutRoles)
         } catch {
             message = error.localizedDescription
         }
@@ -40,7 +40,7 @@ extension ProjectDocument {
     @discardableResult
     func startExportAuthorized(
         name: String, preset: ExportPreset, directory: URL, includeSubRip: Bool,
-        normalizeAudio: Bool = false, author: Author = .user, videoBitRate: Int? = nil
+        normalizeAudio: Bool = false, author: Author = .user, videoBitRate: Int? = nil, withoutRoles: Set<String> = []
     ) throws -> String {
         guard !preview.isMaintainingCache else { throw AutomationBusy() }
         guard let root = fileURL?.deletingLastPathComponent() else {
@@ -54,10 +54,12 @@ extension ProjectDocument {
             }
         }
         var request = try ExportRequest(
-            project: project, root: root, workspace: settings.workspace, name: name, preset: preset,
+            project: withoutRoles.isEmpty ? project : project.muting(roles: withoutRoles), root: root,
+            workspace: settings.workspace, name: name, preset: preset,
             directory: directory, includeSubRip: includeSubRip, normalizeAudio: normalizeAudio,
             reserved: exports.queue.reservedOutputs)
         request.videoBitRate = videoBitRate
+        request.withoutRoles = withoutRoles
         request.transcripts = reviewTranscripts
         let queued = exports.isRunning
         let session = sessionID
@@ -111,6 +113,17 @@ extension ProjectDocument {
 
     private func finishExport(_ request: ExportRequest, outcome: ExportOutcome) {
         let current = project.revision == request.source.revision
+        guard request.withoutRoles.isEmpty else {
+            // A version without some of the sound is not the edit's mix: its loudness and QC stay out of review.
+            DebugLog.write("export", "done \(outcome.receipt.url.path) without \(request.withoutRoles.sorted().joined(separator: ","))")
+            emitPluginEvent(.exportFinished, [
+                "output": .string(outcome.receipt.url.path), "preset": .string(request.preset.rawValue),
+                "rev": .integer(request.source.revision),
+            ])
+            message = String(localized: "Export complete")
+            if !exports.isRunning { ui.showExportReport = true }
+            return
+        }
         // The export's loudness gain stays in the file it wrote: storing it in the project bumped the revision (the
         // agent's next edit failed as stale) and stacked under the next export's own measurement.
         recordReviewLoudness(

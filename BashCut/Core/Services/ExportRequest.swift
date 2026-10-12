@@ -20,6 +20,9 @@ public struct ExportRequest: Sendable {
     public var videoBitRate: Int?
     /// Stored transcripts of the media the edit plays, for the report's speech coverage (#507-36).
     public var transcripts: [String: SourceTranscript] = [:]
+    /// Audio roles left out of this render (`export start --without music`, #520); the project's review keeps the
+    /// full mix's loudness and checks.
+    public var withoutRoles: Set<String> = []
 
     public var includesSubRip: Bool { subRip != nil }
 

@@ -48,6 +48,26 @@ extension ProjectDocument {
         return frames
     }
 
+    /// The strength (0–1) of each timeline beat whose music has a stored grid with strengths, by timeline frame; empty
+    /// without one.
+    func timelineBeatStrengths() -> [Int: Double] {
+        guard let mediaID = project.beatGridMediaID,
+            let media = project.media.first(where: { $0.id == mediaID }),
+            let record = try? storedBeatGrid(mediaID)?.object,
+            let strengths = record["grid"]?.object["strengths"]?.array.compactMap(\.double),
+            let seconds = record["beatsSeconds"]?.array.compactMap(\.double), strengths.count == seconds.count
+        else { return [:] }
+        let bySecond = Dictionary(zip(seconds, strengths), uniquingKeysWith: { first, _ in first })
+        var result: [Int: Double] = [:]
+        for row in timelineFrames(of: seconds, media: media) {
+            guard let frame = row.object["frame"]?.int, let second = row.object["seconds"]?.double,
+                let strength = bySecond[second]
+            else { continue }
+            result[frame] = max(result[frame] ?? 0, strength)
+        }
+        return result
+    }
+
     /// Where `media` plays on the timeline, `[{item, at, fromSeconds, toSeconds}]`, to place a source second.
     func mediaPlacements(_ media: Media) -> JSONValue {
         .array(project.tracks.flatMap(\.items).filter { $0.mediaID == media.id }.map { item in

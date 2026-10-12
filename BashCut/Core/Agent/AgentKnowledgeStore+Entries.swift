@@ -42,7 +42,8 @@ extension AgentKnowledgeStore {
     @discardableResult
     public func addLesson(
         title: String, symptom: String = "", cause: String = "", fix: String = "", evidence: String = "",
-        tags: [String] = [], status: LessonStatus = .active, scope: KnowledgeScope, source: KnowledgeSource
+        check: String? = nil, tags: [String] = [], status: LessonStatus = .active, scope: KnowledgeScope,
+        source: KnowledgeSource
     ) throws -> KnowledgeLesson {
         let title = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !title.isEmpty else { throw KnowledgeError("A lesson needs a title") }
@@ -53,7 +54,7 @@ extension AgentKnowledgeStore {
             id = "l-" + UUID().uuidString.prefix(8).lowercased()
         } while taken.contains(id)
         let lesson = KnowledgeLesson(
-            id: id, title: title, symptom: symptom, cause: cause, fix: fix, evidence: evidence,
+            id: id, title: title, symptom: symptom, cause: cause, fix: fix, evidence: evidence, check: check,
             tags: Self.normalized(tags), status: status, source: source, scope: scope)
         all.append(lesson)
         try writeLessons(all, scope: scope)
@@ -79,10 +80,7 @@ extension AgentKnowledgeStore {
             guard !title.isEmpty else { throw KnowledgeError("A lesson needs a title") }
             lesson.title = title
         }
-        if let symptom = patch.symptom { lesson.symptom = symptom }
-        if let cause = patch.cause { lesson.cause = cause }
-        if let fix = patch.fix { lesson.fix = fix }
-        if let evidence = patch.evidence { lesson.evidence = evidence }
+        patch.applyText(to: &lesson)
         if let tags = patch.tags { lesson.tags = Self.normalized(tags) }
         if let status = patch.status { lesson.status = status }
         lesson.updated = source.date

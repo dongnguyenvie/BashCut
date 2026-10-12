@@ -120,7 +120,8 @@ extension ProjectDocument {
             let lesson = try document.agents.knowledgeStore.addLesson(
                 title: arguments.string("title"), symptom: arguments.optionalString("symptom") ?? "",
                 cause: arguments.optionalString("cause") ?? "", fix: arguments.optionalString("fix") ?? "",
-                evidence: arguments.optionalString("evidence") ?? "", tags: Self.tags(arguments) ?? [],
+                evidence: arguments.optionalString("evidence") ?? "", check: arguments.optionalString("check"),
+                tags: Self.tags(arguments) ?? [],
                 status: status, scope: scope, source: Self.knowledgeSource(author, arguments))
             return try Self.json(lesson)
         }
@@ -131,7 +132,8 @@ extension ProjectDocument {
             let patch = LessonPatch(
                 title: arguments.values["title"]?.string, symptom: arguments.values["symptom"]?.string,
                 cause: arguments.values["cause"]?.string, fix: arguments.values["fix"]?.string,
-                evidence: arguments.values["evidence"]?.string, tags: Self.tags(arguments),
+                evidence: arguments.values["evidence"]?.string, check: arguments.values["check"]?.string,
+                tags: Self.tags(arguments),
                 status: try Self.lessonStatus(arguments.optionalString("status")))
             // Taking a lesson out of review is the user's decision, like knowledge approve.
             let decides = lesson.status == .proposed && patch.status.map { $0 != .proposed } == true
