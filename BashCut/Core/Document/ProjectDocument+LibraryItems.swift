@@ -378,10 +378,16 @@ extension ProjectDocument {
                 kind, itemID: arguments.optionalString("item"), mediaID: arguments.optionalString("media"))
             changes["params"] = .object(selection.params)
             let preview = kind == .effectPreset ? await document.effectPreview(itemID: arguments.optionalString("item")) : nil
-            return try await document.addLibraryItem(
+            let trimmed = try await document.trimmedSelectionFile(selection.params, file: selection.file)
+            var waiting = false
+            // A save waiting for approval copies the trimmed file later; the system's temporary folder cleans it.
+            defer { if !waiting { Self.removeTrimmedSelection(trimmed) } }
+            let saved = try await document.addLibraryItem(
                 kind: kind, name: try arguments.string("name"), id: arguments.optionalString("id"),
                 scope: LibraryScope(rawValue: try arguments.string("scope")) ?? .project, changes: changes,
-                file: selection.file, preview: preview, author: author, method: "library.save-selection")
+                file: trimmed ?? selection.file, preview: preview, author: author, method: "library.save-selection")
+            waiting = saved.object["approval"] != nil
+            return saved
         }
         handleAuthored("library.move") { document, arguments, author in
             let item = try document.libraryCatalog.item(try arguments.string("id"), scope: Self.scope(arguments))

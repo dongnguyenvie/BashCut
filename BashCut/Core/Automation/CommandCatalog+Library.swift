@@ -133,7 +133,9 @@ extension CommandCatalog {
                 + "clip's length, and the sound effect at its start; a still of the clip as its preview), the transition "
                 + "at the selected clip (kind, duration, easing and the sound a preset placed there), or a grade as a look: "
                 + "the full filter stack, with the project LUT it uses copied in as the look's file, or an audio clip (or "
-                + "project audio media) as an audio item: its file copied in, its length, and music or sfx from its layer, or "
+                + "project audio media) as an audio item: its file copied in (for a clip trimmed to part of its file, only "
+                + "the part it plays, as WAV from an uncompressed file or else M4A, with trimmedFrom {start, end} in the "
+                + "file's seconds), its length, and music or sfx from its layer, or "
                 + "an overlay item as a sticker: an image or alpha movie with its file, size, position and length, or an "
                 + "emoji text item with its text preset.",
             parameters: [

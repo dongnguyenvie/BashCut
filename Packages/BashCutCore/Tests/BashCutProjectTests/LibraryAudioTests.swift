@@ -224,4 +224,22 @@ struct LibraryAudioTests {
             Self.sound("whoosh", seconds: 2), role: audio.placementRole(seconds: nil), at: 0)
         #expect(project.track(id: placed.trackID)?.role == TrackRole.sfx)
     }
+
+    @Test("A trimmed audio clip saves only the part it plays: its range, length and where it came from")
+    func trimmedClipRange() throws {
+        let media = Self.sound("song", seconds: 10)
+        let fps = FrameRate(30, 1)
+        // The whole file, or within a frame of it, is not a trim.
+        #expect(LibrarySelection.audioRange(of: Item(media: "song", at: 0, duration: 300), media: media, fps: fps) == nil)
+        let clip = Item(media: "song", at: 90, duration: 60, sourceIn: 45)
+        let range = try #require(LibrarySelection.audioRange(of: clip, media: media, fps: fps))
+        #expect(abs(range.lowerBound - 1.5) < 1e-9 && abs(range.upperBound - 3.5) < 1e-9)
+        var fast = clip
+        fast["speed"] = .number(2)
+        #expect(LibrarySelection.audioRange(of: fast, media: media, fps: fps).map { abs($0.upperBound - 5.5) < 1e-9 } == true)
+        let params = try LibrarySelection.audio(media, trackRole: TrackRole.music, range: range)
+        #expect(params["seconds"] == .integer(2))
+        #expect(params["trimmedFrom"] == .object(["start": .number(1.5), "end": .number(3.5)]))
+        #expect(try LibraryAudio(params: params) == LibraryAudio(role: "music", seconds: 2))
+    }
 }

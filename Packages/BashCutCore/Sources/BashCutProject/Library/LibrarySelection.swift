@@ -94,7 +94,11 @@ public enum LibrarySelection {
 
     /// An audio item (#78) from project audio media: its length, and a role from the layer its clip is on (`trackRole`;
     /// a Music layer gives music, an SFX layer sfx). The caller saves the media's file as the item's file.
-    public static func audio(_ media: Media, trackRole: String?) throws -> [String: JSONValue] {
+    /// With `range` (seconds of the media's file, `audioRange`), the item is that part of it: its length, and
+    /// `trimmedFrom {start, end}` saying where it came from; the caller saves that part as the item's file.
+    public static func audio(
+        _ media: Media, trackRole: String?, range: ClosedRange<Double>? = nil
+    ) throws -> [String: JSONValue] {
         guard media.kind == "audio", media.frames > 0 else {
             throw ProjectError.invalid("\(media.id) is not audio media; save an audio file or clip")
         }
@@ -103,7 +107,24 @@ public enum LibrarySelection {
         case TrackRole.music: "music"
         default: nil
         }
-        return LibraryAudio(role: role, seconds: media.durationSeconds).params()
+        guard let range else { return LibraryAudio(role: role, seconds: media.durationSeconds).params() }
+        var params = LibraryAudio(role: role, seconds: range.upperBound - range.lowerBound).params()
+        params["trimmedFrom"] = .object([
+            "start": EffectRecipe.number((range.lowerBound * 1_000).rounded() / 1_000),
+            "end": EffectRecipe.number((range.upperBound * 1_000).rounded() / 1_000),
+        ])
+        return params
+    }
+
+    /// The seconds of `media`'s file an audio clip plays (its trim, at its speed), or nil when it plays the whole
+    /// file (within one frame of each end).
+    public static func audioRange(of item: Item, media: Media, fps: FrameRate) -> ClosedRange<Double>? {
+        let total = media.durationSeconds
+        let start = min(total, max(0, Double(item.sourceIn) / media.fps.value))
+        let end = min(total, start + item.sourceSeconds(afterFrames: item.duration, fps: fps))
+        let frame = 1 / media.fps.value
+        guard end > start, start > frame / 2 || end < total - frame / 2 else { return nil }
+        return start...end
     }
 
     private static func effect(

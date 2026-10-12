@@ -1,6 +1,7 @@
 import AVFoundation
 import BashCutAutomation
 import BashCutDocument
+import BashCutEngine
 import BashCutProject
 import Foundation
 
@@ -285,13 +286,15 @@ extension ProjectDocument {
     }
 
     /// An audio item's params and file from project audio: the media `mediaID`, or the clip `itemID` (the
-    /// selection by default), whose layer gives its role.
+    /// selection by default), whose layer gives its role. A clip trimmed to part of its file gives that part's length
+    /// and `trimmedFrom`; `trimmedSelectionFile` writes that part before saving.
     func audioSelection(itemID: String?, mediaID: String?) throws -> (params: [String: JSONValue], file: URL?) {
         guard let root = fileURL?.deletingLastPathComponent() else {
             throw RPCFailure(-32602, "Save the project before saving its audio to the library")
         }
         let media: Media
         var trackRole: String?
+        var range: ClosedRange<Double>?
         if let mediaID {
             guard let found = project.media.first(where: { $0.id == mediaID }) else {
                 throw RPCFailure(-32602, "Unknown media \(mediaID)")
@@ -310,13 +313,43 @@ extension ProjectDocument {
             }
             media = found
             trackRole = track.role
+            range = LibrarySelection.audioRange(of: item, media: found, fps: project.fps)
         }
         let params: [String: JSONValue]
-        do { params = try LibrarySelection.audio(media, trackRole: trackRole) } catch {
+        do { params = try LibrarySelection.audio(media, trackRole: trackRole, range: range) } catch {
             throw RPCFailure.from(error, fallbackCode: -32602)
         }
         let file = try MediaPathResolver.resolve(media.path, projectRoot: root, workspaceRoot: settings.workspace)
         return (params, file)
+    }
+
+    /// For an audio selection with `trimmedFrom` (a trimmed clip), the part of `file` the clip plays, written to a
+    /// new temporary folder (remove it with `removeTrimmedSelection` once saved); nil otherwise.
+    func trimmedSelectionFile(_ params: [String: JSONValue], file: URL?) async throws -> URL? {
+        guard let file, let trim = params["trimmedFrom"]?.object, let start = trim["start"]?.double,
+            let end = trim["end"]?.double, end > start
+        else { return nil }
+        let folder = FileManager.default.temporaryDirectory
+            .appendingPathComponent("bashcut-trim-\(UUID().uuidString)", isDirectory: true)
+        return try await LibraryWorker.shared.run {
+            do {
+                try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+                let name = file.deletingPathExtension().lastPathComponent
+                let output = folder.appendingPathComponent(name)
+                    .appendingPathExtension(try AudioRangeWriter.outputExtension(for: file))
+                try AudioRangeWriter.write(source: file, range: start...end, to: output)
+                return output
+            } catch {
+                try? FileManager.default.removeItem(at: folder)
+                throw RPCFailure(-32602, "Could not save the clip's part of \(file.lastPathComponent): \(error.localizedDescription)")
+            }
+        }
+    }
+
+    /// Removes the temporary folder of a file `trimmedSelectionFile` wrote.
+    nonisolated static func removeTrimmedSelection(_ file: URL?) {
+        guard let folder = file?.deletingLastPathComponent(), folder.lastPathComponent.hasPrefix("bashcut-trim-") else { return }
+        try? FileManager.default.removeItem(at: folder)
     }
 
     // MARK: Automation
