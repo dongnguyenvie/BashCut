@@ -468,17 +468,22 @@ extension ProjectDocument {
             if !report.available { throw CapabilityUnavailable(report) }
         }
         guard !conflict else { throw RPCFailure(-32003, "The project has a file conflict; retry later", category: .fileConflict) }
-        if let capability = CommandCatalog.capabilities[method], plugins.calling.contains(capability) {
-            throw RPCFailure(-32003, "\(capability) is already running; retry later", category: .busyRunning)
-        }
-        let id = jobs.start(method, author: author, requestID: requestID, work: { [weak self] _ in
+        let jobWork: @MainActor (JobReporter) async throws -> JSONValue = { [weak self] _ in
             guard let self else { throw CancellationError() }
             return try await work(self)
-        }, finished: { [weak self] outcome in
+        }
+        let finished: @MainActor (Result<JSONValue, any Error>) -> Void = { [weak self] outcome in
             guard case .failure(let error) = outcome, !JobCenter.isCancellation(error) else { return }
             self?.message = method + ": " + error.localizedDescription
-        })
+        }
         message = author.rawValue.capitalized + ": " + method
-        return .object(["job": .string(id), "state": .string("running")])
+        guard let capability = CommandCatalog.capabilities[method] else {
+            let id = jobs.start(method, author: author, requestID: requestID, work: jobWork, finished: finished)
+            return .object(["job": .string(id), "state": .string("running")])
+        }
+        let (id, queued) = startCapabilityTurn(
+            CapabilityTurn(capability: capability, method: method, author: author, requestID: requestID),
+            work: jobWork, finished: finished)
+        return .object(["job": .string(id), "state": .string(queued ? "queued" : "running")])
     }
 }

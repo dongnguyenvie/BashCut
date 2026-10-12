@@ -24,7 +24,8 @@ extension ProjectDocument {
             for (key, value) in try style(item, project) { item[key] = value }
         }
         var planner = LayerPlanner(project)
-        let track = try planner.place(item, on: placement.trackID ?? project.requireTrack(role: TrackRole.captions).id)
+        // Without --track a preset is a title: it goes on the titles layer, never among the captions.
+        let track = try planner.place(item, on: placement.trackID ?? planner.titleTrack())
         let revision = try commitPlan(planner, label: label, author: placement.author, baseRevision: placement.baseRevision)
         selectedTrackID = track
         selectedID = item.id

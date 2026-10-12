@@ -172,7 +172,7 @@ private struct EffectPlanBuilder {
                 ).json
             }
             overlay[EffectRecipe.textField] = .string(target)
-            try planner.place(overlay, on: project.requireTrack(role: TrackRole.captions).id)
+            try planner.place(overlay, on: planner.titleTrack())
         }
     }
 

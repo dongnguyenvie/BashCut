@@ -110,10 +110,8 @@ extension ProjectDocument {
 
     private func finishExport(_ request: ExportRequest, outcome: ExportOutcome) {
         let current = project.revision == request.source.revision
-        if current, let audio = ExportController.normalizedAudio(outcome, current: project["audio"]) {
-            apply(.setProjectProperties(patch: ["audio": audio]), label: "Normalize audio")
-        }
-        // The write-back above only stores the gain the export already applied, so the measurement describes it.
+        // The export's loudness gain stays in the file it wrote: storing it in the project bumped the revision (the
+        // agent's next edit failed as stale) and stacked under the next export's own measurement.
         recordReviewLoudness(
             outcome.finalMeasurement, revision: current ? project.revision : request.source.revision, preset: request.preset)
         lastRender = (outcome.receipt.url, current ? project.revision : request.source.revision)

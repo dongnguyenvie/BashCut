@@ -32,13 +32,13 @@ extension ProjectDocument {
         }
     }
 
-    /// Replaces `key` (or with merge, its top-level fields) as one undoable edit; null clears it.
+    /// Replaces `key` as one undoable edit; null clears it. With merge, objects merge key by key at every depth (null
+    /// deletes a key) and arrays or values replace, like `patchItems`.
     func setPlanObject(_ key: String, _ arguments: CommandArguments, author: Author, label: String) throws -> JSONValue {
         guard let value = arguments["value"] else { throw RPCFailure(-32602, "Give the \(key) as JSON") }
         var next = value
-        if arguments.bool("merge"), case .object(let patch) = value, case .object(var current)? = project[key] {
-            for (field, fieldValue) in patch { current[field] = fieldValue == .null ? nil : fieldValue }
-            next = .object(current)
+        if arguments.bool("merge"), case .object = value, case .object? = project[key] {
+            next = ItemPatch.merge(project[key], value)
         }
         do {
             try ProjectPlan.validateNotes(next, key: key)

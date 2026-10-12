@@ -204,7 +204,7 @@ public enum ProjectSchema {
         return try encoder.encode(document) + Data("\n".utf8)
     }
 
-    private static var definitions: [String: JSONValue] {
+    static var definitions: [String: JSONValue] {
         [
             "rational": .object([
                 "description": .string("[numerator, denominator]"), "type": .string("array"),

@@ -86,23 +86,6 @@ public final class ExportController {
         }
     }
 
-    /// The project's `audio` properties after a normalized export, or nil when the export did not
-    /// measure loudness with a plugin.
-    public static func normalizedAudio(_ outcome: ExportOutcome, current: JSONValue?) -> JSONValue? {
-        guard let generated = outcome.generated, let mixGain = outcome.mixGainDb else { return nil }
-        let loudness = outcome.finalMeasurement
-        var audio = current?.object ?? [:]
-        audio["mixGainDb"] = .number(mixGain)
-        if let loudness {
-            audio["measuredLUFS"] = .number(loudness.integratedLUFS)
-            audio["truePeakDbTP"] = .number(loudness.truePeakDbTP)
-        }
-        audio["measurementVerified"] = .bool(outcome.verified)
-        if let range = loudness?.loudnessRangeLU { audio["loudnessRangeLU"] = .number(range) }
-        audio["measuredBy"] = .object(generated.provenance.json)
-        return .object(audio)
-    }
-
     /// `export.status`: while an export runs, the top-level fields describe it and the last receipt
     /// moves to `lastExport`.
     public var statusJSON: JSONValue {

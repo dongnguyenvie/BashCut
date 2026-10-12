@@ -162,7 +162,7 @@ extension PlanCut {
     ) throws -> [Placement] {
         guard !titles.isEmpty else { return [] }
         let fps = planner.project.fps.value
-        let captions = try planner.project.requireTrack(role: TrackRole.captions)
+        let titlesTrack = try planner.titleTrack()
         var placements: [Placement] = []
         for title in titles {
             let anchor = title.clip.flatMap { id in anchors.first { $0.id == id } } ?? title.section.flatMap { sections[$0] }
@@ -177,7 +177,7 @@ extension PlanCut {
                 item[key] = value
             }
             item[tag] = .string(title.id)
-            try planner.place(item, on: captions.id)
+            try planner.place(item, on: titlesTrack)
             placements.append(Placement(id: title.id, at: item.at, end: item.end))
         }
         return placements

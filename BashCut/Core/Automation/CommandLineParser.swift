@@ -19,11 +19,27 @@ public enum CommandLineParser {
         (["Commands:"] + CommandCatalog.specs.map { "  \($0.usage)" }).joined(separator: "\n")
     }
 
+    /// The commands of `group` (`timeline`), or nil when no command starts with it.
+    public static func groupHelp(_ group: String) -> String? {
+        let specs = CommandCatalog.specs.filter { $0.cliWords.first == group }
+        guard !specs.isEmpty else { return nil }
+        return (["Commands in \(group) (bashcut \(group) <command> --help for one):"] + specs.map { "  \($0.usage)" })
+            .joined(separator: "\n")
+    }
+
+    /// For an unknown command: its group's commands, else the group names (the full list is `bashcut --help`).
+    static func unknownHelp(_ words: [String]) -> String {
+        if let group = words.first, let help = groupHelp(group) { return help }
+        var groups: [String] = []
+        for spec in CommandCatalog.specs { if let first = spec.cliWords.first, !groups.contains(first) { groups.append(first) } }
+        return "Groups: " + groups.joined(separator: ", ") + " (bashcut <group> --help lists its commands)"
+    }
+
     public static func parse(_ words: [String]) throws -> Invocation {
         var words = words
         let format = try extractFormat(&words)
         guard let spec = CommandCatalog.specs.first(where: { words.starts(with: $0.cliWords) }) else {
-            throw Failure(message: "Unknown command: \(words.prefix(2).joined(separator: " "))\n\(help)")
+            throw Failure(message: "Unknown command: \(words.prefix(2).joined(separator: " "))\n\(unknownHelp(words))")
         }
         do {
             var params = try parameters(Array(words.dropFirst(spec.cliWords.count)), for: spec)

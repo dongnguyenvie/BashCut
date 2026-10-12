@@ -12,6 +12,12 @@ import Foundation
     var words: [String] = []
 
     func run() throws {
+        // `bashcut timeline --help` or `bashcut help timeline`: that group's commands only.
+        let asked = words.first == "help" ? Array(words.dropFirst()) : words.filter { $0 != "--help" && $0 != "-h" }
+        if asked.count == 1, words.count == 2, let help = CommandLineParser.groupHelp(asked[0]) {
+            FileHandle.standardOutput.write(Data((help + "\n").utf8))
+            return
+        }
         if words.first == "help", words.count > 1 {
             guard let spec = CommandCatalog.specs.first(where: { $0.cliWords == Array(words.dropFirst()) }) else {
                 throw report(RPCFailure(-32602, "Unknown command: \(words.dropFirst().joined(separator: " "))"))

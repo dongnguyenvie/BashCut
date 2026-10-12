@@ -141,3 +141,14 @@ public struct SourceTranscript: Codable, Sendable, Equatable {
 
     static func rounded(_ value: Double) -> Double { TimelineTranscript.rounded(value) }
 }
+
+extension SourceTranscript {
+    /// `from`…`to` (source seconds) widened so neither edge falls inside a spoken word: an edge inside a word moves
+    /// to that word's start (in) or end (out). Up to `slack` seconds inside a word counts as on its edge.
+    public func outsideWords(from: Double, to: Double, slack: Double) -> (from: Double, to: Double) {
+        let spoken = words.filter { $0.event == nil && $0.end > $0.start }
+        let start = spoken.first { $0.start + slack < from && from < $0.end - slack }?.start ?? from
+        let end = spoken.first { $0.start + slack < to && to < $0.end - slack }?.end ?? to
+        return (start, end)
+    }
+}

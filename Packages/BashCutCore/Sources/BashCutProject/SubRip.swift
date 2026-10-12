@@ -97,7 +97,8 @@ public enum SubRip {
 
     public static func encode(_ project: Project) throws -> String {
         try project.validate()
-        let captions = project.tracks.filter { $0.kind == "text" }.flatMap(\.items).enumerated()
+        // Titles (hooks, place cards, CTAs) are on-screen design, not speech: they stay out of the subtitles.
+        let captions = project.tracks.filter { $0.kind == "text" && $0.role != TrackRole.titles }.flatMap(\.items).enumerated()
             .filter { !$0.element.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
             .sorted { $0.element.at == $1.element.at ? $0.offset < $1.offset : $0.element.at < $1.element.at }
         return captions.enumerated().map { index, entry in
