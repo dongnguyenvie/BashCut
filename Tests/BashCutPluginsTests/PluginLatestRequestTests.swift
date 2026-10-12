@@ -28,13 +28,13 @@ import Testing
         }
     }
 
-    /// Waits (up to 5 s) for `condition`, so the tests hold on a busy machine.
+    /// Waits (up to 30 s) for `condition`, so the tests hold on a busy machine.
     private func until(_ condition: () -> Bool) async throws {
-        for _ in 0..<500 where !condition() { try await Task.sleep(for: .milliseconds(10)) }
+        for _ in 0..<3000 where !condition() { try await Task.sleep(for: .milliseconds(10)) }
     }
 
     private func settle(_ request: PluginLatestRequest) async throws {
-        for _ in 0..<200 where request.isActive { try await Task.sleep(for: .milliseconds(10)) }
+        for _ in 0..<3000 where request.isActive { try await Task.sleep(for: .milliseconds(10)) }
         #expect(!request.isActive)
     }
 
@@ -43,8 +43,8 @@ import Testing
         let request = PluginLatestRequest()
         let log = Log()
         for index in 0..<50 {
-            request.schedule(after: .milliseconds(400), work(index, log))
-            try await Task.sleep(for: .milliseconds(2))
+            request.schedule(after: .milliseconds(100), work(index, log))
+            await Task.yield()
         }
         try await settle(request)
         #expect(request.started == 1)
@@ -56,8 +56,8 @@ import Testing
         let request = PluginLatestRequest()
         let log = Log()
         for index in 0..<5 {
-            // Each request starts before the next is scheduled; none could finish in 2 s on its own.
-            request.schedule(after: .zero, work(index, log, milliseconds: index == 4 ? 50 : 2000))
+            // Each request starts before the next is scheduled; the others would run a minute unless cancelled.
+            request.schedule(after: .zero, work(index, log, milliseconds: index == 4 ? 50 : 60_000))
             try await until { log.started.contains(index) }
         }
         try await settle(request)
@@ -70,7 +70,7 @@ import Testing
     func cancel() async throws {
         let request = PluginLatestRequest()
         let log = Log()
-        request.schedule(after: .zero, work(1, log, milliseconds: 2000))
+        request.schedule(after: .zero, work(1, log, milliseconds: 60_000))
         try await until { log.started == [1] }
         request.schedule(after: .milliseconds(100), work(2, log))
         request.cancel()
