@@ -39,6 +39,7 @@ extension ProjectDocument {
         registerBeatGridCommands()
         registerVisionCommands()
         registerReframeCommands()
+        registerTextLineCommands()
         registerSpeechRateCommands()
         registerVoiceCheckCommands()
         registerVoiceTakeCommands()

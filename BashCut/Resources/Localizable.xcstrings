@@ -1,6 +1,9 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Lines": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Lines" } }, "vi": { "stringUnit": { "state": "translated", "value": "Các dòng" } } } },
+    "Empty line": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Empty line" } }, "vi": { "stringUnit": { "state": "translated", "value": "Dòng trống" } } } },
+    "Use the title's look for this line": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Use the title's look for this line" } }, "vi": { "stringUnit": { "state": "translated", "value": "Dùng kiểu chữ của tiêu đề cho dòng này" } } } },
     "Crop": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Crop" } }, "vi": { "stringUnit": { "state": "translated", "value": "Cắt khung" } } } },
     "Corner radius": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Corner radius" } }, "vi": { "stringUnit": { "state": "translated", "value": "Bo góc" } } } },
     "Keyframe crop at playhead": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Keyframe crop at playhead" } }, "vi": { "stringUnit": { "state": "translated", "value": "Keyframe cắt khung tại đầu phát" } } } },

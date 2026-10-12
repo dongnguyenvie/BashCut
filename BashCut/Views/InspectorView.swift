@@ -228,6 +228,7 @@ struct InspectorView: View {
                     set: { document.patchSelected(["textStyle": .object($0)], label: "Text style", coalescing: true) }),
                 language: document.contentLanguage,
                 addFont: document.fileURL == nil ? nil : { document.importFont() })
+            TextLineStyleControls(document: document, item: item)
             number(
                 "Outline", group: "textStyle", key: "strokeWidth",
                 defaultValue: TextPresetStyle.defaults(item.textPreset)["strokeWidth"] ?? 0, range: 0...12)

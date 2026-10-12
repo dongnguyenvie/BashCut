@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 210 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 211 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -966,7 +966,7 @@ Set one keyframe like the Inspector's controls with keyframes on: property at a 
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_clip_keyframe`
 - `item`: string. Item ID; the selection by default
-- `property`: string, one of color.contrast, color.exposure, color.lutStrength, color.saturation, opacity, pan, rotation, textStyle.lineHeight, textStyle.positionX, textStyle.positionY, textStyle.size, textStyle.strokeWidth, textStyle.tracking, tilt, volume, zoom. Property; all of them by default
+- `property`: string, one of color.contrast, color.exposure, color.lutStrength, color.saturation, crop.bottom, crop.left, crop.radius, crop.right, crop.top, opacity, pan, rotation, textStyle.lineHeight, textStyle.positionX, textStyle.positionY, textStyle.size, textStyle.strokeWidth, textStyle.tracking, tilt, volume, zoom. Property; all of them by default
 - `value`: number. Value
 - `atFrame`: integer, ≥ 0. Timeline frame inside the item; the playhead by default
 - `ease`: string. Change to the next key: linear, in, out, inOut, hold or cubic-bezier(x1,y1,x2,y2)
@@ -1003,6 +1003,22 @@ Play a video clip backwards (with its linked sound): renders a reversed copy of 
 
 - Mode: edit · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_clip_reverse`
 - `item`: string. Item ID; the selected clip by default
+
+## text
+
+### `bashcut text line-style [<item>] --line <line> [--font <font>] [--scale <scale>] [--fill <fill>] [--stroke <stroke>] [--clear] --base-rev <baseRev>`
+
+Give one line of a text item its own look (two fonts in one title, Inspector › Text › Lines): font (a PostScript name from fonts list, which picks the family and the weight), scale (× the block's font size; the line is fitted to the frame on its own), fill and stroke (#RRGGBB). line counts from the top (0), negative from the bottom. Stored in textStyle.lines (one entry per line, null keeps the block's look); given fields merge into the line's, "none" removes one, clear drops the line's look. One undo step. Returns rev, item and lines.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_text_line-style`
+- `item`: string. Text item ID; the selection by default
+- `line`: integer, required. Line from the top (0), negative from the bottom
+- `font`: string. Font PostScript name, or none
+- `scale`: number, 0.2…5. Size × the block's font size
+- `fill`: string. Text colour #RRGGBB, or none
+- `stroke`: string. Outline colour #RRGGBB, or none
+- `clear`: boolean. Drop the line's own look
+- `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
 
 ## jobs
 

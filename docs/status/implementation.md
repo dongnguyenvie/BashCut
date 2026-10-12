@@ -125,6 +125,8 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   lines) sample one picture every `--step` source seconds through the built-in `bashcut.vision` plugin (Apple
   Vision); raw boxes, confidence and time, no labels. The boxes are kept per file content
   (`.bashcut/cache/subjects/`, merged across runs).
+- Two fonts in one title: `textStyle.lines` (per-line font, scale, fill, stroke), `text line-style`, Inspector ›
+  Text › Lines.
 - `clip reframe` (P3-J1) crops a clip or image to its subject from those boxes (measuring missing ones first):
   `locked`, `cut` (hold keys when the subject drifts) or `follow` (smoothed pan/tilt keys), every limit a
   parameter (anchor, zoom, confidence, gate, minimum subject share, drift, hold, smoothing). Below the gate it fits

@@ -145,6 +145,26 @@ extension CommandCatalog {
             ]),
         reframeSpec,
         CommandSpec(
+            "text.line-style", .edit,
+            "Give one line of a text item its own look (two fonts in one title, Inspector › Text › Lines): font (a "
+                + "PostScript name from fonts list, which picks the family and the weight), scale (× the block's font "
+                + "size; the line is fitted to the frame on its own), fill and stroke (#RRGGBB). line counts from the top "
+                + "(0), negative from the bottom. Stored in textStyle.lines (one entry per line, null keeps the block's "
+                + "look); given fields merge into the line's, \"none\" removes one, clear drops the line's look. One undo "
+                + "step. Returns rev, item and lines.",
+            parameters: [
+                CommandParameter("item", .string, "Text item ID; the selection by default", cli: .positional),
+                CommandParameter("line", .integer, "Line from the top (0), negative from the bottom", required: true,
+                                 cli: .option("line")),
+                CommandParameter("font", .string, "Font PostScript name, or none", cli: .option("font")),
+                CommandParameter("scale", .number, "Size × the block's font size", range: TextLineStyles.scaleRange,
+                                 cli: .option("scale")),
+                CommandParameter("fill", .string, "Text colour #RRGGBB, or none", cli: .option("fill")),
+                CommandParameter("stroke", .string, "Outline colour #RRGGBB, or none", cli: .option("stroke")),
+                CommandParameter("clear", .boolean, "Drop the line's own look", cli: .flag("clear")),
+                baseRevision,
+            ]),
+        CommandSpec(
             "clip.reverse", .edit,
             "Play a video clip backwards (with its linked sound): renders a reversed copy of the source it uses into "
                 + "the project's reversed/ folder and points the clip at it. Reversing again restores the original.",

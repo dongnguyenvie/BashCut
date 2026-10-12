@@ -424,7 +424,9 @@ public enum ProjectSchema {
                 "transform": "Framing",
                 "crop": "Video picture: the visible part of the source frame (the picture keeps its place; zoom and pan move it)",
             ]
-            properties[name] = .object(group(name, summaries[name] ?? "Text style overrides"))
+            properties[name] = .object(group(
+                name, summaries[name] ?? "Text style overrides",
+                extra: name == "textStyle" ? ["lines": textLinesSchema] : [:]))
         }
         for property in ItemProperty.all where property.group == nil {
             properties[property.key] = schema(for: property)
@@ -432,6 +434,26 @@ public enum ProjectSchema {
         properties["voice"] = voiceItemSchema
         return fields("A timeline item; see the layer rules for which fields it needs", required: ["id", "at", "dur"],
                       properties: properties)
+    }
+
+    /// `textStyle.lines` (`TextLineStyles`): each line's own look, in reading order.
+    private static var textLinesSchema: JSONValue {
+        let color: JSONValue = .object(["type": .string("string"), "pattern": .string("^#[0-9A-Fa-f]{6}$")])
+        return .object([
+            "type": .string("array"), "maxItems": .integer(TextLineStyles.maximumLines),
+            "description": .string("Each line's own look in reading order (two fonts in one title); null keeps the block's"),
+            "items": .object([
+                "type": .array([.string("object"), .string("null")]), "additionalProperties": .bool(false),
+                "properties": .object([
+                    "font": .object(["type": .string("string"), "minLength": .integer(1), "maxLength": .integer(128),
+                                     "description": .string("Font PostScript name (family and weight)")]),
+                    "scale": .object(["type": .string("number"), "minimum": .number(TextLineStyles.scaleRange.lowerBound),
+                                      "maximum": .number(TextLineStyles.scaleRange.upperBound),
+                                      "description": .string("Size × the block's font size")]),
+                    "fill": color, "stroke": color,
+                ]),
+            ]),
+        ])
     }
 
     private static func group(_ name: String, _ summary: String, extra: [String: JSONValue] = [:]) -> [String: JSONValue] {

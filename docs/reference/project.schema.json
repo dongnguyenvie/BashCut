@@ -999,6 +999,40 @@
               "minimum" : 0.5,
               "type" : "number"
             },
+            "lines" : {
+              "description" : "Each line's own look in reading order (two fonts in one title); null keeps the block's",
+              "items" : {
+                "additionalProperties" : false,
+                "properties" : {
+                  "fill" : {
+                    "pattern" : "^#[0-9A-Fa-f]{6}$",
+                    "type" : "string"
+                  },
+                  "font" : {
+                    "description" : "Font PostScript name (family and weight)",
+                    "maxLength" : 128,
+                    "minLength" : 1,
+                    "type" : "string"
+                  },
+                  "scale" : {
+                    "description" : "Size × the block's font size",
+                    "maximum" : 5,
+                    "minimum" : 0.2,
+                    "type" : "number"
+                  },
+                  "stroke" : {
+                    "pattern" : "^#[0-9A-Fa-f]{6}$",
+                    "type" : "string"
+                  }
+                },
+                "type" : [
+                  "object",
+                  "null"
+                ]
+              },
+              "maxItems" : 50,
+              "type" : "array"
+            },
             "positionX" : {
               "description" : "Horizontal anchor: left edge, centre or right edge by align",
               "maximum" : 1,

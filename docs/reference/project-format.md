@@ -152,7 +152,11 @@ look. `transform.zoom` scales from that base size, and `pan` / `tilt` move it in
   times larger in its own colour (`line` from the top, negative from the bottom; without it the last of two lines or
   the middle one), optionally on its own plate; it is fitted to the frame on its own, the other lines without it.
   `hook-title` emphasises by default once it has two lines; `false` turns it off. `lineFills [colors]` colours the
-  lines in turn. A block taller than the frame allows is moved back inside it, as a wide line shrinks to fit.
+  lines in turn. `lines [{font, scale, fill, stroke} | null]` gives each line, in reading order, its own font
+  (PostScript name, so family and weight), size (`scale` × the block's, 0.2–5, after the emphasis scale) and colours:
+  two fonts in one title. A line with its own font or scale is fitted on its own; `null` and lines past the list keep
+  the block's look (`text line-style`). A block taller than the frame allows is moved back inside it, as a wide line
+  shrinks to fit.
 - **Text templates** are built-in library text presets named by their look, not their use (`stacked-keyword`,
   `headline-subline`, `boxed-keyword`, `two-tone-pop`): a renderer preset plus a full `textStyle`. The same template
   serves as a hook, a call to action or a label; the agent picks it for the video.
