@@ -401,6 +401,141 @@
               "minItems" : 1,
               "type" : "array"
             },
+            "crop.bottom" : {
+              "description" : "Like the item's crop.bottom; video clips and images",
+              "items" : {
+                "properties" : {
+                  "ease" : {
+                    "description" : "Change to the next key: linear, in, out, inOut, hold or cubic-bezier(x1,y1,x2,y2); default inOut",
+                    "type" : "string"
+                  },
+                  "frame" : {
+                    "type" : "integer"
+                  },
+                  "value" : {
+                    "maximum" : 0.95,
+                    "minimum" : 0,
+                    "type" : "number"
+                  }
+                },
+                "required" : [
+                  "frame",
+                  "value"
+                ],
+                "type" : "object"
+              },
+              "maxItems" : 1000,
+              "minItems" : 1,
+              "type" : "array"
+            },
+            "crop.left" : {
+              "description" : "Like the item's crop.left; video clips and images",
+              "items" : {
+                "properties" : {
+                  "ease" : {
+                    "description" : "Change to the next key: linear, in, out, inOut, hold or cubic-bezier(x1,y1,x2,y2); default inOut",
+                    "type" : "string"
+                  },
+                  "frame" : {
+                    "type" : "integer"
+                  },
+                  "value" : {
+                    "maximum" : 0.95,
+                    "minimum" : 0,
+                    "type" : "number"
+                  }
+                },
+                "required" : [
+                  "frame",
+                  "value"
+                ],
+                "type" : "object"
+              },
+              "maxItems" : 1000,
+              "minItems" : 1,
+              "type" : "array"
+            },
+            "crop.radius" : {
+              "description" : "Like the item's crop.radius; video clips and images",
+              "items" : {
+                "properties" : {
+                  "ease" : {
+                    "description" : "Change to the next key: linear, in, out, inOut, hold or cubic-bezier(x1,y1,x2,y2); default inOut",
+                    "type" : "string"
+                  },
+                  "frame" : {
+                    "type" : "integer"
+                  },
+                  "value" : {
+                    "maximum" : 0.5,
+                    "minimum" : 0,
+                    "type" : "number"
+                  }
+                },
+                "required" : [
+                  "frame",
+                  "value"
+                ],
+                "type" : "object"
+              },
+              "maxItems" : 1000,
+              "minItems" : 1,
+              "type" : "array"
+            },
+            "crop.right" : {
+              "description" : "Like the item's crop.right; video clips and images",
+              "items" : {
+                "properties" : {
+                  "ease" : {
+                    "description" : "Change to the next key: linear, in, out, inOut, hold or cubic-bezier(x1,y1,x2,y2); default inOut",
+                    "type" : "string"
+                  },
+                  "frame" : {
+                    "type" : "integer"
+                  },
+                  "value" : {
+                    "maximum" : 0.95,
+                    "minimum" : 0,
+                    "type" : "number"
+                  }
+                },
+                "required" : [
+                  "frame",
+                  "value"
+                ],
+                "type" : "object"
+              },
+              "maxItems" : 1000,
+              "minItems" : 1,
+              "type" : "array"
+            },
+            "crop.top" : {
+              "description" : "Like the item's crop.top; video clips and images",
+              "items" : {
+                "properties" : {
+                  "ease" : {
+                    "description" : "Change to the next key: linear, in, out, inOut, hold or cubic-bezier(x1,y1,x2,y2); default inOut",
+                    "type" : "string"
+                  },
+                  "frame" : {
+                    "type" : "integer"
+                  },
+                  "value" : {
+                    "maximum" : 0.95,
+                    "minimum" : 0,
+                    "type" : "number"
+                  }
+                },
+                "required" : [
+                  "frame",
+                  "value"
+                ],
+                "type" : "object"
+              },
+              "maxItems" : 1000,
+              "minItems" : 1,
+              "type" : "array"
+            },
             "opacity" : {
               "description" : "Opacity, 0 to 1",
               "items" : {
@@ -1951,6 +2086,12 @@
         "loudnessToleranceLU" : {
           "description" : "Loudness further than this from the export's target is flagged; unset: no check, or the measured value as info",
           "maximum" : 20,
+          "minimum" : 0,
+          "type" : "number"
+        },
+        "maxFaceOverlap" : {
+          "description" : "maxFaceOverlap; unset: no check, or the measured value as info",
+          "maximum" : 1,
           "minimum" : 0,
           "type" : "number"
         },

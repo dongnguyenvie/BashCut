@@ -1,6 +1,10 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Crop": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Crop" } }, "vi": { "stringUnit": { "state": "translated", "value": "Cắt khung" } } } },
+    "Corner radius": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Corner radius" } }, "vi": { "stringUnit": { "state": "translated", "value": "Bo góc" } } } },
+    "Keyframe crop at playhead": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Keyframe crop at playhead" } }, "vi": { "stringUnit": { "state": "translated", "value": "Keyframe cắt khung tại đầu phát" } } } },
+    "Keys the crop sides and corner radius here; then change them at another frame": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Keys the crop sides and corner radius here; then change them at another frame" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đặt key cho các cạnh cắt và độ bo góc tại đây; rồi đổi chúng ở khung hình khác" } } } },
     "%@ still needs setup: review Install Dependencies": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%@ still needs setup: review Install Dependencies" } }, "vi": { "stringUnit": { "state": "translated", "value": "%@ vẫn cần cài thêm: xem lại Install Dependencies" } } } },
     "+ %@ setup": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "+ %@ setup" } }, "vi": { "stringUnit": { "state": "translated", "value": "+ %@ cài thêm" } } } },
     "BashCut did not quit, so it was not updated": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "BashCut did not quit, so it was not updated" } }, "vi": { "stringUnit": { "state": "translated", "value": "BashCut chưa thoát nên chưa được cập nhật" } } } },

@@ -11,7 +11,8 @@ import Foundation
 /// static value; the others keep it. On text items, zoom scales the text around its own position. Audio items have
 /// only `volume`, text items have no `volume` (see `properties(onTrackKind:)`). Numeric style fields animate too
 /// (flexibility audit C13): `color.exposure`, `color.contrast`, `color.saturation` and `color.lutStrength` on clips and
-/// adjustment layers, `textStyle.size`, `positionX`, `positionY`, `strokeWidth`, `lineHeight` and `tracking` on text.
+/// adjustment layers, `textStyle.size`, `positionX`, `positionY`, `strokeWidth`, `lineHeight` and `tracking` on text,
+/// and `crop.left`, `right`, `top`, `bottom` and `radius` (rounded corners) on clips and images.
 public struct ItemMotion: Sendable, Equatable {
     /// How a value changes from one key to the next, and how a transition's tween runs (flexibility audit C6): the
     /// named curves, or `cubic-bezier(x1, y1, x2, y2)` like CSS (x1 and x2 in 0…1).
@@ -115,10 +116,15 @@ public struct ItemMotion: Sendable, Equatable {
         "textStyle.strokeWidth": 0...50, "textStyle.lineHeight": 0.5...4, "textStyle.tracking": -0.5...2,
     ]
 
+    /// The visible part of a clip's picture (`crop.*`): sides as shares hidden, radius as a share of the shorter side.
+    public static let cropProperties: [String: ClosedRange<Double>] = [
+        "crop.left": 0...0.95, "crop.right": 0...0.95, "crop.top": 0...0.95, "crop.bottom": 0...0.95, "crop.radius": 0...0.5,
+    ]
+
     public static let ranges: [String: ClosedRange<Double>] = [
         "zoom": 0.01...100, "pan": -65536...65536, "tilt": -65536...65536, "rotation": -3600...3600, "opacity": 0...1,
         "volume": -120...24,
-    ].merging(colorProperties) { $1 }.merging(textStyleProperties) { $1 }
+    ].merging(colorProperties) { $1 }.merging(textStyleProperties) { $1 }.merging(cropProperties) { $1 }
     public static let summaries = [
         "zoom": "Scale over the fitted or filled size (1 = unchanged)",
         "pan": "Horizontal offset in output pixels",
@@ -128,13 +134,14 @@ public struct ItemMotion: Sendable, Equatable {
         "volume": "Gain in dB (0 = unchanged), like volumeDb; audio and clips with sound",
     ].merging(colorProperties.keys.map { ($0, "Like the item's \($0); clips and adjustment layers") }) { $1 }
         .merging(textStyleProperties.keys.map { ($0, "Like the item's \($0); text") }) { $1 }
+        .merging(cropProperties.keys.map { ($0, "Like the item's \($0); video clips and images") }) { $1 }
     /// The properties that move the picture, in the order the Inspector shows them.
     public static let pictureProperties = ["zoom", "pan", "tilt", "rotation", "opacity"]
 
     /// The properties an item on a layer of `kind` can animate.
     public static func properties(onTrackKind kind: String) -> [String] {
         switch kind {
-        case TrackKind.video: pictureProperties + ["volume"] + colorProperties.keys.sorted()
+        case TrackKind.video: pictureProperties + ["volume"] + colorProperties.keys.sorted() + cropProperties.keys.sorted()
         case TrackKind.text: pictureProperties + textStyleProperties.keys.sorted()
         case TrackKind.adjustment: colorProperties.keys.sorted()
         case TrackKind.audio: ["volume"]
@@ -216,11 +223,14 @@ public struct ItemMotion: Sendable, Equatable {
         return motion.isEmpty ? nil : motion
     }
 
-    /// Only the keys of style fields (`color.*`, `textStyle.*`); nil when there are none.
+    /// Only the keys of style fields (`color.*`, `textStyle.*`, `crop.*`); nil when there are none.
     public var style: ItemMotion? {
         let motion = ItemMotion(keys: keys.filter { $0.key.contains(".") && !$0.value.isEmpty })
         return motion.isEmpty ? nil : motion
     }
+
+    /// Whether any `crop.*` field has keys (the compositor then cuts the picture anew at each frame).
+    public var keysCrop: Bool { keys.contains { $0.key.hasPrefix("crop.") && !$0.value.isEmpty } }
 
     /// `fields` with each keyed style field set to its value at `frame` (from the item's start).
     public func styled(_ fields: [String: JSONValue], at frame: Double) -> [String: JSONValue] {

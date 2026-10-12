@@ -110,15 +110,18 @@ public struct FrameLayer: @unchecked Sendable {
     public let motion: (LayerMotion, ClipPlacement)?
     /// The visible part of the source frame, cut before the transform.
     public let crop: SourceCrop?
+    /// The decoded size and orientation the crop is cut in, when `crop.*` keys change it over time.
+    public let animatedCrop: (naturalSize: CGSize, orientation: CGAffineTransform)?
     /// Keyed `color.*` fields.
     public let style: StyleMotion?
     public init(
         trackID: CMPersistentTrackID, transform: CGAffineTransform,
         properties: [String: JSONValue] = [:], transition: RenderTransition? = nil,
         lut: CubeLUT? = nil, motion: (LayerMotion, ClipPlacement)? = nil, crop: SourceCrop? = nil,
-        style: StyleMotion? = nil
+        style: StyleMotion? = nil, animatedCrop: (naturalSize: CGSize, orientation: CGAffineTransform)? = nil
     ) {
         self.style = style
+        self.animatedCrop = animatedCrop
         self.trackID = trackID
         self.transform = transform
         self.properties = properties
@@ -181,7 +184,15 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
                 let motion = video.motion?.0.sample(at: time)
                 let transform = video.motion.flatMap { layer in motion?.transform(layer.1) } ?? video.transform
                 var sourceImage = CIImage(cvPixelBuffer: source)
-                if let crop = video.crop { sourceImage = crop.apply(to: sourceImage) }
+                let properties = video.style?.fields(video.properties, at: time) ?? video.properties
+                if let geometry = video.animatedCrop {
+                    if let crop = SourceCrop(
+                        fields: properties, naturalSize: geometry.naturalSize, orientation: geometry.orientation) {
+                        sourceImage = crop.apply(to: sourceImage)
+                    }
+                } else if let crop = video.crop {
+                    sourceImage = crop.apply(to: sourceImage)
+                }
                 sourceImage = sourceImage.transformed(by: transform)
                 var transitionOpacity = 1.0
                 if let transition = video.transition {
@@ -189,7 +200,6 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
                         to: sourceImage, transition: transition,
                         time: request.compositionTime.seconds, bounds: bounds)
                 }
-                let properties = video.style?.fields(video.properties, at: time) ?? video.properties
                 sourceImage = Self.graded(sourceImage, properties: properties, lut: video.lut)
                 let opacity = (motion?.opacity ?? video.properties["opacity"]?.double ?? 1)
                     * transitionOpacity

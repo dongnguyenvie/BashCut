@@ -166,13 +166,17 @@ public actor CompositionBuilder {
                     let lut = try loadLUT(for: item)
                     let crop = SourceCrop(
                         fields: item.fields, naturalSize: asset.naturalSize, orientation: placement.orientation)
+                    // Keyed crop sides or corners are cut anew at each frame.
+                    let animatedCrop = item.motion?.keysCrop == true
+                        ? (naturalSize: asset.naturalSize, orientation: placement.orientation) : nil
                     visualByTrack[track.id, default: []].append(
                         PlacedVisual(
                             start: item.at, end: item.end,
                             layer: FrameLayer(
                                 trackID: target.trackID, transform: transform,
                                 properties: item.fields, transition: incoming, lut: lut,
-                                motion: motion.map { ($0, placement) }, crop: crop, style: style)))
+                                motion: motion.map { ($0, placement) }, crop: crop, style: style,
+                                animatedCrop: animatedCrop)))
                     if let transition = transitionFrom[item.id] {
                         let hold = try visualLanes.take(
                             layer: track.id, start: item.end, end: item.end + transition.duration, composition: composition)
@@ -197,7 +201,8 @@ public actor CompositionBuilder {
                                         duration: transition.duration, incoming: false,
                                         fps: project.fps.value, easing: transition.easing, motion: transition.motion),
                                     lut: lut,
-                                    motion: motion.map { ($0, placement) }, crop: crop, style: style)))
+                                    motion: motion.map { ($0, placement) }, crop: crop, style: style,
+                                animatedCrop: animatedCrop)))
                     }
                 }
                 // Main sound remains attached in the spike until separate linked dialogue editing lands.

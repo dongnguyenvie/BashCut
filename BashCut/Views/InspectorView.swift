@@ -121,6 +121,7 @@ struct InspectorView: View {
             number("Tilt", group: "transform", key: "tilt", defaultValue: 0, range: -600...600)
             number("Rotation", group: "transform", key: "rotation", defaultValue: 0, range: -180...180)
             number("Opacity", key: "opacity", defaultValue: 1, range: 0...1)
+            if item.mediaID != nil { cropControls(item) }
             Divider()
             MotionControls(document: document, item: item, forText: false)
         case "Audio":
@@ -261,6 +262,25 @@ struct InspectorView: View {
         }
     }
 
+    /// The visible part of the picture and its rounded corners; each side and the radius can be keyframed.
+    @ViewBuilder private func cropControls(_ item: Item) -> some View {
+        DisclosureGroup("Crop") {
+            number("Left", group: "crop", key: "left", defaultValue: 0, range: 0...0.95)
+            number("Right", group: "crop", key: "right", defaultValue: 0, range: 0...0.95)
+            number("Top", group: "crop", key: "top", defaultValue: 0, range: 0...0.95)
+            number("Bottom", group: "crop", key: "bottom", defaultValue: 0, range: 0...0.95)
+            number("Corner radius", group: "crop", key: "radius", defaultValue: 0, range: 0...0.5)
+            PlayheadKeyframeButton(
+                document: document, item: item, title: "Keyframe crop at playhead",
+                help: "Keys the crop sides and corner radius here; then change them at another frame"
+            ) {
+                do { try document.keyframeAll(properties: ItemMotion.cropProperties.keys.sorted()) } catch {
+                    document.message = error.localizedDescription
+                }
+            }
+        }
+    }
+
     @ViewBuilder private var colorControls: some View {
         number("Exposure", group: "color", key: "exposure", defaultValue: 0, range: -2...2)
         number("Contrast", group: "color", key: "contrast", defaultValue: 1, range: 0.5...1.5)
@@ -271,10 +291,10 @@ struct InspectorView: View {
         _ title: String, group: String? = nil, key: String, defaultValue: Double,
         range: ClosedRange<Double>, integer: Bool = false
     ) -> some View {
-        // Transform, opacity and volume are animatable: once the item has keys for one, the control reads and sets
-        // the key at the playhead.
+        // Transform, opacity, volume and crop are animatable: once the item has keys for one, the control reads and
+        // sets the key at the playhead.
         let animatable = group == "transform" || (group == nil && key == "opacity") ? key
-            : group == nil && key == "volumeDb" ? "volume" : nil
+            : group == nil && key == "volumeDb" ? "volume" : group == "crop" ? "crop." + key : nil
         func isAnimated() -> Bool { animatable.flatMap { document.selected?.motion?.keys[$0] } != nil }
         let binding = Binding<Double>(
             get: {

@@ -135,7 +135,8 @@ look. `transform.zoom` scales from that base size, and `pan` / `tilt` move it in
   `hold`) or `"cubic-bezier(x1,y1,x2,y2)"` with x1 and x2 in 0…1.
 - **Keyframes** animate `zoom`, `pan`, `tilt`, `rotation`, `opacity`, `volume` and numeric style fields as
   `group.field` paths: `color.exposure`, `color.contrast`, `color.saturation`, `color.lutStrength` on clips and
-  adjustment layers; `textStyle.size`, `positionX`, `positionY`, `strokeWidth`, `lineHeight`, `tracking` on text.
+  adjustment layers; `textStyle.size`, `positionX`, `positionY`, `strokeWidth`, `lineHeight`, `tracking` on text;
+  `crop.left`, `crop.right`, `crop.top`, `crop.bottom` and `crop.radius` (rounded corners) on clips and images.
 - **Transitions** keep `kind`, `duration`, optional `easing` and optional `motion`
   `{"outgoing": {property: [values]}, "incoming": {…}}`. Properties: `zoom`, `panX`/`panY` (share of the frame,
   right/up), `rotation` (degrees, counterclockwise), `opacity`, `exposure` (EV), `scaleX`, `reveal` (share of
