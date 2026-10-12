@@ -1,3 +1,4 @@
+import BashCutAgent
 import BashCutAutomation
 import BashCutDocument
 import BashCutEngine
@@ -50,6 +51,7 @@ extension ProjectDocument {
         context.missingGlyphs = ProjectFonts.missingGlyphs
         context.delivered = deliveredQC
         context.mediaKeys = sourceMediaKeys()
+        context.claims = ((try? agents.knowledgeStore.claims()) ?? []).map(\.text)
         context.subjects = reviewSubjects()
         return context
     }

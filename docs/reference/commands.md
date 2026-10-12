@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 218 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 226 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -111,6 +111,13 @@ Write a sibling project per select (the kept ones, or ids): same canvas, outputs
 - Mode: edit · Runs: immediately · MCP: `bashcut_project_derive`
 - `ids`: string. Select IDs instead of the kept ones
 - `directory`: string, path. Parent folder; defaults to the one holding this project's folder
+
+### `bashcut project history [--limit <limit>]`
+
+The last projects opened (Welcome screen order, the open one first), each with its exports, posted links and the fingerprint of its latest export (the open project's current timeline when it has none), then what they share: looks, caption presets, music and transitions with how many projects used each, and the hook and cut numbers per project. For variety checks and the creator's own medians; no verdicts.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_project_history`
+- `limit`: integer, 1…50, default 10. Projects to read
 
 ### `bashcut project recents`
 
@@ -357,7 +364,7 @@ Transcribe whole source media once and keep the transcript. A captions.transcrib
 
 ### `bashcut media transcript --media <media> [--as <as>] [--from <from>] [--to <to>] [--ranges <ranges>]`
 
-Read the stored transcript of one media in its own seconds: language, provider, transcribedAt, speechSeconds, firstSpeech/lastSpeech, precision (wordTimes provider or none, and whether words carry confidence, speakers, events, noSpeechProb), then as words: wordList [{index, text, start, end, gapBefore, confidence?, speaker?, event?, noSpeechProb?}]; phrases (default): phraseList [{index, start, end, seconds, text, words, confidence (mean), gapBefore}]; json: both; text: one line per phrase (#index start–end seconds | text; print it with --format text). from/to keep what overlaps; ranges reads several windows in one call: text joins them under "== A–B" lines, other formats return {media, ranges: [one result per window]}.
+Read the stored transcript of one media in its own seconds: language, provider, transcribedAt, speechSeconds, firstSpeech/lastSpeech, precision (wordTimes provider or none, and whether words carry confidence, speakers, events, noSpeechProb, avgLogprob, compressionRatio), then as words: wordList [{index, text, start, end, gapBefore, confidence?, speaker?, event?, noSpeechProb?, avgLogprob?, compressionRatio?}]; phrases (default): phraseList [{index, start, end, seconds, text, words, confidence (mean), gapBefore}]; json: both; text: one line per phrase (#index start–end seconds | text; print it with --format text). from/to keep what overlaps; ranges reads several windows in one call: text joins them under "== A–B" lines, other formats return {media, ranges: [one result per window]}.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_media_transcript`
 - `media`: string, required. Project media ID
@@ -591,6 +598,24 @@ A chapter list from the section markers (00:00 first; an Intro at 0 when no mark
 - Mode: ui · Runs: immediately · MCP: `bashcut_export_chapters`
 - `platform`: string. Platform whose rule applies (default youtube)
 - `write`: boolean. Save the list in render/
+
+### `bashcut export history [--limit <limit>] [--full]`
+
+The project's export ledger, newest first: {index, id, rev, preset, path, seconds, completedAt, links [{url, platform, postedAt}], outcomes (imported or not), hook {firstCutSeconds, firstTextSeconds, firstText, firstMedia, cutsInHook, words}, sections (count)}. full adds each export's fingerprint (look, caption and title presets, music, transitions, clips, average and median cut, sections). Exports made before the ledger have no id, rev or fingerprint.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_export_history`
+- `limit`: integer, 1…100, default 20. Exports to list
+- `full`: boolean. Add the fingerprint of each export
+
+### `bashcut export link --url <url> [--platform <platform>] [--posted-at <postedAt>] [--export <export>]`
+
+Record where an export was posted: its URL, the platform and when it went live. The same URL again replaces its platform and date. Needs a saved project.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_export_link`
+- `url`: string, required. The post's URL
+- `platform`: string. tiktok, youtube, reels… (platforms get lists them)
+- `postedAt`: string. When it went live, ISO 8601 (2026-10-13 or 2026-10-13T18:00)
+- `export`: string. The export: its ID (x-…), index or path from export history; the latest by default
 
 ### `bashcut export start --preset <preset> --name <name> [--output-dir <directory>] [--include-srt] [--normalize-audio] [--without <without>] [--bitrate <bitrate>] [--overwrite] [--wait] [--save]`
 
@@ -895,7 +920,7 @@ Make captions whose text is the script and whose times come from the speech: eac
 
 ### `bashcut transcript words [--from <from>] [--to <to>] [--media <media>] [--heard]`
 
-Read every word on the caption layers in timeline order: index, text, at/end (frames), atSeconds, endSeconds, item and cue (captions export numbering), timing (transcribed or estimated from word length), gapBefore (frames since the previous word ended) and, for captions made from a media, source {media, clip, start, end} in that media's seconds through the clip heard there now (null when no clip of it plays there: captions do not move with their clips). count is the words returned, total the words on the caption layers. With heard, the words come from the stored transcripts (media.transcribe) of the media the timeline plays instead: each word inside a clip that plays it, at that clip's frames (trim, speed), with item = the clip, timing source and the provider's confidence/speaker/event/noSpeechProb; transcribed and untranscribed list the media.
+Read every word on the caption layers in timeline order: index, text, at/end (frames), atSeconds, endSeconds, item and cue (captions export numbering), timing (transcribed or estimated from word length), gapBefore (frames since the previous word ended) and, for captions made from a media, source {media, clip, start, end} in that media's seconds through the clip heard there now (null when no clip of it plays there: captions do not move with their clips). count is the words returned, total the words on the caption layers. With heard, the words come from the stored transcripts (media.transcribe) of the media the timeline plays instead: each word inside a clip that plays it, at that clip's frames (trim, speed), with item = the clip, timing source and the provider's confidence/speaker/event/noSpeechProb/avgLogprob/compressionRatio; transcribed and untranscribed list the media.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_transcript_words`
 - `from`: integer, ≥ 0. Only words ending after this timeline frame
@@ -1349,6 +1374,29 @@ What differs between two projects (default: this one against other): top-level f
 - `other`: string, required, path. Project file or folder
 - `base`: string, path. Project file or folder instead of the open one
 
+## outcomes
+
+### `bashcut outcomes import <data-file> [--export <export>] [--platform <platform>] [--totals <totals>] [--time-column <timeColumn>] [--retention-column <retentionColumn>]`
+
+Import how an export performed: a retention curve and totals from the platform's analytics. JSON {curve: [{t (seconds) | position (% of the video), retention}], totals: {views, likes, shares, averageViewSeconds…}} or a list of points, or CSV with a header (a time or `Video position (%)` column and a retention column; name them when the headers are unclear). Values the file lacks stay null. Stored per export in .bashcut/outcomes; importing again replaces it. Needs an export from the ledger (made with this version or later).
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_outcomes_import`
+- `data`: string, required. The file's text (CLI: path to a .csv or .json file)
+- `export`: string. The export: its ID (x-…), index or path from export history; the latest by default
+- `platform`: string. Where the numbers come from (tiktok, youtube…)
+- `totals`: object. Totals to add or override ({"views": 1200})
+- `timeColumn`: string. CSV: the time column's header
+- `retentionColumn`: string. CSV: the retention column's header
+
+### `bashcut outcomes map [--export <export>] [--top <top>] [--window <window>]`
+
+Map an export's imported outcomes onto its sections (section markers when it was exported; the whole video without them): per section startRetention, endRetention, change (raw), drop {at, change, words}, lift {at, change}, replayPeak {at, retention} and viewsAtStart (views × start retention); then the largest drops of the whole curve {at, from, to, change, section, words}, with the caption words heard within window seconds. Retention is in the file's unit (percent or fraction). Missing values are null; no verdicts.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_outcomes_map`
+- `export`: string. The export: its ID (x-…), index or path from export history; the latest by default
+- `top`: integer, 0…20, default 3. Largest drops to list
+- `window`: number, 0…30, default 4. Seconds of words on each side of a drop
+
 ## speech
 
 ### `bashcut speech rate [--media <media>] [--unit <unit>] [--voice <voice>]`
@@ -1782,7 +1830,7 @@ Write a project skill's SKILL.md in the project folder, creating the skill and l
 
 ### `bashcut knowledge lessons [--scope <scope>] [--status <status>] [--tag <tag>] [--query <query>] [--sort <sort>]`
 
-List lessons the agent learned (symptom, cause, fix), from this project and for every project, newest first. Read the active ones before editing; proposed ones wait for the user's review.
+List lessons the agent learned (symptom, cause, fix), from this project and for every project, newest first. Each has occurrences (times seen), lastSeen and sources (projects it was seen in) when counted. Read the active ones before editing; proposed ones wait for the user's review.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_knowledge_lessons`
 - `scope`: string, one of project, user. Only this scope; both by default
@@ -1807,9 +1855,9 @@ Record a lesson: in this project (default) or, with scope user, for every projec
 - `status`: string, one of active, proposed, default "active". active (default) or proposed
 - `session`: string. Your agent session ID, recorded as the source
 
-### `bashcut knowledge update-lesson <id> [--title <title>] [--symptom <symptom>] [--cause <cause>] [--fix <fix>] [--evidence <evidence>] [--check <check>] [--tags <tags>] [--status <status>] [--session <session>]`
+### `bashcut knowledge update-lesson <id> [--title <title>] [--symptom <symptom>] [--cause <cause>] [--fix <fix>] [--evidence <evidence>] [--check <check>] [--tags <tags>] [--status <status>] [--seen] [--session <session>]`
 
-Change a lesson's fields or status (proposed, active, disabled). Agents changing a lesson for every project need approval.
+Change a lesson's fields or status, or count a sighting (seen). Status is proposed, active or disabled; seen adds 1 to occurrences, sets lastSeen and adds this project to sources. Agents changing a lesson for every project need approval; seen alone does not.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_knowledge_update-lesson`
 - `id`: string, required. Lesson ID (l-…) from knowledge lessons
@@ -1821,6 +1869,7 @@ Change a lesson's fields or status (proposed, active, disabled). Agents changing
 - `check`: string. Question to ask before the next draft (empty clears)
 - `tags`: string. Comma-separated tags (captions, audio, pacing…)
 - `status`: string, one of proposed, active, disabled. New status
+- `seen`: boolean. The problem happened again: count it
 - `session`: string. Your agent session ID, recorded as the source
 
 ### `bashcut knowledge remove-lesson <id> [--session <session>]`
@@ -1833,37 +1882,59 @@ Remove a lesson (history keeps it). Agents removing a lesson for every project n
 
 ### `bashcut knowledge prefs [<key>] [--scope <scope>]`
 
-Read the user's preferences (taste: length, pace, voice, caption style, music…). A project value wins over the one for every project.
+Read the user's preferences (taste: length, pace, voice, caption style, music…). Each has confirmedBy (user: said or approved by the user; inferred: an agent's guess). A project value wins over the one for every project.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_knowledge_prefs`
 - `key`: string. Only this key
 - `scope`: string, one of project, user. Only this scope; both by default
 
-### `bashcut knowledge set-pref <key> [<value>] [--remove] [--scope <scope>] [--session <session>]`
+### `bashcut knowledge set-pref <key> [<value>] [--remove] [--scope <scope>] [--confirmed-by <confirmedBy>] [--session <session>]`
 
-Set or remove a preference: for every project (default) or only this project. An agent's change for every project waits in the Knowledge inbox (approval proposed) unless the user lets agents act without confirmation.
+Set or remove a preference: for every project (default) or only this project. An agent's change for every project waits in the Knowledge inbox (approval proposed) unless the user lets agents act without confirmation. creator.* keys are the creator's profile (name, handle, channel, platforms, language, niche, audience, tone, cta, voiceSamples as media IDs, disclosure; lists comma-separated), shown as one object in context get; an agent's creator.* change for every project always waits for approval.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_knowledge_set-pref`
 - `key`: string, required. Key
 - `value`: string. Value; required unless remove is set
 - `remove`: boolean. Remove the key instead of setting it
 - `scope`: string, one of project, user, default "user". user (default) or project
+- `confirmedBy`: string, one of user, inferred. user when the user said it, inferred when you guessed it (default for agents)
 - `session`: string. Your agent session ID, recorded as the source
 
 ### `bashcut knowledge facts [<key>]`
 
-Read this project's facts (people, places, footage notes, what was approved).
+Read this project's facts (people, places, footage notes, what was approved). Each has evidence {source, measure, n, status measured|estimated|user} when given.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_knowledge_facts`
 - `key`: string. Only this key
 
-### `bashcut knowledge set-fact <key> [<value>] [--remove] [--session <session>]`
+### `bashcut knowledge set-fact <key> [<value>] [--remove] [--source <source>] [--measure <measure>] [--n <n>] [--status <status>] [--session <session>]`
 
-Set or remove a fact about this project. Needs a saved project.
+Set or remove a fact about this project. Give where it comes from: source (URL, file, frame, the user), measure (the command or result path that gave it), n (sample size) and status. Plans and skills refer to a fact by its key. Needs a saved project.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_knowledge_set-fact`
 - `key`: string, required. Key
 - `value`: string. Value; required unless remove is set
+- `remove`: boolean. Remove the key instead of setting it
+- `source`: string. Where it comes from: a URL, a file, a frame, user
+- `measure`: string. The measurement that gave it (review.measure pace.median, media analyze C0042)
+- `n`: integer, 0…100000000. Sample size behind it
+- `status`: string, one of measured, estimated, user. measured, estimated or user (said by the user)
+- `session`: string. Your agent session ID, recorded as the source
+
+### `bashcut knowledge claims`
+
+Read this project's claims ledger: {key, text, source, author} for each number, price, superlative or name the video states. Review lists those in titles and the voiceover that no claim's text covers (unsourced-claim, info).
+
+- Mode: read · Runs: immediately · MCP: `bashcut_knowledge_claims`
+
+### `bashcut knowledge set-claim <key> [--text <text>] [--source <source>] [--remove] [--session <session>]`
+
+Record a claim the video makes and its source, or remove it: text as the video states it ("528 ha", "rẻ nhất", "Phở Thìn"), source a URL, a frame (MEDIA@SECONDS), a file or user. Needs a saved project.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_knowledge_set-claim`
+- `key`: string, required. Key
+- `text`: string. The claim as stated; required unless remove is set
+- `source`: string. URL, MEDIA@SECONDS, a file, or user; required unless remove is set
 - `remove`: boolean. Remove the key instead of setting it
 - `session`: string. Your agent session ID, recorded as the source
 
@@ -1900,6 +1971,15 @@ List changes to lessons, preferences, facts, memos and project skills, newest fi
 - `kind`: string, one of lesson, prefs, facts, memo, skill. Only changes to this kind of entry
 - `target`: string. Only changes to this lesson ID, key or skill name
 - `limit`: integer, 1…500, default 50. Number of changes
+
+### `bashcut knowledge verdicts [--verdict <verdict>] [--subject <subject>] [--limit <limit>]`
+
+What the user did with agents' changes in this project, as BashCut saw it: keep (dismissed the change notice, or the next edit left the agent's items alone), undo, edit (the next edit changed the same items) and reject (the scope guard's Reject). Returns total, counts {subject: {verdict: n}} by the command that made the change (timeline.apply, library.apply, library.place, plan.apply…; edit when unknown) and the newest rows {verdict, signal, subject, label, agent, rev, items, date}. Facts only: no reasons.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_knowledge_verdicts`
+- `verdict`: string, one of keep, undo, reject, edit. Only this verdict
+- `subject`: string. Only changes made by this command
+- `limit`: integer, 0…500, default 20. Rows to return (counts cover all)
 
 ### `bashcut knowledge revert <id> [--session <session>]`
 
@@ -2018,7 +2098,7 @@ Usage of every library item, the saved items nobody used, and groups of duplicat
 - `kind`: string, one of audio, text-preset, sticker, effect-preset, transition-preset, look, voice, clip, brand. Item kind
 - `panel`: string, one of media, audio, text, stickers, effects, transitions, filters, voice, brand. Only items the library panel shows
 
-### `bashcut library add [--kind <kind>] [--name <name>] [--from-result <fromResult>] [--id <id>] [--scope <scope>] [--origin <origin>] [--author <author>] [--tags <tags>] [--pack <pack>] [--params <params>] [--file <file>] [--preview <preview>] [--source <source>] [--license <license>]`
+### `bashcut library add [--kind <kind>] [--name <name>] [--from-result <fromResult>] [--id <id>] [--scope <scope>] [--origin <origin>] [--author <author>] [--tags <tags>] [--pack <pack>] [--params <params>] [--file <file>] [--profile <profile>] [--preview <preview>] [--source <source>] [--license <license>]`
 
 Save a new library item in the project or on this Mac. Files are copied in. Agents saving to the user scope wait for approval. To improve an existing item, use library update. fromResult saves a candidate of a finished library search or library generate job instead (its kind, name, files, source and license; the other fields here override them).
 
@@ -2034,11 +2114,12 @@ Save a new library item in the project or on this Mac. Files are copied in. Agen
 - `pack`: string. Pack or collection name the panel groups it under
 - `params`: object. What the kind needs (JSON): text-preset {textPreset, text, textStyle: {size, positionY, strokeWidth} (the item property ranges), animation: a clip motion preset}, the last two optional; sticker {emoji, textPreset} or a file (PNG, JPEG, HEIC, WebP, GIF, APNG, or a .mov/.mp4 with alpha; not Lottie) with {stickerKind: emoji|image|animated|video-alpha (from the file by default), size: width as 0.01–1 of the frame, position: center|top|bottom|left|right|top-left|top-right|bottom-left|bottom-right or {x, y} in 0–1, animation: a clip motion preset, seconds}, all optional; effect-preset (a recipe) {steps: [{op: motion|keyframes|speed|speedCurve|reverse|freeze|patch|sfx|text, …}], parameters: {name: {default, min, max}}} or the older {patch: item properties}, with its own sound as file; transition-preset {kind, duration, easing: linear|in|out|inOut, sfx: audio item ID} (or its own sound as file); look (a filter stack) {color: {exposure, contrast, saturation, lutStrength}, lutName} with an optional .cube LUT as file; audio (its file required) {role: music|sfx|ambience, seconds, bpm, loopable, lufs, truePeak}, all optional (library add measures seconds and picks a role by length; library analyze fills the rest), with mood and genre as tags; clip (footage: a .mov/.mp4/.m4v or an image file, required) takes any keys (library add measures seconds, width, height and hasAudio; a generator's model, prompt or aspect may ride along)
 - `file`: string, path. File to copy in (audio, image or alpha-movie sticker, a look's .cube LUT, a clip's movie or image…)
+- `profile`: string. The reference profile it was made from (bc:style-study): a file path, URL or knowledge fact key; empty clears it
 - `preview`: string, path. Preview image, GIF or audio snippet to copy in
 - `source`: string. Where it came from (URL or note)
 - `license`: string. License: text as written, or a JSON object {id, redistribute, commercial, attribution…}; stored as given
 
-### `bashcut library update <id> [--scope <scope>] [--name <name>] [--tags <tags>] [--pack <pack>] [--params <params>] [--file <file>] [--preview <preview>] [--source <source>] [--license <license>] [--as <as>] [--into <into>]`
+### `bashcut library update <id> [--scope <scope>] [--name <name>] [--tags <tags>] [--pack <pack>] [--params <params>] [--file <file>] [--profile <profile>] [--preview <preview>] [--source <source>] [--license <license>] [--as <as>] [--into <into>]`
 
 Improve a library item: saves a new version (the old one stays in its history). Built-in and plugin items are read-only, so pass as to save an improved copy under a new ID instead.
 
@@ -2050,6 +2131,7 @@ Improve a library item: saves a new version (the old one stays in its history). 
 - `pack`: string. Pack or collection name the panel groups it under
 - `params`: object. What the kind needs (JSON): text-preset {textPreset, text, textStyle: {size, positionY, strokeWidth} (the item property ranges), animation: a clip motion preset}, the last two optional; sticker {emoji, textPreset} or a file (PNG, JPEG, HEIC, WebP, GIF, APNG, or a .mov/.mp4 with alpha; not Lottie) with {stickerKind: emoji|image|animated|video-alpha (from the file by default), size: width as 0.01–1 of the frame, position: center|top|bottom|left|right|top-left|top-right|bottom-left|bottom-right or {x, y} in 0–1, animation: a clip motion preset, seconds}, all optional; effect-preset (a recipe) {steps: [{op: motion|keyframes|speed|speedCurve|reverse|freeze|patch|sfx|text, …}], parameters: {name: {default, min, max}}} or the older {patch: item properties}, with its own sound as file; transition-preset {kind, duration, easing: linear|in|out|inOut, sfx: audio item ID} (or its own sound as file); look (a filter stack) {color: {exposure, contrast, saturation, lutStrength}, lutName} with an optional .cube LUT as file; audio (its file required) {role: music|sfx|ambience, seconds, bpm, loopable, lufs, truePeak}, all optional (library add measures seconds and picks a role by length; library analyze fills the rest), with mood and genre as tags; clip (footage: a .mov/.mp4/.m4v or an image file, required) takes any keys (library add measures seconds, width, height and hasAudio; a generator's model, prompt or aspect may ride along)
 - `file`: string, path. File to copy in (audio, image or alpha-movie sticker, a look's .cube LUT, a clip's movie or image…)
+- `profile`: string. The reference profile it was made from (bc:style-study): a file path, URL or knowledge fact key; empty clears it
 - `preview`: string, path. Preview image, GIF or audio snippet to copy in
 - `source`: string. Where it came from (URL or note)
 - `license`: string. License: text as written, or a JSON object {id, redistribute, commercial, attribution…}; stored as given

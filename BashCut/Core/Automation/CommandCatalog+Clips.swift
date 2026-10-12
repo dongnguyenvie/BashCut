@@ -36,7 +36,7 @@ extension CommandCatalog {
                 + "returned, total the words on the caption layers. With heard, the words come from the stored "
                 + "transcripts (media.transcribe) of the media the timeline plays instead: each word inside a clip "
                 + "that plays it, at that clip's frames (trim, speed), with item = the clip, timing source and the "
-                + "provider's confidence/speaker/event/noSpeechProb; transcribed and untranscribed list the media.",
+                + "provider's confidence/speaker/event/noSpeechProb/avgLogprob/compressionRatio; transcribed and untranscribed list the media.",
             parameters: [
                 CommandParameter("from", .integer, "Only words ending after this timeline frame", minimum: 0,
                                  cli: .option("from")),

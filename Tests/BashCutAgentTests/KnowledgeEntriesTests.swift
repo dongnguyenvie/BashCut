@@ -1,4 +1,5 @@
 import BashCutAgent
+import BashCutProject
 import Foundation
 import Testing
 
@@ -173,5 +174,49 @@ struct KnowledgeEntriesTests {
         let bounded = store.summary()
         #expect(bounded.lessons.count == KnowledgeSummary.lessonLimit && bounded.omittedLessons == 3)
         #expect(bounded.facts.isEmpty && bounded.errors.count == 1 && bounded.text.contains("… 3 more"))
+    }
+
+    @Test("Evidence (P3-I4): lessons count sightings and projects, prefs say who confirmed them, facts their basis")
+    func evidence() throws {
+        let (store, root) = try store()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let lesson = try store.addLesson(title: "Whip refused", scope: .project, source: source(), seenIn: "Ad A")
+        #expect(lesson.occurrences == 1 && lesson.lastSeen == source().date && lesson.sources == ["Ad A"])
+        let seen = try store.updateLesson(
+            lesson.id, LessonPatch(seen: true, seenIn: "Ad B"), source: source("claude", 60))
+        #expect(seen.occurrences == 2 && seen.lastSeen == source("claude", 60).date && seen.sources == ["Ad A", "Ad B"])
+        #expect(seen.updated == lesson.updated, "a sighting changes no rule")
+        let again = try store.updateLesson(lesson.id, LessonPatch(seen: true, seenIn: "Ad B"), source: source("claude", 90))
+        #expect(again.occurrences == 3 && again.sources == ["Ad A", "Ad B"])
+        #expect(LessonPatch(seen: true).onlySeen && !LessonPatch(seen: true).isEmpty && LessonPatch().isEmpty)
+        #expect(store.summary().text.contains("[seen 3×, last ") && store.summary().text.contains("2 projects]"))
+
+        // A lesson written before counting reads without the fields and counts from 1.
+        let file = root.appendingPathComponent("project/.bashcut/knowledge/lessons.json")
+        try Data(#"{"version":1,"lessons":[{"id":"l-old","title":"Old"}]}"#.utf8).write(to: file)
+        #expect(try store.lesson("l-old").occurrences == nil)
+        #expect(try store.updateLesson("l-old", LessonPatch(seen: true), source: source()).occurrences == 2)
+
+        try store.setValue(.prefs, key: "pace", value: "calm", scope: .user, source: source(),
+                           details: KnowledgeValueDetails(confirmedBy: .inferred))
+        try store.setValue(.facts, key: "median-shot", value: "2.1 s", scope: .project, source: source(),
+                           details: KnowledgeValueDetails(evidence: KnowledgeFactEvidence(
+                            source: "", measure: "review measure shots.median", n: 48, status: .measured)))
+        let fact = try #require(try store.values(.facts).first)
+        #expect(fact.evidence == KnowledgeFactEvidence(measure: "review measure shots.median", n: 48, status: .measured))
+        #expect(try store.values(.prefs).first?.confirmedBy == .inferred)
+
+        let proposal = try store.proposeValue(
+            .prefs, key: "voice", value: "warm", scope: .user, source: source(), confirmedBy: .inferred)
+        #expect(try store.approveValue(proposal.id, source: source("user", 5))?.confirmedBy == .user,
+                "the user's approval confirms it")
+
+        let summary = store.summary()
+        let row = try #require(summary.json.object["lessons"]?.array.first?.object)
+        #expect(row["occurrences"] == .integer(2) && row["lastSeen"] != nil && row["sources"] == nil)
+        #expect(summary.text.contains("median-shot = 2.1 s [measured, n=48]"))
+        #expect(summary.text.contains("pace = calm (user, inferred)"))
+        let facts = summary.json.object["facts"]?.array.first?.object
+        #expect(facts?["status"] == .string("measured") && facts?["n"] == .integer(48) && facts?["source"] == nil)
     }
 }

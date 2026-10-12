@@ -170,7 +170,7 @@ extension ProjectDocument {
                 name: "agent-scope", title: "\(hold.agent) wants to edit outside the attached clips",
                 message: "This edit also changes: \(hold.outside). Only the user can allow it.",
                 options: [ModalOption(AgentScopeChoice.reject.rawValue, String(localized: "Reject"))]
-            ) { [weak self] _ in self?.resolveScopeHold(.reject) })
+            ) { [weak self] _ in self?.resolveScopeHold(.reject, byUser: false) })
         }
         return sheets
     }

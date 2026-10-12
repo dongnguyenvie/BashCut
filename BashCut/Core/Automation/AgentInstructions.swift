@@ -21,6 +21,10 @@ extension CommandCatalog {
         "timeline.move-items", "text.line-style", "clip.backdrop",
         // Plugin overlays (plugins set them for themselves) and packaging saved skills as a plugin (#407, #506).
         "plugins.overlays", "plugins.set-overlays", "skills.export",
+        // Learning facts (P3-I1–I5) the kit's self-learn and publish skills call by name: the ledger, outcomes,
+        // verdicts and claims are read after a run, not while editing.
+        "export.history", "export.link", "project.history", "outcomes.import", "outcomes.map", "knowledge.verdicts",
+        "knowledge.claims", "knowledge.set-claim",
     ]
 
     /// Instructions given to terminal agents, rendered from the command specs: each command's usage and first

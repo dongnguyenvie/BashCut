@@ -9,10 +9,12 @@ public struct KnowledgeValueProposal: Codable, Hashable, Sendable, Identifiable 
     public var key: String
     public var value: String?
     public var source: KnowledgeSource
+    /// How the agent knows it (P3-I4); an approval makes it the user's.
+    public var confirmedBy: KnowledgeConfirmation?
     /// The file it was read from, and the scope the value is written to; not stored.
     public var scope: KnowledgeScope = .user
 
-    enum CodingKeys: String, CodingKey { case id, kind, key, value, source }
+    enum CodingKeys: String, CodingKey { case id, kind, key, value, source, confirmedBy }
 
     public init(
         id: String, kind: KnowledgeValueKind, key: String, value: String?, source: KnowledgeSource,
@@ -55,7 +57,8 @@ extension AgentKnowledgeStore {
     /// Queues a change to a value for review. A newer proposal for the same key replaces the older one.
     @discardableResult
     public func proposeValue(
-        _ kind: KnowledgeValueKind, key: String, value: String?, scope: KnowledgeScope, source: KnowledgeSource
+        _ kind: KnowledgeValueKind, key: String, value: String?, scope: KnowledgeScope, source: KnowledgeSource,
+        confirmedBy: KnowledgeConfirmation? = nil
     ) throws -> KnowledgeValueProposal {
         guard kind == .prefs || scope == .project else { throw KnowledgeError("Facts belong to one project") }
         let key = key.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -70,14 +73,15 @@ extension AgentKnowledgeStore {
         repeat {
             id = "p-" + UUID().uuidString.prefix(8).lowercased()
         } while taken.contains(id)
-        let proposal = KnowledgeValueProposal(id: id, kind: kind, key: key, value: value, source: source, scope: scope)
+        var proposal = KnowledgeValueProposal(id: id, kind: kind, key: key, value: value, source: source, scope: scope)
+        proposal.confirmedBy = confirmedBy
         all.append(proposal)
         try writeProposals(all, scope: scope)
         return proposal
     }
 
     /// Applies a proposal, with `value` when the user edited it first. The stored value keeps the agent as its
-    /// source; history records the approval by `source`.
+    /// source and counts as confirmed by the user; history records the approval by `source`.
     @discardableResult
     public func approveValue(
         _ id: String, value edited: String? = nil, source: KnowledgeSource
@@ -87,7 +91,8 @@ extension AgentKnowledgeStore {
         author.date = source.date
         return try setValue(
             proposal.kind, key: proposal.key, value: proposal.value == nil ? nil : edited ?? proposal.value,
-            scope: proposal.scope, source: author, recordedBy: source, action: .approve)
+            scope: proposal.scope, source: author, details: KnowledgeValueDetails(confirmedBy: .user), recordedBy: source,
+            action: .approve)
     }
 
     /// Drops a proposal; history keeps what was proposed.

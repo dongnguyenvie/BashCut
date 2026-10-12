@@ -86,10 +86,17 @@ SwiftTerm terminal. Claude and Codex use your installed CLI and its existing log
   - **Lessons** (`knowledge lessons`, `add-lesson`, `update-lesson`, `remove-lesson`): a title, the symptom, its
     cause, what to do next time, evidence and tags. Each has a status: `active` lessons are followed, `proposed`
     ones wait for your review, `disabled` ones are kept for the record. The source records which agent wrote it,
-    in which session and when.
+    in which session and when. Each lesson also counts its sightings: `occurrences` (1 when recorded),
+    `lastSeen` and `sources` (the projects it was seen in); `update-lesson ID --seen` counts one more, without
+    approval even for a lesson for every project, since it changes no rule.
   - **Preferences** (`knowledge prefs`, `set-pref`): your taste as key/value pairs, for every project by default. A
-    value set for one project wins over the one for every project.
-  - **Facts** (`knowledge facts`, `set-fact`): people, places, footage notes and what was approved, for this project.
+    value set for one project wins over the one for every project. `confirmedBy` says whether you said or approved
+    it (`user`) or an agent inferred it (`inferred`, the default for agents; `set-pref --confirmed-by user` when you
+    said it in the chat). Approving an agent's proposal makes it `user`.
+  - **Facts** (`knowledge facts`, `set-fact`): people, places, footage notes and what was approved, for this project,
+    with optional `evidence` {`source` (URL, file, frame, user), `measure` (the command or result path), `n` (sample
+    size), `status` measured, estimated or user}: `set-fact KEY VALUE --status measured --measure "review measure
+    shots.median" --n 48`. Plans and skills refer to a fact by its key.
   - **Proposals** (`knowledge proposals`, `approve`, `reject`): what waits in the Knowledge window's **Inbox**. A
     lesson an agent records for every project always starts as a proposal (ID `l-…`); approving makes it active,
     rejecting removes it. An agent's preference change for every project (`set-pref`) is not applied at once: it
@@ -103,6 +110,21 @@ SwiftTerm terminal. Claude and Codex use your installed CLI and its existing log
     (`history.jsonl`). The Knowledge window's **History** section shows the diff; **Revert…** or `knowledge revert
     <change-id>` puts the entry back to how it was before that change, undoing later changes to it too, and is
     recorded as a change of its own. Rejecting a preference proposal changed nothing, so it has nothing to revert.
+  - **Claims** (`knowledge claims`, `set-claim KEY --text "528 ha" --source URL|MEDIA@SECONDS|user [--remove]`): the
+    numbers, prices, superlatives and names the video states, each with its source (`.bashcut/knowledge/claims.json`).
+    Review lists those in titles (not captions) and in `plan.cut.voiceover` lines that no claim's text covers, as
+    `unsourced-claim` at info severity, with the words found by type.
+  - **Creator profile**: preferences under `creator.` (`name`, `handle`, `channel`, `platforms`, `language`, `niche`,
+    `audience`, `tone`, `cta`, `voiceSamples` as media IDs of the open project, `disclosure`; lists comma-separated)
+    are checked by `set-pref` and shown as one `creator` object in the session summary. An agent's change to them for
+    every project always waits in the Inbox, even when agents may act without confirmation.
+  - **Verdicts** (`knowledge verdicts [--verdict] [--subject] [--limit]`): what you did with agents' changes in
+    this project, as BashCut saw it, in `.bashcut/knowledge/verdicts.jsonl`: `keep` (you dismissed the change
+    notice, or your next edit left the agent's items alone), `undo` (you undid the agent's step, also an older one),
+    `edit` (your next edit changed the same items) and `reject` (Reject on an edit the scope guard held; Allow is a
+    `keep`). Each row names the command that made the change (`timeline.apply`, `library.apply`, `library.place`,
+    `plan.apply`…, or `edit`), its label, the agent, the revision and the items; counts are per command and
+    verdict. Facts only: `bc:self-learn` decides what they mean.
   - **Skills** (`skills list [--scope project|user|plugin|kit]`, `get`, `save`, `enable`, `disable`, `remove`,
     `propose`): the agent kit's skills are read-only; `skills propose <name> <file> --summary TEXT` sends the line diff against
     the kit's SKILL.md to the Inbox as a lesson for every project tagged `kit`. Skills you or agents write live in the
@@ -130,8 +152,9 @@ SwiftTerm terminal. Claude and Codex use your installed CLI and its existing log
   place. Each entry shows which agent and session added it and when, and entries changed since you last opened the
   window carry a **New** badge. Your changes are recorded with the source `user`.
 
-  Every agent session starts with a short summary: the active lessons (at most 20, this project's first), the
-  preferences and the project facts (at most 30 each), and how many proposals wait for you. Proposed and disabled
+  Every agent session starts with a short summary: the active lessons (at most 20, this project's first, with
+  their sightings), the preferences (marked when inferred) and the project facts (with status and n), and how many
+  proposals wait for you. Proposed and disabled
   lessons are not in it. `context get` returns the same summary as `knowledge`, so an agent outside BashCut's
   terminals sees it too.
 - **Resuming.** When BashCut has found the last Claude or Codex conversation for the project, the dock offers
@@ -906,6 +929,24 @@ by default) overrides it; no command can change either. When you turn it on, req
   `normalizationGainDb` and whether the final measurement was verified; other exports return `lufs: null`.
 - **OTIO.** `export otio` writes OpenTimelineIO JSON. It keeps integer-frame timing, source ranges and rates,
   layered overlaps, text generators, section markers, speed effects and BashCut metadata.
+- **Ledger.** Every finished export is kept in `.bashcut/export-history.json` (the last 100) with an ID (`x-…`),
+  the revision, preset, path and length, and a fingerprint of the edit: looks, caption and title presets, music,
+  transitions, clip count, average and median cut, the hook (first cut and first text in seconds, the first
+  text, the first media, cuts and caption words in the first 3 s) and the sections. Its sections and caption words
+  in timeline seconds go to `.bashcut/exports/<id>.json`. `export history [--limit] [--full]` lists them newest
+  first; `export link --url URL --platform tiktok --posted-at 2026-10-13 [--export ID]` records where one was
+  posted (the latest by default). `project history [--limit N]` reads the last N projects (the open one first):
+  their exports, links and the fingerprint of the latest export (or the open timeline), and how many projects
+  used each look, preset, music file and transition, with the hook and cut numbers per project, for variety
+  checks and the creator's own medians.
+- **Outcomes.** `outcomes import FILE [--export ID] [--platform] [--totals JSON]` reads a retention curve and totals
+  from the platform's analytics: CSV with a header (a time column, or a `Video position (%)` column that becomes
+  seconds, and a retention column; `--time-column` and `--retention-column` name them) or JSON (`{curve: [{t |
+  position, retention}], totals: {views…}}`). It is stored in `.bashcut/outcomes/<export id>.json`. `outcomes map
+  [--export] [--top] [--window]` lays it over the export's sections: retention at each section's start and end, the
+  raw change, the largest drop (with the caption words within 4 s), the largest lift, the replay peak and the viewers
+  at its start, then the largest drops of the whole curve. Values the file lacks stay `null`; nothing is called good
+  or bad.
 
 ## Model APIs
 

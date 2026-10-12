@@ -265,7 +265,12 @@ extension AgentKnowledgeModel {
     func setValue(_ kind: KnowledgeValueKind, key: String, value: String?, scope: KnowledgeScope) {
         changedHere.insert(Self.valueID(scope, key))
         perform(value == nil ? String(localized: "Removed") : String(localized: "Saved")) {
-            try $0.setValue(kind, key: key, value: value, scope: scope, source: source)
+            // The user typed it: a preference they confirm, a fact they state.
+            try $0.setValue(
+                kind, key: key, value: value, scope: scope, source: source,
+                details: kind == .prefs
+                    ? KnowledgeValueDetails(confirmedBy: .user)
+                    : KnowledgeValueDetails(evidence: KnowledgeFactEvidence(status: .user)))
         }
     }
 

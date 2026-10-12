@@ -265,7 +265,7 @@ final class ProjectDocument {
         plugins.pendingAction = nil
         for pending in plugins.confirmations { resolvePluginConfirm(pending.id, run: false) }
         if privilegedApproval != nil { resolvePrivilegedApproval(false) }
-        resolveScopeHold(.reject)
+        resolveScopeHold(.reject, byUser: false)
         resolveCheckpoint(.withdrawn)
         checkpoints.removeAll()
         reviewTranscripts = [:]
@@ -447,7 +447,6 @@ extension ProjectDocument {
     }
 
     func undo() { run(.undo) }
-
     func redo() { run(.redo) }
 
     private func commitHistoryStep(undo: Bool, author: Author, baseRevision: Int?) throws -> Int {
@@ -456,7 +455,7 @@ extension ProjectDocument {
             throw ProjectError.staleRevision(expected: baseRevision, actual: project.revision)
         }
         let scope = try checkAgentScopeStep(undo: undo, author: author), before = project
-        if undo { try history.undo() } else { try history.redo() }
+        if undo { recordUndoVerdict(by: author, before: before); try history.undo() } else { try history.redo() }
         didCommit(from: before, author: author, label: undo ? "Undo" : "Redo")
         recordScopeEdit(scope, before: before)
         emitPluginEvent(
@@ -480,6 +479,7 @@ extension ProjectDocument {
             markAgentChanges(from: before, author: author, label: label)
             message = author.rawValue.capitalized + ": " + label
         } else {
+            recordNextEditVerdict(by: author, label: label, before: before)
             clearAgentChange()
         }
         dirty = true

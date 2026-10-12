@@ -493,6 +493,8 @@ Each word may also carry what the provider knows about it; BashCut keeps these i
 | `speaker` | A speaker label, up to 64 characters |
 | `event` | A non-speech sound the "word" stands for, such as `laughter` or `music` |
 | `noSpeechProb` | 0–1, the chance the word's stretch holds no speech |
+| `avgLogprob` | At most 0, the decoder's mean log probability of the segment the word came from |
+| `compressionRatio` | Above 0, how compressible the segment's text is (high when the recogniser repeated itself) |
 
 A whole-file transcription (no range) is kept as the media's source transcript, by file content, in
 `.bashcut/cache/transcripts`. `captions generate` and `media transcribe` reuse it while the file, the content

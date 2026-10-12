@@ -301,12 +301,11 @@ extension ProjectDocument {
             let list = tags.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
             changes["tags"] = .array(list.map(JSONValue.string))
         }
-        for key in ["pack", "source"] {
-            if let value = arguments.optionalString(key) { changes[key] = .string(value) }
-        }
+        for key in ["pack", "source"] { if let value = arguments.optionalString(key) { changes[key] = .string(value) } }
         // Free text, or a JSON object with an open id (P2-H8).
         if let license = arguments.optionalString("license") { changes["license"] = LicenseTerms.argument(license) }
         if let params = arguments["params"] { changes["params"] = params }
+        if let profile = arguments["profile"]?.string { changes["profile"] = profile.isEmpty ? .null : .string(profile) }
         return changes
     }
 

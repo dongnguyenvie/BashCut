@@ -78,6 +78,9 @@ extension ProjectDocument {
         switch action {
         case .undo: _ = try commitUndo(author: author)
         case .redo: _ = try commitRedo(author: author)
+        case .dismissAgentChange:
+            if !author.isAgent { recordAgentChangeVerdict(.keep, signal: .dismiss) }
+            clearAgentChange()
         case .newProject: newProject()
         case .openProject: openProject()
         case .saveProject: save()
@@ -172,7 +175,6 @@ extension ProjectDocument {
             ui.showUpdates = false
         case .showAbout: MainMenu.showAbout()
         case .undoAgentChange: undoAgentChange()
-        case .dismissAgentChange: clearAgentChange()
         case .openExportOutput: if let url = exports.report?.receipt.url { NSWorkspace.shared.open(url) }
         case .revealExportOutput:
             if let url = exports.report?.receipt.url { NSWorkspace.shared.activateFileViewerSelecting([url]) }

@@ -31,7 +31,7 @@ public enum CommandCatalog {
         + formatSpecs + clipSpecs + jobSpecs + capabilitySpecs + analysisSpecs + [reviewSyncSpec] + timelineStillsSpecs
         + [colorMeasureSpec] + planSpecs
         + workflowSpecs + planCheckSpecs + planCutSpecs + quoteSpecs + selectsSpecs
-        + variantSpecs + packagingSpecs
+        + variantSpecs + packagingSpecs + ledgerSpecs
         + sourceMediaSpecs
         + pluginSpecs + pluginViewSpecs
         + storageSpecs + agentSpecs + quickEditSpecs + appSpecs + chatSpecs

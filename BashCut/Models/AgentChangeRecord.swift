@@ -8,6 +8,8 @@ struct AgentChangeRecord: Identifiable {
     let beforeRevision: Int
     let afterRevision: Int
     let changes: [ProjectItemChange]
+    /// The command that made it, when it came from one (P3-I1).
+    var command: String?
 
     var changedIDs: Set<String> { Set(changes.map(\.itemID)) }
 }
