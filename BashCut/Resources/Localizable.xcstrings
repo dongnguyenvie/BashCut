@@ -93,6 +93,7 @@
     "The recipe is not valid JSON": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "The recipe is not valid JSON" } }, "vi": { "stringUnit": { "state": "translated", "value": "Công thức không phải JSON hợp lệ" } } } },
     "The recipe must be a JSON object such as {\"steps\": […]}": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "The recipe must be a JSON object such as {\"steps\": […] }" } }, "vi": { "stringUnit": { "state": "translated", "value": "Công thức phải là một đối tượng JSON, ví dụ {\"steps\": […] }" } } } },
     "Not a valid recipe: %@": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Not a valid recipe: %@" } }, "vi": { "stringUnit": { "state": "translated", "value": "Công thức không hợp lệ: %@" } } } },
+    "Backdrop: mixed": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Backdrop: mixed" } }, "vi": { "stringUnit": { "state": "translated", "value": "Nền: khác nhau" } } } },
     "The same cut with voice and sound effects only, to add a platform's own sound": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "The same cut with voice and sound effects only, to add a platform's own sound" } },

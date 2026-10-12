@@ -2,17 +2,35 @@ import BashCutProject
 import SwiftUI
 
 /// Inspector › Video › Backdrop (P3-J7): what fills the frame around a fitted picture — a blurred copy of itself or
-/// a colour — instead of black, without a second clip. Every change is `setBackdrop`, like `clip.backdrop`.
+/// a colour — instead of black, without a second clip. Every change is `setBackdrop`, like `clip.backdrop`. With
+/// several clips selected it shows the first one's backdrop (Mixed when they differ) and sets it on all of them.
 struct BackdropControls: View {
     @Bindable var document: ProjectDocument
-    let item: Item
+    let itemIDs: [String]
 
-    private var backdrop: [String: JSONValue]? {
-        document.project.tracks.flatMap(\.items).first { $0.id == item.id }?["backdrop"]?.object
+    init(document: ProjectDocument, item: Item) {
+        self.document = document
+        itemIDs = [item.id]
     }
+
+    init(document: ProjectDocument, itemIDs: [String]) {
+        self.document = document
+        self.itemIDs = itemIDs
+    }
+
+    private var backdrops: [[String: JSONValue]?] {
+        let items = document.project.tracks.flatMap(\.items)
+        return itemIDs.map { id in items.first { $0.id == id }?["backdrop"]?.object }
+    }
+
+    private var backdrop: [String: JSONValue]? { backdrops.first ?? nil }
 
     var body: some View {
         let kind = backdrop?["kind"]?.string ?? "none"
+        let all = backdrops
+        if all.contains(where: { $0 != all.first ?? nil }) {
+            Text("Backdrop: mixed").font(.caption).foregroundStyle(.secondary)
+        }
         Picker("Backdrop", selection: Binding(
             get: { kind },
             set: { value in
@@ -50,7 +68,7 @@ struct BackdropControls: View {
     }
 
     private func apply(_ value: [String: JSONValue]?, coalesce: Bool = false) {
-        do { try document.setBackdrop(value, items: [item.id], coalesce: coalesce) } catch {
+        do { try document.setBackdrop(value, items: itemIDs, coalesce: coalesce) } catch {
             document.message = error.localizedDescription
         }
     }
