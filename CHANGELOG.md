@@ -5,6 +5,7 @@
 
 ## [Unreleased]
 
+- **Recipe editor errors in Vietnamese.** The effect recipe editor's "not valid JSON", "must be a JSON object" and "not a valid recipe" messages were always English; they are localized now (the checker's detail, which names JSON keys, stays as written).
 - **Library media show the item's name.** A sticker, clip or sound placed from the library was labelled by its content-named copy (`library-<hash>.x2.mov` for an animated sticker) on the timeline, in the Media panel and the viewer; the media now keeps the item's name as `label` (new optional media field) and shows it. Media placed before keep their file name and are still reused.
 - **`project set-data` answers in one line.** It echoed the whole stored value (a merged plan reached 700 KB in a live run); it now returns `{key, bytes, keys, rev}` (keys: the value's top-level keys), and `--echo` returns the value as before.
 - **Cover titles read at phone size.** `export cover --title` (and the Export sheet's Save Cover) drew the title at its timeline preset's caption size (bold-outline 0.055 of the short side, about 3 % of a 9:16 cover's height); it now defaults to 0.12 of the short side (about 7 %), a starting point that `--title-size` (0.02–0.4) overrides; a long title still shrinks to fit the width.

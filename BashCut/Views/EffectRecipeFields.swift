@@ -6,13 +6,23 @@ import SwiftUI
 struct EffectRecipeFields: View {
     @Binding var text: String
 
+    /// What is wrong with `text` in the user's language, or nil when it is a valid recipe. The checker's own detail
+    /// (which step and field) stays as written: it names JSON keys.
+    static func problem(_ text: String) -> String? {
+        do {
+            _ = try EffectRecipe.params(editorText: text)
+            return nil
+        } catch EffectRecipe.EditorProblem.notJSON {
+            return String(localized: "The recipe is not valid JSON")
+        } catch EffectRecipe.EditorProblem.notObject {
+            return String(localized: "The recipe must be a JSON object such as {\"steps\": […]}")
+        } catch EffectRecipe.EditorProblem.invalidRecipe(let detail) {
+            return String(format: String(localized: "Not a valid recipe: %@"), detail)
+        } catch { return error.localizedDescription }
+    }
+
     var body: some View {
-        let problem: String? = {
-            do {
-                _ = try EffectRecipe.params(editorText: text)
-                return nil
-            } catch { return error.localizedDescription }
-        }()
+        let problem = Self.problem(text)
         VStack(alignment: .leading, spacing: 4) {
             Text("Recipe").font(.caption).foregroundStyle(.secondary)
             TextEditor(text: $text)

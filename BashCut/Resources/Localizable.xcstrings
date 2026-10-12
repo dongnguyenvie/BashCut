@@ -90,6 +90,9 @@
     "The download failed": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "The download failed" } }, "vi": { "stringUnit": { "state": "translated", "value": "Tải về thất bại" } } } },
     "The last update did not finish; see %@": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "The last update did not finish; see %@" } }, "vi": { "stringUnit": { "state": "translated", "value": "Lần cập nhật trước chưa xong; xem %@" } } } },
     "The project could not be saved, so BashCut was not updated": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "The project could not be saved, so BashCut was not updated" } }, "vi": { "stringUnit": { "state": "translated", "value": "Không lưu được project nên BashCut chưa được cập nhật" } } } },
+    "The recipe is not valid JSON": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "The recipe is not valid JSON" } }, "vi": { "stringUnit": { "state": "translated", "value": "Công thức không phải JSON hợp lệ" } } } },
+    "The recipe must be a JSON object such as {\"steps\": […]}": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "The recipe must be a JSON object such as {\"steps\": […] }" } }, "vi": { "stringUnit": { "state": "translated", "value": "Công thức phải là một đối tượng JSON, ví dụ {\"steps\": […] }" } } } },
+    "Not a valid recipe: %@": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Not a valid recipe: %@" } }, "vi": { "stringUnit": { "state": "translated", "value": "Công thức không hợp lệ: %@" } } } },
     "The same cut with voice and sound effects only, to add a platform's own sound": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "The same cut with voice and sound effects only, to add a platform's own sound" } },

@@ -330,10 +330,13 @@ struct EffectRecipeTests {
         let text = EffectRecipe.editorText(params)
         #expect(text.contains("\"steps\""))
         #expect(try EffectRecipe.params(editorText: text) == params)
-        #expect(throws: ProjectError.self) { try EffectRecipe.params(editorText: "{steps") }
-        #expect(throws: ProjectError.self) { try EffectRecipe.params(editorText: "[1]") }
-        #expect(throws: ProjectError.self) {
-            try EffectRecipe.params(editorText: #"{"steps":[{"op":"spin"}]}"#)
+        #expect(throws: EffectRecipe.EditorProblem.notJSON) { try EffectRecipe.params(editorText: "{steps") }
+        #expect(throws: EffectRecipe.EditorProblem.notObject) { try EffectRecipe.params(editorText: "[1]") }
+        do {
+            _ = try EffectRecipe.params(editorText: #"{"steps":[{"op":"spin"}]}"#)
+            Issue.record("an unknown step must be refused")
+        } catch let EffectRecipe.EditorProblem.invalidRecipe(message) {
+            #expect(message.contains("spin"))
         }
     }
 }
