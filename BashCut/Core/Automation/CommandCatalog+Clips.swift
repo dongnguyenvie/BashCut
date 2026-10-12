@@ -146,8 +146,8 @@ extension CommandCatalog {
         reframeSpec, moveItemsSpec,
         CommandSpec(
             "clip.backdrop", .edit,
-            "Fill the frame around a fitted picture (an off-aspect photo or clip) without a second clip, like "
-                + "Inspector › Video › Backdrop: blur draws a blurred copy of the same frame scaled to fill, color a "
+            "Fill a fitted picture's bars with a blur of itself or a colour (Inspector › Video › Backdrop). blur "
+                + "draws a blurred copy of the same frame scaled to fill, color a "
                 + "solid colour; none removes it. The backdrop moves, fades and grades with the clip. blur is the "
                 + "radius as a share of the frame's short side, dim darkens it (0–1). Several items in one undo step. "
                 + "Returns rev and items.",
@@ -164,8 +164,8 @@ extension CommandCatalog {
             ]),
         CommandSpec(
             "text.line-style", .edit,
-            "Give one line of a text item its own look (two fonts in one title, Inspector › Text › Lines): font (a "
-                + "PostScript name from fonts list, which picks the family and the weight), scale (× the block's font "
+            "Give one text line its own font, size and colours (two fonts in one title; Inspector › Text › Lines). font "
+                + "is a PostScript name from fonts list (family and weight), scale (× the block's font "
                 + "size; the line is fitted to the frame on its own), fill and stroke (#RRGGBB). line counts from the top "
                 + "(0), negative from the bottom. Stored in textStyle.lines (one entry per line, null keeps the block's "
                 + "look); given fields merge into the line's, \"none\" removes one, clear drops the line's look. One undo "
@@ -193,8 +193,8 @@ extension CommandCatalog {
     /// Subject-aware crop (P3-J1).
     static let reframeSpec = CommandSpec(
         "clip.reframe", .edit,
-        "Crop a video clip or image to its subject, from the face (or person) boxes media.subjects measures: the clip "
-            + "fills the frame and pans (and tilts) so the subject's centre sits at anchorX/anchorY. mode locked holds one "
+        "Crop a clip or image to its subject from media.subjects face boxes: the clip "
+            + "fills the frame and pans (and tilts) so the subject's centre sits at anchor. mode locked holds one "
             + "framing (the subject's median place), cut jumps to a new framing (hold keys) when the subject moves more "
             + "than drift of the frame and the last framing held minHold seconds, follow keys pan and tilt at every "
             + "sampled picture, averaged over smooth seconds. Boxes stored for the source the clip plays are used; "
@@ -215,10 +215,8 @@ extension CommandCatalog {
                              choices: SubjectReframe.Subject.allCases.map(\.rawValue), cli: .option("subject")),
             CommandParameter("minConfidence", .number, "Ignore boxes below this confidence (default 0.5)", range: 0...1,
                              cli: .option("min-confidence")),
-            CommandParameter("anchorX", .number, "Where the subject's centre sits, share of the width from the left "
-                             + "(default 0.5)", range: 0...1, cli: .option("anchor-x")),
-            CommandParameter("anchorY", .number, "Share of the height from the top (default 0.5)", range: 0...1,
-                             cli: .option("anchor-y")),
+            CommandParameter("anchor", .string, "Where the subject's centre sits: x,y as shares of the frame from the "
+                             + "top left (default 0.5,0.5)", cli: .option("anchor")),
             CommandParameter("zoom", .number, "Scale over the filled size (default 1)", range: 1...10, cli: .option("zoom")),
             CommandParameter("gate", .number, "Least mean share of the subject in view (default 0.9)", range: 0...1,
                              cli: .option("gate")),
@@ -235,7 +233,6 @@ extension CommandCatalog {
             CommandParameter("step", .number, "Source seconds between pictures when measuring (default 0.5)",
                              range: 0.04...60, cli: .option("step")),
             CommandParameter("measure", .boolean, "Measure the boxes again even when stored", cli: .flag("measure")),
-            CommandParameter("preview", .boolean, "Render the preview grid (default true)", cli: .option("preview")),
             provider,
             baseRevision,
         ],

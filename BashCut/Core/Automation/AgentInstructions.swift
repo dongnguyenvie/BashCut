@@ -15,6 +15,9 @@ extension CommandCatalog {
         "knowledge.reject", "knowledge.remove-lesson", "skills.enable", "skills.disable", "skills.remove",
         // Inspector › Speed; agents use the setSpeed and setSpeedCurve ops (D10).
         "clip.speed", "clip.speed-curve",
+        // Dragging a selection, Inspector › Text › Lines and › Backdrop; agents use the move and reorder ops and
+        // setProperties of textStyle.lines and backdrop.
+        "timeline.move-items", "text.line-style", "clip.backdrop",
     ]
 
     /// Instructions given to terminal agents, rendered from the command specs: each command's usage and first
@@ -151,13 +154,12 @@ extension CommandCatalog {
             + "thickness, gap (× font size), length (share of the side), radius}], emphasis {line (from the top, "
             + "negative from the bottom), fill, scale, plate {color, opacity, padding, radius}} or false (one line larger "
             + "in its own colour; hook-title emphasises by default), lineFills [colors] (line colours, repeating), "
-            + "lines [{font, scale, fill, stroke} or null] (each line's own look in reading order: two fonts in one "
-            + "title; text line-style sets one). "
+            + "lines [{font, scale, fill, stroke}] (per line). "
             + "Text templates are library items (`library list --kind text-preset`): pick the look for the video, "
             + "whatever the text is for. wordStyle is highlight|karaoke|reveal "
             + "or {spoken, upcoming, past} looks of {fill, opacity}. Keyframes also animate textStyle.size, positionX, "
-            + "positionY, strokeWidth, lineHeight, tracking on text and color.exposure, contrast, saturation, "
-            + "lutStrength on clips and adjustment layers."
+            + "positionY, strokeWidth, lineHeight, tracking on text, color.exposure, contrast, saturation, "
+            + "lutStrength on clips and adjustment layers and crop.left…bottom, radius on clips."
     }()
 
     private static let operations = """
@@ -172,7 +174,8 @@ extension CommandCatalog {
         {"op":"patchItems","select":{"trackRole":"captions"},"patch":{"textStyle":{"fill":"#FFD400","size":null}}}
         restyles many items at once: objects merge key by key (null deletes a key); select by track, trackRole,
         trackKind, textPreset or media (all given must match), or list "items":["ID",…],
-        framing: setProperties {"reframePreset":"close","transform":{"zoom":1.3,"pan":0,"tilt":0}},
+        framing: setProperties {"reframePreset":"close","transform":{"zoom":1.3,"pan":0,"tilt":0}}; bars of a fit
+        picture: {"backdrop":{"kind":"blur"}} (or "color" with "color"),
         {"op":"setLinkedAudio","video":"VIDEO_ID","audio":"AUDIO_ID"}; omit audio to unlink,
         {"op":"setSpeed","item":"ID","speed":2}; the clip and its linked sound get 2x and half the length, later
         clips on their layers move up; add "keepDuration":true to keep the length (prefer this over a speed patch),

@@ -53,7 +53,7 @@ extension ProjectDocument {
         }
     }
 
-    static func reframeOptions(_ arguments: CommandArguments) -> SubjectReframe.Options {
+    static func reframeOptions(_ arguments: CommandArguments) throws -> SubjectReframe.Options {
         var options = SubjectReframe.Options()
         if let mode = arguments.optionalString("mode").flatMap(SubjectReframe.Mode.init(rawValue:)) { options.mode = mode }
         if let subject = arguments.optionalString("subject").flatMap(SubjectReframe.Subject.init(rawValue:)) {
@@ -63,11 +63,18 @@ extension ProjectDocument {
             options.fallback = fallback
         }
         let numbers: [(String, WritableKeyPath<SubjectReframe.Options, Double>)] = [
-            ("minConfidence", \.minConfidence), ("anchorX", \.anchorX), ("anchorY", \.anchorY), ("zoom", \.zoom),
+            ("minConfidence", \.minConfidence), ("zoom", \.zoom),
             ("gate", \.gate), ("minSubjectShare", \.minSubjectShare), ("drift", \.drift),
             ("minHold", \.minHoldSeconds), ("smooth", \.smoothSeconds),
         ]
         for (name, path) in numbers { if let value = arguments.optionalDouble(name) { options[keyPath: path] = value } }
+        if let anchor = arguments.optionalString("anchor") {
+            let parts = anchor.split(separator: ",").compactMap { Double($0.trimmingCharacters(in: .whitespaces)) }
+            guard parts.count == 2, parts.allSatisfy({ (0...1).contains($0) }) else {
+                throw RPCFailure(-32602, "anchor must be x,y with each share in 0…1")
+            }
+            (options.anchorX, options.anchorY) = (parts[0], parts[1])
+        }
         return options
     }
 
@@ -82,11 +89,10 @@ extension ProjectDocument {
         guard media.width != nil, media.height != nil else {
             throw RPCFailure(-32602, "The size of media \(mediaID) is unknown")
         }
-        let options = Self.reframeOptions(arguments)
+        let options = try Self.reframeOptions(arguments)
         let step = arguments.optionalDouble("step") ?? 0.5
         let provider = arguments.optionalString("provider")
         let remeasure = arguments.bool("measure")
-        let preview = arguments.values["preview"]?.bool ?? true
         let url = try analysisSource(mediaID).url
         let range = SubjectReframe.sourceRange(item, media: media, project: project)
         return try await startCapabilityJob("clip.reframe", author: author, arguments: arguments) { document in
@@ -129,10 +135,8 @@ extension ProjectDocument {
             result["rev"] = .integer(revision)
             result["item"] = .string(id)
             result["measured"] = .bool(measured)
-            if preview {
-                let rows = plan.previewFrames.map { (frame: current.at + $0, item: Optional(id)) }
-                result["preview"] = (try? await document.frameGrid(rows, mode: "source", width: 390, sourceItem: id)) ?? .null
-            }
+            let rows = plan.previewFrames.map { (frame: current.at + $0, item: Optional(id)) }
+            result["preview"] = (try? await document.frameGrid(rows, mode: "source", width: 390, sourceItem: id)) ?? .null
             return .object(result)
         }
     }

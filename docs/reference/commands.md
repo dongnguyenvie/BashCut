@@ -984,17 +984,16 @@ Set one keyframe like the Inspector's controls with keyframes on: property at a 
 - `remove`: boolean, default false. Remove the key at that frame
 - `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
 
-### `bashcut clip reframe [<item>] [--mode <mode>] [--subject <subject>] [--min-confidence <minConfidence>] [--anchor-x <anchorX>] [--anchor-y <anchorY>] [--zoom <zoom>] [--gate <gate>] [--min-subject-share <minSubjectShare>] [--fallback <fallback>] [--drift <drift>] [--min-hold <minHold>] [--smooth <smooth>] [--step <step>] [--measure] [--preview <preview>] [--provider <provider>] --base-rev <baseRev>`
+### `bashcut clip reframe [<item>] [--mode <mode>] [--subject <subject>] [--min-confidence <minConfidence>] [--anchor <anchor>] [--zoom <zoom>] [--gate <gate>] [--min-subject-share <minSubjectShare>] [--fallback <fallback>] [--drift <drift>] [--min-hold <minHold>] [--smooth <smooth>] [--step <step>] [--measure] [--provider <provider>] --base-rev <baseRev>`
 
-Crop a video clip or image to its subject, from the face (or person) boxes media.subjects measures: the clip fills the frame and pans (and tilts) so the subject's centre sits at anchorX/anchorY. mode locked holds one framing (the subject's median place), cut jumps to a new framing (hold keys) when the subject moves more than drift of the frame and the last framing held minHold seconds, follow keys pan and tilt at every sampled picture, averaged over smooth seconds. Boxes stored for the source the clip plays are used; missing ones are measured first with a vision.faces provider (every step source seconds) and stored. When fewer than minSubjectShare of the clip's pictures have a subject, or the framing keeps less than gate of the subject in view on average, it fits the whole picture instead (fallback fit) or changes nothing (fallback refuse); never a blind centre crop. The defaults are starting points, not verdicts: set them from the skill's ranges. One undo step (fill, transform, zoom/pan/tilt keys; other keys stay). Returns rev, applied (reframe or fit), reason, coverage {samples, subjectSamples, subjectShare, mean, min} (share of the subject box in view), segments [{frame (from the item's start), pan, tilt}], measured (whether boxes were measured now) and preview {path, rows} (source next to the edit at each framing and the least covered picture). A job.
+Crop a clip or image to its subject from media.subjects face boxes: the clip fills the frame and pans (and tilts) so the subject's centre sits at anchor. mode locked holds one framing (the subject's median place), cut jumps to a new framing (hold keys) when the subject moves more than drift of the frame and the last framing held minHold seconds, follow keys pan and tilt at every sampled picture, averaged over smooth seconds. Boxes stored for the source the clip plays are used; missing ones are measured first with a vision.faces provider (every step source seconds) and stored. When fewer than minSubjectShare of the clip's pictures have a subject, or the framing keeps less than gate of the subject in view on average, it fits the whole picture instead (fallback fit) or changes nothing (fallback refuse); never a blind centre crop. The defaults are starting points, not verdicts: set them from the skill's ranges. One undo step (fill, transform, zoom/pan/tilt keys; other keys stay). Returns rev, applied (reframe or fit), reason, coverage {samples, subjectSamples, subjectShare, mean, min} (share of the subject box in view), segments [{frame (from the item's start), pan, tilt}], measured (whether boxes were measured now) and preview {path, rows} (source next to the edit at each framing and the least covered picture). A job.
 
 - Mode: edit · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_clip_reframe`
 - `item`: string. Video or image item ID; the selection by default
 - `mode`: string, one of locked, cut, follow. locked (default), cut or follow
 - `subject`: string, one of face, faces, person. face (the largest face, default), faces (all faces) or person
 - `minConfidence`: number, 0…1. Ignore boxes below this confidence (default 0.5)
-- `anchorX`: number, 0…1. Where the subject's centre sits, share of the width from the left (default 0.5)
-- `anchorY`: number, 0…1. Share of the height from the top (default 0.5)
+- `anchor`: string. Where the subject's centre sits: x,y as shares of the frame from the top left (default 0.5,0.5)
 - `zoom`: number, 1…10. Scale over the filled size (default 1)
 - `gate`: number, 0…1. Least mean share of the subject in view (default 0.9)
 - `minSubjectShare`: number, 0…1. Least share of pictures with a subject (default 0.5)
@@ -1004,13 +1003,12 @@ Crop a video clip or image to its subject, from the face (or person) boxes media
 - `smooth`: number, 0…60. follow: seconds the path is averaged over (default 1)
 - `step`: number, 0.04…60. Source seconds between pictures when measuring (default 0.5)
 - `measure`: boolean. Measure the boxes again even when stored
-- `preview`: boolean. Render the preview grid (default true)
 - `provider`: string. Provider ID overriding the project preference for one request
 - `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
 
 ### `bashcut clip backdrop [<item>] [--items <items>] --kind <kind> [--color <color>] [--blur <blur>] [--dim <dim>] --base-rev <baseRev>`
 
-Fill the frame around a fitted picture (an off-aspect photo or clip) without a second clip, like Inspector › Video › Backdrop: blur draws a blurred copy of the same frame scaled to fill, color a solid colour; none removes it. The backdrop moves, fades and grades with the clip. blur is the radius as a share of the frame's short side, dim darkens it (0–1). Several items in one undo step. Returns rev and items.
+Fill a fitted picture's bars with a blur of itself or a colour (Inspector › Video › Backdrop). blur draws a blurred copy of the same frame scaled to fill, color a solid colour; none removes it. The backdrop moves, fades and grades with the clip. blur is the radius as a share of the frame's short side, dim darkens it (0–1). Several items in one undo step. Returns rev and items.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_clip_backdrop`
 - `item`: string. Video or image item ID; the selection by default
@@ -1032,7 +1030,7 @@ Play a video clip backwards (with its linked sound): renders a reversed copy of 
 
 ### `bashcut text line-style [<item>] --line <line> [--font <font>] [--scale <scale>] [--fill <fill>] [--stroke <stroke>] [--clear] --base-rev <baseRev>`
 
-Give one line of a text item its own look (two fonts in one title, Inspector › Text › Lines): font (a PostScript name from fonts list, which picks the family and the weight), scale (× the block's font size; the line is fitted to the frame on its own), fill and stroke (#RRGGBB). line counts from the top (0), negative from the bottom. Stored in textStyle.lines (one entry per line, null keeps the block's look); given fields merge into the line's, "none" removes one, clear drops the line's look. One undo step. Returns rev, item and lines.
+Give one text line its own font, size and colours (two fonts in one title; Inspector › Text › Lines). font is a PostScript name from fonts list (family and weight), scale (× the block's font size; the line is fitted to the frame on its own), fill and stroke (#RRGGBB). line counts from the top (0), negative from the bottom. Stored in textStyle.lines (one entry per line, null keeps the block's look); given fields merge into the line's, "none" removes one, clear drops the line's look. One undo step. Returns rev, item and lines.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_text_line-style`
 - `item`: string. Text item ID; the selection by default
