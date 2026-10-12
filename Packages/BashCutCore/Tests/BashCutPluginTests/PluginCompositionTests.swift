@@ -60,6 +60,23 @@ struct PluginCompositionTests {
         #expect(tree.close)
     }
 
+    @Test("Inspector views may have a when condition; other views may not (#405)")
+    func inspectorWhen() throws {
+        let view = try manifest(#", "contributes": {"views": [{"id": "graphic", "title": "Graphic", "location": "inspector", "#
+            + #""when": "selection && media.kind == video"}]}"#)
+        try view.validate()
+        #expect(view.views.first?.condition?.evaluate(["selection": "true", "media.kind": "video"]) == true)
+        #expect(view.views.first?.condition?.evaluate(["selection": "true", "media.kind": "audio"]) == false)
+        #expect(PluginFeature.all.contains("inspector.when"))
+        for extra in [
+            #", "contributes": {"views": [{"id": "d", "title": "D", "location": "dock", "when": "selection"}]}"#,
+            #", "contributes": {"views": [{"id": "i", "title": "I", "location": "inspector", "when": "colour == red"}]}"#,
+        ] {
+            let manifest = try manifest(extra)
+            #expect(throws: PluginError.self) { try manifest.validate() }
+        }
+    }
+
     @Test("Requirements, uses and features validate")
     func compositionFields() throws {
         let plugin = try manifest(

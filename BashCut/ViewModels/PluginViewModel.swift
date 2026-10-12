@@ -213,8 +213,38 @@ import Foundation
     var visible = false {
         didSet {
             guard visible != oldValue else { return }
-            if visible, tree == nil || error != nil { load() } else { scheduleRefresh() }
+            if visible, !following, tree == nil || error != nil { load() } else { scheduleRefresh() }
         }
+    }
+
+    /// An Inspector view (#405) follows the selection: the newest selection renders after `selectionDebounce` without
+    /// a newer one, and a render still running for an older selection is cancelled.
+    @ObservationIgnored private let follow = PluginLatestRequest()
+    @ObservationIgnored private var following = false
+    static let selectionDebounce: Duration = .milliseconds(120)
+
+    /// The Inspector shows another item (or the same item's media changed): forget the old answer and render for the
+    /// new selection, at once when the view just appeared. `matches` false (the view's `when` fails): show nothing
+    /// and ask the plugin nothing.
+    func followSelection(matches: Bool) {
+        let first = !visible
+        forget()
+        following = true
+        visible = true
+        guard matches else {
+            follow.cancel()
+            return
+        }
+        follow.schedule(after: first ? .zero : Self.selectionDebounce) { [weak self] in
+            _ = try? await self?.run(nil)
+        }
+    }
+
+    /// The Inspector no longer shows the view.
+    func stopFollowing() {
+        follow.cancel()
+        following = false
+        visible = false
     }
 
     func load() { Task { _ = try? await run(nil) } }

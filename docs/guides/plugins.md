@@ -925,6 +925,7 @@ the panel's frame from the manifest, so every plugin gets the same parts:
 | `views[].title` | Localized text, at most 40 characters |
 | `views[].location` | Where the view lives: `panel` (default), `dock`, `sheet` or `inspector` |
 | `views[].icon` | Optional SF Symbol for a dock tab or sheet; the container's icon by default |
+| `views[].when` | Inspector views only: a [when condition](#when-conditions) such as `selection.kind == text` or `media.kind == video`; the view is not asked to render for items it does not match (host feature `inspector.when`) |
 
 A container alone (no views) is a panel of the plugin's tools and skills. Views need the `session` transport.
 
@@ -939,7 +940,10 @@ A container alone (no views) is a panel of the plugin's tools and skills. Views 
 
 Only `panel` views need `contributes.container`; a plugin may have dock, sheet or inspector views without a rail
 icon. An inspector view reads the selection from its request's `context` (`selection`, `media` with its `data`) and
-answers an empty `body` for items it has nothing to say about: it then takes no room. The panel's
+answers an empty `body` for items it has nothing to say about: it then takes no room. Give it a `when` so BashCut
+does not ask it about items it never handles. A new selection renders 120 ms after the selection stops changing
+(holding an arrow key over a long timeline asks once), and a render still running for an item the user left is
+cancelled (the plugin gets `cancel`), so the plugin renders one item at a time. The panel's
 **Plugin** section lists the plugin's dock and sheet views with a button that opens each. A plugin opens its own views
 from a view or action request with the host call `plugins.show-view` (`{"plugin": "<its id>", "view": "<id>"}`); it
 cannot open another plugin's. A view answer with `"close": true` closes its sheet (a finished form).
