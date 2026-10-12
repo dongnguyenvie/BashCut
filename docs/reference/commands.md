@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 206 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 207 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -1402,9 +1402,15 @@ This BashCut's version and build, how it was installed (homebrew, direct, app-st
 
 ### `bashcut app update-check`
 
-Ask GitHub for the latest BashCut release, like BashCut › Check for Updates…. Returns this version, the latest release (version, page, notes) when it is newer, and how to update: the Homebrew command or the release page. Never installs anything; App Store and TestFlight copies are not checked.
+Ask GitHub for the latest BashCut release, like BashCut › Check for Updates…. Returns this version, the latest release (version, page, notes) when it is newer, and how to update: the Homebrew command or the release page, and canUpdateNow when app update can install it. Never installs anything; App Store and TestFlight copies are not checked.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_app_update-check`
+
+### `bashcut app update`
+
+Update a Homebrew copy of BashCut to the release app update-check found, like Update Now in Software Update; the user approves it in the app first. Homebrew downloads the release while BashCut runs, then BashCut saves the project, quits, upgrades (brew upgrade --cask bashcut) and opens again. A failure keeps BashCut running: app update-check reports it as installError. Downloaded copies update from the release page.
+
+- Mode: privileged · Runs: after the user approves in the app · MCP: `bashcut_app_update`
 
 ## chat
 

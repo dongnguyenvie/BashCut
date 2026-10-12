@@ -3,12 +3,13 @@ import BashCutDocument
 import SwiftUI
 
 /// Software Update: this BashCut's version and whether a newer release is out, opened from the menus or by itself
-/// when a project opens and a new release is known. It never installs anything: Homebrew copies get the
-/// `brew upgrade` command, downloaded copies the release page.
+/// when a project opens and a new release is known. Homebrew copies update with Update Now (Homebrew downloads,
+/// BashCut quits and opens again) or the `brew upgrade` command; downloaded copies get the release page.
 struct AppUpdateView: View {
     let model: AppUpdateModel
     @Bindable var settings: SettingsModel
     let check: () -> Void
+    let update: () -> Void
     let skip: () -> Void
     let later: () -> Void
     let done: () -> Void
@@ -76,9 +77,10 @@ struct AppUpdateView: View {
         } else {
             Spacer(minLength: 0)
         }
-        if let command = model.upgradeCommand {
+        installStatus
+        if let command = model.upgradeCommand, !model.updatesItself || isFailed {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Quit BashCut, then run in Terminal:").font(.caption).foregroundStyle(.secondary)
+                Text("Or quit BashCut, then run in Terminal:").font(.caption).foregroundStyle(.secondary)
                 Text(verbatim: command).font(.body.monospaced()).textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(8).background(RoundedRectangle(cornerRadius: 6).fill(Color.white.opacity(0.05)))
@@ -97,12 +99,19 @@ struct AppUpdateView: View {
             }
             if let command = model.upgradeCommand {
                 Button("Release Notes…") { NSWorkspace.shared.open(release.url) }
-                Button(copied ? "Copied" : "Copy Command") {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(command, forType: .string)
-                    copied = true
+                if !model.updatesItself || isFailed {
+                    Button(copied ? "Copied" : "Copy Command") {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(command, forType: .string)
+                        copied = true
+                    }
                 }
-                .keyboardShortcut(.defaultAction)
+                if model.updatesItself {
+                    Button(isFailed ? "Try Again" : "Update Now", action: update)
+                        .disabled(!model.canInstallNow)
+                        .help("Homebrew downloads the update, then BashCut saves, quits and opens the new version")
+                        .keyboardShortcut(.defaultAction)
+                }
             } else {
                 Button("Download…") {
                     NSWorkspace.shared.open(release.url)
@@ -110,6 +119,31 @@ struct AppUpdateView: View {
                 }
                 .keyboardShortcut(.defaultAction)
             }
+        }
+    }
+
+    private var isFailed: Bool {
+        if case .failed = model.installState { true } else { false }
+    }
+
+    /// Update Now's progress, or why it stopped.
+    @ViewBuilder private var installStatus: some View {
+        switch model.installState {
+        case .idle:
+            EmptyView()
+        case .preparing(let step):
+            HStack(spacing: 8) {
+                ProgressView().controlSize(.small)
+                Text(step).font(.caption)
+            }
+        case .quitting:
+            HStack(spacing: 8) {
+                ProgressView().controlSize(.small)
+                Text("Quitting BashCut to install the update; it opens again when done.").font(.caption)
+            }
+        case .failed(let message):
+            Label(message, systemImage: "exclamationmark.triangle.fill").font(.caption).foregroundStyle(.orange)
+                .textSelection(.enabled)
         }
     }
 
