@@ -153,7 +153,7 @@ extension CommandCatalog {
             "A script against the words heard on the timeline (stored transcripts, else caption words): per beat (the "
                 + "beats given, the text as one beat, else the plan's beats) the share of its words heard as written, "
                 + "the unmatched words, where it was heard and the section marker it starts in against the beat's "
-                + "section; overall similarity and extra heard words.",
+                + "section, and its onScreen note when the beat has one; overall similarity and extra heard words.",
             parameters: [
                 CommandParameter("beats", .array, "Beats [{id, text, section}] as JSON", cli: .option("beats")),
                 CommandParameter("text", .string, "The whole script as one beat", cli: .option("text")),

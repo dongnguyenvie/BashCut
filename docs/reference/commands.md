@@ -546,7 +546,7 @@ Which described source shot each clip plays: per clip on the video layers in tim
 
 ### `bashcut platforms get [<id>] [--facts]`
 
-Read the platform facts review uses: per platform (TikTok, Reels, Shorts, YouTube) shape, maxSeconds, targetLUFS, maxTruePeakDbTP and safeArea (zones the app covers, as fractions), with the project's review.platform overrides applied, whether it is one of the project's outputs and whether it was overridden; layout: the zones text is checked against (the strictest of the outputs of the frame's shape, null when none); targets: each output preset's loudness target (output.targets, else the platform's); data: the platform table's version and origin (built-in or the plugin that shipped a newer one). With facts, every field with {value, kind hard|recommended|info, source, checked, confidence}, including bitrateMbps, title and cover facts, chapter and disclosure rules where known. With id, that one platform's row with its facts.
+Read the platform facts review uses: per platform (TikTok, Reels, Shorts, YouTube) shape, maxSeconds, targetLUFS, maxTruePeakDbTP and safeArea (zones the app covers, as fractions), with the project's review.platform overrides applied, whether it is one of the project's outputs and whether it was overridden; layout: the zones text is checked against (the strictest of the outputs of the frame's shape, null when none); targets: each output preset's loudness target (output.targets, else the platform's); data: the platform table's version and origin (built-in or the plugin that shipped a newer one). With facts, every field with {value, kind hard|recommended|info, source, checked, confidence}, including bitrateMbps, post text limits (title.maxChars, description.maxChars, caption.maxChars, hashtags.max, hashtags.ignoredAbove), cover facts, chapter and disclosure rules where known. With id, that one platform's row with its facts.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_platforms_get`
 - `id`: string. tiktok, reels, shorts, youtube, or an export preset (youtube-1080 → youtube)
@@ -1177,7 +1177,7 @@ The run's checklist, derived from the plan and the run log (never hand-written):
 
 ### `bashcut script check [--beats <beats>] [--text <text>]`
 
-A script against the words heard on the timeline (stored transcripts, else caption words): per beat (the beats given, the text as one beat, else the plan's beats) the share of its words heard as written, the unmatched words, where it was heard and the section marker it starts in against the beat's section; overall similarity and extra heard words.
+A script against the words heard on the timeline (stored transcripts, else caption words): per beat (the beats given, the text as one beat, else the plan's beats) the share of its words heard as written, the unmatched words, where it was heard and the section marker it starts in against the beat's section, and its onScreen note when the beat has one; overall similarity and extra heard words.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_script_check`
 - `beats`: array. Beats [{id, text, section}] as JSON

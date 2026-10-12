@@ -289,8 +289,9 @@ extension CommandCatalog {
             + "shape, null when none); targets: each output preset's loudness target (output.targets, else the "
             + "platform's); data: the platform table's version and origin (built-in or the plugin that shipped a newer "
             + "one). With facts, every field with {value, kind hard|recommended|info, source, checked, confidence}, "
-            + "including bitrateMbps, title and cover facts, chapter and disclosure rules where known. With id, that "
-            + "one platform's row with its facts.",
+            + "including bitrateMbps, post text limits (title.maxChars, description.maxChars, caption.maxChars, "
+            + "hashtags.max, hashtags.ignoredAbove), cover facts, chapter and disclosure rules where known. With id, "
+            + "that one platform's row with its facts.",
         parameters: [
             CommandParameter(
                 "id", .string, "tiktok, reels, shorts, youtube, or an export preset (youtube-1080 → youtube)",
