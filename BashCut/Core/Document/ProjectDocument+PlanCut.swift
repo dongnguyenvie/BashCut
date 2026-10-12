@@ -58,8 +58,20 @@ extension ProjectDocument {
             if arguments.bool("sheet"), !arguments.bool("dryRun") {
                 json["sheet"] = try await document.timelineSheet(CommandArguments(["cuts": .bool(true), "text": .bool(true)]))
             }
-            return .object(json)
+            return arguments.bool("full") ? .object(json) : Self.briefApply(json)
         }
+    }
+
+    /// What an agent reads after a build: the per-clip facts it already had from plan check, the change list, the
+    /// item IDs and the sheet's cells cost thousands of tokens on every later turn, so they come only with --full;
+    /// a clip's problems, the review and the sheet's image paths stay.
+    static func briefApply(_ json: [String: JSONValue]) -> JSONValue {
+        var brief = json.filter { !["clips", "changes", "items", "sheet"].contains($0.key) }
+        brief["clips"] = .integer(json["clips"]?.array.count ?? 0)
+        if let sheet = json["sheet"]?.object {
+            brief["sheet"] = .array((sheet["sheets"]?.array ?? []).compactMap { $0.object["path"] })
+        }
+        return .object(brief)
     }
 
     /// The list from `cut`, else `plan.cut`, with `patch` merged over it.

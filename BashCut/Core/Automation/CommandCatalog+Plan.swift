@@ -216,12 +216,15 @@ extension CommandCatalog {
                     + "only what changes, then nothing else to write); plan.cut.review is merged into the project's "
                     + "review in the same edit. dryRun returns the check. The "
                     + "result has the review's errors and warnings of the built edit (no info rows; picture and "
-                    + "loudness need review measure); sheet adds the storyboard (timeline sheet --cuts --text) of the "
-                    + "new revision. " + shape,
+                    + "loudness need review measure); sheet adds the storyboard image paths (timeline sheet --cuts "
+                    + "--text) of the new revision. The result is brief (clips as a count; the per-clip facts are plan "
+                    + "check's); full adds clips, changes, items and the sheet's cells. " + shape,
                 parameters: [
                     cut, patch,
                     CommandParameter("dryRun", .boolean, "Check without editing", cli: .flag("dry-run")),
                     CommandParameter("sheet", .boolean, "Also lay the new revision out on a contact sheet", cli: .flag("sheet")),
+                    CommandParameter("full", .boolean, "Return every clip's facts, the changes and the built items",
+                                     cli: .flag("full")),
                     CommandParameter("why", .string, "Why this edit, in one sentence (up to 500 characters)", cli: .option("why")),
                     CommandParameter("evidence", .string, "What it rests on, separated by ;", cli: .option("evidence")),
                     baseRevision,
