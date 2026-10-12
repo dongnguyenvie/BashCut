@@ -93,7 +93,7 @@ extension ReviewIssue {
         "text-overlap", "platform-none", "output-shape", "output-length", "plan-section", "brief-length",
         "brief-outputs", "must-keep", "overlap", "coverage", "hook", "voice-text-changed", "captions-source-changed",
         "beats-source-changed", "ai-media", "delivered-black", "delivered-drift", "delivered-fps", "delivered-silence",
-        "delivered-size",
+        "delivered-size", "unsourced-claim",
     ].sorted { $0.count > $1.count }
 
     /// The longest built-in kind the ID is or starts with (then a hyphen); a plugin's `provider:id` up to the colon
@@ -236,6 +236,7 @@ public enum TimelineReview {
         issues += wordCutIssues(project, transcripts: context.transcripts)
         issues += textIssues(project, context: context)
         issues += hookIssues(project, context: context)
+        issues += claimIssues(project, claims: context.claims)
         issues += audioIssues(project, context: context)
         issues += pictureIssues(project, context: context)
         issues += outputIssues(project, context: context)

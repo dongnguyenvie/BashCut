@@ -28,7 +28,7 @@ extension CommandCatalog {
     /// Agent knowledge (Agent Knowledge sheet): memos and project skills, and the structured lessons, preferences,
     /// project facts, proposals and history with revert (#67, #70) stored as JSON in `.bashcut/knowledge/` and
     /// `Application Support/BashCut/Knowledge/`.
-    static let knowledgeSpecs: [CommandSpec] = memoSpecs + lessonSpecs + valueSpecs + reviewSpecs
+    static let knowledgeSpecs: [CommandSpec] = memoSpecs + lessonSpecs + valueSpecs + claimSpecs + reviewSpecs
 
     private static let memoSpecs: [CommandSpec] = [
         CommandSpec(
@@ -137,7 +137,9 @@ extension CommandCatalog {
             "knowledge.set-pref", .edit,
             "Set or remove a preference: for every project (default) or only this project. An agent's change for every "
                 + "project waits in the Knowledge inbox (approval proposed) unless the user lets agents act without "
-                + "confirmation.",
+                + "confirmation. creator.* keys are the creator's profile (name, handle, channel, platforms, language, "
+                + "niche, audience, tone, cta, voiceSamples as media IDs, disclosure; lists comma-separated), shown as "
+                + "one object in context get; an agent's creator.* change for every project always waits for approval.",
             parameters: [
                 valueKey, valueText, removeValue,
                 CommandParameter("scope", .string, "user (default) or project", default: .string("user"),
@@ -168,6 +170,26 @@ extension CommandCatalog {
                 CommandParameter("status", .string, "measured, estimated or user (said by the user)",
                                  choices: ["measured", "estimated", "user"], cli: .option("status")),
                 session,
+            ]),
+    ]
+
+    private static let claimSpecs: [CommandSpec] = [
+        CommandSpec(
+            "knowledge.claims", .read,
+            "Read this project's claims ledger: {key, text, source, author} for each number, price, superlative or "
+                + "name the video states. Review lists those in titles and the voiceover that no claim's text covers "
+                + "(unsourced-claim, info)."),
+        CommandSpec(
+            "knowledge.set-claim", .edit,
+            "Record a claim the video makes and its source, or remove it: text as the video states it (\"528 ha\", "
+                + "\"rẻ nhất\", \"Phở Thìn\"), source a URL, a frame (MEDIA@SECONDS), a file or user. Needs a saved "
+                + "project.",
+            parameters: [
+                valueKey,
+                CommandParameter("text", .string, "The claim as stated; required unless remove is set", cli: .option("text")),
+                CommandParameter("source", .string, "URL, MEDIA@SECONDS, a file, or user; required unless remove is set",
+                                 cli: .option("source")),
+                removeValue, session,
             ]),
     ]
 

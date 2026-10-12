@@ -110,6 +110,14 @@ SwiftTerm terminal. Claude and Codex use your installed CLI and its existing log
     (`history.jsonl`). The Knowledge window's **History** section shows the diff; **Revert…** or `knowledge revert
     <change-id>` puts the entry back to how it was before that change, undoing later changes to it too, and is
     recorded as a change of its own. Rejecting a preference proposal changed nothing, so it has nothing to revert.
+  - **Claims** (`knowledge claims`, `set-claim KEY --text "528 ha" --source URL|MEDIA@SECONDS|user [--remove]`): the
+    numbers, prices, superlatives and names the video states, each with its source (`.bashcut/knowledge/claims.json`).
+    Review lists those in titles (not captions) and in `plan.cut.voiceover` lines that no claim's text covers, as
+    `unsourced-claim` at info severity, with the words found by type.
+  - **Creator profile**: preferences under `creator.` (`name`, `handle`, `channel`, `platforms`, `language`, `niche`,
+    `audience`, `tone`, `cta`, `voiceSamples` as media IDs of the open project, `disclosure`; lists comma-separated)
+    are checked by `set-pref` and shown as one `creator` object in the session summary. An agent's change to them for
+    every project always waits in the Inbox, even when agents may act without confirmation.
   - **Verdicts** (`knowledge verdicts [--verdict] [--subject] [--limit]`): what you did with agents' changes in
     this project, as BashCut saw it, in `.bashcut/knowledge/verdicts.jsonl`: `keep` (you dismissed the change
     notice, or your next edit left the agent's items alone), `undo` (you undid the agent's step, also an older one),

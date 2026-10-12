@@ -10,6 +10,7 @@ extension ProjectDocument {
         registerMemoCommands()
         registerLessonCommands()
         registerValueCommands()
+        registerClaimCommands()
         registerReviewCommands()
         registerSkillCommands()
     }
@@ -175,10 +176,15 @@ extension ProjectDocument {
                 let store = document.agents.knowledgeStore
                 let source = Self.knowledgeSource(author, arguments)
                 let details = try Self.valueDetails(kind, arguments, author: author)
+                let creator = kind == .prefs && CreatorProfile.isCreatorKey(key)
+                if creator {
+                    let media = Set(document.project.media.map(\.id))
+                    try CreatorProfile.validate(key: key, value: value, mediaExists: media.contains)
+                }
                 // An agent's preference for every project waits in the proposals inbox (#69), unless the user lets
-                // agents act without confirmation.
+                // agents act without confirmation; the creator's profile always waits (P3-I5).
                 if scope == .user, author != .user {
-                    if document.settings.agentActionsAutoApproved {
+                    if document.settings.agentActionsAutoApproved, !creator {
                         document.registry.recordApproval(
                             method: Self.setMethod(kind), author: author, approved: true, automatic: true)
                         DebugLog.write("approval", "auto-approved \(Self.setMethod(kind)) from \(author) key \(key)")
@@ -193,6 +199,22 @@ extension ProjectDocument {
                 return try store.setValue(kind, key: key, value: value, scope: scope, source: source, details: details)
                     .map(Self.json) ?? .null
             }
+        }
+    }
+
+    private func registerClaimCommands() {
+        handle("knowledge.claims") { document, _, _ in
+            try .array(document.agents.knowledgeStore.claims().map { try Self.json($0, scope: .project) })
+        }
+        handleAuthored("knowledge.set-claim") { document, arguments, author in
+            let remove = arguments.bool("remove")
+            guard remove || (arguments.optionalString("text") != nil && arguments.optionalString("source") != nil) else {
+                throw RPCFailure(-32602, "Give the claim's text and source (or remove)")
+            }
+            let claim = try document.agents.knowledgeStore.setClaim(
+                key: arguments.string("key"), text: remove ? nil : arguments.optionalString("text"),
+                source: arguments.optionalString("source"), author: Self.knowledgeSource(author, arguments))
+            return try claim.map { try Self.json($0, scope: .project) } ?? .null
         }
     }
 

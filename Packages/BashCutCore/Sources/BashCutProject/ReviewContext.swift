@@ -117,6 +117,9 @@ public struct ReviewContext {
     /// Current content keys (`SourceHash.mediaNamespace`) of `Project.sourceKeyedMedia`, for results made from an
     /// earlier version of a file (P2-G6).
     public var mediaKeys: [String: String] = [:]
+    /// The texts of the claims ledger (`knowledge set-claim`, P3-I5): a number, price, superlative or name they cover
+    /// counts as sourced.
+    public var claims: [String] = []
 
     public init(
         fontAvailable: @escaping (String) -> Bool = { _ in true },

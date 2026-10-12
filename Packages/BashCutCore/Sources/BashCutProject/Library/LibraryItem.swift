@@ -180,7 +180,7 @@ extension LibraryItem {
         }
         if let license = fields["license"] { try LicenseTerms.validate(license, label: label) }
         if let provenance = fields["provenance"] { try Provenance.validate(provenance, label: label) }
-        for key in ["pack", "source"] {
+        for key in ["pack", "source", "profile"] {
             guard let value = fields[key] else { continue }
             guard let text = value.string, text.count <= (key == "pack" ? 80 : 1_000) else {
                 throw ProjectError.invalid("\(label): \(key) must be text")

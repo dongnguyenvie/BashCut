@@ -86,3 +86,39 @@ struct OutcomesTests {
         #expect(drops[1]["at"] == .number(2) || drops[1]["at"] == .number(6))
     }
 }
+
+/// P3-I5: numbers, prices, superlatives and names in titles and the voiceover, minus what the claims ledger covers.
+struct ClaimScanTests {
+    @Test("A scan finds numbers, prices, superlatives and names; Title Case finds no names")
+    func scan() {
+        let found = ClaimScan.scan("Hồ Tây rộng 528 ha, phở 50k là rẻ nhất. We met Lan at Phở Thìn for $5")
+        #expect(found.numbers == ["528"])
+        #expect(found.prices == ["50k", "$5"])
+        #expect(found.superlatives == ["rẻ nhất"])
+        #expect(found.names.contains("Lan") && found.names.contains("Thìn") && !found.names.contains("We"))
+        #expect(ClaimScan.scan("The Best Coffee In Town").names.isEmpty)
+        #expect(ClaimScan.scan("Giá 30 nghìn đồng").prices == ["30 nghìn"] || ClaimScan.scan("Giá 30 nghìn đồng").numbers == ["30"])
+        let left = ClaimScan.unsourced(found, claims: ["528 ha", "phở 50k", "Lan"])
+        #expect(left.numbers.isEmpty && left.prices == ["$5"] && !left.names.contains("Lan"))
+    }
+
+    @Test("Review lists unsourced claims in titles and voiceover lines at info, not in captions")
+    func review() throws {
+        var title = Item(id: "t", at: 30, duration: 60)
+        title["text"] = .string("Only 3 days")
+        var caption = Item(id: "c", at: 0, duration: 30)
+        caption["text"] = .string("I paid 40 dollars")
+        var project = try Project(name: "Claims").applying(.group(label: "Setup", author: .user, ops: [
+            .addTrack(track: Track(id: "t2", kind: "text", role: "titles"), atIndex: 3),
+            .insert(track: "t2", item: title), .insert(track: "t1", item: caption),
+        ])).project
+        let line: JSONValue = .object(["id": .string("l1"), "text": .string("The cheapest flight is 99 euros")])
+        project["plan"] = JSONValue.object(["cut": .object(["voiceover": .array([line])])])
+        let issues = TimelineReview.run(project, context: ReviewContext()).filter { $0.kind == "unsourced-claim" }
+        #expect(issues.map(\.id).sorted() == ["unsourced-claim-t", "unsourced-claim-vo-l1"])
+        #expect(issues.allSatisfy { $0.severity == .info })
+        var context = ReviewContext()
+        context.claims = ["only 3 days", "cheapest flight 99 euros"]
+        #expect(TimelineReview.run(project, context: context).filter { $0.kind == "unsourced-claim" }.isEmpty)
+    }
+}

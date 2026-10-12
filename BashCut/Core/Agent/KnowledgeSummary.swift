@@ -14,6 +14,8 @@ public struct KnowledgeSummary: Sendable, Equatable {
     /// Active lessons, project first, newest first within a scope.
     public var lessons: [KnowledgeLesson] = []
     public var prefs: [KnowledgeValue] = []
+    /// The `creator.*` preferences as one profile (P3-I5); they are not repeated in `prefs`.
+    public var creator: JSONValue?
     public var facts: [KnowledgeValue] = []
     /// Entries left out by the limits.
     public var omittedLessons = 0, omittedPrefs = 0, omittedFacts = 0
@@ -21,7 +23,9 @@ public struct KnowledgeSummary: Sendable, Equatable {
     /// Files that could not be read, with the reason.
     public var errors: [String] = []
 
-    public var isEmpty: Bool { lessons.isEmpty && prefs.isEmpty && facts.isEmpty && proposals == 0 && errors.isEmpty }
+    public var isEmpty: Bool {
+        lessons.isEmpty && prefs.isEmpty && creator == nil && facts.isEmpty && proposals == 0 && errors.isEmpty
+    }
 
     public var json: JSONValue {
         func value(_ value: KnowledgeValue) -> JSONValue {
@@ -50,7 +54,7 @@ public struct KnowledgeSummary: Sendable, Equatable {
                 if let sources = lesson.sources, sources.count > 1 { row["sources"] = .integer(sources.count) }
                 return .object(row)
             }),
-            "prefs": .array(prefs.map(value)), "facts": .array(facts.map(value)),
+            "prefs": .array(prefs.map(value)), "facts": .array(facts.map(value)), "creator": creator ?? .null,
             "omitted": .object([
                 "lessons": .integer(omittedLessons), "prefs": .integer(omittedPrefs), "facts": .integer(omittedFacts),
             ]),
@@ -74,6 +78,12 @@ public struct KnowledgeSummary: Sendable, Equatable {
                     + Self.seenText(lesson)
             }
             if omittedLessons > 0 { lines.append("- … \(omittedLessons) more (`bashcut knowledge lessons --status active`)") }
+        }
+        if let creator = creator?.object, !creator.isEmpty {
+            lines.append("Creator: " + creator.keys.sorted().map { key in
+                let value = creator[key]?.string ?? creator[key]?.array.compactMap(\.string).joined(separator: ", ") ?? ""
+                return "\(key) = \(Self.clip(value, limit: 80))"
+            }.joined(separator: "; "))
         }
         if !prefs.isEmpty {
             lines.append("Preferences:")
@@ -158,7 +168,9 @@ extension AgentKnowledgeStore {
             }
             return result
         }
-        let prefs = values(.prefs)
+        let all = values(.prefs)
+        summary.creator = CreatorProfile.json(all)
+        let prefs = all.filter { !CreatorProfile.isCreatorKey($0.key) }
         summary.prefs = Array(prefs.prefix(KnowledgeSummary.valueLimit))
         summary.omittedPrefs = prefs.count - summary.prefs.count
         let facts = values(.facts)

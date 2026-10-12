@@ -305,6 +305,8 @@ extension ProjectDocument {
         // Free text, or a JSON object with an open id (P2-H8).
         if let license = arguments.optionalString("license") { changes["license"] = LicenseTerms.argument(license) }
         if let params = arguments["params"] { changes["params"] = params }
+        // The style profile a look, preset or brand kit was made from (P3-I5); empty clears it.
+        if let profile = arguments["profile"]?.string { changes["profile"] = profile.isEmpty ? .null : .string(profile) }
         return changes
     }
 

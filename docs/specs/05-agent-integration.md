@@ -86,7 +86,7 @@ arguments.
 | `plugins actions` / `plugins hooks` / `plugins options <plugin>` | read | Plugin actions wherever they appear, Hook Activity, Options… |
 | `doctor run` | read | Doctor sheet |
 | `knowledge get` | read | Knowledge window: Notes and Skills |
-| `knowledge lessons [--scope] [--status] [--tag] [--query] [--sort]` / `knowledge prefs` / `knowledge facts` / `knowledge proposals` / `knowledge history [--kind] [--target]` / `knowledge verdicts [--verdict] [--subject]` | read | Knowledge window: Lessons (search, filters, sort), Preferences, Project facts, Inbox, History; dock badge |
+| `knowledge lessons [--scope] [--status] [--tag] [--query] [--sort]` / `knowledge prefs` / `knowledge facts` / `knowledge proposals` / `knowledge history [--kind] [--target]` / `knowledge verdicts [--verdict] [--subject]` / `knowledge claims` | read | Knowledge window: Lessons (search, filters, sort), Preferences, Project facts, Inbox, History; dock badge |
 | `skills list [--scope project\|user\|plugin\|kit]` / `skills get <name> [--scope]` | read | Knowledge window › Skills: the project's, every project's, the plugins' (read-only, `<plugin-id>:<name>`) and the agent kit's skills with their descriptions, Edit and Preview |
 | `ui frame [frame]` | read | Ask's attach viewer frame: the viewer picture at a frame as a PNG path |
 | `ui actions` | read | Every toolbar button, menu item and shortcut, with its enabled state |
@@ -119,7 +119,7 @@ arguments.
 | `plugins install <plugin> [--version]` / `plugins remove <plugin>` | edit | Browse › Install/Update (the approval stays with the user) and Installed › Remove |
 | `luts import <file.cube> [--name]` | edit | Filters panel, Import .cube… |
 | `knowledge memo <file> [--scope user]` / `knowledge skill <name> <file>` / `knowledge migrate [--to project]` | edit | Knowledge window › Notes and Skills: Save memo, Save notes, Save skill, Move older memo |
-| `knowledge add-lesson` / `update-lesson` / `remove-lesson` / `approve [--value]` / `reject` / `set-pref` / `set-fact` | edit | Knowledge window: New lesson, Save, Enable/Disable, Delete…, Approve, Reject; Inbox Approve, Edit…, Reject; Preferences and facts Add, Save, Remove |
+| `knowledge add-lesson` / `update-lesson` / `remove-lesson` / `approve [--value]` / `reject` / `set-pref` / `set-fact` / `set-claim` | edit | Knowledge window: New lesson, Save, Enable/Disable, Delete…, Approve, Reject; Inbox Approve, Edit…, Reject; Preferences and facts Add, Save, Remove |
 | `knowledge revert <change-id>` | edit | Knowledge window › History: Revert… |
 | `knowledge split-memo <entries.json> [--scope user]` / `knowledge split-memo --keep` | edit | Knowledge window › Notes: Ask the agent to split it, Keep as notes (#72) |
 | `skills save <name> <file> [--scope user]` / `skills enable` / `skills disable` / `skills remove` / `skills propose <name> <file> --summary` | edit | Knowledge window › Skills: Add, Save skill, On for agents, Share with Claude + Codex, Delete…, Propose change… (kit skills) |
