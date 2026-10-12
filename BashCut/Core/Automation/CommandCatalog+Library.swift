@@ -111,7 +111,10 @@ extension CommandCatalog {
         CommandSpec(
             "library.update", .edit,
             "Improve a library item: saves a new version (the old one stays in its history). Built-in and plugin "
-                + "items are read-only, so pass as to save an improved copy under a new ID instead.",
+                + "items are read-only, so pass as to save an improved copy under a new ID instead. A new file is "
+                + "measured like library add (an audio item's seconds, a sticker's kind and size, a clip's length, size "
+                + "and sound) and values measured from the old file are dropped; the result lists measured and cleared "
+                + "(for audio, run library analyze again for loudness and tempo).",
             parameters: [
                 libraryID, libraryScope,
                 CommandParameter("name", .string, "New display name", cli: .option("name")),

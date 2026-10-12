@@ -372,22 +372,7 @@ extension ProjectDocument {
                 preview: Self.url(arguments, "preview"), author: author)
         }
         handleAuthored("library.save-selection") { document, arguments, author in
-            let kind = LibraryKind(rawValue: try arguments.string("kind")) ?? .look
-            var changes = Self.itemChanges(arguments)
-            let selection = try document.selectionParams(
-                kind, itemID: arguments.optionalString("item"), mediaID: arguments.optionalString("media"))
-            changes["params"] = .object(selection.params)
-            let preview = kind == .effectPreset ? await document.effectPreview(itemID: arguments.optionalString("item")) : nil
-            let trimmed = try await document.trimmedSelectionFile(selection.params, file: selection.file)
-            var waiting = false
-            // A save waiting for approval copies the trimmed file later; the system's temporary folder cleans it.
-            defer { if !waiting { Self.removeTrimmedSelection(trimmed) } }
-            let saved = try await document.addLibraryItem(
-                kind: kind, name: try arguments.string("name"), id: arguments.optionalString("id"),
-                scope: LibraryScope(rawValue: try arguments.string("scope")) ?? .project, changes: changes,
-                file: trimmed ?? selection.file, preview: preview, author: author, method: "library.save-selection")
-            waiting = saved.object["approval"] != nil
-            return saved
+            try await document.saveSelectionCommand(arguments, author: author)
         }
         handleAuthored("library.move") { document, arguments, author in
             let item = try document.libraryCatalog.item(try arguments.string("id"), scope: Self.scope(arguments))
@@ -395,33 +380,7 @@ extension ProjectDocument {
             return try await document.moveLibraryItem(item, to: scope, author: author)
         }
         handleAuthored("library.update") { document, arguments, author in
-            let catalog = document.libraryCatalog
-            let item = try catalog.item(try arguments.string("id"), scope: Self.scope(arguments))
-            let changes = Self.itemChanges(arguments)
-            let file = Self.url(arguments, "file")
-            let preview = Self.url(arguments, "preview")
-            if let newID = arguments.optionalString("as") {
-                let scope = arguments.optionalString("into").flatMap(LibraryScope.init(rawValue:)) ?? .project
-                _ = try catalog.store(scope)
-                let createdBy = LibraryItem.creator(author: author)
-                return try await document.libraryChange(
-                    "library.update", scope: scope, author: author, arguments: ["id": item.reference, "as": newID]
-                ) {
-                    try catalog.copy(
-                        item, as: newID, into: scope, changes: changes, createdBy: createdBy, file: file, preview: preview
-                    ).json()
-                }
-            }
-            guard item.scope.isWritable else {
-                throw RPCFailure(
-                    -32602, "\(item.reference) is read-only; pass --as <new-id> to save an improved copy")
-            }
-            let store = try catalog.store(item.scope)
-            return try await document.libraryChange(
-                "library.update", scope: item.scope, author: author, arguments: ["id": item.reference]
-            ) {
-                try store.update(item.id, changes: changes, file: file, preview: preview).json()
-            }
+            try await document.updateLibraryItemCommand(arguments, author: author)
         }
         handleAuthored("library.remove") { document, arguments, author in
             let item = try document.libraryCatalog.item(try arguments.string("id"), scope: Self.scope(arguments))

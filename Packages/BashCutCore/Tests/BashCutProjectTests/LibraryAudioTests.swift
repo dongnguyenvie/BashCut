@@ -242,4 +242,23 @@ struct LibraryAudioTests {
         #expect(params["trimmedFrom"] == .object(["start": .number(1.5), "end": .number(3.5)]))
         #expect(try LibraryAudio(params: params) == LibraryAudio(role: "music", seconds: 2))
     }
+
+    @Test("A new file drops the values measured from the old one; given params replace the stored ones")
+    func newFileParams() {
+        let audio = LibraryItem(id: "bed", kind: .audio, name: "Bed", params: [
+            "role": .string("music"), "seconds": .integer(30), "bpm": .integer(120), "lufs": .number(-14.2),
+            "loopable": .bool(true),
+        ])
+        let fresh = audio.paramsForNewFile(given: nil)
+        #expect(fresh.params == ["role": .string("music"), "loopable": .bool(true)])
+        #expect(Set(fresh.dropped) == ["seconds", "bpm", "lufs"])
+        #expect(audio.paramsForNewFile(given: ["seconds": .integer(5)]).params == ["seconds": .integer(5)])
+        let emoji = LibraryItem(id: "e", kind: .sticker, name: "E", params: ["stickerKind": .string("emoji"), "width": .integer(4)])
+        #expect(emoji.paramsForNewFile(given: nil).params == ["stickerKind": .string("emoji")])
+        let gif = LibraryItem(id: "g", kind: .sticker, name: "G", params: [
+            "stickerKind": .string("animated"), "frames": .integer(12), "size": .number(0.2),
+        ])
+        #expect(gif.paramsForNewFile(given: nil).params == ["size": .number(0.2)])
+        #expect(LibraryItem.fileMeasuredKeys(.look).isEmpty)
+    }
 }

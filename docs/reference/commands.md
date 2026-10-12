@@ -1938,7 +1938,7 @@ Save a new library item in the project or on this Mac. Files are copied in. Agen
 
 ### `bashcut library update <id> [--scope <scope>] [--name <name>] [--tags <tags>] [--pack <pack>] [--params <params>] [--file <file>] [--preview <preview>] [--source <source>] [--license <license>] [--as <as>] [--into <into>]`
 
-Improve a library item: saves a new version (the old one stays in its history). Built-in and plugin items are read-only, so pass as to save an improved copy under a new ID instead.
+Improve a library item: saves a new version (the old one stays in its history). Built-in and plugin items are read-only, so pass as to save an improved copy under a new ID instead. A new file is measured like library add (an audio item's seconds, a sticker's kind and size, a clip's length, size and sound) and values measured from the old file are dropped; the result lists measured and cleared (for audio, run library analyze again for loudness and tempo).
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_library_update`
 - `id`: string, required. Item ID, or scope:id to pick one scope
