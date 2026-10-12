@@ -30,8 +30,8 @@ extension CommandCatalog {
             return "- `\(compactUsage(spec))`: \(firstSentence(spec.summary))\(note)"
         }
         let header = "Commands (MCP tool `bashcut_<group>_<command>` takes the same parameters; `bashcut help GROUP "
-            + "COMMAND` or the MCP tool description gives the full description, parameters and result fields; (job) "
-            + "returns a job ID):"
+            + "COMMAND` or the MCP tool description has the full text, parameters and results; (job) returns "
+            + "a job ID):"
         return ([preamble, color, plugins, header] + commands + [operations]).joined(separator: "\n")
     }()
 
