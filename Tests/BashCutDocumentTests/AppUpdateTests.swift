@@ -179,4 +179,105 @@ struct AppUpdateTests {
             bundle: .main, environment: ["BASHCUT_UPDATE_FEED": "/tmp/x.json", "BASHCUT_UPDATE_INSTALL": "homebrew"])
         #expect(model.install != .homebrew || AppInstall.current() == .homebrew)
     }
+
+    // MARK: Update Now
+
+    /// Answers `brew` calls from a table keyed by the first argument and records them.
+    private final class FakeBrew: @unchecked Sendable {
+        let lock = NSLock()
+        var calls: [[String]] = []
+        var answers: [String: AppUpdateInstaller.Output]
+
+        init(caskVersion: String = "0.0.4", failing: String? = nil) {
+            answers = [
+                "update": .init(status: 0, text: ""),
+                "info": .init(status: 0, text: #"{"formulae":[],"casks":[{"token":"bashcut","version":"\#(caskVersion)"}]}"#),
+                "fetch": .init(status: 0, text: "Downloaded"),
+            ]
+            if let failing { answers[failing] = .init(status: 1, text: "==> Fetching\nError: Download failed: offline") }
+        }
+
+        func installer() -> AppUpdateInstaller {
+            AppUpdateInstaller(brew: "/opt/homebrew/bin/brew", app: URL(fileURLWithPath: "/Applications/BashCut.app"),
+                               log: FileManager.default.temporaryDirectory.appendingPathComponent("update.log")) { _, arguments in
+                self.lock.withLock {
+                    self.calls.append(arguments)
+                    return self.answers[arguments[0]] ?? .init(status: 1, text: "unexpected")
+                }
+            }
+        }
+    }
+
+    @MainActor @Test func prepareUpdatesTapsChecksTheCaskAndDownloads() async throws {
+        let brew = FakeBrew()
+        let steps = StepLog()
+        #expect(try await brew.installer().prepare(current: "0.0.3") { steps.lines.append($0) } == "0.0.4")
+        #expect(brew.calls == [["update", "--quiet"], ["info", "--cask", "--json=v2", "bashcut"], ["fetch", "--cask", "bashcut"]])
+        #expect(steps.lines.count == 2 && steps.lines[1].contains("0.0.4"))
+    }
+
+    @Test func prepareStopsBeforeDownloadingWhenHomebrewIsBehind() async {
+        let brew = FakeBrew(caskVersion: "0.0.3")
+        await #expect(throws: AppUpdateError.self) { try await brew.installer().prepare(current: "0.0.3") { _ in } }
+        #expect(!brew.calls.contains { $0.first == "fetch" })
+    }
+
+    @Test func prepareReportsHomebrewsError() async {
+        let brew = FakeBrew(failing: "fetch")
+        do {
+            _ = try await brew.installer().prepare(current: "0.0.3") { _ in }
+            Issue.record("expected a failure")
+        } catch {
+            #expect(error.localizedDescription.contains("Download failed: offline"))
+        }
+        #expect(throws: AppUpdateError.self) { try AppUpdateInstaller.caskVersion(from: Data("{}".utf8)) }
+    }
+
+    @Test func helperScriptIsValidZsh() throws {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/zsh")
+        process.arguments = ["-n", "-f", "-c", AppUpdateInstaller.script]
+        try process.run()
+        process.waitUntilExit()
+        #expect(process.terminationStatus == 0)
+        #expect(AppUpdateInstaller.script.contains("upgrade --cask bashcut"))
+    }
+
+    @MainActor @Test func updateNowIsOnlyForHomebrewCopiesWithANewerRelease() async {
+        let checker = checker("install")
+        StubProtocol.serve(checker.latestURL, status: 200, body: release(tag: "v0.0.4"))
+        let brew = FakeBrew(failing: "update")
+        let direct = AppUpdateModel(version: "0.0.3", build: "6", install: .direct, checker: checker,
+                                    installer: brew.installer(), defaults: defaults())
+        await direct.check()
+        #expect(!direct.updatesItself && !direct.canInstallNow)
+
+        let model = AppUpdateModel(version: "0.0.3", build: "6", install: .homebrew, checker: checker,
+                                   installer: brew.installer(), defaults: defaults())
+        #expect(!model.canInstallNow)
+        await model.check()
+        #expect(model.canInstallNow)
+        guard case .object(let fields) = model.fields else { Issue.record("fields"); return }
+        #expect(fields["canUpdateNow"] == .bool(true))
+        // A failed preparation leaves BashCut as it was and can be tried again.
+        #expect(await model.prepareInstall() == false)
+        guard case .failed(let message) = model.installState else { Issue.record("expected a failure"); return }
+        #expect(message.contains("Homebrew could not update"))
+        #expect(model.canInstallNow)
+        model.cancelInstall()
+        #expect(model.installState == .idle)
+    }
+
+    @MainActor @Test func aFailedUpgradeIsReportedOnTheNextLaunch() {
+        let defaults = defaults()
+        defaults.set("/tmp/update.log", forKey: AppUpdateInstaller.failedKey)
+        let model = AppUpdateModel(version: "0.0.3", build: "6", install: .homebrew, checker: nil, defaults: defaults)
+        guard case .failed(let message) = model.installState else { Issue.record("expected the failure"); return }
+        #expect(message.contains("/tmp/update.log"))
+        #expect(defaults.string(forKey: AppUpdateInstaller.failedKey) == nil)
+    }
+}
+
+@MainActor private final class StepLog {
+    var lines: [String] = []
 }

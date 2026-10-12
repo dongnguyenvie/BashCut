@@ -144,7 +144,8 @@ brew install --cask dongnguyenvie/tap/bashcut
 ```
 
 Lệnh này cài `BashCut.app` vào `/Applications` và link CLI `bashcut` cùng server `bashcut-mcp` vào `bin` của
-Homebrew, để agent ở bất kỳ terminal nào cũng điều khiển được app. Cập nhật bằng `brew upgrade --cask bashcut`; gỡ
+Homebrew, để agent ở bất kỳ terminal nào cũng điều khiển được app. Cập nhật bằng **BashCut › Check for Updates… ›
+Cập nhật ngay** (Homebrew tải bản mới, rồi BashCut tự thoát và mở bản mới) hoặc `brew upgrade --cask bashcut`; gỡ
 bằng `brew uninstall --cask bashcut` (thêm `--zap` để xóa luôn cài đặt và cache).
 
 ### Tải bản release

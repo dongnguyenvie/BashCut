@@ -185,6 +185,7 @@ struct EditorView: View {
             AppUpdateView(
                 model: document.appUpdate, settings: document.settings,
                 check: { Task { await document.appUpdate.check() } },
+                update: { document.installAppUpdate() },
                 skip: { document.run(.skipAppUpdate) },
                 later: { document.run(.remindAppUpdateLater) },
                 done: { document.ui.showUpdates = false })

@@ -122,12 +122,21 @@ public struct AppUpdateChecker: Sendable {
 }
 
 /// Whether a newer BashCut has been released: checked once a day when a project opens (Settings › General) and on
-/// demand (BashCut › Check for Updates…, `app update-check`). It only tells; updating is up to the user.
+/// demand (BashCut › Check for Updates…, `app update-check`). A Homebrew copy can also be updated for the user
+/// (Update Now, `app update`) through `AppUpdateInstaller`; other copies only tell.
 @MainActor @Observable
 public final class AppUpdateModel {
     public enum Status: Equatable, Sendable {
         case idle, checking, upToDate
         case available(AppRelease)
+        case failed(String)
+    }
+
+    /// Update Now: Homebrew's preparation (with its current step), then quitting for the helper to upgrade.
+    public enum InstallState: Equatable, Sendable {
+        case idle
+        case preparing(String)
+        case quitting
         case failed(String)
     }
 
@@ -139,8 +148,11 @@ public final class AppUpdateModel {
     public let version: String
     public let build: String
     public let install: AppInstall
+    public private(set) var installState: InstallState = .idle
 
     @ObservationIgnored private let checker: AppUpdateChecker?
+    @ObservationIgnored let installer: AppUpdateInstaller?
+    @ObservationIgnored private var helper: Process?
     @ObservationIgnored private let defaults: UserDefaults
 
     private enum Keys {
@@ -149,13 +161,19 @@ public final class AppUpdateModel {
     }
 
     public init(
-        version: String, build: String, install: AppInstall, checker: AppUpdateChecker?, defaults: UserDefaults = .standard
+        version: String, build: String, install: AppInstall, checker: AppUpdateChecker?,
+        installer: AppUpdateInstaller? = nil, defaults: UserDefaults = .standard
     ) {
         self.version = version
         self.build = build
         self.install = install
         self.checker = checker
+        self.installer = install == .homebrew ? installer : nil
         self.defaults = defaults
+        if let log = defaults.string(forKey: AppUpdateInstaller.failedKey) {
+            defaults.removeObject(forKey: AppUpdateInstaller.failedKey)
+            installState = .failed(String(format: String(localized: "The last update did not finish; see %@"), log))
+        }
         checkedAt = defaults.object(forKey: Keys.checkedAt) as? Date
         // The last check's answer, so the notice stays between launches without asking GitHub again.
         if let data = defaults.data(forKey: Keys.latest),
@@ -167,12 +185,15 @@ public final class AppUpdateModel {
     /// One model for every window, so a check runs once.
     public static let shared = forThisApp()
 
-    /// Development builds read two test settings from the environment: `BASHCUT_UPDATE_FEED` (a local release
-    /// file, see `AppUpdateChecker.feed`) and `BASHCUT_UPDATE_INSTALL` (`homebrew` or `direct`, to act like a release).
+    /// Development builds read test settings from the environment: `BASHCUT_UPDATE_FEED` (a local release file, see
+    /// `AppUpdateChecker.feed`), `BASHCUT_UPDATE_INSTALL` (`homebrew` or `direct`, to act like a release) and
+    /// `BASHCUT_UPDATE_BREW` (a stand-in for `brew`; without it a development build never runs Homebrew, so Update Now
+    /// cannot upgrade the installed release).
     public static func forThisApp(
         bundle: Bundle = .main, environment: [String: String] = ProcessInfo.processInfo.environment
     ) -> AppUpdateModel {
         var install = AppInstall.current(bundle: bundle)
+        var installer = install == .homebrew ? AppUpdateInstaller(app: bundle.bundleURL) : nil
         var checker = AppUpdateChecker(
             repositoryURL: (bundle.object(forInfoDictionaryKey: "BCRepositoryURL") as? String).flatMap(URL.init(string:)))
         if install == .development {
@@ -184,11 +205,14 @@ public final class AppUpdateModel {
                acting == .homebrew || acting == .direct {
                 install = acting
             }
+            installer = environment["BASHCUT_UPDATE_BREW"].flatMap { brew in
+                brew.isEmpty ? nil : AppUpdateInstaller(brew: brew, app: bundle.bundleURL)
+            }
         }
         return AppUpdateModel(
             version: bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "",
             build: bundle.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "",
-            install: install, checker: checker)
+            install: install, checker: checker, installer: installer)
     }
 
     /// The newer release found by the last check.
@@ -198,6 +222,51 @@ public final class AppUpdateModel {
 
     /// How to update: the Homebrew command, or nil to download from the release page.
     public var upgradeCommand: String? { install == .homebrew ? Self.homebrewCommand : nil }
+
+    /// Whether this copy can update itself (Update Now): Homebrew, with `brew` found.
+    public var updatesItself: Bool { installer != nil }
+
+    /// Whether Update Now can run: a newer release, a Homebrew copy with `brew` found, and no update under way.
+    public var canInstallNow: Bool {
+        guard available != nil, installer != nil else { return false }
+        switch installState {
+        case .idle, .failed: return true
+        case .preparing, .quitting: return false
+        }
+    }
+
+    /// Update Now's first half: Homebrew updates and downloads the new release while BashCut runs. Returns whether
+    /// it is ready; a failure is left in `installState` and BashCut keeps running unchanged.
+    public func prepareInstall() async -> Bool {
+        guard canInstallNow, let installer else { return false }
+        installState = .preparing(String(localized: "Preparing the update…"))
+        do {
+            _ = try await installer.prepare(current: version) { [weak self] step in self?.installState = .preparing(step) }
+            return true
+        } catch {
+            installState = .failed(error.localizedDescription)
+            return false
+        }
+    }
+
+    /// Update Now's second half: starts the helper that upgrades once BashCut (`pid`) quits; the caller quits next.
+    public func startInstaller(pid: Int32, defaultsDomain: String) throws {
+        guard let installer else { throw AppUpdateError(String(localized: "Homebrew was not found")) }
+        do {
+            helper = try installer.launchHelper(pid: pid, defaultsDomain: defaultsDomain)
+            installState = .quitting
+        } catch {
+            installState = .failed(error.localizedDescription)
+            throw error
+        }
+    }
+
+    /// BashCut did not quit (or the update was stopped): the helper is stopped, so nothing changes.
+    public func cancelInstall(_ message: String? = nil) {
+        if let helper, helper.isRunning { helper.terminate() }
+        helper = nil
+        installState = message.map(InstallState.failed) ?? .idle
+    }
 
     /// Asks GitHub now. The App Store's copies are not checked.
     @discardableResult
@@ -244,9 +313,15 @@ public final class AppUpdateModel {
     public var fields: JSONValue {
         var fields: [String: JSONValue] = [
             "version": .string(version), "build": .string(build), "install": .string(install.rawValue),
-            "updateAvailable": .bool(available != nil),
+            "updateAvailable": .bool(available != nil), "canUpdateNow": .bool(canInstallNow),
             "checkedAt": checkedAt.map { .string(ISO8601DateFormatter().string(from: $0)) } ?? .null,
         ]
+        switch installState {
+        case .idle: break
+        case .preparing(let step): fields["installing"] = .string(step)
+        case .quitting: fields["installing"] = .string("quitting")
+        case .failed(let message): fields["installError"] = .string(message)
+        }
         switch status {
         case .failed(let message): fields["error"] = .string(message)
         case .available(let release):

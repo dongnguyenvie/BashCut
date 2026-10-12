@@ -149,7 +149,8 @@ brew install --cask dongnguyenvie/tap/bashcut
 ```
 
 This installs `BashCut.app` into `/Applications` and links the `bashcut` CLI and `bashcut-mcp` server into
-Homebrew's `bin`, so agents in any terminal can drive the app. Update with `brew upgrade --cask bashcut`; remove
+Homebrew's `bin`, so agents in any terminal can drive the app. Update from **BashCut › Check for Updates… › Update
+Now** (Homebrew downloads the release, then BashCut quits and opens the new version) or `brew upgrade --cask bashcut`; remove
 with `brew uninstall --cask bashcut` (add `--zap` to also delete settings and caches).
 
 ### Download a release
