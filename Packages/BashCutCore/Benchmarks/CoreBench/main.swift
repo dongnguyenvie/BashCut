@@ -90,7 +90,8 @@ for size in sizes.isEmpty ? [100, 500, 1_000] : sizes {
     let readParsing = try measure(3) { _ = Project(fields: try JSONValue(parsing: file).object) }
     let undo = try measure(1) { for _ in 0..<50 { try history.undo() } } / 50
     print("""
-        \(size) items: open \(format(open)) (reading the JSON \(format(readParsing)), Decodable \(format(readDecodable))) (\(file.count / 1_000) KB), validate \(format(validate)), \
+        \(size) items: open \(format(open)) (reading the JSON \(format(readParsing)), \
+        Decodable \(format(readDecodable))) (\(file.count / 1_000) KB), validate \(format(validate)), \
         setProperties \(format(property)), ripple delete \(format(ripple)), \
         50-op group \(format(group)), history step \(format(steps)), undo \(format(undo)); \
         200-step journal \(String(format: "%.1f", Double(journal.count) / 1e6)) MB, encode \(format(encode)), \
