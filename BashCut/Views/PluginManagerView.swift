@@ -65,7 +65,7 @@ struct PluginManagerView: View {
             PluginInstallApprovalView(
                 pending: pending, registry: model.registry, required: model.requiredBytes(pending),
                 blocker: model.installBlocker(pending), replaces: pending.local == nil ? pending.replacing : model.replaces(pending),
-                shadowNote: model.shadowNote(pending),
+                shadowNote: model.shadowNote(pending), model: model,
                 scope: pending.local == nil || model.currentProjectRoot == nil ? nil : $model.installScope,
                 mode: pending.local?.sourceFolder == nil ? nil : $model.installMode,
                 approve: model.installPendingPlugin, cancel: model.cancelPendingInstall)
@@ -354,6 +354,7 @@ private struct PluginInstallApprovalView: View {
     let replaces: Bool
     /// Which copy runs when the same plugin is installed elsewhere.
     let shadowNote: String?
+    let model: PluginManagerModel
     /// Where an install from this Mac goes; nil when there is no choice.
     let scope: Binding<PluginInstallScope>?
     /// Copy or Link (developer mode) for a plugin folder; nil for an archive or a download.
@@ -384,6 +385,7 @@ private struct PluginInstallApprovalView: View {
             }
             if !plugin.manifest.skills.isEmpty {
                 Text("Teaches agents: \(PluginManagerView.skillNames(plugin))")
+                PluginSkillReviewSection(pending: pending, installed: model.plugin(plugin.id), model: model)
             }
             if plugin.manifest.dependencies.isEmpty {
                 Text("This plugin has no external dependencies.")

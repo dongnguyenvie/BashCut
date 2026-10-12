@@ -9,6 +9,7 @@ public struct PluginManifest: Codable, Sendable, Equatable {
     public let name: LocalizedText
     public let version: String
     public let apiVersion: Int
+    /// The program BashCut runs; empty for a data-only plugin (skills or library packs, #506: `runsCode` false).
     public let entrypoint: String
     public let capabilities: [String]
     public let providers: [PluginProvider]?
@@ -72,7 +73,7 @@ public struct PluginManifest: Codable, Sendable, Equatable {
         name = try container.decode(LocalizedText.self, forKey: .name)
         version = try container.decode(String.self, forKey: .version)
         apiVersion = try container.decode(Int.self, forKey: .apiVersion)
-        entrypoint = try container.decode(String.self, forKey: .entrypoint)
+        entrypoint = try container.decodeIfPresent(String.self, forKey: .entrypoint) ?? ""
         capabilities = try container.decodeIfPresent([String].self, forKey: .capabilities) ?? []
         providers = try container.decodeIfPresent([PluginProvider].self, forKey: .providers)
         dependencies = try container.decodeIfPresent([PluginDependency].self, forKey: .dependencies) ?? []
@@ -139,7 +140,7 @@ public struct PluginManifest: Codable, Sendable, Equatable {
         guard name.isValid(limit: 80),
             matches(version, "^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$")
         else { throw PluginError.invalid("Plugin name and semantic version are required") }
-        try Self.validateRelativePath(entrypoint, field: "entrypoint")
+        if runsCode { try Self.validateRelativePath(entrypoint, field: "entrypoint") } else { try validateDataOnly() }
         guard !capabilities.isEmpty || !(contributes?.isEmpty ?? true), Set(capabilities).count == capabilities.count,
             capabilities.allSatisfy({ matches($0, "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$") })
         else { throw PluginError.invalid("Capabilities must be unique stable identifiers") }

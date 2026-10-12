@@ -1,6 +1,11 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Skills for agents": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Skills for agents" } }, "vi": { "stringUnit": { "state": "translated", "value": "Skill cho agent" } } } },
+    "%lld lines to check": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%lld lines to check" } }, "vi": { "stringUnit": { "state": "translated", "value": "%lld dòng cần xem" } } } },
+    "added": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "added" } }, "vi": { "stringUnit": { "state": "translated", "value": "thêm mới" } } } },
+    "changed": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "changed" } }, "vi": { "stringUnit": { "state": "translated", "value": "đã đổi" } } } },
+    "removed": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "removed" } }, "vi": { "stringUnit": { "state": "translated", "value": "bị xoá" } } } },
     "Overlays": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Overlays" } }, "vi": { "stringUnit": { "state": "translated", "value": "Lớp phủ" } } } },
     "Generate → 1 take": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Generate → 1 take" } }, "vi": { "stringUnit": { "state": "translated", "value": "Tạo → 1 bản đọc" } } } },
     "Insert take into Voiceover": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Insert take into Voiceover" } }, "vi": { "stringUnit": { "state": "translated", "value": "Chèn bản đọc vào giọng đọc" } } } },

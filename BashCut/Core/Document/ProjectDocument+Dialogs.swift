@@ -90,19 +90,7 @@ extension ProjectDocument {
                 if option == "close" { ui.showExternalChanges = false } else { resolveConflict(loadDisk: option == "load-disk") }
             })
         }
-        if ui.showPlugins, let pending = plugins.pendingInstall {
-            // Installing runs the plugin's dependency recipes; only the user can approve it.
-            sheets.append(ModalSheet(
-                name: "plugin-install",
-                title: (pending.repair ? "Set up " : (pending.local == nil ? pending.replacing : plugins.replaces(pending))
-                    ? "Update " : "Install ")
-                    + pending.plugin.manifest.displayName + "?",
-                message: "Only the user can approve a plugin install."
-                    + (pending.plugin.manifest.author.map { " By " + $0.name + ($0.url.map { " (\($0))" } ?? "") + "." } ?? "")
-                    + (plugins.mode(of: pending) == .link ? " It is installed as a link (developer mode)." : ""),
-                options: [ModalOption("cancel", String(localized: "Cancel"))]
-            ) { [weak self] _ in self?.plugins.cancelPendingInstall() })
-        }
+        if ui.showPlugins, let pending = plugins.pendingInstall { sheets.append(pluginInstallSheet(pending)) }
         if ui.showPlugins, let pending = plugins.pendingBundle {
             sheets.append(ModalSheet(
                 name: "plugin-bundle-install", title: "Install " + pending.bundle.name.text + "?",
@@ -114,6 +102,25 @@ extension ProjectDocument {
         sheets += pluginSheets()
         sheets += approvalSheets()
         return sheets
+    }
+
+    /// The plugin install approval as `ui dialog` shows it: who wrote the plugin and what its skills change.
+    private func pluginInstallSheet(_ pending: PendingPluginInstall) -> ModalSheet {
+        // Installing runs the plugin's dependency recipes; only the user can approve it.
+        let verb = pending.repair ? "Set up "
+            : (pending.local == nil ? pending.replacing : plugins.replaces(pending)) ? "Update " : "Install "
+        var message = "Only the user can approve a plugin install."
+        if let author = pending.plugin.manifest.author {
+            message += " By " + author.name + (author.url.map { " (\($0))" } ?? "") + "."
+        }
+        if let review = plugins.skillReviews[pending.id] {
+            message += " Skills changed: \(review.skills.count), lines to check: \(review.flaggedCount)."
+        }
+        if plugins.mode(of: pending) == .link { message += " It is installed as a link (developer mode)." }
+        return ModalSheet(
+            name: "plugin-install", title: verb + pending.plugin.manifest.displayName + "?", message: message,
+            options: [ModalOption("cancel", String(localized: "Cancel"))]
+        ) { [weak self] _ in self?.plugins.cancelPendingInstall() }
     }
 
     /// Decisions only the user can approve: a privileged agent action and an edit outside the attached scope.

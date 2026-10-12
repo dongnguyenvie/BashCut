@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 211 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 212 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -1878,6 +1878,20 @@ Delete a project skill or a skill for every project (history keeps its text; kno
 - `name`: string, required. Skill name (lowercase, hyphenated)
 - `scope`: string, one of project, user, default "project". project (default) or user (every project)
 - `session`: string. Your agent session ID, recorded as the source
+
+### `bashcut skills export --output <output> [--skills <skills>] [--scope <scope>] [--as-plugin] [--id <id>] [--name <name>] [--version <version>] [--author <author>]`
+
+Copy saved skills (for every project by default, or this project's) into a new or empty folder. With asPlugin, the folder is a skill pack plugin (plugin.json with contributes.skills and no entrypoint) that installs in another BashCut with plugins install --path, where its skills show in skills list.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_skills_export`
+- `output`: string, required, path. New or empty folder to write
+- `skills`: array. Skill names; every skill of the scope by default
+- `scope`: string, one of project, user, default "user". user (default: skills for every project) or project
+- `asPlugin`: boolean, default false. Write a skill pack plugin around the skills
+- `id`: string. With asPlugin: the plugin id, reverse-domain (me.my-skills)
+- `name`: string. With asPlugin: the plugin name; the id by default
+- `version`: string, default "0.1.0". With asPlugin: semantic version
+- `author`: string. With asPlugin: who wrote the skills (manifest author.name)
 
 ### `bashcut skills propose <name> <text-file> --summary <summary> [--reason <reason>] [--session <session>]`
 

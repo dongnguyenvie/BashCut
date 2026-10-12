@@ -117,6 +117,8 @@ enum PluginText {
     var plugins: [InstalledPlugin] = []
     var diagnostics: [String] = []
     var pendingInstall: PendingPluginInstall?
+    /// The skill review each pending install's sheet worked out (#506), for `ui dialog`.
+    @ObservationIgnored var skillReviews: [UUID: PluginSkillReview] = [:]
     /// A bundle (Recommended) waiting for the user's approval: its downloaded plugins, each with a checkbox.
     var pendingBundle: PendingBundleInstall?
     var installing = false

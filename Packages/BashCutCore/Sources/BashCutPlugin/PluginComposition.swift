@@ -28,9 +28,13 @@ public enum PluginFeature {
     /// Dragging files from list rows and images onto the timeline and the Media panel (#408).
     public static let viewsDrag = "views.drag"
 
+    /// Skill and library packs without an entrypoint (#506).
+    public static let skillsOnly = "skillsOnly"
+
     /// Features that are not a view component or place.
     static let named = [
         container, views, requires, invoke, optionsSet, voiceMaxTakes, inspectorWhen, viewUpdate, overlays, viewsDrag,
+        skillsOnly,
     ]
 
     /// Every feature this host provides: `views.<component>` for each view component it can draw and

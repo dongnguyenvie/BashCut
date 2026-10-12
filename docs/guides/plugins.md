@@ -898,6 +898,32 @@ description: Check how loud the media in an edit is and say what to change. Use 
 
 `Fixtures/plugins/example.skills` is a worked example: a plugin that only ships a `loudness-check` skill.
 
+### Skill packs without code
+
+A plugin that only ships skills or library packs may leave out `entrypoint` (host feature `skillsOnly`): BashCut
+never runs it. It must have `apiVersion` 7 or later and `contributes.skills` or `contributes.library`, and nothing
+that runs (no `capabilities`, `providers`, `options`, `dependencies`, actions, hooks, views or session transport).
+Trust still pins every file. An older BashCut lists such a manifest as invalid.
+
+```json
+{"schema": "bashcut.plugin/1", "id": "me.my-skills", "name": "My skills", "version": "0.1.0", "apiVersion": 7,
+ "category": "agents", "author": {"name": "Nolan"}, "contributes": {"skills": [{"path": "skills/beat-cut"}]}}
+```
+
+`bashcut skills export --output DIR --as-plugin --id me.my-skills [--name …] [--version 0.1.0] [--author …]
+[--skills a,b] [--scope user|project]` packages saved skills (for every project by default) as such a plugin; without
+`--as-plugin` it copies the skill folders only. `plugins install --path DIR` (or Add Plugin…) installs it in another
+BashCut, where the skills show in `skills list --scope plugin` once it is trusted.
+
+### Reviewing skills before trust
+
+Agents follow plugin skills as instructions, so the install approval shows a **Skills for agents** part whenever the
+plugin ships skills: each skill that is new, changed (an update, compared with the installed copy) or removed, its
+added and removed lines, and the added lines worth a look flagged: `command` (shell commands such as `curl`, `rm -`,
+`sudo`, `| sh`, lines starting `$ `), `url` (links) and `override` ("ignore previous", "disregard", "you are now",
+"without asking", …). Flags are hints for the reader, not verdicts; nothing is blocked. The sheet's `ui dialog` text
+says how many skills changed and how many lines are flagged.
+
 ## Plugin panels and views
 
 A plugin with `contributes.container` (API 8) gets an icon in the left rail, under the built-in panels, while it is

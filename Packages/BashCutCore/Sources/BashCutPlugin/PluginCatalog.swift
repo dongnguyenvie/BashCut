@@ -20,6 +20,12 @@ public struct InstalledPlugin: Sendable, Equatable, Identifiable {
         installationID = manifest.id + "@" + digest
     }
 
+    /// Checks the plugin can be listed: a valid manifest and, for a plugin that runs code, an executable
+    /// entrypoint (a skill or library pack has none, #506).
+    public func checkEntrypoint() throws {
+        if manifest.runsCode { _ = try entrypointURL() } else { try manifest.validate() }
+    }
+
     public func entrypointURL() throws -> URL {
         try manifest.validate()
         let entrypoint = directory.appendingPathComponent(manifest.entrypoint).standardizedFileURL
@@ -70,7 +76,7 @@ public enum PluginCatalog {
                             continue
                         }
                         let plugin = InstalledPlugin(manifest: manifest, directory: directory)
-                        _ = try plugin.entrypointURL()
+                        try plugin.checkEntrypoint()
                         diagnostics.append(
                             "\(manifest.id) \(earlier.manifest.version) at \(earlier.directory.path) is older than the "
                                 + "copy in BashCut (\(manifest.version)); using BashCut's")
@@ -83,7 +89,7 @@ public enum PluginCatalog {
                     }
                     let plugin = InstalledPlugin(manifest: manifest, directory: directory)
                     let entrypointSignature = PluginFileSignature.manifestAndEntrypoint(of: plugin)[1]
-                    _ = try plugin.entrypointURL()
+                    try plugin.checkEntrypoint()
                     cache?.store(plugin, signatures: [manifestSignature, entrypointSignature])
                     plugins[manifest.id] = plugin
                 } catch {
