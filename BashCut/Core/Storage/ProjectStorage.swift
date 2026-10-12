@@ -18,6 +18,14 @@ public enum StorageError: Error, LocalizedError {
 private struct Recovery: Codable {
     let baseline: Data
     let history: ProjectHistory
+
+    /// The record as `encode` wrote it (baseline as Base64), read with the fast JSON path.
+    static func decode(_ data: Data) throws -> Recovery {
+        guard case .object(let fields) = try JSONValue(parsing: data), let text = fields["baseline"]?.string,
+            let baseline = Data(base64Encoded: text), let history = fields["history"]
+        else { throw ProjectError.invalid("Autosave record: expected {baseline, history}") }
+        return Recovery(baseline: baseline, history: try ProjectHistory.decode(json: history))
+    }
 }
 
 /// Serializes atomic writes and checks the caller's disk version before replacing the project.
@@ -47,8 +55,7 @@ public actor ProjectStorage {
         let journal = cache(url).appendingPathComponent("history.jsonl")
         if FileManager.default.fileExists(atPath: journal.path) {
             do {
-                let restored = try JSONDecoder().decode(
-                    ProjectHistory.self, from: Data(contentsOf: journal))
+                let restored = try ProjectHistory.decode(Data(contentsOf: journal))
                 if restored.project == project { history = restored }
             } catch { warning = "History could not be restored; the project is intact." }
         }
@@ -56,7 +63,7 @@ public actor ProjectStorage {
         var recovery: ProjectHistory?
         if FileManager.default.fileExists(atPath: recoveryURL.path) {
             do {
-                let record = try JSONDecoder().decode(Recovery.self, from: Data(contentsOf: recoveryURL))
+                let record = try Recovery.decode(Data(contentsOf: recoveryURL))
                 try record.history.project.validate()
                 if record.baseline == data && record.history.project != project {
                     recovery = record.history

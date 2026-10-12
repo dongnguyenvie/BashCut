@@ -153,6 +153,14 @@ calls back with `method`.
   input and shows the same chips over the terminal, with × and Clear. With no agent open it opens the first chat
   agent, or shows the dock when there is none.
 
+  **Quick Edit (#449)** sits next to Send to Agent (clip menus, Clip menu, multi-selection Inspector; `agent
+  quick-edit <kind> [--text] [--items]`): Faster, Remove this part, Lower the music, Add a caption, More punch-ins and
+  Other… (a sheet for the user's words, `ui dialog` name `quick-edit`). Each sends one request to the open agent (else
+  the first chat agent) as if typed and sent: the selected clips replace the chips as its scope (Lower the music adds
+  the music under their range), BashCut words the ask without numbers, and every request ends with a review of that
+  range only (`review run --summary --from A --to B`, then `review verify` per fix). A terminal tab gets the
+  `[Scope]` block and the request pasted and submitted. A chat agent still working is an error, not a queue.
+
   **Scope guard (#356).** The app checks every edit a tab with chips makes (docs/guides/automation.md, "scope
   guard"). Settings › Agents › Edits outside the attached clips chooses Ask first (default: the edit is held and a
   sheet offers Allow Once, Allow for This Request and Reject; only the user can allow), Block, or Allow. The command

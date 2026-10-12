@@ -144,6 +144,13 @@ public struct ReviewSummary: Sendable, Equatable {
 }
 
 public enum TimelineReview {
+    /// Whether an issue touches the frames `range` (`review run --from --to`): its span `[frame, endFrame)` meets it,
+    /// or its frame lies inside it when it has no end.
+    public static func issue(_ issue: ReviewIssue, overlaps range: Range<Int>) -> Bool {
+        guard let end = issue.endFrame, end > issue.frame else { return range.contains(issue.frame) }
+        return issue.frame < range.upperBound && end > range.lowerBound
+    }
+
     /// A number for `ReviewIssue.facts`, to three decimals.
     static func fact(_ value: Double) -> JSONValue { .number((value * 1_000).rounded() / 1_000) }
 

@@ -1,4 +1,5 @@
 import AppKit
+import BashCutAgent
 import BashCutAutomation
 import BashCutDocument
 import BashCutPlugin
@@ -31,14 +32,25 @@ extension ChatAgentModel {
     ]
 
     /// Every command the tab offers: the app's, then the kit's skills, then the plugin's (app names win).
+    /// Read by the chat input's suggestions on every keystroke, so it uses the kit skills `loadKitSkills` found,
+    /// never the kit folder itself (finding and installing the kit lists and hashes its files).
     var commands: [ChatCommand] {
-        let skills = (document.agentKitLaunch()?.kit.skills ?? []).map {
+        let skills = kitSkills.map {
             ChatCommand(
                 name: "skill:" + $0, args: "[task]", summary: String(localized: "Follow this agent-kit skill"),
                 source: .skill)
         }
         let taken = Set(Self.appCommands.map(\.name))
         return Self.appCommands + skills + pluginCommands.filter { !taken.contains($0.name) }
+    }
+
+    /// The agent kit's skill names for `/skill:…`, read off the main actor when the tab refreshes.
+    func loadKitSkills() async {
+        guard document.settings.loadAgentKit else { return kitSkills = [] }
+        let folder = document.settings.agentKitFolder, support = StorageUsage.supportFolder
+        kitSkills = await Task.detached(priority: .utility) {
+            AgentKit.locate(folder: folder, support: support)?.skills ?? []
+        }.value
     }
 
     func loadPluginCommands(_ resolved: ResolvedPluginProvider) async {

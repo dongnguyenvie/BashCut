@@ -131,6 +131,9 @@ targets:
         BCRepositoryURL: https://github.com/dongnguyenvie/BashCut
         BCIssuesURL: https://github.com/dongnguyenvie/BashCut/issues
         BCContactEmail: dongnguyenvie@gmail.com
+        # YES in the Debug configuration (Configs/Debug.xcconfig): a build from Xcode is not a release, so it does not
+        # look for updates by itself. scripts/run.sh sets it too.
+        BCDevelopmentBuild: $(BC_DEVELOPMENT_BUILD)
         # Finder "Open With" and Dock drops for project.bashcut.json or a project folder; never the default for JSON.
         CFBundleDocumentTypes:
           - CFBundleTypeName: BashCut Project

@@ -5,3 +5,5 @@ ENABLE_HARDENED_RUNTIME = YES
 CODE_SIGN_IDENTITY = -
 #include "Version.xcconfig"
 #include? "Secrets.xcconfig"
+// Info.plist BCDevelopmentBuild: a development build does not look for updates by itself (AppInstall.development).
+BC_DEVELOPMENT_BUILD = NO

@@ -26,7 +26,7 @@ struct AgentDockView: View {
                 .task(id: model.document.fileURL) {
                     // The badge follows agents' writes while the Knowledge window is closed.
                     while !Task.isCancelled {
-                        model.refreshKnowledgeBadge()
+                        await model.refreshKnowledgeBadge()
                         try? await Task.sleep(for: .seconds(3))
                     }
                 }

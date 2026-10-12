@@ -14,7 +14,9 @@ extension CommandCatalog {
             + "unset or a check not run; atExport does not count) or pass (passed is status == pass; the CLI exits 0, "
             + "1 or 2); a pass by an agent is recorded as the review stage; with sinceRev also diff "
             + "{fixed, new, persisting}. With measure, a revision not measured yet is measured first (review.measure, "
-            + "waited for up to 100 s; measured {job, timedOut} says so), so one call measures and reviews.",
+            + "waited for up to 100 s; measured {job, timedOut} says so), so one call measures and reviews. With from/to only "
+            + "the issues touching those frames are listed and counted (range in the result; a pass is not the review "
+            + "stage), the check after a quick edit.",
         parameters: [
             CommandParameter("measure", .boolean, "Run review measure first when this revision is not measured, and "
                              + "wait for it", cli: .flag("measure")),
@@ -24,6 +26,10 @@ extension CommandCatalog {
                              choices: ReviewSeverity.allCases.map(\.rawValue), cli: .option("min-severity")),
             CommandParameter("summary", .boolean, "Wrap the issues with counts and a status",
                              cli: .flag("summary")),
+            CommandParameter("from", .integer, "Only issues that touch frames from here (with to: [from, to))",
+                             minimum: 0, cli: .option("from")),
+            CommandParameter("to", .integer, "Only issues that touch frames before this one", minimum: 1,
+                             cli: .option("to")),
         ])
 
     /// The CLI's exit status for a successful call: `review run --summary` exits 1 on fail and 2 on incomplete
@@ -289,8 +295,9 @@ extension CommandCatalog {
             + "shape, null when none); targets: each output preset's loudness target (output.targets, else the "
             + "platform's); data: the platform table's version and origin (built-in or the plugin that shipped a newer "
             + "one). With facts, every field with {value, kind hard|recommended|info, source, checked, confidence}, "
-            + "including bitrateMbps, title and cover facts, chapter and disclosure rules where known. With id, that "
-            + "one platform's row with its facts.",
+            + "including bitrateMbps, post text limits (title.maxChars, description.maxChars, caption.maxChars, "
+            + "hashtags.max, hashtags.ignoredAbove), cover facts, chapter and disclosure rules where known. With id, "
+            + "that one platform's row with its facts.",
         parameters: [
             CommandParameter(
                 "id", .string, "tiktok, reels, shorts, youtube, or an export preset (youtube-1080 → youtube)",

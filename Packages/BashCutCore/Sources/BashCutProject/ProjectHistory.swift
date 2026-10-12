@@ -66,6 +66,38 @@ public struct ProjectHistory: Codable, Sendable {
         redoStack = Deque(try Self.expand(container.decode([StoredEntry].self, forKey: .redoStack), newest: project))
     }
 
+    /// Reads a journal written by `encode(to:)` with `JSONValue(parsing:)` instead of `Decodable` (the same entries,
+    /// several times faster for a large project). Dates are the default encoding: seconds since 2001-01-01.
+    public static func decode(_ data: Data) throws -> ProjectHistory { try decode(json: try JSONValue(parsing: data)) }
+
+    /// A journal already read as JSON (inside an autosave record).
+    public static func decode(json: JSONValue) throws -> ProjectHistory {
+        let invalid = ProjectError.invalid("History journal: expected {project, undoEntries, redoEntries}")
+        guard case .object(let fields) = json, case .object(let project)? = fields["project"],
+            case .array(let undo)? = fields["undoEntries"], case .array(let redo)? = fields["redoEntries"]
+        else { throw invalid }
+        func stored(_ value: JSONValue) throws -> StoredEntry {
+            guard case .object(let entry) = value, let label = entry["label"]?.string,
+                let author = entry["author"]?.string.flatMap(Author.init(rawValue:))
+            else { throw invalid }
+            var stored = StoredEntry(label: label, author: author)
+            if let operation = entry["operation"], operation != .null {
+                stored.operation = try EditOperation(json: operation, allowInternal: true)
+            }
+            if let delta = entry["delta"], delta != .null { stored.delta = delta }
+            if case .object(let note)? = entry["note"] {
+                stored.note = EditNote(why: note["why"]?.string, evidence: note["evidence"]?.array.compactMap(\.string) ?? [])
+            }
+            stored.date = entry["date"]?.double.map(Date.init(timeIntervalSinceReferenceDate:))
+            stored.revision = entry["revision"]?.int
+            return stored
+        }
+        var history = ProjectHistory(project: Project(fields: project))
+        history.undoStack = Deque(try expand(undo.map(stored), newest: history.project))
+        history.redoStack = Deque(try expand(redo.map(stored), newest: history.project))
+        return history
+    }
+
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(project, forKey: .project)

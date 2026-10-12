@@ -29,7 +29,10 @@ struct MultiSelectionInspector: View {
                 Button("Delete") { document.run(.delete) }
                 Button("Lift") { document.run(.lift) }
             }
-            Button("Send to Agent") { document.run(.sendToAgent) }
+            HStack {
+                Button("Send to Agent") { document.run(.sendToAgent) }
+                QuickEditMenu(document: document)
+            }
             Text("Drag any selected clip to move them all. Esc clears the selection.").foregroundStyle(.secondary)
         }
     }

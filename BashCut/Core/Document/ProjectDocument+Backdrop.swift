@@ -29,6 +29,13 @@ extension ProjectDocument {
             coalescingKey: coalesce ? "backdrop." + ids.joined(separator: ",") : nil)
     }
 
+    /// `clip.reframe`, `text.line-style` and `clip.backdrop`.
+    func registerPictureCommands() {
+        registerReframeCommands()
+        registerTextLineCommands()
+        registerBackdropCommands()
+    }
+
     func registerBackdropCommands() {
         handleAuthored("clip.backdrop") { document, arguments, author in
             let listed = (arguments.optionalString("items") ?? "").split(separator: ",")

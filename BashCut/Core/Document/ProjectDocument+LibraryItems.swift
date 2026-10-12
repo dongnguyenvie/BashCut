@@ -190,6 +190,7 @@ extension ProjectDocument {
         let id = id ?? (slug.isEmpty ? "\(kind.rawValue)-\(UUID().uuidString.prefix(8).lowercased())" : slug)
         var item = LibraryItem(id: id, kind: kind, name: name)
         for (key, value) in changes { item[key] = value == .null ? nil : value }
+        let file = file ?? textPresetFontFile(kind, params: item.params)
         if kind == .look, file != nil, item.params["color"] == nil {
             // A .cube on its own is a look that is just that LUT (#79).
             item["params"] = .object(item.params.merging(["color": .object([:])]) { $1 })
@@ -238,11 +239,12 @@ extension ProjectDocument {
             throw RPCFailure(-32602, "\(item.reference) is \(item.scope.rawValue) and cannot be moved; duplicate it")
         }
         _ = try catalog.store(scope)
+        let font = fontToCarry(item)
         return try await libraryChange(
             "library.move", scope: .user, author: author,
             arguments: ["id": item.reference, "to": scope.rawValue, "name": item.name]
         ) {
-            try catalog.move(item, to: scope).json()
+            try Self.move(item, to: scope, catalog: catalog, font: font).json()
         }
     }
 

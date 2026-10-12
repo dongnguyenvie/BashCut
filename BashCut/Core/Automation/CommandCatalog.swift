@@ -34,7 +34,7 @@ public enum CommandCatalog {
         + variantSpecs + packagingSpecs
         + sourceMediaSpecs
         + pluginSpecs + pluginViewSpecs
-        + storageSpecs + agentSpecs + appSpecs + chatSpecs
+        + storageSpecs + agentSpecs + quickEditSpecs + appSpecs + chatSpecs
         + privilegedSpecs + uiSpecs + toolSpecs + knowledgeSpecs + skillSpecs + librarySpecs + fontSpecs
 
     /// A provider job (`capabilities`) with the request ID and dry-run parameters, when it does not have them yet.
