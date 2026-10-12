@@ -59,11 +59,11 @@ final class ProjectDocument {
     let fileSync = FileSyncController()
     /// Report of the timeline import that created the open project.
     var importReport: TimelineImport?
-    /// The loudness the last export of this session measured, for review (#431); not saved.
+    /// The loudness the last normalized export measured, for review (#431); also in the cache (`ReviewMeasurementStore`).
     var reviewLoudness: ReviewLoudness?
     /// The file the last export of this session wrote and the revision it shows (`review.sync --rendered`).
     var lastRender: (url: URL, revision: Int)?
-    /// The last picture measurement (`review.measure`, #432), for review; not saved.
+    /// The last picture measurement (`review.measure`, #432), for review; also in the cache.
     var reviewPicture: ReviewPicture?
     /// What plugin review checks reported on the last `review.measure` (#451); not saved.
     var reviewPluginIssues: ReviewPluginIssues?
@@ -292,6 +292,7 @@ final class ProjectDocument {
         replaceHistory(ProjectHistory(project: project))
         preview.reset(project)
         fileURL = url
+        resetReviewMeasurements()
         ProjectFontCatalog.shared.activate(projectRoot: url?.deletingLastPathComponent())
         if let url {
             exports.restoreReport(projectRoot: url.deletingLastPathComponent())

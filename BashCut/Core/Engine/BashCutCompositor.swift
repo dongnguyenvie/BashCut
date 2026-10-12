@@ -192,28 +192,8 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
                         frame: frame, reason: "source frame missing", source: video.source), code: 2)
                     return
                 }
-                let time = request.compositionTime.seconds
-                let motion = video.motion?.0.sample(at: time)
-                let transform = video.motion.flatMap { layer in motion?.transform(layer.1) } ?? video.transform
-                var sourceImage = CIImage(cvPixelBuffer: source)
-                if let crop = video.crop { sourceImage = crop.apply(to: sourceImage) }
-                sourceImage = sourceImage.transformed(by: transform)
-                var transitionOpacity = 1.0
-                if let transition = video.transition {
-                    (sourceImage, transitionOpacity) = applyTransition(
-                        to: sourceImage, transition: transition,
-                        time: request.compositionTime.seconds, bounds: bounds)
-                }
-                let properties = video.style?.fields(video.properties, at: time) ?? video.properties
-                sourceImage = Self.graded(sourceImage, properties: properties, lut: video.lut)
-                let opacity = (motion?.opacity ?? video.properties["opacity"]?.double ?? 1)
-                    * transitionOpacity
-                if opacity != 1 {
-                    sourceImage = sourceImage.applyingFilter(
-                        "CIColorMatrix",
-                        parameters: ["inputAVector": CIVector(x: 0, y: 0, z: 0, w: opacity)])
-                }
-                image = sourceImage.composited(over: image)
+                image = layered(source, video, time: request.compositionTime.seconds, bounds: bounds)
+                    .composited(over: image)
             case .adjustment(let adjustment):
                 let properties = adjustment.style?.fields(adjustment.properties, at: request.compositionTime.seconds)
                     ?? adjustment.properties
@@ -232,6 +212,28 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
             image.cropped(to: bounds), to: output, bounds: bounds,
             colorSpace: CGColorSpaceCreateDeviceRGB())
         request.finish(withComposedVideoFrame: output)
+    }
+
+    /// One clip's frame placed, cut, moved by its transition, graded and faded, ready to composite.
+    private func layered(_ source: CVPixelBuffer, _ video: FrameLayer, time: Double, bounds: CGRect) -> CIImage {
+        let motion = video.motion?.0.sample(at: time)
+        let transform = video.motion.flatMap { layer in motion?.transform(layer.1) } ?? video.transform
+        var sourceImage = CIImage(cvPixelBuffer: source)
+        if let crop = video.crop { sourceImage = crop.apply(to: sourceImage) }
+        sourceImage = sourceImage.transformed(by: transform)
+        var transitionOpacity = 1.0
+        if let transition = video.transition {
+            (sourceImage, transitionOpacity) = applyTransition(
+                to: sourceImage, transition: transition, time: time, bounds: bounds)
+        }
+        let properties = video.style?.fields(video.properties, at: time) ?? video.properties
+        sourceImage = Self.graded(sourceImage, properties: properties, lut: video.lut)
+        let opacity = (motion?.opacity ?? video.properties["opacity"]?.double ?? 1) * transitionOpacity
+        if opacity != 1 {
+            sourceImage = sourceImage.applyingFilter(
+                "CIColorMatrix", parameters: ["inputAVector": CIVector(x: 0, y: 0, z: 0, w: opacity)])
+        }
+        return sourceImage
     }
 
     /// Records `error` in the build's failure log and finishes the request with it.

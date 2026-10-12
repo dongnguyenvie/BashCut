@@ -67,6 +67,7 @@ extension ProjectDocument {
     /// up to `UnixRPCClient`'s allowance for the call.
     func measureForReview(author: Author) async throws -> JSONValue? {
         guard project.duration > 0 else { return nil }
+        await restoreReviewMeasurements()
         let running = jobs.jobs.first { $0.method == "review.measure" && $0.isActive }
         guard running != nil || reviewPicture?.revision != project.revision else { return nil }
         let id: String
@@ -80,6 +81,7 @@ extension ProjectDocument {
 
     private func reviewResult(_ arguments: CommandArguments, author: Author) async throws -> JSONValue {
         await loadReviewTranscripts()
+        await restoreReviewMeasurements()
         let all = reviewIssues()
         let previous = arguments.optionalInt("sinceRev").map { revision in reviewRounds.last { $0.revision == revision } }
         if let previous, previous == nil {
@@ -124,6 +126,7 @@ extension ProjectDocument {
             let before = round.issues.first(where: { $0.id == id })
         else { throw RPCFailure(-32602, "\(id) is not in a review of this session; run review run first") }
         await loadReviewTranscripts()
+        await restoreReviewMeasurements()
         var context = reviewContext()
         let fps = project.fps.value
         let margin = Int(fps.rounded())
@@ -175,6 +178,7 @@ extension ProjectDocument {
             befores.append((id, before, round.revision))
         }
         await loadReviewTranscripts()
+        await restoreReviewMeasurements()
         var context = reviewContext()
         let margin = Int(project.fps.value.rounded())
         let picture = befores.filter { item in Self.pictureIssuePrefixes.contains(where: item.id.hasPrefix) }
@@ -312,6 +316,7 @@ extension ProjectDocument {
                 if self.project.revision == project.revision { picture.textContrast = try await self.measureTextContrast() }
                 measured = picture
                 self.reviewPicture = picture
+                self.storeReviewMeasurement(picture: picture, of: project)
             }
             if usePlugins { self.reviewPluginIssues = ReviewPluginIssues(revision: project.revision, issues: reported) }
             let found = self.reviewIssues().filter { issue in
@@ -380,12 +385,16 @@ extension ProjectDocument {
     static let pictureIssuePrefixes = ["black-", "still-", "jump-", "shot-", "text-contrast"]
 
     /// Keeps the loudness a finished export measured, for the revision it now describes.
-    func recordReviewLoudness(_ measurement: LoudnessMeasurement?, revision: Int, preset: ExportPreset) {
+    func recordReviewLoudness(
+        _ measurement: LoudnessMeasurement?, revision: Int, preset: ExportPreset, measured: Project? = nil
+    ) {
         guard let measurement else { return }
         let target = project.loudnessTarget(preset: preset.argument, platform: preset.platform)
-        reviewLoudness = ReviewLoudness(
+        let loudness = ReviewLoudness(
             revision: revision, integratedLUFS: measurement.integratedLUFS, truePeakDbTP: measurement.truePeakDbTP,
             loudnessRangeLU: measurement.loudnessRangeLU, targetLUFS: target.lufs, maxTruePeakDbTP: target.truePeak,
             preset: preset.argument)
+        reviewLoudness = loudness
+        if let measured { storeReviewMeasurement(loudness: loudness, of: measured) }
     }
 }
