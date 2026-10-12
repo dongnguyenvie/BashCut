@@ -84,7 +84,8 @@ extension CommandCatalog {
         CommandSpec(
             "knowledge.lessons", .read,
             "List lessons the agent learned (symptom, cause, fix), from this project and for every project, newest "
-                + "first. Read the active ones before editing; proposed ones wait for the user's review.",
+                + "first, each with occurrences (times seen), lastSeen and sources (projects it was seen in) when "
+                + "counted. Read the active ones before editing; proposed ones wait for the user's review.",
             parameters: [
                 readScope,
                 CommandParameter("status", .string, "Only this status", choices: lessonStatuses,
@@ -109,12 +110,14 @@ extension CommandCatalog {
                 ]),
         CommandSpec(
             "knowledge.update-lesson", .edit,
-            "Change a lesson's fields or status (proposed, active, disabled). Agents changing a lesson for every "
-                + "project need approval.",
+            "Change a lesson's fields or status (proposed, active, disabled), or count one more sighting with seen "
+                + "(occurrences + 1, lastSeen now, this project added to sources). Agents changing a lesson for every "
+                + "project need approval; seen alone does not.",
             parameters: [lessonID, CommandParameter("title", .string, "Short title", cli: .option("title"))]
                 + lessonFields + [
                     CommandParameter("status", .string, "New status", choices: lessonStatuses,
                                      cli: .option("status")),
+                    CommandParameter("seen", .boolean, "The problem happened again: count it", cli: .flag("seen")),
                     session,
                 ]),
         CommandSpec(
@@ -126,8 +129,9 @@ extension CommandCatalog {
     private static let valueSpecs: [CommandSpec] = [
         CommandSpec(
             "knowledge.prefs", .read,
-            "Read the user's preferences (taste: length, pace, voice, caption style, music…). A project value wins "
-                + "over the one for every project.",
+            "Read the user's preferences (taste: length, pace, voice, caption style, music…), each with confirmedBy "
+                + "(user: said or approved by the user; inferred: an agent's guess). A project value wins over the one "
+                + "for every project.",
             parameters: [CommandParameter("key", .string, "Only this key", cli: .positional), readScope]),
         CommandSpec(
             "knowledge.set-pref", .edit,
@@ -138,15 +142,33 @@ extension CommandCatalog {
                 valueKey, valueText, removeValue,
                 CommandParameter("scope", .string, "user (default) or project", default: .string("user"),
                                  choices: knowledgeScopes, cli: .option("scope")),
+                CommandParameter("confirmedBy", .string, "user when the user said it, inferred when you guessed it "
+                                 + "(default for agents)", choices: ["user", "inferred"],
+                                 cli: .option("confirmed-by")),
                 session,
             ]),
         CommandSpec(
             "knowledge.facts", .read,
-            "Read this project's facts (people, places, footage notes, what was approved).",
+            "Read this project's facts (people, places, footage notes, what was approved), each with evidence "
+                + "{source, measure, n, status measured|estimated|user} when given.",
             parameters: [CommandParameter("key", .string, "Only this key", cli: .positional)]),
         CommandSpec(
-            "knowledge.set-fact", .edit, "Set or remove a fact about this project. Needs a saved project.",
-            parameters: [valueKey, valueText, removeValue, session]),
+            "knowledge.set-fact", .edit,
+            "Set or remove a fact about this project, with where it comes from: source (URL, file, frame, the user), "
+                + "measure (the command or result path that gave it), n (sample size) and status. Plans and skills "
+                + "refer to a fact by its key. Needs a saved project.",
+            parameters: [
+                valueKey, valueText, removeValue,
+                CommandParameter("source", .string, "Where it comes from: a URL, a file, a frame, user",
+                                 cli: .option("source")),
+                CommandParameter("measure", .string, "The measurement that gave it (review.measure pace.median, "
+                                 + "media analyze C0042)", cli: .option("measure")),
+                CommandParameter("n", .integer, "Sample size behind it", minimum: 0, maximum: 100_000_000,
+                                 cli: .option("n")),
+                CommandParameter("status", .string, "measured, estimated or user (said by the user)",
+                                 choices: ["measured", "estimated", "user"], cli: .option("status")),
+                session,
+            ]),
     ]
 
     private static let reviewSpecs: [CommandSpec] = [

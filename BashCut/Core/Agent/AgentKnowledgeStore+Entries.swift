@@ -43,7 +43,7 @@ extension AgentKnowledgeStore {
     public func addLesson(
         title: String, symptom: String = "", cause: String = "", fix: String = "", evidence: String = "",
         check: String? = nil, tags: [String] = [], status: LessonStatus = .active, scope: KnowledgeScope,
-        source: KnowledgeSource
+        source: KnowledgeSource, seenIn: String? = nil
     ) throws -> KnowledgeLesson {
         let title = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !title.isEmpty else { throw KnowledgeError("A lesson needs a title") }
@@ -53,9 +53,12 @@ extension AgentKnowledgeStore {
         repeat {
             id = "l-" + UUID().uuidString.prefix(8).lowercased()
         } while taken.contains(id)
-        let lesson = KnowledgeLesson(
+        var lesson = KnowledgeLesson(
             id: id, title: title, symptom: symptom, cause: cause, fix: fix, evidence: evidence, check: check,
             tags: Self.normalized(tags), status: status, source: source, scope: scope)
+        lesson.occurrences = 1
+        lesson.lastSeen = source.date
+        lesson.sources = seenIn.flatMap { $0.isEmpty ? nil : [$0] }
         all.append(lesson)
         try writeLessons(all, scope: scope)
         try record(KnowledgeChange(
@@ -83,7 +86,8 @@ extension AgentKnowledgeStore {
         patch.applyText(to: &lesson)
         if let tags = patch.tags { lesson.tags = Self.normalized(tags) }
         if let status = patch.status { lesson.status = status }
-        lesson.updated = source.date
+        if patch.seen { lesson.seen(at: source.date, in: patch.seenIn) }
+        if !patch.onlySeen { lesson.updated = source.date }
         lesson.scope = scope
         all[index] = lesson
         try writeLessons(all, scope: scope)
@@ -147,7 +151,8 @@ extension AgentKnowledgeStore {
     @discardableResult
     public func setValue(
         _ kind: KnowledgeValueKind, key: String, value: String?, scope: KnowledgeScope, source: KnowledgeSource,
-        recordedBy: KnowledgeSource? = nil, action: KnowledgeChange.Action? = nil
+        details: KnowledgeValueDetails = KnowledgeValueDetails(), recordedBy: KnowledgeSource? = nil,
+        action: KnowledgeChange.Action? = nil
     ) throws -> KnowledgeValue? {
         guard kind == .prefs || scope == .project else { throw KnowledgeError("Facts belong to one project") }
         let key = key.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -166,7 +171,7 @@ extension AgentKnowledgeStore {
                 after: nil), scope: scope)
             return nil
         }
-        let entry = KnowledgeValue(key: key, value: value, source: source, scope: scope)
+        let entry = KnowledgeValue(key: key, value: value, source: source, scope: scope, details: details)
         if let index { all[index] = entry } else { all.append(entry) }
         try writeValues(all, kind: kind, scope: scope)
         try record(KnowledgeChange(

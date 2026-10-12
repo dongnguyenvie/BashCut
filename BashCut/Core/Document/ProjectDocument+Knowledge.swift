@@ -122,7 +122,8 @@ extension ProjectDocument {
                 cause: arguments.optionalString("cause") ?? "", fix: arguments.optionalString("fix") ?? "",
                 evidence: arguments.optionalString("evidence") ?? "", check: arguments.optionalString("check"),
                 tags: Self.tags(arguments) ?? [],
-                status: status, scope: scope, source: Self.knowledgeSource(author, arguments))
+                status: status, scope: scope, source: Self.knowledgeSource(author, arguments),
+                seenIn: document.knowledgeProjectName)
             return try Self.json(lesson)
         }
         handleAuthored("knowledge.update-lesson") { document, arguments, author in
@@ -134,12 +135,14 @@ extension ProjectDocument {
                 cause: arguments.values["cause"]?.string, fix: arguments.values["fix"]?.string,
                 evidence: arguments.values["evidence"]?.string, check: arguments.values["check"]?.string,
                 tags: Self.tags(arguments),
-                status: try Self.lessonStatus(arguments.optionalString("status")))
+                status: try Self.lessonStatus(arguments.optionalString("status")),
+                seen: arguments.bool("seen"), seenIn: document.knowledgeProjectName)
             // Taking a lesson out of review is the user's decision, like knowledge approve.
             let decides = lesson.status == .proposed && patch.status.map { $0 != .proposed } == true
             let source = Self.knowledgeSource(author, arguments)
+            // Counting a sighting changes no rule, so it needs no approval even for every project.
             return try document.knowledgeChange(
-                "knowledge.update-lesson", approval: lesson.scope == .user || decides, author: author,
+                "knowledge.update-lesson", approval: (lesson.scope == .user && !patch.onlySeen) || decides, author: author,
                 arguments: Self.approvalArguments(lesson, arguments)) {
                 try Self.json(store.updateLesson(id, patch, source: source))
             }
@@ -171,6 +174,7 @@ extension ProjectDocument {
                 guard arguments.bool("remove") || value != nil else { throw RPCFailure(-32602, "Missing value") }
                 let store = document.agents.knowledgeStore
                 let source = Self.knowledgeSource(author, arguments)
+                let details = try Self.valueDetails(kind, arguments, author: author)
                 // An agent's preference for every project waits in the proposals inbox (#69), unless the user lets
                 // agents act without confirmation.
                 if scope == .user, author != .user {
@@ -179,13 +183,14 @@ extension ProjectDocument {
                             method: Self.setMethod(kind), author: author, approved: true, automatic: true)
                         DebugLog.write("approval", "auto-approved \(Self.setMethod(kind)) from \(author) key \(key)")
                     } else {
-                        let proposal = try store.proposeValue(kind, key: key, value: value, scope: scope, source: source)
+                        let proposal = try store.proposeValue(
+                            kind, key: key, value: value, scope: scope, source: source, confirmedBy: details.confirmedBy)
                         document.message = String(format: String(localized: "%@ proposes a preference: %@"),
                                                   author.rawValue.capitalized, key)
                         return .object(["approval": .string("proposed"), "proposal": try Self.json(proposal)])
                     }
                 }
-                return try store.setValue(kind, key: key, value: value, scope: scope, source: source)
+                return try store.setValue(kind, key: key, value: value, scope: scope, source: source, details: details)
                     .map(Self.json) ?? .null
             }
         }
@@ -257,6 +262,9 @@ extension ProjectDocument {
 
     // MARK: Helpers
 
+    /// The open project's name, for a lesson's sources; nil while it is unsaved.
+    var knowledgeProjectName: String? { fileURL == nil ? nil : project.name }
+
     private static func setMethod(_ kind: KnowledgeValueKind) -> String {
         kind == .prefs ? "knowledge.set-pref" : "knowledge.set-fact"
     }
@@ -275,6 +283,33 @@ extension ProjectDocument {
             throw RPCFailure(-32602, "status must be proposed, active or disabled")
         }
         return status
+    }
+
+    /// A preference's confirmation (the user's own by default when the user sets it, else inferred) or a fact's
+    /// evidence (the user's when the user sets it without saying).
+    private static func valueDetails(
+        _ kind: KnowledgeValueKind, _ arguments: CommandArguments, author: Author
+    ) throws -> KnowledgeValueDetails {
+        switch kind {
+        case .prefs:
+            let given = try arguments.optionalString("confirmedBy").map { name in
+                guard let value = KnowledgeConfirmation(rawValue: name) else {
+                    throw RPCFailure(-32602, "confirmedBy must be user or inferred")
+                }
+                return value
+            }
+            return KnowledgeValueDetails(confirmedBy: given ?? (author == .user ? .user : .inferred))
+        case .facts:
+            let status = try arguments.optionalString("status").map { name in
+                guard let value = KnowledgeFactEvidence.Status(rawValue: name) else {
+                    throw RPCFailure(-32602, "status must be measured, estimated or user")
+                }
+                return value
+            }
+            return KnowledgeValueDetails(evidence: KnowledgeFactEvidence(
+                source: arguments.optionalString("source"), measure: arguments.optionalString("measure"),
+                n: arguments.optionalInt("n"), status: status ?? (author == .user ? .user : nil)))
+        }
     }
 
     private static func tags(_ arguments: CommandArguments) -> [String]? {

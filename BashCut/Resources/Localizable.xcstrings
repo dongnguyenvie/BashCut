@@ -1,6 +1,14 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Seen %d×": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Seen %d×" } }, "vi": { "stringUnit": { "state": "translated", "value": "Gặp %d lần" } } } },
+    "last %@": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "last %@" } }, "vi": { "stringUnit": { "state": "translated", "value": "gần nhất %@" } } } },
+    "in %@": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "in %@" } }, "vi": { "stringUnit": { "state": "translated", "value": "trong %@" } } } },
+    "Measured": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Measured" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đo được" } } } },
+    "From the user": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "From the user" } }, "vi": { "stringUnit": { "state": "translated", "value": "Từ người dùng" } } } },
+    "Measure: %@": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Measure: %@" } }, "vi": { "stringUnit": { "state": "translated", "value": "Phép đo: %@" } } } },
+    "Confirmed": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Confirmed" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đã xác nhận" } } } },
+    "Inferred": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Inferred" } }, "vi": { "stringUnit": { "state": "translated", "value": "Suy ra" } } } },
     "%@ still needs setup: review Install Dependencies": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%@ still needs setup: review Install Dependencies" } }, "vi": { "stringUnit": { "state": "translated", "value": "%@ vẫn cần cài thêm: xem lại Install Dependencies" } } } },
     "+ %@ setup": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "+ %@ setup" } }, "vi": { "stringUnit": { "state": "translated", "value": "+ %@ cài thêm" } } } },
     "BashCut did not quit, so it was not updated": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "BashCut did not quit, so it was not updated" } }, "vi": { "stringUnit": { "state": "translated", "value": "BashCut chưa thoát nên chưa được cập nhật" } } } },

@@ -86,10 +86,17 @@ SwiftTerm terminal. Claude and Codex use your installed CLI and its existing log
   - **Lessons** (`knowledge lessons`, `add-lesson`, `update-lesson`, `remove-lesson`): a title, the symptom, its
     cause, what to do next time, evidence and tags. Each has a status: `active` lessons are followed, `proposed`
     ones wait for your review, `disabled` ones are kept for the record. The source records which agent wrote it,
-    in which session and when.
+    in which session and when. Each lesson also counts its sightings: `occurrences` (1 when recorded),
+    `lastSeen` and `sources` (the projects it was seen in); `update-lesson ID --seen` counts one more, without
+    approval even for a lesson for every project, since it changes no rule.
   - **Preferences** (`knowledge prefs`, `set-pref`): your taste as key/value pairs, for every project by default. A
-    value set for one project wins over the one for every project.
-  - **Facts** (`knowledge facts`, `set-fact`): people, places, footage notes and what was approved, for this project.
+    value set for one project wins over the one for every project. `confirmedBy` says whether you said or approved
+    it (`user`) or an agent inferred it (`inferred`, the default for agents; `set-pref --confirmed-by user` when you
+    said it in the chat). Approving an agent's proposal makes it `user`.
+  - **Facts** (`knowledge facts`, `set-fact`): people, places, footage notes and what was approved, for this project,
+    with optional `evidence` {`source` (URL, file, frame, user), `measure` (the command or result path), `n` (sample
+    size), `status` measured, estimated or user}: `set-fact KEY VALUE --status measured --measure "review measure
+    shots.median" --n 48`. Plans and skills refer to a fact by its key.
   - **Proposals** (`knowledge proposals`, `approve`, `reject`): what waits in the Knowledge window's **Inbox**. A
     lesson an agent records for every project always starts as a proposal (ID `l-…`); approving makes it active,
     rejecting removes it. An agent's preference change for every project (`set-pref`) is not applied at once: it
@@ -130,8 +137,9 @@ SwiftTerm terminal. Claude and Codex use your installed CLI and its existing log
   place. Each entry shows which agent and session added it and when, and entries changed since you last opened the
   window carry a **New** badge. Your changes are recorded with the source `user`.
 
-  Every agent session starts with a short summary: the active lessons (at most 20, this project's first), the
-  preferences and the project facts (at most 30 each), and how many proposals wait for you. Proposed and disabled
+  Every agent session starts with a short summary: the active lessons (at most 20, this project's first, with
+  their sightings), the preferences (marked when inferred) and the project facts (with status and n), and how many
+  proposals wait for you. Proposed and disabled
   lessons are not in it. `context get` returns the same summary as `knowledge`, so an agent outside BashCut's
   terminals sees it too.
 - **Resuming.** When BashCut has found the last Claude or Codex conversation for the project, the dock offers

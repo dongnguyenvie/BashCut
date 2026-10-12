@@ -25,7 +25,17 @@ public struct KnowledgeSummary: Sendable, Equatable {
 
     public var json: JSONValue {
         func value(_ value: KnowledgeValue) -> JSONValue {
-            .object(["key": .string(value.key), "value": .string(Self.clip(value.value)), "scope": .string(value.scope.rawValue)])
+            var row: [String: JSONValue] = [
+                "key": .string(value.key), "value": .string(Self.clip(value.value)), "scope": .string(value.scope.rawValue),
+            ]
+            if let confirmedBy = value.confirmedBy { row["confirmedBy"] = .string(confirmedBy.rawValue) }
+            if let evidence = value.evidence {
+                if let status = evidence.status { row["status"] = .string(status.rawValue) }
+                if let n = evidence.n { row["n"] = .integer(n) }
+                if let source = evidence.source { row["source"] = .string(Self.clip(source, limit: 120)) }
+                if let measure = evidence.measure { row["measure"] = .string(Self.clip(measure, limit: 120)) }
+            }
+            return .object(row)
         }
         return .object([
             "lessons": .array(lessons.map { lesson in
@@ -35,6 +45,9 @@ public struct KnowledgeSummary: Sendable, Equatable {
                     "scope": .string(lesson.scope.rawValue),
                 ]
                 if let check = lesson.check { row["check"] = .string(Self.clip(check)) }
+                if let occurrences = lesson.occurrences { row["occurrences"] = .integer(occurrences) }
+                if let lastSeen = lesson.lastSeen { row["lastSeen"] = .string(Self.day(lastSeen)) }
+                if let sources = lesson.sources, sources.count > 1 { row["sources"] = .integer(sources.count) }
                 return .object(row)
             }),
             "prefs": .array(prefs.map(value)), "facts": .array(facts.map(value)),
@@ -58,17 +71,21 @@ public struct KnowledgeSummary: Sendable, Equatable {
                 "- \(lesson.id) (\(lesson.scope.rawValue)) \(Self.clip(lesson.title))"
                     + (lesson.fix.isEmpty ? "" : " → \(Self.clip(lesson.fix))")
                     + (lesson.check.map { " (check: \(Self.clip($0)))" } ?? "")
+                    + Self.seenText(lesson)
             }
             if omittedLessons > 0 { lines.append("- … \(omittedLessons) more (`bashcut knowledge lessons --status active`)") }
         }
         if !prefs.isEmpty {
             lines.append("Preferences:")
-            lines += prefs.map { "- \($0.key) = \(Self.clip($0.value)) (\($0.scope.rawValue))" }
+            lines += prefs.map {
+                "- \($0.key) = \(Self.clip($0.value)) (\($0.scope.rawValue)"
+                    + ($0.confirmedBy == .inferred ? ", inferred)" : ")")
+            }
             if omittedPrefs > 0 { lines.append("- … \(omittedPrefs) more (`bashcut knowledge prefs`)") }
         }
         if !facts.isEmpty {
             lines.append("Project facts:")
-            lines += facts.map { "- \($0.key) = \(Self.clip($0.value))" }
+            lines += facts.map { "- \($0.key) = \(Self.clip($0.value))" + Self.evidenceText($0.evidence) }
             if omittedFacts > 0 { lines.append("- … \(omittedFacts) more (`bashcut knowledge facts`)") }
         }
         if proposals > 0 {
@@ -83,11 +100,33 @@ public struct KnowledgeSummary: Sendable, Equatable {
         return lines.joined(separator: "\n")
     }
 
-    /// One line of at most `fieldLimit` characters.
-    static func clip(_ text: String) -> String {
+    /// One line of at most `limit` characters.
+    static func clip(_ text: String, limit: Int = fieldLimit) -> String {
         let line = text.split(whereSeparator: \.isNewline).joined(separator: " ")
             .trimmingCharacters(in: .whitespaces)
-        return line.count > fieldLimit ? String(line.prefix(fieldLimit - 1)) + "…" : line
+        return line.count > limit ? String(line.prefix(limit - 1)) + "…" : line
+    }
+
+    static func day(_ date: Date) -> String {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withFullDate]
+        return formatter.string(from: date)
+    }
+
+    /// " [seen 3×, last 2026-10-01, 2 projects]" for a lesson seen more than once.
+    static func seenText(_ lesson: KnowledgeLesson) -> String {
+        guard let occurrences = lesson.occurrences, occurrences > 1 else { return "" }
+        var parts = ["seen \(occurrences)×"]
+        if let lastSeen = lesson.lastSeen { parts.append("last \(day(lastSeen))") }
+        if let sources = lesson.sources, sources.count > 1 { parts.append("\(sources.count) projects") }
+        return " [" + parts.joined(separator: ", ") + "]"
+    }
+
+    /// " [measured, n=12]" for a fact with evidence.
+    static func evidenceText(_ evidence: KnowledgeFactEvidence?) -> String {
+        guard let evidence else { return "" }
+        let parts = [evidence.status?.rawValue, evidence.n.map { "n=\($0)" }].compactMap { $0 }
+        return parts.isEmpty ? "" : " [" + parts.joined(separator: ", ") + "]"
     }
 }
 
