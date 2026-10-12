@@ -112,15 +112,19 @@ public struct FrameLayer: @unchecked Sendable {
     public let crop: SourceCrop?
     /// The decoded size and orientation the crop is cut in, when `crop.*` keys change it over time.
     public let animatedCrop: (naturalSize: CGSize, orientation: CGAffineTransform)?
+    /// What fills the frame around the picture (`backdrop`); nil leaves it to the layers below.
+    public let backdrop: ClipBackdrop?
     /// Keyed `color.*` fields.
     public let style: StyleMotion?
     public init(
         trackID: CMPersistentTrackID, transform: CGAffineTransform,
         properties: [String: JSONValue] = [:], transition: RenderTransition? = nil,
         lut: CubeLUT? = nil, motion: (LayerMotion, ClipPlacement)? = nil, crop: SourceCrop? = nil,
-        style: StyleMotion? = nil, animatedCrop: (naturalSize: CGSize, orientation: CGAffineTransform)? = nil
+        style: StyleMotion? = nil, animatedCrop: (naturalSize: CGSize, orientation: CGAffineTransform)? = nil,
+        backdrop: ClipBackdrop? = nil
     ) {
         self.style = style
+        self.backdrop = backdrop
         self.animatedCrop = animatedCrop
         self.trackID = trackID
         self.transform = transform
@@ -183,7 +187,8 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
                 let time = request.compositionTime.seconds
                 let motion = video.motion?.0.sample(at: time)
                 let transform = video.motion.flatMap { layer in motion?.transform(layer.1) } ?? video.transform
-                var sourceImage = CIImage(cvPixelBuffer: source)
+                let decoded = CIImage(cvPixelBuffer: source)
+                var sourceImage = decoded
                 let properties = video.style?.fields(video.properties, at: time) ?? video.properties
                 if let geometry = video.animatedCrop {
                     if let crop = SourceCrop(
@@ -194,6 +199,8 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
                     sourceImage = crop.apply(to: sourceImage)
                 }
                 sourceImage = sourceImage.transformed(by: transform)
+                // The backdrop is part of the clip's picture: transitions, grade and opacity apply to both.
+                if let backdrop = video.backdrop { sourceImage = sourceImage.composited(over: backdrop.image(source: decoded)) }
                 var transitionOpacity = 1.0
                 if let transition = video.transition {
                     (sourceImage, transitionOpacity) = applyTransition(

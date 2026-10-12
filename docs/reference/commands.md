@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 211 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 212 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -122,7 +122,7 @@ List recently opened projects (Welcome screen).
 
 ### `bashcut timeline get [--format <format>]`
 
-Read the revision, format and tracks, including track IDs and roles, and scale per video or image item: fit or fill, baseScale, zoom and maxZoom (keyframes), pixelRatio (output pixels per source pixel; over 1 is upscaled) now and at maxZoom, maxZoomNative (the largest zoom before upscaling), shown size and frameCoverage. media lists each media's path, kind, license and provenance as stored.
+Read the revision, format and tracks, including track IDs and roles, and scale per video or image item: fit or fill, baseScale, zoom and maxZoom (keyframes), pixelRatio (output pixels per source pixel; over 1 is upscaled) now and at maxZoom, maxZoomNative (the largest zoom before upscaling), shown size, frameCoverage and backdrop (blur, color or null). media lists each media's path, kind, license and provenance as stored.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_timeline_get`
 - `format`: string, one of json, text. json (default) or a compact text listing
@@ -995,6 +995,19 @@ Crop a video clip or image to its subject, from the face (or person) boxes media
 - `measure`: boolean. Measure the boxes again even when stored
 - `preview`: boolean. Render the preview grid (default true)
 - `provider`: string. Provider ID overriding the project preference for one request
+- `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
+
+### `bashcut clip backdrop [<item>] [--items <items>] --kind <kind> [--color <color>] [--blur <blur>] [--dim <dim>] --base-rev <baseRev>`
+
+Fill the frame around a fitted picture (an off-aspect photo or clip) without a second clip, like Inspector › Video › Backdrop: blur draws a blurred copy of the same frame scaled to fill, color a solid colour; none removes it. The backdrop moves, fades and grades with the clip. blur is the radius as a share of the frame's short side, dim darkens it (0–1). Several items in one undo step. Returns rev and items.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_clip_backdrop`
+- `item`: string. Video or image item ID; the selection by default
+- `items`: string. Several item IDs, comma separated
+- `kind`: string, required, one of blur, color, none. blur, color or none
+- `color`: string. Colour #RRGGBB for kind color (default black)
+- `blur`: number, 0…0.5. Blur radius, share of the short side (default 0.05)
+- `dim`: number, 0…1. Darkening, 0–1 (default 0)
 - `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
 
 ### `bashcut clip reverse [<item>]`

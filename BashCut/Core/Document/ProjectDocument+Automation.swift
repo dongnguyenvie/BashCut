@@ -40,6 +40,7 @@ extension ProjectDocument {
         registerVisionCommands()
         registerReframeCommands()
         registerTextLineCommands()
+        registerBackdropCommands()
         registerSpeechRateCommands()
         registerVoiceCheckCommands()
         registerVoiceTakeCommands()

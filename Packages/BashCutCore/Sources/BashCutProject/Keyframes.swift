@@ -253,7 +253,9 @@ public struct ItemMotion: Sendable, Equatable {
 
 extension Item {
     /// Fields a `setProperties` patch removes when it sets them to null.
-    public static let removableFields: Set<String> = ["freezeFrame", "keyframes", "words", "wordStyle", "brandRoles"]
+    public static let removableFields: Set<String> = [
+        "freezeFrame", "keyframes", "words", "wordStyle", "brandRoles", "backdrop",
+    ]
 
     /// The item's keyframes; nil when it has none (or they are invalid, which validation rejects).
     public var motion: ItemMotion? {

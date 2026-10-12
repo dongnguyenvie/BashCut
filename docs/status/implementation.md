@@ -125,6 +125,8 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   lines) sample one picture every `--step` source seconds through the built-in `bashcut.vision` plugin (Apple
   Vision); raw boxes, confidence and time, no labels. The boxes are kept per file content
   (`.bashcut/cache/subjects/`, merged across runs).
+- Item backdrop (P3-J7): `backdrop {kind blur|color, color, blur, dim}` fills a fitted picture's bars with a blurred,
+  filled copy of its own frame or a colour; `clip backdrop`, Inspector › Video › Backdrop.
 - Two fonts in one title: `textStyle.lines` (per-line font, scale, fill, stroke), `text line-style`, Inspector ›
   Text › Lines.
 - `clip reframe` (P3-J1) crops a clip or image to its subject from those boxes (measuring missing ones first):

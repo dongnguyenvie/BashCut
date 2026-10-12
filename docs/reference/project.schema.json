@@ -191,6 +191,35 @@
           "minimum" : 0,
           "type" : "integer"
         },
+        "backdrop" : {
+          "description" : "Video picture: what fills the frame around it (fit clips, off-aspect photos) instead of black",
+          "properties" : {
+            "blur" : {
+              "description" : "Blur radius as a share of the frame's short side (kind blur; default 0.05)",
+              "maximum" : 0.5,
+              "minimum" : 0,
+              "type" : "number"
+            },
+            "color" : {
+              "description" : "Backdrop colour #RRGGBB (kind color; default black)",
+              "pattern" : "^#[0-9A-Fa-f]{6}$",
+              "type" : "string"
+            },
+            "dim" : {
+              "description" : "Darkens the backdrop: 0 unchanged, 1 black (default 0)",
+              "maximum" : 1,
+              "minimum" : 0,
+              "type" : "number"
+            },
+            "kind" : {
+              "description" : "Video picture: what fills the frame around a fitted picture: blur (a blurred, filled copy of itself) or color",
+              "maxLength" : 5,
+              "minLength" : 1,
+              "type" : "string"
+            }
+          },
+          "type" : "object"
+        },
         "brandRoles" : {
           "additionalProperties" : {
             "enum" : [

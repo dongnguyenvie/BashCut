@@ -1,6 +1,13 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Backdrop": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Backdrop" } }, "vi": { "stringUnit": { "state": "translated", "value": "Nền" } } } },
+    "Blur fill": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Blur fill" } }, "vi": { "stringUnit": { "state": "translated", "value": "Nền mờ" } } } },
+    "Colour": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Colour" } }, "vi": { "stringUnit": { "state": "translated", "value": "Màu" } } } },
+    "Blur": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Blur" } }, "vi": { "stringUnit": { "state": "translated", "value": "Làm mờ" } } } },
+    "Dim": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Dim" } }, "vi": { "stringUnit": { "state": "translated", "value": "Làm tối" } } } },
+    "Backdrop colour": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Backdrop colour" } }, "vi": { "stringUnit": { "state": "translated", "value": "Màu nền" } } } },
+    "Fills the frame around a fitted photo or clip with a blurred copy of it or a colour": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Fills the frame around a fitted photo or clip with a blurred copy of it or a colour" } }, "vi": { "stringUnit": { "state": "translated", "value": "Lấp khung quanh ảnh hoặc clip vừa khung bằng bản làm mờ của chính nó hoặc một màu" } } } },
     "Lines": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Lines" } }, "vi": { "stringUnit": { "state": "translated", "value": "Các dòng" } } } },
     "Empty line": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Empty line" } }, "vi": { "stringUnit": { "state": "translated", "value": "Dòng trống" } } } },
     "Use the title's look for this line": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Use the title's look for this line" } }, "vi": { "stringUnit": { "state": "translated", "value": "Dùng kiểu chữ của tiêu đề cho dòng này" } } } },

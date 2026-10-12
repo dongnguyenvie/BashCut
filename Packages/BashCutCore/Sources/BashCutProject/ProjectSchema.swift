@@ -30,7 +30,7 @@ public struct ItemProperty: Sendable {
         self.summary = summary
     }
 
-    public static let groups = ["transform", "crop", "color", "textStyle"]
+    public static let groups = ["transform", "crop", "color", "textStyle", "backdrop"]
 
     public static let all: [ItemProperty] = [
         .init(nil, "speed", .number(0.01...100), "Source frames per timeline frame; the timeline duration is kept"),
@@ -53,6 +53,12 @@ public struct ItemProperty: Sendable {
         .init("crop", "bottom", .number(0...0.95), "Video picture: fraction of the height hidden at the bottom"),
         .init("crop", "radius", .number(0...0.5),
               "Video picture: corner radius as a fraction of the visible part's shorter side (0.5 = circle or pill)"),
+        .init("backdrop", "kind", .text(maxLength: 5),
+              "Video picture: what fills the frame around a fitted picture: blur (a blurred, filled copy of itself) or color"),
+        .init("backdrop", "color", .color, "Backdrop colour #RRGGBB (kind color; default black)"),
+        .init("backdrop", "blur", .number(0...0.5),
+              "Blur radius as a share of the frame's short side (kind blur; default 0.05)"),
+        .init("backdrop", "dim", .number(0...1), "Darkens the backdrop: 0 unchanged, 1 black (default 0)"),
         .init("textStyle", "size", .number(0.005...1), "Font size as a fraction of the frame's short side (shrunk to fit 90% of the width)"),
         .init("textStyle", "positionY", .number(0...1), "Baseline position from the bottom, as a fraction"),
         .init("textStyle", "strokeWidth", .number(0...50), "Outline width in points"),
@@ -423,6 +429,7 @@ public enum ProjectSchema {
             let summaries = [
                 "transform": "Framing",
                 "crop": "Video picture: the visible part of the source frame (the picture keeps its place; zoom and pan move it)",
+                "backdrop": "Video picture: what fills the frame around it (fit clips, off-aspect photos) instead of black",
             ]
             properties[name] = .object(group(
                 name, summaries[name] ?? "Text style overrides",

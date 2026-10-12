@@ -145,6 +145,24 @@ extension CommandCatalog {
             ]),
         reframeSpec,
         CommandSpec(
+            "clip.backdrop", .edit,
+            "Fill the frame around a fitted picture (an off-aspect photo or clip) without a second clip, like "
+                + "Inspector › Video › Backdrop: blur draws a blurred copy of the same frame scaled to fill, color a "
+                + "solid colour; none removes it. The backdrop moves, fades and grades with the clip. blur is the "
+                + "radius as a share of the frame's short side, dim darkens it (0–1). Several items in one undo step. "
+                + "Returns rev and items.",
+            parameters: [
+                CommandParameter("item", .string, "Video or image item ID; the selection by default", cli: .positional),
+                CommandParameter("items", .string, "Several item IDs, comma separated", cli: .option("items")),
+                CommandParameter("kind", .string, "blur, color or none", required: true,
+                                 choices: ["blur", "color", "none"], cli: .option("kind")),
+                CommandParameter("color", .string, "Colour #RRGGBB for kind color (default black)", cli: .option("color")),
+                CommandParameter("blur", .number, "Blur radius, share of the short side (default 0.05)", range: 0...0.5,
+                                 cli: .option("blur")),
+                CommandParameter("dim", .number, "Darkening, 0–1 (default 0)", range: 0...1, cli: .option("dim")),
+                baseRevision,
+            ]),
+        CommandSpec(
             "text.line-style", .edit,
             "Give one line of a text item its own look (two fonts in one title, Inspector › Text › Lines): font (a "
                 + "PostScript name from fonts list, which picks the family and the weight), scale (× the block's font "

@@ -166,6 +166,13 @@ public actor CompositionBuilder {
                     let lut = try loadLUT(for: item)
                     let crop = SourceCrop(
                         fields: item.fields, naturalSize: asset.naturalSize, orientation: placement.orientation)
+                    let backdrop = ClipBackdrop(
+                        fields: item.fields,
+                        fill: ClipPlacement(
+                            orientation: placement.orientation, size: rect.size,
+                            baseScale: Self.baseScale(source: rect.size, canvas: canvas, fill: true), canvas: canvas
+                        ).transform(zoom: 1, pan: 0, tilt: 0, rotation: 0),
+                        canvas: canvas)
                     // Keyed crop sides or corners are cut anew at each frame.
                     let animatedCrop = item.motion?.keysCrop == true
                         ? (naturalSize: asset.naturalSize, orientation: placement.orientation) : nil
@@ -176,7 +183,7 @@ public actor CompositionBuilder {
                                 trackID: target.trackID, transform: transform,
                                 properties: item.fields, transition: incoming, lut: lut,
                                 motion: motion.map { ($0, placement) }, crop: crop, style: style,
-                                animatedCrop: animatedCrop)))
+                                animatedCrop: animatedCrop, backdrop: backdrop)))
                     if let transition = transitionFrom[item.id] {
                         let hold = try visualLanes.take(
                             layer: track.id, start: item.end, end: item.end + transition.duration, composition: composition)
@@ -202,7 +209,7 @@ public actor CompositionBuilder {
                                         fps: project.fps.value, easing: transition.easing, motion: transition.motion),
                                     lut: lut,
                                     motion: motion.map { ($0, placement) }, crop: crop, style: style,
-                                animatedCrop: animatedCrop)))
+                                animatedCrop: animatedCrop, backdrop: backdrop)))
                     }
                 }
                 // Main sound remains attached in the spike until separate linked dialogue editing lands.

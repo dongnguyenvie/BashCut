@@ -129,6 +129,11 @@ longest side against the frame (bars on the other sides), **fill** covers the fr
 (fit); a project without the field fills, as every project did before it existed, so older zoom values keep their
 look. `transform.zoom` scales from that base size, and `pan` / `tilt` move it in output pixels.
 
+A fitted picture leaves bars; the item's optional `backdrop` fills them instead of black: `{"kind": "blur"}` draws a
+blurred copy of the same frame scaled to fill (`blur`: radius as a share of the frame's short side, default 0.05),
+`{"kind": "color", "color": "#RRGGBB"}` a colour; `dim` (0–1) darkens either. The backdrop belongs to the clip:
+transitions, grade and opacity apply to it too (`clip backdrop`, Inspector › Video › Backdrop).
+
 ## Motion and style as data
 
 - **Ease.** Keyframe `ease` and transition `easing` are one type: `linear`, `in`, `out`, `inOut` (keyframes also
