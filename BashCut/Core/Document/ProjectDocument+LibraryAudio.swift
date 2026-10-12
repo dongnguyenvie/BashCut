@@ -69,8 +69,15 @@ extension ProjectDocument {
         ]
         if source.kind == .audio { fields[TransitionPreset.soundLibraryField] = .string(source.reference) }
         fields.merge(Self.libraryRights(source)) { _, rights in rights }
+        fields.merge(Self.libraryLabel(source)) { _, label in label }
         let media = Media(fields: fields)
         return project.existingMedia(like: media) ?? media
+    }
+
+    /// The `label` a library item gives the media placed from it: its name, shown instead of the content-named copy.
+    static func libraryLabel(_ item: LibraryItem) -> [String: JSONValue] {
+        let name = item.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        return name.isEmpty ? [:] : ["label": .string(name)]
     }
 
     /// The `license` and `provenance` a library item gives the media placed from it (P2-H8): its licence, structured,

@@ -71,6 +71,7 @@ extension ProjectDocument {
             throw RPCFailure(-32602, "\(item.reference)'s file is not a movie or image BashCut can read")
         }
         imported.fields.merge(Self.libraryRights(item)) { _, rights in rights }
+        imported.fields.merge(Self.libraryLabel(item)) { _, label in label }
         return (project.existingMedia(like: imported) ?? imported, kind)
     }
 

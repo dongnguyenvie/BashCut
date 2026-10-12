@@ -226,6 +226,7 @@ public enum ProjectSchema {
                     "hasAudio": boolean("Whether the file has sound"),
                     "alpha": boolean("A movie with an alpha channel (a video sticker); previewed without a proxy"),
                     TransitionPreset.soundLibraryField: string("The library item (scope:id) it was copied from"),
+                    "label": string("The name shown instead of the file's (a library item's name)"),
                     "description": ref("mediaDescription"),
                     "license": mediaLicenseSchema, "provenance": mediaProvenanceSchema,
                     "data": .object([
