@@ -108,6 +108,14 @@ struct FailedRequest {
         params["baseRev"] = .integer(seen)
         return params
     }
+    /// An app-internal change that does not touch what agents edit (a background AV1/VP9 conversion relinking its
+    /// media to the converted copy) moved the revision from `old` to `new`: callers whose `baseRev: "last"` was `old`
+    /// now see `new`, so the bump does not make their next edit stale. Anyone who had not caught up stays stale.
+    public func carrySeenRevisions(from old: Int, to new: Int) {
+        guard new != old else { return }
+        for (token, seen) in seenRevision where seen == old { seenRevision[token] = new }
+    }
+
     /// `automatic` marks requests run without a prompt because the user turned confirmation off.
     public func recordApproval(method: String, author: Author, approved: Bool, automatic: Bool = false) {
         audit(

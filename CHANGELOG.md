@@ -5,6 +5,7 @@
 
 ## [Unreleased]
 
+- **`--base-rev last` survives a background conversion.** When an AV1/VP9 conversion landed and relinked its media to the converted copy, the revision moved and the agent's next edit with `--base-rev last` failed as stale though nothing it edited had changed; the relink now carries `last` forward for every session that had seen the revision before it (one that had missed a real edit is still stale).
 - **Stage progress reports are never gated.** `run append stage --stage cut --text … --eta …` (status started, the command's own help example) was refused with audit_missing while G2 was skip and no strategy audit existed; only marking the rough-cut stage done needs what G2 needs now.
 - **Plugin font pickers fit the Inspector.** A `fontPicker` put its label beside the menu, so a long label (HyperFrames' "Name font (empty keeps the design font)") left the menu a few pixels wide in the Inspector; the label now sits above a full-width menu.
 - **`ui view --media-source clips`.** The Media panel's Clips source (library footage) could not be chosen from the CLI or MCP.
