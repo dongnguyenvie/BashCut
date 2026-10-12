@@ -143,6 +143,7 @@ extension CommandCatalog {
                 CommandParameter("color", .string, "Highlight colour, #RRGGBB (default #FFD400)", cli: .option("color")),
                 baseRevision,
             ]),
+        reframeSpec,
         CommandSpec(
             "clip.reverse", .edit,
             "Play a video clip backwards (with its linked sound): renders a reversed copy of the source it uses into "
@@ -150,4 +151,55 @@ extension CommandCatalog {
             parameters: [CommandParameter("item", .string, "Item ID; the selected clip by default", cli: .positional)],
             execution: .job),
     ]
+
+    /// Subject-aware crop (P3-J1).
+    static let reframeSpec = CommandSpec(
+        "clip.reframe", .edit,
+        "Crop a video clip or image to its subject, from the face (or person) boxes media.subjects measures: the clip "
+            + "fills the frame and pans (and tilts) so the subject's centre sits at anchorX/anchorY. mode locked holds one "
+            + "framing (the subject's median place), cut jumps to a new framing (hold keys) when the subject moves more "
+            + "than drift of the frame and the last framing held minHold seconds, follow keys pan and tilt at every "
+            + "sampled picture, averaged over smooth seconds. Boxes stored for the source the clip plays are used; "
+            + "missing ones are measured first with a vision.faces provider (every step source seconds) and stored. "
+            + "When fewer than minSubjectShare of the clip's pictures have a subject, or the framing keeps less than "
+            + "gate of the subject in view on average, it fits the whole picture instead (fallback fit) or changes "
+            + "nothing (fallback refuse); never a blind centre crop. The defaults are starting points, not verdicts: "
+            + "set them from the skill's ranges. One undo step (fill, transform, zoom/pan/tilt keys; other keys stay). "
+            + "Returns rev, applied (reframe or fit), reason, coverage {samples, subjectSamples, subjectShare, mean, "
+            + "min} (share of the subject box in view), segments [{frame (from the item's start), pan, tilt}], "
+            + "measured (whether boxes were measured now) and preview {path, rows} (source next to the edit at each "
+            + "framing and the least covered picture). A job.",
+        parameters: [
+            CommandParameter("item", .string, "Video or image item ID; the selection by default", cli: .positional),
+            CommandParameter("mode", .string, "locked (default), cut or follow",
+                             choices: SubjectReframe.Mode.allCases.map(\.rawValue), cli: .option("mode")),
+            CommandParameter("subject", .string, "face (the largest face, default), faces (all faces) or person",
+                             choices: SubjectReframe.Subject.allCases.map(\.rawValue), cli: .option("subject")),
+            CommandParameter("minConfidence", .number, "Ignore boxes below this confidence (default 0.5)", range: 0...1,
+                             cli: .option("min-confidence")),
+            CommandParameter("anchorX", .number, "Where the subject's centre sits, share of the width from the left "
+                             + "(default 0.5)", range: 0...1, cli: .option("anchor-x")),
+            CommandParameter("anchorY", .number, "Share of the height from the top (default 0.5)", range: 0...1,
+                             cli: .option("anchor-y")),
+            CommandParameter("zoom", .number, "Scale over the filled size (default 1)", range: 1...10, cli: .option("zoom")),
+            CommandParameter("gate", .number, "Least mean share of the subject in view (default 0.9)", range: 0...1,
+                             cli: .option("gate")),
+            CommandParameter("minSubjectShare", .number, "Least share of pictures with a subject (default 0.5)",
+                             range: 0...1, cli: .option("min-subject-share")),
+            CommandParameter("fallback", .string, "Below the gate: fit (default) or refuse",
+                             choices: SubjectReframe.Fallback.allCases.map(\.rawValue), cli: .option("fallback")),
+            CommandParameter("drift", .number, "cut: share of the frame the subject may move before a new framing "
+                             + "(default 0.15)", range: 0...1, cli: .option("drift")),
+            CommandParameter("minHold", .number, "cut: shortest framing in seconds (default 1)", range: 0...600,
+                             cli: .option("min-hold")),
+            CommandParameter("smooth", .number, "follow: seconds the path is averaged over (default 1)", range: 0...60,
+                             cli: .option("smooth")),
+            CommandParameter("step", .number, "Source seconds between pictures when measuring (default 0.5)",
+                             range: 0.04...60, cli: .option("step")),
+            CommandParameter("measure", .boolean, "Measure the boxes again even when stored", cli: .flag("measure")),
+            CommandParameter("preview", .boolean, "Render the preview grid (default true)", cli: .option("preview")),
+            provider,
+            baseRevision,
+        ],
+        execution: .job)
 }

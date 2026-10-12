@@ -117,6 +117,9 @@ public struct ReviewContext {
     /// Current content keys (`SourceHash.mediaNamespace`) of `Project.sourceKeyedMedia`, for results made from an
     /// earlier version of a file (P2-G6).
     public var mediaKeys: [String: String] = [:]
+    /// Face and person boxes stored for media (`media.subjects`, P2-H6), by media ID; media without any are absent,
+    /// and their faces are unknown, not missing.
+    public var subjects: [String: MediaSubjects] = [:]
 
     public init(
         fontAvailable: @escaping (String) -> Bool = { _ in true },

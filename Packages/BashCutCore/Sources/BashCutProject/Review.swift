@@ -90,7 +90,7 @@ extension ReviewIssue {
         "gap-end", "gap", "caption-lines", "caption", "font", "glyph", "cut-in-word", "loudness-unmeasured", "loudness",
         "true-peak", "ducking", "silence", "music-gap", "picture-unmeasured", "picture-unreliable", "shot-short",
         "shot-long", "black", "still", "jump", "safe-bottom", "safe-side", "safe-top", "title-safe", "small-text",
-        "text-overlap", "platform-none", "output-shape", "output-length", "plan-section", "brief-length",
+        "text-overlap", "text-face", "platform-none", "output-shape", "output-length", "plan-section", "brief-length",
         "brief-outputs", "must-keep", "overlap", "coverage", "hook", "voice-text-changed", "captions-source-changed",
         "beats-source-changed", "ai-media", "delivered-black", "delivered-drift", "delivered-fps", "delivered-silence",
         "delivered-size",
@@ -236,6 +236,7 @@ public enum TimelineReview {
         issues += wordCutIssues(project, transcripts: context.transcripts)
         issues += textIssues(project, context: context)
         issues += hookIssues(project, context: context)
+        issues += faceIssues(project, context: context)
         issues += audioIssues(project, context: context)
         issues += pictureIssues(project, context: context)
         issues += outputIssues(project, context: context)

@@ -306,14 +306,19 @@ extension CommandCatalog {
             + "outside), keyframed when keyframes move it (not followed); holdSeconds, words and wordsPerSecond; "
             + "speech {onsetOffsetFrames (from the nearest word start), narrationShare (of its time with words "
             + "spoken)} from the heard or caption words; captionOverlap {item, ratio of its box} for titles; "
-            + "templateRepeats (items with its preset on its layer); faceOverlap null (unknown: not measured "
-            + "here; media subjects gives face boxes in source pictures). With contrast: contrast {ratio (WCAG, 1–21; basis "
+            + "templateRepeats (items with its preset on its layer); faceOverlap {ratio (largest share of one face box "
+            + "the text box covers), frame, item and media of the clip, confidence, samples (pictures with a face while "
+            + "it shows)} from the face boxes media subjects stored for the clips under it (placed with fit/fill, zoom, "
+            + "pan and tilt; null when none are stored: unknown, not \"no face\"; review.maxFaceOverlap turns it into "
+            + "a text-face review issue). With contrast: contrast {ratio (WCAG, 1–21; basis "
             + "mean: of the mean text, outline: the stronger of fill and outline, plate: the letters against their box), "
             + "meanRatio, lightRatio and darkRatio (the light and dark parts of the text, such as fill and outline), "
             + "textLuminance, "
             + "backgroundLuminance, textPixels} measured on the frame with and without text (at frame, or each "
             + "item's middle). Also the frame size, the platform whose zones apply (safeArea, minTextSize), density "
-            + "(titles and captions per minute) and, at a frame, pictures on screen with their scale and coverage. "
+            + "(titles and captions per minute), facesProvider (face boxes are stored for a clip on screen) and, at a "
+            + "frame, pictures on screen with their scale and coverage (and faceOverlap of an overlay's box with the "
+            + "faces of the other clips). "
             + "With from/to, only text that overlaps those frames. With ink: ink {frame, luma, mid (0–100), inkShare "
             + "(pixels text and overlay layers change)} of the composed frame (frame, default 0) against Main alone. "
             + "No verdicts.",
@@ -374,7 +379,8 @@ extension CommandCatalog {
                 + "Vision): frames [{seconds, frame (source), faces [{box, confidence}], people [{box, confidence}]}] "
                 + "one picture every step source seconds over from…to; box is [x, y, width, height] as shares of the "
                 + "upright picture from the top left. timeline [{item, at, fromSeconds, toSeconds}] places a second. "
-                + "No labels: which face is the speaker or matters is yours. A job.",
+                + "No labels: which face is the speaker or matters is yours. The boxes are kept per file (merged "
+                + "with earlier runs) for clip.reframe and review.layout's faceOverlap. A job.",
             parameters: visionParameters, execution: .job),
         CommandSpec(
             "media.ocr", .read,

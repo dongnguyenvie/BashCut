@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 209 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 210 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -243,7 +243,7 @@ Place project media on a layer (main by default, music for audio), with linked s
 
 ### `bashcut media subjects --media <media> [--step <step>] [--from <from>] [--to <to>] [--provider <provider>] [--request-id <requestId>] [--dry-run]`
 
-Faces and people in the picture of a video or image, with a vision.faces provider (built in: Apple Vision): frames [{seconds, frame (source), faces [{box, confidence}], people [{box, confidence}]}] one picture every step source seconds over from…to; box is [x, y, width, height] as shares of the upright picture from the top left. timeline [{item, at, fromSeconds, toSeconds}] places a second. No labels: which face is the speaker or matters is yours. A job.
+Faces and people in the picture of a video or image, with a vision.faces provider (built in: Apple Vision): frames [{seconds, frame (source), faces [{box, confidence}], people [{box, confidence}]}] one picture every step source seconds over from…to; box is [x, y, width, height] as shares of the upright picture from the top left. timeline [{item, at, fromSeconds, toSeconds}] places a second. No labels: which face is the speaker or matters is yours. The boxes are kept per file (merged with earlier runs) for clip.reframe and review.layout's faceOverlap. A job.
 
 - Mode: read · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_media_subjects`
 - `media`: string, required. Project media ID
@@ -506,7 +506,7 @@ Read the shots on Main in order: index, id, at/atSeconds, duration (frames) and 
 
 ### `bashcut review layout [--frame <frame>] [--from <from>] [--to <to>] [--ink] [--contrast]`
 
-Read where text sits as the renderer lays it out: per visible text item id, track, trackRole, at/end, text, preset, lines, longestLineChars, fontPixels and fontShare (of the frame's short side), bounds (pixels from the top-left) and edges (distance to each frame edge as a share of that dimension, negative outside), keyframed when keyframes move it (not followed); holdSeconds, words and wordsPerSecond; speech {onsetOffsetFrames (from the nearest word start), narrationShare (of its time with words spoken)} from the heard or caption words; captionOverlap {item, ratio of its box} for titles; templateRepeats (items with its preset on its layer); faceOverlap null (unknown: not measured here; media subjects gives face boxes in source pictures). With contrast: contrast {ratio (WCAG, 1–21; basis mean: of the mean text, outline: the stronger of fill and outline, plate: the letters against their box), meanRatio, lightRatio and darkRatio (the light and dark parts of the text, such as fill and outline), textLuminance, backgroundLuminance, textPixels} measured on the frame with and without text (at frame, or each item's middle). Also the frame size, the platform whose zones apply (safeArea, minTextSize), density (titles and captions per minute) and, at a frame, pictures on screen with their scale and coverage. With from/to, only text that overlaps those frames. With ink: ink {frame, luma, mid (0–100), inkShare (pixels text and overlay layers change)} of the composed frame (frame, default 0) against Main alone. No verdicts.
+Read where text sits as the renderer lays it out: per visible text item id, track, trackRole, at/end, text, preset, lines, longestLineChars, fontPixels and fontShare (of the frame's short side), bounds (pixels from the top-left) and edges (distance to each frame edge as a share of that dimension, negative outside), keyframed when keyframes move it (not followed); holdSeconds, words and wordsPerSecond; speech {onsetOffsetFrames (from the nearest word start), narrationShare (of its time with words spoken)} from the heard or caption words; captionOverlap {item, ratio of its box} for titles; templateRepeats (items with its preset on its layer); faceOverlap {ratio (largest share of one face box the text box covers), frame, item and media of the clip, confidence, samples (pictures with a face while it shows)} from the face boxes media subjects stored for the clips under it (placed with fit/fill, zoom, pan and tilt; null when none are stored: unknown, not "no face"; review.maxFaceOverlap turns it into a text-face review issue). With contrast: contrast {ratio (WCAG, 1–21; basis mean: of the mean text, outline: the stronger of fill and outline, plate: the letters against their box), meanRatio, lightRatio and darkRatio (the light and dark parts of the text, such as fill and outline), textLuminance, backgroundLuminance, textPixels} measured on the frame with and without text (at frame, or each item's middle). Also the frame size, the platform whose zones apply (safeArea, minTextSize), density (titles and captions per minute), facesProvider (face boxes are stored for a clip on screen) and, at a frame, pictures on screen with their scale and coverage (and faceOverlap of an overlay's box with the faces of the other clips). With from/to, only text that overlaps those frames. With ink: ink {frame, luma, mid (0–100), inkShare (pixels text and overlay layers change)} of the composed frame (frame, default 0) against Main alone. No verdicts.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_review_layout`
 - `frame`: integer, ≥ 0. Only text on screen at this timeline frame
@@ -971,6 +971,30 @@ Set one keyframe like the Inspector's controls with keyframes on: property at a 
 - `atFrame`: integer, ≥ 0. Timeline frame inside the item; the playhead by default
 - `ease`: string. Change to the next key: linear, in, out, inOut, hold or cubic-bezier(x1,y1,x2,y2)
 - `remove`: boolean, default false. Remove the key at that frame
+- `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
+
+### `bashcut clip reframe [<item>] [--mode <mode>] [--subject <subject>] [--min-confidence <minConfidence>] [--anchor-x <anchorX>] [--anchor-y <anchorY>] [--zoom <zoom>] [--gate <gate>] [--min-subject-share <minSubjectShare>] [--fallback <fallback>] [--drift <drift>] [--min-hold <minHold>] [--smooth <smooth>] [--step <step>] [--measure] [--preview <preview>] [--provider <provider>] --base-rev <baseRev>`
+
+Crop a video clip or image to its subject, from the face (or person) boxes media.subjects measures: the clip fills the frame and pans (and tilts) so the subject's centre sits at anchorX/anchorY. mode locked holds one framing (the subject's median place), cut jumps to a new framing (hold keys) when the subject moves more than drift of the frame and the last framing held minHold seconds, follow keys pan and tilt at every sampled picture, averaged over smooth seconds. Boxes stored for the source the clip plays are used; missing ones are measured first with a vision.faces provider (every step source seconds) and stored. When fewer than minSubjectShare of the clip's pictures have a subject, or the framing keeps less than gate of the subject in view on average, it fits the whole picture instead (fallback fit) or changes nothing (fallback refuse); never a blind centre crop. The defaults are starting points, not verdicts: set them from the skill's ranges. One undo step (fill, transform, zoom/pan/tilt keys; other keys stay). Returns rev, applied (reframe or fit), reason, coverage {samples, subjectSamples, subjectShare, mean, min} (share of the subject box in view), segments [{frame (from the item's start), pan, tilt}], measured (whether boxes were measured now) and preview {path, rows} (source next to the edit at each framing and the least covered picture). A job.
+
+- Mode: edit · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_clip_reframe`
+- `item`: string. Video or image item ID; the selection by default
+- `mode`: string, one of locked, cut, follow. locked (default), cut or follow
+- `subject`: string, one of face, faces, person. face (the largest face, default), faces (all faces) or person
+- `minConfidence`: number, 0…1. Ignore boxes below this confidence (default 0.5)
+- `anchorX`: number, 0…1. Where the subject's centre sits, share of the width from the left (default 0.5)
+- `anchorY`: number, 0…1. Share of the height from the top (default 0.5)
+- `zoom`: number, 1…10. Scale over the filled size (default 1)
+- `gate`: number, 0…1. Least mean share of the subject in view (default 0.9)
+- `minSubjectShare`: number, 0…1. Least share of pictures with a subject (default 0.5)
+- `fallback`: string, one of fit, refuse. Below the gate: fit (default) or refuse
+- `drift`: number, 0…1. cut: share of the frame the subject may move before a new framing (default 0.15)
+- `minHold`: number, 0…600. cut: shortest framing in seconds (default 1)
+- `smooth`: number, 0…60. follow: seconds the path is averaged over (default 1)
+- `step`: number, 0.04…60. Source seconds between pictures when measuring (default 0.5)
+- `measure`: boolean. Measure the boxes again even when stored
+- `preview`: boolean. Render the preview grid (default true)
+- `provider`: string. Provider ID overriding the project preference for one request
 - `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
 
 ### `bashcut clip reverse [<item>]`

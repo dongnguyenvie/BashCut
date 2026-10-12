@@ -50,6 +50,7 @@ extension ProjectDocument {
         context.missingGlyphs = ProjectFonts.missingGlyphs
         context.delivered = deliveredQC
         context.mediaKeys = sourceMediaKeys()
+        context.subjects = reviewSubjects()
         return context
     }
 

@@ -214,6 +214,35 @@ extension TimelineReview {
         return issues
     }
 
+    /// Text covering more of a face than the project's `review.maxFaceOverlap` allows, from the face boxes stored for
+    /// the clips under it (`media.subjects`); not checked without the limit or without stored boxes.
+    static func faceIssues(_ project: Project, context: ReviewContext) -> [ReviewIssue] {
+        guard let limit = ReviewProfile(project)["maxFaceOverlap"], !context.subjects.isEmpty,
+            project.width > 0, project.height > 0
+        else { return [] }
+        let width = Double(project.width), height = Double(project.height)
+        var issues: [ReviewIssue] = []
+        for track in project.tracks where track.kind == "text" && track["hidden"] != .bool(true) {
+            for item in track.items where !item.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                let box = textBox(item, width: width, height: height, context: context)
+                let rect = CGRectLike(x: box.minX, y: box.minY, width: box.maxX - box.minX, height: box.maxY - box.minY)
+                guard let overlap = FaceOverlap.measure(
+                    rect, from: item.at, to: item.end, project: project, subjects: context.subjects),
+                    overlap.ratio > limit
+                else { continue }
+                issues.append(
+                    ReviewIssue(
+                        id: "text-face-" + item.id, title: "Text over a face",
+                        detail: "The text covers \(percent(overlap.ratio)) of a face in \(overlap.item ?? "a clip") "
+                            + "(review.maxFaceOverlap \(percent(limit))).",
+                        frame: overlap.frame ?? item.at,
+                        fix: ReviewFix(hint: "Move the text (textStyle.positionY) or reframe the clip under it."),
+                        facts: ["ratio": fact(overlap.ratio), "maxFaceOverlap": .number(limit), "overlap": overlap.json]))
+            }
+        }
+        return issues
+    }
+
     /// "16%" for 0.16.
     static func percent(_ fraction: Double) -> String { String(format: "%g%%", (fraction * 1000).rounded() / 10) }
 
