@@ -353,7 +353,13 @@ bashcut timeline redo --base-rev 14
 single-clip actions use) and every selected item as `selectedItems`. `ui select a --items b,c` selects several
 items (`--add` keeps the current selection). Delete, Lift, Copy, Cut, Paste and Mute (`ui action timeline.delete`,
 `clip.copy`, `clip.cut`, `clip.paste`, `clip.mute`) act on the whole selection as one undo step;
-`timeline.select-all` and `timeline.deselect` change it.
+`timeline.select-all` and `timeline.deselect` change it. Copy and Cut also put the clips on the macOS pasteboard
+(private type `com.bashcut.timeline-items`, JSON with the media they play), so Paste works in another project or
+another BashCut window: media the project lacks are added with a path from the project, and timing is converted to
+its frame rate. `timeline move-items --items a,b --by 30` moves several items like a selection drag;
+`--before c` (or `end`) moves the given clips of the magnetic main layer as one block. The Inspector's multi-selection
+fields (opacity, volume, fill, zoom, pan, tilt, rotation) are one `timeline apply` with
+`{"op": "patchItems", "items": [...], "patch": {...}}` for agents.
 
 `ui action clip.send-to-agent` (Send to Agent) attaches the selected items to the open agent's request, and
 `chat attach --items a,b` / `chat detach [--items a]` do the same for a chat agent; `agent detach [--items a]`

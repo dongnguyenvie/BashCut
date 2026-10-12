@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 212 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 213 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -179,6 +179,17 @@ Delete an empty gap on a layer (the main layer by default): later clips on that 
 - Mode: edit · Runs: immediately · MCP: `bashcut_timeline_close-gap`
 - `atFrame`: integer, required, ≥ 0. A frame inside the gap
 - `track`: string. Layer ID; defaults to the main layer
+- `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
+
+### `bashcut timeline move-items --items <items> [--by <by>] [--before <before>] [--track <track>] --base-rev <baseRev>`
+
+Move several items together in one undo step, like dragging a timeline selection: by shifts each item that many frames on its own layer, keeping their offsets (items on a magnetic layer stay; one landing on another clip spills to a free layer); before moves the given items of the magnetic layer track (Main by default) as one block, in their order, before that clip (an item outside the list) or to the end (end); the layer packs again and linked sound follows. Give by or before. Returns rev and items.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_timeline_move-items`
+- `items`: string, required. Item IDs, comma separated
+- `by`: integer. Frames to move (negative: earlier)
+- `before`: string. Magnetic layer: the clip the block goes before, or end
+- `track`: string. The magnetic layer for before (default: the main layer)
 - `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
 
 ### `bashcut timeline sheet [--at <at>] [--cuts] [--text] [--entries <entries>] [--every <every>] [--size <size>] [--columns <columns>] [--rows <rows>] [--outputs <outputs>]`

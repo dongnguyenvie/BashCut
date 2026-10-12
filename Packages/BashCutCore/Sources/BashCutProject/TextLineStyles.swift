@@ -67,19 +67,22 @@ public enum TextLineStyles {
                 throw ProjectError.invalid("\(path)[\(index)]: expected an object or null")
             }
             for (key, field) in fields {
-                let valid: Bool
-                switch key {
-                case "font": valid = (field.string?.count).map { (1...128).contains($0) } ?? false
-                case "scale": valid = field.double.map { $0.isFinite && scaleRange.contains($0) } ?? false
-                case "fill", "stroke": valid = field.string.map(ItemProperty.Rule.isColor) ?? false
-                default:
+                guard keys.contains(key) else {
                     throw ProjectError.invalid("\(path)[\(index)].\(key): unknown; use \(keys.joined(separator: ", "))")
                 }
-                guard valid else {
-                    let expected = key == "font" ? "a font name" : key == "scale" ? "a number in \(scaleRange)" : "a colour #RRGGBB"
+                if let expected = mismatch(key, field) {
                     throw ProjectError.invalid("\(path)[\(index)].\(key): expected \(expected)")
                 }
             }
+        }
+    }
+
+    /// What a line style field should have been, or nil when it fits.
+    static func mismatch(_ key: String, _ value: JSONValue) -> String? {
+        switch key {
+        case "font": (value.string?.count).map { (1...128).contains($0) } == true ? nil : "a font name"
+        case "scale": value.double.map { $0.isFinite && scaleRange.contains($0) } == true ? nil : "a number in \(scaleRange)"
+        default: value.string.map(ItemProperty.Rule.isColor) == true ? nil : "a colour #RRGGBB"
         }
     }
 }

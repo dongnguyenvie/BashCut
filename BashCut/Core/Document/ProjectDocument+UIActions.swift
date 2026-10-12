@@ -51,7 +51,7 @@ extension ProjectDocument {
         case .selectAll: return project.tracks.contains { !$0.items.isEmpty }
         case .deselect: return !selectedIDs.isEmpty
         case .copyClips, .cutClips, .sendToAgent: return !selectedItems.isEmpty
-        case .pasteClips: return hasProject && clipboard != nil
+        case .pasteClips: return hasProject && (clipboard != nil || Self.pasteboardHasClips)
         case .muteClips: return selectedItems.contains { $0.mediaID != nil }
         case .showHistory, .showReview, .showPlugins, .showDoctor, .showSettings, .showAgentKit, .showSections,
             .showCommands, .showShortcuts, .showUpdates, .showAbout, .toggleAgentDock,

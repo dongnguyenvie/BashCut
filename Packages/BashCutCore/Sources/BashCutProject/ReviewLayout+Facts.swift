@@ -146,6 +146,18 @@ enum FaceOverlap {
         return (value("zoom", 1), value("pan", 0), value("tilt", 0))
     }
 
+    /// The sampled pictures `clip` shows over `frames` (from its start), each from the frame it first shows; the
+    /// picture already showing at the first frame counts from there.
+    static func pictures(
+        _ clip: Item, media: Media, project: Project, subjects: MediaSubjects, frames: Range<Int>
+    ) -> [(frame: Int, sample: MediaSubjects.Sample)] {
+        let start = frames.lowerBound
+        let rows = SubjectReframe.timeline(clip, media: media, project: project, subjects: subjects)
+            .filter { $0.frame < frames.upperBound }
+        guard let showing = rows.last(where: { $0.frame <= start }) else { return rows.filter { $0.frame >= start } }
+        return [(start, showing.sample)] + rows.filter { $0.frame > start }
+    }
+
     /// The overlap of `box` (frame pixels; from the bottom left unless `topLeft`) with the faces under it from frame
     /// `from` to `to`; nil when no clip there has stored boxes (unknown).
     static func measure(
@@ -166,22 +178,14 @@ enum FaceOverlap {
                 else { continue }
                 known = true
                 let start = max(from, clip.at) - clip.at, end = min(to, clip.end) - clip.at
-                var rows = SubjectReframe.timeline(clip, media: asset, project: project, subjects: stored)
-                    .filter { $0.frame < end }
-                // The picture already showing when the box appears counts from its first frame.
-                if let showing = rows.last(where: { $0.frame <= start }) {
-                    rows = [(start, showing.sample)] + rows.filter { $0.frame > start }
-                } else {
-                    rows = rows.filter { $0.frame >= start }
-                }
-                for (frame, sample) in rows where !sample.faces.isEmpty {
+                for (frame, sample) in pictures(clip, media: asset, project: project, subjects: stored, frames: start..<end)
+                where !sample.faces.isEmpty {
                     samples += 1
                     let values = transform(clip, at: frame)
                     for face in sample.faces {
                         let placed = placement.frameRect(face, zoom: values.zoom, pan: values.pan, tilt: values.tilt)
                         let area = placed.width * placed.height
-                        guard area > 0 else { continue }
-                        let ratio = min(1, TextFacts.intersection(rect, placed) / area)
+                        let ratio = area > 0 ? min(1, TextFacts.intersection(rect, placed) / area) : 0
                         if ratio > (best?.ratio ?? -1) {
                             best = Result(
                                 ratio: ratio, frame: clip.at + frame, item: clip.id, media: asset.id,

@@ -53,12 +53,6 @@ public struct ItemProperty: Sendable {
         .init("crop", "bottom", .number(0...0.95), "Video picture: fraction of the height hidden at the bottom"),
         .init("crop", "radius", .number(0...0.5),
               "Video picture: corner radius as a fraction of the visible part's shorter side (0.5 = circle or pill)"),
-        .init("backdrop", "kind", .text(maxLength: 5),
-              "Video picture: what fills the frame around a fitted picture: blur (a blurred, filled copy of itself) or color"),
-        .init("backdrop", "color", .color, "Backdrop colour #RRGGBB (kind color; default black)"),
-        .init("backdrop", "blur", .number(0...0.5),
-              "Blur radius as a share of the frame's short side (kind blur; default 0.05)"),
-        .init("backdrop", "dim", .number(0...1), "Darkens the backdrop: 0 unchanged, 1 black (default 0)"),
         .init("textStyle", "size", .number(0.005...1), "Font size as a fraction of the frame's short side (shrunk to fit 90% of the width)"),
         .init("textStyle", "positionY", .number(0...1), "Baseline position from the bottom, as a fraction"),
         .init("textStyle", "strokeWidth", .number(0...50), "Outline width in points"),
@@ -72,6 +66,7 @@ public struct ItemProperty: Sendable {
         .init("textStyle", "tracking", .number(-0.5...2), "Letter spacing as a share of the font size (default 0)"),
         .init("textStyle", "uppercase", .boolean, "Draw the text in capitals"),
     ] + ColorGrade.ranges.map { .init("color", $0.key, .number($0.range), ColorGrade.summaries[$0.key] ?? "") }
+        + backdropProperties
 }
 
 extension ColorGrade {
@@ -441,26 +436,6 @@ public enum ProjectSchema {
         properties["voice"] = voiceItemSchema
         return fields("A timeline item; see the layer rules for which fields it needs", required: ["id", "at", "dur"],
                       properties: properties)
-    }
-
-    /// `textStyle.lines` (`TextLineStyles`): each line's own look, in reading order.
-    private static var textLinesSchema: JSONValue {
-        let color: JSONValue = .object(["type": .string("string"), "pattern": .string("^#[0-9A-Fa-f]{6}$")])
-        return .object([
-            "type": .string("array"), "maxItems": .integer(TextLineStyles.maximumLines),
-            "description": .string("Each line's own look in reading order (two fonts in one title); null keeps the block's"),
-            "items": .object([
-                "type": .array([.string("object"), .string("null")]), "additionalProperties": .bool(false),
-                "properties": .object([
-                    "font": .object(["type": .string("string"), "minLength": .integer(1), "maxLength": .integer(128),
-                                     "description": .string("Font PostScript name (family and weight)")]),
-                    "scale": .object(["type": .string("number"), "minimum": .number(TextLineStyles.scaleRange.lowerBound),
-                                      "maximum": .number(TextLineStyles.scaleRange.upperBound),
-                                      "description": .string("Size × the block's font size")]),
-                    "fill": color, "stroke": color,
-                ]),
-            ]),
-        ])
     }
 
     private static func group(_ name: String, _ summary: String, extra: [String: JSONValue] = [:]) -> [String: JSONValue] {

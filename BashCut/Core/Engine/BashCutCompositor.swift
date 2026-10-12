@@ -184,38 +184,8 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
                     request.finish(with: NSError(domain: "BashCutCompositor.MissingFrame", code: 2))
                     return
                 }
-                let time = request.compositionTime.seconds
-                let motion = video.motion?.0.sample(at: time)
-                let transform = video.motion.flatMap { layer in motion?.transform(layer.1) } ?? video.transform
-                let decoded = CIImage(cvPixelBuffer: source)
-                var sourceImage = decoded
-                let properties = video.style?.fields(video.properties, at: time) ?? video.properties
-                if let geometry = video.animatedCrop {
-                    if let crop = SourceCrop(
-                        fields: properties, naturalSize: geometry.naturalSize, orientation: geometry.orientation) {
-                        sourceImage = crop.apply(to: sourceImage)
-                    }
-                } else if let crop = video.crop {
-                    sourceImage = crop.apply(to: sourceImage)
-                }
-                sourceImage = sourceImage.transformed(by: transform)
-                // The backdrop is part of the clip's picture: transitions, grade and opacity apply to both.
-                if let backdrop = video.backdrop { sourceImage = sourceImage.composited(over: backdrop.image(source: decoded)) }
-                var transitionOpacity = 1.0
-                if let transition = video.transition {
-                    (sourceImage, transitionOpacity) = applyTransition(
-                        to: sourceImage, transition: transition,
-                        time: request.compositionTime.seconds, bounds: bounds)
-                }
-                sourceImage = Self.graded(sourceImage, properties: properties, lut: video.lut)
-                let opacity = (motion?.opacity ?? video.properties["opacity"]?.double ?? 1)
-                    * transitionOpacity
-                if opacity != 1 {
-                    sourceImage = sourceImage.applyingFilter(
-                        "CIColorMatrix",
-                        parameters: ["inputAVector": CIVector(x: 0, y: 0, z: 0, w: opacity)])
-                }
-                image = sourceImage.composited(over: image)
+                image = Self.picture(video, source: source, time: request.compositionTime.seconds, bounds: bounds)
+                    .composited(over: image)
             case .adjustment(let adjustment):
                 let properties = adjustment.style?.fields(adjustment.properties, at: request.compositionTime.seconds)
                     ?? adjustment.properties
@@ -234,6 +204,41 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
             image.cropped(to: bounds), to: output, bounds: bounds,
             colorSpace: CGColorSpaceCreateDeviceRGB())
         request.finish(withComposedVideoFrame: output)
+    }
+
+    /// One clip's picture at `time`: cut (crop, keyed or not), placed, over its backdrop, through its transition,
+    /// graded and faded.
+    static func picture(_ video: FrameLayer, source: CVPixelBuffer, time: Double, bounds: CGRect) -> CIImage {
+        let motion = video.motion?.0.sample(at: time)
+        let transform = video.motion.flatMap { layer in motion?.transform(layer.1) } ?? video.transform
+        let decoded = CIImage(cvPixelBuffer: source)
+        var sourceImage = decoded
+        let properties = video.style?.fields(video.properties, at: time) ?? video.properties
+        if let geometry = video.animatedCrop {
+            if let crop = SourceCrop(
+                fields: properties, naturalSize: geometry.naturalSize, orientation: geometry.orientation) {
+                sourceImage = crop.apply(to: sourceImage)
+            }
+        } else if let crop = video.crop {
+            sourceImage = crop.apply(to: sourceImage)
+        }
+        sourceImage = sourceImage.transformed(by: transform)
+        // The backdrop is part of the clip's picture: transitions, grade and opacity apply to both.
+        if let backdrop = video.backdrop { sourceImage = sourceImage.composited(over: backdrop.image(source: decoded)) }
+        var transitionOpacity = 1.0
+        if let transition = video.transition {
+            (sourceImage, transitionOpacity) = applyTransition(
+                to: sourceImage, transition: transition, time: time, bounds: bounds)
+        }
+        sourceImage = Self.graded(sourceImage, properties: properties, lut: video.lut)
+        let opacity = (motion?.opacity ?? video.properties["opacity"]?.double ?? 1)
+            * transitionOpacity
+        if opacity != 1 {
+            sourceImage = sourceImage.applyingFilter(
+                "CIColorMatrix",
+                parameters: ["inputAVector": CIVector(x: 0, y: 0, z: 0, w: opacity)])
+        }
+        return sourceImage
     }
 
     /// A text overlay moved by its keyframes: zoom and rotation around the text's own position, pan and tilt, opacity.
@@ -279,7 +284,7 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
     /// The transition's motion at this time (C5: every kind is data): exposure, halftone dots and the RGB split, then
     /// zoom, horizontal squeeze and rotation around the frame centre with the pan, the perspective swing about the left
     /// edge, then the reveal from the left. Preview and export share it.
-    private func applyTransition(
+    private static func applyTransition(
         to input: CIImage, transition: RenderTransition, time: Double, bounds: CGRect
     ) -> (CIImage, Double) {
         let progress = transition.progress(at: time)

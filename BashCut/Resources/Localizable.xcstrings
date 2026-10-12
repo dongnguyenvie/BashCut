@@ -1,6 +1,8 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Fill frame (mixed)": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Fill frame (mixed)" } }, "vi": { "stringUnit": { "state": "translated", "value": "Lấp khung (khác nhau)" } } } },
+    "Mixed": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Mixed" } }, "vi": { "stringUnit": { "state": "translated", "value": "Khác nhau" } } } },
     "Backdrop": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Backdrop" } }, "vi": { "stringUnit": { "state": "translated", "value": "Nền" } } } },
     "Blur fill": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Blur fill" } }, "vi": { "stringUnit": { "state": "translated", "value": "Nền mờ" } } } },
     "Colour": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Colour" } }, "vi": { "stringUnit": { "state": "translated", "value": "Màu" } } } },

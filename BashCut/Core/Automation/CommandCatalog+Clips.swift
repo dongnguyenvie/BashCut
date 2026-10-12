@@ -143,7 +143,7 @@ extension CommandCatalog {
                 CommandParameter("color", .string, "Highlight colour, #RRGGBB (default #FFD400)", cli: .option("color")),
                 baseRevision,
             ]),
-        reframeSpec,
+        reframeSpec, moveItemsSpec,
         CommandSpec(
             "clip.backdrop", .edit,
             "Fill the frame around a fitted picture (an off-aspect photo or clip) without a second clip, like "
@@ -240,4 +240,22 @@ extension CommandCatalog {
             baseRevision,
         ],
         execution: .job)
+
+    /// Moving a selection (#357 follow-up).
+    static let moveItemsSpec = CommandSpec(
+        "timeline.move-items", .edit,
+        "Move several items together in one undo step, like dragging a timeline selection: by shifts each item "
+            + "that many frames on its own layer, keeping their offsets (items on a magnetic layer stay; one landing "
+            + "on another clip spills to a free layer); before moves the given items of the magnetic layer track (Main "
+            + "by default) as one block, in their order, before that clip (an item outside the list) or to the end "
+            + "(end); the layer packs again and linked sound follows. Give by or before. Returns rev and items.",
+        parameters: [
+            CommandParameter("items", .string, "Item IDs, comma separated", required: true, cli: .option("items")),
+            CommandParameter("by", .integer, "Frames to move (negative: earlier)", cli: .option("by")),
+            CommandParameter("before", .string, "Magnetic layer: the clip the block goes before, or end",
+                             cli: .option("before")),
+            CommandParameter("track", .string, "The magnetic layer for before (default: the main layer)",
+                             cli: .option("track")),
+            baseRevision,
+        ])
 }

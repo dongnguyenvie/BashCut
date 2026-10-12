@@ -170,6 +170,97 @@ public enum SubjectReframe {
         return sorted.count % 2 == 1 ? sorted[sorted.count / 2] : (sorted[sorted.count / 2 - 1] + sorted[sorted.count / 2]) / 2
     }
 
+    /// One sampled picture with a subject: where it first shows, the framing that centres it, and its centre.
+    struct Target {
+        let frame: Int
+        let pan: Double
+        let tilt: Double
+        let centerX: Double
+        let centerY: Double
+    }
+
+    /// The framings over the item: held from each segment's frame (locked, cut) or moving linearly between them
+    /// (follow).
+    struct Framings {
+        let segments: [Segment]
+        let moving: Bool
+        private let motion: ItemMotion?
+
+        init(_ segments: [Segment], moving: Bool) {
+            self.segments = segments
+            self.moving = moving
+            motion = moving && segments.count > 1 ? ItemMotion(keys: [
+                "pan": segments.map { .init(frame: $0.frame, value: $0.pan, ease: .linear) },
+                "tilt": segments.map { .init(frame: $0.frame, value: $0.tilt, ease: .linear) },
+            ]) : nil
+        }
+
+        func at(_ frame: Int) -> (pan: Double, tilt: Double) {
+            if let motion {
+                return (motion.value("pan", at: Double(frame)) ?? 0, motion.value("tilt", at: Double(frame)) ?? 0)
+            }
+            let segment = segments.last { $0.frame <= frame } ?? segments.first
+            return (segment?.pan ?? 0, segment?.tilt ?? 0)
+        }
+    }
+
+    /// The framings `options.mode` makes from the pictures with a subject.
+    static func framings(_ targets: [Target], fill: PicturePlacement, options: Options, fps: Double) -> Framings {
+        guard let first = targets.first else { return Framings([], moving: false) }
+        func held(_ group: [Target], from frame: Int) -> Segment {
+            let framing = framing(
+                center: (median(group.map(\.centerX)), median(group.map(\.centerY))), placement: fill, options: options)
+            return Segment(frame: frame, pan: framing.pan, tilt: framing.tilt)
+        }
+        switch options.mode {
+        case .locked:
+            return Framings([held(targets, from: 0)], moving: false)
+        case .cut:
+            let hold = Int((options.minHoldSeconds * fps).rounded())
+            var groups: [[Target]] = [[first]]
+            var current = first
+            for target in targets.dropFirst() {
+                let offX = abs(target.pan - current.pan) / max(1, fill.canvasWidth)
+                let offY = abs(target.tilt - current.tilt) / max(1, fill.canvasHeight)
+                if max(offX, offY) > options.drift, target.frame - groups[groups.count - 1][0].frame >= hold {
+                    groups.append([target])
+                    current = target
+                } else {
+                    groups[groups.count - 1].append(target)
+                }
+            }
+            return Framings(groups.enumerated().map { held($1, from: $0 == 0 ? 0 : $1[0].frame) }, moving: false)
+        case .follow:
+            let window = max(0, options.smoothSeconds * fps / 2)
+            var keyed = targets.map { target in
+                let near = targets.filter { abs(Double($0.frame - target.frame)) <= window }
+                return Segment(
+                    frame: target.frame, pan: near.map(\.pan).reduce(0, +) / Double(near.count),
+                    tilt: near.map(\.tilt).reduce(0, +) / Double(near.count))
+            }
+            // At most 1,000 keys, evenly picked; the first at the item's start.
+            if keyed.count > 1_000 {
+                let stride = Double(keyed.count - 1) / 999
+                keyed = (0..<1_000).map { keyed[Int((Double($0) * stride).rounded())] }
+            }
+            keyed[0] = Segment(frame: 0, pan: keyed[0].pan, tilt: keyed[0].tilt)
+            return Framings(keyed, moving: true)
+        }
+    }
+
+    /// Why the framing does not pass, or nil.
+    static func failure(samples: Int, coverage: Coverage, options: Options) -> String? {
+        if samples == 0 { return "No subject boxes are stored for the source this clip plays" }
+        if coverage.subjectShare < options.minSubjectShare {
+            return "A subject was found in \(percent(coverage.subjectShare)) of the pictures, under minSubjectShare "
+                + percent(options.minSubjectShare)
+        }
+        if let mean = coverage.mean, mean < options.gate {
+            return "The framing keeps \(percent(mean)) of the subject in view on average, under the gate \(percent(options.gate))"
+        }
+        return nil
+    }
+
     /// Plans the reframe of a video or image `item`; throws `Refused` when it falls short and the fallback is
     /// `refuse`.
     public static func plan(
@@ -182,123 +273,47 @@ public enum SubjectReframe {
             sourceWidth: Double(width), sourceHeight: Double(height), canvasWidth: Double(project.width),
             canvasHeight: Double(project.height), fill: true)
         let rows = timeline(item, media: media, project: project, subjects: subjects)
-        let boxes = rows.map { (frame: $0.frame, box: subjectBox($0.sample, options: options)) }
-        let found = boxes.compactMap { row in row.box.map { (frame: row.frame, box: $0) } }
-        let fps = project.fps.value
+        let found = rows.compactMap { row in subjectBox(row.sample, options: options).map { (frame: row.frame, box: $0) } }
         let crop = item["crop"]?.object ?? [:]
-
-        func coverage(_ at: (Int) -> (pan: Double, tilt: Double)) -> Coverage {
-            let shares = found.map { row in
-                let framing = at(row.frame)
-                return fill.visibleShare(row.box, zoom: options.zoom, pan: framing.pan, tilt: framing.tilt, crop: crop)
-            }
-            return Coverage(
-                samples: rows.count, subjectSamples: found.count,
-                mean: shares.isEmpty ? nil : shares.reduce(0, +) / Double(shares.count), min: shares.min())
+        let targets = found.map { row in
+            let framing = framing(center: (row.box.centerX, row.box.centerY), placement: fill, options: options)
+            return Target(frame: row.frame, pan: framing.pan, tilt: framing.tilt, centerX: row.box.centerX, centerY: row.box.centerY)
         }
-
-        var segments: [Segment] = []
-        var keyed: [(frame: Int, pan: Double, tilt: Double)] = []
-        if !found.isEmpty {
-            let targets = found.map { row in
-                (frame: row.frame, framing: framing(center: (row.box.centerX, row.box.centerY), placement: fill, options: options),
-                 center: (x: row.box.centerX, y: row.box.centerY))
-            }
-            switch options.mode {
-            case .locked:
-                let center = (median(targets.map(\.center.x)), median(targets.map(\.center.y)))
-                let held = framing(center: center, placement: fill, options: options)
-                segments = [Segment(frame: 0, pan: held.pan, tilt: held.tilt)]
-            case .cut:
-                let hold = Int((options.minHoldSeconds * fps).rounded())
-                var groups: [[Int]] = [[0]]
-                var current = targets[0].framing
-                for index in targets.indices.dropFirst() {
-                    let target = targets[index]
-                    let start = targets[groups[groups.count - 1][0]].frame
-                    let offX = abs(target.framing.pan - current.pan) / max(1, fill.canvasWidth)
-                    let offY = abs(target.framing.tilt - current.tilt) / max(1, fill.canvasHeight)
-                    if max(offX, offY) > options.drift, target.frame - start >= hold {
-                        groups.append([index])
-                        current = target.framing
-                    } else {
-                        groups[groups.count - 1].append(index)
-                    }
-                }
-                segments = groups.enumerated().map { number, group in
-                    let center = (median(group.map { targets[$0].center.x }), median(group.map { targets[$0].center.y }))
-                    let held = framing(center: center, placement: fill, options: options)
-                    return Segment(frame: number == 0 ? 0 : targets[group[0]].frame, pan: held.pan, tilt: held.tilt)
-                }
-            case .follow:
-                let window = max(0, options.smoothSeconds * fps / 2)
-                keyed = targets.map { target in
-                    let near = targets.filter { abs(Double($0.frame - target.frame)) <= window }
-                    return (target.frame, near.map(\.framing.pan).reduce(0, +) / Double(near.count),
-                            near.map(\.framing.tilt).reduce(0, +) / Double(near.count))
-                }
-                // At most 1,000 keys, evenly picked.
-                if keyed.count > 1_000 {
-                    let stride = Double(keyed.count - 1) / 999
-                    keyed = (0..<1_000).map { keyed[Int((Double($0) * stride).rounded())] }
-                }
-                if keyed[0].frame != 0 { keyed[0].frame = 0 }
-                segments = keyed.map { Segment(frame: $0.frame, pan: $0.pan, tilt: $0.tilt) }
-            }
+        let framings = framings(targets, fill: fill, options: options, fps: project.fps.value)
+        let shares = found.map { row in
+            let framing = framings.at(row.frame)
+            return (frame: row.frame,
+                    share: fill.visibleShare(row.box, zoom: options.zoom, pan: framing.pan, tilt: framing.tilt, crop: crop))
         }
-
-        func framingAt(_ frame: Int) -> (pan: Double, tilt: Double) {
-            if options.mode == .follow, !keyed.isEmpty {
-                let motion = ItemMotion(keys: [
-                    "pan": keyed.map { .init(frame: $0.frame, value: $0.pan, ease: .linear) },
-                    "tilt": keyed.map { .init(frame: $0.frame, value: $0.tilt, ease: .linear) },
-                ])
-                return (motion.value("pan", at: Double(frame)) ?? 0, motion.value("tilt", at: Double(frame)) ?? 0)
-            }
-            let segment = segments.last { $0.frame <= frame } ?? segments.first
-            return (segment?.pan ?? 0, segment?.tilt ?? 0)
-        }
-        let measured = coverage(framingAt)
+        let measured = Coverage(
+            samples: rows.count, subjectSamples: found.count,
+            mean: shares.isEmpty ? nil : shares.map(\.share).reduce(0, +) / Double(shares.count),
+            min: shares.map(\.share).min())
 
         var transform = item["transform"]?.object ?? [:]
         var motion = item.motion ?? ItemMotion(keys: [:])
         for property in ["zoom", "pan", "tilt"] { motion.keys[property] = nil }
-        let failure: String? = {
-            if rows.isEmpty { return "No subject boxes are stored for the source this clip plays" }
-            if measured.subjectShare < options.minSubjectShare {
-                return "A subject was found in \(percent(measured.subjectShare)) of the pictures, under minSubjectShare "
-                    + percent(options.minSubjectShare)
-            }
-            if let mean = measured.mean, mean < options.gate {
-                return "The framing keeps \(percent(mean)) of the subject in view on average, under the gate \(percent(options.gate))"
-            }
-            return nil
-        }()
-        if let failure {
+        if let failure = failure(samples: rows.count, coverage: measured, options: options) {
             if options.fallback == .refuse { throw Refused(reason: failure, coverage: measured) }
+            for key in ["pan", "tilt"] { transform[key] = .number(0) }
             transform["zoom"] = .number(1)
-            transform["pan"] = .number(0)
-            transform["tilt"] = .number(0)
             return Plan(
                 applied: "fit", reason: failure,
                 patch: ["fill": .bool(false), "transform": .object(transform), "keyframes": motion.isEmpty ? .null : motion.json,
                         "reframePreset": .string("custom")],
                 coverage: measured, segments: [], previewFrames: [item.duration / 2])
         }
+        let segments = framings.segments
         transform["zoom"] = .number(rounded(options.zoom, 1_000))
         transform["pan"] = .number(rounded(segments[0].pan, 10))
         transform["tilt"] = .number(rounded(segments[0].tilt, 10))
         if segments.count > 1 {
-            let ease: ItemMotion.Ease = options.mode == .cut ? .hold : .linear
+            let ease: ItemMotion.Ease = framings.moving ? .linear : .hold
             motion.keys["pan"] = segments.map { .init(frame: $0.frame, value: rounded($0.pan, 10), ease: ease) }
             motion.keys["tilt"] = segments.map { .init(frame: $0.frame, value: rounded($0.tilt, 10), ease: ease) }
         }
-        var previews = options.mode == .follow ? [0, item.duration / 2, max(0, item.duration - 1)] : segments.map(\.frame)
-        if let worst = found.min(by: { lhs, rhs in
-            let left = framingAt(lhs.frame), right = framingAt(rhs.frame)
-            return fill.visibleShare(lhs.box, zoom: options.zoom, pan: left.pan, tilt: left.tilt, crop: crop)
-                < fill.visibleShare(rhs.box, zoom: options.zoom, pan: right.pan, tilt: right.tilt, crop: crop)
-        }) { previews.append(worst.frame) }
+        var previews = framings.moving ? [0, item.duration / 2, item.duration - 1] : segments.map(\.frame)
+        if let worst = shares.min(by: { $0.share < $1.share }) { previews.append(worst.frame) }
         previews = Array(Set(previews.map { min(max(0, $0), max(0, item.duration - 1)) })).sorted()
         return Plan(
             applied: "reframe", reason: nil,

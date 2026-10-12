@@ -125,6 +125,9 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   lines) sample one picture every `--step` source seconds through the built-in `bashcut.vision` plugin (Apple
   Vision); raw boxes, confidence and time, no labels. The boxes are kept per file content
   (`.bashcut/cache/subjects/`, merged across runs).
+- Multi-selection follow-ups (#357): Inspector multi-edit of opacity, volume, fill and framing; selection drags on the
+  magnetic layer move a block (`timeline move-items --before`); copy/paste through the macOS pasteboard across
+  projects and windows.
 - Item backdrop (P3-J7): `backdrop {kind blur|color, color, blur, dim}` fills a fitted picture's bars with a blurred,
   filled copy of its own frame or a colour; `clip backdrop`, Inspector › Video › Backdrop.
 - Two fonts in one title: `textStyle.lines` (per-line font, scale, fill, stroke), `text line-style`, Inspector ›

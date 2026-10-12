@@ -264,32 +264,13 @@ struct InspectorView: View {
         }
     }
 
-    /// The visible part of the picture and its rounded corners; each side and the radius can be keyframed.
-    @ViewBuilder private func cropControls(_ item: Item) -> some View {
-        DisclosureGroup("Crop") {
-            number("Left", group: "crop", key: "left", defaultValue: 0, range: 0...0.95)
-            number("Right", group: "crop", key: "right", defaultValue: 0, range: 0...0.95)
-            number("Top", group: "crop", key: "top", defaultValue: 0, range: 0...0.95)
-            number("Bottom", group: "crop", key: "bottom", defaultValue: 0, range: 0...0.95)
-            number("Corner radius", group: "crop", key: "radius", defaultValue: 0, range: 0...0.5)
-            PlayheadKeyframeButton(
-                document: document, item: item, title: "Keyframe crop at playhead",
-                help: "Keys the crop sides and corner radius here; then change them at another frame"
-            ) {
-                do { try document.keyframeAll(properties: ItemMotion.cropProperties.keys.sorted()) } catch {
-                    document.message = error.localizedDescription
-                }
-            }
-        }
-    }
-
     @ViewBuilder private var colorControls: some View {
         number("Exposure", group: "color", key: "exposure", defaultValue: 0, range: -2...2)
         number("Contrast", group: "color", key: "contrast", defaultValue: 1, range: 0.5...1.5)
         number("Saturation", group: "color", key: "saturation", defaultValue: 1, range: 0...2)
     }
 
-    private func number(
+    func number(
         _ title: String, group: String? = nil, key: String, defaultValue: Double,
         range: ClosedRange<Double>, integer: Bool = false
     ) -> some View {
@@ -462,39 +443,6 @@ private struct SpeedControls: View {
 
     /// Slider values snap to 0.05× steps.
     static func rounded(_ value: Double) -> Double { (value * 20).rounded() / 20 }
-}
-
-/// Several clips selected: their count and extent, a shared Mute switch and the bulk actions.
-struct MultiSelectionInspector: View {
-    let document: ProjectDocument
-
-    var body: some View {
-        let items = document.selectedItems
-        VStack(alignment: .leading, spacing: 12) {
-            Text(String(format: String(localized: "%d clips selected"), items.count)).font(.callout.bold())
-            if let start = items.map(\.at).min(), let end = items.map(\.end).max() {
-                Text(String(format: "%d–%d frames", start, end)).foregroundStyle(.secondary)
-            }
-            if items.contains(where: { $0.mediaID != nil }) {
-                Toggle(
-                    "Mute",
-                    isOn: Binding(
-                        get: { SelectionEdits.allMuted(document.selectedIDs, in: document.project) },
-                        set: { _ in document.run(.muteClips) }))
-            }
-            Divider()
-            HStack {
-                Button("Copy") { document.run(.copyClips) }
-                Button("Cut") { document.run(.cutClips) }
-            }
-            HStack {
-                Button("Delete") { document.run(.delete) }
-                Button("Lift") { document.run(.lift) }
-            }
-            Button("Send to Agent") { document.run(.sendToAgent) }
-            Text("Drag any selected clip to move them all. Esc clears the selection.").foregroundStyle(.secondary)
-        }
-    }
 }
 
 extension InspectorView {
