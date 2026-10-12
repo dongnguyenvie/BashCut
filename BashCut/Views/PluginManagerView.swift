@@ -152,6 +152,8 @@ extension PluginManagerView {
 /// "By <author>", a link when the author has a web page.
 struct PluginAuthorLabel: View {
     let author: PluginAuthor
+    /// Caption size instead of the small row size (the install sheet).
+    var prominent = false
 
     var body: some View {
         let text = String(format: String(localized: "By %@"), author.name)
@@ -162,7 +164,7 @@ struct PluginAuthorLabel: View {
                 Text(text)
             }
         }
-        .font(.caption2).foregroundStyle(.secondary)
+        .font(prominent ? .callout : .caption2).foregroundStyle(.secondary)
     }
 }
 
@@ -368,6 +370,7 @@ private struct PluginInstallApprovalView: View {
                     plugin.manifest.displayName),
                 systemImage: "puzzlepiece.extension"
             ).font(.title2)
+            if let author = plugin.manifest.author { PluginAuthorLabel(author: author, prominent: true) }
             if let archive = pending.archive { download(archive) }
             if let local = pending.local { localSource(local) }
             if !plugin.manifest.capabilities.isEmpty {

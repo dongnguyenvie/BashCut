@@ -54,6 +54,7 @@ struct PluginPanelView: View {
                 Text(verbatim: plugin.manifest.containerTitle).font(.headline).lineLimit(1)
                 Text(verbatim: plugin.manifest.displayName + " " + plugin.manifest.version)
                     .font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                if let author = plugin.manifest.author { PluginAuthorLabel(author: author).lineLimit(1) }
             }
             Spacer()
             Button {

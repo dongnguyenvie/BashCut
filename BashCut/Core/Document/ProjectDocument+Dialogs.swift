@@ -98,6 +98,7 @@ extension ProjectDocument {
                     ? "Update " : "Install ")
                     + pending.plugin.manifest.displayName + "?",
                 message: "Only the user can approve a plugin install."
+                    + (pending.plugin.manifest.author.map { " By " + $0.name + ($0.url.map { " (\($0))" } ?? "") + "." } ?? "")
                     + (plugins.mode(of: pending) == .link ? " It is installed as a link (developer mode)." : ""),
                 options: [ModalOption("cancel", String(localized: "Cancel"))]
             ) { [weak self] _ in self?.plugins.cancelPendingInstall() })
