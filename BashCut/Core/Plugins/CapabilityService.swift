@@ -189,6 +189,14 @@ public struct CapabilityService: Sendable {
             projectRoot: projectRoot)
     }
 
+    public func cutout(
+        imageURL: URL, crop: Bool, preferredProvider: String?, projectRoot: URL, outputRoot: URL
+    ) async throws -> GeneratedCutout {
+        try await run(
+            CutoutCapability(imageURL: imageURL, crop: crop, outputRoot: outputRoot), preferredProvider: preferredProvider,
+            projectRoot: projectRoot)
+    }
+
     public func syncAudio(
         mediaURL: URL, otherURL: URL, preferredProvider: String?, projectRoot: URL?
     ) async throws -> GeneratedAudioSync {

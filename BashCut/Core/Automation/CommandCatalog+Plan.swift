@@ -174,14 +174,21 @@ extension CommandCatalog {
             + "drops the old edges), section, speed, volumeDb, role (speech, broll, underVO; speech by default "
             + "for quote, words or seconds holding transcribed words), zoom, pan, tilt (its picture's framing: a punch-in such as zoom 1.15 "
             + "breaks a jump cut between two clips of one camera), cover: [{media, from, seconds, zoom, pan, tilt}] "
-            + "(pictures shown over the clip's sound, muted, the last filling the rest)}], titles: [{id, text, clip "
-            + "or section (+ offset seconds) | at, seconds (to "
+            + "(pictures shown over the clip's sound, muted, the last filling the rest)}], voiceover: [{id, text, "
+            + "section, pause (seconds after it), at (seconds; else right after the line before), take (a kept take's "
+            + "path; else the best kept take of its text: voice lines makes them), volumeDb}] (on the Voiceover "
+            + "layer from 0; an edit may be lines without clips), graphics: [{id, media, on (a clip, line, title or "
+            + "earlier graphic) | section | at, offset, seconds | until (an entry: to its end), else to its anchor's "
+            + "end, track overlay|main (main: the picture of an edit made of graphics), from, render (a graphics "
+            + "plugin's inputs, not read)}] (full canvas), titles: [{id, text, clip "
+            + "(a clip or line) or section (+ offset seconds) | at, seconds (to "
             + "the end of its clip or section when left out; needed with at), preset, style}], captions: {from: "
             + "speech, wordStyle highlight|karaoke|reveal, preset, style, replace: {\"misheard words\": \"right "
             + "words\"} (names the transcript got wrong; a line a clip plays only part of shows only the words heard)} "
             + "(captions from the "
-            + "stored transcripts of the clips' media, cut with them), music: {media, from, volumeDb, duckDb (level "
-            + "under speech)}, sfx: [{id, media, on (a clip or title ID) | section | at seconds, offset (negative: "
+            + "stored transcripts of the clips' media, cut with them, and each voiceover line's own text timed by its "
+            + "take's words), music: {media, from, volumeDb, duckDb (level "
+            + "under speech)}, sfx: [{id, media, on (a clip, line, title or graphic ID) | section | at seconds, offset (negative: "
             + "before it), seconds (default the whole file), volumeDb}] (on the SFX layer, never past the end), "
             + "review: {limit: number} (review limits such as minTextSize, minTextContrast, "
             + "minShotSeconds, chosen from the recipe's ranges; merged over the project's review on apply)}. A title's "
@@ -206,12 +213,17 @@ extension CommandCatalog {
                     + "review-profile-unset with facts.unsetLimits: every review limit the "
                     + "built edit needs and nobody set); and the review of the edit as it would be (the "
                     + "project's review profile; picture and loudness need a render and are not measured). ok is false "
-                    + "while an error stands. " + shape,
-                parameters: [cut, patch]),
+                    + "while an error stands. Voiceover lines report at, seconds, take and the take's similarity; "
+                    + "graphics their at, seconds and track (also before they have media, so a graphics plugin renders "
+                    + "each to its span; words adds the voiceover words heard during each, in seconds from its start). "
+                    + shape,
+                parameters: [cut, patch, CommandParameter(
+                    "words", .boolean, "Per graphic, the voiceover words heard during it (seconds from its start)",
+                    cli: .flag("words"))]),
             CommandSpec(
                 "plan.apply", .edit,
                 "Build the edit list as one undoable edit: clips on Main in order (sound linked on the dialogue "
-                    + "layer), section markers, titles and the music bed, each tagged planCut. Applying again replaces "
+                    + "layer), voiceover lines, graphics, section markers, titles and the music bed, each tagged planCut. Applying again replaces "
                     + "only what an earlier apply built (changes made to those items since are lost; other layers are "
                     + "kept but not re-timed); Main must hold nothing else. Refuses while plan.check has an error. "
                     + "With cut or patch, the list is also saved as plan.cut in the same edit (a revision: --patch with "

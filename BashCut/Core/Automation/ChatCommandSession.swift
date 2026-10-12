@@ -10,7 +10,7 @@ import Foundation
         "captions.generate", "export.status", "export.start", "export.otio", "plugins.list", "plugins.actions",
         "plugins.hooks", "plugins.options", "jobs.status", "jobs.cancel", "layers.add", "layers.set",
         "adjustment.add", "schema.get",
-        "clip.motion", "clip.keyframe", "clip.reverse", "beats.detect", "voice.speak", "voice.place",
+        "clip.motion", "clip.keyframe", "clip.reverse", "beats.detect", "voice.speak", "voice.lines", "voice.place",
         "audio.measure", "media.sync", "media.analyze", "media.analysis", "media.cuts", "media.transcribe",
         "media.transcript", "media.speech-map", "media.describe", "media.description",
         "media.frames", "media.frame", "media.strip", "media.inventory", "media.digest", "review.sync",

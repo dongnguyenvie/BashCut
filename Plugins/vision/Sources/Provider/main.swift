@@ -1,6 +1,7 @@
-// BashCut Vision: the core plugin that provides `vision.faces` (face and person boxes) and `vision.text` (on-screen
-// text) with Apple Vision, so an agent can measure what is in the picture without installing anything (P2-H6, P2-H7).
-// Raw boxes, confidence and time only; reading them is the agent's.
+// BashCut Vision: the core plugin that provides `vision.faces` (face and person boxes), `vision.text` (on-screen
+// text) and `vision.cutout` (a picture's subject on a transparent background) with Apple Vision, so an agent can
+// measure what is in the picture, or cut a mascot out, without installing anything (P2-H6, P2-H7). Raw boxes,
+// confidence and time only; reading them is the agent's.
 //
 // Plugin API one-shot transport: `provider rpc` reads one JSON request from stdin and writes one JSON response.
 import BashCutVisionAnalysis
@@ -40,6 +41,20 @@ func text(_ params: [String: Any]) async throws -> [String: Any] {
     return ["step": sampling.step, "frames": frames]
 }
 
+func cutout(_ params: [String: Any]) throws -> [String: Any] {
+    guard let path = params["imagePath"] as? String, FileManager.default.fileExists(atPath: path) else {
+        throw VisionError("The picture is missing")
+    }
+    guard let folder = params["outputDirectory"] as? String else { throw VisionError("outputDirectory is missing") }
+    let input = URL(fileURLWithPath: path)
+    let output = URL(fileURLWithPath: folder).appendingPathComponent(input.deletingPathExtension().lastPathComponent + "-cutout.png")
+    let result = try VisionCutout.cutout(input: input, output: output, crop: params["crop"] as? Bool ?? false)
+    return [
+        "path": output.path, "width": result.width, "height": result.height, "instances": result.instances,
+        "coverage": result.coverage,
+    ]
+}
+
 func handle(_ request: [String: Any]) async -> [String: Any] {
     let id = request["id"] ?? ""
     let params = request["params"] as? [String: Any] ?? [:]
@@ -47,6 +62,7 @@ func handle(_ request: [String: Any]) async -> [String: Any] {
         switch request["method"] as? String {
         case "vision.faces": return ["id": id, "result": try await faces(params)]
         case "vision.text": return ["id": id, "result": try await text(params)]
+        case "vision.cutout": return ["id": id, "result": try cutout(params)]
         default: return ["id": id, "error": ["code": "unknown_method", "message": "\(request["method"] ?? "")"]]
         }
     } catch {

@@ -27,6 +27,7 @@ extension ProjectDocument {
 
     func registerVoiceCheckCommands() {
         handleAuthored("voice.check") { document, arguments, author in
+            if let items = arguments.optionalString("items") { return try await document.checkVoiceItems(items, arguments, author: author) }
             let itemID = arguments.optionalString("item")
             let item = try itemID.map { try document.item($0) }
             guard let mediaID = item?.mediaID ?? arguments.optionalString("media") else {
@@ -97,6 +98,42 @@ extension ProjectDocument {
                     "unmatched": TextAlignment.unmatchedJSON(aligned.alignment),
                 ])
             }
+        }
+    }
+
+    /// `voice.check --items a,b|all`: each voiceover item against its voice text in one job, without word lists.
+    func checkVoiceItems(_ list: String, _ arguments: CommandArguments, author: Author) async throws -> JSONValue {
+        let voiced = project.tracks.flatMap(\.items).filter { $0.mediaID != nil && $0["voice"]?.object["text"]?.string != nil }
+        let items: [Item]
+        if list == "all" {
+            items = voiced
+        } else {
+            items = try list.split(separator: ",").map { id in
+                let item = try self.item(id.trimmingCharacters(in: .whitespaces))
+                guard item.mediaID != nil, item["voice"]?.object["text"]?.string != nil else {
+                    throw RPCFailure(-32602, "Item \(item.id) is not a voiceover item with voice text")
+                }
+                return item
+            }
+        }
+        guard !items.isEmpty else { throw RPCFailure(-32602, "No voiceover items with voice text") }
+        let provider = arguments.optionalString("provider")
+        let minimum = arguments.optionalDouble("minSimilarity")
+        return try await startCapabilityJob("voice.check", author: author, arguments: arguments) { document in
+            var checks: [JSONValue] = []
+            for item in items {
+                try Task.checkCancellation()
+                let text = item["voice"]?.object["text"]?.string ?? ""
+                let heard = try await document.heardWords(of: item.mediaID ?? "", item: item, provider: provider)
+                let result = TextAlignment.align(text, to: heard)
+                var row: [String: JSONValue] = [
+                    "item": .string(item.id), "similarity": .number((result.similarity * 1_000).rounded() / 1_000),
+                    "unmatched": TextAlignment.unmatchedJSON(result),
+                ]
+                if let minimum { row["passed"] = .bool(result.similarity >= minimum) }
+                checks.append(.object(row))
+            }
+            return .object(["checks": .array(checks)])
         }
     }
 

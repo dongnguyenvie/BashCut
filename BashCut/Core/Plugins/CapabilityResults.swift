@@ -68,6 +68,17 @@ public struct GeneratedVision: Sendable {
     public let provenance: PluginProvenance
 }
 
+/// `vision.cutout`: the picture's subject on a transparent background (PNG), with how many subjects were found and
+/// the share of the picture they cover.
+public struct GeneratedCutout: Sendable {
+    public let url: URL
+    public let width: Int
+    public let height: Int
+    public let instances: Int?
+    public let coverage: Double?
+    public let provenance: PluginProvenance
+}
+
 public struct GeneratedLoudnessMeasurement: Sendable {
     public let measurement: LoudnessMeasurement
     public let provenance: PluginProvenance

@@ -550,6 +550,14 @@ picture from its top left and a finite `confidence`; a `text` entry also has `st
 landmark, mouth movement) are passed on; BashCut adds the source `frame` and where the media plays on the timeline.
 Which face matters, or whether a line is a caption, is the agent's.
 
+### `vision.cutout`
+
+The request has `imagePath` (a picture), `crop` (true: crop to the subject) and `outputDirectory`. Write the picture's
+subject on a transparent background as a PNG inside `outputDirectory` and return its `path`, `width` and `height`
+(pixels), and optionally `instances` (how many subjects were kept) and `coverage` (0–1, the share of the picture
+kept). `image cutout` runs it; the built-in Vision plugin uses Apple Vision's foreground mask, and a plugin with a
+better model can serve it with a higher priority.
+
 ### `audio.loudness`
 
 `mediaPath` is a rendered mix. Return `integratedLUFS` (−100 to 10), `truePeakDbTP` (−100 to 20) and optional

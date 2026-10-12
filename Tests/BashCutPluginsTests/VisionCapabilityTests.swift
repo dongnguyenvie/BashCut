@@ -72,4 +72,33 @@ struct VisionCapabilityTests {
             try await TextRecognitionCapability(sampling).output(from: noString, context: context)
         }
     }
+
+    @Test("A cutout request names the picture and folder; the PNG must come back inside the request folder")
+    func cutout() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let picture = folder.appendingPathComponent("mascot.png")
+        try Data([0x89]).write(to: picture)
+        let adapter = CutoutCapability(imageURL: picture, crop: true, outputRoot: folder)
+        try adapter.validate()
+        #expect(adapter.params(outputDirectory: folder) == .object([
+            "imagePath": .string(picture.path), "crop": .bool(true), "outputDirectory": .string(folder.path),
+        ]))
+        #expect(throws: PluginError.self) {
+            try CutoutCapability(imageURL: folder.appendingPathComponent("none.png"), crop: false, outputRoot: folder).validate()
+        }
+        let inside = CapabilityContext(provenance: context.provenance, outputDirectory: folder)
+        let made = folder.appendingPathComponent("mascot-cutout.png")
+        try Data([0x89]).write(to: made)
+        let result: JSONValue = .object([
+            "path": .string(made.path), "width": .integer(300), "height": .integer(500), "instances": .integer(1),
+            "coverage": .number(0.66),
+        ])
+        let output = try await adapter.output(from: result, context: inside)
+        #expect(output.width == 300 && output.instances == 1 && output.coverage == 0.66)
+        let outside: JSONValue = .object(["path": .string("/etc/hosts"), "width": .integer(1), "height": .integer(1)])
+        await #expect(throws: PluginError.self) { try await adapter.output(from: outside, context: inside) }
+        await #expect(throws: PluginError.self) { try await adapter.output(from: .object([:]), context: inside) }
+    }
 }

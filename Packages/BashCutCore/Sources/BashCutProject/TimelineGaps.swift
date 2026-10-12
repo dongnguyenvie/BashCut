@@ -49,9 +49,22 @@ extension Project {
     /// Moves every item on `track` that starts at or after `frame` by `delta`. A ripple on the main layer moves the
     /// timeline's markers with it (#507-11), from `markersFrom` (the edited edge) when markers inside the edited clip
     /// move too.
-    mutating func shift(track: Int, from frame: Int, by delta: Int, markersFrom: Int? = nil) throws {
+    ///
+    /// The linked partner of each moved item moves with it when it sits on another layer, so a clip's sound stays in
+    /// sync though its own layer was not rippled. `moved` holds what this operation's ripples already moved: a
+    /// partner moved with its clip is not moved again by its own layer's ripple.
+    mutating func shift(track: Int, from frame: Int, by delta: Int, markersFrom: Int? = nil, moved: inout Set<String>) throws {
+        var partners: [String] = []
         for index in tracks[track].items.indices where tracks[track].items[index].at >= frame {
-            tracks[track].items[index].at = try sum(tracks[track].items[index].at, delta)
+            let item = tracks[track].items[index]
+            guard moved.insert(item.id).inserted else { continue }
+            tracks[track].items[index].at = try sum(item.at, delta)
+            if let partner = item.fields["linkedAudio"]?.string ?? item.fields["linkedVideo"]?.string { partners.append(partner) }
+        }
+        for partner in partners where !moved.contains(partner) {
+            guard let (other, index) = try? location(partner), other != track else { continue }
+            tracks[other].items[index].at = try sum(tracks[other].items[index].at, delta)
+            moved.insert(partner)
         }
         if tracks[track].role == TrackRole.main, tracks[track].kind == "video", delta != 0, !markers.isEmpty {
             markers = shiftedMarkers(from: markersFrom ?? frame, by: delta)

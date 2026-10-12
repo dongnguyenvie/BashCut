@@ -99,16 +99,14 @@ extension CommandCatalog {
         Prefer `media place` and `timeline move`, which put content on a free or new layer when the range is taken;
         raw insert/move operations that overlap are rejected.
         Edits need --base-rev N from the latest read. One request is one atomic apply call.
-        Changes appear in the UI and can be undone.
         Job commands return a job ID; `bashcut jobs wait JOB_ID --done --timeout 100` returns when it ends;
         `jobs wait ID1,ID2,…` waits for several at once. Their result is one undoable edit.
         Each call is a turn: batch (`media import FOLDER`; sheets, not `ui frame` one by one; `checkpoint status
-        --wait 100`; `context get` on start, not per command). Build a cut as plan.cut: `plan check`, then `plan apply`.
-        Installing plugins is user-only. Add `--format text` to print text results without JSON quoting.
-        Change the canvas of the open project with `bashcut project format --canvas landscape` (portrait, landscape,
-        square); text sizes follow the short side, so titles keep their look. New projects fit each clip inside the
-        frame (bars where its shape differs; `--clips fill` crops to cover instead); a clip's `fill` (setProperties)
-        overrides that, and transform zoom scales from it.
+        --wait 100`; `context get` on start, not per command). Build a cut (or voiceover lines and graphics) as plan.cut:
+        `plan check`, then `plan apply`.
+        Installing plugins is user-only. `--format text` prints text results without JSON quoting.
+        `project format --canvas landscape|portrait|square` changes the canvas (text sizes follow the short side).
+        Clips fit inside the frame; a clip's `fill` (setProperties) or `--clips fill` crops to cover; zoom scales from it.
         Projects: `bashcut project create` / `project open` / `project save`; they refuse to drop unsaved work unless
         you pass --save-current or --discard-current. A new project has no default language: pass `--language` from
         the user's prompt or answer. Your terminal stays open when the project changes; read
@@ -161,9 +159,8 @@ extension CommandCatalog {
     }()
 
     private static let operations = """
-        `bashcut timeline apply /absolute/path/ops.json --base-rev N --label "Describe the edit"` reads an array of objects.
-        Add `--dry-run` to validate without changing the project. It returns the current rev, projectedRev,
-        changedItems/changedTracks, addedTracks/removedTracks and the predicted duration in frames.
+        `bashcut timeline apply /absolute/path/ops.json --base-rev N --label "Describe the edit"` reads an array.
+        Add `--dry-run` to validate without changing the project; it returns what would change.
         Supported operations:
         {"op":"split","item":"ID","atFrame":30}, {"op":"delete","item":"ID","ripple":true},
         {"op":"trim","item":"ID","edge":"end","toFrame":120,"ripple":true},
@@ -173,8 +170,7 @@ extension CommandCatalog {
         {"op":"patchItems","select":{"trackRole":"captions"},"patch":{"textStyle":{"fill":"#FFD400","size":null}}}
         restyles many items at once: objects merge key by key (null deletes a key); select by track, trackRole,
         trackKind, textPreset or media (all given must match), or list "items":["ID",…],
-        Cycle or choose framing with setProperties patches such as
-        {"op":"setProperties","item":"ID","patch":{"reframePreset":"close","transform":{"zoom":1.3,"pan":0,"tilt":0}}},
+        framing: setProperties {"reframePreset":"close","transform":{"zoom":1.3,"pan":0,"tilt":0}},
         {"op":"setLinkedAudio","video":"VIDEO_ID","audio":"AUDIO_ID"}; omit audio to unlink,
         {"op":"setSpeed","item":"ID","speed":2}; the clip and its linked sound get 2x and half the length, later
         clips on their layers move up; add "keepDuration":true to keep the length (prefer this over a speed patch),
@@ -206,7 +202,7 @@ extension CommandCatalog {
         {"op":"deleteColorLUT","id":"look"}.
         {"op":"roll","item":"ID","edge":"end","toFrame":120},
         {"op":"slip","item":"ID","sourceIn":60}.
-        Roll moves a shared cut without changing total duration. Slip changes only the source start.
+        Roll moves a shared cut, keeping the total length. Slip changes only the source start.
         atFrame/toFrame are absolute integer timeline frames. in is an integer source frame at the media fps.
         Never hand-edit project.bashcut.json while the app is open, never overwrite original footage, and never render with ffmpeg.
         Editing the timeline (apply, cuts, voice, text, color, mix) needs no confirm: work on and use checkpoint request only at

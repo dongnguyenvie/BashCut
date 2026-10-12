@@ -6,16 +6,19 @@ import Foundation
 extension Project {
     mutating func applySpeed(_ id: String, speed: Double, keepDuration: Bool) throws {
         let linked = try linkedItemID(id)
-        let duration = try speedItem(id: id, speed: speed, keepDuration: keepDuration, duration: nil)
+        var moved = Set<String>()
+        let duration = try speedItem(id: id, speed: speed, keepDuration: keepDuration, duration: nil, moved: &moved)
         // The partner gets the same speed and length so picture and sound stay in sync.
-        if let linked { _ = try speedItem(id: linked, speed: speed, keepDuration: true, duration: duration) }
+        if let linked { _ = try speedItem(id: linked, speed: speed, keepDuration: true, duration: duration, moved: &moved) }
     }
 
     public static let speedRange: ClosedRange<Double> = 0.1...16
 
     /// Sets an item's speed and new duration (or `duration` for a linked partner), rippling later items on its
     /// layer by the change. Returns the new duration.
-    mutating func speedItem(id: String, speed: Double, keepDuration: Bool, duration forced: Int?) throws -> Int {
+    mutating func speedItem(
+        id: String, speed: Double, keepDuration: Bool, duration forced: Int?, moved: inout Set<String>
+    ) throws -> Int {
         guard speed.isFinite, Self.speedRange.contains(speed) else {
             throw ProjectError.invalid("Speed must be between 0.1× and 16×")
         }
@@ -40,7 +43,7 @@ extension Project {
         // A constant speed replaces a ramp; setSpeedCurve puts its curve back right after.
         item.fields["speedCurve"] = nil
         tracks[track].items[index] = item
-        try shift(track: track, from: original.end, by: item.duration - original.duration)
+        try shift(track: track, from: original.end, by: item.duration - original.duration, moved: &moved)
         return item.duration
     }
 }
@@ -61,10 +64,11 @@ extension Project {
             }
             return
         }
-        let duration = try speedItem(id: id, speed: curve.average, keepDuration: keepDuration, duration: nil)
+        var moved = Set<String>()
+        let duration = try speedItem(id: id, speed: curve.average, keepDuration: keepDuration, duration: nil, moved: &moved)
         try setCurve(id, curve)
         if let linked {
-            _ = try speedItem(id: linked, speed: curve.average, keepDuration: true, duration: duration)
+            _ = try speedItem(id: linked, speed: curve.average, keepDuration: true, duration: duration, moved: &moved)
             try setCurve(linked, curve)
         }
     }
