@@ -26,6 +26,16 @@ extension Track {
 }
 
 extension Project {
+    /// The same timeline with every audio layer of `roles` muted, for an export without them (#520: the cut without
+    /// its music, so a platform's own sound can replace it). Frames, items and the other layers stay as they are.
+    public func muting(roles: Set<String>) -> Project {
+        var copy = self
+        for index in copy.tracks.indices where copy.tracks[index].kind == TrackKind.audio && roles.contains(copy.tracks[index].role) {
+            copy.tracks[index]["muted"] = .bool(true)
+        }
+        return copy
+    }
+
     /// Rejects an edit that changed items on a layer that is locked before and after it. Undo (`restore`)
     /// is exempt so history keeps working; unlocking is a track property change, which this never blocks.
     func enforceLocks(after next: Project, operation: EditOperation) throws {

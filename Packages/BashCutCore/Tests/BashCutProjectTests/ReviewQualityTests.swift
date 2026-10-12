@@ -183,6 +183,21 @@ struct ReviewQualityTests {
         #expect(ids(run(shrunk), "small-text-") == ["small-text-sub"])
         let share = TimelineReview.smallestTextShare(shrunk.tracks.first { $0.id == "t1" }!.items[0], in: shrunk, context: ReviewContext())
         #expect(abs((share ?? 0) - 0.021) < 0.001)
+        // Keyed zoom counts when the text holds it (#521): kept at 0.4× is small, a pop-in that settles is not.
+        var keyed = project
+        var held = text("held", "nhỏ dần", style: ["size": .number(0.06)])
+        held["keyframes"] = .object(["zoom": .array([
+            .object(["frame": .integer(0), "value": .number(1)]), .object(["frame": .integer(10), "value": .number(0.4)]),
+        ])])
+        var pop = text("pop", "bật", at: 90, style: ["size": .number(0.06)])
+        pop["keyframes"] = .object(["zoom": .array([
+            .object(["frame": .integer(0), "value": .number(0.4)]), .object(["frame": .integer(6), "value": .number(1)]),
+        ])])
+        set(&keyed, track: "t1", [held, pop])
+        let keyedIssues = run(keyed)
+        #expect(ids(keyedIssues, "small-text-") == ["small-text-held"])
+        let facts = keyedIssues.first { $0.id == "small-text-held" }?.facts
+        #expect(facts?["keyedScale"]?.double == 0.4 && facts?["styleShare"]?.double == 0.06)
         // Text size and lines are the project's limits: none without them.
         let bare = run(project, profiled: false)
         #expect(ids(bare, "small-text-").isEmpty && ids(bare, "caption-lines-").isEmpty)

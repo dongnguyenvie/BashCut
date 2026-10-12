@@ -515,12 +515,14 @@ Read where text sits as the renderer lays it out: per visible text item id, trac
 - `ink`: boolean. Measure the composed frame (frame, default 0): luma, mid and inkShare
 - `contrast`: boolean. Measure each item's contrast on rendered frames
 
-### `bashcut review sync [--events <events>] [--bins] [--rendered]`
+### `bashcut review sync [--events <events>] [--impact-frames <impactFrames>] [--run-gap-seconds <runGapSeconds>] [--bins] [--rendered]`
 
-Time events against the beat grid and the spoken words: per event (cuts on Main by default; text items and sfx items on request) the nearest beat and the nearest word edge (start or end, its text, whether the event falls inside the word) with offsetFrames and offsetMs (positive = after it), and for beats and words count, mean and median offset (with bins also p10, p90 and counts per offset from −6 to +6 frames). Words are the stored transcripts heard through the clips (media.transcribe), else the caption words. With rendered: rendered {windows [{at, lagMs, correlation}], driftMsPerMinute, lagStartMs, lagEndMs} from matching the last export's sound to the timeline's mix every 10 s (positive lag = the render is later); the export must show this revision.
+Time events against the beat grid and the spoken words: per event (cuts on Main by default; text items and sfx items on request) the nearest beat and the nearest word edge (start or end, its text, whether the event falls inside the word) with offsetFrames and offsetMs (positive = after it), and for beats and words count, mean and median offset (with bins also p10, p90 and counts per offset from −6 to +6 frames). Words are the stored transcripts heard through the clips (media.transcribe), else the caption words. With rendered: rendered {windows [{at, lagMs, correlation}], driftMsPerMinute, lagStartMs, lagEndMs} from matching the last export's sound to the timeline's mix every 10 s (positive lag = the render is later); the export must show this revision. impacts adds impacts {summary {count, perMinute, minSpacingSeconds, minSpacingBeats, onStrongestQuarterOfBeats}, events [{frame, frames, source transition|keyframes|overlay, item, kind or changes {property: [from, to]} or media, beat {frame, offsetFrames, strength}, secondsSincePrevious, beatsSincePrevious}]}: changes to the whole picture lasting at most impactFrames (transitions on Main, fast zoom/pan/tilt/rotation/opacity/exposure keys on Main clips and adjustment layers, short pictures over Main). sfx adds sfxRuns [{media, count, items, frames, gainsDb, intervalsFrames, constantGain, constantSpacing}]: three or more placements of one sound file with starts at most runGapSeconds apart. No limit is applied.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_review_sync`
-- `events`: string. cuts, text, sfx, captions (comma separated; default cuts)
+- `events`: string. cuts, text, sfx, captions, impacts (comma separated; default cuts)
+- `impactFrames`: integer, 1…120. Longest impact, frames (default 12)
+- `runGapSeconds`: number. Largest gap in an sfx run, s (default 2)
 - `bins`: boolean. Add p10/p90 and counts per offset
 - `rendered`: boolean. Also measure the last export's timing against the timeline
 
@@ -575,9 +577,9 @@ A chapter list from the section markers (00:00 first; an Intro at 0 when no mark
 - `platform`: string. Platform whose rule applies (default youtube)
 - `write`: boolean. Save the list in render/
 
-### `bashcut export start --preset <preset> --name <name> [--output-dir <directory>] [--include-srt] [--normalize-audio] [--bitrate <bitrate>] [--overwrite] [--wait] [--save]`
+### `bashcut export start --preset <preset> --name <name> [--output-dir <directory>] [--include-srt] [--normalize-audio] [--without <without>] [--bitrate <bitrate>] [--overwrite] [--wait] [--save]`
 
-Request a background video export; the user approves it in the app first. Approved exports queue behind a running one. Vertical presets default under the platform's recompression line (platforms list: bitrateMbps); bitrate overrides it. Feed shapes: feed-4x5 (1080×1350), square, portrait-3x4 (1080×1440). The export status reports the bitrate written. Started at once (no approval needed), the result has job: wait with jobs wait JOB --done, or pass wait to get the finished job (up to 100 s; save also saves the project once it lands). An agent's export with any preset but quick-draft needs a draft audit with verdict pass of the current timeline (run append audit --point draft) or the user's G5 approval at this revision: else audit_missing. A name already on disk or queued gets the next free suffix (name-2…; the result says renamedFrom); overwrite replaces the files on disk (moved to the Trash) instead.
+Request a background video export; the user approves it in the app first. Approved exports queue behind a running one. Vertical presets default under the platform's recompression line (platforms list: bitrateMbps); bitrate overrides it. Feed shapes: feed-4x5 (1080×1350), square, portrait-3x4 (1080×1440). The export status reports the bitrate written. Started at once (no approval needed), the result has job: wait with jobs wait JOB --done, or pass wait to get the finished job (up to 100 s; save also saves the project once it lands). An agent's export with any preset but quick-draft needs a draft audit with verdict pass of the current timeline (run append audit --point draft) or the user's G5 approval at this revision: else audit_missing. A name already on disk or queued gets the next free suffix (name-2…; the result says renamedFrom); overwrite replaces the files on disk (moved to the Trash) instead. without leaves audio layers of those roles out of this file (music: the same cut with voice and sound effects only, for a platform's own sound); its loudness and QC stay out of review.
 
 - Mode: privileged · Runs: after the user approves in the app · MCP: `bashcut_export_start`
 - `preset`: string, required, one of tiktok, reels, shorts, feed-4x5, square, portrait-3x4, youtube-1080, youtube-4k, quick-draft, prores. Export preset
@@ -585,6 +587,7 @@ Request a background video export; the user approves it in the app first. Approv
 - `directory`: string. Output folder, relative to the project; defaults to its render folder
 - `includeSRT`: boolean, default false. Also write a SubRip file
 - `normalizeAudio`: boolean, default false. Run two-pass LUFS normalization with a plugin
+- `without`: string. Audio roles to leave out (music, sfx, voiceover, dialogue)
 - `bitrate`: number, 0.5…200. Video bit rate in Mbps instead of the preset's
 - `overwrite`: boolean, default false. Replace an earlier export of this name instead of suffixing it
 - `wait`: boolean, default false. When it starts at once, wait up to 100 s for it to finish and return the job
@@ -1690,7 +1693,7 @@ List lessons the agent learned (symptom, cause, fix), from this project and for 
 - `query`: string. Text to find in the title, symptom, cause, fix, evidence or tags
 - `sort`: string, one of newest, oldest, default "newest". Order by last change; newest first by default
 
-### `bashcut knowledge add-lesson <title> [--symptom <symptom>] [--cause <cause>] [--fix <fix>] [--evidence <evidence>] [--tags <tags>] [--scope <scope>] [--status <status>] [--session <session>]`
+### `bashcut knowledge add-lesson <title> [--symptom <symptom>] [--cause <cause>] [--fix <fix>] [--evidence <evidence>] [--check <check>] [--tags <tags>] [--scope <scope>] [--status <status>] [--session <session>]`
 
 Record a lesson: in this project (default) or, with scope user, for every project. Use status proposed when unsure. Agents' lessons for every project are always proposed until the user approves them.
 
@@ -1699,13 +1702,14 @@ Record a lesson: in this project (default) or, with scope user, for every projec
 - `symptom`: string. What went wrong or what was noticed
 - `cause`: string. Why it happened
 - `fix`: string. What to do next time
-- `evidence`: string. What shows it (frames, files, the user's words)
+- `evidence`: string. What shows it (frames, files, the user's words quoted)
+- `check`: string. Question to ask before the next draft (empty clears)
 - `tags`: string. Comma-separated tags (captions, audio, pacing…)
 - `scope`: string, one of project, user, default "project". project (default) or user
 - `status`: string, one of active, proposed, default "active". active (default) or proposed
 - `session`: string. Your agent session ID, recorded as the source
 
-### `bashcut knowledge update-lesson <id> [--title <title>] [--symptom <symptom>] [--cause <cause>] [--fix <fix>] [--evidence <evidence>] [--tags <tags>] [--status <status>] [--session <session>]`
+### `bashcut knowledge update-lesson <id> [--title <title>] [--symptom <symptom>] [--cause <cause>] [--fix <fix>] [--evidence <evidence>] [--check <check>] [--tags <tags>] [--status <status>] [--session <session>]`
 
 Change a lesson's fields or status (proposed, active, disabled). Agents changing a lesson for every project need approval.
 
@@ -1715,7 +1719,8 @@ Change a lesson's fields or status (proposed, active, disabled). Agents changing
 - `symptom`: string. What went wrong or what was noticed
 - `cause`: string. Why it happened
 - `fix`: string. What to do next time
-- `evidence`: string. What shows it (frames, files, the user's words)
+- `evidence`: string. What shows it (frames, files, the user's words quoted)
+- `check`: string. Question to ask before the next draft (empty clears)
 - `tags`: string. Comma-separated tags (captions, audio, pacing…)
 - `status`: string, one of proposed, active, disabled. New status
 - `session`: string. Your agent session ID, recorded as the source

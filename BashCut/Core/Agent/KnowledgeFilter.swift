@@ -33,7 +33,7 @@ public struct KnowledgeFilter: Sendable, Equatable {
         let matching = lessons.filter { lesson in
             (scope == nil || lesson.scope == scope) && (status == nil || lesson.status == status)
                 && (tag.map(lesson.tags.contains) ?? true)
-                && (needle.isEmpty || ([lesson.title, lesson.symptom, lesson.cause, lesson.fix, lesson.evidence]
+                && (needle.isEmpty || ([lesson.title, lesson.symptom, lesson.cause, lesson.fix, lesson.evidence, lesson.check ?? ""]
                     + lesson.tags).contains { $0.lowercased().contains(needle) })
         }
         return ordered(matching, date: \.updated)
