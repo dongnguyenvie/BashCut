@@ -24,7 +24,8 @@ extension CommandCatalog {
                 + "media and tracks are not data. Core reads only: brief lengthSeconds {min, max} and outputs [names], "
                 + "plan sections [{id, label, lengthSeconds {min, max}, frozen}], shots and beats [{id, text, section}] "
                 + "when present (directly or under value): review compares them with the edit, as info, and context get "
-                + "summarises them so work can resume from them.",
+                + "summarises them so work can resume from them. Returns {key, bytes, keys, rev}; --echo returns the "
+                + "stored value too.",
             parameters: [
                 CommandParameter("key", .string, "brief, plan or your own key", required: true, cli: .positional),
                 CommandParameter("value", .object, "The object (CLI: path to a JSON file)", required: true,
@@ -32,6 +33,7 @@ extension CommandCatalog {
                 CommandParameter(
                     "merge", .boolean, "Merge into the stored value: objects key by key (null deletes), arrays and values replace",
                     cli: .flag("merge")),
+                CommandParameter("echo", .boolean, "Return the stored value as well", cli: .flag("echo")),
                 baseRevision,
             ]),
     ]

@@ -5,6 +5,7 @@
 
 ## [Unreleased]
 
+- **`project set-data` answers in one line.** It echoed the whole stored value (a merged plan reached 700 KB in a live run); it now returns `{key, bytes, keys, rev}` (keys: the value's top-level keys), and `--echo` returns the value as before.
 - **Cover titles read at phone size.** `export cover --title` (and the Export sheet's Save Cover) drew the title at its timeline preset's caption size (bold-outline 0.055 of the short side, about 3 % of a 9:16 cover's height); it now defaults to 0.12 of the short side (about 7 %), a starting point that `--title-size` (0.02–0.4) overrides; a long title still shrinks to fit the width.
 - **`--base-rev last` survives a background conversion.** When an AV1/VP9 conversion landed and relinked its media to the converted copy, the revision moved and the agent's next edit with `--base-rev last` failed as stale though nothing it edited had changed; the relink now carries `last` forward for every session that had seen the revision before it (one that had missed a real edit is still stale).
 - **Stage progress reports are never gated.** `run append stage --stage cut --text … --eta …` (status started, the command's own help example) was refused with audit_missing while G2 was skip and no strategy audit existed; only marking the rough-cut stage done needs what G2 needs now.

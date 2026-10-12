@@ -48,7 +48,9 @@ extension ProjectDocument {
             if key == "brief", case .object(let brief) = next, !brief.isEmpty {
                 logAutoStage("intake", evidence: ["brief set: " + brief.keys.sorted().joined(separator: ", ")], author: author)
             }
-            return .object(["rev": .integer(revision), key: project[key] ?? .null])
+            let stored = project[key] ?? .null
+            if arguments.bool("echo") { return .object(["rev": .integer(revision), key: stored]) }
+            return ProjectPlan.dataAck(key: key, value: stored, revision: revision)
         } catch let error as ProjectError {
             throw RPCFailure.invalid(error)
         }
