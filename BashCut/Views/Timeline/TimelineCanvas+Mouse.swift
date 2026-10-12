@@ -135,7 +135,7 @@ extension TimelineCanvas {
                 item: item, track: track, origin: point, edge: edge,
                 rolling: edge != nil && event.modifierFlags.contains(.option),
                 slipping: edge == nil && toggling && track.kind != "text")
-            drag.group = inGroup && edge == nil && !toggling && !track.magnetic
+            drag.group = inGroup && edge == nil && !toggling
             drag.clickSelection = toggling ? .toggle : inGroup ? .only : nil
             gesture = .clip(drag)
             (edge == nil ? NSCursor.closedHand : NSCursor.resizeLeftRight).set()
@@ -289,7 +289,7 @@ extension TimelineCanvas {
         DebugLog.write("timeline", "\(name) \(drag.item.id) from \(drag.track.id)@\(drag.item.at) to frame \(frame)")
         guard document.project.revision == dragRevision else { return gestureDropped() }
         if drag.group {
-            do { try document.moveSelection(by: frame - drag.item.at) } catch { document.message = error.localizedDescription }
+            commitGroupDrag(drag, frame: frame)
         } else if drag.slipping, let slipSourceIn {
             document.apply(.slip(item: drag.item.id, sourceIn: slipSourceIn), label: "Slip clip")
         } else if drag.rolling, let edge = drag.edge {
@@ -310,6 +310,18 @@ extension TimelineCanvas {
                 }
             }
         }
+    }
+
+    /// A selection dragged by one of its clips: every clip moves by the same frames on its own layer, or, on a
+    /// magnetic layer, that layer's selected clips move as one block, in order, before the clip under the drop.
+    private func commitGroupDrag(_ drag: ClipDrag, frame: Int) {
+        do {
+            guard drag.track.magnetic else { return try document.moveSelection(by: frame - drag.item.at) }
+            let block = document.selectedItems.filter { item in drag.track.items.contains { $0.id == item.id } }
+            let start = frame - (drag.item.at - (block.map(\.at).min() ?? drag.item.at))
+            let before = SelectionEdits.anchor(document.selectedIDs, on: drag.track.id, at: start, in: document.project)
+            try document.reorderSelection(on: drag.track.id, before: before)
+        } catch { document.message = error.localizedDescription }
     }
 
     private func updateSlip(delta: Int, item: Item) {

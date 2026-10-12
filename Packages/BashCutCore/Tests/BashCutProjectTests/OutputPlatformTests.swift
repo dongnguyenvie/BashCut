@@ -156,6 +156,16 @@ struct PlatformDataTests {
         #expect(OutputPlatform.youtube.facts["chapters"]?.kind == .hard)
         #expect(OutputPlatform.named("youtube-1080")?.id == "youtube" && OutputPlatform.named("youtube-4k")?.id == "youtube")
         #expect(OutputPlatform.named("reels")?.id == "reels" && OutputPlatform.named("quick-draft") == nil)
+        // Post text limits (caption, description, hashtags) with their sources.
+        #expect(OutputPlatform.tiktok.facts["caption.maxChars"]?.value == .integer(2200))
+        #expect(OutputPlatform.tiktok.facts["hashtags.max"]?.value == .null && OutputPlatform.tiktok.facts["hashtags.max"]?.kind == .info)
+        #expect(OutputPlatform.reels.facts["caption.maxChars"]?.value == .integer(2200))
+        #expect(OutputPlatform.reels.facts["hashtags.max"]?.value == .integer(5) && OutputPlatform.reels.facts["hashtags.max"]?.kind == .hard)
+        for platform in [OutputPlatform.youtube, .shorts] {
+            #expect(platform.facts["description.maxChars"]?.value == .integer(5000))
+            #expect(platform.facts["hashtags.ignoredAbove"]?.value == .integer(60))
+            #expect(platform.facts["title.maxChars"]?.source.contains("support.google.com") == true)
+        }
         var newer = builtIn.json.object
         newer["version"] = .string("2099-01-01")
         var platforms = newer["platforms"]?.array ?? []

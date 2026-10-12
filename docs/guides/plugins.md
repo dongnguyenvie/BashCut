@@ -367,7 +367,7 @@ standard error become the error shown to the user.
 
 | Limit | Value |
 |---|---|
-| Request size | 1 MiB |
+| Request size | 1 MiB (`review.check` sends a larger project as a file, `projectFile`) |
 | Response size | 8 MiB |
 | Call timeout | 120 seconds, or the provider's `timeoutSeconds`. With the session transport this is the longest a request may go **without a progress line**; every `progress` message restarts it, up to 4 hours in total |
 | Health probe timeout | 15 seconds, 256 KiB of output |
@@ -435,7 +435,7 @@ builds the request parameters and validates the result.
 | `audio.sync` | `media sync` | `mediaPath`, `otherPath` | `offsetSeconds`, `correlation`, optional `halves`, `overlapStartSeconds`, `overlapEndSeconds` |
 | `library.search` (API 6) | A library panel's Search…, `library search` | `kind`, `query`, `limit`, `page`, `language`, `outputDirectory` | `items`: up to `limit` library item objects; see [Library search and generate](#library-search-and-generate) |
 | `library.generate` (API 6) | A library panel's Generate…, `library generate` | `kind`, `prompt`, `limit`, `params` (hints), `language`, `outputDirectory` | `items`, as for `library.search` |
-| `review.check` (API 9) | `review measure`, the Review sheet's Measure | `project`, `revision`, `fps`, `duration`, `width`, `height`, `projectRoot` | `issues`; see [`review.check`](#reviewcheck) |
+| `review.check` (API 9) | `review measure`, the Review sheet's Measure | `project` (or `projectFile` when over 512 KiB), `revision`, `fps`, `duration`, `width`, `height`, `projectRoot` | `issues`; see [`review.check`](#reviewcheck) |
 
 ### Output files
 
@@ -592,8 +592,10 @@ when they agree within 0.02 s), and the overlap in the first file's seconds.
 A plugin's own review of the timeline: a model-scored hook, contrast, brand rules. Every ready provider of every
 enabled plugin runs, side by side, when the user or an agent measures the review (`review measure`); `review run`
 then lists its issues with the built-in ones for that revision. The request has the whole project (`project`, the
-same JSON as `project get`; requests over 1 MB fail, as for any request), its `revision`, `fps`, `duration` in
-frames, `width`, `height` and `projectRoot`. Return at most 50 issues:
+same JSON as `project get`), its `revision`, `fps`, `duration` in frames, `width`, `height` and `projectRoot`. A
+project whose JSON is over 512 KiB does not fit the 1 MiB request limit, so it comes as `projectFile` instead of
+`project`: the path of a private file with the same JSON, which BashCut removes once every check has answered. Read
+`project` when it is there and `projectFile` otherwise. Return at most 50 issues:
 
 ```json
 {"issues": [{"id": "hook", "title": "Weak hook", "detail": "No face or number in the first 2 s",

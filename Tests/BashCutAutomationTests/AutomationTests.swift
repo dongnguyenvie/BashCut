@@ -194,13 +194,18 @@ import Testing
             }
         }
         #expect(connected == 0)
+        // Let the accept thread take the idle client first (it is accepted in connection order in any case).
         try await Task.sleep(for: .milliseconds(200))
-        let started = Date()
         let response = try await Task.detached {
             try UnixRPCClient.call(RPCRequest(method: "context.get"), path: path)
         }.value
         #expect(response.result == .string("context.get"))
-        #expect(Date().timeIntervalSince(started) < 2)
+        // The other client was answered while the server still waits on the idle one (nothing to read yet, not closed:
+        // a server serving one client at a time would have held the call until the idle client's 10 s read timeout
+        // closed it). No wall-clock bound, so a loaded machine cannot fail it.
+        var byte: UInt8 = 0
+        let peeked = Darwin.recv(idle, &byte, 1, MSG_PEEK | MSG_DONTWAIT)
+        #expect(peeked < 0 && (errno == EAGAIN || errno == EWOULDBLOCK), "idle client still open and unanswered")
         await server.stop()
     }
 

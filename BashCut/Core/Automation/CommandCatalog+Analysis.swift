@@ -14,7 +14,9 @@ extension CommandCatalog {
             + "unset or a check not run; atExport does not count) or pass (passed is status == pass; the CLI exits 0, "
             + "1 or 2); a pass by an agent is recorded as the review stage; with sinceRev also diff "
             + "{fixed, new, persisting}. With measure, a revision not measured yet is measured first (review.measure, "
-            + "waited for up to 100 s; measured {job, timedOut} says so), so one call measures and reviews.",
+            + "waited for up to 100 s; measured {job, timedOut} says so), so one call measures and reviews. With from/to only "
+            + "the issues touching those frames are listed and counted (range in the result; a pass is not the review "
+            + "stage), the check after a quick edit.",
         parameters: [
             CommandParameter("measure", .boolean, "Run review measure first when this revision is not measured, and "
                              + "wait for it", cli: .flag("measure")),
@@ -24,6 +26,10 @@ extension CommandCatalog {
                              choices: ReviewSeverity.allCases.map(\.rawValue), cli: .option("min-severity")),
             CommandParameter("summary", .boolean, "Wrap the issues with counts and a status",
                              cli: .flag("summary")),
+            CommandParameter("from", .integer, "Only issues that touch frames from here (with to: [from, to))",
+                             minimum: 0, cli: .option("from")),
+            CommandParameter("to", .integer, "Only issues that touch frames before this one", minimum: 1,
+                             cli: .option("to")),
         ])
 
     /// The CLI's exit status for a successful call: `review run --summary` exits 1 on fail and 2 on incomplete
@@ -289,8 +295,9 @@ extension CommandCatalog {
             + "shape, null when none); targets: each output preset's loudness target (output.targets, else the "
             + "platform's); data: the platform table's version and origin (built-in or the plugin that shipped a newer "
             + "one). With facts, every field with {value, kind hard|recommended|info, source, checked, confidence}, "
-            + "including bitrateMbps, title and cover facts, chapter and disclosure rules where known. With id, that "
-            + "one platform's row with its facts.",
+            + "including bitrateMbps, post text limits (title.maxChars, description.maxChars, caption.maxChars, "
+            + "hashtags.max, hashtags.ignoredAbove), cover facts, chapter and disclosure rules where known. With id, "
+            + "that one platform's row with its facts.",
         parameters: [
             CommandParameter(
                 "id", .string, "tiktok, reels, shorts, youtube, or an export preset (youtube-1080 → youtube)",
@@ -306,14 +313,19 @@ extension CommandCatalog {
             + "outside), keyframed when keyframes move it (not followed); holdSeconds, words and wordsPerSecond; "
             + "speech {onsetOffsetFrames (from the nearest word start), narrationShare (of its time with words "
             + "spoken)} from the heard or caption words; captionOverlap {item, ratio of its box} for titles; "
-            + "templateRepeats (items with its preset on its layer); faceOverlap null (unknown: not measured "
-            + "here; media subjects gives face boxes in source pictures). With contrast: contrast {ratio (WCAG, 1–21; basis "
+            + "templateRepeats (items with its preset on its layer); faceOverlap {ratio (largest share of one face box "
+            + "the text box covers), frame, item and media of the clip, confidence, samples (pictures with a face while "
+            + "it shows)} from the face boxes media subjects stored for the clips under it (placed with fit/fill, zoom, "
+            + "pan and tilt; null when none are stored: unknown, not \"no face\"; review.maxFaceOverlap turns it into "
+            + "a text-face review issue). With contrast: contrast {ratio (WCAG, 1–21; basis "
             + "mean: of the mean text, outline: the stronger of fill and outline, plate: the letters against their box), "
             + "meanRatio, lightRatio and darkRatio (the light and dark parts of the text, such as fill and outline), "
             + "textLuminance, "
             + "backgroundLuminance, textPixels} measured on the frame with and without text (at frame, or each "
             + "item's middle). Also the frame size, the platform whose zones apply (safeArea, minTextSize), density "
-            + "(titles and captions per minute) and, at a frame, pictures on screen with their scale and coverage. "
+            + "(titles and captions per minute), facesProvider (face boxes are stored for a clip on screen) and, at a "
+            + "frame, pictures on screen with their scale and coverage (and faceOverlap of an overlay's box with the "
+            + "faces of the other clips). "
             + "With from/to, only text that overlaps those frames. With ink: ink {frame, luma, mid (0–100), inkShare "
             + "(pixels text and overlay layers change)} of the composed frame (frame, default 0) against Main alone. "
             + "No verdicts.",
@@ -374,7 +386,8 @@ extension CommandCatalog {
                 + "Vision): frames [{seconds, frame (source), faces [{box, confidence}], people [{box, confidence}]}] "
                 + "one picture every step source seconds over from…to; box is [x, y, width, height] as shares of the "
                 + "upright picture from the top left. timeline [{item, at, fromSeconds, toSeconds}] places a second. "
-                + "No labels: which face is the speaker or matters is yours. A job.",
+                + "No labels: which face is the speaker or matters is yours. The boxes are kept per file (merged "
+                + "with earlier runs) for clip.reframe and review.layout's faceOverlap. A job.",
             parameters: visionParameters, execution: .job),
         CommandSpec(
             "media.ocr", .read,

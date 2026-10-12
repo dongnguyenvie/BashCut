@@ -120,7 +120,7 @@ public enum UnixRPCClient {
             throw RPCFailure(-32000, "Cannot reach BashCut; open the app first")
         }
         try SocketIO.writeLine(JSONEncoder().encode(request), descriptor)
-        let response = try JSONDecoder().decode(RPCResponse.self, from: SocketIO.readLine(descriptor))
+        let response = try RPCResponse.parse(SocketIO.readLine(descriptor))
         if let error = response.error { throw error }
         return response
     }
@@ -179,7 +179,7 @@ private final class AcceptLoop: @unchecked Sendable {
     private static func serve(_ client: Int32, handler: @escaping @Sendable (RPCRequest) async -> RPCResponse) {
         let request: RPCRequest
         do {
-            request = try JSONDecoder().decode(RPCRequest.self, from: SocketIO.readLine(client))
+            request = try RPCRequest.parse(SocketIO.readLine(client))
         } catch {
             reply(RPCResponse(id: .null, error: RPCFailure(-32600, "Invalid JSON-RPC request").typed), client)
             return

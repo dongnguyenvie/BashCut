@@ -32,6 +32,8 @@
 	<string>$(PRODUCT_NAME)</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
+	<key>BCDevelopmentBuild</key>
+	<string>$(BC_DEVELOPMENT_BUILD)</string>
 	<key>BCContactEmail</key>
 	<string>dongnguyenvie@gmail.com</string>
 	<key>BCIssuesURL</key>

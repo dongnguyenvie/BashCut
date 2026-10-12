@@ -32,7 +32,7 @@ struct KnowledgeManagerView: View {
             // Agents change knowledge with commands or by editing the files; show their changes while open.
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(1.5))
-                model.refreshIfChanged()
+                await model.refreshIfChanged()
             }
         }
     }

@@ -41,7 +41,9 @@ private struct CountingEngine: RenderEngine {
     }
 }
 
-@MainActor
+/// A hang (#492: both `failedItemRecovery` cases waited at 0% CPU for 10 minutes) fails the test instead of holding
+/// the whole run and the `.build` lock.
+@MainActor @Suite(.timeLimit(.minutes(2)))
 struct PreviewControllerTests {
     private func project(frames: Int = 30) throws -> Project {
         var caption = Item(at: 0, duration: frames)
@@ -50,9 +52,14 @@ struct PreviewControllerTests {
         return try base.applying(.insert(track: base.requireTrack(role: TrackRole.captions).id, item: caption)).project
     }
 
-    private func waitUntil(_ condition: @MainActor () async -> Bool) async throws {
-        for _ in 0..<400 where !(await condition()) { try await Task.sleep(for: .milliseconds(10)) }
-        #expect(await condition())
+    /// Polls `condition` until it holds, for up to 30 s: player items take seconds to become ready while the parallel
+    /// run saturates the machine (the old 4 s bound failed there). Returns as soon as it holds.
+    private func waitUntil(
+        _ condition: @MainActor () async -> Bool, sourceLocation: SourceLocation = #_sourceLocation
+    ) async throws {
+        let deadline = ContinuousClock.now + .seconds(30)
+        while !(await condition()), ContinuousClock.now < deadline { try await Task.sleep(for: .milliseconds(10)) }
+        #expect(await condition(), sourceLocation: sourceLocation)
     }
 
     @Test("A discrete edit preempts coalescing without waiting through the debounce")

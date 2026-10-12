@@ -90,7 +90,7 @@ extension ReviewIssue {
         "gap-end", "gap", "caption-lines", "caption", "font", "glyph", "cut-in-word", "loudness-unmeasured", "loudness",
         "true-peak", "ducking", "silence", "music-gap", "picture-unmeasured", "picture-unreliable", "shot-short",
         "shot-long", "black", "still", "jump", "safe-bottom", "safe-side", "safe-top", "title-safe", "small-text",
-        "text-overlap", "platform-none", "output-shape", "output-length", "plan-section", "brief-length",
+        "text-overlap", "text-face", "platform-none", "output-shape", "output-length", "plan-section", "brief-length",
         "brief-outputs", "must-keep", "overlap", "coverage", "hook", "voice-text-changed", "captions-source-changed",
         "beats-source-changed", "ai-media", "delivered-black", "delivered-drift", "delivered-fps", "delivered-silence",
         "delivered-size", "unsourced-claim",
@@ -144,6 +144,13 @@ public struct ReviewSummary: Sendable, Equatable {
 }
 
 public enum TimelineReview {
+    /// Whether an issue touches the frames `range` (`review run --from --to`): its span `[frame, endFrame)` meets it,
+    /// or its frame lies inside it when it has no end.
+    public static func issue(_ issue: ReviewIssue, overlaps range: Range<Int>) -> Bool {
+        guard let end = issue.endFrame, end > issue.frame else { return range.contains(issue.frame) }
+        return issue.frame < range.upperBound && end > range.lowerBound
+    }
+
     /// A number for `ReviewIssue.facts`, to three decimals.
     static func fact(_ value: Double) -> JSONValue { .number((value * 1_000).rounded() / 1_000) }
 
@@ -237,6 +244,7 @@ public enum TimelineReview {
         issues += textIssues(project, context: context)
         issues += hookIssues(project, context: context)
         issues += claimIssues(project, claims: context.claims)
+        issues += faceIssues(project, context: context)
         issues += audioIssues(project, context: context)
         issues += pictureIssues(project, context: context)
         issues += outputIssues(project, context: context)

@@ -376,7 +376,17 @@ bashcut timeline redo --base-rev 14
 single-clip actions use) and every selected item as `selectedItems`. `ui select a --items b,c` selects several
 items (`--add` keeps the current selection). Delete, Lift, Copy, Cut, Paste and Mute (`ui action timeline.delete`,
 `clip.copy`, `clip.cut`, `clip.paste`, `clip.mute`) act on the whole selection as one undo step;
-`timeline.select-all` and `timeline.deselect` change it.
+`timeline.select-all` and `timeline.deselect` change it. Copy and Cut also put the clips on the macOS pasteboard
+(private type `com.bashcut.timeline-items`, JSON with the media they play), so Paste works in another project or
+another BashCut window: media the project lacks are added with a path from the project, and timing is converted to
+its frame rate. `timeline move-items --items a,b --by 30` moves several items like a selection drag;
+`--before c` (or `end`) moves the given clips of the magnetic main layer as one block. The Inspector's multi-selection
+fields (opacity, volume, fill, zoom, pan, tilt, rotation) are one `timeline apply` with
+`{"op": "patchItems", "items": [...], "patch": {...}}` for agents.
+
+`agent quick-edit faster|remove|music-lower|caption|punch-in|custom [--text] [--items]` (Quick Edit next to Send to
+Agent) sends a one-click request on the selection to the open agent with those items as its scope, ending with a
+review of their range (`review run --from A --to B` lists and counts only the issues touching those frames).
 
 `ui action clip.send-to-agent` (Send to Agent) attaches the selected items to the open agent's request, and
 `chat attach --items a,b` / `chat detach [--items a]` do the same for a chat agent; `agent detach [--items a]`
@@ -393,8 +403,16 @@ The app enforces that rule (the scope guard, #356). Every edit a chat or termina
 - `insert` runs when the new item lies inside the scope's span (first start to last end, where the items are now).
   A transition runs when either of its clips is in scope.
 - Media and LUT imports, beat grids and new layers run. Changes to existing layers, project settings, format, sections, LUT deletes and `restore` are project-wide and always count as outside.
-- Ripple shifts, undo/redo and dry runs are not checked. An edit with a stale base revision fails with `-32002`
-  before the guard looks at it.
+- Ripple shifts are not checked: the later clips a ripple delete or trim moves, and moves that shift a layer's whole
+  tail by one amount across the scope's span (`timeline close-gap` after lifting a scope clip), with the section
+  markers they carry. Moving a single clip is checked.
+- An agent's `timeline undo` or `redo` is checked as the change between the two states: clips that only moved on
+  their layer pass, a clip that comes back must lie in the span, one that goes away must be in scope, layer and
+  project settings are project-wide. A step cannot be held, so outside the scope it fails with `-32004` (and the
+  parts outside) in Ask first and Block alike; the user can undo it themselves.
+- A dry run is never held; `timeline apply --dry-run` adds `outsideScope {outOfScope, projectWide, mode}` when the
+  apply would be held (ask) or refused (block). An edit with a stale base revision fails with `-32002` before the
+  guard looks at it.
 
 What happens to an edit outside the scope is the user's choice in Settings › Agents ("Edits outside the attached
 clips"); agents cannot change it. The guard only runs when **Dangerously allow all agent actions** (on by default)
@@ -612,7 +630,10 @@ panel shows the kit in use and the saved kits (a click applies one); New Project
   those `textStyle` fields and its motion preset when its keyframes are exactly one at the item's length (hand-made
   keys are not saved). `library place` sets them on the new item; `library apply` sets the preset, then the stored
   `textStyle` over the item's own (fields it does not store stay) and the animation at the item's length, as one undo
-  step. Items without `textStyle` or `animation` behave as before: apply changes only the preset. The Text panel's
+  step. A preset whose `textStyle.font` is one of the project's own fonts (`fonts import`) is saved with that font
+  file as its `file`, in any scope (and gets it when moved to This Mac); placing or applying it in a project without
+  the font copies the file into that project's `fonts/` folder first. Items without `textStyle` or `animation`
+  behave as before: apply changes only the preset. The Text panel's
   cards show the stored size, position, outline, font and text colour, and Edit… changes them and the animation.
 - **Text fonts and colours** (#412): `textStyle.font` is a PostScript name, `fill`, `stroke` and `highlight` are
   `#RRGGBB`. `fonts list [--query q] [--project] [--language tag] [--covers]` gives the names (project fonts first;

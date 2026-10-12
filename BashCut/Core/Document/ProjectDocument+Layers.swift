@@ -177,6 +177,27 @@ extension ProjectDocument {
                 itemID: itemID, range: range, author: author, baseRevision: arguments.int("baseRev"))
             return .object(["rev": .integer(result.revision), "item": .string(itemID), "track": .string(result.trackID)])
         }
+        handleAuthored("timeline.move-items") { document, arguments, author in
+            let ids = try arguments.string("items").split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty }
+            let all = Set(document.project.tracks.flatMap(\.items).map(\.id))
+            if let unknown = ids.first(where: { !all.contains($0) }) { throw RPCFailure(-32602, "Unknown item \(unknown)") }
+            let by = arguments.optionalInt("by"), before = arguments.optionalString("before")
+            guard (by == nil) != (before == nil) else { throw RPCFailure(-32602, "Give by or before") }
+            let operations: [EditOperation]
+            if let by {
+                operations = try SelectionEdits.shift(ids, by: by, in: document.project)
+            } else {
+                guard let track = arguments.optionalString("track")
+                    ?? document.project.tracks.first(where: { $0.role == TrackRole.main })?.id
+                else { throw RPCFailure(-32602, "No magnetic layer") }
+                operations = try SelectionEdits.reorder(
+                    ids, on: track, before: before == "end" ? nil : before, in: document.project)
+            }
+            let revision = try document.commitSelection(
+                operations, label: "Move clips", author: author, baseRevision: try arguments.int("baseRev"))
+            return .object(["rev": .integer(revision), "items": .array(ids.map(JSONValue.string))])
+        }
         handleAuthored("timeline.move") { document, arguments, author in
             let result = try document.moveItem(
                 arguments.string("item"), to: arguments.string("track"), at: arguments.int("atFrame"),

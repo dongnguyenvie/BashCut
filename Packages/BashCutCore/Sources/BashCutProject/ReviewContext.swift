@@ -120,6 +120,9 @@ public struct ReviewContext {
     /// The texts of the claims ledger (`knowledge set-claim`, P3-I5): a number, price, superlative or name they cover
     /// counts as sourced.
     public var claims: [String] = []
+    /// Face and person boxes stored for media (`media.subjects`, P2-H6), by media ID; media without any are absent,
+    /// and their faces are unknown, not missing.
+    public var subjects: [String: MediaSubjects] = [:]
 
     public init(
         fontAvailable: @escaping (String) -> Bool = { _ in true },

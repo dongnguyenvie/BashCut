@@ -17,16 +17,26 @@ struct PluginProcessLifecycleTests {
         let started = Date()
         let call = Task { try await PluginProcessRunner(timeout: 60).call(plugin: plugin, method: "fixture.run") }
         let pidFile = root.appendingPathComponent("helper.pid")
-        for _ in 0..<250 where !FileManager.default.fileExists(atPath: pidFile.path) {
+        // Cancel once the helper runs: waits for the event (up to 20 s on a loaded machine), not a fixed delay.
+        for _ in 0..<1_000 where !Self.hasPID(pidFile) {
             try await Task.sleep(for: .milliseconds(20))
         }
+        #expect(Self.hasPID(pidFile), "the plugin started its helper")
         call.cancel()
         await #expect(throws: PluginError.invalid("Plugin request was cancelled")) { try await call.value }
         #expect(Date().timeIntervalSince(started) < 15, "well before the 30 s sleep, with room for a loaded machine")
         let helper = try #require(pid_t(String(contentsOf: pidFile, encoding: .utf8)
             .trimmingCharacters(in: .whitespacesAndNewlines)))
-        try await Task.sleep(for: .milliseconds(100))
+        // The group is killed before the call returns; the helper may take a moment to be reaped.
+        for _ in 0..<250 where kill(helper, 0) == 0 {
+            try await Task.sleep(for: .milliseconds(20))
+        }
         #expect(kill(helper, 0) != 0)
+    }
+
+    /// The helper wrote its whole PID line.
+    private static func hasPID(_ file: URL) -> Bool {
+        (try? String(contentsOf: file, encoding: .utf8))?.hasSuffix("\n") == true
     }
 
     @Test("Timeouts terminate the plugin and report a timeout")

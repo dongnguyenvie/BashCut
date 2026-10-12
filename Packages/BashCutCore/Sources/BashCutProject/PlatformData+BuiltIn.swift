@@ -4,9 +4,10 @@ import Foundation
 extension PlatformData {
     /// The platform table shipped with BashCut (P1-F1): T17's values with their sources, checked 2026-10. TikTok's
     /// bottom band moved from 0.16 to the 0.23–0.25 measured elsewhere; Reels' to 0.25.
+    /// 2026-10-13: post text limits (caption, description, hashtags) from the platforms' own docs.
     static let builtInJSON = #"""
 {
- "version": "2026-10-07",
+ "version": "2026-10-13",
  "platforms": [
   {
    "id": "tiktok",
@@ -89,6 +90,20 @@ extension PlatformData {
      "source": "Platform AI-content policies (T17 §3: disclosure rules)",
      "checked": "2026-10",
      "confidence": "consensus"
+    },
+    "caption.maxChars": {
+     "value": 2200,
+     "kind": "hard",
+     "source": "Post caption up to 2200 UTF-16 code units (https://developers.tiktok.com/doc/content-posting-api-reference-direct-post, updated 2026-08-24); the app was reported to take 4000 (onlinemarketing.de 2023) and photo-post descriptions 4000",
+     "checked": "2026-10",
+     "confidence": "official"
+    },
+    "hashtags.max": {
+     "value": null,
+     "kind": "info",
+     "source": "No official hashtag limit; 3–5 is third-party advice only",
+     "checked": "2026-10",
+     "confidence": "unverified"
     }
    }
   },
@@ -173,6 +188,20 @@ extension PlatformData {
      "source": "Platform AI-content policies (T17 §3: disclosure rules)",
      "checked": "2026-10",
      "confidence": "consensus"
+    },
+    "caption.maxChars": {
+     "value": 2200,
+     "kind": "hard",
+     "source": "Caption up to 2200 characters (https://developers.facebook.com/docs/instagram-platform/instagram-graph-api/reference/ig-user/media)",
+     "checked": "2026-10",
+     "confidence": "official"
+    },
+    "hashtags.max": {
+     "value": 5,
+     "kind": "hard",
+     "source": "At most 5 hashtags per post, announced by Instagram @creators (https://www.socialmediatoday.com/news/instagram-implements-new-limits-on-hashtag-use/808309/, 2025-12-18); the Graph API docs still say 30",
+     "checked": "2026-10",
+     "confidence": "official"
     }
    }
   },
@@ -261,7 +290,7 @@ extension PlatformData {
     "title.maxChars": {
      "value": 100,
      "kind": "hard",
-     "source": "YouTube title limit 100 characters (Jakeschincariol, digitalsamba, AgriciDaniel)",
+     "source": "Title up to 100 characters (https://support.google.com/youtube/answer/57404)",
      "checked": "2026-10",
      "confidence": "official"
     },
@@ -278,6 +307,20 @@ extension PlatformData {
      "source": "Shorts thumbnail 1280×720 (hotclip 2026-08)",
      "checked": "2026-08",
      "confidence": "consensus"
+    },
+    "description.maxChars": {
+     "value": 5000,
+     "kind": "hard",
+     "source": "Description up to 5000 characters (https://support.google.com/youtube/answer/57404)",
+     "checked": "2026-10",
+     "confidence": "official"
+    },
+    "hashtags.ignoredAbove": {
+     "value": 60,
+     "kind": "hard",
+     "source": "More than 60 hashtags and YouTube ignores all of them (https://support.google.com/youtube/answer/6390658)",
+     "checked": "2026-10",
+     "confidence": "official"
     }
    }
   },
@@ -359,7 +402,7 @@ extension PlatformData {
     "title.maxChars": {
      "value": 100,
      "kind": "hard",
-     "source": "YouTube title limit 100 characters",
+     "source": "Title up to 100 characters (https://support.google.com/youtube/answer/57404)",
      "checked": "2026-10",
      "confidence": "official"
     },
@@ -394,6 +437,20 @@ extension PlatformData {
      "source": "YouTube altered-content disclosure (T17 §3)",
      "checked": "2026-10",
      "confidence": "consensus"
+    },
+    "description.maxChars": {
+     "value": 5000,
+     "kind": "hard",
+     "source": "Description up to 5000 characters (https://support.google.com/youtube/answer/57404)",
+     "checked": "2026-10",
+     "confidence": "official"
+    },
+    "hashtags.ignoredAbove": {
+     "value": 60,
+     "kind": "hard",
+     "source": "More than 60 hashtags and YouTube ignores all of them (https://support.google.com/youtube/answer/6390658)",
+     "checked": "2026-10",
+     "confidence": "official"
     }
    }
   }

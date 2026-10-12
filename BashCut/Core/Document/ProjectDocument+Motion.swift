@@ -113,7 +113,8 @@ extension ProjectDocument {
     /// value (Inspector's diamond).
     @discardableResult
     func keyframeAll(
-        item id: String? = nil, at frame: Int? = nil, author: Author = .user, baseRevision: Int? = nil
+        item id: String? = nil, at frame: Int? = nil, properties: [String]? = nil, author: Author = .user,
+        baseRevision: Int? = nil
     ) throws -> Int {
         let (item, track) = try motionTargetAndTrack(id)
         let local = (frame ?? playhead) - item.at
@@ -121,7 +122,7 @@ extension ProjectDocument {
             throw ProjectError.invalid("Move the playhead inside the item to set a keyframe")
         }
         var motion = item.motion ?? ItemMotion(keys: [:])
-        for property in track.kind == TrackKind.audio ? ["volume"] : ItemMotion.pictureProperties {
+        for property in properties ?? (track.kind == TrackKind.audio ? ["volume"] : ItemMotion.pictureProperties) {
             let value = motionValue(property, item: item, at: item.at + local)
             var keys = (motion.keys[property] ?? []).filter { $0.frame != local }
             keys.append(.init(frame: local, value: value))

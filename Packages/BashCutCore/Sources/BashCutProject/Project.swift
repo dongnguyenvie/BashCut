@@ -392,8 +392,13 @@ public struct Project: JSONObject {
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
         return try encoder.encode(self)
     }
+    /// Reads a project file. The JSON is read with `JSONValue(parsing:)`: the same values as `Decodable`, several
+    /// times faster for a large timeline.
     public static func decode(_ data: Data) throws -> Project {
-        var project = try JSONDecoder().decode(Project.self, from: data)
+        guard case .object(let fields) = try JSONValue(parsing: data) else {
+            throw ProjectError.invalid("A project file holds one JSON object")
+        }
+        var project = Project(fields: fields)
         try ProjectMigration.upgrade(&project)
         project = project.normalizingLayers()
         try project.validate()

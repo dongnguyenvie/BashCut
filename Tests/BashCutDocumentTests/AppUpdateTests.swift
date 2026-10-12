@@ -162,6 +162,17 @@ struct AppUpdateTests {
         guard case .failed = await store.check() else { Issue.record("App Store copies are not checked"); return }
     }
 
+    @Test("Info.plist BCDevelopmentBuild: run.sh's Boolean or Xcode Debug's expanded build setting")
+    func developmentBuildFlag() {
+        #expect(AppInstall.isDevelopmentBuild(true))
+        #expect(AppInstall.isDevelopmentBuild("YES"))
+        #expect(!AppInstall.isDevelopmentBuild(false))
+        #expect(!AppInstall.isDevelopmentBuild("NO"))
+        // A plist copied without expanding the setting (a release built another way) is not a development build.
+        #expect(!AppInstall.isDevelopmentBuild("$(BC_DEVELOPMENT_BUILD)"))
+        #expect(!AppInstall.isDevelopmentBuild(nil))
+    }
+
     @Test func developmentFeedReplacesGitHub() async throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)

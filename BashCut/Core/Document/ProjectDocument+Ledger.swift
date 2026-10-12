@@ -9,7 +9,7 @@ extension ProjectDocument {
     func registerLedgerCommands() {
         handle("export.history") { document, arguments, _ in
             let root = try document.ledgerRoot()
-            let entries = try document.exports.ledger.entries(projectRoot: root)
+            let entries = try document.exports.ledger.all(projectRoot: root)
             let full = arguments.bool("full")
             let rows = entries.enumerated().reversed().prefix(arguments.optionalInt("limit") ?? 20).map { index, entry in
                 Self.ledgerRow(entry, index: index, root: root, full: full)
@@ -103,7 +103,7 @@ extension ProjectDocument {
         var rows: [JSONValue] = []
         var fingerprints: [[String: JSONValue]] = []
         for root in roots.prefix(limit) {
-            let entries = (try? exports.ledger.entries(projectRoot: root)) ?? []
+            let entries = (try? exports.ledger.all(projectRoot: root)) ?? []
             let isOpen = root == openRoot
             let latest = entries.last
             var fingerprint = entries.last(where: { $0.fingerprint != nil })?.fingerprint?.object

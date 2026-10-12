@@ -84,7 +84,7 @@ extension CommandCatalog {
         CommandSpec(
             "knowledge.lessons", .read,
             "List lessons the agent learned (symptom, cause, fix), from this project and for every project, newest "
-                + "first, each with occurrences (times seen), lastSeen and sources (projects it was seen in) when "
+                + "first. Each has occurrences (times seen), lastSeen and sources (projects it was seen in) when "
                 + "counted. Read the active ones before editing; proposed ones wait for the user's review.",
             parameters: [
                 readScope,
@@ -110,8 +110,8 @@ extension CommandCatalog {
                 ]),
         CommandSpec(
             "knowledge.update-lesson", .edit,
-            "Change a lesson's fields or status (proposed, active, disabled), or count one more sighting with seen "
-                + "(occurrences + 1, lastSeen now, this project added to sources). Agents changing a lesson for every "
+            "Change a lesson's fields or status, or count a sighting (seen). Status is proposed, active or disabled; "
+                + "seen adds 1 to occurrences, sets lastSeen and adds this project to sources. Agents changing a lesson for every "
                 + "project need approval; seen alone does not.",
             parameters: [lessonID, CommandParameter("title", .string, "Short title", cli: .option("title"))]
                 + lessonFields + [
@@ -129,7 +129,7 @@ extension CommandCatalog {
     private static let valueSpecs: [CommandSpec] = [
         CommandSpec(
             "knowledge.prefs", .read,
-            "Read the user's preferences (taste: length, pace, voice, caption style, music…), each with confirmedBy "
+            "Read the user's preferences (taste: length, pace, voice, caption style, music…). Each has confirmedBy "
                 + "(user: said or approved by the user; inferred: an agent's guess). A project value wins over the one "
                 + "for every project.",
             parameters: [CommandParameter("key", .string, "Only this key", cli: .positional), readScope]),
@@ -151,12 +151,12 @@ extension CommandCatalog {
             ]),
         CommandSpec(
             "knowledge.facts", .read,
-            "Read this project's facts (people, places, footage notes, what was approved), each with evidence "
+            "Read this project's facts (people, places, footage notes, what was approved). Each has evidence "
                 + "{source, measure, n, status measured|estimated|user} when given.",
             parameters: [CommandParameter("key", .string, "Only this key", cli: .positional)]),
         CommandSpec(
             "knowledge.set-fact", .edit,
-            "Set or remove a fact about this project, with where it comes from: source (URL, file, frame, the user), "
+            "Set or remove a fact about this project. Give where it comes from: source (URL, file, frame, the user), "
                 + "measure (the command or result path that gave it), n (sample size) and status. Plans and skills "
                 + "refer to a fact by its key. Needs a saved project.",
             parameters: [

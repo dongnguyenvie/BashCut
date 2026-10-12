@@ -139,9 +139,6 @@ public struct ExportHistoryStore: Sendable {
         return ExportHistorySnapshot(current: metrics, comparison: comparison)
     }
 
-    /// Every recorded export, oldest first.
-    public func entries(projectRoot: URL) throws -> [StoredExportMetrics] { try read(projectRoot: projectRoot) }
-
     /// The export `reference` names (its ID, its 0-based index in the ledger or its path), or the latest one.
     public func entry(_ reference: String?, projectRoot: URL) throws -> (index: Int, entry: StoredExportMetrics) {
         let history = try read(projectRoot: projectRoot)
@@ -195,6 +192,9 @@ public struct ExportHistoryStore: Sendable {
         let comparison = history.dropLast().last.map { Self.compare(current, with: $0) }
         return ExportHistorySnapshot(current: current, comparison: comparison)
     }
+
+    /// Every recorded export, oldest first (the last `limit`).
+    public func all(projectRoot: URL) throws -> [StoredExportMetrics] { try read(projectRoot: projectRoot) }
 
     private func read(projectRoot: URL) throws -> [StoredExportMetrics] {
         let url = historyURL(projectRoot: projectRoot)

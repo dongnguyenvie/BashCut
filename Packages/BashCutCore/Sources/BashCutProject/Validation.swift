@@ -409,6 +409,14 @@ extension Item {
             throw ProjectError.invalid("item.\(id).in: expected integer source frame")
         }
         try validateDeclaredProperties()
+        if case .object(let backdrop) = fields["backdrop"],
+            !["blur", "color"].contains(backdrop["kind"]?.string ?? "")
+        {
+            throw ProjectError.invalid("item.\(id).backdrop.kind: expected blur or color")
+        }
+        if case .object(let style) = fields["textStyle"] {
+            try TextLineStyles.validate(style["lines"], path: "item.\(id).textStyle.lines")
+        }
         if case .object(let crop) = fields["crop"] {
             let side = { (key: String) in crop[key]?.double ?? 0 }
             guard side("left") + side("right") < 0.95 + 1e-9, side("top") + side("bottom") < 0.95 + 1e-9 else {

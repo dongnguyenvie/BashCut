@@ -25,8 +25,7 @@ final class ProjectDocument {
     /// Every selected item, in the order they were selected; contains `selectedID`. Set it through `select(_:primary:)`.
     var selectedIDs: [String] = []
     @ObservationIgnored var settingSelection = false
-    /// Clips copied or cut from the timeline, pasted at the playhead.
-    @ObservationIgnored var clipboard: TimelineClipboard?
+    @ObservationIgnored var clipboard: TimelineClipboard? // Clips copied or cut here (the OS pasteboard has them too).
     var selectedTrackID: String? {
         didSet { if selectedTrackID != oldValue { selectionDidChange() } }
     }
@@ -45,11 +44,9 @@ final class ProjectDocument {
     var fileURL: URL? {
         didSet { if fileURL != nil, fileURL != oldValue { flushPendingRunEntries() } }
     }
-    /// Skill reads made before any project was open (an agent reads its recipe before `project create`), written to
-    /// the run log of the next project that opens.
+    /// Skill reads made before any project was open, written to the run log of the next project that opens.
     var pendingRunEntries: [[String: JSONValue]] = []
-    /// Skill reads of the last half hour, whichever project was open, so a project created or opened right after
-    /// (an agent reads its recipe, then creates the project) has them in its run log.
+    /// Skill reads of the last half hour, so a project created or opened right after has them in its run log.
     var recentSkillReads: [(date: Date, entry: [String: JSONValue])] = []
     /// The last job waiting for or running each capability, so a second request queues behind it (#507).
     var capabilityTurns: [String: Task<Void, Never>] = [:]
@@ -59,11 +56,11 @@ final class ProjectDocument {
     let fileSync = FileSyncController()
     /// Report of the timeline import that created the open project.
     var importReport: TimelineImport?
-    /// The loudness the last export of this session measured, for review (#431); not saved.
+    /// The loudness the last normalized export measured, for review (#431); also in the cache (`ReviewMeasurementStore`).
     var reviewLoudness: ReviewLoudness?
     /// The file the last export of this session wrote and the revision it shows (`review.sync --rendered`).
     var lastRender: (url: URL, revision: Int)?
-    /// The last picture measurement (`review.measure`, #432), for review; not saved.
+    /// The last picture measurement (`review.measure`, #432), for review; also in the cache.
     var reviewPicture: ReviewPicture?
     /// What plugin review checks reported on the last `review.measure` (#451); not saved.
     var reviewPluginIssues: ReviewPluginIssues?
@@ -88,6 +85,7 @@ final class ProjectDocument {
     let ui = EditorUIState()
     @ObservationIgnored lazy var agents = AgentDockModel(document: self)
     @ObservationIgnored lazy var chatAgents = ChatAgents(document: self)
+    @ObservationIgnored lazy var runPanel = RunPanelModel(document: self) // The run panel and result card (#447, #448).
     @ObservationIgnored lazy var plugins = PluginManagerModel()
     @ObservationIgnored lazy var pluginViews = PluginViews(document: self)
     @ObservationIgnored lazy var pluginHooks = PluginHookDispatcher(document: self)
@@ -292,6 +290,7 @@ final class ProjectDocument {
         replaceHistory(ProjectHistory(project: project))
         preview.reset(project)
         fileURL = url
+        resetReviewMeasurements()
         ProjectFontCatalog.shared.activate(projectRoot: url?.deletingLastPathComponent())
         if let url {
             exports.restoreReport(projectRoot: url.deletingLastPathComponent())
@@ -455,10 +454,10 @@ extension ProjectDocument {
         if let baseRevision, baseRevision != project.revision {
             throw ProjectError.staleRevision(expected: baseRevision, actual: project.revision)
         }
-        let before = project
-        if undo { recordUndoVerdict(by: author, before: before) }
-        if undo { try history.undo() } else { try history.redo() }
+        let scope = try checkAgentScopeStep(undo: undo, author: author), before = project
+        if undo { recordUndoVerdict(by: author, before: before); try history.undo() } else { try history.redo() }
         didCommit(from: before, author: author, label: undo ? "Undo" : "Redo")
+        recordScopeEdit(scope, before: before)
         emitPluginEvent(
             undo ? .editUndone : .editRedone, editEventPayload(label: undo ? "Undo" : "Redo", author: author, before: before))
         DebugLog.write("edit", "\(undo ? "undo" : "redo") by \(author) rev \(before.revision)→\(project.revision)")
