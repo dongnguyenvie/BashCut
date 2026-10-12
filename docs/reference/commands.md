@@ -1887,13 +1887,15 @@ Propose a change to an agent kit skill: the line diff against the kit's SKILL.md
 
 ## library
 
-### `bashcut library list [--kind <kind>] [--panel <panel>] [--tag <tag>] [--scope <scope>] [--created-by <createdBy>] [--pack <pack>] [--query <query>]`
+### `bashcut library list [--kind <kind>] [--panel <panel>] [--offset <offset>] [--limit <limit>] [--tag <tag>] [--scope <scope>] [--created-by <createdBy>] [--pack <pack>] [--query <query>]`
 
-List library items. Kinds: Media clips, Audio, Text, Stickers, Effects, Transitions, Filters, Voice; from the open project, this Mac, plugins and built-in packs, with usage. Check here before making something new.
+List library items. Kinds: Media clips, Audio, Text, Stickers, Effects, Transitions, Filters, Voice; from the open project, this Mac, plugins and built-in packs, with usage. Check here before making something new. With offset or limit, one page: {items, total, offset, limit, next} (next: the offset of the following page, null after the last); without them, every match as an array.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_library_list`
 - `kind`: string, one of audio, text-preset, sticker, effect-preset, transition-preset, look, voice, clip, brand. Item kind
 - `panel`: string, one of media, audio, text, stickers, effects, transitions, filters, voice, brand. Only items the library panel shows
+- `offset`: integer, ≥ 0. Skip this many matches (paging)
+- `limit`: integer, 1…500. At most this many matches (paging; 50 with offset alone)
 - `tag`: string. Only items with this tag
 - `scope`: string, one of built-in, user, project, plugin. Look only in this scope; without it project, user, plugin, then built-in
 - `createdBy`: string, one of user, agent, plugin, built-in. Only items made by

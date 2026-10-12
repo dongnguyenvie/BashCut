@@ -261,4 +261,15 @@ struct LibraryAudioTests {
         #expect(gif.paramsForNewFile(given: nil).params == ["size": .number(0.2)])
         #expect(LibraryItem.fileMeasuredKeys(.look).isEmpty)
     }
+
+    @Test("Library pages: clamped offset and limit, next until the last page")
+    func pages() {
+        let first = LibraryPage(total: 120, offset: 0, limit: nil)
+        #expect(first.range == 0..<50 && first.next == 50)
+        let last = LibraryPage(total: 120, offset: 100, limit: 50)
+        #expect(last.range == 100..<120 && last.next == nil)
+        #expect(LibraryPage(total: 3, offset: 9, limit: 0).range == 3..<3)
+        #expect(LibraryPage(total: 3, offset: -2, limit: 10_000).limit == LibraryPage.maximumLimit)
+        #expect(last.json(items: []).object["next"] == .null)
+    }
 }

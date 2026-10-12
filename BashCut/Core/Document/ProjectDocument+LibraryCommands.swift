@@ -2,9 +2,21 @@ import BashCutAutomation
 import BashCutProject
 import Foundation
 
-/// `library save-selection` and `library update`: saving what is selected (a trimmed audio clip saves only the part
-/// it plays) and improving an item (a new file is measured again like `library add`).
+/// `library list` (with paging), `library save-selection` and `library update`: saving what is selected (a trimmed
+/// audio clip saves only the part it plays) and improving an item (a new file is measured again like `library add`).
 extension ProjectDocument {
+    /// The matching items with their usage: all of them as an array, or with `offset`/`limit` one page as
+    /// `{items, total, offset, limit, next}` (`next` is the offset of the following page, null after the last).
+    func listLibraryCommand(_ arguments: CommandArguments) throws -> JSONValue {
+        let catalog = libraryCatalog
+        let usage = try catalog.usage()
+        let items = try catalog.items(matching: Self.filter(arguments))
+        let offset = arguments.optionalInt("offset"), limit = arguments.optionalInt("limit")
+        guard offset != nil || limit != nil else { return .array(items.map { $0.json(usage: usage[$0.reference]) }) }
+        let page = LibraryPage(total: items.count, offset: offset ?? 0, limit: limit)
+        return page.json(items: items[page.range].map { $0.json(usage: usage[$0.reference]) })
+    }
+
     func saveSelectionCommand(_ arguments: CommandArguments, author: Author) async throws -> JSONValue {
         let kind = LibraryKind(rawValue: try arguments.string("kind")) ?? .look
         var changes = Self.itemChanges(arguments)

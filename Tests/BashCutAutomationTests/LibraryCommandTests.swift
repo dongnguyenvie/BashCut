@@ -5,6 +5,13 @@ import Testing
 
 /// The library commands on the CLI and MCP.
 struct LibraryCommandTests {
+    @Test("library list pages with offset and limit")
+    func libraryListPaging() throws {
+        let list = try CommandLineParser.parse(["library", "list", "--kind", "audio", "--offset", "50", "--limit", "25"])
+        #expect(list.params == ["kind": .string("audio"), "offset": .integer(50), "limit": .integer(25)])
+        #expect(throws: (any Error).self) { try CommandLineParser.parse(["library", "list", "--limit", "0"]) }
+    }
+
     @Test("clip freeze is the clip menu's Freeze Frame on the CLI and over MCP, with a frame and off")
     @MainActor func clipFreeze() throws {
         let freeze = try CommandLineParser.parse(["clip", "freeze", "c1", "--at-frame", "45", "--base-rev", "2"])

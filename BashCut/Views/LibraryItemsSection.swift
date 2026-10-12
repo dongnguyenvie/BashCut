@@ -19,6 +19,9 @@ struct LibraryItemsSection<Tile: View>: View {
 
     @State private var items: [LibraryItem] = []
     @State private var dropTargeted = false
+    /// How many matches the panel draws; Show more adds a page. A new search or filter starts again.
+    @State private var shown = Self.pageSize
+    static var pageSize: Int { 60 }
 
     private var panel: String { document.ui.libraryTab.panelName }
 
@@ -35,9 +38,11 @@ struct LibraryItemsSection<Tile: View>: View {
                 TextField("Search library…", text: filter.query).textFieldStyle(.roundedBorder)
                 filterMenu
             }
-            grid(visibleItems.filter { $0.scope != .plugin })
+            let matches = visibleItems
+            let page = Array(matches.prefix(shown))
+            grid(page.filter { $0.scope != .plugin })
             // Plugin packs (#81), under the name of the plugin that ships them.
-            ForEach(pluginGroups(visibleItems), id: \.plugin) { group in
+            ForEach(pluginGroups(page), id: \.plugin) { group in
                 VStack(alignment: .leading, spacing: 4) {
                     Label {
                         Text(verbatim: ([group.name] + group.packs).joined(separator: " · ")).lineLimit(1)
@@ -49,7 +54,13 @@ struct LibraryItemsSection<Tile: View>: View {
                     grid(group.items)
                 }
             }
-            if visibleItems.isEmpty {
+            if matches.count > page.count {
+                Button("Show \(min(Self.pageSize, matches.count - page.count)) more of \(matches.count - page.count)") {
+                    shown += Self.pageSize
+                }
+                .buttonStyle(.link).font(.caption)
+            }
+            if matches.isEmpty {
                 Text(filter.wrappedValue.isActive ? "No matching items." : "Nothing in this library yet.")
                     .font(.caption).foregroundStyle(.secondary)
             }
@@ -67,6 +78,7 @@ struct LibraryItemsSection<Tile: View>: View {
         .task(id: "\(document.libraryRevision):\(document.plugins.library.revision):\(document.fileURL?.path ?? "")") {
             load()
         }
+        .onChange(of: filter.wrappedValue) { shown = Self.pageSize }
     }
 
     private func grid(_ items: [LibraryItem]) -> some View {

@@ -279,7 +279,7 @@ extension ProjectDocument {
         return (params, try MediaPathResolver.resolve(sound.path, projectRoot: root, workspaceRoot: settings.workspace))
     }
 
-    private static func filter(_ arguments: CommandArguments) -> LibraryCatalog.Filter {
+    static func filter(_ arguments: CommandArguments) -> LibraryCatalog.Filter {
         var kinds = arguments.optionalString("kind").flatMap(LibraryKind.init(rawValue:)).map { [$0] }
         if let panel = arguments.optionalString("panel") {
             let inPanel = LibraryKind.kinds(inPanel: panel)
@@ -332,11 +332,7 @@ extension ProjectDocument {
     }
 
     private func registerLibraryReadCommands() {
-        handle("library.list") { document, arguments, _ in
-            let catalog = document.libraryCatalog
-            let usage = try catalog.usage()
-            return .array(try catalog.items(matching: Self.filter(arguments)).map { $0.json(usage: usage[$0.reference]) })
-        }
+        handle("library.list") { document, arguments, _ in try document.listLibraryCommand(arguments) }
         handle("library.get") { document, arguments, _ in
             let catalog = document.libraryCatalog
             let item = try catalog.item(try arguments.string("id"), scope: Self.scope(arguments))

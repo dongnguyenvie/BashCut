@@ -70,9 +70,14 @@ extension CommandCatalog {
         CommandSpec(
             "library.list", .read,
             "List library items. Kinds: Media clips, Audio, Text, Stickers, Effects, Transitions, Filters, Voice; from the open project, "
-                + "this Mac, plugins and built-in packs, with usage. Check here before making something new.",
+                + "this Mac, plugins and built-in packs, with usage. Check here before making something new. With offset "
+                + "or limit, one page: {items, total, offset, limit, next} (next: the offset of the following page, null "
+                + "after the last); without them, every match as an array.",
             parameters: [
                 libraryKind, libraryPanel,
+                CommandParameter("offset", .integer, "Skip this many matches (paging)", minimum: 0, cli: .option("offset")),
+                CommandParameter("limit", .integer, "At most this many matches (paging; 50 with offset alone)", minimum: 1,
+                                 maximum: 500, cli: .option("limit")),
                 CommandParameter("tag", .string, "Only items with this tag", cli: .option("tag")),
                 libraryScope,
                 CommandParameter("createdBy", .string, "Only items made by", choices: ["user", "agent", "plugin", "built-in"],
