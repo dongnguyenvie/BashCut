@@ -12,11 +12,14 @@ public struct CompositionSnapshot: @unchecked Sendable {
     /// Items whose video this Mac cannot decode. Preview leaves them out (black, sound still plays); an export
     /// build throws `UndecodableMediaError` instead.
     public let undecodable: [UndecodableMedia]
+    /// Frames the compositor could not render, with the item and source frame of each.
+    public let renderFailures: RenderFailures
 
     public init(
         composition: AVComposition, videoComposition: AVVideoComposition, audioMix: AVAudioMix, structure: Int? = nil,
-        undecodable: [UndecodableMedia] = []
+        undecodable: [UndecodableMedia] = [], renderFailures: RenderFailures = RenderFailures()
     ) {
+        self.renderFailures = renderFailures
         self.composition = composition
         self.videoComposition = videoComposition
         self.audioMix = audioMix
@@ -123,9 +126,14 @@ public actor CompositionBuilder {
                     start: media.fps.time(item.sourceIn),
                     duration: CMTimeMultiplyByFloat64(
                         project.fps.time(item.duration), multiplier: item.speed))
+                // Each project frame shows the source picture at the middle of that frame, not at its start: a
+                // 29.97 fps picture starts a hair after the 30 fps frame boundary, so sampling at the start showed
+                // every picture one frame late (picture 0 twice, the clip's last picture never; at a join with
+                // another clip that looked like a dropped frame). Same-rate clips show the same pictures either way.
+                let middle = CMTimeMultiplyByFloat64(project.fps.time(1), multiplier: 0.5 * item.speed)
                 let videoSourceRange = isStill ? stillRange : freezeFrame.map {
                     CMTimeRange(start: media.fps.time($0), duration: media.fps.time(1))
-                } ?? normalSourceRange
+                } ?? CMTimeRange(start: normalSourceRange.start + middle, duration: normalSourceRange.duration)
                 let destination = project.fps.time(item.at)
                 let ramp = rampPlans.plan(for: item, mediaFPS: media.fps, fps: project.fps)
                 if track.kind == "video", let codec = asset.undecodableCodec {
@@ -166,13 +174,18 @@ public actor CompositionBuilder {
                     let lut = try loadLUT(for: item)
                     let crop = SourceCrop(
                         fields: item.fields, naturalSize: asset.naturalSize, orientation: placement.orientation)
+                    let layerSource = LayerSource(
+                        itemID: item.id, trackID: track.id, trackName: track.name, mediaID: mediaID,
+                        mediaPath: media.path, at: item.at, sourceIn: item.sourceIn, speed: item.speed,
+                        heldFrame: isStill ? 0 : freezeFrame, projectFPS: project.fps.value, mediaFPS: media.fps.value)
                     visualByTrack[track.id, default: []].append(
                         PlacedVisual(
                             start: item.at, end: item.end,
                             layer: FrameLayer(
                                 trackID: target.trackID, transform: transform,
                                 properties: item.fields, transition: incoming, lut: lut,
-                                motion: motion.map { ($0, placement) }, crop: crop, style: style)))
+                                motion: motion.map { ($0, placement) }, crop: crop, style: style,
+                                source: layerSource)))
                     if let transition = transitionFrom[item.id] {
                         let hold = try visualLanes.take(
                             layer: track.id, start: item.end, end: item.end + transition.duration, composition: composition)
@@ -197,7 +210,8 @@ public actor CompositionBuilder {
                                         duration: transition.duration, incoming: false,
                                         fps: project.fps.value, easing: transition.easing, motion: transition.motion),
                                     lut: lut,
-                                    motion: motion.map { ($0, placement) }, crop: crop, style: style)))
+                                    motion: motion.map { ($0, placement) }, crop: crop, style: style,
+                                    source: { var held = layerSource; held.heldFrame = isStill ? 0 : frame; return held }())))
                     }
                 }
                 // Main sound remains attached in the spike until separate linked dialogue editing lands.
@@ -262,13 +276,14 @@ public actor CompositionBuilder {
             }
         }
         var sweep = IntervalSweep(timedLayers)
+        let failures = RenderFailures()
         var instructions: [FrameInstruction] = []
         for (start, end) in zip(boundaries, boundaries.dropFirst()) {
             instructions.append(
                 FrameInstruction(
                     range: CMTimeRange(
                         start: project.fps.time(start), duration: project.fps.time(end - start)),
-                    layers: sweep.values(at: start)))
+                    layers: sweep.values(at: start), failures: failures, fps: project.fps.value))
         }
         let video = AVMutableVideoComposition()
         video.customVideoCompositorClass = BashCutCompositor.self
@@ -279,7 +294,7 @@ public actor CompositionBuilder {
         audio.inputParameters = audioLanes.parameters
         return CompositionSnapshot(
             composition: composition, videoComposition: video, audioMix: audio, structure: Self.structure(of: composition),
-            undecodable: undecodable)
+            undecodable: undecodable, renderFailures: failures)
     }
 
     /// A hash of every track (ID and media type) and segment (source file and its state on disk, source track, source

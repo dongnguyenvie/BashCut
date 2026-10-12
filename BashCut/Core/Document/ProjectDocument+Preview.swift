@@ -34,7 +34,13 @@ extension ProjectDocument {
         generator.appliesPreferredTrackTransform = true
         generator.requestedTimeToleranceBefore = .zero
         generator.requestedTimeToleranceAfter = .zero
-        let captured = try await generator.image(at: project.fps.time(frame)).image
+        let captured: CGImage
+        do {
+            captured = try await generator.image(at: project.fps.time(frame)).image
+        } catch {
+            // The compositor's own account of this frame (item, media, source frame) instead of AVFoundation's code.
+            throw snapshot.renderFailures.all.last { $0.frame == frame } ?? error
+        }
         let image = MediaStills.fit(captured, maximumSide: maximumDimension)
         let data = try MediaStills.png(image)
         let directory = ProjectCache.url(.agentContext, projectRoot: root)

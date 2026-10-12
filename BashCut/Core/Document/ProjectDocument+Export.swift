@@ -127,7 +127,8 @@ extension ProjectDocument {
         // The export's loudness gain stays in the file it wrote: storing it in the project bumped the revision (the
         // agent's next edit failed as stale) and stacked under the next export's own measurement.
         recordReviewLoudness(
-            outcome.finalMeasurement, revision: current ? project.revision : request.source.revision, preset: request.preset)
+            outcome.finalMeasurement, revision: current ? project.revision : request.source.revision, preset: request.preset,
+            measured: request.source)
         lastRender = (outcome.receipt.url, current ? project.revision : request.source.revision)
         measureDelivered(request, url: outcome.receipt.url, revision: current ? project.revision : request.source.revision)
         DebugLog.write("export", "done \(outcome.receipt.url.path)")

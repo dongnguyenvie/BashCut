@@ -155,6 +155,7 @@ extension ProjectDocument {
                 plugins: arguments.optionalBool("plugins") ?? true)
         }
         handle("review.picture") { document, arguments, _ in
+            await document.restoreReviewMeasurements()
             guard let picture = document.reviewPicture else {
                 throw RPCFailure(-32602, "No picture measurement yet: run review measure first")
             }

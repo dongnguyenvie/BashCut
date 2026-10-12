@@ -39,6 +39,8 @@ enum ChatEntryKind: String, Codable { case user, assistant, tool, notice, error 
     private(set) var status: JSONValue?
     /// Slash commands the plugin declares (op `commands`); the app's own come first (see `commands`).
     var pluginCommands: [ChatCommand] = []
+    /// The agent kit's skills, offered as `/skill:<name>` (`loadKitSkills`).
+    var kitSkills: [String] = []
     /// The plugin command running now, such as `/compact`.
     var runningCommand: String?
     var error = ""
@@ -123,9 +125,11 @@ enum ChatEntryKind: String, Codable { case user, assistant, tool, notice, error 
             return
         }
         async let loaded: Void = commands ? loadPluginCommands(resolved) : ()
+        async let skills: Void = commands ? loadKitSkills() : ()
         status = try? await document.plugins.service.chat(
             ["op": .string("status"), "conversation": .string(conversation)], using: resolved, host: nil)
         await loaded
+        await skills
     }
 
     /// The open project changed: stop, and show that project's conversation.

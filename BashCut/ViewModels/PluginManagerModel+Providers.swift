@@ -53,6 +53,7 @@ extension PluginManagerModel {
     /// Reads the skills of the plugins that may run now (trusted, enabled, files checked). A skill that cannot be
     /// read is left out and listed in `diagnostics`.
     func rebuildSkills() {
+        skillsByPlugin = [:]
         let ready = plugins.filter { availability[$0.id] == .ready && !$0.manifest.skills.isEmpty }
         let found = PluginSkills.catalog(ready)
         diagnostics += found.problems
@@ -62,9 +63,15 @@ extension PluginManagerModel {
         onSkillsChanged?()
     }
 
-    /// The skills one plugin ships, ready or not, for the plugin detail and `plugins list`.
+    /// The skills one plugin ships, ready or not, for the plugin detail and `plugins list`. A plugin panel asks on
+    /// every redraw, so each plugin's skill files are read once per catalog refresh (`rebuildSkills` clears this).
     func skills(of plugin: InstalledPlugin) -> [PluginSkill] {
-        plugin.manifest.skills.isEmpty ? [] : PluginSkills.skills(of: plugin).skills
+        guard !plugin.manifest.skills.isEmpty else { return [] }
+        let key = plugin.installationID + "|" + plugin.manifest.version
+        if let known = skillsByPlugin[key] { return known }
+        let found = PluginSkills.skills(of: plugin).skills
+        skillsByPlugin[key] = found
+        return found
     }
 
     /// Uses the newest valid platform table a ready plugin ships (P1-F1) when it is newer than BashCut's own.

@@ -37,6 +37,7 @@ extension ProjectDocument {
         try? FileManager.default.removeItem(at: folder)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         await loadReviewTranscripts()
+        await restoreReviewMeasurements()
         let issues = reviewIssues()
         let previous = reviewRounds.last { $0.revision != project.revision }
         let (words, wordSource) = await syncWords()
