@@ -385,6 +385,7 @@ Two guards protect your own edits:
 │  Product review  │ [fun / chill / cinematic] feel.  │  │
 │  Music montage   └──────────────────────────────────┘  │
 │  Tutorial        Fill in the parts in [brackets].      │
+│  Explainer                                             │
 │  Captions                                              │
 │  Fix a part                                            │
 │ [ ] Attach current frame       [Clear] [Cancel] [Send] │
