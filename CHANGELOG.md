@@ -5,6 +5,7 @@
 
 ## [Unreleased]
 
+- **Stage progress reports are never gated.** `run append stage --stage cut --text … --eta …` (status started, the command's own help example) was refused with audit_missing while G2 was skip and no strategy audit existed; only marking the rough-cut stage done needs what G2 needs now.
 - **Plugin font pickers fit the Inspector.** A `fontPicker` put its label beside the menu, so a long label (HyperFrames' "Name font (empty keeps the design font)") left the menu a few pixels wide in the Inspector; the label now sits above a full-width menu.
 - **`ui view --media-source clips`.** The Media panel's Clips source (library footage) could not be chosen from the CLI or MCP.
 - **`plan check` names the built edit's review errors.** The check already reviewed the edit as it would be built but only listed it under `review`, so an agent reading `problems` found captions under TikTok's caption bar only after rendering every graphic and building; one problem `review-errors` (warning) now counts them by kind with the first one's detail. `bashcut --version` answers like `app version` instead of "Unknown command".
