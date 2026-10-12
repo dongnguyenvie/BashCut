@@ -19,8 +19,11 @@ public enum PluginFeature {
     /// `views[].when` on inspector views (#405).
     public static let inspectorWhen = "inspector.when"
 
+    /// `viewUpdate` lines outside a request (#409).
+    public static let viewUpdate = "viewUpdate"
+
     /// Features that are not a view component or place.
-    static let named = [container, views, requires, invoke, optionsSet, voiceMaxTakes, inspectorWhen]
+    static let named = [container, views, requires, invoke, optionsSet, voiceMaxTakes, inspectorWhen, viewUpdate]
 
     /// Every feature this host provides: `views.<component>` for each view component it can draw and
     /// `location.<place>` for each place a view can live.

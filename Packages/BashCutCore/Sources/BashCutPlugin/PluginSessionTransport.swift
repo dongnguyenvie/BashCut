@@ -30,14 +30,18 @@ public actor PluginSessionTransport: PluginTransport {
     public let idleTimeout: TimeInterval
     public let handshakeTimeout: TimeInterval
     public let maximumLineBytes: Int
+    /// Where `viewUpdate` lines go (#409).
+    let viewUpdates: PluginViewUpdates
     private let oneShot: PluginProcessRunner
     private var sessions: [String: PluginSession] = [:]
     private var crashes: [String: [Date]] = [:]
 
     public init(
         requestTimeout: TimeInterval = 120, maximumRequestDuration: TimeInterval = 4 * 3600,
-        idleTimeout: TimeInterval = 90, handshakeTimeout: TimeInterval = 10, maximumLineBytes: Int = 8 * 1024 * 1024
+        idleTimeout: TimeInterval = 90, handshakeTimeout: TimeInterval = 10, maximumLineBytes: Int = 8 * 1024 * 1024,
+        viewUpdates: PluginViewUpdates = .shared
     ) {
+        self.viewUpdates = viewUpdates
         self.requestTimeout = requestTimeout
         self.maximumRequestDuration = maximumRequestDuration
         self.idleTimeout = idleTimeout
@@ -121,7 +125,7 @@ public actor PluginSessionTransport: PluginTransport {
             throw PluginError.invalid("Plugin \(plugin.id) keeps crashing; try again in a minute")
         }
         let session = PluginSession(
-            plugin: plugin, maximumLineBytes: maximumLineBytes, idleTimeout: idleTimeout
+            plugin: plugin, maximumLineBytes: maximumLineBytes, idleTimeout: idleTimeout, viewUpdates: viewUpdates
         ) { [weak self] id, crashed in
             await self?.ended(id, crashed: crashed)
         }
@@ -155,7 +159,9 @@ actor PluginSession {
     }
 
     nonisolated let directory: URL
-    private let plugin: InstalledPlugin
+    let plugin: InstalledPlugin
+    let viewUpdates: PluginViewUpdates
+    var viewUpdateLimiter = PluginViewUpdateLimiter()
     private let maximumLineBytes: Int
     private let idleTimeout: TimeInterval
     private let onEnd: @Sendable (ObjectIdentifier, Bool) async -> Void
@@ -171,10 +177,11 @@ actor PluginSession {
     private var idleTask: Task<Void, Never>?
 
     init(
-        plugin: InstalledPlugin, maximumLineBytes: Int, idleTimeout: TimeInterval,
+        plugin: InstalledPlugin, maximumLineBytes: Int, idleTimeout: TimeInterval, viewUpdates: PluginViewUpdates,
         onEnd: @escaping @Sendable (ObjectIdentifier, Bool) async -> Void
     ) {
         self.plugin = plugin
+        self.viewUpdates = viewUpdates
         directory = plugin.directory.standardizedFileURL
         self.maximumLineBytes = maximumLineBytes
         self.idleTimeout = idleTimeout
@@ -350,6 +357,8 @@ actor PluginSession {
             receiveEvent(fields)
         case "call":
             receiveCall(fields)
+        case "viewUpdate":
+            receiveViewUpdate(fields, bytes: line.count)
         case "overflow":
             failAll(PluginError.invalid("Plugin response is too large"))
             _ = Darwin.kill(-pid, SIGKILL)

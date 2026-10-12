@@ -55,3 +55,19 @@ extension PluginSession {
         try? write(data)
     }
 }
+
+/// View updates outside a request (#409): `{"type":"viewUpdate","view","body",…}` from a plugin with API 8 or later,
+/// for a view its manifest declares, within the per-plugin size and rate limits.
+extension PluginSession {
+    func receiveViewUpdate(_ fields: [String: JSONValue], bytes: Int) {
+        guard plugin.manifest.apiVersion >= 8, let view = fields["view"]?.string,
+            plugin.manifest.views.contains(where: { $0.id == view })
+        else { return }
+        let now = Double(DispatchTime.now().uptimeNanoseconds) / 1_000_000_000
+        guard viewUpdateLimiter.allow(bytes: bytes, now: now) else { return }
+        var answer = fields
+        answer["type"] = nil
+        answer["view"] = nil
+        viewUpdates.post(PluginViewUpdate(pluginID: plugin.id, view: view, answer: .object(answer)))
+    }
+}

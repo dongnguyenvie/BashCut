@@ -985,6 +985,25 @@ The answer:
 - While working, send `{"type":"event","id","event":{"kind":"render","body":[…],"title"?}}` to redraw before the answer
   (a progress bar, partial results), or `{"kind":"notify","text"}` for a status message.
 
+### Updates outside a request
+
+A session plugin (API 8 or later) may redraw one of its views at any time, without a request — a background job's
+progress, a timer, a download that finished:
+
+```json
+{"type": "viewUpdate", "view": "takes", "body": [{"type": "progress", "value": 0.4, "label": "Rendering"}], "title": "Takes"}
+```
+
+- The line is a [view answer](#view-requests) plus `view` (an id from the manifest's `views`): `body`, and optionally
+  `title`, `state`, `notify` and `close`. Updates for views the manifest does not declare are dropped.
+- BashCut draws an update only in a view on screen, at most every 60 ms like streamed renders (the ones in between
+  are skipped); updates for hidden views are dropped, so render the whole view again on the next `view.render`.
+  While a request of that view runs, an update only redraws; the request's answer decides the values and state.
+  Otherwise it is applied like an answer (its `state` comes back with the next request).
+- Limits per plugin: at most 512 KiB per update and a burst of 20 updates refilled at 10 a second; updates over
+  either are dropped. Updates do not keep an idle session alive (it still stops 90 s after the last request).
+- Host feature `viewUpdate`; an older BashCut ignores the lines.
+
 ### Components
 
 Every component is `{"type", "id"?, …}`. Buttons, inputs and lists need an `id` (a short key, unique in the view);
@@ -1037,7 +1056,7 @@ A component type this BashCut does not know draws "Needs a newer BashCut" and th
 - Answers over the session's line limit (8 MiB) fail; keep data in your plugin and send what is on screen.
 
 Not available (they would cost performance or safety): webviews, free drawing, video players, timeline or viewer
-overlays, inspector tabs, drag and drop from a view, and updates the plugin sends without a request.
+overlays, inspector tabs and drag and drop from a view.
 
 ### Commands
 
