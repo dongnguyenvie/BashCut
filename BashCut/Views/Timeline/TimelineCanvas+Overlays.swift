@@ -11,6 +11,9 @@ extension TimelineCanvas {
         let last = layout.frame(at: dirtyRect.maxX + 1) + 1
         guard first < last else { return }
         let top = TimelineLayout.sectionBand.upperBound
+        // Labels go on the first line whose last label ends before them, so a marker and a range that start
+        // together (or close) do not print over each other.
+        var labelLines: [CGFloat] = []
         for entry in overlays.timeline(in: first..<last) {
             let overlay = entry.overlay
             guard let frames = overlay.frames else { continue }
@@ -40,9 +43,15 @@ extension TimelineCanvas {
                 continue
             }
             if let label = overlay.label, !label.isEmpty {
+                let attributes = Self.overlayText(color)
+                let x = band.minX + 4
+                let width = min(max(60, band.width - 6), (label as NSString).size(withAttributes: attributes).width + 2)
+                let line = labelLines.firstIndex { $0 <= x } ?? labelLines.count
+                if line == labelLines.count { labelLines.append(0) }
+                labelLines[line] = x + width + 4
                 (label as NSString).draw(
-                    in: CGRect(x: band.minX + 4, y: band.minY + 2, width: max(60, band.width - 6), height: 13),
-                    withAttributes: Self.overlayText(color))
+                    in: CGRect(x: x, y: band.minY + 2 + CGFloat(line) * 12, width: width, height: 13),
+                    withAttributes: attributes)
             }
         }
     }
