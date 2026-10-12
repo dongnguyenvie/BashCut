@@ -29,7 +29,7 @@ struct InspectorView: View {
                         MultiSelectionInspector(document: document)
                     } else if let item = document.selected {
                         Text(item.id).font(.caption.monospaced()).lineLimit(1).textSelection(.enabled)
-                        Text(String(format: "%d–%d frames", item.at, item.end)).font(.caption).foregroundStyle(
+                        Text("\(item.at)–\(item.end) frames").font(.caption).foregroundStyle(
                             .secondary)
                         if let linkedID = item.linkedItemID {
                             HStack {
