@@ -693,7 +693,9 @@ panel shows the kit in use and the saved kits (a click applies one); New Project
     content is copied once), imports it as media (reusing media for the same file) and places it on the Overlay layer,
     added in front of the other video layers when the project has none, or on a free overlay layer beside it, fitted
     (`fill: false`) and framed with `transform` zoom, pan and tilt, all as one undo step. Options win over the
-    sticker's defaults. The engine draws an animated sticker's first frame for now; the result's `note` says so. A
+    sticker's defaults. An animated sticker (GIF, APNG, animated WebP) is placed as a ProRes 4444 movie with alpha
+    written next to its copy (`library-<hash>.x<loops>.mov`, looped to cover `--duration` or the sticker's `seconds`)
+    and the result says `animated: true`. A
     sticker movie plays once (a longer `--duration` is cut to its length and the `note` says so) and is marked
     `alpha: true` in the project, so BashCut previews it from the original instead of a proxy without alpha (`media
     import` marks any movie with an alpha channel the same way). Emoji
