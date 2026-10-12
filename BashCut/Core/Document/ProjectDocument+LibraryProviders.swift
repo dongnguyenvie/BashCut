@@ -43,8 +43,10 @@ extension ProjectDocument {
             throw RPCFailure(-32602, "Open a saved project to save into its library, or pass --scope user")
         }
         return startCapabilityTurn(
-            request.capability, method: request.method, author: author, detail: request.text,
-            requestID: request.requestID, work: { [weak self] _ in
+            CapabilityTurn(
+                capability: request.capability, method: request.method, author: author, detail: request.text,
+                requestID: request.requestID),
+            work: { [weak self] _ in
                 guard let self else { throw CancellationError() }
                 return try await runLibraryProvider(request, author: author)
             }, finished: { [weak self] outcome in

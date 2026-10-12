@@ -482,31 +482,8 @@ extension ProjectDocument {
             return .object(["job": .string(id), "state": .string("running")])
         }
         let (id, queued) = startCapabilityTurn(
-            capability, method: method, author: author, requestID: requestID, work: jobWork, finished: finished)
+            CapabilityTurn(capability: capability, method: method, author: author, requestID: requestID),
+            work: jobWork, finished: finished)
         return .object(["job": .string(id), "state": .string(queued ? "queued" : "running")])
-    }
-
-    /// Starts a job that calls `capability`, one at a time: a second request queues behind the first instead of
-    /// failing busy, so the agent waits on both job IDs rather than polling and retrying. `queued` when it waits.
-    func startCapabilityTurn(
-        _ capability: String, method: String, author: Author, detail: String? = nil, requestID: String?,
-        work: @escaping @MainActor (JobReporter) async throws -> JSONValue,
-        finished: @escaping @MainActor (Result<JSONValue, any Error>) -> Void
-    ) -> (id: String, queued: Bool) {
-        let previous = capabilityTurns[capability]
-        let id = jobs.enqueue(method, author: author, detail: detail, requestID: requestID)
-        let turn = Task { @MainActor [weak self] in
-            await previous?.value
-            while self?.plugins.calling.contains(capability) == true { try? await Task.sleep(for: .milliseconds(200)) }
-            guard self?.jobs.job(id)?.state == .queued else { return }
-            self?.jobs.run(id, work: work, finished: finished)
-            while self?.jobs.job(id)?.isActive == true { try? await Task.sleep(for: .milliseconds(200)) }
-        }
-        capabilityTurns[capability] = turn
-        Task { @MainActor [weak self] in
-            await turn.value
-            if self?.capabilityTurns[capability] == turn { self?.capabilityTurns[capability] = nil }
-        }
-        return (id, previous != nil || plugins.calling.contains(capability))
     }
 }

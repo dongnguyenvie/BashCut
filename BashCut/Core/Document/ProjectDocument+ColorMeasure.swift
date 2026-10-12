@@ -32,6 +32,21 @@ extension ProjectDocument {
         var ungraded: [Int: CGImage] = [:]
         let graded: Bool
         let compare: Bool
+        /// Per frame, measured off the main actor: pixel loops over a dozen frames took seconds and froze the app.
+        var composedStats: [Int: ColorMeasure.Stats] = [:]
+        var ungradedStats: [Int: ColorMeasure.Stats] = [:]
+        var deltaE: [Int: Double] = [:]
+
+        mutating func measure() async {
+            let (composed, ungraded) = (composed, ungraded)
+            let result = await Task.detached(priority: .userInitiated) {
+                (composed.mapValues(ColorMeasure.stats), ungraded.mapValues(ColorMeasure.stats),
+                 Dictionary(uniqueKeysWithValues: composed.compactMap { frame, after in
+                     ungraded[frame].map { (frame, ColorMeasure.deltaE(after, $0)) }
+                 }))
+            }.value
+            (composedStats, ungradedStats, deltaE) = result
+        }
     }
 
     func colorMeasure(_ arguments: CommandArguments) async throws -> JSONValue {
@@ -52,6 +67,7 @@ extension ProjectDocument {
             let snapshot = try await engine.build(bare, root: root, workspace: settings.workspace, purpose: .preview)
             pictures.ungraded = try await images(of: snapshot, frames: flat, maximumSide: 640)
         }
+        await pictures.measure()
         var rows: [JSONValue] = [], measured: [(id: String, stats: ColorMeasure.Stats)] = []
         for (item, itemFrames) in zip(items, frames) {
             let (row, stats) = try await colorRow(item, frames: itemFrames, pictures: pictures)
@@ -81,21 +97,20 @@ extension ProjectDocument {
             "frames": .array(frames.map(JSONValue.integer)),
         ]
         var compared: ColorMeasure.Stats?
-        let ungraded = ColorMeasure.median(frames.compactMap { pictures.ungraded[$0] }.map(ColorMeasure.stats))
+        let ungraded = ColorMeasure.median(frames.compactMap { pictures.ungradedStats[$0] })
         if pictures.compare {
             row["ungraded"] = ungraded?.json ?? .null
         } else if !pictures.graded {
-            compared = ColorMeasure.median(try await sourcePictures(item, frames: frames).map(ColorMeasure.stats))
+            let sources = try await sourcePictures(item, frames: frames)
+            compared = ColorMeasure.median(await Task.detached(priority: .userInitiated) { sources.map(ColorMeasure.stats) }.value)
             row["source"] = compared?.json ?? .null
         }
-        if pictures.graded, let stats = ColorMeasure.median(frames.compactMap { pictures.composed[$0] }.map(ColorMeasure.stats)) {
+        if pictures.graded, let stats = ColorMeasure.median(frames.compactMap { pictures.composedStats[$0] }) {
             row["graded"] = stats.json
             compared = stats
             if let before = ungraded {
-                let pairs = frames.compactMap { frame in
-                    pictures.composed[frame].flatMap { after in pictures.ungraded[frame].map { (after, $0) } }
-                }
-                let deltaE = pairs.isEmpty ? nil : pairs.map { ColorMeasure.deltaE($0.0, $0.1) }.reduce(0, +) / Double(pairs.count)
+                let pairs = frames.compactMap { pictures.deltaE[$0] }
+                let deltaE = pairs.isEmpty ? nil : pairs.reduce(0, +) / Double(pairs.count)
                 row["change"] = ColorMeasure.compare(source: before, graded: stats, deltaE: deltaE)
             }
         }

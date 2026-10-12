@@ -29,7 +29,9 @@ extension CommandCatalog {
                 CommandParameter("key", .string, "brief, plan or your own key", required: true, cli: .positional),
                 CommandParameter("value", .object, "The object (CLI: path to a JSON file)", required: true,
                                  cli: .positionalJSONFile),
-                CommandParameter("merge", .boolean, "Merge into the stored value: objects key by key (null deletes), arrays and values replace", cli: .flag("merge")),
+                CommandParameter(
+                    "merge", .boolean, "Merge into the stored value: objects key by key (null deletes), arrays and values replace",
+                    cli: .flag("merge")),
                 baseRevision,
             ]),
     ]

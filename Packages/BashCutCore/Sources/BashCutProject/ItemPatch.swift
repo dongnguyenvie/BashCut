@@ -42,8 +42,7 @@ public enum ItemPatch {
                     continue
                 }
                 let current = pending[id] ?? items[id]?.0.fields ?? [:]
-                var change: [String: JSONValue] = [:]
-                for (key, value) in patch { change[key] = value == .null ? .null : merge(current[key], value) }
+                let change = merged(patch, into: current)
                 pending[id, default: current].merge(change) { $1 }
                 var merged = fields
                 merged["patch"] = .object(change)
@@ -54,10 +53,7 @@ public enum ItemPatch {
                     result.append(op)
                     continue
                 }
-                var change: [String: JSONValue] = [:]
-                for (key, value) in patch {
-                    change[key] = value == .null ? .null : merge(projectPending[key] ?? project[key], value)
-                }
+                let change = merged(patch, into: patch.keys.reduce(into: [:]) { $0[$1] = projectPending[$1] ?? project[$1] })
                 projectPending.merge(change) { $1 }
                 var merged = fields
                 merged["patch"] = .object(change)
@@ -67,6 +63,13 @@ public enum ItemPatch {
             }
         }
         return result
+    }
+
+    /// Each field of `patch` merged into its current value; a null stays null so the op removes the field.
+    static func merged(_ patch: [String: JSONValue], into current: [String: JSONValue]) -> [String: JSONValue] {
+        patch.reduce(into: [:]) { change, field in
+            change[field.key] = field.value == .null ? .null : merge(current[field.key], field.value)
+        }
     }
 
     /// `patch` merged into `base`: objects key by key (null deletes), anything else replaces. A top-level null stays

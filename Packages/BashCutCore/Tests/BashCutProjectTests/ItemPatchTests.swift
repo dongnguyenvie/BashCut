@@ -98,6 +98,19 @@ struct TitleTrackAndWordEdgeTests {
         #expect(planner.project.track(role: TrackRole.captions)?.items.isEmpty == true)
     }
 
+    @Test("Subtitles leave out the titles layer")
+    func subtitlesSkipTitles() throws {
+        var planner = LayerPlanner(Project(name: "Subtitles"))
+        var caption = Item(id: "c", at: 0, duration: 30)
+        caption["text"] = .string("spoken")
+        try planner.place(caption, on: "t1")
+        var hook = Item(id: "h", at: 0, duration: 30)
+        hook["text"] = .string("HOOK")
+        try planner.place(hook, on: try planner.titleTrack())
+        let srt = try SubRip.encode(planner.project)
+        #expect(srt.contains("spoken") && !srt.contains("HOOK"))
+    }
+
     @Test("An edge inside a word widens to the word's edge; edges on a gap stay")
     func outsideWords() throws {
         let words: [JSONValue] = [
