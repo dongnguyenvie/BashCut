@@ -11,7 +11,8 @@ public struct DeliveredFacts: Sendable, Equatable {
     public var audioStart: Double?
     /// The rate frames are written at (from the shortest frame duration).
     public var fps: Double
-    /// Frames over duration: lower than `fps` when the encoder holds a frame (a still or black stretch).
+    /// Frames over duration. Exports write a picture on every frame (#507-1), so lower than `fps` means frames are
+    /// missing: the file is variable frame rate.
     public var averageFps: Double?
     public var expectedFps: Double
     public var width: Int
@@ -90,6 +91,14 @@ extension TimelineReview {
                 issues.append(ReviewIssue(
                     id: "delivered-fps-\(id)", title: "Frame rate differs from the preset",
                     detail: String(format: "The file plays at %.3f fps; the project is %.3f.", facts.fps, facts.expectedFps),
+                    frame: 0, severity: .error))
+            }
+            if let average = facts.averageFps, average < facts.expectedFps * 0.98 {
+                issues.append(ReviewIssue(
+                    id: "delivered-vfr-\(id)", title: "Frames missing in the file",
+                    detail: String(
+                        format: "The file averages %.2f fps of %.3f: variable frame rate, motion stutters. Export again.",
+                        average, facts.expectedFps),
                     frame: 0, severity: .error))
             }
             if facts.width != facts.expectedWidth || facts.height != facts.expectedHeight {

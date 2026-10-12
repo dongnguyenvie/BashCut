@@ -107,6 +107,18 @@ struct ReviewMechanicsTests {
         #expect(TimelineReview.deliveredIssues(project, delivered: [stale]).isEmpty)
     }
 
+    @Test("Delivered facts: an average frame rate under the project's is missing frames (#507-1)")
+    func deliveredMissingFrames() throws {
+        let project = try ReviewPictureTests().project([("a", "m", 300)])
+        var facts = DeliveredFacts(
+            revision: project.revision, preset: "tiktok", path: "/tmp/out.mp4", videoStart: 0, audioStart: 0, fps: 30,
+            expectedFps: 30, size: (1080, 1920), expectedSize: (1080, 1920), duration: 10, black: [], silence: [],
+            averageFps: 27.7)
+        #expect(TimelineReview.deliveredIssues(project, delivered: [facts]).map(\.id) == ["delivered-vfr-tiktok"])
+        facts.averageFps = 29.97
+        #expect(TimelineReview.deliveredIssues(project, delivered: [facts]).isEmpty)
+    }
+
     @Test("The written frame rate ignores held frames and a coarse timescale's 20/21-tick jitter")
     func writtenRate() throws {
         // 29.97 fps at a 1/600 timescale: frames 20 or 21 ticks apart, then a 5 s black stretch held as one frame.

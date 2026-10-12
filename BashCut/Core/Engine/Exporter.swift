@@ -138,13 +138,13 @@ public actor Exporter {
     ) async throws {
         let end = snapshot.composition.duration
         let lanes = pairs.map { output, input in
-            let tail = output is AVAssetReaderVideoCompositionOutput
-                ? VideoTail(end: end, frame: snapshot.videoComposition.frameDuration) : nil
+            let grid = output is AVAssetReaderVideoCompositionOutput
+                ? ConstantFrames(end: end, frame: snapshot.videoComposition.frameDuration) : nil
             return ExportSampleTransfer.Lane(request: { queue, callback in
                 input.requestMediaDataWhenReady(on: queue, using: callback)
             }, ready: { input.isReadyForMoreMediaData }, next: {
-                guard let sample = output.copyNextSampleBuffer() ?? tail?.closing() else { return nil }
-                tail?.last = sample
+                let read = { output.copyNextSampleBuffer() }
+                guard let sample = grid?.next(read) ?? (grid == nil ? read() : nil) else { return nil }
                 if output is AVAssetReaderAudioMixOutput { limiter?.limiter.process(sample) }
                 guard input.append(sample) else {
                     throw writer.error ?? ProjectError.invalid("Cannot write sample")
@@ -170,29 +170,42 @@ final class LimiterBox: @unchecked Sendable {
     init(_ limiter: PeakLimiter) { self.limiter = limiter }
 }
 
-/// The composition output sends a held picture (freeze frame, still, the last source picture) as one sample. When the
-/// timeline ends on one, the video track would end with it; `closing` repeats it on the timeline's last frame.
-private final class VideoTail: @unchecked Sendable {
+/// The composition output sends a picture only when it changes: a held picture (freeze frame, still) is one sample,
+/// and a clip with no animation comes at its own rate (24, 25 fps or variable), so the file was variable frame rate
+/// with frames missing (#507-1). `next` writes one sample on every frame of the project's grid up to the timeline's
+/// end, each the latest picture due by the middle of that frame.
+final class ConstantFrames: @unchecked Sendable {
     let end: CMTime
     let frame: CMTime
-    var last: CMSampleBuffer?
-    private var closed = false
+    private var slot = CMTime.zero
+    private var held: CMSampleBuffer?
+    private var upcoming: CMSampleBuffer?
+    private var drained = false
 
     init(end: CMTime, frame: CMTime) {
         self.end = end
         self.frame = frame
     }
 
-    func closing() -> CMSampleBuffer? {
-        guard !closed, let last else { return nil }
-        closed = true
-        let time = end - frame
-        guard time > last.presentationTimeStamp else { return nil }
-        var timing = CMSampleTimingInfo(duration: frame, presentationTimeStamp: time, decodeTimeStamp: .invalid)
+    func next(_ read: () -> CMSampleBuffer?) -> CMSampleBuffer? {
+        guard slot < end else { return nil }
+        let due = slot + CMTimeMultiplyByRatio(frame, multiplier: 1, divisor: 2)
+        while true {
+            if upcoming == nil, !drained {
+                upcoming = read()
+                drained = upcoming == nil
+            }
+            guard let sample = upcoming, held == nil || sample.presentationTimeStamp <= due else { break }
+            held = sample
+            upcoming = nil
+        }
+        guard let held else { return nil }
+        var timing = CMSampleTimingInfo(duration: frame, presentationTimeStamp: slot, decodeTimeStamp: .invalid)
         var copy: CMSampleBuffer?
         CMSampleBufferCreateCopyWithNewTiming(
-            allocator: nil, sampleBuffer: last, sampleTimingEntryCount: 1, sampleTimingArray: &timing,
+            allocator: nil, sampleBuffer: held, sampleTimingEntryCount: 1, sampleTimingArray: &timing,
             sampleBufferOut: &copy)
+        slot = slot + frame
         return copy
     }
 }
