@@ -18,6 +18,8 @@ public struct ExportRequest: Sendable {
     public let normalizeAudio: Bool
     /// Overrides the preset's video bit rate (`export start --bitrate`, P1-F2).
     public var videoBitRate: Int?
+    /// Stored transcripts of the media the edit plays, for the report's speech coverage (#507-36).
+    public var transcripts: [String: SourceTranscript] = [:]
 
     public var includesSubRip: Bool { subRip != nil }
 
@@ -67,25 +69,38 @@ public struct ExportRequest: Sendable {
     /// Files this export will write, for duplicate checks against the queue.
     public var outputs: Set<URL> { Set([output, subRip].compactMap { $0 }) }
 
-    /// Whether an export named `name` would hit a file on disk or an output of a queued export.
+    /// Whether an export named `name` would hit a file on disk (unless `ignoringFiles`) or an output of a queued
+    /// export.
     public static func nameIsTaken(
-        _ name: String, preset: ExportPreset, directory: URL, includeSubRip: Bool, reserved: Set<URL> = []
+        _ name: String, preset: ExportPreset, directory: URL, includeSubRip: Bool, reserved: Set<URL> = [],
+        ignoringFiles: Bool = false
     ) -> Bool {
         let base = directory.appendingPathComponent(name.trimmingCharacters(in: .whitespacesAndNewlines))
             .standardizedFileURL
         var outputs = [base.appendingPathExtension(preset.fileExtension)]
         if includeSubRip { outputs.append(base.appendingPathExtension("srt")) }
-        return outputs.contains { isTaken($0, reserved: reserved) }
+        return outputs.contains { reserved.contains($0) || (!ignoringFiles && FileManager.default.fileExists(atPath: $0.path)) }
+    }
+
+    /// The files an earlier export named `name` left: the video and any caption sidecar.
+    public static func existingOutputs(_ name: String, preset: ExportPreset, directory: URL) -> [URL] {
+        let base = directory.appendingPathComponent(name.trimmingCharacters(in: .whitespacesAndNewlines))
+            .standardizedFileURL
+        return [preset.fileExtension, "srt", "vtt"].map { base.appendingPathExtension($0) }
+            .filter { FileManager.default.fileExists(atPath: $0.path) }
     }
 
     /// `name` when it is free, otherwise the first free `name-2`, `name-3`… (`long1-2` continues as `long1-3`; a
     /// suffix of 1000 or more, such as a year, is kept: `trip-2026` becomes `trip-2026-2`).
     public static func availableName(
-        _ name: String, preset: ExportPreset, directory: URL, includeSubRip: Bool, reserved: Set<URL> = []
+        _ name: String, preset: ExportPreset, directory: URL, includeSubRip: Bool, reserved: Set<URL> = [],
+        ignoringFiles: Bool = false
     ) -> String {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         func taken(_ candidate: String) -> Bool {
-            nameIsTaken(candidate, preset: preset, directory: directory, includeSubRip: includeSubRip, reserved: reserved)
+            nameIsTaken(
+                candidate, preset: preset, directory: directory, includeSubRip: includeSubRip, reserved: reserved,
+                ignoringFiles: ignoringFiles)
         }
         guard taken(trimmed) else { return trimmed }
         var stem = trimmed

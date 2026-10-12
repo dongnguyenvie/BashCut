@@ -39,10 +39,10 @@ extension CommandCatalog {
 
     static let reviewAcceptSpec = CommandSpec(
         "review.accept", .edit,
-        "Keep a warning or note on purpose, with the reason, as one undoable edit (review.accepted); later runs show it "
-            + "with accepted.reason, leave it out of the counts, and the export report lists it. Errors cannot be "
-            + "accepted: fix them, or change their severity in review.severities with a reason. With remove, the "
-            + "issue counts again.",
+        "Keep an issue on purpose, with the reason, as one undoable edit (review.accepted); later runs show it "
+            + "with accepted.reason, leave it out of the counts, and the export report lists it. Accept an error "
+            + "only when no fix exists (the summary counts it as acceptedErrors); to change a whole check, set "
+            + "review.severities.<check> to {severity, reason}. With remove, the issue counts again.",
         parameters: [
             CommandParameter("id", .string, "Issue ID from review run", required: true, cli: .positional),
             CommandParameter("reason", .string, "Why it stays", cli: .option("reason")),
@@ -96,8 +96,8 @@ extension CommandCatalog {
             + "review.check side by side (each at most 30 s; a failing or slow check becomes an info issue). Plugin "
             + "issues carry source (the plugin ID) and IDs prefixed with the provider. A project turns checks off "
             + "with review.disabledChecks (plugin or provider IDs; timeline apply setProjectProperties). The job's "
-            + "result has the sample count, the plugin checks that ran and the measured issues; measure again after "
-            + "an edit.",
+            + "result has the sample count, hardCuts (touching clips on Main without a transition, the ones measured), "
+            + "the plugin checks that ran and the measured issues; measure again after an edit.",
         parameters: [
             CommandParameter("picture", .boolean, "Measure the picture (default true)", cli: .option("picture")),
             CommandParameter("plugins", .boolean, "Run plugin review checks (default true)", cli: .option("plugins")),
@@ -172,11 +172,12 @@ extension CommandCatalog {
         "Render the viewer's picture at a timeline frame (the playhead by default) to a PNG, like attaching the "
             + "viewer frame in Ask; returns its path. Read the file to look at the edit. Keeps the ten newest. width "
             + "renders it that many pixels wide (phone: 390, about a phone screen, to judge text at the size viewers "
-            + "see it); otherwise up to 1280 on the long edge.",
+            + "see it); otherwise up to 1280 on the long edge. out also copies the PNG to that file (replacing it).",
         parameters: [
             CommandParameter("frame", .integer, "Timeline frame; the playhead by default", minimum: 0, cli: .positional),
             CommandParameter("width", .integer, "Width in pixels", minimum: 64, maximum: 4_096, cli: .option("width")),
             CommandParameter("phone", .boolean, "390 pixels wide", cli: .flag("phone")),
+            CommandParameter("out", .string, "Also write the PNG to this file", isPath: true, cli: .option("out")),
         ])
 
     /// Before/after grids (P0-B5).
@@ -279,7 +280,9 @@ extension CommandCatalog {
             + "including bitrateMbps, title and cover facts, chapter and disclosure rules where known. With id, that "
             + "one platform's row with its facts.",
         parameters: [
-            CommandParameter("id", .string, "tiktok, reels, shorts, youtube", cli: .positional),
+            CommandParameter(
+                "id", .string, "tiktok, reels, shorts, youtube, or an export preset (youtube-1080 → youtube)",
+                cli: .positional),
             CommandParameter("facts", .boolean, "Include each field's provenance", cli: .flag("facts")),
         ])
 
@@ -292,8 +295,10 @@ extension CommandCatalog {
             + "speech {onsetOffsetFrames (from the nearest word start), narrationShare (of its time with words "
             + "spoken)} from the heard or caption words; captionOverlap {item, ratio of its box} for titles; "
             + "templateRepeats (items with its preset on its layer); faceOverlap null (unknown: not measured "
-            + "here; media subjects gives face boxes in source pictures). With contrast: contrast {ratio (WCAG, 1–21) of the mean, lightRatio and "
-            + "darkRatio (the light and dark parts of the text, such as fill and outline), textLuminance, "
+            + "here; media subjects gives face boxes in source pictures). With contrast: contrast {ratio (WCAG, 1–21; basis "
+            + "mean: of the mean text, outline: the stronger of fill and outline, plate: the letters against their box), "
+            + "meanRatio, lightRatio and darkRatio (the light and dark parts of the text, such as fill and outline), "
+            + "textLuminance, "
             + "backgroundLuminance, textPixels} measured on the frame with and without text (at frame, or each "
             + "item's middle). Also the frame size, the platform whose zones apply (safeArea, minTextSize), density "
             + "(titles and captions per minute) and, at a frame, pictures on screen with their scale and coverage. "
@@ -376,9 +381,12 @@ extension CommandCatalog {
                 + "stays as in the mix) and measured over time. Spoken blocks are those inside heard or caption words, "
                 + "else where the speech stem is over −70 LUFS. Returns voice, musicUnderSpeech (voice minus music, "
                 + "in LU) and musicInGaps as {median, p10, p90, blocks}; speechWindows with the same per window; "
-                + "effects per sound-effect item: loudness (loudest momentary LUFS), peakDb, voiceP95 within "
-                + "nearSeconds, deltaDb, masked (under that voice level), onset and peak offsets in frames to the "
-                + "nearest cut, beat and word edge; and each stem's integrated loudness. A job; no levels are changed.",
+                + "effects per sound-effect item: loudness (loudest momentary LUFS), peakDb, the voice at the same "
+                + "moment (voiceDuring LUFS, voicePeakDb) with overVoiceDb and peakOverVoiceDb (the effect minus "
+                + "them; a short effect reads low on 400 ms loudness, so read its peak too), voiceP95 within "
+                + "nearSeconds with deltaDb, sharedWith (effects playing at once, measured together), onset and peak "
+                + "offsets in frames to the nearest cut, beat and word edge; and each stem's integrated loudness. No "
+                + "verdicts. A job; no levels are changed.",
             parameters: [
                 CommandParameter("nearSeconds", .number, "Seconds around an effect read for the voice (default 1)",
                                  range: 0.1...10, cli: .option("near")),

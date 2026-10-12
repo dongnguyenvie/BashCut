@@ -75,7 +75,7 @@ struct ReviewInvariantsTests {
         #expect(!issues.contains { $0.severity == .warning })
     }
 
-    @Test("Accepted warnings keep their reason and leave the counts; errors are never accepted; blockExport names prefixes")
+    @Test("Accepted issues keep their reason and leave the counts; an accepted error is counted apart; blockExport names prefixes")
     func accepted() {
         var (project, _) = project([Item(id: "a", media: "m", at: 0, duration: 60), Item(id: "b", media: "m", at: 90, duration: 30)])
         project["review"] = .object([
@@ -89,7 +89,27 @@ struct ReviewInvariantsTests {
         project.tracks[project.tracks.firstIndex { $0.id == "v1" }!].items.append(shot)
         shot.at = 150
         let issues = TimelineReview.run(project)
-        #expect(issues.first { $0.id == "gap-b" }?.accepted == nil)
+        // An error kept on purpose (#507-31): accepted, out of the error count, in acceptedErrors.
+        let gap = issues.first { $0.id == "gap-b" }
+        #expect(gap?.severity == .error && gap?.accepted == "on purpose")
+        let withError = ReviewSummary(issues, coverage: .object([:]))
+        #expect(withError.acceptedErrors == 1 && withError.json.object["acceptedErrors"] == .integer(1))
+        // A severity entry with its reason (#507-37).
+        var reasoned = project
+        reasoned["review"] = .object([
+            "minShotSeconds": .number(1.5),
+            "severities": .object(["shot-short": .object(["severity": .string("info"), "reason": .string("fast montage")])]),
+        ])
+        #expect(throws: Never.self) { try reasoned.validateReviewSettings() }
+        let short = TimelineReview.run(reasoned).first { $0.id == "shot-short-c" }
+        #expect(short?.severity == .info && short?.json.object["severityReason"] == .string("fast montage"))
+        for entry: JSONValue in [
+            .object(["severity": .string("loud")]), .object(["severity": .string("info"), "reason": .string("")]),
+            .object(["severity": .string("info"), "why": .string("x")]),
+        ] {
+            reasoned["review"] = .object(["severities": .object(["shot-short": entry])])
+            #expect(throws: ProjectError.self) { try reasoned.validateReviewSettings() }
+        }
         project["review"] = .object([
             "severities": .object(["shot-short": .string("warning")]), "minShotSeconds": .number(1.5),
             "accepted": .object(["shot-short-c": .object(["reason": .string("same angle on purpose")])]),

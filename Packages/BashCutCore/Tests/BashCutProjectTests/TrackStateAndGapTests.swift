@@ -42,6 +42,34 @@ struct TrackStateAndGapTests {
         #expect(result.matches(original: project))
     }
 
+    @Test("Ripple edits and closed gaps on the main layer move section markers with the clips (#507-11)")
+    func markersFollowRipple() throws {
+        // Without the second clip's linked sound, which a ripple on the picture layer does not carry along.
+        var project = try gapped().applying(.delete(item: "b-audio", ripple: false)).project
+        project = try project.applying(.group(label: "Sections", author: .user, ops: [
+            .upsertSection(id: "intro", label: "Intro", atFrame: 0), .upsertSection(id: "gap", label: "Gap", atFrame: 70),
+            .upsertSection(id: "body", label: "Body", atFrame: 90), .upsertSection(id: "end", label: "End", atFrame: 120),
+        ])).project
+        let deleted = try ProjectFixtures.undoRedo(.delete(item: "a", ripple: true), on: project)
+        #expect(deleted.applied.sectionMarkers.map(\.id) == ["intro", "gap", "body", "end"])
+        #expect(deleted.applied.sectionMarkers.map(\.at) == [0, 10, 30, 60])
+        // Trimming 20 frames off the start of the second clip (30–90): Body, on the removed part, stays at the clip's
+        // start, and End moves with the picture it marked.
+        let trimmed = try deleted.applied.applying(.trim(item: "b", edge: .start, toFrame: 50, ripple: true)).project
+        #expect(trimmed.sectionMarkers.map(\.at) == [0, 10, 30, 40])
+        let shortened = try deleted.applied.applying(.trim(item: "b", edge: .end, toFrame: 50, ripple: true)).project
+        #expect(shortened.sectionMarkers.map(\.at) == [0, 10, 30, 50])
+        #expect(deleted.matches(original: project))
+        let closed = try ProjectFixtures.undoRedo(project.closingGap(on: "v1", containing: 70), on: project)
+        #expect(closed.applied.sectionMarkers.map(\.id) == ["intro", "body", "end"])
+        #expect(closed.applied.sectionMarkers.map(\.at) == [0, 60, 90])
+        #expect(closed.matches(original: project))
+        // A ripple on another layer leaves the markers alone.
+        let sound = try gapped().applying(.upsertSection(id: "s", label: "S", atFrame: 120)).project
+            .applying(.delete(item: "b-audio", ripple: true)).project
+        #expect(sound.sectionMarkers.map(\.at) == [120])
+    }
+
     @Test("A locked layer refuses edits to its items until unlocked; undo still works")
     func lock() throws {
         var project = try gapped()

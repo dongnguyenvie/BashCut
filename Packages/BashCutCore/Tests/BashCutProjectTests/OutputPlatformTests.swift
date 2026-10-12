@@ -154,6 +154,8 @@ struct PlatformDataTests {
         #expect(OutputPlatform.tiktok.safeArea.bottom == 0.24 && OutputPlatform.tiktok.facts["safeArea.bottom"]?.confidence == "measured")
         #expect(OutputPlatform.reels.bitrateMbps == 5 && OutputPlatform.youtube.maxSeconds == nil)
         #expect(OutputPlatform.youtube.facts["chapters"]?.kind == .hard)
+        #expect(OutputPlatform.named("youtube-1080")?.id == "youtube" && OutputPlatform.named("youtube-4k")?.id == "youtube")
+        #expect(OutputPlatform.named("reels")?.id == "reels" && OutputPlatform.named("quick-draft") == nil)
         var newer = builtIn.json.object
         newer["version"] = .string("2099-01-01")
         var platforms = newer["platforms"]?.array ?? []

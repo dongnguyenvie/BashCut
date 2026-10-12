@@ -64,6 +64,27 @@ struct ProjectCreationTests {
         #expect(try FileManager.default.contentsOfDirectory(atPath: root.path).sorted() == ["existing", "link"])
     }
 
+    @Test("A folder that already holds footage but no project becomes the project, its files untouched (#507-38)")
+    func adoptsFolder() async throws {
+        let root = try directory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let folder = root.appendingPathComponent("trip")
+        try FileManager.default.createDirectory(at: folder.appendingPathComponent("render"), withIntermediateDirectories: true)
+        let clip = folder.appendingPathComponent("clip.mov")
+        try Data("shot".utf8).write(to: clip)
+        var setup = ProjectSetup()
+        setup.name = "Trip"
+        let store = ProjectStorage()
+        let created = try await store.create(setup, in: root, footage: folder)
+        #expect(created.url == folder.appendingPathComponent("project.bashcut.json"))
+        #expect(try Data(contentsOf: clip) == Data("shot".utf8))
+        let names = try FileManager.default.contentsOfDirectory(atPath: folder.path).sorted()
+        #expect(names == [".bashcut", "clip.mov", "footage", "media", "project.bashcut.json", "render", "subtitles", "voiceover"])
+        // The footage is the folder itself, so footage is a plain folder, not a link to itself.
+        #expect((try? FileManager.default.destinationOfSymbolicLink(atPath: folder.appendingPathComponent("footage").path)) == nil)
+        await #expect(throws: (any Error).self) { try await store.create(setup, in: root) }
+    }
+
     @Test("Invalid setup and missing footage leave the parent unchanged")
     func invalidSettings() async throws {
         let root = try directory()

@@ -75,7 +75,8 @@ public final class ExportController {
             captionCount: request.source.tracks.first(where: { $0.role == TrackRole.captions })?.items.count ?? 0,
             includedSubRip: request.includesSubRip, loudness: outcome.finalMeasurement,
             loudnessVerified: outcome.verified, appliedGainDb: outcome.appliedGainDb,
-            speechCoverage: TimelineReview.speechCoverage(request.source), completedAt: Date(),
+            speechCoverage: TimelineReview.speechCoverage(request.source, transcripts: request.transcripts),
+            completedAt: Date(),
             comparison: nil)
         report.acceptedIssues = (request.source["review"]?.object["accepted"]?.object ?? [:])
             .compactMapValues { $0.object["reason"]?.string }

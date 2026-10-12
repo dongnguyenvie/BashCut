@@ -127,9 +127,12 @@ public enum MixMeasure {
         ])
     }
 
-    /// Every item on a sound-effects layer: its loudest momentary level and sample peak, the voice's 95th percentile
-    /// within `nearSeconds`, the difference, masked (the effect is under that voice level), and its onset and
-    /// peak frames against the nearest cut, beat and word.
+    /// Every item on a sound-effects layer: its loudest momentary level and sample peak; the voice at the same moment
+    /// (`voiceDuring`: the speech stem at the effect's loudest block, `voicePeakDb`: the speech's loudest sample over
+    /// the effect) with `overVoiceDb` and `peakOverVoiceDb`, the effect minus them; the voice's 95th percentile within
+    /// `nearSeconds` with `deltaDb`; `sharedWith`, other effects playing at the same time (their levels are measured
+    /// together); and its onset and peak frames against the nearest cut, beat and word. No verdict (#507-16): a short
+    /// effect reads low on 400 ms loudness, so judge its peaks too.
     static func effectsJSON(
         _ project: Project, speech: Curve?, effects: Curve?, words: [ReviewSync.WordSpan], nearSeconds: Double
     ) -> JSONValue {
@@ -154,14 +157,31 @@ public enum MixMeasure {
                 guard let level = speech?.level(index), level > silenceLUFS else { return nil }
                 return level
             }.sorted()
+            let tenth = { (value: Double) in JSONValue.number((value * 10).rounded() / 10) }
             if !nearby.isEmpty {
                 let p95 = nearby[min(nearby.count - 1, Int((Double(nearby.count - 1) * 0.95).rounded()))]
-                row["voiceP95"] = .number((p95 * 10).rounded() / 10)
-                row["deltaDb"] = .number(((loudest - p95) * 10).rounded() / 10)
-                row["masked"] = .bool(loudest < p95)
+                row["voiceP95"] = tenth(p95)
+                row["deltaDb"] = tenth(loudest - p95)
             } else {
                 row["voiceP95"] = .null
             }
+            let loudestIndex = first + (levels.enumerated().max { $0.element < $1.element }?.offset ?? 0)
+            if let during = speech?.level(loudestIndex), during > silenceLUFS {
+                row["voiceDuring"] = tenth(during)
+                row["overVoiceDb"] = tenth(loudest - during)
+            } else {
+                row["voiceDuring"] = .null
+            }
+            let voicePeaks = (first..<last).compactMap { index -> Double? in
+                guard let speech, speech.peakDb.indices.contains(index), speech.level(index) > silenceLUFS else { return nil }
+                return speech.peakDb[index]
+            }
+            if let voicePeak = voicePeaks.max() {
+                row["voicePeakDb"] = tenth(voicePeak)
+                row["peakOverVoiceDb"] = tenth((peaks.max() ?? -100) - voicePeak)
+            }
+            let shared = items.filter { $0.id != item.id && $0.at < item.end && item.at < $0.end }.map(\.id)
+            if !shared.isEmpty { row["sharedWith"] = .array(shared.map(JSONValue.string)) }
             let offsets = { (frame: Int) -> JSONValue in
                 var result: [String: JSONValue] = [:]
                 for (name, list) in [("cut", cuts), ("beat", beats), ("word", edges)] {

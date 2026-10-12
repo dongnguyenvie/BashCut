@@ -31,8 +31,55 @@ extension Project {
         let gap = try gap(on: trackID, containing: frame)
         let later = (tracks.first { $0.id == trackID }?.items ?? [])
             .filter { $0.at >= gap.upperBound }.sorted { $0.at < $1.at }
-        return .group(
-            label: "Delete gap", author: .user,
-            ops: later.map { .move(item: $0.id, toTrack: trackID, atFrame: $0.at - gap.count) })
+        var ops: [EditOperation] = later.map { .move(item: $0.id, toTrack: trackID, atFrame: $0.at - gap.count) }
+        if tracks.first(where: { $0.id == trackID })?.role == TrackRole.main {
+            // Sections on the main layer follow its clips (#507-11): removed ones first, then the moved ones in order.
+            let shifted = shiftedMarkers(from: gap.upperBound, by: -gap.count)
+            let kept = Dictionary(shifted.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+            let sections = sectionMarkers
+            ops += sections.filter { kept[$0.id] == nil }.map { .deleteSection(id: $0.id) }
+            ops += sections.compactMap { section in
+                guard let moved = kept[section.id], moved.at != section.at else { return nil }
+                return .upsertSection(id: section.id, label: section.label, atFrame: moved.at)
+            }
+        }
+        return .group(label: "Delete gap", author: .user, ops: ops)
+    }
+
+    /// Moves every item on `track` that starts at or after `frame` by `delta`. A ripple on the main layer moves the
+    /// timeline's markers with it (#507-11), from `markersFrom` (the edited edge) when markers inside the edited clip
+    /// move too.
+    mutating func shift(track: Int, from frame: Int, by delta: Int, markersFrom: Int? = nil) throws {
+        for index in tracks[track].items.indices where tracks[track].items[index].at >= frame {
+            tracks[track].items[index].at = try sum(tracks[track].items[index].at, delta)
+        }
+        if tracks[track].role == TrackRole.main, tracks[track].kind == "video", delta != 0, !markers.isEmpty {
+            markers = shiftedMarkers(from: markersFrom ?? frame, by: delta)
+        }
+    }
+
+    /// The markers after the main layer moves by `delta` from `frame`: later ones move with it; when time is removed
+    /// (`delta` < 0), markers inside the removed part go to the cut, and of the sections that then share a frame
+    /// only the one that started latest is kept, since it starts what is left.
+    public func shiftedMarkers(from frame: Int, by delta: Int) -> [TimelineMarker] {
+        let cut = frame + min(delta, 0)
+        var moved: [(marker: TimelineMarker, original: Int)] = markers.map { marker in
+            var marker = marker
+            let at = marker.at
+            if at >= frame {
+                marker.fields["at"] = .integer(at + delta)
+            } else if at >= cut {
+                marker.fields["at"] = .integer(cut)
+            }
+            return (marker, at)
+        }
+        if delta < 0 {
+            moved = moved.filter { entry in
+                entry.marker.kind != "section" || !moved.contains { other in
+                    other.marker.kind == "section" && other.marker.at == entry.marker.at && other.original > entry.original
+                }
+            }
+        }
+        return moved.map(\.marker)
     }
 }

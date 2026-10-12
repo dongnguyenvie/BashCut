@@ -47,8 +47,10 @@ public struct ReviewIssue: Identifiable, Sendable {
     public let fix: ReviewFix?
     /// The plugin whose `review.check` reported the issue; nil for built-in checks.
     public let source: String?
-    /// Why the project keeps this warning or note (`review.accepted`, P1-E2); accepted issues are not counted.
+    /// Why the project keeps this issue (`review.accepted`, P1-E2); accepted issues are not counted.
     public var accepted: String?
+    /// Why `review.severities` changed this check's severity, when the entry gives a reason (#507-37).
+    public var severityReason: String?
 
     public init(
         id: String, title: String, detail: String, frame: Int, endFrame: Int? = nil, severity: ReviewSeverity = .warning,
@@ -77,6 +79,7 @@ public struct ReviewIssue: Identifiable, Sendable {
         if let fix { fields["fix"] = fix.json }
         if let source { fields["source"] = .string(source) }
         if let accepted { fields["accepted"] = .object(["reason": .string(accepted)]) }
+        if let severityReason { fields["severityReason"] = .string(severityReason) }
         return .object(fields)
     }
 }
@@ -110,8 +113,10 @@ public struct ReviewSummary: Sendable, Equatable {
     public let errors: Int
     public let warnings: Int
     public let infos: Int
-    /// Warnings and notes the project accepted with a reason; not in the other counts.
+    /// Issues the project accepted with a reason; not in the other counts.
     public let accepted: Int
+    /// Of those, the errors (#507-31): kept on purpose, but listed so a reader sees them.
+    public let acceptedErrors: Int
     public let status: Status
     /// Kept for older callers: true only when `status` is pass.
     public var passed: Bool { status == .pass }
@@ -124,6 +129,7 @@ public struct ReviewSummary: Sendable, Equatable {
         warnings = open.filter { $0.severity == .warning }.count
         infos = open.filter { $0.severity == .info }.count
         accepted = issues.count - open.count
+        acceptedErrors = issues.filter { $0.accepted != nil && $0.severity == .error }.count
         let unchecked = ["unsetLimits", "notChecked"].contains { !(coverage.object[$0]?.array ?? []).isEmpty }
         status = errors > 0 ? .fail : unchecked ? .incomplete : .pass
     }
@@ -131,7 +137,8 @@ public struct ReviewSummary: Sendable, Equatable {
     public var json: JSONValue {
         .object([
             "errors": .integer(errors), "warnings": .integer(warnings), "infos": .integer(infos),
-            "accepted": .integer(accepted), "passed": .bool(passed), "status": .string(status.rawValue),
+            "accepted": .integer(accepted), "acceptedErrors": .integer(acceptedErrors), "passed": .bool(passed),
+            "status": .string(status.rawValue),
         ])
     }
 }
@@ -140,19 +147,35 @@ public enum TimelineReview {
     /// A number for `ReviewIssue.facts`, to three decimals.
     static func fact(_ value: Double) -> JSONValue { .number((value * 1_000).rounded() / 1_000) }
 
-    public static func speechCoverage(_ project: Project) -> Double {
+    /// The share of the edit that is speech: voiceover items and items tagged speech, whole; and any other clip
+    /// whose media has a stored transcript (`transcripts`, by media ID), from its first heard word to its last
+    /// (#507-36: clips placed by hand carry no tag). Muted clips and music or effects layers do not count.
+    public static func speechCoverage(_ project: Project, transcripts: [String: SourceTranscript] = [:]) -> Double {
         guard project.duration > 0 else { return 0 }
-        let voiceover = project.tracks.filter { $0.role == "voiceover" }.flatMap(\.items)
-        let speech = project.tracks
-            .filter { $0.role != "voiceover" }
-            .flatMap(\.items)
-            .filter { $0["tag"]?.object["role"]?.string == "speech" }
-        let regions = (speech + voiceover).sorted { $0.at < $1.at }
+        var regions: [Range<Int>] = []
+        for track in project.tracks where track.kind == TrackKind.audio || track.kind == TrackKind.video {
+            for item in track.items where item.duration > 0 {
+                if track.role == TrackRole.voiceover || item["tag"]?.object["role"]?.string == "speech" {
+                    regions.append(item.at..<item.end)
+                    continue
+                }
+                guard ![TrackRole.music, TrackRole.sfx].contains(track.role), !track.isMuted, item["muted"] != .bool(true),
+                    let mediaID = item.mediaID, let transcript = transcripts[mediaID],
+                    let media = project.media.first(where: { $0.id == mediaID })
+                else { continue }
+                let span = project.sourceSpan(of: item, media: media)
+                let heard = transcript.words.filter { $0.event == nil && $0.end > span.lowerBound && $0.start < span.upperBound }
+                guard let first = heard.first, let last = heard.max(by: { $0.end < $1.end }) else { continue }
+                let start = max(item.at, project.frame(atSource: max(first.start, span.lowerBound), in: item, media: media))
+                let end = min(item.end, project.frame(atSource: min(last.end, span.upperBound), in: item, media: media))
+                if end > start { regions.append(start..<end) }
+            }
+        }
         var covered = 0
         var lastEnd = 0
-        for region in regions {
-            covered += max(0, min(project.duration, region.end) - max(lastEnd, region.at))
-            lastEnd = max(lastEnd, region.end)
+        for region in regions.sorted(by: { $0.lowerBound < $1.lowerBound }) {
+            covered += max(0, min(project.duration, region.upperBound) - max(lastEnd, region.lowerBound))
+            lastEnd = max(lastEnd, region.upperBound)
         }
         return Double(covered) / Double(project.duration)
     }
@@ -224,26 +247,27 @@ public enum TimelineReview {
         issues += rightsIssues(project, context: context)
         if let plugins = context.pluginIssues, plugins.revision == project.revision { issues += plugins.issues }
         if project.duration > 0, let minimum = profile["minSpeechCoverage"] {
-            let coverage = speechCoverage(project)
+            let coverage = speechCoverage(project, transcripts: context.transcripts)
             if coverage < minimum {
                 issues.append(
                     ReviewIssue(
-                        id: "coverage", title: "Little tagged speech",
-                        detail: String(format: "%.0f%% of the edit is tagged speech or voiceover; the project asks for %.0f%%.",
-                                       coverage * 100, minimum * 100),
+                        id: "coverage", title: "Little speech",
+                        detail: String(
+                            format: "%.0f%% of the edit is speech (heard in transcripts, tagged or voiceover); the "
+                                + "project asks for %.0f%%.", coverage * 100, minimum * 100),
                         frame: 0, facts: ["share": fact(coverage), "minimum": .number(minimum)]))
             }
         }
         return sorted(accepting(applyingSeverities(issues, project: project), project: project))
     }
 
-    /// Warnings and notes the project accepted (`review.accepted`), with their reasons. Errors are never accepted:
-    /// they are fixed, or their severity is changed in `review.severities` for a stated reason.
+    /// Issues the project accepted (`review.accepted`), with their reasons. An error can be accepted too (#507-31),
+    /// when no fix exists; the summary counts it as acceptedErrors.
     static func accepting(_ issues: [ReviewIssue], project: Project) -> [ReviewIssue] {
         let accepted = project["review"]?.object["accepted"]?.object ?? [:]
         guard !accepted.isEmpty else { return issues }
         return issues.map { issue in
-            guard issue.severity != .error, let reason = accepted[issue.id]?.object["reason"]?.string else { return issue }
+            guard let reason = accepted[issue.id]?.object["reason"]?.string else { return issue }
             var copy = issue
             copy.accepted = reason
             return copy

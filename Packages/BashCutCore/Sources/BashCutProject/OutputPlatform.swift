@@ -7,6 +7,16 @@ public enum OutputPresetName {
         "tiktok", "reels", "shorts", "feed-4x5", "square", "portrait-3x4", "youtube-1080", "youtube-4k", "quick-draft",
         "prores",
     ]
+
+    /// The platform an export preset is made for (#507-21): the preset's own name for the vertical apps, `youtube`
+    /// for both YouTube sizes; drafts, masters and plain shapes have none.
+    public static func platformID(_ preset: String) -> String? {
+        switch preset {
+        case "tiktok", "reels", "shorts": preset
+        case "youtube-1080", "youtube-4k": "youtube"
+        default: nil
+        }
+    }
 }
 
 /// Where a vertical platform's own UI covers the picture, as fractions of the frame: the caption bar along the
@@ -88,8 +98,10 @@ public struct OutputPlatform: Sendable, Equatable, Identifiable {
     /// The platforms of the table in use.
     public static var all: [OutputPlatform] { PlatformData.current.platforms.map(OutputPlatform.init) }
 
-    public static func named(_ id: String) -> OutputPlatform? {
-        PlatformData.current.platforms.first { $0.id == id }.map(OutputPlatform.init)
+    /// A platform by its id, or by the export preset made for it (`youtube-1080` → `youtube`, #507-21).
+    public static func named(_ name: String) -> OutputPlatform? {
+        let id = PlatformData.current.platforms.contains { $0.id == name } ? name : OutputPresetName.platformID(name) ?? name
+        return PlatformData.current.platforms.first { $0.id == id }.map(OutputPlatform.init)
             ?? PlatformData.builtIn.platforms.first { $0.id == id }.map(OutputPlatform.init)
     }
 

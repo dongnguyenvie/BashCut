@@ -91,4 +91,24 @@ struct ReviewTests {
         #expect(overlapIDs == ["overlap-close"])
         #expect(abs(TimelineReview.speechCoverage(project) - 36.0 / 44.0) < 0.0001)
     }
+
+    @Test("Clips placed by hand count as speech from their first heard word to the last (#507-36)")
+    func heardCoverage() throws {
+        let media = Media(fields: [
+            "id": .string("m"), "path": .string("talk.mov"), "frames": .integer(300), "fps": FrameRate(30, 1).json,
+        ])
+        var project = try Project(name: "Talk", fps: FrameRate(30, 1)).applying(.group(label: "fixture", author: .user, ops: [
+            .addMedia(media), .insert(track: "v1", item: Item(id: "a", media: "m", at: 0, duration: 90, sourceIn: 30)),
+        ])).project
+        #expect(TimelineReview.speechCoverage(project) == 0)
+        // Words at 1.5–2.0 s and 3.0–3.5 s of the source: the clip plays from 1 s, so frames 15–75 are heard.
+        let words = [("xin", 1.5, 2.0), ("chào", 3.0, 3.5), ("muộn", 9.0, 9.5)].map {
+            CaptionWords.Timed(text: $0.0, start: $0.1, end: $0.2)
+        }
+        let transcripts = ["m": SourceTranscript(key: "k", language: "vi", provider: [:], transcribedAt: "", phrases: [], words: words)]
+        #expect(abs(TimelineReview.speechCoverage(project, transcripts: transcripts) - 60.0 / 90.0) < 0.0001)
+        let index = project.tracks.firstIndex { $0.id == "v1" }!
+        project.tracks[index].items[0]["muted"] = .bool(true)
+        #expect(TimelineReview.speechCoverage(project, transcripts: transcripts) == 0)
+    }
 }

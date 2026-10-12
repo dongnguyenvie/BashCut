@@ -5,6 +5,8 @@ import Foundation
 /// `decode` case and one `json` case here plus its `applying` logic.
 extension EditOperation {
     public static let maximumFrame = 2_000_000_000
+    /// `addTrack`'s index for "in front of the layers of its kind": the top visual layer, or the last sound layer.
+    public static let frontLayer = -1
     /// The operation names an agent may send, for error messages.
     public static let agentOperations = [
         "insert", "delete", "split", "trim", "move", "reorder", "slip", "roll", "setProperties", "setSpeed",
@@ -58,7 +60,10 @@ extension EditOperation {
         case "setLinkedAudio": self = .setLinkedAudio(video: try read.string("video"), audio: fields["audio"]?.string)
         case "addMedia": self = .addMedia(Media(fields: try read.object("media")))
         case "addTrack":
-            self = .addTrack(track: Track(fields: try read.object("track")), atIndex: try read.index("atIndex"))
+            // Without atIndex the layer goes in front of its kind's layers (#507-19c).
+            self = .addTrack(
+                track: Track(fields: try read.object("track")),
+                atIndex: fields["atIndex"] == nil ? EditOperation.frontLayer : try read.index("atIndex"))
         case "deleteTrack": self = .deleteTrack(track: try read.string("track"))
         case "moveTrack": self = .moveTrack(track: try read.string("track"), toIndex: try read.index("toIndex"))
         case "setTrackProperties":
@@ -88,9 +93,17 @@ extension EditOperation {
                 id: try read.string("id"), label: try read.string("label"), atFrame: try read.frame("atFrame"))
         case "deleteSection": self = .deleteSection(id: try read.string("id"))
         case "upsertTransition":
+            // The id is optional (#507-18): without one the op updates the transition at that cut, or names a new
+            // one after it. `between: [from, to]` is the same as from and to.
+            let between = fields["between"]?.array.compactMap(\.string) ?? []
+            guard fields["between"] == nil || between.count == 2 else {
+                throw ProjectError.invalid("between must be the two item ids of the cut, [from, to]")
+            }
+            guard fields["duration"] != nil else { throw ProjectError.invalid("duration (frames) is required") }
             self = .upsertTransition(
-                id: try read.string("id"), kind: try read.string("kind"), from: try read.string("from"),
-                to: try read.string("to"), duration: try read.frame("duration"), easing: fields["easing"]?.string,
+                id: fields["id"]?.string ?? "", kind: try read.string("kind"),
+                from: try between.first ?? read.string("from"), to: try between.last ?? read.string("to"),
+                duration: try read.frame("duration"), easing: fields["easing"]?.string,
                 motion: fields["motion"].flatMap { $0 == .null ? nil : $0 })
         case "deleteTransition": self = .deleteTransition(id: try read.string("id"))
         case "addColorLUT": self = .addColorLUT(ColorLUT(fields: try read.object("lut")))
@@ -148,7 +161,9 @@ extension EditOperation {
             return op("setLinkedAudio", ["video": .string(video), "audio": audio.map(JSONValue.string) ?? .null])
         case .addMedia(let media): return op("addMedia", ["media": .object(media.fields)])
         case .addTrack(let track, let index):
-            return op("addTrack", ["track": .object(track.fields), "atIndex": .integer(index)])
+            var fields: [String: JSONValue] = ["track": .object(track.fields)]
+            if index != EditOperation.frontLayer { fields["atIndex"] = .integer(index) }
+            return op("addTrack", fields)
         case .deleteTrack(let track): return op("deleteTrack", ["track": .string(track)])
         case .moveTrack(let track, let index): return op("moveTrack", ["track": .string(track), "toIndex": .integer(index)])
         case .setTrackProperties(let track, let patch):
@@ -179,9 +194,9 @@ extension EditOperation {
         case .deleteSection(let id): return op("deleteSection", ["id": .string(id)])
         case .upsertTransition(let id, let kind, let from, let to, let duration, let easing, let motion):
             var fields: [String: JSONValue] = [
-                "id": .string(id), "kind": .string(kind), "from": .string(from), "to": .string(to),
-                "duration": .integer(duration),
+                "kind": .string(kind), "from": .string(from), "to": .string(to), "duration": .integer(duration),
             ]
+            if !id.isEmpty { fields["id"] = .string(id) }
             if let easing { fields["easing"] = .string(easing) }
             if let motion { fields["motion"] = motion }
             return op("upsertTransition", fields)

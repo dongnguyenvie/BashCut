@@ -76,8 +76,18 @@ extension ProjectSchema {
             "type": .string("object"),
             "description": .string(
                 "Check ID (or prefix before a hyphen, such as safe or shot-long; or a plugin provider ID ending in ':') → "
-                    + "error, warning, info or off"),
-            "additionalProperties": enumeration("Severity", ReviewProfile.severityValues),
+                    + "error, warning, info or off, or {severity, reason}; review shows the reason as severityReason"),
+            "additionalProperties": .object([
+                "oneOf": .array([
+                    enumeration("Severity", ReviewProfile.severityValues),
+                    object(
+                        "Severity with the reason for the change", required: ["severity"],
+                        properties: [
+                            "severity": enumeration("Severity", ReviewProfile.severityValues),
+                            "reason": string("Why this check's severity differs for this project"),
+                        ]),
+                ]),
+            ]),
         ])
         properties["platform"] = object(
             "Overrides of platform facts when an app changes its interface (#469)", required: [],
@@ -92,7 +102,8 @@ extension ProjectSchema {
         properties["disabledChecks"] = array("Plugin or provider IDs whose review checks do not run", of: string("ID"))
         properties["accepted"] = .object([
             "type": .string("object"),
-            "description": .string("Issue ID → {reason, rev, author}: warnings and notes kept on purpose (P1-E2); never errors"),
+            "description": .string("Issue ID → {reason, rev, author, severity}: issues kept on purpose (P1-E2); an error only when no fix exists "
+                    + "(counted as acceptedErrors)"),
             "additionalProperties": object(
                 "Accepted issue", required: ["reason"],
                 properties: ["reason": string("Why it stays"), "rev": integer("Revision", minimum: 0), "author": string("Author")]),

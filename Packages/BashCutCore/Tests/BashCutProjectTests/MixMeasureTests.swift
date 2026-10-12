@@ -42,9 +42,26 @@ struct MixMeasureTests {
         #expect(windows.count == 1 && windows[0]["end"] == .number(4))
         let fx = try #require(json["effects"]?.array.first).object
         #expect(fx["loudness"] == .number(-24) && fx["peakDb"] == .number(-6))
-        #expect(fx["voiceP95"] == .number(-20) && fx["deltaDb"] == .number(-4) && fx["masked"] == .bool(true))
+        #expect(fx["voiceP95"] == .number(-20) && fx["deltaDb"] == .number(-4) && fx["masked"] == nil)
+        // Against the voice at the same moment (#507-16); the speech curve has no peaks here.
+        #expect(fx["voiceDuring"] == .number(-20) && fx["overVoiceDb"] == .number(-4) && fx["peakOverVoiceDb"] == nil)
+        #expect(fx["sharedWith"] == nil)
         #expect(fx["onsetOffsets"]?.object["cut"] == .integer(30) && fx["onsetOffsets"]?.object["beat"] == .integer(0))
         #expect(fx["peakFrame"] == .integer(93))
+    }
+
+    @Test("A short effect is read against the voice's peaks where it plays; overlapping effects are named (#507-16)")
+    func effectPeaks() throws {
+        var project = project()
+        let fx = project.tracks.count - 1
+        project.tracks[fx].items.append(Item(id: "t", media: "m", at: 100, duration: 15))
+        let speech = MixMeasure.Curve(
+            momentary: (0..<100).map { $0 < 40 ? -20 : -100 }, peakDb: (0..<100).map { $0 < 40 ? -8 : -100 })
+        let (_, music, effect) = curves()
+        let json = MixMeasure.json(project, speech: speech, music: music, effects: effect, words: []).object
+        let rows = try #require(json["effects"]?.array).map(\.object)
+        #expect(rows[0]["voicePeakDb"] == .number(-8) && rows[0]["peakOverVoiceDb"] == .number(2))
+        #expect(rows[0]["sharedWith"] == .array([.string("t")]) && rows[1]["sharedWith"] == .array([.string("s")]))
     }
 
     @Test("Words decide the spoken blocks when there are any")

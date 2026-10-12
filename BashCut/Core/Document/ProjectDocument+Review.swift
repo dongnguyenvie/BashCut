@@ -217,7 +217,8 @@ extension ProjectDocument {
         ])
     }
 
-    /// `review.accept`: keeps a warning or note with the reason (or drops the acceptance) as one undoable edit.
+    /// `review.accept`: keeps an issue with the reason (or drops the acceptance) as one undoable edit. An error can
+    /// be kept too when no fix exists (#507-31); it is recorded with its severity and counted as acceptedErrors.
     func acceptReviewIssue(_ arguments: CommandArguments, author: Author) throws -> JSONValue {
         let id = try arguments.string("id")
         var review = project["review"]?.object ?? [:]
@@ -226,12 +227,11 @@ extension ProjectDocument {
             guard accepted.removeValue(forKey: id) != nil else { throw RPCFailure(-32602, "\(id) is not accepted") }
         } else {
             guard let reason = arguments.optionalString("reason") else { throw RPCFailure(-32602, "Give the reason") }
-            if let issue = reviewIssues().first(where: { $0.id == id }), issue.severity == .error {
-                throw RPCFailure(-32602, "\(id) is an error: fix it, or change its severity in review.severities with a reason")
-            }
-            accepted[id] = .object([
+            var record: [String: JSONValue] = [
                 "reason": .string(reason), "rev": .integer(project.revision), "author": .string(author.rawValue),
-            ])
+            ]
+            if let issue = reviewIssues().first(where: { $0.id == id }) { record["severity"] = .string(issue.severity.rawValue) }
+            accepted[id] = .object(record)
         }
         review["accepted"] = accepted.isEmpty ? nil : .object(accepted)
         let revision = try commit(
@@ -319,7 +319,9 @@ extension ProjectDocument {
             }
             return .object([
                 "revision": .integer(project.revision), "samples": .integer(measured?.samples.count ?? 0),
-                "cuts": .integer(measured?.cuts.count ?? 0),
+                // Hard cuts measured: touching clips on Main with no transition (export status cuts counts every
+                // join, #508-34).
+                "hardCuts": .integer(measured?.cuts.count ?? 0),
                 "pluginChecks": .array(checks.map { .object(["plugin": .string($0.plugin.id), "provider": .string($0.provider.id)]) }),
                 "issues": .array(found.map(\.json)), "current": .bool(project.revision == self.project.revision),
             ])

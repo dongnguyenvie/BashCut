@@ -433,7 +433,11 @@ recorded show only label and author. Plugins see `why` in the `edit.committed` e
 - **Sections and LUTs** keep stable IDs. A LUT catalog entry uses a project-relative `luts/*.cube` path and a 3D
   size from 2 through 64. Apply it with `setProperties` on `color.lut`, with optional `color.lutStrength` from 0
   through 1.
-- **Transitions.** `upsertTransition` takes stable `from`/`to` clip IDs, a kind, an integer-frame `duration`, an
+- **Tracks.** `addTrack` takes the track object and an optional `atIndex` (0 is the back layer); without it the
+  layer goes in front of the layers of its kind.
+- **Transitions.** `upsertTransition` takes stable `from`/`to` clip IDs (or `between: [from, to]`), an optional `id`
+  (without one it updates the transition at that cut or names a new one `transition-<from>-<to>`), a kind, an
+  integer-frame `duration`, an
   optional `easing` (`linear`, the default, `in`, `out`, `inOut` or `"cubic-bezier(x1,y1,x2,y2)"` with x1 and x2 in
   0…1, the same ease type keyframes use) and an optional `motion`. The built-in kinds (`dissolve`, `whip`, `blink`,
   `zoom`, `spin`, `shutter`, `wipe`) are rows of data; any other kind (lowercase letters, digits, dashes) needs a

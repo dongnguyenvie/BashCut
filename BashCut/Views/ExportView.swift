@@ -208,7 +208,7 @@ struct ExportReportView: View {
             Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 8) {
                 row("Preset", Text(LocalizedStringKey(report.preset.title)))
                 row("Duration", Text(report.receipt.duration.formatted(.number.precision(.fractionLength(2)))) + Text(" s"))
-                row("Cuts", Text(report.cutCount.formatted()))
+                row("Cuts", Text(report.cuts.formatted()))
                 row("Captions", Text(report.captionCount.formatted()))
                 row("Speech coverage", Text(report.speechCoverage, format: .percent.precision(.fractionLength(0))))
                 row("File size", Text(ByteCountFormatter.string(fromByteCount: report.receipt.bytes, countStyle: .file)))

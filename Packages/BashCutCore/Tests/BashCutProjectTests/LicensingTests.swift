@@ -29,6 +29,8 @@ struct LicensingTests {
             "origin": .string("ai"), "provider": .string("acme"), "seed": .integer(42), "charged": .number(0.12),
             "requestId": .string("r1"), "custom": .bool(true),
         ]), label: "x")
+        // A clip downloaded from someone's page (#507-24).
+        try Provenance.validate(.object(["origin": .string("web"), "sourceUrl": .string("https://v.example/1")]), label: "x")
         for bad: [String: JSONValue] in [
             ["origin": .string("found")], ["charged": .number(-1)], ["seed": .bool(true)], ["prompt": .integer(1)],
         ] {

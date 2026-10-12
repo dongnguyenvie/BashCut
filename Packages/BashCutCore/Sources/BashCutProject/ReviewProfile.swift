@@ -26,12 +26,15 @@ public struct ReviewProfile: Sendable, Equatable {
         values = Self.numberKeys.keys.reduce(into: [:]) { result, key in
             if let value = review[key]?.double { result[key] = value }
         }
-        severities = (review["severities"]?.object ?? [:]).compactMapValues(\.string)
+        severities = (review["severities"]?.object ?? [:]).compactMapValues(Self.severity)
         platform = review["platform"]?.object ?? [:]
         credits = review["credits"]?.bool ?? false
     }
 
     public subscript(key: String) -> Double? { values[key] }
+
+    /// A `review.severities` entry's value: `"warning"`, or `{"severity": "warning", "reason": "…"}` (#507-37).
+    public static func severity(_ entry: JSONValue) -> String? { entry.string ?? entry.object["severity"]?.string }
 
     /// A platform with this project's overrides applied.
     public func applying(to platform: OutputPlatform) -> OutputPlatform {
@@ -67,9 +70,15 @@ extension Project {
         }
         if let severities = review["severities"], severities != .null {
             guard case .object(let map) = severities,
-                map.values.allSatisfy({ $0.string.map(ReviewProfile.severityValues.contains) == true })
+                map.values.allSatisfy({ entry in
+                    ReviewProfile.severity(entry).map(ReviewProfile.severityValues.contains) == true
+                        && (entry.string != nil || entry.object.keys.allSatisfy { ["severity", "reason"].contains($0) })
+                        && (entry.object["reason"].map { ($0.string?.count ?? 0) > 0 } ?? true)
+                })
             else {
-                throw ProjectError.invalid("review.severities: values must be \(ReviewProfile.severityValues.joined(separator: ", "))")
+                throw ProjectError.invalid(
+                    "review.severities: values must be " + ReviewProfile.severityValues.joined(separator: ", ")
+                        + ", or {severity, reason} with reason text")
             }
         }
         try Self.validateReviewRecords(review)
