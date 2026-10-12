@@ -80,7 +80,7 @@ struct LibraryView: View {
             } else if mediaSource == .clips {
                 clips
             } else {
-                mediaGrid
+                mediaGrid.mediaFileDrop(document)
             }
         }
     }

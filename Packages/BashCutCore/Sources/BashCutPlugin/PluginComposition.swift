@@ -25,8 +25,13 @@ public enum PluginFeature {
     /// Plugin overlays on the timeline and viewer (#407).
     public static let overlays = "overlays"
 
+    /// Dragging files from list rows and images onto the timeline and the Media panel (#408).
+    public static let viewsDrag = "views.drag"
+
     /// Features that are not a view component or place.
-    static let named = [container, views, requires, invoke, optionsSet, voiceMaxTakes, inspectorWhen, viewUpdate, overlays]
+    static let named = [
+        container, views, requires, invoke, optionsSet, voiceMaxTakes, inspectorWhen, viewUpdate, overlays, viewsDrag,
+    ]
 
     /// Every feature this host provides: `views.<component>` for each view component it can draw and
     /// `location.<place>` for each place a view can live.
