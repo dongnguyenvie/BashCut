@@ -5,6 +5,7 @@
 
 ## [Unreleased]
 
+- **Text › Lines shows what a line inherits.** A line without its own font or colours showed the preset's font ("Preset (Arial Black)") and colours, while it draws with the title's own; it now shows *Title's look (System-Black)* and the title's colours.
 - **Plugin views can list a capability's providers.** A view's host call `capabilities.get` was refused (not on the plugin command boundary), so the Views Example's Voice tab offered only "BashCut's choice" even with VieNeu TTS installed; plugin views and actions may now call it.
 - **`export status` reports a failed export.** After an export failed, `export status` still said `completed` with the previous file, so a caller polling it never saw the failure or its error (which names the frame and item since the render-error change). It now says `failed` with `error`, `failedAt`, the preset and path, and the previous receipt under `lastExport`, until a later export finishes.
 - **Dry runs show the request ID again.** `voice speak --dry-run --request-id X` (and every other provider command's dry run, `library search/generate` too) returned the request without its `requestId`, so the request a dry run showed was not the one a real run sends; it is in `params` again.

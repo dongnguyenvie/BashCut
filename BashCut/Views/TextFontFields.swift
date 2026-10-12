@@ -13,12 +13,21 @@ struct TextFontFields: View {
     var language = ""
     /// Shows Add Font… (needs a saved project).
     var addFont: (() -> Void)?
+    /// What an unset field falls back to when it is not the preset: a title line inherits the title's own font and
+    /// colours (Text › Lines), so its menu names the title's font, not the preset's.
+    var inherited: [String: JSONValue]?
+
+    private var fallbackFont: String { inherited?["font"]?.string ?? TextPresetStyle.font(preset) }
+    private var fallbackLabel: String {
+        inherited == nil
+            ? String(localized: "Preset (\(fallbackFont))") : String(localized: "Title's look (\(fallbackFont))")
+    }
 
     var body: some View {
         let font = style["font"]?.string
         LabeledContent("Font") {
-            Menu(font ?? String(localized: "Preset (\(TextPresetStyle.font(preset)))")) {
-                Button("Preset (\(TextPresetStyle.font(preset)))") { style["font"] = nil }
+            Menu(font ?? fallbackLabel) {
+                Button(fallbackLabel) { style["font"] = nil }
                 let own = ProjectFontCatalog.shared.fonts
                 if !own.isEmpty {
                     Section("Project") {
@@ -42,8 +51,8 @@ struct TextFontFields: View {
             Label("\(font) is not available and draws as Helvetica", systemImage: "exclamationmark.triangle")
                 .font(.caption).foregroundStyle(.orange)
         }
-        colorPicker("Text colour", key: "fill", fallback: TextPresetStyle.fill(preset))
-        colorPicker("Outline colour", key: "stroke", fallback: "#000000")
+        colorPicker("Text colour", key: "fill", fallback: inherited?["fill"]?.string ?? TextPresetStyle.fill(preset))
+        colorPicker("Outline colour", key: "stroke", fallback: inherited?["stroke"]?.string ?? "#000000")
     }
 
     /// `family`: the title names the family too (the project's fonts are not grouped by family).

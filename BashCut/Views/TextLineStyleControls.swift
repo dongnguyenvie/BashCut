@@ -32,7 +32,8 @@ struct TextLineStyleControls: View {
                                     for key in ["font", "fill", "stroke"] { patch[key] = fields[key] ?? .null }
                                     apply(patch, line: index, coalesce: true)
                                 }),
-                            language: document.contentLanguage)
+                            language: document.contentLanguage,
+                            inherited: currentStyle.filter { ["font", "fill", "stroke"].contains($0.key) })
                         HStack {
                             Text("Size")
                             Slider(

@@ -1,6 +1,7 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Title's look (%@)": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Title's look (%@)" } }, "vi": { "stringUnit": { "state": "translated", "value": "Kiểu của tiêu đề (%@)" } } } },
     "Skills for agents": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Skills for agents" } }, "vi": { "stringUnit": { "state": "translated", "value": "Skill cho agent" } } } },
     "%lld lines to check": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%lld lines to check" } }, "vi": { "stringUnit": { "state": "translated", "value": "%lld dòng cần xem" } } } },
     "added": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "added" } }, "vi": { "stringUnit": { "state": "translated", "value": "thêm mới" } } } },
