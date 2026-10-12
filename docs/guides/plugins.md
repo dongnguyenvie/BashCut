@@ -1363,8 +1363,9 @@ later:
 - Calls on a request without a host channel get the error "This request cannot call BashCut".
 - Call params and results are limited to 1 MiB.
 - Views and actions (API 8) call as author `plugin`, with one command token per plugin, limited to the chat-agent
-  commands plus `plugins.run`, `plugins.invoke`, `plugins.show-view`, `plugins.option`, `plugins.overlays` and
-  `plugins.set-overlays` (its own); `ui.action` only for
+  commands plus `plugins.run`, `plugins.invoke`, `plugins.show-view`, `plugins.option`, `plugins.overlays`,
+  `plugins.set-overlays` (its own) and `capabilities.get` (the providers of a capability, for a provider picker);
+  `ui.action` only for
   `notify`, `panel` and `source` (`{"action": "notify", "target": "Done"}` shows a status message).
 - `plugins.option` (`{"plugin": "<its id>", "option", "value"}`) sets one of the calling plugin's own options, so a
   view's "Use" button can choose the `voice` the Voice panel and every later request see, without a copy in plugin

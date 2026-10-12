@@ -53,6 +53,8 @@ import Testing
         let mine: [String: JSONValue] = ["plugin": .string("example.voice"), "option": .string("voice")]
         let theirs: [String: JSONValue] = ["plugin": .string("other.plugin"), "option": .string("voice")]
         #expect(PluginCommandSession.allowedMethods.contains("plugins.option"))
+        // A view's provider picker lists a capability's providers (views-example Voice tab).
+        #expect(PluginCommandSession.allowedMethods.contains("capabilities.get"))
         #expect(PluginCommandSession.ownPluginRefusal("plugins.option", params: mine, caller: "example.voice") == nil)
         #expect(PluginCommandSession.ownPluginRefusal("plugins.option", params: theirs, caller: "example.voice") != nil)
         #expect(PluginCommandSession.ownPluginRefusal("plugins.option", params: [:], caller: "example.voice") != nil)

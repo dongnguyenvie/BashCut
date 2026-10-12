@@ -2,13 +2,14 @@ import BashCutProject
 import Foundation
 
 /// App commands a plugin's view or action requests may call over the session host channel (plugin API 8, #399): the
-/// chat-agent boundary plus running plugin actions and status messages. They run as author `plugin` with one token
+/// chat-agent boundary plus running plugin actions, status messages and `capabilities.get` (which plugins provide a
+/// capability, for a provider picker). They run as author `plugin` with one token
 /// per plugin, so edits are validated, undoable and attributed like any command. `plugins.invoke` and `plugins.option`
 /// are answered by the caller before they get here, since they need the calling plugin's manifest.
 @MainActor public final class PluginCommandSession {
     public static let allowedMethods: Set<String> = ChatCommandSession.allowedMethods.union([
         "plugins.run", "plugins.invoke", "plugins.show-view", "plugins.option", "plugins.set-overlays",
-        "plugins.overlays",
+        "plugins.overlays", "capabilities.get",
     ]).subtracting(["plugins.view", "plugins.view-event"])
     /// Host calls a plugin may make only about itself: `params.plugin` must be the caller's id.
     public nonisolated static let ownPluginMethods: Set<String> = [
