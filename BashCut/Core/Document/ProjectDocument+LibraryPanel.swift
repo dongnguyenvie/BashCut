@@ -121,7 +121,7 @@ extension ProjectDocument {
         var preset = edited
         if preset.sfx == ownTransitionSound { preset.sfx = nil }
         var params = item.params
-        for key in ["kind", "duration", "easing", "sfx"] { params[key] = nil }
+        for key in ["kind", "duration", "easing", "sfx", "sfxOffset", "sfxVolumeDb"] { params[key] = nil }
         params.merge(preset.params) { $1 }
         var changes: [String: JSONValue] = ["params": .object(params)]
         if item.file != nil, edited.sfx != ownTransitionSound { changes["file"] = .null }

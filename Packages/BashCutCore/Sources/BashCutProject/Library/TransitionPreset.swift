@@ -6,12 +6,16 @@ import Foundation
 /// `kind` is required. `duration` (timeline frames) falls back to the cut's current transition or a default length,
 /// and is never longer than the shorter clip. `easing` is a `TimelineTransition` easing (linear when absent).
 /// `sfx` names an audio library item (`id` or `scope:id`); without it, a preset's own `file` is its sound.
+/// `sfxOffset` moves the sound from the cut by timeline frames (negative: it starts before the cut, so a whoosh peaks
+/// on it) and `sfxVolumeDb` is its gain (the clip's `volumeDb`).
 public struct TransitionPreset: Sendable, Equatable {
     public static let maximumDuration = 600
     /// The item field that marks a sound effect a preset placed, with the ID of its transition.
     public static let soundField = "transitionSFX"
     /// The media field naming the audio library item (`scope:id`) a preset's sound was copied from.
     public static let soundLibraryField = "libraryItem"
+    public static let sfxOffsetRange = -600...600
+    public static let sfxVolumeRange = -60.0...12.0
 
     public var kind: String
     public var duration: Int?
@@ -19,13 +23,20 @@ public struct TransitionPreset: Sendable, Equatable {
     /// A `TransitionMotion` object; required for a kind that is not built in.
     public var motion: JSONValue?
     public var sfx: String?
+    public var sfxOffset: Int?
+    public var sfxVolumeDb: Double?
 
-    public init(kind: String, duration: Int? = nil, easing: String? = nil, motion: JSONValue? = nil, sfx: String? = nil) {
+    public init(
+        kind: String, duration: Int? = nil, easing: String? = nil, motion: JSONValue? = nil, sfx: String? = nil,
+        sfxOffset: Int? = nil, sfxVolumeDb: Double? = nil
+    ) {
         self.kind = kind
         self.duration = duration
         self.easing = easing
         self.motion = motion
         self.sfx = sfx
+        self.sfxOffset = sfxOffset
+        self.sfxVolumeDb = sfxVolumeDb
     }
 
     /// Reads and checks `params`; `label` starts each error message.
@@ -59,6 +70,18 @@ public struct TransitionPreset: Sendable, Equatable {
             }
             sfx = value.string
         }
+        if let value = params["sfxOffset"] {
+            guard let frames = value.int, Self.sfxOffsetRange.contains(frames) else {
+                throw ProjectError.invalid("\(label): params.sfxOffset must be whole frames from −600 to 600")
+            }
+            sfxOffset = frames == 0 ? nil : frames
+        }
+        if let value = params["sfxVolumeDb"] {
+            guard let volume = value.double, volume.isFinite, Self.sfxVolumeRange.contains(volume) else {
+                throw ProjectError.invalid("\(label): params.sfxVolumeDb must be from −60 to 12 dB")
+            }
+            sfxVolumeDb = volume == 0 ? nil : volume
+        }
     }
 
     /// The params as a library item stores them; a linear easing is left out.
@@ -68,6 +91,8 @@ public struct TransitionPreset: Sendable, Equatable {
         if let easing, easing != TimelineTransition.defaultEasing { params["easing"] = .string(easing) }
         if let motion { params["motion"] = motion }
         if let sfx { params["sfx"] = .string(sfx) }
+        if let sfxOffset, sfxOffset != 0 { params["sfxOffset"] = .integer(sfxOffset) }
+        if let sfxVolumeDb, sfxVolumeDb != 0 { params["sfxVolumeDb"] = EffectRecipe.number((sfxVolumeDb * 10).rounded() / 10) }
         return params
     }
 }
@@ -99,8 +124,9 @@ extension Project {
     }
 
     /// The plan that applies `preset` at the cut beside the video clip `itemID` as one edit: the transition and,
-    /// with `sound` (audio media, new or already in the project), a sound effect from the cut on an SFX layer
-    /// (added when the project has none). It replaces a sound an earlier preset placed at this cut.
+    /// with `sound` (audio media, new or already in the project), a sound effect from the cut (moved by
+    /// `sfxOffset`, never before frame 0, at `sfxVolumeDb`) on an SFX layer (added when the project has none). It
+    /// replaces a sound an earlier preset placed at this cut.
     public func transitionPresetPlan(_ preset: TransitionPreset, at itemID: String, sound: Media? = nil) throws -> LayerPlanner {
         guard TimelineTransition.renderedKinds.contains(preset.kind) || preset.motion != nil else {
             throw ProjectError.invalid("The transition kind \(preset.kind) is not built in: give params.motion")
@@ -125,8 +151,9 @@ extension Project {
         if let earlier = transitionSound(for: id) { try planner.add([.delete(item: earlier.item.id, ripple: false)]) }
         if !media.contains(where: { $0.id == sound.id }) { try planner.add([.addMedia(sound)]) }
         let layer = try planner.sfxTrack()
-        var item = Item(media: sound.id, at: cut.to.at, duration: length)
+        var item = Item(media: sound.id, at: max(0, cut.to.at + (preset.sfxOffset ?? 0)), duration: length)
         item[TransitionPreset.soundField] = .string(id)
+        if let volume = preset.sfxVolumeDb, volume != 0 { item["volumeDb"] = .number(volume) }
         try planner.place(item, on: layer)
         return planner
     }

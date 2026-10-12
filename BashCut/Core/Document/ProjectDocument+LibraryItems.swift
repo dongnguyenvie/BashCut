@@ -259,14 +259,15 @@ extension ProjectDocument {
         let item = id.flatMap { id in project.tracks.flatMap(\.items).first { $0.id == id } }
         if let id, item == nil { throw RPCFailure(-32602, "Unknown item \(id)") }
         let transition = id.flatMap { id in project.transitions.first { $0.fromItemID == id || $0.toItemID == id } }
-        let sound = kind == .transitionPreset ? transition.flatMap { project.transitionSound(for: $0.id)?.media } : nil
+        let placedSound = kind == .transitionPreset ? transition.flatMap { project.transitionSound(for: $0.id) } : nil
+        let sound = placedSound?.media
         let grade = kind == .look ? gradeLUT(of: item) : nil
         let effectSound = kind == .effectPreset ? item.flatMap(effectSound(of:)) : nil
         let params: [String: JSONValue]
         do {
             params = try LibrarySelection.params(
                 kind, item: item, transition: transition, sound: sound ?? effectSound?.media, lut: grade?.lut,
-                soundItem: effectSound?.item, project: project)
+                soundItem: effectSound?.item ?? placedSound?.item, project: project)
         } catch { throw RPCFailure.from(error, fallbackCode: -32602) }
         if let grade { return (params, grade.file) }
         let ownSound = kind == .effectPreset

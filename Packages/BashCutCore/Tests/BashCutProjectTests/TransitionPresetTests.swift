@@ -45,6 +45,38 @@ struct TransitionPresetTests {
         for item in LibraryBuiltIns.transitions { try item.validate() }
     }
 
+    @Test("A preset's sound moves from the cut by sfxOffset at sfxVolumeDb, and save selection keeps both")
+    func soundOffsetAndVolume() throws {
+        let preset = try TransitionPreset(params: [
+            "kind": .string("whip"), "sfx": .string("user:whoosh"), "sfxOffset": .integer(-8), "sfxVolumeDb": .integer(-6),
+        ])
+        #expect(preset.sfxOffset == -8 && preset.sfxVolumeDb == -6)
+        #expect(try TransitionPreset(params: preset.params) == preset)
+        #expect(try TransitionPreset(params: ["kind": .string("whip"), "sfxOffset": .integer(0)]).params == ["kind": .string("whip")])
+        for bad: [String: JSONValue] in [
+            ["kind": .string("whip"), "sfxOffset": .integer(601)], ["kind": .string("whip"), "sfxOffset": .number(1.5)],
+            ["kind": .string("whip"), "sfxVolumeDb": .integer(13)],
+        ] {
+            #expect(throws: ProjectError.self) { try TransitionPreset(params: bad) }
+        }
+        let project = try ProjectFixtures.twoClips("a", "b")
+        let placed = try project.applying(
+            Self.operation(try project.transitionPresetPlan(preset, at: "b", sound: Self.whoosh()))).project
+        let sound = try #require(placed.transitionSound(for: "transition-a-b"))
+        #expect(sound.item.at == 52)
+        #expect(sound.item["volumeDb"] == .number(-6))
+        // Saved from the timeline, the offset and gain come back.
+        let transition = try #require(placed.transitions.first)
+        let saved = try LibrarySelection.params(
+            .transitionPreset, item: nil, transition: transition, sound: sound.media, soundItem: sound.item, project: placed)
+        #expect(saved["sfxOffset"] == .integer(-8))
+        #expect(saved["sfxVolumeDb"] == .integer(-6))
+        // Never before the start of the timeline.
+        let early = TransitionPreset(kind: "whip", sfxOffset: -600)
+        let first = try project.applying(Self.operation(try project.transitionPresetPlan(early, at: "b", sound: Self.whoosh()))).project
+        #expect(first.transitionSound(for: "transition-a-b")?.item.at == 0)
+    }
+
     @Test("Transitions store an easing that the tween honors; linear stays the default")
     func easing() throws {
         let project = try ProjectFixtures.twoClips("a", "b")

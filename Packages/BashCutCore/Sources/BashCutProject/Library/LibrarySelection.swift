@@ -31,8 +31,16 @@ public enum LibrarySelection {
                 throw ProjectError.invalid("Select a clip that has a transition to save it")
             }
             let sfx = sound?[TransitionPreset.soundLibraryField]?.string
+            // The sound's place against the cut and its gain, when the preset's sound item is given.
+            let cut = project?.tracks.flatMap(\.items).first { $0.id == transition.toItemID }?.at
+            let offset = soundItem.flatMap { item in cut.map { item.at - $0 } }
+                .map { min(max($0, TransitionPreset.sfxOffsetRange.lowerBound), TransitionPreset.sfxOffsetRange.upperBound) }
+            let volume = soundItem?["volumeDb"]?.double.map {
+                min(max($0, TransitionPreset.sfxVolumeRange.lowerBound), TransitionPreset.sfxVolumeRange.upperBound)
+            }
             return TransitionPreset(
-                kind: transition.kind, duration: transition.duration, easing: transition.easing, sfx: sfx
+                kind: transition.kind, duration: transition.duration, easing: transition.easing, sfx: sfx,
+                sfxOffset: sound == nil ? nil : offset, sfxVolumeDb: sound == nil ? nil : volume
             ).params
         case .look:
             return try look(item, lut: lut)
