@@ -100,3 +100,41 @@ public enum WireOperations {
         }
     }
 }
+
+// Socket lines are read with `JSONValue(parsing:)` (JSONSerialization) instead of `Decodable`, which tries every
+// scalar type for every value: same values, several times faster on large answers such as `project get`.
+extension RPCRequest {
+    /// A request line, with the same fields the `Decodable` form requires: jsonrpc, id, method and params; token
+    /// optional.
+    public static func parse(_ data: Data) throws -> RPCRequest {
+        guard case .object(let fields)? = try? JSONValue(parsing: data), fields["jsonrpc"]?.string != nil,
+            let id = fields["id"], let method = fields["method"]?.string, case .object(let params)? = fields["params"]
+        else { throw RPCFailure(-32600, "Invalid JSON-RPC request") }
+        let token: String?
+        switch fields["token"] {
+        case nil, .null?: token = nil
+        case .string(let value)?: token = value
+        default: throw RPCFailure(-32600, "Invalid JSON-RPC request")
+        }
+        return RPCRequest(id: id, method: method, params: params, token: token)
+    }
+}
+
+extension RPCResponse {
+    /// A response line: jsonrpc and id, an optional result (null is none) and an optional error {code, message, data}.
+    public static func parse(_ data: Data) throws -> RPCResponse {
+        guard case .object(let fields)? = try? JSONValue(parsing: data), fields["jsonrpc"]?.string != nil,
+            let id = fields["id"]
+        else { throw RPCFailure(-32700, "Malformed response from BashCut") }
+        var failure: RPCFailure?
+        if let error = fields["error"], error != .null {
+            guard let code = error.object["code"]?.int, let message = error.object["message"]?.string else {
+                throw RPCFailure(-32700, "Malformed error from BashCut")
+            }
+            let data = error.object["data"]
+            failure = RPCFailure(code, message, data: data == .null ? nil : data)
+        }
+        let result = fields["result"]
+        return RPCResponse(id: id, result: result == .null ? nil : result, error: failure)
+    }
+}

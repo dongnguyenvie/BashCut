@@ -109,6 +109,38 @@ extension ProjectDocument {
                 + "for their answer.", data: .object(data))
     }
 
+    /// The scope guard for an agent's undo or redo (#356), checked as the change between the two states. A step
+    /// cannot be held for the user (it is no edit the app could replay later), so one that reaches outside the scope
+    /// fails in ask and block mode alike, naming what lies outside; the user can undo it themselves.
+    func checkAgentScopeStep(undo: Bool, author: Author) throws -> AgentScopeDecision {
+        guard author != .user, let token = CommandCaller.token, let owner = scopeOwner(for: token),
+            !owner.scope.isEmpty
+        else { return AgentScopeDecision() }
+        guard agentScopeMode != .off, !owner.scopeAllowed,
+            let target = (undo ? history.lastUndo : history.redoEntries.last)?.before
+        else { return AgentScopeDecision(owner: owner) }
+        let check = AgentScopeGuard.check(from: project, to: target, scope: owner.scope, extra: owner.scopeExtra)
+        guard !check.isInScope else { return AgentScopeDecision(owner: owner) }
+        let step = undo ? "undo" : "redo"
+        DebugLog.write("edit", "scope guard stopped an \(step) by \(author): \(check.items.count) item(s) outside")
+        throw RPCFailure(
+            -32004, "Blocked: this \(step) changes \(check.summary(in: project)), outside the attached scope. Ask the "
+                + "user to \(step) it in BashCut, or to attach these items.", data: check.json)
+    }
+
+    /// For a dry run, which is never held: what the guard would do with the edit for this caller. Nil when it would
+    /// pass; else the parts outside the scope and `mode` (ask: the edit would be held for the user; block: refused).
+    func agentScopePreview(_ operation: EditOperation, author: Author) -> JSONValue? {
+        guard author != .user, let token = CommandCaller.token, let owner = scopeOwner(for: token),
+            !owner.scope.isEmpty, agentScopeMode != .off, !owner.scopeAllowed
+        else { return nil }
+        let check = AgentScopeGuard.check(operation, scope: owner.scope, extra: owner.scopeExtra, in: project)
+        guard !check.isInScope else { return nil }
+        var data = check.json.object
+        data["mode"] = .string(agentScopeMode.rawValue)
+        return .object(data)
+    }
+
     /// The user's answer to a held edit: Allow Once or Allow for This Request apply it now (on the current project),
     /// Reject drops it. `context get` reports the outcome to the agent as `scope.last`.
     func resolveScopeHold(_ choice: AgentScopeChoice) {

@@ -135,7 +135,7 @@ Atomically apply validated timeline operations as one undoable edit; returns cha
 - `ops`: array, required. Operations array (CLI: path to ops.json)
 - `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
 - `label`: string, default "Agent edit". Short description of the edit
-- `dryRun`: boolean, default false. Validate without editing; return projected duration, changed IDs, cutsInsideWord (clip edges the edit leaves inside a transcribed word) and fingerprint
+- `dryRun`: boolean, default false. Validate without editing; return projected duration, changed IDs, cutsInsideWord (clip edges the edit leaves inside a transcribed word), fingerprint and, when the attached scope would hold or refuse the edit, outsideScope
 - `why`: string. Why this edit, in one sentence (up to 500 characters)
 - `evidence`: string. What it rests on, separated by ; (review issue IDs, transcript ranges, measurements; up to 20, 200 characters each)
 - `expectFingerprint`: string. The dry run's fingerprint; refuse other ops
@@ -548,7 +548,7 @@ Which described source shot each clip plays: per clip on the video layers in tim
 
 ### `bashcut platforms get [<id>] [--facts]`
 
-Read the platform facts review uses: per platform (TikTok, Reels, Shorts, YouTube) shape, maxSeconds, targetLUFS, maxTruePeakDbTP and safeArea (zones the app covers, as fractions), with the project's review.platform overrides applied, whether it is one of the project's outputs and whether it was overridden; layout: the zones text is checked against (the strictest of the outputs of the frame's shape, null when none); targets: each output preset's loudness target (output.targets, else the platform's); data: the platform table's version and origin (built-in or the plugin that shipped a newer one). With facts, every field with {value, kind hard|recommended|info, source, checked, confidence}, including bitrateMbps, title and cover facts, chapter and disclosure rules where known. With id, that one platform's row with its facts.
+Read the platform facts review uses: per platform (TikTok, Reels, Shorts, YouTube) shape, maxSeconds, targetLUFS, maxTruePeakDbTP and safeArea (zones the app covers, as fractions), with the project's review.platform overrides applied, whether it is one of the project's outputs and whether it was overridden; layout: the zones text is checked against (the strictest of the outputs of the frame's shape, null when none); targets: each output preset's loudness target (output.targets, else the platform's); data: the platform table's version and origin (built-in or the plugin that shipped a newer one). With facts, every field with {value, kind hard|recommended|info, source, checked, confidence}, including bitrateMbps, post text limits (title.maxChars, description.maxChars, caption.maxChars, hashtags.max, hashtags.ignoredAbove), cover facts, chapter and disclosure rules where known. With id, that one platform's row with its facts.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_platforms_get`
 - `id`: string. tiktok, reels, shorts, youtube, or an export preset (youtube-1080 → youtube)
@@ -562,14 +562,16 @@ Read the export state: while one runs, its job, step, preset and path (last rece
 
 - Mode: read · Runs: immediately · MCP: `bashcut_export_status`
 
-### `bashcut export cover <frame> [--aspect <aspect>] [--size <size>]`
+### `bashcut export cover <frame> [--aspect <aspect>] [--size <size>] [--title <title>] [--preset <preset>]`
 
-Write a still of the composed frame for each cover aspect into render/: the asked aspects (W:H, comma separated), else each output's cover aspect from platforms get (cover.aspect, else its shape), cropped from the centre. Pick the frame from real frames (timeline sheet); look at the result.
+Write a still of the composed frame for each cover aspect into render/: the asked aspects (W:H, comma separated), else each output's cover aspect from platforms get (cover.aspect, else its shape), cropped from the centre. With title, the text is drawn on each cover in preset (a text preset or a library text-preset ID, bold-outline by default), sized by each cover's short side and fitted to its width; each cover gives titleBox {x, y, width, height} as fractions from the top-left, to check against the platform's zones (platforms get), and its file ends in -title. Pick the frame from real frames (timeline sheet); look at the result.
 
 - Mode: ui · Runs: immediately · MCP: `bashcut_export_cover`
 - `frame`: integer, required, ≥ 0. Timeline frame
 - `aspect`: string. Aspects such as 16:9,9:16
 - `size`: integer, 160…3840. Long edge in pixels
+- `title`: string. Title text drawn on each cover
+- `preset`: string. Text preset of the title
 
 ### `bashcut export chapters [--platform <platform>] [--write]`
 
@@ -1187,7 +1189,7 @@ The run's checklist, derived from the plan and the run log (never hand-written):
 
 ### `bashcut script check [--beats <beats>] [--text <text>]`
 
-A script against the words heard on the timeline (stored transcripts, else caption words): per beat (the beats given, the text as one beat, else the plan's beats) the share of its words heard as written, the unmatched words, where it was heard and the section marker it starts in against the beat's section; overall similarity and extra heard words.
+A script against the words heard on the timeline (stored transcripts, else caption words): per beat (the beats given, the text as one beat, else the plan's beats) the share of its words heard as written, the unmatched words, where it was heard and the section marker it starts in against the beat's section, and its onScreen note when the beat has one; overall similarity and extra heard words.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_script_check`
 - `beats`: array. Beats [{id, text, section}] as JSON

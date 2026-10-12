@@ -185,6 +185,7 @@ extension ProjectDocument {
                 else { throw RPCFailure(-32603, "Dry run returned no object") }
                 fields["fingerprint"] = .string(fingerprint)
                 if !warnings.isEmpty { fields["warnings"] = .array(warnings) }
+                if let scope = document.agentScopePreview(operation, author: author) { fields["outsideScope"] = scope }
                 return .object(fields)
             }
             if let expected = arguments.optionalString("expectFingerprint"), expected != fingerprint {
