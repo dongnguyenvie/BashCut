@@ -10,7 +10,7 @@ struct MultiSelectionInspector: View {
         VStack(alignment: .leading, spacing: 12) {
             Text(String(format: String(localized: "%d clips selected"), items.count)).font(.callout.bold())
             if let start = items.map(\.at).min(), let end = items.map(\.end).max() {
-                Text(String(format: "%d–%d frames", start, end)).foregroundStyle(.secondary)
+                Text("\(start)–\(end) frames").foregroundStyle(.secondary)
             }
             if items.contains(where: { $0.mediaID != nil }) {
                 Toggle(

@@ -78,11 +78,16 @@ struct ExportView: View {
                     }
                 }
                 LabeledContent("Cover") {
-                    HStack {
-                        TextField("Title (optional)", text: $coverTitle).frame(maxWidth: 220)
-                        Picker("Title preset", selection: $coverPreset) {
-                            ForEach(TextPreset.all, id: \.self) { Text(verbatim: $0).tag($0) }
-                        }.labelsHidden().fixedSize().disabled(coverTitle.isEmpty)
+                    // Two lines: one row of field, preset and button squeezed the label in Vietnamese.
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            // In a columns form a TextField's title becomes a second label and squeezes the field.
+                            TextField("Title (optional)", text: $coverTitle, prompt: Text("Title (optional)"))
+                                .labelsHidden().frame(minWidth: 120, maxWidth: 220)
+                            Picker("Title preset", selection: $coverPreset) {
+                                ForEach(TextPreset.all, id: \.self) { Text(verbatim: $0).tag($0) }
+                            }.labelsHidden().fixedSize().disabled(coverTitle.isEmpty)
+                        }
                         Button("Save Cover at Playhead") {
                             document.saveCoverAtPlayhead(title: coverTitle, preset: coverPreset)
                         }.help("A still of the frame at the playhead for each output's cover aspect, saved in render/")

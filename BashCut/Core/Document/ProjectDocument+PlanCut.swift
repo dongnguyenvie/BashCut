@@ -278,6 +278,7 @@ extension ProjectDocument {
             context.transcripts = transcripts
             let review = TimelineReview.run(after, context: context).filter { $0.accepted == nil }
             result["review"] = .array(review.map(\.json))
+            if let problem = PlanCut.reviewErrorsProblem(review) { problems.append(problem) }
         }
         problems += planReviewProblems(review, built: built?.planner.project)
         result["problems"] = .array(problems.map(\.json))
