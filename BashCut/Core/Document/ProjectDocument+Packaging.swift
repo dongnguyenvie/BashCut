@@ -37,7 +37,7 @@ extension ProjectDocument {
             frame: try arguments.int("frame"),
             aspects: arguments.optionalString("aspect").map { $0.split(separator: ",").map(String.init) } ?? [],
             size: arguments.optionalInt("size"), title: arguments.optionalString("title"),
-            preset: arguments.optionalString("preset"))
+            preset: arguments.optionalString("preset"), titleSize: arguments.optionalDouble("titleSize"))
     }
 
     /// The Export sheet's Save Cover: the frame at the playhead, each output's aspect, the title typed there.
@@ -53,7 +53,9 @@ extension ProjectDocument {
         }
     }
 
-    func exportCover(frame: Int, aspects asked: [String], size: Int?, title: String?, preset: String?) async throws -> JSONValue {
+    func exportCover(
+        frame: Int, aspects asked: [String], size: Int?, title: String?, preset: String?, titleSize: Double? = nil
+    ) async throws -> JSONValue {
         guard frame >= 0, frame < project.duration else { throw RPCFailure(-32602, "frame must be within the timeline") }
         var aspects = asked
         if aspects.isEmpty {
@@ -66,7 +68,7 @@ extension ProjectDocument {
         guard let image = try await timelineImages([frame], maximumSide: longEdge)[frame] else {
             throw RPCFailure(-32603, "The frame could not be drawn")
         }
-        let title = try coverTitle(title, preset: preset)
+        let title = try coverTitle(title, preset: preset, size: titleSize)
         let folder = try renderFolder()
         var covers: [JSONValue] = []
         for aspect in Set(aspects).sorted() {
@@ -95,8 +97,9 @@ extension ProjectDocument {
     }
 
     /// The text item a cover title draws: `text` in a renderer preset or a library text preset (its style too;
-    /// bold-outline by default). Nil without a title.
-    func coverTitle(_ text: String?, preset: String?) throws -> Item? {
+    /// bold-outline by default) at `size` of the cover's short side (CoverTitle.defaultSize when nil: timeline presets
+    /// are caption-sized). Nil without a title.
+    func coverTitle(_ text: String?, preset: String?, size: Double? = nil) throws -> Item? {
         guard let text = text?.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty else {
             if preset != nil { throw RPCFailure(-32602, "preset needs a title") }
             return nil
@@ -106,7 +109,7 @@ extension ProjectDocument {
         let name = preset ?? "bold-outline"
         if TextPreset.all.contains(name) {
             item["textPreset"] = .string(name)
-            return item
+            return CoverTitle.sized(item, size)
         }
         guard let library = try? libraryCatalog.item(name), library.kind == .textPreset else {
             throw RPCFailure(
@@ -118,7 +121,7 @@ extension ProjectDocument {
         var patch = try look.patch(for: item, project: project)
         patch["keyframes"] = nil
         for (key, value) in patch { item[key] = value }
-        return item
+        return CoverTitle.sized(item, size)
     }
 
     private static func rounded(_ value: Double) -> Double { (value * 1_000).rounded() / 1_000 }
