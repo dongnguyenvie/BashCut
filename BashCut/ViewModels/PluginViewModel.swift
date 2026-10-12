@@ -36,6 +36,13 @@ import Foundation
         }
     }
 
+    /// Views of ready plugins that live in the Inspector, as `(key, plugin, view)`.
+    var inspectorViews: [(key: String, plugin: InstalledPlugin, view: PluginViewContribution)] {
+        document.plugins.plugins.filter { document.plugins.isReady($0) }.flatMap { plugin in
+            plugin.manifest.views.filter { $0.place == .inspector }.map { (plugin.id + "/" + $0.id, plugin, $0) }
+        }
+    }
+
     /// The model for `<plugin>/<view>` while that plugin is ready and has the view.
     func model(key: String) -> PluginViewModel? {
         guard let (plugin, view) = resolve(key) else { return nil }
@@ -61,6 +68,8 @@ import Foundation
             document.ui.showAgentDock = true
             document.agents.pluginViewKey = key
         case .sheet: document.ui.pluginSheet = key
+        // The Inspector is always on screen; its plugin views follow the selection, so there is nothing to open.
+        case .inspector: break
         }
     }
 

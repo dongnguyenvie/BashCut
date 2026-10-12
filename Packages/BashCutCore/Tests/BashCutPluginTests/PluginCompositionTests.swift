@@ -36,12 +36,13 @@ struct PluginCompositionTests {
         }
     }
 
-    @Test("Views live in the panel, the dock or a sheet; only panel views need a container")
+    @Test("Views live in the panel, the dock, a sheet or the Inspector; only panel views need a container")
     func locations() throws {
         let plugin = try manifest(#", "contributes": {"views": [{"id": "voice", "title": "Voice", "location": "dock", "#
-            + #""icon": "waveform"}, {"id": "form", "title": "Form", "location": "sheet"}]}"#)
+            + #""icon": "waveform"}, {"id": "form", "title": "Form", "location": "sheet"}, "#
+            + #"{"id": "inputs", "title": "Inputs", "location": "inspector"}]}"#)
         try plugin.validate()
-        #expect(plugin.views.map(\.place) == [.dock, .sheet])
+        #expect(plugin.views.map(\.place) == [.dock, .sheet, .inspector])
         #expect(plugin.container == nil)
         #expect(throws: PluginError.self) {
             try manifest(#", "contributes": {"views": [{"id": "a", "title": "A", "location": "panel"}]}"#).validate()
@@ -54,6 +55,7 @@ struct PluginCompositionTests {
                 .validate()
         }
         #expect(PluginFeature.all.contains("location.sheet"))
+        #expect(PluginFeature.all.contains("location.inspector"))
         let tree = try PluginViewTree(parsing: .object(["body": .array([]), "close": .bool(true)]))
         #expect(tree.close)
     }

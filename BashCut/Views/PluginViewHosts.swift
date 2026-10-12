@@ -1,5 +1,6 @@
 import BashCutDocument
 import BashCutPlugin
+import BashCutProject
 import SwiftUI
 
 /// A plugin view on its own (a dock tab or a sheet): a lazy scrolling column, visible while it is on screen.
@@ -73,5 +74,43 @@ struct PluginViewRows: View {
         if let tree = model.tree {
             ForEach(tree.body) { node in PluginNodeView(node: node, model: model) }
         }
+    }
+}
+
+/// Plugin views that live in the Inspector (`location: inspector`), under the selected item's controls. Each renders
+/// again from scratch when the selection or the selected item's media changes; one that answers an empty body
+/// takes no room.
+struct PluginInspectorViews: View {
+    @Bindable var document: ProjectDocument
+    let item: Item
+
+    var body: some View {
+        ForEach(document.pluginViews.inspectorViews, id: \.key) { entry in
+            PluginInspectorSection(
+                model: document.pluginViews.model(plugin: entry.plugin.id, view: entry.view.id),
+                selection: item.id + "|" + (item.mediaID ?? ""))
+        }
+    }
+}
+
+private struct PluginInspectorSection: View {
+    @Bindable var model: PluginViewModel
+    let selection: String
+
+    private var shows: Bool { model.error != nil || !(model.tree?.body.isEmpty ?? true) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if shows {
+                Divider()
+                PluginViewRows(model: model)
+            }
+        }
+        .task(id: selection) {
+            model.forget()
+            model.visible = true
+            model.load()
+        }
+        .onDisappear { model.visible = false }
     }
 }
