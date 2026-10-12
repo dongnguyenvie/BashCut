@@ -122,8 +122,12 @@ extension TextAlignment {
         let written = Set(intended.map(SpeechUnits.normalized))
         return heard.flatMap { word -> [CaptionWords.Timed] in
             let token = SpeechUnits.normalized(word.text)
-            guard !written.contains(token), let words = NumberWords.spelled(word.text, language: language), words.count > 0
+            // A unit written onto the number ("3,5km") stays a word of its own after the spelled number.
+            let digits = String(token.prefix { $0.isNumber || $0 == "." || $0 == "," || $0 == "%" })
+            let unit = String(token.dropFirst(digits.count))
+            guard !written.contains(token), let spelled = NumberWords.spelled(digits, language: language), !spelled.isEmpty
             else { return [word] }
+            let words = spelled + (unit.isEmpty ? [] : [unit])
             let step = max(0, word.end - word.start) / Double(words.count)
             return words.enumerated().map { index, text in
                 CaptionWords.Timed(

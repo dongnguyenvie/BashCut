@@ -91,6 +91,8 @@ public enum PlanCut {
         public var textStyle: [String: JSONValue] = [:]
         /// Words the transcript got wrong and what the captions say instead ("Tết Sịch" → "Texas"), longest first.
         public var replace: [(from: String, to: String)] = []
+        /// The longest caption line for voiceover lines, in characters: a longer line is broken into several cues.
+        public var maxChars: Int?
     }
 
     /// A voiceover line: what it says and the take that says it (`voice.lines` keeps takes; a path picks one, else
@@ -322,8 +324,11 @@ public enum PlanCut {
             replace = pairs.map { ($0.key, $0.value.string ?? "") }
                 .sorted { $0.from.count == $1.from.count ? $0.from < $1.from : $0.from.count > $1.from.count }
         }
+        let maxChars = row["maxChars"]?.int
+        if let maxChars, !(8...120).contains(maxChars) { throw ProjectError.invalid("captions.maxChars: 8…120 characters") }
         return Captions(
-            wordStyle: wordStyle, preset: row["preset"]?.string, style: style, textStyle: textStyle, replace: replace)
+            wordStyle: wordStyle, preset: row["preset"]?.string, style: style, textStyle: textStyle, replace: replace,
+            maxChars: maxChars)
     }
 
     /// Text style fields (straight or nested as `textStyle`) apart from item properties.

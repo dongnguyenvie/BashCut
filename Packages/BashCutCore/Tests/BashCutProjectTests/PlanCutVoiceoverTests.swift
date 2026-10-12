@@ -96,6 +96,15 @@ struct PlanCutVoiceoverTests {
         #expect(cues.last?.at == 75 + 6, "timed by the take's first word (0.2 s)")
     }
 
+    @Test("Caption lines break at word gaps under maxChars, early after punctuation")
+    func captionLines() throws {
+        #expect(PlanCut.captionLines("Hồ Tây rộng năm trăm hai mươi tám héc ta, gấp gần năm mươi lần Hồ Gươm.", maxChars: 24)
+            == "Hồ Tây rộng năm trăm hai\nmươi tám héc ta,\ngấp gần năm mươi lần Hồ\nGươm.")
+        #expect(PlanCut.captionLines("Ngắn thôi", maxChars: 24) == "Ngắn thôi")
+        let tooShort = #"{"voiceover":[{"text":"a"}],"captions":{"maxChars":3}}"#
+        #expect(throws: ProjectError.self) { try PlanCut.decode(JSONDecoder().decode(JSONValue.self, from: Data(tooShort.utf8))) }
+    }
+
     @Test("Check facts: a line without a take, a graphic without media or shorter than its span, black on Main")
     func facts() throws {
         let cut = try spec(#"""

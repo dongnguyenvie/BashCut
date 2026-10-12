@@ -131,5 +131,7 @@ struct SpeechToolsTests {
             CaptionWords.Timed(text: $0.0, start: $0.1, end: $0.2)
         })
         #expect(digits.similarity == 1, "digits in the script stay digits")
+        let joined = TextAlignment.align("ba phẩy năm km", to: [CaptionWords.Timed(text: "3,5km", start: 0, end: 1)])
+        #expect(joined.similarity == 1, "a unit written onto the number")
     }
 }

@@ -372,7 +372,9 @@ extension PlanCut {
             guard let take = takes[line.id], !take.words.isEmpty,
                 planner.project.tracks.contains(where: { $0.items.contains { $0.fields[tag] == .string(line.id) } })
             else { continue }
-            let aligned = TextAlignment.cues(script: line.caption ?? line.text, heard: take.words)
+            let text = line.caption ?? line.text
+            let script = captions.maxChars.map { captionLines(text, maxChars: $0) } ?? text
+            let aligned = TextAlignment.cues(script: script, heard: take.words)
             guard !aligned.cues.isEmpty else { continue }
             let before = Set(planner.project.tracks.flatMap(\.items).map(\.id))
             try planner.add([planner.project.importingCues(
@@ -386,6 +388,27 @@ extension PlanCut {
                 try planner.add([.setProperties(item: item.id, patch: patch)])
             }
         }
+    }
+
+    /// `text` broken into lines of at most `maxChars` characters at word gaps, one cue each; a line breaks early
+    /// after a comma or a full stop once it holds half the limit. A word longer than the limit stays whole.
+    static func captionLines(_ text: String, maxChars: Int) -> String {
+        var lines: [String] = []
+        var current = ""
+        for word in text.split(whereSeparator: \.isWhitespace).map(String.init) {
+            if !current.isEmpty, current.count + 1 + word.count > maxChars {
+                lines.append(current)
+                current = word
+            } else {
+                current = current.isEmpty ? word : current + " " + word
+            }
+            if let last = word.last, ",.;:!?".contains(last), current.count * 2 >= maxChars {
+                lines.append(current)
+                current = ""
+            }
+        }
+        if !current.isEmpty { lines.append(current) }
+        return lines.joined(separator: "\n")
     }
 
     /// The span a graphic asks for, in timeline frames: its anchor's start plus offset, for its seconds, until an
