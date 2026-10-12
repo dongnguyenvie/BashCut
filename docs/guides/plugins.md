@@ -1000,9 +1000,14 @@ others may have one. Text is shown as given (the plugin localizes it with `local
 | `toggle` | `label`, `value`? |
 | `picker` | `label`?, `value`?, `options: [{"value", "label"}]` or strings (at most 200) |
 | `slider` | `label`?, `value`?, `min`, `max`, `step`?: sends `change` when the drag ends |
+| `colorPicker` | `label`?, `value`? (`#RRGGBB`; `#RRGGBBAA` with `alpha`), `alpha`?: a colour well; sends `change` with the hex string 250 ms after the colour stops moving |
+| `fontPicker` | `label`?, `value`?, `by`? (`font`, the default: a PostScript name such as `Inter-Bold`; `family`: a family name such as `Inter`, for CSS `font-family`): a menu of the project's fonts and the installed ones (what `fonts list` lists), marking fonts without the content language's letters; sends `change` with the name |
 
 An input's `value` in an answer replaces what the user typed, except for an input whose change is still on its way.
-Leave `value` out to keep the user's text. A text field without `search` and a text area send their value with the
+Leave `value` out to keep the user's text. A `colorPicker` value that is not hex is refused (`#abc` and lower case are
+normalized to `#AABBCC`). `colorPicker` and `fontPicker` are the host features `views.colorPicker` and
+`views.fontPicker`; an older BashCut draws "Needs a newer BashCut" in their place, so a plugin that also runs there
+should check `features` and fall back to a `textField`. A text field without `search` and a text area send their value with the
 next event instead of on every keystroke.
 
 A component type this BashCut does not know draws "Needs a newer BashCut" and the rest of the view still works; check

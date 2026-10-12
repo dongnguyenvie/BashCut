@@ -1,6 +1,7 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Choose a font": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Choose a font" } }, "vi": { "stringUnit": { "state": "translated", "value": "Chọn phông chữ" } } } },
     "%@ still needs setup: review Install Dependencies": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%@ still needs setup: review Install Dependencies" } }, "vi": { "stringUnit": { "state": "translated", "value": "%@ vẫn cần cài thêm: xem lại Install Dependencies" } } } },
     "+ %@ setup": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "+ %@ setup" } }, "vi": { "stringUnit": { "state": "translated", "value": "+ %@ cài thêm" } } } },
     "BashCut did not quit, so it was not updated": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "BashCut did not quit, so it was not updated" } }, "vi": { "stringUnit": { "state": "translated", "value": "BashCut chưa thoát nên chưa được cập nhật" } } } },

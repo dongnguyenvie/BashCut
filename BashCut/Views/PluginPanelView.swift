@@ -209,6 +209,8 @@ struct PluginNodeView: View {
                 .disabled(node.bool("disabled"))
         case .picker: picker
         case .slider: PluginSliderView(node: node, model: model)
+        case .colorPicker: PluginColorPickerView(node: node, model: model)
+        case .fontPicker: PluginFontPickerView(node: node, model: model)
         case nil:
             Label(String(format: String(localized: "Needs a newer BashCut: %@"), node.type), systemImage: "puzzlepiece")
                 .font(.caption2).foregroundStyle(.secondary)
