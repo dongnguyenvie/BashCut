@@ -42,6 +42,7 @@ extension ProjectDocument {
         request.audio = editableAudio(item)
         request.sticker = editableSticker(item)
         request.textPreset = editableTextPreset(item)
+        request.brand = item.kind == .brand ? item.params : nil
         ui.libraryEditor = request
     }
 
@@ -55,6 +56,7 @@ extension ProjectDocument {
         request.audio = editableAudio(item)
         request.sticker = editableSticker(item)
         request.textPreset = editableTextPreset(item)
+        request.brand = item.kind == .brand ? item.params : nil
         ui.libraryEditor = request
     }
 
@@ -134,6 +136,7 @@ extension ProjectDocument {
         if let audio = request.audio { changes["params"] = .object(audio.params(merging: item.params)) }
         if let sticker = request.sticker { changes["params"] = .object(sticker.params(merging: item.params)) }
         if let text = request.textPreset { changes["params"] = .object(text.params(merging: item.params)) }
+        if let brand = request.brand { changes["params"] = .object(brand) }
         return changes
     }
 
@@ -159,6 +162,11 @@ extension ProjectDocument {
         let changes = edited
         runLibraryPanelChange(done: String(localized: "Saved “\(name)” in the library")) { document in
             switch request.mode {
+            case .saveSelection(.brand):
+                var fields = changes
+                fields["params"] = .object(request.brand ?? [:])
+                return try await document.addLibraryItem(
+                    kind: .brand, name: name, scope: request.scope, changes: fields, author: .user, method: "library.add")
             case .saveSelection(let kind):
                 var fields = changes
                 let selection = try document.selectionParams(kind, mediaID: request.mediaID)
@@ -351,6 +359,7 @@ extension ProjectDocument {
         case .look: String(localized: "look")
         case .voice: String(localized: "voice")
         case .clip: String(localized: "clip")
+        case .brand: String(localized: "brand kit")
         }
     }
 

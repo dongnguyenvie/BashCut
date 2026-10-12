@@ -244,6 +244,8 @@ extension ProjectDocument {
             let transformed = size.applying(transform)
             fields["width"] = .integer(Int(abs(transformed.width).rounded()))
             fields["height"] = .integer(Int(abs(transformed.height).rounded()))
+            // A movie with an alpha channel (a rendered graphic) is shown with its transparency, like a video sticker.
+            if (try? await video.load(.formatDescriptions))?.contains(where: hasAlpha) == true { fields["alpha"] = .bool(true) }
         }
         return (Media(fields: fields), frames)
     }

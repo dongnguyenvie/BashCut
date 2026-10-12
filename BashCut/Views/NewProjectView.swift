@@ -10,6 +10,9 @@ struct NewProjectView: View {
     @State private var parent: URL?
     @State private var footage: URL?
     @State private var error = ""
+    /// Brand kits saved on this Mac, from plugins or built in (#453); a project's own kits stay with that project.
+    @State private var brands: [LibraryItem] = []
+    @State private var brand: String?
     @FocusState private var nameFocused: Bool
 
     /// nil is Auto: the first video or image clip sets the shape; picking a shape fixes it.
@@ -48,6 +51,13 @@ struct NewProjectView: View {
                 }
                 TextField("Content language", text: $setup.contentLanguage)
                     .help("Language tag for captions and narration, such as vi, en or en-US.")
+                if !brands.isEmpty {
+                    Picker("Brand kit", selection: $brand) {
+                        Text("None").tag(String?.none)
+                        ForEach(brands, id: \.reference) { LibraryView.title($0).tag(String?.some($0.reference)) }
+                    }
+                    .help("Palette, fonts, logo, mascot and voice the new project starts with; change it later in the Brand panel.")
+                }
                 folderRow("Save in", url: parent) { parent = chooseFolder() ?? parent }
                 folderRow("Footage folder (optional)", url: footage) { footage = chooseFolder() ?? footage }
                 if footage != nil {
@@ -81,6 +91,7 @@ struct NewProjectView: View {
                 nameFocused = true
                 parent = parent ?? document.settings.defaultProjectsFolder
             }
+            .task { brands = ((try? document.libraryCatalog.panelItems([.brand])) ?? []).filter { $0.scope != .project } }
     }
 
     private func folderRow(_ title: LocalizedStringKey, url: URL?, action: @escaping () -> Void) -> some View {
@@ -126,6 +137,9 @@ struct NewProjectView: View {
             }
             do {
                 _ = try await document.createProject(setup, in: parent, footage: footage)
+                if let brand, let item = brands.first(where: { $0.reference == brand }) {
+                    try document.applyBrand(item)
+                }
                 document.settings.rememberProjectsFolder(parent)
                 dismiss()
             } catch {

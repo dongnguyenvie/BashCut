@@ -138,9 +138,11 @@ look. `transform.zoom` scales from that base size, and `pan` / `tilt` move it in
   adjustment layers; `textStyle.size`, `positionX`, `positionY`, `strokeWidth`, `lineHeight`, `tracking` on text.
 - **Transitions** keep `kind`, `duration`, optional `easing` and optional `motion`
   `{"outgoing": {property: [values]}, "incoming": {…}}`. Properties: `zoom`, `panX`/`panY` (share of the frame,
-  right/up), `rotation` (degrees, counterclockwise), `opacity`, `exposure` (EV), `scaleX` and `reveal` (share of
-  the width shown from the left); 2–16 values spread evenly over the eased tween. The built-in kinds (`dissolve`,
-  `whip`, `blink`, `zoom`, `spin`, `shutter`, `wipe`) are rows of the same table; any other kind needs `motion`.
+  right/up), `rotation` (degrees, counterclockwise), `opacity`, `exposure` (EV), `scaleX`, `reveal` (share of
+  the width shown from the left), `swing` (degrees about the left edge in perspective), `rgbSplit` (red/blue offset
+  as a share of the width) and `halftone` (dot spacing as a share of the width); 2–16 values spread evenly over the
+  eased tween. The built-in kinds (`dissolve`, `whip`, `blink`, `zoom`, `spin`, `shutter`, `wipe`, `swing`,
+  `glitch`, `halftone`) are rows of the same table; any other kind needs `motion`.
 - **Text style** is open: besides the declared `textStyle` fields, the renderer reads `background {color, opacity,
   padding, radius}`, `shadow {color, opacity, blur, dx, dy}` and `accentBars [{side left|right|top|bottom, color,
   opacity, thickness, gap, length, radius}]` (thickness and gap in font sizes, defaults 0.12 and 0.2; length a share
@@ -153,6 +155,12 @@ look. `transform.zoom` scales from that base size, and `pan` / `tilt` move it in
 - **Text templates** are built-in library text presets named by their look, not their use (`stacked-keyword`,
   `headline-subline`, `boxed-keyword`, `two-tone-pop`): a renderer preset plus a full `textStyle`. The same template
   serves as a hook, a call to action or a label; the agent picks it for the video.
+- **Brand kit** (#453): the project's optional `brand` holds the applied kit — `palette` {accent, background, text,
+  secondary} `#RRGGBB`, `fonts` {heading, body}, `logo` and `mascot` {pose: id} sticker library references, `voice`
+  {provider, voice}, `disclosure`, plus `library` and `name` of the item it came from. A text item's optional
+  `brandRoles` {textStyle path: role} ties `fill`, `stroke`, `highlight`, `background.color`, `shadow.color` or
+  `accentBars.color` to a colour role and `font` to a font role; applying a kit rewrites those values, so the stored
+  `textStyle` always holds plain colours and fonts that every reader understands.
 
 ## Schema and versioning
 

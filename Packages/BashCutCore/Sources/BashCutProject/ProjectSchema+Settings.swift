@@ -16,6 +16,32 @@ extension ProjectSchema {
             ]))
     }
 
+    /// The applied brand kit (#453): a `brand` library item's params plus where it came from.
+    static var brandSchema: JSONValue {
+        let hex = string("#RRGGBB", pattern: "^#[0-9A-Fa-f]{6}$")
+        let roles = { (names: [String]) in names.reduce(into: [String: JSONValue]()) { $0[$1] = hex } }
+        return object(
+            "The brand kit in use (#453), set by library apply of a brand item: recipes, graphics and voice read it; "
+                + "text items with brandRoles take its colours and fonts", required: [],
+            properties: [
+                "library": string("The brand library item (scope:id) it came from"),
+                "name": string("The kit's name"),
+                "palette": object("Colours by role", required: [], properties: roles(LibraryBrand.colorRoles)),
+                "fonts": object("Font names by role", required: [], properties: [
+                    "heading": string("Heading font", maxLength: 128), "body": string("Body font", maxLength: 128),
+                ]),
+                "logo": string("Sticker library id of the logo"),
+                "mascot": .object([
+                    "type": .string("object"), "description": .string("Pose name → sticker library id"),
+                    "additionalProperties": .object(["type": .string("string")]),
+                ]),
+                "voice": object("Default voice", required: [], properties: [
+                    "provider": string("voice.synthesize provider ID"), "voice": string("The provider's voice ID"),
+                ]),
+                "disclosure": string("Disclosure label shown on generated or illustrative content", maxLength: 200),
+            ])
+    }
+
     static var outputSchema: JSONValue {
         object(
             "What the project is made for (#441)", required: [],

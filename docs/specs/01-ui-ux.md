@@ -60,7 +60,7 @@ The layout follows CapCut desktop, plus an agent dock on the right.
 
 | Region | Content | Notes |
 |---|---|---|
-| **Tab rail** (far left) | Media 🎞, Audio ♪, Text T, Stickers ★, Effects ✦, Transitions ⇄, Filters ◐, Voice 🎙 | Same idea as CapCut's left rail |
+| **Tab rail** (far left) | Media 🎞, Audio ♪, Text T, Stickers ★, Effects ✦, Transitions ⇄, Filters ◐, Voice 🎙, Brand 🎨 | Same idea as CapCut's left rail |
 | **Library** | Content of the selected tab: thumbnail grid, drag to timeline, hover-scrub | Each tab is described in §3 |
 | **Viewer** | Preview in the project frame (9:16 / 16:9), timecode, toggleable TikTok safe area | Same engine as export. Heavy footage plays from automatic proxies; a manual quality picker (Full / ½ / Proxy) is Planned |
 | **Inspector** | Properties of the selected item | Tabs: Video, Audio, Text, Color, Speed. Every number can be scrubbed and typed |
@@ -223,7 +223,7 @@ Every effect has a "when to use" note. Special effects also carry *"1–2 times 
 
 ### 3.5 Transitions ⇄
 
-The default is a hard cut. The other transitions are dissolve, whip, blink, zoom, spin, shutter and wipe; all of
+The default is a hard cut. The other transitions are dissolve, whip, blink, zoom, spin, shutter, wipe, swing, glitch and halftone; all of
 them render the same in preview and export.
 
 Select a clip beside a cut and choose a transition; the panel adjusts its duration in frames. A draggable handle

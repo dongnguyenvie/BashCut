@@ -177,6 +177,7 @@ public enum ProjectSchema {
                 "audio": ref("audio"),
                 "output": outputSchema,
                 "review": reviewSchema,
+                "brand": brandSchema,
                 "brief": planSchemas["brief"] ?? .null,
                 "plan": planSchemas["plan"] ?? .null,
                 "beatGrid": object(
@@ -396,6 +397,17 @@ public enum ProjectSchema {
                 "oneOf": .array([
                     .object(["type": .string("string"), "enum": .array(CaptionWords.styles.map(JSONValue.string))]),
                     .object(["type": .string("object"), "additionalProperties": .object(["type": .string("object")])]),
+                ]),
+            ]),
+            "brandRoles": .object([
+                "type": .string("object"),
+                "description": .string(
+                    "Text: textStyle path → brand role (#453); applying a brand kit sets these from its palette and "
+                        + "fonts. Paths " + (LibraryBrand.colorPaths + [LibraryBrand.fontPath]).joined(separator: ", ")
+                        + "; roles " + (LibraryBrand.colorRoles + LibraryBrand.fontRoles).joined(separator: ", ")),
+                "additionalProperties": .object([
+                    "type": .string("string"),
+                    "enum": .array((LibraryBrand.colorRoles + LibraryBrand.fontRoles).map(JSONValue.string)),
                 ]),
             ]),
             "tag": .object([

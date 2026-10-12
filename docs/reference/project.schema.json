@@ -191,6 +191,21 @@
           "minimum" : 0,
           "type" : "integer"
         },
+        "brandRoles" : {
+          "additionalProperties" : {
+            "enum" : [
+              "accent",
+              "background",
+              "text",
+              "secondary",
+              "heading",
+              "body"
+            ],
+            "type" : "string"
+          },
+          "description" : "Text: textStyle path → brand role (#453); applying a brand kit sets these from its palette and fonts. Paths fill, stroke, highlight, background.color, shadow.color, accentBars.color, font; roles accent, background, text, secondary, heading, body",
+          "type" : "object"
+        },
         "color" : {
           "$ref" : "#/$defs/color"
         },
@@ -1529,12 +1544,12 @@
           "type" : "string"
         },
         "kind" : {
-          "description" : "Transition kind: dissolve, whip, blink, zoom, spin, shutter, wipe, or any name with motion",
+          "description" : "Transition kind: dissolve, whip, blink, zoom, spin, shutter, wipe, swing, glitch, halftone, or any name with motion",
           "pattern" : "^[a-z][a-z0-9-]{0,63}$",
           "type" : "string"
         },
         "motion" : {
-          "description" : "The tween as data: outgoing and incoming {property: [values]} over the tween; properties exposure, opacity, panX, panY, reveal, rotation, scaleX, zoom",
+          "description" : "The tween as data: outgoing and incoming {property: [values]} over the tween; properties exposure, halftone, opacity, panX, panY, reveal, rgbSplit, rotation, scaleX, swing, zoom",
           "type" : "object"
         },
         "to" : {
@@ -1588,6 +1603,92 @@
         "bpm",
         "frames"
       ],
+      "type" : "object"
+    },
+    "brand" : {
+      "description" : "The brand kit in use (#453), set by library apply of a brand item: recipes, graphics and voice read it; text items with brandRoles take its colours and fonts",
+      "properties" : {
+        "disclosure" : {
+          "description" : "Disclosure label shown on generated or illustrative content",
+          "maxLength" : 200,
+          "type" : "string"
+        },
+        "fonts" : {
+          "description" : "Font names by role",
+          "properties" : {
+            "body" : {
+              "description" : "Body font",
+              "maxLength" : 128,
+              "type" : "string"
+            },
+            "heading" : {
+              "description" : "Heading font",
+              "maxLength" : 128,
+              "type" : "string"
+            }
+          },
+          "type" : "object"
+        },
+        "library" : {
+          "description" : "The brand library item (scope:id) it came from",
+          "type" : "string"
+        },
+        "logo" : {
+          "description" : "Sticker library id of the logo",
+          "type" : "string"
+        },
+        "mascot" : {
+          "additionalProperties" : {
+            "type" : "string"
+          },
+          "description" : "Pose name → sticker library id",
+          "type" : "object"
+        },
+        "name" : {
+          "description" : "The kit's name",
+          "type" : "string"
+        },
+        "palette" : {
+          "description" : "Colours by role",
+          "properties" : {
+            "accent" : {
+              "description" : "#RRGGBB",
+              "pattern" : "^#[0-9A-Fa-f]{6}$",
+              "type" : "string"
+            },
+            "background" : {
+              "description" : "#RRGGBB",
+              "pattern" : "^#[0-9A-Fa-f]{6}$",
+              "type" : "string"
+            },
+            "secondary" : {
+              "description" : "#RRGGBB",
+              "pattern" : "^#[0-9A-Fa-f]{6}$",
+              "type" : "string"
+            },
+            "text" : {
+              "description" : "#RRGGBB",
+              "pattern" : "^#[0-9A-Fa-f]{6}$",
+              "type" : "string"
+            }
+          },
+          "type" : "object"
+        },
+        "voice" : {
+          "description" : "Default voice",
+          "properties" : {
+            "provider" : {
+              "description" : "voice.synthesize provider ID",
+              "type" : "string"
+            },
+            "voice" : {
+              "description" : "The provider's voice ID",
+              "type" : "string"
+            }
+          },
+          "type" : "object"
+        }
+      },
       "type" : "object"
     },
     "brief" : {

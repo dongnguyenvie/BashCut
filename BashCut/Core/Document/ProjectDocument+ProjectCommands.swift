@@ -166,12 +166,15 @@ extension ProjectDocument {
             let footage = given.map { file == nil ? URL(fileURLWithPath: $0.path, isDirectory: true) : $0.deletingLastPathComponent() }
             let importing = arguments.bool("importFootage")
             if importing, footage == nil { throw RPCFailure(-32602, "import needs a footage folder") }
+            let brand = try arguments.optionalString("brand").map { try document.libraryCatalog.item($0) }
+            if let brand, brand.kind != .brand { throw RPCFailure(-32602, "\(brand.reference) is not a brand kit") }
             try await document.leaveCurrentProject(arguments)
             document.busy = true
             do {
                 defer { document.busy = false }
                 _ = try await document.createProject(setup, in: parent, footage: footage)
             }
+            if let brand { try document.applyBrand(brand, author: author) }
             guard importing, let footage else { return document.projectResult() }
             return try await document.importCreatedFootage(footage, only: file.map { [$0] }, author: author)
         }

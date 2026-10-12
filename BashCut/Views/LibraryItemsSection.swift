@@ -178,7 +178,7 @@ struct LibraryItemsSection<Tile: View>: View {
         }
         Button("Duplicate & Edit…") { document.beginDuplicate(item) }
         if item.scope.isWritable {
-            if [.transitionPreset, .look, .audio, .textPreset].contains(item.kind) || document.isMediaSticker(item) {
+            if [.transitionPreset, .look, .audio, .textPreset, .brand].contains(item.kind) || document.isMediaSticker(item) {
                 Button("Edit…") { document.beginRename(item) }
             } else {
                 Button("Rename…") { document.beginRename(item) }
@@ -280,6 +280,10 @@ struct LibraryItemEditorSheet: View {
                     LibraryStickerFields(sticker: Binding(
                         get: { request.sticker ?? LibrarySticker(stickerKind: "image") }, set: { request.sticker = $0 }))
                 }
+                if request.brand != nil {
+                    BrandKitFields(document: document, params: Binding(
+                        get: { request.brand ?? [:] }, set: { request.brand = $0 }))
+                }
                 if request.textPreset != nil {
                     TextPresetFields(style: Binding(
                         get: { request.textPreset ?? LibraryTextPreset(textPreset: "bold-outline") },
@@ -310,12 +314,13 @@ struct LibraryItemEditorSheet: View {
 
     private var title: LocalizedStringKey {
         switch request.mode {
+        case .saveSelection(.brand): "New brand kit"
         case .saveSelection(let kind): "Save selection as \(ProjectDocument.kindTitle(kind))"
         case .duplicate: "Duplicate & Edit"
         case .rename:
             request.transition != nil ? "Edit transition" : request.look != nil ? "Edit look"
                 : request.audio != nil ? "Edit audio" : request.sticker?.isMedia == true ? "Edit sticker"
-                : request.textPreset != nil ? "Edit text style" : "Rename"
+                : request.textPreset != nil ? "Edit text style" : request.brand != nil ? "Edit brand kit" : "Rename"
         }
     }
 }

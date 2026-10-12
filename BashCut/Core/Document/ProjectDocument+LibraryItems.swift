@@ -426,6 +426,7 @@ extension ProjectDocument {
     private func registerLibraryUseCommands() {
         handleAuthored("library.apply") { document, arguments, author in
             let item = try document.libraryCatalog.item(try arguments.string("id"), scope: Self.scope(arguments))
+            if item.kind == .brand { return try document.applyBrand(item, arguments: arguments, author: author) }
             guard let target = arguments.optionalString("item") ?? document.selectedID else {
                 throw RPCFailure(-32602, "Select an item or pass --item")
             }

@@ -259,8 +259,9 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
         return image
     }
 
-    /// The transition's motion at this time (C5: every kind is data): exposure, then zoom, horizontal squeeze and
-    /// rotation around the frame centre with the pan, then the reveal from the left. Preview and export share it.
+    /// The transition's motion at this time (C5: every kind is data): exposure, halftone dots and the RGB split, then
+    /// zoom, horizontal squeeze and rotation around the frame centre with the pan, the perspective swing about the left
+    /// edge, then the reveal from the left. Preview and export share it.
     private func applyTransition(
         to input: CIImage, transition: RenderTransition, time: Double, bounds: CGRect
     ) -> (CIImage, Double) {
@@ -271,6 +272,12 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
         if let exposure = value("exposure"), exposure != 0 {
             image = image.applyingFilter("CIExposureAdjust", parameters: [kCIInputEVKey: exposure])
         }
+        if let halftone = value("halftone"), halftone * bounds.width >= 2 {
+            image = Self.halftoned(image, spacing: halftone * bounds.width)
+        }
+        if let split = value("rgbSplit"), split * bounds.width >= 0.5 {
+            image = Self.splitChannels(image, offset: split * bounds.width)
+        }
         let zoom = value("zoom") ?? 1, squeeze = max(0.001, value("scaleX") ?? 1)
         let rotation = (value("rotation") ?? 0) * .pi / 180
         let pan = CGPoint(x: (value("panX") ?? 0) * bounds.width, y: (value("panY") ?? 0) * bounds.height)
@@ -280,10 +287,56 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
                     .rotated(by: rotation).scaledBy(x: zoom * squeeze, y: zoom)
                     .translatedBy(x: -bounds.midX, y: -bounds.midY))
         }
+        if let swing = value("swing"), swing != 0 {
+            image = Self.swung(image, degrees: swing, bounds: bounds)
+        }
         if let reveal = value("reveal") {
             image = image.cropped(to: CGRect(x: bounds.minX, y: bounds.minY, width: bounds.width * reveal, height: bounds.height))
         }
         let opacity = value("opacity") ?? 1
         return (image, opacity)
+    }
+
+    /// Colour print dots `spacing` pixels apart over the picture, cut back to its extent.
+    static func halftoned(_ image: CIImage, spacing: Double) -> CIImage {
+        let extent = image.extent
+        guard extent.width.isFinite, extent.height.isFinite else { return image }
+        return image.applyingFilter("CICMYKHalftone", parameters: [
+            kCIInputWidthKey: spacing, kCIInputSharpnessKey: 0.7, kCIInputAngleKey: 0.35,
+            kCIInputCenterKey: CIVector(x: extent.midX, y: extent.midY),
+        ]).cropped(to: extent)
+    }
+
+    /// Red moved `offset` pixels right and blue left of green, joined by their maximum (an RGB-split glitch): each
+    /// image holds one channel at full alpha, so the maximum is the picture itself where they line up. Adding them
+    /// would sum the alphas too and darken the picture to a third.
+    static func splitChannels(_ image: CIImage, offset: Double) -> CIImage {
+        func channel(_ red: CGFloat, _ green: CGFloat, _ blue: CGFloat, shift: Double) -> CIImage {
+            image.applyingFilter("CIColorMatrix", parameters: [
+                "inputRVector": CIVector(x: red, y: 0, z: 0, w: 0), "inputGVector": CIVector(x: 0, y: green, z: 0, w: 0),
+                "inputBVector": CIVector(x: 0, y: 0, z: blue, w: 0), "inputAVector": CIVector(x: 0, y: 0, z: 0, w: 1),
+            ]).transformed(by: CGAffineTransform(translationX: shift, y: 0))
+        }
+        return channel(1, 0, 0, shift: offset)
+            .applyingFilter("CIMaximumCompositing", parameters: [kCIInputBackgroundImageKey: channel(0, 1, 0, shift: 0)])
+            .applyingFilter("CIMaximumCompositing", parameters: [kCIInputBackgroundImageKey: channel(0, 0, 1, shift: -offset)])
+            .cropped(to: image.extent)
+    }
+
+    /// The frame turned `degrees` about its left edge, seen in perspective from a camera 1.5 frame sizes away:
+    /// positive takes the right edge away from the viewer, negative brings it closer.
+    static func swung(_ image: CIImage, degrees: Double, bounds: CGRect) -> CIImage {
+        let angle = min(89, max(-89, degrees)) * .pi / 180
+        let distance = 1.5 * max(bounds.width, bounds.height)
+        func corner(_ x: CGFloat, _ y: CGFloat) -> CIVector {
+            let along = x - bounds.minX, depth = along * sin(angle)
+            let scale = distance / (distance + depth)
+            return CIVector(x: bounds.minX + along * cos(angle) * scale, y: bounds.midY + (y - bounds.midY) * scale)
+        }
+        return image.applyingFilter("CIPerspectiveTransformWithExtent", parameters: [
+            "inputExtent": CIVector(cgRect: bounds),
+            "inputTopLeft": corner(bounds.minX, bounds.maxY), "inputTopRight": corner(bounds.maxX, bounds.maxY),
+            "inputBottomLeft": corner(bounds.minX, bounds.minY), "inputBottomRight": corner(bounds.maxX, bounds.minY),
+        ])
     }
 }

@@ -94,6 +94,7 @@ extension CommandCatalog {
         Adjustment layers (kind adjustment) hold items with only a `color` grade and no media or text; each grades
         every layer below it while on screen. Use `adjustment add` for a grade on a range; there is no project-wide
         style setting. Reusable grades are library looks (`library list --kind look`, `library place`, `library add`).
+        Brand kit: `library apply BRAND` (no --item) sets brand, restyles brandRoles text.
         `schema get` returns the JSON Schema of project.bashcut.json with every field, type and range.
         Prefer `media place` and `timeline move`, which put content on a free or new layer when the range is taken;
         raw insert/move operations that overlap are rejected.
@@ -196,9 +197,9 @@ extension CommandCatalog {
         {"op":"upsertTransition","id":"cut-a-b","kind":"dissolve","from":"CLIP_A","to":"CLIP_B","duration":12,
          "easing":"inOut"} (id optional; easing: linear, the default, in, out, inOut or "cubic-bezier(0.2,0,0,1)";
          kinds dissolve,
-         whip, blink, zoom, spin, shutter, wipe, or any name with "motion":{"outgoing":{"zoom":[1,1.2],"opacity":[1,0]},
+         whip, blink, zoom, spin, shutter, wipe, swing, glitch, halftone, or any name with "motion":{"outgoing":{"zoom":[1,1.2],"opacity":[1,0]},
          "incoming":{"panX":[0.3,0],"opacity":[0,1]}}: zoom, panX/panY (share of the frame), rotation (deg), opacity,
-         exposure (EV), scaleX, reveal (wipe from the left), each [from, to] or more points),
+         exposure (EV), scaleX, reveal (wipe from the left), swing (deg), rgbSplit, halftone, each [from, to] or more points),
         {"op":"deleteTransition","id":"cut-a-b"}.
         {"op":"insert","track":"ADJUSTMENT_TRACK_ID","item":{"id":"grade-1","at":0,"dur":90,"color":{"saturation":0.8,"lut":"LUT_ID"}}},
         {"op":"addColorLUT","lut":{"id":"look","name":"Look","path":"luts/look.cube","size":33}},

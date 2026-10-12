@@ -1867,6 +1867,174 @@
         "vi": { "stringUnit": { "state": "translated", "value": "Màn trập" } }
       }
     },
+    "Brand": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Brand" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Thương hiệu" } }
+      }
+    },
+    "New Brand Kit…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "New Brand Kit…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Bộ thương hiệu mới…" } }
+      }
+    },
+    "Click a kit to use it in this project: titles and cards tied to the brand take its colours and fonts. Recipes, graphics and voiceover read it too.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Click a kit to use it in this project: titles and cards tied to the brand take its colours and fonts. Recipes, graphics and voiceover read it too." } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Bấm một bộ để dùng cho dự án này: tiêu đề và thẻ gắn với thương hiệu sẽ lấy màu và phông của bộ. Công thức, đồ hoạ và lồng tiếng cũng đọc nó." } }
+      }
+    },
+    "In this project": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "In this project" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Trong dự án này" } }
+      }
+    },
+    "Palette": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Palette" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Bảng màu" } }
+      }
+    },
+    "Logo and mascot": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Logo and mascot" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Logo và linh vật" } }
+      }
+    },
+    "New pose": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "New pose" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Tư thế mới" } }
+      }
+    },
+    "Remove this pose": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Remove this pose" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Xoá tư thế này" } }
+      }
+    },
+    "Disclosure": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Disclosure" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Nhãn công bố" } }
+      }
+    },
+    "Unset": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Unset" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Chưa đặt" } }
+      }
+    },
+    "Leave this colour unset": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Leave this colour unset" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Để trống màu này" } }
+      }
+    },
+    "Accent": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Accent" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Màu nhấn" } }
+      }
+    },
+    "Background": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Background" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Nền" } }
+      }
+    },
+    "Secondary": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Secondary" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Màu phụ" } }
+      }
+    },
+    "Heading": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Heading" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Tiêu đề" } }
+      }
+    },
+    "Body": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Body" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Nội dung" } }
+      }
+    },
+    "Brand kit": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Brand kit" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Bộ thương hiệu" } }
+      }
+    },
+    "Palette, fonts, logo, mascot and voice the new project starts with; change it later in the Brand panel.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Palette, fonts, logo, mascot and voice the new project starts with; change it later in the Brand panel." } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Bảng màu, phông chữ, logo, linh vật và giọng đọc cho dự án mới; đổi sau trong bảng Thương hiệu." } }
+      }
+    },
+    "My brand kit": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "My brand kit" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Bộ thương hiệu của tôi" } }
+      }
+    },
+    "Remove brand kit": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Remove brand kit" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Bỏ bộ thương hiệu" } }
+      }
+    },
+    "Apply brand %@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Apply brand %@" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Áp dụng thương hiệu %@" } }
+      }
+    },
+    "New brand kit": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "New brand kit" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Bộ thương hiệu mới" } }
+      }
+    },
+    "Edit brand kit": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Edit brand kit" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Sửa bộ thương hiệu" } }
+      }
+    },
+    "brand kit": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "brand kit" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "bộ thương hiệu" } }
+      }
+    },
+    "voice.synthesize provider": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "voice.synthesize provider" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "nhà cung cấp voice.synthesize" } }
+      }
+    },
+    "Swing": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Swing" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Lật thẻ" } }
+      }
+    },
+    "Glitch": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Glitch" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Nhiễu số" } }
+      }
+    },
+    "Halftone": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Halftone" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Chấm in" } }
+      }
+    },
     "Wipe": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Wipe" } },

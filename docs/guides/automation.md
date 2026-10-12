@@ -440,10 +440,13 @@ recorded show only label and author. Plugins see `why` in the `edit.committed` e
   integer-frame `duration`, an
   optional `easing` (`linear`, the default, `in`, `out`, `inOut` or `"cubic-bezier(x1,y1,x2,y2)"` with x1 and x2 in
   0…1, the same ease type keyframes use) and an optional `motion`. The built-in kinds (`dissolve`, `whip`, `blink`,
-  `zoom`, `spin`, `shutter`, `wipe`) are rows of data; any other kind (lowercase letters, digits, dashes) needs a
+  `zoom`, `spin`, `shutter`, `wipe`, `swing` — the next card swings in about its left edge, `glitch` — RGB split and
+  jitter, `halftone` — print dots) are rows of data; any other kind (lowercase letters, digits, dashes) needs a
   `motion`: `{"outgoing": {…}, "incoming": {…}}`, each side mapping `zoom`, `panX`/`panY` (share of the frame,
-  right/up), `rotation` (degrees, counterclockwise), `opacity`, `exposure` (EV), `scaleX` (horizontal squeeze) or
-  `reveal` (share of the width shown from the left) to 2–16 values spread evenly over the eased tween. Preview and
+  right/up), `rotation` (degrees, counterclockwise), `opacity`, `exposure` (EV), `scaleX` (horizontal squeeze),
+  `reveal` (share of the width shown from the left), `swing` (degrees about the left edge in perspective, positive
+  takes the right edge away), `rgbSplit` (red and blue apart by a share of the width, 0–0.2) or `halftone` (dot
+  spacing as a share of the width, 0–0.1) to 2–16 values spread evenly over the eased tween. Preview and
   export draw it the same way. The clips must be adjacent on one video track. `deleteTransition` restores a hard cut; moving or deleting either clip removes a transition that no
   longer describes a valid cut.
 - **Roll.** `{"op": "roll", "item": "ID", "edge": "end", "toFrame": 75}` moves the shared cut with exactly one
@@ -491,9 +494,9 @@ item; without it the revision stays the same.
 
 ## Library items
 
-The library panels (Media clips, Audio, Text, Stickers, Effects, Transitions, Filters, Voice) are collections of items
-with one model (#66). An item has an `id`, a `kind` (`clip`, `audio`, `text-preset`, `sticker`, `effect-preset`,
-`transition-preset`, `look`, `voice`), a `name`, `tags`, a `pack`, `source` and `license`, `createdBy` (user, agent or plugin),
+The library panels (Media clips, Audio, Text, Stickers, Effects, Transitions, Filters, Voice, Brand) are collections of
+items with one model (#66). An item has an `id`, a `kind` (`clip`, `audio`, `text-preset`, `sticker`, `effect-preset`,
+`transition-preset`, `look`, `voice`, `brand`), a `name`, `tags`, a `pack`, `source` and `license`, `createdBy` (user, agent or plugin),
 `version`, usage, an optional copied `file` and `preview`, and `params` with what the kind needs.
 
 **Licences and provenance (P2-H8).** `license` is stored structured: `{id, version?, text?, url?, attribution?}` with
@@ -555,6 +558,19 @@ project or on this Mac.
   clip (or, with `--media`, any project audio media) as an audio item (see Audio below), or an overlay item as a
   sticker (see Stickers below).
 - `bashcut library move <id> --to project|user` moves a saved item with its versions, files and use count.
+
+**Brand kits (#453).** A `brand` item's params hold what a channel keeps on every video, each optional (at least one
+set): `palette` {`accent`, `background`, `text`, `secondary`} as `#RRGGBB`, `fonts` {`heading`, `body`}, `logo` and
+`mascot` {pose: id} as sticker library references, `voice` {`provider`, `voice`} and `disclosure` (a label such as
+"Ảnh tạo bằng AI"). `library add --kind brand --name Acme --params '{"palette":{"accent":"#FFB000"}}'` saves one;
+`library apply <brand-id> --base-rev N` (no `--item`) sets the project's `brand` (the params plus `library` and `name`)
+and, in the same undo step, restyles every text item with `brandRoles`; the result lists the `restyled` items.
+`brandRoles` maps `textStyle` paths to roles: `fill`, `stroke`, `highlight`, `background.color`, `shadow.color` and
+`accentBars.color` (every bar) to a colour role, `font` to a font role; a role the kit leaves unset keeps the item's
+value. A text preset with `brandRoles` in its params passes them to the text it places and takes the project's kit
+at once, and so does a `plan.cut` title or caption whose `style` (or library preset) carries `brandRoles`. `project create --brand <id>` starts a project with a kit; `setProjectProperties {"brand": null}` removes it
+(styled text keeps its values). Recipes, graphics providers and voice skills read `project get` › `brand`. The Brand
+panel shows the kit in use and the saved kits (a click applies one); New Project offers the kits on this Mac.
 - Text presets (#380) are `params` `{textPreset, text, textStyle, animation}`: `textPreset` is a renderer preset and
   `text` the sample (placed unless `library place --text` gives another). The optional `textStyle` holds the item's
   own `size`, `positionY`, `strokeWidth`, `font`, `fill`, `stroke` and `highlight` (the item property rules of
@@ -669,7 +685,8 @@ project or on this Mac.
     (`fill: false`) and framed with `transform` zoom, pan and tilt, all as one undo step. Options win over the
     sticker's defaults. The engine draws an animated sticker's first frame for now; the result's `note` says so. A
     sticker movie plays once (a longer `--duration` is cut to its length and the `note` says so) and is marked
-    `alpha: true` in the project, so BashCut previews it from the original instead of a proxy without alpha. Emoji
+    `alpha: true` in the project, so BashCut previews it from the original instead of a proxy without alpha (`media
+    import` marks any movie with an alpha channel the same way). Emoji
     stickers place as text exactly as before; `--position` and `--size` do not apply to them.
   - The project copy belongs to the project: `library remove` or `library update` of the sticker never changes it.
   - `library save-selection --kind sticker --name X [--item id]` saves the selected overlay: an image (or a movie with

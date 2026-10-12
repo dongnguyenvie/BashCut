@@ -216,6 +216,8 @@ public struct LibraryEditorRequest: Identifiable {
     public var sticker: LibrarySticker?
     /// A text preset's size, position, outline and animation, edited in the sheet (#380); nil for other kinds.
     public var textPreset: LibraryTextPreset?
+    /// A brand kit's params, edited in the sheet (#453); nil for other kinds.
+    public var brand: [String: JSONValue]?
 
     public init(
         mode: Mode, name: String, tags: [String] = [], pack: String? = nil, scope: LibraryScope,
@@ -315,6 +317,7 @@ public enum LibraryTab: String, CaseIterable, Identifiable, Sendable {
     case transitions = "Transitions"
     case filters = "Filters"
     case voice = "Voice"
+    case brand = "Brand"
 
     public var id: String { rawValue }
 
@@ -336,6 +339,7 @@ public enum LibraryTab: String, CaseIterable, Identifiable, Sendable {
         case .transitions: return "arrow.left.arrow.right"
         case .filters: return "circle.lefthalf.filled"
         case .voice: return "mic"
+        case .brand: return "paintpalette"
         }
     }
 }

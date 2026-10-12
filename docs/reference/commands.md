@@ -39,7 +39,7 @@ Close the open project and show the Welcome screen, like File › Close Project.
 - `saveCurrent`: boolean, default false. Save the open project first when it has unsaved changes
 - `discardCurrent`: boolean, default false. Drop unsaved changes of the open project
 
-### `bashcut project create --name <name> [--dir <directory>] [--footage <footage>] [--canvas <canvas>] [--resolution <resolution>] [--fps <fps>] [--language <language>] [--import] [--save-current] [--discard-current]`
+### `bashcut project create --name <name> [--dir <directory>] [--footage <footage>] [--canvas <canvas>] [--resolution <resolution>] [--fps <fps>] [--language <language>] [--import] [--brand <brand>] [--save-current] [--discard-current]`
 
 Create a project folder (media, footage, render…) like the New Project wizard and open it. With import, also import every video, audio and image file in footage (as media import FOLDER) and start media transcribe and media analyze for them: the result adds import (files, converting) and jobs {transcribe, analyze} (a job ID, or {error} when it could not start), so one call readies the footage for a survey. A folder of that name without a project (say one the footage was copied into) becomes the project: the project folders are added and its files stay where they are.
 
@@ -52,6 +52,7 @@ Create a project folder (media, footage, render…) like the New Project wizard 
 - `fps`: string, one of 29.97, 30, 24, 60, default "29.97". Frame rate
 - `language`: string. Content language (BCP 47) of speech and captions, from the user's prompt or answer; no default
 - `importFootage`: boolean, default false. Import the footage folder's files and start transcription and picture analysis
+- `brand`: string. A brand kit from the library (this Mac, a plugin or built in) to apply to the new project, as library apply
 - `saveCurrent`: boolean, default false. Save the open project first when it has unsaved changes
 - `discardCurrent`: boolean, default false. Drop unsaved changes of the open project
 
@@ -1009,7 +1010,7 @@ Whether each plugin capability (or one) can serve now: available, else reason mi
 
 - Mode: read · Runs: immediately · MCP: `bashcut_capabilities_get`
 - `capability`: string. Capability ID, such as captions.transcribe; all by default
-- `kind`: string, one of audio, text-preset, sticker, effect-preset, transition-preset, look, voice, clip. Only providers serving this library item kind
+- `kind`: string, one of audio, text-preset, sticker, effect-preset, transition-preset, look, voice, clip, brand. Only providers serving this library item kind
 - `voices`: boolean. Add the voices of the voice providers
 
 ## beats
@@ -1509,7 +1510,7 @@ List every editor action (buttons, menu items, keyboard shortcuts) with its shor
 
 ### `bashcut ui action <action> [<target>] [--in <in>] [--out <out>]`
 
-Run an editor action like the user: by ID (timeline.split, timeline.zoom-in, playback.toggle) or by shortcut (cmd+b, space, cmd+=). Actions that open a dialog return at once; answer it with ui.respond. With a target: open DIALOG (a sheet or popover: new-project, export, export-report, agent-changes, review, history, plugins, settings, doctor, knowledge, ask, sections, external-changes, plugin-proposals, commands, shortcuts, add-plugin, library-search, library-generate), panel PANEL (a library panel in the left rail: media, audio, text, stickers, effects, transitions, filters, voice), source MEDIA (the source viewer, with --in/--out frames marked) or notify MESSAGE (a short status message).
+Run an editor action like the user: by ID (timeline.split, timeline.zoom-in, playback.toggle) or by shortcut (cmd+b, space, cmd+=). Actions that open a dialog return at once; answer it with ui.respond. With a target: open DIALOG (a sheet or popover: new-project, export, export-report, agent-changes, review, history, plugins, settings, doctor, knowledge, ask, sections, external-changes, plugin-proposals, commands, shortcuts, add-plugin, library-search, library-generate), panel PANEL (a library panel in the left rail: media, audio, text, stickers, effects, transitions, filters, voice, brand), source MEDIA (the source viewer, with --in/--out frames marked) or notify MESSAGE (a short status message).
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_ui_action`
 - `action`: string, required. Action ID or shortcut, or open, panel, source, notify
@@ -1839,8 +1840,8 @@ Propose a change to an agent kit skill: the line diff against the kit's SKILL.md
 List library items. Kinds: Media clips, Audio, Text, Stickers, Effects, Transitions, Filters, Voice; from the open project, this Mac, plugins and built-in packs, with usage. Check here before making something new.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_library_list`
-- `kind`: string, one of audio, text-preset, sticker, effect-preset, transition-preset, look, voice, clip. Item kind
-- `panel`: string, one of media, audio, text, stickers, effects, transitions, filters, voice. Only items the library panel shows
+- `kind`: string, one of audio, text-preset, sticker, effect-preset, transition-preset, look, voice, clip, brand. Item kind
+- `panel`: string, one of media, audio, text, stickers, effects, transitions, filters, voice, brand. Only items the library panel shows
 - `tag`: string. Only items with this tag
 - `scope`: string, one of built-in, user, project, plugin. Look only in this scope; without it project, user, plugin, then built-in
 - `createdBy`: string, one of user, agent, plugin, built-in. Only items made by
@@ -1860,15 +1861,15 @@ Read one library item, with its earlier versions and file paths.
 Usage of every library item, the saved items nobody used, and groups of duplicates (same kind and content), to find what to prune or merge.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_library_stats`
-- `kind`: string, one of audio, text-preset, sticker, effect-preset, transition-preset, look, voice, clip. Item kind
-- `panel`: string, one of media, audio, text, stickers, effects, transitions, filters, voice. Only items the library panel shows
+- `kind`: string, one of audio, text-preset, sticker, effect-preset, transition-preset, look, voice, clip, brand. Item kind
+- `panel`: string, one of media, audio, text, stickers, effects, transitions, filters, voice, brand. Only items the library panel shows
 
 ### `bashcut library add [--kind <kind>] [--name <name>] [--from-result <fromResult>] [--id <id>] [--scope <scope>] [--origin <origin>] [--author <author>] [--tags <tags>] [--pack <pack>] [--params <params>] [--file <file>] [--preview <preview>] [--source <source>] [--license <license>]`
 
 Save a new library item in the project or on this Mac. Files are copied in. Agents saving to the user scope wait for approval. To improve an existing item, use library update. fromResult saves a candidate of a finished library search or library generate job instead (its kind, name, files, source and license; the other fields here override them).
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_library_add`
-- `kind`: string, one of audio, text-preset, sticker, effect-preset, transition-preset, look, voice, clip. Item kind (required unless fromResult)
+- `kind`: string, one of audio, text-preset, sticker, effect-preset, transition-preset, look, voice, clip, brand. Item kind (required unless fromResult)
 - `name`: string. Display name (required unless fromResult)
 - `fromResult`: string. A library search or generate candidate as <job>:<index> (index from 0, as the job result lists it)
 - `id`: string. Item ID: lowercase letters, digits and hyphens; from the name by default
@@ -1934,7 +1935,7 @@ Move a saved item between the project and this Mac, with its versions, files and
 
 ### `bashcut library apply <id> [--scope <scope>] [--item <item>] [--set <set>] [--from <from>] [--to <to>] --base-rev <baseRev>`
 
-Use a library item on an existing timeline item: a text preset on a text item (its preset, then its stored textStyle over the item's and its animation, as one undo step), an effect preset's recipe on a clip (every step, its sounds and text, and a split for a from/to range, as one undo step; set overrides its parameters; when a reverse step needs a new reversed copy it runs as a job), a look's grade (adding its LUT to the project when it has one, in the same undo step), or a transition preset at the cut beside a video clip (its kind, duration and easing, plus its sound on an SFX layer, as one undo step). Defaults to the selected item.
+Use a library item on an existing timeline item: a text preset on a text item (its preset, then its stored textStyle over the item's and its animation, as one undo step), an effect preset's recipe on a clip (every step, its sounds and text, and a split for a from/to range, as one undo step; set overrides its parameters; when a reverse step needs a new reversed copy it runs as a job), a look's grade (adding its LUT to the project when it has one, in the same undo step), or a transition preset at the cut beside a video clip (its kind, duration and easing, plus its sound on an SFX layer, as one undo step). A brand kit applies to the whole project and needs no item: it sets the project's brand (palette, fonts, logo, mascot, voice, disclosure) and restyles every text item with brandRoles, as one undo step. Defaults to the selected item.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_library_apply`
 - `id`: string, required. Item ID, or scope:id to pick one scope
@@ -1984,7 +1985,7 @@ Ask an installed plugin that provides library.search (sounds, stickers, GIFs… 
 
 - Mode: edit · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_library_search`
 - `query`: string, required. What to look for
-- `kind`: string, required, one of audio, text-preset, sticker, effect-preset, transition-preset, look, voice, clip. Item kind
+- `kind`: string, required, one of audio, text-preset, sticker, effect-preset, transition-preset, look, voice, clip, brand. Item kind
 - `provider`: string. Plugin or provider ID; the first available provider that serves the kind by default
 - `limit`: integer, 1…50, default 12. Most candidates to return
 - `save`: integer, ≥ 0. Also save the candidate with this index (from 0) when the job finishes
@@ -1999,7 +2000,7 @@ Ask an installed plugin that provides library.generate (AI music, stickers…) t
 
 - Mode: edit · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_library_generate`
 - `prompt`: string, required. What to make
-- `kind`: string, required, one of audio, text-preset, sticker, effect-preset, transition-preset, look, voice, clip. Item kind
+- `kind`: string, required, one of audio, text-preset, sticker, effect-preset, transition-preset, look, voice, clip, brand. Item kind
 - `provider`: string. Plugin or provider ID; the first available provider that serves the kind by default
 - `limit`: integer, 1…50, default 4. Most candidates to return
 - `save`: integer, ≥ 0. Also save the candidate with this index (from 0) when the job finishes
@@ -2024,7 +2025,7 @@ Write library items as a pack folder (pack.json and files) to share or import el
 - Mode: edit · Runs: immediately · MCP: `bashcut_library_export-pack`
 - `output`: string, required, path. New or empty folder to write
 - `pack`: string. Items in this pack
-- `kind`: string, one of audio, text-preset, sticker, effect-preset, transition-preset, look, voice, clip. Item kind
+- `kind`: string, one of audio, text-preset, sticker, effect-preset, transition-preset, look, voice, clip, brand. Item kind
 - `scope`: string, one of built-in, user, project, plugin. Look only in this scope; without it project, user, plugin, then built-in
 - `name`: string. Pack name; the pack filter or the folder name by default
 
