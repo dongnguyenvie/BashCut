@@ -78,8 +78,9 @@ private struct PluginPanelManager: View {
         let requirements = document.plugins.requirementsJSON(plugin).array
         let unprovided = document.unprovidedCapabilities(plugin)
         let elsewhere = plugin.manifest.views.filter { $0.place != .panel }
+        let overlays = document.ui.pluginOverlayRevision >= 0 ? document.ui.pluginOverlaySets[plugin.id]?.count ?? 0 : 0
         if !tools.isEmpty || !skills.isEmpty || !requirements.isEmpty || !plugin.manifest.usedCapabilities.isEmpty
-            || !elsewhere.isEmpty {
+            || !elsewhere.isEmpty || overlays > 0 {
             DisclosureGroup(isExpanded: $expanded) {
                 VStack(alignment: .leading, spacing: 8) {
                     if !elsewhere.isEmpty {
@@ -91,6 +92,15 @@ private struct PluginPanelManager: View {
                                 Label(view.title.text, systemImage: view.place == .dock ? "sidebar.right" : "macwindow")
                                     .frame(maxWidth: .infinity, alignment: .leading)
                             }
+                        }
+                    }
+                    if overlays > 0 {
+                        // Same as `plugins set-overlays <plugin> --overlays '[]'`.
+                        HStack {
+                            label("Overlays", "square.dashed")
+                            Text(verbatim: "\(overlays)").font(.caption).foregroundStyle(.secondary)
+                            Spacer()
+                            Button("Clear") { document.ui.setPluginOverlays(plugin.id, []) }.controlSize(.small)
                         }
                     }
                     if !tools.isEmpty {

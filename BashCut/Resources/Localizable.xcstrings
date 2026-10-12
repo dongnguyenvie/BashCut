@@ -1,6 +1,7 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Overlays": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Overlays" } }, "vi": { "stringUnit": { "state": "translated", "value": "Lớp phủ" } } } },
     "Generate → 1 take": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Generate → 1 take" } }, "vi": { "stringUnit": { "state": "translated", "value": "Tạo → 1 bản đọc" } } } },
     "Insert take into Voiceover": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Insert take into Voiceover" } }, "vi": { "stringUnit": { "state": "translated", "value": "Chèn bản đọc vào giọng đọc" } } } },
     "Choose a font": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Choose a font" } }, "vi": { "stringUnit": { "state": "translated", "value": "Chọn phông chữ" } } } },

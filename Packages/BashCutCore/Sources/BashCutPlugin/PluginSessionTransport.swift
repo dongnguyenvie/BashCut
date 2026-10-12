@@ -357,8 +357,8 @@ actor PluginSession {
             receiveEvent(fields)
         case "call":
             receiveCall(fields)
-        case "viewUpdate":
-            receiveViewUpdate(fields, bytes: line.count)
+        case "viewUpdate", "overlays":
+            receivePush(fields, bytes: line.count)
         case "overflow":
             failAll(PluginError.invalid("Plugin response is too large"))
             _ = Darwin.kill(-pid, SIGKILL)

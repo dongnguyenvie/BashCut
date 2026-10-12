@@ -2,6 +2,7 @@ import AppKit
 import BashCutAutomation
 import BashCutDocument
 import BashCutEngine
+import BashCutPlugin
 import BashCutProject
 
 /// The scrolling timeline: ruler, section band, beat grid and clips. The playhead, drag guides and labels are
@@ -27,6 +28,8 @@ import BashCutProject
     /// The document's agent-changed clips as of the last update; clips in it show a sparkle.
     var drawnAgentChanges: Set<String> = []
     var reviewRevision = -1
+    /// Plugin overlays (#407) as of the last content update.
+    var overlays = PluginOverlayIndex([:])
 
     /// The clip under the pointer, drawn highlighted with trim handles.
     var hoveredItemID: String? {
@@ -182,6 +185,7 @@ import BashCutProject
                 drawClip(item, in: rect, row: row, dirtyRect: dirtyRect, root: root)
             }
         }
+        drawPluginOverlays(dirtyRect)
     }
 
     private func drawSectionBand(_ dirtyRect: CGRect) {

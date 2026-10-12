@@ -24,9 +24,17 @@ import Foundation
         }
     }
 
-    /// A view update outside a request: drawn only in a view on screen of a ready plugin; others are dropped.
+    /// A view update outside a request: drawn only in a view on screen of a ready plugin; others are dropped. An
+    /// overlay set (#407) replaces the plugin's overlays; a bad one is dropped (the host call reports why).
     private func pushed(_ update: PluginViewUpdate) {
-        guard let model = models[update.pluginID + "/" + update.view], model.visible,
+        guard let view = update.view else {
+            guard let plugin = document.plugins.plugin(update.pluginID), document.plugins.isReady(plugin),
+                let overlays = try? PluginOverlay.parse(update.answer.object["overlays"] ?? .null)
+            else { return }
+            document.ui.setPluginOverlays(plugin.id, overlays)
+            return
+        }
+        guard let model = models[update.pluginID + "/" + view], model.visible,
             let plugin = document.plugins.plugin(update.pluginID), document.plugins.isReady(plugin)
         else { return }
         model.pushed(update.answer)
@@ -103,6 +111,7 @@ import Foundation
 
     /// Ends every plugin's command token and forgets views of plugins that are gone (project closed or switched).
     func reset() {
+        document.ui.clearPluginOverlays()
         for session in sessions.values { session.revoke(in: document.registry) }
         sessions = [:]
         models = models.filter { key, _ in containers.contains { key.hasPrefix($0.id + "/") } }

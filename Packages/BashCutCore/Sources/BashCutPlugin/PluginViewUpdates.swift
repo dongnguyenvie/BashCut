@@ -2,14 +2,17 @@ import BashCutProject
 import Foundation
 
 /// A view update a session plugin sent without a request (#409, host feature `viewUpdate`): the line
-/// `{"type":"viewUpdate","view":"<id>","body":[…],"title"?,"state"?,"notify"?}` from a background job or a timer.
+/// `{"type":"viewUpdate","view":"<id>","body":[…],"title"?,"state"?,"notify"?}` from a background job or a timer; or
+/// its overlay set (#407, `{"type":"overlays","overlays":[…]}`, `view` nil).
 public struct PluginViewUpdate: Sendable {
     public let pluginID: String
-    public let view: String
-    /// The update as a view answer (`body`, `title`?, `state`?, `notify`?), parsed by `PluginViewTree(parsing:)`.
+    /// The view to redraw; nil for an overlay set.
+    public let view: String?
+    /// The update as a view answer (`body`, `title`?, `state`?, `notify`?), parsed by `PluginViewTree(parsing:)`; for
+    /// an overlay set, `{"overlays": […]}` (`PluginOverlay.parse`).
     public let answer: JSONValue
 
-    public init(pluginID: String, view: String, answer: JSONValue) {
+    public init(pluginID: String, view: String?, answer: JSONValue) {
         self.pluginID = pluginID
         self.view = view
         self.answer = answer

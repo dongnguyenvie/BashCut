@@ -57,6 +57,8 @@ import Testing
         #expect(PluginCommandSession.ownPluginRefusal("plugins.option", params: theirs, caller: "example.voice") != nil)
         #expect(PluginCommandSession.ownPluginRefusal("plugins.option", params: [:], caller: "example.voice") != nil)
         #expect(PluginCommandSession.ownPluginRefusal("plugins.show-view", params: theirs, caller: "example.voice") != nil)
+        #expect(PluginCommandSession.ownPluginRefusal("plugins.set-overlays", params: theirs, caller: "example.voice") != nil)
+        #expect(PluginCommandSession.ownPluginRefusal("plugins.set-overlays", params: mine, caller: "example.voice") == nil)
         #expect(PluginCommandSession.ownPluginRefusal("timeline.get", params: theirs, caller: "example.voice") == nil)
         // The session itself never runs it with its plugin token: the generic handler cannot tell which plugin calls.
         let registry = CommandRegistry()

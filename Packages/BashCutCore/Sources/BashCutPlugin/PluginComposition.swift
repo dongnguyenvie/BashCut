@@ -22,8 +22,11 @@ public enum PluginFeature {
     /// `viewUpdate` lines outside a request (#409).
     public static let viewUpdate = "viewUpdate"
 
+    /// Plugin overlays on the timeline and viewer (#407).
+    public static let overlays = "overlays"
+
     /// Features that are not a view component or place.
-    static let named = [container, views, requires, invoke, optionsSet, voiceMaxTakes, inspectorWhen, viewUpdate]
+    static let named = [container, views, requires, invoke, optionsSet, voiceMaxTakes, inspectorWhen, viewUpdate, overlays]
 
     /// Every feature this host provides: `views.<component>` for each view component it can draw and
     /// `location.<place>` for each place a view can live.

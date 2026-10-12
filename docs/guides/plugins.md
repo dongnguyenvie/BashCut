@@ -1055,8 +1055,44 @@ A component type this BashCut does not know draws "Needs a newer BashCut" and th
   `image` small files or thumbnails anyway.
 - Answers over the session's line limit (8 MiB) fail; keep data in your plugin and send what is on screen.
 
-Not available (they would cost performance or safety): webviews, free drawing, video players, timeline or viewer
-overlays, inspector tabs and drag and drop from a view.
+Not available (they would cost performance or safety): webviews, free drawing, video players, inspector tabs and
+drag and drop from a view.
+
+### Overlays on the timeline and viewer
+
+A plugin (API 8 or later, host feature `overlays`) can mark the timeline and the viewer with data instead of
+drawing: the parts a review found, the beats it hears, where a face or a logo is. BashCut draws the marks itself and
+never asks the plugin per frame; the plugin sends its whole set again when something changes.
+
+```json
+[{"id": "hook", "kind": "range", "start": 0, "end": 90, "label": "Hook", "color": "orange"},
+ {"id": "drop", "kind": "marker", "start": 312, "label": "Drop"},
+ {"id": "face", "kind": "region", "rect": {"x": 0.3, "y": 0.1, "width": 0.4, "height": 0.5}, "start": 0, "end": 150,
+  "style": "outline", "label": "Face"}]
+```
+
+| Field | Rules |
+|---|---|
+| `id` | A short key, unique in the set |
+| `kind` | `range` (frames `start..<end` tinted over every layer, or one layer with `track`, and a bar on the ruler), `marker` (a line and a ruler flag at frame `start`), `region` (a rectangle on the viewer) |
+| `start`, `end` | Project frames (integers ≥ 0). A region with them shows only while the playhead is in `start..<end`; without, always |
+| `track` | `range`/`marker`: the layer id to mark instead of all layers |
+| `rect` | `region`: `{x, y, width, height}` in 0–1 of the picture, inside it |
+| `label` | At most 80 characters, drawn next to the mark |
+| `color` | `accent` (default), `green`, `orange`, `red`, `purple`, `secondary` or `#RRGGBB` |
+| `style` | `region`: `outline` (default, dashed) or `fill` (a tint) |
+
+- Send the set with the host call `plugins.set-overlays` (`{"plugin": "<its id>", "overlays": […]}`) from a view,
+  action or other request with a host channel; a bad set fails the call with the reason. Or, any time (while
+  handling a hook, from a timer), the line `{"type": "overlays", "overlays": […]}`; a bad set sent this way is
+  dropped. It counts against the same per-plugin limits as [view updates](#updates-outside-a-request).
+- `[]` removes the plugin's marks. At most 500 overlays per plugin. Overlays are not saved with the project and go
+  away when another project opens.
+- The panel's **Plugin** section shows how many overlays the plugin has with **Clear**. `plugins overlays [plugin]`
+  lists them; `plugins set-overlays <plugin> --overlays '[…]'` sets or clears them from the command line.
+- Cost: the timeline draws overlays with the clips, only when they or the content change (playback and scrolling move
+  only the playhead and draw newly shown parts, looking up the overlays in those frames); the viewer filters the
+  regions by the playhead and redraws only when the regions shown change.
 
 ### Commands
 
@@ -1285,7 +1321,8 @@ later:
 - Calls on a request without a host channel get the error "This request cannot call BashCut".
 - Call params and results are limited to 1 MiB.
 - Views and actions (API 8) call as author `plugin`, with one command token per plugin, limited to the chat-agent
-  commands plus `plugins.run`, `plugins.invoke`, `plugins.show-view` and `plugins.option`; `ui.action` only for
+  commands plus `plugins.run`, `plugins.invoke`, `plugins.show-view`, `plugins.option`, `plugins.overlays` and
+  `plugins.set-overlays` (its own); `ui.action` only for
   `notify`, `panel` and `source` (`{"action": "notify", "target": "Done"}` shows a status message).
 - `plugins.option` (`{"plugin": "<its id>", "option", "value"}`) sets one of the calling plugin's own options, so a
   view's "Use" button can choose the `voice` the Voice panel and every later request see, without a copy in plugin

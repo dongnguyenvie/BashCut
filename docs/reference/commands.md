@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 209 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 211 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -783,6 +783,21 @@ Run a plugin capability directly with raw parameters. It returns the provider's 
 - `provider`: string. Provider ID; the project's choice or the highest priority by default
 - `params`: object. Request parameters (JSON object)
 
+### `bashcut plugins overlays [<plugin>]`
+
+List the overlays plugins draw on the timeline and viewer (ranges, markers and viewer regions with their frames, label and colour), by plugin.
+
+- Mode: read · Runs: immediately · MCP: `bashcut_plugins_overlays`
+- `plugin`: string. Only this plugin
+
+### `bashcut plugins set-overlays <plugin> --overlays <overlays>`
+
+Replace a plugin's overlays on the timeline and viewer (not saved with the project); an empty list clears them. Plugins call this for their own overlays: [{id, kind: range|marker|region, start, end, track, rect {x,y,width,height} 0–1, label, color, style}].
+
+- Mode: ui · Runs: immediately · MCP: `bashcut_plugins_set-overlays`
+- `plugin`: string, required. Plugin ID
+- `overlays`: array, required. The overlay set (JSON array); [] clears
+
 ## captions
 
 ### `bashcut captions export [--as <as>]`
@@ -1290,7 +1305,7 @@ Synthesize voice takes and measure them: per take index, path, projectPath, seco
 
 - Mode: edit · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_voice_speak`
 - `text`: string. Voiceover text in the project content language (with replace, the item's voice text by default)
-- `takes`: integer, 1…8, default 3. Number of takes to generate
+- `takes`: integer, 1…8, default 3. Number of takes to generate; capped to the provider's maxTakes (requestedTakes in the answer when it gave fewer)
 - `provider`: string. Provider ID overriding the project preference for one request
 - `choose`: integer, 1…8. Put this take on the timeline (1 = first)
 - `atFrame`: integer, ≥ 0. With choose: timeline frame; defaults to the playhead
