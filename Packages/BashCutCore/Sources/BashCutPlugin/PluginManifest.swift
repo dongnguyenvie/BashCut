@@ -346,6 +346,9 @@ public struct PluginProvider: Codable, Sendable, Equatable, Identifiable {
     public var paid: Bool?
     /// The provider answers a request with `dryRun: true` with `{estimate: {units, costUSD}}` and does no work.
     public var estimates: Bool?
+    /// Most takes a `voice.synthesize` provider is asked for per line (1–8, host feature `voice.maxTakes`): a paid
+    /// provider sets 1 so a line costs one take. Nil: any number.
+    public var maxTakes: Int?
 
     public init(
         id: String, capability: String, name: String, priority: Int = 0, timeoutSeconds: Int? = nil, kinds: [String]? = nil
@@ -374,6 +377,7 @@ public struct PluginProvider: Codable, Sendable, Equatable, Identifiable {
         clones = try container.decodeIfPresent(Bool.self, forKey: .clones)
         paid = try container.decodeIfPresent(Bool.self, forKey: .paid)
         estimates = try container.decodeIfPresent(Bool.self, forKey: .estimates)
+        maxTakes = try container.decodeIfPresent(Int.self, forKey: .maxTakes)
     }
 }
 

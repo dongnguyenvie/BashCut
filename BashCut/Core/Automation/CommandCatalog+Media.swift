@@ -300,7 +300,8 @@ extension CommandCatalog {
         parameters: [
             CommandParameter("text", .string, "Voiceover text in the project content language (with replace, "
                              + "the item's voice text by default)", sensitive: true, cli: .positional),
-            CommandParameter("takes", .integer, "Number of takes to generate", default: .integer(3), minimum: 1,
+            CommandParameter("takes", .integer, "Number of takes to generate; capped to the provider's maxTakes "
+                             + "(requestedTakes in the answer when it gave fewer)", default: .integer(3), minimum: 1,
                              maximum: 8, cli: .option("takes")),
             provider,
             CommandParameter("choose", .integer, "Put this take on the timeline (1 = first)", minimum: 1, maximum: 8,

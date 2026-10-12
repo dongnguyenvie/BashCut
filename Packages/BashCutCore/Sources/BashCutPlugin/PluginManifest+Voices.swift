@@ -11,6 +11,11 @@ public struct PluginVoice: Codable, Sendable, Equatable {
     public let supportsRate: Bool?
 }
 
+extension PluginProvider {
+    /// `count` takes capped to `maxTakes` (#410).
+    public func takes(_ count: Int) -> Int { min(count, maxTakes ?? count) }
+}
+
 extension PluginManifest {
     /// Voice facts and cloning (P0-C7) belong to `voice.synthesize` providers.
     func validateVoices() throws {
@@ -25,6 +30,14 @@ extension PluginManifest {
             }
             if provider.clones != nil, provider.capability != "voice.synthesize" {
                 throw PluginError.invalid("Provider \(provider.id): clones is for voice.synthesize")
+            }
+            if let maxTakes = provider.maxTakes {
+                guard provider.capability == "voice.synthesize", (1...8).contains(maxTakes) else {
+                    throw PluginError.invalid("Provider \(provider.id): maxTakes is 1–8, for voice.synthesize")
+                }
+                guard apiVersion >= 8 else {
+                    throw PluginError.invalid("Provider \(provider.id): maxTakes needs apiVersion 8 (feature voice.maxTakes)")
+                }
             }
         }
     }

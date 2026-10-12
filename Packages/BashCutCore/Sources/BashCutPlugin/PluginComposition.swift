@@ -14,8 +14,11 @@ public enum PluginFeature {
     /// The `plugins.option` host call for the plugin's own options (#411).
     public static let optionsSet = "options.set"
 
+    /// `providers[].maxTakes` on `voice.synthesize` providers (#410).
+    public static let voiceMaxTakes = "voice.maxTakes"
+
     /// Features that are not a view component or place.
-    static let named = [container, views, requires, invoke, optionsSet]
+    static let named = [container, views, requires, invoke, optionsSet, voiceMaxTakes]
 
     /// Every feature this host provides: `views.<component>` for each view component it can draw and
     /// `location.<place>` for each place a view can live.

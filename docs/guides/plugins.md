@@ -450,6 +450,11 @@ symlinks are followed, and the file must exist. If the call fails, BashCut delet
   through 1. A provider that only makes one file can return `{"audioPath": …}` instead.
 - When the provider returns fewer takes than requested, BashCut calls it again with a higher `takeOffset` until
   the count is filled. If any call fails, the takes made so far are discarded.
+- A provider that should not be asked for several takes (a paid cloud voice, where each take costs credits) sets
+  `"maxTakes": 1` (1–8, `apiVersion` 8, host feature `voice.maxTakes`) on its provider: BashCut never asks it for more
+  takes than that per line. `voice speak --takes 3` then makes one take and answers `requestedTakes: 3`, the Voice
+  panel generates one take and shows no take picker, and `plugins list` and `capabilities get voice.synthesize
+  --voices` report `maxTakes`.
 - Each file must be valid audio with a positive duration. BashCut does not score takes itself (P0-C4): it measures
   each take (seconds, units per second in the content language's unit, leading and trailing silence, pauses) and
   reports them with the provider's `score`; the caller picks (`voice place`, or `--choose`).

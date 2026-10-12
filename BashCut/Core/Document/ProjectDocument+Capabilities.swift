@@ -417,6 +417,7 @@ extension ProjectDocument {
                             "id": .string(provider.id), "capability": .string(provider.capability),
                             "name": .string(provider.name), "priority": .integer(provider.priority),
                             "kinds": provider.kinds.map { .array($0.map(JSONValue.string)) } ?? .null,
+                            "maxTakes": provider.maxTakes.map(JSONValue.integer) ?? .null,
                         ])
                     }),
                 ])

@@ -5,10 +5,10 @@ import Testing
 /// Voice facts and cloning on `voice.synthesize` providers (P0-C7).
 @Suite("Plugin voice facts")
 struct PluginVoiceFactsTests {
-    private func manifest(capability: String, provider: String) throws -> PluginManifest {
+    private func manifest(capability: String, provider: String, apiVersion: Int = 2) throws -> PluginManifest {
         let json = """
             {"schema": "bashcut.plugin/1", "id": "example.voice", "name": "Voice", "version": "1.0.0",
-             "apiVersion": 2, "entrypoint": "bin/provider", "capabilities": ["\(capability)"],
+             "apiVersion": \(apiVersion), "entrypoint": "bin/provider", "capabilities": ["\(capability)"],
              "providers": [{"id": "example.voice.local", "capability": "\(capability)", "name": "Local"\(provider)}]}
             """
         return try JSONDecoder().decode(PluginManifest.self, from: Data(json.utf8))
@@ -46,5 +46,20 @@ struct PluginVoiceFactsTests {
         #expect(provider.paid == true && provider.estimates == true)
         let again = try JSONDecoder().decode(PluginManifest.self, from: JSONEncoder().encode(paid))
         #expect(again.providers?.first == provider)
+    }
+
+    @Test("maxTakes caps the takes asked of a voice provider; 1–8, voice.synthesize, API 8 (#410)")
+    func maxTakes() throws {
+        let one = try manifest(capability: "voice.synthesize", provider: #", "maxTakes": 1"#, apiVersion: 8)
+        try one.validate()
+        let provider = try #require(one.providers?.first)
+        #expect(provider.maxTakes == 1 && provider.takes(3) == 1)
+        #expect(try #require(try manifest(capability: "voice.synthesize", provider: "").providers?.first).takes(3) == 3)
+        #expect(PluginFeature.all.contains("voice.maxTakes"))
+        for (capability, extra, api) in [("voice.synthesize", #", "maxTakes": 0"#, 8), ("voice.synthesize", #", "maxTakes": 9"#, 8),
+                                         ("audio.beats", #", "maxTakes": 1"#, 8), ("voice.synthesize", #", "maxTakes": 1"#, 7)] {
+            let manifest = try manifest(capability: capability, provider: extra, apiVersion: api)
+            #expect(throws: PluginError.self) { try manifest.validate() }
+        }
     }
 }
