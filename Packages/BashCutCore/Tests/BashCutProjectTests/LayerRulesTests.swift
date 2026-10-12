@@ -17,6 +17,21 @@ struct LayerRulesTests {
         return project
     }
 
+    @Test("addTrack without atIndex puts the layer in front of its kind (#507-19c)")
+    func addTrackInFront() throws {
+        let project = try project()
+        let video = try EditOperation(json: .object([
+            "op": .string("addTrack"), "track": .object(Track(id: "v9", kind: "video", role: "overlay").fields),
+        ]))
+        #expect(try EditOperation(json: video.json) == video)
+        let withVideo = try project.applying(video).project
+        let visual = withVideo.tracks.filter(\.isVisual)
+        #expect(visual.last?.id == "v9" && withVideo.tracks.count == project.tracks.count + 1)
+        let sound = try withVideo.applying(.addTrack(
+            track: Track(id: "a9", kind: "audio", role: "music"), atIndex: EditOperation.frontLayer)).project
+        #expect(sound.tracks.last?.id == "a9")
+    }
+
     @Test("Visual layers stay above audio layers and the main layer is unique and permanent")
     func bandsAndMain() throws {
         let project = try project()

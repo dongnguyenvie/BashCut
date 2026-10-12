@@ -61,6 +61,14 @@ extension CommandCatalog {
 
 extension CommandCatalog {
     /// `export start --wait --save`: the finished job in the same call, then the project saved.
+    /// The written file: its bit rate, and whether an earlier export of the name is replaced (#507-23).
+    static let exportFileParameters = [
+        CommandParameter("bitrate", .number, "Video bit rate in Mbps instead of the preset's", range: 0.5...200,
+                         cli: .option("bitrate")),
+        CommandParameter("overwrite", .boolean, "Replace an earlier export of this name instead of suffixing it",
+                         default: .bool(false), cli: .flag("overwrite")),
+    ]
+
     static let exportWaitParameters = [
         CommandParameter("wait", .boolean, "When it starts at once, wait up to 100 s for it to finish and return the job",
                          default: .bool(false), cli: .flag("wait")),
@@ -70,8 +78,9 @@ extension CommandCatalog {
 
     /// Where a media file came from and what its licence allows (P2-H8), recorded on `media import`.
     static let mediaRightsParameters = [
-        CommandParameter("origin", .string, "Where the file came from", choices: ["stock", "ai", "own", "built-in"],
-                         cli: .option("origin")),
+        CommandParameter("origin", .string, "Where the file came from: stock (a stock library), web (downloaded from "
+                         + "another page, such as a CC BY clip), ai, own (the user's footage) or built-in",
+                         choices: Provenance.origins, cli: .option("origin")),
         CommandParameter("license", .string, "Its licence: text as written, or a JSON object {id, "
                          + "redistribute, commercial, attribution…}; stored as given", cli: .option("license")),
         CommandParameter("source", .string, "Where it was found (URL)", cli: .option("source")),

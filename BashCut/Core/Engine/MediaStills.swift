@@ -57,10 +57,14 @@ public enum MediaStills {
     /// the pixels that differ between the frame with text and without it are the text; their WCAG relative luminance
     /// in the frame with text against the same pixels without it gives the ratio (1–21). Text on its own plate
     /// (`plate`: a background box) changes the whole box, so the changed pixels split at the middle of their
-    /// luminance: the larger part is the plate, which is what the letters stand on. Nil when no pixel changed.
+    /// luminance: the larger part is the plate, which is what the letters stand on. Outlined text (`outlined`: a
+    /// stroke) reads by whichever of its parts stands apart from the picture, so its ratio is the higher of the light
+    /// and dark parts' (#507-17). Nil when no pixel changed.
     public struct Contrast: Sendable, Equatable {
-        /// Mean text luminance against the mean of what was behind it.
+        /// The text against what was behind it: the mean text luminance, or for outlined text its stronger part.
         public let ratio: Double
+        /// Mean text luminance against the mean of what was behind it.
+        public let meanRatio: Double
         public let text: Double
         public let background: Double
         public let pixels: Int
@@ -70,7 +74,9 @@ public enum MediaStills {
         public let darkRatio: Double
     }
 
-    public static func contrast(withText: CGImage, without: CGImage, rect: CGRect, plate: Bool = false) -> Contrast? {
+    public static func contrast(
+        withText: CGImage, without: CGImage, rect: CGRect, plate: Bool = false, outlined: Bool = false
+    ) -> Contrast? {
         let width = withText.width, height = withText.height
         guard let first = pixels(withText, width: width, height: height),
             let second = pixels(without, width: width, height: height)
@@ -101,10 +107,11 @@ public enum MediaStills {
         let ratio = { (value: Double) in (max(value, behind) + 0.05) / (min(value, behind) + 0.05) }
         let sorted = text.sorted()
         let mean = text.reduce(0, +) / Double(text.count)
+        let light = ratio(sorted[Int(Double(sorted.count - 1) * 0.9)])
+        let dark = ratio(sorted[Int(Double(sorted.count - 1) * 0.1)])
         return Contrast(
-            ratio: ratio(mean), text: mean, background: behind, pixels: text.count,
-            lightRatio: ratio(sorted[Int(Double(sorted.count - 1) * 0.9)]),
-            darkRatio: ratio(sorted[Int(Double(sorted.count - 1) * 0.1)]))
+            ratio: outlined ? max(light, dark, ratio(mean)) : ratio(mean), meanRatio: ratio(mean), text: mean,
+            background: behind, pixels: text.count, lightRatio: light, darkRatio: dark)
     }
 
     /// RGBA bytes of `image` drawn at `width × height`, top row first.

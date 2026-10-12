@@ -180,7 +180,8 @@ extension CommandCatalog {
         {"op":"setSpeedCurve","item":"ID","preset":"hero"} or "points":[{"t":0,"speed":1},{"t":0.5,"speed":3},{"t":1,"speed":1}]
         for a speed ramp (t 0…1 along the clip; "points":null removes it); reverse a clip with `clip reverse ID`,
         {"op":"insert","track":"TEXT_TRACK_ID","item":{"id":"new-id","at":0,"dur":90,"text":"Caption"}},
-        {"op":"addTrack","track":{"id":"NEW_TRACK_ID","kind":"video","role":"overlay","name":"B-roll 2","items":[]},"atIndex":2},
+        {"op":"addTrack","track":{"id":"NEW_TRACK_ID","kind":"video","role":"overlay","name":"B-roll 2","items":[]},"atIndex":2}
+        (omit atIndex: in front),
         {"op":"moveTrack","track":"TRACK_ID","toIndex":3},
         {"op":"setTrackProperties","track":"TRACK_ID","patch":{"name":"Product shots"}},
         {"op":"setProjectProperties","patch":{"audio":{"targetLUFS":-14,"normalizeEnabled":true}}},
@@ -193,7 +194,8 @@ extension CommandCatalog {
         {"op":"upsertSection","id":"section-hook","label":"Hook","atFrame":0},
         {"op":"deleteSection","id":"section-hook"}.
         {"op":"upsertTransition","id":"cut-a-b","kind":"dissolve","from":"CLIP_A","to":"CLIP_B","duration":12,
-         "easing":"inOut"} (easing: linear, the default, in, out, inOut or "cubic-bezier(0.2,0,0,1)"; kinds dissolve,
+         "easing":"inOut"} (id optional; easing: linear, the default, in, out, inOut or "cubic-bezier(0.2,0,0,1)";
+         kinds dissolve,
          whip, blink, zoom, spin, shutter, wipe, or any name with "motion":{"outgoing":{"zoom":[1,1.2],"opacity":[1,0]},
          "incoming":{"panX":[0.3,0],"opacity":[0,1]}}: zoom, panX/panY (share of the frame), rotation (deg), opacity,
          exposure (EV), scaleX, reveal (wipe from the left), each [from, to] or more points),

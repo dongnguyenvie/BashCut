@@ -27,7 +27,10 @@ extension ProjectDocument {
         handle("platforms.get") { document, arguments, _ in
             guard let id = arguments.optionalString("id") else { return document.platformsJSON(facts: arguments.bool("facts")) }
             guard let platform = OutputPlatform.named(id) else {
-                throw RPCFailure(-32602, "Unknown platform \(id); use " + OutputPlatform.all.map(\.id).joined(separator: ", "))
+                throw RPCFailure(
+                    -32602,
+                    "Unknown platform \(id); use " + OutputPlatform.all.map(\.id).joined(separator: ", ")
+                        + " or an export preset made for one (youtube-1080, youtube-4k)")
             }
             let applied = ReviewProfile(document.project).applying(to: platform)
             var row = applied.json.object

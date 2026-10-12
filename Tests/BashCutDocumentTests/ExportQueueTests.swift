@@ -185,6 +185,15 @@ struct ExportQueueTests {
         #expect(free("clip") == "clip")
         #expect(free("clip", srt: true) == "clip-2")
         #expect(free("queued", reserved: [render.appendingPathComponent("queued.mp4")]) == "queued-2")
+        // Overwrite (#507-23): files on disk no longer count, a queued export still does.
+        #expect(ExportRequest.availableName(
+            "long1", preset: .quickDraft, directory: render, includeSubRip: false, ignoringFiles: true) == "long1")
+        #expect(ExportRequest.availableName(
+            "queued", preset: .quickDraft, directory: render, includeSubRip: false,
+            reserved: [render.appendingPathComponent("queued.mp4")], ignoringFiles: true) == "queued-2")
+        try Data().write(to: render.appendingPathComponent("long1.vtt"))
+        #expect(ExportRequest.existingOutputs("long1", preset: .quickDraft, directory: render).map(\.lastPathComponent)
+            == ["long1.mp4", "long1.vtt"])
         do {
             _ = try request("long1", in: root)
             Issue.record("Expected a taken name to fail")

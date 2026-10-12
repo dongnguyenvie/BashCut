@@ -83,7 +83,8 @@ public enum CommandCatalog {
         CommandSpec(
             "export.status", .read,
             "Read the export state: while one runs, its job, step, preset and path (last receipt under lastExport); "
-                + "otherwise the most recent receipt. Includes the queue (job IDs for jobs.cancel) and delivered: each "
+                + "otherwise the most recent receipt (clips on Main, cuts: the joins between them, transitions "
+                + "included). Includes the queue (job IDs for jobs.cancel) and delivered: each "
                 + "exported file of this session measured (stream starts and drift, fps and size against the preset, "
                 + "black and silent stretches), which review run reads (P1-E6)."),
         CommandSpec(
@@ -244,7 +245,9 @@ public enum CommandCatalog {
                 + "wait with jobs wait JOB --done, or pass wait to get the finished job (up to 100 s; save also saves "
                 + "the project once it lands). An agent's export with any preset but quick-draft needs "
                 + "a draft audit with verdict pass of the current timeline (run append audit --point draft) or the "
-                + "user's G5 approval at this revision: else audit_missing.",
+                + "user's G5 approval at this revision: else audit_missing. A name already on disk or queued gets "
+                + "the next free suffix (name-2…; the result says renamedFrom); overwrite replaces the files on disk "
+                + "(moved to the Trash) instead.",
             parameters: [
                 CommandParameter("preset", .string, "Export preset", required: true, choices: exportPresets,
                                  cli: .option("preset")),
@@ -254,9 +257,7 @@ public enum CommandCatalog {
                                  cli: .flag("include-srt")),
                 CommandParameter("normalizeAudio", .boolean, "Run two-pass LUFS normalization with a plugin",
                                  default: .bool(false), cli: .flag("normalize-audio")),
-                CommandParameter("bitrate", .number, "Video bit rate in Mbps instead of the preset's", range: 0.5...200,
-                                 cli: .option("bitrate")),
-            ] + exportWaitParameters,
+            ] + exportFileParameters + exportWaitParameters,
             execution: .approval),
         CommandSpec(
             "export.otio", .privileged, "Request an OpenTimelineIO export; the user approves it in the app first.",

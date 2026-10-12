@@ -24,7 +24,8 @@ extension CommandCatalog {
                 + "import, also import every video, audio and image file in footage (as media import FOLDER) and start "
                 + "media transcribe and media analyze for them: the result adds import (files, converting) and jobs "
                 + "{transcribe, analyze} (a job ID, or {error} when it could not start), so one call readies the "
-                + "footage for a survey.",
+                + "footage for a survey. A folder of that name without a project (say one the footage was copied "
+                + "into) becomes the project: the project folders are added and its files stay where they are.",
             parameters: [
                 CommandParameter("name", .string, "Project name", required: true, cli: .option("name")),
                 CommandParameter("directory", .string,

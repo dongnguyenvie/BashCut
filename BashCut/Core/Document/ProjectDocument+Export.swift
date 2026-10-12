@@ -58,6 +58,7 @@ extension ProjectDocument {
             directory: directory, includeSubRip: includeSubRip, normalizeAudio: normalizeAudio,
             reserved: exports.queue.reservedOutputs)
         request.videoBitRate = videoBitRate
+        request.transcripts = reviewTranscripts
         let queued = exports.isRunning
         let session = sessionID
         let name = request.output.lastPathComponent

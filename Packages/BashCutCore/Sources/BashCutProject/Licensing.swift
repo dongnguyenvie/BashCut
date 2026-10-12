@@ -84,7 +84,9 @@ public struct LicenseTerms: Sendable, Equatable {
 /// seed?, requestId?, charged?, parentMedia?}` plus provider fields (`plugin`, `version`, `capability`). Unknown
 /// fields round-trip.
 public enum Provenance {
-    public static let origins = ["stock", "ai", "own", "built-in"]
+    /// `stock`: a stock library (Pexels, Mixkit…); `web`: downloaded from someone else's page, such as a CC BY clip
+    /// (#507-24); `ai`: generated; `own`: the user's own footage; `built-in`: shipped with the app or a plugin.
+    public static let origins = ["stock", "web", "ai", "own", "built-in"]
     static let textFields: [String: Int] = [
         "sourceUrl": 2_000, "author": 200, "provider": 200, "plugin": 200, "version": 80, "capability": 80,
         "model": 200, "prompt": 4_000, "requestId": 200, "parentMedia": 200, "libraryItem": 200,

@@ -104,7 +104,7 @@ extension CommandCatalog {
                 CommandParameter("id", .string, "Item ID: lowercase letters, digits and hyphens; from the name by default",
                                  cli: .option("id")),
                 writableScope,
-                CommandParameter("origin", .string, "Where it came from (P2-H8)", choices: ["stock", "ai", "own", "built-in"],
+                CommandParameter("origin", .string, "Where it came from (P2-H8)", choices: Provenance.origins,
                                  cli: .option("origin")),
                 CommandParameter("author", .string, "Who made it, for the credit line", cli: .option("author")),
             ] + itemFields),

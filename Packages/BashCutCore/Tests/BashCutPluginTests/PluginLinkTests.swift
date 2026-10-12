@@ -102,6 +102,11 @@ struct PluginLinkTests {
             == .githubRepo(owner: "nolan", repo: "plugs", ref: "main", path: "plugins/hello"))
         #expect(try PluginLink(parsing: "https://github.com/nolan/plugs/tree/main/plugins/hello", ref: "dev").target
             == .githubRepo(owner: "nolan", repo: "plugs", ref: "dev", path: "plugins/hello"))
+        #expect(try PluginLink(parsing: "https://github.com/nolan/plugs/tree/feat/x/plugins/vlog", ref: "feat/x").target
+            == .githubRepo(owner: "nolan", repo: "plugs", ref: "feat/x", path: "plugins/vlog"))
+        #expect(try PluginLink(parsing: "https://github.com/nolan/plugs/tree/feat/x/plugins").alternatives
+            == [.githubRepo(owner: "nolan", repo: "plugs", ref: "feat/x", path: "plugins"),
+                .githubRepo(owner: "nolan", repo: "plugs", ref: "feat/x/plugins", path: nil)])
         #expect(try PluginLink(parsing: "https://github.com/nolan/plugs/blob/v2/hello/plugin.json").target
             == .githubRepo(owner: "nolan", repo: "plugs", ref: "v2", path: "hello"))
         #expect(try PluginLink(parsing: "https://raw.githubusercontent.com/nolan/plugs/v2/plugin.json").target
@@ -144,6 +149,14 @@ struct PluginLinkTests {
 
         let missing = try PluginLink(parsing: "https://github.com/nolan/plugs/tree/main/plugins/nope")
         await #expect(throws: PluginError.self) { try await resolver().stage(missing, stagingParent: root) }
+        // A branch with a slash (#507-29): `feat` does not exist, `feat/one` does, and the rest is the folder.
+        StubURLProtocol.set("\(api)/repos/nolan/plugs/commits/feat", .init(status: 422))
+        StubURLProtocol.set("\(api)/repos/nolan/plugs/commits/feat/one", .init(body: Data(commit.utf8)))
+        let slashed = try PluginLink(parsing: "https://github.com/nolan/plugs/tree/feat/one/plugins/hello")
+        #expect(slashed.alternatives.count == 3)
+        let branch = try await resolver().stage(slashed, stagingParent: root.appendingPathComponent("Plugins"))
+        #expect(branch.plugin.id == "nolan.linked-demo" && branch.origin?.resolved == commit)
+        branch.discard()
         let unknown = try PluginLink(parsing: "https://github.com/nolan/other")
         let report = await resolver().validate(unknown)
         #expect(report.problems.first?.hasPrefix("No GitHub repo nolan/other") == true)

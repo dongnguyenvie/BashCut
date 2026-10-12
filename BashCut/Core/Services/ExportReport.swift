@@ -8,7 +8,10 @@ import Foundation
 public struct ExportReport: Sendable {
     public let receipt: ExportReceipt
     public let preset: ExportPreset
+    /// Clips on Main (the stored name predates `cuts`, #508-34).
     public let cutCount: Int
+    /// The joins between consecutive clips on Main, transitions included: clips − 1.
+    public var cuts: Int { max(0, cutCount - 1) }
     public let captionCount: Int
     public let includedSubRip: Bool
     public let loudness: LoudnessMeasurement?
@@ -85,7 +88,8 @@ extension ExportReport {
                 "path": .string(receipt.url.path),
                 "duration": .number(receipt.duration),
                 "bytes": .integer(Int(receipt.bytes)),
-                "cuts": .integer(cutCount),
+                "clips": .integer(cutCount),
+                "cuts": .integer(cuts),
                 "captions": .integer(captionCount),
                 "includedSRT": .bool(includedSubRip),
                 "speechCoverage": .number(speechCoverage),
@@ -99,6 +103,7 @@ extension ExportReport {
                 var values: [String: JSONValue] = [
                     "duration": .number(comparison.duration),
                     "bytes": .integer(Int(comparison.bytes)),
+                    "clips": .integer(comparison.cutCount),
                     "cuts": .integer(comparison.cutCount),
                     "captions": .integer(comparison.captionCount),
                     "speechCoverage": .number(comparison.speechCoverage),

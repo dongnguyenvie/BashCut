@@ -253,12 +253,29 @@ extension ProjectDocument {
         return result
     }
 
+    /// The name an export gets (#507-23): a name taken by an earlier export gets the next free suffix, or with
+    /// `overwrite` keeps it and returns the old files to replace; a queued export's name is never shared.
+    private func exportName(
+        _ asked: String, preset: ExportPreset, directory: URL, includeSubRip: Bool, overwrite: Bool
+    ) -> (name: String, replaced: [URL]) {
+        let name = ExportRequest.availableName(
+            asked, preset: preset, directory: directory, includeSubRip: includeSubRip,
+            reserved: exports.queue.reservedOutputs, ignoringFiles: overwrite)
+        guard overwrite, name == asked else { return (name, []) }
+        return (name, ExportRequest.existingOutputs(asked, preset: preset, directory: directory))
+    }
+
+    /// Moves an earlier export's files to the Trash before it is written again.
+    private static func trash(_ files: [URL]) throws {
+        for url in files { try FileManager.default.trashItem(at: url, resultingItemURL: nil) }
+    }
+
     private func registerPrivilegedCommands() {
         handleAuthored("export.start") { document, arguments, author in
             guard let preset = ExportPreset(argument: try arguments.string("preset")) else {
                 throw RPCFailure(-32602, "Unknown export preset")
             }
-            let (name, directory) = try document.exportDestination(arguments)
+            let (asked, directory) = try document.exportDestination(arguments)
             guard document.project.duration > 0 else { throw RPCFailure(-32602, "The timeline is empty") }
             // A final export by an agent needs a passing draft audit of this timeline or the user's G5 approval
             // (spec 13 §7), whatever agentPermissions say; drafts and the user are never blocked.
@@ -270,16 +287,12 @@ extension ProjectDocument {
             let includeSubRip = arguments.bool("includeSRT")
             let normalizeAudio = arguments.bool("normalizeAudio")
             let bitRate = arguments.optionalDouble("bitrate").map { Int($0 * 1_000_000) }
+            let (name, replaced) = document.exportName(
+                asked, preset: preset, directory: directory, includeSubRip: includeSubRip,
+                overwrite: arguments.bool("overwrite"))
             let output = directory.appendingPathComponent(name).appendingPathExtension(preset.fileExtension)
-            // Fail before asking the user to approve an export that cannot start.
-            let reserved = document.exports.queue.reservedOutputs
-            if ExportRequest.nameIsTaken(
-                name, preset: preset, directory: directory, includeSubRip: includeSubRip, reserved: reserved)
-            {
-                let free = ExportRequest.availableName(
-                    name, preset: preset, directory: directory, includeSubRip: includeSubRip, reserved: reserved)
-                throw RPCFailure(-32602, "\(name) is already exported or queued; use another name such as \(free)")
-            }
+            // The report's speech coverage reads the clips' stored transcripts (#507-36).
+            await document.loadReviewTranscripts()
             // Filled when the export starts at once (auto-approved), so the caller can `jobs wait --done` on it.
             let started = StartedJob()
             let approval = try document.queuePrivilegedApproval(
@@ -292,6 +305,7 @@ extension ProjectDocument {
                 ]
             ) { [weak document] in
                 guard let document else { throw RPCFailure(-32000, "Editor closed") }
+                try Self.trash(replaced)
                 started.id = try document.startExportAuthorized(
                     name: name, preset: preset, directory: directory, includeSubRip: includeSubRip,
                     normalizeAudio: normalizeAudio, author: author, videoBitRate: bitRate)
@@ -301,6 +315,8 @@ extension ProjectDocument {
             }
             var json = approval.json(output: output).object
             json["job"] = started.id.map(JSONValue.string)
+            json["renamedFrom"] = name == asked ? nil : .string(asked)
+            json["replaced"] = replaced.isEmpty ? nil : .array(replaced.map { .string($0.path) })
             if let job = started.id, arguments.bool("wait") {
                 json.merge(try await document.waitForExport(job, save: arguments.bool("save"))) { $1 }
             }
@@ -369,8 +385,17 @@ extension ProjectDocument {
                 maximum = Int((Double(width) * Double(max(project.width, project.height)) / Double(max(1, project.width))).rounded())
             }
             let capture = try await document.captureAgentFrame(at: frame, maximumDimension: maximum)
+            var path = capture.url.path
+            if let out = arguments.optionalString("out") {
+                // `--out` (#507-25b): the caller's own file, as well as the kept copy.
+                let url = URL(fileURLWithPath: (out as NSString).expandingTildeInPath)
+                try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+                if FileManager.default.fileExists(atPath: url.path) { try FileManager.default.removeItem(at: url) }
+                try FileManager.default.copyItem(at: capture.url, to: url)
+                path = url.path
+            }
             return .object([
-                "path": .string(capture.url.path), "frame": .integer(capture.frame),
+                "path": .string(path), "frame": .integer(capture.frame),
                 "width": .integer(capture.width), "height": .integer(capture.height),
             ])
         }

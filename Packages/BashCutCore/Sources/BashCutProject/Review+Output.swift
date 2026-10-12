@@ -41,12 +41,13 @@ extension TimelineReview {
         return String(format: "%d:%02d", whole / 60, whole % 60)
     }
 
-    /// The project's `review.severities` (a recipe sets them): check ID → `error`, `warning`, `info` or `off`. A key
-    /// matches an issue whose ID is the key or starts with the key and a hyphen (`safe` covers `safe-bottom-…`);
-    /// a key ending in `:` names a plugin provider and covers its issues; the longest matching key wins. `off` drops
-    /// the issue.
+    /// The project's `review.severities` (a recipe sets them): check ID → `error`, `warning`, `info` or `off`, or
+    /// `{severity, reason}` (#507-37). A key matches an issue whose ID is the key or starts with the key and a hyphen
+    /// (`safe` covers `safe-bottom-…`); a key ending in `:` names a plugin provider and covers its issues; the longest
+    /// matching key wins. `off` drops the issue.
     static func applyingSeverities(_ issues: [ReviewIssue], project: Project) -> [ReviewIssue] {
-        let overrides = (project["review"]?.object["severities"]?.object ?? [:]).compactMapValues(\.string)
+        let entries = project["review"]?.object["severities"]?.object ?? [:]
+        let overrides = entries.compactMapValues(ReviewProfile.severity)
         guard !overrides.isEmpty else { return issues }
         let keys = overrides.keys.sorted { $0.count > $1.count }
         return issues.compactMap { issue in
@@ -60,6 +61,7 @@ extension TimelineReview {
             guard let severity = ReviewSeverity(rawValue: value) else { return value == "off" ? nil : issue }
             var changed = issue
             changed.severity = severity
+            changed.severityReason = entries[key]?.object["reason"]?.string
             return changed
         }
     }

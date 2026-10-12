@@ -91,6 +91,31 @@ struct MediaStillsTests {
         #expect(mixed.ratio < plated.ratio / 4)
     }
 
+    @Test("Outlined text is rated by the part that stands apart from the picture, not the mean (#507-17)")
+    func outlinedContrast() throws {
+        // White letters with a thick black outline over a bright picture: the mean sits near the picture.
+        func frame(text: Bool) throws -> CGImage {
+            let context = try #require(CGContext(
+                data: nil, width: 100, height: 100, bitsPerComponent: 8, bytesPerRow: 400,
+                space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+            context.setFillColor(CGColor(srgbRed: 0.85, green: 0.85, blue: 0.85, alpha: 1))
+            context.fill(CGRect(x: 0, y: 0, width: 100, height: 100))
+            if text {
+                context.setFillColor(CGColor(srgbRed: 0, green: 0, blue: 0, alpha: 1))
+                context.fill(CGRect(x: 10, y: 10, width: 60, height: 30))
+                context.setFillColor(CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 1))
+                context.fill(CGRect(x: 20, y: 20, width: 40, height: 10))
+            }
+            return try #require(context.makeImage())
+        }
+        let rect = CGRect(x: 0, y: 0, width: 1, height: 1)
+        let plain = try #require(MediaStills.contrast(withText: try frame(text: true), without: try frame(text: false), rect: rect))
+        let outlined = try #require(MediaStills.contrast(
+            withText: try frame(text: true), without: try frame(text: false), rect: rect, outlined: true))
+        #expect(outlined.ratio == outlined.darkRatio && outlined.ratio > 10)
+        #expect(outlined.meanRatio == plain.ratio && plain.ratio < 3)
+    }
+
     @Test("Fitting keeps the picture upright")
     func fit() throws {
         let context = try #require(CGContext(

@@ -205,7 +205,7 @@ final class ConstantFrames: @unchecked Sendable {
         CMSampleBufferCreateCopyWithNewTiming(
             allocator: nil, sampleBuffer: held, sampleTimingEntryCount: 1, sampleTimingArray: &timing,
             sampleBufferOut: &copy)
-        slot = slot + frame
+        slot = CMTimeAdd(slot, frame)
         return copy
     }
 }

@@ -63,8 +63,8 @@ public struct PluginLinkResolver: Sendable {
         switch link.target {
         case .archive(let url):
             download = url
-        case .githubRepo(let owner, let repo, let ref, let subfolder):
-            let commit = try await commit(owner: owner, repo: repo, ref: ref)
+        case .githubRepo(let owner, let repo, _, _):
+            let (commit, subfolder) = try await repoCommit(link)
             resolved = commit
             path = subfolder
             download = api("repos", owner, repo, "zipball", commit)
@@ -98,12 +98,35 @@ public struct PluginLinkResolver: Sendable {
         components.reduce(githubAPI) { $0.appendingPathComponent($1) }
     }
 
+    /// The commit and folder of a repo link: the first reading of the link whose ref exists (#507-29).
+    private func repoCommit(_ link: PluginLink) async throws -> (String, String?) {
+        var firstMissing: MissingRef?
+        for reading in [link.target] + link.alternatives {
+            guard case .githubRepo(let owner, let repo, let ref, let path) = reading else { continue }
+            do {
+                return (try await commit(owner: owner, repo: repo, ref: ref), path)
+            } catch let missing as MissingRef {
+                firstMissing = firstMissing ?? missing
+            }
+        }
+        throw PluginError.invalid(firstMissing?.message ?? "No GitHub repo in this link")
+    }
+
+    /// GitHub knows no such repo or ref (404, or 422 for a ref that is not a commit).
+    private struct MissingRef: Error {
+        let message: String
+    }
+
     /// The commit `ref` (or the default branch) points at, so the install is exactly what was checked.
     private func commit(owner: String, repo: String, ref: String?) async throws -> String {
-        let data = try await get(
-            api("repos", owner, repo, "commits", ref ?? "HEAD"), host: "github.com", accept: "application/vnd.github.sha",
-            notFound: "No GitHub repo \(owner)/\(repo)" + (ref.map { " with ref \($0)" } ?? "")
-                + ". For a private repo, add an access token for github.com")
+        let notFound = "No GitHub repo \(owner)/\(repo)" + (ref.map { " with ref \($0)" } ?? "")
+            + ". For a private repo, add an access token for github.com"
+        let url = api("repos", owner, repo, "commits", ref ?? "HEAD")
+        let (data, response) = try await session.data(
+            for: request(url, host: "github.com", accept: "application/vnd.github.sha"), delegate: RedirectGuard())
+        let status = (response as? HTTPURLResponse)?.statusCode ?? 200
+        if status == 404 || status == 422 { throw MissingRef(message: notFound) }
+        try Self.check(status, url: url)
         let sha = (String(bytes: data, encoding: .utf8) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         guard sha.range(of: "^[0-9a-f]{40}$", options: .regularExpression) != nil else {
             throw PluginError.invalid("GitHub did not return a commit for \(owner)/\(repo)")

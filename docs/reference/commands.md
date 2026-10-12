@@ -41,7 +41,7 @@ Close the open project and show the Welcome screen, like File › Close Project.
 
 ### `bashcut project create --name <name> [--dir <directory>] [--footage <footage>] [--canvas <canvas>] [--resolution <resolution>] [--fps <fps>] [--language <language>] [--import] [--save-current] [--discard-current]`
 
-Create a project folder (media, footage, render…) like the New Project wizard and open it. With import, also import every video, audio and image file in footage (as media import FOLDER) and start media transcribe and media analyze for them: the result adds import (files, converting) and jobs {transcribe, analyze} (a job ID, or {error} when it could not start), so one call readies the footage for a survey.
+Create a project folder (media, footage, render…) like the New Project wizard and open it. With import, also import every video, audio and image file in footage (as media import FOLDER) and start media transcribe and media analyze for them: the result adds import (files, converting) and jobs {transcribe, analyze} (a job ID, or {error} when it could not start), so one call readies the footage for a survey. A folder of that name without a project (say one the footage was copied into) becomes the project: the project folders are added and its files stay where they are.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_project_create`
 - `name`: string, required. Project name
@@ -214,7 +214,7 @@ Add a media file (path relative to the project or absolute): video, audio or a s
 - `place`: boolean, default false. Also place it on a layer
 - `track`: string. Layer ID for place; defaults to the main layer (music for audio)
 - `atFrame`: integer, ≥ 0. Timeline frame for place
-- `origin`: string, one of stock, ai, own, built-in. Where the file came from
+- `origin`: string, one of stock, web, ai, own, built-in. Where the file came from: stock (a stock library), web (downloaded from another page, such as a CC BY clip), ai, own (the user's footage) or built-in
 - `license`: string. Its licence: text as written, or a JSON object {id, redistribute, commercial, attribution…}; stored as given
 - `source`: string. Where it was found (URL)
 - `author`: string. Who made it, for the credit line
@@ -444,7 +444,7 @@ Review the timeline before export: issues {id, kind, severity error|warning|info
 
 ### `bashcut review measure [--picture <picture>] [--plugins <plugins>]`
 
-Run the measured review for this revision and keep it, so review.run includes it: render the timeline small (two frames a second and both sides of every hard cut on Main, proxies allowed) for black or empty picture, frozen picture, long static shots and jump cuts, the contrast of every title and up to eight captions against the picture behind them (review.minTextContrast, a WCAG ratio; unset: the lowest as info), and run every enabled plugin review.check side by side (each at most 30 s; a failing or slow check becomes an info issue). Plugin issues carry source (the plugin ID) and IDs prefixed with the provider. A project turns checks off with review.disabledChecks (plugin or provider IDs; timeline apply setProjectProperties). The job's result has the sample count, the plugin checks that ran and the measured issues; measure again after an edit.
+Run the measured review for this revision and keep it, so review.run includes it: render the timeline small (two frames a second and both sides of every hard cut on Main, proxies allowed) for black or empty picture, frozen picture, long static shots and jump cuts, the contrast of every title and up to eight captions against the picture behind them (review.minTextContrast, a WCAG ratio; unset: the lowest as info), and run every enabled plugin review.check side by side (each at most 30 s; a failing or slow check becomes an info issue). Plugin issues carry source (the plugin ID) and IDs prefixed with the provider. A project turns checks off with review.disabledChecks (plugin or provider IDs; timeline apply setProjectProperties). The job's result has the sample count, hardCuts (touching clips on Main without a transition, the ones measured), the plugin checks that ran and the measured issues; measure again after an edit.
 
 - Mode: read · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_review_measure`
 - `picture`: boolean. Measure the picture (default true)
@@ -452,7 +452,7 @@ Run the measured review for this revision and keep it, so review.run includes it
 
 ### `bashcut review accept <id> [--reason <reason>] [--remove] --base-rev <baseRev>`
 
-Keep a warning or note on purpose, with the reason, as one undoable edit (review.accepted); later runs show it with accepted.reason, leave it out of the counts, and the export report lists it. Errors cannot be accepted: fix them, or change their severity in review.severities with a reason. With remove, the issue counts again.
+Keep an issue on purpose, with the reason, as one undoable edit (review.accepted); later runs show it with accepted.reason, leave it out of the counts, and the export report lists it. Accept an error only when no fix exists (the summary counts it as acceptedErrors); to change a whole check, set review.severities.<check> to {severity, reason}. With remove, the issue counts again.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_review_accept`
 - `id`: string, required. Issue ID from review run
@@ -505,7 +505,7 @@ Read the shots on Main in order: index, id, at/atSeconds, duration (frames) and 
 
 ### `bashcut review layout [--frame <frame>] [--from <from>] [--to <to>] [--ink] [--contrast]`
 
-Read where text sits as the renderer lays it out: per visible text item id, track, trackRole, at/end, text, preset, lines, longestLineChars, fontPixels and fontShare (of the frame's short side), bounds (pixels from the top-left) and edges (distance to each frame edge as a share of that dimension, negative outside), keyframed when keyframes move it (not followed); holdSeconds, words and wordsPerSecond; speech {onsetOffsetFrames (from the nearest word start), narrationShare (of its time with words spoken)} from the heard or caption words; captionOverlap {item, ratio of its box} for titles; templateRepeats (items with its preset on its layer); faceOverlap null (unknown: not measured here; media subjects gives face boxes in source pictures). With contrast: contrast {ratio (WCAG, 1–21) of the mean, lightRatio and darkRatio (the light and dark parts of the text, such as fill and outline), textLuminance, backgroundLuminance, textPixels} measured on the frame with and without text (at frame, or each item's middle). Also the frame size, the platform whose zones apply (safeArea, minTextSize), density (titles and captions per minute) and, at a frame, pictures on screen with their scale and coverage. With from/to, only text that overlaps those frames. With ink: ink {frame, luma, mid (0–100), inkShare (pixels text and overlay layers change)} of the composed frame (frame, default 0) against Main alone. No verdicts.
+Read where text sits as the renderer lays it out: per visible text item id, track, trackRole, at/end, text, preset, lines, longestLineChars, fontPixels and fontShare (of the frame's short side), bounds (pixels from the top-left) and edges (distance to each frame edge as a share of that dimension, negative outside), keyframed when keyframes move it (not followed); holdSeconds, words and wordsPerSecond; speech {onsetOffsetFrames (from the nearest word start), narrationShare (of its time with words spoken)} from the heard or caption words; captionOverlap {item, ratio of its box} for titles; templateRepeats (items with its preset on its layer); faceOverlap null (unknown: not measured here; media subjects gives face boxes in source pictures). With contrast: contrast {ratio (WCAG, 1–21; basis mean: of the mean text, outline: the stronger of fill and outline, plate: the letters against their box), meanRatio, lightRatio and darkRatio (the light and dark parts of the text, such as fill and outline), textLuminance, backgroundLuminance, textPixels} measured on the frame with and without text (at frame, or each item's middle). Also the frame size, the platform whose zones apply (safeArea, minTextSize), density (titles and captions per minute) and, at a frame, pictures on screen with their scale and coverage. With from/to, only text that overlaps those frames. With ink: ink {frame, luma, mid (0–100), inkShare (pixels text and overlay layers change)} of the composed frame (frame, default 0) against Main alone. No verdicts.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_review_layout`
 - `frame`: integer, ≥ 0. Only text on screen at this timeline frame
@@ -546,14 +546,14 @@ Which described source shot each clip plays: per clip on the video layers in tim
 Read the platform facts review uses: per platform (TikTok, Reels, Shorts, YouTube) shape, maxSeconds, targetLUFS, maxTruePeakDbTP and safeArea (zones the app covers, as fractions), with the project's review.platform overrides applied, whether it is one of the project's outputs and whether it was overridden; layout: the zones text is checked against (the strictest of the outputs of the frame's shape, null when none); targets: each output preset's loudness target (output.targets, else the platform's); data: the platform table's version and origin (built-in or the plugin that shipped a newer one). With facts, every field with {value, kind hard|recommended|info, source, checked, confidence}, including bitrateMbps, title and cover facts, chapter and disclosure rules where known. With id, that one platform's row with its facts.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_platforms_get`
-- `id`: string. tiktok, reels, shorts, youtube
+- `id`: string. tiktok, reels, shorts, youtube, or an export preset (youtube-1080 → youtube)
 - `facts`: boolean. Include each field's provenance
 
 ## export
 
 ### `bashcut export status`
 
-Read the export state: while one runs, its job, step, preset and path (last receipt under lastExport); otherwise the most recent receipt. Includes the queue (job IDs for jobs.cancel) and delivered: each exported file of this session measured (stream starts and drift, fps and size against the preset, black and silent stretches), which review run reads (P1-E6).
+Read the export state: while one runs, its job, step, preset and path (last receipt under lastExport); otherwise the most recent receipt (clips on Main, cuts: the joins between them, transitions included). Includes the queue (job IDs for jobs.cancel) and delivered: each exported file of this session measured (stream starts and drift, fps and size against the preset, black and silent stretches), which review run reads (P1-E6).
 
 - Mode: read · Runs: immediately · MCP: `bashcut_export_status`
 
@@ -574,9 +574,9 @@ A chapter list from the section markers (00:00 first; an Intro at 0 when no mark
 - `platform`: string. Platform whose rule applies (default youtube)
 - `write`: boolean. Save the list in render/
 
-### `bashcut export start --preset <preset> --name <name> [--output-dir <directory>] [--include-srt] [--normalize-audio] [--bitrate <bitrate>] [--wait] [--save]`
+### `bashcut export start --preset <preset> --name <name> [--output-dir <directory>] [--include-srt] [--normalize-audio] [--bitrate <bitrate>] [--overwrite] [--wait] [--save]`
 
-Request a background video export; the user approves it in the app first. Approved exports queue behind a running one. Vertical presets default under the platform's recompression line (platforms list: bitrateMbps); bitrate overrides it. Feed shapes: feed-4x5 (1080×1350), square, portrait-3x4 (1080×1440). The export status reports the bitrate written. Started at once (no approval needed), the result has job: wait with jobs wait JOB --done, or pass wait to get the finished job (up to 100 s; save also saves the project once it lands). An agent's export with any preset but quick-draft needs a draft audit with verdict pass of the current timeline (run append audit --point draft) or the user's G5 approval at this revision: else audit_missing.
+Request a background video export; the user approves it in the app first. Approved exports queue behind a running one. Vertical presets default under the platform's recompression line (platforms list: bitrateMbps); bitrate overrides it. Feed shapes: feed-4x5 (1080×1350), square, portrait-3x4 (1080×1440). The export status reports the bitrate written. Started at once (no approval needed), the result has job: wait with jobs wait JOB --done, or pass wait to get the finished job (up to 100 s; save also saves the project once it lands). An agent's export with any preset but quick-draft needs a draft audit with verdict pass of the current timeline (run append audit --point draft) or the user's G5 approval at this revision: else audit_missing. A name already on disk or queued gets the next free suffix (name-2…; the result says renamedFrom); overwrite replaces the files on disk (moved to the Trash) instead.
 
 - Mode: privileged · Runs: after the user approves in the app · MCP: `bashcut_export_start`
 - `preset`: string, required, one of tiktok, reels, shorts, feed-4x5, square, portrait-3x4, youtube-1080, youtube-4k, quick-draft, prores. Export preset
@@ -585,6 +585,7 @@ Request a background video export; the user approves it in the app first. Approv
 - `includeSRT`: boolean, default false. Also write a SubRip file
 - `normalizeAudio`: boolean, default false. Run two-pass LUFS normalization with a plugin
 - `bitrate`: number, 0.5…200. Video bit rate in Mbps instead of the preset's
+- `overwrite`: boolean, default false. Replace an earlier export of this name instead of suffixing it
 - `wait`: boolean, default false. When it starts at once, wait up to 100 s for it to finish and return the job
 - `save`: boolean, default false. Save the project after a waited export lands
 
@@ -1056,7 +1057,7 @@ How a music file's energy moves, with an audio.energy provider: the curve every 
 
 ### `bashcut audio mix-measure [--near <nearSeconds>] [--provider <provider>] [--request-id <requestId>] [--dry-run]`
 
-Read the mix by role without exporting: one stem each for speech (dialogue and voiceover layers and the sound of video clips), music and sound effects is rendered (other sounds at −120 dB, so ducking stays as in the mix) and measured over time. Spoken blocks are those inside heard or caption words, else where the speech stem is over −70 LUFS. Returns voice, musicUnderSpeech (voice minus music, in LU) and musicInGaps as {median, p10, p90, blocks}; speechWindows with the same per window; effects per sound-effect item: loudness (loudest momentary LUFS), peakDb, voiceP95 within nearSeconds, deltaDb, masked (under that voice level), onset and peak offsets in frames to the nearest cut, beat and word edge; and each stem's integrated loudness. A job; no levels are changed.
+Read the mix by role without exporting: one stem each for speech (dialogue and voiceover layers and the sound of video clips), music and sound effects is rendered (other sounds at −120 dB, so ducking stays as in the mix) and measured over time. Spoken blocks are those inside heard or caption words, else where the speech stem is over −70 LUFS. Returns voice, musicUnderSpeech (voice minus music, in LU) and musicInGaps as {median, p10, p90, blocks}; speechWindows with the same per window; effects per sound-effect item: loudness (loudest momentary LUFS), peakDb, the voice at the same moment (voiceDuring LUFS, voicePeakDb) with overVoiceDb and peakOverVoiceDb (the effect minus them; a short effect reads low on 400 ms loudness, so read its peak too), voiceP95 within nearSeconds with deltaDb, sharedWith (effects playing at once, measured together), onset and peak offsets in frames to the nearest cut, beat and word edge; and each stem's integrated loudness. No verdicts. A job; no levels are changed.
 
 - Mode: read · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_audio_mix-measure`
 - `nearSeconds`: number, 0.1…10. Seconds around an effect read for the voice (default 1)
@@ -1548,14 +1549,15 @@ Move the viewer to a timeline frame.
 - Mode: ui · Runs: immediately · MCP: `bashcut_ui_seek`
 - `frame`: integer, required, ≥ 0. Timeline frame
 
-### `bashcut ui frame [<frame>] [--width <width>] [--phone]`
+### `bashcut ui frame [<frame>] [--width <width>] [--phone] [--out <out>]`
 
-Render the viewer's picture at a timeline frame (the playhead by default) to a PNG, like attaching the viewer frame in Ask; returns its path. Read the file to look at the edit. Keeps the ten newest. width renders it that many pixels wide (phone: 390, about a phone screen, to judge text at the size viewers see it); otherwise up to 1280 on the long edge.
+Render the viewer's picture at a timeline frame (the playhead by default) to a PNG, like attaching the viewer frame in Ask; returns its path. Read the file to look at the edit. Keeps the ten newest. width renders it that many pixels wide (phone: 390, about a phone screen, to judge text at the size viewers see it); otherwise up to 1280 on the long edge. out also copies the PNG to that file (replacing it).
 
 - Mode: read · Runs: immediately · MCP: `bashcut_ui_frame`
 - `frame`: integer, ≥ 0. Timeline frame; the playhead by default
 - `width`: integer, 64…4096. Width in pixels
 - `phone`: boolean. 390 pixels wide
+- `out`: string, path. Also write the PNG to this file
 
 ### `bashcut ui frames --compare <compare> [--frames <frames>] [--items <items>] [--width <width>]`
 
@@ -1871,7 +1873,7 @@ Save a new library item in the project or on this Mac. Files are copied in. Agen
 - `fromResult`: string. A library search or generate candidate as <job>:<index> (index from 0, as the job result lists it)
 - `id`: string. Item ID: lowercase letters, digits and hyphens; from the name by default
 - `scope`: string, one of project, user, default "project". project (the open project's .bashcut/library; the default) or user (this Mac; agents need approval)
-- `origin`: string, one of stock, ai, own, built-in. Where it came from (P2-H8)
+- `origin`: string, one of stock, web, ai, own, built-in. Where it came from (P2-H8)
 - `author`: string. Who made it, for the credit line
 - `tags`: string. Comma-separated tags (mood, use, genre…)
 - `pack`: string. Pack or collection name the panel groups it under

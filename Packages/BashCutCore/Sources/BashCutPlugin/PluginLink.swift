@@ -25,6 +25,9 @@ public struct PluginLink: Sendable, Equatable {
     public let target: Target
     /// Expected SHA-256 of the downloaded archive (lowercase hex).
     public let sha256: String?
+    /// Other readings of a `/tree/` or `/blob/` link whose ref may hold slashes (`tree/feat/x/plugins/vlog`, #507-29):
+    /// the same repo with a longer ref and a shorter folder, tried in order when `target`'s ref does not exist.
+    public let alternatives: [Target]
 
     /// The host whose access token is sent: `github.com` for every GitHub link.
     public var tokenHost: String {
@@ -48,8 +51,9 @@ public struct PluginLink: Sendable, Equatable {
         let ref = ref?.isEmpty == false ? ref : fragmentRef
         let host = Self.normalizedHost(rawHost)
         let parts = url.path.split(separator: "/").map { $0.removingPercentEncoding ?? String($0) }
+        var alternatives: [Target] = []
         switch host {
-        case "github.com": target = try Self.github(parts, url: url, ref: ref)
+        case "github.com": (target, alternatives) = try Self.github(parts, url: url, ref: ref)
         case "raw.githubusercontent.com": target = try Self.raw(parts, url: url, ref: ref)
         default:
             if Self.isArchive(url) {
@@ -62,6 +66,7 @@ public struct PluginLink: Sendable, Equatable {
                     "Link a .zip or .bashcutplugin file, a GitHub repo or a GitHub release (\(url.absoluteString))")
             }
         }
+        self.alternatives = alternatives
     }
 
     /// `#<ref>`, `#sha256=<hex>` or both, joined by `&`.
@@ -93,27 +98,42 @@ public struct PluginLink: Sendable, Equatable {
 
     static func isArchive(_ url: URL) -> Bool { PluginLocalSource.archiveExtensions.contains(url.pathExtension.lowercased()) }
 
-    private static func github(_ parts: [String], url: URL, ref: String?) throws -> Target {
+    private static func github(_ parts: [String], url: URL, ref: String?) throws -> (Target, [Target]) {
         guard parts.count >= 2 else { throw PluginError.invalid("Link a GitHub repo as https://github.com/<owner>/<repo>") }
         let owner = parts[0]
         let repo = parts[1].hasSuffix(".git") ? String(parts[1].dropLast(4)) : parts[1]
         let rest = Array(parts.dropFirst(2))
-        func folder(_ items: ArraySlice<String>) -> String? { items.isEmpty ? nil : items.joined(separator: "/") }
+        /// `<ref>/<folder>` after tree/ or blob/: the ref given, when the link starts with it, else every split, the
+        /// one-segment ref first (git refs cannot nest, so at most one of them exists as a branch).
+        func repoTargets(_ segments: ArraySlice<String>) -> (Target, [Target]) {
+            func folder(_ items: ArraySlice<String>) -> String? { items.isEmpty ? nil : items.joined(separator: "/") }
+            if let ref {
+                let given = ref.split(separator: "/").map(String.init)
+                let skip = segments.starts(with: given) ? given.count : 1
+                return (.githubRepo(owner: owner, repo: repo, ref: ref, path: folder(segments.dropFirst(skip))), [])
+            }
+            let all = (1...segments.count).map { count in
+                Target.githubRepo(
+                    owner: owner, repo: repo, ref: segments.prefix(count).joined(separator: "/"),
+                    path: folder(segments.dropFirst(count)))
+            }
+            return (all[0], Array(all.dropFirst()))
+        }
         switch rest.first {
         case nil:
-            return .githubRepo(owner: owner, repo: repo, ref: ref, path: nil)
+            return (.githubRepo(owner: owner, repo: repo, ref: ref, path: nil), [])
         case "tree" where rest.count >= 2:
-            return .githubRepo(owner: owner, repo: repo, ref: ref ?? rest[1], path: folder(rest.dropFirst(2)))
+            return repoTargets(rest.dropFirst())
         case "blob" where rest.count >= 3 && rest.last == "plugin.json":
-            return .githubRepo(owner: owner, repo: repo, ref: ref ?? rest[1], path: folder(rest.dropFirst(2).dropLast()))
+            return repoTargets(rest.dropFirst().dropLast())
         case "releases":
-            if rest.count >= 4, rest[1] == "download", isArchive(url) { return .archive(url) }
-            if rest.count >= 3, rest[1] == "tag" { return .githubRelease(owner: owner, repo: repo, tag: ref ?? rest[2]) }
+            if rest.count >= 4, rest[1] == "download", isArchive(url) { return (.archive(url), []) }
+            if rest.count >= 3, rest[1] == "tag" { return (.githubRelease(owner: owner, repo: repo, tag: ref ?? rest[2]), []) }
             if rest.count <= 2, rest.count == 1 || rest[1] == "latest" {
-                return .githubRelease(owner: owner, repo: repo, tag: ref)
+                return (.githubRelease(owner: owner, repo: repo, tag: ref), [])
             }
         case "archive" where isArchive(url):
-            return .archive(url)
+            return (.archive(url), [])
         default:
             break
         }

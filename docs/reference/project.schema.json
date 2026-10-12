@@ -1244,6 +1244,7 @@
               "description" : "Origin",
               "enum" : [
                 "stock",
+                "web",
                 "ai",
                 "own",
                 "built-in"
@@ -1793,7 +1794,7 @@
             ],
             "type" : "object"
           },
-          "description" : "Issue ID → {reason, rev, author}: warnings and notes kept on purpose (P1-E2); never errors",
+          "description" : "Issue ID → {reason, rev, author, severity}: issues kept on purpose (P1-E2); an error only when no fix exists (counted as acceptedErrors)",
           "type" : "object"
         },
         "blackMinSeconds" : {
@@ -1950,16 +1951,43 @@
         },
         "severities" : {
           "additionalProperties" : {
-            "description" : "Severity",
-            "enum" : [
-              "error",
-              "warning",
-              "info",
-              "off"
-            ],
-            "type" : "string"
+            "oneOf" : [
+              {
+                "description" : "Severity",
+                "enum" : [
+                  "error",
+                  "warning",
+                  "info",
+                  "off"
+                ],
+                "type" : "string"
+              },
+              {
+                "description" : "Severity with the reason for the change",
+                "properties" : {
+                  "reason" : {
+                    "description" : "Why this check's severity differs for this project",
+                    "type" : "string"
+                  },
+                  "severity" : {
+                    "description" : "Severity",
+                    "enum" : [
+                      "error",
+                      "warning",
+                      "info",
+                      "off"
+                    ],
+                    "type" : "string"
+                  }
+                },
+                "required" : [
+                  "severity"
+                ],
+                "type" : "object"
+              }
+            ]
           },
-          "description" : "Check ID (or prefix before a hyphen, such as safe or shot-long; or a plugin provider ID ending in ':') → error, warning, info or off",
+          "description" : "Check ID (or prefix before a hyphen, such as safe or shot-long; or a plugin provider ID ending in ':') → error, warning, info or off, or {severity, reason}; review shows the reason as severityReason",
           "type" : "object"
         },
         "stillMotion" : {

@@ -81,7 +81,7 @@ extension Project {
 }
 
 extension Project {
-    fileprivate func sum(_ lhs: Int, _ rhs: Int) throws -> Int {
+    func sum(_ lhs: Int, _ rhs: Int) throws -> Int {
         let (result, overflow) = lhs.addingReportingOverflow(rhs)
         guard !overflow else { throw ProjectError.invalid("Frame arithmetic overflow") }
         return result
@@ -138,6 +138,8 @@ extension Project {
         case .deleteSection(let id):
             try deleteSection(id: id)
         case .upsertTransition(let id, let kind, let from, let to, let duration, let easing, let motion):
+            let id = id.isEmpty
+                ? transitions.first { $0.fromItemID == from && $0.toItemID == to }?.id ?? "transition-\(from)-\(to)" : id
             var transition = TimelineTransition(id: id, kind: kind, from: from, to: to, duration: duration, easing: easing)
             transition.fields["motion"] = motion
             try upsertTransition(transition)
@@ -310,6 +312,7 @@ extension Project {
     }
 
     private mutating func addTrack(_ track: Track, at index: Int) throws {
+        let index = index == EditOperation.frontLayer ? trackBand(kind: track.kind).upperBound : index
         guard !track.id.isEmpty, !tracks.contains(where: { $0.id == track.id }),
             (0...tracks.count).contains(index)
         else { throw ProjectError.invalid("Invalid track insertion") }
@@ -436,7 +439,9 @@ extension Project {
         }
         tracks[track].items[index] = trimmed
         if ripple {
-            try shift(track: track, from: original.end, by: trimmed.duration - original.duration)
+            try shift(
+                track: track, from: original.end, by: trimmed.duration - original.duration,
+                markersFrom: edge == .start ? max(frame, original.at) : original.end)
         }
     }
 
@@ -486,12 +491,6 @@ extension Project {
         for (linkedID, linkedFrame) in linkedFrames {
             let linked = try location(linkedID)
             tracks[linked.0].items[linked.1].at = linkedFrame
-        }
-    }
-
-    mutating func shift(track: Int, from frame: Int, by delta: Int) throws {
-        for index in tracks[track].items.indices where tracks[track].items[index].at >= frame {
-            tracks[track].items[index].at = try sum(tracks[track].items[index].at, delta)
         }
     }
 }
