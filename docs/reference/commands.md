@@ -560,14 +560,16 @@ Read the export state: while one runs, its job, step, preset and path (last rece
 
 - Mode: read · Runs: immediately · MCP: `bashcut_export_status`
 
-### `bashcut export cover <frame> [--aspect <aspect>] [--size <size>]`
+### `bashcut export cover <frame> [--aspect <aspect>] [--size <size>] [--title <title>] [--preset <preset>]`
 
-Write a still of the composed frame for each cover aspect into render/: the asked aspects (W:H, comma separated), else each output's cover aspect from platforms get (cover.aspect, else its shape), cropped from the centre. Pick the frame from real frames (timeline sheet); look at the result.
+Write a still of the composed frame for each cover aspect into render/: the asked aspects (W:H, comma separated), else each output's cover aspect from platforms get (cover.aspect, else its shape), cropped from the centre. With title, the text is drawn on each cover in preset (a text preset or a library text-preset ID, bold-outline by default), sized by each cover's short side and fitted to its width; each cover gives titleBox {x, y, width, height} as fractions from the top-left, to check against the platform's zones (platforms get), and its file ends in -title. Pick the frame from real frames (timeline sheet); look at the result.
 
 - Mode: ui · Runs: immediately · MCP: `bashcut_export_cover`
 - `frame`: integer, required, ≥ 0. Timeline frame
 - `aspect`: string. Aspects such as 16:9,9:16
 - `size`: integer, 160…3840. Long edge in pixels
+- `title`: string. Title text drawn on each cover
+- `preset`: string. Text preset of the title
 
 ### `bashcut export chapters [--platform <platform>] [--write]`
 
