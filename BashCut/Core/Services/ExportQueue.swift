@@ -100,9 +100,7 @@ public final class ExportQueue {
                 "bytes": .integer(Int(result.receipt.bytes)),
             ]
             // The rights facts of the media it plays (P2-H9), when the project asks for them.
-            if ReviewProfile(request.project).credits {
-                receipt["credits"] = ProjectCredits.of(request.project).json
-            }
+            if let credits = result.credits { receipt["credits"] = credits }
             return .object(receipt)
         }, finished: { [weak self] result in
             guard let self else { return }
