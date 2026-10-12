@@ -10,8 +10,8 @@ extension PlanCut {
         if let at, at < 0 { throw ProjectError.invalid("Line \(id): at must be 0 or more") }
         guard (0...30).contains(pause) else { throw ProjectError.invalid("Line \(id): pause 0…30 seconds") }
         return Line(
-            id: id, text: text, take: row["take"]?.string, section: row["section"]?.string, at: at, pause: pause,
-            volumeDb: row["volumeDb"]?.double)
+            id: id, text: text, caption: row["caption"]?.string.flatMap { $0.isEmpty ? nil : $0 }, take: row["take"]?.string,
+            section: row["section"]?.string, at: at, pause: pause, volumeDb: row["volumeDb"]?.double)
     }
 
     static func decodeGraphic(

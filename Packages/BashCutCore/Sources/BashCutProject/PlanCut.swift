@@ -99,6 +99,8 @@ public enum PlanCut {
     public struct Line: Sendable {
         public var id: String
         public var text: String
+        /// What the captions show for the line when it differs from what is said (digits for a spelled-out number).
+        public var caption: String?
         public var take: String?
         public var section: String?
         public var at: Double?
@@ -232,7 +234,7 @@ public enum PlanCut {
     ]
     static let coverKeys: Set<String> = ["media", "from", "seconds"]
     static let soundKeys: Set<String> = ["id", "media", "on", "section", "at", "offset", "seconds", "volumeDb"]
-    static let lineKeys: Set<String> = ["id", "text", "take", "section", "at", "pause", "volumeDb"]
+    static let lineKeys: Set<String> = ["id", "text", "caption", "take", "section", "at", "pause", "volumeDb"]
     static let graphicKeys: Set<String> = [
         "id", "media", "on", "section", "at", "offset", "seconds", "until", "track", "from", "render",
     ]

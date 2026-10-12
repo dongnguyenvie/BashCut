@@ -363,7 +363,7 @@ extension PlanCut {
         try planner.add(markers)
     }
 
-    /// Captions with each line's own text, timed by the words heard in its take.
+    /// Captions with each line's own text (its `caption` when given), timed by the words heard in its take.
     static func placeLineCaptions(
         _ captions: Captions, lines: [Line], takes: [String: LineTake], textPresets: [String: LibraryTextPreset],
         in planner: inout LayerPlanner
@@ -372,7 +372,7 @@ extension PlanCut {
             guard let take = takes[line.id], !take.words.isEmpty,
                 planner.project.tracks.contains(where: { $0.items.contains { $0.fields[tag] == .string(line.id) } })
             else { continue }
-            let aligned = TextAlignment.cues(script: line.text, heard: take.words)
+            let aligned = TextAlignment.cues(script: line.caption ?? line.text, heard: take.words)
             guard !aligned.cues.isEmpty else { continue }
             let before = Set(planner.project.tracks.flatMap(\.items).map(\.id))
             try planner.add([planner.project.importingCues(

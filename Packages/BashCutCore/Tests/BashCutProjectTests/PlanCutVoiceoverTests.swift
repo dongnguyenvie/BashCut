@@ -68,7 +68,8 @@ struct PlanCutVoiceoverTests {
     @Test("Lines play back to back with their pauses; graphics fill their spans, cut to what the movie has")
     func building() throws {
         let cut = try spec(#"""
-            {"voiceover":[{"id":"l1","text":"Xin chào","section":"p1","pause":0.5},{"id":"l2","text":"Ba cây số","section":"p2"}],
+            {"voiceover":[{"id":"l1","text":"Xin chào","section":"p1","pause":0.5},
+             {"id":"l2","text":"Ba cây số","caption":"3 cây số","section":"p2"}],
              "graphics":[{"id":"bg","media":"map","at":0,"until":"l2","track":"main"},{"id":"g1","media":"card","on":"l2","offset":0.5}],
              "titles":[{"id":"t1","text":"Ba cây số","clip":"l2","seconds":1}],
              "captions":{"from":"speech"}}
@@ -91,7 +92,7 @@ struct PlanCutVoiceoverTests {
         #expect(after.sectionMarkers.map(\.id) == ["p1", "p2"] && after.sectionMarkers[1].at == 75)
         #expect(after.sectionMarkers.first?.label == "Phần 1")
         let cues = after.tracks.filter { $0.role == TrackRole.captions }.flatMap(\.items)
-        #expect(cues.map(\.text) == ["Xin chào", "Ba cây số"], "each line's own text")
+        #expect(cues.map(\.text) == ["Xin chào", "3 cây số"], "each line's own text, or its caption")
         #expect(cues.last?.at == 75 + 6, "timed by the take's first word (0.2 s)")
     }
 

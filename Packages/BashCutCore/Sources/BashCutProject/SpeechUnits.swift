@@ -58,9 +58,14 @@ public enum TextAlignment {
         public var similarity: Double
     }
 
-    public static func align(_ text: String, to heard: [CaptionWords.Timed]) -> Result {
+    public static func align(_ text: String, to spoken: [CaptionWords.Timed]) -> Result {
         let intended = SpeechUnits.tokens(text)
-        let left = intended.map(SpeechUnits.normalized), right = heard.map { SpeechUnits.normalized($0.text) }
+        let heard = spelledNumbers(spoken, intended: intended, language: NumberWords.language(of: text))
+        let compared = { (token: String) in
+            let word = SpeechUnits.normalized(token)
+            return NumberWords.variants[word] ?? word
+        }
+        let left = intended.map(compared), right = heard.map { compared($0.text) }
         let rows = left.count, columns = right.count
         var cost = [[Int]](repeating: [Int](repeating: 0, count: columns + 1), count: rows + 1)
         for row in 0...rows { cost[row][0] = row }
@@ -111,6 +116,23 @@ public enum TextAlignment {
 }
 
 extension TextAlignment {
+    /// Heard numerals the script does not write as digits, as words over the numeral's time ("528" → năm trăm hai
+    /// mươi tám), so a spelled-out number in the script matches what a recognizer wrote in digits.
+    static func spelledNumbers(_ heard: [CaptionWords.Timed], intended: [String], language: String) -> [CaptionWords.Timed] {
+        let written = Set(intended.map(SpeechUnits.normalized))
+        return heard.flatMap { word -> [CaptionWords.Timed] in
+            let token = SpeechUnits.normalized(word.text)
+            guard !written.contains(token), let words = NumberWords.spelled(word.text, language: language), words.count > 0
+            else { return [word] }
+            let step = max(0, word.end - word.start) / Double(words.count)
+            return words.enumerated().map { index, text in
+                CaptionWords.Timed(
+                    text: text, start: word.start + step * Double(index), end: word.start + step * Double(index + 1),
+                    confidence: word.confidence, speaker: word.speaker)
+            }
+        }
+    }
+
     /// Captions whose text is the script and whose times come from the speech (P0-C9): each non-empty line of
     /// `script` becomes a cue from its first word's start to its last word's end, with the script's own words timed
     /// on it. Lines without a single matched word keep the time between their neighbours.
