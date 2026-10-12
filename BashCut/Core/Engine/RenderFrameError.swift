@@ -34,12 +34,13 @@ public struct LayerSource: Sendable, Equatable {
         self.mediaFPS = mediaFPS
     }
 
-    /// The source frame shown at timeline `frame` (a speed curve is not followed: the plain speed is used).
+    /// The source frame shown at timeline `frame`: the picture at the middle of that frame, as the composition samples
+    /// it (a speed curve is not followed: the plain speed is used).
     public func sourceFrame(at frame: Int) -> Int {
         if let heldFrame { return heldFrame }
         guard projectFPS > 0 else { return sourceIn }
-        let seconds = Double(frame - at) / projectFPS * speed
-        return sourceIn + Int((seconds * mediaFPS + 0.001).rounded(.down))
+        let seconds = (Double(frame - at) + 0.5) / projectFPS * speed
+        return sourceIn + Int((seconds * mediaFPS).rounded(.down))
     }
 }
 

@@ -126,9 +126,14 @@ public actor CompositionBuilder {
                     start: media.fps.time(item.sourceIn),
                     duration: CMTimeMultiplyByFloat64(
                         project.fps.time(item.duration), multiplier: item.speed))
+                // Each project frame shows the source picture at the middle of that frame, not at its start: a
+                // 29.97 fps picture starts a hair after the 30 fps frame boundary, so sampling at the start showed
+                // every picture one frame late (picture 0 twice, the clip's last picture never; at a join with
+                // another clip that looked like a dropped frame). Same-rate clips show the same pictures either way.
+                let middle = CMTimeMultiplyByFloat64(project.fps.time(1), multiplier: 0.5 * item.speed)
                 let videoSourceRange = isStill ? stillRange : freezeFrame.map {
                     CMTimeRange(start: media.fps.time($0), duration: media.fps.time(1))
-                } ?? normalSourceRange
+                } ?? CMTimeRange(start: normalSourceRange.start + middle, duration: normalSourceRange.duration)
                 let destination = project.fps.time(item.at)
                 let ramp = rampPlans.plan(for: item, mediaFPS: media.fps, fps: project.fps)
                 if track.kind == "video", let codec = asset.undecodableCodec {

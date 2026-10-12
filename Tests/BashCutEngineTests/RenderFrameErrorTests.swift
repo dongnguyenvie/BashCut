@@ -34,8 +34,8 @@ struct RenderFrameErrorTests {
         var source = LayerSource(
             itemID: "a", trackID: "v1", trackName: "Main", mediaID: "m", mediaPath: "media/a.mov", at: 100,
             sourceIn: 50, speed: 2, projectFPS: 30, mediaFPS: 60)
-        // 15 frames into the item at 2x: 1 s of source at 60 fps.
-        #expect(source.sourceFrame(at: 115) == 110)
+        // 15.5 frames (the middle of frame 15) into the item at 2x: 1.033 s of source at 60 fps.
+        #expect(source.sourceFrame(at: 115) == 112)
         source.heldFrame = 7
         #expect(source.sourceFrame(at: 115) == 7)
         let error = RenderFrameError(frame: 115, reason: "source frame missing", source: source)
