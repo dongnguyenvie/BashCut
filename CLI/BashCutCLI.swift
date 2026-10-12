@@ -20,6 +20,12 @@ import Foundation
             return
         }
         if words.isEmpty || ["help", "-h", "--help"].contains(words[0]) { throw CleanExit.helpRequest(self) }
+        // `bashcut <group> <command> --help` prints that command's reference, like `bashcut help <group> <command>`.
+        if words.prefix(while: { $0 != "--" }).contains(where: { $0 == "--help" || $0 == "-h" }),
+            let spec = CommandCatalog.specs.first(where: { words.starts(with: $0.cliWords) }) {
+            FileHandle.standardOutput.write(Data((CommandReference.entry(spec).joined(separator: "\n") + "\n").utf8))
+            return
+        }
         if words == ClaudeHook.words { return hook() }
         defer { DebugLog.flush() }
         let invocation: CommandLineParser.Invocation

@@ -30,6 +30,8 @@ public struct AgentLaunchRequest: Sendable {
     public var kit: AgentKitLaunch?
     /// Skills of ready plugins (#377), linked next to the kit's where the provider keeps its own skills folder.
     public var pluginSkills: [PluginSkill] = []
+    /// Load BashCut's MCP server only, not the user's other servers (Claude's `--strict-mcp-config`).
+    public var onlyBashCutMCP = false
 }
 
 /// The installed agent kit and the skills-only Claude plugin made from it (`AgentKitInstall`).

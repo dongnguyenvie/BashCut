@@ -67,6 +67,10 @@ extension ProjectDocument {
             switch result {
             case .success(let outcome):
                 finishExport(request, outcome: outcome)
+                logAutoStage("export", evidence: [
+                    request.output.path, "\(preset.rawValue) export finished",
+                    normalizeAudio ? "loudness measured and normalized" : "loudness not measured (no normalize-audio)",
+                ], author: author)
                 exports.post(ExportNotice(.finished, name: name, author: author))
             case .failure(let error) where JobCenter.isCancellation(error):
                 message = String(localized: "Export cancelled")

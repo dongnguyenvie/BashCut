@@ -26,7 +26,7 @@ extension CommandCatalog {
         CommandSpec(
             "skills.get", .read,
             "Read a skill's SKILL.md. Without scope, the project's skill wins over the one for every project, then a "
-                + "plugin's (<plugin-id>:<name>; with scope plugin a bare name works when one plugin has it), then the "
+                + "plugin's (<plugin-id>:<name>, its agent name such as vlog-product-ad, or a bare name one plugin has), then the "
                 + "kit's. To change a plugin's skill, save a copy with skills save. sections lists its ## headings; "
                 + "section returns only the sections whose heading contains one of the given words (comma-separated), "
                 + "and still counts as reading the skill.",

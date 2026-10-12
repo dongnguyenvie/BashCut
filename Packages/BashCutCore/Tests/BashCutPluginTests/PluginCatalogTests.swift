@@ -10,6 +10,8 @@ struct PluginCatalogTests {
             "loudnessRangeLU": .number(7.5),
         ]))
         #expect(try LoudnessNormalizer.correction(measurement: measured) == 2)
+        // With a limiter holding the peaks, the whole gain to the target.
+        #expect(try LoudnessNormalizer.correction(measurement: measured, limited: true) == 6)
         let quiet = LoudnessMeasurement(integratedLUFS: -24, truePeakDbTP: -20)
         #expect(try LoudnessNormalizer.correction(measurement: quiet) == 10)
         #expect(throws: PluginError.self) {

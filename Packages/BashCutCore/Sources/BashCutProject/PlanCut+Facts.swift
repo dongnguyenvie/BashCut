@@ -71,13 +71,17 @@ extension PlanCut {
             return problems
         }
         row["described"] = .object(["size": shot.size.map(JSONValue.string) ?? .null, "start": rounded(shot.start), "end": rounded(shot.end)])
-        if let size = shot.size, let before = previous, before.media == media.id, before.size == size {
+        // A punch-in (the clip's zoom) is a framing of its own.
+        let zoom = resolved.clip.transform["zoom"]?.double ?? 1
+        let framing = shot.size.map { zoom == 1 ? $0 : "\($0)@\(zoom)" }
+        if let size = shot.size, let framing, let before = previous, before.media == media.id, before.size == framing {
             problems.append(Problem(
                 id: "same-framing", severity: "info", entry: id,
-                detail: "Same media and described size (\(size)) as the clip before: a jump cut unless reframed",
+                detail: "Same media and described size (\(size)) as the clip before: a jump cut unless reframed (the "
+                    + "clip's zoom, a punch-in) or covered",
                 facts: ["size": .string(size)]))
         }
-        previous = shot.size.map { (media.id, $0) }
+        previous = framing.map { (media.id, $0) }
         return problems
     }
 

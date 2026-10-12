@@ -33,7 +33,7 @@ struct PlanCutTests {
         try PlanCut.decode(JSONDecoder().decode(JSONValue.self, from: Data(json.utf8)))
     }
 
-    @Test("The list needs clips with one way to pick their range; IDs are unique and titles anchor to a clip")
+    @Test("The list needs clips with one way to pick their range (from/to may move a quote's edges); IDs are unique and titles anchor to a clip")
     func decoding() throws {
         let good = try spec(#"""
             {"clips":[{"media":"m","quote":"giá năm chục"},{"id":"b","media":"m","from":5,"to":7}],
@@ -42,7 +42,8 @@ struct PlanCutTests {
         #expect(good.clips.map(\.id) == ["c1", "b"] && good.titles.first?.id == "t1")
         for bad in [
             #"{"clips":[]}"#,
-            #"{"clips":[{"media":"m","quote":"a","from":1,"to":2}]}"#,
+            #"{"clips":[{"media":"m","quote":"a","words":"1-2"}]}"#,
+            #"{"clips":[{"media":"m","quote":"a","from":2,"to":1}]}"#,
             #"{"clips":[{"media":"m","from":3,"to":2}]}"#,
             #"{"clips":[{"id":"a","media":"m"},{"id":"a","media":"m"}]}"#,
             #"{"clips":[{"media":"m"}],"titles":[{"text":"x","clip":"nope","seconds":1}]}"#,
@@ -62,7 +63,7 @@ struct PlanCutTests {
         let (clips, problems) = PlanCut.resolve(cut, project: project, transcripts: ["m": transcript])
         #expect(clips.map(\.clip.id) == ["a", "c"])
         #expect(clips[0].from == 2.8 && clips[0].to == 3.4 && clips[0].facts["matched"] == .number(1))
-        #expect(clips[1].from == 2.9 && clips[1].to == 4)
+        #expect(clips[1].from == 2.8 && clips[1].to == 4, "2.9 s cut into “giá” (2.8–3.0 s)")
         let byID = Dictionary(grouping: problems, by: \.id)
         #expect(byID["quote-not-found"]?.first?.entry == "b" && byID["quote-not-found"]?.first?.severity == "error")
         #expect(byID["unknown-media"]?.first?.entry == "d")
@@ -153,7 +154,8 @@ struct PlanCutTests {
         var project = project()
         let cut = try spec(#"""
             {"clips":[{"id":"a","media":"m","quote":"giá năm chục"},{"id":"b","media":"m","from":8,"to":10,"role":"broll"}],
-            "captions":{"from":"speech","preset":"bold-outline","style":{"size":0.05,"positionY":0.2}},
+            "captions":{"from":"speech","preset":"bold-outline","style":{"size":0.05,"positionY":0.2},
+                        "replace":{"năm chục":"50"}},
             "music":{"media":"song","duckDb":-20}}
             """#)
         let resolved = PlanCut.resolve(cut, project: project, transcripts: ["m": transcript]).clips
@@ -163,6 +165,8 @@ struct PlanCutTests {
         let cues = items.filter { $0.fields[PlanCut.tag] == .string("captions") }
         // Only the quoted words (2.8–3.4 s) play, so one cue, cut to them, at the clip's start.
         #expect(cues.count == 1 && cues[0].at == 0 && cues[0].textPreset == "bold-outline")
+        // Its text is the words heard, not the whole phrase, with the transcript's slip replaced.
+        #expect(cues[0].text == "giá 50")
         #expect(cues[0]["textStyle"]?.object["size"] == .number(0.05) && cues[0]["captionMedia"] == .string("m"))
         #expect(items.first { $0.id == "plan-a" }?["tag"]?.object["role"] == .string("speech"))
         #expect(items.first { $0.id == "plan-b" }?["tag"]?.object["role"] == .string("broll"))
@@ -224,5 +228,119 @@ struct PlanCutTests {
         #expect(throws: ProjectError.self) {
             try spec(#"{"clips":[{"media":"m","from":0,"to":1,"speed":2,"cover":[{"media":"m","from":3}]}]}"#)
         }
+    }
+
+    @Test("A patch names only what changes: entries by ID merge, null removes, unknown IDs are added")
+    func patch() throws {
+        let list = JSONValue.object([
+            "clips": .array([
+                .object(["id": .string("c1"), "media": .string("m"), "from": .number(0), "to": .number(2)]),
+                .object(["id": .string("c2"), "media": .string("m"), "quote": .string("xin chào"),
+                         "cover": .array([.object(["media": .string("m"), "from": .number(5)])])]),
+            ]),
+            "titles": .array([.object(["id": .string("t1"), "text": .string("Hook"), "style": .object(["size": .number(0.05)])])]),
+            "music": .object(["media": .string("song"), "volumeDb": .number(-18)]),
+        ])
+        let patched = try PlanCut.patch(list, with: .object([
+            "clips": .object([
+                "c1": .null,
+                "c2": .object(["cover": .array([.object(["media": .string("m"), "from": .number(9)])])]),
+                "c3": .object(["media": .string("m"), "from": .number(10), "to": .number(11), "speed": .null]),
+            ]),
+            "titles": .object(["t1": .object(["style": .object(["background": .object(["opacity": .number(0.6)])])])]),
+            "music": .null,
+        ]))
+        let clips = patched.object["clips"]?.array ?? []
+        #expect(clips.map { $0.object["id"]?.string } == ["c2", "c3"])
+        #expect(clips[0].object["quote"] == .string("xin chào"), "untouched fields stay")
+        #expect(clips[0].object["cover"]?.array.first?.object["from"] == .number(9), "a list inside an entry is replaced")
+        #expect(clips[1].object["speed"] == nil, "null is never stored")
+        let style = patched.object["titles"]?.array.first?.object["style"]?.object
+        #expect(style?["size"] == .number(0.05) && style?["background"]?.object["opacity"] == .number(0.6))
+        #expect(patched.object["music"] == nil)
+        #expect(throws: ProjectError.self) { try PlanCut.patch(list, with: .array([])) }
+    }
+
+    @Test("A clip's in edge rounds down and its out edge up to whole frames, so it keeps its last word whole")
+    func wholeFrames() throws {
+        let cut = try spec(#"{"clips":[{"id":"a","media":"m","from":1.02,"to":1.88}]}"#)
+        let built = try PlanCut.build(cut, clips: PlanCut.resolve(cut, project: project(), transcripts: [:]).clips, on: project())
+        let clip = try #require(built.planner.project.track(role: TrackRole.main, kind: "video")?.items.first)
+        #expect(clip.sourceIn == 30 && clip.duration == 27)
+    }
+
+    @Test("A clip's or cover's zoom, pan and tilt frame its picture; fields nothing reads are warned about")
+    func framing() throws {
+        let cut = try spec(#"""
+            {"clips":[{"id":"a","media":"m","from":0,"to":2,"zoom":1.2,"why":"punch-in"},
+            {"id":"b","media":"m","from":5,"to":7,"scale":2,"cover":[{"media":"m","from":13,"tilt":-40,"crop":1}]}],
+            "titles":[{"id":"t","text":"Hi","clip":"a","postion":0.8}]}
+            """#)
+        let built = try PlanCut.build(cut, clips: PlanCut.resolve(cut, project: project(), transcripts: [:]).clips, on: project())
+        let items = built.planner.project.tracks.flatMap(\.items)
+        #expect(items.first { $0.id == "plan-a" }?["transform"]?.object["zoom"] == .number(1.2))
+        #expect(items.first { $0.id == "plan-a" }?.linkedItemID.flatMap { id in items.first { $0.id == id } }?["transform"] == nil)
+        #expect(items.first { $0.id == "plan-b-cover1" }?["transform"]?.object["tilt"] == .number(-40))
+        let warned = PlanCut.resolve(cut, project: project(), transcripts: [:]).problems.filter { $0.id == "unknown-field" }
+        #expect(warned.map { $0.entry ?? "" } == ["b", "b", "t"])
+        #expect(warned.map { $0.facts["fields"] } == [.array([.string("scale")]), .array([.string("crop")]), .array([.string("postion")])])
+        #expect(throws: ProjectError.self) { try spec(#"{"clips":[{"media":"m","from":0,"to":1,"zoom":0}]}"#) }
+    }
+
+    @Test("from or to on a quote moves that edge (snapped out of words); a patched quote drops the old edges")
+    func quoteEdges() throws {
+        let cut = try spec(#"{"clips":[{"id":"a","media":"m","quote":"các bạn ơi","to":3.1}]}"#)
+        let clip = try #require(PlanCut.resolve(cut, project: project(), transcripts: ["m": transcript]).clips.first)
+        #expect(clip.from == 2.0 && clip.to == 3.2)
+        #expect(clip.facts["quoted"]?.object["to"] == .number(2.8))
+        let list = try JSONDecoder().decode(JSONValue.self, from: Data(#"{"clips":[{"id":"a","media":"m","quote":"xin","to":3.1}]}"#.utf8))
+        let patched = try PlanCut.patch(list, with: .object(["clips": .object(["a": .object(["quote": .string("giá năm chục")])])]))
+        #expect(patched.object["clips"]?.array.first?.object["to"] == nil)
+        let moved = try PlanCut.patch(list, with: .object(["clips": .object(["a": .object(["from": .number(0.9)])])]))
+        #expect(moved.object["clips"]?.array.first?.object["quote"] == .string("xin"))
+    }
+
+    @Test("Sound effects go on the SFX layer at a clip's or title's start plus offset, clipped to the edit")
+    func soundEffects() throws {
+        let cut = try spec(#"""
+            {"clips":[{"id":"a","media":"m","from":0,"to":2,"section":"hook"},{"id":"b","media":"m","from":5,"to":7}],
+            "titles":[{"id":"t","text":"Hi","clip":"b","offset":0.5,"seconds":1}],
+            "sfx":[{"id":"w","media":"song","on":"b","offset":-0.2,"seconds":0.5,"volumeDb":-6},
+                   {"media":"song","on":"t","seconds":0.3},{"media":"song","at":3.9,"seconds":2,"pitch":1}]}
+            """#)
+        let resolved = PlanCut.resolve(cut, project: project(), transcripts: [:])
+        #expect(resolved.problems.contains { $0.id == "unknown-field" && $0.entry == "s3" })
+        let built = try PlanCut.build(cut, clips: resolved.clips, on: project()).planner.project
+        let sfx = try #require(built.track(role: TrackRole.sfx)).items.sorted { $0.at < $1.at }
+        #expect(sfx.map(\.id) == ["plan-w", "plan-s2", "plan-s3"])
+        #expect(sfx.map(\.at) == [54, 75, 117] && sfx.map(\.duration) == [15, 9, 3])
+        #expect(sfx[0].fields["volumeDb"] == .number(-6) && sfx[0].fields[PlanCut.tag] == .string("w"))
+        #expect(throws: ProjectError.self) { try spec(#"{"clips":[{"media":"m","from":0,"to":1}],"sfx":[{"media":"song","on":"nope"}]}"#) }
+    }
+
+    @Test("Review limits ride with the list as an object")
+    func reviewLimits() throws {
+        let limits = try spec(#"{"clips":[{"media":"m","from":0,"to":1}],"review":{"minTextSize":0.04}}"#).review
+        #expect(limits?["minTextSize"] == .number(0.04))
+        #expect(throws: ProjectError.self) { try spec(#"{"clips":[{"media":"m","from":0,"to":1}],"review":3}"#) }
+    }
+
+    @Test("Rough seconds that cut into a word move out to its edges; the times given stay as requested")
+    func roughSecondsSnap() throws {
+        let cut = try spec(#"{"clips":[{"media":"m","from":2.1,"to":3.1}]}"#)
+        let clip = try #require(PlanCut.resolve(cut, project: project(), transcripts: ["m": transcript]).clips.first)
+        #expect(clip.from == 2.0 && clip.to == 3.2)
+        #expect(clip.facts["requested"]?.object["from"] == .number(2.1))
+        // An edge within a frame of the word's far edge stays out of the word instead of taking it whole.
+        let nudged = try spec(#"{"clips":[{"media":"m","from":1.89,"to":2.31}]}"#)
+        let near = try #require(PlanCut.resolve(nudged, project: project(), transcripts: ["m": transcript]).clips.first)
+        #expect(near.from == 1.9 && near.to == 2.3)
+        let clean = try spec(#"{"clips":[{"media":"m","from":2.0,"to":3.2}]}"#)
+        let kept = try #require(PlanCut.resolve(clean, project: project(), transcripts: ["m": transcript]).clips.first)
+        #expect(kept.from == 2.0 && kept.facts["requested"] == nil)
+        // Seconds holding transcribed words play speech, like a quote; silent seconds keep no role.
+        #expect(kept.clip.role == "speech")
+        let silent = try spec(#"{"clips":[{"media":"m","from":10,"to":12}]}"#)
+        #expect(PlanCut.resolve(silent, project: project(), transcripts: ["m": transcript]).clips.first?.clip.role == nil)
     }
 }

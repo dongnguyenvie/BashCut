@@ -97,7 +97,9 @@ extension CommandCatalog {
                 + "stored unverified), skipped needs --reason; the rough-cut stage while G2 is skip needs what G2 needs. "
                 + "skill: a skill you read (stored verified: false unless the kit hook writes it with --verified-by "
                 + "hook; skills get records plugin and kit skill reads itself). audit: an auditor's verdict at a point "
-                + "(strategy after the story, draft before export, process at the end), bound to the current timeline.",
+                + "(strategy after the story, draft before export, process at the end), bound to the current timeline. "
+                + "BashCut writes these stages itself (auto: true): rough-cut and captions on plan apply, review on a "
+                + "review run that passes, export when an export lands.",
             parameters: [
                 CommandParameter("kind", .string, "Entry kind (1–40 characters; not gate)", required: true, cli: .positional),
                 CommandParameter("data", .object, "More fields as a JSON object", cli: .option("data")),
@@ -161,14 +163,27 @@ extension CommandCatalog {
         let cut = CommandParameter(
             "cut", .object, "The list {clips, titles, music} (CLI: path to cut.json); plan.cut when omitted",
             cli: .positionalJSONFile)
+        let patch = CommandParameter(
+            "patch", .object, "Changes merged over the list instead of a whole new one: {clips: {c2: {cover: […]}, c5: null}, "
+                + "titles: {t1: {style: {…}}}}; an entry by ID merges, null removes, an unknown ID adds",
+            cli: .option("patch"))
         let shape = "plan.cut is {clips: [{id, media, quote | words FIRST-LAST | from/to seconds (whole media when "
-            + "none; seconds for a still), section, speed, volumeDb, role (speech, broll, underVO; speech by default "
-            + "for quote or words), cover: [{media, from, seconds}] (pictures shown over the clip's sound, muted, the "
-            + "last filling the rest)}], titles: [{id, text, clip or section (+ offset seconds) | at, seconds (to "
+            + "none; seconds for a still; from or to next to a quote or words moves that edge, and a patched quote "
+            + "drops the old edges), section, speed, volumeDb, role (speech, broll, underVO; speech by default "
+            + "for quote, words or seconds holding transcribed words), zoom, pan, tilt (its picture's framing: a punch-in such as zoom 1.15 "
+            + "breaks a jump cut between two clips of one camera), cover: [{media, from, seconds, zoom, pan, tilt}] "
+            + "(pictures shown over the clip's sound, muted, the last filling the rest)}], titles: [{id, text, clip "
+            + "or section (+ offset seconds) | at, seconds (to "
             + "the end of its clip or section when left out; needed with at), preset, style}], captions: {from: "
-            + "speech, wordStyle highlight|karaoke|reveal, preset, style} (captions from the "
+            + "speech, wordStyle highlight|karaoke|reveal, preset, style, replace: {\"misheard words\": \"right "
+            + "words\"} (names the transcript got wrong; a line a clip plays only part of shows only the words heard)} "
+            + "(captions from the "
             + "stored transcripts of the clips' media, cut with them), music: {media, from, volumeDb, duckDb (level "
-            + "under speech)}}. A title's preset is a renderer "
+            + "under speech)}, sfx: [{id, media, on (a clip or title ID) | section | at seconds, offset (negative: "
+            + "before it), seconds (default the whole file), volumeDb}] (on the SFX layer, never past the end), "
+            + "review: {limit: number} (review limits such as minTextSize, minTextContrast, "
+            + "minShotSeconds, chosen from the recipe's ranges; merged over the project's review on apply)}. A title's "
+            + "preset is a renderer "
             + "preset (" + TextPreset.all.joined(separator: ", ") + ") or a library text-preset ID (templates such "
             + "as stacked-keyword, boxed-keyword, headline-subline, two-tone-pop; library list --kind text-preset); "
             + "its style gives text style fields over the preset's: font (a PostScript name or System-[Condensed|"
@@ -185,24 +200,31 @@ extension CommandCatalog {
                     + "second and textShare (its smallest line as a share of the short side, the measure of "
                     + "review.minTextSize); problems {id, severity error|warning|info, entry, detail, facts} (quote not found, "
                     + "unknown media, source played twice, same media and size back to back, media against the canvas "
-                    + "shape, stroke-units, review-profile-unset); and the review of the edit as it would be (the "
+                    + "shape, stroke-units, unknown-field for a field nothing reads, "
+                    + "review-profile-unset with facts.unsetLimits: every review limit the "
+                    + "built edit needs and nobody set); and the review of the edit as it would be (the "
                     + "project's review profile; picture and loudness need a render and are not measured). ok is false "
                     + "while an error stands. " + shape,
-                parameters: [cut]),
+                parameters: [cut, patch]),
             CommandSpec(
                 "plan.apply", .edit,
                 "Build the edit list as one undoable edit: clips on Main in order (sound linked on the dialogue "
                     + "layer), section markers, titles and the music bed, each tagged planCut. Applying again replaces "
                     + "only what an earlier apply built (changes made to those items since are lost; other layers are "
                     + "kept but not re-timed); Main must hold nothing else. Refuses while plan.check has an error. "
-                    + "With cut, the list is also saved as plan.cut in the same edit. dryRun returns the check. The "
+                    + "With cut or patch, the list is also saved as plan.cut in the same edit (a revision: --patch with "
+                    + "only what changes, then nothing else to write); plan.cut.review is merged into the project's "
+                    + "review in the same edit. dryRun returns the check. The "
                     + "result has the review's errors and warnings of the built edit (no info rows; picture and "
-                    + "loudness need review measure); sheet adds the storyboard (timeline sheet --cuts --text) of the "
-                    + "new revision. " + shape,
+                    + "loudness need review measure); sheet adds the storyboard image paths (timeline sheet --cuts "
+                    + "--text) of the new revision. The result is brief (clips as a count; the per-clip facts are plan "
+                    + "check's); full adds clips, changes, items and the sheet's cells. " + shape,
                 parameters: [
-                    cut,
+                    cut, patch,
                     CommandParameter("dryRun", .boolean, "Check without editing", cli: .flag("dry-run")),
                     CommandParameter("sheet", .boolean, "Also lay the new revision out on a contact sheet", cli: .flag("sheet")),
+                    CommandParameter("full", .boolean, "Return every clip's facts, the changes and the built items",
+                                     cli: .flag("full")),
                     CommandParameter("why", .string, "Why this edit, in one sentence (up to 500 characters)", cli: .option("why")),
                     CommandParameter("evidence", .string, "What it rests on, separated by ;", cli: .option("evidence")),
                     baseRevision,

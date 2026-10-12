@@ -5,6 +5,14 @@ import Foundation
 /// `decode` case and one `json` case here plus its `applying` logic.
 extension EditOperation {
     public static let maximumFrame = 2_000_000_000
+    /// The operation names an agent may send, for error messages.
+    public static let agentOperations = [
+        "insert", "delete", "split", "trim", "move", "reorder", "slip", "roll", "setProperties", "setSpeed",
+        "setSpeedCurve", "setSource", "setLinkedAudio", "addMedia", "addTrack", "deleteTrack", "moveTrack",
+        "setTrackProperties", "setProjectProperties", "setFormat", "setProviderPreference", "setBeatGrid",
+        "setMediaDescription", "setMediaRights", "setMediaData", "upsertSection", "deleteSection", "upsertTransition",
+        "deleteTransition", "addColorLUT", "deleteColorLUT",
+    ]
 
     // Decoding stays one exhaustive switch so malformed variants fail at one boundary.
     // swiftlint:disable cyclomatic_complexity
@@ -95,7 +103,10 @@ extension EditOperation {
                 label: try read.string("label"), author: author,
                 ops: try ops.map { try EditOperation(json: $0, allowInternal: true) })
         case "restore" where allowInternal: self = .restore(Project(fields: try read.object("project")))
-        default: throw ProjectError.invalid("Unknown edit operation")
+        case let name:
+            throw ProjectError.invalid(
+                "Unknown edit operation \(name): use " + (Self.agentOperations + ["patchItems"]).joined(separator: ", ")
+                    + " (setProperties {item, patch} changes one item; patchItems {items or select, patch} many)")
         }
     }
 

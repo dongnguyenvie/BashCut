@@ -22,7 +22,7 @@ struct PluginProcessLifecycleTests {
         }
         call.cancel()
         await #expect(throws: PluginError.invalid("Plugin request was cancelled")) { try await call.value }
-        #expect(Date().timeIntervalSince(started) < 5)
+        #expect(Date().timeIntervalSince(started) < 15, "well before the 30 s sleep, with room for a loaded machine")
         let helper = try #require(pid_t(String(contentsOf: pidFile, encoding: .utf8)
             .trimmingCharacters(in: .whitespacesAndNewlines)))
         try await Task.sleep(for: .milliseconds(100))
@@ -37,7 +37,7 @@ struct PluginProcessLifecycleTests {
         await #expect(throws: PluginError.invalid("Plugin request timed out")) {
             try await PluginProcessRunner(timeout: 0.3).call(plugin: plugin, method: "fixture.run")
         }
-        #expect(Date().timeIntervalSince(started) < 5)
+        #expect(Date().timeIntervalSince(started) < 15, "well before the 30 s sleep, with room for a loaded machine")
     }
 
     @Test("Nonzero exits surface stderr")

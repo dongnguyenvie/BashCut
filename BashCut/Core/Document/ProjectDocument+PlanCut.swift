@@ -22,17 +22,30 @@ extension ProjectDocument {
                 ]))
             }
             var operations = built.planner.operations
-            if let cut = arguments["cut"], cut != .null {
+            var properties: [String: JSONValue] = [:]
+            let given = [arguments["cut"], arguments["patch"]].contains { $0 != nil && $0 != .null }
+            if given, let cut = try document.planCutValue(arguments) {
                 var plan = document.project["plan"]?.object ?? [:]
                 plan["cut"] = cut
-                operations.insert(.setProjectProperties(patch: ["plan": .object(plan)]), at: 0)
+                properties["plan"] = .object(plan)
             }
+            if let review = document.planReview(spec) { properties["review"] = .object(review) }
+            if !properties.isEmpty { operations.insert(.setProjectProperties(patch: properties), at: 0) }
             let label = "Apply edit list"
             let result = try document.commitEdit(
                 .group(label: label, author: author, ops: operations), label: label, author: author,
                 baseRevision: baseRevision, note: try Self.editNote(arguments))
             var json = check.json.object
             json["rev"] = .integer(result.revision)
+            let clips = spec.clips.count
+            let sections = Set(spec.clips.compactMap(\.section)).count
+            document.logAutoStage("story", evidence: [
+                "plan.cut: \(clips) clips in \(sections) sections", "plan check ok at rev \(baseRevision)",
+            ], author: author)
+            document.logAutoStage("rough-cut", evidence: ["plan.apply rev \(result.revision)", "\(clips) clips"], author: author)
+            if spec.captions != nil {
+                document.logAutoStage("captions", evidence: ["plan.apply rev \(result.revision) captions from plan.cut"], author: author)
+            }
             json["changed"] = .bool(result.changed)
             // What the build left to fix, without the info rows: the review run of the new revision.
             json["review"] = .array((check.json.object["review"]?.array ?? []).filter {
@@ -45,19 +58,44 @@ extension ProjectDocument {
             if arguments.bool("sheet"), !arguments.bool("dryRun") {
                 json["sheet"] = try await document.timelineSheet(CommandArguments(["cuts": .bool(true), "text": .bool(true)]))
             }
-            return .object(json)
+            return arguments.bool("full") ? .object(json) : Self.briefApply(json)
         }
     }
 
-    /// The list from `cut`, else `plan.cut`.
-    func planCutSpec(_ arguments: CommandArguments) throws -> PlanCut.Spec {
+    /// What an agent reads after a build: the per-clip facts it already had from plan check, the change list, the
+    /// item IDs and the sheet's cells cost thousands of tokens on every later turn, so they come only with --full;
+    /// a clip's problems, the review and the sheet's image paths stay.
+    static func briefApply(_ json: [String: JSONValue]) -> JSONValue {
+        var brief = json.filter { !["clips", "changes", "items", "sheet"].contains($0.key) }
+        brief["clips"] = .integer(json["clips"]?.array.count ?? 0)
+        if let sheet = json["sheet"]?.object {
+            brief["sheet"] = .array((sheet["sheets"]?.array ?? []).compactMap { $0.object["path"] })
+        }
+        return .object(brief)
+    }
+
+    /// The list from `cut`, else `plan.cut`, with `patch` merged over it.
+    func planCutValue(_ arguments: CommandArguments) throws -> JSONValue? {
         let value = arguments["cut"].flatMap { $0 == .null ? nil : $0 } ?? project["plan"]?.object["cut"]
+        guard let value, let patch = arguments["patch"], patch != .null else { return value }
+        do { return try PlanCut.patch(value, with: patch) } catch let error as ProjectError { throw RPCFailure.invalid(error) }
+    }
+
+    /// The list from `cut`, else `plan.cut`, with `patch` merged over it.
+    func planCutSpec(_ arguments: CommandArguments) throws -> PlanCut.Spec {
+        let value = try planCutValue(arguments)
         guard let value else {
             throw RPCFailure(-32602, "No edit list: give cut (a JSON file) or set plan.cut", data: .object([
                 "remediation": .object(["command": .string("project.set-data"), "hint": .string("plan --merge with {cut: …}")]),
             ]))
         }
         do { return try PlanCut.decode(value) } catch let error as ProjectError { throw RPCFailure.invalid(error) }
+    }
+
+    /// The project's review limits with `plan.cut.review` merged over them; nil when the plan sets none.
+    func planReview(_ spec: PlanCut.Spec) -> [String: JSONValue]? {
+        guard let limits = spec.review, !limits.isEmpty else { return nil }
+        return (project["review"]?.object ?? [:]).merging(limits) { $1 }
     }
 
     /// The library text presets the titles name (renderer presets need none), and an error for a name that is
@@ -132,6 +170,38 @@ extension ProjectDocument {
         }
     }
 
+    /// The limits a review of the built edit reads and nobody set, listed at once so they are chosen with the plan;
+    /// and `plan.cut.review` values out of range.
+    func planReviewProblems(_ review: [String: JSONValue]?, built: Project?) -> [PlanCut.Problem] {
+        var problems: [PlanCut.Problem] = []
+        var profiled = built ?? project
+        if let review { profiled["review"] = .object(review) }
+        let profile = ReviewProfile(profiled)
+        let unset = TimelineReview.applicableLimits(profiled).filter { profile[$0] == nil }
+        if !unset.isEmpty {
+            problems.append(PlanCut.Problem(
+                id: "review-profile-unset", severity: "warning", entry: nil,
+                detail: "Review limits this edit needs are unset, so review run stays incomplete: "
+                    + unset.joined(separator: ", ") + ". Choose each from the recipe's ranges in plan.cut.review "
+                    + "(written on plan apply) or project set-data review",
+                facts: [
+                    "unsetLimits": .array(unset.map(JSONValue.string)),
+                    // What each limit can hold (seconds, a share 0–1, characters, a contrast ratio), not a choice.
+                    "accepts": .object(Dictionary(uniqueKeysWithValues: unset.compactMap { key in
+                        ReviewProfile.numberKeys[key].map { (key, JSONValue.string("\($0.lowerBound)…\($0.upperBound)")) }
+                    })),
+                ]))
+        }
+        guard let review else { return problems }
+        var copy = project
+        copy["review"] = .object(review)
+        do { try copy.validateReviewSettings() } catch {
+            problems.append(PlanCut.Problem(
+                id: "review-invalid", severity: "error", entry: nil, detail: "plan.cut." + error.localizedDescription))
+        }
+        return problems
+    }
+
     struct PlanCutCheck {
         var built: (planner: LayerPlanner, placements: [PlanCut.Placement], kept: [String])?
         var problems: [PlanCut.Problem]
@@ -155,8 +225,10 @@ extension ProjectDocument {
         } catch {
             problems.append(PlanCut.Problem(id: "cannot-build", severity: "error", entry: nil, detail: "\(error)"))
         }
+        let review = planReview(spec)
         if let built {
-            let after = built.planner.project
+            var after = built.planner.project
+            if let review { after["review"] = .object(review) }
             let facts = PlanCut.facts(spec, clips: clips, placements: built.placements, on: after)
             problems += facts.problems + planFontProblems(after) + planStyleProblems(after)
             let fps = after.fps.value
@@ -195,12 +267,7 @@ extension ProjectDocument {
             let review = TimelineReview.run(after, context: context).filter { $0.accepted == nil }
             result["review"] = .array(review.map(\.json))
         }
-        if ReviewProfile(project).values.isEmpty {
-            problems.append(PlanCut.Problem(
-                id: "review-profile-unset", severity: "warning", entry: nil,
-                detail: "The project has no review limits, so review run stays incomplete and checks no text size, "
-                    + "contrast or shot length: set them from the recipe's ranges with project set-data review"))
-        }
+        problems += planReviewProblems(review, built: built?.planner.project)
         result["problems"] = .array(problems.map(\.json))
         result["ok"] = .bool(!problems.contains { $0.severity == "error" })
         return PlanCutCheck(built: built, problems: problems, json: .object(result))

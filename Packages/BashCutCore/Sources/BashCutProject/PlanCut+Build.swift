@@ -41,6 +41,7 @@ extension PlanCut {
         }
         placements += try placeTitles(
             spec.titles, anchors: placements, sections: sections, textPresets: textPresets, in: &planner)
+        placements += try placeSounds(spec.sfx, anchors: placements, sections: sections, length: total, in: &planner)
         if let music = spec.music, total > 0, let placed = try placeMusic(music, length: total, in: &planner) {
             placements.append(placed)
             if let duck = music.duckDb {
@@ -86,9 +87,13 @@ extension PlanCut {
             var patch: [String: JSONValue] = [tag: .string(clip.id)]
             if let section = clip.section { patch[sectionTag] = .string(section) }
             if let role = clip.role { patch["tag"] = .object(["role": .string(role)]) }
+            // The in edge rounds down and the out edge up to whole frames, so a clip given at word edges keeps the
+            // whole of its first and last word (rounding the length could end it a frame inside the last one).
+            let sourceIn = media.isImage ? 0 : Int((resolved.from * media.fps.value).rounded(.down))
+            let start = media.isImage ? resolved.from : Double(sourceIn) / media.fps.value
             let slot = Slot(
-                at: cursor, span: max(1, Int(((resolved.to - resolved.from) * fps).rounded())),
-                sourceIn: media.isImage ? 0 : Int((resolved.from * media.fps.value).rounded(.down)), patch: patch)
+                at: cursor, span: max(1, Int(((resolved.to - start) * fps - 1e-6).rounded(.up))),
+                sourceIn: sourceIn, patch: patch)
             let end = clip.cover.isEmpty
                 ? try placeOwn(clip, media: media, slot: slot, main: main, in: &planner)
                 : try placeCovered(clip, media: media, slot: slot, main: main, in: &planner)
@@ -114,7 +119,9 @@ extension PlanCut {
         if clip.speed != 1 { try planner.add([.setSpeed(item: id, speed: clip.speed, keepDuration: false)]) }
         var patch = slot.patch
         if let volume = clip.volumeDb { patch["volumeDb"] = .number(volume) }
-        try planner.add([.setProperties(item: id, patch: patch)])
+        var picture = patch
+        if !clip.transform.isEmpty { picture["transform"] = .object(clip.transform) }
+        try planner.add([.setProperties(item: id, patch: picture)])
         let placed = planner.project.tracks.flatMap(\.items).first { $0.id == id }
         if let partner = placed?.linkedItemID { try planner.add([.setProperties(item: partner, patch: patch)]) }
         return placed?.end ?? slot.at + slot.span
@@ -139,6 +146,7 @@ extension PlanCut {
                 sourceIn: picture.isImage ? 0 : Int((shot.from * picture.fps.value).rounded(.down)))
             for (key, value) in slot.patch { item[key] = value }
             item["tag"] = .object(["role": .string("broll")])
+            if !shot.transform.isEmpty { item["transform"] = .object(shot.transform) }
             if picture.hasAudio == true { item["muted"] = .bool(true) }
             try planner.place(item, on: main)
             cursor += length
@@ -220,9 +228,41 @@ extension PlanCut {
                     for: item, (captions.preset, captions.style, captions.textStyle), textPresets: textPresets,
                     project: planner.project)
                 patch[tag] = .string("captions")
+                let text = captions.replace.reduce(item.text) { text, pair in
+                    text.replacingOccurrences(of: pair.from, with: pair.to, options: .caseInsensitive)
+                }
+                if text != item.text { patch["text"] = .string(text) }
                 try planner.add([.setProperties(item: item.id, patch: patch)])
             }
         }
+    }
+
+    /// Sound effects on the SFX layer (spilling onto another where one already plays), each at its anchor plus
+    /// offset, for its seconds or the whole file, never past the edit's end.
+    static func placeSounds(
+        _ sounds: [Sound], anchors: [Placement], sections: [String: Placement], length total: Int,
+        in planner: inout LayerPlanner
+    ) throws -> [Placement] {
+        guard !sounds.isEmpty, total > 0 else { return [] }
+        let fps = planner.project.fps.value
+        let track = try planner.project.requireTrack(role: TrackRole.sfx)
+        var placements: [Placement] = []
+        for sound in sounds {
+            guard let media = planner.project.media.first(where: { $0.id == sound.media }) else { continue }
+            let anchor = sound.on.flatMap { id in anchors.first { $0.id == id }?.at }
+                ?? sound.section.flatMap { sections[$0]?.at } ?? Int(((sound.at ?? 0) * fps).rounded())
+            let start = max(0, anchor + Int((sound.offset * fps).rounded()))
+            guard start < total else { continue }
+            let wanted = Int(((sound.seconds ?? media.durationSeconds) * fps).rounded())
+            let duration = max(1, min(wanted, Int((media.durationSeconds * fps).rounded(.down)), total - start))
+            let id = "plan-" + sound.id
+            try planner.placeMedia(media, on: track.id, at: start, duration: duration, itemID: id, sourceIn: 0)
+            var patch: [String: JSONValue] = [tag: .string(sound.id)]
+            if let volume = sound.volumeDb { patch["volumeDb"] = .number(volume) }
+            try planner.add([.setProperties(item: id, patch: patch)])
+            placements.append(Placement(id: sound.id, at: start, end: start + duration))
+        }
+        return placements
     }
 
     /// The music bed from frame 0, as long as the clips (or what the file has left).

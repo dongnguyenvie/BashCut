@@ -22,7 +22,7 @@ extension ProjectDocument {
                 ?? KnowledgeSkillRef.Origin.allCases
             let knowledge = document.agents.knowledge
             for origin in origins {
-                // A plugin skill is `<plugin-id>:<name>`; with --scope plugin a bare name works when one plugin has it.
+                // A plugin skill is `<plugin-id>:<name>`; its link name or a bare name one plugin has works too.
                 let id = origin == .plugin ? document.pluginSkillID(name) : name
                 guard let id else { continue }
                 let ref = KnowledgeSkillRef(origin: origin, name: id)
@@ -107,12 +107,16 @@ extension ProjectDocument {
     /// checklist and the kit hook name them. Nothing is logged before the first save, and a failed write never fails
     /// the read.
     private func logSkillRead(_ name: String, origin: KnowledgeSkillRef.Origin, author: Author?) {
-        guard let log = runLog else { return }
         let entry: [String: JSONValue] = [
             "kind": .string("skill"), "name": .string(WorkflowChecklist.skillName(name, origin: origin.rawValue)),
             "origin": .string(origin.rawValue), "author": .string(author?.rawValue ?? "unknown"),
             "rev": .integer(project.revision), "verified": .bool(true), "via": .string("skills.get"),
         ]
+        rememberSkillRead(entry)
+        guard let log = runLog else {
+            holdRunEntry(entry)
+            return
+        }
         do { try log.append(entry) } catch { DebugLog.write("runlog", "skill read not logged: \(error)") }
     }
 
@@ -165,8 +169,10 @@ extension ProjectDocument {
     }
 
     /// The ID of a ready plugin's skill named `name` (`<plugin-id>:<name>`, or a bare name only one plugin has).
+    /// A plugin skill by its ID, its agent link name (`vlog-product-ad`, as agents list it) or a bare name one plugin has.
     private func pluginSkillID(_ name: String) -> String? {
         if plugins.skills.contains(where: { $0.id == name }) { return name }
+        if let linked = plugins.skills.first(where: { $0.linkName == name }) { return linked.id }
         let matches = plugins.skills.filter { $0.name == name }
         return matches.count == 1 ? matches[0].id : nil
     }

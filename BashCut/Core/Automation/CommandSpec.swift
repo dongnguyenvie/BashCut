@@ -107,6 +107,7 @@ public struct CommandSpec: Sendable {
             if let choices = parameter.choices { property["enum"] = .array(choices.map(JSONValue.string)) }
             if let value = parameter.defaultValue { property["default"] = value }
             if parameter.kind == .array { property["items"] = .object(["type": .string("object")]) }
+            if parameter.name == "baseRev" { property["type"] = .array([.string("integer"), .string("string")]) }
             properties[parameter.name] = .object(property)
         }
         var schema: [String: JSONValue] = [
@@ -153,6 +154,11 @@ public struct CommandSpec: Sendable {
 extension CommandParameter {
     /// Returns the value, with integral numbers normalized to integers, or throws when it does not fit.
     func checked(_ value: JSONValue) throws -> JSONValue {
+        if name == "baseRev", value == .string(CommandCatalog.lastRevision) { return value }
+        // A list sent wrapped in an object under its own name ({"shots": […], …} for shots) is that list.
+        if kind == .array, case .object(let fields) = value, case .array(let list)? = fields[name] {
+            return try checked(.array(list))
+        }
         let normalized: JSONValue
         if kind == .integer, case .number(let number) = value, number.rounded() == number, abs(number) < 1e15 {
             normalized = .integer(Int(number))

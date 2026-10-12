@@ -78,7 +78,8 @@ extension CommandCatalog {
                 + "track lengths), picture samples (luma, spread, change, peak as in review.picture, plus sharpness and "
                 + "colourfulness) with every jump searched to its exact frame as a cut candidate, and sound levels "
                 + "(RMS per 0.1 s, peak, stereo correlation). Read it with media.analysis. A record that exists is "
-                + "reused unless force. The job's result lists each media with its key and whether it was reused.",
+                + "reused unless force. Ask right after import: media still being converted are measured when the conversion lands. "
+                + "The job's result lists each media with its key and whether it was reused.",
             parameters: [
                 CommandParameter("media", .string, "Project media ID; every video and audio media by default",
                                  cli: .option("media")),
@@ -157,7 +158,11 @@ extension CommandCatalog {
                 + "direction left/right/toward/away/none), subjects (up to 12 names), tags, people, onScreenText, "
                 + "confidence 0–1, bestMoment (source seconds or null), looked (source seconds of the frames you "
                 + "looked at), note; any other field is kept as given. Replaces the description unless "
-                + "merge (shots overlapping the new ones are replaced) or clear. Returns rev and coverage.",
+                + "merge (shots overlapping the new ones are replaced) or clear. Obvious slips are repaired and listed "
+                + "in adjusted: numbers as text (\"659 s\"), subjects as one comma-separated string, labels and notes "
+                + "over their length, a best moment or looked frames outside the shot, a shot running into the next "
+                + "(it ends where the next starts); what cannot be repaired is reported for every shot at once. "
+                + "Returns rev, coverage and adjusted.",
             parameters: [
                 CommandParameter("shots", .array, "Shots array, or {shots: […]} (CLI: path to shots.json)",
                                  cli: .positionalJSONFile),
@@ -427,7 +432,9 @@ extension CommandCatalog {
                 + "confidence, speakers, events, noSpeechProb), then as words: wordList [{index, text, start, end, "
                 + "gapBefore, confidence?, speaker?, event?, noSpeechProb?}]; phrases (default): phraseList [{index, "
                 + "start, end, seconds, text, words, confidence (mean), gapBefore}]; json: both; text: one line per "
-                + "phrase (#index start–end seconds | text; print it with --format text). from/to keep what overlaps.",
+                + "phrase (#index start–end seconds | text; print it with --format text). from/to keep what overlaps; "
+                + "ranges reads several windows in one call: text joins them under \"== A–B\" lines, other formats "
+                + "return {media, ranges: [one result per window]}.",
             parameters: [
                 mediaMedia,
                 CommandParameter("as", .string, "phrases (default), words, json or text",
@@ -435,6 +442,8 @@ extension CommandCatalog {
                 CommandParameter("from", .number, "Only from this source second", range: 0...86_400,
                                  cli: .option("from")),
                 CommandParameter("to", .number, "Only up to this source second", range: 0...86_400, cli: .option("to")),
+                CommandParameter("ranges", .string, "Several windows instead of from/to: A:B,C:D in source seconds",
+                                 cli: .option("ranges")),
             ]),
     ]
 }

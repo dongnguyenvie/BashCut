@@ -55,7 +55,30 @@ extension ProjectDocument {
 
     /// `review.run`: the issues with the session's transcripts loaded, kept as a round; with `sinceRev`, what the
     /// round fixed, added and left against the review of that revision (P1-E2).
-    func runReview(_ arguments: CommandArguments) async throws -> JSONValue {
+    func runReview(_ arguments: CommandArguments, author: Author = .user) async throws -> JSONValue {
+        let measured = arguments.bool("measure") ? try await measureForReview(author: author) : nil
+        let result = try await reviewResult(arguments, author: author)
+        guard let measured, case .object(var object) = result else { return result }
+        object["measured"] = measured
+        return .object(object)
+    }
+
+    /// `review run --measure`: measures this revision when it was not (or waits for a measure already running),
+    /// up to `UnixRPCClient`'s allowance for the call.
+    func measureForReview(author: Author) async throws -> JSONValue? {
+        guard project.duration > 0 else { return nil }
+        let running = jobs.jobs.first { $0.method == "review.measure" && $0.isActive }
+        guard running != nil || reviewPicture?.revision != project.revision else { return nil }
+        let id: String
+        if let running { id = running.id } else {
+            guard let started = try startReviewMeasure(author: author).object["job"]?.string else { return nil }
+            id = started
+        }
+        let waited = try await waitForJobs([id], seconds: 100).object
+        return .object(["job": .string(id), "timedOut": waited["timedOut"] ?? .bool(false)])
+    }
+
+    private func reviewResult(_ arguments: CommandArguments, author: Author) async throws -> JSONValue {
         await loadReviewTranscripts()
         let all = reviewIssues()
         let previous = arguments.optionalInt("sinceRev").map { revision in reviewRounds.last { $0.revision == revision } }
@@ -74,8 +97,12 @@ extension ProjectDocument {
         let list = JSONValue.array(issues.map(\.json))
         guard arguments.bool("summary") || previous != nil else { return list }
         let checks = TimelineReview.coverage(project, context: reviewContext())
+        let summary = ReviewSummary(all, coverage: checks)
+        if summary.status == .pass {
+            logAutoStage("review", evidence: ["review run rev \(project.revision): pass"], author: author)
+        }
         var result: [String: JSONValue] = [
-            "issues": list, "summary": ReviewSummary(all, coverage: checks).json, "rev": .integer(project.revision),
+            "issues": list, "summary": summary.json, "rev": .integer(project.revision),
             "round": .integer(reviewRounds.count), "checks": checks,
         ]
         if let previous, let previous {
@@ -91,6 +118,7 @@ extension ProjectDocument {
     /// window around it as proof.
     func verifyReviewIssue(_ arguments: CommandArguments) async throws -> JSONValue {
         let id = try arguments.string("id")
+        if id == "all" || id.contains(",") { return try await verifyReviewIssues(id) }
         guard let round = reviewRounds.last(where: { $0.revision != project.revision && $0.issues.contains { $0.id == id } })
             ?? reviewRounds.last(where: { $0.issues.contains { $0.id == id } }),
             let before = round.issues.first(where: { $0.id == id })
@@ -128,6 +156,65 @@ extension ProjectDocument {
             result["window"] = window?.object["path"] ?? .null
         }
         return .object(result)
+    }
+
+    /// `review.verify all` or `ID1,ID2,…`: every listed issue (all: the errors and warnings of the last review of an
+    /// earlier revision) against one review of now, picture issues re-sampled once over the span they cover. A row
+    /// per issue with fixed or persisting; the still window only for what persists.
+    func verifyReviewIssues(_ list: String) async throws -> JSONValue {
+        let earlier = reviewRounds.last { $0.revision != project.revision } ?? reviewRounds.last
+        let ids = list == "all"
+            ? (earlier?.issues ?? []).filter { $0.severity != .info }.map(\.id)
+            : list.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        var befores: [(id: String, issue: ReviewIssue, rev: Int)] = []
+        for id in ids {
+            guard let round = reviewRounds.last(where: { $0.revision != project.revision && $0.issues.contains { $0.id == id } })
+                ?? reviewRounds.last(where: { $0.issues.contains { $0.id == id } }),
+                let before = round.issues.first(where: { $0.id == id })
+            else { throw RPCFailure(-32602, "\(id) is not in a review of this session; run review run first") }
+            befores.append((id, before, round.revision))
+        }
+        await loadReviewTranscripts()
+        var context = reviewContext()
+        let margin = Int(project.fps.value.rounded())
+        let picture = befores.filter { item in Self.pictureIssuePrefixes.contains(where: item.id.hasPrefix) }
+        if let first = picture.map({ $0.issue.frame }).min(), let root = fileURL?.deletingLastPathComponent() {
+            let last = picture.map { $0.issue.endFrame ?? $0.issue.frame + 1 }.max() ?? first + 1
+            let range = max(0, first - margin)..<min(project.duration, last + margin)
+            if !range.isEmpty {
+                let snapshot = try await engine.build(project, root: root, workspace: settings.workspace, purpose: .preview)
+                context.picture = try await PictureSampler.measure(snapshot, project: project, range: range)
+            }
+        }
+        let now = TimelineReview.run(project, context: context)
+        var rows: [JSONValue] = []
+        var persisting = 0
+        for item in befores {
+            var row: [String: JSONValue] = ["id": .string(item.id), "beforeRev": .integer(item.rev)]
+            if let after = now.first(where: { $0.id == item.id }) {
+                persisting += 1
+                row["status"] = .string("persisting")
+                row["after"] = after.json
+                let center = min(max(0, project.duration - 1), after.frame)
+                let window = try? await reviewWindow(CommandArguments([
+                    "frame": .integer(center), "span": .integer(margin), "step": .integer(max(1, margin / 6)),
+                ]))
+                row["window"] = window?.object["path"] ?? .null
+            } else {
+                row["status"] = .string("fixed")
+            }
+            if item.id.hasPrefix("loudness") || item.id.hasPrefix("true-peak") {
+                row["measured"] = .string("loudness needs a normalized export of this revision")
+            }
+            rows.append(.object(row))
+        }
+        return .object([
+            "rev": .integer(project.revision), "fixed": .integer(befores.count - persisting),
+            "persisting": .integer(persisting), "issues": .array(rows),
+            "new": .array(now.filter { issue in
+                issue.severity != .info && !(earlier?.issues ?? []).contains { $0.id == issue.id }
+            }.map(\.json)),
+        ])
     }
 
     /// `review.accept`: keeps a warning or note with the reason (or drops the acceptance) as one undoable edit.

@@ -38,7 +38,7 @@ public enum QuoteRange {
         ])
     }
 
-    /// The range for word indices `first...last`, or for rough times snapped outwards to the words they cut into.
+    /// The range for word indices `first...last`, or for rough times snapped out of the words they cut into.
     public static func json(
         _ transcript: SourceTranscript, media: Media, first: Int? = nil, last: Int? = nil, from: Double? = nil,
         to: Double? = nil, matches: Int = 1
@@ -53,8 +53,12 @@ public enum QuoteRange {
             (start, end) = (words[first].start, words[last].end)
         } else if let from, let to, from < to {
             requested = (from, to)
-            start = words.first { $0.start < from && from < $0.end }?.start ?? from
-            end = words.first { $0.start < to && to < $0.end }?.end ?? to
+            // An edge inside a word moves out to its edge, unless it is within a frame of the far edge: an out edge
+            // a frame into the next word drops that word instead of taking it whole.
+            let tolerance = 1 / fps
+            start = words.first { $0.start < from && from < $0.end }.map { from >= $0.end - tolerance ? $0.end : $0.start }
+                ?? from
+            end = words.first { $0.start < to && to < $0.end }.map { to <= $0.start + tolerance ? $0.start : $0.end } ?? to
         } else {
             throw ProjectError.invalid("Give a quote, word indices or from < to")
         }

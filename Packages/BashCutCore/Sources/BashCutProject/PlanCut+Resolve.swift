@@ -1,7 +1,7 @@
 import Foundation
 
-/// Each clip's source range: quotes and word indices through the media's stored transcript, rough seconds kept as
-/// given (their edges reported against the transcript), stills for their seconds.
+/// Each clip's source range: quotes and word indices through the media's stored transcript, rough seconds moved out
+/// of any word they cut into (the times given kept as `requested`), stills for their seconds.
 extension PlanCut {
     public static func resolve(
         _ spec: Spec, project: Project, transcripts: [String: SourceTranscript]
@@ -21,7 +21,10 @@ extension PlanCut {
                 problems.append(Problem(id: "range-invalid", severity: "error", entry: clip.id, detail: "\(error)"))
             }
         }
-        problems += coverProblems(spec, project: project) + overlaps(resolved)
+        problems += spec.unknownFields + coverProblems(spec, project: project) + overlaps(resolved)
+        for sound in spec.sfx where !project.media.contains(where: { $0.id == sound.media }) {
+            problems.append(Problem(id: "unknown-media", severity: "error", entry: sound.id, detail: "No sound media \(sound.media) in the project"))
+        }
         return (resolved, problems)
     }
 
@@ -38,11 +41,28 @@ extension PlanCut {
                 id: "no-transcript", severity: "error", entry: clip.id,
                 detail: "\(media.id) has no transcript: media transcribe --media \(media.id), or give from/to")])
         }
+        let found: (Resolved?, [Problem])
         if let span = clip.words {
-            let facts = try QuoteRange.json(transcript, media: media, first: span.first, last: span.last).object
-            return (ranged(clip, facts), [])
+            found = (ranged(clip, try QuoteRange.json(transcript, media: media, first: span.first, last: span.last).object), [])
+        } else {
+            found = try resolveQuote(clip, quote: clip.quote ?? "", media: media, transcript: transcript)
         }
-        return try resolveQuote(clip, quote: clip.quote ?? "", media: media, transcript: transcript)
+        guard let quoted = found.0, clip.from != nil || clip.to != nil else { return found }
+        return (try movedEdges(quoted, media: media, transcript: transcript), found.1)
+    }
+
+    /// A quote or words range with `from`/`to` given too: those edges move there (snapped out of words like seconds),
+    /// the quote's own range kept as `quoted`.
+    static func movedEdges(_ quoted: Resolved, media: Media, transcript: SourceTranscript) throws -> Resolved {
+        let from = quoted.clip.from ?? quoted.from, to = quoted.clip.to ?? quoted.to
+        guard to > from else {
+            throw ProjectError.invalid(String(format: "from %.2f must be before to %.2f (the quote runs %.2f–%.2f)",
+                                              from, to, quoted.from, quoted.to))
+        }
+        var facts = try QuoteRange.json(transcript, media: media, from: from, to: to).object
+        for key in ["matched", "alternatives", "matches"] { facts[key] = quoted.facts[key] ?? facts[key] }
+        facts["quoted"] = .object(["from": .number(quoted.from), "to": .number(quoted.to)])
+        return Resolved(clip: quoted.clip, from: facts["from"]?.double ?? from, to: facts["to"]?.double ?? to, facts: facts)
     }
 
     static func resolveSeconds(
@@ -56,13 +76,20 @@ extension PlanCut {
                 detail: String(format: "%@ runs %.2f s; the clip asks %.2f–%.2f s", media.id, media.durationSeconds, from, to))])
         }
         var facts: [String: JSONValue] = [:]
+        var range = (from: from, to: to)
         if let transcript {
-            // Rough times are kept as given; the snapped edges are only reported.
+            // An edge inside a spoken word moves out to that word's edge (the check reports edges there too), so the
+            // build never cuts a word; `requested` keeps the times as given.
             facts = try QuoteRange.json(transcript, media: media, from: from, to: to).object
-            facts["from"] = .number(from)
-            facts["to"] = .number(to)
+            range = (facts["from"]?.double ?? from, facts["to"]?.double ?? to)
+            if abs(range.from - from) > 0.0005 || abs(range.to - to) > 0.0005 {
+                facts["requested"] = .object(["from": .number(from), "to": .number(to)])
+            }
         }
-        return (Resolved(clip: clip, from: from, to: to, facts: facts), [])
+        // A range with transcribed words in it plays speech, like a clip picked by quote.
+        var tagged = clip
+        if tagged.role == nil, !(facts["text"]?.string ?? "").isEmpty { tagged.role = "speech" }
+        return (Resolved(clip: tagged, from: range.from, to: range.to, facts: facts), [])
     }
 
     static func resolveQuote(

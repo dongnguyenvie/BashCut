@@ -27,7 +27,7 @@ public struct AgentLaunch: Sendable {
     /// found on the extended PATH, and the provider's command line.
     public static func make(
         provider: any AgentProvider, workspace: URL, context: AgentSessionContext,
-        resumeID: String = "", kit: AgentKitLaunch? = nil, pluginSkills: [PluginSkill] = [],
+        resumeID: String = "", kit: AgentKitLaunch? = nil, pluginSkills: [PluginSkill] = [], onlyBashCutMCP: Bool = false,
         environment: [String: String] = ProcessInfo.processInfo.environment
     ) throws -> AgentLaunch {
         var env = AgentEnvironment.filtered(environment, allowing: provider.environmentAllowlist)
@@ -49,7 +49,8 @@ public struct AgentLaunch: Sendable {
             workspace: workspace, context: context,
             resumeID: provider.isAgent ? resumeID.trimmingCharacters(in: .whitespacesAndNewlines) : "",
             mcpExecutable: URL(fileURLWithPath: context.toolsDirectory).appendingPathComponent("bashcut-mcp").path,
-            kit: provider.isAgent ? kit : nil, pluginSkills: provider.isAgent ? pluginSkills : [])
+            kit: provider.isAgent ? kit : nil, pluginSkills: provider.isAgent ? pluginSkills : [],
+            onlyBashCutMCP: onlyBashCutMCP)
         let commandLine = try provider.commandLine(for: request)
         return AgentLaunch(
             executable: executable, arguments: commandLine.arguments, environment: env,

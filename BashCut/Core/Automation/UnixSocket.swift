@@ -87,11 +87,15 @@ public enum UnixRPCClient {
     /// How long to wait for the answer: `jobs.wait` holds the request up to its `timeout` (at most
     /// `JobWaitDefaults.maximum`), `checkpoint.status`
     /// up to its `wait`, `agent.ask`
-    /// until the user answers or its `timeout` passes.
+    /// until the user answers or its `timeout` passes; `project.create --import`, `review.run --measure` and
+    /// `export.start --wait` while they import, measure or export.
     static func readSeconds(_ request: RPCRequest) -> Int {
         switch request.method {
         case "jobs.wait": min(JobWaitDefaults.maximum, max(1, request.params["timeout"]?.int ?? JobWaitDefaults.seconds)) + 10
         case "checkpoint.status": min(JobWaitDefaults.maximum, max(0, request.params["wait"]?.int ?? 0)) + 10
+        case "project.create": request.params["importFootage"] == .bool(true) ? 120 : 10
+        case "review.run": request.params["measure"] == .bool(true) ? 115 : 10
+        case "export.start": request.params["wait"] == .bool(true) ? 115 : 10
         case "agent.ask":
             min(AgentAskDefaults.maximumSeconds, max(5, request.params["timeout"]?.int ?? AgentAskDefaults.seconds)) + 10
         default: 10

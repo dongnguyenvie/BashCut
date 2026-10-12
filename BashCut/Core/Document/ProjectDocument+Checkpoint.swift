@@ -106,8 +106,8 @@ extension ProjectDocument {
     /// `stage` takes a status (done with evidence, else stored unverified; skipped with a reason), `skill` a name
     /// (verified only from the kit hook), `audit` a point, verdict, findings and auditor (spec 13 §5, §6).
     func appendRunLog(_ arguments: CommandArguments, author: Author) throws -> JSONValue {
-        guard let log = runLog else { throw RPCFailure(-32602, "Save the project first") }
         let kind = try arguments.string("kind")
+        guard let log = runLog else { return try holdSkillRead(kind, arguments, author: author) }
         guard kind.count <= 40, kind != "gate" else {
             throw RPCFailure(-32602, "kind must be 1–40 characters and not gate (checkpoints write gate entries)")
         }
@@ -121,6 +121,7 @@ extension ProjectDocument {
             guard try completeSkillEntry(&entry, hook: arguments.optionalString("verifiedBy") == "hook") else {
                 return .object(["ignored": .bool(true), "name": entry["name"] ?? .null])
             }
+            rememberSkillRead(entry)
         case "audit":
             guard entry["point"] != nil, entry["verdict"] != nil else {
                 throw RPCFailure(-32602, "An audit entry needs --point and --verdict")
@@ -130,6 +131,74 @@ extension ProjectDocument {
         default: break
         }
         do { return try log.append(entry) } catch { throw RPCFailure.from(error, fallbackCode: -32602) }
+    }
+
+    /// A skill read reported before the project exists, kept for the next project that opens; other kinds need one.
+    private func holdSkillRead(_ kind: String, _ arguments: CommandArguments, author: Author) throws -> JSONValue {
+        guard kind == "skill" else { throw RPCFailure(-32602, "Save the project first") }
+        var entry = Self.runLogFields(arguments)
+        entry["kind"] = .string(kind)
+        entry["author"] = .string(author.rawValue)
+        guard try completeSkillEntry(&entry, hook: arguments.optionalString("verifiedBy") == "hook") else {
+            return .object(["ignored": .bool(true), "name": entry["name"] ?? .null])
+        }
+        rememberSkillRead(entry)
+        holdRunEntry(entry)
+        return .object(["held": .bool(true), "name": entry["name"] ?? .null])
+    }
+
+    /// Keeps a skill read for the next project that opens within half an hour.
+    func rememberSkillRead(_ entry: [String: JSONValue], now: Date = Date()) {
+        recentSkillReads.removeAll { now.timeIntervalSince($0.date) > 1_800 }
+        recentSkillReads.append((now, entry))
+        if recentSkillReads.count > 20 { recentSkillReads.removeFirst(recentSkillReads.count - 20) }
+    }
+
+    /// Keeps an entry made before a project was open (at most the last 20).
+    func holdRunEntry(_ entry: [String: JSONValue]) {
+        pendingRunEntries.append(entry)
+        if pendingRunEntries.count > 20 { pendingRunEntries.removeFirst(pendingRunEntries.count - 20) }
+    }
+
+    /// Writes the held entries to the run log of the project that just opened.
+    func flushPendingRunEntries() {
+        guard let log = runLog else { return }
+        // Recent reads made while another project was open, unless this log already has them.
+        let logged = Set(log.entries().filter { $0["kind"]?.string == "skill" }.compactMap { $0["name"]?.string })
+        let held = Set(pendingRunEntries.compactMap { $0["name"]?.string })
+        var carried = Set<String>()
+        let recent = recentSkillReads.map(\.entry).filter { entry in
+            guard let name = entry["name"]?.string, !logged.contains(name), !held.contains(name) else { return false }
+            return carried.insert(name).inserted
+        }
+        for var entry in pendingRunEntries + recent {
+            entry["rev"] = .integer(project.revision)
+            do { try log.append(entry) } catch { DebugLog.write("runlog", "held entry not logged: \(error)") }
+        }
+        pendingRunEntries.removeAll()
+    }
+
+    /// Records a stage BashCut itself can prove (`plan.apply` built the rough cut, `review.run` passed, an export
+    /// landed), so the agent does not spend a turn on `run append`. Agents only; review and export once per revision,
+    /// the other stages once, and the rough cut only when the strategy guard would let the agent record it.
+    func logAutoStage(_ stage: String, evidence: [String], author: Author) {
+        guard author != .user, let log = runLog else { return }
+        let entries = log.entries()
+        // Once per revision for review and export (a pass or an export proves that revision); the building stages
+        // once, while their latest entry is still BashCut's own done, so every plan apply does not log them again.
+        let latest = entries.last { $0["kind"]?.string == "stage" && $0["stage"]?.string == stage }
+        if let latest, latest["status"]?.string == "done",
+            latest["rev"] == .integer(project.revision) || (latest["auto"] == .bool(true) && !["review", "export"].contains(stage))
+        { return }
+        if stage == "rough-cut", settings.gateMode(.strategy) == .skip,
+            WorkflowChecklist.strategyGuard(project, entries: entries) != nil
+        { return }
+        let entry: [String: JSONValue] = [
+            "kind": .string("stage"), "stage": .string(stage), "status": .string("done"),
+            "evidence": .array(evidence.map(JSONValue.string)), "author": .string(author.rawValue),
+            "rev": .integer(project.revision), "auto": .bool(true),
+        ]
+        do { try log.append(entry) } catch { DebugLog.write("runlog", "auto stage not logged: \(error)") }
     }
 
     /// Fills a `skill` entry; false when the kit hook reported a skill that is not BashCut's (nothing is written).

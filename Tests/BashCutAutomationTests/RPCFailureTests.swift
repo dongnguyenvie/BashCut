@@ -109,5 +109,16 @@ struct CommandCallerTests {
         #expect(UnixRPCClient.readSeconds(RPCRequest(method: "jobs.wait", params: ["timeout": .integer(5)])) == 15)
         #expect(UnixRPCClient.readSeconds(RPCRequest(method: "jobs.wait")) == JobWaitDefaults.seconds + 10)
         #expect(UnixRPCClient.readSeconds(RPCRequest(method: "jobs.wait", params: ["timeout": .integer(999)])) == JobWaitDefaults.maximum + 10)
+        // Calls that wait for their own work get the time it may take; without the option they keep 10 s.
+        #expect(UnixRPCClient.readSeconds(RPCRequest(method: "review.run", params: ["measure": .bool(true)])) == 115)
+        #expect(UnixRPCClient.readSeconds(RPCRequest(method: "export.start", params: ["wait": .bool(true)])) == 115)
+        #expect(UnixRPCClient.readSeconds(RPCRequest(method: "project.create", params: ["importFootage": .bool(true)])) == 120)
+        #expect(UnixRPCClient.readSeconds(RPCRequest(method: "project.create")) == 10)
+    }
+
+    @Test("jobs.wait takes a timeout past its maximum (the wait is cut to it) instead of refusing the call")
+    func longWait() throws {
+        let invocation = try CommandLineParser.parse(["jobs", "wait", "J1", "--timeout", "500", "--done"])
+        #expect(invocation.params["timeout"] == .integer(500))
     }
 }

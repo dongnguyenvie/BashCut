@@ -284,6 +284,7 @@ extension ProjectDocument {
             frames += project.tracks.filter { $0.kind == TrackKind.text && $0.role != TrackRole.captions }
                 .flatMap(\.items).map { $0.at + $0.duration / 2 }
         }
+        if let entries = arguments.optionalString("entries") { frames += try entryFrames(entries) }
         let every = arguments.optionalDouble("every") ?? (frames.isEmpty ? 2 : nil)
         if let every { frames += stride(from: 0.0, to: Double(duration) / fps, by: every).map { Int(($0 * fps).rounded()) } }
         let kept = Set(frames.filter { $0 >= 0 && $0 < duration }).sorted()
@@ -291,6 +292,16 @@ extension ProjectDocument {
             throw RPCFailure(-32602, "\(kept.count) cells asked; at most \(Self.maximumStills)")
         }
         return kept
+    }
+
+    /// The middle of each picture or title item plan apply built for the listed entries: a look at only what a
+    /// revision changed.
+    private func entryFrames(_ entries: String) throws -> [Int] {
+        let ids = Set(entries.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) })
+        let matched = project.tracks.filter { $0.kind != TrackKind.audio }.flatMap(\.items)
+            .filter { ids.contains($0.fields[PlanCut.tag]?.string ?? "") }
+        guard !matched.isEmpty else { throw RPCFailure(-32602, "No built item has plan.cut entry \(entries)") }
+        return matched.map { $0.at + $0.duration / 2 }
     }
 
     /// What a cell shows: the visual items at `frame` and the text on screen.

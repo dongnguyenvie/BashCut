@@ -28,6 +28,9 @@ struct AgentSettingsView: View {
             SettingsRow("Load the agent kit in Claude and Codex tabs", keywords: ["kit", "skills"]) {
                 SettingsSwitch(isOn: $settings.loadAgentKit)
             }
+            SettingsRow("Only BashCut's MCP server in Claude tabs", keywords: ["mcp", "tokens", "context"]) {
+                SettingsSwitch(isOn: $settings.agentOnlyBashCutMCP)
+            }
             SettingsRow("Agent kit", keywords: ["kit", "skills", "folder", "version"]) {
                 Text(kitSummary).lineLimit(1).truncationMode(.middle).foregroundStyle(.secondary)
                 Button("Choose…", action: chooseKit)

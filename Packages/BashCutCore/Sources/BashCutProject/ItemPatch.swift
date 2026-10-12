@@ -64,7 +64,9 @@ public enum ItemPatch {
     private static func select(
         _ fields: [String: JSONValue], items: [String: (Item, Track)], order: [String]
     ) throws -> [String] {
-        if let list = fields["items"]?.array {
+        // Item IDs given inside select ({"select": {"ids": […]}}) are the items list.
+        let listed = fields["items"]?.array ?? fields["select"]?.object["ids"]?.array ?? fields["select"]?.object["items"]?.array
+        if let list = listed {
             let ids = list.compactMap(\.string)
             guard !ids.isEmpty, ids.count == list.count else { throw ProjectError.invalid("patchItems.items: expected item IDs") }
             if let missing = ids.first(where: { items[$0] == nil }) { throw ProjectError.invalid("Unknown item: \(missing)") }
@@ -75,7 +77,8 @@ public enum ItemPatch {
         }
         let known: Set<String> = ["track", "trackRole", "trackKind", "textPreset", "media"]
         if let unknown = selector.keys.sorted().first(where: { !known.contains($0) }) {
-            throw ProjectError.invalid("patchItems.select: unknown key \(unknown) (use \(known.sorted().joined(separator: ", ")))")
+            throw ProjectError.invalid(
+                "patchItems.select: unknown key \(unknown) (use \(known.sorted().joined(separator: ", ")), or items: [IDs])")
         }
         let wanted = selector.compactMapValues(\.string)
         let ids = order.filter { id in

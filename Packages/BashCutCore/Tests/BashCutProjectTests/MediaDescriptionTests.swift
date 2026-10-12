@@ -139,4 +139,27 @@ struct MediaDescriptionTests {
         let cleared = EditOperation.setMediaDescription(media: "m", description: nil)
         #expect(try EditOperation(json: cleared.json) == cleared)
     }
+
+    @Test("A describer's slips are repaired and listed; what cannot be repaired is reported for every shot at once")
+    func lenient() throws {
+        let rows: [JSONValue] = [
+            .object([
+                "start": .string("1.0 s"), "end": .number(6), "subjects": .string("farmer, tractor ,  pig"),
+                "bestMoment": .string("~7 s"), "looked": .array([.number(2), .number(9)]),
+            ]),
+            shot(5, 8, ["note": .string(String(repeating: "a", count: 320))]),
+        ]
+        let (shots, adjusted) = try MediaDescription.lenientShots(rows, duration: 10)
+        #expect(shots.count == 2 && shots[0].start == 1 && shots[0].end == 5)
+        #expect(shots[0].subjects == ["farmer", "tractor", "pig"] && shots[0].bestMoment == 5 && shots[0].looked == [2])
+        #expect(shots[1].note?.count == 300)
+        #expect(adjusted.contains { $0.contains("ended at 5.000") } && adjusted.contains { $0.contains("subjects") })
+        let broken = [shot(1, 2, [:]), .object(["size": .string("MS")]), shot(3, 4)]
+        #expect {
+            _ = try MediaDescription.lenientShots(broken, duration: 10)
+        } throws: { error in
+            let text = error.localizedDescription
+            return text.contains("shots[0]") && text.contains("shots[1]") && !text.contains("shots[2]")
+        }
+    }
 }

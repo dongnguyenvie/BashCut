@@ -21,6 +21,11 @@ public final class SettingsModel {
     public var projectsFolder: URL? { didSet { store(projectsFolder, Keys.projectsFolder) } }
     /// Load the agent kit's editing skills in BashCut's Claude and Codex tabs. On by default.
     public var loadAgentKit: Bool { didSet { defaults.set(loadAgentKit, forKey: Keys.loadAgentKit) } }
+    /// Claude tabs load only BashCut's MCP server (`--strict-mcp-config`): the user's other servers stay out of the
+    /// agent's context, which every turn resends.
+    public var agentOnlyBashCutMCP: Bool {
+        didSet { defaults.set(agentOnlyBashCutMCP, forKey: Keys.agentOnlyBashCutMCP) }
+    }
     /// A kit folder to use instead of the one inside BashCut (a checkout being worked on); nil uses the built-in kit.
     public var agentKitFolder: URL? { didSet { store(agentKitFolder, Keys.agentKitFolder) } }
     /// The kit version whose setup banner the user put off with Later; a newer kit shows it again.
@@ -119,6 +124,7 @@ public final class SettingsModel {
         static let projectsFolder = "projectsFolder"
         static let defaultAgent = "defaultAgent"
         static let loadAgentKit = "loadAgentKit"
+        static let agentOnlyBashCutMCP = "agentOnlyBashCutMCP"
         static let agentKitFolder = "agentKitFolder"
         static let agentKitPromptDismissed = "agentKitPromptDismissed"
         static let claudeConfigFolder = "claudeConfigFolder"
@@ -146,6 +152,7 @@ public final class SettingsModel {
         projectsFolder = defaults.string(forKey: Keys.projectsFolder).map { URL(fileURLWithPath: $0) }
         defaultProviderRaw = defaults.string(forKey: Keys.defaultAgent) ?? "codex"
         loadAgentKit = defaults.object(forKey: Keys.loadAgentKit) as? Bool ?? true
+        agentOnlyBashCutMCP = defaults.object(forKey: Keys.agentOnlyBashCutMCP) as? Bool ?? true
         agentKitFolder = defaults.string(forKey: Keys.agentKitFolder).map { URL(fileURLWithPath: $0) }
         agentKitPromptDismissed = defaults.string(forKey: Keys.agentKitPromptDismissed)
         claudeConfigFolder = defaults.string(forKey: Keys.claudeConfigFolder).map { URL(fileURLWithPath: $0) }

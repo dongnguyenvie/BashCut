@@ -156,6 +156,7 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
             let launch = try AgentLaunch.make(
                 provider: provider, workspace: directory, context: context,
                 resumeID: resumeID(for: provider), kit: document.agentKitLaunch(), pluginSkills: document.agentPluginSkills(),
+                onlyBashCutMCP: document.settings.agentOnlyBashCutMCP,
                 environment: document.currentAgentEnvironment)
             let session = TerminalSession(provider: provider, token: token, launch: launch, icon: icon)
             sessions.append(session)
