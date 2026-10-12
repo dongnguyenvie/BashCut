@@ -4,7 +4,7 @@ an invariant (undo restores the timeline, save and reopen keep it, review stays 
 
     scripts/bench-features.py [--only media,timeline,...] [--stress 500] [--keep] [--app PATH_TO_BashCut.app]
 
-It works in a scratch project under build/bench-features/run-<time>/ with generated media (ffmpeg), saves the
+It works in a scratch project under .local/projects/bench-features/run-<time>/ with generated media (ffmpeg), saves the
 open project first and reopens it at the end. Library items, lessons, preferences and skills it creates are project
 scope (one library item visits user scope and is removed). It never runs plugin actions, agents or network
 providers. The report is printed and written next to the project as report.json and report.md.
@@ -908,7 +908,7 @@ def main():
     if previous and context.get("dirty"):
         rpc("project.save")
     started = time.strftime("%Y%m%d-%H%M%S")
-    folder = REPO / "build" / "bench-features" / f"run-{started}"
+    folder = REPO / ".local" / "projects" / "bench-features" / f"run-{started}"
     folder.mkdir(parents=True)
     bench = Bench()
     run = Run(bench, folder, options)

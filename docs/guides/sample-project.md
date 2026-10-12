@@ -8,11 +8,11 @@ scripts/run.sh                          # build and open build/BashCut.app
 scripts/sample-project.py               # make: generate media, build the project, run the checks (~10 s)
 scripts/sample-project.py --light       # the same without the 4K HEVC clip
 scripts/sample-project.py check         # re-run the checks against the open sample project
-scripts/sample-project.py open          # open build/sample-project/bashcut-sample again
+scripts/sample-project.py open          # open .local/projects/sample-project/bashcut-sample again
 ```
 
 It needs `ffmpeg` (`brew install ffmpeg`) and Python 3 (it comes with Xcode's command line tools). The project
-lives in `build/sample-project/bashcut-sample`, which git ignores; `make` deletes and rebuilds it each time.
+lives in `.local/projects/sample-project/bashcut-sample`, which git ignores; `make` deletes and rebuilds it each time.
 It refuses to replace a project with unsaved changes unless you pass `--discard-current`.
 
 ## How it is built
