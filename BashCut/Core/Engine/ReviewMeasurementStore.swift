@@ -2,9 +2,10 @@ import BashCutProject
 import CryptoKit
 import Foundation
 
-/// Keeps the review's picture (`review.measure`) and loudness (a normalized export) measurements in the project's
-/// cache, so they outlive the app session. Each record is keyed by a fingerprint of what it measured: the project
-/// without its revision number, and the size, date and inode of every media file it plays. Any edit, a replaced media
+/// Keeps the review's picture (`review.measure`) and loudness (a normalized export) measurements and the issues the
+/// plugins' `review.check` reported in the project's cache, so they outlive the app session. Each record is keyed by
+/// a fingerprint of what it measured: the project without its revision number, and the size, date and inode of every
+/// media file it plays. Any edit, a replaced media
 /// file or another format gives a new key, so a stale record is never found; an undo back to measured content finds
 /// it again. Records live in `.bashcut/cache/review-measurements/<key>-<kind>.json`, and the oldest are pruned.
 public enum ReviewMeasurementStore {
@@ -49,14 +50,28 @@ public enum ReviewMeasurementStore {
             key: key(for: project, projectRoot: projectRoot, workspace: workspace), projectRoot: projectRoot)
     }
 
-    /// The stored measurements of content equal to `project`, given `project`'s revision.
+    /// Stores the issues the plugins' `review.check` reported for `project` (an empty list too: the checks ran and
+    /// found nothing).
+    public static func store(
+        pluginIssues issues: [ReviewIssue], for project: Project, projectRoot: URL, workspace: URL? = nil
+    ) throws {
+        try write(
+            StoredPluginIssues(issues), kind: "plugins",
+            key: key(for: project, projectRoot: projectRoot, workspace: workspace), projectRoot: projectRoot)
+    }
+
+    /// The stored measurements and plugin issues of content equal to `project`, given `project`'s revision.
     public static func load(
         for project: Project, projectRoot: URL, workspace: URL? = nil
-    ) -> (picture: ReviewPicture?, loudness: ReviewLoudness?) {
+    ) -> (picture: ReviewPicture?, loudness: ReviewLoudness?, pluginIssues: ReviewPluginIssues?) {
         let key = key(for: project, projectRoot: projectRoot, workspace: workspace)
         let picture = ProjectCache.record(StoredPicture.self, .reviewMeasurements, key: key + "-picture", projectRoot: projectRoot)
         let loudness = ProjectCache.record(StoredLoudness.self, .reviewMeasurements, key: key + "-loudness", projectRoot: projectRoot)
-        return (picture?.value(revision: project.revision), loudness?.value(revision: project.revision))
+        let plugins = ProjectCache.record(StoredPluginIssues.self, .reviewMeasurements, key: key + "-plugins", projectRoot: projectRoot)
+        return (
+            picture?.value(revision: project.revision), loudness?.value(revision: project.revision),
+            plugins?.value(revision: project.revision)
+        )
     }
 
     private static func write<Record: Encodable>(_ record: Record, kind: String, key: String, projectRoot: URL) throws {
@@ -140,5 +155,44 @@ private struct StoredLoudness: Codable {
         return ReviewLoudness(
             revision: revision, integratedLUFS: integratedLUFS, truePeakDbTP: truePeakDbTP,
             loudnessRangeLU: loudnessRangeLU, targetLUFS: targetLUFS, maxTruePeakDbTP: maxTruePeakDbTP, preset: preset)
+    }
+}
+
+private struct StoredPluginIssues: Codable {
+    struct Fix: Codable {
+        let command: String?
+        let arguments: [String: JSONValue]
+        let hint: String?
+    }
+    struct Issue: Codable {
+        let id, kind, title, detail, severity: String
+        let facts: [String: JSONValue]
+        let frame: Int
+        let endFrame: Int?
+        let fix: Fix?
+        let source: String?
+    }
+    var version = 1
+    let issues: [Issue]
+
+    init(_ issues: [ReviewIssue]) {
+        self.issues = issues.map { issue in
+            Issue(
+                id: issue.id, kind: issue.kind, title: issue.title, detail: issue.detail,
+                severity: issue.severity.rawValue, facts: issue.facts, frame: issue.frame, endFrame: issue.endFrame,
+                fix: issue.fix.map { Fix(command: $0.command, arguments: $0.arguments, hint: $0.hint) },
+                source: issue.source)
+        }
+    }
+
+    func value(revision: Int) -> ReviewPluginIssues? {
+        guard version == 1 else { return nil }
+        return ReviewPluginIssues(revision: revision, issues: issues.map { issue in
+            ReviewIssue(
+                id: issue.id, title: issue.title, detail: issue.detail, frame: issue.frame, endFrame: issue.endFrame,
+                severity: ReviewSeverity(rawValue: issue.severity) ?? .warning,
+                fix: issue.fix.map { ReviewFix(command: $0.command, arguments: $0.arguments, hint: $0.hint) },
+                source: issue.source, kind: issue.kind, facts: issue.facts)
+        })
     }
 }

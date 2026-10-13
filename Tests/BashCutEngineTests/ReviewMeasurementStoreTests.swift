@@ -44,6 +44,28 @@ struct ReviewMeasurementStoreTests {
         #expect(none.picture == nil && none.loudness == nil)
     }
 
+    @Test("Plugin review.check issues come back for the same content with their fix, facts and source")
+    func pluginIssues() throws {
+        let root = try TestFixtures.temporaryDirectory("review-measurements")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let project = try Self.project(root: root)
+        let issue = ReviewIssue(
+            id: "brand.check:logo-0", title: "Logo missing", detail: "No logo in the first 3 s", frame: 0, endFrame: 90,
+            severity: .error, fix: ReviewFix(command: "library.place", arguments: ["id": .string("logo")], hint: "Add it"),
+            source: "com.example.brand", facts: ["seconds": .number(3.5)])
+        try ReviewMeasurementStore.store(pluginIssues: [issue], for: project, projectRoot: root)
+        var reopened = project
+        reopened.revision += 3
+        let stored = try #require(ReviewMeasurementStore.load(for: reopened, projectRoot: root).pluginIssues)
+        #expect(stored.revision == reopened.revision && stored.issues.count == 1)
+        let back = try #require(stored.issues.first)
+        #expect(back.json == issue.json)
+        try ReviewMeasurementStore.store(pluginIssues: [], for: project, projectRoot: root)
+        #expect(ReviewMeasurementStore.load(for: project, projectRoot: root).pluginIssues?.issues.isEmpty == true)
+        let edited = try project.applying(.move(item: "a", toTrack: "v1", atFrame: 3)).project
+        #expect(ReviewMeasurementStore.load(for: edited, projectRoot: root).pluginIssues == nil)
+    }
+
     @Test("A media file changed on disk makes the stored measurements stale")
     func mediaChange() throws {
         let root = try TestFixtures.temporaryDirectory("review-measurements")

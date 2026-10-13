@@ -334,7 +334,13 @@ extension ProjectDocument {
                 self.reviewPicture = picture
                 self.storeReviewMeasurement(picture: picture, of: project)
             }
-            if usePlugins { self.reviewPluginIssues = ReviewPluginIssues(revision: project.revision, issues: reported) }
+            if usePlugins {
+                self.reviewPluginIssues = ReviewPluginIssues(revision: project.revision, issues: reported)
+                // Kept for the next session only when every check ran: a failed or timed-out one runs again then.
+                if !checks.isEmpty, !reported.contains(where: { $0.id.hasSuffix(":failed") }) {
+                    self.storeReviewMeasurement(pluginIssues: reported, of: project)
+                }
+            }
             let found = self.reviewIssues().filter { issue in
                 issue.source != nil || Self.pictureIssuePrefixes.contains(where: issue.id.hasPrefix)
             }

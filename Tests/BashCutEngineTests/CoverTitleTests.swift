@@ -37,4 +37,14 @@ struct CoverTitleTests {
         item["text"] = .string("  ")
         #expect(CoverTitle.draw(item, over: try grey(width: 100, height: 100)) == nil)
     }
+
+    @Test("A cover title's size is a fraction of the short side; the cover default reads at phone size")
+    func titleSize() throws {
+        var item = Item(at: 0, duration: 1)
+        item["text"] = .string("ĐÀ LẠT")
+        let caption = try #require(CoverTitle.draw(item, over: try grey(width: 540, height: 960)))
+        let cover = try #require(CoverTitle.draw(CoverTitle.sized(item, nil), over: try grey(width: 540, height: 960)))
+        #expect(cover.box.height > caption.box.height * 1.8)
+        #expect(cover.box.height * 960 >= 0.06 * 540, "the drawn text is at least half the font size tall")
+    }
 }

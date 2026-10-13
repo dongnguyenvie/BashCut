@@ -247,4 +247,16 @@ struct ChangeDigestTests {
         #expect(json["counts"]?.object["added"] == .integer(1) && json["truncated"] == .bool(false))
         #expect(json["text"]?.string?.contains("+ e on v1") == true && json["text"]?.string?.contains("- a") == true)
     }
+
+    @Test("set-data answers with key, size, top-level keys and revision instead of echoing the value")
+    func dataAck() throws {
+        let big: JSONValue = .object(["sections": .array(Array(repeating: .string(String(repeating: "x", count: 100)), count: 100)),
+                                      "recipe": .object(["skill": .string("bashcut.vlog:food")])])
+        let ack = ProjectPlan.dataAck(key: "plan", value: big, revision: 7).object
+        #expect(ack["key"] == .string("plan") && ack["rev"] == .integer(7))
+        #expect(ack["keys"] == .array([.string("recipe"), .string("sections")]))
+        #expect((ack["bytes"]?.int ?? 0) > 10_000)
+        #expect(ack["sections"] == nil && ack["plan"] == nil)
+        #expect(ProjectPlan.dataAck(key: "brief", value: .null, revision: 8).object["cleared"] == .bool(true))
+    }
 }

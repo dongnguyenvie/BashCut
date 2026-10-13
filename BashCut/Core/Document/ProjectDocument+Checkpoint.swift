@@ -275,7 +275,9 @@ extension ProjectDocument {
         if entry["status"] == .string("skipped"), (entry["reason"]?.string ?? "").isEmpty {
             throw RPCFailure(-32602, "A skipped stage needs --reason")
         }
-        if entry["stage"] == .string("rough-cut"), entry["status"] != .string("skipped"), settings.gateMode(.strategy) == .skip {
+        if WorkflowChecklist.stageNeedsStrategyGuard(
+            stage: entry["stage"]?.string ?? "", status: entry["status"]?.string,
+            strategySkipped: settings.gateMode(.strategy) == .skip) {
             try checkStrategyGuard(author: author)
         }
     }

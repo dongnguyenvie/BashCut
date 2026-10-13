@@ -26,6 +26,8 @@ extension CommandCatalog {
         // verdicts and claims are read after a run, not while editing.
         "export.history", "export.link", "project.history", "outcomes.import", "outcomes.map", "knowledge.verdicts",
         "knowledge.claims", "knowledge.set-claim",
+        // The result card's per-file Reveal in Finder: for the user watching, not for editing.
+        "export.reveal-output",
     ]
 
     /// Instructions given to terminal agents, rendered from the command specs: each command's usage and first
@@ -101,7 +103,7 @@ extension CommandCatalog {
         transitions and markers (sections). To look at the result, `bashcut ui frame [FRAME]` renders the viewer
         picture at a frame to a PNG; read that image.
         Layers: tracks list visual layers back to front, then audio layers, which are mixed. There is one
-        main video layer. Items never overlap on one layer, audio media never goes on a visual layer.
+        main video layer. Items never overlap on a layer; audio media never goes on a visual layer.
         Adjustment layers (kind adjustment) hold items with only a `color` grade and no media or text; each grades
         every layer below it while on screen. Use `adjustment add` for a grade on a range; there is no project-wide
         style setting. Reusable grades are library looks (`library list --kind look`, `library place`, `library add`).
@@ -115,14 +117,14 @@ extension CommandCatalog {
         Each call is a turn: batch (`media import FOLDER`; sheets, not `ui frame` one by one; `checkpoint status
         --wait 100`; `context get` on start, not per command). Build a cut (or voiceover lines and graphics) as plan.cut:
         `plan check`, then `plan apply`.
-        `--format text` prints results without JSON quoting.
+        `--format text` prints plain results.
         `project format --canvas landscape|portrait|square` changes the canvas (text sizes follow the short side).
         Clips fit inside the frame; a clip's `fill` (setProperties) or `--clips fill` crops to cover; zoom scales from it.
         Projects: `bashcut project create` / `project open` / `project save`; they refuse to drop unsaved work unless
         you pass --save-current or --discard-current. A new project has no default language: pass `--language` from
         the user's prompt or answer. Your terminal stays open when the project changes; read
         `context get` or `timeline get` before your next edit (edits fail until you do). Outside BashCut's terminals the CLI and MCP read the
-        automation token file automatically; edits are attributed to "agent". Exports still need the user's approval.
+        token file themselves; edits are attributed to "agent". Exports still need the user's approval.
         """
 
     /// How agents find and run what installed plugins add. The installed actions themselves are listed in the

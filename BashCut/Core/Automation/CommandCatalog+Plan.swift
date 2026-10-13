@@ -24,7 +24,8 @@ extension CommandCatalog {
                 + "media and tracks are not data. Core reads only: brief lengthSeconds {min, max} and outputs [names], "
                 + "plan sections [{id, label, lengthSeconds {min, max}, frozen}], shots and beats [{id, text, section}] "
                 + "when present (directly or under value): review compares them with the edit, as info, and context get "
-                + "summarises them so work can resume from them.",
+                + "summarises them so work can resume from them. Returns {key, bytes, keys, rev}; --echo returns the "
+                + "stored value too.",
             parameters: [
                 CommandParameter("key", .string, "brief, plan or your own key", required: true, cli: .positional),
                 CommandParameter("value", .object, "The object (CLI: path to a JSON file)", required: true,
@@ -32,6 +33,7 @@ extension CommandCatalog {
                 CommandParameter(
                     "merge", .boolean, "Merge into the stored value: objects key by key (null deletes), arrays and values replace",
                     cli: .flag("merge")),
+                CommandParameter("echo", .boolean, "Return the stored value as well", cli: .flag("echo")),
                 baseRevision,
             ]),
     ]
@@ -96,7 +98,8 @@ extension CommandCatalog {
             "Append to the run log: an entry of any kind (start opens a run; stage, skill, audit, round, measured, note "
                 + "and end are the usual ones; gate is reserved for checkpoints) with the fields given and any data "
                 + "object. The revision, author and time are added. stage: --status done needs --evidence (else it is "
-                + "stored unverified), skipped needs --reason; the rough-cut stage while G2 is skip needs what G2 needs. "
+                + "stored unverified), skipped needs --reason; marking the rough-cut stage done while G2 is skip needs what "
+                + "G2 needs (progress reports are never gated). "
                 + "skill: a skill you read (stored verified: false unless the kit hook writes it with --verified-by "
                 + "hook; skills get records plugin and kit skill reads itself). audit: an auditor's verdict at a point "
                 + "(strategy after the story, draft before export, process at the end), bound to the current timeline. "
@@ -208,7 +211,8 @@ extension CommandCatalog {
             + "under speech)}, sfx: [{id, media, on (a clip, line, title or graphic ID) | section | at seconds, offset (negative: "
             + "before it), seconds (default the whole file), volumeDb}] (on the SFX layer, never past the end), "
             + "review: {limit: number} (review limits such as minTextSize, minTextContrast, "
-            + "minShotSeconds, chosen from the recipe's ranges; merged over the project's review on apply)}. A title's "
+            + "minShotSeconds, chosen from the recipe's ranges; merged over the project's review on apply)}; any "
+            + "entry may give facts: [key] (the project facts or claims it rests on). A title's "
             + "preset is a renderer "
             + "preset (" + TextPreset.all.joined(separator: ", ") + ") or a library text-preset ID (templates such "
             + "as stacked-keyword, boxed-keyword, headline-subline, two-tone-pop; library list --kind text-preset); "
@@ -226,7 +230,8 @@ extension CommandCatalog {
                     + "second and textShare (its smallest line as a share of the short side, the measure of "
                     + "review.minTextSize); problems {id, severity error|warning|info, entry, detail, facts} (quote not found, "
                     + "unknown media, source played twice, same media and size back to back, media against the canvas "
-                    + "shape, stroke-units, unknown-field for a field nothing reads, "
+                    + "shape, stroke-units, unknown-field for a field nothing reads, unknown-fact for a facts key that "
+                    + "is neither a project fact nor a claim, "
                     + "review-profile-unset with facts.unsetLimits: every review limit the "
                     + "built edit needs and nobody set); and the review of the edit as it would be (the "
                     + "project's review profile; picture and loudness need a render and are not measured). ok is false "
@@ -361,7 +366,8 @@ extension CommandCatalog {
             "Write a still of the composed frame for each cover aspect into render/: the asked aspects (W:H, comma "
                 + "separated), else each output's cover aspect from platforms get (cover.aspect, else its shape), cropped "
                 + "from the centre. With title, the text is drawn on each cover in preset (a text preset or a library "
-                + "text-preset ID, bold-outline by default), sized by each cover's short side and fitted to its width; "
+                + "text-preset ID, bold-outline by default), at title-size of each cover's short side (default 0.12, "
+                + "about 7 % of a 9:16 cover's height; a starting point) and fitted to its width; "
                 + "each cover gives titleBox {x, y, width, height} as fractions from the top-left, to check against the "
                 + "platform's zones (platforms get), and its file ends in -title. Pick the frame from real frames "
                 + "(timeline sheet); look at the result.",
@@ -371,6 +377,8 @@ extension CommandCatalog {
                 CommandParameter("size", .integer, "Long edge in pixels", minimum: 160, maximum: 3_840, cli: .option("size")),
                 CommandParameter("title", .string, "Title text drawn on each cover", cli: .option("title")),
                 CommandParameter("preset", .string, "Text preset of the title", cli: .option("preset")),
+                CommandParameter("titleSize", .number, "Title size as a fraction of the cover's short side (default "
+                                 + "0.12)", range: 0.02...0.4, cli: .option("title-size")),
             ]),
         CommandSpec(
             "export.chapters", .ui,

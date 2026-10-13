@@ -15,6 +15,18 @@ public enum ProjectPlan {
         }
     }
 
+    /// `project set-data`'s answer: the key, the stored value's size in bytes of JSON, its top-level keys (at most
+    /// 40) and the revision, not the value itself, which can be hundreds of kilobytes an agent already has.
+    public static func dataAck(key: String, value: JSONValue, revision: Int) -> JSONValue {
+        let bytes = (try? JSONEncoder().encode(value).count) ?? 0
+        var ack: [String: JSONValue] = ["key": .string(key), "bytes": .integer(bytes), "rev": .integer(revision)]
+        if case .object(let fields) = value {
+            ack["keys"] = .array(fields.keys.sorted().prefix(40).map(JSONValue.string))
+        }
+        if value == .null { ack["cleared"] = .bool(true) }
+        return .object(ack)
+    }
+
     /// `{min, max}` read from `value` itself or its `value` field (the stated/inferred wrapper), when both are numbers.
     public static func range(_ value: JSONValue?) -> (min: Double, max: Double)? {
         guard let value else { return nil }

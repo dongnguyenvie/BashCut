@@ -33,6 +33,12 @@ extension CommandCatalog {
                 exportReference,
             ]),
         CommandSpec(
+            "export.reveal-output", .ui,
+            "Reveal an exported file in Finder, like the result card's per-file icon: the export by ID, index or path "
+                + "from export history (the run's files are in run status result.outputs), the latest by default. "
+                + "Returns its path.",
+            parameters: [exportReference]),
+        CommandSpec(
             "project.history", .read,
             "The last projects opened (Welcome screen order, the open one first), each with its exports, posted links "
                 + "and the fingerprint of its latest export (the open project's current timeline when it has none), "

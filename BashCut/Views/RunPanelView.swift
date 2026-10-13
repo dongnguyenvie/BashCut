@@ -147,8 +147,9 @@ struct RunResultCard: View {
                         Image(systemName: "film").foregroundStyle(.secondary)
                         Text(URL(fileURLWithPath: output.path).lastPathComponent).lineLimit(1).truncationMode(.middle)
                         Spacer()
-                        Button { NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: output.path)]) }
-                            label: { Image(systemName: "magnifyingglass") }
+                        Button {
+                            do { try document.revealExport(output.path) } catch { document.message = error.localizedDescription }
+                        } label: { Image(systemName: "magnifyingglass") }
                             .buttonStyle(.plain).help("Reveal in Finder")
                             .disabled(!FileManager.default.fileExists(atPath: output.path))
                     }.font(.caption)

@@ -43,6 +43,38 @@ extension ProjectDocument {
             baseRevision: baseRevision, coalescingKey: coalesce ? "speed.\(id)" : nil)
     }
 
+    /// Changes several clips' speed as one undo step (the multi-selection Inspector, `clip.speed --items`): each clip
+    /// with the single-clip rules (its length follows unless keepDuration, rippling its layer; linked sound follows).
+    /// Items whose speed cannot change are left out and returned as `skipped`; throws when none can.
+    @discardableResult
+    func setClipSpeeds(
+        _ speed: Double, items ids: [String], keepDuration: Bool, preservePitch: Bool? = nil, author: Author = .user,
+        baseRevision: Int? = nil
+    ) throws -> (revision: Int, skipped: [String]) {
+        var (operations, skipped) = project.speedOperations(ids, speed: speed, keepDuration: keepDuration)
+        guard !operations.isEmpty else {
+            throw ProjectError.invalid("None of the items is a clip whose speed can change (media, not a freeze frame)")
+        }
+        if let preservePitch {
+            let changed = operations.compactMap { operation -> String? in
+                if case .setSpeed(let id, _, _) = operation { return id }
+                return nil
+            }
+            let items = project.tracks.flatMap(\.items)
+            for id in changed {
+                let linked = items.first { $0.id == id }?.linkedItemID
+                for target in [id] + (linked.map { [$0] } ?? []) {
+                    operations.append(.setProperties(item: target, patch: ["preservePitch": .bool(preservePitch)]))
+                }
+            }
+        }
+        let label = "Speed " + UIAction.speedLabel(speed)
+        let revision = try commit(
+            .group(label: label, author: author, ops: operations), label: label, author: author,
+            baseRevision: baseRevision)
+        return (revision, skipped)
+    }
+
     /// The next preset above or below the selected clip's speed (Speed up / Slow down).
     func stepSpeed(up: Bool, author: Author) throws {
         guard let item = speedTarget else { throw ProjectError.invalid("Select a clip to change its speed") }
@@ -60,6 +92,9 @@ extension ProjectDocument {
 
     func registerSpeedCommands() {
         handleAuthored("clip.speed") { document, arguments, author in
+            let listed = (arguments.optionalString("items") ?? "").split(separator: ",")
+                .map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+            if !listed.isEmpty { return try document.clipSpeeds(listed, arguments, author: author) }
             let id = arguments.optionalString("item") ?? document.selectedID
             guard let id else { throw RPCFailure(-32602, "Give an item or select a clip first") }
             let speed = arguments.optionalDouble("speed") ?? 1
@@ -76,5 +111,25 @@ extension ProjectDocument {
                 "shortened": .bool(Self.shortened(before: before, after: item?.duration, keepDuration: arguments.bool("keepDuration"))),
             ])
         }
+    }
+
+    /// `clip.speed --items`: several clips in one undo step; each row as `clip.speed` reports one clip.
+    private func clipSpeeds(_ ids: [String], _ arguments: CommandArguments, author: Author) throws -> JSONValue {
+        let keepDuration = arguments.bool("keepDuration")
+        let speed = arguments.optionalDouble("speed") ?? 1
+        let items = { Dictionary(self.project.tracks.flatMap(\.items).map { ($0.id, $0) }) { first, _ in first } }
+        let before = items()
+        let (revision, skipped) = try setClipSpeeds(
+            speed, items: ids, keepDuration: keepDuration, preservePitch: arguments.optionalBool("preservePitch"),
+            author: author, baseRevision: try arguments.int("baseRev"))
+        let after = items()
+        let rows: [JSONValue] = ids.filter { !skipped.contains($0) }.compactMap { id in
+            guard let item = after[id] else { return nil }
+            return .object([
+                "item": .string(id), "speed": .number(item.speed), "duration": .integer(item.duration),
+                "shortened": .bool(Self.shortened(before: before[id]?.duration, after: item.duration, keepDuration: keepDuration)),
+            ])
+        }
+        return .object(["rev": .integer(revision), "items": .array(rows), "skipped": .array(skipped.map(JSONValue.string))])
     }
 }

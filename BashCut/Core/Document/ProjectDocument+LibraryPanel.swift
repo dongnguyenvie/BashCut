@@ -154,8 +154,8 @@ extension ProjectDocument {
             return
         }
         if let recipe = request.recipe {
-            do { _ = try EffectRecipe.params(editorText: recipe) } catch {
-                message = error.localizedDescription
+            if let problem = EffectRecipeFields.problem(recipe) {
+                message = problem
                 return
             }
         }

@@ -216,6 +216,15 @@ extension ProjectDocument {
         var errors: [PlanCut.Problem] { problems.filter { $0.severity == "error" } }
     }
 
+    /// Entries citing fact keys this project has neither as a fact nor as a claim (P3-I4).
+    func planFactProblems(_ spec: PlanCut.Spec) -> [PlanCut.Problem] {
+        guard !spec.factReferences.isEmpty else { return [] }
+        let store = agents.knowledgeStore
+        let facts = ((try? store.values(.facts, scope: .project)) ?? []).map(\.key)
+        let claims = ((try? store.claims()) ?? []).map(\.key)
+        return PlanCut.factProblems(spec, known: Set(facts + claims))
+    }
+
     /// Resolves, builds on a scratch copy and reviews the result; nothing changes.
     func checkPlanCut(_ spec: PlanCut.Spec, words: Bool = false) async throws -> PlanCutCheck {
         var transcripts: [String: SourceTranscript] = [:]
@@ -225,7 +234,7 @@ extension ProjectDocument {
         let (clips, resolveProblems) = PlanCut.resolve(spec, project: project, transcripts: transcripts)
         let takes = await planLineTakes(spec)
         let (textPresets, presetProblems) = planTextPresets(spec)
-        var problems = resolveProblems + presetProblems
+        var problems = resolveProblems + presetProblems + planFactProblems(spec)
         var result: [String: JSONValue] = ["baseRev": .integer(project.revision)]
         var built: (planner: LayerPlanner, placements: [PlanCut.Placement], kept: [String])?
         do {

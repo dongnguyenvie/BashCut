@@ -37,6 +37,21 @@ struct SpeedTests {
         #expect(try item(fitted, "right").duration == 30)
     }
 
+    @Test("Several clips change speed in one group, each rippling its layer like one clip does")
+    func several() throws {
+        let project = try ProjectFixtures.twoClips()
+        let (operations, skipped) = project.speedOperations(["left", "right", "nope"], speed: 2, keepDuration: false)
+        #expect(operations.count == 2 && skipped == ["nope"])
+        let fast = try project.applying(.group(label: "Speed 2×", author: .user, ops: operations)).project
+        let one = try project.applying(.setSpeed(item: "left", speed: 2, keepDuration: false)).project
+        #expect(try item(fast, "left").duration == item(one, "left").duration)
+        #expect(try item(fast, "right").at == item(fast, "left").end && item(fast, "right").speed == 2)
+        #expect(try item(fast, "right").duration == (item(project, "right").duration / 2))
+        let pair = try ProjectFixtures.linkedPair()
+        let linked = pair.speedOperations(["v", "a"], speed: 1.5, keepDuration: false)
+        #expect(linked.operations == [.setSpeed(item: "v", speed: 1.5, keepDuration: false)] && linked.skipped.isEmpty)
+    }
+
     @Test("Linked picture and sound change together")
     func linked() throws {
         let project = try ProjectFixtures.linkedPair()

@@ -119,6 +119,7 @@ extension ProjectDocument {
         }
         imported.media[TransitionPreset.soundLibraryField] = .string(item.reference)
         imported.media.fields.merge(Self.libraryRights(item)) { _, rights in rights }
+        imported.media.fields.merge(Self.libraryLabel(item)) { _, label in label }
         return (project.existingMedia(like: imported.media) ?? imported.media, frames)
     }
 

@@ -613,7 +613,9 @@ project whose JSON is over 512 KiB does not fit the 1 MiB request limit, so it c
 optional. Frames are clamped to the timeline. BashCut prefixes each ID with the provider ID (`<provider>:<id>`) and
 adds `source` (the plugin ID), which the Review sheet shows as *From plugin …*. A check has 30 seconds (less when its
 provider sets a lower `timeoutSeconds`); a check that fails, returns a malformed result or runs out of time becomes
-one info issue, "Plugin check failed", and never stops the others or the built-in checks. A project turns checks off
+one info issue, "Plugin check failed", and never stops the others or the built-in checks. The issues are kept in the
+project's cache with the review measurements (keyed by the project's content), so they come back after a restart for
+the same timeline without running the checks again; a measure where a check failed is not kept. A project turns checks off
 with `review.disabledChecks`, a list of plugin or provider IDs (`timeline apply` with `setProjectProperties`);
 `plugins hooks` lists the checks under `reviewChecks` with `enabled` (for this project) and `active` (can run now).
 Declaring `review.check` needs `apiVersion` 9.
@@ -1048,10 +1050,10 @@ others may have one. Text is shown as given (the plugin localizes it with `local
 | `badge` | `text`, `color`? (`accent`, `green`, `orange`, `red`, `purple`, `secondary`) |
 | `keyValue` | `items: [{"key", "value"}]` (at most 100) |
 | `progress` | `value`? (0–1; spinner without), `label`? |
-| `image` | `path` (a local file), `height`? (16–600), `caption`?, `file`? (what a drag carries; `path` by default) |
+| `image` | `path` (a local file), `height`? (16–600), `caption`?, `file`? (what a drag carries; `path` by default), `libraryItem`? (a library reference the drag carries instead) |
 | `imageCompare` | `before`, `after` (local files), `height`?, `beforeLabel`?, `afterLabel`?; drag to compare |
 | `audio` | `path`, `title`?: a play/stop button (one sound plays at a time) |
-| `list` | `items: [{"id", "title", "subtitle"?, "icon"?, "image"?, "badge"?, "audio"?, "file"?, "actions"?: [{"id", "title", "icon"?}]}]` (at most 500, 3 actions per row), `selected`?, `empty`?; a row with `file` can be dragged |
+| `list` | `items: [{"id", "title", "subtitle"?, "icon"?, "image"?, "badge"?, "audio"?, "file"?, "libraryItem"?, "actions"?: [{"id", "title", "icon"?}]}]` (at most 500, 3 actions per row), `selected`?, `empty`?; a row with `file` or `libraryItem` can be dragged |
 | `button` | `title`, `icon`?, `style`? (`primary`, `destructive`, `link`), `confirm`?, `wide`?, `disabled`? |
 | `textField` | `label`?, `placeholder`?, `value`?, `search`? (sends `change` 300 ms after typing stops), `submit`? |
 | `textArea` | `label`?, `value`?, `height`? (40–400) |
@@ -1098,7 +1100,11 @@ BashCut runs the same validated import as for files dragged from Finder; the plu
 | The timeline | Imports the file and places it on the layer under the pointer (or the usual one for its kind) at the snapped frame; one undoable edit | `media import <file> --place [--track <layer>] [--at-frame <frame>]` |
 | The Media panel (Footage) | Imports it without placing it; a file already in the project is reused | `media import <file>` |
 
-A library item is placed with `library place <reference>` (the row's button or action, not a drag).
+A list row or `image` with `libraryItem` (a reference such as `plugin:<plugin>/<id>` or `user:<id>`, as `library
+list` gives it) drags that library item instead of a file: dropped on the timeline it is placed like `library place
+<reference> --at-frame <frame>` (the layer under the pointer when it takes the item: an audio item on an audio layer,
+a clip on a picture layer), with the same checks and one undo step per item; the plugin is not called. A reference
+that is not `scope:id` of a library scope does not drag.
 
 ### Overlays on the timeline and viewer
 

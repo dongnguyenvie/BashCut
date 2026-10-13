@@ -113,7 +113,9 @@ SwiftTerm terminal. Claude and Codex use your installed CLI and its existing log
   - **Claims** (`knowledge claims`, `set-claim KEY --text "528 ha" --source URL|MEDIA@SECONDS|user [--remove]`): the
     numbers, prices, superlatives and names the video states, each with its source (`.bashcut/knowledge/claims.json`).
     Review lists those in titles (not captions) and in `plan.cut.voiceover` lines that no claim's text covers, as
-    `unsourced-claim` at info severity, with the words found by type.
+    `unsourced-claim` at info severity, with the words found by type. Any `plan.cut` entry may cite what it rests on
+    with `facts: [key]`; `plan check` warns `unknown-fact` for a key that is neither a project fact (`set-fact`) nor
+    a claim, so a typo or a fact never recorded shows before the build.
   - **Creator profile**: preferences under `creator.` (`name`, `handle`, `channel`, `platforms`, `language`, `niche`,
     `audience`, `tone`, `cta`, `voiceSamples` as media IDs of the open project, `disclosure`; lists comma-separated)
     are checked by `set-pref` and shown as one `creator` object in the session summary. An agent's change to them for
@@ -675,7 +677,9 @@ panel shows the kit in use and the saved kits (a click applies one); New Project
   the clip's reverse, speed or speed ramp, `transform`, keyframes (as `t`) and the sound effect at its start (one a
   preset placed, or one on an SFX layer starting with the clip), and a 320-pixel still of the clip's middle as the
   preview. The Effects panel's **Apply with…** (the slider button, or the context menu) shows the parameters and an
-  optional frame range; it is the `effect-apply` dialog (`ui respond apply|cancel`).
+  optional frame range; it is the `effect-apply` dialog (`ui respond apply|cancel`). Edit… and Duplicate & Edit… show
+  the recipe as a form (a row per step: its op and fields, steps added, removed and moved; nested values as compact
+  JSON) or as JSON, both checked as typed; Save writes the same `params` as `library update <id> --params`.
 - Looks are filter stacks (#79): `params` `{color: {exposure, contrast, saturation, lutStrength}, lutName}` plus an
   optional .cube LUT as the item's `file` (`library add --kind look --name X --file look.cube`; without `--params`
   the look is just that LUT). `library place` adds one as an adjustment and `library apply` replaces a clip's or

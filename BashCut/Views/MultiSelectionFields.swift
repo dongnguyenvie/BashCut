@@ -1,3 +1,4 @@
+import BashCutAutomation
 import BashCutProject
 import SwiftUI
 
@@ -38,10 +39,11 @@ struct MultiSelectionInspector: View {
     }
 }
 
-/// Inspector with several items selected (#357 follow-up): the properties they share — opacity, volume and framing
-/// (fill, zoom, pan, tilt, rotation) — set on every selected item they apply to, as one undo step (a slider drag
-/// coalesces). A value that differs between the items shows the first one's, marked Mixed. Agents do the same with
-/// `timeline.apply` `patchItems` (`items: [...]`); `clip.backdrop --items` sets a backdrop on several.
+/// Inspector with several items selected (#357 follow-up): the properties they share — opacity, volume, framing
+/// (fill, zoom, pan, tilt, rotation), backdrop and speed — set on every selected item they apply to, as one undo
+/// step (a slider drag coalesces). A value that differs between the items shows the first one's, marked Mixed.
+/// Agents do the same with `timeline.apply` `patchItems` (`items: [...]`), `clip.backdrop --items` and
+/// `clip.speed --items`.
 struct MultiSelectionFields: View {
     let document: ProjectDocument
 
@@ -76,6 +78,10 @@ struct MultiSelectionFields: View {
             number("Tilt", key: "tilt", group: "transform", fallback: 0, range: -600...600, targets: targets)
             number("Rotation", key: "rotation", group: "transform", fallback: 0, range: -180...180, targets: targets)
         }
+        let pictures = targets.filter { $0.track.kind == TrackKind.video && $0.item.mediaID != nil }.map(\.item.id)
+        if !pictures.isEmpty { BackdropControls(document: document, itemIDs: pictures) }
+        let timed = targets.filter { $0.item.mediaID != nil && $0.item.fields["freezeFrame"] == nil }.map(\.item)
+        if !timed.isEmpty { MultiSelectionSpeed(document: document, items: timed) }
     }
 
     private func number(
@@ -102,5 +108,53 @@ struct MultiSelectionFields: View {
             }
             Slider(value: binding, in: range)
         }
+    }
+}
+
+/// Speed for several selected clips: the presets and a typed value, each applied to every clip as one undo step
+/// with the single-clip rules (`setClipSpeeds`, like `clip.speed --items`); the Change clip length setting is shared
+/// with the single-clip Inspector.
+private struct MultiSelectionSpeed: View {
+    let document: ProjectDocument
+    let items: [Item]
+    @AppStorage("speedChangesLength") private var changesLength = true
+    @State private var typed = ""
+
+    var body: some View {
+        let speeds = items.map { $0.speedCurve == nil ? $0.speed : -1 }
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("Speed")
+                if Set(speeds).count > 1 { Text("Mixed").foregroundStyle(.secondary) }
+                Spacer()
+                TextField("Speed", text: $typed).textFieldStyle(.roundedBorder).frame(width: 60)
+                    .onSubmit {
+                        if let value = Double(typed.replacingOccurrences(of: "×", with: "")
+                            .replacingOccurrences(of: ",", with: "."))
+                        { apply(value) }
+                    }
+            }
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 3), spacing: 4) {
+                ForEach(UIAction.speedPresets, id: \.self) { preset in
+                    Button(UIAction.speedLabel(preset)) { apply(preset) }
+                        .buttonStyle(.bordered).controlSize(.small)
+                        .tint(speeds.allSatisfy { abs($0 - preset) < 0.001 } ? .cyan : nil)
+                }
+            }
+            Toggle("Change clip length", isOn: $changesLength)
+        }
+        .onAppear { typed = Self.text(speeds) }
+        .onChange(of: speeds) { typed = Self.text(speeds) }
+    }
+
+    /// The first clip's speed for the field, empty for a ramp.
+    private static func text(_ speeds: [Double]) -> String {
+        speeds.first.map { $0 < 0 ? "" : String(format: "%g", $0) } ?? ""
+    }
+
+    private func apply(_ value: Double) {
+        do {
+            try document.setClipSpeeds(value, items: items.map(\.id), keepDuration: !changesLength)
+        } catch { document.message = error.localizedDescription }
     }
 }

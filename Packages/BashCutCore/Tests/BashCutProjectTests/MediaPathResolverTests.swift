@@ -102,5 +102,15 @@ struct MediaPathResolverTests {
             "id": .string("m2"), "path": .string("media/converted/m2.mov"), "originalPath": .string("footage/bts.mp4"),
         ])
         #expect(converted.fileName == "bts.mp4")
+        let sticker = Media(fields: [
+            "id": .string("m3"), "path": .string("stickers/library-9f2c.x2.mov"), "label": .string("Party popper"),
+        ])
+        #expect(sticker.fileName == "Party popper")
+        var unlabelled = sticker
+        unlabelled.fields["label"] = nil
+        var project = Project(name: "Labels")
+        project.media = [unlabelled]
+        #expect(project.existingMedia(like: Media(fields: sticker.fields.merging(["id": .string("m4")]) { $1 }))?.id == "m3",
+                "media placed before labels existed is reused")
     }
 }

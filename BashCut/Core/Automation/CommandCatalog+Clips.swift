@@ -65,9 +65,12 @@ extension CommandCatalog {
             "Change a clip's constant speed like Inspector › Speed. By default the clip keeps its source and its length "
                 + "changes (2× halves it), moving later clips on its layer; with keepDuration it keeps its length and uses "
                 + "more or less source. Linked picture and sound change together. A clip is shortened to fit its source even "
-                + "with keepDuration; the result then has shortened: true.",
+                + "with keepDuration; the result then has shortened: true. With items, every listed clip changes in one "
+                + "undo step, each by these rules (Inspector with several clips selected); items that have no speed are "
+                + "returned as skipped.",
             parameters: [
                 CommandParameter("item", .string, "Item ID; the selected clip by default", cli: .positional),
+                CommandParameter("items", .string, "Several item IDs, comma separated", cli: .option("items")),
                 CommandParameter("speed", .number, "Speed, for example 0.5, 1.5 or 2", required: true,
                                  range: Project.speedRange, cli: .option("speed")),
                 CommandParameter("keepDuration", .boolean, "Keep the clip's length instead", default: .bool(false),

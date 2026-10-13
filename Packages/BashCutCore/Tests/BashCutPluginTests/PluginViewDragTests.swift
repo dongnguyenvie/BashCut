@@ -23,4 +23,17 @@ struct PluginViewDragTests {
         #expect(PluginViewDrag.file("take.wav") == nil && PluginViewDrag.file(nil) == nil)
         #expect(PluginFeature.all.contains("views.drag"))
     }
+
+    @Test("A row's libraryItem drags as its reference; only scope:id references of a library scope qualify")
+    func libraryItems() {
+        let payload = PluginViewDrag.libraryPayload("plugin:bashcut.vlog/whoosh")
+        #expect(payload == "bashcut-library:plugin:bashcut.vlog/whoosh")
+        #expect(PluginViewDrag.libraryReference(dropped: payload ?? "") == "plugin:bashcut.vlog/whoosh")
+        #expect(PluginViewDrag.libraryPayload("built-in:pop") != nil && PluginViewDrag.libraryPayload("project:x") != nil)
+        for bad in ["whoosh", "nowhere:x", "user:", "user:a\nb", ""] {
+            #expect(PluginViewDrag.libraryPayload(bad) == nil, "\(bad)")
+        }
+        #expect(PluginViewDrag.libraryPayload(nil) == nil)
+        #expect(PluginViewDrag.libraryReference(dropped: "bashcut-media:m1") == nil)
+    }
 }

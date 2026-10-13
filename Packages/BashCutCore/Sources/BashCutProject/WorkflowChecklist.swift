@@ -289,6 +289,12 @@ public enum WorkflowChecklist {
         return nil
     }
 
+    /// Whether a `run append stage` entry must pass the strategy guard: only marking the rough cut done while G2 is
+    /// skipped. Progress reports (status started, the default, with text, progress or ETA) and skips are never gated.
+    public static func stageNeedsStrategyGuard(stage: String, status: String?, strategySkipped: Bool) -> Bool {
+        strategySkipped && stage == "rough-cut" && status == "done"
+    }
+
     /// Before G2 (or the rough cut when G2 is skipped): the recipe skill read when the plan names one, and a
     /// strategy audit of any verdict.
     public static func strategyGuard(_ project: Project, entries: [[String: JSONValue]]) -> GuardFailure? {
