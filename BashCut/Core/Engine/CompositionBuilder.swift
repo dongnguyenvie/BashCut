@@ -296,6 +296,11 @@ public actor CompositionBuilder {
                         start: project.fps.time(start), duration: project.fps.time(end - start)),
                     layers: sweep.values(at: start), failures: failures, fps: project.fps.value))
         }
+        // A timeline of only captions, titles or sound has no video track, and a video reader refuses an empty track
+        // list (an uncaught exception). A clear frame held over the whole timeline gives the compositor frames to draw.
+        if composition.tracks(withMediaType: .video).isEmpty {
+            try await Self.addBlankCanvas(to: composition, duration: project.fps.time(project.duration), root: root)
+        }
         let video = AVMutableVideoComposition()
         video.customVideoCompositorClass = BashCutCompositor.self
         video.renderSize = CGSize(width: project.width, height: project.height)
@@ -306,6 +311,16 @@ public actor CompositionBuilder {
         return CompositionSnapshot(
             composition: composition, videoComposition: video, audioMix: audio, structure: Self.structure(of: composition),
             undecodable: undecodable, renderFailures: failures)
+    }
+
+    private static func addBlankCanvas(to composition: AVMutableComposition, duration: CMTime, root: URL) async throws {
+        let blank = AVURLAsset(url: try await StillImageMovie.blank(root: root))
+        guard let source = try await blank.loadTracks(withMediaType: .video).first,
+              let canvas = composition.addMutableTrack(withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid)
+        else { throw ProjectError.invalid("Could not allocate video layer") }
+        let frame = CMTimeRange(start: .zero, duration: StillImageMovie.sampleDuration)
+        try canvas.insertTimeRange(frame, of: source, at: .zero)
+        canvas.scaleTimeRange(frame, toDuration: duration)
     }
 
     /// A hash of every track (ID and media type) and segment (source file and its state on disk, source track, source
