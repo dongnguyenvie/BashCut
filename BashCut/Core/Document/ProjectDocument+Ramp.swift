@@ -128,6 +128,22 @@ extension ProjectDocument {
                 "shortened": .bool(Self.shortened(before: before, after: item?.duration, keepDuration: arguments.bool("keepDuration"))),
             ])
         }
+        handleAuthored("clip.freeze") { document, arguments, author in
+            let id = arguments.optionalString("item") ?? document.selectedID
+            guard let id else { throw RPCFailure(-32602, "Give an item or select a clip first") }
+            let frozen: (revision: Int, source: Int?)
+            do {
+                frozen = try document.freezeClip(
+                    id, atFrame: arguments.optionalInt("atFrame"), off: arguments.bool("off"), author: author,
+                    baseRevision: try arguments.int("baseRev"))
+            } catch let failure as RPCFailure { throw failure } catch {
+                throw RPCFailure.from(error, fallbackCode: -32602)
+            }
+            return .object([
+                "rev": .integer(frozen.revision), "item": .string(id),
+                "freezeFrame": frozen.source.map(JSONValue.integer) ?? .null,
+            ])
+        }
         handleAuthored("clip.reverse") { document, arguments, author in
             let id = arguments.optionalString("item") ?? document.selectedID
             let job = try document.reverseClip(id, author: author)

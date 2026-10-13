@@ -11,9 +11,25 @@ public enum PluginOptionPolicy {
         hasSecrets(options) ? .user : option.effectiveScope
     }
 
-    public static func validateEdit(options: [PluginOption], author: Author) throws {
-        guard author == .user || !hasSecrets(options) else {
+    /// `ownPlugin`: the plugin sets one of its own options over the host channel (#411). It already holds its
+    /// credentials, so it may change its non-secret options even when it has secrets; secrets stay user-only.
+    public static func validateEdit(options: [PluginOption], author: Author, ownPlugin: Bool = false) throws {
+        guard author == .user || (author == .plugin && ownPlugin) || !hasSecrets(options) else {
             throw ProjectError.invalid("Change options for plugins with secrets in Settings")
+        }
+    }
+
+    /// The checked value of a `plugins.option` call over the host channel (#411): text is read like the command line
+    /// (`on`, `12`, a choice), other JSON is checked as it is, and null or a missing value resets to the default (nil).
+    /// Secret options are refused: only the user sets them, in Settings.
+    public static func ownValue(_ value: JSONValue?, for option: PluginOption) throws -> JSONValue? {
+        guard option.type != .secret else {
+            throw ProjectError.invalid("A plugin cannot set its secret option \(option.id); the user sets it in Settings")
+        }
+        switch value {
+        case nil, .null?: return nil
+        case .string(let text)?: return try option.parse(text)
+        case let value?: return try option.check(value)
         }
     }
 

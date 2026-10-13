@@ -100,6 +100,33 @@ public struct LibraryItem: JSONObject, Identifiable {
     /// `scope:id`, unique across scopes; usage counts are keyed by it.
     public var reference: String { "\(scope.rawValue):\(id)" }
 
+    /// The params of a kind that are measured from its file (`library add`, `library analyze`), so a new file
+    /// (`library update --file`) makes them stale: an audio item's length, tempo, loudness and landmarks, a
+    /// sticker's kind and picture size, a clip's length, size and sound.
+    public static func fileMeasuredKeys(_ kind: LibraryKind?) -> [String] {
+        switch kind {
+        case .audio: ["seconds", "bpm", "lufs", "truePeak", "landmarks", "trimmedFrom"]
+        case .sticker: ["stickerKind", "width", "height", "frames"]
+        case .clip: ["seconds", "width", "height", "hasAudio"]
+        default: []
+        }
+    }
+
+    /// The params to measure a new file against: `given` (this update's params, which replace the stored ones), or
+    /// else the stored ones without the values measured from the old file (`fileMeasuredKeys`; an emoji sticker keeps
+    /// its kind). Returns them and the stale keys dropped.
+    public func paramsForNewFile(given: [String: JSONValue]?) -> (params: [String: JSONValue], dropped: [String]) {
+        if let given { return (given, []) }
+        var params = params
+        var dropped: [String] = []
+        for key in Self.fileMeasuredKeys(kind) where params[key] != nil {
+            if kind == .sticker, key == "stickerKind", params[key] == .string("emoji") { continue }
+            params[key] = nil
+            dropped.append(key)
+        }
+        return (params, dropped)
+    }
+
     /// The item as commands return it: its fields without `history`, plus `scope`, `panel` and `versions`.
     public func json(usage: LibraryUsage? = nil, includeHistory: Bool = false) -> JSONValue {
         var result = fields
@@ -180,7 +207,7 @@ extension LibraryItem {
         }
         if let license = fields["license"] { try LicenseTerms.validate(license, label: label) }
         if let provenance = fields["provenance"] { try Provenance.validate(provenance, label: label) }
-        for key in ["pack", "source"] {
+        for key in ["pack", "source", "profile"] {
             guard let value = fields[key] else { continue }
             guard let text = value.string, text.count <= (key == "pack" ? 80 : 1_000) else {
                 throw ProjectError.invalid("\(label): \(key) must be text")

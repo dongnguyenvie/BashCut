@@ -35,10 +35,11 @@ extension ProjectDocument {
         return nil
     }
 
-    /// The stored transcript when it is in the content language and, when `provider` is given, made by it (the
-    /// provider or its plugin).
+    /// The stored transcript when it is in the content language (any, while the project has none: it then holds the
+    /// language heard) and, when `provider` is given, made by it (the provider or its plugin).
     func reusableTranscript(_ mediaID: String, provider: String?) async throws -> SourceTranscript? {
-        guard let stored = try await storedTranscript(mediaID), stored.language == contentLanguage else { return nil }
+        guard let stored = try await storedTranscript(mediaID), contentLanguage.isEmpty || stored.language == contentLanguage
+        else { return nil }
         if let provider, ![stored.provider["provider"], stored.provider["plugin"]].contains(.string(provider)) {
             return nil
         }
@@ -50,8 +51,10 @@ extension ProjectDocument {
         let source = try analysisSource(mediaID)
         let key = try await Self.transcriptKey(source.url)
         let generated = try await transcribe(mediaID, provider: provider)
+        // A project without a content language keeps the language the provider heard, so it can be set from it.
         let transcript = SourceTranscript(
-            key: key, language: contentLanguage, provider: generated.provenance.json,
+            key: key, language: contentLanguage.isEmpty ? generated.language ?? "" : contentLanguage,
+            provider: generated.provenance.json,
             transcribedAt: ISO8601DateFormatter().string(from: Date()), phrases: try SubRip.cues(generated.text),
             words: generated.words)
         try ProjectCache.store(transcript, .transcripts, key: key, projectRoot: source.root)

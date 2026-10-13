@@ -132,10 +132,17 @@ extension AgentKnowledgeModel {
 
     /// Reloads when a knowledge file changed on disk (an agent's command, or an edit by hand), and the skill list
     /// when skills were added or removed. Memo text is not reloaded here, so an unsaved edit is kept.
-    func refreshIfChanged() {
+    /// The dock polls this every few seconds: the skill folders are listed and the knowledge files stat'ed off the
+    /// main actor (a long-running app spent its main thread scanning skills here), and only a change reloads.
+    func refreshIfChanged() async {
         guard let store else { return }
-        if store.skills() != skills || store.skills(.user) != userSkills { refreshSkills() }
-        guard store.signature() != signature else { return }
+        let scan = await Task.detached(priority: .utility) {
+            (project: store.skills(), user: store.skills(.user), signature: store.signature())
+        }.value
+        // The project may have changed while the folders were read.
+        guard self.store?.project == store.project, self.store?.user == store.user else { return }
+        if scan.project != skills || scan.user != userSkills { refreshSkills() }
+        guard scan.signature != signature else { return }
         loadEntries()
     }
 
@@ -258,7 +265,12 @@ extension AgentKnowledgeModel {
     func setValue(_ kind: KnowledgeValueKind, key: String, value: String?, scope: KnowledgeScope) {
         changedHere.insert(Self.valueID(scope, key))
         perform(value == nil ? String(localized: "Removed") : String(localized: "Saved")) {
-            try $0.setValue(kind, key: key, value: value, scope: scope, source: source)
+            // The user typed it: a preference they confirm, a fact they state.
+            try $0.setValue(
+                kind, key: key, value: value, scope: scope, source: source,
+                details: kind == .prefs
+                    ? KnowledgeValueDetails(confirmedBy: .user)
+                    : KnowledgeValueDetails(evidence: KnowledgeFactEvidence(status: .user)))
         }
     }
 

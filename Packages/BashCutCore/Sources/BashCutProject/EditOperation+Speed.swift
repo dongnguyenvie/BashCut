@@ -14,6 +14,28 @@ extension Project {
 
     public static let speedRange: ClosedRange<Double> = 0.1...16
 
+    /// `setSpeed` for several items at once (the multi-selection Inspector's Speed, `clip speed --items`): one
+    /// operation per clip, each with the single-clip rules (its layer ripples), to apply as one group. A linked
+    /// partner of a clip already listed is left out (it follows that clip); items without media and freeze frames
+    /// are left out and returned as `skipped`.
+    public func speedOperations(
+        _ ids: [String], speed: Double, keepDuration: Bool
+    ) -> (operations: [EditOperation], skipped: [String]) {
+        var operations: [EditOperation] = [], skipped: [String] = [], covered = Set<String>()
+        let items = Dictionary(tracks.flatMap(\.items).map { ($0.id, $0) }) { first, _ in first }
+        for id in ids {
+            guard !covered.contains(id) else { continue }
+            guard let item = items[id], item.mediaID != nil, item.fields["freezeFrame"] == nil else {
+                skipped.append(id)
+                continue
+            }
+            covered.insert(id)
+            if let linked = item.linkedItemID { covered.insert(linked) }
+            operations.append(.setSpeed(item: id, speed: speed, keepDuration: keepDuration))
+        }
+        return (operations, skipped)
+    }
+
     /// Sets an item's speed and new duration (or `duration` for a linked partner), rippling later items on its
     /// layer by the change. Returns the new duration.
     mutating func speedItem(

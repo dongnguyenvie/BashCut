@@ -224,4 +224,52 @@ struct LibraryAudioTests {
             Self.sound("whoosh", seconds: 2), role: audio.placementRole(seconds: nil), at: 0)
         #expect(project.track(id: placed.trackID)?.role == TrackRole.sfx)
     }
+
+    @Test("A trimmed audio clip saves only the part it plays: its range, length and where it came from")
+    func trimmedClipRange() throws {
+        let media = Self.sound("song", seconds: 10)
+        let fps = FrameRate(30, 1)
+        // The whole file, or within a frame of it, is not a trim.
+        #expect(LibrarySelection.audioRange(of: Item(media: "song", at: 0, duration: 300), media: media, fps: fps) == nil)
+        let clip = Item(media: "song", at: 90, duration: 60, sourceIn: 45)
+        let range = try #require(LibrarySelection.audioRange(of: clip, media: media, fps: fps))
+        #expect(abs(range.lowerBound - 1.5) < 1e-9 && abs(range.upperBound - 3.5) < 1e-9)
+        var fast = clip
+        fast["speed"] = .number(2)
+        #expect(LibrarySelection.audioRange(of: fast, media: media, fps: fps).map { abs($0.upperBound - 5.5) < 1e-9 } == true)
+        let params = try LibrarySelection.audio(media, trackRole: TrackRole.music, range: range)
+        #expect(params["seconds"] == .integer(2))
+        #expect(params["trimmedFrom"] == .object(["start": .number(1.5), "end": .number(3.5)]))
+        #expect(try LibraryAudio(params: params) == LibraryAudio(role: "music", seconds: 2))
+    }
+
+    @Test("A new file drops the values measured from the old one; given params replace the stored ones")
+    func newFileParams() {
+        let audio = LibraryItem(id: "bed", kind: .audio, name: "Bed", params: [
+            "role": .string("music"), "seconds": .integer(30), "bpm": .integer(120), "lufs": .number(-14.2),
+            "loopable": .bool(true),
+        ])
+        let fresh = audio.paramsForNewFile(given: nil)
+        #expect(fresh.params == ["role": .string("music"), "loopable": .bool(true)])
+        #expect(Set(fresh.dropped) == ["seconds", "bpm", "lufs"])
+        #expect(audio.paramsForNewFile(given: ["seconds": .integer(5)]).params == ["seconds": .integer(5)])
+        let emoji = LibraryItem(id: "e", kind: .sticker, name: "E", params: ["stickerKind": .string("emoji"), "width": .integer(4)])
+        #expect(emoji.paramsForNewFile(given: nil).params == ["stickerKind": .string("emoji")])
+        let gif = LibraryItem(id: "g", kind: .sticker, name: "G", params: [
+            "stickerKind": .string("animated"), "frames": .integer(12), "size": .number(0.2),
+        ])
+        #expect(gif.paramsForNewFile(given: nil).params == ["size": .number(0.2)])
+        #expect(LibraryItem.fileMeasuredKeys(.look).isEmpty)
+    }
+
+    @Test("Library pages: clamped offset and limit, next until the last page")
+    func pages() {
+        let first = LibraryPage(total: 120, offset: 0, limit: nil)
+        #expect(first.range == 0..<50 && first.next == 50)
+        let last = LibraryPage(total: 120, offset: 100, limit: 50)
+        #expect(last.range == 100..<120 && last.next == nil)
+        #expect(LibraryPage(total: 3, offset: 9, limit: 0).range == 3..<3)
+        #expect(LibraryPage(total: 3, offset: -2, limit: 10_000).limit == LibraryPage.maximumLimit)
+        #expect(last.json(items: []).object["next"] == .null)
+    }
 }

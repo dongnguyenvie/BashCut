@@ -152,3 +152,27 @@ struct PluginAudioButton: View {
         .disabled(path == nil)
     }
 }
+
+extension View {
+    /// Lets the user drag a plugin's local video, audio or image file onto the timeline or the Media panel (#408,
+    /// `views.drag`); the file is checked when the drag starts, not while drawing. A `libraryItem` reference drags
+    /// instead of the file: the timeline places it like `library place`.
+    @ViewBuilder func pluginFileDrag(_ path: String?, library: String? = nil) -> some View {
+        if let payload = PluginViewDrag.libraryPayload(library) {
+            onDrag { NSItemProvider(object: payload as NSString) }
+        } else if let path {
+            onDrag { PluginViewDrag.file(path).flatMap { NSItemProvider(contentsOf: $0) } ?? NSItemProvider() }
+        } else {
+            self
+        }
+    }
+
+    /// The Media panel takes files dropped from Finder or a plugin view (#408): imported like `media import`, not placed.
+    func mediaFileDrop(_ document: ProjectDocument) -> some View {
+        dropDestination(for: URL.self) { urls, _ in
+            let files = urls.filter { $0.isFileURL && PluginViewDrag.isMedia($0) }
+            document.importFilesToMedia(files)
+            return !files.isEmpty
+        }
+    }
+}

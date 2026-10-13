@@ -303,6 +303,75 @@ struct EffectRecipeTests {
         #expect(keys?["opacity"]?.first?.position.frame(length: 60) == 17)
         #expect(throws: ProjectError.self) { try LibrarySelection.params(.effectPreset, item: Item(at: 0, duration: 30)) }
     }
+
+    @Test("A freeze frame is saved where it is along the clip and freezes the same place on another clip")
+    func saveFreezeRoundTrip() throws {
+        let project = try Self.project()
+        let media = try #require(project.media.first)
+        let clip = try #require(project.tracks.flatMap(\.items).first { $0.id == "c" })
+        // Frame 45 of the 60-frame clip (source in 30) holds source frame 75.
+        #expect(clip.sourceFrame(at: 45, media: media, fps: project.fps) == 75)
+        #expect(clip.sourceFrame(at: 500, media: media, fps: project.fps) == 89)
+        var frozen = clip
+        frozen["freezeFrame"] = .integer(75)
+        let t = try #require(frozen.freezePosition(media: media, fps: project.fps))
+        #expect(abs(t - 45.0 / 59.0) < 1e-6)
+        let params = try LibrarySelection.params(.effectPreset, item: frozen, project: project)
+        let steps = try EffectRecipe(params: params).resolvedSteps()
+        guard case .freeze(let position) = try #require(steps.first) else { Issue.record("no freeze step"); return }
+        #expect(position.frame(length: 60) == 45)
+        let applied = try Self.applied(try EffectRecipe(params: params), to: project).item
+        #expect(applied["freezeFrame"] == .integer(75))
+    }
+
+    @Test("The recipe editor shows a recipe as JSON and checks what it saves")
+    func editorText() throws {
+        let params = try Self.recipe([["op": .string("speed"), "speed": .integer(2)]]).params
+        let text = EffectRecipe.editorText(params)
+        #expect(text.contains("\"steps\""))
+        #expect(try EffectRecipe.params(editorText: text) == params)
+        #expect(throws: EffectRecipe.EditorProblem.notJSON) { try EffectRecipe.params(editorText: "{steps") }
+        #expect(throws: EffectRecipe.EditorProblem.notObject) { try EffectRecipe.params(editorText: "[1]") }
+        do {
+            _ = try EffectRecipe.params(editorText: #"{"steps":[{"op":"spin"}]}"#)
+            Issue.record("an unknown step must be refused")
+        } catch let EffectRecipe.EditorProblem.invalidRecipe(message) {
+            #expect(message.contains("op must be one of"))
+        }
+    }
+}
+
+struct EffectRecipeFormTests {
+    @Test("The form shows a row per step and writes the same params back; parameters stay, text stays text")
+    func roundTrip() throws {
+        let params: [String: JSONValue] = [
+            "steps": .array([
+                .object(["op": .string("speed"), "speed": .string("$rate"), "keepDuration": .bool(true)]),
+                .object(["op": .string("text"), "text": .string("2026"), "t": .number(0.5),
+                         "textStyle": .object(["size": .number(0.1)])]),
+            ]),
+            "parameters": .object(["rate": .object(["default": .integer(2), "min": .number(0.5), "max": .integer(4)])]),
+        ]
+        let steps = EffectRecipe.formSteps(params)
+        #expect(steps.map(\.op) == ["speed", "text"])
+        #expect(steps[0].fields.map(\.key) == ["keepDuration", "speed"] && steps[0].fields[1].text == "$rate")
+        #expect(steps[1].fields.first { $0.key == "textStyle" }?.text == #"{"size":0.1}"#)
+        let back = EffectRecipe.params(params, steps: steps)
+        #expect(back == params)
+        _ = try EffectRecipe(params: back)
+        var edited = steps
+        edited[0].fields[1].text = "1.5"
+        edited.append(EffectRecipe.FormStep.template("freeze"))
+        let written = EffectRecipe.params(params, steps: edited)
+        let list = try #require(written["steps"]?.array)
+        #expect(list[0].object["speed"] == .number(1.5) && list[2].object == ["op": .string("freeze"), "t": .integer(0)])
+        #expect(list[1].object["text"] == .string("2026"))
+        let legacy = EffectRecipe.formSteps(["patch": .object(["opacity": .number(0.5)])])
+        #expect(legacy == [EffectRecipe.FormStep(op: "patch", fields: [EffectRecipe.FormField(key: "patch", text: #"{"opacity":0.5}"#)])])
+        let upgraded = EffectRecipe.params(["patch": .object(["opacity": .number(0.5)])], steps: legacy)
+        #expect(upgraded["patch"] == nil && upgraded["steps"]?.array.count == 1)
+        #expect(EffectRecipe.formValue("abc") == .string("abc") && EffectRecipe.formValue("[1]") == .array([.integer(1)]))
+    }
 }
 
 private extension Item {

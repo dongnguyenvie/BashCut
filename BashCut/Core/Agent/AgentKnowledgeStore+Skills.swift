@@ -275,3 +275,13 @@ extension SkillFrontMatter {
         return sections.filter { !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     }
 }
+
+extension AgentKnowledgeStore {
+    /// A kit skill's name without the `bc:` (Claude Code, Codex) or `bc-` (Codex's link) that agents see it by.
+    public static func kitSkillName(_ name: String) -> String {
+        for prefix in ["bc:", "bc-"] where name.hasPrefix(prefix) && name.count > prefix.count {
+            return String(name.dropFirst(prefix.count))
+        }
+        return name
+    }
+}

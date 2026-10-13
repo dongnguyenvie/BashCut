@@ -36,7 +36,7 @@ extension CommandCatalog {
                 + "returned, total the words on the caption layers. With heard, the words come from the stored "
                 + "transcripts (media.transcribe) of the media the timeline plays instead: each word inside a clip "
                 + "that plays it, at that clip's frames (trim, speed), with item = the clip, timing source and the "
-                + "provider's confidence/speaker/event/noSpeechProb; transcribed and untranscribed list the media.",
+                + "provider's confidence/speaker/event/noSpeechProb/avgLogprob/compressionRatio; transcribed and untranscribed list the media.",
             parameters: [
                 CommandParameter("from", .integer, "Only words ending after this timeline frame", minimum: 0,
                                  cli: .option("from")),
@@ -65,9 +65,12 @@ extension CommandCatalog {
             "Change a clip's constant speed like Inspector › Speed. By default the clip keeps its source and its length "
                 + "changes (2× halves it), moving later clips on its layer; with keepDuration it keeps its length and uses "
                 + "more or less source. Linked picture and sound change together. A clip is shortened to fit its source even "
-                + "with keepDuration; the result then has shortened: true.",
+                + "with keepDuration; the result then has shortened: true. With items, every listed clip changes in one "
+                + "undo step, each by these rules (Inspector with several clips selected); items that have no speed are "
+                + "returned as skipped.",
             parameters: [
                 CommandParameter("item", .string, "Item ID; the selected clip by default", cli: .positional),
+                CommandParameter("items", .string, "Several item IDs, comma separated", cli: .option("items")),
                 CommandParameter("speed", .number, "Speed, for example 0.5, 1.5 or 2", required: true,
                                  range: Project.speedRange, cli: .option("speed")),
                 CommandParameter("keepDuration", .boolean, "Keep the clip's length instead", default: .bool(false),
@@ -143,11 +146,129 @@ extension CommandCatalog {
                 CommandParameter("color", .string, "Highlight colour, #RRGGBB (default #FFD400)", cli: .option("color")),
                 baseRevision,
             ]),
+        reframeSpec, moveItemsSpec,
+        CommandSpec(
+            "clip.backdrop", .edit,
+            "Fill a fitted picture's bars with a blur of itself or a colour (Inspector › Video › Backdrop). blur "
+                + "draws a blurred copy of the same frame scaled to fill, color a "
+                + "solid colour; none removes it. The backdrop moves, fades and grades with the clip. blur is the "
+                + "radius as a share of the frame's short side, dim darkens it (0–1). Several items in one undo step. "
+                + "Returns rev and items.",
+            parameters: [
+                CommandParameter("item", .string, "Video or image item ID; the selection by default", cli: .positional),
+                CommandParameter("items", .string, "Several item IDs, comma separated", cli: .option("items")),
+                CommandParameter("kind", .string, "blur, color or none", required: true,
+                                 choices: ["blur", "color", "none"], cli: .option("kind")),
+                CommandParameter("color", .string, "Colour #RRGGBB for kind color (default black)", cli: .option("color")),
+                CommandParameter("blur", .number, "Blur radius, share of the short side (default 0.05)", range: 0...0.5,
+                                 cli: .option("blur")),
+                CommandParameter("dim", .number, "Darkening, 0–1 (default 0)", range: 0...1, cli: .option("dim")),
+                baseRevision,
+            ]),
+        CommandSpec(
+            "text.line-style", .edit,
+            "Give one text line its own font, size and colours (two fonts in one title; Inspector › Text › Lines). font "
+                + "is a PostScript name from fonts list (family and weight), scale (× the block's font "
+                + "size; the line is fitted to the frame on its own), fill and stroke (#RRGGBB). line counts from the top "
+                + "(0), negative from the bottom. Stored in textStyle.lines (one entry per line, null keeps the block's "
+                + "look); given fields merge into the line's, \"none\" removes one, clear drops the line's look. One undo "
+                + "step. Returns rev, item and lines.",
+            parameters: [
+                CommandParameter("item", .string, "Text item ID; the selection by default", cli: .positional),
+                CommandParameter("line", .integer, "Line from the top (0), negative from the bottom", required: true,
+                                 cli: .option("line")),
+                CommandParameter("font", .string, "Font PostScript name, or none", cli: .option("font")),
+                CommandParameter("scale", .number, "Size × the block's font size", range: TextLineStyles.scaleRange,
+                                 cli: .option("scale")),
+                CommandParameter("fill", .string, "Text colour #RRGGBB, or none", cli: .option("fill")),
+                CommandParameter("stroke", .string, "Outline colour #RRGGBB, or none", cli: .option("stroke")),
+                CommandParameter("clear", .boolean, "Drop the line's own look", cli: .flag("clear")),
+                baseRevision,
+            ]),
         CommandSpec(
             "clip.reverse", .edit,
             "Play a video clip backwards (with its linked sound): renders a reversed copy of the source it uses into "
                 + "the project's reversed/ folder and points the clip at it. Reversing again restores the original.",
             parameters: [CommandParameter("item", .string, "Item ID; the selected clip by default", cli: .positional)],
             execution: .job),
+        CommandSpec(
+            "clip.freeze", .edit,
+            "Hold one frame of a video clip for its whole length, like the clip menu's Freeze Frame (ui action "
+                + "clip.freeze): the frame the clip shows at atFrame (the playhead by default), as one undo step; "
+                + "freezing a frozen clip picks again from its source; off removes the freeze. A frozen clip has no "
+                + "speed and cannot be reversed. Returns freezeFrame, the source frame held.",
+            parameters: [
+                CommandParameter("item", .string, "Item ID; the selected clip by default", cli: .positional),
+                CommandParameter("atFrame", .integer, "Timeline frame inside the clip; the playhead by default",
+                                 minimum: 0, cli: .option("at-frame")),
+                CommandParameter("off", .boolean, "Remove the freeze frame", default: .bool(false), cli: .flag("off")),
+                baseRevision,
+            ]),
     ]
+
+    /// Subject-aware crop (P3-J1).
+    static let reframeSpec = CommandSpec(
+        "clip.reframe", .edit,
+        "Crop a clip or image to its subject from media.subjects face boxes: the clip "
+            + "fills the frame and pans (and tilts) so the subject's centre sits at anchor. mode locked holds one "
+            + "framing (the subject's median place), cut jumps to a new framing (hold keys) when the subject moves more "
+            + "than drift of the frame and the last framing held minHold seconds, follow keys pan and tilt at every "
+            + "sampled picture, averaged over smooth seconds. Boxes stored for the source the clip plays are used; "
+            + "missing ones are measured first with a vision.faces provider (every step source seconds) and stored. "
+            + "When fewer than minSubjectShare of the clip's pictures have a subject, or the framing keeps less than "
+            + "gate of the subject in view on average, it fits the whole picture instead (fallback fit) or changes "
+            + "nothing (fallback refuse); never a blind centre crop. The defaults are starting points, not verdicts: "
+            + "set them from the skill's ranges. One undo step (fill, transform, zoom/pan/tilt keys; other keys stay). "
+            + "Returns rev, applied (reframe or fit), reason, coverage {samples, subjectSamples, subjectShare, mean, "
+            + "min} (share of the subject box in view), segments [{frame (from the item's start), pan, tilt}], "
+            + "measured (whether boxes were measured now) and preview {path, rows} (source next to the edit at each "
+            + "framing and the least covered picture). A job.",
+        parameters: [
+            CommandParameter("item", .string, "Video or image item ID; the selection by default", cli: .positional),
+            CommandParameter("mode", .string, "locked (default), cut or follow",
+                             choices: SubjectReframe.Mode.allCases.map(\.rawValue), cli: .option("mode")),
+            CommandParameter("subject", .string, "face (the largest face, default), faces (all faces) or person",
+                             choices: SubjectReframe.Subject.allCases.map(\.rawValue), cli: .option("subject")),
+            CommandParameter("minConfidence", .number, "Ignore boxes below this confidence (default 0.5)", range: 0...1,
+                             cli: .option("min-confidence")),
+            CommandParameter("anchor", .string, "Where the subject's centre sits: x,y as shares of the frame from the "
+                             + "top left (default 0.5,0.5)", cli: .option("anchor")),
+            CommandParameter("zoom", .number, "Scale over the filled size (default 1)", range: 1...10, cli: .option("zoom")),
+            CommandParameter("gate", .number, "Least mean share of the subject in view (default 0.9)", range: 0...1,
+                             cli: .option("gate")),
+            CommandParameter("minSubjectShare", .number, "Least share of pictures with a subject (default 0.5)",
+                             range: 0...1, cli: .option("min-subject-share")),
+            CommandParameter("fallback", .string, "Below the gate: fit (default) or refuse",
+                             choices: SubjectReframe.Fallback.allCases.map(\.rawValue), cli: .option("fallback")),
+            CommandParameter("drift", .number, "cut: share of the frame the subject may move before a new framing "
+                             + "(default 0.15)", range: 0...1, cli: .option("drift")),
+            CommandParameter("minHold", .number, "cut: shortest framing in seconds (default 1)", range: 0...600,
+                             cli: .option("min-hold")),
+            CommandParameter("smooth", .number, "follow: seconds the path is averaged over (default 1)", range: 0...60,
+                             cli: .option("smooth")),
+            CommandParameter("step", .number, "Source seconds between pictures when measuring (default 0.5)",
+                             range: 0.04...60, cli: .option("step")),
+            CommandParameter("measure", .boolean, "Measure the boxes again even when stored", cli: .flag("measure")),
+            provider,
+            baseRevision,
+        ],
+        execution: .job)
+
+    /// Moving a selection (#357 follow-up).
+    static let moveItemsSpec = CommandSpec(
+        "timeline.move-items", .edit,
+        "Move several items together in one undo step, like dragging a timeline selection: by shifts each item "
+            + "that many frames on its own layer, keeping their offsets (items on a magnetic layer stay; one landing "
+            + "on another clip spills to a free layer); before moves the given items of the magnetic layer track (Main "
+            + "by default) as one block, in their order, before that clip (an item outside the list) or to the end "
+            + "(end); the layer packs again and linked sound follows. Give by or before. Returns rev and items.",
+        parameters: [
+            CommandParameter("items", .string, "Item IDs, comma separated", required: true, cli: .option("items")),
+            CommandParameter("by", .integer, "Frames to move (negative: earlier)", cli: .option("by")),
+            CommandParameter("before", .string, "Magnetic layer: the clip the block goes before, or end",
+                             cli: .option("before")),
+            CommandParameter("track", .string, "The magnetic layer for before (default: the main layer)",
+                             cli: .option("track")),
+            baseRevision,
+        ])
 }

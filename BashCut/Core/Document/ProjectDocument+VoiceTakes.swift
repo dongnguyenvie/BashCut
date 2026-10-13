@@ -200,12 +200,14 @@ extension ProjectDocument {
                 let voice = voiceFacts(take, text: text)
                 try VoiceTakeFile(take.asset, voice: voice).write(voice: voice)
             }
-            return .object(["takes": .array(listed)])
+            return .object(takes.count < count ? ["takes": .array(listed), "requestedTakes": .integer(count)] : ["takes": .array(listed)])
         }
         let index = min(takes.count, choose ?? 1) - 1
         let chosen = takes[index], voice = voiceFacts(chosen, text: text)
         let file = VoiceTakeFile(chosen.asset, voice: voice)
         var result: [String: JSONValue] = ["chosen": .integer(index + 1), "voice": voice["voice"] ?? .null, "takes": .array(listed)]
+        // The provider gives fewer takes than asked (`maxTakes`, #410).
+        if takes.count < count { result["requestedTakes"] = .integer(count) }
         do {
             if let target {
                 result["replaced"] = try await replaceVoiceTake(file, item: target, voice: voice, author: author)
@@ -290,6 +292,7 @@ extension ProjectDocument {
                     "plugin": .string(plugin.id), "provider": .string(provider.id), "name": .string(provider.name),
                     "availability": .string(plugins.currentAvailability(plugin).name),
                     "clones": .bool(provider.clones ?? false), "current": current.map(JSONValue.string) ?? .null,
+                    "maxTakes": provider.maxTakes.map(JSONValue.integer) ?? .null,
                     "voices": .array((provider.voices ?? []).map { voice in
                         let key = provider.id + "/" + voice.id
                         var row: [String: JSONValue] = [

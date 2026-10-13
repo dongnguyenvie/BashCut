@@ -75,7 +75,10 @@ extension ProjectDocument {
         media.fields["path"] = .string(Self.relativePath(copy, root: root))
         updated.media[index] = media
         do {
-            try commit(.restore(updated), label: "Use converted video", author: author)
+            let before = project.revision
+            let after = try commit(.restore(updated), label: "Use converted video", author: author)
+            // Relinking to the converted copy changes no clip, so it must not make an agent's baseRev last stale.
+            registry.carrySeenRevisions(from: before, to: after)
             let original = URL(fileURLWithPath: media["originalPath"]?.string ?? media.path).lastPathComponent
             message = String(localized: "Converted \(original) so this Mac can play it")
             DebugLog.write("convert", "\(mediaID) now reads \(media.path)")

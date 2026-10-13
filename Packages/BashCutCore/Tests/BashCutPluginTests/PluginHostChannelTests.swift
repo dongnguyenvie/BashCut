@@ -4,7 +4,8 @@ import Foundation
 import Testing
 
 /// A session plugin (Python standard library) for the API 4 host channel: `fixture.agent` sends two events, calls
-/// `timeline.get` and answers with the call's reply; `fixture.slowcall` makes one call and answers when it returns.
+/// `timeline.get` and a bad command and answers with both replies (in whichever order they come back);
+/// `fixture.slowcall` makes one call and answers when it returns.
 private let hostScript = #"""
 #!/usr/bin/env python3
 import json, sys
@@ -13,11 +14,18 @@ def send(message):
     sys.stdout.write(json.dumps(message) + "\n")
     sys.stdout.flush()
 
+# Call results in the order they arrive: the app runs calls side by side, so c2's error can come before c1's result.
+results = {}
+
 def wait_for(call_id):
+    if call_id in results:
+        return results.pop(call_id)
     for line in sys.stdin:
         message = json.loads(line)
-        if message.get("type") == "callResult" and message.get("callId") == call_id:
-            return message
+        if message.get("type") == "callResult":
+            if message.get("callId") == call_id:
+                return message
+            results[message.get("callId")] = message
 
 for line in sys.stdin:
     message = json.loads(line)
@@ -104,9 +112,12 @@ struct PluginHostChannelTests {
     func callPausesTimeout() async throws {
         let (plugin, root) = try makePlugin()
         defer { try? FileManager.default.removeItem(at: root) }
-        let transport = PluginSessionTransport(requestTimeout: 0.4)
+        // The plugin itself must answer within the silence window (reading the request, then the call's result), so
+        // the window is generous for a loaded machine; the call runs over three windows, which would time out
+        // without the pause.
+        let transport = PluginSessionTransport(requestTimeout: 1.5)
         let host = PluginHostChannel(event: { _ in }, call: { _, _ in
-            try? await Task.sleep(for: .milliseconds(1_500))
+            try? await Task.sleep(for: .milliseconds(4_800))
             return .success(.object(["done": .bool(true)]))
         })
         let result = try await transport.call(

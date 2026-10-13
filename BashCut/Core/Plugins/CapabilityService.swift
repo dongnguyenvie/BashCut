@@ -104,16 +104,18 @@ public struct CapabilityService: Sendable {
 
     // MARK: Capabilities
 
-    /// Asks one provider for voice takes until `count` exist; a failure discards the takes made so far.
+    /// Asks one provider for voice takes until `count` exist, never more than its `maxTakes` (#410: a paid provider
+    /// that gives one take is asked once); a failure discards the takes made so far.
     public func synthesizeVoiceTakes(
-        text: String, language: String, count: Int = 3, preferredProvider: String?,
+        text: String, language: String, count requested: Int = 3, preferredProvider: String?,
         projectRoot: URL, outputRoot: URL, cloneConsent: Bool = false
     ) async throws -> [GeneratedVoiceTake] {
         let first = VoiceSynthesisCapability(
-            text: text, language: language, takeCount: count, outputRoot: outputRoot, cloneConsent: cloneConsent)
+            text: text, language: language, takeCount: requested, outputRoot: outputRoot, cloneConsent: cloneConsent)
         try first.validate()
         let resolved = try await resolve(
             VoiceSynthesisCapability.capability, preferredProvider: preferredProvider, projectRoot: projectRoot)
+        let count = resolved.provider.takes(requested)
         var generated: [GeneratedVoiceTake] = []
         do {
             while generated.count < count {

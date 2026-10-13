@@ -29,7 +29,9 @@ public enum CaptionWords {
 
     /// One word with its time in seconds of the media it was heard in (transcription output), plus what the
     /// provider knows about it when it says: `confidence` (0–1), `speaker`, `event` (a non-speech sound such as
-    /// laughter or music) and `noSpeechProb` (0–1, the chance its stretch holds no speech).
+    /// laughter or music), `noSpeechProb` (0–1, the chance its stretch holds no speech), and the decoder's scores of
+    /// the segment it came from: `avgLogprob` (mean log probability, at most 0) and `compressionRatio` (text
+    /// compressibility, high when the recognizer repeated itself).
     public struct Timed: Codable, Sendable, Equatable {
         public let text: String
         public let start: Double
@@ -38,10 +40,12 @@ public enum CaptionWords {
         public var speaker: String?
         public var event: String?
         public var noSpeechProb: Double?
+        public var avgLogprob: Double?
+        public var compressionRatio: Double?
 
         public init(
             text: String, start: Double, end: Double, confidence: Double? = nil, speaker: String? = nil,
-            event: String? = nil, noSpeechProb: Double? = nil
+            event: String? = nil, noSpeechProb: Double? = nil, avgLogprob: Double? = nil, compressionRatio: Double? = nil
         ) {
             self.text = text
             self.start = start
@@ -50,6 +54,15 @@ public enum CaptionWords {
             self.speaker = speaker
             self.event = event
             self.noSpeechProb = noSpeechProb
+            self.avgLogprob = avgLogprob
+            self.compressionRatio = compressionRatio
+        }
+
+        /// The same word with another text and time, keeping what the provider knows about it.
+        public func retimed(text: String, start: Double, end: Double) -> Timed {
+            Timed(
+                text: text, start: start, end: end, confidence: confidence, speaker: speaker, event: event,
+                noSpeechProb: noSpeechProb, avgLogprob: avgLogprob, compressionRatio: compressionRatio)
         }
     }
 
@@ -59,7 +72,8 @@ public enum CaptionWords {
     }
 
     /// Reads a word-timings file: `[{"text"|"word", "start", "end"}]` in seconds, with the optional `confidence`
-    /// (or `probability`), `speaker`, `event` and `noSpeechProb`; values out of range are left out.
+    /// (or `probability`), `speaker`, `event`, `noSpeechProb`, `avgLogprob` and `compressionRatio`; values out of range
+    /// are left out.
     public static func decode(_ data: Data) throws -> [Timed] {
         guard data.count <= 8 * 1024 * 1024,
             let value = try? JSONDecoder().decode(JSONValue.self, from: data), case .array(let list) = value,
@@ -77,7 +91,9 @@ public enum CaptionWords {
             }
             return Timed(
                 text: text, start: start, end: end, confidence: unit(fields["confidence"] ?? fields["probability"]),
-                speaker: label(fields["speaker"]), event: label(fields["event"]), noSpeechProb: unit(fields["noSpeechProb"]))
+                speaker: label(fields["speaker"]), event: label(fields["event"]), noSpeechProb: unit(fields["noSpeechProb"]),
+                avgLogprob: fields["avgLogprob"]?.double.flatMap { $0.isFinite && $0 <= 0 ? $0 : nil },
+                compressionRatio: fields["compressionRatio"]?.double.flatMap { $0.isFinite && $0 > 0 ? $0 : nil })
         }
     }
 }

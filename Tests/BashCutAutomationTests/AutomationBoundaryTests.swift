@@ -83,4 +83,26 @@ import Testing
         #expect(await registry.handle(undo).error?.code == -32002, "someone else edited since")
         #expect(seen == [4, 5, 6])
     }
+
+    @Test("A background relink (converted footage) carries baseRev last forward for callers who had caught up")
+    func lastRevisionAfterBackgroundBump() async {
+        let registry = CommandRegistry()
+        var revision = 4
+        registry.currentRevision = { revision }
+        registry.register("timeline.undo") { arguments, _ in
+            guard try arguments.int("baseRev") == revision else { throw RPCFailure(-32002, "stale") }
+            revision += 1
+            return .null
+        }
+        registry.register("context.get") { _, _ in .null }
+        let current = registry.issueToken(author: .agent), behind = registry.issueToken(author: .claude)
+        _ = await registry.handle(RPCRequest(method: "context.get", token: behind))
+        revision += 1
+        _ = await registry.handle(RPCRequest(method: "context.get", token: current))
+        registry.carrySeenRevisions(from: revision, to: revision + 1)
+        revision += 1
+        let undo = { token in RPCRequest(method: "timeline.undo", params: ["baseRev": .string("last")], token: token) }
+        #expect(await registry.handle(undo(current)).error == nil, "the conversion bump is not an edit it missed")
+        #expect(await registry.handle(undo(behind)).error?.code == -32002, "it missed a real edit before the bump")
+    }
 }

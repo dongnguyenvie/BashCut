@@ -1,3 +1,4 @@
+import BashCutAgent
 import BashCutAutomation
 import BashCutDocument
 import BashCutEngine
@@ -50,6 +51,8 @@ extension ProjectDocument {
         context.missingGlyphs = ProjectFonts.missingGlyphs
         context.delivered = deliveredQC
         context.mediaKeys = sourceMediaKeys()
+        context.claims = ((try? agents.knowledgeStore.claims()) ?? []).map(\.text)
+        context.subjects = reviewSubjects()
         return context
     }
 
@@ -67,6 +70,7 @@ extension ProjectDocument {
     /// up to `UnixRPCClient`'s allowance for the call.
     func measureForReview(author: Author) async throws -> JSONValue? {
         guard project.duration > 0 else { return nil }
+        await restoreReviewMeasurements()
         let running = jobs.jobs.first { $0.method == "review.measure" && $0.isActive }
         guard running != nil || reviewPicture?.revision != project.revision else { return nil }
         let id: String
@@ -80,6 +84,7 @@ extension ProjectDocument {
 
     private func reviewResult(_ arguments: CommandArguments, author: Author) async throws -> JSONValue {
         await loadReviewTranscripts()
+        await restoreReviewMeasurements()
         let all = reviewIssues()
         let previous = arguments.optionalInt("sinceRev").map { revision in reviewRounds.last { $0.revision == revision } }
         if let previous, previous == nil {
@@ -90,27 +95,40 @@ extension ProjectDocument {
         if reviewRounds.last?.revision == project.revision { reviewRounds.removeLast() }
         reviewRounds.append((project.revision, all, project))
         reviewRounds = Array(reviewRounds.suffix(20))
-        var issues = all
+        let range = try Self.reviewRange(arguments)
+        let inRange = range.map { range in all.filter { TimelineReview.issue($0, overlaps: range) } } ?? all
+        var issues = inRange
         if let minimum = arguments.optionalString("minSeverity").flatMap(ReviewSeverity.init(rawValue:)) {
             issues = issues.filter { $0.severity <= minimum }
         }
         let list = JSONValue.array(issues.map(\.json))
         guard arguments.bool("summary") || previous != nil else { return list }
         let checks = TimelineReview.coverage(project, context: reviewContext())
-        let summary = ReviewSummary(all, coverage: checks)
-        if summary.status == .pass {
+        let summary = ReviewSummary(inRange, coverage: checks)
+        // A range is a look at one part (a quick edit's check), not the review stage of the whole edit.
+        if summary.status == .pass, range == nil {
             logAutoStage("review", evidence: ["review run rev \(project.revision): pass"], author: author)
         }
         var result: [String: JSONValue] = [
             "issues": list, "summary": summary.json, "rev": .integer(project.revision),
             "round": .integer(reviewRounds.count), "checks": checks,
         ]
+        if let range { result["range"] = .object(["from": .integer(range.lowerBound), "to": .integer(range.upperBound)]) }
         if let previous, let previous {
             var diff = ReviewRounds.diff(before: previous.issues, after: all).object
             diff["sinceRev"] = .integer(previous.revision)
             result["diff"] = .object(diff)
         }
         return .object(result)
+    }
+
+    /// `review run --from --to`: the frames `[from, to)` whose issues the call lists; nil for the whole edit.
+    static func reviewRange(_ arguments: CommandArguments) throws -> Range<Int>? {
+        let from = arguments.optionalInt("from"), to = arguments.optionalInt("to")
+        guard from != nil || to != nil else { return nil }
+        let start = from ?? 0, end = to ?? Int.max
+        guard end > start else { throw RPCFailure(-32602, "--to must be after --from") }
+        return start..<end
     }
 
     /// `review.verify` (P1-E3): the issue as the last review of an earlier revision saw it, measured again now over
@@ -124,6 +142,7 @@ extension ProjectDocument {
             let before = round.issues.first(where: { $0.id == id })
         else { throw RPCFailure(-32602, "\(id) is not in a review of this session; run review run first") }
         await loadReviewTranscripts()
+        await restoreReviewMeasurements()
         var context = reviewContext()
         let fps = project.fps.value
         let margin = Int(fps.rounded())
@@ -175,6 +194,7 @@ extension ProjectDocument {
             befores.append((id, before, round.revision))
         }
         await loadReviewTranscripts()
+        await restoreReviewMeasurements()
         var context = reviewContext()
         let margin = Int(project.fps.value.rounded())
         let picture = befores.filter { item in Self.pictureIssuePrefixes.contains(where: item.id.hasPrefix) }
@@ -312,8 +332,15 @@ extension ProjectDocument {
                 if self.project.revision == project.revision { picture.textContrast = try await self.measureTextContrast() }
                 measured = picture
                 self.reviewPicture = picture
+                self.storeReviewMeasurement(picture: picture, of: project)
             }
-            if usePlugins { self.reviewPluginIssues = ReviewPluginIssues(revision: project.revision, issues: reported) }
+            if usePlugins {
+                self.reviewPluginIssues = ReviewPluginIssues(revision: project.revision, issues: reported)
+                // Kept for the next session only when every check ran: a failed or timed-out one runs again then.
+                if !checks.isEmpty, !reported.contains(where: { $0.id.hasSuffix(":failed") }) {
+                    self.storeReviewMeasurement(pluginIssues: reported, of: project)
+                }
+            }
             let found = self.reviewIssues().filter { issue in
                 issue.source != nil || Self.pictureIssuePrefixes.contains(where: issue.id.hasPrefix)
             }
@@ -380,12 +407,16 @@ extension ProjectDocument {
     static let pictureIssuePrefixes = ["black-", "still-", "jump-", "shot-", "text-contrast"]
 
     /// Keeps the loudness a finished export measured, for the revision it now describes.
-    func recordReviewLoudness(_ measurement: LoudnessMeasurement?, revision: Int, preset: ExportPreset) {
+    func recordReviewLoudness(
+        _ measurement: LoudnessMeasurement?, revision: Int, preset: ExportPreset, measured: Project? = nil
+    ) {
         guard let measurement else { return }
         let target = project.loudnessTarget(preset: preset.argument, platform: preset.platform)
-        reviewLoudness = ReviewLoudness(
+        let loudness = ReviewLoudness(
             revision: revision, integratedLUFS: measurement.integratedLUFS, truePeakDbTP: measurement.truePeakDbTP,
             loudnessRangeLU: measurement.loudnessRangeLU, targetLUFS: target.lufs, maxTruePeakDbTP: target.truePeak,
             preset: preset.argument)
+        reviewLoudness = loudness
+        if let measured { storeReviewMeasurement(loudness: loudness, of: measured) }
     }
 }

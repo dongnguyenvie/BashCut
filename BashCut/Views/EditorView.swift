@@ -93,6 +93,9 @@ struct EditorView: View {
         }
         .overlay(alignment: .bottomTrailing) {
             VStack(alignment: .trailing, spacing: 0) {
+                if document.fileURL != nil, document.runPanel.visible {
+                    RunPanelView(document: document, model: document.runPanel)
+                }
                 if let notice = document.exports.notice {
                     ExportToast(notice: notice, document: document)
                         .transition(.move(edge: .trailing).combined(with: .opacity))
@@ -111,7 +114,15 @@ struct EditorView: View {
         .onChange(of: document.exports.isRunning ? Int(document.exports.progress * 100) : nil) { _, percent in
             ExportDockTile.show(percent.map { Double($0) / 100 })
         }
+        // The run panel follows the run log: a cheap check every second, a read only when it changed.
+        .task(id: document.fileURL) {
+            while !Task.isCancelled {
+                document.runPanel.refresh()
+                do { try await Task.sleep(for: .seconds(1)) } catch { return }
+            }
+        }
         .sheet(isPresented: Bindable(document.ui).showAsk) { AskAgentView(document: document) }
+        .sheet(isPresented: Bindable(document.ui).showQuickEdit) { QuickEditSheet(document: document) }
         .sheet(isPresented: Bindable(document.ui).showNewProject) { NewProjectView(document: document) }
         .sheet(isPresented: Bindable(document.ui).showExport) { ExportView(document: document) }
         .sheet(isPresented: Bindable(document.ui).showExportReport) {
@@ -124,7 +135,7 @@ struct EditorView: View {
             CheckpointView(request: request, resolve: document.resolveCheckpoint)
         }
         .sheet(item: $document.scopeHold) { hold in
-            AgentScopeHoldView(hold: hold, resolve: document.resolveScopeHold)
+            AgentScopeHoldView(hold: hold, resolve: { document.resolveScopeHold($0) })
         }
         .sheet(isPresented: Bindable(document.ui).showAgentChanges) {
             if let change = document.agentChange {

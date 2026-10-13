@@ -138,6 +138,16 @@ struct WorkflowChecklistTests {
         #expect(WorkflowChecklist.strategyGuard(recipe, entries: [read])?.category == "audit_missing")
     }
 
+    @Test("Only marking the rough cut done while G2 is skipped is gated; progress reports never are")
+    func stageGuardScope() {
+        #expect(WorkflowChecklist.stageNeedsStrategyGuard(stage: "rough-cut", status: "done", strategySkipped: true))
+        #expect(!WorkflowChecklist.stageNeedsStrategyGuard(stage: "rough-cut", status: nil, strategySkipped: true))
+        #expect(!WorkflowChecklist.stageNeedsStrategyGuard(stage: "rough-cut", status: "started", strategySkipped: true))
+        #expect(!WorkflowChecklist.stageNeedsStrategyGuard(stage: "rough-cut", status: "skipped", strategySkipped: true))
+        #expect(!WorkflowChecklist.stageNeedsStrategyGuard(stage: "rough-cut", status: "done", strategySkipped: false))
+        #expect(!WorkflowChecklist.stageNeedsStrategyGuard(stage: "colour", status: "done", strategySkipped: true))
+    }
+
     @Test("A plan stage goes right after the stage its after names, chained or not, else before review")
     func stagePlacement() throws {
         let plan: JSONValue = .object([

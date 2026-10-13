@@ -64,6 +64,80 @@ public enum SelectionEdits {
         return planner.operations
     }
 
+    /// Moves the selected items of magnetic layer `trackID` together as one block, keeping their order, so the block
+    /// sits before `before` (an item of that layer outside the selection; nil: at the end). The layer packs again and
+    /// linked sound follows, as a single reorder does. Selected items on other layers stay.
+    public static func reorder(_ ids: [String], on trackID: String, before: String?, in project: Project) throws
+        -> [EditOperation]
+    {
+        guard let track = project.track(id: trackID), track.magnetic else {
+            throw ProjectError.invalid("Moving clips as a block needs a magnetic layer")
+        }
+        let wanted = Set(roots(ids, in: project).map(\.id))
+        let block = track.items.filter { wanted.contains($0.id) }.sorted { ($0.at, $0.id) < ($1.at, $1.id) }
+        guard !block.isEmpty else { return [] }
+        if let before {
+            guard track.items.contains(where: { $0.id == before }) else {
+                throw ProjectError.invalid("\(before) is not on layer \(trackID)")
+            }
+            guard !wanted.contains(before) else { throw ProjectError.invalid("before must be a clip outside the selection") }
+        }
+        // Already in place: the block is contiguous and directly before `before`.
+        let ordered = track.items.sorted { ($0.at, $0.id) < ($1.at, $1.id) }
+        if let first = ordered.firstIndex(where: { $0.id == block[0].id }),
+            ordered[first..<min(ordered.count, first + block.count)].map(\.id) == block.map(\.id),
+            (first + block.count < ordered.count ? ordered[first + block.count].id : nil) == before
+        {
+            return []
+        }
+        return block.map { .reorder(item: $0.id, before: before) }
+    }
+
+    /// The clip of magnetic layer `trackID` outside the selection that a block of the selected clips dropped with its
+    /// first clip at `frame` goes before: the first whose middle is after `frame`; nil for the end.
+    public static func anchor(_ ids: [String], on trackID: String, at frame: Int, in project: Project) -> String? {
+        let wanted = Set(roots(ids, in: project).map(\.id))
+        return project.track(id: trackID)?.items.filter { !wanted.contains($0.id) }.sorted { $0.at < $1.at }
+            .first { frame < $0.at + $0.duration / 2 }?.id
+    }
+
+    /// Sets `key` (inside `group` when given, merged into each item's group) on every selected item it applies to,
+    /// in one undo step (Inspector multi-edit): opacity on clips and text, volumeDb on anything with sound, transform,
+    /// fill and backdrop on clips and images. Returns no operations when none applies.
+    public static func patch(
+        _ ids: [String], key: String, group: String? = nil, value: JSONValue, in project: Project
+    ) -> [EditOperation] {
+        let wanted = Set(ids)
+        var operations: [EditOperation] = []
+        for track in project.tracks {
+            for item in track.items where wanted.contains(item.id) {
+                guard applies(key: group ?? key, to: item, on: track) else { continue }
+                var patch: [String: JSONValue]
+                if let group {
+                    var fields = item[group]?.object ?? [:]
+                    fields[key] = value == .null ? nil : value
+                    patch = [group: .object(fields)]
+                    if group == "transform" { patch["reframePreset"] = .string("custom") }
+                } else {
+                    patch = [key: value]
+                }
+                operations.append(.setProperties(item: item.id, patch: patch))
+            }
+        }
+        return operations
+    }
+
+    /// Whether a multi-edit of `key` (a field or group name) applies to `item` on `track`.
+    public static func applies(key: String, to item: Item, on track: Track) -> Bool {
+        let picture = track.kind == TrackKind.video && item.mediaID != nil
+        switch key {
+        case "opacity": return track.kind == TrackKind.video || track.kind == TrackKind.text
+        case "volumeDb": return item.mediaID != nil && (track.kind == TrackKind.audio || track.kind == TrackKind.video)
+        case "transform", "fill", "backdrop", "crop": return picture
+        default: return false
+        }
+    }
+
     /// Items between `anchor` and `target` on `target`'s layer, both included (Shift-click). Only `target` when the
     /// anchor is on another layer or gone.
     public static func range(from anchor: String?, to target: String, in project: Project) -> [String] {
@@ -91,6 +165,8 @@ public struct TimelineClipboard: Sendable, Equatable {
     }
 
     public let entries: [Entry]
+
+    init(entries: [Entry]) { self.entries = entries }
 
     /// Copies the selected items and their linked partners, so pasted picture keeps its sound.
     public init?(copying ids: [String], from project: Project) {

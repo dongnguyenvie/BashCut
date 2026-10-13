@@ -9,14 +9,19 @@ public struct PluginViewNode: Sendable, Equatable, Identifiable {
     public enum Kind: String, CaseIterable, Sendable {
         case section, row, divider, spacer, text, badge, keyValue, progress, image, imageCompare, audio, list
         case button, textField, textArea, toggle, picker, slider
+        /// A colour well: `value` is `#RRGGBB` (`#RRGGBBAA` with `alpha`); sends `change` with the hex string.
+        case colorPicker
+        /// A font menu of the project's fonts and the installed ones (what `fonts list` lists): `value` is a PostScript
+        /// name, or a family name with `"by": "family"`; sends `change` with it.
+        case fontPicker
 
         /// Components that send events and so need an `id`.
-        public var isInteractive: Bool {
-            [.button, .textField, .textArea, .toggle, .picker, .slider, .list].contains(self)
-        }
+        public var isInteractive: Bool { isInput || [.button, .list].contains(self) }
 
         /// Inputs whose current value goes with every event as `values[id]`.
-        public var isInput: Bool { [.textField, .textArea, .toggle, .picker, .slider].contains(self) }
+        public var isInput: Bool {
+            [.textField, .textArea, .toggle, .picker, .slider, .colorPicker, .fontPicker].contains(self)
+        }
     }
 
     /// The plugin's `id`, or a path such as `_0.2` for components without one.
@@ -45,6 +50,7 @@ public struct PluginViewNode: Sendable, Equatable, Identifiable {
         switch kind {
         case .toggle: return .bool(false)
         case .slider: return .number(double("min") ?? 0)
+        case .colorPicker: return .string(bool("alpha") ? "#FFFFFFFF" : "#FFFFFF")
         default: return .string("")
         }
     }
@@ -162,6 +168,14 @@ public struct PluginViewTree: Sendable, Equatable {
         if kind == .picker, (fields["options"]?.array.count ?? 0) > maximumOptions {
             throw PluginError.invalid("A picker offers at most \(maximumOptions) options")
         }
+        if kind == .colorPicker, let value = fields["value"], value != .null {
+            guard let hex = value.string.flatMap({ PluginViewColor.normalized($0, alpha: fields["alpha"]?.bool ?? false) })
+            else { throw PluginError.invalid("colorPicker \(id ?? "") value must be #RRGGBB or #RRGGBBAA") }
+            fields["value"] = .string(hex)
+        }
+        if kind == .fontPicker, let by = fields["by"]?.string, !["font", "family"].contains(by) {
+            throw PluginError.invalid("fontPicker \(id ?? "") by must be font or family")
+        }
     }
 
     /// Every component, depth first.
@@ -190,6 +204,36 @@ public struct PluginViewTree: Sendable, Equatable {
         if let title { fields["title"] = .string(title) }
         if let refreshSeconds { fields["refreshSeconds"] = .integer(refreshSeconds) }
         return .object(fields)
+    }
+}
+
+/// Hex colours of `colorPicker` components (`views.colorPicker`).
+public enum PluginViewColor {
+    /// `#RRGGBB` or `#RRGGBBAA` (3- and 4-digit short forms too) in upper case; with `alpha` the result always has an
+    /// alpha byte (`FF` when the value had none), without it the alpha byte is dropped. Nil for anything else.
+    public static func normalized(_ text: String, alpha: Bool = false) -> String? {
+        var digits = text.trimmingCharacters(in: .whitespaces)
+        guard digits.hasPrefix("#") else { return nil }
+        digits.removeFirst()
+        guard digits.allSatisfy(\.isHexDigit), [3, 4, 6, 8].contains(digits.count) else { return nil }
+        if digits.count <= 4 { digits = digits.map { "\($0)\($0)" }.joined() }
+        digits = digits.uppercased()
+        if alpha { return "#" + (digits.count == 6 ? digits + "FF" : digits) }
+        return "#" + digits.prefix(6)
+    }
+
+    /// The red, green, blue and alpha components (0–1) of a hex colour; nil when it is not one.
+    public static func components(_ text: String) -> (red: Double, green: Double, blue: Double, alpha: Double)? {
+        guard let hex = normalized(text, alpha: true), let value = UInt64(hex.dropFirst(), radix: 16) else { return nil }
+        func byte(_ shift: UInt64) -> Double { Double((value >> shift) & 255) / 255 }
+        return (byte(24), byte(16), byte(8), byte(0))
+    }
+
+    /// The hex text for components (0–1, clamped).
+    public static func hex(red: Double, green: Double, blue: Double, alpha: Double = 1, includeAlpha: Bool = false) -> String {
+        func byte(_ value: Double) -> Int { Int((min(1, max(0, value.isFinite ? value : 0)) * 255).rounded()) }
+        let rgb = String(format: "#%02X%02X%02X", byte(red), byte(green), byte(blue))
+        return includeAlpha ? rgb + String(format: "%02X", byte(alpha)) : rgb
     }
 }
 

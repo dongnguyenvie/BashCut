@@ -1,5 +1,7 @@
+import AVFoundation
 import BashCutAutomation
 import BashCutDocument
+import BashCutEngine
 import BashCutProject
 import Foundation
 
@@ -151,13 +153,41 @@ extension ProjectDocument {
         return (sound, media)
     }
 
-    /// A small still of the clip's middle as an effect preset's preview, when the viewer can render one; nil
-    /// otherwise (the preset is saved without one).
+    /// An effect preset's preview: a small looping GIF of the clip as the timeline plays it (the effect included),
+    /// or a still of its middle when the frames cannot be read; nil when the viewer can render neither (the preset
+    /// is saved without one).
     func effectPreview(itemID: String?) async -> URL? {
         guard let id = itemID ?? selectedID, let item = project.tracks.flatMap(\.items).first(where: { $0.id == id }),
             project.tracks.first(where: { $0.items.contains { $0.id == id } })?.kind == TrackKind.video
         else { return nil }
+        if let animated = try? await effectPreviewGIF(item) { return animated }
         return try? await captureAgentFrame(at: item.at + item.duration / 2, maximumDimension: 320).url
+    }
+
+    /// Up to `EffectPreviewGIF.frames` frames across the clip at its timeline pace, as a GIF in the project cache.
+    private func effectPreviewGIF(_ item: Item) async throws -> URL? {
+        for _ in 0..<500 where preview.currentBuild == nil && project.duration > 0 && fileURL != nil {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        guard let root = fileURL?.deletingLastPathComponent(), let snapshot = preview.currentBuild, item.duration > 1
+        else { return nil }
+        let count = min(EffectPreviewGIF.frames, item.duration)
+        let frames = (0..<count).map { min(project.duration - 1, item.at + $0 * (item.duration - 1) / max(1, count - 1)) }
+        guard frames.allSatisfy({ snapshot.undecodable(at: $0).isEmpty }) else { return nil }
+        let generator = AVAssetImageGenerator(asset: snapshot.composition)
+        generator.videoComposition = snapshot.videoComposition
+        generator.appliesPreferredTrackTransform = true
+        generator.maximumSize = CGSize(width: 320, height: 320)
+        generator.requestedTimeToleranceBefore = .zero
+        generator.requestedTimeToleranceAfter = .zero
+        var images: [CGImage] = []
+        for frame in frames { images.append(try await generator.image(at: project.fps.time(frame)).image) }
+        let directory = ProjectCache.url(.agentContext, projectRoot: root)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let url = directory.appendingPathComponent("effect-r\(project.revision)-\(item.id.prefix(36)).gif")
+        let seconds = Double(item.duration) / project.fps.value
+        try AnimatedImageMovie.writeGIF(images, delay: EffectPreviewGIF.delay(seconds: seconds, frames: count), to: url)
+        return url
     }
 
     // MARK: Apply with…

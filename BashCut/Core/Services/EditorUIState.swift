@@ -36,6 +36,30 @@ public final class EditorUIState {
     public var pluginPanelViews: [String: String] = [:]
     /// The plugin view shown in a sheet (`<plugin>/<view>`, plugin API 8 `location: sheet`).
     public var pluginSheet: String?
+    /// Plugin overlays on the timeline and viewer (#407), ready to draw; `setPluginOverlays` changes them.
+    @ObservationIgnored public private(set) var pluginOverlays = PluginOverlayIndex([:])
+    /// Goes up whenever `pluginOverlays` changes (observed, so the timeline compares a number, not the overlays).
+    public private(set) var pluginOverlayRevision = 0
+    /// Each plugin's overlay set as it sent it.
+    @ObservationIgnored public private(set) var pluginOverlaySets: [String: [PluginOverlay]] = [:]
+
+    /// Replaces `plugin`'s overlays (an empty set removes them); not saved with the project.
+    public func setPluginOverlays(_ plugin: String, _ overlays: [PluginOverlay]) {
+        guard pluginOverlaySets[plugin] ?? [] != overlays else { return }
+        pluginOverlaySets[plugin] = overlays.isEmpty ? nil : overlays
+        pluginOverlays = PluginOverlayIndex(pluginOverlaySets)
+        pluginOverlayRevision += 1
+    }
+
+    /// Removes the overlays of every plugin `keep` refuses (all of them with no `keep`).
+    public func clearPluginOverlays(keeping keep: (String) -> Bool = { _ in false }) {
+        let kept = pluginOverlaySets.filter { keep($0.key) }
+        guard kept.count != pluginOverlaySets.count else { return }
+        pluginOverlaySets = kept
+        pluginOverlays = PluginOverlayIndex(kept)
+        pluginOverlayRevision += 1
+    }
+
     /// One of `UIAction.mediaSources`: what the Media panel lists.
     public var mediaSource = "footage"
     /// Search and filters of each library panel, by panel name.
@@ -74,6 +98,9 @@ public final class EditorUIState {
     /// Software Update opened by itself for a new release: it shows what is known without checking again.
     public var updatesPrompt = false
     public var showAsk = false
+    /// Quick Edit › Other…: the request typed for the selected clips (#449).
+    public var showQuickEdit = false
+    public var quickEditDraft = ""
     public var showSections = false
     /// The command palette (⇧⌘P) and the keyboard-shortcuts sheet (⌘/), both built from the menu bar.
     public var showCommands = false
@@ -135,6 +162,7 @@ public final class EditorUIState {
     /// Closes the sheets that describe the previous project when another one opens.
     public func closeProjectSheets() {
         showExportReport = false
+        showQuickEdit = false
         showExportProgress = false
         showAgentChanges = false
         showExternalChanges = false
@@ -218,6 +246,8 @@ public struct LibraryEditorRequest: Identifiable {
     public var textPreset: LibraryTextPreset?
     /// A brand kit's params, edited in the sheet (#453); nil for other kinds.
     public var brand: [String: JSONValue]?
+    /// An effect preset's recipe as JSON text, edited in the sheet; nil for other kinds.
+    public var recipe: String?
 
     public init(
         mode: Mode, name: String, tags: [String] = [], pack: String? = nil, scope: LibraryScope,

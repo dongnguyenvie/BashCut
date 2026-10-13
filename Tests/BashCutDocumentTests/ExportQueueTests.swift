@@ -10,6 +10,8 @@ import Testing
 private struct FakeEngine: RenderEngine {
     let log: ExportLog
     var steps = 3
+    /// Exports to a file with this name fail instead of writing it.
+    var failing: String?
 
     func build(_ project: Project, root: URL, workspace: URL?, purpose: RenderPurpose) async throws
         -> CompositionSnapshot
@@ -29,6 +31,7 @@ private struct FakeEngine: RenderEngine {
         progress: @escaping @Sendable (Double) -> Void
     ) async throws -> ExportReceipt {
         await log.started(url.lastPathComponent)
+        if url.lastPathComponent == failing { throw ProjectError.invalid("Render failed at project frame 20") }
         for step in 1...steps {
             try await Task.sleep(for: .milliseconds(15))
             progress(Double(step) / Double(steps))
@@ -69,9 +72,13 @@ struct ExportQueueTests {
             reserved: reserved)
     }
 
-    private func waitUntil(_ condition: @MainActor () -> Bool) async throws {
-        for _ in 0..<400 where !condition() { try await Task.sleep(for: .milliseconds(10)) }
-        #expect(condition())
+    /// Polls for up to 30 s (a loaded machine runs the fake exports late), returning as soon as `condition` holds.
+    private func waitUntil(
+        _ condition: @MainActor () -> Bool, sourceLocation: SourceLocation = #_sourceLocation
+    ) async throws {
+        let deadline = ContinuousClock.now + .seconds(30)
+        while !condition(), ContinuousClock.now < deadline { try await Task.sleep(for: .milliseconds(10)) }
+        #expect(condition(), sourceLocation: sourceLocation)
     }
 
     @Test("Exports run one at a time in request order and report progress as jobs")
@@ -230,6 +237,21 @@ struct ExportQueueTests {
         #expect(callbacks == 2)
     }
 
+    @Test("The report's speech coverage and the credits come with the export, made off the main actor (#350)")
+    func outcomeCarriesReportFacts() async throws {
+        let root = try folder()
+        defer { try? FileManager.default.removeItem(at: root) }
+        var project = try project()
+        project["review"] = .object(["credits": .bool(true)])
+        let request = try ExportRequest(
+            project: project, root: root, workspace: nil, name: "facts", preset: .quickDraft,
+            directory: root.appendingPathComponent("render"), includeSubRip: false, normalizeAudio: false, reserved: [])
+        let pipeline = ExportPipeline(engine: FakeEngine(log: ExportLog()), loudness: nil)
+        let outcome = try await pipeline.run(request) { _, _ in }
+        #expect(outcome.speechCoverage == TimelineReview.speechCoverage(request.source, transcripts: request.transcripts))
+        #expect(outcome.credits == ProjectCredits.of(project).json)
+    }
+
     @Test("The controller keeps the last report in the project history and describes it in export.status")
     func controllerReports() async throws {
         let root = try folder()
@@ -256,6 +278,31 @@ struct ExportQueueTests {
         #expect(reopened.report?.receipt.url.lastPathComponent == "two.mp4")
         reopened.reset()
         #expect(reopened.report == nil)
+    }
+
+    @Test("A failed export shows as failed in export.status with its error until a later export finishes")
+    func controllerFailure() async throws {
+        let root = try folder()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let log = ExportLog()
+        let exports = ExportController(jobs: JobCenter()) {
+            ExportPipeline(engine: FakeEngine(log: log, failing: "bad.mp4"), loudness: nil)
+        }
+        var finished = 0
+        try exports.enqueue(try request("one", in: root), author: .agent) { _ in finished += 1 }
+        try await waitUntil { finished == 1 }
+        try exports.enqueue(try request("bad", in: root), author: .agent) { _ in finished += 1 }
+        try await waitUntil { finished == 2 }
+        var status = exports.statusJSON.object
+        #expect(status["state"] == .string("failed"))
+        #expect(status["error"]?.string?.contains("project frame 20") == true)
+        #expect(status["path"] == .string(root.appendingPathComponent("render/bad.mp4").path))
+        #expect(status["lastExport"]?.object["path"] == .string(root.appendingPathComponent("render/one.mp4").path))
+        try exports.enqueue(try request("two", in: root), author: .agent) { _ in finished += 1 }
+        try await waitUntil { finished == 3 }
+        status = exports.statusJSON.object
+        #expect(status["state"] == .string("completed"))
+        #expect(status["error"] == nil)
     }
 
     @Test("The export toast shows the newest notice until dismissed; failures stay and a project switch clears it")

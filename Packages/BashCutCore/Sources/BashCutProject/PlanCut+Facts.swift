@@ -157,6 +157,34 @@ extension PlanCut {
         return (lines, graphics, problems)
     }
 
+    /// The review errors of the edit as it would be built, as one problem, so a check that reads only `problems` sees
+    /// them before rendering and building (captions under a platform's caption bar, a cut inside a word…).
+    public static func reviewErrorsProblem(_ review: [ReviewIssue]) -> Problem? {
+        let errors = review.filter { $0.severity == .error }
+        guard let first = errors.first else { return nil }
+        var kinds: [String: Int] = [:]
+        for issue in errors { kinds[issue.kind, default: 0] += 1 }
+        let counts = kinds.sorted { $0.key < $1.key }.map { "\($0.key) ×\($0.value)" }.joined(separator: ", ")
+        return Problem(
+            id: "review-errors", severity: "warning", entry: nil,
+            detail: "The edit as built has \(errors.count) review error(s) (\(counts)); the first: \(first.title): "
+                + "\(first.detail) Fix them in this list before building (review holds each one).",
+            facts: ["kinds": .object(kinds.mapValues { .integer($0) }), "first": first.json])
+    }
+
+    /// A project without a content language (captions, speech-rate units, voices and font checks read it), with the
+    /// language its footage was heard in as the fix.
+    public static func languageProblem(_ contentLanguage: String, heard: [String]) -> Problem? {
+        guard contentLanguage.isEmpty else { return nil }
+        let languages = Array(Set(heard.filter { !$0.isEmpty })).sorted()
+        let fix = languages.count == 1 ? "project format --language \(languages[0]) --base-rev last (the footage was heard in "
+            + "\(languages[0]))" : "project format --language <tag> --base-rev last"
+        return Problem(
+            id: "content-language-unset", severity: "warning", entry: nil,
+            detail: "The project has no content language, which captions, voices and font checks use: \(fix)",
+            facts: ["heard": .array(languages.map(JSONValue.string))])
+    }
+
     /// A graphic's span, layer and media, and what is wrong with it.
     static func graphicRow(
         _ graphic: Graphic, placements: [Placement], on project: Project, problems: inout [Problem]

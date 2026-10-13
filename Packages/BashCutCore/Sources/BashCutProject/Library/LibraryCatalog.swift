@@ -381,3 +381,32 @@ public enum LibraryBuiltIns {
         }
     }()
 }
+
+/// One page of a library listing (`library list --offset --limit`).
+public struct LibraryPage: Sendable, Equatable {
+    public static let defaultLimit = 50
+    public static let maximumLimit = 500
+    public var total: Int
+    public var offset: Int
+    public var limit: Int
+
+    /// A page of `total` items from `offset` (clamped to 0…total), `limit` long (the default without one).
+    public init(total: Int, offset: Int, limit: Int?) {
+        self.total = max(0, total)
+        self.offset = min(max(0, offset), self.total)
+        self.limit = min(Self.maximumLimit, max(1, limit ?? Self.defaultLimit))
+    }
+
+    /// The indices of the page's items.
+    public var range: Range<Int> { offset..<min(total, offset + limit) }
+
+    /// The offset of the following page, or nil after the last.
+    public var next: Int? { range.upperBound < total ? range.upperBound : nil }
+
+    public func json(items: [JSONValue]) -> JSONValue {
+        .object([
+            "items": .array(items), "total": .integer(total), "offset": .integer(offset), "limit": .integer(limit),
+            "next": next.map(JSONValue.integer) ?? .null,
+        ])
+    }
+}

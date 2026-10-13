@@ -75,6 +75,26 @@ extension CommandCatalog {
             ]),
     ]
 
+    /// Quick Edit next to Send to Agent (#449): a one-click request on the selection for the open agent.
+    static let quickEditSpecs: [CommandSpec] = [
+        CommandSpec(
+            "agent.quick-edit", .edit,
+            "A quick edit on the selected clips (or --items) like the Quick Edit menu next to Send to Agent: the open "
+                + "agent (else the first chat agent) gets the request with those clips as its scope (lower music adds "
+                + "the music under them) and is asked to review only that range afterwards (review run --from --to). "
+                + "faster, remove, music-lower, caption and punch-in are worded by BashCut, with --text added; custom "
+                + "sends --text. Returns {kind, sentTo, items, range, request}; a chat agent still working is an error.",
+            parameters: [
+                CommandParameter("kind", .string, "What to do", required: true,
+                                 choices: ["faster", "remove", "music-lower", "caption", "punch-in", "custom"],
+                                 cli: .positional),
+                CommandParameter("text", .string, "The request for custom, or a note added to the others",
+                                 sensitive: true, cli: .option("text")),
+                CommandParameter("items", .string, "Item IDs, comma-separated (default the selection)",
+                                 cli: .option("items")),
+            ]),
+    ]
+
     /// Chat-agent tabs: plugins with the `agent.chat` capability (docs/specs/11-chat-agents.md), such as AI Editor.
     static let chatSpecs: [CommandSpec] = [
         CommandSpec(

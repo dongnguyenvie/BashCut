@@ -11,12 +11,15 @@ extension ProjectDocument {
         handleAuthored("media.subjects") { document, arguments, author in
             let provider = arguments.optionalString("provider")
             return try await document.startVisionJob("media.subjects", arguments, author: author) { document, sampling, root in
-                try await document.plugins.running(FacesCapability.capability) {
+                let generated = try await document.plugins.running(FacesCapability.capability) {
                     try await document.plugins.service.detectSubjects(
                         sampling, preferredProvider: provider
                             ?? document.project.preferredProvider(for: FacesCapability.capability),
                         projectRoot: root)
                 }
+                // Kept per file content, for clip.reframe and review.layout's faceOverlap.
+                try document.storeSubjects(generated, url: sampling.mediaURL, root: root)
+                return generated
             }
         }
         handleAuthored("image.cutout") { document, arguments, author in try await document.startCutout(arguments, author: author) }

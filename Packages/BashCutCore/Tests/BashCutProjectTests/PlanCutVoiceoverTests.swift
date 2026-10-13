@@ -123,4 +123,28 @@ struct PlanCutVoiceoverTests {
         #expect(graphics[0]["short"] == .number(5))
         #expect(problems["picture-gap"] != nil, "Main is black after the card")
     }
+
+    @Test("plan check names the built edit's review errors as one problem, so captions under a caption bar show early")
+    func reviewErrorsProblem() throws {
+        let issues = [
+            ReviewIssue(id: "safe-bottom-a", title: "Text under the platform caption bar", detail: "Bottom 24%.", frame: 0,
+                        severity: .error),
+            ReviewIssue(id: "safe-bottom-b", title: "Text under the platform caption bar", detail: "Bottom 24%.", frame: 9,
+                        severity: .error),
+            ReviewIssue(id: "jump-c", title: "Jump cut", detail: "Small change.", frame: 3, severity: .warning),
+        ]
+        let problem = try #require(PlanCut.reviewErrorsProblem(issues))
+        #expect(problem.id == "review-errors" && problem.severity == "warning")
+        #expect(problem.facts["kinds"] == .object(["safe-bottom": .integer(2)]))
+        #expect(problem.detail.contains("2 review error(s)"))
+        #expect(PlanCut.reviewErrorsProblem(Array(issues.suffix(1))) == nil, "warnings alone are not reported")
+    }
+
+    @Test("plan check asks for a content language when the project has none, naming the one the footage was heard in")
+    func languageProblem() {
+        #expect(PlanCut.languageProblem("vi", heard: ["en"]) == nil)
+        let problem = PlanCut.languageProblem("", heard: ["en", "en", ""])
+        #expect(problem?.id == "content-language-unset" && problem?.detail.contains("--language en") == true)
+        #expect(PlanCut.languageProblem("", heard: [])?.detail.contains("<tag>") == true)
+    }
 }

@@ -417,6 +417,7 @@ extension ProjectDocument {
                             "id": .string(provider.id), "capability": .string(provider.capability),
                             "name": .string(provider.name), "priority": .integer(provider.priority),
                             "kinds": provider.kinds.map { .array($0.map(JSONValue.string)) } ?? .null,
+                            "maxTakes": provider.maxTakes.map(JSONValue.integer) ?? .null,
                         ])
                     }),
                 ])
@@ -443,9 +444,13 @@ extension ProjectDocument {
     }
 
     /// Runs `work` with plugin calls frozen instead of sent (P2-G4) and returns the first request it would send.
-    func capabilityDryRun(_ work: @MainActor (ProjectDocument) async throws -> JSONValue) async throws -> JSONValue {
+    /// `requestID` goes into the request as `requestId`, as in a real run.
+    func capabilityDryRun(
+        requestID: String? = nil, _ work: @MainActor (ProjectDocument) async throws -> JSONValue
+    ) async throws -> JSONValue {
         do {
-            _ = try await PluginCallContext.$current.withValue(PluginCallContext(dryRun: true)) { try await work(self) }
+            let call = PluginCallContext(requestID: requestID, dryRun: true)
+            _ = try await PluginCallContext.$current.withValue(call) { try await work(self) }
         } catch let dryRun as PluginDryRun {
             return .object(["dryRun": .bool(true), "request": dryRun.request])
         }
@@ -458,8 +463,8 @@ extension ProjectDocument {
         _ method: String, author: Author, arguments: CommandArguments? = nil, requestID: String? = nil,
         work: @escaping @MainActor (ProjectDocument) async throws -> JSONValue
     ) async throws -> JSONValue {
-        if arguments?.bool("dryRun") == true { return try await capabilityDryRun(work) }
         let requestID = requestID ?? arguments?.optionalString("requestId")
+        if arguments?.bool("dryRun") == true { return try await capabilityDryRun(requestID: requestID, work) }
         if let reused = reusedJob(method, requestID: requestID) { return reused }
         guard let root = fileURL?.deletingLastPathComponent() else { throw RPCFailure(-32602, "Open a saved project first") }
         // Fail the call, not a job a moment later, when nothing could serve it (P2-G5; health is checked in the job).

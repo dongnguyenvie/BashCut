@@ -126,6 +126,30 @@ extension ProjectDocument {
         Task { do { try await placeLibraryItem(item) } catch { message = error.localizedDescription } }
     }
 
+    /// Library items dragged from a plugin view onto the timeline (#408, `libraryItem`): each placed like
+    /// `library place <reference> --at-frame F` (the same lookup and placement, one undo step each), the next at
+    /// the end of the one before. The layer under the pointer is used when it takes the item (an audio item on an
+    /// audio layer, a clip on a picture layer); otherwise the placement picks one, as `library place` does.
+    func placeDroppedLibraryItems(_ references: [String], at frame: Int, overTrack trackID: String?) {
+        Task {
+            var at = frame
+            for reference in references {
+                do {
+                    let item = try libraryCatalog.item(reference)
+                    let track = trackID.flatMap { id in project.tracks.first { $0.id == id } }
+                    let fits = track.map { item.kind == .audio ? $0.kind == TrackKind.audio
+                        : item.kind == .clip && $0.kind == TrackKind.video } ?? false
+                    let placed = try await placeLibraryItem(
+                        item, LibraryPlacement(frame: at, trackID: fits ? trackID : nil))
+                    at = project.tracks.flatMap(\.items).first { $0.id == placed.itemID }?.end ?? at
+                } catch {
+                    message = error.localizedDescription
+                    return
+                }
+            }
+        }
+    }
+
     /// Library panels: uses an item on the selected timeline item.
     func applyFromLibrary(_ item: LibraryItem) {
         guard let selectedID else { return }
@@ -190,6 +214,7 @@ extension ProjectDocument {
         let id = id ?? (slug.isEmpty ? "\(kind.rawValue)-\(UUID().uuidString.prefix(8).lowercased())" : slug)
         var item = LibraryItem(id: id, kind: kind, name: name)
         for (key, value) in changes { item[key] = value == .null ? nil : value }
+        let file = file ?? textPresetFontFile(kind, params: item.params)
         if kind == .look, file != nil, item.params["color"] == nil {
             // A .cube on its own is a look that is just that LUT (#79).
             item["params"] = .object(item.params.merging(["color": .object([:])]) { $1 })
@@ -238,11 +263,12 @@ extension ProjectDocument {
             throw RPCFailure(-32602, "\(item.reference) is \(item.scope.rawValue) and cannot be moved; duplicate it")
         }
         _ = try catalog.store(scope)
+        let font = fontToCarry(item)
         return try await libraryChange(
             "library.move", scope: .user, author: author,
             arguments: ["id": item.reference, "to": scope.rawValue, "name": item.name]
         ) {
-            try catalog.move(item, to: scope).json()
+            try Self.move(item, to: scope, catalog: catalog, font: font).json()
         }
     }
 
@@ -259,14 +285,15 @@ extension ProjectDocument {
         let item = id.flatMap { id in project.tracks.flatMap(\.items).first { $0.id == id } }
         if let id, item == nil { throw RPCFailure(-32602, "Unknown item \(id)") }
         let transition = id.flatMap { id in project.transitions.first { $0.fromItemID == id || $0.toItemID == id } }
-        let sound = kind == .transitionPreset ? transition.flatMap { project.transitionSound(for: $0.id)?.media } : nil
+        let placedSound = kind == .transitionPreset ? transition.flatMap { project.transitionSound(for: $0.id) } : nil
+        let sound = placedSound?.media
         let grade = kind == .look ? gradeLUT(of: item) : nil
         let effectSound = kind == .effectPreset ? item.flatMap(effectSound(of:)) : nil
         let params: [String: JSONValue]
         do {
             params = try LibrarySelection.params(
                 kind, item: item, transition: transition, sound: sound ?? effectSound?.media, lut: grade?.lut,
-                soundItem: effectSound?.item, project: project)
+                soundItem: effectSound?.item ?? placedSound?.item, project: project)
         } catch { throw RPCFailure.from(error, fallbackCode: -32602) }
         if let grade { return (params, grade.file) }
         let ownSound = kind == .effectPreset
@@ -278,7 +305,7 @@ extension ProjectDocument {
         return (params, try MediaPathResolver.resolve(sound.path, projectRoot: root, workspaceRoot: settings.workspace))
     }
 
-    private static func filter(_ arguments: CommandArguments) -> LibraryCatalog.Filter {
+    static func filter(_ arguments: CommandArguments) -> LibraryCatalog.Filter {
         var kinds = arguments.optionalString("kind").flatMap(LibraryKind.init(rawValue:)).map { [$0] }
         if let panel = arguments.optionalString("panel") {
             let inPanel = LibraryKind.kinds(inPanel: panel)
@@ -299,12 +326,11 @@ extension ProjectDocument {
             let list = tags.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
             changes["tags"] = .array(list.map(JSONValue.string))
         }
-        for key in ["pack", "source"] {
-            if let value = arguments.optionalString(key) { changes[key] = .string(value) }
-        }
+        for key in ["pack", "source"] { if let value = arguments.optionalString(key) { changes[key] = .string(value) } }
         // Free text, or a JSON object with an open id (P2-H8).
         if let license = arguments.optionalString("license") { changes["license"] = LicenseTerms.argument(license) }
         if let params = arguments["params"] { changes["params"] = params }
+        if let profile = arguments["profile"]?.string { changes["profile"] = profile.isEmpty ? .null : .string(profile) }
         return changes
     }
 
@@ -331,11 +357,7 @@ extension ProjectDocument {
     }
 
     private func registerLibraryReadCommands() {
-        handle("library.list") { document, arguments, _ in
-            let catalog = document.libraryCatalog
-            let usage = try catalog.usage()
-            return .array(try catalog.items(matching: Self.filter(arguments)).map { $0.json(usage: usage[$0.reference]) })
-        }
+        handle("library.list") { document, arguments, _ in try document.listLibraryCommand(arguments) }
         handle("library.get") { document, arguments, _ in
             let catalog = document.libraryCatalog
             let item = try catalog.item(try arguments.string("id"), scope: Self.scope(arguments))
@@ -372,16 +394,7 @@ extension ProjectDocument {
                 preview: Self.url(arguments, "preview"), author: author)
         }
         handleAuthored("library.save-selection") { document, arguments, author in
-            let kind = LibraryKind(rawValue: try arguments.string("kind")) ?? .look
-            var changes = Self.itemChanges(arguments)
-            let selection = try document.selectionParams(
-                kind, itemID: arguments.optionalString("item"), mediaID: arguments.optionalString("media"))
-            changes["params"] = .object(selection.params)
-            let preview = kind == .effectPreset ? await document.effectPreview(itemID: arguments.optionalString("item")) : nil
-            return try await document.addLibraryItem(
-                kind: kind, name: try arguments.string("name"), id: arguments.optionalString("id"),
-                scope: LibraryScope(rawValue: try arguments.string("scope")) ?? .project, changes: changes,
-                file: selection.file, preview: preview, author: author, method: "library.save-selection")
+            try await document.saveSelectionCommand(arguments, author: author)
         }
         handleAuthored("library.move") { document, arguments, author in
             let item = try document.libraryCatalog.item(try arguments.string("id"), scope: Self.scope(arguments))
@@ -389,33 +402,7 @@ extension ProjectDocument {
             return try await document.moveLibraryItem(item, to: scope, author: author)
         }
         handleAuthored("library.update") { document, arguments, author in
-            let catalog = document.libraryCatalog
-            let item = try catalog.item(try arguments.string("id"), scope: Self.scope(arguments))
-            let changes = Self.itemChanges(arguments)
-            let file = Self.url(arguments, "file")
-            let preview = Self.url(arguments, "preview")
-            if let newID = arguments.optionalString("as") {
-                let scope = arguments.optionalString("into").flatMap(LibraryScope.init(rawValue:)) ?? .project
-                _ = try catalog.store(scope)
-                let createdBy = LibraryItem.creator(author: author)
-                return try await document.libraryChange(
-                    "library.update", scope: scope, author: author, arguments: ["id": item.reference, "as": newID]
-                ) {
-                    try catalog.copy(
-                        item, as: newID, into: scope, changes: changes, createdBy: createdBy, file: file, preview: preview
-                    ).json()
-                }
-            }
-            guard item.scope.isWritable else {
-                throw RPCFailure(
-                    -32602, "\(item.reference) is read-only; pass --as <new-id> to save an improved copy")
-            }
-            let store = try catalog.store(item.scope)
-            return try await document.libraryChange(
-                "library.update", scope: item.scope, author: author, arguments: ["id": item.reference]
-            ) {
-                try store.update(item.id, changes: changes, file: file, preview: preview).json()
-            }
+            try await document.updateLibraryItemCommand(arguments, author: author)
         }
         handleAuthored("library.remove") { document, arguments, author in
             let item = try document.libraryCatalog.item(try arguments.string("id"), scope: Self.scope(arguments))

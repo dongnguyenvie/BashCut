@@ -96,6 +96,15 @@ struct KnowledgeValueRow: View {
                     if kind == .prefs {
                         KnowledgeChip(text: KnowledgeSourceLine.scopeTitle(value.scope), color: .gray).fixedSize()
                     }
+                    if let confirmedBy = value.confirmedBy {
+                        KnowledgeChip(
+                            text: confirmedBy == .user ? String(localized: "Confirmed") : String(localized: "Inferred"),
+                            color: confirmedBy == .user ? .green : .orange
+                        ).fixedSize()
+                    }
+                    if let evidence = value.evidence, let line = KnowledgeEvidenceText.chip(evidence) {
+                        KnowledgeChip(text: line, color: .blue).fixedSize().help(KnowledgeEvidenceText.detail(evidence))
+                    }
                     if model.isNew(value) { KnowledgeNewBadge(text: String(localized: "New")) }
                 }
                 KnowledgeSourceLine(source: value.source, scope: nil, updated: nil)
@@ -119,6 +128,38 @@ struct KnowledgeValueRow: View {
 }
 
 // MARK: Parts the Knowledge sections share
+
+/// Evidence lines (P3-I4): how often a lesson was seen and where, what a fact rests on.
+enum KnowledgeEvidenceText {
+    static func sightings(_ lesson: KnowledgeLesson) -> String {
+        var parts = [String(format: String(localized: "Seen %d×"), lesson.occurrences ?? 1)]
+        if let lastSeen = lesson.lastSeen {
+            parts.append(String(format: String(localized: "last %@"), lastSeen.formatted(date: .abbreviated, time: .omitted)))
+        }
+        if let sources = lesson.sources, !sources.isEmpty {
+            parts.append(String(format: String(localized: "in %@"), sources.joined(separator: ", ")))
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    static func chip(_ evidence: KnowledgeFactEvidence) -> String? {
+        let status = evidence.status.map { status -> String in
+            switch status {
+            case .measured: String(localized: "Measured")
+            case .estimated: String(localized: "Estimated")
+            case .user: String(localized: "From the user")
+            }
+        }
+        let parts = [status, evidence.n.map { "n=\($0)" }].compactMap { $0 }
+        return parts.isEmpty ? nil : parts.joined(separator: " ")
+    }
+
+    static func detail(_ evidence: KnowledgeFactEvidence) -> String {
+        [evidence.source.map { String(format: String(localized: "Source: %@"), $0) },
+         evidence.measure.map { String(format: String(localized: "Measure: %@"), $0) }]
+            .compactMap { $0 }.joined(separator: "\n")
+    }
+}
 
 /// Who added an entry and when: "claude · session 1a2b… · 3 hours ago".
 struct KnowledgeSourceLine: View {

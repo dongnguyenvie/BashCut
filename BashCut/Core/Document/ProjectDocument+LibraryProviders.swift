@@ -309,7 +309,7 @@ extension ProjectDocument {
                 request.scope = LibraryScope(rawValue: arguments.optionalString("scope") ?? "project") ?? .project
                 request.requestID = arguments.optionalString("requestId")
                 if arguments.bool("dryRun") {
-                    return try await document.capabilityDryRun { document in
+                    return try await document.capabilityDryRun(requestID: request.requestID) { document in
                         try await document.runLibraryProvider(request, author: author)
                     }
                 }

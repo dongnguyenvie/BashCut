@@ -8,7 +8,7 @@ public enum CommandCatalog {
     public static let dialogs = [
         "new-project", "export", "export-report", "agent-changes", "review", "history", "plugins", "settings",
         "doctor", "knowledge", "ask", "sections", "external-changes", "plugin-proposals", "commands", "shortcuts",
-        "add-plugin", "library-search", "library-generate",
+        "add-plugin", "library-search", "library-generate", "quick-edit",
     ]
     public static let libraryPanels = ["media", "audio", "text", "stickers", "effects", "transitions", "filters", "voice", "brand"]
     public static let exportPresets = OutputPresetName.all
@@ -31,10 +31,10 @@ public enum CommandCatalog {
         + formatSpecs + clipSpecs + jobSpecs + capabilitySpecs + analysisSpecs + [reviewSyncSpec] + timelineStillsSpecs
         + [colorMeasureSpec] + planSpecs
         + workflowSpecs + planCheckSpecs + planCutSpecs + quoteSpecs + selectsSpecs
-        + variantSpecs + packagingSpecs
+        + variantSpecs + packagingSpecs + ledgerSpecs
         + sourceMediaSpecs
         + pluginSpecs + pluginViewSpecs
-        + storageSpecs + agentSpecs + appSpecs + chatSpecs
+        + storageSpecs + agentSpecs + quickEditSpecs + appSpecs + chatSpecs
         + privilegedSpecs + uiSpecs + toolSpecs + knowledgeSpecs + skillSpecs + librarySpecs + fontSpecs
 
     /// A provider job (`capabilities`) with the request ID and dry-run parameters, when it does not have them yet.
@@ -68,7 +68,7 @@ public enum CommandCatalog {
             "Read the revision, format and tracks, including track IDs and roles, and scale per video or image item: "
                 + "fit or fill, baseScale, zoom and maxZoom (keyframes), pixelRatio (output pixels per source pixel; "
                 + "over 1 is upscaled) now and at maxZoom, maxZoomNative (the largest zoom before upscaling), shown "
-                + "size and frameCoverage. media lists each media's path, kind, license and provenance as stored.",
+                + "size, frameCoverage and backdrop (blur, color or null). media lists each media's path, kind, license and provenance as stored.",
             parameters: [
                 CommandParameter(
                     "format", .string, "json (default) or a compact text listing", choices: ["json", "text"],
@@ -84,10 +84,10 @@ public enum CommandCatalog {
         CommandSpec(
             "export.status", .read,
             "Read the export state: while one runs, its job, step, preset and path (last receipt under lastExport); "
-                + "otherwise the most recent receipt (clips on Main, cuts: the joins between them, transitions "
-                + "included). Includes the queue (job IDs for jobs.cancel) and delivered: each "
-                + "exported file of this session measured (stream starts and drift, fps and size against the preset, "
-                + "black and silent stretches), which review run reads (P1-E6)."),
+                + "after a failed export, state failed with its error and path (receipt under lastExport); otherwise "
+                + "the most recent receipt (clips on Main, cuts: the joins between them, transitions included). Includes "
+                + "the queue (job IDs for jobs.cancel) and delivered: each exported file of this session measured (stream "
+                + "starts and drift, fps and size against the preset, black and silent stretches), which review run reads (P1-E6)."),
         CommandSpec(
             "plugins.list", .read,
             "List installed plugins with their category, providers and project provider preferences. With health, "
@@ -311,7 +311,7 @@ public enum CommandCatalog {
             "ui.view", .ui,
             "Read the editor view state, or change it: timeline zoom (pixels per second), viewer zoom, snapping, safe area, "
                 + "color compare, agent dock, inspector tab, Settings section and search, Knowledge section, Plugins tab and Browse "
-                + "category, the Media panel's source (footage, project, shared, selects), the open library panel's "
+                + "category, the Media panel's source (footage, project, shared, selects, clips), the open library panel's "
                 + "search and filters, and scroll the timeline to a frame.",
             parameters: [
                 CommandParameter("zoom", .integer, "Timeline zoom in pixels per second", minimum: 1, maximum: 600,

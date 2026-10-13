@@ -122,7 +122,7 @@ struct SpeechToolsTests {
             CaptionWords.Timed(text: $0.0, start: $0.1, end: $0.2)
         }
         let result = TextAlignment.align("Hồ Tây rộng năm trăm hai mươi tám héc ta.", to: heard)
-        #expect(result.words.filter { $0.kind == "match" }.count == 8)
+        #expect(result.words.filter { $0.kind == "match" }.count == 10, "hecta is said héc ta")
         let tam = result.words.first { $0.text == "tám" }
         #expect(tam?.kind == "match" && (tam?.start ?? 0) >= 1.4 && (tam?.end ?? 0) <= 1.6, "a fifth of the numeral's time")
         let variant = TextAlignment.align("hai mươi mốt", to: [CaptionWords.Timed(text: "21", start: 0, end: 1)])
@@ -133,5 +133,53 @@ struct SpeechToolsTests {
         #expect(digits.similarity == 1, "digits in the script stay digits")
         let joined = TextAlignment.align("ba phẩy năm km", to: [CaptionWords.Timed(text: "3,5km", start: 0, end: 1)])
         #expect(joined.similarity == 1, "a unit written onto the number")
+    }
+
+    @Test("A heard unit becomes the script's spoken form of it, sharing the unit's time")
+    func unitsMatchSpokenForms() {
+        let hectare = TextAlignment.align("hai héc ta", to: heard("2 hectare"))
+        #expect(hectare.similarity == 1)
+        let ta = hectare.words.last
+        #expect(ta?.text == "ta" && ta.map { $0.start >= 0.5 && $0.end <= 0.9 } == true)
+        let km = TextAlignment.align("ba cây số", to: [CaptionWords.Timed(text: "3km", start: 0, end: 0.9)])
+        #expect(km.similarity == 1, "a unit stuck to the number")
+        #expect(TextAlignment.align("ba ki lô mét", to: heard("3 km")).similarity == 1)
+        #expect(TextAlignment.align("three kilometres", to: heard("3 km")).similarity == 1)
+        #expect(TextAlignment.align("tám km", to: heard("8 km")).similarity == 1, "the script says it as heard")
+        let unsaid = TextAlignment.align("ba mét", to: heard("3 km"))
+        #expect(unsaid.words.last?.kind == "substituted", "no spoken form of km in the script: unchanged")
+        let split = TextAlignment.align("ba phẩy ba cây số đi bộ", to: heard("3 ,3km đi bộ."))
+        #expect(split.similarity == 1, "a decimal written as two words (Whisper: 3 ,3km) keeps its phẩy")
+        #expect(TextAlignment.align("ba, bốn người", to: heard("3, 4 người")).similarity == 1, "a list is not a decimal")
+    }
+
+    @Test("Provider scores per word: avgLogprob and compressionRatio decode, stay in precision and rows")
+    func decoderScores() throws {
+        let data = Data("""
+            [{"text":"a","start":0,"end":0.5,"avgLogprob":-0.31,"compressionRatio":1.4},
+             {"text":"b","start":0.5,"end":1,"avgLogprob":0.2,"compressionRatio":-1}]
+            """.utf8)
+        let words = try CaptionWords.decode(data)
+        #expect(words[0].avgLogprob == -0.31 && words[0].compressionRatio == 1.4)
+        #expect(words[1].avgLogprob == nil && words[1].compressionRatio == nil, "out of range is left out")
+        let transcript = SourceTranscript(
+            key: "k", language: "en", provider: [:], transcribedAt: "now", phrases: [], words: words)
+        #expect(transcript.precision.object["avgLogprob"] == .bool(true))
+        #expect(transcript.precision.object["compressionRatio"] == .bool(true))
+        let rows = transcript.json(.words).object["wordList"]?.array ?? []
+        #expect(rows.first?.object["avgLogprob"] == .number(-0.31) && rows.last?.object["avgLogprob"] == nil)
+        let kept = TextAlignment.spelledNumbers([words[0]].map { $0.retimed(text: "5", start: 0, end: 1) }, intended: [], language: "en")
+        #expect(kept.first?.avgLogprob == -0.31, "spelled numbers keep the provider scores")
+    }
+}
+
+/// `project format --language`: tags a project's content language takes.
+struct LanguageTagTests {
+    @Test("BCP 47-shaped tags pass; names, empty subtags and non-ASCII letters do not")
+    func tags() {
+        for tag in ["vi", "en", "en-US", "zh-Hant-TW", "yue"] { #expect(Project.isLanguageTag(tag), "\(tag)") }
+        for tag in ["", "english", "e", "en-", "-US", "tiếng", "en_US", "en-toolongsubtag"] {
+            #expect(!Project.isLanguageTag(tag), "\(tag)")
+        }
     }
 }

@@ -57,6 +57,7 @@ public struct TranscriptionCapability: CapabilityAdapter {
             defer { try? handle.close() }
             words = try CaptionWords.decode(handle.read(upToCount: 8 * 1024 * 1024 + 1) ?? Data())
         }
-        return GeneratedPluginCaptions(text: text, provenance: context.provenance, words: words)
+        let heard = result.object["language"]?.string.flatMap { Project.isLanguageTag($0) ? $0 : nil }
+        return GeneratedPluginCaptions(text: text, provenance: context.provenance, words: words, language: heard)
     }
 }

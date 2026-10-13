@@ -69,7 +69,7 @@ extension ProjectDocument {
             if !exports.isRunning { ui.showExportProgress = false }
             switch result {
             case .success(let outcome):
-                finishExport(request, outcome: outcome)
+                finishExport(request, outcome: outcome, author: author)
                 logAutoStage("export", evidence: [
                     request.output.path, "\(preset.rawValue) export finished",
                     normalizeAudio ? "loudness measured and normalized" : "loudness not measured (no normalize-audio)",
@@ -111,7 +111,7 @@ extension ProjectDocument {
         }
     }
 
-    private func finishExport(_ request: ExportRequest, outcome: ExportOutcome) {
+    private func finishExport(_ request: ExportRequest, outcome: ExportOutcome, author: Author) {
         let current = project.revision == request.source.revision
         guard request.withoutRoles.isEmpty else {
             // A version without some of the sound is not the edit's mix: its loudness and QC stay out of review.
@@ -121,13 +121,14 @@ extension ProjectDocument {
                 "rev": .integer(request.source.revision),
             ])
             message = String(localized: "Export complete")
-            if !exports.isRunning { ui.showExportReport = true }
+            if !exports.isRunning, !showsRunResult(author) { ui.showExportReport = true }
             return
         }
         // The export's loudness gain stays in the file it wrote: storing it in the project bumped the revision (the
         // agent's next edit failed as stale) and stacked under the next export's own measurement.
         recordReviewLoudness(
-            outcome.finalMeasurement, revision: current ? project.revision : request.source.revision, preset: request.preset)
+            outcome.finalMeasurement, revision: current ? project.revision : request.source.revision, preset: request.preset,
+            measured: request.source)
         lastRender = (outcome.receipt.url, current ? project.revision : request.source.revision)
         measureDelivered(request, url: outcome.receipt.url, revision: current ? project.revision : request.source.revision)
         DebugLog.write("export", "done \(outcome.receipt.url.path)")
@@ -137,7 +138,15 @@ extension ProjectDocument {
         ])
         message = String(localized: "Export complete")
         // Keep the report for later when more exports are waiting.
-        if !exports.isRunning { ui.showExportReport = true }
+        if !exports.isRunning, !showsRunResult(author) { ui.showExportReport = true }
+    }
+
+    /// An agent's export while the run panel shows: the panel turns into the result card instead of a sheet over
+    /// the editor (#448).
+    private func showsRunResult(_ author: Author) -> Bool {
+        guard author != .user else { return false }
+        runPanel.refresh()
+        return runPanel.tracksRun
     }
 
     /// Measures the written file in the background (P1-E6); review reads it for the revision it shows.
@@ -151,6 +160,8 @@ extension ProjectDocument {
                 guard let self else { return }
                 deliveredQC.removeAll { $0.preset == preset }
                 deliveredQC.append(facts)
+                // The result card counted the issues before this file was measured (black or silent stretches).
+                runPanel.refresh(force: true)
                 DebugLog.write("export", "qc \(preset): drift \(facts.drift ?? 0) black \(facts.black.count) silence \(facts.silence.count)")
             } catch {
                 DebugLog.write("export", "qc failed: \(error.localizedDescription)")

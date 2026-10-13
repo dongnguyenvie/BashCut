@@ -20,8 +20,22 @@ extension TimelineReview {
         /// Whether the box is the renderer's layout rather than an estimate.
         var measured = false
         /// The smallest line's font size: an emphasised line drawn under 1× (`textStyle.emphasis.scale`, such as a
-        /// template's subline) is smaller than `points`.
-        var smallestPoints: Double { points * min(1, Self.emphasisScale(item, lines: lines) ?? 1) }
+        /// template's subline) or a line scaled down by `textStyle.lines` is smaller than `points`.
+        var smallestPoints: Double {
+            let style = item["textStyle"]?.object ?? [:]
+            let emphasis = Self.emphasisScale(item, lines: lines)
+            let emphasised = Self.emphasisLine(item, lines: lines)
+            let scales = (0..<max(1, lines)).map { index in
+                TextLineStyles.scale(style, line: index) * (index == emphasised ? emphasis ?? 1 : 1)
+            }
+            return points * min(1, emphasis ?? 1, scales.min() ?? 1)
+        }
+
+        /// The emphasised line's index when `textStyle.emphasis` names one, else nil.
+        static func emphasisLine(_ item: Item, lines: Int) -> Int? {
+            guard let line = item["textStyle"]?.object["emphasis"]?.object["line"]?.double.map({ Int($0) }) else { return nil }
+            return TextLineStyles.index(line, count: lines)
+        }
 
         /// The scale of the emphasised line when one is drawn, as the renderer clamps it (0.3…3).
         static func emphasisScale(_ item: Item, lines: Int) -> Double? {
@@ -209,6 +223,35 @@ extension TimelineReview {
                         detail: "This text covers another text item shown at the same time.", frame: other.item.at,
                         severity: .info,
                         fix: ReviewFix(hint: "Move one with textStyle.positionY or shift it in time.")))
+            }
+        }
+        return issues
+    }
+
+    /// Text covering more of a face than the project's `review.maxFaceOverlap` allows, from the face boxes stored for
+    /// the clips under it (`media.subjects`); not checked without the limit or without stored boxes.
+    static func faceIssues(_ project: Project, context: ReviewContext) -> [ReviewIssue] {
+        guard let limit = ReviewProfile(project)["maxFaceOverlap"], !context.subjects.isEmpty,
+            project.width > 0, project.height > 0
+        else { return [] }
+        let width = Double(project.width), height = Double(project.height)
+        var issues: [ReviewIssue] = []
+        for track in project.tracks where track.kind == "text" && track["hidden"] != .bool(true) {
+            for item in track.items where !item.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                let box = textBox(item, width: width, height: height, context: context)
+                let rect = CGRectLike(x: box.minX, y: box.minY, width: box.maxX - box.minX, height: box.maxY - box.minY)
+                guard let overlap = FaceOverlap.measure(
+                    rect, from: item.at, to: item.end, project: project, subjects: context.subjects),
+                    overlap.ratio > limit
+                else { continue }
+                issues.append(
+                    ReviewIssue(
+                        id: "text-face-" + item.id, title: "Text over a face",
+                        detail: "The text covers \(percent(overlap.ratio)) of a face in \(overlap.item ?? "a clip") "
+                            + "(review.maxFaceOverlap \(percent(limit))).",
+                        frame: overlap.frame ?? item.at,
+                        fix: ReviewFix(hint: "Move the text (textStyle.positionY) or reframe the clip under it."),
+                        facts: ["ratio": fact(overlap.ratio), "maxFaceOverlap": .number(limit), "overlap": overlap.json]))
             }
         }
         return issues

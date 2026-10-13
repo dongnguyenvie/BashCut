@@ -14,6 +14,9 @@ public final class ExportController {
     public private(set) var report: ExportReport?
     /// The toast about the latest export starting, finishing or failing; nil once dismissed or timed out.
     public private(set) var notice: ExportNotice?
+    /// The newest export of this session that failed, until one finishes after it: `export.status` reports it as
+    /// `failed` with its error, so a caller polling the status sees the failure instead of the older receipt.
+    public private(set) var failure: ExportFailure?
     @ObservationIgnored private let history: ExportHistoryStore
 
     public init(
@@ -35,7 +38,15 @@ public final class ExportController {
         finished: @escaping @MainActor (Result<ExportOutcome, any Error>) -> Void
     ) throws -> String {
         try queue.enqueue(request, author: author) { [weak self] result in
-            if case .success(let outcome) = result { self?.record(request, outcome: outcome) }
+            switch result {
+            case .success(let outcome):
+                self?.failure = nil
+                self?.record(request, outcome: outcome)
+            case .failure(let error) where !JobCenter.isCancellation(error):
+                self?.failure = ExportFailure(
+                    preset: request.preset.rawValue, path: request.output.path, error: error.localizedDescription, at: Date())
+            case .failure: break
+            }
             finished(result)
         }
     }
@@ -48,6 +59,7 @@ public final class ExportController {
         queue.cancelAll()
         report = nil
         notice = nil
+        failure = nil
     }
 
     /// Shows `notice`; it hides by itself after its kind's delay unless a newer notice replaced it.
@@ -75,17 +87,20 @@ public final class ExportController {
             captionCount: request.source.tracks.first(where: { $0.role == TrackRole.captions })?.items.count ?? 0,
             includedSubRip: request.includesSubRip, loudness: outcome.finalMeasurement,
             loudnessVerified: outcome.verified, appliedGainDb: outcome.appliedGainDb,
-            speechCoverage: TimelineReview.speechCoverage(request.source, transcripts: request.transcripts),
+            speechCoverage: outcome.speechCoverage,
             completedAt: Date(),
             comparison: nil)
         report.acceptedIssues = (request.source["review"]?.object["accepted"]?.object ?? [:])
             .compactMapValues { $0.object["reason"]?.string }
-        if let snapshot = try? history.record(report.storedMetrics, projectRoot: request.root) {
+        if let snapshot = try? history.record(report.storedMetrics, projectRoot: request.root, project: request.source) {
             self.report = ExportReport(snapshot: snapshot) ?? report
         } else {
             self.report = report
         }
     }
+
+    /// The project's export ledger (P3-I2).
+    public var ledger: ExportHistoryStore { history }
 
     /// `export.status`: while an export runs, the top-level fields describe it and the last receipt
     /// moves to `lastExport`.
@@ -104,10 +119,28 @@ public final class ExportController {
             result["lastExport"] = last.map(JSONValue.object) ?? .null
             return .object(result)
         }
+        if let failure {
+            result["state"] = .string("failed")
+            result["progress"] = .number(0)
+            result["preset"] = .string(failure.preset)
+            result["path"] = .string(failure.path)
+            result["error"] = .string(failure.error)
+            result["failedAt"] = .string(ISO8601DateFormatter().string(from: failure.at))
+            result["lastExport"] = last.map(JSONValue.object) ?? .null
+            return .object(result)
+        }
         result["state"] = .string(report == nil ? "idle" : "completed")
         result["progress"] = .number(report == nil ? 0 : 1)
         return .object(result.merging(last ?? [:]) { current, _ in current })
     }
+}
+
+/// An export that failed (not cancelled): its preset, the file it was writing and the error.
+public struct ExportFailure: Equatable, Sendable {
+    public let preset: String
+    public let path: String
+    public let error: String
+    public let at: Date
 }
 
 /// What the export toast says: an export started or was queued, finished, failed or was cancelled.

@@ -10,7 +10,9 @@ extension CommandCatalog {
                 + "scale with the frame. --clips fit shows each clip whole (bars where its shape differs), fill covers "
                 + "the frame and crops; a clip's own `fill` property overrides it. --outputs sets the export presets the "
                 + "project is made for (first one primary): review checks the first one's platform (safe area, longest "
-                + "length, smallest text) and the Export sheet starts with it. Each change is one undoable edit.",
+                + "length, smallest text) and the Export sheet starts with it. --language sets the content language "
+                + "(captions, speech-rate units, voices, font checks), for a project created without one once its "
+                + "footage is transcribed. Each change is one undoable edit.",
             parameters: [
                 CommandParameter("canvas", .string, "Canvas", choices: ["portrait", "landscape", "square"],
                                  cli: .option("canvas")),
@@ -22,6 +24,8 @@ extension CommandCatalog {
                     "outputs", .string,
                     "Comma-separated export presets (\(OutputPresetName.all.joined(separator: ", "))); none clears them",
                     cli: .option("outputs")),
+                CommandParameter("language", .string, "Content language, a BCP 47 tag (vi, en, en-US); none clears it",
+                                 cli: .option("language")),
                 baseRevision,
             ]),
     ]

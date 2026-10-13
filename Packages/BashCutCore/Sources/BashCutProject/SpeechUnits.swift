@@ -117,23 +117,53 @@ public enum TextAlignment {
 
 extension TextAlignment {
     /// Heard numerals the script does not write as digits, as words over the numeral's time ("528" → năm trăm hai
-    /// mươi tám), so a spelled-out number in the script matches what a recognizer wrote in digits.
+    /// mươi tám), so a spelled-out number in the script matches what a recognizer wrote in digits. Heard units
+    /// (also stuck to a number, "3,5km") the script does not write become the script's spoken form of them
+    /// ("km" → cây số), sharing the unit's time.
     static func spelledNumbers(_ heard: [CaptionWords.Timed], intended: [String], language: String) -> [CaptionWords.Timed] {
-        let written = Set(intended.map(SpeechUnits.normalized))
-        return heard.flatMap { word -> [CaptionWords.Timed] in
+        let script = intended.map(SpeechUnits.normalized)
+        let written = Set(script)
+        let numbers = joinedDecimals(heard).flatMap { word -> [CaptionWords.Timed] in
             let token = SpeechUnits.normalized(word.text)
             // A unit written onto the number ("3,5km") stays a word of its own after the spelled number.
             let digits = String(token.prefix { $0.isNumber || $0 == "." || $0 == "," || $0 == "%" })
             let unit = String(token.dropFirst(digits.count))
             guard !written.contains(token), let spelled = NumberWords.spelled(digits, language: language), !spelled.isEmpty
             else { return [word] }
-            let words = spelled + (unit.isEmpty ? [] : [unit])
-            let step = max(0, word.end - word.start) / Double(words.count)
-            return words.enumerated().map { index, text in
-                CaptionWords.Timed(
-                    text: text, start: word.start + step * Double(index), end: word.start + step * Double(index + 1),
-                    confidence: word.confidence, speaker: word.speaker)
+            return split(word, into: spelled + (unit.isEmpty ? [] : [unit]))
+        }
+        return numbers.flatMap { word -> [CaptionWords.Timed] in
+            let token = SpeechUnits.normalized(word.text)
+            guard !written.contains(token), let spoken = UnitWords.spoken(token, language: language, in: script) else {
+                return [word]
             }
+            return split(word, into: spoken)
+        }
+    }
+
+    /// A decimal a recognizer wrote in two words ("3" then ",3km", Whisper on Vietnamese "ba phẩy ba cây số") as one
+    /// word over both times, so it spells with its "phẩy" / "point" instead of losing it.
+    static func joinedDecimals(_ heard: [CaptionWords.Timed]) -> [CaptionWords.Timed] {
+        var result: [CaptionWords.Timed] = []
+        for word in heard {
+            let text = word.text.trimmingCharacters(in: .whitespaces)
+            if let last = result.last, !last.text.isEmpty, last.text.allSatisfy(\.isNumber),
+                let mark = text.first, mark == "," || mark == ".", text.dropFirst().first?.isNumber == true
+            {
+                result[result.count - 1] = last.retimed(text: last.text + text, start: last.start, end: word.end)
+            } else {
+                result.append(word)
+            }
+        }
+        return result
+    }
+
+    /// `word` as `texts`, its time shared evenly between them.
+    static func split(_ word: CaptionWords.Timed, into texts: [String]) -> [CaptionWords.Timed] {
+        guard texts.count > 1 else { return texts.map { word.retimed(text: $0, start: word.start, end: word.end) } }
+        let step = max(0, word.end - word.start) / Double(texts.count)
+        return texts.enumerated().map { index, text in
+            word.retimed(text: text, start: word.start + step * Double(index), end: word.start + step * Double(index + 1))
         }
     }
 
@@ -168,5 +198,54 @@ extension TextAlignment {
                 "start": .number((word.start * 1_000).rounded() / 1_000), "end": .number((word.end * 1_000).rounded() / 1_000),
             ])
         })
+    }
+}
+
+/// Units as they are said (W6 follow-up of P0-C5): a recognizer writes "km" or "hectare" where the script spells
+/// "cây số" or "héc ta". Each heard form maps to the spoken forms a script may use, per language; the first spoken
+/// form found in the script wins, so a heard unit only changes when the script says it another way.
+public enum UnitWords {
+    /// Heard forms (normalized) → spoken forms, each as its words.
+    public static let table: [String: [String: [[String]]]] = {
+        let viKilometre: [[String]] = [["cây", "số"], ["ki", "lô", "mét"], ["ki-lô-mét"], ["kilômét"], ["km"]]
+        let viHectare: [[String]] = [["héc", "ta"], ["héc-ta"], ["hecta"], ["ha"]]
+        let viMetre: [[String]] = [["mét"]]
+        let viKilogram: [[String]] = [["ki", "lô", "gam"], ["ki-lô-gam"], ["cân"], ["ký"], ["kí"], ["ki", "lô"], ["kg"]]
+        let viMinute: [[String]] = [["phút"]]
+        let viHour: [[String]] = [["giờ"], ["tiếng"]]
+        let viDong: [[String]] = [["đồng"], ["nghìn", "đồng"]]
+        let enKilometre: [[String]] = [["kilometres"], ["kilometers"], ["kilometre"], ["kilometer"], ["km"]]
+        let enHectare: [[String]] = [["hectares"], ["hectare"], ["ha"]]
+        let enKilogram: [[String]] = [["kilograms"], ["kilogram"], ["kilos"], ["kilo"], ["kg"]]
+        let enMetre: [[String]] = [["metres"], ["meters"], ["metre"], ["meter"], ["m"]]
+        let enMile: [[String]] = [["miles"], ["mile"], ["mi"]]
+        return [
+            "vi": [
+                "km": viKilometre, "kilomet": viKilometre, "kilômét": viKilometre, "ki-lô-mét": viKilometre,
+                "kilometer": viKilometre, "kilometre": viKilometre,
+                "ha": viHectare, "hectare": viHectare, "hecta": viHectare, "héc-ta": viHectare,
+                "m": viMetre, "met": viMetre,
+                "kg": viKilogram, "kilogram": viKilogram, "kilôgam": viKilogram,
+                "min": viMinute, "h": viHour, "đ": viDong, "vnđ": viDong, "vnd": viDong,
+            ],
+            "en": [
+                "km": enKilometre, "kms": enKilometre, "ha": enHectare, "kg": enKilogram, "kgs": enKilogram,
+                "m": enMetre, "mi": enMile,
+                "kilometres": enKilometre, "kilometers": enKilometre, "kilometre": enKilometre, "kilometer": enKilometre,
+            ],
+        ]
+    }()
+
+    /// The script's spoken form of a heard unit token, or nil when the token is no unit, the script says no form
+    /// of it, or says it the way it was heard.
+    public static func spoken(_ token: String, language: String, in script: [String]) -> [String]? {
+        guard let forms = table[language]?[token] else { return nil }
+        for form in forms where form != [token] && contains(script, form) { return form }
+        return nil
+    }
+
+    static func contains(_ script: [String], _ form: [String]) -> Bool {
+        guard !form.isEmpty, script.count >= form.count else { return false }
+        return (0...(script.count - form.count)).contains { Array(script[$0..<($0 + form.count)]) == form }
     }
 }

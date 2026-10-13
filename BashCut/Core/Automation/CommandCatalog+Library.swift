@@ -29,8 +29,9 @@ extension CommandCatalog {
                 + "animation: a clip motion preset, seconds}, all optional; "
                 + "effect-preset (a recipe) {steps: [{op: motion|keyframes|speed|speedCurve|reverse|freeze|patch|sfx|text, "
                 + "…}], parameters: {name: {default, min, max}}} or the older {patch: item properties}, with its own sound "
-                + "as file; transition-preset {kind, duration, easing: linear|in|out|"
-                + "inOut, sfx: audio item ID} (or its own sound as file); look (a filter stack) {color: {exposure, contrast, "
+                + "as file; transition-preset {kind, duration, easing: linear|in|out|inOut, sfx: audio item ID, sfxOffset: frames "
+                + "from the cut (−600–600, negative before it), sfxVolumeDb: −60–12} (or its own sound as file); look (a filter "
+                + "stack) {color: {exposure, contrast, "
                 + "saturation, lutStrength}, lutName} with an optional .cube LUT as file; audio (its file required) {role: "
                 + "music|sfx|ambience, seconds, bpm, loopable, lufs, truePeak}, all optional (library add measures seconds "
                 + "and picks a role by length; library analyze fills the rest), with mood and genre as tags; clip (footage: a "
@@ -40,6 +41,10 @@ extension CommandCatalog {
         CommandParameter(
             "file", .string, "File to copy in (audio, image or alpha-movie sticker, a look's .cube LUT, a clip's movie or image…)", isPath: true,
             cli: .option("file")),
+        CommandParameter(
+            "profile", .string,
+            "The reference profile it was made from (bc:style-study): a file path, URL or knowledge fact key; empty "
+                + "clears it", cli: .option("profile")),
         CommandParameter("preview", .string, "Preview image, GIF or audio snippet to copy in", isPath: true,
                          cli: .option("preview")),
         CommandParameter("source", .string, "Where it came from (URL or note)", cli: .option("source")),
@@ -69,9 +74,14 @@ extension CommandCatalog {
         CommandSpec(
             "library.list", .read,
             "List library items. Kinds: Media clips, Audio, Text, Stickers, Effects, Transitions, Filters, Voice; from the open project, "
-                + "this Mac, plugins and built-in packs, with usage. Check here before making something new.",
+                + "this Mac, plugins and built-in packs, with usage. Check here before making something new. With offset "
+                + "or limit, one page: {items, total, offset, limit, next} (next: the offset of the following page, null "
+                + "after the last); without them, every match as an array.",
             parameters: [
                 libraryKind, libraryPanel,
+                CommandParameter("offset", .integer, "Skip this many matches (paging)", minimum: 0, cli: .option("offset")),
+                CommandParameter("limit", .integer, "At most this many matches (paging; 50 with offset alone)", minimum: 1,
+                                 maximum: 500, cli: .option("limit")),
                 CommandParameter("tag", .string, "Only items with this tag", cli: .option("tag")),
                 libraryScope,
                 CommandParameter("createdBy", .string, "Only items made by", choices: ["user", "agent", "plugin", "built-in"],
@@ -111,7 +121,10 @@ extension CommandCatalog {
         CommandSpec(
             "library.update", .edit,
             "Improve a library item: saves a new version (the old one stays in its history). Built-in and plugin "
-                + "items are read-only, so pass as to save an improved copy under a new ID instead.",
+                + "items are read-only, so pass as to save an improved copy under a new ID instead. A new file is "
+                + "measured like library add (an audio item's seconds, a sticker's kind and size, a clip's length, size "
+                + "and sound) and values measured from the old file are dropped; the result lists measured and cleared "
+                + "(for audio, run library analyze again for loudness and tempo).",
             parameters: [
                 libraryID, libraryScope,
                 CommandParameter("name", .string, "New display name", cli: .option("name")),
@@ -129,11 +142,15 @@ extension CommandCatalog {
             "library.save-selection", .edit,
             "Save what is selected on the timeline as a new library item (the panels' Save selection as…): a text "
                 + "item's preset, text, textStyle (size, position, outline) and motion preset when its keyframes are one, "
-                + "a clip's effect as a recipe (reverse, speed or speed ramp, framing, keyframes scaled to the "
-                + "clip's length, and the sound effect at its start; a still of the clip as its preview), the transition "
-                + "at the selected clip (kind, duration, easing and the sound a preset placed there), or a grade as a look: "
+                + "a clip's effect as a recipe (reverse, freeze frame, speed or speed ramp, framing, keyframes scaled to the "
+                + "clip's length, and the sound effect at its start; a looping GIF of the clip as the timeline plays it as its "
+                + "preview), the transition "
+                + "at the selected clip (kind, duration, easing and the sound a preset placed there, with its offset from the cut "
+                + "and volume), or a grade as a look: "
                 + "the full filter stack, with the project LUT it uses copied in as the look's file, or an audio clip (or "
-                + "project audio media) as an audio item: its file copied in, its length, and music or sfx from its layer, or "
+                + "project audio media) as an audio item: its file copied in (for a clip trimmed to part of its file, only "
+                + "the part it plays, as WAV from an uncompressed file or else M4A, with trimmedFrom {start, end} in the "
+                + "file's seconds), its length, and music or sfx from its layer, or "
                 + "an overlay item as a sticker: an image or alpha movie with its file, size, position and length, or an "
                 + "emoji text item with its text preset.",
             parameters: [
@@ -163,7 +180,8 @@ extension CommandCatalog {
                 + "recipe on a clip (every step, its sounds and text, and a split for a from/to range, as one undo step; set "
                 + "overrides its parameters; when a reverse step needs a new reversed copy it runs as a job), a look's grade "
                 + "(adding its LUT to the project when it has one, in the same undo step), or a transition preset at the cut "
-                + "beside a video clip (its kind, duration and easing, plus its sound on an SFX layer, as one undo step). "
+                + "beside a video clip (its kind, duration and easing, plus its sound on an SFX layer moved by sfxOffset at "
+                + "sfxVolumeDb, as one undo step). "
                 + "A brand kit applies to the whole project and needs no item: it sets the project's brand (palette, fonts, "
                 + "logo, mascot, voice, disclosure) and restyles every text item with brandRoles, as one undo step. "
                 + "Defaults to the selected item.",
@@ -185,7 +203,8 @@ extension CommandCatalog {
                 + "or emoji sticker as text, an image, "
                 + "animated or video-alpha sticker (its file copied into the project's stickers/ folder once per content, "
                 + "imported and placed on the Overlay layer, added when missing, at size and position, as one undo step; "
-                + "an animated sticker shows its first frame for now and the result says so), a look as an "
+                + "an animated GIF, APNG or WebP sticker plays as a ProRes 4444 movie with alpha written beside its copy, looped to "
+                + "cover the length asked or the sticker's seconds, and the result says animated: true), a look as an "
                 + "adjustment (with its LUT added to the project in the same undo step), or audio: its file copied into the "
                 + "project's music/ or sfx/ folder (once per content), imported and placed on the Music layer (music, "
                 + "ambience) or SFX layer (sfx), the layer added when missing, as one undo step. duration trims a sound; "

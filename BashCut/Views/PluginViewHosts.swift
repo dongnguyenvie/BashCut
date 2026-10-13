@@ -78,17 +78,21 @@ struct PluginViewRows: View {
 }
 
 /// Plugin views that live in the Inspector (`location: inspector`), under the selected item's controls. Each renders
-/// again from scratch when the selection or the selected item's media changes; one that answers an empty body
+/// again from scratch when the selection or the selected item's media changes (debounced; a render for an older
+/// selection is cancelled); a view whose `when` does not match is not asked, and one that answers an empty body
 /// takes no room.
 struct PluginInspectorViews: View {
     @Bindable var document: ProjectDocument
     let item: Item
 
     var body: some View {
-        ForEach(document.pluginViews.inspectorViews, id: \.key) { entry in
+        let views = document.pluginViews.inspectorViews
+        let facts = views.contains { $0.view.when != nil } ? document.pluginFacts() : [:]
+        ForEach(views, id: \.key) { entry in
             PluginInspectorSection(
                 model: document.pluginViews.model(plugin: entry.plugin.id, view: entry.view.id),
-                selection: item.id + "|" + (item.mediaID ?? ""))
+                selection: item.id + "|" + (item.mediaID ?? ""),
+                matches: entry.view.condition?.evaluate(facts) ?? true)
         }
     }
 }
@@ -96,8 +100,9 @@ struct PluginInspectorViews: View {
 private struct PluginInspectorSection: View {
     @Bindable var model: PluginViewModel
     let selection: String
+    let matches: Bool
 
-    private var shows: Bool { model.error != nil || !(model.tree?.body.isEmpty ?? true) }
+    private var shows: Bool { matches && (model.error != nil || !(model.tree?.body.isEmpty ?? true)) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -106,11 +111,7 @@ private struct PluginInspectorSection: View {
                 PluginViewRows(model: model)
             }
         }
-        .task(id: selection) {
-            model.forget()
-            model.visible = true
-            model.load()
-        }
-        .onDisappear { model.visible = false }
+        .task(id: selection + (matches ? "" : "|off")) { model.followSelection(matches: matches) }
+        .onDisappear { model.stopFollowing() }
     }
 }

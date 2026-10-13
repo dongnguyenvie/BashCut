@@ -14,6 +14,7 @@ extension ProjectDocument {
         handle("review.verify") { document, arguments, _ in try await document.verifyReviewIssue(arguments) }
         handleAuthored("review.accept") { document, arguments, author in try document.acceptReviewIssue(arguments, author: author) }
         handle("review.shots") { document, arguments, _ in
+            await document.restoreReviewMeasurements()
             guard let mediaID = arguments.optionalString("media") else {
                 return ReviewShots.json(
                     document.project, picture: document.reviewPicture, summary: arguments.bool("summary"),

@@ -33,6 +33,8 @@ public enum ReviewScale {
             "maxZoomNative": round(1 / base), "sourceWidth": .integer(width), "sourceHeight": .integer(height),
             "shownWidth": round(shownWidth), "shownHeight": round(shownHeight),
             "frameCoverage": round(covered / Double(project.width * project.height)),
+            // What fills the rest of the frame (`backdrop`): blur, color, or null for black.
+            "backdrop": item["backdrop"]?.object["kind"] ?? .null,
         ])
     }
 

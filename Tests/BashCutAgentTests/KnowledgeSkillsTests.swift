@@ -100,3 +100,45 @@ struct SkillSectionsTests {
         #expect(sections[2].text == "## Review profile\nranges\n\n")
     }
 }
+
+/// The Knowledge › Skills preview (#126, #127) and the new skill name field (#128).
+struct SkillMarkdownTests {
+    @Test("Numbered items keep their number and take indented continuation lines")
+    func numbered() {
+        let blocks = SkillMarkdown.blocks("1. Survey\n   the footage\n2. Rough cut\n\n2026 was a year.\n10. Ten")
+        #expect(blocks == [
+            .numbered("1", "Survey the footage"), .numbered("2", "Rough cut"), .paragraph("2026 was a year."),
+            .numbered("10", "Ten"),
+        ])
+    }
+
+    @Test("Quote lines join into one block; a body rule is a divider, front matter is not")
+    func quotesAndRules() {
+        let text = "---\nname: x\n---\n> first line\n> second line\n\n---\n## Next\n- a\n* b\n***"
+        let blocks = SkillMarkdown.blocks(SkillFrontMatter(text).body)
+        #expect(blocks == [
+            .quote("first line\nsecond line"), .rule, .heading(2, "Next"), .bullet("a"), .bullet("b"), .rule,
+        ])
+        #expect(SkillMarkdown.blocks("| a |\n| b |") == [.code("| a |\n| b |")])
+        #expect(SkillMarkdown.blocks("```\n> not a quote\n```") == [.code("> not a quote")])
+    }
+
+    @Test("A skill name is checked as it is typed")
+    func names() {
+        #expect(!AgentKnowledgeStore.isValidSkillName("Hook First!"))
+        #expect(AgentKnowledgeStore.isValidSkillName("hook-first"))
+        #expect(!AgentKnowledgeStore.isValidSkillName("") && !AgentKnowledgeStore.isValidSkillName("hook--first"))
+    }
+}
+
+/// `skills get` finds a kit skill by the names agents see it by (Codex live run, 2026-10-13: `bc:review` failed).
+struct KitSkillNameTests {
+    @Test("bc:review and bc-review name the kit skill review; other names stay")
+    func kitNames() {
+        #expect(AgentKnowledgeStore.kitSkillName("bc:review") == "review")
+        #expect(AgentKnowledgeStore.kitSkillName("bc-edit-workflow") == "edit-workflow")
+        #expect(AgentKnowledgeStore.kitSkillName("review") == "review")
+        #expect(AgentKnowledgeStore.kitSkillName("bc:") == "bc:")
+        #expect(AgentKnowledgeStore.kitSkillName("bashcut.vlog:plan") == "bashcut.vlog:plan")
+    }
+}

@@ -87,7 +87,10 @@ struct PlanCoverageTests {
         project["plan"] = .object([
             "sections": .array([.object(["id": .string("b"), "label": .string("B")])]),
             "beats": .array([
-                .object(["id": .string("1"), "text": .string("xin chào các bạn"), "section": .string("b")]),
+                .object([
+                    "id": .string("1"), "text": .string("xin chào các bạn"), "section": .string("b"),
+                    "onScreen": .string("Bowl close-up"),
+                ]),
                 .object(["id": .string("2"), "text": .string("hôm nay ăn phở")]),
             ]),
         ])
@@ -99,6 +102,9 @@ struct PlanCoverageTests {
         #expect(beats[0]["heardShare"] == .number(0.75) && beats[0]["at"] == .integer(120))
         #expect(beats[0]["inPlannedSection"] == .bool(true) && beats[0]["unmatched"] == .array([.string("các")]))
         #expect(beats[1]["heardShare"] == .number(0) && beats[1]["at"] == nil)
+        #expect(beats[0]["onScreen"] == .string("Bowl close-up") && beats[1]["onScreen"] == nil)
+        let byID = PlanCoverage.scriptCheck(project, words: words, beats: [["id": .string("1"), "text": .string("xin chào")]]).object
+        #expect(byID["beats"]?.array.first?.object["onScreen"] == .string("Bowl close-up"))
         let given = PlanCoverage.scriptCheck(project, words: words, beats: [["id": .string("x"), "text": .string("xin chào")]]).object
         #expect(given["beats"]?.array.first?.object["heardShare"] == .number(1))
     }
@@ -240,5 +246,17 @@ struct ChangeDigestTests {
         #expect(json["project"] == .array([.string("review")]))
         #expect(json["counts"]?.object["added"] == .integer(1) && json["truncated"] == .bool(false))
         #expect(json["text"]?.string?.contains("+ e on v1") == true && json["text"]?.string?.contains("- a") == true)
+    }
+
+    @Test("set-data answers with key, size, top-level keys and revision instead of echoing the value")
+    func dataAck() throws {
+        let big: JSONValue = .object(["sections": .array(Array(repeating: .string(String(repeating: "x", count: 100)), count: 100)),
+                                      "recipe": .object(["skill": .string("bashcut.vlog:food")])])
+        let ack = ProjectPlan.dataAck(key: "plan", value: big, revision: 7).object
+        #expect(ack["key"] == .string("plan") && ack["rev"] == .integer(7))
+        #expect(ack["keys"] == .array([.string("recipe"), .string("sections")]))
+        #expect((ack["bytes"]?.int ?? 0) > 10_000)
+        #expect(ack["sections"] == nil && ack["plan"] == nil)
+        #expect(ProjectPlan.dataAck(key: "brief", value: .null, revision: 8).object["cleared"] == .bool(true))
     }
 }

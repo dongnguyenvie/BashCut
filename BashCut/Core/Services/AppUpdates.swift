@@ -42,10 +42,18 @@ public enum AppInstall: String, Sendable {
 
     public static func current(bundle: Bundle = .main, fileManager: FileManager = .default) -> AppInstall {
         if PluginChannel.current == .appStore { return .appStore }
-        if bundle.object(forInfoDictionaryKey: "BCDevelopmentBuild") as? Bool == true { return .development }
+        if isDevelopmentBuild(bundle.object(forInfoDictionaryKey: "BCDevelopmentBuild")) { return .development }
         let applications = ["/Applications", fileManager.homeDirectoryForCurrentUser.path + "/Applications"]
         let inApplications = applications.contains(bundle.bundleURL.deletingLastPathComponent().path)
         return inApplications && caskrooms.contains(where: fileManager.fileExists(atPath:)) ? .homebrew : .direct
+    }
+
+    /// `BCDevelopmentBuild` in Info.plist: a Boolean (`scripts/run.sh`) or the expanded `$(BC_DEVELOPMENT_BUILD)`
+    /// build setting, `YES` in Xcode's Debug configuration.
+    static func isDevelopmentBuild(_ value: Any?) -> Bool {
+        if let flag = value as? Bool { return flag }
+        guard let text = value as? String else { return false }
+        return ["yes", "true", "1"].contains(text.lowercased())
     }
 
     /// Whether BashCut looks for updates itself; the App Store updates its copies.

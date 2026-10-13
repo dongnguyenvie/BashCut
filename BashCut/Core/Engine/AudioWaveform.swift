@@ -23,6 +23,17 @@ public struct AudioWaveform: Codable, Sendable, Equatable {
         return peaks[first...max(first, last)].max() ?? 0
     }
 
+    /// The loudest peak of each of `count` equal stretches of the sound (a small picture of it, such as a library
+    /// sound's tile).
+    public func bars(_ count: Int) -> [Float] {
+        guard !peaks.isEmpty, count > 0 else { return [] }
+        return (0..<count).map { bar in
+            let start = min(peaks.count - 1, bar * peaks.count / count)
+            let end = max(start + 1, (bar + 1) * peaks.count / count)
+            return peaks[start..<min(end, peaks.count)].max() ?? 0
+        }
+    }
+
     var valid: Bool {
         duration.isFinite && duration > 0 && !peaks.isEmpty && peaks.count <= 20000
             && peaks.allSatisfy { $0.isFinite && (0...1).contains($0) }

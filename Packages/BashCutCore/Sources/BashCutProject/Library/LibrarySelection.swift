@@ -9,7 +9,8 @@ public enum LibrarySelection {
     /// the media of the sound a preset placed at its cut: one copied from an audio library item is kept as `sfx`.
     /// A look keeps the item's whole filter stack (#79): its grade and, given `lut` (the project LUT the grade
     /// uses), the LUT's strength and name; the caller saves the LUT's file as the item's file.
-    /// An effect preset (#76) becomes a recipe of what is on the clip: reverse, speed or speed ramp, framing,
+    /// An effect preset (#76) becomes a recipe of what is on the clip: reverse, freeze frame (where along the clip it
+    /// is held, told with `project`'s media), speed or speed ramp, framing,
     /// keyframes (as positions 0–1 so they scale with the next clip) and the sound effect at its start, given as
     /// `soundItem` (the SFX item) and `sound` (its media; one copied from an audio library item is kept as `sfx`).
     /// A text preset keeps the item's preset, text, `textStyle` and its motion preset (#380), told on `project`'s frame.
@@ -24,14 +25,22 @@ public enum LibrarySelection {
             }
             return LibraryTextPreset(item: item, project: project).params()
         case .effectPreset:
-            return try effect(item, soundItem: soundItem, sound: sound)
+            return try effect(item, soundItem: soundItem, sound: sound, project: project)
         case .transitionPreset:
             guard let transition else {
                 throw ProjectError.invalid("Select a clip that has a transition to save it")
             }
             let sfx = sound?[TransitionPreset.soundLibraryField]?.string
+            // The sound's place against the cut and its gain, when the preset's sound item is given.
+            let cut = project?.tracks.flatMap(\.items).first { $0.id == transition.toItemID }?.at
+            let offset = soundItem.flatMap { item in cut.map { item.at - $0 } }
+                .map { min(max($0, TransitionPreset.sfxOffsetRange.lowerBound), TransitionPreset.sfxOffsetRange.upperBound) }
+            let volume = soundItem?["volumeDb"]?.double.map {
+                min(max($0, TransitionPreset.sfxVolumeRange.lowerBound), TransitionPreset.sfxVolumeRange.upperBound)
+            }
             return TransitionPreset(
-                kind: transition.kind, duration: transition.duration, easing: transition.easing, sfx: sfx
+                kind: transition.kind, duration: transition.duration, easing: transition.easing, sfx: sfx,
+                sfxOffset: sound == nil ? nil : offset, sfxVolumeDb: sound == nil ? nil : volume
             ).params
         case .look:
             return try look(item, lut: lut)
@@ -93,7 +102,11 @@ public enum LibrarySelection {
 
     /// An audio item (#78) from project audio media: its length, and a role from the layer its clip is on (`trackRole`;
     /// a Music layer gives music, an SFX layer sfx). The caller saves the media's file as the item's file.
-    public static func audio(_ media: Media, trackRole: String?) throws -> [String: JSONValue] {
+    /// With `range` (seconds of the media's file, `audioRange`), the item is that part of it: its length, and
+    /// `trimmedFrom {start, end}` saying where it came from; the caller saves that part as the item's file.
+    public static func audio(
+        _ media: Media, trackRole: String?, range: ClosedRange<Double>? = nil
+    ) throws -> [String: JSONValue] {
         guard media.kind == "audio", media.frames > 0 else {
             throw ProjectError.invalid("\(media.id) is not audio media; save an audio file or clip")
         }
@@ -102,13 +115,38 @@ public enum LibrarySelection {
         case TrackRole.music: "music"
         default: nil
         }
-        return LibraryAudio(role: role, seconds: media.durationSeconds).params()
+        guard let range else { return LibraryAudio(role: role, seconds: media.durationSeconds).params() }
+        var params = LibraryAudio(role: role, seconds: range.upperBound - range.lowerBound).params()
+        params["trimmedFrom"] = .object([
+            "start": EffectRecipe.number((range.lowerBound * 1_000).rounded() / 1_000),
+            "end": EffectRecipe.number((range.upperBound * 1_000).rounded() / 1_000),
+        ])
+        return params
     }
 
-    private static func effect(_ item: Item?, soundItem: Item?, sound media: Media?) throws -> [String: JSONValue] {
+    /// The seconds of `media`'s file an audio clip plays (its trim, at its speed), or nil when it plays the whole
+    /// file (within one frame of each end).
+    public static func audioRange(of item: Item, media: Media, fps: FrameRate) -> ClosedRange<Double>? {
+        let total = media.durationSeconds
+        let start = min(total, max(0, Double(item.sourceIn) / media.fps.value))
+        let end = min(total, start + item.sourceSeconds(afterFrames: item.duration, fps: fps))
+        let frame = 1 / media.fps.value
+        guard end > start, start > frame / 2 || end < total - frame / 2 else { return nil }
+        return start...end
+    }
+
+    private static func effect(
+        _ item: Item?, soundItem: Item?, sound media: Media?, project: Project?
+    ) throws -> [String: JSONValue] {
         guard let item else { throw ProjectError.invalid("Select a clip to save its effect") }
         var steps: [[String: JSONValue]] = []
         if item["reversed"] != nil { steps.append(["op": .string("reverse")]) }
+        if item["freezeFrame"] != nil {
+            // Where along the clip the held frame is, so it lands at the same place on the next clip.
+            let clipMedia = project?.media.first { $0.id == item.mediaID }
+            let t = project.flatMap { project in clipMedia.flatMap { item.freezePosition(media: $0, fps: project.fps) } } ?? 0
+            steps.append(["op": .string("freeze"), "t": EffectRecipe.number((t * 1_000_000).rounded() / 1_000_000)])
+        }
         if let curve = item.speedCurve {
             steps.append(["op": .string("speedCurve"), "points": curve.json])
         } else if abs(item.speed - 1) > 1e-9 {
@@ -118,7 +156,8 @@ public enum LibrarySelection {
         if let motion = item.motion { steps.append(keyframeStep(motion, duration: item.duration)) }
         if let soundItem, let media { steps.append(soundStep(soundItem, media: media, clip: item)) }
         guard !steps.isEmpty else {
-            throw ProjectError.invalid("The selected item has no framing, keyframes, speed, reverse or sound effect to save")
+            throw ProjectError.invalid(
+                "The selected item has no framing, keyframes, speed, reverse, freeze frame or sound effect to save")
         }
         return EffectRecipe(steps: steps).params
     }

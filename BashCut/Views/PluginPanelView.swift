@@ -54,6 +54,7 @@ struct PluginPanelView: View {
                 Text(verbatim: plugin.manifest.containerTitle).font(.headline).lineLimit(1)
                 Text(verbatim: plugin.manifest.displayName + " " + plugin.manifest.version)
                     .font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                if let author = plugin.manifest.author { PluginAuthorLabel(author: author).lineLimit(1) }
             }
             Spacer()
             Button {
@@ -77,8 +78,9 @@ private struct PluginPanelManager: View {
         let requirements = document.plugins.requirementsJSON(plugin).array
         let unprovided = document.unprovidedCapabilities(plugin)
         let elsewhere = plugin.manifest.views.filter { $0.place != .panel }
+        let overlays = document.ui.pluginOverlayRevision >= 0 ? document.ui.pluginOverlaySets[plugin.id]?.count ?? 0 : 0
         if !tools.isEmpty || !skills.isEmpty || !requirements.isEmpty || !plugin.manifest.usedCapabilities.isEmpty
-            || !elsewhere.isEmpty {
+            || !elsewhere.isEmpty || overlays > 0 {
             DisclosureGroup(isExpanded: $expanded) {
                 VStack(alignment: .leading, spacing: 8) {
                     if !elsewhere.isEmpty {
@@ -90,6 +92,15 @@ private struct PluginPanelManager: View {
                                 Label(view.title.text, systemImage: view.place == .dock ? "sidebar.right" : "macwindow")
                                     .frame(maxWidth: .infinity, alignment: .leading)
                             }
+                        }
+                    }
+                    if overlays > 0 {
+                        // Same as `plugins set-overlays <plugin> --overlays '[]'`.
+                        HStack {
+                            label("Overlays", "square.dashed")
+                            Text(verbatim: "\(overlays)").font(.caption).foregroundStyle(.secondary)
+                            Spacer()
+                            Button("Clear") { document.ui.setPluginOverlays(plugin.id, []) }.controlSize(.small)
                         }
                     }
                     if !tools.isEmpty {
@@ -194,7 +205,9 @@ struct PluginNodeView: View {
             } else {
                 ProgressView { label }.controlSize(.small)
             }
-        case .image: PluginImageView(path: node.string("path"), height: node.double("height"), caption: node.string("caption"))
+        case .image:
+            PluginImageView(path: node.string("path"), height: node.double("height"), caption: node.string("caption"))
+                .pluginFileDrag(node.string("file") ?? node.string("path"), library: node.string("libraryItem"))
         case .imageCompare: PluginImageCompare(node: node)
         case .audio: PluginAudioButton(path: node.string("path"), title: node.string("title"))
         case .list: PluginListView(node: node, model: model)
@@ -209,6 +222,8 @@ struct PluginNodeView: View {
                 .disabled(node.bool("disabled"))
         case .picker: picker
         case .slider: PluginSliderView(node: node, model: model)
+        case .colorPicker: PluginColorPickerView(node: node, model: model)
+        case .fontPicker: PluginFontPickerView(node: node, model: model)
         case nil:
             Label(String(format: String(localized: "Needs a newer BashCut: %@"), node.type), systemImage: "puzzlepiece")
                 .font(.caption2).foregroundStyle(.secondary)
@@ -465,5 +480,6 @@ private struct PluginListView: View {
         .background(selected == id ? Color.cyan.opacity(0.14) : .clear, in: RoundedRectangle(cornerRadius: 5))
         .contentShape(Rectangle())
         .onTapGesture { model.send(PluginViewEvent(node: node.id, kind: .select, value: .string(id))) }
+        .pluginFileDrag(item["file"]?.string, library: item["libraryItem"]?.string)
     }
 }

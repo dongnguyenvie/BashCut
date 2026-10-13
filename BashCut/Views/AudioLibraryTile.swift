@@ -3,7 +3,7 @@ import BashCutProject
 import SwiftUI
 
 /// One audio library item in the Audio panel (#78): play/stop, its name and badges (use, length, BPM, loudness,
-/// loop) and Place. Mood and genre are its tags.
+/// loop), its waveform and Place. Mood and genre are its tags.
 struct AudioLibraryTile: View {
     @Bindable var document: ProjectDocument
     let item: LibraryItem
@@ -29,6 +29,7 @@ struct AudioLibraryTile: View {
             VStack(alignment: .leading, spacing: 2) {
                 LibraryView.title(item).lineLimit(1)
                 LibraryAudioBadges(audio: audio, tags: item.tags)
+                LibraryWaveformView(url: document.libraryCatalog.fileURL(of: item))
             }
             Spacer(minLength: 4)
             Button("Place") { document.placeFromLibrary(item) }

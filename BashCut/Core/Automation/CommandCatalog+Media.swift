@@ -300,7 +300,8 @@ extension CommandCatalog {
         parameters: [
             CommandParameter("text", .string, "Voiceover text in the project content language (with replace, "
                              + "the item's voice text by default)", sensitive: true, cli: .positional),
-            CommandParameter("takes", .integer, "Number of takes to generate", default: .integer(3), minimum: 1,
+            CommandParameter("takes", .integer, "Number of takes to generate; capped to the provider's maxTakes "
+                             + "(requestedTakes in the answer when it gave fewer)", default: .integer(3), minimum: 1,
                              maximum: 8, cli: .option("takes")),
             provider,
             CommandParameter("choose", .integer, "Put this take on the timeline (1 = first)", minimum: 1, maximum: 8,
@@ -461,8 +462,9 @@ extension CommandCatalog {
             "media.transcript", .read,
             "Read the stored transcript of one media in its own seconds: language, provider, transcribedAt, "
                 + "speechSeconds, firstSpeech/lastSpeech, precision (wordTimes provider or none, and whether words carry "
-                + "confidence, speakers, events, noSpeechProb), then as words: wordList [{index, text, start, end, "
-                + "gapBefore, confidence?, speaker?, event?, noSpeechProb?}]; phrases (default): phraseList [{index, "
+                + "confidence, speakers, events, noSpeechProb, avgLogprob, compressionRatio), then as words: wordList "
+                + "[{index, text, start, end, gapBefore, confidence?, speaker?, event?, noSpeechProb?, avgLogprob?, "
+                + "compressionRatio?}]; phrases (default): phraseList [{index, "
                 + "start, end, seconds, text, words, confidence (mean), gapBefore}]; json: both; text: one line per "
                 + "phrase (#index start–end seconds | text; print it with --format text). from/to keep what overlaps; "
                 + "ranges reads several windows in one call: text joins them under \"== A–B\" lines, other formats "

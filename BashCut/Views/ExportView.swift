@@ -16,6 +16,8 @@ struct ExportView: View {
     @State private var withoutMusic = false
     @State private var targetLUFS = -14.0
     @State private var loudnessProvider = ""
+    @State private var coverTitle = ""
+    @State private var coverPreset = "hook-title"
 
     private var dimensions: (Int, Int) {
         preset.dimensions(projectWidth: document.project.width, projectHeight: document.project.height)
@@ -73,6 +75,22 @@ struct ExportView: View {
                         LabeledContent("Target loudness") {
                             Text("\(targetLUFS.formatted(.number.precision(.fractionLength(0)))) LUFS")
                         }
+                    }
+                }
+                LabeledContent("Cover") {
+                    // Two lines: one row of field, preset and button squeezed the label in Vietnamese.
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            // In a columns form a TextField's title becomes a second label and squeezes the field.
+                            TextField("Title (optional)", text: $coverTitle, prompt: Text("Title (optional)"))
+                                .labelsHidden().frame(minWidth: 120, maxWidth: 220)
+                            Picker("Title preset", selection: $coverPreset) {
+                                ForEach(TextPreset.all, id: \.self) { Text(verbatim: $0).tag($0) }
+                            }.labelsHidden().fixedSize().disabled(coverTitle.isEmpty)
+                        }
+                        Button("Save Cover at Playhead") {
+                            document.saveCoverAtPlayhead(title: coverTitle, preset: coverPreset)
+                        }.help("A still of the frame at the playhead for each output's cover aspect, saved in render/")
                     }
                 }
             }.formStyle(.columns)

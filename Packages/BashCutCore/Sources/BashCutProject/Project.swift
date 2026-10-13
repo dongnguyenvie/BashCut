@@ -121,6 +121,13 @@ public struct Media: JSONObject, Identifiable {
         return value
     }
     public var durationSeconds: Double { Double(frames) / fps.value }
+    /// The name to show: `label` (the library item's name for media placed from the library, whose copy is named by
+    /// its content), else the imported file's, also after a conversion pointed `path` at `media/converted/<id>.mov`
+    /// (`originalPath` keeps the original).
+    public var fileName: String {
+        if let label = fields["label"]?.string, !label.isEmpty { return label }
+        return URL(fileURLWithPath: fields["originalPath"]?.string ?? path).lastPathComponent
+    }
     /// A still image: held for as long as its items last, up to `Media.imageMaximumSeconds` (its `frames`).
     public var isImage: Bool { kind == "image" }
     public static let imageMaximumSeconds = 3600.0
@@ -343,8 +350,9 @@ public struct Project: JSONObject {
         media.first { existing in
             existing.id != candidate.id && existing.path == candidate.path
                 && candidate.fields.allSatisfy { key, value in
-                    // Rights describe the file, not this use of it: media placed before they were recorded is reused.
-                    ["id", "license", "provenance"].contains(key) || existing.fields[key] == value
+                    // Rights and the label describe the file, not this use of it: media placed before they were recorded
+                    // is reused.
+                    ["id", "license", "provenance", "label"].contains(key) || existing.fields[key] == value
                 }
         }
     }
@@ -392,8 +400,13 @@ public struct Project: JSONObject {
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
         return try encoder.encode(self)
     }
+    /// Reads a project file. The JSON is read with `JSONValue(parsing:)`: the same values as `Decodable`, several
+    /// times faster for a large timeline.
     public static func decode(_ data: Data) throws -> Project {
-        var project = try JSONDecoder().decode(Project.self, from: data)
+        guard case .object(let fields) = try JSONValue(parsing: data) else {
+            throw ProjectError.invalid("A project file holds one JSON object")
+        }
+        var project = Project(fields: fields)
         try ProjectMigration.upgrade(&project)
         project = project.normalizingLayers()
         try project.validate()

@@ -117,6 +117,8 @@ enum PluginText {
     var plugins: [InstalledPlugin] = []
     var diagnostics: [String] = []
     var pendingInstall: PendingPluginInstall?
+    /// The skill review each pending install's sheet worked out (#506), for `ui dialog`.
+    @ObservationIgnored var skillReviews: [UUID: PluginSkillReview] = [:]
     /// A bundle (Recommended) waiting for the user's approval: its downloaded plugins, each with a checkbox.
     var pendingBundle: PendingBundleInstall?
     var installing = false
@@ -145,6 +147,8 @@ enum PluginText {
     var skills: [PluginSkill] = []
     /// Skills that could not be read, also in `diagnostics`.
     var skillProblems: [String] = []
+    /// `skills(of:)` per plugin installation and version, until the next catalog refresh.
+    @ObservationIgnored var skillsByPlugin: [String: [PluginSkill]] = [:]
     /// Called when `skills` changes, so the document links them for agents and lists them in their knowledge.
     @ObservationIgnored var onSkillsChanged: (@MainActor () -> Void)?
     /// When each action last started, so MCP lists recently used actions first (#98).

@@ -188,6 +188,28 @@ struct CapabilityServiceTests {
         #expect(takes.filter { $0.id != best.id }.allSatisfy { !FileManager.default.fileExists(atPath: $0.asset.url.path) })
     }
 
+    @Test("A provider with maxTakes 1 is asked once for voice speak --takes 3 (#410)")
+    func maxTakes() async throws {
+        let sandbox = try PluginSandbox()
+        defer { sandbox.cleanup() }
+        let tone = sandbox.root.appendingPathComponent("tone.wav")
+        let calls = sandbox.root.appendingPathComponent("calls.txt")
+        try TestFixtures.writeTone(to: tone, seconds: 1)
+        var provider = PluginProvider(id: "test.paid", capability: "voice.synthesize", name: "Paid")
+        provider.maxTakes = 1
+        try sandbox.addPlugin(
+            "test.voice", providers: [provider], body: """
+                echo call >> '\(calls.path)'
+                cp '\(tone.path)' "$out/a.wav"
+                printf '{"id":"%s","result":{"audioPath":"a.wav"}}\\n' "$id"
+                """, apiVersion: 8)
+        let takes = try await sandbox.service.synthesizeVoiceTakes(
+            text: "Xin chào", language: "vi", count: 3, preferredProvider: nil, projectRoot: sandbox.project,
+            outputRoot: sandbox.project.appendingPathComponent("voiceover/generated"))
+        #expect(takes.count == 1)
+        #expect(try String(contentsOf: calls, encoding: .utf8).split(separator: "\n").count == 1)
+    }
+
     @Test("Without provider scores no pace formula ranks the takes: the first take is the best")
     func unscoredTakes() async throws {
         let sandbox = try PluginSandbox()

@@ -71,7 +71,7 @@ struct ReviewCheckTests {
                 printf '{"id":"%s","result":{"issues":[{"title":"No id"}]}}\\n' "$id"
                 """), apiVersion: 9)
         try sandbox.addPlugin(
-            "test.slow", providers: [provider("test.slow.check", timeout: 10)], body: "sleep 30", apiVersion: 9)
+            "test.slow", providers: [provider("test.slow.check", timeout: 10)], body: "sleep 300", apiVersion: 9)
         try sandbox.addPlugin(
             "test.good", providers: [provider("test.good.check")], body: body("""
                 printf '{"id":"%s","result":{"issues":[{"id":"ok","title":"Fine","frame":3,"severity":"info"}]}}\\n' "$id"
@@ -81,8 +81,9 @@ struct ReviewCheckTests {
         let start = ContinuousClock.now
         // The slow provider's own timeoutSeconds (10, the least a manifest allows) cuts it short; the others keep 30 s.
         let found = await service.runReviewChecks(providers, project: project(), projectRoot: sandbox.project)
-        // The slow plugin sleeps 30 s; stopping it at its 10 s limit ends well before that, even on a busy machine.
-        #expect(start.duration(to: .now) < .seconds(28), "the slow check must be stopped before its 30 s sleep ends")
+        // The slow plugin sleeps 300 s: ending long before that proves its 10 s limit stopped it. The bound is far from
+        // both numbers, so a loaded machine (stopping took up to 27 s under parallel tests) cannot fail it.
+        #expect(start.duration(to: .now) < .seconds(150), "the slow check must be stopped before its 300 s sleep ends")
         #expect(found.contains { $0.id == "test.good.check:ok" && $0.source == "test.good" })
         for plugin in ["test.crash", "test.bad", "test.slow"] {
             let failure = found.first { $0.source == plugin }
@@ -90,6 +91,39 @@ struct ReviewCheckTests {
             #expect(failure?.severity == .info, "\(plugin)")
         }
         #expect(found.first { $0.source == "test.slow" }?.detail.contains("within 10 s") == true)
+    }
+
+    @Test("A project over the inline limit goes as projectFile: a 2 MB project is checked, and its file removed")
+    func largeProjectAsFile() async throws {
+        let sandbox = try PluginSandbox()
+        defer { sandbox.cleanup() }
+        // Counts the items of the project file and says whether `project` came inline too.
+        let count = #"perl -MJSON::PP -0777 -e 'my $r = decode_json(<STDIN>)->{params}; "#
+            + #"open(my $f, "<", $r->{projectFile}) or die "no file"; local $/; my $p = decode_json(<$f>); "#
+            + #"my $n = 0; $n += scalar @{$_->{items}} for @{$p->{tracks}}; "#
+            + #"print "items $n inline ", (exists $r->{project} ? 1 : 0), " file $r->{projectFile}"'"#
+        try sandbox.addPlugin(
+            "test.big", providers: [provider("test.big.check")], body: body("""
+                summary=$(printf '%s' "$input" | \(count))
+                printf '{"id":"%s","result":{"issues":[{"id":"n","title":"Items","detail":"%s","frame":0}]}}\\n' "$id" "$summary"
+                """), apiVersion: 9)
+        var project = Project(name: "Large", fps: FrameRate(30, 1))
+        let index = project.tracks.firstIndex { $0.kind == "text" }!
+        project.tracks[index].items = (0..<4_000).map { number in
+            var item = Item(id: "t\(number)", at: number * 10, duration: 10)
+            item["text"] = .string(String(repeating: "Một dòng chữ khá dài cho phụ đề. ", count: 12))
+            return item
+        }
+        let size = try JSONEncoder().encode(JSONValue.object(project.fields)).count
+        #expect(size > 1024 * 1024, "\(size) bytes: over the 1 MiB request limit")
+        let service = sandbox.service
+        let found = await service.runReviewChecks(
+            service.reviewCheckProviders(projectRoot: sandbox.project), project: project, projectRoot: sandbox.project)
+        let detail = try #require(found.first?.detail)
+        #expect(detail.hasPrefix("items 4000 inline 0 file "), "\(detail)")
+        let file = String(detail.dropFirst("items 4000 inline 0 file ".count))
+        #expect(file.hasSuffix("/project.json"))
+        #expect(!FileManager.default.fileExists(atPath: file), "the project file is removed after the checks")
     }
 
     @Test("Checks declared under an older apiVersion are not offered")

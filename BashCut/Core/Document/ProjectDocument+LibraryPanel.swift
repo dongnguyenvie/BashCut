@@ -43,6 +43,7 @@ extension ProjectDocument {
         request.sticker = editableSticker(item)
         request.textPreset = editableTextPreset(item)
         request.brand = item.kind == .brand ? item.params : nil
+        request.recipe = item.kind == .effectPreset ? EffectRecipe.editorText(item.params) : nil
         ui.libraryEditor = request
     }
 
@@ -57,6 +58,7 @@ extension ProjectDocument {
         request.sticker = editableSticker(item)
         request.textPreset = editableTextPreset(item)
         request.brand = item.kind == .brand ? item.params : nil
+        request.recipe = item.kind == .effectPreset ? EffectRecipe.editorText(item.params) : nil
         ui.libraryEditor = request
     }
 
@@ -121,7 +123,7 @@ extension ProjectDocument {
         var preset = edited
         if preset.sfx == ownTransitionSound { preset.sfx = nil }
         var params = item.params
-        for key in ["kind", "duration", "easing", "sfx"] { params[key] = nil }
+        for key in ["kind", "duration", "easing", "sfx", "sfxOffset", "sfxVolumeDb"] { params[key] = nil }
         params.merge(preset.params) { $1 }
         var changes: [String: JSONValue] = ["params": .object(params)]
         if item.file != nil, edited.sfx != ownTransitionSound { changes["file"] = .null }
@@ -137,6 +139,9 @@ extension ProjectDocument {
         if let sticker = request.sticker { changes["params"] = .object(sticker.params(merging: item.params)) }
         if let text = request.textPreset { changes["params"] = .object(text.params(merging: item.params)) }
         if let brand = request.brand { changes["params"] = .object(brand) }
+        if let recipe = request.recipe, let params = try? EffectRecipe.params(editorText: recipe) {
+            changes["params"] = .object(params)
+        }
         return changes
     }
 
@@ -147,6 +152,12 @@ extension ProjectDocument {
         guard !name.isEmpty else {
             message = String(localized: "Give the item a name")
             return
+        }
+        if let recipe = request.recipe {
+            if let problem = EffectRecipeFields.problem(recipe) {
+                message = problem
+                return
+            }
         }
         ui.libraryEditor = nil
         let tags = request.tags.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
@@ -175,9 +186,11 @@ extension ProjectDocument {
                         ?? request.sticker.map { $0.params(merging: selection.params) }
                         ?? request.textPreset.map { $0.params(merging: selection.params) } ?? selection.params)
                 let preview = kind == .effectPreset ? await document.effectPreview(itemID: nil) : nil
+                let trimmed = try await document.trimmedSelectionFile(selection.params, file: selection.file)
+                defer { Self.removeTrimmedSelection(trimmed) }
                 return try await document.addLibraryItem(
-                    kind: kind, name: name, scope: request.scope, changes: fields, file: selection.file, preview: preview,
-                    author: .user, method: "library.save-selection")
+                    kind: kind, name: name, scope: request.scope, changes: fields, file: trimmed ?? selection.file,
+                    preview: preview, author: .user, method: "library.save-selection")
             case .duplicate(let item):
                 return try await document.duplicateLibraryItem(item, into: request.scope, changes: changes, author: .user)
             case .rename(let item):

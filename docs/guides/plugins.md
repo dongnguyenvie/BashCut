@@ -77,7 +77,7 @@ checked manifest, an entrypoint that already speaks the protocol and smoke tests
 | `uses` | No | Capability IDs this plugin calls with `plugins.invoke` (API 8), at most 32 |
 | `features` | No | [Host features](#host-features) the plugin cannot work without (API 8), at most 32 |
 | `category` | No | Where Plugins and Settings group it: `agents`, `captions`, `voice`, `audio`, `color`, `effects`, `export` or `utilities`. A registry listing's category wins; without either, BashCut guesses from the capabilities (`agent.*`, `captions.*`, `voice.*`, `audio.*`) and falls back to Utilities. Older BashCut versions ignore it |
-| `author` | No | Who wrote the plugin: `{"name": "Luan Tran", "url": "https://github.com/luantran069"}`. `name` is 1–80 characters on one line; `url` is optional (`null` or left out) and must be an `http` or `https` link. Plugins (Installed and Browse) show *By <name>*, a link when there is a url; `plugins list` and `plugins search` return it. The registry's `publisher` is who signs and ships the plugin, which may differ. Metadata only, so any `apiVersion`; older BashCut versions ignore it |
+| `author` | No | Who wrote the plugin: `{"name": "Luan Tran", "url": "https://github.com/luantran069"}`. `name` is 1–80 characters on one line; `url` is optional (`null` or left out) and must be an `http` or `https` link. Plugins (Installed and Browse), the install approval sheet (and its `ui dialog` text) and the plugin's panel header show *By <name>*, a link when there is a url; `plugins list` and `plugins search` return it. The registry's `publisher` is who signs and ships the plugin, which may differ. Metadata only, so any `apiVersion`; older BashCut versions ignore it |
 
 BashCut resolves features by capability and provider ID, never by vendor SDK. A plugin is only chosen for a
 capability when it declares a provider for it.
@@ -119,7 +119,7 @@ the lower of the plugin's `apiVersion` and the host's current version.
 ### Host features
 
 Host features (API 8) are names for what a BashCut can do, so a plugin asks for exactly what it uses instead of a whole
-API version: `container`, `views`, `requires`, `invoke`, and `views.<component>` for each view component (`views.list`,
+API version: `container`, `views`, `requires`, `invoke`, `options.set` (the `plugins.option` host call), and `views.<component>` for each view component (`views.list`,
 `views.audio`, `views.imageCompare`, …). The session `hello` carries `"features": […]` and `plugins list --views` lists them.
 A manifest's `features` names the ones the plugin cannot work without; a BashCut without one lists the plugin as
 outdated ("Update BashCut"). For optional features, read `features` from `hello` and adapt instead.
@@ -367,7 +367,7 @@ standard error become the error shown to the user.
 
 | Limit | Value |
 |---|---|
-| Request size | 1 MiB |
+| Request size | 1 MiB (`review.check` sends a larger project as a file, `projectFile`) |
 | Response size | 8 MiB |
 | Call timeout | 120 seconds, or the provider's `timeoutSeconds`. With the session transport this is the longest a request may go **without a progress line**; every `progress` message restarts it, up to 4 hours in total |
 | Health probe timeout | 15 seconds, 256 KiB of output |
@@ -435,7 +435,7 @@ builds the request parameters and validates the result.
 | `audio.sync` | `media sync` | `mediaPath`, `otherPath` | `offsetSeconds`, `correlation`, optional `halves`, `overlapStartSeconds`, `overlapEndSeconds` |
 | `library.search` (API 6) | A library panel's Search…, `library search` | `kind`, `query`, `limit`, `page`, `language`, `outputDirectory` | `items`: up to `limit` library item objects; see [Library search and generate](#library-search-and-generate) |
 | `library.generate` (API 6) | A library panel's Generate…, `library generate` | `kind`, `prompt`, `limit`, `params` (hints), `language`, `outputDirectory` | `items`, as for `library.search` |
-| `review.check` (API 9) | `review measure`, the Review sheet's Measure | `project`, `revision`, `fps`, `duration`, `width`, `height`, `projectRoot` | `issues`; see [`review.check`](#reviewcheck) |
+| `review.check` (API 9) | `review measure`, the Review sheet's Measure | `project` (or `projectFile` when over 512 KiB), `revision`, `fps`, `duration`, `width`, `height`, `projectRoot` | `issues`; see [`review.check`](#reviewcheck) |
 
 ### Output files
 
@@ -450,6 +450,11 @@ symlinks are followed, and the file must exist. If the call fails, BashCut delet
   through 1. A provider that only makes one file can return `{"audioPath": …}` instead.
 - When the provider returns fewer takes than requested, BashCut calls it again with a higher `takeOffset` until
   the count is filled. If any call fails, the takes made so far are discarded.
+- A provider that should not be asked for several takes (a paid cloud voice, where each take costs credits) sets
+  `"maxTakes": 1` (1–8, `apiVersion` 8, host feature `voice.maxTakes`) on its provider: BashCut never asks it for more
+  takes than that per line. `voice speak --takes 3` then makes one take and answers `requestedTakes: 3`, the Voice
+  panel generates one take and shows no take picker, and `plugins list` and `capabilities get voice.synthesize
+  --voices` report `maxTakes`.
 - Each file must be valid audio with a positive duration. BashCut does not score takes itself (P0-C4): it measures
   each take (seconds, units per second in the content language's unit, leading and trailing silence, pauses) and
   reports them with the provider's `score`; the caller picks (`voice place`, or `--choose`).
@@ -488,6 +493,8 @@ Each word may also carry what the provider knows about it; BashCut keeps these i
 | `speaker` | A speaker label, up to 64 characters |
 | `event` | A non-speech sound the "word" stands for, such as `laughter` or `music` |
 | `noSpeechProb` | 0–1, the chance the word's stretch holds no speech |
+| `avgLogprob` | At most 0, the decoder's mean log probability of the segment the word came from |
+| `compressionRatio` | Above 0, how compressible the segment's text is (high when the recogniser repeated itself) |
 
 A whole-file transcription (no range) is kept as the media's source transcript, by file content, in
 `.bashcut/cache/transcripts`. `captions generate` and `media transcribe` reuse it while the file, the content
@@ -590,8 +597,10 @@ when they agree within 0.02 s), and the overlap in the first file's seconds.
 A plugin's own review of the timeline: a model-scored hook, contrast, brand rules. Every ready provider of every
 enabled plugin runs, side by side, when the user or an agent measures the review (`review measure`); `review run`
 then lists its issues with the built-in ones for that revision. The request has the whole project (`project`, the
-same JSON as `project get`; requests over 1 MB fail, as for any request), its `revision`, `fps`, `duration` in
-frames, `width`, `height` and `projectRoot`. Return at most 50 issues:
+same JSON as `project get`), its `revision`, `fps`, `duration` in frames, `width`, `height` and `projectRoot`. A
+project whose JSON is over 512 KiB does not fit the 1 MiB request limit, so it comes as `projectFile` instead of
+`project`: the path of a private file with the same JSON, which BashCut removes once every check has answered. Read
+`project` when it is there and `projectFile` otherwise. Return at most 50 issues:
 
 ```json
 {"issues": [{"id": "hook", "title": "Weak hook", "detail": "No face or number in the first 2 s",
@@ -604,7 +613,9 @@ frames, `width`, `height` and `projectRoot`. Return at most 50 issues:
 optional. Frames are clamped to the timeline. BashCut prefixes each ID with the provider ID (`<provider>:<id>`) and
 adds `source` (the plugin ID), which the Review sheet shows as *From plugin …*. A check has 30 seconds (less when its
 provider sets a lower `timeoutSeconds`); a check that fails, returns a malformed result or runs out of time becomes
-one info issue, "Plugin check failed", and never stops the others or the built-in checks. A project turns checks off
+one info issue, "Plugin check failed", and never stops the others or the built-in checks. The issues are kept in the
+project's cache with the review measurements (keyed by the project's content), so they come back after a restart for
+the same timeline without running the checks again; a measure where a check failed is not kept. A project turns checks off
 with `review.disabledChecks`, a list of plugin or provider IDs (`timeline apply` with `setProjectProperties`);
 `plugins hooks` lists the checks under `reviewChecks` with `enabled` (for this project) and `active` (can run now).
 Declaring `review.check` needs `apiVersion` 9.
@@ -893,6 +904,32 @@ description: Check how loud the media in an edit is and say what to change. Use 
 
 `Fixtures/plugins/example.skills` is a worked example: a plugin that only ships a `loudness-check` skill.
 
+### Skill packs without code
+
+A plugin that only ships skills or library packs may leave out `entrypoint` (host feature `skillsOnly`): BashCut
+never runs it. It must have `apiVersion` 7 or later and `contributes.skills` or `contributes.library`, and nothing
+that runs (no `capabilities`, `providers`, `options`, `dependencies`, actions, hooks, views or session transport).
+Trust still pins every file. An older BashCut lists such a manifest as invalid.
+
+```json
+{"schema": "bashcut.plugin/1", "id": "me.my-skills", "name": "My skills", "version": "0.1.0", "apiVersion": 7,
+ "category": "agents", "author": {"name": "Nolan"}, "contributes": {"skills": [{"path": "skills/beat-cut"}]}}
+```
+
+`bashcut skills export --output DIR --as-plugin --id me.my-skills [--name …] [--version 0.1.0] [--author …]
+[--skills a,b] [--scope user|project]` packages saved skills (for every project by default) as such a plugin; without
+`--as-plugin` it copies the skill folders only. `plugins install --path DIR` (or Add Plugin…) installs it in another
+BashCut, where the skills show in `skills list --scope plugin` once it is trusted.
+
+### Reviewing skills before trust
+
+Agents follow plugin skills as instructions, so the install approval shows a **Skills for agents** part whenever the
+plugin ships skills: each skill that is new, changed (an update, compared with the installed copy) or removed, its
+added and removed lines, and the added lines worth a look flagged: `command` (shell commands such as `curl`, `rm -`,
+`sudo`, `| sh`, lines starting `$ `), `url` (links) and `override` ("ignore previous", "disregard", "you are now",
+"without asking", …). Flags are hints for the reader, not verdicts; nothing is blocked. The sheet's `ui dialog` text
+says how many skills changed and how many lines are flagged.
+
 ## Plugin panels and views
 
 A plugin with `contributes.container` (API 8) gets an icon in the left rail, under the built-in panels, while it is
@@ -920,6 +957,7 @@ the panel's frame from the manifest, so every plugin gets the same parts:
 | `views[].title` | Localized text, at most 40 characters |
 | `views[].location` | Where the view lives: `panel` (default), `dock`, `sheet` or `inspector` |
 | `views[].icon` | Optional SF Symbol for a dock tab or sheet; the container's icon by default |
+| `views[].when` | Inspector views only: a [when condition](#when-conditions) such as `selection.kind == text` or `media.kind == video`; the view is not asked to render for items it does not match (host feature `inspector.when`) |
 
 A container alone (no views) is a panel of the plugin's tools and skills. Views need the `session` transport.
 
@@ -934,7 +972,10 @@ A container alone (no views) is a panel of the plugin's tools and skills. Views 
 
 Only `panel` views need `contributes.container`; a plugin may have dock, sheet or inspector views without a rail
 icon. An inspector view reads the selection from its request's `context` (`selection`, `media` with its `data`) and
-answers an empty `body` for items it has nothing to say about: it then takes no room. The panel's
+answers an empty `body` for items it has nothing to say about: it then takes no room. Give it a `when` so BashCut
+does not ask it about items it never handles. A new selection renders 120 ms after the selection stops changing
+(holding an arrow key over a long timeline asks once), and a render still running for an item the user left is
+cancelled (the plugin gets `cancel`), so the plugin renders one item at a time. The panel's
 **Plugin** section lists the plugin's dock and sheet views with a button that opens each. A plugin opens its own views
 from a view or action request with the host call `plugins.show-view` (`{"plugin": "<its id>", "view": "<id>"}`); it
 cannot open another plugin's. A view answer with `"close": true` closes its sheet (a finished form).
@@ -976,6 +1017,25 @@ The answer:
 - While working, send `{"type":"event","id","event":{"kind":"render","body":[…],"title"?}}` to redraw before the answer
   (a progress bar, partial results), or `{"kind":"notify","text"}` for a status message.
 
+### Updates outside a request
+
+A session plugin (API 8 or later) may redraw one of its views at any time, without a request — a background job's
+progress, a timer, a download that finished:
+
+```json
+{"type": "viewUpdate", "view": "takes", "body": [{"type": "progress", "value": 0.4, "label": "Rendering"}], "title": "Takes"}
+```
+
+- The line is a [view answer](#view-requests) plus `view` (an id from the manifest's `views`): `body`, and optionally
+  `title`, `state`, `notify` and `close`. Updates for views the manifest does not declare are dropped.
+- BashCut draws an update only in a view on screen, at most every 60 ms like streamed renders (the ones in between
+  are skipped); updates for hidden views are dropped, so render the whole view again on the next `view.render`.
+  While a request of that view runs, an update only redraws; the request's answer decides the values and state.
+  Otherwise it is applied like an answer (its `state` comes back with the next request).
+- Limits per plugin: at most 512 KiB per update and a burst of 20 updates refilled at 10 a second; updates over
+  either are dropped. Updates do not keep an idle session alive (it still stops 90 s after the last request).
+- Host feature `viewUpdate`; an older BashCut ignores the lines.
+
 ### Components
 
 Every component is `{"type", "id"?, …}`. Buttons, inputs and lists need an `id` (a short key, unique in the view);
@@ -990,19 +1050,24 @@ others may have one. Text is shown as given (the plugin localizes it with `local
 | `badge` | `text`, `color`? (`accent`, `green`, `orange`, `red`, `purple`, `secondary`) |
 | `keyValue` | `items: [{"key", "value"}]` (at most 100) |
 | `progress` | `value`? (0–1; spinner without), `label`? |
-| `image` | `path` (a local file), `height`? (16–600), `caption`? |
+| `image` | `path` (a local file), `height`? (16–600), `caption`?, `file`? (what a drag carries; `path` by default), `libraryItem`? (a library reference the drag carries instead) |
 | `imageCompare` | `before`, `after` (local files), `height`?, `beforeLabel`?, `afterLabel`?; drag to compare |
 | `audio` | `path`, `title`?: a play/stop button (one sound plays at a time) |
-| `list` | `items: [{"id", "title", "subtitle"?, "icon"?, "image"?, "badge"?, "audio"?, "actions"?: [{"id", "title", "icon"?}]}]` (at most 500, 3 actions per row), `selected`?, `empty`? |
+| `list` | `items: [{"id", "title", "subtitle"?, "icon"?, "image"?, "badge"?, "audio"?, "file"?, "libraryItem"?, "actions"?: [{"id", "title", "icon"?}]}]` (at most 500, 3 actions per row), `selected`?, `empty`?; a row with `file` or `libraryItem` can be dragged |
 | `button` | `title`, `icon`?, `style`? (`primary`, `destructive`, `link`), `confirm`?, `wide`?, `disabled`? |
 | `textField` | `label`?, `placeholder`?, `value`?, `search`? (sends `change` 300 ms after typing stops), `submit`? |
 | `textArea` | `label`?, `value`?, `height`? (40–400) |
 | `toggle` | `label`, `value`? |
 | `picker` | `label`?, `value`?, `options: [{"value", "label"}]` or strings (at most 200) |
 | `slider` | `label`?, `value`?, `min`, `max`, `step`?: sends `change` when the drag ends |
+| `colorPicker` | `label`?, `value`? (`#RRGGBB`; `#RRGGBBAA` with `alpha`), `alpha`?: a colour well; sends `change` with the hex string 250 ms after the colour stops moving |
+| `fontPicker` | `label`?, `value`?, `by`? (`font`, the default: a PostScript name such as `Inter-Bold`; `family`: a family name such as `Inter`, for CSS `font-family`): a menu of the project's fonts and the installed ones (what `fonts list` lists), marking fonts without the content language's letters; sends `change` with the name |
 
 An input's `value` in an answer replaces what the user typed, except for an input whose change is still on its way.
-Leave `value` out to keep the user's text. A text field without `search` and a text area send their value with the
+Leave `value` out to keep the user's text. A `colorPicker` value that is not hex is refused (`#abc` and lower case are
+normalized to `#AABBCC`). `colorPicker` and `fontPicker` are the host features `views.colorPicker` and
+`views.fontPicker`; an older BashCut draws "Needs a newer BashCut" in their place, so a plugin that also runs there
+should check `features` and fall back to a `textField`. A text field without `search` and a text area send their value with the
 next event instead of on every keystroke.
 
 A component type this BashCut does not know draws "Needs a newer BashCut" and the rest of the view still works; check
@@ -1022,8 +1087,60 @@ A component type this BashCut does not know draws "Needs a newer BashCut" and th
   `image` small files or thumbnails anyway.
 - Answers over the session's line limit (8 MiB) fail; keep data in your plugin and send what is on screen.
 
-Not available (they would cost performance or safety): webviews, free drawing, video players, timeline or viewer
-overlays, inspector tabs, drag and drop from a view, and updates the plugin sends without a request.
+Not available (they would cost performance or safety): webviews, free drawing, video players and inspector tabs.
+
+### Drag and drop
+
+A list row with `file` and an `image` (its `file`, or its `path`) can be dragged out of a view (host feature
+`views.drag`) when the file is a local video, audio or image file given as an absolute path; other files do not drag.
+BashCut runs the same validated import as for files dragged from Finder; the plugin is not called.
+
+| Drop on | Does | Command line |
+|---|---|---|
+| The timeline | Imports the file and places it on the layer under the pointer (or the usual one for its kind) at the snapped frame; one undoable edit | `media import <file> --place [--track <layer>] [--at-frame <frame>]` |
+| The Media panel (Footage) | Imports it without placing it; a file already in the project is reused | `media import <file>` |
+
+A list row or `image` with `libraryItem` (a reference such as `plugin:<plugin>/<id>` or `user:<id>`, as `library
+list` gives it) drags that library item instead of a file: dropped on the timeline it is placed like `library place
+<reference> --at-frame <frame>` (the layer under the pointer when it takes the item: an audio item on an audio layer,
+a clip on a picture layer), with the same checks and one undo step per item; the plugin is not called. A reference
+that is not `scope:id` of a library scope does not drag.
+
+### Overlays on the timeline and viewer
+
+A plugin (API 8 or later, host feature `overlays`) can mark the timeline and the viewer with data instead of
+drawing: the parts a review found, the beats it hears, where a face or a logo is. BashCut draws the marks itself and
+never asks the plugin per frame; the plugin sends its whole set again when something changes.
+
+```json
+[{"id": "hook", "kind": "range", "start": 0, "end": 90, "label": "Hook", "color": "orange"},
+ {"id": "drop", "kind": "marker", "start": 312, "label": "Drop"},
+ {"id": "face", "kind": "region", "rect": {"x": 0.3, "y": 0.1, "width": 0.4, "height": 0.5}, "start": 0, "end": 150,
+  "style": "outline", "label": "Face"}]
+```
+
+| Field | Rules |
+|---|---|
+| `id` | A short key, unique in the set |
+| `kind` | `range` (frames `start..<end` tinted over every layer, or one layer with `track`, and a bar on the ruler), `marker` (a line and a ruler flag at frame `start`), `region` (a rectangle on the viewer) |
+| `start`, `end` | Project frames (integers ≥ 0). A region with them shows only while the playhead is in `start..<end`; without, always |
+| `track` | `range`/`marker`: the layer id to mark instead of all layers |
+| `rect` | `region`: `{x, y, width, height}` in 0–1 of the picture, inside it |
+| `label` | At most 80 characters, drawn next to the mark |
+| `color` | `accent` (default), `green`, `orange`, `red`, `purple`, `secondary` or `#RRGGBB` |
+| `style` | `region`: `outline` (default, dashed) or `fill` (a tint) |
+
+- Send the set with the host call `plugins.set-overlays` (`{"plugin": "<its id>", "overlays": […]}`) from a view,
+  action or other request with a host channel; a bad set fails the call with the reason. Or, any time (while
+  handling a hook, from a timer), the line `{"type": "overlays", "overlays": […]}`; a bad set sent this way is
+  dropped. It counts against the same per-plugin limits as [view updates](#updates-outside-a-request).
+- `[]` removes the plugin's marks. At most 500 overlays per plugin. Overlays are not saved with the project and go
+  away when another project opens.
+- The panel's **Plugin** section shows how many overlays the plugin has with **Clear**. `plugins overlays [plugin]`
+  lists them; `plugins set-overlays <plugin> --overlays '[…]'` sets or clears them from the command line.
+- Cost: the timeline draws overlays with the clips, only when they or the content change (playback and scrolling move
+  only the playhead and draw newly shown parts, looking up the overlays in those frames); the viewer filters the
+  regions by the playhead and redraws only when the regions shown change.
 
 ### Commands
 
@@ -1252,8 +1369,17 @@ later:
 - Calls on a request without a host channel get the error "This request cannot call BashCut".
 - Call params and results are limited to 1 MiB.
 - Views and actions (API 8) call as author `plugin`, with one command token per plugin, limited to the chat-agent
-  commands plus `plugins.run`, `plugins.invoke` and `plugins.show-view`; `ui.action` only for `notify`, `panel` and
-  `source` (`{"action": "notify", "target": "Done"}` shows a status message). Edits are validated and undoable
+  commands plus `plugins.run`, `plugins.invoke`, `plugins.show-view`, `plugins.option`, `plugins.overlays`,
+  `plugins.set-overlays` (its own) and `capabilities.get` (the providers of a capability, for a provider picker);
+  `ui.action` only for
+  `notify`, `panel` and `source` (`{"action": "notify", "target": "Done"}` shows a status message).
+- `plugins.option` (`{"plugin": "<its id>", "option", "value"}`) sets one of the calling plugin's own options, so a
+  view's "Use" button can choose the `voice` the Voice panel and every later request see, without a copy in plugin
+  data. `value` is text read like `plugins option --value` (`on`, `12`, a choice) or JSON of the option's type;
+  `null` or no value resets it. A plugin cannot set another plugin's options or any `secret` option (the user sets
+  secrets in Settings); a plugin with secrets may still set its other options. User-scope values are saved for this
+  Mac; project-scope values are an undoable project edit by author `plugin`. The answer is `{"value", "rev"}` Host
+  feature `options.set`. Edits are validated and undoable
   and the history shows the plugin as their author. An action that edits through calls should return no
   `operations` of its own.
 

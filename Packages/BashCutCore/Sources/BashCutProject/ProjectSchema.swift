@@ -30,7 +30,7 @@ public struct ItemProperty: Sendable {
         self.summary = summary
     }
 
-    public static let groups = ["transform", "crop", "color", "textStyle"]
+    public static let groups = ["transform", "crop", "color", "textStyle", "backdrop"]
 
     public static let all: [ItemProperty] = [
         .init(nil, "speed", .number(0.01...100), "Source frames per timeline frame; the timeline duration is kept"),
@@ -66,6 +66,7 @@ public struct ItemProperty: Sendable {
         .init("textStyle", "tracking", .number(-0.5...2), "Letter spacing as a share of the font size (default 0)"),
         .init("textStyle", "uppercase", .boolean, "Draw the text in capitals"),
     ] + ColorGrade.ranges.map { .init("color", $0.key, .number($0.range), ColorGrade.summaries[$0.key] ?? "") }
+        + backdropProperties
 }
 
 extension ColorGrade {
@@ -225,6 +226,7 @@ public enum ProjectSchema {
                     "hasAudio": boolean("Whether the file has sound"),
                     "alpha": boolean("A movie with an alpha channel (a video sticker); previewed without a proxy"),
                     TransitionPreset.soundLibraryField: string("The library item (scope:id) it was copied from"),
+                    "label": string("The name shown instead of the file's (a library item's name)"),
                     "description": ref("mediaDescription"),
                     "license": mediaLicenseSchema, "provenance": mediaProvenanceSchema,
                     "data": .object([
@@ -423,8 +425,11 @@ public enum ProjectSchema {
             let summaries = [
                 "transform": "Framing",
                 "crop": "Video picture: the visible part of the source frame (the picture keeps its place; zoom and pan move it)",
+                "backdrop": "Video picture: what fills the frame around it (fit clips, off-aspect photos) instead of black",
             ]
-            properties[name] = .object(group(name, summaries[name] ?? "Text style overrides"))
+            properties[name] = .object(group(
+                name, summaries[name] ?? "Text style overrides",
+                extra: name == "textStyle" ? ["lines": textLinesSchema] : [:]))
         }
         for property in ItemProperty.all where property.group == nil {
             properties[property.key] = schema(for: property)

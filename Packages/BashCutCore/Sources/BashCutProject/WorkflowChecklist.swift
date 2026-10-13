@@ -23,7 +23,7 @@ public enum WorkflowChecklist {
     public static let auditPoints = ["strategy", "draft", "process"]
     public static let verdicts = ["pass", "changes", "fail"]
     public static let auditors = ["critic", "self"]
-    public static let stageStatuses = ["done", "skipped"]
+    public static let stageStatuses = ["started", "done", "skipped"]
 
     /// The kit's generic checks (§6.2), added to every video's draft and strategy audit before a recipe's own.
     public static let genericChecks: [JSONValue] = [
@@ -287,6 +287,12 @@ public enum WorkflowChecklist {
                     + "current draft again", command: command)
         }
         return nil
+    }
+
+    /// Whether a `run append stage` entry must pass the strategy guard: only marking the rough cut done while G2 is
+    /// skipped. Progress reports (status started, the default, with text, progress or ETA) and skips are never gated.
+    public static func stageNeedsStrategyGuard(stage: String, status: String?, strategySkipped: Bool) -> Bool {
+        strategySkipped && stage == "rough-cut" && status == "done"
     }
 
     /// Before G2 (or the rough cut when G2 is skipped): the recipe skill read when the plan names one, and a

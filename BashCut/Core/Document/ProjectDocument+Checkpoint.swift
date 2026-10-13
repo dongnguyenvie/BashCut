@@ -100,6 +100,32 @@ extension ProjectDocument {
         }
         handleAuthored("run.append") { document, arguments, author in try document.appendRunLog(arguments, author: author) }
         handle("run.checklist") { document, _, _ in document.runChecklist }
+        handle("run.status") { document, _, _ in
+            await document.loadReviewTranscripts()
+            return document.runStatus()
+        }
+    }
+
+    /// `run.status`: the run panel's progress and, once the run exported, its result card.
+    func runStatus(now: Date = Date()) -> JSONValue {
+        guard let progress = RunProgress.make(project, entries: runLog?.entries() ?? []) else {
+            return .object(["progress": .null, "result": .null])
+        }
+        var result = runResult(for: progress)
+        if let current = runPanel.result, current.run == result?.run, current.main == result?.main {
+            result?.thumbnail = current.thumbnail
+        }
+        return .object(["progress": progress.json(now: now), "result": result?.json ?? .null])
+    }
+
+    /// The result card of a run that exported: its exports from the history and the open review issues now.
+    func runResult(for progress: RunProgress) -> RunResult? {
+        guard progress.exportedAt != nil, let root = fileURL?.deletingLastPathComponent() else { return nil }
+        let history = (try? ExportHistoryStore().all(projectRoot: root)) ?? []
+        return RunResult.make(
+            run: progress.run, since: progress.startedAt, history: history,
+            review: ReviewSummary(reviewIssues(), coverage: .null),
+            recipe: project["plan"]?.object["recipe"]?.object["skill"]?.string)
     }
 
     /// `run.append`: an entry of any kind but `gate`, with the given fields over `data`, the revision and the author.
@@ -130,7 +156,11 @@ extension ProjectDocument {
             entry["timeline"] = .string(WorkflowChecklist.timelineFingerprint(project))
         default: break
         }
-        do { return try log.append(entry) } catch { throw RPCFailure.from(error, fallbackCode: -32602) }
+        do {
+            let written = try log.append(entry)
+            if kind == "stage" { runPanel.refresh() }
+            return written
+        } catch { throw RPCFailure.from(error, fallbackCode: -32602) }
     }
 
     /// A skill read reported before the project exists, kept for the next project that opens; other kinds need one.
@@ -223,7 +253,8 @@ extension ProjectDocument {
         for key in ["stage", "text", "status", "reason", "name", "origin", "point", "verdict", "by"] {
             if let value = arguments.optionalString(key) { entry[key] = .string(value) }
         }
-        for key in ["round", "fixed", "left", "findings"] { if let value = arguments.optionalInt(key) { entry[key] = .integer(value) } }
+        for key in ["round", "fixed", "left", "findings", "eta"] { if let value = arguments.optionalInt(key) { entry[key] = .integer(value) } }
+        if let progress = arguments.optionalDouble("progress") { entry["progress"] = .number(progress) }
         for key in ["measured", "notMeasured"] {
             if let value = arguments.optionalString(key) {
                 entry[key] = .array(value.split(separator: ",").map { .string($0.trimmingCharacters(in: .whitespaces)) })
@@ -238,12 +269,15 @@ extension ProjectDocument {
     /// A stage entry: done without evidence is unverified, skipped needs a reason, and the rough cut while G2 is
     /// skip meets the strategy guard.
     private func completeStageEntry(_ entry: inout [String: JSONValue], author: Author) throws {
-        guard entry["stage"]?.string != nil else { throw RPCFailure(-32602, "A stage entry needs --stage") }
+        guard let stage = entry["stage"]?.string else { throw RPCFailure(-32602, "A stage entry needs --stage") }
+        entry["stage"] = .string(RunProgress.stageID(stage))
         if entry["status"] == .string("done"), entry["evidence"] == nil { entry["unverified"] = .bool(true) }
         if entry["status"] == .string("skipped"), (entry["reason"]?.string ?? "").isEmpty {
             throw RPCFailure(-32602, "A skipped stage needs --reason")
         }
-        if entry["stage"] == .string("rough-cut"), entry["status"] != .string("skipped"), settings.gateMode(.strategy) == .skip {
+        if WorkflowChecklist.stageNeedsStrategyGuard(
+            stage: entry["stage"]?.string ?? "", status: entry["status"]?.string,
+            strategySkipped: settings.gateMode(.strategy) == .skip) {
             try checkStrategyGuard(author: author)
         }
     }

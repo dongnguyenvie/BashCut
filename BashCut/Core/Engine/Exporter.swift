@@ -155,7 +155,10 @@ public actor Exporter {
             })
         }
         let transfer = ExportSampleTransfer(lanes: lanes, duration: end.seconds, progress: progress, failure: {
-            if reader.status == .failed { return reader.error ?? ProjectError.invalid("Cannot read media") }
+            if reader.status == .failed {
+                // AVFoundation reports a compositor failure as a generic "operation stopped"; name the frame instead.
+                return snapshot.renderFailures.first ?? reader.error ?? ProjectError.invalid("Cannot read media")
+            }
             if reader.status == .cancelled { return CancellationError() }
             if writer.status != .writing { return writer.error ?? ProjectError.invalid("Writer stopped") }
             return nil

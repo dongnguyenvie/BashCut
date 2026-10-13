@@ -127,6 +127,7 @@ struct CommandSpecTests {
         let actions = try CommandLineParser.parse(["plugins", "actions", "silence", "--plugin", "bashcut.silence-markers"])
         #expect(actions.params == ["query": .string("silence"), "plugin": .string("bashcut.silence-markers")])
         #expect(CommandCatalog.dialogs.contains("plugin-proposals"))
+        #expect(CommandCatalog.dialogs.contains("quick-edit"))  // Quick Edit › Other… (#449)
         let search = try CommandLineParser.parse(["plugins", "search", "silence", "--capability", "audio.beats", "--refresh"])
         #expect(search.params == ["query": .string("silence"), "capability": .string("audio.beats"), "refresh": .bool(true)])
         #expect(search.spec.mode == .read)

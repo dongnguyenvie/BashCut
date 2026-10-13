@@ -123,9 +123,7 @@ extension TimelineCanvas {
             ClipStyle.icon(name)?.drawFlipped(in: CGRect(x: x, y: y + 1, width: 10, height: 10))
             x += 12
         }
-        let filename = item.mediaID.flatMap { mediaByID[$0] }.map {
-            URL(fileURLWithPath: $0.path).lastPathComponent
-        } ?? item.id
+        let filename = item.mediaID.flatMap { mediaByID[$0] }.map(\.fileName) ?? item.id
         let duration = Timecode.duration(item.duration, fps: project.fps)
         let durationWidth = (duration as NSString).size(withAttributes: ClipStyle.durationText).width
         let showsDuration = rect.width > durationWidth + 60

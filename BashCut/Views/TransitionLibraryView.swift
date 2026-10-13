@@ -106,7 +106,8 @@ struct TransitionLibraryView: View {
     }
 }
 
-/// A transition preset's kind, duration, easing and sound in the library item sheet (#77); `library update --params`
+/// A transition preset's kind, duration, easing and sound (with its offset from the cut and volume) in the library
+/// item sheet (#77); `library update --params`
 /// sets the same fields.
 struct TransitionPresetFields: View {
     @Bindable var document: ProjectDocument
@@ -140,6 +141,19 @@ struct TransitionPresetFields: View {
             }
         }
         .task { sounds = (try? document.libraryCatalog.panelItems([.audio])) ?? [] }
+        if preset.sfx != nil {
+            Stepper(
+                "Sound offset: \(preset.sfxOffset ?? 0) frames",
+                value: Binding(get: { preset.sfxOffset ?? 0 }, set: { preset.sfxOffset = $0 == 0 ? nil : $0 }),
+                in: TransitionPreset.sfxOffsetRange)
+                .help("Negative starts the sound before the cut")
+            LabeledContent("Sound volume") {
+                Slider(
+                    value: Binding(get: { preset.sfxVolumeDb ?? 0 }, set: { preset.sfxVolumeDb = $0 == 0 ? nil : $0.rounded() }),
+                    in: TransitionPreset.sfxVolumeRange, step: 1)
+                Text(verbatim: "\(Int((preset.sfxVolumeDb ?? 0).rounded())) dB").monospacedDigit().frame(width: 52, alignment: .trailing)
+            }
+        }
     }
 
     private var kinds: [String] {

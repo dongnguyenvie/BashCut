@@ -51,15 +51,23 @@ struct StickerLibraryView: View {
     }
 }
 
-/// An image item's picture (a sticker or a preview), read once per file: an image's first frame, or a movie's first
-/// frame with its transparency.
+/// An image item's picture (a sticker or a preview), read once per file: an image (a GIF, APNG or animated WebP
+/// plays), or a movie's first frame with its transparency.
 struct LibraryImage: View {
     let url: URL?
     @State private var image: NSImage?
 
     var body: some View {
         Group {
-            if let image { Image(nsImage: image).resizable().scaledToFit() } else { Image(systemName: "photo") }
+            if let image {
+                if Self.isAnimated(image) {
+                    AnimatedImageView(image: image)
+                } else {
+                    Image(nsImage: image).resizable().scaledToFit()
+                }
+            } else {
+                Image(systemName: "photo")
+            }
         }
         .task(id: url) { image = await url.asyncMap(Self.picture) ?? nil }
     }
@@ -73,6 +81,31 @@ struct LibraryImage: View {
         generator.maximumSize = CGSize(width: 160, height: 160)
         guard let frame = try? await generator.image(at: .zero).image else { return nil }
         return NSImage(cgImage: frame, size: NSSize(width: frame.width, height: frame.height))
+    }
+}
+
+extension LibraryImage {
+    static func isAnimated(_ image: NSImage) -> Bool {
+        image.representations.contains { (($0 as? NSBitmapImageRep)?.value(forProperty: .frameCount) as? Int ?? 1) > 1 }
+    }
+}
+
+/// An animated image that plays in a loop, scaled to fit.
+private struct AnimatedImageView: NSViewRepresentable {
+    let image: NSImage
+
+    func makeNSView(context: Context) -> NSImageView {
+        let view = NSImageView()
+        view.animates = true
+        view.imageScaling = .scaleProportionallyUpOrDown
+        view.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        view.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
+        view.image = image
+        return view
+    }
+
+    func updateNSView(_ view: NSImageView, context: Context) {
+        if view.image !== image { view.image = image }
     }
 }
 

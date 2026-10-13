@@ -62,6 +62,26 @@ struct HistoryJournalTests {
         }
     }
 
+    @Test("The fast journal reader gives the same history as Decodable, notes and dates included")
+    func fastReader() throws {
+        var original = try history()
+        try original.apply(
+            .setProperties(item: "c2", patch: ["volumeDb": .number(-3.5)]), label: "Gain", author: .codex,
+            note: EditNote(why: "Too loud", evidence: ["review:loud-1"]))
+        let journal = try JSONEncoder().encode(original)
+        let fast = try ProjectHistory.decode(journal)
+        let decoded = try JSONDecoder().decode(ProjectHistory.self, from: journal)
+        #expect(fast.project == decoded.project)
+        #expect(sameEntries(fast.undoEntries, decoded.undoEntries) && sameEntries(fast.redoEntries, decoded.redoEntries))
+        for (lhs, rhs) in zip(fast.undoEntries, decoded.undoEntries) {
+            #expect(lhs.note == rhs.note && lhs.revision == rhs.revision && lhs.date == rhs.date)
+        }
+        #expect(fast.undoEntries.last?.note?.why == "Too loud")
+        #expect(try Project.decode(original.project.data()) == original.project)
+        #expect(throws: (any Error).self) { try ProjectHistory.decode(Data(#"{"project":{}}"#.utf8)) }
+        #expect(throws: (any Error).self) { try Project.decode(Data("[1]".utf8)) }
+    }
+
     @Test("Steps store only what changed")
     func storesDifferences() throws {
         let history = try history()

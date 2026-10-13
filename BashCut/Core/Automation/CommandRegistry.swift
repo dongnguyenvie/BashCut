@@ -12,6 +12,8 @@ public struct AuditEvent: Codable, Sendable {
 /// #356) know which agent session made an edit. Nil outside a command or for a request without a live token.
 public enum CommandCaller {
     @TaskLocal public static var token: String?
+    /// The command being handled, so an edit can say which command made it (P3-I1 verdicts).
+    @TaskLocal public static var method: String?
 }
 
 /// One failed request, kept for `context get` (the token only to tell sessions apart; never reported).
@@ -106,6 +108,14 @@ struct FailedRequest {
         params["baseRev"] = .integer(seen)
         return params
     }
+    /// An app-internal change that does not touch what agents edit (a background AV1/VP9 conversion relinking its
+    /// media to the converted copy) moved the revision from `old` to `new`: callers whose `baseRev: "last"` was `old`
+    /// now see `new`, so the bump does not make their next edit stale. Anyone who had not caught up stays stale.
+    public func carrySeenRevisions(from old: Int, to new: Int) {
+        guard new != old else { return }
+        for (token, seen) in seenRevision where seen == old { seenRevision[token] = new }
+    }
+
     /// `automatic` marks requests run without a prompt because the user turned confirmation off.
     public func recordApproval(method: String, author: Author, approved: Bool, automatic: Bool = false) {
         audit(
@@ -144,7 +154,7 @@ struct FailedRequest {
             let params = try resolvingLastRevision(request.params, token: request.token)
             let arguments = CommandArguments(try spec.validate(params))
             let result = try await CommandCaller.$token.withValue(author == nil ? nil : request.token) {
-                try await handler(arguments, author)
+                try await CommandCaller.$method.withValue(request.method) { try await handler(arguments, author) }
             }
             if let token = request.token, author != nil, let revision = currentRevision?() { seenRevision[token] = revision }
             if Self.projectSwitches.contains(request.method), let token = request.token {

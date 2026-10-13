@@ -12,6 +12,12 @@ import Foundation
     var words: [String] = []
 
     func run() throws {
+        // `bashcut --version` (what agents try first) is `bashcut app version`.
+        if words == ["--version"] || words == ["-V"] {
+            var alias = self
+            alias.words = ["app", "version"]
+            return try alias.run()
+        }
         // `bashcut timeline --help` or `bashcut help timeline`: that group's commands only.
         let asked = words.first == "help" ? Array(words.dropFirst()) : words.filter { $0 != "--help" && $0 != "-h" }
         if asked.count == 1, words.count == 2, let help = CommandLineParser.groupHelp(asked[0]) {

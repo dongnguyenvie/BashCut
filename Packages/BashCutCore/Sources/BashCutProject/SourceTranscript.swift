@@ -41,7 +41,7 @@ public struct SourceTranscript: Codable, Sendable, Equatable {
     }
 
     /// Which facts the provider gave: word times from the provider or none (phrases only), and whether any word
-    /// carries a confidence, speaker, event or no-speech probability.
+    /// carries a confidence, speaker, event, no-speech probability, average log probability or compression ratio.
     public var precision: JSONValue {
         .object([
             "wordTimes": .string(words.isEmpty ? "none" : "provider"),
@@ -49,6 +49,8 @@ public struct SourceTranscript: Codable, Sendable, Equatable {
             "speakers": .bool(words.contains { $0.speaker != nil }),
             "events": .bool(words.contains { $0.event != nil }),
             "noSpeechProb": .bool(words.contains { $0.noSpeechProb != nil }),
+            "avgLogprob": .bool(words.contains { $0.avgLogprob != nil }),
+            "compressionRatio": .bool(words.contains { $0.compressionRatio != nil }),
         ])
     }
 
@@ -136,6 +138,8 @@ public struct SourceTranscript: Codable, Sendable, Equatable {
         if let speaker = word.speaker { row["speaker"] = .string(speaker) }
         if let event = word.event { row["event"] = .string(event) }
         if let noSpeechProb = word.noSpeechProb { row["noSpeechProb"] = .number(rounded(noSpeechProb)) }
+        if let avgLogprob = word.avgLogprob { row["avgLogprob"] = .number(rounded(avgLogprob)) }
+        if let compressionRatio = word.compressionRatio { row["compressionRatio"] = .number(rounded(compressionRatio)) }
         return row
     }
 

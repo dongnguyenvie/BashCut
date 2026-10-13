@@ -1,6 +1,7 @@
 import AVFoundation
 import BashCutAutomation
 import BashCutDocument
+import BashCutEngine
 import BashCutProject
 import CoreMedia
 import Foundation
@@ -84,8 +85,11 @@ extension ProjectDocument {
     }
 
     /// Project media for a sticker's file, copied into `stickers/` first (named by its content, so the same file is
-    /// copied once), and reused when the project already has it. Also says how many frames an image file has.
-    private func libraryStickerMedia(_ item: LibraryItem, sticker: LibrarySticker) async throws -> (media: Media, frames: Int) {
+    /// copied once), and reused when the project already has it. Also says how many frames an image file has. An
+    /// animated image becomes a movie with alpha next to its copy, looped to cover `seconds`.
+    private func libraryStickerMedia(
+        _ item: LibraryItem, sticker: LibrarySticker, seconds: Double
+    ) async throws -> (media: Media, frames: Int) {
         guard let root = fileURL?.deletingLastPathComponent() else {
             throw RPCFailure(-32602, "Save the project before adding a sticker from the library")
         }
@@ -105,10 +109,17 @@ extension ProjectDocument {
                 throw RPCFailure(-32602, "\(item.reference)'s file is not an image BashCut can read")
             }
             frames = probe.frames
-            imported = try Self.importedImage(url: url, projectFPS: project.fps, root: root)
+            if frames > 1 {
+                let movie = try await animatedStickerMovie(url, seconds: seconds, label: item.reference)
+                imported = try await Self.importedMedia(url: movie, kind: "video", projectFPS: project.fps, root: root)
+                imported.media["alpha"] = .bool(true)
+            } else {
+                imported = try Self.importedImage(url: url, projectFPS: project.fps, root: root)
+            }
         }
         imported.media[TransitionPreset.soundLibraryField] = .string(item.reference)
         imported.media.fields.merge(Self.libraryRights(item)) { _, rights in rights }
+        imported.media.fields.merge(Self.libraryLabel(item)) { _, label in label }
         return (project.existingMedia(like: imported.media) ?? imported.media, frames)
     }
 
@@ -117,7 +128,9 @@ extension ProjectDocument {
     /// width wide at `position` (the sticker's defaults, else 30% in the centre), as one undo step.
     func placeLibrarySticker(_ item: LibraryItem, _ placement: LibraryPlacement) async throws -> JSONValue {
         let sticker = try librarySticker(item)
-        let (media, frames) = try await libraryStickerMedia(item, sticker: sticker)
+        let seconds = placement.duration.map { Double($0) / project.fps.value } ?? sticker.seconds
+            ?? LibrarySticker.defaultSeconds
+        let (media, frames) = try await libraryStickerMedia(item, sticker: sticker, seconds: seconds)
         let placed: StickerPlacement
         do {
             placed = try project.stickerPlacePlan(
@@ -141,14 +154,25 @@ extension ProjectDocument {
             ]),
         ]
         var notes: [String] = []
-        if sticker.stickerKind == "animated" || frames > 1 {
-            notes.append(
-                "BashCut shows animated stickers as their first frame for now; export the animation as a movie with "
-                    + "alpha (HEVC with alpha or ProRes 4444) for motion")
-        }
+        if frames > 1 { result["animated"] = .bool(true) }
         if placed.shortened { notes.append("The sticker movie is shorter than asked, so it plays once") }
         if !notes.isEmpty { result["note"] = .string(notes.joined(separator: ". ")) }
         return .object(result)
+    }
+
+    /// The movie an animated sticker plays: `stickers/<copy>-x<loops>.mov` beside its copy, written once per loop
+    /// count, enough loops of the animation to cover `seconds`.
+    private func animatedStickerMovie(_ image: URL, seconds: Double, label: String) async throws -> URL {
+        guard let delays = AnimatedImageMovie.delays(of: image) else {
+            throw RPCFailure(-32602, "\(label)'s file is not an animated image BashCut can read")
+        }
+        let loops = AnimatedImageMovie.loops(covering: seconds, loopSeconds: delays.reduce(0, +))
+        let movie = image.deletingPathExtension().appendingPathExtension("x\(loops)").appendingPathExtension("mov")
+        guard !FileManager.default.fileExists(atPath: movie.path) else { return movie }
+        do { try await AnimatedImageMovie.write(image: image, loops: loops, to: movie) } catch {
+            throw RPCFailure(-32602, "Could not turn \(label) into a movie: \(error.localizedDescription)")
+        }
+        return movie
     }
 
     // MARK: Saving the selection

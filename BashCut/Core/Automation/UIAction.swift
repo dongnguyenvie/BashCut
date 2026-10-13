@@ -127,6 +127,10 @@ public enum UIAction: String, CaseIterable, Sendable {
     case pasteClips = "clip.paste"
     case muteClips = "clip.mute"
     case sendToAgent = "clip.send-to-agent"
+    case showRunPanel = "run.show"
+    case dismissRunPanel = "run.dismiss"
+    case fixRunIssues = "run.fix-issues"
+    case tryAnotherRecipe = "run.another-recipe"
 
     public var id: String { rawValue }
 
@@ -141,8 +145,9 @@ public enum UIAction: String, CaseIterable, Sendable {
 
     /// Inspector tabs, for `ui.view --inspector`.
     public static let inspectorTabs = ["video", "audio", "text", "color", "speed"]
-    /// The Media panel's sources: footage, project media, shared assets and the selects store (P1-D8).
-    public static let mediaSources = ["footage", "project", "shared", "selects"]
+    /// The Media panel's sources: footage, project media, shared assets, the selects store (P1-D8) and library clips
+    /// (P2-H5), matching `MediaLibrarySource`.
+    public static let mediaSources = ["footage", "project", "shared", "selects", "clips"]
     /// Settings sections, for `ui.view --settings-section`.
     public static let settingsSections = ["general", "agents", "plugins", "storage"]
     /// Knowledge window sections, for `ui.view --knowledge-section`.
@@ -235,6 +240,10 @@ public enum UIAction: String, CaseIterable, Sendable {
         case .pasteClips: "Paste copied clips at the playhead"
         case .muteClips: "Mute or unmute selected clips"
         case .sendToAgent: "Send selected clips to the open agent as the scope of its request"
+        case .showRunPanel: "Show the run panel again (the agent's stages, or the result card after its export)"
+        case .dismissRunPanel: "Close the run panel until the next run"
+        case .fixRunIssues: "Result card: ask the open agent to fix the review issues left, then export again"
+        case .tryAnotherRecipe: "Result card: ask the open agent for another version made with a different recipe"
         }
     }
 
