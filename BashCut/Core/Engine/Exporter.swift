@@ -95,6 +95,8 @@ public actor Exporter {
         _ snapshot: CompositionSnapshot, reader: AVAssetReader, writer: AVAssetWriter, settings: ExportSettings?
     ) async throws -> (AVAssetReaderOutput, AVAssetWriterInput) {
         let tracks = try await snapshot.composition.loadTracks(withMediaType: .video)
+        // AVFoundation raises an Objective-C exception (which Swift cannot catch) for an empty track list.
+        guard !tracks.isEmpty else { throw ProjectError.invalid("Timeline has no video track to export") }
         let video = AVAssetReaderVideoCompositionOutput(
             videoTracks: tracks,
             videoSettings: [

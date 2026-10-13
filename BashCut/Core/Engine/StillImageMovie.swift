@@ -62,6 +62,27 @@ public enum StillImageMovie {
         guard let picture = decoded(image) else {
             throw ProjectError.invalid("Cannot read the image \(image.lastPathComponent)")
         }
+        try await write(picture: picture, to: destination)
+    }
+
+    /// A one-frame clear movie: the only video track of a timeline without clips (captions or sound alone), since a
+    /// video reader needs at least one track with samples to drive the compositor.
+    static func blank(root: URL) async throws -> URL {
+        let destination = root.appendingPathComponent(folder, isDirectory: true).appendingPathComponent("_blank.mov")
+        if FileManager.default.fileExists(atPath: destination.path) { return destination }
+        guard let picture = CGContext(
+            data: nil, width: 2, height: 2, bitsPerComponent: 8, bytesPerRow: 0,
+            space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue)?.makeImage()
+        else { throw ProjectError.invalid("Cannot make a blank frame") }
+        // Never replace one another build may be reading: the first finished copy wins, later ones are dropped.
+        let copy = destination.deletingLastPathComponent().appendingPathComponent(".\(UUID().uuidString).blank.mov")
+        defer { try? FileManager.default.removeItem(at: copy) }
+        try await write(picture: picture, to: copy)
+        try? FileManager.default.moveItem(at: copy, to: destination)
+        return destination
+    }
+
+    private static func write(picture: CGImage, to destination: URL) async throws {
         // ProRes wants even dimensions; the frame is stretched by at most one pixel.
         let width = max(2, picture.width + picture.width % 2), height = max(2, picture.height + picture.height % 2)
         let folder = destination.deletingLastPathComponent()
