@@ -123,7 +123,7 @@ extension TextAlignment {
     static func spelledNumbers(_ heard: [CaptionWords.Timed], intended: [String], language: String) -> [CaptionWords.Timed] {
         let script = intended.map(SpeechUnits.normalized)
         let written = Set(script)
-        let numbers = heard.flatMap { word -> [CaptionWords.Timed] in
+        let numbers = joinedDecimals(heard).flatMap { word -> [CaptionWords.Timed] in
             let token = SpeechUnits.normalized(word.text)
             // A unit written onto the number ("3,5km") stays a word of its own after the spelled number.
             let digits = String(token.prefix { $0.isNumber || $0 == "." || $0 == "," || $0 == "%" })
@@ -139,6 +139,23 @@ extension TextAlignment {
             }
             return split(word, into: spoken)
         }
+    }
+
+    /// A decimal a recognizer wrote in two words ("3" then ",3km", Whisper on Vietnamese "ba phẩy ba cây số") as one
+    /// word over both times, so it spells with its "phẩy" / "point" instead of losing it.
+    static func joinedDecimals(_ heard: [CaptionWords.Timed]) -> [CaptionWords.Timed] {
+        var result: [CaptionWords.Timed] = []
+        for word in heard {
+            let text = word.text.trimmingCharacters(in: .whitespaces)
+            if let last = result.last, !last.text.isEmpty, last.text.allSatisfy(\.isNumber),
+                let mark = text.first, mark == "," || mark == ".", text.dropFirst().first?.isNumber == true
+            {
+                result[result.count - 1] = last.retimed(text: last.text + text, start: last.start, end: word.end)
+            } else {
+                result.append(word)
+            }
+        }
+        return result
     }
 
     /// `word` as `texts`, its time shared evenly between them.
