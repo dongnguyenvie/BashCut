@@ -44,6 +44,14 @@ struct WorkflowCommandTests {
         #expect(CommandCatalog.hiddenFromAgents.contains("run.status"))
     }
 
+    @Test("export reveal-output reveals a run's file by ledger ID, index or path, like the result card's icon")
+    @MainActor func revealOutput() throws {
+        let parsed = try CommandLineParser.parse(["export", "reveal-output", "--export", "/tmp/a.mp4"])
+        #expect(parsed.spec.name == "export.reveal-output" && parsed.spec.mode == .ui)
+        #expect(parsed.params["export"] == .string("/tmp/a.mp4"))
+        #expect(CommandCatalog.hiddenFromAgents.contains("export.reveal-output"))
+    }
+
     @Test("review run takes a frame range; quick edits are the user's, not the agents'")
     @MainActor func rangeAndQuickEdit() throws {
         let review = try CommandLineParser.parse(["review", "run", "--summary", "--from", "360", "--to", "540"])

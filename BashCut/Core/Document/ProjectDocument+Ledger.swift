@@ -1,3 +1,4 @@
+import AppKit
 import BashCutAutomation
 import BashCutDocument
 import BashCutProject
@@ -32,6 +33,9 @@ extension ProjectDocument {
                 return Self.ledgerRow(entry, index: index, root: root, full: false)
             } catch let error as ProjectError { throw RPCFailure(-32602, error.localizedDescription) }
         }
+        handleAuthored("export.reveal-output") { document, arguments, _ in
+            .object(["path": .string(try document.revealExport(arguments.optionalString("export")).path), "revealed": .bool(true)])
+        }
         handle("project.history") { document, arguments, _ in document.projectHistory(limit: arguments.optionalInt("limit") ?? 10) }
         handleAuthored("outcomes.import") { document, arguments, _ in try document.importOutcomes(arguments) }
         handle("outcomes.map") { document, arguments, _ in
@@ -48,6 +52,23 @@ extension ProjectDocument {
                 duration: entry.duration, top: arguments.optionalInt("top") ?? 3,
                 window: arguments.optionalDouble("window") ?? 4)
         }
+    }
+
+    /// `export.reveal-output` and the result card's per-file icon: the export `reference` names (ID, ledger index or
+    /// path; the latest by default) shown in Finder. Refuses a file that is gone.
+    @discardableResult
+    func revealExport(_ reference: String?) throws -> URL {
+        let root = try ledgerRoot()
+        let entry: StoredExportMetrics
+        do { entry = try exports.ledger.entry(reference, projectRoot: root).entry } catch let error as ProjectError {
+            throw RPCFailure(-32602, error.localizedDescription)
+        }
+        let url = URL(fileURLWithPath: entry.path)
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            throw RPCFailure(-32602, "\(url.lastPathComponent) is no longer on disk (\(url.path))")
+        }
+        NSWorkspace.shared.activateFileViewerSelecting([url])
+        return url
     }
 
     private func ledgerRoot() throws -> URL {

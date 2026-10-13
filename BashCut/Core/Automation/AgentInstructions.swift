@@ -26,6 +26,8 @@ extension CommandCatalog {
         // verdicts and claims are read after a run, not while editing.
         "export.history", "export.link", "project.history", "outcomes.import", "outcomes.map", "knowledge.verdicts",
         "knowledge.claims", "knowledge.set-claim",
+        // The result card's per-file Reveal in Finder: for the user watching, not for editing.
+        "export.reveal-output",
     ]
 
     /// Instructions given to terminal agents, rendered from the command specs: each command's usage and first

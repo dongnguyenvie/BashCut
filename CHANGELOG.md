@@ -5,6 +5,7 @@
 
 ## [Unreleased]
 
+- **`export reveal-output`.** The result card's per-file Reveal in Finder icons had no command; `export reveal-output [--export ID|index|path]` reveals that export (the latest by default) and refuses a file that is gone. Left out of the agent instructions (it is for the user watching).
 - **Backdrop and speed for several clips.** The multi-selection Inspector has the Backdrop picker (blur, colour, dim; Mixed when the clips differ) and Speed (presets and a typed value, with the shared Change clip length setting). Speed applies to every selected clip as one undo step with the single-clip rules: each clip's length follows its speed and its layer ripples, linked sound follows, freeze frames and items without media are left out. `clip speed --items a,b,c --speed 2` does the same and returns each clip's new speed and length and the skipped items.
 - **Recipe editor errors in Vietnamese.** The effect recipe editor's "not valid JSON", "must be a JSON object" and "not a valid recipe" messages were always English; they are localized now (the checker's detail, which names JSON keys, stays as written).
 - **Library media show the item's name.** A sticker, clip or sound placed from the library was labelled by its content-named copy (`library-<hash>.x2.mov` for an animated sticker) on the timeline, in the Media panel and the viewer; the media now keeps the item's name as `label` (new optional media field) and shows it. Media placed before keep their file name and are still reused.
