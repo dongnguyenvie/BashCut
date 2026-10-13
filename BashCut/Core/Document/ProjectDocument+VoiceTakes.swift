@@ -79,9 +79,20 @@ extension ProjectDocument {
         return TakeFacts(units: units, leading: onset, trailing: max(0, take.durationSeconds - tail), pauses: pauses)
     }
 
-    /// The voice a take came from: its provider and the plugin's `voice` option.
-    func voiceKey(_ take: GeneratedVoiceTake) -> String {
+    /// The voice a take came from: its provider and the voice asked for (a preset or a saved clone, #532), else the
+    /// project's clone when the provider clones, else the plugin's `voice` option.
+    func voiceKey(_ take: GeneratedVoiceTake, voice asked: String? = nil) -> String {
         let provenance = take.asset.provenance
+        if let asked {
+            let prefix = provenance.providerID + "/"
+            return prefix + (asked.hasPrefix(prefix) ? String(asked.dropFirst(prefix.count)) : asked)
+        }
+        if let clone = projectVoiceClone,
+            let provider = voiceProviders().first(where: { $0.provider.id == provenance.providerID })?.provider,
+            Self.canSpeak(clone, with: provider)
+        {
+            return provenance.providerID + "/" + clone.id
+        }
         let plugin = plugins.service.catalog(projectRoot: fileURL?.deletingLastPathComponent()).plugins
             .first { $0.id == provenance.pluginID }
         let voice = plugin.flatMap { pluginOptionValues($0)["voice"]?.string } ?? "default"
@@ -104,14 +115,16 @@ extension ProjectDocument {
         }
     }
 
-    func measureTakes(_ takes: [GeneratedVoiceTake], text: String) async -> (SpeechUnits.Unit, [TakeFacts]) {
+    func measureTakes(
+        _ takes: [GeneratedVoiceTake], text: String, voice: String? = nil
+    ) async -> (SpeechUnits.Unit, [TakeFacts]) {
         let unit = SpeechUnits.unit(for: contentLanguage)
         var facts: [TakeFacts] = []
         for take in takes {
             let fact = await takeFacts(take, text: text, unit: unit)
             facts.append(fact)
             VoiceRateStore.shared.record(
-                voice: voiceKey(take), language: contentLanguage, unit: unit.rawValue,
+                voice: voiceKey(take, voice: voice), language: contentLanguage, unit: unit.rawValue,
                 rate: fact.rate(seconds: take.durationSeconds))
         }
         return (unit, facts)
@@ -162,10 +175,10 @@ extension ProjectDocument {
     }
 
     /// The voice facts an item keeps: text, language, its hash, provider and voice.
-    func voiceFacts(_ take: GeneratedVoiceTake, text: String) -> [String: JSONValue] {
+    func voiceFacts(_ take: GeneratedVoiceTake, text: String, voice: String? = nil) -> [String: JSONValue] {
         [
             "text": .string(text), "language": .string(contentLanguage), "textHash": .string(SourceHash.text(text)),
-            "provider": .string(take.asset.provenance.providerID), "voice": .string(voiceKey(take)),
+            "provider": .string(take.asset.provenance.providerID), "voice": .string(voiceKey(take, voice: voice)),
         ]
     }
 
@@ -174,6 +187,8 @@ extension ProjectDocument {
         var text: String?
         var count: Int
         var provider: String?
+        /// A preset or saved clone ID for this request (#532); nil uses the project's voice.
+        var voice: String?
         var cloneConsent: Bool
         var choose: Int?
         var frame: Int?
@@ -191,19 +206,20 @@ extension ProjectDocument {
             throw ProjectError.invalid("Give the text to say (the item has no voice text)")
         }
         if let choose, choose > count { throw RPCFailure(-32602, "choose must be 1–\(count)") }
-        let takes = try await generateVoiceTakes(text: text, count: count, provider: provider, cloneConsent: cloneConsent)
+        let takes = try await generateVoiceTakes(
+            text: text, count: count, provider: provider, cloneConsent: cloneConsent, voice: request.voice)
         guard !takes.isEmpty else { throw ProjectError.invalid("Voice provider returned no takes") }
-        let (unit, facts) = await measureTakes(takes, text: text)
+        let (unit, facts) = await measureTakes(takes, text: text, voice: request.voice)
         let listed = takesJSON(takes, facts: facts, unit: unit)
         guard choose != nil || target != nil else {
             for take in takes {
-                let voice = voiceFacts(take, text: text)
+                let voice = voiceFacts(take, text: text, voice: request.voice)
                 try VoiceTakeFile(take.asset, voice: voice).write(voice: voice)
             }
             return .object(takes.count < count ? ["takes": .array(listed), "requestedTakes": .integer(count)] : ["takes": .array(listed)])
         }
         let index = min(takes.count, choose ?? 1) - 1
-        let chosen = takes[index], voice = voiceFacts(chosen, text: text)
+        let chosen = takes[index], voice = voiceFacts(chosen, text: text, voice: request.voice)
         let file = VoiceTakeFile(chosen.asset, voice: voice)
         var result: [String: JSONValue] = ["chosen": .integer(index + 1), "voice": voice["voice"] ?? .null, "takes": .array(listed)]
         // The provider gives fewer takes than asked (`maxTakes`, #410).
@@ -251,13 +267,14 @@ extension ProjectDocument {
             let count = try arguments.int("takes")
             let (frame, choose) = (arguments.optionalInt("atFrame"), arguments.optionalInt("choose"))
             let provider = arguments.optionalString("provider")
+            let voice = arguments.optionalString("voice")
             let consent = arguments.bool("cloneConsent")
             if let choose, choose > count { throw RPCFailure(-32602, "choose must be 1–\(count)") }
             let work: @MainActor (ProjectDocument) async throws -> JSONValue = { document in
                 try await document.speak(
                     SpeakRequest(
-                        text: text, count: count, provider: provider, cloneConsent: consent, choose: choose, frame: frame,
-                        replace: replace), author: author)
+                        text: text, count: count, provider: provider, voice: voice, cloneConsent: consent,
+                        choose: choose, frame: frame, replace: replace), author: author)
             }
             return try await document.startCapabilityJob("voice.speak", author: author, arguments: arguments, work: work)
         }
@@ -275,42 +292,5 @@ extension ProjectDocument {
     /// The language subtag of a BCP 47 tag, lowercased (`en-US` → `en`); empty for an empty tag.
     static func baseLanguage(_ tag: String) -> String {
         String(tag.split(whereSeparator: { $0 == "-" || $0 == "_" }).first ?? "").lowercased()
-    }
-
-    /// `capabilities.get --voices` (P0-C7): every voice of the installed `voice.synthesize` providers with its facts, whether the
-    /// provider clones, the voice each plugin is set to, the rate measured on its takes and, when the
-    /// project has a content language, whether the voice speaks it.
-    func voiceList() -> JSONValue {
-        let catalog = plugins.service.catalog(projectRoot: fileURL?.deletingLastPathComponent())
-        let rates = VoiceRateStore.shared.summary().array
-        let content = Self.baseLanguage(contentLanguage)
-        var rows: [JSONValue] = []
-        for plugin in catalog.plugins {
-            for provider in (plugin.manifest.providers ?? []) where provider.capability == "voice.synthesize" {
-                let current = pluginOptionValues(plugin)["voice"]?.string
-                rows.append(.object([
-                    "plugin": .string(plugin.id), "provider": .string(provider.id), "name": .string(provider.name),
-                    "availability": .string(plugins.currentAvailability(plugin).name),
-                    "clones": .bool(provider.clones ?? false), "current": current.map(JSONValue.string) ?? .null,
-                    "maxTakes": provider.maxTakes.map(JSONValue.integer) ?? .null,
-                    "voices": .array((provider.voices ?? []).map { voice in
-                        let key = provider.id + "/" + voice.id
-                        var row: [String: JSONValue] = [
-                            "id": .string(voice.id), "language": .string(voice.language),
-                            "region": voice.region.map(JSONValue.string) ?? .null,
-                            "style": voice.style.map(JSONValue.string) ?? .null,
-                            "gender": voice.gender.map(JSONValue.string) ?? .null,
-                            "supportsRate": voice.supportsRate.map(JSONValue.bool) ?? .null,
-                        ]
-                        if !content.isEmpty {
-                            row["speaksContentLanguage"] = .bool(Self.baseLanguage(voice.language) == content)
-                        }
-                        row["measuredRate"] = .array(rates.filter { $0.object["voice"]?.string == key })
-                        return .object(row)
-                    }),
-                ]))
-            }
-        }
-        return .object(["providers": .array(rows)])
     }
 }

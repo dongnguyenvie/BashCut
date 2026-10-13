@@ -16,6 +16,8 @@ public enum PluginFeature {
 
     /// `providers[].maxTakes` on `voice.synthesize` providers (#410).
     public static let voiceMaxTakes = "voice.maxTakes"
+    /// `providers[].clone` on `voice.synthesize` providers and saved clones sent as `reference` (#532).
+    public static let voiceSavedClones = "voice.savedClones"
     /// `views[].when` on inspector views (#405).
     public static let inspectorWhen = "inspector.when"
 
@@ -33,8 +35,8 @@ public enum PluginFeature {
 
     /// Features that are not a view component or place.
     static let named = [
-        container, views, requires, invoke, optionsSet, voiceMaxTakes, inspectorWhen, viewUpdate, overlays, viewsDrag,
-        skillsOnly,
+        container, views, requires, invoke, optionsSet, voiceMaxTakes, voiceSavedClones, inspectorWhen, viewUpdate,
+        overlays, viewsDrag, skillsOnly,
     ]
 
     /// Every feature this host provides: `views.<component>` for each view component it can draw and

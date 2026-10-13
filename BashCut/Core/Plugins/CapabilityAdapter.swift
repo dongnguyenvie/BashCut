@@ -17,10 +17,13 @@ public protocol CapabilityAdapter: Sendable {
     func validate() throws
     func params(outputDirectory: URL?) -> JSONValue
     func output(from result: JSONValue, context: CapabilityContext) async throws -> Output
+    /// Option values for this request only, over the plugin's own (a voice chosen for one line).
+    var optionOverrides: [String: JSONValue] { get }
 }
 
 extension CapabilityAdapter {
     public var outputRoot: URL? { nil }
+    public var optionOverrides: [String: JSONValue] { [:] }
     public func validate() throws {}
 }
 
@@ -63,8 +66,8 @@ extension CapabilityService {
         var succeeded = false
         defer { if !succeeded, let directory { try? FileManager.default.removeItem(at: directory) } }
         var params = adapter.params(outputDirectory: directory)
-        if case .object(var fields) = params, fields["options"] == nil, let optionValues {
-            let values = await optionValues(resolved.plugin)
+        if case .object(var fields) = params, fields["options"] == nil {
+            let values = (await optionValues?(resolved.plugin) ?? [:]).merging(adapter.optionOverrides) { $1 }
             if !values.isEmpty {
                 fields["options"] = .object(values)
                 params = .object(fields)

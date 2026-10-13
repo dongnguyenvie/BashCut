@@ -167,18 +167,22 @@ extension ProjectDocument {
     /// `cloneConsent`: the person asking agreed to clone a voice; the Voice panel passes it for the user, agents only
     /// when told to.
     func generateVoiceTakes(
-        text: String, count: Int = 3, provider: String? = nil, cloneConsent: Bool = false
+        text: String, count: Int = 3, provider: String? = nil, cloneConsent: Bool = false, voice: String? = nil
     ) async throws -> [GeneratedVoiceTake] {
         guard let root = fileURL?.deletingLastPathComponent() else {
             throw ProjectError.invalid("Open a project before generating voiceover")
         }
         let session = sessionID
+        // A preset or saved clone asked for, else the project's clone, else the plugin's own voice option (#532); a
+        // project without a content language speaks in the clone's language.
+        let resolved = try resolveVoice(voice, provider: provider)
+        let language = contentLanguage.isEmpty ? resolved.choice?.cloneLanguage ?? "" : contentLanguage
         let takes = try await plugins.running("voice.synthesize") {
             try await plugins.service.synthesizeVoiceTakes(
-                text: text, language: contentLanguage, count: count,
-                preferredProvider: provider ?? project.preferredProvider(for: "voice.synthesize"),
+                text: text, language: language, count: count,
+                preferredProvider: resolved.provider ?? project.preferredProvider(for: "voice.synthesize"),
                 projectRoot: root, outputRoot: root.appendingPathComponent("voiceover/generated", isDirectory: true),
-                cloneConsent: cloneConsent)
+                cloneConsent: cloneConsent, voice: resolved.choice)
         }
         guard session == sessionID else {
             CapabilityService.discardVoiceTakes(takes)

@@ -11,7 +11,7 @@ import Foundation
         "plugins.hooks", "plugins.options", "jobs.status", "jobs.cancel", "layers.add", "layers.set",
         "adjustment.add", "schema.get",
         "clip.motion", "clip.keyframe", "clip.reverse", "clip.freeze", "clip.reframe", "text.line-style", "clip.backdrop",
-        "beats.detect", "voice.speak", "voice.lines", "voice.place",
+        "beats.detect", "voice.speak", "voice.lines", "voice.place", "voice.use", "voice.clone-list",
         "audio.measure", "media.sync", "media.analyze", "media.analysis", "media.cuts", "media.transcribe",
         "media.transcript", "media.speech-map", "media.describe", "media.description",
         "media.frames", "media.frame", "media.strip", "media.inventory", "media.digest", "review.sync",

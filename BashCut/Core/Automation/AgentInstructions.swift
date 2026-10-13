@@ -28,6 +28,8 @@ extension CommandCatalog {
         "knowledge.claims", "knowledge.set-claim",
         // The result card's per-file Reveal in Finder: for the user watching, not for editing.
         "export.reveal-output",
+        // My voices (#532): capabilities get --voices lists the clones; removing one is the user's.
+        "voice.clone-list", "voice.clone-remove",
     ]
 
     /// Instructions given to terminal agents, rendered from the command specs: each command's usage and first
@@ -142,6 +144,7 @@ extension CommandCatalog {
            removed). The edit is one undo step attributed to the plugin.
         Plugins that provide capabilities (voice, captions, beats, loudness) are used by `voice speak`,
         `captions generate`, `beats detect` and export; `--provider` picks one, `plugins list` shows them.
+        Voices: `capabilities get --voices` rows are `kind` preset or clone (the user's saved voices).
         Find more with `plugins search`; installing, trusting and turning plugins on are for the user only. When the
         user is missing plugins, suggest they type `/bc:setup`, which shows one approval for the recommended
         bundle (`plugins bundles`). Never start an install on your own.

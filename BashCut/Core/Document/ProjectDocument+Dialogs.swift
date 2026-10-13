@@ -122,6 +122,7 @@ extension ProjectDocument {
             ) { [weak self] _ in self?.plugins.cancelPendingBundle() })
         }
         sheets += pluginSheets()
+        sheets += [voiceCloneSheet()].compactMap { $0 }
         sheets += approvalSheets()
         return sheets
     }
@@ -143,6 +144,20 @@ extension ProjectDocument {
             name: "plugin-install", title: verb + pending.plugin.manifest.displayName + "?", message: message,
             options: [ModalOption("cancel", String(localized: "Cancel"))]
         ) { [weak self] _ in self?.plugins.cancelPendingInstall() }
+    }
+
+    /// Voice panel › Clone a voice… (#532): consent is the user's, so agents can only read it and close it; they save
+    /// clones with `voice clone-add`, which asks the user.
+    private func voiceCloneSheet() -> ModalSheet? {
+        guard ui.showVoiceClone else { return nil }
+        let draft = voiceClone
+        let window = draft.prepared.map { String(format: "window %.2f–%.2f s", $0.trim.start, $0.trim.end) }
+        let message = ["Only the user can consent to a clone; agents use voice clone-add.", draft.sourceTitle, window ?? "",
+                       draft.message].filter { !$0.isEmpty }.joined(separator: " ")
+        return ModalSheet(name: "voice-clone", title: "Clone a voice", message: message, options: [Self.close]) { [weak self] _ in
+            self?.voiceClone.reset()
+            self?.ui.showVoiceClone = false
+        }
     }
 
     /// Decisions only the user can approve: a privileged agent action and an edit outside the attached scope.
@@ -285,6 +300,8 @@ extension ProjectDocument {
             "quick-edit": ({ !$0.selectedItems.isEmpty }, "Select the clips first", \.showQuickEdit),
             "external-changes": ({ $0.conflict }, "The project file has no conflicting change", \.showExternalChanges),
             "plugin-proposals": ({ !$0.plugins.proposals.isEmpty }, "No plugin edits to review", \.showPluginProposals),
+            "voice-clone": ({ $0.fileURL != nil && (try? $0.cloneRange(provider: nil)) != nil },
+                            "Open a saved project with a voice provider that clones", \.showVoiceClone),
         ]
     }
 

@@ -8,7 +8,7 @@ public enum CommandCatalog {
     public static let dialogs = [
         "new-project", "export", "export-report", "agent-changes", "review", "history", "plugins", "settings",
         "doctor", "knowledge", "ask", "sections", "external-changes", "plugin-proposals", "commands", "shortcuts",
-        "add-plugin", "library-search", "library-generate", "quick-edit", "recents",
+        "add-plugin", "library-search", "library-generate", "quick-edit", "recents", "voice-clone",
     ]
     public static let libraryPanels = ["media", "audio", "text", "stickers", "effects", "transitions", "filters", "voice", "brand"]
     public static let exportPresets = OutputPresetName.all
@@ -35,7 +35,7 @@ public enum CommandCatalog {
         + sourceMediaSpecs
         + pluginSpecs + pluginViewSpecs
         + storageSpecs + agentSpecs + quickEditSpecs + appSpecs + chatSpecs
-        + privilegedSpecs + uiSpecs + toolSpecs + knowledgeSpecs + skillSpecs + librarySpecs + fontSpecs
+        + privilegedSpecs + uiSpecs + toolSpecs + knowledgeSpecs + skillSpecs + librarySpecs + fontSpecs + voiceCloneSpecs
 
     /// A provider job (`capabilities`) with the request ID and dry-run parameters, when it does not have them yet.
     static func withRequestParameters(_ spec: CommandSpec) -> CommandSpec {

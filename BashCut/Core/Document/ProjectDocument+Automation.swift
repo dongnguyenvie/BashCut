@@ -44,6 +44,7 @@ extension ProjectDocument {
         registerSpeechRateCommands()
         registerVoiceCheckCommands()
         registerVoiceTakeCommands()
+        registerVoiceCloneCommands()
         registerVoiceLineCommands()
         registerPlanCommands()
         registerWorkflowCommands()

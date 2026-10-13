@@ -105,16 +105,21 @@ public struct CapabilityService: Sendable {
     // MARK: Capabilities
 
     /// Asks one provider for voice takes until `count` exist, never more than its `maxTakes` (#410: a paid provider
-    /// that gives one take is asked once); a failure discards the takes made so far.
+    /// that gives one take is asked once); a failure discards the takes made so far. A saved clone (`voice`) only goes
+    /// to a provider that clones (#532).
     public func synthesizeVoiceTakes(
         text: String, language: String, count requested: Int = 3, preferredProvider: String?,
-        projectRoot: URL, outputRoot: URL, cloneConsent: Bool = false
+        projectRoot: URL, outputRoot: URL, cloneConsent: Bool = false, voice: VoiceChoice? = nil
     ) async throws -> [GeneratedVoiceTake] {
         let first = VoiceSynthesisCapability(
-            text: text, language: language, takeCount: requested, outputRoot: outputRoot, cloneConsent: cloneConsent)
+            text: text, language: language, takeCount: requested, outputRoot: outputRoot, cloneConsent: cloneConsent,
+            voice: voice)
         try first.validate()
         let resolved = try await resolve(
             VoiceSynthesisCapability.capability, preferredProvider: preferredProvider, projectRoot: projectRoot)
+        if case .clone(let reference) = voice, resolved.provider.cloneRange == nil {
+            throw PluginError.invalid("\(resolved.provider.name) cannot speak with a cloned voice (\(reference.voice))")
+        }
         let count = resolved.provider.takes(requested)
         var generated: [GeneratedVoiceTake] = []
         do {
@@ -122,7 +127,7 @@ public struct CapabilityService: Sendable {
                 let requested = count - generated.count
                 let batch = VoiceSynthesisCapability(
                     text: text, language: language, takeCount: requested, takeOffset: generated.count,
-                    outputRoot: outputRoot, cloneConsent: cloneConsent)
+                    outputRoot: outputRoot, cloneConsent: cloneConsent, voice: voice)
                 generated.append(contentsOf: try await run(batch, using: resolved).prefix(requested))
             }
             return generated
