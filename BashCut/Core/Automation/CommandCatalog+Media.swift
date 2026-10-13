@@ -196,10 +196,14 @@ extension CommandCatalog {
                 + "contact sheets of columns × rows cells labelled '<cell> <file> <m:ss.s>' (the colour changes with "
                 + "each media), sheets [{path, cells [{cell, media, frame, seconds}]}], so a cell maps back to its "
                 + "media and second. With reference (one media): a sheet with a REF row from that media (over "
-                + "referenceFrom…referenceTo) above an OURS row, cell for cell. At most 400 frames per call.",
+                + "referenceFrom…referenceTo) above an OURS row, cell for cell. At most 400 frames per call. With "
+                + "file: frames of a video not in the project (a stock or library candidate), at or count over the "
+                + "whole file, frames [{path, file, frame, seconds, width, height}].",
             parameters: [
                 CommandParameter("media", .string, "Media IDs, comma separated; every media with a picture by default",
                                  cli: .option("media")),
+                CommandParameter("file", .string, "Absolute path of a video not in the project, instead of media",
+                                 cli: .option("file")),
                 CommandParameter("at", .string, "Source seconds, comma separated (one media)", cli: .option("at")),
                 CommandParameter("every", .number, "Seconds between frames", range: 0.04...3_600, cli: .option("every")),
                 CommandParameter("count", .integer, "Frames per media, evenly spaced (default 8)", minimum: 1,

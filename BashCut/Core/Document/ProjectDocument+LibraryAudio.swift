@@ -189,8 +189,10 @@ extension ProjectDocument {
         let root = fileURL?.deletingLastPathComponent()
         var measured = LibraryAudio(seconds: try await Self.soundSeconds(url, label: item.reference))
         var notes: [String: JSONValue] = [:]
+        // Music only, kept in params next to the measured values: beatConfidence and energy (`measureBed`).
+        var extra: [String: JSONValue] = [:]
         do {
-            let loudness = try await plugins.running("audio.loudness") {
+            let loudness = try await plugins.queued("audio.loudness") {
                 try await plugins.service.analyzeLoudness(
                     mediaURL: url, bands: false, curve: true,
                     preferredProvider: provider ?? project.preferredProvider(for: "audio.loudness"), projectRoot: root)
@@ -209,31 +211,65 @@ extension ProjectDocument {
         if audio.placementRole(seconds: measured.seconds) == "sfx" {
             notes["bpm"] = .string("Not measured for a sound effect")
         } else {
-            do {
-                let beats = try await plugins.running("audio.beats") {
-                    try await plugins.service.detectBeats(
-                        mediaURL: url, preferredProvider: project.preferredProvider(for: "audio.beats"),
-                        projectRoot: root ?? store.root)
-                }
-                if LibraryAudio.bpmRange.contains(beats.bpm) {
-                    measured.bpm = beats.bpm
-                } else {
-                    notes["bpm"] = .string("No steady tempo found")
-                }
-            } catch {
-                notes["bpm"] = .string(error.localizedDescription)
-            }
+            let music = await measureBed(url, root: root, beatsRoot: root ?? store.root)
+            measured.bpm = music.bpm
+            extra = music.extra
+            notes.merge(music.notes) { $1 }
         }
-        let changes: [String: JSONValue]
-        do { changes = try LibraryAudio.analysisChanges(item, measured: measured) } catch {
+        var analysis: [String: JSONValue]
+        do { analysis = try LibraryAudio.analysisChanges(item, measured: measured) } catch {
             throw RPCFailure.from(error, fallbackCode: -32602)
         }
+        if case .object(var params)? = analysis["params"], !extra.isEmpty {
+            params.merge(extra) { $1 }
+            analysis["params"] = .object(params)
+        }
+        let changes = analysis
         let saved = try await libraryChange(
             "library.analyze", scope: item.scope, author: author, arguments: ["id": item.reference, "name": item.name]
         ) {
             try store.update(item.id, changes: changes).json()
         }
-        return .object(["item": saved, "measured": .object(measured.params()), "notes": .object(notes)])
+        return .object([
+            "item": saved, "measured": .object(measured.params().merging(extra) { $1 }), "notes": .object(notes),
+        ])
+    }
+
+    /// A music bed's tempo (an audio.beats provider) with `beatConfidence` (0…1, when the provider gives one), and
+    /// `energy` {rangeDb, liftAt, peakAt} from an audio.energy curve; a provider that fails says why in notes.
+    private func measureBed(
+        _ url: URL, root: URL?, beatsRoot: URL
+    ) async -> (bpm: Double?, extra: [String: JSONValue], notes: [String: JSONValue]) {
+        var bpm: Double?
+        var extra: [String: JSONValue] = [:], notes: [String: JSONValue] = [:]
+        do {
+            let beats = try await plugins.queued("audio.beats") {
+                try await plugins.service.detectBeats(
+                    mediaURL: url, preferredProvider: project.preferredProvider(for: "audio.beats"), projectRoot: beatsRoot)
+            }
+            if LibraryAudio.bpmRange.contains(beats.bpm) {
+                bpm = beats.bpm
+                if let confidence = beats.grid["confidence"] { extra["beatConfidence"] = confidence }
+            } else {
+                notes["bpm"] = .string("No steady tempo found")
+            }
+        } catch {
+            notes["bpm"] = .string(error.localizedDescription)
+        }
+        do {
+            let energy = try await plugins.queued("audio.energy") {
+                try await plugins.service.analyzeEnergy(
+                    mediaURL: url, preferredProvider: project.preferredProvider(for: "audio.energy"), projectRoot: root)
+            }
+            let curve = energy.result.object
+            if let summary = LibraryAudio.energySummary(
+                levelDb: curve["levelDb"]?.array.compactMap(\.double) ?? [], step: curve["step"]?.double ?? 0) {
+                extra["energy"] = .object(summary)
+            }
+        } catch {
+            notes["energy"] = .string(error.localizedDescription)
+        }
+        return (bpm, extra, notes)
     }
 
     /// The Audio panel's Analyze: the same as `library analyze`, as the user.
@@ -363,18 +399,40 @@ extension ProjectDocument {
 
     func registerLibraryAudioCommands() {
         handleAuthored("library.analyze") { document, arguments, author in
-            let item = try document.libraryCatalog.item(
-                try arguments.string("id"), scope: arguments.optionalString("scope").flatMap(LibraryScope.init(rawValue:)))
-            _ = try document.libraryAudio(item)
+            let scope = arguments.optionalString("scope").flatMap(LibraryScope.init(rawValue:))
+            let items = try CommandCatalog.libraryIDs(try arguments.string("id")).map { id in
+                let item = try document.libraryCatalog.item(id, scope: scope)
+                _ = try document.libraryAudio(item)
+                return item
+            }
             let provider = arguments.optionalString("provider")
-            let job = document.jobs.start("library.analyze", author: author, detail: item.name, work: { [weak document] _ in
+            let detail = items.count == 1 ? items[0].name : "\(items.count) items"
+            let job = document.jobs.start("library.analyze", author: author, detail: detail, work: { [weak document] reporter in
                 guard let document else { throw CancellationError() }
-                return try await document.analyzeLibraryAudio(item, provider: provider, author: author)
+                if items.count == 1 { return try await document.analyzeLibraryAudio(items[0], provider: provider, author: author) }
+                // Several IDs: one after another in this job, each result or error on its own row.
+                var rows: [JSONValue] = []
+                var failed = 0
+                for (index, item) in items.enumerated() {
+                    try Task.checkCancellation()
+                    reporter.progress(Double(index) / Double(items.count), detail: item.name)
+                    do {
+                        var row = try await document.analyzeLibraryAudio(item, provider: provider, author: author).object
+                        row["id"] = .string(item.reference)
+                        rows.append(.object(row))
+                    } catch {
+                        failed += 1
+                        rows.append(.object(["id": .string(item.reference), "error": .string(error.localizedDescription)]))
+                    }
+                }
+                return .object([
+                    "items": .array(rows), "analyzed": .integer(items.count - failed), "failed": .integer(failed),
+                ])
             }, finished: { [weak document] outcome in
                 guard case .failure(let error) = outcome, !JobCenter.isCancellation(error) else { return }
                 document?.message = "library.analyze: " + error.localizedDescription
             })
-            return .object(["job": .string(job), "state": .string("running")])
+            return .object(["job": .string(job), "state": .string("running"), "count": .integer(items.count)])
         }
         handle("library.preview") { document, arguments, _ in
             guard !arguments.bool("stop"), let id = arguments.optionalString("id") else {

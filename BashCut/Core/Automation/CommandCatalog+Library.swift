@@ -233,11 +233,17 @@ extension CommandCatalog {
             "Measure an audio library item's file and save the values as a new version: its length, integrated "
                 + "loudness and true peak (an audio.loudness provider, as audio measure), landmarks {onset, peak, tail} "
                 + "in seconds (where it passes the −70 LUFS gate, peaks and drops back under it) and, unless it is a sound effect, "
-                + "its tempo in BPM (an audio.beats provider, as beats detect). Runs as a job; a missing provider leaves "
+                + "its tempo in BPM (an audio.beats provider, as beats detect) with beatConfidence 0…1 when the provider "
+                + "gives one, and energy {rangeDb (quiet to loud parts), liftAt, peakAt seconds} (an audio.energy "
+                + "provider). Runs as a job; a missing provider leaves "
                 + "that value and says why in notes. Agents saving to the user scope wait for approval. Tag mood and "
-                + "genre with library update --tags after listening or reading the analysis.",
+                + "genre with library update --tags after listening or reading the analysis. Several IDs separated by "
+                + "commas run in one job (result: items [{id, item, measured, notes} or {id, error}], analyzed, failed); "
+                + "a provider busy with another job is waited for, not refused.",
             parameters: [
-                libraryID, libraryScope,
+                CommandParameter(
+                    "id", .string, "Item ID or scope:id; several separated by commas", required: true, cli: .positional),
+                libraryScope,
                 CommandParameter("provider", .string, "audio.loudness provider ID; the project's choice by default",
                                  cli: .option("provider")),
             ],
@@ -302,4 +308,15 @@ extension CommandCatalog {
                                  cli: .option("name")),
             ]),
     ]
+}
+
+extension CommandCatalog {
+    /// The IDs of `library analyze`: one ID, or several separated by commas (duplicates dropped, order kept).
+    public static func libraryIDs(_ value: String) throws -> [String] {
+        var seen = Set<String>()
+        let ids = value.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty && seen.insert($0).inserted }
+        guard !ids.isEmpty else { throw RPCFailure(-32602, "id: give one library ID or several separated by commas") }
+        return ids
+    }
 }
