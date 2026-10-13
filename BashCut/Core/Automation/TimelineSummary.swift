@@ -40,11 +40,13 @@ public enum TimelineSummary {
         var lines = [
             "project \(project.name) rev \(project.revision) \(project.width)x\(project.height) \(project.fps.value)fps"
         ]
+        let labels = project.trackLabels
         for track in project.tracks {
+            let layer = "\(labels[track.id] ?? track.id) \(track.role.uppercased())"
             for item in track.items.sorted(by: { $0.at < $1.at }) {
                 let media = item.mediaID ?? (track.isAdjustment ? "adjustment" : "text")
                 lines.append(
-                    "\(track.role.uppercased()) \(item.id) \(item.at)-\(item.end) media=\(media) in=\(item.sourceIn) \(item.text)"
+                    "\(layer) \(item.id) \(item.at)-\(item.end) media=\(media) in=\(item.sourceIn) \(item.text)"
                 )
             }
         }
