@@ -16,6 +16,19 @@ public enum CommandCaller {
     @TaskLocal public static var method: String?
 }
 
+/// An agent's request as it starts and ends (#534), so the editor can show what the agent is doing without asking
+/// it for anything. `finished` is nil while it runs; `job` is the job a command started, when its result names one.
+public struct CommandActivity: Sendable {
+    public let id: UUID
+    public let method: String
+    public let mode: CommandMode
+    public let author: Author
+    public let token: String?
+    public var finished: Bool?
+    public var error: String?
+    public var job: String?
+}
+
 /// One failed request, kept for `context get` (the token only to tell sessions apart; never reported).
 struct FailedRequest {
     let date: Date
@@ -43,6 +56,8 @@ struct FailedRequest {
     private let logger: (@Sendable (String, String) -> Void)?
     /// The open project's revision, set by the document; `baseRev: "last"` resolves against what each token saw.
     public var currentRevision: (@MainActor () -> Int?)?
+    /// Told when an agent's request starts and ends (#534); reads and requests without a live token are included.
+    public var onActivity: (@MainActor (CommandActivity) -> Void)?
     /// The project revision as of each token's last successful command.
     private var seenRevision: [String: Int] = [:]
     public init(audit: @escaping @Sendable (AuditEvent) -> Void = { _ in }) {
@@ -132,6 +147,7 @@ struct FailedRequest {
         let author = request.token.flatMap { tokens[$0] }
         let started = Date()
         let who = author.map { "\($0)" } ?? "anonymous"
+        let activity = startActivity(request, author: author)
         do {
             guard request.jsonrpc == "2.0" else { throw RPCFailure(-32600, "JSON-RPC 2.0 required") }
             guard let spec = CommandCatalog.spec(named: request.method), let handler = handlers[request.method]
@@ -161,12 +177,14 @@ struct FailedRequest {
                 switchedProject.removeValue(forKey: token)
             }
             audit(AuditEvent(date: Date(), method: request.method, author: author, succeeded: true))
+            endActivity(activity, error: nil, result: result)
             log(
                 "rpc", "\(request.method) by \(who) ok in \(Self.milliseconds(since: started)) ms "
                     + "params=\(Self.summary(spec.logParameters(arguments.values)))")
             return RPCResponse(id: request.id, result: result)
         } catch {
             audit(AuditEvent(date: Date(), method: request.method, author: author, succeeded: false))
+            endActivity(activity, error: error, result: nil)
             let failure = RPCFailure.from(error, fallbackCode: -32602).typed
             failures.append(
                 FailedRequest(
@@ -178,6 +196,21 @@ struct FailedRequest {
                     + "FAILED \(failure.code) in \(Self.milliseconds(since: started)) ms")
             return RPCResponse(id: request.id, error: failure)
         }
+    }
+
+    private func startActivity(_ request: RPCRequest, author: Author?) -> CommandActivity? {
+        guard let author, onActivity != nil, let spec = CommandCatalog.spec(named: request.method) else { return nil }
+        let activity = CommandActivity(id: UUID(), method: request.method, mode: spec.mode, author: author, token: request.token)
+        onActivity?(activity)
+        return activity
+    }
+
+    private func endActivity(_ activity: CommandActivity?, error: (any Error)?, result: JSONValue?) {
+        guard var activity else { return }
+        activity.finished = error == nil
+        activity.error = error.map { String($0.localizedDescription.prefix(200)) }
+        activity.job = result?.object["job"]?.string
+        onActivity?(activity)
     }
 
     /// Failed requests of the last `window` seconds, newest first: those sent with `token` when given, else all; and

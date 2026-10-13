@@ -12,41 +12,44 @@ struct RunPanelView: View {
     let model: RunPanelModel
 
     var body: some View {
-        if let progress = model.progress {
-            VStack(alignment: .leading, spacing: 10) {
-                header(progress)
-                if !model.collapsed {
-                    if let result = model.result, progress.finished {
-                        RunResultCard(document: document, model: model, result: result)
-                    } else {
-                        stages(progress)
-                    }
+        let progress = model.progress
+        VStack(alignment: .leading, spacing: 10) {
+            header(progress)
+            if !model.collapsed {
+                if let progress, let result = model.result, progress.finished {
+                    RunResultCard(document: document, model: model, result: result)
+                } else {
+                    if let progress { stages(progress) }
+                    RunActivitySection(document: document)
                 }
             }
-            .padding(12)
-            .frame(width: 320, alignment: .leading)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 10))
-            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.cyan.opacity(0.3)))
-            .shadow(radius: 8)
-            .padding(.horizontal, 14).padding(.top, 14)
         }
+        .padding(12)
+        .frame(width: 320, alignment: .leading)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 10))
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.cyan.opacity(0.3)))
+        .shadow(radius: 8)
+        .padding(.horizontal, 14).padding(.top, 14)
     }
 
-    private func header(_ progress: RunProgress) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: progress.finished ? "checkmark.seal.fill" : "wand.and.stars")
-                .foregroundStyle(progress.finished ? .green : .cyan)
-            Text(progress.finished ? "Agent run finished" : "Agent run").font(.callout.bold())
+    private func header(_ progress: RunProgress?) -> some View {
+        let finished = progress?.finished == true
+        return HStack(spacing: 8) {
+            Image(systemName: finished ? "checkmark.seal.fill" : "wand.and.stars")
+                .foregroundStyle(finished ? .green : .cyan)
+            Text(finished ? "Agent run finished" : "Agent run").font(.callout.bold())
             Spacer()
-            SwiftUI.TimelineView(.periodic(from: .now, by: 1)) { context in
-                Text(Self.clock(progress.elapsed(now: context.date))).font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary).help("Elapsed time")
+            if let progress {
+                SwiftUI.TimelineView(.periodic(from: .now, by: 1)) { context in
+                    Text(Self.clock(progress.elapsed(now: context.date))).font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary).help("Elapsed time")
+                }
             }
             Button { model.collapsed.toggle() } label: {
                 Image(systemName: model.collapsed ? "chevron.down" : "chevron.up")
             }.buttonStyle(.plain).help(model.collapsed ? "Expand" : "Collapse")
             Button { document.run(.dismissRunPanel) } label: { Image(systemName: "xmark") }
-                .buttonStyle(.plain).help("Close until the next run")
+                .buttonStyle(.plain).help("Close; the agent button opens it again")
         }
     }
 

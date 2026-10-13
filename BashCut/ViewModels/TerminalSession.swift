@@ -39,6 +39,8 @@ import SwiftTerm
     }
     /// Presses Return in the terminal, sending what is in the agent's input.
     func submit() { view.send(source: view, data: [13][...]) }
+    /// Presses Escape, which interrupts Claude Code's and Codex's current turn (the run panel's Stop, #534).
+    func interrupt() { view.send(source: view, data: [27][...]) }
     func runCommand(_ text: String) { view.send(source: view, data: Array((text + "\n").utf8)[...]) }
     func close() {
         view.send(source: view, data: [3][...])

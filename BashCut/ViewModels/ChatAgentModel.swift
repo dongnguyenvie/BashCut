@@ -337,6 +337,8 @@ enum ChatEntryKind: String, Codable { case user, assistant, tool, notice, error 
     }
 
     var available: [ChatAgentModel] { Self.ready(in: document).map { model(for: $0.id) } }
+    /// Every chat agent opened this session.
+    var all: [ChatAgentModel] { Array(models.values) }
 
     /// The agent whose commands run with `token`.
     func owner(of token: String) -> ChatAgentModel? { models.values.first { $0.owns(token) } }
