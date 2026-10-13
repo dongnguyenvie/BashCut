@@ -66,6 +66,12 @@ struct EditorView: View {
                     CommandPaletteView { document.ui.showCommands = false }.padding(.top, 90)
                 }
             }
+            if document.ui.showRecents {
+                ZStack(alignment: .top) {
+                    Color.black.opacity(0.3).onTapGesture { document.ui.showRecents = false }
+                    RecentProjectsView(document: document) { document.ui.showRecents = false }.padding(.top, 90)
+                }
+            }
         }
         .modifier(PluginSheetPresenter(document: document))
         .sheet(isPresented: Bindable(document.ui).showShortcuts) {

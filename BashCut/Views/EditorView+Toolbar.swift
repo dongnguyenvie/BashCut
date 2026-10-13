@@ -87,13 +87,14 @@ extension EditorView {
     }
 
     @ViewBuilder private var recentProjects: some View {
-        let recents = document.settings.recentProjects
+        let recents = Array(document.settings.recentHistory.prefix(SettingsModel.recentProjectLimit))
         if !recents.isEmpty {
             Menu("Open Recent") {
-                ForEach(recents, id: \.path) { url in
-                    Button(url.deletingLastPathComponent().lastPathComponent) { document.openProject(at: url) }
+                ForEach(Array(zip(recents, RecentProject.menuTitles(recents))), id: \.0.url) { project, title in
+                    Button(title) { document.openProject(at: project.url) }.help(project.folder.path)
                 }
                 Divider()
+                Button("View All…") { document.run(.showRecentProjects) }
                 Button("Clear Menu") { document.run(.clearRecentProjects) }
             }
         }

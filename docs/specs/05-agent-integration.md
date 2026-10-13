@@ -62,7 +62,7 @@ arguments.
 | Command | Mode | UI equivalent |
 |---|---|---|
 | `context get` | read | Open project, selection, playhead; running analysis jobs and media not yet measured, transcribed or described |
-| `project get` / `project recents` | read | Welcome screen, Recent projects |
+| `project get` / `project recents [--query] [--remove]` | read | Welcome screen, Recent projects, Open Recent › View All… (`ui action project.show-recents`) |
 | `timeline get [--format text\|json]` | read | Looking at the timeline, its transitions and section markers |
 | `media list [--analysis]` / `media analyze` / `media analysis` | read | Library (`media analyze`: a measured record per source file with shots, motion, sound spans and file facts, read with `media analysis`) |
 | `media cuts` | edit | Correcting the shots found in a source file |

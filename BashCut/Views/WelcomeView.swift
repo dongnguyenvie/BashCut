@@ -41,6 +41,8 @@ struct WelcomeView: View {
                     Text("Recent projects").font(.headline)
                     Spacer()
                     if !document.settings.recentProjects.isEmpty {
+                        Button("View All…") { document.run(.showRecentProjects) }.buttonStyle(.plain)
+                            .action(.showRecentProjects, in: document)
                         Button("Clear") { document.run(.clearRecentProjects) }.buttonStyle(.plain)
                     }
                 }

@@ -121,11 +121,13 @@ The last projects opened (Welcome screen order, the open one first), each with i
 - Mode: read · Runs: immediately · MCP: `bashcut_project_history`
 - `limit`: integer, 1…50, default 10. Projects to read
 
-### `bashcut project recents`
+### `bashcut project recents [--query <query>] [--remove <remove>]`
 
-List recently opened projects (Welcome screen).
+List recently opened projects, newest first (Open Recent › View All…): name, path, lastOpened and exists. --remove takes one off the list (needs a session).
 
 - Mode: read · Runs: immediately · MCP: `bashcut_project_recents`
+- `query`: string. Only projects whose name or path matches these words (fuzzy)
+- `remove`: string, path. Project file or folder to remove from the list
 
 ## timeline
 
@@ -1717,7 +1719,7 @@ List every editor action (buttons, menu items, keyboard shortcuts) with its shor
 
 ### `bashcut ui action <action> [<target>] [--in <in>] [--out <out>]`
 
-Run an editor action like the user: by ID (timeline.split, timeline.zoom-in, playback.toggle) or by shortcut (cmd+b, space, cmd+=). Actions that open a dialog return at once; answer it with ui.respond. With a target: open DIALOG (a sheet or popover: new-project, export, export-report, agent-changes, review, history, plugins, settings, doctor, knowledge, ask, sections, external-changes, plugin-proposals, commands, shortcuts, add-plugin, library-search, library-generate, quick-edit), panel PANEL (a library panel in the left rail: media, audio, text, stickers, effects, transitions, filters, voice, brand), source MEDIA (the source viewer, with --in/--out frames marked) or notify MESSAGE (a short status message).
+Run an editor action like the user: by ID (timeline.split, timeline.zoom-in, playback.toggle) or by shortcut (cmd+b, space, cmd+=). Actions that open a dialog return at once; answer it with ui.respond. With a target: open DIALOG (a sheet or popover: new-project, export, export-report, agent-changes, review, history, plugins, settings, doctor, knowledge, ask, sections, external-changes, plugin-proposals, commands, shortcuts, add-plugin, library-search, library-generate, quick-edit, recents), panel PANEL (a library panel in the left rail: media, audio, text, stickers, effects, transitions, filters, voice, brand), source MEDIA (the source viewer, with --in/--out frames marked) or notify MESSAGE (a short status message).
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_ui_action`
 - `action`: string, required. Action ID or shortcut, or open, panel, source, notify

@@ -98,9 +98,32 @@ struct SettingsModelTests {
         #expect(settings.recentProjects.first?.path == "/p/5/project.bashcut.json")
         #expect(settings.recentProjects.count == SettingsModel.recentProjectLimit)
         settings.forgetRecentProject(URL(fileURLWithPath: "/p/5/project.bashcut.json"))
-        #expect(SettingsModel(defaults: defaults).recentProjects.count == SettingsModel.recentProjectLimit - 1)
+        #expect(SettingsModel(defaults: defaults).recentHistory.count == 9)
+        #expect(!settings.recentProjects.contains { $0.path == "/p/5/project.bashcut.json" })
         settings.clearRecentProjects()
         #expect(SettingsModel(defaults: defaults).recentProjects.isEmpty)
+    }
+
+    @Test("The history keeps 50 projects with their name and open time; older builds' paths carry over (#529)")
+    func recentHistory() throws {
+        let defaults = try defaults()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(["/old/a/project.bashcut.json", "/old/b/project.bashcut.json"], forKey: "recentProjectPaths")
+        let settings = SettingsModel(defaults: defaults)
+        #expect(settings.recentHistory.map(\.title) == ["a", "b"])
+        #expect(settings.recentHistory.first?.lastOpened == nil)
+
+        let opened = Date(timeIntervalSince1970: 1_800_000_000)
+        for index in 0..<60 {
+            settings.rememberRecentProject(URL(fileURLWithPath: "/p/\(index)/project.bashcut.json"), name: "Cut \(index)", at: opened)
+        }
+        let reloaded = SettingsModel(defaults: defaults)
+        #expect(reloaded.recentHistory.count == SettingsModel.recentHistoryLimit)
+        #expect(reloaded.recentProjects.count == SettingsModel.recentProjectLimit)
+        #expect(reloaded.recentHistory.first == RecentProject(
+            url: URL(fileURLWithPath: "/p/59/project.bashcut.json"), name: "Cut 59", lastOpened: opened))
+        // Older builds still find the menu's paths.
+        #expect(defaults.stringArray(forKey: "recentProjectPaths") == reloaded.recentProjects.map(\.path))
     }
 
     @Test("Every workflow gate is skipped until the user changes it; modes and the round limit are stored (P1-D4)")
