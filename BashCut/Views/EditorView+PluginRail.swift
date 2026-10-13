@@ -30,7 +30,11 @@ extension EditorView {
             ForEach(containers, id: \.id) { plugin in
                 let selected = document.ui.pluginPanel == plugin.id
                 Button {
-                    document.showPluginPanel(plugin.id)
+                    if selected, document.ui.showLibraryPanel {
+                        document.run(.toggleLibraryPanel)
+                    } else {
+                        document.showPluginPanel(plugin.id)
+                    }
                 } label: {
                     VStack(spacing: 3) {
                         Image(systemName: plugin.manifest.container?.icon ?? "puzzlepiece.extension").font(.system(size: 16))

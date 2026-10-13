@@ -17,19 +17,13 @@ extension EditorView {
                 .help("Redo (⇧⌘Z)").action(.redo, in: document)
             formatMenu
             Spacer(minLength: 8)
-            activity
-            Spacer(minLength: 8)
-            PluginActionStrip(document: document, placement: "toolbar", compact: true)
+            // A narrow window folds the plugin actions, Plugins and Review into ☰ and the activity into an icon,
+            // instead of pushing the row under the window buttons (#528).
+            ViewThatFits(in: .horizontal) {
+                trailingItems(compact: false)
+                trailingItems(compact: true)
+            }
             PluginShortcutButtons(document: document)
-            pluginsButton
-            Button("Review") { document.run(.showReview) }.help("Review before export (⇧⌘R)")
-                .action(.showReview, in: document)
-            Divider().frame(height: 18)
-            exportButton
-            moreMenu
-            Button { document.run(.toggleAgentDock) } label: { Image(systemName: "sidebar.right") }
-                .help("Show or hide the agent dock (⌘J)").accessibilityLabel("Agent dock")
-                .action(.toggleAgentDock, in: document)
         }
         .controlSize(.small)
         // Room for the window's close, minimize and zoom buttons, which sit on this row.
@@ -40,6 +34,25 @@ extension EditorView {
     }
 
     static let toolbarHeight = 38.0
+
+    private func trailingItems(compact: Bool) -> some View {
+        HStack(spacing: 8) {
+            activity(compact: compact)
+            Spacer(minLength: 8)
+            if !compact {
+                PluginActionStrip(document: document, placement: "toolbar", compact: true)
+                pluginsButton
+                Button("Review") { document.run(.showReview) }.help("Review before export (⇧⌘R)")
+                    .action(.showReview, in: document)
+                Divider().frame(height: 18)
+            }
+            exportButton
+            moreMenu(compact: compact)
+            Button { document.run(.toggleAgentDock) } label: { Image(systemName: "sidebar.right") }
+                .help("Show or hide the agent dock (⌘J)").accessibilityLabel("Agent dock")
+                .action(.toggleAgentDock, in: document)
+        }
+    }
 
     private var projectName: String {
         document.fileURL == nil ? String(localized: "No project") : document.project.name
@@ -138,9 +151,20 @@ extension EditorView {
         }
     }
 
-    /// ☰: project, history and app commands that do not need a toolbar button of their own.
-    private var moreMenu: some View {
-        Menu {
+    /// ☰: project, history and app commands that do not need a toolbar button of their own; in a narrow window
+    /// also the toolbar's plugin actions, Plugins and Review.
+    private func moreMenu(compact: Bool) -> some View {
+        let plugins = document.plugins.updates.count + document.plugins.proposals.count
+        return Menu {
+            if compact {
+                Section {
+                    PluginActionStrip(document: document, placement: "toolbar", compact: true)
+                    Button(plugins > 0 ? String(format: String(localized: "Plugins (%d)…"), plugins) : String(localized: "Plugins…")) {
+                        if document.plugins.proposals.isEmpty { document.run(.showPlugins) } else { document.ui.showPluginProposals = true }
+                    }
+                    Button("Review…") { document.run(.showReview) }.disabled(!document.canPerform(.showReview))
+                }
+            }
             Section {
                 Button("New Project…") { document.run(.newProject) }
                 Button("Open Project…") { document.run(.openProject) }
@@ -153,6 +177,12 @@ extension EditorView {
                 Button("Agent Skills…") { document.run(.showAgentKit) }
                 Button("Doctor…") { document.run(.showDoctor) }
                 Button("Settings…") { document.run(.showSettings) }
+            }
+            Section {
+                Button(document.ui.showLibraryPanel ? "Hide Library Panel" : "Show Library Panel") {
+                    document.run(.toggleLibraryPanel)
+                }
+                Button(document.ui.showInspector ? "Hide Inspector" : "Show Inspector") { document.run(.toggleInspector) }
             }
             Section {
                 Button("Command Palette…") { document.run(.showCommands) }
@@ -176,7 +206,7 @@ extension EditorView {
         }
         .overlay(alignment: .topTrailing) {
             // A newer BashCut is out; ☰ › Update to … opens Software Update.
-            if document.showsAppUpdateNotice {
+            if document.showsAppUpdateNotice || (compact && plugins > 0) {
                 Circle().fill(Color.cyan).frame(width: 7, height: 7).offset(x: 3, y: -3).allowsHitTesting(false)
             }
         }
@@ -186,9 +216,12 @@ extension EditorView {
     }
 
     /// What the app is doing: export progress, work in progress, plugin edits waiting, or the save state.
-    private var activity: some View {
+    /// Compact: one icon, with the details in its help.
+    private func activity(compact: Bool) -> some View {
         HStack(spacing: 6) {
-            if document.exports.isRunning {
+            if compact {
+                compactActivity
+            } else if document.exports.isRunning {
                 ProgressView(value: document.exports.progress).frame(width: 140)
                 Text(document.exports.queue.detail ?? String(localized: "Exporting")).lineLimit(1)
                 Text(document.exports.progress, format: .percent.precision(.fractionLength(0))).monospacedDigit()
@@ -219,12 +252,35 @@ extension EditorView {
             }
         }
         .font(.caption)
-        .padding(.horizontal, 10).frame(minWidth: 220).frame(height: 24)
+        .padding(.horizontal, compact ? 7 : 10).frame(minWidth: compact ? nil : 220).frame(height: 24)
         // Tinted while an export runs, so it stands out from the usual save state.
         .background(RoundedRectangle(cornerRadius: 7).fill(
             document.exports.isRunning ? Color.cyan.opacity(0.18) : Color.black.opacity(0.25)))
         .overlay(RoundedRectangle(cornerRadius: 7).stroke(
             document.exports.isRunning ? Color.cyan.opacity(0.45) : Color.white.opacity(0.08)))
+    }
+}
+
+extension EditorView {
+    @ViewBuilder fileprivate var compactActivity: some View {
+        if document.exports.isRunning {
+            ExportProgressRing(progress: document.exports.progress).help("Exporting")
+        } else if document.busy {
+            ProgressView().controlSize(.mini)
+        } else if !document.plugins.proposals.isEmpty {
+            Button {
+                document.ui.showPluginProposals = true
+            } label: {
+                Image(systemName: "puzzlepiece.extension.fill")
+            }.buttonStyle(.plain).foregroundStyle(.orange).help("Review edits plugin hooks proposed")
+        } else if document.fileURL != nil {
+            Image(systemName: document.dirty ? "circle.fill" : "checkmark.circle")
+                .foregroundStyle(document.dirty ? Color.secondary : Color.green).imageScale(.small)
+                .help(String(format: String(localized: "%@ · rev %d"),
+                             document.dirty ? String(localized: "Edited") : String(localized: "Saved"), document.project.revision))
+        } else {
+            Image(systemName: "scissors").foregroundStyle(.secondary).help("BashCut")
+        }
     }
 }
 

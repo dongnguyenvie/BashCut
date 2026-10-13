@@ -26,48 +26,27 @@ struct EditorView: View {
             }
             if document.fileURL == nil {
                 // The dock works before a project is open, so an agent can be asked to create or open one.
-                HSplitView {
-                    WelcomeView(document: document).frame(minWidth: 560, maxHeight: .infinity)
-                    if document.ui.showAgentDock {
-                        AgentDockView(model: document.agents).frame(minWidth: 330, idealWidth: 370, maxWidth: 500)
-                    }
-                }.frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-            HSplitView {
-                VStack(spacing: 0) {
-                    HStack(spacing: 0) {
-                        // Each pane is clipped to its frame: a child wider than its pane is centred and
-                        // would otherwise draw over the neighbouring panes (#484).
-                        rail.frame(width: 54).clipped()
-                        Divider()
-                        Group {
-                            if let id = document.ui.pluginPanel,
-                                let plugin = document.pluginViews.containers.first(where: { $0.id == id }) {
-                                PluginPanelView(document: document, plugin: plugin)
-                            } else {
-                                LibraryView(document: document, pluginManager: document.plugins)
-                            }
-                        }.frame(width: 225).clipped()
-                        Divider()
-                        Group {
-                            if document.sourceViewer.visible {
-                                SourceViewer(document: document, source: document.sourceViewer)
-                            } else {
-                                viewer
-                            }
-                        }.frame(minWidth: 260, maxWidth: .infinity).clipped()
-                        Divider()
-                        InspectorView(document: document).frame(width: 220).clipped()
-                    }.disabled(document.busy)
-                    Divider()
-                    timelineToolbar
-                    TimelineView(document: document)
-                        .help("Option-drag an edge to roll; Command-drag a clip to slip; Shift-Delete to lift.")
-                        .frame(height: 300).disabled(document.busy)
-                }.frame(minWidth: 850)
+                let welcome = WelcomeView(document: document).frame(minWidth: 560, maxHeight: .infinity)
                 if document.ui.showAgentDock {
-                    AgentDockView(model: document.agents).frame(minWidth: 330, idealWidth: 370, maxWidth: 500)
+                    HSplitView {
+                        welcome
+                        AgentDockView(model: document.agents)
+                            .frame(minWidth: EditorLayout.dockMinWidth, idealWidth: 370, maxWidth: 500)
+                    }.frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    welcome.frame(maxWidth: .infinity)
                 }
+            } else {
+            // Without the dock the column is not in a split view: a split view keeps its pane's last width and
+            // would not let the window shrink below it (#528).
+            if document.ui.showAgentDock {
+                HSplitView {
+                    editorColumn
+                    AgentDockView(model: document.agents)
+                        .frame(minWidth: EditorLayout.dockMinWidth, idealWidth: 370, maxWidth: 500)
+                }
+            } else {
+                editorColumn
             }
             }
             // Export progress, the save state and the revision are in the toolbar's activity capsule.
@@ -78,7 +57,8 @@ struct EditorView: View {
         }
         .ignoresSafeArea(.container, edges: .top)
         .background(Color(red: 0.065, green: 0.07, blue: 0.08)).preferredColorScheme(.dark).tint(.cyan)
-        .frame(minWidth: 1280, minHeight: 800)
+        .frame(minWidth: minSize.width, minHeight: minSize.height)
+        .background(WindowMinSize(size: minSize))
         .overlay {
             if document.ui.showCommands {
                 ZStack(alignment: .top) {
@@ -220,11 +200,17 @@ struct EditorView: View {
         }
     }
     private func runDoctor() { Task { await document.runDoctor() } }
-    private var rail: some View {
+    private var minSize: CGSize { EditorLayout.minSize(dock: document.ui.showAgentDock && !document.agents.isDetached) }
+    var rail: some View {
         VStack(spacing: 4) {
             ForEach(LibraryTab.allCases) { tab in
                 Button {
-                    document.showLibraryTab(tab)
+                    // The open panel's tab collapses the panel; any other tab shows it.
+                    if libraryTabSelected(tab), document.ui.showLibraryPanel {
+                        document.run(.toggleLibraryPanel)
+                    } else {
+                        document.showLibraryTab(tab)
+                    }
                 } label: {
                     VStack(spacing: 3) {
                         Image(systemName: tab.icon).font(.system(size: 16))
@@ -242,7 +228,7 @@ struct EditorView: View {
             Spacer()
         }.padding(.top, 8)
     }
-    private var timelineToolbar: some View {
+    var timelineToolbar: some View {
         HStack(spacing: 10) {
             Text("TIMELINE").font(.caption.bold())
             Button("Split") { document.run(.split) }.action(.split, in: document)

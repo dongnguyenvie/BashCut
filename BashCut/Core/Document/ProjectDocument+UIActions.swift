@@ -58,7 +58,7 @@ extension ProjectDocument {
         case .pasteClips: return hasProject && (clipboard != nil || Self.pasteboardHasClips)
         case .muteClips: return selectedItems.contains { $0.mediaID != nil }
         case .showHistory, .showReview, .showPlugins, .showDoctor, .showSettings, .showAgentKit, .showSections,
-            .showCommands, .showShortcuts, .showUpdates, .showAbout, .toggleAgentDock,
+            .showCommands, .showShortcuts, .showUpdates, .showAbout, .toggleAgentDock, .toggleLibraryPanel, .toggleInspector,
             .askAgent, .openClaudeTerminal, .openCodexTerminal, .openShellTerminal,
             .toggleSafeArea, .toggleSnap, .addVideoLayer, .addAdjustmentLayer, .addTextLayer,
             .addAudioLayer:
@@ -91,6 +91,8 @@ extension ProjectDocument {
             try openDialog(String(action.id.dropFirst("show.".count)))
         case .toggleAgentDock:
             if agents.isDetached { agents.attach() } else { ui.showAgentDock.toggle() }
+        case .toggleLibraryPanel: ui.showLibraryPanel.toggle()
+        case .toggleInspector: ui.showInspector.toggle()
         case .askAgent: ui.showAsk = true
         case .openClaudeTerminal, .openCodexTerminal, .openShellTerminal:
             // The dock's + menu: a new tab with its own session token.
@@ -342,6 +344,7 @@ extension ProjectDocument {
             "viewerZoom": .string(EditorViewerZoom.choice(ui.viewerZoom)),
             "snap": .bool(ui.snapping), "safeArea": .bool(ui.showSafeArea), "compare": .bool(preview.showColorComparison),
             "agentDock": .bool(ui.showAgentDock && !agents.isDetached), "agentDockDetached": .bool(agents.isDetached),
+            "libraryPane": .bool(ui.showLibraryPanel), "inspectorPane": .bool(ui.showInspector),
             "chatTab": agents.chatPluginID.map(JSONValue.string) ?? .null,
             "playing": .bool(preview.isPlaying), "playhead": .integer(playhead),
             "selection": selectedID.map(JSONValue.string) ?? .null,

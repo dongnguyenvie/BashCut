@@ -67,6 +67,8 @@ public enum UIAction: String, CaseIterable, Sendable {
     case showUpdates = "show.updates"
     case showAbout = "show.about"
     case toggleAgentDock = "agent.toggle-dock"
+    case toggleLibraryPanel = "view.library-pane"
+    case toggleInspector = "view.inspector-pane"
     case askAgent = "agent.ask"
     case openClaudeTerminal = "agent.open-claude"
     case openCodexTerminal = "agent.open-codex"
@@ -180,6 +182,8 @@ public enum UIAction: String, CaseIterable, Sendable {
         case .showUpdates: "Check for BashCut updates"
         case .showAbout: "About BashCut (version and build)"
         case .toggleAgentDock: "Show or hide the agent dock"
+        case .toggleLibraryPanel: "Show or hide the library panel (left of the viewer)"
+        case .toggleInspector: "Show or hide the Inspector (right of the viewer)"
         case .askAgent: "Ask agent"
         case .openClaudeTerminal: "Claude terminal"
         case .openCodexTerminal: "Codex terminal"
@@ -292,6 +296,8 @@ public enum UIAction: String, CaseIterable, Sendable {
         case .showReview: UIShortcut("r", [.command, .shift])
         case .showExport: UIShortcut("e", [.command])
         case .toggleAgentDock: UIShortcut("j", [.command])
+        case .toggleLibraryPanel: UIShortcut("s", [.command, .control])
+        case .toggleInspector: UIShortcut("i", [.command, .control])
         case .askAgent: UIShortcut("k", [.command])
         case .toggleSafeArea: UIShortcut("'", [.command, .shift])
         case .toggleCompare: UIShortcut("c", [.command, .option])
