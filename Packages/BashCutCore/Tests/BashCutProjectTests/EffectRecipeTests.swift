@@ -336,7 +336,7 @@ struct EffectRecipeTests {
             _ = try EffectRecipe.params(editorText: #"{"steps":[{"op":"spin"}]}"#)
             Issue.record("an unknown step must be refused")
         } catch let EffectRecipe.EditorProblem.invalidRecipe(message) {
-            #expect(message.contains("spin"))
+            #expect(message.contains("op must be one of"))
         }
     }
 }
