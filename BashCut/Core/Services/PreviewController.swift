@@ -202,6 +202,27 @@ public final class PreviewController {
         noteStopped()
     }
 
+    /// J and L: plays in reverse or forward, one step faster for each press in the direction it already plays (1×,
+    /// 2×, 4×); K is `pause`. Reverse needs an item that can play backwards; without one J steps back a second.
+    public func shuttle(forward: Bool) {
+        guard player.currentItem != nil else { return }
+        let rate = Self.shuttleRate(after: player.rate, forward: forward)
+        guard rate > 0 || player.currentItem?.canPlayReverse == true else {
+            seek(playhead - Int(project.fps.value.rounded()))
+            return
+        }
+        wasPlaying = true
+        player.rate = rate
+        if showColorComparison { comparisonPlayer.rate = rate }
+    }
+
+    /// The next J/K/L rate: the same direction doubles up to 4×; from a stop or the other direction it is 1×.
+    public nonisolated static func shuttleRate(after current: Float, forward: Bool) -> Float {
+        let sign: Float = forward ? 1 : -1
+        let speed = current * sign
+        return sign * (speed >= 1 ? min(4, speed * 2) : 1)
+    }
+
     private func noteStopped() {
         guard wasPlaying else { return }
         wasPlaying = false

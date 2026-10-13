@@ -26,6 +26,9 @@ struct UIActionTests {
         #expect(UIAction.matching("shift+delete") == [.lift])
         #expect(UIAction.matching("left") == [.previousFrame])
         #expect(UIAction.matching("shift+right") == [.forwardSecond])
+        // ⌥⌘F is the full-screen preview; ⌃⌘F stays the window's full screen.
+        #expect(UIAction.matching("opt+cmd+f") == [.toggleFullScreenPreview])
+        #expect(UIAction.matching("viewer.fullscreen") == [.toggleFullScreenPreview])
         // `space` plays whichever viewer is shown; the document picks the available one.
         #expect(Set(UIAction.matching("space")) == [.togglePlayback, .sourceTogglePlayback])
         #expect(UIAction.matching("cmd+a") == [.selectAll])

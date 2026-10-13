@@ -31,6 +31,13 @@ struct TransportBar: View {
                     format: "%.2f / %.2fs", Double(document.playhead) / document.project.fps.value,
                     Double(document.project.duration) / document.project.fps.value)
             ).font(.caption.monospacedDigit())
+            Button {
+                document.run(.toggleFullScreenPreview)
+            } label: {
+                Image(systemName: "arrow.up.left.and.arrow.down.right")
+            }
+            .help("Full Screen Preview (⌥⌘F)")
+            .disabled(!document.canPerform(.toggleFullScreenPreview))
         }.buttonStyle(.borderless).padding(10)
     }
 }

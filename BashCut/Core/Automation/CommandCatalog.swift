@@ -312,7 +312,7 @@ public enum CommandCatalog {
             "Read the editor view state, or change it: timeline zoom (pixels per second), viewer zoom, snapping, safe area, "
                 + "color compare, agent dock, inspector tab, Settings section and search, Knowledge section, Plugins tab and Browse "
                 + "category, the Media panel's source (footage, project, shared, selects, clips), the open library panel's "
-                + "search and filters, and scroll the timeline to a frame.",
+                + "search and filters, and scroll the timeline to a frame; fullScreen: the preview of viewer.fullscreen is on.",
             parameters: [
                 CommandParameter("zoom", .integer, "Timeline zoom in pixels per second", minimum: 1, maximum: 600,
                                  cli: .option("zoom")),
