@@ -28,7 +28,9 @@ from a click, the CLI or MCP.
 - The socket is `~/Library/Application Support/BashCut/automation.sock`; set `BASHCUT_SOCKET` to use
   another path. The folder is `0700` and the socket `0600`. Run one BashCut instance per socket.
 - Each connection carries one newline-delimited JSON-RPC 2.0 request with `id`, `method`, `params` and an
-  optional `token`. Messages are limited to 8 MiB, with a 10-second I/O timeout.
+  optional `token`. Messages are limited to 8 MiB. The client waits 30 s for an answer (longer for calls that
+  wait on their own work: `jobs.wait`, `review.run --measure`, `review.verify`, `export.start --wait`,
+  `project.create --import`, `color.measure`, `agent.ask`); a late answer is reported as a retryable failure.
 - Metadata-only audit records go to `~/Library/Application Support/BashCut/audit.jsonl`. Request contents and
   credentials are never recorded.
 - This is a local automation service, not a security boundary against other software already running as the
