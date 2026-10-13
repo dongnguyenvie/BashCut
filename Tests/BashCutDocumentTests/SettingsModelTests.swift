@@ -122,7 +122,8 @@ struct SettingsModelTests {
         #expect(reloaded.recentProjects.count == SettingsModel.recentProjectLimit)
         #expect(reloaded.recentHistory.first == RecentProject(
             url: URL(fileURLWithPath: "/p/59/project.bashcut.json"), name: "Cut 59", lastOpened: opened))
-        #expect(defaults.object(forKey: "recentProjectPaths") == nil)
+        // Older builds still find the menu's paths.
+        #expect(defaults.stringArray(forKey: "recentProjectPaths") == reloaded.recentProjects.map(\.path))
     }
 
     @Test("Every workflow gate is skipped until the user changes it; modes and the round limit are stored (P1-D4)")

@@ -81,7 +81,6 @@ extension ProjectDocument {
         registerKnowledgeCommands()
     }
 
-    /// Health checks run now (`plugins.list --health`): every plugin's, or one's.
     /// `project recents --remove`: the entry whose project file or folder is `path`.
     func forgetRecentProject(path: String) throws {
         let target = URL(fileURLWithPath: (path as NSString).expandingTildeInPath).standardizedFileURL
@@ -90,6 +89,7 @@ extension ProjectDocument {
         settings.forgetRecentProject(entry.url)
     }
 
+    /// Health checks run now (`plugins.list --health`): every plugin's, or one's.
     func pluginHealthJSON(_ id: String?) async throws -> JSONValue {
         plugins.refresh(projectRoot: fileURL?.deletingLastPathComponent())
         var selected = plugins.plugins

@@ -148,7 +148,7 @@ public final class SettingsModel {
         static let appUpdateRemindAfter = "appUpdateRemindAfter"
         static let interfaceLanguage = "interfaceLanguage"
         static let appleLanguages = "AppleLanguages"
-        /// Paths only, written by builds before #529; read when the history below is missing.
+        /// Paths only, as builds before #529 read them; still written, read when the history below is missing.
         static let recentProjectPaths = "recentProjectPaths"
         static let recentHistory = "recentProjects"
     }
@@ -249,6 +249,7 @@ public final class SettingsModel {
             if let date = entry.lastOpened { fields["opened"] = date }
             return fields
         }, forKey: Keys.recentHistory)
-        defaults.removeObject(forKey: Keys.recentProjectPaths)
+        // Builds before #529 (the Homebrew release beside a dev build) read the paths only.
+        defaults.set(recentProjects.map(\.path), forKey: Keys.recentProjectPaths)
     }
 }
