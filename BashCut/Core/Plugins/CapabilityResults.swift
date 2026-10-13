@@ -43,6 +43,8 @@ public struct GeneratedPluginCaptions: Sendable {
     public let provenance: PluginProvenance
     /// Word timings in media seconds, when the provider returned a `wordsPath`.
     public var words: [CaptionWords.Timed] = []
+    /// The language the provider heard (a BCP 47 tag) when it detected one, for a request without a language.
+    public var language: String?
 }
 
 public struct GeneratedBeatGrid: Sendable {

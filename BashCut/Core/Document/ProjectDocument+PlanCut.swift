@@ -278,9 +278,10 @@ extension ProjectDocument {
             context.transcripts = transcripts
             let review = TimelineReview.run(after, context: context).filter { $0.accepted == nil }
             result["review"] = .array(review.map(\.json))
-            if let problem = PlanCut.reviewErrorsProblem(review) { problems.append(problem) }
+            problems += [PlanCut.reviewErrorsProblem(review)].compactMap { $0 }
         }
         problems += planReviewProblems(review, built: built?.planner.project)
+        problems += [PlanCut.languageProblem(contentLanguage, heard: transcripts.values.map(\.language))].compactMap { $0 }
         result["problems"] = .array(problems.map(\.json))
         result["ok"] = .bool(!problems.contains { $0.severity == "error" })
         return PlanCutCheck(built: built, problems: problems, json: .object(result))

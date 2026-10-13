@@ -92,6 +92,19 @@ extension ProjectDocument {
             baseRevision: baseRevision)
     }
 
+    /// The project's content language (`none` clears it), one undoable edit; a tag that is not BCP 47-shaped is refused.
+    func setContentLanguage(_ tag: String, author: Author, baseRevision: Int?) throws {
+        let value = tag.trimmingCharacters(in: .whitespaces)
+        let cleared = value.isEmpty || value == "none"
+        guard cleared || Project.isLanguageTag(value) else {
+            throw RPCFailure(-32602, "language must be a BCP 47 tag such as vi, en or en-US, or none")
+        }
+        guard (cleared ? nil : value) != project["contentLanguage"]?.string else { return }
+        _ = try commit(
+            .setProjectProperties(patch: ["contentLanguage": cleared ? .null : .string(value)]),
+            label: "Change content language", author: author, baseRevision: baseRevision)
+    }
+
     func projectResult() -> JSONValue {
         .object(["project": fileURL.map { .string($0.path) } ?? .null, "rev": .integer(project.revision)])
     }
@@ -101,8 +114,9 @@ extension ProjectDocument {
         let canvas = arguments.optionalString("canvas")
         let clips = arguments.optionalString("clips")
         let outputs = arguments.optionalString("outputs")
-        guard canvas != nil || clips != nil || outputs != nil else {
-            throw RPCFailure(-32602, "Give canvas, clips, outputs or several")
+        let language = arguments.optionalString("language")
+        guard canvas != nil || clips != nil || outputs != nil || language != nil else {
+            throw RPCFailure(-32602, "Give canvas, clips, outputs, language or several")
         }
         var baseRevision: Int? = try arguments.int("baseRev")
         if let canvas {
@@ -119,8 +133,13 @@ extension ProjectDocument {
         if let outputs {
             let names = outputs.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
             try setOutputPresets(names, author: author, baseRevision: baseRevision)
+            baseRevision = nil
+        }
+        if let language {
+            try setContentLanguage(language, author: author, baseRevision: baseRevision)
         }
         return .object([
+            "contentLanguage": project["contentLanguage"] ?? .null,
             "outputs": .array(project.outputPresets.map(JSONValue.string)),
             "rev": .integer(project.revision), "width": .integer(project.width),
             "height": .integer(project.height), "clips": .string(project.clipsFill ? "fill" : "fit"),

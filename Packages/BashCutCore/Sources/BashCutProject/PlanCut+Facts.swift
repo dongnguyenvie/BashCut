@@ -172,6 +172,19 @@ extension PlanCut {
             facts: ["kinds": .object(kinds.mapValues { .integer($0) }), "first": first.json])
     }
 
+    /// A project without a content language (captions, speech-rate units, voices and font checks read it), with the
+    /// language its footage was heard in as the fix.
+    public static func languageProblem(_ contentLanguage: String, heard: [String]) -> Problem? {
+        guard contentLanguage.isEmpty else { return nil }
+        let languages = Array(Set(heard.filter { !$0.isEmpty })).sorted()
+        let fix = languages.count == 1 ? "project format --language \(languages[0]) --base-rev last (the footage was heard in "
+            + "\(languages[0]))" : "project format --language <tag> --base-rev last"
+        return Problem(
+            id: "content-language-unset", severity: "warning", entry: nil,
+            detail: "The project has no content language, which captions, voices and font checks use: \(fix)",
+            facts: ["heard": .array(languages.map(JSONValue.string))])
+    }
+
     /// A graphic's span, layer and media, and what is wrong with it.
     static func graphicRow(
         _ graphic: Graphic, placements: [Placement], on project: Project, problems: inout [Problem]

@@ -139,4 +139,12 @@ struct PlanCutVoiceoverTests {
         #expect(problem.detail.contains("2 review error(s)"))
         #expect(PlanCut.reviewErrorsProblem(Array(issues.suffix(1))) == nil, "warnings alone are not reported")
     }
+
+    @Test("plan check asks for a content language when the project has none, naming the one the footage was heard in")
+    func languageProblem() {
+        #expect(PlanCut.languageProblem("vi", heard: ["en"]) == nil)
+        let problem = PlanCut.languageProblem("", heard: ["en", "en", ""])
+        #expect(problem?.id == "content-language-unset" && problem?.detail.contains("--language en") == true)
+        #expect(PlanCut.languageProblem("", heard: [])?.detail.contains("<tag>") == true)
+    }
 }

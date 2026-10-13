@@ -172,3 +172,14 @@ struct SpeechToolsTests {
         #expect(kept.first?.avgLogprob == -0.31, "spelled numbers keep the provider scores")
     }
 }
+
+/// `project format --language`: tags a project's content language takes.
+struct LanguageTagTests {
+    @Test("BCP 47-shaped tags pass; names, empty subtags and non-ASCII letters do not")
+    func tags() {
+        for tag in ["vi", "en", "en-US", "zh-Hant-TW", "yue"] { #expect(Project.isLanguageTag(tag), "\(tag)") }
+        for tag in ["", "english", "e", "en-", "-US", "tiếng", "en_US", "en-toolongsubtag"] {
+            #expect(!Project.isLanguageTag(tag), "\(tag)")
+        }
+    }
+}
