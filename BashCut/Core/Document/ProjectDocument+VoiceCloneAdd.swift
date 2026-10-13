@@ -30,7 +30,7 @@ private final class SavedVoiceClone {
 
 extension ProjectDocument {
     /// What these checks cannot tell (no cheap analysis gives them).
-    static let cloneChecksNotDone = ["musicUnder", "twoSpeakers"]
+    static let cloneChecksNotDone = ["twoSpeakers"]
 
     /// The reference range to trim to: the asked provider's, else the highest-priority cloning provider's.
     func cloneRange(provider: String?) throws -> PluginCloneRange {

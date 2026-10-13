@@ -72,7 +72,7 @@ struct VoiceCloneSheet: View {
                 Label(check.detail, systemImage: check.passed ? "checkmark.circle" : "exclamationmark.triangle")
                     .font(.caption).foregroundStyle(check.passed ? Color.secondary : Color.orange)
             }
-            Text("Music under the voice and a second speaker are not checked.").font(.caption2).foregroundStyle(.secondary)
+            Text("A second speaker is not checked.").font(.caption2).foregroundStyle(.secondary)
         }
         if !draft.message.isEmpty { Text(draft.message).font(.caption).foregroundStyle(.orange).textSelection(.enabled) }
         ForEach(draft.refusedChecks, id: \.self) { detail in

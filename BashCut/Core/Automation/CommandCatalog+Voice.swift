@@ -7,12 +7,13 @@ extension CommandCatalog {
         CommandSpec(
             "voice.clone-add", .privileged,
             "Save a cloned voice to My voices. From a media ID or a sound/video file (for every project), BashCut "
-                + "picks the best clean window within the cloning provider's reference range (most speech, fewest "
-                + "pauses, no clipping), checks it and refuses with a reason (tooShort, tooQuiet, mostlySilence, notEnoughSpeech, "
-                + "clipped; data.checks says what was measured). Music under the voice and a second speaker are not "
-                + "detected (notChecked). Saving asks the user first: the consent is theirs. Returns window {start, "
-                + "end, seconds} in source seconds, range, checks [{id, passed, value, detail}], providers (that can "
-                + "speak with it), approval and, once saved, clone (as voice clone-list shows it).",
+                + "picks the best clean window within the cloning provider's reference range (most speech by Apple's "
+                + "on-device sound classifier, levels as the fallback; fewest pauses, no clipping or music), checks it "
+                + "and refuses with a reason (tooShort, tooQuiet, mostlySilence, notEnoughSpeech, clipped, musicUnder; "
+                + "data.checks says what was measured). A second speaker is not detected (notChecked). Saving asks "
+                + "the user first: the consent is theirs. Returns window {start, end, seconds} in source seconds, "
+                + "range, checks [{id, passed, value, detail}], providers (that can speak with it), approval and, once "
+                + "saved, clone (as voice clone-list shows it).",
             parameters: [
                 CommandParameter("name", .string, "Name of the voice, such as Giọng Nolan", required: true, cli: .option("name")),
                 CommandParameter("from", .string, "Project media ID or file path (relative to the project folder)",

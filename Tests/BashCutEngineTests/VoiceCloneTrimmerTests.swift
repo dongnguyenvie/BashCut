@@ -58,6 +58,44 @@ struct VoiceCloneTrimmerTests {
         }
     }
 
+    /// Classifier output: `speech` and `music` confidence for frames in the given seconds.
+    static func classes(seconds: Double, speech: ClosedRange<Double>, music: Double = 0) -> VoiceCloneClassification {
+        let count = Int(seconds / VoiceCloneTrimmer.frame)
+        let speechValues = (0..<count).map { speech.contains(Double($0) * VoiceCloneTrimmer.frame) ? 0.9 : 0.05 }
+        return VoiceCloneClassification(speech: speechValues, music: Array(repeating: music, count: count))
+    }
+
+    @Test("With the classifier's mask, talk over steady traffic noise is speech (the level threshold alone misses it)")
+    func maskOverNoise() throws {
+        // 20 s of loud noise with a tone on top all the way: levels see almost no contrast.
+        let samples = zip(Self.silence(20, level: 0.2), Self.speech(20)).map { $0 + $1 * 0.3 }
+        let classes = Self.classes(seconds: 20, speech: 5...15)
+        let window = try VoiceCloneTrimmer.choose(samples, rate: Self.rate, minSeconds: 3, maxSeconds: 8, classes: classes)
+        #expect(window.start >= 4.8 && window.end <= 15.3 && window.seconds >= 3)
+        let ids = window.checks.map(\.id)
+        #expect(ids.contains("music") && window.checks.first { $0.id == "speech" }?.passed == true)
+    }
+
+    @Test("Music under the voice refuses with musicUnder")
+    func musicUnder() {
+        let classes = Self.classes(seconds: 12, speech: 0...12, music: 0.9)
+        do {
+            _ = try VoiceCloneTrimmer.choose(Self.speech(12), rate: Self.rate, minSeconds: 3, maxSeconds: 8, classes: classes)
+            Issue.record("expected musicUnder")
+        } catch let refusal as VoiceCloneRefusal {
+            #expect(refusal.reason == "musicUnder")
+        } catch {
+            Issue.record("unexpected \(error)")
+        }
+    }
+
+    @Test("The sound classifier runs on generated sound and gives one value per frame")
+    func classifierRuns() throws {
+        let classes = try #require(try VoiceCloneClassifier.classify(Self.silence(1) + Self.speech(4), rate: Self.rate))
+        #expect(classes.speech.count == 100 && classes.music.count == 100)
+        #expect(classes.speech.allSatisfy { (0...1).contains($0) })
+    }
+
     @Test("A source file is trimmed to a 24 kHz mono WAV of the chosen window")
     func trimsFile() async throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -67,7 +105,7 @@ struct VoiceCloneTrimmerTests {
         try VoiceCloneAudio.write(Self.silence(2) + Self.speech(10) + Self.silence(2), to: source)
         let output = folder.appendingPathComponent("reference.wav")
         let trim = try await VoiceCloneAudio.trim(
-            source: source, range: 1...14, minSeconds: 3, maxSeconds: 8, output: output)
+            source: source, range: 1...14, minSeconds: 3, maxSeconds: 8, output: output, classify: false)
         #expect(trim.start >= 1 && trim.end <= 14 && trim.seconds <= 8.01 && trim.seconds >= 3)
         let file = try AVAudioFile(forReading: output)
         #expect(file.fileFormat.sampleRate == 24_000 && file.fileFormat.channelCount == 1)

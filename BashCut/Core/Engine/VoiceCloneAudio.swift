@@ -23,16 +23,25 @@ public enum VoiceCloneAudio {
     /// Trims `range` of `source` (the whole file when nil) to the best window within [minSeconds, maxSeconds] and
     /// writes it to `output` as 16-bit mono WAV; throws `VoiceCloneRefusal` when no window is good enough.
     public static func trim(
-        source: URL, range: ClosedRange<Double>?, minSeconds: Double, maxSeconds: Double, output: URL
+        source: URL, range: ClosedRange<Double>?, minSeconds: Double, maxSeconds: Double, output: URL,
+        classify: Bool = true
     ) async throws -> VoiceCloneTrim {
         let start = max(0, range?.lowerBound ?? 0)
         let samples = try await decode(source, from: start, seconds: min(longestScan, range.map { $0.upperBound - start } ?? longestScan))
-        let window = try VoiceCloneTrimmer.choose(samples, rate: rate, minSeconds: minSeconds, maxSeconds: maxSeconds)
+        // Speech and music from the on-device sound classifier; levels alone when it cannot run.
+        let classes = classify ? try? await classification(samples) : nil
+        let window = try VoiceCloneTrimmer.choose(
+            samples, rate: rate, minSeconds: minSeconds, maxSeconds: maxSeconds, classes: classes)
         let first = Int(window.start * rate), last = min(samples.count, Int(window.end * rate))
         try write(Array(samples[first..<last]), to: output)
         return VoiceCloneTrim(
             start: start + window.start, end: start + window.end, checks: window.checks, output: output,
             scannedSeconds: Double(samples.count) / rate)
+    }
+
+    /// The sound classifier's speech and music per frame, run off the caller's thread (it waits for its results).
+    public static func classification(_ samples: [Float]) async throws -> VoiceCloneClassification? {
+        try await Task.detached(priority: .userInitiated) { try VoiceCloneClassifier.classify(samples, rate: rate) }.value
     }
 
     /// Mono float samples at `rate` of the first sound track, from `from` for at most `seconds`.

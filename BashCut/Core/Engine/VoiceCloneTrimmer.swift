@@ -28,8 +28,8 @@ public struct VoiceCloneWindow: Sendable, Equatable {
 
 /// Picks the best clean stretch of speech for a clone reference (#532): the window within the provider's
 /// [min, max] seconds with the most speech, the fewest long gaps and no clipping, starting and ending between words.
-/// Speech is frames 10 dB over the noise floor (and within 30 dB of the loud frames); nothing is assumed about
-/// the language. Music under the voice and a second speaker are not detected.
+/// Speech comes from Apple's sound classifier when it ran (with music under the voice), else from levels: frames
+/// 10 dB over the noise floor and within 30 dB of the loud frames. A second speaker is not detected.
 public enum VoiceCloneTrimmer {
     /// Seconds per level frame.
     static let frame = 0.05
@@ -43,9 +43,15 @@ public enum VoiceCloneTrimmer {
         let floor: Double
         let loud: Double
         let rate: Double
+        /// Speech level over the noise between words, in dB.
+        let noise: Double
+        /// Music confidence per frame (empty without the classifier).
+        let music: [Double]
     }
 
-    static func levels(_ samples: [Float], rate: Double) -> Levels {
+    /// Frame levels and which frames are speech: with `classes`, frames the classifier calls speech (confidence 0.5 or
+    /// more) above −55 dBFS; without, frames 10 dB over the noise floor and within 30 dB of the loud frames.
+    static func levels(_ samples: [Float], rate: Double, classes: VoiceCloneClassification? = nil) -> Levels {
         let hop = max(1, Int(rate * frame))
         var decibels: [Double] = [], clipped: [Int] = []
         for start in stride(from: 0, to: samples.count - hop + 1, by: hop) {
@@ -60,14 +66,27 @@ public enum VoiceCloneTrimmer {
         let sorted = decibels.sorted()
         let pick = { (share: Double) in sorted.isEmpty ? -180 : sorted[min(sorted.count - 1, Int(Double(sorted.count) * share))] }
         let (floor, loud) = (pick(0.1), pick(0.95))
-        let threshold = max(floor + 10, loud - 30, -55)
+        guard let classes else {
+            let threshold = max(floor + 10, loud - 30, -55)
+            return Levels(
+                decibels: decibels, clipped: clipped, voiced: decibels.map { $0 > threshold }, floor: floor, loud: loud,
+                rate: rate, noise: loud - floor, music: [])
+        }
+        let voiced = decibels.indices.map { $0 < classes.speech.count && classes.speech[$0] >= 0.5 && decibels[$0] > -55 }
+        let median = { (values: [Double]) in values.isEmpty ? nil : values.sorted()[values.count / 2] }
+        let speechLevel = median(decibels.indices.filter { voiced[$0] }.map { decibels[$0] })
+        let quietLevel = median(decibels.indices.filter { !voiced[$0] }.map { decibels[$0] })
+        let noise = speechLevel.flatMap { speech in quietLevel.map { speech - $0 } } ?? loud - floor
         return Levels(
-            decibels: decibels, clipped: clipped, voiced: decibels.map { $0 > threshold }, floor: floor, loud: loud, rate: rate)
+            decibels: decibels, clipped: clipped, voiced: voiced, floor: floor, loud: loud, rate: rate, noise: noise,
+            music: decibels.indices.map { $0 < classes.music.count ? classes.music[$0] : 0 })
     }
 
-    /// Chooses the window or refuses with the reason.
+    /// Chooses the window or refuses with the reason. `classes` (the sound classifier's speech and music per frame)
+    /// replaces the level threshold for speech and adds the music check.
     public static func choose(
-        _ samples: [Float], rate: Double, minSeconds: Double, maxSeconds: Double
+        _ samples: [Float], rate: Double, minSeconds: Double, maxSeconds: Double,
+        classes: VoiceCloneClassification? = nil
     ) throws -> VoiceCloneWindow {
         let total = Double(samples.count) / rate
         var checks = [VoiceCloneCheck(
@@ -79,7 +98,7 @@ public enum VoiceCloneTrimmer {
                 message: "The source is \(round(total)) s; a clone needs at least \(round(minSeconds)) s of speech",
                 checks: checks)
         }
-        let levels = levels(samples, rate: rate)
+        let levels = levels(samples, rate: rate, classes: classes)
         checks.append(VoiceCloneCheck(
             id: "loudness", passed: levels.loud >= -45, value: round(levels.loud),
             detail: "loud frames at \(round(levels.loud)) dBFS (needs −45 or more)"))
@@ -106,7 +125,9 @@ public enum VoiceCloneTrimmer {
         for index in 0..<count {
             voicedSum.append(voicedSum[index] + (levels.voiced[index] ? 1 : 0))
             gapSum.append(gapSum[index] + (gap[index] ? 1 : 0))
-            clipSum.append(clipSum[index] + (levels.clipped[index] > 0 ? 1 : 0))
+            // Music under the voice counts like clipping.
+            let spoiled = levels.clipped[index] > 0 || (index < levels.music.count && levels.music[index] >= 0.5)
+            clipSum.append(clipSum[index] + (spoiled ? 1 : 0))
         }
         let upper = min(maxFrames, count), lower = min(max(1, minFrames), upper)
         var lengths = Array(stride(from: upper, through: lower, by: -10))
@@ -162,7 +183,7 @@ public enum VoiceCloneTrimmer {
             longest = max(longest, run)
         }
         let clipped = Double(levels.clipped[first..<last].reduce(0, +)) / (Double(last - first) * frame * levels.rate)
-        let noise = levels.loud - levels.floor
+        let noise = levels.noise
         checks += [
             VoiceCloneCheck(id: "speech", passed: speech >= minSeconds * 0.6, value: round(speech),
                             detail: "\(round(speech)) s of speech in the window"),
@@ -183,7 +204,21 @@ public enum VoiceCloneTrimmer {
             throw VoiceCloneRefusal(
                 reason: "clipped", message: "The voice is clipped (distorted) everywhere; record it quieter", checks: checks)
         }
+        try checkMusic(levels, first: first, last: last, checks: &checks)
         return VoiceCloneWindow(start: Double(first) * frame, end: Double(last) * frame, checks: checks)
+    }
+
+    /// With the classifier: the share of window frames where music is likely (confidence 0.5 or more). Under 0.2
+    /// passes; over half refuses with `musicUnder`.
+    static func checkMusic(_ levels: Levels, first: Int, last: Int, checks: inout [VoiceCloneCheck]) throws {
+        guard !levels.music.isEmpty, last > first else { return }
+        let share = Double(levels.music[first..<last].filter { $0 >= 0.5 }.count) / Double(last - first)
+        checks.append(VoiceCloneCheck(
+            id: "music", passed: share < 0.2, value: round(share), detail: "share of the window with music under the voice"))
+        guard share <= 0.5 else {
+            throw VoiceCloneRefusal(
+                reason: "musicUnder", message: "Music plays under the voice; pick a part without music", checks: checks)
+        }
     }
 
     static func round(_ value: Double) -> Double { (value * 100).rounded() / 100 }
