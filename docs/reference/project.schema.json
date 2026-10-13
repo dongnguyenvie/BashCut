@@ -1371,6 +1371,10 @@
           ],
           "type" : "string"
         },
+        "label" : {
+          "description" : "The name shown instead of the file's (a library item's name)",
+          "type" : "string"
+        },
         "libraryItem" : {
           "description" : "The library item (scope:id) it was copied from",
           "type" : "string"
