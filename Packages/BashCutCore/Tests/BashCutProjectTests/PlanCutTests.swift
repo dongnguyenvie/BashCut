@@ -343,4 +343,21 @@ struct PlanCutTests {
         let silent = try spec(#"{"clips":[{"media":"m","from":10,"to":12}]}"#)
         #expect(PlanCut.resolve(silent, project: project(), transcripts: ["m": transcript]).clips.first?.clip.role == nil)
     }
+
+    @Test("Entries cite fact keys with facts: [key]; plan check warns for a key that is no fact or claim")
+    func factReferences() throws {
+        let cited = try spec(#"""
+            {"clips":[{"media":"m","from":0,"to":2,"facts":["price-pho"]}],
+            "voiceover":[{"id":"v1","text":"528 ha","facts":["area","nope"]}],
+            "titles":[{"text":"50k","clip":"c1","seconds":1,"facts":[]}]}
+            """#)
+        #expect(cited.unknownFields.isEmpty)
+        #expect(cited.factReferences.map(\.entry) == ["c1", "v1"])
+        let problems = PlanCut.factProblems(cited, known: ["price-pho", "area", "nope"])
+        #expect(problems.isEmpty)
+        let missing = PlanCut.factProblems(cited, known: ["area", "nope"])
+        #expect(missing.map(\.entry) == ["c1"] && missing.first?.id == "unknown-fact")
+        #expect(PlanCut.factProblems(cited, known: [])[1].facts["keys"] == .array([.string("area"), .string("nope")]))
+        #expect(throws: ProjectError.self) { try spec(#"{"clips":[{"media":"m","facts":"price"}]}"#) }
+    }
 }

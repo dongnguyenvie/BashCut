@@ -113,7 +113,9 @@ SwiftTerm terminal. Claude and Codex use your installed CLI and its existing log
   - **Claims** (`knowledge claims`, `set-claim KEY --text "528 ha" --source URL|MEDIA@SECONDS|user [--remove]`): the
     numbers, prices, superlatives and names the video states, each with its source (`.bashcut/knowledge/claims.json`).
     Review lists those in titles (not captions) and in `plan.cut.voiceover` lines that no claim's text covers, as
-    `unsourced-claim` at info severity, with the words found by type.
+    `unsourced-claim` at info severity, with the words found by type. Any `plan.cut` entry may cite what it rests on
+    with `facts: [key]`; `plan check` warns `unknown-fact` for a key that is neither a project fact (`set-fact`) nor
+    a claim, so a typo or a fact never recorded shows before the build.
   - **Creator profile**: preferences under `creator.` (`name`, `handle`, `channel`, `platforms`, `language`, `niche`,
     `audience`, `tone`, `cta`, `voiceSamples` as media IDs of the open project, `disclosure`; lists comma-separated)
     are checked by `set-pref` and shown as one `creator` object in the session summary. An agent's change to them for

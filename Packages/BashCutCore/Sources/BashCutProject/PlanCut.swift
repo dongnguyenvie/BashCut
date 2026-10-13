@@ -139,6 +139,8 @@ public enum PlanCut {
         public var sfx: [Sound] = []
         /// Fields the list gave that nothing reads (`unknown-field` warnings), so a typo is not silently ignored.
         public var unknownFields: [Problem] = []
+        /// The fact keys each entry cites (`facts: [key]`), checked against the project's facts and claims.
+        public var factReferences: [(entry: String, keys: [String])] = []
     }
 
     static let roles = ["speech", "broll", "underVO"]
@@ -228,17 +230,21 @@ public enum PlanCut {
             + unknownSoundFields(root["sfx"]?.array ?? [], ids: spec.sfx.map(\.id))
             + unknownEntryFields(lineValues, ids: lines.map(\.id), known: lineKeys)
             + unknownEntryFields(graphicValues, ids: graphicIDs, known: graphicKeys)
+        spec.factReferences = try factReferences([
+            (clipValues, clips.map(\.id)), (lineValues, lines.map(\.id)), (root["titles"]?.array ?? [], titles.map(\.id)),
+            (graphicValues, graphicIDs), (root["sfx"]?.array ?? [], spec.sfx.map(\.id)),
+        ])
         return spec
     }
 
     static let clipKeys: Set<String> = [
-        "id", "media", "quote", "words", "from", "to", "seconds", "section", "speed", "volumeDb", "role", "cover",
+        "id", "media", "quote", "words", "from", "to", "seconds", "section", "speed", "volumeDb", "role", "cover", "facts",
     ]
     static let coverKeys: Set<String> = ["media", "from", "seconds"]
-    static let soundKeys: Set<String> = ["id", "media", "on", "section", "at", "offset", "seconds", "volumeDb"]
-    static let lineKeys: Set<String> = ["id", "text", "caption", "take", "section", "at", "pause", "volumeDb"]
+    static let soundKeys: Set<String> = ["id", "media", "on", "section", "at", "offset", "seconds", "volumeDb", "facts"]
+    static let lineKeys: Set<String> = ["id", "text", "caption", "take", "section", "at", "pause", "volumeDb", "facts"]
     static let graphicKeys: Set<String> = [
-        "id", "media", "on", "section", "at", "offset", "seconds", "until", "track", "from", "render",
+        "id", "media", "on", "section", "at", "offset", "seconds", "until", "track", "from", "render", "facts",
     ]
 
     static func unknownSoundFields(_ sounds: [JSONValue], ids: [String]) -> [Problem] {
@@ -257,7 +263,9 @@ public enum PlanCut {
         }
     }
 
-    static let titleKeys: Set<String> = ["id", "text", "clip", "offset", "at", "section", "seconds", "preset", "style"]
+    static let titleKeys: Set<String> = [
+        "id", "text", "clip", "offset", "at", "section", "seconds", "preset", "style", "facts",
+    ]
     /// Picture framing a clip or cover may give (a punch-in or reframe), with their item ranges.
     static let transformKeys: [String: ClosedRange<Double>] = ["zoom": 0.01...100, "pan": -65536...65536, "tilt": -65536...65536]
     /// Notes an agent leaves on an entry; read by nobody, never warned about.
