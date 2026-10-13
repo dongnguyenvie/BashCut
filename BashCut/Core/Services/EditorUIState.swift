@@ -29,6 +29,9 @@ public final class EditorUIState {
     /// nil fits the frame in the viewer; otherwise the output's scale (see `EditorViewerZoom`).
     public var viewerZoom: Double?
     public var showAgentDock = true
+    /// The library panel left of the viewer and the Inspector right of it; hidden to give a small window room (#528).
+    public var showLibraryPanel = true
+    public var showInspector = true
     public var libraryTab: LibraryTab = .media
     /// The plugin whose rail panel replaces the library panel (plugin API 8), or nil for the library.
     public var pluginPanel: String?

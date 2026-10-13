@@ -429,12 +429,6 @@ extension ProjectDocument {
         return "\(selectedID) (\(selectedIDs.count) items: \(selectedIDs.joined(separator: ", ")))"
     }
 
-    func showLibraryTab(_ tab: LibraryTab) {
-        DebugLog.write("ui", "library panel \(ui.libraryTab.rawValue) → \(tab.rawValue)")
-        ui.libraryTab = tab
-        ui.pluginPanel = nil
-    }
-
     func contextText() -> String {
         """
         [BashCut context]

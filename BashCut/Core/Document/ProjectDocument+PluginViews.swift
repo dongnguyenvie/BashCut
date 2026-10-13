@@ -12,6 +12,15 @@ extension ProjectDocument {
         DebugLog.write("ui", "plugin panel \(pluginID)\(view.map { " view \($0)" } ?? "")")
         if let view { ui.pluginPanelViews[pluginID] = view }
         ui.pluginPanel = pluginID
+        ui.showLibraryPanel = true
+    }
+
+    /// Shows a built-in library panel, revealing the panel column if it was hidden.
+    func showLibraryTab(_ tab: LibraryTab) {
+        DebugLog.write("ui", "library panel \(ui.libraryTab.rawValue) → \(tab.rawValue)")
+        ui.libraryTab = tab
+        ui.pluginPanel = nil
+        ui.showLibraryPanel = true
     }
 
     /// The view a plugin's panel shows: the chosen one while the plugin still has it, else its first view.
