@@ -191,6 +191,8 @@ import BashCutPlugin
         menu.addItem(item(.toggleCompare, String(localized: "Compare Before / After")) { [weak self] in
             self?.document.preview.showColorComparison == true
         })
+        menu.addItem(item(.toggleFullScreenPreview, String(localized: "Full Screen Preview")) { [weak self] in
+            self?.document.fullScreenPreview.isOn == true })
         menu.addItem(.separator())
         menu.addItem(item(.toggleAgentDock, String(localized: "Agent Dock")) { [weak self] in
             guard let self else { return false }

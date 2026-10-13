@@ -49,6 +49,9 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
 
 - Mockup-based native layout: eight library tabs, media thumbnails and search, viewer with safe area, five
   Inspector tabs, history and review.
+- Full-screen preview (#530, ⌥⌘F, `ui action viewer.fullscreen`): the program picture alone on a borderless
+  screen-size window (a second screen when there is one), driven by the viewer's own player, with an auto-hiding
+  transport and Space, ←/→, J/K/L and Esc.
 - Dynamic layers: repeated video/image, text and audio layers with explicit stacking order and vertical scrolling.
   Core validation enforces layer rules (visual above audio, one undeletable main layer, no overlap within a layer,
   matching media kinds) and repairs older projects on open. Placement spills CapCut-style onto the next free layer.

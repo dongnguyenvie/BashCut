@@ -470,6 +470,7 @@ Shortcuts belong to editor actions; `bashcut ui actions` lists every action with
 | I / O | Mark source in / out | Implemented |
 | E / Q | Insert / overwrite from the source viewer | Implemented |
 | Esc | Back to the timeline from the source viewer | Implemented |
+| ⌥⌘F | Full-screen preview of the program picture (Esc or ⌥⌘F exits; J K L shuttle inside it) | Implemented |
 | S, ⌘B | Split | Implemented |
 | ⌫ / ⇧⌫ | Ripple delete / lift | Implemented |
 | ⌘= / ⌘− | Zoom the timeline in / out around the playhead | Implemented |

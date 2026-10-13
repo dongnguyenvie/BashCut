@@ -62,6 +62,17 @@ struct PreviewControllerTests {
         #expect(await condition(), sourceLocation: sourceLocation)
     }
 
+    @Test("J and L speed up in their own direction and start at 1x from a stop or the other way")
+    func shuttleRates() {
+        #expect(PreviewController.shuttleRate(after: 0, forward: true) == 1)
+        #expect(PreviewController.shuttleRate(after: 1, forward: true) == 2)
+        #expect(PreviewController.shuttleRate(after: 2, forward: true) == 4)
+        #expect(PreviewController.shuttleRate(after: 4, forward: true) == 4)
+        #expect(PreviewController.shuttleRate(after: 2, forward: false) == -1)
+        #expect(PreviewController.shuttleRate(after: -1, forward: false) == -2)
+        #expect(PreviewController.shuttleRate(after: -4, forward: true) == 1)
+    }
+
     @Test("A discrete edit preempts coalescing without waiting through the debounce")
     func discretePreemptsDebounce() async throws {
         let log = BuildLog()

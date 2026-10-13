@@ -1,6 +1,13 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Full Screen Preview (⌥⌘F)": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Full Screen Preview (⌥⌘F)" } }, "vi": { "stringUnit": { "state": "translated", "value": "Xem toàn màn hình (⌥⌘F)" } } } },
+    "Full Screen Preview": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Full Screen Preview" } }, "vi": { "stringUnit": { "state": "translated", "value": "Xem toàn màn hình" } } } },
+    "Playing full screen": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Playing full screen" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đang phát toàn màn hình" } } } },
+    "Esc or ⌥⌘F returns to the editor.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Esc or ⌥⌘F returns to the editor." } }, "vi": { "stringUnit": { "state": "translated", "value": "Esc hoặc ⌥⌘F để quay lại trình dựng." } } } },
+    "Play or pause (Space)": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Play or pause (Space)" } }, "vi": { "stringUnit": { "state": "translated", "value": "Phát hoặc tạm dừng (Space)" } } } },
+    "Loop": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Loop" } }, "vi": { "stringUnit": { "state": "translated", "value": "Lặp lại" } } } },
+    "Exit full screen (Esc)": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Exit full screen (Esc)" } }, "vi": { "stringUnit": { "state": "translated", "value": "Thoát toàn màn hình (Esc)" } } } },
     "queued, %d ahead": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "queued, %d ahead" } }, "vi": { "stringUnit": { "state": "translated", "value": "đang chờ, còn %d việc trước" } } } },
     "queued": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "queued" } }, "vi": { "stringUnit": { "state": "translated", "value": "đang chờ" } } } },
     "failed": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "failed" } }, "vi": { "stringUnit": { "state": "translated", "value": "lỗi" } } } },

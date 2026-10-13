@@ -84,6 +84,7 @@ public enum UIAction: String, CaseIterable, Sendable {
     case forwardSecond = "playhead.forward-second"
     case toggleCompare = "view.compare"
     case toggleSafeArea = "view.safe-area"
+    case toggleFullScreenPreview = "viewer.fullscreen"
     case toggleSnap = "timeline.snap"
     case zoomIn = "timeline.zoom-in"
     case zoomOut = "timeline.zoom-out"
@@ -203,6 +204,8 @@ public enum UIAction: String, CaseIterable, Sendable {
         case .forwardSecond: "Forward one second"
         case .toggleCompare: "Compare color before/after"
         case .toggleSafeArea: "Safe area"
+        case .toggleFullScreenPreview:
+            "Full-screen preview on or off: the program picture alone, on a second screen when there is one (Esc exits)"
         case .toggleSnap: "Snap"
         case .zoomIn: "Zoom timeline in"
         case .zoomOut: "Zoom timeline out"
@@ -309,6 +312,8 @@ public enum UIAction: String, CaseIterable, Sendable {
         case .askAgent: UIShortcut("k", [.command])
         case .toggleSafeArea: UIShortcut("'", [.command, .shift])
         case .toggleCompare: UIShortcut("c", [.command, .option])
+        // ⌃⌘F is View › Enter Full Screen (the whole window).
+        case .toggleFullScreenPreview: UIShortcut("f", [.command, .option])
         case .speedUp: UIShortcut("]", [.command])
         case .slowDown: UIShortcut("[", [.command])
         case .resetSpeed: UIShortcut("r", [.command, .option])

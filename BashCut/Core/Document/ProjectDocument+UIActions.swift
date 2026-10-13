@@ -27,6 +27,7 @@ extension ProjectDocument {
         case .zoomIn: return ui.canZoomIn
         case .zoomOut: return ui.canZoomOut
         case .zoomFit: return project.duration > 0
+        case .toggleFullScreenPreview: return fullScreenPreview.isOn || (project.duration > 0 && !sourceViewer.visible)
         case .split, .delete, .lift: return selected != nil
         case .freezeFrame, .changeFraming: return selectedItemTrack?.kind == "video"
         case .unlinkAudio: return selected?.linkedItemID != nil
@@ -111,6 +112,7 @@ extension ProjectDocument {
         case .forwardSecond: preview.seek(playhead + Int(project.fps.value.rounded()))
         case .toggleCompare: preview.setColorComparison(!preview.showColorComparison)
         case .toggleSafeArea: ui.showSafeArea.toggle()
+        case .toggleFullScreenPreview: fullScreenPreview.toggle(self)
         case .toggleSnap: ui.snapping.toggle()
         case .zoomIn: ui.zoomIn(around: playhead)
         case .zoomOut: ui.zoomOut(around: playhead)
@@ -349,6 +351,7 @@ extension ProjectDocument {
             ]),
             "viewerZoom": .string(EditorViewerZoom.choice(ui.viewerZoom)),
             "snap": .bool(ui.snapping), "safeArea": .bool(ui.showSafeArea), "compare": .bool(preview.showColorComparison),
+            "fullScreen": .bool(fullScreenPreview.isOn),
             "agentDock": .bool(ui.showAgentDock && !agents.isDetached), "agentDockDetached": .bool(agents.isDetached),
             "libraryPane": .bool(ui.showLibraryPanel), "inspectorPane": .bool(ui.showInspector),
             "chatTab": agents.chatPluginID.map(JSONValue.string) ?? .null,

@@ -81,8 +81,8 @@ final class ProjectDocument {
     @ObservationIgnored var timelineGestureActive = false
     /// Preferences and recent projects.
     let settings: SettingsModel
-    /// Zoom, toggles, panels and open sheets.
-    let ui = EditorUIState()
+    /// Zoom, toggles, panels and open sheets, and the full-screen preview window (#530).
+    let ui = EditorUIState(), fullScreenPreview = FullScreenPreview()
     @ObservationIgnored lazy var agents = AgentDockModel(document: self)
     @ObservationIgnored lazy var chatAgents = ChatAgents(document: self)
     @ObservationIgnored lazy var runPanel = RunPanelModel(document: self) // The run panel and result card (#447, #448).

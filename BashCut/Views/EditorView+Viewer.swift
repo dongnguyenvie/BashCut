@@ -117,6 +117,13 @@ extension EditorView {
                             Button("Import footage…") { document.importMedia() }
                         }
                     }
+                } else if document.fullScreenPreview.isOn {
+                    // The picture plays in the full-screen window; one player view on screen at a time.
+                    VStack(spacing: 8) {
+                        Image(systemName: "arrow.up.left.and.arrow.down.right").font(.largeTitle).foregroundStyle(.cyan)
+                        Text("Playing full screen").font(.headline)
+                        Text("Esc or ⌥⌘F returns to the editor.").font(.caption).foregroundStyle(.secondary)
+                    }
                 } else if let zoom = document.ui.viewerZoom {
                     ScrollView([.horizontal, .vertical]) {
                         viewerFrame.frame(
@@ -162,40 +169,48 @@ extension EditorView {
             }
             PluginViewerOverlays(document: document)
             ViewerPlaceholderCard(document: document)
-            if document.ui.showSafeArea {
-                GeometryReader { geo in
-                    let aspect = Double(document.project.width) / Double(document.project.height)
-                    let height = min(geo.size.height, geo.size.width / aspect)
-                    let width = height * aspect
-                    // No output set: only the frame and a title-safe guide (#469).
-                    let area = document.layoutPlatform?.safeArea ?? SafeArea()
-                    Group {
-                        if aspect < 1 {
-                            // Vertical video: the platform covers the bottom, the right edge and the top (#441).
-                            ZStack(alignment: .bottomTrailing) {
-                                Rectangle().strokeBorder(
-                                    .red.opacity(0.6), style: StrokeStyle(lineWidth: 1, dash: [5]))
-                                Rectangle().fill(.red.opacity(0.15)).frame(height: height * area.bottom)
-                                Rectangle().fill(.red.opacity(0.15)).frame(
-                                    width: width * area.sideWidth, height: height * area.sideHeight)
-                                VStack {
-                                    Rectangle().fill(.red.opacity(0.15)).frame(height: height * area.top)
-                                    Spacer()
-                                }
-                            }
-                        } else {
-                            // Landscape and square: keep titles inside title safe.
-                            ZStack {
-                                Rectangle().strokeBorder(.red.opacity(0.35), lineWidth: 1)
-                                Rectangle().strokeBorder(
-                                    .red.opacity(0.6), style: StrokeStyle(lineWidth: 1, dash: [5])
-                                ).frame(width: width * (1 - 2 * area.margin), height: height * (1 - 2 * area.margin))
-                            }
-                        }
-                    }.frame(width: width, height: height).position(
-                        x: geo.size.width / 2, y: geo.size.height / 2)
-                }.allowsHitTesting(false)
-            }
+            if document.ui.showSafeArea { ViewerSafeArea(document: document) }
         }
+    }
+}
+
+/// The safe-area guides over the picture (#441, #469), aspect-fit in whatever frame it gets; the viewer and the
+/// full-screen preview show it while the Safe area toggle is on.
+struct ViewerSafeArea: View {
+    let document: ProjectDocument
+
+    var body: some View {
+        GeometryReader { geo in
+            let aspect = Double(document.project.width) / Double(document.project.height)
+            let height = min(geo.size.height, geo.size.width / aspect)
+            let width = height * aspect
+            // No output set: only the frame and a title-safe guide (#469).
+            let area = document.layoutPlatform?.safeArea ?? SafeArea()
+            Group {
+                if aspect < 1 {
+                    // Vertical video: the platform covers the bottom, the right edge and the top (#441).
+                    ZStack(alignment: .bottomTrailing) {
+                        Rectangle().strokeBorder(
+                            .red.opacity(0.6), style: StrokeStyle(lineWidth: 1, dash: [5]))
+                        Rectangle().fill(.red.opacity(0.15)).frame(height: height * area.bottom)
+                        Rectangle().fill(.red.opacity(0.15)).frame(
+                            width: width * area.sideWidth, height: height * area.sideHeight)
+                        VStack {
+                            Rectangle().fill(.red.opacity(0.15)).frame(height: height * area.top)
+                            Spacer()
+                        }
+                    }
+                } else {
+                    // Landscape and square: keep titles inside title safe.
+                    ZStack {
+                        Rectangle().strokeBorder(.red.opacity(0.35), lineWidth: 1)
+                        Rectangle().strokeBorder(
+                            .red.opacity(0.6), style: StrokeStyle(lineWidth: 1, dash: [5])
+                        ).frame(width: width * (1 - 2 * area.margin), height: height * (1 - 2 * area.margin))
+                    }
+                }
+            }.frame(width: width, height: height).position(
+                x: geo.size.width / 2, y: geo.size.height / 2)
+        }.allowsHitTesting(false)
     }
 }
