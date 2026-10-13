@@ -272,4 +272,14 @@ struct LibraryAudioTests {
         #expect(LibraryPage(total: 3, offset: -2, limit: 10_000).limit == LibraryPage.maximumLimit)
         #expect(last.json(items: []).object["next"] == .null)
     }
+
+    @Test("A bed's energy summary: range between quiet and loud parts, where it lifts and peaks (#566)")
+    func energySummary() throws {
+        let level: [Double] = [-30, -30, -28, -20, -12, -11, -10, -12, -25, -30]
+        let summary = try #require(LibraryAudio.energySummary(levelDb: level, step: 0.5))
+        #expect(summary["rangeDb"] == .integer(19))
+        #expect(summary["liftAt"] == .integer(2))
+        #expect(summary["peakAt"] == .integer(3))
+        #expect(LibraryAudio.energySummary(levelDb: [-10], step: 0.5) == nil)
+    }
 }

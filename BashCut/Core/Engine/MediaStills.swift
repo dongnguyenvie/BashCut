@@ -35,6 +35,17 @@ public enum MediaStills {
         return result
     }
 
+    /// A video file's length in seconds and frame rate (its nominal rate, 30 when it has none), for files outside
+    /// the project (`media frames --file`); nil without a video track or a length.
+    public static func videoTiming(_ url: URL) async throws -> (seconds: Double, fps: FrameRate)? {
+        let asset = AVURLAsset(url: url)
+        guard let track = try await asset.loadTracks(withMediaType: .video).first else { return nil }
+        let seconds = try await asset.load(.duration).seconds
+        let rate = Double(try await track.load(.nominalFrameRate))
+        guard seconds.isFinite, seconds > 0 else { return nil }
+        return (seconds, FrameRate(Int(((rate > 0 ? rate : 30) * 1_000).rounded()), 1_000))
+    }
+
     /// `image` scaled down to fit inside `maximumSide` pixels; a smaller image is returned as is.
     public static func fit(_ image: CGImage, maximumSide: Int) -> CGImage {
         let largest = max(image.width, image.height)

@@ -125,6 +125,24 @@ public struct LibraryAudio: Sendable, Equatable {
         return ["params": .object(audio.params(merging: item.params))]
     }
 
+    /// A music bed's energy in a few numbers for choosing between candidates (`library analyze`, from an
+    /// audio.energy curve of `levelDb` every `step` seconds): `rangeDb` between its quiet (10th percentile) and loud
+    /// (90th) parts, `liftAt` the first second within 3 dB of the loud level, `peakAt` the loudest second. Nil for
+    /// fewer than 2 points.
+    public static func energySummary(levelDb: [Double], step: Double) -> [String: JSONValue]? {
+        guard levelDb.count >= 2, step > 0 else { return nil }
+        let sorted = levelDb.sorted()
+        func percentile(_ share: Double) -> Double { sorted[min(sorted.count - 1, Int(Double(sorted.count - 1) * share))] }
+        let loud = percentile(0.9)
+        let lift = levelDb.firstIndex { $0 >= loud - 3 } ?? 0
+        let peak = levelDb.indices.max { levelDb[$0] < levelDb[$1] } ?? 0
+        return [
+            "rangeDb": rounded(loud - percentile(0.1), places: 1),
+            "liftAt": rounded(Double(lift) * step, places: 1),
+            "peakAt": rounded(Double(peak) * step, places: 1),
+        ]
+    }
+
     // MARK: Project copies
 
     /// The folders library sounds are copied into; a copy in any of them is reused.

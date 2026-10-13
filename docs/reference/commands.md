@@ -395,12 +395,13 @@ Read media descriptions. With media: description {shots, describedBy, describedA
 - Mode: read · Runs: immediately · MCP: `bashcut_media_description`
 - `media`: string. Project media ID; every media by default
 
-### `bashcut media frames [--media <media>] [--at <at>] [--every <every>] [--count <count>] [--from <from>] [--to <to>] [--sheet] [--columns <columns>] [--rows <rows>] [--size <size>] [--reference <reference>] [--reference-from <referenceFrom>] [--reference-to <referenceTo>]`
+### `bashcut media frames [--media <media>] [--file <file>] [--at <at>] [--every <every>] [--count <count>] [--from <from>] [--to <to>] [--sheet] [--columns <columns>] [--rows <rows>] [--size <size>] [--reference <reference>] [--reference-from <referenceFrom>] [--reference-to <referenceTo>]`
 
-Read exact source frames of media as PNG files (in .bashcut/cache/media-stills; read them to look): at the given source seconds, every N seconds, or count evenly spaced (default 8, each in the middle of its part) over from…to (the whole file by default). Every media with a picture by default. frames [{path, media, frame (exact source frame index), seconds, width, height}]. With sheet: contact sheets of columns × rows cells labelled '<cell> <file> <m:ss.s>' (the colour changes with each media), sheets [{path, cells [{cell, media, frame, seconds}]}], so a cell maps back to its media and second. With reference (one media): a sheet with a REF row from that media (over referenceFrom…referenceTo) above an OURS row, cell for cell. At most 400 frames per call.
+Read exact source frames of media as PNG files (in .bashcut/cache/media-stills; read them to look): at the given source seconds, every N seconds, or count evenly spaced (default 8, each in the middle of its part) over from…to (the whole file by default). Every media with a picture by default. frames [{path, media, frame (exact source frame index), seconds, width, height}]. With sheet: contact sheets of columns × rows cells labelled '<cell> <file> <m:ss.s>' (the colour changes with each media), sheets [{path, cells [{cell, media, frame, seconds}]}], so a cell maps back to its media and second. With reference (one media): a sheet with a REF row from that media (over referenceFrom…referenceTo) above an OURS row, cell for cell. At most 400 frames per call. With file: frames of a video not in the project (a stock or library candidate), at or count over the whole file, frames [{path, file, frame, seconds, width, height}].
 
 - Mode: read · Runs: immediately · MCP: `bashcut_media_frames`
 - `media`: string. Media IDs, comma separated; every media with a picture by default
+- `file`: string. Absolute path of a video not in the project, instead of media
 - `at`: string. Source seconds, comma separated (one media)
 - `every`: number, 0.04…3600. Seconds between frames
 - `count`: integer, 1…400. Frames per media, evenly spaced (default 8)
@@ -2258,10 +2259,10 @@ Add a library item to the timeline as a new item: a text preset (with its stored
 
 ### `bashcut library analyze <id> [--scope <scope>] [--provider <provider>]`
 
-Measure an audio library item's file and save the values as a new version: its length, integrated loudness and true peak (an audio.loudness provider, as audio measure), landmarks {onset, peak, tail} in seconds (where it passes the −70 LUFS gate, peaks and drops back under it) and, unless it is a sound effect, its tempo in BPM (an audio.beats provider, as beats detect). Runs as a job; a missing provider leaves that value and says why in notes. Agents saving to the user scope wait for approval. Tag mood and genre with library update --tags after listening or reading the analysis.
+Measure an audio library item's file and save the values as a new version: its length, integrated loudness and true peak (an audio.loudness provider, as audio measure), landmarks {onset, peak, tail} in seconds (where it passes the −70 LUFS gate, peaks and drops back under it) and, unless it is a sound effect, its tempo in BPM (an audio.beats provider, as beats detect) with beatConfidence 0…1 when the provider gives one, and energy {rangeDb (quiet to loud parts), liftAt, peakAt seconds} (an audio.energy provider). Runs as a job; a missing provider leaves that value and says why in notes. Agents saving to the user scope wait for approval. Tag mood and genre with library update --tags after listening or reading the analysis. Several IDs separated by commas run in one job (result: items [{id, item, measured, notes} or {id, error}], analyzed, failed); a provider busy with another job is waited for, not refused.
 
 - Mode: edit · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_library_analyze`
-- `id`: string, required. Item ID, or scope:id to pick one scope
+- `id`: string, required. Item ID or scope:id; several separated by commas
 - `scope`: string, one of built-in, user, project, plugin. Look only in this scope; without it project, user, plugin, then built-in
 - `provider`: string. audio.loudness provider ID; the project's choice by default
 

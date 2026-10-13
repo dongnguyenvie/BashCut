@@ -338,6 +338,17 @@ enum PluginText {
         return try await body()
     }
 
+    /// `running`, but waits up to `timeout` seconds for a busy capability instead of refusing (batch work such as
+    /// `library analyze` with several IDs, or two analyze jobs started together).
+    func queued<T>(_ capability: String, timeout: Double = 300, _ body: () async throws -> T) async throws -> T {
+        let deadline = Date().addingTimeInterval(timeout)
+        while calling.contains(capability) {
+            guard Date() < deadline else { throw PluginError.invalid("\(capability) is still busy after \(Int(timeout)) s") }
+            try await Task.sleep(nanoseconds: 250_000_000)
+        }
+        return try await running(capability, body)
+    }
+
     /// Bytes the pending install needs: the archive plus the downloads its recipes declare.
     func requiredBytes(_ pending: PendingPluginInstall) -> Int64 {
         // Dependencies the preflight found already available download nothing.
