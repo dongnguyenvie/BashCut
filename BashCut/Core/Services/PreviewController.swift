@@ -39,6 +39,10 @@ public final class PreviewController {
     /// Called with the playhead when playback stops (pause or the end of the timeline).
     @ObservationIgnored public var onPlaybackStopped: (@MainActor (Int) -> Void)?
     @ObservationIgnored private var wasPlaying = false
+    /// J's speed while it plays backwards (−1, −2 or −4), else 0. AVPlayer refuses negative rates on our compositions
+    /// even where `canPlayReverse` says yes, so reverse steps the playhead back on a frame clock instead (no sound).
+    public private(set) var reverseRate: Float = 0
+    @ObservationIgnored private var reverseTask: Task<Void, Never>?
 
     @ObservationIgnored var awaitReadiness: @MainActor (AVPlayerItem, String) async throws -> Void = { item, message in
         try await PlayerItemReadiness.wait(item, message: message)
@@ -76,7 +80,7 @@ public final class PreviewController {
         return player
     }
 
-    public var isPlaying: Bool { player.rate != 0 }
+    public var isPlaying: Bool { player.rate != 0 || reverseRate != 0 }
 
     /// Forgets the previous project's preview and moves the playhead to the start.
     public func reset(_ project: Project) {
@@ -187,7 +191,7 @@ public final class PreviewController {
     }
 
     public func togglePlayback() {
-        if player.rate == 0 {
+        if !isPlaying {
             wasPlaying = true
             player.play()
             if showColorComparison { comparisonPlayer.play() }
@@ -197,23 +201,44 @@ public final class PreviewController {
     }
 
     public func pause() {
+        stopReverse()
         player.pause()
         comparisonPlayer.pause()
         noteStopped()
     }
 
     /// J and L: plays in reverse or forward, one step faster for each press in the direction it already plays (1×,
-    /// 2×, 4×); K is `pause`. Reverse needs an item that can play backwards; without one J steps back a second.
+    /// 2×, 4×); K is `pause`. Reverse is silent and stops at the start.
     public func shuttle(forward: Bool) {
         guard player.currentItem != nil else { return }
-        let rate = Self.shuttleRate(after: player.rate, forward: forward)
-        guard rate > 0 || player.currentItem?.canPlayReverse == true else {
-            seek(playhead - Int(project.fps.value.rounded()))
+        let rate = Self.shuttleRate(after: reverseRate != 0 ? reverseRate : player.rate, forward: forward)
+        wasPlaying = true
+        guard rate < 0 else {
+            stopReverse()
+            player.rate = rate
+            if showColorComparison { comparisonPlayer.rate = rate }
             return
         }
-        wasPlaying = true
-        player.rate = rate
-        if showColorComparison { comparisonPlayer.rate = rate }
+        player.pause()
+        comparisonPlayer.pause()
+        reverseRate = rate
+        guard reverseTask == nil else { return }
+        reverseTask = Task { [weak self] in
+            while let self, reverseRate != 0, !Task.isCancelled {
+                // Whole frames per tick, ticking no faster than 30 times a second.
+                let step = max(1, Int((Double(-reverseRate) * project.fps.value / 30).rounded()))
+                let tick = Double(step) / (Double(-reverseRate) * project.fps.value)
+                seek(playhead - step)
+                if playhead == 0 { pause(); return }
+                do { try await Task.sleep(for: .seconds(tick)) } catch { return }
+            }
+        }
+    }
+
+    private func stopReverse() {
+        reverseRate = 0
+        reverseTask?.cancel()
+        reverseTask = nil
     }
 
     /// The next J/K/L rate: the same direction doubles up to 4×; from a stop or the other direction it is 1×.
@@ -238,7 +263,7 @@ public final class PreviewController {
     /// Follows the player while it plays and keeps the comparison player within a frame of it.
     public func updatePlayhead() {
         if let error = player.currentItem?.error { onMessage?(error.localizedDescription) }
-        if player.rate == 0 { noteStopped() } else { wasPlaying = true }
+        if !isPlaying { noteStopped() } else { wasPlaying = true }
         guard player.rate != 0, player.currentTime().isNumeric else { return }
         let frame = project.fps.frame(player.currentTime())
         // Observers (timeline, transport bar) only hear about real moves.

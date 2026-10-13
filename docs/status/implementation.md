@@ -51,7 +51,9 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   Inspector tabs, history and review.
 - Full-screen preview (#530, ⌥⌘F, `ui action viewer.fullscreen`): the program picture alone on a borderless
   screen-size window (a second screen when there is one), driven by the viewer's own player, with an auto-hiding
-  transport and Space, ←/→, J/K/L and Esc.
+  transport and Space, ←/→, J/K/L and Esc. J/K/L also work on the focused timeline and as `ui action
+  playback.shuttle-back|stop|shuttle-forward`; reverse steps the playhead on a frame clock (AVPlayer rejects negative
+  rates on our compositions), silent, 1×/2×/4×.
 - Dynamic layers: repeated video/image, text and audio layers with explicit stacking order and vertical scrolling.
   Core validation enforces layer rules (visual above audio, one undeletable main layer, no overlap within a layer,
   matching media kinds) and repairs older projects on open. Placement spills CapCut-style onto the next free layer.

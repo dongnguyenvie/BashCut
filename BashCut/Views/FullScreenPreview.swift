@@ -107,9 +107,9 @@ final class FullScreenPreview {
             let back = event.keyCode == 123
             let second = modifiers.contains(.shift)
             document.run(second ? (back ? .backSecond : .forwardSecond) : (back ? .previousFrame : .nextFrame))
-        case (_, "j") where modifiers.isEmpty: document.preview.shuttle(forward: false)
-        case (_, "k") where modifiers.isEmpty: document.preview.pause()
-        case (_, "l") where modifiers.isEmpty: document.preview.shuttle(forward: true)
+        case (_, "j") where modifiers.isEmpty: document.run(.shuttleBack)
+        case (_, "k") where modifiers.isEmpty: document.run(.shuttleStop)
+        case (_, "l") where modifiers.isEmpty: document.run(.shuttleForward)
         default: return false
         }
         return true

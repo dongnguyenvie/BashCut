@@ -152,8 +152,7 @@ import BashCutPlugin
 
     private func playbackMenu() -> NSMenuItem {
         let menu = NSMenu(title: String(localized: "Playback"))
-        // One item for both viewers: the source viewer's action while it is shown, else the timeline's.
-        menu.addItem(item(.togglePlayback, or: .sourceTogglePlayback, String(localized: "Play / Pause")))
+        addPlayItems(to: menu)
         menu.addItem(.separator())
         menu.addItem(item(.previousFrame, or: .sourcePreviousFrame, String(localized: "Previous Frame")))
         menu.addItem(item(.nextFrame, or: .sourceNextFrame, String(localized: "Next Frame")))
@@ -480,5 +479,16 @@ struct AppLinks {
             repository: value("BCRepositoryURL").flatMap(URL.init(string:)),
             issues: value("BCIssuesURL").flatMap(URL.init(string:)),
             contactEmail: value("BCContactEmail"))
+    }
+}
+
+extension MainMenu {
+    /// Play / Pause, then J/K/L.
+    fileprivate func addPlayItems(to menu: NSMenu) {
+        // One item for both viewers: the source viewer's action while it is shown, else the timeline's.
+        menu.addItem(item(.togglePlayback, or: .sourceTogglePlayback, String(localized: "Play / Pause")))
+        menu.addItem(item(.shuttleBack, String(localized: "Play Backwards")))
+        menu.addItem(item(.shuttleStop, String(localized: "Stop")))
+        menu.addItem(item(.shuttleForward, String(localized: "Play Forwards")))
     }
 }

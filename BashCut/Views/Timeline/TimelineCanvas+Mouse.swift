@@ -335,8 +335,18 @@ extension TimelineCanvas {
 
     // MARK: Keys
 
+    /// Plain letters that run an action while the timeline has keyboard focus.
+    private static let letterActions: [String: UIAction] = [
+        "s": .split, "n": .toggleSnap, "j": .shuttleBack, "k": .shuttleStop, "l": .shuttleForward,
+    ]
+
     override func keyDown(with event: NSEvent) {
         let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        if modifiers.isEmpty, let key = event.charactersIgnoringModifiers?.lowercased(),
+           let action = Self.letterActions[key] {
+            document.run(action)
+            return
+        }
         switch (event.keyCode, event.charactersIgnoringModifiers?.lowercased()) {
         case (53, _):
             gesture = nil
@@ -357,14 +367,10 @@ extension TimelineCanvas {
         case (123, _), (124, _):
             let back = event.keyCode == 123
             document.run(modifiers.contains(.shift) ? (back ? .backSecond : .forwardSecond) : (back ? .previousFrame : .nextFrame))
-        case (_, "s") where modifiers.isEmpty:
-            document.run(.split)
         case (_, "z") where modifiers == .shift:
             document.run(.zoomFit)
         case (_, "f") where modifiers == .shift:
             document.run(.freezeFrame)
-        case (_, "n") where modifiers.isEmpty:
-            document.run(.toggleSnap)
         default:
             super.keyDown(with: event)
         }
