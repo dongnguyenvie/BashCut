@@ -190,7 +190,7 @@ extension ProjectDocument {
         var measured = LibraryAudio(seconds: try await Self.soundSeconds(url, label: item.reference))
         var notes: [String: JSONValue] = [:]
         do {
-            let loudness = try await plugins.running("audio.loudness") {
+            let loudness = try await plugins.queued("audio.loudness") {
                 try await plugins.service.analyzeLoudness(
                     mediaURL: url, bands: false, curve: true,
                     preferredProvider: provider ?? project.preferredProvider(for: "audio.loudness"), projectRoot: root)
@@ -210,7 +210,7 @@ extension ProjectDocument {
             notes["bpm"] = .string("Not measured for a sound effect")
         } else {
             do {
-                let beats = try await plugins.running("audio.beats") {
+                let beats = try await plugins.queued("audio.beats") {
                     try await plugins.service.detectBeats(
                         mediaURL: url, preferredProvider: project.preferredProvider(for: "audio.beats"),
                         projectRoot: root ?? store.root)
@@ -363,18 +363,40 @@ extension ProjectDocument {
 
     func registerLibraryAudioCommands() {
         handleAuthored("library.analyze") { document, arguments, author in
-            let item = try document.libraryCatalog.item(
-                try arguments.string("id"), scope: arguments.optionalString("scope").flatMap(LibraryScope.init(rawValue:)))
-            _ = try document.libraryAudio(item)
+            let scope = arguments.optionalString("scope").flatMap(LibraryScope.init(rawValue:))
+            let items = try CommandCatalog.libraryIDs(try arguments.string("id")).map { id in
+                let item = try document.libraryCatalog.item(id, scope: scope)
+                _ = try document.libraryAudio(item)
+                return item
+            }
             let provider = arguments.optionalString("provider")
-            let job = document.jobs.start("library.analyze", author: author, detail: item.name, work: { [weak document] _ in
+            let detail = items.count == 1 ? items[0].name : "\(items.count) items"
+            let job = document.jobs.start("library.analyze", author: author, detail: detail, work: { [weak document] reporter in
                 guard let document else { throw CancellationError() }
-                return try await document.analyzeLibraryAudio(item, provider: provider, author: author)
+                if items.count == 1 { return try await document.analyzeLibraryAudio(items[0], provider: provider, author: author) }
+                // Several IDs: one after another in this job, each result or error on its own row.
+                var rows: [JSONValue] = []
+                var failed = 0
+                for (index, item) in items.enumerated() {
+                    try Task.checkCancellation()
+                    reporter.progress(Double(index) / Double(items.count), detail: item.name)
+                    do {
+                        var row = try await document.analyzeLibraryAudio(item, provider: provider, author: author).object
+                        row["id"] = .string(item.reference)
+                        rows.append(.object(row))
+                    } catch {
+                        failed += 1
+                        rows.append(.object(["id": .string(item.reference), "error": .string(error.localizedDescription)]))
+                    }
+                }
+                return .object([
+                    "items": .array(rows), "analyzed": .integer(items.count - failed), "failed": .integer(failed),
+                ])
             }, finished: { [weak document] outcome in
                 guard case .failure(let error) = outcome, !JobCenter.isCancellation(error) else { return }
                 document?.message = "library.analyze: " + error.localizedDescription
             })
-            return .object(["job": .string(job), "state": .string("running")])
+            return .object(["job": .string(job), "state": .string("running"), "count": .integer(items.count)])
         }
         handle("library.preview") { document, arguments, _ in
             guard !arguments.bool("stop"), let id = arguments.optionalString("id") else {

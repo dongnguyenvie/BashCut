@@ -61,6 +61,10 @@ struct LibraryCommandTests {
         let analyzeSpec = try #require(CommandCatalog.spec(named: "library.analyze"))
         #expect(analyzeSpec.execution == .job)
         #expect(analyzeSpec.inputSchema.object["required"] == .array([.string("id")]))
+        let batch = try CommandLineParser.parse(["library", "analyze", "a, b,project:c,a"])
+        #expect(batch.params["id"] == .string("a, b,project:c,a"))
+        #expect(try CommandCatalog.libraryIDs("a, b,project:c,a") == ["a", "b", "project:c"])
+        #expect(throws: (any Error).self) { try CommandCatalog.libraryIDs(" , ") }
 
         let play = try CommandLineParser.parse(["library", "preview", "bed"])
         #expect(play.params["id"] == .string("bed"))

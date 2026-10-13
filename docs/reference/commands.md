@@ -2258,10 +2258,10 @@ Add a library item to the timeline as a new item: a text preset (with its stored
 
 ### `bashcut library analyze <id> [--scope <scope>] [--provider <provider>]`
 
-Measure an audio library item's file and save the values as a new version: its length, integrated loudness and true peak (an audio.loudness provider, as audio measure), landmarks {onset, peak, tail} in seconds (where it passes the −70 LUFS gate, peaks and drops back under it) and, unless it is a sound effect, its tempo in BPM (an audio.beats provider, as beats detect). Runs as a job; a missing provider leaves that value and says why in notes. Agents saving to the user scope wait for approval. Tag mood and genre with library update --tags after listening or reading the analysis.
+Measure an audio library item's file and save the values as a new version: its length, integrated loudness and true peak (an audio.loudness provider, as audio measure), landmarks {onset, peak, tail} in seconds (where it passes the −70 LUFS gate, peaks and drops back under it) and, unless it is a sound effect, its tempo in BPM (an audio.beats provider, as beats detect). Runs as a job; a missing provider leaves that value and says why in notes. Agents saving to the user scope wait for approval. Tag mood and genre with library update --tags after listening or reading the analysis. Several IDs separated by commas run in one job (result: items [{id, item, measured, notes} or {id, error}], analyzed, failed); a provider busy with another job is waited for, not refused.
 
 - Mode: edit · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_library_analyze`
-- `id`: string, required. Item ID, or scope:id to pick one scope
+- `id`: string, required. Item ID or scope:id; several separated by commas
 - `scope`: string, one of built-in, user, project, plugin. Look only in this scope; without it project, user, plugin, then built-in
 - `provider`: string. audio.loudness provider ID; the project's choice by default
 
