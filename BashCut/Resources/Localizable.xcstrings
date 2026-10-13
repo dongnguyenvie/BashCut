@@ -94,6 +94,15 @@
     "The recipe must be a JSON object such as {\"steps\": […]}": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "The recipe must be a JSON object such as {\"steps\": […] }" } }, "vi": { "stringUnit": { "state": "translated", "value": "Công thức phải là một đối tượng JSON, ví dụ {\"steps\": […] }" } } } },
     "Not a valid recipe: %@": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Not a valid recipe: %@" } }, "vi": { "stringUnit": { "state": "translated", "value": "Công thức không hợp lệ: %@" } } } },
     "Backdrop: mixed": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Backdrop: mixed" } }, "vi": { "stringUnit": { "state": "translated", "value": "Nền: khác nhau" } } } },
+    "Form": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Form" } }, "vi": { "stringUnit": { "state": "translated", "value": "Biểu mẫu" } } } },
+    "JSON": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "JSON" } }, "vi": { "stringUnit": { "state": "translated", "value": "JSON" } } } },
+    "Recipe editor": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Recipe editor" } }, "vi": { "stringUnit": { "state": "translated", "value": "Trình sửa công thức" } } } },
+    "Add step": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Add step" } }, "vi": { "stringUnit": { "state": "translated", "value": "Thêm bước" } } } },
+    "Step": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Step" } }, "vi": { "stringUnit": { "state": "translated", "value": "Bước" } } } },
+    "Move up": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Move up" } }, "vi": { "stringUnit": { "state": "translated", "value": "Chuyển lên" } } } },
+    "Move down": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Move down" } }, "vi": { "stringUnit": { "state": "translated", "value": "Chuyển xuống" } } } },
+    "Remove step": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Remove step" } }, "vi": { "stringUnit": { "state": "translated", "value": "Xoá bước" } } } },
+    "Fix the JSON first: the form needs a JSON object.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Fix the JSON first: the form needs a JSON object." } }, "vi": { "stringUnit": { "state": "translated", "value": "Sửa JSON trước: biểu mẫu cần một đối tượng JSON." } } } },
     "The same cut with voice and sound effects only, to add a platform's own sound": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "The same cut with voice and sound effects only, to add a platform's own sound" } },

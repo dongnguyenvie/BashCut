@@ -677,7 +677,9 @@ panel shows the kit in use and the saved kits (a click applies one); New Project
   the clip's reverse, speed or speed ramp, `transform`, keyframes (as `t`) and the sound effect at its start (one a
   preset placed, or one on an SFX layer starting with the clip), and a 320-pixel still of the clip's middle as the
   preview. The Effects panel's **Apply with…** (the slider button, or the context menu) shows the parameters and an
-  optional frame range; it is the `effect-apply` dialog (`ui respond apply|cancel`).
+  optional frame range; it is the `effect-apply` dialog (`ui respond apply|cancel`). Edit… and Duplicate & Edit… show
+  the recipe as a form (a row per step: its op and fields, steps added, removed and moved; nested values as compact
+  JSON) or as JSON, both checked as typed; Save writes the same `params` as `library update <id> --params`.
 - Looks are filter stacks (#79): `params` `{color: {exposure, contrast, saturation, lutStrength}, lutName}` plus an
   optional .cube LUT as the item's `file` (`library add --kind look --name X --file look.cube`; without `--params`
   the look is just that LUT). `library place` adds one as an adjustment and `library apply` replaces a clip's or
