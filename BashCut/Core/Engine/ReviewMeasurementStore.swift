@@ -3,8 +3,9 @@ import CryptoKit
 import Foundation
 
 /// Keeps the review's picture (`review.measure`) and loudness (a normalized export) measurements and the issues the
-/// plugins' `review.check` reported in the project's cache, so they outlive the app session. Each record is keyed by a fingerprint of what it measured: the project
-/// without its revision number, and the size, date and inode of every media file it plays. Any edit, a replaced media
+/// plugins' `review.check` reported in the project's cache, so they outlive the app session. Each record is keyed by
+/// a fingerprint of what it measured: the project without its revision number, and the size, date and inode of every
+/// media file it plays. Any edit, a replaced media
 /// file or another format gives a new key, so a stale record is never found; an undo back to measured content finds
 /// it again. Records live in `.bashcut/cache/review-measurements/<key>-<kind>.json`, and the oldest are pruned.
 public enum ReviewMeasurementStore {

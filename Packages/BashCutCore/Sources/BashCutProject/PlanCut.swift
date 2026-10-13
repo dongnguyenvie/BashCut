@@ -263,9 +263,7 @@ public enum PlanCut {
         }
     }
 
-    static let titleKeys: Set<String> = [
-        "id", "text", "clip", "offset", "at", "section", "seconds", "preset", "style", "facts",
-    ]
+    static let titleKeys: Set<String> = ["id", "text", "clip", "offset", "at", "section", "seconds", "preset", "style", "facts"]
     /// Picture framing a clip or cover may give (a punch-in or reframe), with their item ranges.
     static let transformKeys: [String: ClosedRange<Double>] = ["zoom": 0.01...100, "pan": -65536...65536, "tilt": -65536...65536]
     /// Notes an agent leaves on an entry; read by nobody, never warned about.

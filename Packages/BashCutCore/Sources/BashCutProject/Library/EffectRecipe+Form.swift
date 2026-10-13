@@ -78,7 +78,7 @@ extension EffectRecipe {
         default:
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
-            return (try? encoder.encode(value)).map { String(decoding: $0, as: UTF8.self) } ?? ""
+            return (try? encoder.encode(value)).flatMap { String(bytes: $0, encoding: .utf8) } ?? ""
         }
     }
 
