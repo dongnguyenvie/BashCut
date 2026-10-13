@@ -88,18 +88,21 @@ public enum UnixRPCClient {
     /// `JobWaitDefaults.maximum`), `checkpoint.status`
     /// up to its `wait`, `agent.ask`
     /// until the user answers or its `timeout` passes; `project.create --import`, `review.run --measure` and
-    /// `export.start --wait` while they import, measure or export; `color.measure` while it renders the edit.
+    /// `export.start --wait` while they import, measure or export; `color.measure` while it renders the edit;
+    /// `review.verify` while it re-samples the picture. Other calls get 30 s: the app can be busy on the main actor
+    /// for longer than 10 s (run11: `project.create` 10.0 s), and a write that answers late is not a failed write.
     static func readSeconds(_ request: RPCRequest) -> Int {
         switch request.method {
         case "jobs.wait": min(JobWaitDefaults.maximum, max(1, request.params["timeout"]?.int ?? JobWaitDefaults.seconds)) + 10
         case "checkpoint.status": min(JobWaitDefaults.maximum, max(0, request.params["wait"]?.int ?? 0)) + 10
-        case "project.create": request.params["importFootage"] == .bool(true) ? 120 : 10
-        case "review.run": request.params["measure"] == .bool(true) ? 115 : 10
-        case "export.start": request.params["wait"] == .bool(true) ? 115 : 10
+        case "project.create": request.params["importFootage"] == .bool(true) ? 120 : 30
+        case "review.run": request.params["measure"] == .bool(true) ? 115 : 30
+        case "export.start": request.params["wait"] == .bool(true) ? 115 : 30
         case "color.measure": 60
+        case "review.verify": 115
         case "agent.ask":
             min(AgentAskDefaults.maximumSeconds, max(5, request.params["timeout"]?.int ?? AgentAskDefaults.seconds)) + 10
-        default: 10
+        default: 30
         }
     }
 
@@ -120,7 +123,12 @@ public enum UnixRPCClient {
             throw RPCFailure(-32000, "Cannot reach BashCut; open the app first")
         }
         try SocketIO.writeLine(JSONEncoder().encode(request), descriptor)
-        let response = try RPCResponse.parse(SocketIO.readLine(descriptor))
+        let line: Data
+        do { line = try SocketIO.readLine(descriptor) } catch let failure as RPCFailure where failure.code == -32000 {
+            throw RPCFailure(-32000, "BashCut closed the connection or did not answer within \(readSeconds(request)) s; the call may still "
+                + "finish, so check its result before running it again")
+        }
+        let response = try RPCResponse.parse(line)
         if let error = response.error { throw error }
         return response
     }

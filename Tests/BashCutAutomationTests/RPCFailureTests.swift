@@ -103,17 +103,18 @@ struct CommandCallerTests {
         #expect(CommandCaller.token == nil)
     }
 
-    @Test("jobs.wait gets a socket read timeout past its wait; other calls keep 10 s")
+    @Test("jobs.wait gets a socket read timeout past its wait; other calls get 30 s")
     func waitTimeout() {
-        #expect(UnixRPCClient.readSeconds(RPCRequest(method: "jobs.status")) == 10)
+        #expect(UnixRPCClient.readSeconds(RPCRequest(method: "jobs.status")) == 30)
         #expect(UnixRPCClient.readSeconds(RPCRequest(method: "jobs.wait", params: ["timeout": .integer(5)])) == 15)
         #expect(UnixRPCClient.readSeconds(RPCRequest(method: "jobs.wait")) == JobWaitDefaults.seconds + 10)
         #expect(UnixRPCClient.readSeconds(RPCRequest(method: "jobs.wait", params: ["timeout": .integer(999)])) == JobWaitDefaults.maximum + 10)
-        // Calls that wait for their own work get the time it may take; without the option they keep 10 s.
+        // Calls that wait for their own work get the time it may take; without the option they get the 30 s default.
         #expect(UnixRPCClient.readSeconds(RPCRequest(method: "review.run", params: ["measure": .bool(true)])) == 115)
         #expect(UnixRPCClient.readSeconds(RPCRequest(method: "export.start", params: ["wait": .bool(true)])) == 115)
         #expect(UnixRPCClient.readSeconds(RPCRequest(method: "project.create", params: ["importFootage": .bool(true)])) == 120)
-        #expect(UnixRPCClient.readSeconds(RPCRequest(method: "project.create")) == 10)
+        #expect(UnixRPCClient.readSeconds(RPCRequest(method: "project.create")) == 30)
+        #expect(UnixRPCClient.readSeconds(RPCRequest(method: "review.verify", params: ["id": .string("all")])) == 115)
     }
 
     @Test("jobs.wait takes a timeout past its maximum (the wait is cut to it) instead of refusing the call")
