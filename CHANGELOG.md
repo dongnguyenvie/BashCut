@@ -5,6 +5,7 @@
 
 ## [Unreleased]
 
+- **Voice checks keep the "phẩy" of a decimal Whisper splits.** Whisper writes "ba phẩy ba cây số" as two words, `3` and `,3km`; the comma was dropped, so every correct take of a line with a decimal scored under 1 with "phẩy" missing and agents re-voiced or inspected it. A number followed by `,3`/`.3` is now read as one decimal. **`skills get bc:review`** (and `bc-review`) finds the kit skill: agents see kit skills by those names (Claude Code, Codex) and the call failed with "No skill named".
 - **Plugin font pickers fit the Inspector.** A `fontPicker` put its label beside the menu, so a long label (HyperFrames' "Name font (empty keeps the design font)") left the menu a few pixels wide in the Inspector; the label now sits above a full-width menu.
 - **`ui view --media-source clips`.** The Media panel's Clips source (library footage) could not be chosen from the CLI or MCP.
 - **`plan check` names the built edit's review errors.** The check already reviewed the edit as it would be built but only listed it under `review`, so an agent reading `problems` found captions under TikTok's caption bar only after rendering every graphic and building; one problem `review-errors` (warning) now counts them by kind with the first one's detail. `bashcut --version` answers like `app version` instead of "Unknown command".

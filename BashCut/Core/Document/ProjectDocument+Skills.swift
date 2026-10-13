@@ -24,8 +24,10 @@ extension ProjectDocument {
                 ?? KnowledgeSkillRef.Origin.allCases
             let knowledge = document.agents.knowledge
             for origin in origins {
-                // A plugin skill is `<plugin-id>:<name>`; its link name or a bare name one plugin has works too.
-                let id = origin == .plugin ? document.pluginSkillID(name) : name
+                // A plugin skill is `<plugin-id>:<name>`; its link name or a bare name one plugin has works too. A kit
+                // skill answers to the names agents see it by too: `bc:review` (Claude Code, Codex) and `bc-review`
+                // (Codex's link).
+                let id = origin == .plugin ? document.pluginSkillID(name) : origin == .kit ? AgentKnowledgeStore.kitSkillName(name) : name
                 guard let id else { continue }
                 let ref = KnowledgeSkillRef(origin: origin, name: id)
                 guard let text = knowledge.text(of: ref),

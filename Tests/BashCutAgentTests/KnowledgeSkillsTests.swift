@@ -130,3 +130,15 @@ struct SkillMarkdownTests {
         #expect(!AgentKnowledgeStore.isValidSkillName("") && !AgentKnowledgeStore.isValidSkillName("hook--first"))
     }
 }
+
+/// `skills get` finds a kit skill by the names agents see it by (Codex live run, 2026-10-13: `bc:review` failed).
+struct KitSkillNameTests {
+    @Test("bc:review and bc-review name the kit skill review; other names stay")
+    func kitNames() {
+        #expect(AgentKnowledgeStore.kitSkillName("bc:review") == "review")
+        #expect(AgentKnowledgeStore.kitSkillName("bc-edit-workflow") == "edit-workflow")
+        #expect(AgentKnowledgeStore.kitSkillName("review") == "review")
+        #expect(AgentKnowledgeStore.kitSkillName("bc:") == "bc:")
+        #expect(AgentKnowledgeStore.kitSkillName("bashcut.vlog:plan") == "bashcut.vlog:plan")
+    }
+}

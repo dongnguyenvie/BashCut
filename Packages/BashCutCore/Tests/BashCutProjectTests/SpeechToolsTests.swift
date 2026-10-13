@@ -148,6 +148,9 @@ struct SpeechToolsTests {
         #expect(TextAlignment.align("tám km", to: heard("8 km")).similarity == 1, "the script says it as heard")
         let unsaid = TextAlignment.align("ba mét", to: heard("3 km"))
         #expect(unsaid.words.last?.kind == "substituted", "no spoken form of km in the script: unchanged")
+        let split = TextAlignment.align("ba phẩy ba cây số đi bộ", to: heard("3 ,3km đi bộ."))
+        #expect(split.similarity == 1, "a decimal written as two words (Whisper: 3 ,3km) keeps its phẩy")
+        #expect(TextAlignment.align("ba, bốn người", to: heard("3, 4 người")).similarity == 1, "a list is not a decimal")
     }
 
     @Test("Provider scores per word: avgLogprob and compressionRatio decode, stay in precision and rows")
