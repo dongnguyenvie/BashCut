@@ -32,9 +32,12 @@ struct RunActivitySection: View {
                 Text("No agent activity yet. Steps and jobs show here while an agent works.")
                     .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
-            if activity.canStop {
-                HStack {
-                    Spacer()
+            HStack {
+                Toggle("Follow", isOn: Binding(get: { activity.follow }, set: { _ in document.run(.toggleFollowAgent) }))
+                    .toggleStyle(.checkbox).controlSize(.small)
+                    .help("Scroll the timeline to where the agent works; scrolling it yourself turns this off")
+                Spacer()
+                if activity.canStop {
                     Button(role: .destructive) { document.run(.stopAgent) } label: {
                         Label("Stop", systemImage: "stop.circle")
                     }
@@ -76,6 +79,11 @@ struct RunActivitySection: View {
             Text(step.method).font(.caption.monospaced()).lineLimit(1)
             if let detail = job?.detail { Text(detail).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle) }
             Spacer(minLength: 4)
+            if !step.changed.isEmpty {
+                Button { document.jumpToAgentItems(step.changed) } label: { Image(systemName: "arrow.right.circle") }
+                    .buttonStyle(.plain).foregroundStyle(.cyan)
+                    .help(String(format: String(localized: "Jump to the %d items this step changed"), step.changed.count))
+            }
             if state == .running, let value = job?.progress {
                 Text(value, format: .percent.precision(.fractionLength(0))).monospacedDigit().foregroundStyle(.secondary)
             } else {

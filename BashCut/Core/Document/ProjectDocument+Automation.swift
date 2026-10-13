@@ -467,6 +467,7 @@ extension ProjectDocument {
             author: author, label: label, beforeRevision: before.revision,
             afterRevision: project.revision, changes: changes, command: CommandCaller.method)
         agentChangedIDs = Set(changes.compactMap { $0.after == nil ? nil : $0.itemID })
+        activity.flash(changes.compactMap { $0.after == nil ? nil : $0.itemID })
     }
 
     func clearAgentChange() {

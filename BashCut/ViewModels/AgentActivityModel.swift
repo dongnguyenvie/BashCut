@@ -62,7 +62,20 @@ enum AgentStatus: Equatable {
     /// Methods that are bookkeeping, not steps: run log entries and job polls.
     static let quietPrefixes = ["run.", "jobs.", "context.", "agent.status", "checkpoint.status"]
 
-    init(document: ProjectDocument) { self.document = document }
+    /// Blocks being made, shown where they land (#534).
+    let placeholders: WorkPlaceholders
+    /// Follow mode: the timeline scrolls to where the agent works. On for each new run the panel follows, off as soon
+    /// as the user scrolls the timeline (`ui action run.follow` toggles it).
+    private(set) var follow = false
+    /// Items to flash on the timeline: the agent's latest change, or a step's items after Jump.
+    private(set) var flash: (id: UUID, items: [String])?
+    @ObservationIgnored private var followedRun: Int?
+    @ObservationIgnored private var followedFrame: Int?
+
+    init(document: ProjectDocument) {
+        self.document = document
+        placeholders = WorkPlaceholders(document: document)
+    }
 
     /// Called by the command registry as an agent request starts and ends.
     func record(_ activity: CommandActivity) {
@@ -118,13 +131,53 @@ enum AgentStatus: Equatable {
     /// Forgets the steps when another project opens.
     func reset() {
         steps.removeAll()
+        placeholders.reset()
+        follow = false
+        followedRun = nil
+        followedFrame = nil
         refreshStatus()
+    }
+
+    func setFollow(_ on: Bool) {
+        follow = on
+        followedFrame = nil
+        if on { followWork() }
+    }
+
+    /// The user scrolled the timeline: follow mode ends.
+    func userScrolled() {
+        if follow { follow = false }
+    }
+
+    func flash(_ items: [String]) {
+        guard !items.isEmpty else { return }
+        flash = (UUID(), items)
+    }
+
+    /// Where the agent works now: the first placeholder on the timeline, else the start of its latest change.
+    var workFrame: Int? {
+        if let frames = placeholders.items.first(where: { $0.onTimeline && !$0.failed })?.target.frames { return frames.lowerBound }
+        return document.agentChange?.changes.compactMap { $0.after?.at }.min()
+    }
+
+    /// Follow mode: turns on for a new run the panel follows, and scrolls the timeline when the work moves.
+    private func followWork() {
+        if let progress = document.runPanel.progress, !progress.finished, progress.run != followedRun,
+            document.runPanel.tracksRun
+        {
+            followedRun = progress.run
+            follow = true
+        }
+        guard follow, let frame = workFrame, frame != followedFrame else { return }
+        followedFrame = frame
+        document.ui.timelineReveal = TimelineReveal(frame: frame)
     }
 
     /// Called every second by the editor and after each request.
     func refreshStatus(now: Date = Date()) {
         let next = computeStatus(now: now)
         if next != status { status = next }
+        followWork()
     }
 
     private func computeStatus(now: Date) -> AgentStatus {

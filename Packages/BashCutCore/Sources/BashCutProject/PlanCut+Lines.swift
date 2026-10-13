@@ -38,6 +38,28 @@ extension PlanCut {
             seconds: seconds, until: until, main: track == "main", from: from)
     }
 
+    /// Where each graphic would show on `project` as it is now (#534): its span from the items an earlier apply built
+    /// for its anchor (tagged with the entry's ID), or from `at`. The editor shows a placeholder there while a graphics
+    /// plugin renders it. Graphics on a section, or whose anchor is not on the timeline, are left out.
+    public static func graphicSpans(_ spec: Spec, in project: Project) -> [String: Range<Int>] {
+        var anchors: [String: Placement] = [:]
+        for track in project.tracks {
+            for item in track.items {
+                guard let id = item[tag]?.string else { continue }
+                let known = anchors[id]
+                anchors[id] = Placement(id: id, at: min(known?.at ?? item.at, item.at), end: max(known?.end ?? item.end, item.end))
+            }
+        }
+        var placed = Array(anchors.values)
+        var spans: [String: Range<Int>] = [:]
+        for graphic in spec.graphics where graphic.section == nil {
+            guard let span = graphicSpan(graphic, anchors: placed, sections: [:], fps: project.fps.value) else { continue }
+            placed.append(span)
+            spans[graphic.id] = span.at..<span.end
+        }
+        return spans
+    }
+
     static func decodeSound(
         _ row: [String: JSONValue], id: String, entries: [String], sections: Set<String>
     ) throws -> Sound {
