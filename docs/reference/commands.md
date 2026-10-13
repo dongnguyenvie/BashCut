@@ -133,7 +133,7 @@ List recently opened projects, newest first (Open Recent › View All…): name,
 
 ### `bashcut timeline get [--format <format>]`
 
-Read the revision, format and tracks, including track IDs and roles, and scale per video or image item: fit or fill, baseScale, zoom and maxZoom (keyframes), pixelRatio (output pixels per source pixel; over 1 is upscaled) now and at maxZoom, maxZoomNative (the largest zoom before upscaling), shown size, frameCoverage and backdrop (blur, color or null). media lists each media's path, kind, license and provenance as stored.
+Read the revision, format and tracks (IDs, roles, V1/A1 labels), and scale per video or image item: fit or fill, baseScale, zoom and maxZoom (keyframes), pixelRatio (output pixels per source pixel; over 1 is upscaled) now and at maxZoom, maxZoomNative (the largest zoom before upscaling), shown size, frameCoverage and backdrop (blur, color or null). media lists each media's path, kind, license and provenance as stored.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_timeline_get`
 - `format`: string, one of json, text. json (default) or a compact text listing
@@ -957,7 +957,7 @@ Add an empty layer: text goes to the front of the picture stack, video and adjus
 Change a layer's header switches like the timeline header: hide a visual layer, mute an audio layer, lock any layer (a locked layer refuses edits until unlocked); set a caption layer's language (P1-F4), which output.captions picks a layer by.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_layers_set`
-- `track`: string, required. Layer ID
+- `track`: string, required. Layer ID or label (V2, A1)
 - `hidden`: boolean. Hidden (visual layers)
 - `muted`: boolean. Muted (audio layers)
 - `locked`: boolean. Locked

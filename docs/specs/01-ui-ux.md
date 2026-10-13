@@ -121,7 +121,7 @@ Review and the agent both use these roles.
 | Context menu | Right-click a clip | Split, Delete, Lift, Freeze frame, Change framing, Unlink audio, Lock/Unlock layer (`clip.*` and `timeline.*` actions) |
 | Delete a gap | Click the hatched gap on Main, then ⌫, or right-click › Delete gap | `timeline close-gap` |
 | Drop media | Drag from the Media or Audio panel, or files from Finder | Lands on the layer under the pointer when it takes that kind of media (else main or music), at the snapped frame; spills like any placement |
-| Layer header | Pinned on the left | Icon and name per layer; hide (visual layers), mute (audio layers) and lock switches (`layers set`). Clips on hidden, muted or locked layers are drawn faded or striped |
+| Layer header | Pinned on the left | Compact by default (78 pt): a short ID per layer (V1… visual layers from the back, A1… audio layers from the top; Main has a filled chip), an icon, and hide (visual layers), mute (audio layers) and lock switches (`layers set`). Hovering the ID shows `V3 · Captions`, double-click renames, the selected row shows its name. Drag the right edge for a wide header with full names; the width is remembered (`ui action timeline.header-compact` toggles). IDs come from the layer order and are not stored; `timeline get` reports them as `label` and `--track` accepts them. Clips on hidden, muted or locked layers are drawn faded or striped |
 
 ### 2.4 How agent changes appear
 

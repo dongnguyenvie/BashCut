@@ -6990,6 +6990,54 @@
         "en": { "stringUnit": { "state": "translated", "value": "Remove from Library" } },
         "vi": { "stringUnit": { "state": "translated", "value": "Xoá khỏi thư viện" } }
       }
+    },
+    "Compact Layer Header": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Compact Layer Header" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Thanh lớp thu gọn" } }
+      }
+    },
+    "Show layer": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Show layer" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Hiện lớp" } }
+      }
+    },
+    "Hide layer": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Hide layer" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Ẩn lớp" } }
+      }
+    },
+    "Mute layer": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Mute layer" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Tắt tiếng lớp" } }
+      }
+    },
+    "Unmute layer": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Unmute layer" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Bật tiếng lớp" } }
+      }
+    },
+    "Lock layer": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Lock layer" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Khoá lớp" } }
+      }
+    },
+    "Unlock layer": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Unlock layer" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Mở khoá lớp" } }
+      }
+    },
+    "Double-click to rename": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Double-click to rename" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Nhấp đúp để đổi tên" } }
+      }
     }
   },
   "version": "1.0"

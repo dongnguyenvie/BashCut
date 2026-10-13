@@ -78,10 +78,11 @@ struct EditorUIStateTests {
     func zoomToFit() {
         let ui = EditorUIState()
         ui.timelineViewportWidth = 1180
+        ui.timelineLeading = 140
         // 30 fps × 100 s: (1180 − 140 − 40) points / 100 s = 10 points per second.
         ui.zoomToFit(duration: 3000, fps: 30)
         #expect(abs(ui.timelineScale - 10) < 1e-9)
-        #expect(ui.timelineZoomAnchor?.frame == 0 && ui.timelineZoomAnchor?.viewOffset == EditorUIState.timelineLeading)
+        #expect(ui.timelineZoomAnchor?.frame == 0 && ui.timelineZoomAnchor?.viewOffset == 140)
         ui.zoomToFit(duration: 30 * 3600 * 3, fps: 30)
         #expect(ui.timelineScale == EditorUIState.timelineZoomRange.lowerBound)
         ui.zoomToFit(duration: 1, fps: 30)

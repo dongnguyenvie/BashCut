@@ -13,8 +13,8 @@ extension TimelineCanvas {
         let seconds = Double(project.duration) / project.fps.value + step * 2
         NSColor.darkGray.setStroke()
         if scale >= 6 {
-            let first = max(0, Int((dirtyRect.minX - TimelineLayout.leading) / scale))
-            let last = min(Int(seconds * project.fps.value), Int((dirtyRect.maxX - TimelineLayout.leading) / scale) + 1)
+            let first = max(0, Int((dirtyRect.minX - layout.leading) / scale))
+            let last = min(Int(seconds * project.fps.value), Int((dirtyRect.maxX - layout.leading) / scale) + 1)
             if first <= last {
                 let ticks = NSBezierPath()
                 for frame in first...last {
@@ -26,7 +26,7 @@ extension TimelineCanvas {
         }
         let lines = NSBezierPath()
         for second in stride(from: 0.0, through: seconds, by: step) {
-            let x = TimelineLayout.leading + second * pointsPerSecond
+            let x = layout.leading + second * pointsPerSecond
             if x < dirtyRect.minX - 60 || x > dirtyRect.maxX { continue }
             let whole = Int(second)
             let label = step >= 60 || whole >= 60 ? String(format: "%d:%02d", whole / 60, whole % 60) : "\(whole)s"

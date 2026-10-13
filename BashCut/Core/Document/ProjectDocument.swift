@@ -79,10 +79,9 @@ final class ProjectDocument {
     let appUpdate = AppUpdateModel.shared
     /// A timeline drag is in progress; only guards autosave and agent edits, so views do not observe it.
     @ObservationIgnored var timelineGestureActive = false
-    /// Preferences and recent projects.
-    let settings: SettingsModel
-    /// Zoom, toggles, panels and open sheets, and the full-screen preview window (#530).
-    let ui = EditorUIState(), fullScreenPreview = FullScreenPreview()
+    let settings: SettingsModel // Preferences and recent projects.
+    let ui: EditorUIState // Zoom, toggles, panels and open sheets.
+    let fullScreenPreview = FullScreenPreview() // The full-screen preview window (#530).
     @ObservationIgnored lazy var agents = AgentDockModel(document: self)
     @ObservationIgnored lazy var chatAgents = ChatAgents(document: self)
     @ObservationIgnored lazy var runPanel = RunPanelModel(document: self) // The run panel and result card (#447, #448).
@@ -114,6 +113,7 @@ final class ProjectDocument {
         settings = services.settings
         automation = services.automation
         preview = PreviewController(engine: services.engine)
+        ui = EditorUIState(timelineLeading: services.settings.timelineHeaderWidth)
         preview.onMessage = { [weak self] in self?.message = $0 }
         preview.onPlaybackStopped = { [weak self] frame in
             self?.emitPluginEvent(.playbackStopped, ["playhead": .integer(frame)])

@@ -92,7 +92,7 @@ import BashCutProject
     init(document: ProjectDocument) {
         self.document = document
         project = document.project
-        layout = TimelineLayout(project: document.project, scale: 1)
+        layout = TimelineLayout(project: document.project, scale: 1, leading: document.ui.timelineLeading)
         mediaByID = Self.index(document.project.media)
         super.init(frame: .zero)
         wantsLayer = true
@@ -153,8 +153,8 @@ import BashCutProject
 
     /// The gap under `point` on a layer that has clips after it.
     func gapHit(at point: CGPoint) -> (trackID: String, range: Range<Int>)? {
-        guard let row = layout.row(at: point.y), point.y < row.maxY, point.x >= TimelineLayout.leading else { return nil }
-        let frame = Int((point.x - TimelineLayout.leading) / scale)
+        guard let row = layout.row(at: point.y), point.y < row.maxY, point.x >= layout.leading else { return nil }
+        let frame = Int((point.x - layout.leading) / scale)
         return row.track.gaps.first { $0.contains(frame) }.map { (row.track.id, $0) }
     }
 
@@ -194,7 +194,7 @@ import BashCutProject
         let sections = project.sectionMarkers
         let bandY = TimelineLayout.sectionBand
         let band = CGRect(
-            x: TimelineLayout.leading, y: bandY.lowerBound, width: max(0, bounds.width - TimelineLayout.leading),
+            x: layout.leading, y: bandY.lowerBound, width: max(0, bounds.width - layout.leading),
             height: bandY.upperBound - bandY.lowerBound)
         guard band.intersects(dirtyRect) else { return }
         NSColor(calibratedWhite: 0.13, alpha: 1).setFill()

@@ -63,7 +63,7 @@ extension ProjectDocument {
         case .showHistory, .showReview, .showPlugins, .showDoctor, .showSettings, .showAgentKit, .showSections,
             .showCommands, .showShortcuts, .showUpdates, .showAbout, .showRecentProjects, .toggleAgentDock, .toggleLibraryPanel, .toggleInspector,
             .askAgent, .openClaudeTerminal, .openCodexTerminal, .openShellTerminal,
-            .toggleSafeArea, .toggleSnap, .addVideoLayer, .addAdjustmentLayer, .addTextLayer,
+            .toggleSafeArea, .toggleSnap, .toggleCompactHeader, .addVideoLayer, .addAdjustmentLayer, .addTextLayer,
             .addAudioLayer:
             return true
         }
@@ -117,6 +117,9 @@ extension ProjectDocument {
         case .zoomIn: ui.zoomIn(around: playhead)
         case .zoomOut: ui.zoomOut(around: playhead)
         case .zoomFit: ui.zoomToFit(duration: project.duration, fps: project.fps.value)
+        case .toggleCompactHeader:
+            setTimelineHeaderWidth(
+                ui.timelineHeaderCompact ? EditorUIState.wideTimelineLeading : EditorUIState.compactTimelineLeading)
         case .freezeFrame: toggleFreezeSelected()
         case .unlinkAudio: unlinkSelectedAudio()
         case .speedUp: try stepSpeed(up: true, author: author)
@@ -197,6 +200,15 @@ extension ProjectDocument {
         case .clearRecentProjects: settings.clearRecentProjects()
         default: assertionFailure("Unhandled UI action \(action.id)")
         }
+    }
+
+    /// Resizes the timeline's layer header (dragging its edge, `timeline.header-compact`) and remembers the width.
+    func setTimelineHeaderWidth(_ width: Double) {
+        let range = EditorUIState.timelineLeadingRange
+        let width = min(max(width.rounded(), range.lowerBound), range.upperBound)
+        guard width != ui.timelineLeading else { return }
+        ui.timelineLeading = width
+        settings.timelineHeaderWidth = width
     }
 
     /// Scrolls the timeline so `frame` is visible.
@@ -350,7 +362,8 @@ extension ProjectDocument {
                 .number(EditorUIState.timelineZoomRange.lowerBound), .number(EditorUIState.timelineZoomRange.upperBound),
             ]),
             "viewerZoom": .string(EditorViewerZoom.choice(ui.viewerZoom)),
-            "snap": .bool(ui.snapping), "safeArea": .bool(ui.showSafeArea), "compare": .bool(preview.showColorComparison),
+            "snap": .bool(ui.snapping), "headerCompact": .bool(ui.timelineHeaderCompact),
+            "headerWidth": .number(ui.timelineLeading), "safeArea": .bool(ui.showSafeArea), "compare": .bool(preview.showColorComparison),
             "fullScreen": .bool(fullScreenPreview.isOn),
             "agentDock": .bool(ui.showAgentDock && !agents.isDetached), "agentDockDetached": .bool(agents.isDetached),
             "libraryPane": .bool(ui.showLibraryPanel), "inspectorPane": .bool(ui.showInspector),

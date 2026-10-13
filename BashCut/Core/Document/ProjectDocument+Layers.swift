@@ -110,6 +110,17 @@ extension ProjectDocument {
         return try commit(operation, label: "Delete gap", author: author, baseRevision: baseRevision)
     }
 
+    /// Renames a layer (double-click in the layer header) as one undoable edit.
+    @discardableResult
+    func renameLayer(_ trackID: String, to name: String, author: Author = .user) throws -> Int {
+        guard let track = project.tracks.first(where: { $0.id == trackID }) else {
+            throw ProjectError.invalid("Unknown layer \(trackID)")
+        }
+        return try commit(
+            .setTrackProperties(track: trackID, patch: ["name": .string(name)]), label: "Rename \(track.name)",
+            author: author)
+    }
+
     /// Sets a layer's hidden, muted or locked switch (nil leaves it as is) as one undoable edit.
     @discardableResult
     func setLayerSwitches(

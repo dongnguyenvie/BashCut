@@ -139,6 +139,8 @@ import BashCutPlugin
         menu.addItem(item(.deleteLayer, String(localized: "Delete Empty Layer")))
         menu.addItem(.separator())
         menu.addItem(item(.toggleSnap, String(localized: "Snap")) { [weak self] in self?.document.ui.snapping == true })
+        menu.addItem(item(.toggleCompactHeader, String(localized: "Compact Layer Header")) { [weak self] in
+            self?.document.ui.timelineHeaderCompact == true })
         menu.addItem(item(.showSections, String(localized: "Sections…")))
         menu.addItem(item(.refreshWaveforms, String(localized: "Refresh Waveforms")))
         menu.addItem(.separator())
@@ -187,8 +189,7 @@ import BashCutPlugin
         menu.addItem(.separator())
         menu.addItem(item(.toggleSafeArea, String(localized: "Safe Area")) { [weak self] in self?.document.ui.showSafeArea == true })
         menu.addItem(item(.toggleCompare, String(localized: "Compare Before / After")) { [weak self] in
-            self?.document.preview.showColorComparison == true
-        })
+            self?.document.preview.showColorComparison == true })
         menu.addItem(item(.toggleFullScreenPreview, String(localized: "Full Screen Preview")) { [weak self] in
             self?.document.fullScreenPreview.isOn == true })
         menu.addItem(.separator())

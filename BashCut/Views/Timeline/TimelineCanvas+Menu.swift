@@ -99,7 +99,7 @@ extension TimelineCanvas {
         menu.addItem(QuickEditChoice.menuItem(document))
         menu.addItem(.separator())
         let locked = track.isLocked
-        let title = String(format: String(localized: locked ? "Unlock %@" : "Lock %@"), track.name)
+        let title = String(format: String(localized: locked ? "Unlock %@" : "Lock %@"), document.project.trackTitle(track))
         menu.addItem(ClosureMenuItem(title) { [weak self] in
             do { try self?.document.setLayerSwitches(track.id, locked: !locked) } catch {
                 self?.document.message = error.localizedDescription
