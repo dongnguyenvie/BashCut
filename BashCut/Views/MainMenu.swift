@@ -185,9 +185,7 @@ import BashCutPlugin
         }
         menu.addItem(submenu(library))
         menu.addItem(.separator())
-        menu.addItem(item(.toggleSafeArea, String(localized: "Safe Area")) { [weak self] in
-            self?.document.ui.showSafeArea == true
-        })
+        menu.addItem(item(.toggleSafeArea, String(localized: "Safe Area")) { [weak self] in self?.document.ui.showSafeArea == true })
         menu.addItem(item(.toggleCompare, String(localized: "Compare Before / After")) { [weak self] in
             self?.document.preview.showColorComparison == true
         })
