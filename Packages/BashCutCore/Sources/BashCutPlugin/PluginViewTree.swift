@@ -9,6 +9,9 @@ public struct PluginViewNode: Sendable, Equatable, Identifiable {
     public enum Kind: String, CaseIterable, Sendable {
         case section, row, divider, spacer, text, badge, keyValue, progress, image, imageCompare, audio, list
         case button, textField, textArea, toggle, picker, slider
+        /// A grid of tiles (thumbnails with title, badge, audio preview and buttons) like `list` items: sends `select`
+        /// with the item id, `action` with `{"item", "action"}` and `click` with `"more"` from its load-more button.
+        case grid
         /// A colour well: `value` is `#RRGGBB` (`#RRGGBBAA` with `alpha`); sends `change` with the hex string.
         case colorPicker
         /// A font menu of the project's fonts and the installed ones (what `fonts list` lists): `value` is a PostScript
@@ -16,7 +19,7 @@ public struct PluginViewNode: Sendable, Equatable, Identifiable {
         case fontPicker
 
         /// Components that send events and so need an `id`.
-        public var isInteractive: Bool { isInput || [.button, .list].contains(self) }
+        public var isInteractive: Bool { isInput || [.button, .list, .grid].contains(self) }
 
         /// Inputs whose current value goes with every event as `values[id]`.
         public var isInput: Bool {
@@ -149,20 +152,20 @@ public struct PluginViewTree: Sendable, Equatable {
         return PluginViewNode(id: declaredID ?? path, type: type, props: fields, children: children)
     }
 
-    /// Cuts long texts and checks list items and picker options.
+    /// Cuts long texts and checks list and grid items and picker options.
     private static func check(_ fields: inout [String: JSONValue], kind: PluginViewNode.Kind?, id: String?) throws {
         for (key, field) in fields {
             if case .string(let text) = field, text.count > maximumTextLength {
                 fields[key] = .string(String(text.prefix(maximumTextLength)))
             }
         }
-        if kind == .list {
+        if let kind, [.list, .grid].contains(kind) {
             let items = fields["items"]?.array ?? []
             guard items.count <= maximumListItems else {
-                throw PluginError.invalid("A list shows at most \(maximumListItems) items")
+                throw PluginError.invalid("A \(kind.rawValue) shows at most \(maximumListItems) items")
             }
             guard items.allSatisfy({ !($0.object["id"]?.string?.isEmpty ?? true) }) else {
-                throw PluginError.invalid("List \(id ?? "") items need an id")
+                throw PluginError.invalid("\(kind == .grid ? "Grid" : "List") \(id ?? "") items need an id")
             }
         }
         if kind == .picker, (fields["options"]?.array.count ?? 0) > maximumOptions {
@@ -238,7 +241,8 @@ public enum PluginViewColor {
 }
 
 /// Something the user did in a view: `click` (button), `change` (input), `submit` (text field Return), `select` (list
-/// row, value = item id) or `action` (list row button, value = `{"item", "action"}`).
+/// row or grid cell, value = item id) or `action` (list row or grid cell button, value = `{"item", "action"}`); a grid's
+/// load-more button sends `click` with value `"more"`.
 public struct PluginViewEvent: Sendable, Equatable {
     public enum Kind: String, CaseIterable, Sendable { case click, change, submit, select, action }
 

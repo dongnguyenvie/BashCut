@@ -211,6 +211,7 @@ struct PluginNodeView: View {
         case .imageCompare: PluginImageCompare(node: node)
         case .audio: PluginAudioButton(path: node.string("path"), title: node.string("title"))
         case .list: PluginListView(node: node, model: model)
+        case .grid: PluginGridView(node: node, model: model)
         case .button: button
         case .textField: PluginTextField(node: node, model: model)
         case .textArea: textArea

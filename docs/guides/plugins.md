@@ -1018,8 +1018,9 @@ The app asks the plugin for a view's components and sends what the user does. Bo
 - `state` is whatever the plugin returned last time (or `null`), so a plugin can keep no state of its own.
 - `values` maps every input's `id` to its current value.
 - `context` is the read-only editor snapshot actions get (project, selection, playhead).
-- Event `type` is `click` (button), `change` (input), `submit` (text field with `submit`, on Return), `select` (list
-  row; value = item `id`) or `action` (list row button; value = `{"item", "action"}`).
+- Event `type` is `click` (button; a grid's load-more button with value `"more"`), `change` (input), `submit` (text
+  field with `submit`, on Return), `select` (list row or grid cell; value = item `id`) or `action` (list row or grid
+  cell button; value = `{"item", "action"}`).
 
 The answer:
 
@@ -1061,7 +1062,7 @@ progress, a timer, a download that finished:
 
 ### Components
 
-Every component is `{"type", "id"?, …}`. Buttons, inputs and lists need an `id` (a short key, unique in the view);
+Every component is `{"type", "id"?, …}`. Buttons, inputs, lists and grids need an `id` (a short key, unique in the view);
 others may have one. Text is shown as given (the plugin localizes it with `locale`).
 
 | Type | Fields |
@@ -1077,6 +1078,7 @@ others may have one. Text is shown as given (the plugin localizes it with `local
 | `imageCompare` | `before`, `after` (local files), `height`?, `beforeLabel`?, `afterLabel`?; drag to compare |
 | `audio` | `path`, `title`?: a play/stop button (one sound plays at a time) |
 | `list` | `items: [{"id", "title", "subtitle"?, "icon"?, "image"?, "badge"?, "audio"?, "file"?, "libraryItem"?, "actions"?: [{"id", "title", "icon"?}]}]` (at most 500, 3 actions per row), `selected`?, `empty`?; a row with `file` or `libraryItem` can be dragged |
+| `grid` | `items: [{"id", "image"?, "title"?, "subtitle"?, "badge"?, "badgeColor"?, "icon"?, "audio"?, "file"?, "libraryItem"?, "actions"?: [{"id", "title", "icon"?}]}]` (at most 500, 3 actions per cell), `selected`? (an item id, or an array of ids for several), `cellWidth`? (64–320, default 120), `aspect`? (image width/height, 0.3–3, default 1), `empty`?, `more`? (title of a load-more button under the grid): tiles that fill the width, the image filled and clipped to `aspect` (the `icon` or a placeholder without one), `badge` top right in `badgeColor` (the `badge` colours), `audio` as a play button bottom left, `title` and `subtitle` on one line each, then the buttons. Sends `select` (cell, value = item `id`), `action` (cell button, value = `{"item", "action"}`) and `click` with value `"more"` (load-more). Host feature `views.grid` |
 | `button` | `title`, `icon`?, `style`? (`primary`, `destructive`, `link`), `confirm`?, `wide`?, `disabled`? |
 | `textField` | `label`?, `placeholder`?, `value`?, `search`? (sends `change` 300 ms after typing stops), `submit`? |
 | `textArea` | `label`?, `value`?, `height`? (40–400) |
@@ -1114,7 +1116,7 @@ Not available (they would cost performance or safety): webviews, free drawing, v
 
 ### Drag and drop
 
-A list row with `file` and an `image` (its `file`, or its `path`) can be dragged out of a view (host feature
+A list row or grid cell with `file`, and an `image` (its `file`, or its `path`), can be dragged out of a view (host feature
 `views.drag`) when the file is a local video, audio or image file given as an absolute path; other files do not drag.
 BashCut runs the same validated import as for files dragged from Finder; the plugin is not called.
 
@@ -1393,9 +1395,17 @@ later:
 - Call params and results are limited to 1 MiB.
 - Views and actions (API 8) call as author `plugin`, with one command token per plugin, limited to the chat-agent
   commands plus `plugins.run`, `plugins.invoke`, `plugins.show-view`, `plugins.option`, `plugins.overlays`,
-  `plugins.set-overlays` (its own) and `capabilities.get` (the providers of a capability, for a provider picker);
+  `plugins.set-overlays` (its own), `capabilities.get` (the providers of a capability, for a provider picker) and
+  `jobs.wait` (wait for a job such as `library analyze`; at most 110 s per call, and the silence timeout is paused);
   `ui.action` only for
   `notify`, `panel` and `source` (`{"action": "notify", "target": "Done"}` shows a status message).
+- `cli` (`{"argv": ["library", "add", "--kind", "clip", "--file", "/abs/x.jpg"]}`, the words after `bashcut`) runs
+  that command as if it had been called directly: the words are parsed like the command line (`--format` is
+  ignored; the result is the command's JSON), then the same allow-list and own-plugin rules apply, so `plugins
+  invoke …` works only for capabilities in `uses`. A missing or non-string `argv`, an unknown command or bad options
+  fail with -32602 and the command line's message; `cli` cannot run `cli`. A plugin can so run unchanged scripts
+  that shell out to `bashcut …` by putting a small `bashcut` stand-in first on their `PATH` that forwards its argv
+  as this call.
 - `plugins.option` (`{"plugin": "<its id>", "option", "value"}`) sets one of the calling plugin's own options, so a
   view's "Use" button can choose the `voice` the Voice panel and every later request see, without a copy in plugin
   data. `value` is text read like `plugins option --value` (`on`, `12`, a choice) or JSON of the option's type;
