@@ -189,7 +189,7 @@ extension ProjectDocument {
         let root = fileURL?.deletingLastPathComponent()
         var measured = LibraryAudio(seconds: try await Self.soundSeconds(url, label: item.reference))
         var notes: [String: JSONValue] = [:]
-        // Music only, kept in params next to the measured values: beatConfidence (0…1) and energy {rangeDb, liftAt, peakAt}.
+        // Music only, kept in params next to the measured values: beatConfidence and energy (`measureBed`).
         var extra: [String: JSONValue] = [:]
         do {
             let loudness = try await plugins.queued("audio.loudness") {
@@ -211,34 +211,10 @@ extension ProjectDocument {
         if audio.placementRole(seconds: measured.seconds) == "sfx" {
             notes["bpm"] = .string("Not measured for a sound effect")
         } else {
-            do {
-                let beats = try await plugins.queued("audio.beats") {
-                    try await plugins.service.detectBeats(
-                        mediaURL: url, preferredProvider: project.preferredProvider(for: "audio.beats"),
-                        projectRoot: root ?? store.root)
-                }
-                if LibraryAudio.bpmRange.contains(beats.bpm) {
-                    measured.bpm = beats.bpm
-                    if let confidence = beats.grid["confidence"] { extra["beatConfidence"] = confidence }
-                } else {
-                    notes["bpm"] = .string("No steady tempo found")
-                }
-            } catch {
-                notes["bpm"] = .string(error.localizedDescription)
-            }
-            do {
-                let energy = try await plugins.queued("audio.energy") {
-                    try await plugins.service.analyzeEnergy(
-                        mediaURL: url, preferredProvider: project.preferredProvider(for: "audio.energy"), projectRoot: root)
-                }
-                let curve = energy.result.object
-                if let summary = LibraryAudio.energySummary(
-                    levelDb: curve["levelDb"]?.array.compactMap(\.double) ?? [], step: curve["step"]?.double ?? 0) {
-                    extra["energy"] = .object(summary)
-                }
-            } catch {
-                notes["energy"] = .string(error.localizedDescription)
-            }
+            let music = await measureBed(url, root: root, beatsRoot: root ?? store.root)
+            measured.bpm = music.bpm
+            extra = music.extra
+            notes.merge(music.notes) { $1 }
         }
         var analysis: [String: JSONValue]
         do { analysis = try LibraryAudio.analysisChanges(item, measured: measured) } catch {
@@ -257,6 +233,43 @@ extension ProjectDocument {
         return .object([
             "item": saved, "measured": .object(measured.params().merging(extra) { $1 }), "notes": .object(notes),
         ])
+    }
+
+    /// A music bed's tempo (an audio.beats provider) with `beatConfidence` (0…1, when the provider gives one), and
+    /// `energy` {rangeDb, liftAt, peakAt} from an audio.energy curve; a provider that fails says why in notes.
+    private func measureBed(
+        _ url: URL, root: URL?, beatsRoot: URL
+    ) async -> (bpm: Double?, extra: [String: JSONValue], notes: [String: JSONValue]) {
+        var bpm: Double?
+        var extra: [String: JSONValue] = [:], notes: [String: JSONValue] = [:]
+        do {
+            let beats = try await plugins.queued("audio.beats") {
+                try await plugins.service.detectBeats(
+                    mediaURL: url, preferredProvider: project.preferredProvider(for: "audio.beats"), projectRoot: beatsRoot)
+            }
+            if LibraryAudio.bpmRange.contains(beats.bpm) {
+                bpm = beats.bpm
+                if let confidence = beats.grid["confidence"] { extra["beatConfidence"] = confidence }
+            } else {
+                notes["bpm"] = .string("No steady tempo found")
+            }
+        } catch {
+            notes["bpm"] = .string(error.localizedDescription)
+        }
+        do {
+            let energy = try await plugins.queued("audio.energy") {
+                try await plugins.service.analyzeEnergy(
+                    mediaURL: url, preferredProvider: project.preferredProvider(for: "audio.energy"), projectRoot: root)
+            }
+            let curve = energy.result.object
+            if let summary = LibraryAudio.energySummary(
+                levelDb: curve["levelDb"]?.array.compactMap(\.double) ?? [], step: curve["step"]?.double ?? 0) {
+                extra["energy"] = .object(summary)
+            }
+        } catch {
+            notes["energy"] = .string(error.localizedDescription)
+        }
+        return (bpm, extra, notes)
     }
 
     /// The Audio panel's Analyze: the same as `library analyze`, as the user.
