@@ -260,14 +260,15 @@ import BashCutPlugin
     // MARK: Dynamic content
 
     private func fillRecents(_ menu: NSMenu) {
-        for url in document.settings.recentProjects {
-            let entry = ActionMenuItem(url.deletingLastPathComponent().lastPathComponent, target: self) { [weak self] in
-                self?.document.openProject(at: url)
-            }
-            entry.toolTip = url.deletingLastPathComponent().path
+        let recents = Array(document.settings.recentHistory.prefix(SettingsModel.recentProjectLimit))
+        for (project, title) in zip(recents, RecentProject.menuTitles(recents)) {
+            let url = project.url
+            let entry = ActionMenuItem(title, target: self) { [weak self] in self?.document.openProject(at: url) }
+            entry.toolTip = project.folder.path
             menu.addItem(entry)
         }
         if !menu.items.isEmpty { menu.addItem(.separator()) }
+        menu.addItem(item(.showRecentProjects, String(localized: "View All…")))
         menu.addItem(item(.clearRecentProjects, String(localized: "Clear Menu")))
     }
 

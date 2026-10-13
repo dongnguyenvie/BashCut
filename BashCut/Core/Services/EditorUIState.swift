@@ -108,6 +108,8 @@ public final class EditorUIState {
     /// The command palette (⇧⌘P) and the keyboard-shortcuts sheet (⌘/), both built from the menu bar.
     public var showCommands = false
     public var showShortcuts = false
+    /// Open Recent › View All… (⌃R): every remembered project, searchable (#529).
+    public var showRecents = false
     /// Edits plugin hooks proposed, waiting for review.
     public var showPluginProposals = false
 
@@ -177,7 +179,7 @@ public final class EditorUIState {
     public static let toggledDialogs: [String: ReferenceWritableKeyPath<EditorUIState, Bool>] = [
         "review": \.showReview, "history": \.showHistory, "plugins": \.showPlugins, "settings": \.showSettings,
         "doctor": \.showDoctor, "ask": \.showAsk, "sections": \.showSections, "commands": \.showCommands,
-        "shortcuts": \.showShortcuts, "updates": \.showUpdates,
+        "shortcuts": \.showShortcuts, "updates": \.showUpdates, "recents": \.showRecents,
     ]
 }
 

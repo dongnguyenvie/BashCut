@@ -295,7 +295,7 @@ final class ProjectDocument {
         ProjectFontCatalog.shared.activate(projectRoot: url?.deletingLastPathComponent())
         if let url {
             exports.restoreReport(projectRoot: url.deletingLastPathComponent())
-            settings.rememberRecentProject(url)
+            settings.rememberRecentProject(url, name: project.name)
         }
         selectedID = nil
         selectedTrackID = nil

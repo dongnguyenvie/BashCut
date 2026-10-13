@@ -8,7 +8,7 @@ public enum CommandCatalog {
     public static let dialogs = [
         "new-project", "export", "export-report", "agent-changes", "review", "history", "plugins", "settings",
         "doctor", "knowledge", "ask", "sections", "external-changes", "plugin-proposals", "commands", "shortcuts",
-        "add-plugin", "library-search", "library-generate", "quick-edit",
+        "add-plugin", "library-search", "library-generate", "quick-edit", "recents",
     ]
     public static let libraryPanels = ["media", "audio", "text", "stickers", "effects", "transitions", "filters", "voice", "brand"]
     public static let exportPresets = OutputPresetName.all
@@ -371,12 +371,24 @@ public enum CommandCatalog {
                 + "open project has unsaved changes unless saveCurrent or discardCurrent is set.",
             parameters: [CommandParameter("path", .string, "edl.json file", required: true, isPath: true, cli: .positional)]
                 + leaveCurrent),
-        CommandSpec("project.recents", .read, "List recently opened projects (Welcome screen)."),
+        recentProjectsSpec,
         CommandSpec("doctor.run", .read, "Run the Doctor checks (workspace, tools, plugins) and return the results."),
     ]
 }
 
 extension CommandCatalog {
+    /// Open Recent › View All… (#529).
+    static let recentProjectsSpec = CommandSpec(
+        "project.recents", .read,
+        "List recently opened projects, newest first (Open Recent › View All…): name, path, lastOpened and exists. "
+            + "--remove takes one off the list (needs a session).",
+        parameters: [
+            CommandParameter("query", .string, "Only projects whose name or path matches these words (fuzzy)",
+                             cli: .option("query")),
+            CommandParameter("remove", .string, "Project file or folder to remove from the list", isPath: true,
+                             cli: .option("remove")),
+        ])
+
     /// `export start --without` (#520).
     static let exportOverwriteAndWithout = "overwrite replaces the files on disk (moved to the Trash) instead. "
         + exportWithoutSummary

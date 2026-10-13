@@ -46,11 +46,7 @@ struct CommandPaletteView: View {
                 }
             }
         }
-        .frame(width: 580)
-        .background(Color(red: 0.11, green: 0.115, blue: 0.13))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.12)))
-        .shadow(color: .black.opacity(0.5), radius: 30, y: 12)
+        .paletteChrome()
         .onAppear {
             entries = MenuCatalog.entries()
             focused = true
@@ -71,10 +67,8 @@ struct CommandPaletteView: View {
                     .background(RoundedRectangle(cornerRadius: 4).stroke(Color.white.opacity(0.15)))
             }
         }
-        .padding(.horizontal, 10).padding(.vertical, 6)
         .opacity(entry.enabled ? 1 : 0.4)
-        .background(RoundedRectangle(cornerRadius: 6).fill(selected ? Color.cyan.opacity(0.18) : .clear))
-        .contentShape(Rectangle())
+        .paletteRow(selected: selected)
     }
 
     private func move(_ step: Int) -> KeyPress.Result {
@@ -93,6 +87,24 @@ struct CommandPaletteView: View {
         close()
         // After the palette is gone, so a command that opens a sheet or moves focus is not fighting it.
         DispatchQueue.main.async { entry.run() }
+    }
+}
+
+extension View {
+    /// The floating panel of the command palette, shared by the recent projects window.
+    func paletteChrome() -> some View {
+        frame(width: 580)
+            .background(Color(red: 0.11, green: 0.115, blue: 0.13))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.12)))
+            .shadow(color: .black.opacity(0.5), radius: 30, y: 12)
+    }
+
+    /// A palette row's selection highlight.
+    func paletteRow(selected: Bool) -> some View {
+        padding(.horizontal, 10).padding(.vertical, 6)
+            .background(RoundedRectangle(cornerRadius: 6).fill(selected ? Color.cyan.opacity(0.18) : .clear))
+            .contentShape(Rectangle())
     }
 }
 

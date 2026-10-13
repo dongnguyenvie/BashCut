@@ -122,6 +122,7 @@ public enum UIAction: String, CaseIterable, Sendable {
     case cancelExport = "export.cancel"
     case dismissExportNotice = "export.dismiss-notice"
     case clearRecentProjects = "project.clear-recents"
+    case showRecentProjects = "project.show-recents"
     case selectAll = "timeline.select-all"
     case deselect = "timeline.deselect"
     case copyClips = "clip.copy"
@@ -240,6 +241,7 @@ public enum UIAction: String, CaseIterable, Sendable {
         case .cancelExport: "Cancel the running export (queued exports start next)"
         case .dismissExportNotice: "Dismiss the export notice"
         case .clearRecentProjects: "Clear recent projects"
+        case .showRecentProjects: "View all recent projects: search by name or path, open, reveal or remove"
         case .selectAll: "Select every clip on the timeline"
         case .deselect: "Clear the clip selection"
         case .copyClips: "Copy selected clips"
@@ -310,6 +312,7 @@ public enum UIAction: String, CaseIterable, Sendable {
         case .speedUp: UIShortcut("]", [.command])
         case .slowDown: UIShortcut("[", [.command])
         case .resetSpeed: UIShortcut("r", [.command, .option])
+        case .showRecentProjects: UIShortcut("r", [.control])
         case .unlinkAudio: UIShortcut("l", [.command, .option])
         case .togglePlayback: UIShortcut("space")
         case .zoomIn: UIShortcut("=", [.command])

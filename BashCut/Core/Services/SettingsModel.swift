@@ -6,7 +6,10 @@ import Observation
 /// `UserDefaults` at once under the keys earlier builds used, so existing preferences carry over.
 @MainActor @Observable
 public final class SettingsModel {
+    /// Entries in Open Recent and on the Welcome screen.
     public static let recentProjectLimit = 8
+    /// Entries kept for View All (#529).
+    public static let recentHistoryLimit = 50
 
     /// Folder agents work in and shared media resolves against; nil uses the project folder, or without a project the
     /// projects folder (~/Movies/BashCut), never the home folder.
@@ -112,8 +115,10 @@ public final class SettingsModel {
             }
         }
     }
-    /// Most recent first, at most `recentProjectLimit`.
-    public private(set) var recentProjects: [URL]
+    /// Most recent first, at most `recentHistoryLimit`.
+    public private(set) var recentHistory: [RecentProject]
+    /// The newest `recentProjectLimit` of the history: the menus and the Welcome screen.
+    public var recentProjects: [URL] { recentHistory.prefix(Self.recentProjectLimit).map(\.url) }
 
     @ObservationIgnored private let defaults: UserDefaults
 
@@ -143,7 +148,9 @@ public final class SettingsModel {
         static let appUpdateRemindAfter = "appUpdateRemindAfter"
         static let interfaceLanguage = "interfaceLanguage"
         static let appleLanguages = "AppleLanguages"
-        static let recentProjects = "recentProjectPaths"
+        /// Paths only, written by builds before #529; read when the history below is missing.
+        static let recentProjectPaths = "recentProjectPaths"
+        static let recentHistory = "recentProjects"
     }
 
     public init(defaults: UserDefaults = .standard) {
@@ -174,7 +181,18 @@ public final class SettingsModel {
         appUpdateRemindAfter = defaults.object(forKey: Keys.appUpdateRemindAfter) as? Date
         defaultExportPresetRaw = defaults.string(forKey: Keys.defaultExportPreset) ?? ExportPreset.tiktok.rawValue
         interfaceLanguage = defaults.string(forKey: Keys.interfaceLanguage) ?? "system"
-        recentProjects = defaults.stringArray(forKey: Keys.recentProjects)?.map { URL(fileURLWithPath: $0) } ?? []
+        if let entries = defaults.array(forKey: Keys.recentHistory) as? [[String: Any]] {
+            recentHistory = entries.compactMap { entry in
+                (entry["path"] as? String).map {
+                    RecentProject(url: URL(fileURLWithPath: $0), name: entry["name"] as? String,
+                                  lastOpened: entry["opened"] as? Date)
+                }
+            }
+        } else {
+            recentHistory = defaults.stringArray(forKey: Keys.recentProjectPaths)?.map {
+                RecentProject(url: URL(fileURLWithPath: $0))
+            } ?? []
+        }
     }
 
     /// ~/Movies/BashCut: visible in Finder and, unlike Desktop or Documents, not behind a macOS privacy prompt.
@@ -199,24 +217,25 @@ public final class SettingsModel {
         defaults.string(forKey: Keys.defaultExportPreset).flatMap(ExportPreset.init(rawValue:))
     }
 
-    /// Moves `url` to the top of the recent projects.
-    public func rememberRecentProject(_ url: URL) {
-        let normalized = url.standardizedFileURL
-        recentProjects.removeAll { $0.standardizedFileURL == normalized }
-        recentProjects.insert(normalized, at: 0)
-        if recentProjects.count > Self.recentProjectLimit { recentProjects.removeLast(recentProjects.count - Self.recentProjectLimit) }
+    /// Moves `url` to the top of the recent projects, with the project's name and the time it was opened.
+    public func rememberRecentProject(_ url: URL, name: String? = nil, at date: Date = Date()) {
+        let entry = RecentProject(url: url, name: name, lastOpened: date)
+        recentHistory.removeAll { $0.url == entry.url }
+        recentHistory.insert(entry, at: 0)
+        if recentHistory.count > Self.recentHistoryLimit { recentHistory.removeLast(recentHistory.count - Self.recentHistoryLimit) }
         saveRecentProjects()
     }
 
     public func forgetRecentProject(_ url: URL) {
         let normalized = url.standardizedFileURL
-        recentProjects.removeAll { $0.standardizedFileURL == normalized }
+        recentHistory.removeAll { $0.url == normalized }
         saveRecentProjects()
     }
 
     public func clearRecentProjects() {
-        recentProjects.removeAll()
-        defaults.removeObject(forKey: Keys.recentProjects)
+        recentHistory.removeAll()
+        defaults.removeObject(forKey: Keys.recentHistory)
+        defaults.removeObject(forKey: Keys.recentProjectPaths)
     }
 
     private func store(_ url: URL?, _ key: String) {
@@ -224,6 +243,12 @@ public final class SettingsModel {
     }
 
     private func saveRecentProjects() {
-        defaults.set(recentProjects.map(\.path), forKey: Keys.recentProjects)
+        defaults.set(recentHistory.map { entry -> [String: Any] in
+            var fields: [String: Any] = ["path": entry.url.path]
+            if let name = entry.name { fields["name"] = name }
+            if let date = entry.lastOpened { fields["opened"] = date }
+            return fields
+        }, forKey: Keys.recentHistory)
+        defaults.removeObject(forKey: Keys.recentProjectPaths)
     }
 }

@@ -1,4 +1,5 @@
 import BashCutAutomation
+import BashCutDocument
 import BashCutEngine
 import BashCutImport
 import BashCutPlugin
@@ -60,8 +61,13 @@ extension ProjectDocument {
             result["report"] = report.json
             return .object(result)
         }
-        handle("project.recents") { document, _, _ in
-            .array(document.settings.recentProjects.map { .string($0.path) })
+        handle("project.recents") { document, arguments, author in
+            if let path = arguments.optionalString("remove") {
+                guard author != nil else { throw RPCFailure(-32001, "A live agent session token is required") }
+                try document.forgetRecentProject(path: path)
+            }
+            let history = RecentProject.filter(document.settings.recentHistory, query: arguments.optionalString("query"))
+            return .array(history.map(\.json))
         }
         handle("doctor.run") { document, _, _ in
             await document.runDoctor()
@@ -76,6 +82,14 @@ extension ProjectDocument {
     }
 
     /// Health checks run now (`plugins.list --health`): every plugin's, or one's.
+    /// `project recents --remove`: the entry whose project file or folder is `path`.
+    func forgetRecentProject(path: String) throws {
+        let target = URL(fileURLWithPath: (path as NSString).expandingTildeInPath).standardizedFileURL
+        guard let entry = settings.recentHistory.first(where: { $0.url == target || $0.folder.standardizedFileURL == target })
+        else { throw RPCFailure(-32602, "Not in the recent projects: \(path)") }
+        settings.forgetRecentProject(entry.url)
+    }
+
     func pluginHealthJSON(_ id: String?) async throws -> JSONValue {
         plugins.refresh(projectRoot: fileURL?.deletingLastPathComponent())
         var selected = plugins.plugins

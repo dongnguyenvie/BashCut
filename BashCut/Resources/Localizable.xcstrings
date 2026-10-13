@@ -141,6 +141,36 @@
     "Move down": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Move down" } }, "vi": { "stringUnit": { "state": "translated", "value": "Chuyển xuống" } } } },
     "Remove step": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Remove step" } }, "vi": { "stringUnit": { "state": "translated", "value": "Xoá bước" } } } },
     "Fix the JSON first: the form needs a JSON object.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Fix the JSON first: the form needs a JSON object." } }, "vi": { "stringUnit": { "state": "translated", "value": "Sửa JSON trước: biểu mẫu cần một đối tượng JSON." } } } },
+    "Copy Path": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Copy Path" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Sao chép đường dẫn" } }
+      }
+    },
+    "No matching project": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "No matching project" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Không có dự án phù hợp" } }
+      }
+    },
+    "Remove from Recent Projects": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Remove from Recent Projects" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Xoá khỏi dự án gần đây" } }
+      }
+    },
+    "Search recent projects by name or path": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Search recent projects by name or path" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Tìm dự án gần đây theo tên hoặc đường dẫn" } }
+      }
+    },
+    "The project file is missing": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "The project file is missing" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Không còn tệp dự án" } }
+      }
+    },
     "The same cut with voice and sound effects only, to add a platform's own sound": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "The same cut with voice and sound effects only, to add a platform's own sound" } },
@@ -174,6 +204,12 @@
     "Update Now": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Update Now" } }, "vi": { "stringUnit": { "state": "translated", "value": "Cập nhật ngay" } } } },
     "Updating Homebrew…": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Updating Homebrew…" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đang cập nhật Homebrew…" } } } },
     "Waiting for approval: app.update": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Waiting for approval: app.update" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đang chờ duyệt: app.update" } } } },
+    "View All…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "View All…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Xem tất cả…" } }
+      }
+    },
     "Without music": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Without music" } },
