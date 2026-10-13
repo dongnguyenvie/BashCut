@@ -50,7 +50,7 @@ extension ProjectDocument {
         case .clearRecentProjects: return !settings.recentProjects.isEmpty
         case .showRunPanel: return hasProject && runPanel.canShow
         case .dismissRunPanel: return runPanel.visible
-        case .toggleRunPanel: return hasProject
+        case .toggleRunPanel, .toggleFollowAgent: return hasProject
         case .stopAgent: return activity.canStop
         case .fixRunIssues: return (runPanel.result?.issuesLeft ?? 0) > 0 && agents.canDeliver
         case .tryAnotherRecipe: return runPanel.result != nil && agents.canDeliver
@@ -186,6 +186,7 @@ extension ProjectDocument {
         case .dismissRunPanel: runPanel.dismiss()
         case .toggleRunPanel: runPanel.toggle()
         case .stopAgent: activity.stop()
+        case .toggleFollowAgent: activity.setFollow(!activity.follow)
         case .fixRunIssues: try fixRunIssues()
         case .tryAnotherRecipe: try tryAnotherRecipe()
         case .cancelExport: exports.cancelActive()

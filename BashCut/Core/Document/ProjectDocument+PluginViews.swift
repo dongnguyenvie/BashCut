@@ -177,16 +177,21 @@ extension ProjectDocument {
             let capability = try arguments.string("capability")
             let provider = arguments.optionalString("provider")
             let params = arguments["params"]?.object ?? [:]
-            let job = document.jobs.start("plugins.invoke", author: author, detail: capability, work: { [weak document] reporter in
-                guard let document else { throw CancellationError() }
-                return try await document.invokeCapability(
-                    capability, provider: provider, params: params, caller: "cli"
-                ) { fraction, text in
-                    Task { @MainActor in
-                        if let fraction { reporter.progress(fraction, detail: text) } else if let text { reporter.detail(text) }
+            let start: @MainActor () -> String? = { [weak document] in
+                document?.jobs.start("plugins.invoke", author: author, detail: capability, work: { [weak document] reporter in
+                    guard let document else { throw CancellationError() }
+                    return try await document.invokeCapability(
+                        capability, provider: provider, params: params, caller: "cli"
+                    ) { fraction, text in
+                        Task { @MainActor in
+                            if let fraction { reporter.progress(fraction, detail: text) } else if let text { reporter.detail(text) }
+                        }
                     }
-                }
-            })
+                })
+            }
+            let job = start() ?? ""
+            // A graphic being rendered shows as a placeholder where it lands (#534).
+            document.trackGraphicPlaceholder(job, capability: capability, params: params, retry: start)
             return .object(["job": .string(job), "state": .string("running")])
         }
     }

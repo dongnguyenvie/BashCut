@@ -119,10 +119,9 @@ struct LibraryView: View {
                                 media: media, root: document.fileURL?.deletingLastPathComponent(),
                                 workspace: document.settings.workspace)
                         }.buttonStyle(.plain).help("Open source viewer")
-                            .accessibilityLabel("Preview " + media.fileName)
+                            .accessibilityLabel("Preview " + media.fileName).overlay { MediaWorkBadge(document: document, mediaID: media.id) }
                         Text(media.fileName).font(.caption2).lineLimit(1)
-                        Text(mediaSummary(media))
-                            .font(.system(size: 9, design: .monospaced)).foregroundStyle(.secondary)
+                        Text(mediaSummary(media)).font(.system(size: 9, design: .monospaced)).foregroundStyle(.secondary)
                         HStack(spacing: 6) {
                             Button("Append") { document.appendMedia(media) }.font(.caption2)
                             proxyBadge(media)
@@ -142,6 +141,7 @@ struct LibraryView: View {
                         }
                     }
                 }
+                PlaceholderTiles(document: document)
             }
             if visibleMedia.isEmpty {
                 Text(emptyMediaMessage).foregroundStyle(.secondary).font(.caption)

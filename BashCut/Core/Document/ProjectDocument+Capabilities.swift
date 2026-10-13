@@ -484,11 +484,13 @@ extension ProjectDocument {
         message = author.rawValue.capitalized + ": " + method
         guard let capability = CommandCatalog.capabilities[method] else {
             let id = jobs.start(method, author: author, requestID: requestID, work: jobWork, finished: finished)
+            trackPlaceholder(id, method: method, author: author, arguments: arguments, work: work)
             return .object(["job": .string(id), "state": .string("running")])
         }
         let (id, queued) = startCapabilityTurn(
             CapabilityTurn(capability: capability, method: method, author: author, requestID: requestID),
             work: jobWork, finished: finished)
+        trackPlaceholder(id, method: method, author: author, arguments: arguments, work: work)
         return .object(["job": .string(id), "state": .string(queued ? "queued" : "running")])
     }
 }

@@ -80,6 +80,8 @@ import BashCutProject
     let badge = TimelineBadgeView(frame: .zero)
     let ghost = ClipGhostView(frame: .zero)
     let marquee = MarqueeView(frame: .zero)
+    let work = TimelineWorkOverlay(frame: .zero) // Placeholders, held ranges and flashes (#534).
+    var lastFlash: UUID?
     let filmstrips = FilmstripCache()
 
     override var isFlipped: Bool { true }
@@ -94,7 +96,7 @@ import BashCutProject
         mediaByID = Self.index(document.project.media)
         super.init(frame: .zero)
         wantsLayer = true
-        for overlay in [ghost, marquee, dropGuide, snapGuide, playheadView, badge] as [NSView] { addSubview(overlay) }
+        for overlay in [work, ghost, marquee, dropGuide, snapGuide, playheadView, badge] as [NSView] { addSubview(overlay) }
         filmstrips.onUpdate = { [weak self] in self?.redrawFilmstrips() }
         registerForDraggedTypes([.string, .fileURL])
     }

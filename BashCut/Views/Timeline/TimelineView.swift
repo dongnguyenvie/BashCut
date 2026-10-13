@@ -25,6 +25,8 @@ struct TimelineView: NSViewRepresentable {
     func makeNSView(context: Context) -> TimelineContainerView {
         let container = TimelineContainerView(canvas: TimelineCanvas(document: document))
         container.header.onSelect = { [document] id in document.selectedTrackID = id }
+        container.canvas.work.menuFor = { [document] id in TimelineWorkOverlay.menu(document, id: id) }
+        container.onUserScroll = { [document] in document.activity.userScrolled() }
         container.header.onMenu = { [document] _ in
             let menu = NSMenu()
             PluginMenus.append(to: menu, document, placement: "track.context")
@@ -91,6 +93,7 @@ struct TimelineView: NSViewRepresentable {
             }
             header.layout = layout
         }
+        updateWork(canvas, layout: layout, size: size)
         header.selectedTrackID = document.selectedTrackID
         header.time.text = Timecode.string(document.playhead, fps: project.fps)
         if canvas.gesture == nil || !(canvas.isScrubbing) { canvas.placePlayhead(document.playhead) }
@@ -104,6 +107,16 @@ struct TimelineView: NSViewRepresentable {
             canvas.scrollToVisible(CGRect(x: max(0, x - 120), y: view.documentVisibleRect.minY, width: 240, height: 1))
         }
         follow(document.playhead, in: view, canvas: canvas)
+    }
+
+    /// Placeholders, held ranges and the flash of what the agent just changed (#534).
+    private func updateWork(_ canvas: TimelineCanvas, layout: TimelineLayout, size: CGSize) {
+        if canvas.work.frame.size != size { canvas.work.frame = CGRect(origin: .zero, size: size) }
+        let work = TimelineWorkOverlay.content(document, layout: layout)
+        canvas.work.update(boxes: work.boxes, held: work.held)
+        guard let flash = document.activity.flash, flash.id != canvas.lastFlash else { return }
+        canvas.lastFlash = flash.id
+        canvas.work.flash(flash.items.compactMap { canvas.locate($0)?.0 })
     }
 
     /// During playback, turns the page when the playhead leaves the visible area, like CapCut.
@@ -154,7 +167,13 @@ final class TimelineContainerView: NSView {
         NotificationCenter.default.addObserver(
             self, selector: #selector(clipViewScrolled), name: NSView.boundsDidChangeNotification,
             object: scrollView.contentView)
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(userScrolled), name: NSScrollView.willStartLiveScrollNotification, object: scrollView)
     }
+
+    /// Scrolling by the user (not by follow mode or a reveal) ends follow mode (#534).
+    var onUserScroll: (() -> Void)?
+    @objc private func userScrolled() { onUserScroll?() }
     required init?(coder: NSCoder) { nil }
 
     override var isFlipped: Bool { true }

@@ -26,6 +26,6 @@ import Testing
 
     @Test("The run panel's UI actions exist for ui action")
     func runActions() {
-        for id in ["run.toggle", "run.stop"] { #expect(UIAction.matching(id).count == 1) }
+        for id in ["run.toggle", "run.stop", "run.follow"] { #expect(UIAction.matching(id).count == 1) }
     }
 }
