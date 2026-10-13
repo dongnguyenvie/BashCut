@@ -92,7 +92,7 @@ extension ReviewIssue {
         "shot-long", "black", "still", "jump", "safe-bottom", "safe-side", "safe-top", "title-safe", "small-text",
         "text-overlap", "text-face", "platform-none", "output-shape", "output-length", "plan-section", "brief-length",
         "brief-outputs", "must-keep", "overlap", "coverage", "hook", "voice-text-changed", "captions-source-changed",
-        "beats-source-changed", "ai-media", "delivered-black", "delivered-drift", "delivered-fps", "delivered-silence",
+        "beats-source-changed", "ai-media", "ai-undisclosed", "delivered-black", "delivered-drift", "delivered-fps", "delivered-silence",
         "delivered-size", "unsourced-claim",
     ].sorted { $0.count > $1.count }
 
@@ -254,6 +254,7 @@ public enum TimelineReview {
         issues += deliveredIssues(project, delivered: context.delivered)
         issues += provenanceIssues(project, context: context)
         issues += rightsIssues(project, context: context)
+        issues += disclosureIssues(project)
         if let plugins = context.pluginIssues, plugins.revision == project.revision { issues += plugins.issues }
         if project.duration > 0, let minimum = profile["minSpeechCoverage"] {
             let coverage = speechCoverage(project, transcripts: context.transcripts)

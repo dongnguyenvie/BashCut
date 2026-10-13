@@ -274,6 +274,10 @@
           },
           "type" : "object"
         },
+        "disclosure" : {
+          "description" : "Text: the label that discloses generated pictures under it (image disclose, #550)",
+          "type" : "boolean"
+        },
         "dur" : {
           "description" : "Length, in timeline frames",
           "minimum" : 1,
@@ -1347,6 +1351,10 @@
           "minimum" : 1,
           "type" : "integer"
         },
+        "generated" : {
+          "description" : "Made by an image.generate provider (#550): review asks for the disclosure label",
+          "type" : "boolean"
+        },
         "hasAudio" : {
           "description" : "Whether the file has sound",
           "type" : "boolean"
@@ -1831,6 +1839,37 @@
           },
           "type" : "object"
         },
+        "illustration" : {
+          "description" : "Style lock of image generate (#550): every call reuses it; the project's wins over the brand's",
+          "properties" : {
+            "disclosure" : {
+              "description" : "Label shown over generated pictures (the brand's disclosure otherwise)",
+              "maxLength" : 200,
+              "type" : "string"
+            },
+            "references" : {
+              "description" : "Reference pictures (a character, a style sample): project-relative or absolute paths, or sticker library ids",
+              "items" : {
+                "description" : "Path or library id",
+                "maxLength" : 1024,
+                "type" : "string"
+              },
+              "maxItems" : 8,
+              "type" : "array"
+            },
+            "seed" : {
+              "description" : "Seed, for providers that take one",
+              "minimum" : 0,
+              "type" : "integer"
+            },
+            "style" : {
+              "description" : "Style prompt sent with every picture",
+              "maxLength" : 4000,
+              "type" : "string"
+            }
+          },
+          "type" : "object"
+        },
         "library" : {
           "description" : "The brand library item (scope:id) it came from",
           "type" : "string"
@@ -1945,6 +1984,37 @@
       "description" : "Stable project ID",
       "minLength" : 1,
       "type" : "string"
+    },
+    "illustration" : {
+      "description" : "Style lock of image generate (#550): every call reuses it; the project's wins over the brand's",
+      "properties" : {
+        "disclosure" : {
+          "description" : "Label shown over generated pictures (the brand's disclosure otherwise)",
+          "maxLength" : 200,
+          "type" : "string"
+        },
+        "references" : {
+          "description" : "Reference pictures (a character, a style sample): project-relative or absolute paths, or sticker library ids",
+          "items" : {
+            "description" : "Path or library id",
+            "maxLength" : 1024,
+            "type" : "string"
+          },
+          "maxItems" : 8,
+          "type" : "array"
+        },
+        "seed" : {
+          "description" : "Seed, for providers that take one",
+          "minimum" : 0,
+          "type" : "integer"
+        },
+        "style" : {
+          "description" : "Style prompt sent with every picture",
+          "maxLength" : 4000,
+          "type" : "string"
+        }
+      },
+      "type" : "object"
     },
     "luts" : {
       "description" : "Project .cube LUT catalog",

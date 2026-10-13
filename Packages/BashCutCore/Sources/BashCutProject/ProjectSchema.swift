@@ -178,7 +178,7 @@ public enum ProjectSchema {
                 "audio": ref("audio"),
                 "output": outputSchema,
                 "review": reviewSchema,
-                "brand": brandSchema,
+                "brand": brandSchema, "illustration": illustrationSchema,
                 "brief": planSchemas["brief"] ?? .null,
                 "plan": planSchemas["plan"] ?? .null,
                 "beatGrid": object(
@@ -225,6 +225,7 @@ public enum ProjectSchema {
                     "height": integer("Pixels", minimum: 1, maximum: 16384),
                     "hasAudio": boolean("Whether the file has sound"),
                     "alpha": boolean("A movie with an alpha channel (a video sticker); previewed without a proxy"),
+                    "generated": boolean("Made by an image.generate provider (#550): review asks for the disclosure label"),
                     TransitionPreset.soundLibraryField: string("The library item (scope:id) it was copied from"),
                     "label": string("The name shown instead of the file's (a library item's name)"),
                     "description": ref("mediaDescription"),
@@ -401,6 +402,7 @@ public enum ProjectSchema {
                     .object(["type": .string("object"), "additionalProperties": .object(["type": .string("object")])]),
                 ]),
             ]),
+            "disclosure": boolean("Text: the label that discloses generated pictures under it (image disclose, #550)"),
             "brandRoles": .object([
                 "type": .string("object"),
                 "description": .string(

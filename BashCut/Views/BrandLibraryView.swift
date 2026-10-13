@@ -1,6 +1,7 @@
 import BashCutDocument
 import BashCutProject
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// The Brand panel (#453): the kit the project uses, and the saved kits. A click applies a kit to the whole project
 /// (its palette and fonts restyle every text tied to brand roles, in one undo step); New Brand Kit… starts from the
@@ -85,6 +86,7 @@ struct BrandKitFields: View {
     @Binding var params: [String: JSONValue]
     @State private var stickers: [LibraryItem] = []
     @State private var newPose = ""
+    @State private var cutting = false
 
     var body: some View {
         Section("Palette") {
@@ -117,6 +119,9 @@ struct BrandKitFields: View {
                     newPose = ""
                 }
                 .disabled(stickers.isEmpty || newPose.trimmingCharacters(in: .whitespaces).isEmpty)
+                Button("From picture…") { poseFromPicture() }
+                    .disabled(cutting || newPose.trimmingCharacters(in: .whitespaces).isEmpty || document.fileURL == nil)
+                    .help("Cut the subject out of a photo and use it as this pose (library brand-pose)")
             }
         }
         Section("Voice") {
@@ -127,6 +132,26 @@ struct BrandKitFields: View {
             get: { params["disclosure"]?.string ?? "" },
             set: { params["disclosure"] = $0.isEmpty ? nil : .string($0) }), prompt: Text("Ảnh tạo bằng AI"))
             .task { stickers = (try? document.libraryCatalog.panelItems([.sticker]))?.filter { $0.file != nil } ?? [] }
+    }
+
+    /// Cuts a photo's subject out as a sticker and uses it as the new pose (`library brand-pose --image`).
+    private func poseFromPicture() {
+        let pose = newPose.trimmingCharacters(in: .whitespaces)
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.image]
+        guard !pose.isEmpty, panel.runModal() == .OK, let url = panel.url else { return }
+        cutting = true
+        Task {
+            defer { cutting = false }
+            do {
+                let sticker = try await document.poseSticker(from: url, pose: pose)
+                setPose(pose, sticker)
+                newPose = ""
+                stickers = (try? document.libraryCatalog.panelItems([.sticker]))?.filter { $0.file != nil } ?? []
+            } catch {
+                document.message = error.localizedDescription
+            }
+        }
     }
 
     private var poses: [String] { (params["mascot"]?.object.keys).map { $0.sorted() } ?? [] }

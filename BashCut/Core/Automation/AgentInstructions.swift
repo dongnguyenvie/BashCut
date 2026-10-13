@@ -30,6 +30,8 @@ extension CommandCatalog {
         "export.reveal-output",
         // My voices (#532): capabilities get --voices lists the clones; removing one is the user's.
         "voice.clone-list", "voice.clone-remove",
+        // Generated pictures (#550): image generate returns them; the list is for checking later.
+        "image.generate-list",
     ]
 
     /// Instructions given to terminal agents, rendered from the command specs: each command's usage and first

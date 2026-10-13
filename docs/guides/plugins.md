@@ -435,6 +435,7 @@ builds the request parameters and validates the result.
 | `audio.sync` | `media sync` | `mediaPath`, `otherPath` | `offsetSeconds`, `correlation`, optional `halves`, `overlapStartSeconds`, `overlapEndSeconds` |
 | `library.search` (API 6) | A library panel's Search…, `library search` | `kind`, `query`, `limit`, `page`, `language`, `outputDirectory` | `items`: up to `limit` library item objects; see [Library search and generate](#library-search-and-generate) |
 | `library.generate` (API 6) | A library panel's Generate…, `library generate` | `kind`, `prompt`, `limit`, `params` (hints), `language`, `outputDirectory` | `items`, as for `library.search` |
+| `image.generate` | `image generate`, `library brand-pose --generate` | `prompts` [{id, prompt}], `style` {prompt?, references, seed?}, `width`, `height`, `aspectRatio`, `outputDirectory` | `images` [{id, path, seed?, revisedPrompt?}], optional `failed` [{id, message}]; see [`image.generate`](#imagegenerate) |
 | `review.check` (API 9) | `review measure`, the Review sheet's Measure | `project` (or `projectFile` when over 512 KiB), `revision`, `fps`, `duration`, `width`, `height`, `projectRoot` | `issues`; see [`review.check`](#reviewcheck) |
 
 ### Output files
@@ -574,6 +575,18 @@ subject on a transparent background as a PNG inside `outputDirectory` and return
 (pixels), and optionally `instances` (how many subjects were kept) and `coverage` (0–1, the share of the picture
 kept). `image cutout` runs it; the built-in Vision plugin uses Apple Vision's foreground mask, and a plugin with a
 better model can serve it with a higher priority.
+
+### `image.generate`
+
+One request carries every scene of a batch (#550): `prompts` [{id, prompt}] (1–24), `style` with the project's style
+lock — `prompt` (the style text, when set), `references` (absolute paths of reference pictures: a character, a style
+sample) and `seed` (when set) — the picture size `width` × `height` with its reduced `aspectRatio` (such as `9:16`),
+and `outputDirectory`. Write one picture per scene inside `outputDirectory` and return `images` [{id, path}] with the
+IDs asked for, plus `seed` and `revisedPrompt` when the model reports them; list scenes it could not make in `failed`
+[{id, message}] instead of failing the whole request (a request with no picture at all is an error). Send `progress`
+per scene. How the prompts, style and references reach a model is the provider's: BashCut knows no model. Each
+picture is added to the project's media with `generated: true`, and a contact sheet of the batch is drawn for the
+agent.
 
 ### `audio.loudness`
 

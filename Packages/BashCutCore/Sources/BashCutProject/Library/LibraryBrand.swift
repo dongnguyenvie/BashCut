@@ -6,7 +6,8 @@ import Foundation
 ///
 /// Params: `palette` {accent, background, text, secondary} as `#RRGGBB`; `fonts` {heading, body} as font names;
 /// `logo` and each `mascot` pose a sticker library reference (`id` or `scope:id`); `voice` {provider, voice}; and
-/// `disclosure` (a label such as "Ảnh tạo bằng AI"). Every field is optional, but a kit sets at least one. Other keys
+/// `disclosure` (a label such as "Ảnh tạo bằng AI"); `illustration`, the style lock of generated pictures
+/// (`IllustrationLock`, #550). Every field is optional, but a kit sets at least one. Other keys
 /// round-trip.
 ///
 /// Text items opt in with `brandRoles` {textStyle path: role}: `fill`, `stroke`, `highlight`, `background.color`,
@@ -57,6 +58,9 @@ public struct LibraryBrand: Sendable, Equatable {
                 fields.allSatisfy({ ["provider", "voice"].contains($0.key) && ($0.value.string.map { (1...160).contains($0.count) } ?? false) })
             else { throw ProjectError.invalid("\(label).voice: expected {provider, voice} texts") }
         }
+        if let illustration = params["illustration"], illustration != .null {
+            _ = try IllustrationLock(illustration, label: "\(label).illustration")
+        }
         try validateDisclosure(params, label: label)
     }
 
@@ -67,13 +71,13 @@ public struct LibraryBrand: Sendable, Equatable {
                 throw ProjectError.invalid("\(label).disclosure: expected a text of 1–200 characters")
             }
         }
-        let used = ["palette", "fonts", "logo", "mascot", "voice", "disclosure"].filter { key in
+        let used = ["palette", "fonts", "logo", "mascot", "voice", "disclosure", "illustration"].filter { key in
             guard let value = params[key], value != .null else { return false }
             if case .object(let fields) = value { return !fields.isEmpty }
             return true
         }
         guard !used.isEmpty else {
-            throw ProjectError.invalid("\(label): set at least one of palette, fonts, logo, mascot, voice or disclosure")
+            throw ProjectError.invalid("\(label): set at least one of palette, fonts, logo, mascot, voice, disclosure or illustration")
         }
     }
 

@@ -2106,6 +2106,48 @@
         "vi": { "stringUnit": { "state": "translated", "value": "Logo và linh vật" } }
       }
     },
+    "From picture…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "From picture…" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Từ ảnh…" } }
+      }
+    },
+    "Cut the subject out of a photo and use it as this pose (library brand-pose)": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Cut the subject out of a photo and use it as this pose (library brand-pose)" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Tách chủ thể khỏi ảnh và dùng làm tư thế này (library brand-pose)" } }
+      }
+    },
+    "Mascot": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Mascot" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Linh vật" } }
+      }
+    },
+    "Generate pictures": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Generate pictures" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Tạo ảnh" } }
+      }
+    },
+    "Clear illustration style": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Clear illustration style" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Xoá phong cách minh hoạ" } }
+      }
+    },
+    "Set illustration style": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Set illustration style" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Đặt phong cách minh hoạ" } }
+      }
+    },
+    "Add disclosure labels": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Add disclosure labels" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Thêm nhãn công bố" } }
+      }
+    },
     "New pose": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "New pose" } },
