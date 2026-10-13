@@ -7,13 +7,24 @@ public enum TimelineSummary {
     public static func json(_ project: Project) -> JSONValue {
         .object([
             "rev": .integer(project.revision), "format": project["format"] ?? .null,
-            "tracks": project["tracks"] ?? .array([]),
+            "tracks": tracks(project),
             "transitions": .array(project.transitions.map { .object($0.fields) }),
             "markers": .array(project.markers.map { .object($0.fields) }),
             "luts": .array(project.colorLUTs.map { .object($0.fields) }),
             "scale": ReviewScale.all(project),
             "media": .array(project.media.map(rights)),
         ])
+    }
+
+    /// The stored layers, each with its short display label (`V1`, `A1`, #531) added as `label`.
+    static func tracks(_ project: Project) -> JSONValue {
+        let labels = project.trackLabels
+        guard case .array(let rows) = project["tracks"] ?? .array([]) else { return .array([]) }
+        return .array(rows.map { row in
+            guard case .object(var fields) = row, let id = fields["id"]?.string, let label = labels[id] else { return row }
+            fields["label"] = .string(label)
+            return .object(fields)
+        })
     }
 
     /// Each media's path, kind, licence and provenance as stored (P2-H8); null when not recorded.

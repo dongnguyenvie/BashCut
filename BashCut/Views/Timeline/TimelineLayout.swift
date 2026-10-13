@@ -13,8 +13,6 @@ import Foundation
         var rect: CGRect { CGRect(x: 0, y: y, width: 0, height: height) }
     }
 
-    /// Width of the fixed layer header; frame 0 starts here.
-    static let leading = EditorUIState.timelineLeading
     static let rulerHeight = 22.0
     static let sectionBand = 24.0...46.0
     static let firstRowY = 52.0
@@ -26,10 +24,16 @@ import Foundation
 
     /// Points per frame.
     let scale: Double
+    /// Width of the fixed layer header (`EditorUIState.timelineLeading`); frame 0 starts here.
+    let leading: Double
     let rows: [Row]
+    /// Each layer's short ID (V1, A1) by track ID.
+    let labels: [String: String]
 
-    init(project: Project, scale: Double) {
+    init(project: Project, scale: Double, leading: Double = EditorUIState.compactTimelineLeading) {
         self.scale = scale
+        self.leading = leading
+        labels = project.trackLabels
         let visual = project.tracks.filter(\.isVisual).reversed()
         let audio = project.tracks.filter { !$0.isVisual }
         var y = Self.firstRowY
@@ -45,17 +49,17 @@ import Foundation
     /// True when both layouts have the same layers at the same places with the same names and switches; the
     /// clips on them may differ.
     func sameRows(as other: TimelineLayout) -> Bool {
-        rows.count == other.rows.count && zip(rows, other.rows).allSatisfy { row, otherRow in
+        leading == other.leading && labels == other.labels && rows.count == other.rows.count && zip(rows, other.rows).allSatisfy { row, otherRow in
             row.y == otherRow.y && row.height == otherRow.height && row.track.sameSettings(as: otherRow.track)
         }
     }
 
     var contentHeight: Double { (rows.last?.maxY ?? Self.firstRowY) + Self.rowSpacing }
 
-    func x(_ frame: Int) -> Double { Self.leading + Double(frame) * scale }
+    func x(_ frame: Int) -> Double { leading + Double(frame) * scale }
 
     /// The frame under `x`, rounded to the nearest frame and never negative.
-    func frame(at x: Double) -> Int { max(0, Int(((x - Self.leading) / scale).rounded())) }
+    func frame(at x: Double) -> Int { max(0, Int(((x - leading) / scale).rounded())) }
 
     func row(at y: Double) -> Row? { rows.first { y >= $0.y && y < $0.maxY + Self.rowSpacing } }
 

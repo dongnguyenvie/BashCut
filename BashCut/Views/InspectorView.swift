@@ -31,6 +31,10 @@ struct InspectorView: View {
                         Text(item.id).font(.caption.monospaced()).lineLimit(1).textSelection(.enabled)
                         Text("\(item.at)–\(item.end) frames").font(.caption).foregroundStyle(
                             .secondary)
+                        if let track = document.selectedItemTrack {
+                            Label(document.project.trackTitle(track), systemImage: "square.stack")
+                                .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                        }
                         if let linkedID = item.linkedItemID {
                             HStack {
                                 Label("Linked A/V", systemImage: "link")

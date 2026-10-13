@@ -56,6 +56,9 @@ struct FailedRequest {
     private let logger: (@Sendable (String, String) -> Void)?
     /// The open project's revision, set by the document; `baseRev: "last"` resolves against what each token saw.
     public var currentRevision: (@MainActor () -> Int?)?
+    /// Turns a `track` argument that names a layer by its short label (`V2`, `A1`, #531) into the track ID; set by
+    /// the document.
+    public var resolveTrack: (@MainActor (String) -> String)?
     /// Told when an agent's request starts and ends (#534); reads and requests without a live token are included.
     public var onActivity: (@MainActor (CommandActivity) -> Void)?
     /// The project revision as of each token's last successful command.
@@ -123,6 +126,13 @@ struct FailedRequest {
         params["baseRev"] = .integer(seen)
         return params
     }
+    /// A `track` given as a short label (`V2`) becomes the track ID it names.
+    private func resolvingTrack(_ params: [String: JSONValue]) -> [String: JSONValue] {
+        guard let track = params["track"]?.string, let resolveTrack else { return params }
+        var params = params
+        params["track"] = .string(resolveTrack(track))
+        return params
+    }
     /// An app-internal change that does not touch what agents edit (a background AV1/VP9 conversion relinking its
     /// media to the converted copy) moved the revision from `old` to `new`: callers whose `baseRev: "last"` was `old`
     /// now see `new`, so the bump does not make their next edit stale. Anyone who had not caught up stays stale.
@@ -167,7 +177,7 @@ struct FailedRequest {
             if Self.projectReads.contains(request.method), let token = request.token {
                 switchedProject.removeValue(forKey: token)
             }
-            let params = try resolvingLastRevision(request.params, token: request.token)
+            let params = resolvingTrack(try resolvingLastRevision(request.params, token: request.token))
             let arguments = CommandArguments(try spec.validate(params))
             let result = try await CommandCaller.$token.withValue(author == nil ? nil : request.token) {
                 try await CommandCaller.$method.withValue(request.method) { try await handler(arguments, author) }

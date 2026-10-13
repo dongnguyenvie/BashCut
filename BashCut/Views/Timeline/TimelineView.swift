@@ -13,6 +13,7 @@ struct TimelineView: NSViewRepresentable {
         let session: UUID
         let revision: Int
         let scale: Double
+        let leading: Double
         let selectedID: String?
         let selectedIDs: [String]
         let selectedTrackID: String?
@@ -25,6 +26,10 @@ struct TimelineView: NSViewRepresentable {
     func makeNSView(context: Context) -> TimelineContainerView {
         let container = TimelineContainerView(canvas: TimelineCanvas(document: document))
         container.header.onSelect = { [document] id in document.selectedTrackID = id }
+        container.header.onResize = { [document] width in document.setTimelineHeaderWidth(width) }
+        container.header.onRename = { [document] id, name in
+            do { try document.renameLayer(id, to: name) } catch { document.message = error.localizedDescription }
+        }
         container.canvas.work.menuFor = { [document] id in TimelineWorkOverlay.menu(document, id: id) }
         container.onUserScroll = { [document] in document.activity.userScrolled() }
         container.header.onMenu = { [document] _ in
@@ -54,12 +59,13 @@ struct TimelineView: NSViewRepresentable {
         let visible = view.documentVisibleRect
         let scale = document.ui.timelineScale / project.fps.value
         document.ui.timelineViewportWidth = view.contentSize.width
-        let layout = TimelineLayout(project: project, scale: scale)
+        let layout = TimelineLayout(project: project, scale: scale, leading: document.ui.timelineLeading)
         let size = CGSize(
             width: max(view.contentSize.width, layout.x(project.duration) + TimelineLayout.trailing),
             height: max(view.contentSize.height, layout.contentHeight))
         let key = ContentKey(
-            session: document.sessionID, revision: project.revision, scale: scale, selectedID: document.selectedID,
+            session: document.sessionID, revision: project.revision, scale: scale, leading: layout.leading,
+            selectedID: document.selectedID,
             selectedIDs: document.selectedIDs, selectedTrackID: document.selectedTrackID, waveforms: document.waveforms.values.count,
             agentChanges: document.agentChangedIDs.count, overlays: document.ui.pluginOverlayRevision, size: size)
         if key != canvas.lastContent {
@@ -83,7 +89,7 @@ struct TimelineView: NSViewRepresentable {
             canvas.overlays = document.ui.pluginOverlays
             canvas.setFrameSize(size)
             // An edit or a selection change repaints only the clips it touched.
-            if let previous, previous.session == key.session, previous.scale == key.scale, previous.size == key.size,
+            if let previous, previous.session == key.session, previous.scale == key.scale, previous.leading == key.leading, previous.size == key.size,
                 previous.selectedTrackID == key.selectedTrackID, previous.waveforms == key.waveforms,
                 previous.overlays == key.overlays,
                 let rects = canvas.changedRects(since: drawn) {
@@ -92,6 +98,7 @@ struct TimelineView: NSViewRepresentable {
                 canvas.needsDisplay = true
             }
             header.layout = layout
+            if header.frame.width != layout.leading { container.needsLayout = true }
         }
         updateWork(canvas, layout: layout, size: size)
         header.selectedTrackID = document.selectedTrackID
@@ -124,10 +131,10 @@ struct TimelineView: NSViewRepresentable {
         guard document.preview.isPlaying, canvas.gesture == nil else { return }
         let visible = view.documentVisibleRect
         let x = canvas.layout.x(frame)
-        let viewport = visible.width - TimelineLayout.leading
-        guard x > visible.maxX - 24 || x < visible.minX + TimelineLayout.leading else { return }
+        let viewport = visible.width - canvas.layout.leading
+        guard x > visible.maxX - 24 || x < visible.minX + canvas.layout.leading else { return }
         let maximum = max(0, canvas.frame.width - visible.width)
-        let origin = CGPoint(x: min(max(0, x - TimelineLayout.leading - viewport * 0.1), maximum), y: visible.minY)
+        let origin = CGPoint(x: min(max(0, x - canvas.layout.leading - viewport * 0.1), maximum), y: visible.minY)
         view.contentView.scroll(to: origin)
         view.reflectScrolledClipView(view.contentView)
     }
@@ -137,7 +144,7 @@ struct TimelineView: NSViewRepresentable {
         _ anchor: TimelineZoomAnchor, in view: NSScrollView, canvas: TimelineCanvas, previousScale: Double,
         visible: CGRect
     ) {
-        let oldX = TimelineLayout.leading + Double(anchor.frame) * previousScale
+        let oldX = canvas.layout.leading + Double(anchor.frame) * previousScale
         let offset = anchor.viewOffset
             ?? (visible.minX...visible.maxX ~= oldX ? oldX - visible.minX : visible.width / 2)
         let newX = canvas.layout.x(anchor.frame)
@@ -182,7 +189,7 @@ final class TimelineContainerView: NSView {
         super.layout()
         scrollView.frame = bounds
         header.frame = NSRect(
-            x: 0, y: 0, width: TimelineLayout.leading, height: scrollView.contentView.frame.height)
+            x: 0, y: 0, width: header.layout.leading, height: scrollView.contentView.frame.height)
         clipViewScrolled()
     }
 

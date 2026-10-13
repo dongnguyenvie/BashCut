@@ -175,7 +175,7 @@ struct LibraryView: View {
         VStack(alignment: .leading, spacing: 10) {
             Picker("Track", selection: $audioTrack) {
                 ForEach(document.project.tracks.filter { $0.kind == "audio" }, id: \.id) { track in
-                    Text(track.name).tag(track.id)
+                    Text(document.project.trackTitle(track)).tag(track.id)
                 }
             }
             .task(id: document.project.tracks.map(\.id).joined(separator: ":")) {

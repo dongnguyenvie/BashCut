@@ -65,7 +65,7 @@ public enum CommandCatalog {
         CommandSpec("project.get", .read, "Read the whole open project document."),
         CommandSpec(
             "timeline.get", .read,
-            "Read the revision, format and tracks, including track IDs and roles, and scale per video or image item: "
+            "Read the revision, format and tracks (IDs, roles, V1/A1 labels), and scale per video or image item: "
                 + "fit or fill, baseScale, zoom and maxZoom (keyframes), pixelRatio (output pixels per source pixel; "
                 + "over 1 is upscaled) now and at maxZoom, maxZoomNative (the largest zoom before upscaling), shown "
                 + "size, frameCoverage and backdrop (blur, color or null). media lists each media's path, kind, license and provenance as stored.",
@@ -197,7 +197,7 @@ public enum CommandCatalog {
                 + "lock any layer (a locked layer refuses edits until unlocked); set a caption layer's language (P1-F4), "
                 + "which output.captions picks a layer by.",
             parameters: [
-                CommandParameter("track", .string, "Layer ID", required: true, cli: .positional),
+                CommandParameter("track", .string, "Layer ID or label (V2, A1)", required: true, cli: .positional),
                 CommandParameter("hidden", .boolean, "Hidden (visual layers)", cli: .option("hidden")),
                 CommandParameter("muted", .boolean, "Muted (audio layers)", cli: .option("muted")),
                 CommandParameter("locked", .boolean, "Locked", cli: .option("locked")),

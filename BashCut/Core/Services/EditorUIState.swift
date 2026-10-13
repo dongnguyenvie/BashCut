@@ -12,9 +12,20 @@ public final class EditorUIState {
     /// Timeline pixels per second: from a whole long video in view to single frames.
     public static let timelineZoomRange: ClosedRange<Double> = 1...600
     public static let zoomStep = 1.25
-    /// Width of the track-name column left of frame 0, and the margin kept after the end when fitting.
-    public static let timelineLeading = 140.0
+    /// The layer header left of frame 0 (#531): compact shows short IDs (V1, A1) and switches, wide adds the full
+    /// names; the user drags its edge anywhere in the range.
+    public static let compactTimelineLeading = 78.0
+    public static let wideTimelineLeading = 160.0
+    public static let timelineLeadingRange: ClosedRange<Double> = compactTimelineLeading...280
+    /// The margin kept after the end when fitting.
     public static let fitMargin = 40.0
+
+    /// Width of the layer header; `ProjectDocument.setTimelineHeaderWidth` changes it and remembers it in Settings.
+    public var timelineLeading = compactTimelineLeading
+    /// Whether the header is too narrow for layer names (closer to compact than to wide).
+    public var timelineHeaderCompact: Bool {
+        timelineLeading < (Self.compactTimelineLeading + Self.wideTimelineLeading) / 2
+    }
 
     /// Timeline pixels per second.
     public private(set) var timelineScale = 50.0
@@ -113,7 +124,7 @@ public final class EditorUIState {
     /// Edits plugin hooks proposed, waiting for review.
     public var showPluginProposals = false
 
-    public init() {}
+    public init(timelineLeading: Double = compactTimelineLeading) { self.timelineLeading = timelineLeading }
 
     public var canZoomIn: Bool { timelineScale < Self.timelineZoomRange.upperBound }
     public var canZoomOut: Bool { timelineScale > Self.timelineZoomRange.lowerBound }
@@ -150,13 +161,13 @@ public final class EditorUIState {
     /// The zoom that shows `duration` frames at `fps` in the visible width, with a margin after the end.
     public func fitZoom(duration: Int, fps: Double) -> Double {
         let seconds = Double(max(1, duration)) / max(1, fps)
-        let width = max(100, timelineViewportWidth - Self.timelineLeading - Self.fitMargin)
+        let width = max(100, timelineViewportWidth - timelineLeading - Self.fitMargin)
         return min(max(width / seconds, Self.timelineZoomRange.lowerBound), Self.timelineZoomRange.upperBound)
     }
 
     /// Shows the whole timeline from its start.
     public func zoomToFit(duration: Int, fps: Double) {
-        setTimelineZoom(fitZoom(duration: duration, fps: fps), anchor: 0, viewOffset: Self.timelineLeading)
+        setTimelineZoom(fitZoom(duration: duration, fps: fps), anchor: 0, viewOffset: timelineLeading)
     }
 
     /// Asks the timeline to scroll `frame` (clamped to `0...duration`) into view.

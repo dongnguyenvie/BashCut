@@ -59,6 +59,28 @@ import Testing
         #expect(throws: RPCFailure.self) { try AutomationOutputPath.resolve("chat.md", projectRoot: nil) }
     }
 
+    @Test("A track argument may name the layer by its short label; IDs and unknown values pass through")
+    func trackLabels() async {
+        let registry = CommandRegistry()
+        let project = Project(name: "Labels")
+        registry.resolveTrack = { project.resolveTrackReference($0) }
+        var tracks: [String] = []
+        registry.register("layers.set") { arguments, _ in
+            tracks.append(try arguments.string("track"))
+            return .null
+        }
+        let token = registry.issueToken(author: .agent)
+        for track in ["A1", "v2", "t1", "V9"] {
+            let request = RPCRequest(
+                method: "layers.set", params: ["track": .string(track), "locked": .bool(true), "baseRev": .integer(0)],
+                token: token)
+            #expect(await registry.handle(request).error == nil)
+        }
+        #expect(tracks == ["a1", "v2", "t1", "V9"])
+        let labels = TimelineSummary.json(project).object["tracks"]?.array.compactMap { $0.object["label"]?.string }
+        #expect(labels == ["V1", "V2", "V3", "A1", "A2", "A3", "A4"])
+    }
+
     @Test("baseRev last is the revision as of the caller's last command; anyone else's edit since makes it stale")
     func lastRevision() async {
         let registry = CommandRegistry()

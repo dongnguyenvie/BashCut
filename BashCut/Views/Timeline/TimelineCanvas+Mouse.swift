@@ -25,7 +25,7 @@ extension TimelineCanvas {
         let point = convert(event.locationInWindow, from: nil)
         let onPlayhead = grabsPlayhead(point)
         playheadView.highlighted = onPlayhead
-        if point.y < TimelineLayout.rulerHeight, point.x >= TimelineLayout.leading {
+        if point.y < TimelineLayout.rulerHeight, point.x >= layout.leading {
             showBadge(Timecode.string(min(project.duration, layout.frame(at: point.x)), fps: project.fps), at: point)
         } else if onPlayhead {
             showBadge(Timecode.string(playhead, fps: project.fps), at: point)
@@ -55,7 +55,7 @@ extension TimelineCanvas {
     override func cursorUpdate(with event: NSEvent) { hoverCursor.set() }
 
     func grabsPlayhead(_ point: CGPoint) -> Bool {
-        if point.y < TimelineLayout.rulerHeight { return point.x >= TimelineLayout.leading }
+        if point.y < TimelineLayout.rulerHeight { return point.x >= layout.leading }
         guard abs(point.x - layout.x(playhead)) <= Self.playheadGrab else { return false }
         // A clip edge under the playhead stays trimmable.
         if let clip = hit(at: point), edge(at: point, of: clip.0) != nil { return false }
@@ -68,8 +68,8 @@ extension TimelineCanvas {
 
     func showBadge(_ text: String, at point: CGPoint) {
         var visible = visibleRect
-        visible.origin.x += TimelineLayout.leading
-        visible.size.width -= TimelineLayout.leading
+        visible.origin.x += layout.leading
+        visible.size.width -= layout.leading
         badge.show(text, nearX: point.x, y: max(visible.minY + 2, point.y - 24), within: visible)
     }
 
