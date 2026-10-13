@@ -613,7 +613,9 @@ project whose JSON is over 512 KiB does not fit the 1 MiB request limit, so it c
 optional. Frames are clamped to the timeline. BashCut prefixes each ID with the provider ID (`<provider>:<id>`) and
 adds `source` (the plugin ID), which the Review sheet shows as *From plugin …*. A check has 30 seconds (less when its
 provider sets a lower `timeoutSeconds`); a check that fails, returns a malformed result or runs out of time becomes
-one info issue, "Plugin check failed", and never stops the others or the built-in checks. A project turns checks off
+one info issue, "Plugin check failed", and never stops the others or the built-in checks. The issues are kept in the
+project's cache with the review measurements (keyed by the project's content), so they come back after a restart for
+the same timeline without running the checks again; a measure where a check failed is not kept. A project turns checks off
 with `review.disabledChecks`, a list of plugin or provider IDs (`timeline apply` with `setProjectProperties`);
 `plugins hooks` lists the checks under `reviewChecks` with `enabled` (for this project) and `active` (can run now).
 Declaring `review.check` needs `apiVersion` 9.
