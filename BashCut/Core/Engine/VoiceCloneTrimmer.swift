@@ -109,7 +109,8 @@ public enum VoiceCloneTrimmer {
         guard share >= 0.25 else {
             checks.append(VoiceCloneCheck(id: "speech", passed: false, value: round(share), detail: "speech in the source"))
             throw VoiceCloneRefusal(
-                reason: "mostlySilence", message: "The source is mostly silence; pick a part where the voice speaks",
+                reason: "mostlySilence", message: "The source has little speech (silence, or music or noise without a voice); "
+                    + "pick a part where the voice speaks",
                 checks: checks)
         }
         let (start, end) = bestWindow(levels, minFrames: Int((minSeconds / frame).rounded(.up)),

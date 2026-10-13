@@ -173,11 +173,13 @@ extension ProjectDocument {
             throw ProjectError.invalid("Open a project before generating voiceover")
         }
         let session = sessionID
-        // A preset or saved clone asked for, else the project's clone, else the plugin's own voice option (#532).
+        // A preset or saved clone asked for, else the project's clone, else the plugin's own voice option (#532); a
+        // project without a content language speaks in the clone's language.
         let resolved = try resolveVoice(voice, provider: provider)
+        let language = contentLanguage.isEmpty ? resolved.choice?.cloneLanguage ?? "" : contentLanguage
         let takes = try await plugins.running("voice.synthesize") {
             try await plugins.service.synthesizeVoiceTakes(
-                text: text, language: contentLanguage, count: count,
+                text: text, language: language, count: count,
                 preferredProvider: resolved.provider ?? project.preferredProvider(for: "voice.synthesize"),
                 projectRoot: root, outputRoot: root.appendingPathComponent("voiceover/generated", isDirectory: true),
                 cloneConsent: cloneConsent, voice: resolved.choice)

@@ -27,6 +27,11 @@ public struct VoiceCloneReference: Sendable, Equatable {
 public enum VoiceChoice: Sendable, Equatable {
     case preset(String)
     case clone(VoiceCloneReference)
+
+    /// The saved clone's language, nil for a preset.
+    public var cloneLanguage: String? {
+        if case .clone(let reference) = self { reference.language } else { nil }
+    }
 }
 
 /// `voice.synthesize`: one batch of voice takes for a line of text, written as audio files into the
