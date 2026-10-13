@@ -12,6 +12,7 @@ extension ProjectDocument {
 
     func startAutomation() {
         registry.currentRevision = { [weak self] in self?.project.revision }
+        registry.onActivity = { [weak self] in self?.activity.record($0) }
         registerReadCommands()
         registerProjectCommands()
         registerCaptionCommands()

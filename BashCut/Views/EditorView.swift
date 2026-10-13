@@ -98,6 +98,7 @@ struct EditorView: View {
         .task(id: document.fileURL) {
             while !Task.isCancelled {
                 document.runPanel.refresh()
+                document.activity.refreshStatus()
                 do { try await Task.sleep(for: .seconds(1)) } catch { return }
             }
         }

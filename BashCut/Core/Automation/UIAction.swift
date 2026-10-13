@@ -131,6 +131,8 @@ public enum UIAction: String, CaseIterable, Sendable {
     case sendToAgent = "clip.send-to-agent"
     case showRunPanel = "run.show"
     case dismissRunPanel = "run.dismiss"
+    case toggleRunPanel = "run.toggle"
+    case stopAgent = "run.stop"
     case fixRunIssues = "run.fix-issues"
     case tryAnotherRecipe = "run.another-recipe"
 
@@ -246,6 +248,8 @@ public enum UIAction: String, CaseIterable, Sendable {
         case .sendToAgent: "Send selected clips to the open agent as the scope of its request"
         case .showRunPanel: "Show the run panel again (the agent's stages, or the result card after its export)"
         case .dismissRunPanel: "Close the run panel until the next run"
+        case .toggleRunPanel: "Agent button: open or close the run panel (the agent's stages, steps and jobs)"
+        case .stopAgent: "Run panel: stop the agent (cancel its jobs and interrupt its turn)"
         case .fixRunIssues: "Result card: ask the open agent to fix the review issues left, then export again"
         case .tryAnotherRecipe: "Result card: ask the open agent for another version made with a different recipe"
         }

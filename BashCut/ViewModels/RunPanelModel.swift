@@ -29,14 +29,21 @@ import Observation
 
     init(document: ProjectDocument) { self.document = document }
 
-    /// Whether the panel shows: a run with stages that the user did not close, still going or with a result.
+    /// Whether the panel shows: a run with stages that the user did not close, still going or with a result; or the
+    /// panel the user opened with the agent button (#534), also without stages (the agent's steps and jobs).
     var visible: Bool {
-        guard let progress, !isDismissed(progress) else { return false }
+        guard let progress else { return shownByUser }
+        guard !isDismissed(progress) else { return false }
         return !progress.finished || result != nil || shownByUser
     }
 
-    /// Whether the panel could be shown again after the user closed it.
-    var canShow: Bool { progress.map(isDismissed) ?? false }
+    /// Whether the panel could be opened: it is closed (the agent button opens it in any state, #534).
+    var canShow: Bool { !visible }
+
+    /// The agent button: opens the panel, or closes it.
+    func toggle() {
+        if visible { dismiss() } else { show() }
+    }
 
     /// Whether this run is followed: the panel shows or would show it (an agent's export then skips the report sheet).
     var tracksRun: Bool { progress.map { !isDismissed($0) } ?? false }
@@ -77,6 +84,7 @@ import Observation
 
     /// A project opened: a run already over, or idle for hours, does not pop up again.
     private func projectOpened() {
+        document.activity.reset()
         dismissed = nil
         shownByUser = false
         thumbnail = nil

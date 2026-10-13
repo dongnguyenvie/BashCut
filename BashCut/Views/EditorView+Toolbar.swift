@@ -37,6 +37,7 @@ extension EditorView {
 
     private func trailingItems(compact: Bool) -> some View {
         HStack(spacing: 8) {
+            AgentStatusButton(document: document, compact: compact)
             activity(compact: compact)
             Spacer(minLength: 8)
             if !compact {

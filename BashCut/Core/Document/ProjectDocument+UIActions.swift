@@ -48,8 +48,10 @@ extension ProjectDocument {
         case .showExportProgress, .cancelExport: return exports.isRunning
         case .dismissExportNotice: return exports.notice != nil
         case .clearRecentProjects: return !settings.recentProjects.isEmpty
-        case .showRunPanel: return runPanel.canShow
+        case .showRunPanel: return hasProject && runPanel.canShow
         case .dismissRunPanel: return runPanel.visible
+        case .toggleRunPanel: return hasProject
+        case .stopAgent: return activity.canStop
         case .fixRunIssues: return (runPanel.result?.issuesLeft ?? 0) > 0 && agents.canDeliver
         case .tryAnotherRecipe: return runPanel.result != nil && agents.canDeliver
         case .selectAll: return project.tracks.contains { !$0.items.isEmpty }
@@ -182,6 +184,8 @@ extension ProjectDocument {
             if let url = exports.report?.receipt.url { NSWorkspace.shared.activateFileViewerSelecting([url]) }
         case .showRunPanel: runPanel.show()
         case .dismissRunPanel: runPanel.dismiss()
+        case .toggleRunPanel: runPanel.toggle()
+        case .stopAgent: activity.stop()
         case .fixRunIssues: try fixRunIssues()
         case .tryAnotherRecipe: try tryAnotherRecipe()
         case .cancelExport: exports.cancelActive()
