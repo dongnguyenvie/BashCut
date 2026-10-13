@@ -82,6 +82,9 @@ public enum UIAction: String, CaseIterable, Sendable {
     case nextFrame = "playhead.next-frame"
     case backSecond = "playhead.back-second"
     case forwardSecond = "playhead.forward-second"
+    case shuttleBack = "playback.shuttle-back"
+    case shuttleStop = "playback.stop"
+    case shuttleForward = "playback.shuttle-forward"
     case toggleCompare = "view.compare"
     case toggleSafeArea = "view.safe-area"
     case toggleFullScreenPreview = "viewer.fullscreen"
@@ -203,6 +206,9 @@ public enum UIAction: String, CaseIterable, Sendable {
         case .nextFrame: "Next frame"
         case .backSecond: "Back one second"
         case .forwardSecond: "Forward one second"
+        case .shuttleBack: "Play backwards (J again: 2×, 4×; silent)"
+        case .shuttleStop: "Stop playback (K)"
+        case .shuttleForward: "Play forwards (L again: 2×, 4×)"
         case .toggleCompare: "Compare color before/after"
         case .toggleSafeArea: "Safe area"
         case .toggleFullScreenPreview:
@@ -282,6 +288,10 @@ public enum UIAction: String, CaseIterable, Sendable {
         case .nextFrame: [UIShortcut("right")]
         case .backSecond: [UIShortcut("left", [.shift])]
         case .forwardSecond: [UIShortcut("right", [.shift])]
+        // J/K/L while the timeline has keyboard focus, like `s`: global letters would swallow typing.
+        case .shuttleBack: [UIShortcut("j")]
+        case .shuttleStop: [UIShortcut("k")]
+        case .shuttleForward: [UIShortcut("l")]
         // Timeline-only: the Edit menu's Copy, Cut, Paste and Select All reach the timeline while it has focus, and
         // text fields everywhere else.
         case .selectAll: [UIShortcut("a", [.command])]

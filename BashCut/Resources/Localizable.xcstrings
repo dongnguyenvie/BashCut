@@ -7038,6 +7038,18 @@
         "en": { "stringUnit": { "state": "translated", "value": "Double-click to rename" } },
         "vi": { "stringUnit": { "state": "translated", "value": "Nhấp đúp để đổi tên" } }
       }
+    },
+    "Play Backwards": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Play Backwards" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Phát lùi" } }
+      }
+    },
+    "Play Forwards": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Play Forwards" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Phát tới" } }
+      }
     }
   },
   "version": "1.0"

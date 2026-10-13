@@ -156,6 +156,39 @@ struct PreviewControllerTests {
         #expect(preview.seekCount - before <= 3)
     }
 
+    @Test("J plays backwards on the frame clock, speeds up, stops at the start, and L or K leaves it")
+    func reverseShuttle() async throws {
+        let video = try await TestFixtures.requireVideo()
+        let media = Media(fields: [
+            "id": .string("clip"), "path": .string(video.lastPathComponent), "fps": FrameRate().json, "frames": .integer(59),
+        ])
+        let base = Project(name: "Reverse")
+        let value = try base.applying(.group(label: "Setup", author: .user, ops: [
+            .addMedia(media), .insert(track: "v1", item: Item(id: "c", media: "clip", at: 0, duration: 59)),
+        ])).project
+        let preview = PreviewController(engine: AVFoundationRenderEngine(source: OriginalMediaSource()))
+        preview.rebuild(value, root: video.deletingLastPathComponent(), workspace: nil)
+        try await waitUntil { preview.snapshot != nil && preview.player.currentItem?.status == .readyToPlay }
+        preview.seek(50)
+        preview.shuttle(forward: false)
+        #expect(preview.isPlaying && preview.reverseRate == -1 && preview.player.rate == 0)
+        try await waitUntil { preview.playhead < 45 }
+        preview.shuttle(forward: false)
+        #expect(preview.reverseRate == -2)
+        preview.pause()
+        let stopped = preview.playhead
+        try await Task.sleep(for: .milliseconds(150))
+        #expect(!preview.isPlaying && preview.playhead == stopped)
+        preview.shuttle(forward: false)
+        try await waitUntil { !preview.isPlaying }
+        #expect(preview.playhead == 0 && preview.reverseRate == 0)
+        preview.seek(20)
+        preview.shuttle(forward: false)
+        preview.shuttle(forward: true)
+        #expect(preview.reverseRate == 0 && preview.player.rate == 1)
+        preview.pause()
+    }
+
     @Test("An edit keeps the previous picture until the new composition is ready")
     func rebuildKeepsPicture() async throws {
         let video = try await TestFixtures.requireVideo()
