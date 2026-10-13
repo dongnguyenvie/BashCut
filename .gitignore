@@ -11,4 +11,4 @@ Fixtures/media/
 memos/
 
 # Local-only notes and scripts (release steps, signing, reusable how-tos); never committed.
-.local/
+.local
