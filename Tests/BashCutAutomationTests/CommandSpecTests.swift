@@ -65,7 +65,7 @@ struct CommandSpecTests {
         #expect(values == ["text": .string("Xin chào"), "takes": .integer(3), "dryRun": .bool(false)])
         for params: [String: JSONValue] in [
             ["text": .string("a"), "takes": .integer(9)], ["text": .string("a"), "atFrame": .integer(-1)],
-            ["text": .string("a"), "voice": .string("x")], ["text": .integer(1)],
+            ["text": .string("a"), "tone": .string("x")], ["text": .integer(1)],
         ] {
             #expect(throws: RPCFailure.self) { try speak.validate(params) }
         }

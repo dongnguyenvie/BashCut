@@ -358,6 +358,11 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
 - `captions.generate`, `beats.detect` and `voice.speak` run as background jobs with `jobs.status`/`jobs.cancel`
   and apply one undoable agent-attributed edit; `plugins list` (with `--health`) reports providers,
   availability and diagnostics. See [plugins.md](../guides/plugins.md).
+- Saved cloned voices (#532): My voices in the user's folder (`VoiceCloneStore`), a reference trimmed to the
+  provider's `clone {minSeconds, maxSeconds}` range by speech/silence/clipping levels (`VoiceCloneTrimmer`), sent as
+  `voice.synthesize` `reference`; preset/clone labels in the Voice panel picker and `capabilities get --voices`;
+  `voice clone-add|clone-list|clone-remove` (add and remove ask the user) and `voice use`. Music under the voice and a second
+  speaker are not detected.
 - Plugin API 2: an API window (`minApiVersion`/`maxApiVersion`), SHA-256 trust pins with user-only Trust and
   enable switches (states ready, disabled, untrusted, changed, outdated), native `options` per user or project,
   `contributes.actions` in fixed placements (Plugins menu, toolbar, clip/track/timeline/media context menus,

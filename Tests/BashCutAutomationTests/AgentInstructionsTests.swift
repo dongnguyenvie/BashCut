@@ -16,7 +16,8 @@ struct AgentInstructionsTests {
         // About 8k tokens (flexibility audit, D15): full descriptions are in `bashcut help` and the MCP tools. The
         // tool rules moved here from the kit's edit-workflow skill (spec 13 §9) every agent reads anyway. 36.5k since
         // clip reframe (P3-J1); UI-parity commands agents do with ops (text line-style, clip backdrop) stay out.
-        #expect(text.count < 36_500)
+        // 37k since saved voices (#532: voice clone-add, voice use; listing and removing clones stay out).
+        #expect(text.count < 37_000)
         for rule in ["-32004", "held: true", "capability_missing", "agentPermissions", "Library first", "audit_missing"] {
             #expect(text.contains(rule), "\(rule)")
         }

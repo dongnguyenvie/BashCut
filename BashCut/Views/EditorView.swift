@@ -110,6 +110,7 @@ struct EditorView: View {
         }
         .sheet(isPresented: Bindable(document.ui).showAsk) { AskAgentView(document: document) }
         .sheet(isPresented: Bindable(document.ui).showQuickEdit) { QuickEditSheet(document: document) }
+        .sheet(isPresented: Bindable(document.ui).showVoiceClone) { VoiceCloneSheet(document: document) }
         .sheet(isPresented: Bindable(document.ui).showNewProject) { NewProjectView(document: document) }
         .sheet(isPresented: Bindable(document.ui).showExport) { ExportView(document: document) }
         .sheet(isPresented: Bindable(document.ui).showExportReport) {

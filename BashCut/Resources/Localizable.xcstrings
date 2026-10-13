@@ -7050,7 +7050,28 @@
         "en": { "stringUnit": { "state": "translated", "value": "Play Forwards" } },
         "vi": { "stringUnit": { "state": "translated", "value": "Phát tới" } }
       }
-    }
+    },
+    "Plugin default": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Plugin default" } }, "vi": { "stringUnit": { "state": "translated", "value": "Mặc định của plugin" } } } },
+    "My voices": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "My voices" } }, "vi": { "stringUnit": { "state": "translated", "value": "Giọng của tôi" } } } },
+    "+ Clone a voice…": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "+ Clone a voice…" } }, "vi": { "stringUnit": { "state": "translated", "value": "+ Nhân bản giọng…" } } } },
+    "Remove voice…": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Remove voice…" } }, "vi": { "stringUnit": { "state": "translated", "value": "Xoá giọng…" } } } },
+    "Remove this voice from My voices in every project?": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Remove this voice from My voices in every project?" } }, "vi": { "stringUnit": { "state": "translated", "value": "Xoá giọng này khỏi Giọng của tôi trong mọi dự án?" } } } },
+    "voice-badge-clone": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Clone" } }, "vi": { "stringUnit": { "state": "translated", "value": "Nhân bản" } } } },
+    "voice-badge-preset": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Preset" } }, "vi": { "stringUnit": { "state": "translated", "value": "Có sẵn" } } } },
+    "Clone a voice": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Clone a voice" } }, "vi": { "stringUnit": { "state": "translated", "value": "Nhân bản giọng" } } } },
+    "Use a few seconds of one person speaking clearly, with no music under the voice.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Use a few seconds of one person speaking clearly, with no music under the voice." } }, "vi": { "stringUnit": { "state": "translated", "value": "Dùng vài giây một người nói rõ ràng, không có nhạc dưới giọng." } } } },
+    "I agree to clone this voice": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "I agree to clone this voice" } }, "vi": { "stringUnit": { "state": "translated", "value": "Tôi đồng ý nhân bản giọng này" } } } },
+    "Consent": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Consent" } }, "vi": { "stringUnit": { "state": "translated", "value": "Sự đồng ý" } } } },
+    "It is my own voice": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "It is my own voice" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đây là giọng của chính tôi" } } } },
+    "I have the speaker's permission": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "I have the speaker's permission" } }, "vi": { "stringUnit": { "state": "translated", "value": "Tôi được người nói cho phép" } } } },
+    "Record now": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Record now" } }, "vi": { "stringUnit": { "state": "translated", "value": "Thu âm ngay" } } } },
+    "Choose a file…": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Choose a file…" } }, "vi": { "stringUnit": { "state": "translated", "value": "Chọn tệp…" } } } },
+    "Selected clip": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Selected clip" } }, "vi": { "stringUnit": { "state": "translated", "value": "Clip đang chọn" } } } },
+    "Uses %.1f–%.1f s (%.1f s)": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Uses %.1f–%.1f s (%.1f s)" } }, "vi": { "stringUnit": { "state": "translated", "value": "Dùng %.1f–%.1f s (%.1f s)" } } } },
+    "Music under the voice and a second speaker are not checked.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Music under the voice and a second speaker are not checked." } }, "vi": { "stringUnit": { "state": "translated", "value": "Chưa kiểm tra nhạc dưới giọng và người nói thứ hai." } } } },
+    "Select a clip with the voice on the timeline first": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Select a clip with the voice on the timeline first" } }, "vi": { "stringUnit": { "state": "translated", "value": "Hãy chọn một clip có giọng nói trên timeline trước" } } } },
+    "Recording": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Recording" } }, "vi": { "stringUnit": { "state": "translated", "value": "Bản thu âm" } } } },
+    "Saved voice %@": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Saved voice %@" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đã lưu giọng %@" } } } }
   },
   "version": "1.0"
 }

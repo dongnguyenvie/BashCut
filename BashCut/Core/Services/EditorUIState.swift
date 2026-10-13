@@ -121,6 +121,8 @@ public final class EditorUIState {
     public var showShortcuts = false
     /// Open Recent › View All… (⌃R): every remembered project, searchable (#529).
     public var showRecents = false
+    /// Voice panel › Clone a voice… (#532).
+    public var showVoiceClone = false
     /// Edits plugin hooks proposed, waiting for review.
     public var showPluginProposals = false
 

@@ -463,6 +463,16 @@ symlinks are followed, and the file must exist. If the call fails, BashCut delet
 - A provider may describe its voices in the manifest (P0-C7), so agents pick by facts (`capabilities get voice.synthesize --voices`):
   `"voices": [{"id", "language", "region"?, "style"?, "gender"?, "supportsRate"?}]` and `"clones": true` when it can
   clone. Only `voice.synthesize` providers may declare them; IDs are unique and every voice has a language.
+- Saved clones ("My voices", #532, host feature `voice.savedClones`, `apiVersion` 9): a provider that clones declares
+  the reference clip it accepts, `"clone": {"minSeconds": 3, "maxSeconds": 8, "formats": ["wav"]}` (1 ≤ min < max ≤ 60;
+  it implies `clones`; `"clones": true` alone means 3–8 s). BashCut trims each saved clone into that range (a 24 kHz
+  mono 16-bit WAV in `~/Library/Application Support/BashCut/Voices/<id>/`) and, when a line is said with a saved
+  clone, adds to the request
+  `"reference": {"path": "<absolute path of the reference clip>", "voice": "<clone id>", "name": "<clone name>",
+  "language": "<BCP 47 tag>"}` and `"cloneConsent": true` (the consent saved with the clone). A preset request has no
+  `reference`; a preset chosen for one line (`voice speak --voice`) arrives as `options.voice`. A provider without
+  `clone`/`clones` is never sent a saved clone. A plugin's own reference option (such as a project file option) keeps
+  working for clones it makes itself.
 
 ### `captions.align`
 

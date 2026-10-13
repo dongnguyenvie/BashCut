@@ -304,6 +304,9 @@ extension CommandCatalog {
                              + "(requestedTakes in the answer when it gave fewer)", default: .integer(3), minimum: 1,
                              maximum: 8, cli: .option("takes")),
             provider,
+            CommandParameter("voice", .string, "Voice for this request: a preset (voice or provider/voice) or a saved "
+                             + "clone ID (clone-…, sent to a provider that clones with its saved consent); the project's "
+                             + "voice by default", cli: .option("voice")),
             CommandParameter("choose", .integer, "Put this take on the timeline (1 = first)", minimum: 1, maximum: 8,
                              cli: .option("choose")),
             CommandParameter("atFrame", .integer, "With choose: timeline frame; defaults to the playhead", minimum: 0,

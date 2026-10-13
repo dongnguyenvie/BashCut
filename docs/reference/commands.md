@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 228 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 232 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -1138,7 +1138,7 @@ Cancel a queued or running job (plugin call or export).
 
 ### `bashcut capabilities get [<capability>] [--kind <kind>] [--voices]`
 
-Whether each plugin capability (or one) can serve now: available, else reason missing (no plugin provides it), not_configured (turned off, not approved, changed, outdated or missing a required plugin) or unhealthy (a dependency fails its health check). Lists each provider with plugin, priority, paid, state and detail, and the commands that call the capability. A command whose capability cannot serve fails with category capability_missing and the same reason. With voices, voices: the voices of every voice.synthesize provider (per provider plugin, name, availability, clones (voice speak then needs cloneConsent) and the voice its plugin is set to; per voice id, language, region, style, gender, supportsRate, speaksContentLanguage (when the project has a content language) and measuredRate (rates measured on its takes, per language: samples, p10, p50, p90)); without a capability the result is then {capabilities, voices}.
+Whether each plugin capability (or one) can serve now: available, else reason missing (no plugin provides it), not_configured (turned off, not approved, changed, outdated or missing a required plugin) or unhealthy (a dependency fails its health check). Lists each provider with plugin, priority, paid, state and detail, and the commands that call the capability. A command whose capability cannot serve fails with category capability_missing and the same reason. With voices, voices: the voices of every voice.synthesize provider (per provider plugin, name, availability, clones and cloneRange {minSeconds, maxSeconds}, and the voice its plugin is set to; per voice id, kind (preset, or clone: a saved voice from My voices, listed first under the providers that can speak with it), source (the provider ID, or my-voices), language, region, style, gender, supportsRate, speaksContentLanguage (when the project has a content language) and measuredRate (rates measured on its takes, per language: samples, p10, p50, p90)), and projectVoice (the saved clone the project speaks with, set by voice use); without a capability the result is then {capabilities, voices}.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_capabilities_get`
 - `capability`: string. Capability ID, such as captions.transcribe; all by default
@@ -1444,7 +1444,7 @@ List stretches of at least minSeconds with no spoken word (heard or caption word
 
 ## voice
 
-### `bashcut voice speak [<text>] [--takes <takes>] [--provider <provider>] [--choose <choose>] [--at-frame <atFrame>] [--replace <replace>] [--clone-consent] [--request-id <requestId>] [--dry-run]`
+### `bashcut voice speak [<text>] [--takes <takes>] [--provider <provider>] [--voice <voice>] [--choose <choose>] [--at-frame <atFrame>] [--replace <replace>] [--clone-consent] [--request-id <requestId>] [--dry-run]`
 
 Synthesize voice takes and measure them: per take index, path, projectPath, seconds, units (syllables, words or characters for the content language), unitsPerSecond over its sound, leadingSilence, trailingSilence, pauses and the provider's score when it gives one; the rates are kept per voice (speech rate). Every take file is kept: pick one yourself and put it on the timeline with voice place. With choose, take N goes on the Voiceover track at once (the rest are removed); with replace, the take (choose, default 1) goes into that item, keeping its place, and its captions are timed again. The item keeps voice {text, language, provider, voice}.
 
@@ -1452,6 +1452,7 @@ Synthesize voice takes and measure them: per take index, path, projectPath, seco
 - `text`: string. Voiceover text in the project content language (with replace, the item's voice text by default)
 - `takes`: integer, 1…8, default 3. Number of takes to generate; capped to the provider's maxTakes (requestedTakes in the answer when it gave fewer)
 - `provider`: string. Provider ID overriding the project preference for one request
+- `voice`: string. Voice for this request: a preset (voice or provider/voice) or a saved clone ID (clone-…, sent to a provider that clones with its saved consent); the project's voice by default
 - `choose`: integer, 1…8. Put this take on the timeline (1 = first)
 - `atFrame`: integer, ≥ 0. With choose: timeline frame; defaults to the playhead
 - `replace`: string. Voiceover item to put the take into, keeping its place
@@ -1509,6 +1510,39 @@ Change a voiceover item's speed (pitch kept) so it lasts frames, or ends at toFr
 - `minRatio`: number, required, 0.1…16. Slowest speed allowed (1 = as recorded)
 - `maxRatio`: number, required, 0.1…16. Fastest speed allowed
 - `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
+
+### `bashcut voice clone-add --name <name> --from <from> [--at <at>] [--to <to>] --consent <consent> [--language <language>] [--provider <provider>]`
+
+Save a cloned voice to My voices. From a media ID or a sound/video file (for every project), BashCut picks the best clean window within the cloning provider's reference range (most speech, fewest pauses, no clipping), checks it and refuses with a reason (tooShort, tooQuiet, mostlySilence, notEnoughSpeech, clipped; data.checks says what was measured). Music under the voice and a second speaker are not detected (notChecked). Saving asks the user first: the consent is theirs. Returns window {start, end, seconds} in source seconds, range, checks [{id, passed, value, detail}], providers (that can speak with it), approval and, once saved, clone (as voice clone-list shows it).
+
+- Mode: privileged · Runs: after the user approves in the app · MCP: `bashcut_voice_clone-add`
+- `name`: string, required. Name of the voice, such as Giọng Nolan
+- `from`: string, required. Project media ID or file path (relative to the project folder)
+- `at`: number, 0…86400. Start of the part to use, in source seconds
+- `to`: number, 0…86400. End of the part to use, in source seconds
+- `consent`: string, required, one of own, permission. The user's consent: own (their own voice) or permission (they have the speaker's permission)
+- `language`: string. BCP 47 language the voice speaks; the content language by default
+- `provider`: string. Cloning provider whose reference range to trim to
+
+### `bashcut voice clone-list`
+
+List My voices: per saved clone id, name, kind clone, source my-voices, language, providers (installed ones that can speak with it), savedFor, durationSeconds, sourceDescription, createdAt, consent {by, at, statement}, reference (the clip's path) and current (this project speaks with it).
+
+- Mode: read · Runs: immediately · MCP: `bashcut_voice_clone-list`
+
+### `bashcut voice clone-remove <voice>`
+
+Remove a saved clone from My voices (every project) after the user approves; a project using it goes back to its plugin's voice.
+
+- Mode: privileged · Runs: after the user approves in the app · MCP: `bashcut_voice_clone-remove`
+- `voice`: string, required. Clone ID (clone-…)
+
+### `bashcut voice use <voice>`
+
+Choose the project's voice. Like the Voice panel picker, a saved clone ID sets the project's voiceClone; a preset (voice or provider/voice) sets its plugin's voice option and the voice provider and clears voiceClone; default clears voiceClone (the plugin's own voice). voice speak and voice lines then speak with it.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_voice_use`
+- `voice`: string, required. Clone ID, preset voice (provider/voice) or default
 
 ## storage
 
@@ -1719,7 +1753,7 @@ List every editor action (buttons, menu items, keyboard shortcuts) with its shor
 
 ### `bashcut ui action <action> [<target>] [--in <in>] [--out <out>]`
 
-Run an editor action like the user: by ID (timeline.split, timeline.zoom-in, playback.toggle) or by shortcut (cmd+b, space, cmd+=). Actions that open a dialog return at once; answer it with ui.respond. With a target: open DIALOG (a sheet or popover: new-project, export, export-report, agent-changes, review, history, plugins, settings, doctor, knowledge, ask, sections, external-changes, plugin-proposals, commands, shortcuts, add-plugin, library-search, library-generate, quick-edit, recents), panel PANEL (a library panel in the left rail: media, audio, text, stickers, effects, transitions, filters, voice, brand), source MEDIA (the source viewer, with --in/--out frames marked) or notify MESSAGE (a short status message).
+Run an editor action like the user: by ID (timeline.split, timeline.zoom-in, playback.toggle) or by shortcut (cmd+b, space, cmd+=). Actions that open a dialog return at once; answer it with ui.respond. With a target: open DIALOG (a sheet or popover: new-project, export, export-report, agent-changes, review, history, plugins, settings, doctor, knowledge, ask, sections, external-changes, plugin-proposals, commands, shortcuts, add-plugin, library-search, library-generate, quick-edit, recents, voice-clone), panel PANEL (a library panel in the left rail: media, audio, text, stickers, effects, transitions, filters, voice, brand), source MEDIA (the source viewer, with --in/--out frames marked) or notify MESSAGE (a short status message).
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_ui_action`
 - `action`: string, required. Action ID or shortcut, or open, panel, source, notify

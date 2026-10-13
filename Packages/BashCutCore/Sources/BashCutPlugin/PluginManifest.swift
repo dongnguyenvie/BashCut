@@ -337,12 +337,11 @@ public struct PluginProvider: Codable, Sendable, Equatable, Identifiable {
     public let priority: Int
     /// Seconds a request may go without reporting progress (default 120), for providers with long silent steps.
     public let timeoutSeconds: Int?
-    /// Library kinds a `library.search` or `library.generate` provider serves (API 6); nil serves every kind.
-    public let kinds: [String]?
-    /// Voices of a `voice.synthesize` provider (P0-C7).
-    public var voices: [PluginVoice]?
+    public let kinds: [String]? // Library kinds a library.search/generate provider serves (API 6); nil: every kind.
+    public var voices: [PluginVoice]? // Voices of a `voice.synthesize` provider (P0-C7).
     /// A `voice.synthesize` provider that can clone a voice from a recording; clone requests carry `cloneConsent`.
     public var clones: Bool?
+    public var clone: PluginCloneRange? // Reference clip range of a cloning provider (feature voice.savedClones).
     /// The provider charges per request (P2-G4): agents send a stable `requestId` and may ask for a dry run first.
     public var paid: Bool?
     /// The provider answers a request with `dryRun: true` with `{estimate: {units, costUSD}}` and does no work.
@@ -376,6 +375,7 @@ public struct PluginProvider: Codable, Sendable, Equatable, Identifiable {
         kinds = try container.decodeIfPresent([String].self, forKey: .kinds)
         voices = try container.decodeIfPresent([PluginVoice].self, forKey: .voices)
         clones = try container.decodeIfPresent(Bool.self, forKey: .clones)
+        clone = try container.decodeIfPresent(PluginCloneRange.self, forKey: .clone)
         paid = try container.decodeIfPresent(Bool.self, forKey: .paid)
         estimates = try container.decodeIfPresent(Bool.self, forKey: .estimates)
         maxTakes = try container.decodeIfPresent(Int.self, forKey: .maxTakes)

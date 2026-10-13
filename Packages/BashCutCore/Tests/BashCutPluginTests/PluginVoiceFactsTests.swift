@@ -48,6 +48,34 @@ struct PluginVoiceFactsTests {
         #expect(again.providers?.first == provider)
     }
 
+    @Test("clone declares the reference range; clones: true alone means 3–8 s; checked and API 9 (#532)")
+    func cloneRange() throws {
+        let declared = try manifest(
+            capability: "voice.synthesize", provider: #", "clone": {"minSeconds": 5, "maxSeconds": 12, "formats": ["wav"]}"#,
+            apiVersion: 9)
+        try declared.validate()
+        let provider = try #require(declared.providers?.first)
+        #expect(provider.cloneRange == PluginCloneRange(minSeconds: 5, maxSeconds: 12, formats: ["wav"]))
+        #expect(provider.cloneRange?.accepts(6) == true && provider.cloneRange?.accepts(13) == false)
+        let again = try JSONDecoder().decode(PluginManifest.self, from: JSONEncoder().encode(declared))
+        #expect(again.providers?.first == provider)
+        let legacy = try #require(try manifest(capability: "voice.synthesize", provider: #", "clones": true"#).providers?.first)
+        #expect(legacy.cloneRange == .standard)
+        #expect(try #require(try manifest(capability: "voice.synthesize", provider: "").providers?.first).cloneRange == nil)
+        #expect(PluginFeature.all.contains("voice.savedClones"))
+        for (capability, extra, api) in [
+            ("voice.synthesize", #", "clone": {"minSeconds": 8, "maxSeconds": 3}"#, 9),
+            ("voice.synthesize", #", "clone": {"minSeconds": 0.5, "maxSeconds": 3}"#, 9),
+            ("voice.synthesize", #", "clone": {"minSeconds": 3, "maxSeconds": 61}"#, 9),
+            ("voice.synthesize", #", "clones": false, "clone": {"minSeconds": 3, "maxSeconds": 8}"#, 9),
+            ("audio.beats", #", "clone": {"minSeconds": 3, "maxSeconds": 8}"#, 9),
+            ("voice.synthesize", #", "clone": {"minSeconds": 3, "maxSeconds": 8}"#, 8),
+        ] {
+            let manifest = try manifest(capability: capability, provider: extra, apiVersion: api)
+            #expect(throws: PluginError.self) { try manifest.validate() }
+        }
+    }
+
     @Test("maxTakes caps the takes asked of a voice provider; 1–8, voice.synthesize, API 8 (#410)")
     func maxTakes() throws {
         let one = try manifest(capability: "voice.synthesize", provider: #", "maxTakes": 1"#, apiVersion: 8)
