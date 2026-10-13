@@ -47,6 +47,7 @@ extension ProjectDocument {
     }
 
     func mediaFrames(_ arguments: CommandArguments) async throws -> JSONValue {
+        if let file = arguments.optionalString("file") { return try await fileFrames(file, arguments: arguments) }
         let ids = arguments.optionalString("media").map { $0.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) } }
         let selected = try ids.map { list in try list.map { try analysisSource($0).media } }
             ?? project.media.filter { $0.kind != "audio" }
@@ -87,6 +88,49 @@ extension ProjectDocument {
         let directory = try stillsDirectory()
         if !sheet { return try writeFrames(rows, size: size, directory: directory) }
         return try writeSheets(rows, arguments: arguments, size: size, directory: directory)
+    }
+
+    /// `media frames --file`: frames of a video that is not in the project (a stock or library candidate), read
+    /// with AVFoundation like project media: at `at` seconds or `count` evenly spaced (default 8) over the file.
+    func fileFrames(_ path: String, arguments: CommandArguments) async throws -> JSONValue {
+        guard arguments.optionalString("media") == nil, arguments.optionalString("reference") == nil,
+            !arguments.bool("sheet")
+        else { throw RPCFailure(-32602, "file takes no media, reference or sheet") }
+        let url = URL(fileURLWithPath: (path as NSString).expandingTildeInPath)
+        guard url.path.hasPrefix("/"), FileManager.default.fileExists(atPath: url.path) else {
+            throw RPCFailure(-32602, "file: no such file \(path) (give an absolute path)")
+        }
+        guard let (duration, fps) = try await MediaStills.videoTiming(url) else {
+            throw RPCFailure(-32602, "\(url.lastPathComponent) has no video track or no length")
+        }
+        let last = max(0, Int(duration * fps.value) - 1)
+        var times = try Self.seconds(arguments.optionalString("at"))
+        if times.isEmpty {
+            let count = arguments.optionalInt("count") ?? 8
+            times = (0..<count).map { (Double($0) + 0.5) * duration / Double(count) }
+        }
+        var seen = Set<Int>()
+        let frames = times.map { min(last, max(0, Int(($0 * fps.value + 0.000_1).rounded(.down)))) }
+            .filter { seen.insert($0).inserted }
+        let size = arguments.optionalInt("size") ?? 640
+        let images = try await MediaStills.images(url: url, isImage: false, fps: fps, frames: frames, maximumSide: size)
+        let directory = try stillsDirectory()
+        let stem = url.deletingPathExtension().lastPathComponent.prefix(24)
+        var files: [JSONValue] = []
+        for frame in frames {
+            let seconds = JSONValue.number((Double(frame) / fps.value * 1_000).rounded() / 1_000)
+            guard let image = images[frame] else {
+                files.append(.object(["frame": .integer(frame), "seconds": seconds, "error": .string("not decoded")]))
+                continue
+            }
+            let file = try write(image, name: "file-\(stem)-f\(frame)-\(size).png", directory: directory)
+            files.append(.object([
+                "path": .string(file.path), "file": .string(url.path), "frame": .integer(frame), "seconds": seconds,
+                "width": .integer(image.width), "height": .integer(image.height),
+            ]))
+        }
+        MediaStills.prune(directory, keeping: Self.keptStills)
+        return .object(["frames": .array(files)])
     }
 
     private func stills(_ plan: StillPlan, size: Int) async throws -> [Int: CGImage] {

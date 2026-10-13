@@ -395,12 +395,13 @@ Read media descriptions. With media: description {shots, describedBy, describedA
 - Mode: read · Runs: immediately · MCP: `bashcut_media_description`
 - `media`: string. Project media ID; every media by default
 
-### `bashcut media frames [--media <media>] [--at <at>] [--every <every>] [--count <count>] [--from <from>] [--to <to>] [--sheet] [--columns <columns>] [--rows <rows>] [--size <size>] [--reference <reference>] [--reference-from <referenceFrom>] [--reference-to <referenceTo>]`
+### `bashcut media frames [--media <media>] [--file <file>] [--at <at>] [--every <every>] [--count <count>] [--from <from>] [--to <to>] [--sheet] [--columns <columns>] [--rows <rows>] [--size <size>] [--reference <reference>] [--reference-from <referenceFrom>] [--reference-to <referenceTo>]`
 
-Read exact source frames of media as PNG files (in .bashcut/cache/media-stills; read them to look): at the given source seconds, every N seconds, or count evenly spaced (default 8, each in the middle of its part) over from…to (the whole file by default). Every media with a picture by default. frames [{path, media, frame (exact source frame index), seconds, width, height}]. With sheet: contact sheets of columns × rows cells labelled '<cell> <file> <m:ss.s>' (the colour changes with each media), sheets [{path, cells [{cell, media, frame, seconds}]}], so a cell maps back to its media and second. With reference (one media): a sheet with a REF row from that media (over referenceFrom…referenceTo) above an OURS row, cell for cell. At most 400 frames per call.
+Read exact source frames of media as PNG files (in .bashcut/cache/media-stills; read them to look): at the given source seconds, every N seconds, or count evenly spaced (default 8, each in the middle of its part) over from…to (the whole file by default). Every media with a picture by default. frames [{path, media, frame (exact source frame index), seconds, width, height}]. With sheet: contact sheets of columns × rows cells labelled '<cell> <file> <m:ss.s>' (the colour changes with each media), sheets [{path, cells [{cell, media, frame, seconds}]}], so a cell maps back to its media and second. With reference (one media): a sheet with a REF row from that media (over referenceFrom…referenceTo) above an OURS row, cell for cell. At most 400 frames per call. With file: frames of a video not in the project (a stock or library candidate), at or count over the whole file, frames [{path, file, frame, seconds, width, height}].
 
 - Mode: read · Runs: immediately · MCP: `bashcut_media_frames`
 - `media`: string. Media IDs, comma separated; every media with a picture by default
+- `file`: string. Absolute path of a video not in the project, instead of media
 - `at`: string. Source seconds, comma separated (one media)
 - `every`: number, 0.04…3600. Seconds between frames
 - `count`: integer, 1…400. Frames per media, evenly spaced (default 8)

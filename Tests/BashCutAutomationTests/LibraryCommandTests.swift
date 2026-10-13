@@ -65,6 +65,9 @@ struct LibraryCommandTests {
         #expect(batch.params["id"] == .string("a, b,project:c,a"))
         #expect(try CommandCatalog.libraryIDs("a, b,project:c,a") == ["a", "b", "project:c"])
         #expect(throws: (any Error).self) { try CommandCatalog.libraryIDs(" , ") }
+        // Over-fetch tiles (#556): frames of a candidate video that is not project media.
+        let frames = try CommandLineParser.parse(["media", "frames", "--file", "/tmp/c.mp4", "--count", "3"])
+        #expect(frames.params == ["file": .string("/tmp/c.mp4"), "count": .integer(3)])
 
         let play = try CommandLineParser.parse(["library", "preview", "bed"])
         #expect(play.params["id"] == .string("bed"))
