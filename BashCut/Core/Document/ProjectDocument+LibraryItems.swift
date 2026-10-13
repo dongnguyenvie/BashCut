@@ -126,6 +126,30 @@ extension ProjectDocument {
         Task { do { try await placeLibraryItem(item) } catch { message = error.localizedDescription } }
     }
 
+    /// Library items dragged from a plugin view onto the timeline (#408, `libraryItem`): each placed like
+    /// `library place <reference> --at-frame F` (the same lookup and placement, one undo step each), the next at
+    /// the end of the one before. The layer under the pointer is used when it takes the item (an audio item on an
+    /// audio layer, a clip on a picture layer); otherwise the placement picks one, as `library place` does.
+    func placeDroppedLibraryItems(_ references: [String], at frame: Int, overTrack trackID: String?) {
+        Task {
+            var at = frame
+            for reference in references {
+                do {
+                    let item = try libraryCatalog.item(reference)
+                    let track = trackID.flatMap { id in project.tracks.first { $0.id == id } }
+                    let fits = track.map { item.kind == .audio ? $0.kind == TrackKind.audio
+                        : item.kind == .clip && $0.kind == TrackKind.video } ?? false
+                    let placed = try await placeLibraryItem(
+                        item, LibraryPlacement(frame: at, trackID: fits ? trackID : nil))
+                    at = project.tracks.flatMap(\.items).first { $0.id == placed.itemID }?.end ?? at
+                } catch {
+                    message = error.localizedDescription
+                    return
+                }
+            }
+        }
+    }
+
     /// Library panels: uses an item on the selected timeline item.
     func applyFromLibrary(_ item: LibraryItem) {
         guard let selectedID else { return }

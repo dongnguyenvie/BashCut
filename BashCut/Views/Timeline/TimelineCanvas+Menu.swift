@@ -1,5 +1,6 @@
 import AppKit
 import BashCutAutomation
+import BashCutPlugin
 import BashCutProject
 import UniformTypeIdentifiers
 
@@ -155,6 +156,8 @@ extension TimelineCanvas {
     private struct Drop {
         let media: [Media]
         let files: [URL]
+        /// Library item references dragged from a plugin view (`libraryItem`), placed like `library place`.
+        var library: [String] = []
         let trackID: String?
         let frame: Int
     }
@@ -181,6 +184,10 @@ extension TimelineCanvas {
     override func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {
         defer { draggingExited(sender) }
         guard let drop = drop(for: sender) else { return false }
+        if !drop.library.isEmpty {
+            document.placeDroppedLibraryItems(drop.library, at: drop.frame, overTrack: drop.trackID)
+            return true
+        }
         if !drop.files.isEmpty {
             document.importFiles(drop.files, trackID: drop.trackID, at: drop.frame)
             return true
@@ -202,7 +209,17 @@ extension TimelineCanvas {
     /// media (otherwise the planner picks one), at the snapped frame under the pointer.
     private func drop(for sender: any NSDraggingInfo) -> Drop? {
         let pasteboard = sender.draggingPasteboard
-        let ids = (pasteboard.readObjects(forClasses: [NSString.self]) as? [String] ?? [])
+        let texts = pasteboard.readObjects(forClasses: [NSString.self]) as? [String] ?? []
+        let library = texts.compactMap { PluginViewDrag.libraryReference(dropped: $0) }
+        if !library.isEmpty {
+            let point = convert(sender.draggingLocation, from: nil)
+            let row = layout.row(at: point.y)?.track
+            let frame = snap(
+                min(project.duration, layout.frame(at: point.x)), excluding: nil, toPlayhead: true,
+                modifiers: NSEvent.modifierFlags).frame
+            return Drop(media: [], files: [], library: library, trackID: row?.isLocked == false ? row?.id : nil, frame: frame)
+        }
+        let ids = texts
             .filter { $0.hasPrefix(Self.mediaPasteboardPrefix) }.map { String($0.dropFirst(Self.mediaPasteboardPrefix.count)) }
         let media = ids.compactMap { id in project.media.first { $0.id == id } }
         let files = (pasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL] ?? [])

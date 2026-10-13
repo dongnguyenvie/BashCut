@@ -207,7 +207,7 @@ struct PluginNodeView: View {
             }
         case .image:
             PluginImageView(path: node.string("path"), height: node.double("height"), caption: node.string("caption"))
-                .pluginFileDrag(node.string("file") ?? node.string("path"))
+                .pluginFileDrag(node.string("file") ?? node.string("path"), library: node.string("libraryItem"))
         case .imageCompare: PluginImageCompare(node: node)
         case .audio: PluginAudioButton(path: node.string("path"), title: node.string("title"))
         case .list: PluginListView(node: node, model: model)
@@ -480,6 +480,6 @@ private struct PluginListView: View {
         .background(selected == id ? Color.cyan.opacity(0.14) : .clear, in: RoundedRectangle(cornerRadius: 5))
         .contentShape(Rectangle())
         .onTapGesture { model.send(PluginViewEvent(node: node.id, kind: .select, value: .string(id))) }
-        .pluginFileDrag(item["file"]?.string)
+        .pluginFileDrag(item["file"]?.string, library: item["libraryItem"]?.string)
     }
 }

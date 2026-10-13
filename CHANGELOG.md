@@ -5,6 +5,7 @@
 
 ## [Unreleased]
 
+- **Drag library items out of plugin views (#408).** A plugin list row or `image` with `libraryItem` (a library reference, `scope:id`) can be dragged onto the timeline, where it is placed like `library place <reference> --at-frame <frame>`: the same lookup and placement (sticker, clip, sound, text preset, look), one undo step per item, on the layer under the pointer when it takes the item. CLI parity is `library place`.
 - **Plan entries cite their facts.** Any `plan.cut` entry (clip, voiceover line, title, graphic, sound) may give `facts: [key]`, the project facts (`knowledge set-fact`) or claims (`knowledge set-claim`) it rests on; `plan check` warns `unknown-fact` with the keys for one that is neither, so a typo or a fact never recorded shows before the build.
 - **Plugin review checks outlive the session.** The issues a plugin's `review.check` reported were lost when BashCut restarted, so `review run` showed none until `review measure` ran the checks again; they are now kept in `.bashcut/cache/review-measurements/<content key>-plugins.json` beside the picture and loudness measurements, found again for the same content, and shown only while that plugin's check is still installed and enabled. A measure where a check failed or timed out is not kept.
 - **`export reveal-output`.** The result card's per-file Reveal in Finder icons had no command; `export reveal-output [--export ID|index|path]` reveals that export (the latest by default) and refuses a file that is gone. Left out of the agent instructions (it is for the user watching).

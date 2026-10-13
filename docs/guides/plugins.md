@@ -1050,10 +1050,10 @@ others may have one. Text is shown as given (the plugin localizes it with `local
 | `badge` | `text`, `color`? (`accent`, `green`, `orange`, `red`, `purple`, `secondary`) |
 | `keyValue` | `items: [{"key", "value"}]` (at most 100) |
 | `progress` | `value`? (0–1; spinner without), `label`? |
-| `image` | `path` (a local file), `height`? (16–600), `caption`?, `file`? (what a drag carries; `path` by default) |
+| `image` | `path` (a local file), `height`? (16–600), `caption`?, `file`? (what a drag carries; `path` by default), `libraryItem`? (a library reference the drag carries instead) |
 | `imageCompare` | `before`, `after` (local files), `height`?, `beforeLabel`?, `afterLabel`?; drag to compare |
 | `audio` | `path`, `title`?: a play/stop button (one sound plays at a time) |
-| `list` | `items: [{"id", "title", "subtitle"?, "icon"?, "image"?, "badge"?, "audio"?, "file"?, "actions"?: [{"id", "title", "icon"?}]}]` (at most 500, 3 actions per row), `selected`?, `empty`?; a row with `file` can be dragged |
+| `list` | `items: [{"id", "title", "subtitle"?, "icon"?, "image"?, "badge"?, "audio"?, "file"?, "libraryItem"?, "actions"?: [{"id", "title", "icon"?}]}]` (at most 500, 3 actions per row), `selected`?, `empty`?; a row with `file` or `libraryItem` can be dragged |
 | `button` | `title`, `icon`?, `style`? (`primary`, `destructive`, `link`), `confirm`?, `wide`?, `disabled`? |
 | `textField` | `label`?, `placeholder`?, `value`?, `search`? (sends `change` 300 ms after typing stops), `submit`? |
 | `textArea` | `label`?, `value`?, `height`? (40–400) |
@@ -1100,7 +1100,11 @@ BashCut runs the same validated import as for files dragged from Finder; the plu
 | The timeline | Imports the file and places it on the layer under the pointer (or the usual one for its kind) at the snapped frame; one undoable edit | `media import <file> --place [--track <layer>] [--at-frame <frame>]` |
 | The Media panel (Footage) | Imports it without placing it; a file already in the project is reused | `media import <file>` |
 
-A library item is placed with `library place <reference>` (the row's button or action, not a drag).
+A list row or `image` with `libraryItem` (a reference such as `plugin:<plugin>/<id>` or `user:<id>`, as `library
+list` gives it) drags that library item instead of a file: dropped on the timeline it is placed like `library place
+<reference> --at-frame <frame>` (the layer under the pointer when it takes the item: an audio item on an audio layer,
+a clip on a picture layer), with the same checks and one undo step per item; the plugin is not called. A reference
+that is not `scope:id` of a library scope does not drag.
 
 ### Overlays on the timeline and viewer
 
