@@ -102,8 +102,9 @@ struct ReviewCheckTests {
             + #"open(my $f, "<", $r->{projectFile}) or die "no file"; local $/; my $p = decode_json(<$f>); "#
             + #"my $n = 0; $n += scalar @{$_->{items}} for @{$p->{tracks}}; "#
             + #"print "items $n inline ", (exists $r->{project} ? 1 : 0), " file $r->{projectFile}"'"#
+        // Perl decodes the 2 MB file in a few seconds alone, but took over the 30 s default under the parallel run.
         try sandbox.addPlugin(
-            "test.big", providers: [provider("test.big.check")], body: body("""
+            "test.big", providers: [provider("test.big.check", timeout: 300)], body: body("""
                 summary=$(printf '%s' "$input" | \(count))
                 printf '{"id":"%s","result":{"issues":[{"id":"n","title":"Items","detail":"%s","frame":0}]}}\\n' "$id" "$summary"
                 """), apiVersion: 9)

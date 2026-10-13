@@ -30,7 +30,7 @@ struct TimelineSummaryTests {
         #expect(json["tracks"]?.array.isEmpty == false)
 
         let text = TimelineSummary.text(project())
-        #expect(text.contains("MAIN a 0-30"))
+        #expect(text.contains("V1 MAIN a 0-30"))
         #expect(text.contains("TRANSITION t1 whip a->b dur=12"))
         #expect(text.contains("MARKER section-hook section at=0 Hook"))
     }
