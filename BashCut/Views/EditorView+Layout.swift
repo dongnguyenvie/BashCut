@@ -26,6 +26,29 @@ enum EditorLayout {
 }
 
 extension EditorView {
+    /// The run panel and the agent change and export toasts: bottom right of the timeline, over its lowest tracks
+    /// and clear of the scroll bar. They belong to the editor column, so they never sit over the agent dock beside it,
+    /// nor over the viewer's transport and timecode.
+    var toastStack: some View {
+        VStack(alignment: .trailing, spacing: 0) {
+            if document.fileURL != nil, document.runPanel.visible {
+                RunPanelView(document: document, model: document.runPanel)
+            }
+            if let notice = document.exports.notice {
+                ExportToast(notice: notice, document: document)
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
+            }
+            if let change = document.agentChange {
+                AgentChangeToast(
+                    change: change, canUndo: document.canUndoAgentChange,
+                    show: { document.run(.showAgentChanges) },
+                    undo: { document.run(.undoAgentChange) },
+                    dismiss: { document.run(.dismissAgentChange) })
+            }
+        }
+        .animation(.easeOut(duration: 0.2), value: document.exports.notice?.id)
+    }
+
     /// The panes over the timeline; the timeline is resizable against them.
     var editorColumn: some View {
         VSplitView {
@@ -64,6 +87,7 @@ extension EditorView {
                 TimelineView(document: document)
                     .help("Option-drag an edge to roll; Command-drag a clip to slip; Shift-Delete to lift.")
                     .disabled(document.busy)
+                    .overlay(alignment: .bottomTrailing) { toastStack.padding(.bottom, 14) }
             }.frame(minHeight: EditorLayout.timelineMinHeight, idealHeight: EditorLayout.timelineIdealHeight)
         }.frame(minWidth: EditorLayout.editorMinWidth)
     }

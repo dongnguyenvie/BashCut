@@ -147,7 +147,7 @@ extension EditorView {
         .accessibilityLabel(exports.isRunning ? String(localized: "Export progress") : String(localized: "Export…"))
         .shortcut(.showExport)
         .disabled(!document.canPerform(exports.isRunning ? .showExportProgress : .showExport))
-        .buttonStyle(.borderedProminent)
+        .buttonStyle(ExportButtonStyle())
         .popover(isPresented: Bindable(document.ui).showExportProgress, arrowEdge: .bottom) {
             ExportProgressPopover(document: document)
         }
@@ -307,5 +307,22 @@ struct WindowDragArea: NSViewRepresentable {
                 window.performDrag(with: event)
             }
         }
+    }
+}
+
+/// The toolbar's one filled button: cyan with dark text. The system prominent style turns grey when the window is
+/// not key, which made Export look disabled; this keeps the cyan, a little softer.
+private struct ExportButtonStyle: ButtonStyle {
+    @Environment(\.controlActiveState) private var activeState
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        let inactive = activeState == .inactive
+        configuration.label
+            .fontWeight(.medium)
+            .foregroundStyle(Color.black.opacity(0.85))
+            .padding(.horizontal, 10).padding(.vertical, 3)
+            .background(RoundedRectangle(cornerRadius: 6).fill(Color.cyan))
+            .opacity(!isEnabled ? 0.4 : inactive ? 0.7 : configuration.isPressed ? 0.8 : 1)
     }
 }
