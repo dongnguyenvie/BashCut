@@ -13,7 +13,7 @@ struct StickerLibraryView: View {
         VStack(alignment: .leading, spacing: 12) {
             LibraryItemsSection(
                 document: document, kinds: [.sticker], saveKinds: [.sticker], fileKind: .sticker,
-                columns: [GridItem(.adaptive(minimum: 55))],
+                columns: [GridItem(.adaptive(minimum: 72))],
                 itemActions: { item in
                     document.fileURL == nil ? [] : [LibraryPanelAction(title: "Place at Playhead") { document.placeFromLibrary(item) }]
                 },
@@ -25,16 +25,22 @@ struct StickerLibraryView: View {
 
     private func tile(_ item: LibraryItem) -> some View {
         Button { document.placeFromLibrary(item) } label: {
-            if let emoji = item.params["emoji"]?.string, item.params["stickerKind"]?.string ?? "emoji" == "emoji" {
-                Text(verbatim: emoji).font(.largeTitle)
-            } else {
-                LibraryImage(url: document.libraryCatalog.previewURL(of: item) ?? document.libraryCatalog.fileURL(of: item))
-                    .frame(width: 40, height: 40)
-                    .overlay(alignment: .bottomLeading) { kindBadge(item) }
+            VStack(spacing: 3) {
+                if let emoji = item.params["emoji"]?.string, item.params["stickerKind"]?.string ?? "emoji" == "emoji" {
+                    Text(verbatim: emoji).font(.largeTitle).frame(height: 40)
+                } else {
+                    LibraryImage(
+                        url: document.libraryCatalog.previewURL(of: item) ?? document.libraryCatalog.fileURL(of: item),
+                        fallbackSymbol: item.params["stickerKind"]?.string == "video-alpha" ? "film" : LibraryKind.sticker.tileSymbol)
+                        .frame(width: 40, height: 40)
+                        .overlay(alignment: .bottomLeading) { kindBadge(item) }
+                }
+                LibraryTileCaption(item: item)
             }
+            .frame(maxWidth: .infinity)
         }
         .buttonStyle(.bordered).disabled(document.fileURL == nil)
-        .help(LibraryView.title(item))
+        .help(Text(verbatim: item.name))
     }
 
     @ViewBuilder private func kindBadge(_ item: LibraryItem) -> some View {
@@ -55,6 +61,8 @@ struct StickerLibraryView: View {
 /// plays), or a movie's first frame with its transparency.
 struct LibraryImage: View {
     let url: URL?
+    /// The icon shown while there is no picture, and when the file is missing or will not load.
+    var fallbackSymbol = "photo"
     @State private var image: NSImage?
 
     var body: some View {
@@ -66,21 +74,10 @@ struct LibraryImage: View {
                     Image(nsImage: image).resizable().scaledToFit()
                 }
             } else {
-                Image(systemName: "photo")
+                LibraryTileFallback(symbol: fallbackSymbol)
             }
         }
-        .task(id: url) { image = await url.asyncMap(Self.picture) ?? nil }
-    }
-
-    private static func picture(_ url: URL) async -> NSImage? {
-        guard LibrarySticker.videoExtensions.contains(url.pathExtension.lowercased()) else {
-            return NSImage(contentsOf: url)
-        }
-        let generator = AVAssetImageGenerator(asset: AVURLAsset(url: url))
-        generator.appliesPreferredTrackTransform = true
-        generator.maximumSize = CGSize(width: 160, height: 160)
-        guard let frame = try? await generator.image(at: .zero).image else { return nil }
-        return NSImage(cgImage: frame, size: NSSize(width: frame.width, height: frame.height))
+        .task(id: url) { image = await url.asyncMap(LibraryPictureLoader.picture) ?? nil }
     }
 }
 

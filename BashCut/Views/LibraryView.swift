@@ -95,9 +95,9 @@ struct LibraryView: View {
             tile: { item in
                 Button { document.placeFromLibrary(item) } label: {
                     VStack(alignment: .leading, spacing: 2) {
-                        LibraryImage(url: document.libraryCatalog.previewURL(of: item) ?? document.libraryCatalog.fileURL(of: item))
-                            .frame(height: 60)
-                        LibraryView.title(item).font(.caption2).lineLimit(1)
+                        LibraryImage(url: document.libraryCatalog.previewURL(of: item) ?? document.libraryCatalog.fileURL(of: item),
+                                     fallbackSymbol: LibraryKind.clip.tileSymbol).frame(height: 60)
+                        LibraryTileCaption(item: item)
                     }
                 }
                 .buttonStyle(.plain).disabled(document.fileURL == nil)
