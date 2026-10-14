@@ -1,5 +1,6 @@
 import AppKit
 import BashCutAutomation
+import BashCutDocument
 import BashCutPlugin
 import BashCutProject
 import UniformTypeIdentifiers

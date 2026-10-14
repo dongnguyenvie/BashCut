@@ -1,5 +1,6 @@
 import AppKit
 import BashCutAutomation
+import BashCutDocument
 import BashCutProject
 
 /// Pointer and keyboard handling: scrubbing the playhead, moving and trimming clips, hover feedback,

@@ -1,4 +1,5 @@
 import BashCutAutomation
+import BashCutDocument
 import SwiftUI
 
 /// Play controls, position slider and time under the viewer. It is its own view because it reads the playhead,
@@ -27,9 +28,8 @@ struct TransportBar: View {
                 value: Binding(get: { Double(document.playhead) }, set: { document.preview.seek(Int($0)) }),
                 in: 0...Double(max(1, document.project.duration)))
             Text(
-                String(
-                    format: "%.2f / %.2fs", Double(document.playhead) / document.project.fps.value,
-                    Double(document.project.duration) / document.project.fps.value)
+                Timecode.transportLabel(
+                    position: document.playhead, length: document.project.duration, fps: document.project.fps)
             ).font(.caption.monospacedDigit())
             Button {
                 document.run(.toggleFullScreenPreview)
