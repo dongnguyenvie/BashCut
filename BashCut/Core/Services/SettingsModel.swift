@@ -35,6 +35,10 @@ public final class SettingsModel {
     public var agentKitPromptDismissed: String? {
         didSet { defaults.set(agentKitPromptDismissed, forKey: Keys.agentKitPromptDismissed) }
     }
+    /// The kit version whose setup banner the dock has shown in full once; after that it takes one line.
+    public var agentKitPromptSeen: String? {
+        didSet { defaults.set(agentKitPromptSeen, forKey: Keys.agentKitPromptSeen) }
+    }
     /// Claude Code's configuration folder when it is not found by itself (`CLAUDE_CONFIG_DIR`); nil detects it.
     public var claudeConfigFolder: URL? {
         didSet { store(claudeConfigFolder, Keys.claudeConfigFolder) }
@@ -141,6 +145,7 @@ public final class SettingsModel {
         static let agentOnlyBashCutMCP = "agentOnlyBashCutMCP"
         static let agentKitFolder = "agentKitFolder"
         static let agentKitPromptDismissed = "agentKitPromptDismissed"
+        static let agentKitPromptSeen = "agentKitPromptSeen"
         static let claudeConfigFolder = "claudeConfigFolder"
         static let codexHomeFolder = "codexHomeFolder"
         static let allowAgentEdits = "allowAgentEdits"
@@ -173,6 +178,7 @@ public final class SettingsModel {
         agentOnlyBashCutMCP = defaults.object(forKey: Keys.agentOnlyBashCutMCP) as? Bool ?? true
         agentKitFolder = defaults.string(forKey: Keys.agentKitFolder).map { URL(fileURLWithPath: $0) }
         agentKitPromptDismissed = defaults.string(forKey: Keys.agentKitPromptDismissed)
+        agentKitPromptSeen = defaults.string(forKey: Keys.agentKitPromptSeen)
         claudeConfigFolder = defaults.string(forKey: Keys.claudeConfigFolder).map { URL(fileURLWithPath: $0) }
         codexHomeFolder = defaults.string(forKey: Keys.codexHomeFolder).map { URL(fileURLWithPath: $0) }
         allowAgentEdits = defaults.object(forKey: Keys.allowAgentEdits) as? Bool ?? true

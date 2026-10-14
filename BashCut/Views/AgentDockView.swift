@@ -76,32 +76,7 @@ struct AgentDockView: View {
                         }
                     }
             } else {
-                VStack(spacing: 14) {
-                    Image(systemName: "terminal").font(.largeTitle).foregroundStyle(.cyan)
-                    Text("Choose an agent").font(.headline)
-                    Text("Claude Code and Codex run with your CLI login or API key.").foregroundStyle(.secondary)
-                    Button("Start default agent") { model.openDefault() }
-                        .buttonStyle(.borderedProminent)
-                    ForEach(model.document.chatAgents.available, id: \.pluginID) { agent in
-                        Button(String(format: String(localized: "Start %@"), agent.title)) { model.openChat(agent.pluginID) }
-                    }
-                    ForEach(model.agentChoices) { choice in
-                        if model.canContinue(choice.id) {
-                            HStack {
-                                Button("Continue \(choice.title)") { model.open(choice.id) }
-                                    .help("Pick up your last conversation in this project")
-                                Button("New conversation") { model.startNewConversation(choice.id) }
-                                    .help("Start without the earlier conversation")
-                            }
-                        } else {
-                            Button("Start \(choice.title)") { model.open(choice.id) }
-                        }
-                    }
-                    if !model.sessionDiscoveryMessage.isEmpty {
-                        Label(model.sessionDiscoveryMessage, systemImage: "clock.arrow.circlepath")
-                            .font(.caption).foregroundStyle(.secondary)
-                    }
-                }.padding().frame(maxWidth: .infinity, maxHeight: .infinity)
+                AgentEmptyStateView(model: model)
             }
             if !model.error.isEmpty {
                 Text(model.error).font(.caption).foregroundStyle(.orange).padding(8).textSelection(.enabled)

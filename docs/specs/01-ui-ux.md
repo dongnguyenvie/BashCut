@@ -339,6 +339,8 @@ plugin output directly as timeline JSON. Details are in the [plugins guide](../g
 for this project, the dock offers **Continue** or **New conversation**. A handoff moves the project context from
 one agent to the other.
 
+**Empty state.** Before any agent runs, the tab shows one primary button (**Start** the default agent, or **Continue** when this project has a conversation to pick up), an **Other agents** menu (chat agents such as AI Editor, the other terminal agents, New conversation) and a one-line explainer. The agent skills banner shows in full the first time a kit version is seen, then as one line (\"Agent skills: Set Up · Details…\" and Later) until a newer kit comes out.
+
 **The context chip** follows the timeline or library selection. Click ✕ to send nothing.
 
 **Quick actions** paste a prompt template into the terminal; you can edit it before pressing Enter. Templates are

@@ -1,6 +1,9 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Other agents": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Other agents" } }, "vi": { "stringUnit": { "state": "translated", "value": "Agent khác" } } } },
+    "Agent skills:": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Agent skills:" } }, "vi": { "stringUnit": { "state": "translated", "value": "Kỹ năng agent:" } } } },
+    "New conversation with %@": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "New conversation with %@" } }, "vi": { "stringUnit": { "state": "translated", "value": "Cuộc trò chuyện mới với %@" } } } },
     "Copy ID": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Copy ID" } }, "vi": { "stringUnit": { "state": "translated", "value": "Sao chép ID" } } } },
     "Select a timeline item to edit it": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Select a timeline item to edit it" } }, "vi": { "stringUnit": { "state": "translated", "value": "Chọn một mục trên timeline để chỉnh" } } } },
     "Format": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Format" } }, "vi": { "stringUnit": { "state": "translated", "value": "Định dạng" } } } },

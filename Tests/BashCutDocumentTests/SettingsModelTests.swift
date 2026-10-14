@@ -13,6 +13,16 @@ struct SettingsModelTests {
         return defaults
     }
 
+    @Test("The agent kit banner remembers the kit version it showed in full (P1-8)")
+    func kitBannerSeen() throws {
+        let defaults = try defaults()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = SettingsModel(defaults: defaults)
+        #expect(settings.agentKitPromptSeen == nil)
+        settings.agentKitPromptSeen = "1.2.0"
+        #expect(SettingsModel(defaults: defaults).agentKitPromptSeen == "1.2.0")
+    }
+
     @Test("Defaults match earlier builds and every change is stored under the old keys")
     func persistence() throws {
         let defaults = try defaults()
