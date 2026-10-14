@@ -288,7 +288,7 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   framing), Transitions (Soft dissolve, Quick whip, Zoom punch) and Looks (Original, Vivid, Muted film, Black &
   white, Bright & airy, Moody).
 - Shared panel UI (#80): the Audio, Text, Stickers, Effects, Transitions and Filters panels show their library items
-  with search, pack, tag and scope filters (`ui view --library-*`), agent and scope badges, Add… and drops (files or
+  with a home view (Recent per project, Favorites on this Mac, packs with See all), source chips, search, pack and tag filters (`ui view --library-*`, `library favorite`), agent and scope badges, Add… and drops (files or
   packs), Save selection as… (text style, framing, transition, look, audio) and a context menu (Duplicate & Edit, Rename,
   Move to project/this Mac, Show Source & License, Show in Finder, Remove). The item sheet is the `library-item`
   dialog. Voice stays provider-driven.

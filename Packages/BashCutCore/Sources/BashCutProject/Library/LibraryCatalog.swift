@@ -127,9 +127,26 @@ public struct LibraryCatalog: Sendable {
         try (user?.usage() ?? [:]).merging(project?.usage() ?? [:]) { $1 }
     }
 
+    /// Counts a use, and puts the item first in the project's Recent list (when a project is open).
     public func recordUse(_ item: LibraryItem, now: Date = Date()) throws {
         try usageStore(for: item)?.recordUse(item.reference, now: now)
+        try project?.recordRecent(item.reference)
     }
+
+    // MARK: Favourites and recent
+
+    /// The favourite references (`scope:id`), global: kept in this Mac's library.
+    public func favorites() throws -> [String] { try user?.favorites() ?? [] }
+
+    /// Stars or unstars `item`. Read-only items (built-in, plugin) can be favourites too.
+    public func setFavorite(_ item: LibraryItem, _ on: Bool) throws {
+        guard let user else { throw ProjectError.invalid("No user library") }
+        try user.setFavorite(item.reference, on)
+    }
+
+    /// The references placed or applied in the open project, newest first (at most `LibraryStore.maximumRecent`);
+    /// empty without a saved project.
+    public func recent() throws -> [String] { try project?.recent() ?? [] }
 
     // MARK: Changes
 
@@ -182,6 +199,8 @@ public struct LibraryCatalog: Sendable {
         let source = try store(item.scope)
         let target = try store(scope)
         let use = try usageStore(for: item)?.usage()[item.reference]
+        let wasFavorite = try favorites().contains(item.reference)
+        let recentIndex = try recent().firstIndex(of: item.reference)
         let moved = try target.adopt(item, from: source)
         do {
             try source.remove(item.id)
@@ -190,6 +209,12 @@ public struct LibraryCatalog: Sendable {
             throw error
         }
         if let use { try usageStore(for: moved)?.setUsage(moved.reference, use) }
+        // The reference changes with the scope: a favourite stays one, and a recent item stays recent.
+        if wasFavorite {
+            try setFavorite(item, false)
+            try setFavorite(moved, true)
+        }
+        if recentIndex != nil { try project?.recordRecent(moved.reference) }
         return moved
     }
 

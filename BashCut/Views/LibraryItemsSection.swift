@@ -19,15 +19,20 @@ struct LibraryItemsSection<Tile: View>: View {
     var itemActions: (LibraryItem) -> [LibraryPanelAction] = { _ in [] }
     @ViewBuilder let tile: (LibraryItem) -> Tile
 
-    @State private var items: [LibraryItem] = []
+    @State var items: [LibraryItem] = []
+    /// Starred references (this Mac) and the project's recent ones, newest first (D5).
+    @State var favorites: [String] = []
+    @State var recent: [String] = []
+    /// The home view sections the user folded.
+    @State var collapsed: Set<String> = []
     @State private var dropTargeted = false
     /// How many matches the panel draws; Show more adds a page. A new search or filter starts again.
-    @State private var shown = Self.pageSize
+    @State var shown = Self.pageSize
     static var pageSize: Int { 60 }
 
-    private var panel: String { document.ui.libraryTab.panelName }
+    var panel: String { document.ui.libraryTab.panelName }
 
-    private var filter: Binding<LibraryPanelFilter> {
+    var filter: Binding<LibraryPanelFilter> {
         Binding(
             get: { document.ui.libraryFilters[panel] ?? LibraryPanelFilter() },
             set: { document.ui.libraryFilters[panel] = $0 })
@@ -40,32 +45,8 @@ struct LibraryItemsSection<Tile: View>: View {
                 TextField("Search library…", text: filter.query).textFieldStyle(.roundedBorder)
                 filterMenu
             }
-            let matches = visibleItems
-            let page = Array(matches.prefix(shown))
-            grid(page.filter { $0.scope != .plugin })
-            // Plugin packs (#81), under the name of the plugin that ships them.
-            ForEach(pluginGroups(page), id: \.plugin) { group in
-                VStack(alignment: .leading, spacing: 4) {
-                    Label {
-                        Text(verbatim: ([group.name] + group.packs).joined(separator: " · ")).lineLimit(1)
-                    } icon: {
-                        Image(systemName: "puzzlepiece.extension")
-                    }
-                    .font(.caption).foregroundStyle(.secondary)
-                    .help("From a plugin: read-only; Duplicate & Edit… saves your own copy")
-                    grid(group.items, fromOnePack: true)
-                }
-            }
-            if matches.count > page.count {
-                Button("Show \(min(Self.pageSize, matches.count - page.count)) more of \(matches.count - page.count)") {
-                    shown += Self.pageSize
-                }
-                .buttonStyle(.link).font(.caption)
-            }
-            if matches.isEmpty {
-                Text(filter.wrappedValue.isActive ? "No matching items." : "Nothing in this library yet.")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
+            sourceChips
+            if showsHome { homeSections } else { results }
         }
         .padding(4)
         .overlay {
@@ -83,18 +64,21 @@ struct LibraryItemsSection<Tile: View>: View {
         .onChange(of: filter.wrappedValue) { shown = Self.pageSize }
     }
 
-    private func grid(_ items: [LibraryItem], fromOnePack: Bool = false) -> some View {
+    func grid(_ items: [LibraryItem], fromOnePack: Bool = false) -> some View {
         LazyVGrid(columns: columns, spacing: 8) {
             ForEach(items, id: \.reference) { item in
-                tile(item)
-                    .overlay(alignment: .topTrailing) { if !badgesInTile { LibraryItemBadges(item: item, hidesScope: fromOnePack) } }
+                let starred = favorites.contains(item.reference)
+                LibraryGridTile(
+                    item: item, isFavorite: starred, showsBadges: !badgesInTile, hidesScope: fromOnePack,
+                    toggleFavorite: { document.toggleLibraryFavorite(item, currently: starred) },
+                    content: { tile(item) })
                     .contextMenu { contextMenu(item) }
             }
         }
     }
 
     /// Plugin items by plugin, in the order they come, with the plugin's name and its packs' names.
-    private func pluginGroups(_ items: [LibraryItem]) -> [(plugin: String, name: String, packs: [String], items: [LibraryItem])] {
+    func pluginGroups(_ items: [LibraryItem]) -> [(plugin: String, name: String, packs: [String], items: [LibraryItem])] {
         var groups: [(plugin: String, name: String, packs: [String], items: [LibraryItem])] = []
         for item in items where item.scope == .plugin {
             let plugin = item.createdBy["plugin"]?.string ?? ""
@@ -110,7 +94,7 @@ struct LibraryItemsSection<Tile: View>: View {
     }
 
     /// Search… and Generate…, when a plugin that may run provides them for this panel's kinds (#81).
-    @ViewBuilder private var providerButtons: some View {
+    @ViewBuilder var providerButtons: some View {
         if !document.libraryProviders(PluginAPI.librarySearch, kinds: kinds).isEmpty {
             Button("Search…", systemImage: "magnifyingglass.circle") {
                 document.beginLibrarySearch(PluginAPI.librarySearch, kinds: kinds)
@@ -164,12 +148,6 @@ struct LibraryItemsSection<Tile: View>: View {
                 Text("All tags").tag(String?.none)
                 ForEach(Self.unique(items.flatMap(\.tags)), id: \.self) { Text(verbatim: $0).tag(String?.some($0)) }
             }
-            Picker("Scope", selection: filter.scope) {
-                Text("All scopes").tag(String?.none)
-                ForEach(LibraryScope.allCases, id: \.self) { scope in
-                    Text(ProjectDocument.scopeTitle(scope)).tag(String?.some(scope.rawValue))
-                }
-            }
             if filter.wrappedValue.isActive {
                 Divider()
                 Button("Clear filters") { filter.wrappedValue = LibraryPanelFilter() }
@@ -179,7 +157,7 @@ struct LibraryItemsSection<Tile: View>: View {
                 ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
         }
         .menuStyle(.borderlessButton).fixedSize()
-        .help("Filter by pack, tag or scope")
+        .help("Filter by pack or tag")
     }
 
     @ViewBuilder private func contextMenu(_ item: LibraryItem) -> some View { libraryMenu(item) }
@@ -189,6 +167,10 @@ struct LibraryItemsSection<Tile: View>: View {
         if !actions.isEmpty {
             ForEach(Array(actions.enumerated()), id: \.offset) { _, action in Button(action.title, action: action.run) }
             Divider()
+        }
+        let starred = favorites.contains(item.reference)
+        Button(starred ? "Remove from Favorites" : "Add to Favorites") {
+            document.toggleLibraryFavorite(item, currently: starred)
         }
         Button("Duplicate & Edit…") { document.beginDuplicate(item) }
         if item.scope.isWritable {
@@ -215,24 +197,19 @@ struct LibraryItemsSection<Tile: View>: View {
         }
     }
 
-    private var visibleItems: [LibraryItem] {
-        let filter = filter.wrappedValue
-        let match = LibraryCatalog.Filter(
-            tag: filter.tag, scope: filter.scope.flatMap(LibraryScope.init(rawValue:)), pack: filter.pack,
-            query: filter.query.isEmpty ? nil : filter.query)
-        return items.filter(match.matches)
-    }
-
     private func load() {
         do {
-            items = try document.libraryCatalog.panelItems(kinds)
+            let catalog = document.libraryCatalog
+            items = try catalog.panelItems(kinds)
+            favorites = (try? catalog.favorites()) ?? []
+            recent = (try? catalog.recent()) ?? []
         } catch {
             items = LibraryBuiltIns.items.filter { $0.kind.map(kinds.contains) == true }
             document.message = error.localizedDescription
         }
     }
 
-    private static func unique(_ values: [String]) -> [String] {
+    static func unique(_ values: [String]) -> [String] {
         var seen: Set<String> = []
         return values.filter { seen.insert($0.lowercased()).inserted }.sorted { $0.localizedStandardCompare($1) == .orderedAscending }
     }

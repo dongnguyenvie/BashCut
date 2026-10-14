@@ -10,11 +10,20 @@ extension ProjectDocument {
     func listLibraryCommand(_ arguments: CommandArguments) throws -> JSONValue {
         let catalog = libraryCatalog
         let usage = try catalog.usage()
-        let items = try catalog.items(matching: Self.filter(arguments))
+        let favorites = Set(try catalog.favorites())
+        var items = try catalog.items(matching: Self.filter(arguments))
+        if arguments.bool("favorites") { items = items.filter { favorites.contains($0.reference) } }
+        if arguments.bool("recent") {
+            let order = try catalog.recent()
+            items = items.filter { order.contains($0.reference) }.sorted {
+                (order.firstIndex(of: $0.reference) ?? 0) < (order.firstIndex(of: $1.reference) ?? 0)
+            }
+        }
+        let json = { (item: LibraryItem) in Self.favoriteJSON(item, usage: usage[item.reference], favorites: favorites) }
         let offset = arguments.optionalInt("offset"), limit = arguments.optionalInt("limit")
-        guard offset != nil || limit != nil else { return .array(items.map { $0.json(usage: usage[$0.reference]) }) }
+        guard offset != nil || limit != nil else { return .array(items.map(json)) }
         let page = LibraryPage(total: items.count, offset: offset ?? 0, limit: limit)
-        return page.json(items: items[page.range].map { $0.json(usage: usage[$0.reference]) })
+        return page.json(items: items[page.range].map(json))
     }
 
     func saveSelectionCommand(_ arguments: CommandArguments, author: Author) async throws -> JSONValue {

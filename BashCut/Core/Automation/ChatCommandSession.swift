@@ -35,7 +35,7 @@ import Foundation
         "knowledge.set-claim",
         "skills.list",
         "skills.get", "skills.propose",
-        "library.list", "library.get", "library.stats", "library.add", "library.update",
+        "library.list", "library.get", "library.favorite", "library.stats", "library.add", "library.update",
         "library.remove", "library.apply", "library.place", "library.save-selection", "library.move", "library.analyze",
         "library.preview", "library.search", "library.generate", "plugins.view", "plugins.view-event",
     ]

@@ -84,7 +84,7 @@ public struct LibraryStore: Sendable {
         try write(.object(contents.fields), to: file)
     }
 
-    private func write(_ value: JSONValue, to url: URL) throws {
+    func write(_ value: JSONValue, to url: URL) throws {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
@@ -201,6 +201,7 @@ public struct LibraryStore: Sendable {
         try save(contents)
         var usage = try usage()
         if usage.removeValue(forKey: removed.reference) != nil { try saveUsage(usage) }
+        try forget(removed.reference)
         return removed
     }
 

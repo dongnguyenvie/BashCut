@@ -348,7 +348,7 @@ public enum CommandCatalog {
                                  cli: .option("library-tag")),
                 CommandParameter("libraryScope", .string, "Scope the open library panel shows",
                                  choices: ["all"] + LibraryScope.allCases.map(\.rawValue), cli: .option("library-scope")),
-            ]),
+            ] + libraryViewParameters),
         CommandSpec(
             "ui.seek", .ui, "Move the viewer to a timeline frame.",
             parameters: [CommandParameter("frame", .integer, "Timeline frame", required: true, minimum: 0,
