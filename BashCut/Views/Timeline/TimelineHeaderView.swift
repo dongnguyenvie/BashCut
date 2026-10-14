@@ -37,6 +37,10 @@ final class TimelineHeaderView: NSView, NSTextFieldDelegate, NSViewToolTipOwner 
     var onResize: ((Double) -> Void)?
     /// The context menu for a layer row (plugin `track.context` actions); the row is selected first.
     var onMenu: ((String) -> NSMenu?)?
+    /// Folds or unfolds the empty layers (the row under the last layer).
+    var onToggleEmpty: (() -> Void)?
+    /// The menu "+ Add track" opens, one entry per kind of layer.
+    var onAddMenu: (() -> NSMenu?)?
 
     private static let chipWidth = 22.0
     /// The grab area at the right edge that resizes the header.
@@ -93,6 +97,44 @@ final class TimelineHeaderView: NSView, NSTextFieldDelegate, NSViewToolTipOwner 
         for row in layout.rows where NSRect(x: 0, y: row.y, width: bounds.width, height: row.height).intersects(area) {
             draw(row)
         }
+        drawFooters()
+    }
+
+    /// The row that folds the empty layers ("V1, V3, A1 empty"; "Hide empty" once shown) and the "+ Add track" row.
+    private func footerRects() -> (empty: NSRect?, add: NSRect) {
+        let inset = bounds.width - 1
+        return (
+            layout.emptyRowY.map { NSRect(x: 0, y: $0, width: inset, height: TimelineLayout.footerRowHeight) },
+            NSRect(x: 0, y: layout.addRowY, width: inset, height: TimelineLayout.footerRowHeight))
+    }
+
+    /// What the fold row says: the empty layers' IDs in the wide header, their count in the compact one.
+    private var emptyTitle: String {
+        let labels = layout.emptyLabels
+        if layout.emptyExpanded { return String(localized: "Hide empty") }
+        return isCompact
+            ? String(format: String(localized: "%d empty"), labels.count)
+            : String(format: String(localized: "%@ empty"), labels.joined(separator: ", "))
+    }
+
+    private func drawFooters() {
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: isCompact ? 9 : 10), .foregroundColor: NSColor.secondaryLabelColor,
+        ]
+        let options: NSString.DrawingOptions = [.usesLineFragmentOrigin, .truncatesLastVisibleLine]
+        let rects = footerRects()
+        if let rect = rects.empty {
+            NSColor(calibratedWhite: 0.11, alpha: 1).setFill()
+            NSBezierPath(roundedRect: rect.insetBy(dx: 3, dy: 0), xRadius: 4, yRadius: 4).fill()
+            Self.symbol(layout.emptyExpanded ? "chevron.down" : "chevron.right", tint: .tertiaryLabelColor)?
+                .draw(in: NSRect(x: 8, y: rect.midY - 5, width: 10, height: 10))
+            (emptyTitle as NSString).draw(
+                with: NSRect(x: 22, y: rect.midY - 7, width: max(0, rect.width - 26), height: 14),
+                options: options, attributes: attributes)
+        }
+        (String(localized: "+ Add track") as NSString).draw(
+            with: NSRect(x: 9, y: rects.add.midY - 7, width: max(0, rects.add.width - 12), height: 14),
+            options: options, attributes: attributes)
     }
 
     /// The vertical center of a row's ID, icon and switches; a selected compact row moves them up to make room for
@@ -189,6 +231,15 @@ final class TimelineHeaderView: NSView, NSTextFieldDelegate, NSViewToolTipOwner 
             return
         }
         point.y += scrollOffset
+        let footers = footerRects()
+        if footers.empty?.contains(point) == true {
+            onToggleEmpty?()
+            return
+        }
+        if footers.add.contains(point) {
+            if let menu = onAddMenu?() { menu.popUp(positioning: nil, at: NSPoint(x: 6, y: footers.add.maxY - scrollOffset), in: self) }
+            return
+        }
         guard let row = row(at: point) else { return }
         if let hit = buttons(for: row).first(where: { $0.1.contains(point) }) {
             onToggle?(row.track.id, hit.0)
@@ -221,6 +272,10 @@ final class TimelineHeaderView: NSView, NSTextFieldDelegate, NSViewToolTipOwner 
     override func resetCursorRects() {
         addCursorRect(NSRect(x: bounds.width - Self.edgeWidth, y: 0, width: Self.edgeWidth, height: bounds.height),
                       cursor: .resizeLeftRight)
+        for footer in [footerRects().empty, footerRects().add].compactMap({ $0 }) {
+            let visible = footer.offsetBy(dx: 0, dy: -scrollOffset).intersection(bounds)
+            if !visible.isNull, !visible.isEmpty { addCursorRect(visible, cursor: .pointingHand) }
+        }
         for row in layout.rows {
             for (_, frame) in buttons(for: row) {
                 // Buttons scrolled out of view intersect to a null (infinite) rect, which AppKit rejects.
@@ -275,6 +330,10 @@ final class TimelineHeaderView: NSView, NSTextFieldDelegate, NSViewToolTipOwner 
     /// One tooltip area per visible ID and switch; `view(_:stringForToolTip:point:userData:)` names what is there.
     private func updateToolTips() {
         removeAllToolTips()
+        for footer in [footerRects().empty, footerRects().add].compactMap({ $0 }) {
+            let visible = footer.offsetBy(dx: 0, dy: -scrollOffset).intersection(bounds)
+            if !visible.isNull, !visible.isEmpty { addToolTip(visible, owner: self, userData: nil) }
+        }
         for row in layout.rows {
             for rect in [chipRect(row)] + buttons(for: row).map(\.1) {
                 let visible = rect.offsetBy(dx: 0, dy: -scrollOffset).intersection(bounds)
@@ -287,6 +346,13 @@ final class TimelineHeaderView: NSView, NSTextFieldDelegate, NSViewToolTipOwner 
         _ view: NSView, stringForToolTip tag: NSView.ToolTipTag, point: NSPoint, userData data: UnsafeMutableRawPointer?
     ) -> String {
         let point = NSPoint(x: point.x, y: point.y + scrollOffset)
+        let footers = footerRects()
+        if footers.empty?.contains(point) == true {
+            return layout.emptyExpanded
+                ? String(localized: "Fold the empty layers into one row")
+                : String(format: String(localized: "Empty layers: %@. Click to show them."), layout.emptyLabels.joined(separator: ", "))
+        }
+        if footers.add.contains(point) { return String(localized: "Add a layer") }
         guard let row = row(at: point) else { return "" }
         let track = row.track
         if let hit = buttons(for: row).first(where: { $0.1.contains(point) }) {
