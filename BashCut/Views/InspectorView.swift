@@ -1,3 +1,4 @@
+import BashCutDocument
 import BashCutProject
 import BashCutAutomation
 import BashCutEngine

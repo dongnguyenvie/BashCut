@@ -1,3 +1,4 @@
+import BashCutDocument
 import BashCutProject
 import SwiftUI
 
@@ -77,6 +78,6 @@ private struct SectionRow: View {
     }
 
     private func format(_ frame: Int) -> String {
-        String(format: "%.2fs", Double(frame) / document.project.fps.value)
+        Timecode.string(frame, fps: document.project.fps)
     }
 }
