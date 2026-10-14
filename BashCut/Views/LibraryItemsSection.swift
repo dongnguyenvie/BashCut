@@ -53,7 +53,7 @@ struct LibraryItemsSection<Tile: View>: View {
                     }
                     .font(.caption).foregroundStyle(.secondary)
                     .help("From a plugin: read-only; Duplicate & Edit… saves your own copy")
-                    grid(group.items)
+                    grid(group.items, fromOnePack: true)
                 }
             }
             if matches.count > page.count {
@@ -83,11 +83,11 @@ struct LibraryItemsSection<Tile: View>: View {
         .onChange(of: filter.wrappedValue) { shown = Self.pageSize }
     }
 
-    private func grid(_ items: [LibraryItem]) -> some View {
+    private func grid(_ items: [LibraryItem], fromOnePack: Bool = false) -> some View {
         LazyVGrid(columns: columns, spacing: 8) {
             ForEach(items, id: \.reference) { item in
                 tile(item)
-                    .overlay(alignment: .topTrailing) { if !badgesInTile { LibraryItemBadges(item: item) } }
+                    .overlay(alignment: .topTrailing) { if !badgesInTile { LibraryItemBadges(item: item, hidesScope: fromOnePack) } }
                     .contextMenu { contextMenu(item) }
             }
         }
@@ -249,13 +249,15 @@ struct LibraryItemBadges: View {
     let item: LibraryItem
     /// Drawn in a row (after a title) instead of over a tile's corner: no inset.
     var inline = false
+    /// The whole section comes from one pack and its header says so: no plugin or folder mark.
+    var hidesScope = false
 
     var body: some View {
         HStack(spacing: 2) {
             if item.creator == "agent" {
                 Image(systemName: "sparkles").help("Made by an agent")
             }
-            switch item.scope {
+            switch hidesScope ? .builtIn : item.scope {
             case .project: Image(systemName: "folder").help("Saved in this project")
             case .user: Image(systemName: "desktopcomputer").help("Saved on this Mac")
             case .plugin: Image(systemName: "puzzlepiece.extension").help("From a plugin")
