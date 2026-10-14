@@ -1,8 +1,8 @@
 import BashCutDocument
 import SwiftUI
 
-/// The Tools panel (P1-3): the list of tools on top and the selected tool under it. Built-in tools and the plugins'
-/// `kind: tool` views and `tools` actions are listed together.
+/// The Tools panel (P1-4): the list of tools on top and the selected tool's card under it. The built-in tools (Auto
+/// captions, Voiceover, Beat detection) come first, then the plugins' `kind: tool` views and `tools` actions.
 struct ToolsPanelView: View {
     @Bindable var document: ProjectDocument
     @Bindable var pluginManager: PluginManagerModel
@@ -15,7 +15,7 @@ struct ToolsPanelView: View {
                 ForEach(tools) { tool in toolRow(tool, selected: tool.id == selected?.id) }
             }
             Divider()
-            if let selected { toolContent(selected) }
+            if let selected { toolContent(selected).id(selected.id) }
         }
     }
 
@@ -43,36 +43,17 @@ struct ToolsPanelView: View {
     @ViewBuilder private func toolContent(_ tool: ToolListEntry) -> some View {
         switch tool.source {
         case .native:
-            VoiceLibraryView(document: document, pluginManager: pluginManager)
-            PluginActionStrip(document: document, placement: "panel.voice")
+            switch tool.id {
+            case ToolID.captions: CaptionsToolCard(document: document, pluginManager: pluginManager)
+            case ToolID.beats: BeatsToolCard(document: document, pluginManager: pluginManager)
+            default:
+                VoiceToolCard(document: document, pluginManager: pluginManager)
+                PluginActionStrip(document: document, placement: "panel.voice")
+            }
         case .view(let key):
-            if let model = document.pluginViews.model(key: key) {
-                PluginToolViewRows(model: model).id(key)
-            }
+            if let model = document.pluginViews.model(key: key) { PluginToolViewCard(model: model, entry: tool) }
         case .action(let id):
-            if let action = document.plugins.action(id) {
-                Button {
-                    document.triggerPluginAction(action)
-                } label: {
-                    Label("Run", systemImage: "play.fill").frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(!document.canRunPluginAction(action))
-            }
+            if let action = document.plugins.action(id) { PluginToolCard(document: document, action: action) }
         }
-    }
-}
-
-/// A plugin's tool view in the Tools panel: marked visible while it is on screen, like a view in the plugin's panel.
-private struct PluginToolViewRows: View {
-    @Bindable var model: PluginViewModel
-
-    var body: some View {
-        LazyVStack(alignment: .leading, spacing: 8) { PluginViewRows(model: model) }
-            .task(id: model.pluginID + "/" + model.viewID) {
-                model.visible = true
-                while !Task.isCancelled { try? await Task.sleep(for: .seconds(3600)) }
-                model.visible = false
-            }
     }
 }

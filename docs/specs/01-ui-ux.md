@@ -171,7 +171,7 @@ segment (`source.show`) shows the last clip again where it was left.
 
 ### 3.2 Audio ♪
 
-Audio files can be imported and inserted into Music, SFX or Voiceover. **[Detect Beats]** on a music track runs an
+Audio files can be imported and inserted into Music, SFX or Voiceover. **Beat detection** (Tools, on the selected audio clip or an audio file) runs an
 `audio.beats` provider and creates the Beat band, which the timeline snaps to.
 
 **Planned:**
@@ -199,7 +199,7 @@ involves the network and copyright.
 | **Hook Title** | Large title for the hook |
 | **Chapter Card** | Chapter heading |
 
-**[Auto Captions]** runs a `captions.transcribe` provider and fills the Captions track. Each line is editable
+**Auto captions** (Tools, on the selected clip or a media file) runs a `captions.transcribe` provider and fills the Captions track. Each line is editable
 inline. Review warns about lines longer than 42 characters, because line length matters more than font size.
 
 Captions can be imported from and exported to `.srt`.
@@ -243,7 +243,7 @@ on the join is **Planned**.
 | **Scope** | One clip, or every layer below an adjustment item for its range | Implemented |
 | **Compare** | Split before/after slider in the viewer | Implemented |
 
-### 3.7 Voice 🎙
+### 3.7 Voice 🎙 (now Tools › Voiceover)
 
 This tab is the manual counterpart of the `nolan-voice-clone` skill.
 
@@ -307,9 +307,9 @@ Capabilities used by panels today:
 
 | Panel | Capability |
 |---|---|
-| Voice | `voice.synthesize` |
-| Text › Auto Captions | `captions.transcribe` |
-| Audio › Detect Beats | `audio.beats` |
+| Tools › Voiceover | `voice.synthesize` |
+| Tools › Auto captions | `captions.transcribe` |
+| Tools › Beat detection | `audio.beats` |
 | Export › Normalize Audio | `audio.loudness` |
 
 The app records plugin, provider and version provenance on generated assets and measurements. It never takes

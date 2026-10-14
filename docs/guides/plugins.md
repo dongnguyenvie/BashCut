@@ -763,7 +763,7 @@ code.
 |---|---|
 | `menu.plugins` | The main-menu **Plugins** menu, grouped by plugin |
 | `toolbar` | Buttons in the editor toolbar |
-| `tools` | The **Tools** panel (API 10): the action is listed there and its `params` are drawn as a tool card with the main fields, an **Advanced** group and **Run on** (selected clip, whole timeline, this project). `tools` may be combined with other placements |
+| `tools` | The **Tools** panel (API 10): the action is listed after Auto captions, Voiceover and Beat detection, and its `params` are drawn as a tool card: the main fields, an **Advanced (n)** group for the `advanced` ones, then **Run on** and Run (the same background job as the menu). **Run on** follows the action: a `when` with `selection` runs on the selected clip, `context: ["timeline"]` on the whole timeline, anything else on the project. `tools` may be combined with other placements; the parameter sheet of the other placements ignores `advanced` |
 | `clip.context` | The timeline clip context menu |
 | `track.context` | The layer header context menu and the clip context menu |
 | `timeline.context` | The timeline gap and empty-area context menu |

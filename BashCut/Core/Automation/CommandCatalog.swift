@@ -10,8 +10,6 @@ public enum CommandCatalog {
         "doctor", "knowledge", "ask", "sections", "external-changes", "plugin-proposals", "commands", "shortcuts",
         "add-plugin", "library-search", "library-generate", "quick-edit", "recents", "voice-clone",
     ]
-    /// The rail's panels, then `voice`: the old Voice panel, now the Voiceover tool inside Tools (it selects that tool).
-    public static let libraryPanels = ["media", "audio", "text", "stickers", "effects", "transitions", "filters", "brand", "tools", "voice"]
     public static let exportPresets = OutputPresetName.all
 
     /// The plugin capability each provider-backed command runs on: `capabilities get`, the capability_missing errors

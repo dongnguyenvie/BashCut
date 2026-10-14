@@ -246,6 +246,10 @@ extension ProjectDocument {
             switch action {
             case "open": return try document.openDialogFromAutomation(target)
             case "panel":
+                if document.toolEntries.contains(where: { $0.id == target && $0.source != .native }) {
+                    document.showTool(target)
+                    return .bool(true)
+                }
                 guard let tab = LibraryTab(panelName: target) else { throw RPCFailure(-32602, "Unknown panel \(target)") }
                 document.showLibraryTab(tab)
                 if let tool = LibraryTab.toolForPanelName(target) { document.showTool(tool) }
