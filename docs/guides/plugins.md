@@ -150,8 +150,12 @@ checked on its manifest and entrypoint only, so it can change while it is writte
   identify the approved root and require Trust again. Catalog diagnostics identify shadowed installations.
 - Plugins in the app bundle are trusted without a pin; they can still be turned off.
 - Installing a plugin from the Plugins sheet pins the installed files.
-- **Trust**, **Revoke Trust** and turning a plugin or its hooks **on** are user-only (Plugins sheet). Agents can
-  only turn them off with `plugins set`.
+- Settings › Plugins › **Trust plugins automatically** (on by default) installs, links and sets up plugins without
+  the approval sheet, including `plugins install` and `plugins setup` from an agent, and trusts plugins in the user
+  plugin folder as they are, and again after their files change. Plugins that come with a project are not in that
+  folder and still ask; a plugin turned off stays off. Turn it off to approve every install and change yourself.
+- **Revoke Trust** and turning a plugin or its hooks **on** are user-only (Plugins sheet). Agents can only turn them
+  off with `plugins set`.
 - Only `ready` plugins provide capabilities, show actions or receive hooks. Turning a plugin off also stops its
   session process.
 
@@ -267,7 +271,7 @@ instead of a copy, once your folder still holds the files that were checked; Ins
 
 After you edit the plugin, choose **Reload** on its row: it stops the plugin's session process, so the next call
 starts your new code, and checks its files again. Any change to the pinned files makes the plugin **changed** until
-you choose **Trust** again; Reload never trusts it. (Development builds of BashCut check a linked folder on its
+you choose **Trust** again; Reload never trusts it, unless Trust plugins automatically is on (the default). (Development builds of BashCut check a linked folder on its
 manifest and entrypoint only, see [Trust and availability](#trust-and-availability).) Removing a linked plugin
 removes only the link; your folder is kept.
 

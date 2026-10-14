@@ -6,6 +6,14 @@ import Foundation
 
 /// The plugin registry from the editor: panels ask for a provider, automation searches and requests installs.
 extension ProjectDocument {
+    /// "approved" while plugins are trusted automatically (the install already runs); otherwise opens the Plugins
+    /// sheet, where the approval waits, and answers "pending".
+    func showPluginApproval() -> String {
+        guard !plugins.trustsAutomatically() else { return "approved" }
+        ui.showPlugins = true
+        return "pending"
+    }
+
     /// Opens Plugins › Browse, optionally narrowed to providers of `capability`.
     func showPluginBrowser(capability: String? = nil) {
         plugins.browseCapability = capability
@@ -89,8 +97,7 @@ extension ProjectDocument {
                 throw RPCFailure(-32602, "\(plugin.id) has no install recipes")
             }
             try document.plugins.requestSetup(plugin)
-            document.ui.showPlugins = true
-            return .object(["plugin": .string(plugin.id), "approval": .string("pending")])
+            return .object(["plugin": .string(plugin.id), "approval": .string(document.showPluginApproval())])
         }
     }
 
@@ -119,7 +126,7 @@ extension ProjectDocument {
             guard let self else { throw CancellationError() }
             reporter.detail("Downloading \(id)")
             let outcome = try await plugins.requestInstall(id, version: version)
-            ui.showPlugins = true
+            ui.showPlugins = ui.showPlugins || outcome != .automatic // The approval waits there.
             return .object(["plugin": .string(id)].merging(outcome.json) { $1 })
         }, finished: { [weak self] outcome in
             guard case .failure(let error) = outcome, !JobCenter.isCancellation(error) else { return }
@@ -140,7 +147,7 @@ extension ProjectDocument {
             guard let self else { throw CancellationError() }
             reporter.detail("Downloading \(id)")
             let outcome = try await plugins.requestBundle(id, only: only)
-            if outcome != .nothingToInstall { ui.showPlugins = true }
+            if outcome != .nothingToInstall, outcome != .automatic { ui.showPlugins = true }
             var fields: [String: JSONValue] = ["bundle": .string(id)]
             if outcome == .pending, let pending = plugins.pendingBundle {
                 fields["checked"] = .array(pending.items.filter(\.selected).map { .string($0.id) })
@@ -173,10 +180,9 @@ extension ProjectDocument {
                 reporter.detail("Downloading \(name)")
                 plugin = try await plugins.requestLinkInstall(link, scope: scope)
             }
-            ui.showPlugins = true
             return .object([
                 "plugin": .string(plugin.id), "version": .string(plugin.manifest.version),
-                "scope": .string(scope.rawValue), "mode": .string(mode.rawValue), "approval": .string("pending"),
+                "scope": .string(scope.rawValue), "mode": .string(mode.rawValue), "approval": .string(showPluginApproval()),
             ])
         }, finished: { [weak self] outcome in
             guard case .failure(let error) = outcome, !JobCenter.isCancellation(error) else { return }

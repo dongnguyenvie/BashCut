@@ -67,6 +67,16 @@ struct SettingsModelTests {
         #expect(SettingsModel(defaults: defaults).dangerouslyAllowAgents)
     }
 
+    @Test("Plugins are trusted automatically by default, and the switch is stored")
+    func trustPluginsAutomatically() throws {
+        let defaults = try defaults()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = SettingsModel(defaults: defaults)
+        #expect(settings.trustPluginsAutomatically)
+        settings.trustPluginsAutomatically = false
+        #expect(!SettingsModel(defaults: defaults).trustPluginsAutomatically)
+    }
+
     @Test("New projects go to ~/Movies/BashCut until another folder is remembered")
     func projectsFolder() throws {
         let defaults = try defaults()

@@ -52,7 +52,7 @@ public final class SettingsModel {
     }
     /// Dangerously allow all agent actions: timeline edits, privileged actions (exports, kit setup, library items for
     /// every project, preferences), edits outside an attached scope and plugin action confirmations all run without
-    /// asking. Installing and trusting plugins stays with the user. Off by default; only the user can change it.
+    /// asking. Installing and trusting plugins follows `trustPluginsAutomatically`. Only the user can change it.
     public var dangerouslyAllowAgents: Bool {
         didSet { defaults.set(dangerouslyAllowAgents, forKey: Keys.dangerouslyAllowAgents) }
     }
@@ -75,6 +75,11 @@ public final class SettingsModel {
     /// only the user can change it in Settings — no automation command exists for it.
     public var autoApprovePrivileged: Bool {
         didSet { defaults.set(autoApprovePrivileged, forKey: Keys.autoApprovePrivileged) }
+    }
+    /// Install, link and set up plugins without the approval sheet, and trust plugins in the user plugin folder again
+    /// after their files change. On by default so plugins are easy to add; plugins that come with a project still ask.
+    public var trustPluginsAutomatically: Bool {
+        didSet { defaults.set(trustPluginsAutomatically, forKey: Keys.trustPluginsAutomatically) }
     }
     /// Deliver editor events to plugin hooks. On by default; each plugin also has its own hooks switch.
     public var runPluginHooks: Bool { didSet { defaults.set(runPluginHooks, forKey: Keys.runPluginHooks) } }
@@ -145,6 +150,7 @@ public final class SettingsModel {
         static let dangerouslyAllowAgents = "dangerouslyAllowAgents"
         static let defaultExportPreset = "defaultExportPreset"
         static let runPluginHooks = "runPluginHooks"
+        static let trustPluginsAutomatically = "trustPluginsAutomatically"
         static let autoApplyPluginHookEdits = "autoApplyPluginHookEdits"
         static let checkPluginUpdatesDaily = "checkPluginUpdatesDaily"
         static let checkAppUpdatesDaily = "checkAppUpdatesDaily"
@@ -179,6 +185,7 @@ public final class SettingsModel {
         } ?? 3
         dangerouslyAllowAgents = defaults.object(forKey: Keys.dangerouslyAllowAgents) as? Bool ?? true
         runPluginHooks = defaults.object(forKey: Keys.runPluginHooks) as? Bool ?? true
+        trustPluginsAutomatically = defaults.object(forKey: Keys.trustPluginsAutomatically) as? Bool ?? true
         autoApplyPluginHookEdits = defaults.bool(forKey: Keys.autoApplyPluginHookEdits)
         checkPluginUpdatesDaily = defaults.object(forKey: Keys.checkPluginUpdatesDaily) as? Bool ?? true
         checkAppUpdatesDaily = defaults.object(forKey: Keys.checkAppUpdatesDaily) as? Bool ?? true

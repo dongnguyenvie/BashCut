@@ -251,7 +251,7 @@ struct SettingsView: View {
                 Text("When you send clips to an agent, its edits to other clips or to the whole project ask you first, are blocked, or are allowed.")
                 if all {
                     // swiftlint:disable:next line_length
-                    Text("All agent actions run without asking, including plugin actions that normally ask first. Only installing and trusting plugins still needs you.")
+                    Text("All agent actions run without asking, including plugin actions that normally ask first. Installing and trusting plugins follows Settings › Plugins.")
                         .foregroundStyle(.red)
                 }
             }

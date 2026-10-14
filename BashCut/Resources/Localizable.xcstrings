@@ -283,7 +283,7 @@
     "Approve agent actions without asking": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Approve agent actions without asking" } }, "vi": { "stringUnit": { "state": "translated", "value": "Tự duyệt hành động của agent" } } } },
     "Dangerously allow all agent actions": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Dangerously allow all agent actions" } }, "vi": { "stringUnit": { "state": "translated", "value": "Cho agent toàn quyền (nguy hiểm)" } } } },
     "Agent actions that ask first: exports, agent kit setup and updates, library items and preferences for every project. Every request is still logged.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Agent actions that ask first: exports, agent kit setup and updates, library items and preferences for every project. Every request is still logged." } }, "vi": { "stringUnit": { "state": "translated", "value": "Các hành động của agent cần hỏi trước: xuất video, cài đặt và cập nhật agent kit, mục thư viện và tuỳ chọn dùng cho mọi dự án. Mọi yêu cầu vẫn được ghi log." } } } },
-    "All agent actions run without asking, including plugin actions that normally ask first. Only installing and trusting plugins still needs you.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "All agent actions run without asking, including plugin actions that normally ask first. Only installing and trusting plugins still needs you." } }, "vi": { "stringUnit": { "state": "translated", "value": "Mọi hành động của agent chạy mà không hỏi, kể cả hành động plugin thường cần xác nhận. Chỉ việc cài và tin cậy plugin vẫn cần bạn." } } } },
+    "All agent actions run without asking, including plugin actions that normally ask first. Installing and trusting plugins follows Settings › Plugins.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "All agent actions run without asking, including plugin actions that normally ask first. Installing and trusting plugins follows Settings › Plugins." } }, "vi": { "stringUnit": { "state": "translated", "value": "Mọi hành động của agent chạy mà không hỏi, kể cả hành động plugin thường cần xác nhận. Việc cài và tin cậy plugin theo Cài đặt › Plugin." } } } },
     "Let agents do everything without asking?": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Let agents do everything without asking?" } }, "vi": { "stringUnit": { "state": "translated", "value": "Cho agent làm mọi thứ mà không hỏi?" } } } },
     "Agents can edit any clip, export, change the agent kit, save library items and preferences for every project, and run plugin actions without asking you. Every request is still logged.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Agents can edit any clip, export, change the agent kit, save library items and preferences for every project, and run plugin actions without asking you. Every request is still logged." } }, "vi": { "stringUnit": { "state": "translated", "value": "Agent có thể sửa mọi clip, xuất video, thay đổi agent kit, lưu mục thư viện và tuỳ chọn cho mọi dự án, và chạy hành động plugin mà không hỏi bạn. Mọi yêu cầu vẫn được ghi log." } } } },
     "Allow Everything": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Allow Everything" } }, "vi": { "stringUnit": { "state": "translated", "value": "Cho phép tất cả" } } } },
@@ -5840,6 +5840,12 @@
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "%@ proposes an edit: %@" } },
         "vi": { "stringUnit": { "state": "translated", "value": "%@ đề xuất chỉnh sửa: %@" } }
+      }
+    },
+    "Trust plugins automatically": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Trust plugins automatically" } },
+        "vi": { "stringUnit": { "state": "translated", "value": "Tự động tin cậy plugin" } }
       }
     },
     "Run plugin hooks": {

@@ -112,6 +112,14 @@ public final class PluginTrustStore: @unchecked Sendable {
     /// Development builds: a plugin folder that is a symbolic link (`dev-link.sh`) is checked on its manifest and
     /// entrypoint only, so its other files can change while it is being written.
     public var relaxesLinkedPlugins = false
+    /// Plugins under this folder (the user plugin folder) are trusted as they are when first seen, and again after
+    /// their files change, without asking (Settings › Plugins › Trust plugins automatically). Plugins that come with
+    /// a project are never under it; a plugin the user turned off stays off. Nil asks for every plugin.
+    public var automaticTrustRoot: URL? {
+        get { locked { automaticTrustPath.map { URL(fileURLWithPath: $0) } } }
+        set { locked { automaticTrustPath = newValue.map { $0.standardizedFileURL.path + "/" } } }
+    }
+    private var automaticTrustPath: String?
     private let lock = NSLock()
     private var contents: Contents
     /// Fingerprints by plugin folder, reused while the folder's stamp (`PluginTree.stamp`) is unchanged. `files`
@@ -178,20 +186,37 @@ public final class PluginTrustStore: @unchecked Sendable {
         let grant = grant(for: plugin)
         if let grant, !grant.enabled { return .disabled }
         if isBundled(plugin) { return .ready }
-        guard let grant, !grant.fingerprint.manifestSHA256.isEmpty else { return .untrusted }
+        guard let grant, !grant.fingerprint.manifestSHA256.isEmpty else {
+            return trustsAutomatically(plugin) ? trustAutomatically(plugin, pinning: pinning) : .untrusted
+        }
         guard let current = current() else { return nil }
         let linked = relaxesLinkedPlugins
             && (try? plugin.directory.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink) == true
-        if linked {
-            return current.manifestSHA256 == grant.fingerprint.manifestSHA256
-                && current.entrypointSHA256 == grant.fingerprint.entrypointSHA256 ? .ready : .changed
+        let unchanged = linked
+            ? current.manifestSHA256 == grant.fingerprint.manifestSHA256
+                && current.entrypointSHA256 == grant.fingerprint.entrypointSHA256
+            : current.matches(grant.fingerprint)
+        guard unchanged else {
+            return trustsAutomatically(plugin) ? trustAutomatically(plugin, pinning: pinning) : .changed
         }
-        guard current.matches(grant.fingerprint) else { return .changed }
+        if linked { return .ready }
         if pinning, grant.fingerprint.treeSHA256 == nil {
             // An older grant: pin the folder as it is now, since manifest and entrypoint still match.
             try? update { $0.grants[plugin.installationID]?.fingerprint = current }
         }
         return .ready
+    }
+
+    private func trustsAutomatically(_ plugin: InstalledPlugin) -> Bool {
+        guard let root = locked({ automaticTrustPath }) else { return false }
+        return plugin.directoryPath.hasPrefix(root)
+    }
+
+    /// Pins the plugin's files as they are now (`automaticTrustRoot`). A listing (`pinning` false) does not walk the
+    /// folder: it answers nil so the full check runs and trusts.
+    private func trustAutomatically(_ plugin: InstalledPlugin, pinning: Bool) -> PluginAvailability? {
+        guard pinning else { return nil }
+        return (try? trust(plugin)) == nil ? .changed : .ready
     }
 
     /// The plugin's fingerprint, hashed again only when a file in its folder was added, removed or changed size or
@@ -218,7 +243,8 @@ public final class PluginTrustStore: @unchecked Sendable {
         return plugin.installationID + "@" + PluginFingerprint.hex(Data(digest.utf8))
     }
 
-    /// Pins the plugin's current files. Only the user may call this (Plugins sheet, install approval).
+    /// Pins the plugin's current files. Only the user may call this (Plugins sheet, install approval), or the store
+    /// itself for plugins under `automaticTrustRoot`.
     public func trust(_ plugin: InstalledPlugin) throws {
         // Hashed from scratch, then kept, so listing the plugin right after shows it ready without another walk.
         locked { fingerprints[plugin.directoryPath] = nil }

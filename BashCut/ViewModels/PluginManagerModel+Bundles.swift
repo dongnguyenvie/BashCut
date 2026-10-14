@@ -23,12 +23,15 @@ enum PluginInstallRequest: Equatable {
 /// plugin in it is already installed.
 enum PluginInstallRequestOutcome: Equatable {
     case pending
+    /// Installing without the approval sheet (Trust plugins automatically).
+    case automatic
     case queued(position: Int)
     case nothingToInstall
 
     var json: [String: JSONValue] {
         switch self {
         case .pending: ["approval": .string("pending")]
+        case .automatic: ["approval": .string("approved")]
         case .queued(let position): ["approval": .string("queued"), "position": .integer(position)]
         case .nothingToInstall: ["approval": .string("none"), "reason": .string("Everything in it is installed")]
         }
@@ -213,7 +216,8 @@ extension PluginManagerModel {
         }
         pendingBundle = PendingBundleInstall(bundle: bundle, items: items, skipped: skipped + failed)
         tab = .browse
-        return .pending
+        approveAutomatically()
+        return trustsAutomatically() ? .automatic : .pending
     }
 
     /// Downloads and verifies each offered plugin in turn; one that fails is left out with its error.

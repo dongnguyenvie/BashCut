@@ -232,9 +232,9 @@ extension CommandCatalog {
         without waiting for the user: decide what the prompt and footage leave open and say what you chose. After one
         round of questions at intake, never end a turn on a question or a request to the user: fix a failed step
         yourself or take the best fallback, finish, and list what waits on the user in the final summary ("ask the
-        user" in a skill or hint means that). Installing
-        and trusting BashCut plugins stays with the user; never clone a voice that is not the user's. Reply in the
-        user's language.
+        user" in a skill or hint means that). Install
+        a BashCut plugin the edit needs (trusted automatically unless the user turned it off); never clone a voice that
+        is not the user's. Reply in the user's language.
         Errors carry data.category, retryable and sometimes remediation.command. Retry only retryable ones, after the
         remediation; never resend invalid_arguments unchanged. stale_revision (-32002)/file_conflict → context get,
         resend with the new rev; busy_dialog → ui dialog, answer it; busy_approval/busy_running → wait;

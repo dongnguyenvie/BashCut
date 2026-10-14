@@ -746,7 +746,7 @@ Check a plugin that is not in the registry (a folder, its plugin.json, a .zip or
 
 ### `bashcut plugins install [<plugin>] [--bundle <bundle>] [--only <only>] [--version <version>] [--path <path>] [--url <url>] [--ref <ref>] [--sha256 <sha256>] [--scope <scope>] [--link]`
 
-Download a registry plugin (or its update), check its SHA-256 and manifest, and show the install approval in the Plugins sheet. With bundle instead, download every plugin of a bundle this Mac does not have and show one approval for all of them, each with a checkbox. With path or url instead, add a plugin that is not in the registry (Add Plugin…): a folder, its plugin.json or a .zip / .bashcutplugin file on this Mac, or a link, checked like plugins validate. Only the user can approve; the job ends when the approval is shown. While another install waits for approval or runs, a registry plugin or bundle is queued (approval: queued) and its approval opens after that one ends; do not ask again.
+Download a registry plugin (or its update), check its SHA-256 and manifest, and show the install approval in the Plugins sheet. With bundle instead, download every plugin of a bundle this Mac does not have and show one approval for all of them, each with a checkbox. With path or url instead, add a plugin that is not in the registry (Add Plugin…): a folder, its plugin.json or a .zip / .bashcutplugin file on this Mac, or a link, checked like plugins validate. With Trust plugins automatically on (the default) it installs at once (approval: approved); otherwise only the user can approve and the job ends when the approval is shown. While another install waits for approval or runs, a registry plugin or bundle is queued (approval: queued) and its approval opens after that one ends; do not ask again.
 
 - Mode: edit · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_plugins_install`
 - `plugin`: string. Plugin ID from plugins search (or use path)
@@ -785,7 +785,7 @@ Uninstall a plugin from the user or project plugin folder, with its trust and op
 
 ### `bashcut plugins setup <plugin>`
 
-Show the approval to run an installed plugin's dependency install recipes again (Install Dependencies…). Only the user can approve; follow it with jobs status.
+Run an installed plugin's dependency install recipes again (Install Dependencies…): at once with Trust plugins automatically on (approval: approved), otherwise after the user approves; follow it with jobs status.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_plugins_setup`
 - `plugin`: string, required. Plugin ID

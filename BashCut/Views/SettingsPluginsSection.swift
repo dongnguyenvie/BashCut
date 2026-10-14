@@ -43,6 +43,14 @@ struct SettingsPluginsSection: View {
 
     var body: some View {
         SettingsSection("Plugins") {
+            if PluginChannel.current.allowsUserPlugins {
+                SettingsRow("Trust plugins automatically", keywords: ["trust", "approve", "install", "permission"]) {
+                    SettingsSwitch(isOn: $settings.trustPluginsAutomatically)
+                        .onChange(of: settings.trustPluginsAutomatically) {
+                            document.plugins.refresh(projectRoot: document.plugins.currentProjectRoot)
+                        }
+                }
+            }
             SettingsRow("Run plugin hooks", keywords: ["hook", "event"]) {
                 SettingsSwitch(isOn: $settings.runPluginHooks)
             }

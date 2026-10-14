@@ -51,6 +51,33 @@ struct PluginTrustTests {
         #expect(store.availability(of: plugin) == .untrusted)
     }
 
+    @Test("Plugins in the automatic trust folder are trusted, and trusted again after a change; others still ask")
+    func automaticTrust() throws {
+        let sandbox = Sandbox()
+        defer { try? FileManager.default.removeItem(at: sandbox.root) }
+        let plugin = try sandbox.plugin()
+        let project = try sandbox.plugin(in: "project", id: "example.project")
+        let store = sandbox.store()
+        store.automaticTrustRoot = sandbox.root.appendingPathComponent("user")
+        // A listing does not walk the folder; the full check trusts it.
+        #expect(store.knownAvailability(of: plugin) == nil)
+        #expect(store.availability(of: plugin) == .ready)
+        #expect(store.grant(for: plugin) != nil)
+        try Data("#!/bin/sh\necho v2\n".utf8).write(to: plugin.directory.appendingPathComponent("bin/provider"))
+        #expect(store.availability(of: plugin) == .ready)
+        #expect(store.grant(for: plugin)?.fingerprint == (try PluginFingerprint(plugin: plugin)))
+        // A plugin that came with a project is outside the folder.
+        #expect(store.availability(of: project) == .untrusted)
+        // Turning a plugin off is the user's and stays.
+        try store.setEnabled(plugin, enabled: false)
+        #expect(store.availability(of: plugin) == .disabled)
+        try store.setEnabled(plugin, enabled: true)
+        // Without the folder, a change asks again.
+        store.automaticTrustRoot = nil
+        try Data("#!/bin/sh\necho v3\n".utf8).write(to: plugin.directory.appendingPathComponent("bin/provider"))
+        #expect(store.availability(of: plugin) == .changed)
+    }
+
     @Test("Repair cannot silently reapprove changed files, including disabled plugins")
     func repairTrust() throws {
         let sandbox = Sandbox()

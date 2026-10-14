@@ -86,7 +86,7 @@ final class ProjectDocument {
     @ObservationIgnored lazy var chatAgents = ChatAgents(document: self)
     @ObservationIgnored lazy var runPanel = RunPanelModel(document: self) // The run panel and result card (#447, #448).
     @ObservationIgnored lazy var activity = AgentActivityModel(document: self) // What agents are doing (#534).
-    @ObservationIgnored lazy var plugins = PluginManagerModel()
+    @ObservationIgnored lazy var plugins = PluginManagerModel { [unowned self] in settings.trustPluginsAutomatically }
     @ObservationIgnored lazy var pluginViews = PluginViews(document: self)
     @ObservationIgnored lazy var pluginHooks = PluginHookDispatcher(document: self)
     /// The plugin whose proposal is being committed, so its own hooks do not hear about it.
