@@ -116,11 +116,22 @@ struct EditorUIStateTests {
 
     @Test("Library panels match the `ui.panel` choices")
     func libraryPanels() {
-        #expect(CommandCatalog.libraryPanels == LibraryTab.allCases.map(\.panelName))
+        // `voice` is the old Voice panel: it opens Tools on the Voiceover tool.
+        #expect(CommandCatalog.libraryPanels == LibraryTab.allCases.map(\.panelName) + ["voice"])
         // Every Media panel source can be chosen with ui view --media-source, library clips too (P2-H5).
         #expect(UIAction.mediaSources == ["footage", "project", "shared", "selects", "clips"])
-        #expect(LibraryTab(panelName: "voice") == .voice)
+        #expect(LibraryTab(panelName: "voice") == .tools && LibraryTab.toolForPanelName("voice") == ToolID.voice)
+        #expect(LibraryTab(panelName: "tools") == .tools && LibraryTab.toolForPanelName("tools") == nil)
         #expect(LibraryTab(panelName: "Voice") == nil)
+    }
+
+    @Test("The rail has eight asset panels, then Tools")
+    func railPanels() {
+        #expect(LibraryTab.assets.map(\.panelName) == [
+            "media", "audio", "text", "stickers", "effects", "transitions", "filters", "brand",
+        ])
+        #expect(LibraryTab.allCases.last == .tools && !LibraryTab.tools.isAsset)
+        #expect(LibraryTab.assets.allSatisfy { $0.isAsset })
     }
 
     @Test("Named dialogs open their sheet")

@@ -318,6 +318,7 @@ extension ProjectDocument {
         if let frame = request.seek { preview.seek(min(frame, project.duration)) }
         if let frame = request.reveal { revealInTimeline(frame) }
         if let tab = request.panel.flatMap(LibraryTab.init(panelName:)) { showLibraryTab(tab) }
+        if let tool = request.panel.flatMap(LibraryTab.toolForPanelName) { showTool(tool) }
         if let tab = request.inspector, UIAction.inspectorTabs.contains(tab) { ui.inspectorTab = tab }
     }
 

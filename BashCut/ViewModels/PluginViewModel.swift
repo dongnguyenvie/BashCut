@@ -61,6 +61,13 @@ import Foundation
         }
     }
 
+    /// Tool views (`kind: tool`) of ready plugins that the Tools panel lists, as `(key, plugin, view)`.
+    var toolViews: [(key: String, plugin: InstalledPlugin, view: PluginViewContribution)] {
+        document.plugins.plugins.filter { document.plugins.isReady($0) && !document.plugins.isHidden($0) }.flatMap { plugin in
+            plugin.manifest.views.filter { $0.place == .panel && $0.isTool }.map { (plugin.id + "/" + $0.id, plugin, $0) }
+        }
+    }
+
     /// Views of ready plugins that live in the Inspector, as `(key, plugin, view)`.
     var inspectorViews: [(key: String, plugin: InstalledPlugin, view: PluginViewContribution)] {
         document.plugins.plugins.filter { document.plugins.isReady($0) && !document.plugins.isHidden($0) }.flatMap { plugin in
@@ -88,6 +95,7 @@ import Foundation
         let key = plugin.id + "/" + view.id
         DebugLog.write("ui", "plugin view \(key) in \(view.place.rawValue)")
         switch view.place {
+        case .panel where view.isTool: document.showTool(key)
         case .panel: document.showPluginPanel(plugin.id, view: view.id)
         case .dock:
             document.ui.showAgentDock = true
