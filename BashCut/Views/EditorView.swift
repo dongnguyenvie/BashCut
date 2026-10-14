@@ -54,10 +54,7 @@ struct EditorView: View {
             }
             }
             // Export progress, the save state and the revision are in the toolbar's activity capsule.
-            HStack {
-                Text(document.message).lineLimit(2).textSelection(.enabled)
-                Spacer()
-            }.font(.caption).padding(6)
+            StatusBarView(document: document)
         }
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { windowHeight = $0 }
         .ignoresSafeArea(.container, edges: .top)

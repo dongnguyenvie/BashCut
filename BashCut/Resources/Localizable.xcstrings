@@ -7143,7 +7143,15 @@
     "Select a clip with speech on the timeline.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Select a clip with speech on the timeline." } }, "vi": { "stringUnit": { "state": "translated", "value": "Hãy chọn một clip có lời nói trên timeline." } } } },
     "Select an audio clip on the timeline.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Select an audio clip on the timeline." } }, "vi": { "stringUnit": { "state": "translated", "value": "Hãy chọn một clip âm thanh trên timeline." } } } },
     "Script": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Script" } }, "vi": { "stringUnit": { "state": "translated", "value": "Kịch bản" } } } },
-    "Cancelled": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Cancelled" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đã hủy" } } } }
+    "Cancelled": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Cancelled" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đã hủy" } } } },
+    "Nothing selected": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Nothing selected" } }, "vi": { "stringUnit": { "state": "translated", "value": "Chưa chọn gì" } } } },
+    "1 selected": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "1 selected" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đã chọn 1" } } } },
+    "%lld selected": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%lld selected" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đã chọn %lld" } } } },
+    "Length %@": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Length %@" } }, "vi": { "stringUnit": { "state": "translated", "value": "Độ dài %@" } } } },
+    "1 job": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "1 job" } }, "vi": { "stringUnit": { "state": "translated", "value": "1 tác vụ" } } } },
+    "%lld jobs": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%lld jobs" } }, "vi": { "stringUnit": { "state": "translated", "value": "%lld tác vụ" } } } },
+    "No jobs are running.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "No jobs are running." } }, "vi": { "stringUnit": { "state": "translated", "value": "Không có tác vụ nào đang chạy." } } } },
+    "Open where this job runs": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Open where this job runs" } }, "vi": { "stringUnit": { "state": "translated", "value": "Mở nơi tác vụ này chạy" } } } }
   },
   "version": "1.0"
 }
