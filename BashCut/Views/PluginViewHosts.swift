@@ -34,7 +34,10 @@ struct PluginSheetView: View {
                     Image(systemName: view.icon ?? plugin.manifest.container?.icon ?? "puzzlepiece.extension")
                         .foregroundStyle(.cyan)
                     Text(verbatim: view.title.text).font(.headline)
-                    Text(verbatim: plugin.manifest.displayName).font(.caption).foregroundStyle(.secondary)
+                    // The plugin name only when it says more than the title ("Online resources" by "Online Resources").
+                    if plugin.manifest.displayName.caseInsensitiveCompare(view.title.text) != .orderedSame {
+                        Text(verbatim: plugin.manifest.displayName).font(.caption).foregroundStyle(.secondary)
+                    }
                     Spacer()
                     Button("Close") { document.ui.pluginSheet = nil }.keyboardShortcut(.cancelAction)
                 }.padding(12)
@@ -46,7 +49,8 @@ struct PluginSheetView: View {
                 Button("Close") { document.ui.pluginSheet = nil }.padding(.bottom)
             }
         }
-        .frame(minWidth: 420, idealWidth: 480, minHeight: 320, idealHeight: 520)
+        // Big enough for a results grid of 3 × 4 tiles; the grid adds columns as the sheet grows.
+        .frame(minWidth: 900, idealWidth: 1100, maxWidth: .infinity, minHeight: 600, idealHeight: 720, maxHeight: .infinity)
     }
 }
 
