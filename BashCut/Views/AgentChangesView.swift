@@ -47,7 +47,9 @@ struct AgentChangesView: View {
                 Button("Done", action: done)
             }
             if change.changes.isEmpty {
+                // Fills the room under the header, so it sits in the middle of the sheet (#533).
                 ContentUnavailableView("No item changes", systemImage: "checkmark.circle")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 List(change.changes) { item in
                     VStack(alignment: .leading, spacing: 6) {

@@ -27,7 +27,10 @@ struct AudioLibraryTile: View {
             .help(playing ? "Stop" : "Play")
             .accessibilityLabel(playing ? Text("Stop") : Text("Play"))
             VStack(alignment: .leading, spacing: 2) {
-                LibraryView.title(item).lineLimit(1)
+                HStack(spacing: 3) {
+                    LibraryView.title(item).lineLimit(1).help(Text(verbatim: item.name))
+                    LibraryItemBadges(item: item, inline: true).fixedSize()
+                }
                 LibraryAudioBadges(audio: audio, tags: item.tags)
                 LibraryWaveformView(url: document.libraryCatalog.fileURL(of: item))
             }
@@ -47,22 +50,40 @@ struct LibraryAudioBadges: View {
     let audio: LibraryAudio?
     var tags: [String] = []
 
+    /// Chips stay whole on one line: when the row is too narrow the mood tag goes first, then LUFS, then BPM.
     var body: some View {
-        HStack(spacing: 4) {
-            if let role = audio?.role { badge(Text(Self.roleTitle(role))) }
-            if let seconds = audio?.seconds { badge(Text(verbatim: Self.length(seconds))) }
-            if let bpm = audio?.bpm { badge(Text(verbatim: "\(Int(bpm.rounded())) BPM")) }
-            if let lufs = audio?.lufs { badge(Text(verbatim: String(format: "%.0f LUFS", lufs))) }
-            if audio?.loopable == true {
-                Image(systemName: "repeat").help("Loops seamlessly")
-            }
-            if let mood = tags.first { Text(verbatim: mood).foregroundStyle(.tertiary).lineLimit(1) }
+        ViewThatFits(in: .horizontal) {
+            row(bpm: true, lufs: true, mood: true)
+            row(bpm: true, lufs: true, mood: false)
+            row(bpm: true, lufs: false, mood: false)
+            row(bpm: false, lufs: false, mood: false)
         }
         .font(.system(size: 9).monospacedDigit()).foregroundStyle(.secondary)
     }
 
+    private func row(bpm showBPM: Bool, lufs showLUFS: Bool, mood showMood: Bool) -> some View {
+        HStack(spacing: 4) {
+            if let role = audio?.role { badge(Text(Self.roleTitle(role))) }
+            if let seconds = audio?.seconds { badge(Text(verbatim: Self.length(seconds))) }
+            if showBPM, let bpm = audio?.bpm { badge(Text(verbatim: "\(Int(bpm.rounded())) BPM")) }
+            if showLUFS, let lufs = audio?.lufs { badge(Text(verbatim: String(format: "%.0f LUFS", lufs))) }
+            if audio?.loopable == true {
+                Image(systemName: "repeat").help("Loops seamlessly")
+            }
+            if showMood, let mood { Text(verbatim: mood).foregroundStyle(.tertiary).fixedSize() }
+        }
+    }
+
+    /// The first tag, unless it only repeats the role chip ("sfx" next to SFX).
+    private var mood: String? {
+        guard let tag = tags.first else { return nil }
+        let role = audio?.role ?? ""
+        let repeats = [role, Self.roleName(role)].contains { $0.caseInsensitiveCompare(tag) == .orderedSame }
+        return repeats ? nil : tag
+    }
+
     private func badge(_ text: Text) -> some View {
-        text.padding(.horizontal, 3).background(RoundedRectangle(cornerRadius: 3).fill(Color.white.opacity(0.08)))
+        text.lineLimit(1).fixedSize().padding(.horizontal, 3).background(RoundedRectangle(cornerRadius: 3).fill(Color.white.opacity(0.08)))
     }
 
     static func roleTitle(_ role: String) -> LocalizedStringKey {
@@ -70,6 +91,14 @@ struct LibraryAudioBadges: View {
         case "sfx": "SFX"
         case "ambience": "Ambience"
         default: "Music"
+        }
+    }
+
+    /// The role as the chip says it, in English lowercase ("music" for any other role).
+    static func roleName(_ role: String) -> String {
+        switch role {
+        case "sfx", "ambience": role
+        default: "music"
         }
     }
 

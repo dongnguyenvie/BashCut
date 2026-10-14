@@ -200,7 +200,7 @@ struct LibraryView: View {
             }
             Divider()
             LibraryItemsSection(
-                document: document, kinds: [.audio], saveKinds: [.audio], fileKind: .audio,
+                document: document, kinds: [.audio], saveKinds: [.audio], fileKind: .audio, badgesInTile: true,
                 itemActions: { item in
                     [
                         LibraryPanelAction(title: "Place at Playhead") { document.placeFromLibrary(item) },
@@ -210,10 +210,11 @@ struct LibraryView: View {
                 tile: { item in AudioLibraryTile(document: document, item: item) })
             Divider()
             Text("Beat Detection").font(.headline)
-            Picker("Source", selection: $beatSource) {
-                ForEach(document.project.media.filter { $0["kind"] == .string("audio") }) { media in
-                    Text(media.fileName).tag(media.id)
-                }
+            let beatSources = document.project.media.filter { $0["kind"] == .string("audio") }
+            if beatSources.isEmpty {
+                Text("Import an audio file to detect beats.").font(.caption).foregroundStyle(.secondary)
+            } else {
+                Picker("Source", selection: $beatSource) { ForEach(beatSources) { Text($0.fileName).tag($0.id) } }
             }
             Picker("Provider", selection: $beatProvider) {
                 Text("Automatic").tag("")
@@ -235,9 +236,7 @@ struct LibraryView: View {
                 detectBeats()
             }
             .buttonStyle(.borderedProminent)
-            .disabled(
-                document.fileURL == nil || beatSource.isEmpty
-                    || pluginManager.calling.contains("audio.beats"))
+            .disabled(document.fileURL == nil || beatSource.isEmpty || pluginManager.calling.contains("audio.beats"))
             if let bpm = document.project.beatBPM {
                 Text("\(document.project.beatFrames.count) beats · \(bpm, format: .number.precision(.fractionLength(1))) BPM")
                     .font(.caption.monospacedDigit())

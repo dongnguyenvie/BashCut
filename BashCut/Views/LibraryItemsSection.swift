@@ -12,6 +12,8 @@ struct LibraryItemsSection<Tile: View>: View {
     var saveKinds: [LibraryKind] = []
     /// The kind Add… and drops make from plain files (audio, sticker images); packs are always accepted.
     var fileKind: LibraryKind?
+    /// The tile draws `LibraryItemBadges` itself (the Audio panel puts them after the title), so none in the corner.
+    var badgesInTile = false
     var columns = [GridItem(.flexible())]
     /// Commands first in a library item's context menu (the Effects panel's Apply with…).
     var itemActions: (LibraryItem) -> [LibraryPanelAction] = { _ in [] }
@@ -85,7 +87,7 @@ struct LibraryItemsSection<Tile: View>: View {
         LazyVGrid(columns: columns, spacing: 8) {
             ForEach(items, id: \.reference) { item in
                 tile(item)
-                    .overlay(alignment: .topTrailing) { LibraryItemBadges(item: item) }
+                    .overlay(alignment: .topTrailing) { if !badgesInTile { LibraryItemBadges(item: item) } }
                     .contextMenu { contextMenu(item) }
             }
         }
@@ -245,6 +247,8 @@ struct LibraryPanelAction {
 /// Small marks on an item: who made it when not built in, and where it is saved.
 struct LibraryItemBadges: View {
     let item: LibraryItem
+    /// Drawn in a row (after a title) instead of over a tile's corner: no inset.
+    var inline = false
 
     var body: some View {
         HStack(spacing: 2) {
@@ -258,7 +262,7 @@ struct LibraryItemBadges: View {
             case .builtIn: EmptyView()
             }
         }
-        .font(.system(size: 9)).foregroundStyle(.secondary).padding(3)
+        .font(.system(size: 9)).foregroundStyle(.secondary).padding(inline ? 0 : 3)
         .accessibilityElement(children: .combine)
     }
 }

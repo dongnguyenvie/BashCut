@@ -1,6 +1,7 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Import an audio file to detect beats.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Import an audio file to detect beats." } }, "vi": { "stringUnit": { "state": "translated", "value": "Nhập một file âm thanh để nhận diện nhịp." } } } },
     "Full Screen Preview (⌥⌘F)": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Full Screen Preview (⌥⌘F)" } }, "vi": { "stringUnit": { "state": "translated", "value": "Xem toàn màn hình (⌥⌘F)" } } } },
     "Full Screen Preview": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Full Screen Preview" } }, "vi": { "stringUnit": { "state": "translated", "value": "Xem toàn màn hình" } } } },
     "Playing full screen": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Playing full screen" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đang phát toàn màn hình" } } } },
