@@ -65,7 +65,7 @@ public final class EditorUIState {
     public private(set) var rightTab: RightColumnTab = .inspector
     /// The agent lives in its own window, so its tab only says so.
     public var agentPoppedOut = false
-    @ObservationIgnored private var agentPickedAt: Date?
+    @ObservationIgnored var agentPickedAt: Date?
     /// How long a picked Agent tab survives selecting a timeline item.
     public static let agentTabHold: TimeInterval = 2
 
@@ -91,28 +91,6 @@ public final class EditorUIState {
         }
     }
 
-    /// ⌘J with the agent in the window: hides the column while the Agent tab shows, otherwise shows that tab.
-    public func toggleAgentTab() {
-        if rightTab == .agent, showAgentDock { showAgentDock = false } else { showAgentDock = true }
-    }
-
-    /// The Inspector toggle: hides the column while the Inspector tab shows, otherwise shows that tab.
-    public func toggleInspectorTab() {
-        if rightTab == .inspector, showInspector { showInspector = false } else { showInspector = true }
-    }
-
-    /// A timeline item was selected: the Inspector comes forward, unless the user just picked the Agent tab.
-    public func itemSelected(now: Date = Date()) {
-        guard rightTab == .agent, rightColumnVisible else { return }
-        if let picked = agentPickedAt, now.timeIntervalSince(picked) < Self.agentTabHold { return }
-        showInspector = true
-    }
-
-    /// The agent moved to its own window (or came back). A column showing the Agent tab goes back to the Inspector.
-    public func setAgentPoppedOut(_ out: Bool) {
-        agentPoppedOut = out
-        if out, rightTab == .agent { showInspector = true }
-    }
     /// The library panel's width in points when dragged (`LibraryPanelMetrics.widthRange`); nil: the default for the screen.
     public var libraryWidth: Double?
     /// The wide library panel (760 pt over the viewer, with a category sidebar); Esc leaves it.
