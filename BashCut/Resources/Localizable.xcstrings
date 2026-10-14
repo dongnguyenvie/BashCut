@@ -7125,7 +7125,10 @@
     "A second speaker is not checked.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "A second speaker is not checked." } }, "vi": { "stringUnit": { "state": "translated", "value": "Chưa kiểm tra người nói thứ hai." } } } },
     "Select a clip with the voice on the timeline first": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Select a clip with the voice on the timeline first" } }, "vi": { "stringUnit": { "state": "translated", "value": "Hãy chọn một clip có giọng nói trên timeline trước" } } } },
     "Recording": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Recording" } }, "vi": { "stringUnit": { "state": "translated", "value": "Bản thu âm" } } } },
-    "Saved voice %@": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Saved voice %@" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đã lưu giọng %@" } } } }
+    "Saved voice %@": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Saved voice %@" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đã lưu giọng %@" } } } },
+    "Developer": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Developer" } }, "vi": { "stringUnit": { "state": "translated", "value": "Nhà phát triển" } } } },
+    "Developer mode": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Developer mode" } }, "vi": { "stringUnit": { "state": "translated", "value": "Chế độ nhà phát triển" } } } },
+    "Shows the sample plugins in the rail, the menus and Plugins › Browse. For people who write plugins.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Shows the sample plugins in the rail, the menus and Plugins › Browse. For people who write plugins." } }, "vi": { "stringUnit": { "state": "translated", "value": "Hiện các plugin mẫu trên thanh bên, trong menu và Plugins › Duyệt. Dành cho người viết plugin." } } } }
   },
   "version": "1.0"
 }
