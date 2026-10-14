@@ -26,8 +26,9 @@ enum EditorLayout {
 }
 
 extension EditorView {
-    /// The run panel and the agent change and export toasts: bottom right of the panes, just above the timeline.
-    /// They belong to the editor column, so they never sit over the agent dock beside it.
+    /// The run panel and the agent change and export toasts: bottom right of the timeline, over its lowest tracks
+    /// and clear of the scroll bar. They belong to the editor column, so they never sit over the agent dock beside it,
+    /// nor over the viewer's transport and timecode.
     var toastStack: some View {
         VStack(alignment: .trailing, spacing: 0) {
             if document.fileURL != nil, document.runPanel.visible {
@@ -80,13 +81,13 @@ extension EditorView {
                     InspectorView(document: document).frame(width: EditorLayout.inspectorWidth).clipped()
                 }
             }.frame(minHeight: EditorLayout.paneMinHeight).disabled(document.busy)
-                .overlay(alignment: .bottomTrailing) { toastStack }
             // The timeline is resizable against the panes above it (#528).
             VStack(spacing: 0) {
                 timelineToolbar
                 TimelineView(document: document)
                     .help("Option-drag an edge to roll; Command-drag a clip to slip; Shift-Delete to lift.")
                     .disabled(document.busy)
+                    .overlay(alignment: .bottomTrailing) { toastStack.padding(.bottom, 14) }
             }.frame(minHeight: EditorLayout.timelineMinHeight, idealHeight: EditorLayout.timelineIdealHeight)
         }.frame(minWidth: EditorLayout.editorMinWidth)
     }
