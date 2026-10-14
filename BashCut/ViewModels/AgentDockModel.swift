@@ -48,7 +48,9 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
     var kitPrompt: AgentKitPrompt?
     var kitSettingUp = false
     @ObservationIgnored var kitPromptChecked: Date?
-    @ObservationIgnored private var detachedWindow: NSWindow?
+    @ObservationIgnored private var detachedWindow: NSWindow? {
+        didSet { document.ui.setAgentPoppedOut(detachedWindow != nil) }
+    }
     @ObservationIgnored private var detachedDelegate: AgentDockWindowDelegate?
     @ObservationIgnored private var knowledgeWindow: NSWindow?
     @ObservationIgnored private var knowledgeDelegate: AgentDockWindowDelegate?

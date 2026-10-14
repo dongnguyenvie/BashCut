@@ -57,7 +57,7 @@ extension ProjectDocument {
     func isShowing(_ key: String, _ place: PluginViewLocation, plugin: InstalledPlugin) -> Bool {
         switch place {
         case .panel: ui.pluginPanel == plugin.id && pluginPanelView(plugin).map { plugin.id + "/" + $0.id } == key
-        case .dock: ui.showAgentDock && agents.pluginViewKey == key
+        case .dock: ui.showAgentDock && ui.rightTab == .agent && agents.pluginViewKey == key
         case .sheet: ui.pluginSheet == key
         case .inspector: selectedItems.count == 1
         }

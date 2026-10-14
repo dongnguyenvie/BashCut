@@ -194,10 +194,10 @@ import BashCutPlugin
         menu.addItem(.separator())
         menu.addItem(item(.toggleAgentDock, String(localized: "Agent Dock")) { [weak self] in
             guard let self else { return false }
-            return document.ui.showAgentDock && !document.agents.isDetached
+            return document.ui.showAgentDock && document.ui.rightTab == .agent && !document.agents.isDetached
         })
         menu.addItem(item(.toggleLibraryPanel, String(localized: "Library Panel")) { [weak self] in self?.document.ui.showLibraryPanel == true })
-        menu.addItem(item(.toggleInspector, String(localized: "Inspector")) { [weak self] in self?.document.ui.showInspector == true })
+        menu.addItem(item(.toggleInspector, String(localized: "Inspector")) { [weak self] in self?.document.ui.inspectorShown == true })
         menu.addItem(.separator())
         menu.addItem(item(.showCommands, String(localized: "Command Palette…")))
         let fullScreen = menu.addItem(

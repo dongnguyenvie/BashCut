@@ -10,10 +10,6 @@ struct InspectorView: View {
     private var tab: String { document.ui.inspectorTab.capitalized }
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text("INSPECTOR").font(.caption.bold())
-                Spacer()
-            }.padding(10)
             ScrollView(.horizontal) {
                 HStack(spacing: 4) {
                     ForEach(["Video", "Audio", "Text", "Color", "Speed"], id: \.self) { name in

@@ -1,6 +1,12 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Inspector": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Inspector" } }, "vi": { "stringUnit": { "state": "translated", "value": "Thuộc tính" } } } },
+    "Pop out": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Pop out" } }, "vi": { "stringUnit": { "state": "translated", "value": "Tách ra" } } } },
+    "Open the agent in its own window": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Open the agent in its own window" } }, "vi": { "stringUnit": { "state": "translated", "value": "Mở trợ lý trong cửa sổ riêng" } } } },
+    "Agent is in its own window": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Agent is in its own window" } }, "vi": { "stringUnit": { "state": "translated", "value": "Trợ lý đang ở cửa sổ riêng" } } } },
+    "Show window": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Show window" } }, "vi": { "stringUnit": { "state": "translated", "value": "Hiện cửa sổ" } } } },
+    "Bring back": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Bring back" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đưa về lại" } } } },
     "Import an audio file to detect beats.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Import an audio file to detect beats." } }, "vi": { "stringUnit": { "state": "translated", "value": "Nhập một file âm thanh để nhận diện nhịp." } } } },
     "Full Screen Preview (⌥⌘F)": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Full Screen Preview (⌥⌘F)" } }, "vi": { "stringUnit": { "state": "translated", "value": "Xem toàn màn hình (⌥⌘F)" } } } },
     "Full Screen Preview": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Full Screen Preview" } }, "vi": { "stringUnit": { "state": "translated", "value": "Xem toàn màn hình" } } } },

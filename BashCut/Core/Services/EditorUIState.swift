@@ -4,6 +4,9 @@ import BashCutProject
 import Foundation
 import Observation
 
+/// The tabs of the right column (P1-6); the raw values are what `ui view --right-tab` takes.
+public enum RightColumnTab: String, CaseIterable, Sendable { case inspector, agent }
+
 /// Editor view state that is not part of the project: timeline zoom and scroll requests, toggles, the
 /// open library panel and inspector tab, and which editor sheets are showing. `ui.view`, `ui.panel`,
 /// `ui.open` and `ui.dialog` read and change it; nothing here is saved with the project.
@@ -39,10 +42,69 @@ public final class EditorUIState {
     public var showSafeArea = false
     /// nil fits the frame in the viewer; otherwise the output's scale (see `EditorViewerZoom`).
     public var viewerZoom: Double?
-    public var showAgentDock = true
-    /// The library panel left of the viewer and the Inspector right of it; hidden to give a small window room (#528).
+    /// The Agent tab of the right column is open. Setting it to true selects that tab.
+    public var showAgentDock = true {
+        didSet { if showAgentDock { pick(.agent) } }
+    }
+    /// The library panel left of the viewer and the right column beside it; hidden to give a small window room (#528).
     public var showLibraryPanel = true
-    public var showInspector = true
+    /// The Inspector tab of the right column is open. Setting it to true selects that tab.
+    public var showInspector = true {
+        didSet { if showInspector { rightTab = .inspector } }
+    }
+    /// The tab of the right column (P1-6). Inspector: the column sits beside the viewer and the timeline spans the
+    /// window under it. Agent: the column runs the full height, beside the timeline too.
+    public private(set) var rightTab: RightColumnTab = .inspector
+    /// The agent lives in its own window, so its tab only says so.
+    public var agentPoppedOut = false
+    @ObservationIgnored private var agentPickedAt: Date?
+    /// How long a picked Agent tab survives selecting a timeline item.
+    public static let agentTabHold: TimeInterval = 2
+
+    /// Whether the right column is on screen: the open flag of the tab it shows.
+    public var rightColumnVisible: Bool {
+        rightTab == .inspector ? showInspector : (showAgentDock || agentPoppedOut)
+    }
+
+    /// The column is on screen showing the Inspector tab.
+    public var inspectorShown: Bool { rightColumnVisible && rightTab == .inspector }
+
+    private func pick(_ tab: RightColumnTab, now: Date = Date()) {
+        rightTab = tab
+        if tab == .agent { agentPickedAt = now }
+    }
+
+    /// The user clicked a tab of the column (or an automation did): select it and open it.
+    public func selectRightTab(_ tab: RightColumnTab, now: Date = Date()) {
+        switch tab {
+        case .inspector: showInspector = true
+        case .agent:
+            if agentPoppedOut { pick(.agent, now: now) } else { showAgentDock = true }
+        }
+    }
+
+    /// ⌘J with the agent in the window: hides the column while the Agent tab shows, otherwise shows that tab.
+    public func toggleAgentTab() {
+        if rightTab == .agent, showAgentDock { showAgentDock = false } else { showAgentDock = true }
+    }
+
+    /// The Inspector toggle: hides the column while the Inspector tab shows, otherwise shows that tab.
+    public func toggleInspectorTab() {
+        if rightTab == .inspector, showInspector { showInspector = false } else { showInspector = true }
+    }
+
+    /// A timeline item was selected: the Inspector comes forward, unless the user just picked the Agent tab.
+    public func itemSelected(now: Date = Date()) {
+        guard rightTab == .agent, rightColumnVisible else { return }
+        if let picked = agentPickedAt, now.timeIntervalSince(picked) < Self.agentTabHold { return }
+        showInspector = true
+    }
+
+    /// The agent moved to its own window (or came back). A column showing the Agent tab goes back to the Inspector.
+    public func setAgentPoppedOut(_ out: Bool) {
+        agentPoppedOut = out
+        if out, rightTab == .agent { showInspector = true }
+    }
     public var libraryTab: LibraryTab = .media
     /// The plugin whose rail panel replaces the library panel (plugin API 8), or nil for the library.
     public var pluginPanel: String?

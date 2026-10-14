@@ -184,7 +184,7 @@ extension EditorView {
                 Button(document.ui.showLibraryPanel ? "Hide Library Panel" : "Show Library Panel") {
                     document.run(.toggleLibraryPanel)
                 }
-                Button(document.ui.showInspector ? "Hide Inspector" : "Show Inspector") { document.run(.toggleInspector) }
+                Button(document.ui.inspectorShown ? "Hide Inspector" : "Show Inspector") { document.run(.toggleInspector) }
             }
             Section {
                 Button("Command Palette…") { document.run(.showCommands) }

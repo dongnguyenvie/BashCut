@@ -10,13 +10,18 @@ struct AgentDockView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 2) {
-                Text("AGENT").font(.caption.bold()).foregroundStyle(.secondary)
-                Spacer()
-                DockIconButton(
-                    systemImage: detached ? "rectangle.portrait.and.arrow.forward" : "macwindow.on.rectangle",
-                    help: detached ? "Attach agent dock" : "Detach agent dock"
-                ) {
-                    detached ? model.attach() : model.detach()
+                if detached {
+                    Text("AGENT").font(.caption.bold()).foregroundStyle(.secondary)
+                    Spacer()
+                    DockIconButton(systemImage: "rectangle.portrait.and.arrow.forward", help: "Attach agent dock") {
+                        model.attach()
+                    }
+                } else {
+                    Button { model.detach() } label: {
+                        Label("Pop out", systemImage: "macwindow.on.rectangle").font(.caption)
+                    }
+                    .buttonStyle(.plain).foregroundStyle(.secondary).help("Open the agent in its own window")
+                    Spacer()
                 }
                 DockIconButton(systemImage: "books.vertical", help: knowledgeHelp) {
                     if model.knowledge.proposalCount > 0 { model.document.ui.knowledgeSection = "inbox" }

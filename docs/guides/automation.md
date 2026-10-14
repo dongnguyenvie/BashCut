@@ -349,6 +349,7 @@ tool name and parameters (types, ranges, choices, defaults). It is generated fro
 | `ui action panel <panel>` | `media`, `audio`, `text`, `stickers`, `effects`, `transitions`, `filters`, `voice` |
 | `ui view --zoom` | 1–600 pixels per second; `--zoom-anchor` is the frame kept in place (the playhead by default) |
 | `ui view --snap`, `--safe-area`, `--compare`, `--agent-dock` | `on` / `off` (also `true`/`false`, `yes`/`no`, `1`/`0`) |
+| `ui view --right-tab` | `inspector`, `agent` (selects the tab of the right column and opens it; `--agent-dock on` selects the Agent tab) |
 | `ui view --inspector` | `video`, `audio`, `text`, `color`, `speed` |
 
 ### Adding a command

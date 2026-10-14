@@ -8,24 +8,37 @@ import SwiftUI
 enum EditorLayout {
     static let railWidth = 54.0
     static let libraryWidth = 225.0
-    static let inspectorWidth = 220.0
+    /// The right column (Inspector and Agent tabs): wide at 1680 pt or more, narrower below.
+    static let rightColumnWideWidth = 340.0
+    static let rightColumnWidth = 300.0
+    static let rightColumnWideFrom = 1680.0
     static let viewerMinWidth = 260.0
     /// The editor column (panes, timeline toolbar and timeline): the timeline toolbar needs this much.
     static let editorMinWidth = 860.0
-    static let dockMinWidth = 330.0
     static let paneMinHeight = 220.0
     /// The timeline is resizable against the panes above it, from `timelineMinHeight` up.
     static let timelineMinHeight = 170.0
     static let timelineIdealHeight = 330.0
     static let minHeight = 600.0
 
-    /// The smallest content size: the editor column, plus the agent dock while it is shown in the window.
-    static func minSize(dock: Bool) -> CGSize {
-        CGSize(width: editorMinWidth + (dock ? dockMinWidth + 1 : 0), height: minHeight)
+    /// The smallest content size: the editor column, plus the right column while it runs beside the timeline (the
+    /// Agent tab). The Inspector tab sits beside the viewer, inside the editor column.
+    static func minSize(agentColumn: Bool) -> CGSize {
+        CGSize(width: editorMinWidth + (agentColumn ? rightColumnWidth + 1 : 0), height: minHeight)
+    }
+
+    static func rightColumnWidth(window: Double) -> Double {
+        window >= rightColumnWideFrom ? rightColumnWideWidth : rightColumnWidth
     }
 }
 
 extension EditorView {
+    var columnWidth: Double { EditorLayout.rightColumnWidth(window: windowWidth) }
+    /// The Inspector tab shows: the column sits beside the viewer and the timeline spans the full width (design 7b).
+    var inspectorColumn: Bool { document.ui.rightColumnVisible && document.ui.rightTab == .inspector }
+    /// The Agent tab shows: the column runs the full height, beside the timeline too (a terminal needs the height).
+    var agentColumn: Bool { document.ui.rightColumnVisible && document.ui.rightTab == .agent }
+
     /// The run panel and the agent change and export toasts: bottom right of the timeline, over its lowest tracks
     /// and clear of the scroll bar. They belong to the editor column, so they never sit over the agent dock beside it,
     /// nor over the viewer's transport and timecode.
@@ -76,9 +89,9 @@ extension EditorView {
                         viewer
                     }
                 }.frame(minWidth: EditorLayout.viewerMinWidth, maxWidth: .infinity).clipped()
-                if document.ui.showInspector {
+                if inspectorColumn {
                     Divider()
-                    InspectorView(document: document).frame(width: EditorLayout.inspectorWidth).clipped()
+                    RightColumnView(document: document).frame(width: columnWidth).clipped()
                 }
             }.frame(minHeight: EditorLayout.paneMinHeight).disabled(document.busy)
             // The timeline is resizable against the panes above it (#528).
