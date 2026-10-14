@@ -47,7 +47,12 @@
     "Running": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Running" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đang chạy" } } } },
     "Failed": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Failed" } }, "vi": { "stringUnit": { "state": "translated", "value": "Lỗi" } } } },
     "Cancel this job": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Cancel this job" } }, "vi": { "stringUnit": { "state": "translated", "value": "Huỷ tác vụ này" } } } },
-    "%lld timeline changes": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%lld timeline changes" } }, "vi": { "stringUnit": { "state": "translated", "value": "%lld thay đổi trên dòng thời gian" } } } },
+    "%lld timeline changes": { "localizations": {
+      "en": { "variations": { "plural": {
+        "one": { "stringUnit": { "state": "translated", "value": "%lld timeline change" } },
+        "other": { "stringUnit": { "state": "translated", "value": "%lld timeline changes" } } } } },
+      "vi": { "variations": { "plural": {
+        "other": { "stringUnit": { "state": "translated", "value": "%lld thay đổi trên dòng thời gian" } } } } } } },
     "%lld–%lld frames": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%lld–%lld frames" } }, "vi": { "stringUnit": { "state": "translated", "value": "Khung hình %lld–%lld" } } } },
     "Title's look (%@)": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Title's look (%@)" } }, "vi": { "stringUnit": { "state": "translated", "value": "Kiểu của tiêu đề (%@)" } } } },
     "Skills for agents": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Skills for agents" } }, "vi": { "stringUnit": { "state": "translated", "value": "Skill cho agent" } } } },
