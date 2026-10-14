@@ -4,6 +4,8 @@ import SwiftUI
 /// The right column (P1-6, D1): Inspector and Agent as tabs. The Agent tab shows a dot while the agent works.
 struct RightColumnView: View {
     @Bindable var document: ProjectDocument
+    let formatMenu: AnyView
+    let platformMenu: AnyView
 
     var body: some View {
         VStack(spacing: 0) {
@@ -15,7 +17,7 @@ struct RightColumnView: View {
             Divider()
             switch document.ui.rightTab {
             case .inspector:
-                InspectorView(document: document)
+                InspectorView(document: document, formatMenu: formatMenu, platformMenu: platformMenu)
             case .agent:
                 if document.agents.isDetached {
                     PoppedOutAgentView(model: document.agents)

@@ -1,6 +1,15 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Copy ID": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Copy ID" } }, "vi": { "stringUnit": { "state": "translated", "value": "Sao chép ID" } } } },
+    "Select a timeline item to edit it": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Select a timeline item to edit it" } }, "vi": { "stringUnit": { "state": "translated", "value": "Chọn một mục trên timeline để chỉnh" } } } },
+    "Format": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Format" } }, "vi": { "stringUnit": { "state": "translated", "value": "Định dạng" } } } },
+    "Length": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Length" } }, "vi": { "stringUnit": { "state": "translated", "value": "Độ dài" } } } },
+    "Outputs": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Outputs" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đầu ra" } } } },
+    "Fill the frame": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Fill the frame" } }, "vi": { "stringUnit": { "state": "translated", "value": "Lấp đầy khung" } } } },
+    "Fit inside": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Fit inside" } }, "vi": { "stringUnit": { "state": "translated", "value": "Vừa trong khung" } } } },
+    "%d sections": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%d sections" } }, "vi": { "stringUnit": { "state": "translated", "value": "%d phần" } } } },
+    "No platform chosen": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "No platform chosen" } }, "vi": { "stringUnit": { "state": "translated", "value": "Chưa chọn nền tảng" } } } },
     "Inspector": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Inspector" } }, "vi": { "stringUnit": { "state": "translated", "value": "Thuộc tính" } } } },
     "Pop out": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Pop out" } }, "vi": { "stringUnit": { "state": "translated", "value": "Tách ra" } } } },
     "Open the agent in its own window": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Open the agent in its own window" } }, "vi": { "stringUnit": { "state": "translated", "value": "Mở trợ lý trong cửa sổ riêng" } } } },
