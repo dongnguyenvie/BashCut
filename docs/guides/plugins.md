@@ -64,7 +64,7 @@ checked manifest, an entrypoint that already speaks the protocol and smoke tests
 | `id` | Yes | Reverse-domain style: lowercase letters and digits in at least two parts separated by `.` or `-` (`example.voice`) |
 | `name` | Yes | Display name, up to 80 characters; [localized text](#localized-text) |
 | `version` | Yes | Semantic version, such as `1.2.0` or `1.2.0-beta.1` |
-| `apiVersion` | Yes | `1` to `9`; see [API versions](#api-versions) |
+| `apiVersion` | Yes | `1` to `10`; see [API versions](#api-versions) |
 | `minApiVersion` / `maxApiVersion` | No | The host API window the plugin works with; `minApiVersion` defaults to `apiVersion` |
 | `entrypoint` | Yes | Relative path inside the bundle to an executable file; no leading `/` and no `..` |
 | `capabilities` | Yes | List of unique capability IDs (lowercase, segments separated by `.` or `-`); may be empty only when `contributes` is not |
@@ -97,7 +97,7 @@ and dependency names stay plain strings.
 
 ## API versions
 
-The host serves every plugin API version from `PluginAPI.minimum` (1) to `PluginAPI.current` (9); changes are
+The host serves every plugin API version from `PluginAPI.minimum` (1) to `PluginAPI.current` (10); changes are
 additive, so older manifests keep working. Version 2 adds `options`, `contributes` and the `session` transport.
 Version 3 adds option `choiceLabels` and the `file` option type, the `BASHCUT_PLUGIN_DATA`/`BASHCUT_PLUGIN_CACHE`
 folders and `::progress` lines from install recipes. Version 4 adds the `secret` option type, the session host
@@ -106,7 +106,8 @@ and the manifest's `terminal` object. Version 6 adds `contributes.library` (libr
 `library.generate` capabilities and provider `kinds`. Version 7 adds `contributes.skills` (agent skills). Version 8 adds plugin UI and composition:
 `contributes.container` and `contributes.views` (a panel in the left rail with declarative views), `requires`, `uses`
 with the `plugins.invoke` host call, the host channel for views and session actions, and `features`. Version 9 adds
-the `review.check` capability. From version 8
+the `review.check` capability. Version 10 adds the Tools panel: `views[].kind`, the `tools` action placement and
+`advanced` options. From version 8
 on, the API version goes up at most once per BashCut release; smaller differences between hosts are
 [host features](#host-features). A manifest
 that uses a feature with an older `apiVersion` is
@@ -716,6 +717,7 @@ example the voice a `voice.synthesize` provider should use), as `options`.
 | `choices` | Required for `enum`: 1–100 unique strings |
 | `minimum`, `maximum` | Bounds for `number` and `integer` |
 | `maxLength` | For `string`: 1–100,000 (default limit 10,000) |
+| `advanced` | API 10, action `params` only: `true` puts the parameter under **Advanced** on the tool card instead of with the main fields (default `false`). Ignored by the parameter sheet of other placements, which shows every parameter |
 | `scope` | `user` (default): saved for this Mac in `plugin-trust.json`. `project`: stored in the project under `pluginOptions.<plugin id>` as an undoable edit |
 | `bindsSecrets` | Not on `secret` or `file` options. The plugin's secrets are stored per value of this option, so a key entered for one destination is never sent to another |
 
@@ -761,6 +763,7 @@ code.
 |---|---|
 | `menu.plugins` | The main-menu **Plugins** menu, grouped by plugin |
 | `toolbar` | Buttons in the editor toolbar |
+| `tools` | The **Tools** panel (API 10): the action is listed there and its `params` are drawn as a tool card with the main fields, an **Advanced** group and **Run on** (selected clip, whole timeline, this project). `tools` may be combined with other placements |
 | `clip.context` | The timeline clip context menu |
 | `track.context` | The layer header context menu and the clip context menu |
 | `timeline.context` | The timeline gap and empty-area context menu |
@@ -982,6 +985,7 @@ the panel's frame from the manifest, so every plugin gets the same parts:
 | `container.title` | Optional [localized text](#localized-text), at most 24 characters; the plugin name by default |
 | `views[].id` | A short key, unique; at most 8 views |
 | `views[].title` | Localized text, at most 40 characters |
+| `views[].kind` | `panel` (default) or `tool` (API 10): a `tool` view is listed in the **Tools** panel beside Auto captions, Voiceover and Beat detection, needs no `container` and no rail icon, and must have `location` `panel` (host feature `tools`). Asset libraries (stickers, effects, sounds…) need no view kind: providers reach the asset panels through `kind`s of `library.search` and `library.generate` |
 | `views[].location` | Where the view lives: `panel` (default), `dock`, `sheet` or `inspector` |
 | `views[].icon` | Optional SF Symbol for a dock tab or sheet; the container's icon by default |
 | `views[].when` | Inspector views only: a [when condition](#when-conditions) such as `selection.kind == text` or `media.kind == video`; the view is not asked to render for items it does not match (host feature `inspector.when`) |
