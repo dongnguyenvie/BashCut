@@ -1,5 +1,6 @@
 import AppKit
 import BashCutDocument
+import BashCutProject
 import SwiftUI
 
 /// The editor's pane sizes and the smallest window they fit in (#528). The window cannot become smaller than
@@ -7,7 +8,11 @@ import SwiftUI
 /// dock can be hidden to give a small window room.
 enum EditorLayout {
     static let railWidth = 54.0
-    static let libraryWidth = 225.0
+    /// The library panel: dragged between 300 and 520 pt; without a choice 372 on a screen of 1680 pt or more, else 300
+    /// (P1-10). It gives way to the viewer in a small window.
+    @MainActor static func libraryWidth(_ ui: EditorUIState) -> Double {
+        ui.libraryWidth ?? LibraryPanelMetrics.defaultWidth(screenWidth: Double(NSScreen.main?.frame.width ?? 1440))
+    }
     static let inspectorWidth = 220.0
     static let viewerMinWidth = 260.0
     /// The editor column (panes, timeline toolbar and timeline): the timeline toolbar needs this much.
@@ -59,15 +64,8 @@ extension EditorView {
                 ScrollView(.vertical, showsIndicators: false) { rail }.frame(width: EditorLayout.railWidth).clipped()
                 Divider()
                 if document.ui.showLibraryPanel {
-                    Group {
-                        if let id = document.ui.pluginPanel,
-                            let plugin = document.pluginViews.containers.first(where: { $0.id == id }) {
-                            PluginPanelView(document: document, plugin: plugin)
-                        } else {
-                            LibraryView(document: document, pluginManager: document.plugins)
-                        }
-                    }.frame(width: EditorLayout.libraryWidth).clipped()
-                    Divider()
+                    libraryPane.zIndex(1)
+                    if document.ui.libraryWide { Divider() } else { LibraryResizeHandle(document: document) }
                 }
                 Group {
                     if document.sourceViewer.visible {

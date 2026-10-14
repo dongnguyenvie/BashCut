@@ -40,13 +40,20 @@ struct LibraryItemsSection<Tile: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            header
-            HStack(spacing: 6) {
-                TextField("Search library…", text: filter.query).textFieldStyle(.roundedBorder)
-                filterMenu
+            if document.ui.libraryWide {
+                // Wide panel (P1-10): the categories on the left, the tiles on the right.
+                header
+                HStack(alignment: .top, spacing: 10) {
+                    sidebar.frame(width: LibraryPanelMetrics.sidebarWidth - 10)
+                    Divider()
+                    VStack(alignment: .leading, spacing: 8) { searchRow; sourceChips; listing }
+                }
+            } else {
+                header
+                searchRow
+                sourceChips
+                listing
             }
-            sourceChips
-            if showsHome { homeSections } else { results }
         }
         .padding(4)
         .overlay {
@@ -64,14 +71,25 @@ struct LibraryItemsSection<Tile: View>: View {
         .onChange(of: filter.wrappedValue) { shown = Self.pageSize }
     }
 
+    private var searchRow: some View {
+        HStack(spacing: 6) {
+            TextField("Search library…", text: filter.query).textFieldStyle(.roundedBorder)
+            filterMenu
+        }
+    }
+
+    @ViewBuilder var listing: some View { if showsHome { homeSections } else { results } }
+
     func grid(_ items: [LibraryItem], fromOnePack: Bool = false) -> some View {
-        LazyVGrid(columns: columns, spacing: 8) {
+        LazyVGrid(columns: gridColumns, spacing: 8) {
             ForEach(items, id: \.reference) { item in
                 let starred = favorites.contains(item.reference)
                 LibraryGridTile(
                     item: item, isFavorite: starred, showsBadges: !badgesInTile, hidesScope: fromOnePack,
                     toggleFavorite: { document.toggleLibraryFavorite(item, currently: starred) },
-                    content: { tile(item) })
+                    place: canPlaceFromTile(item) ? { document.placeFromLibrary(item) } : nil,
+                    draggable: item.kind != .brand && item.kind != .voice,
+                    content: { shownTile(item) })
                     .contextMenu { contextMenu(item) }
             }
         }

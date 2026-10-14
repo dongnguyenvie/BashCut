@@ -1803,7 +1803,7 @@ Run an editor action like the user: by ID (timeline.split, timeline.zoom-in, pla
 - `in`: integer, ≥ 0. source: in frame
 - `out`: integer, ≥ 1. source: out frame (exclusive)
 
-### `bashcut ui view [--zoom <zoom>] [--zoom-anchor <zoomAnchor>] [--snap <snap>] [--safe-area <safeArea>] [--viewer-zoom <viewerZoom>] [--compare <compare>] [--agent-dock <agentDock>] [--reveal <reveal>] [--inspector <inspector>] [--settings-section <settingsSection>] [--settings-search <settingsSearch>] [--knowledge-section <knowledgeSection>] [--plugins-tab <pluginsTab>] [--plugins-category <pluginsCategory>] [--media-source <mediaSource>] [--library-query <libraryQuery>] [--library-pack <libraryPack>] [--library-tag <libraryTag>] [--library-scope <libraryScope>] [--library-source <librarySource>] [--library-collection <libraryCollection>]`
+### `bashcut ui view [--zoom <zoom>] [--zoom-anchor <zoomAnchor>] [--snap <snap>] [--safe-area <safeArea>] [--viewer-zoom <viewerZoom>] [--compare <compare>] [--agent-dock <agentDock>] [--reveal <reveal>] [--inspector <inspector>] [--settings-section <settingsSection>] [--settings-search <settingsSearch>] [--knowledge-section <knowledgeSection>] [--plugins-tab <pluginsTab>] [--plugins-category <pluginsCategory>] [--media-source <mediaSource>] [--library-query <libraryQuery>] [--library-pack <libraryPack>] [--library-tag <libraryTag>] [--library-scope <libraryScope>] [--library-source <librarySource>] [--library-collection <libraryCollection>] [--library-width <libraryWidth>] [--library-wide <libraryWide>] [--library-layout <libraryLayout>] [--library-tile-size <libraryTileSize>]`
 
 Read the editor view state, or change it: timeline zoom (pixels per second), viewer zoom, snapping, safe area, color compare, agent dock, inspector tab, Settings section and search, Knowledge section, Plugins tab and Browse category, the Media panel's source (footage, project, shared, selects, clips), the open library panel's search and filters, and scroll the timeline to a frame; fullScreen: the preview of viewer.fullscreen is on.
 
@@ -1829,6 +1829,10 @@ Read the editor view state, or change it: timeline zoom (pixels per second), vie
 - `libraryScope`: string, one of all, built-in, user, project, plugin. Scope the open library panel shows
 - `librarySource`: string, one of all, mine, packs. Source chip of the open library panel: mine (this project and this Mac), packs (built in and plugin) or all
 - `libraryCollection`: string, one of all, recent, favorites. List the open library panel shows instead of its home view: recent (this project), favorites (this Mac) or all
+- `libraryWidth`: number, 300…520. Width of the library panel in points
+- `libraryWide`: boolean. The wide library panel (760 pt over the viewer, with a category sidebar) on or off
+- `libraryLayout`: string, one of grid, list. Grid or list for the open library panel (remembered per panel)
+- `libraryTileSize`: number, 0…1. Tile size of the open library panel, 0 (small) to 1 (large)
 
 ### `bashcut ui seek <frame>`
 

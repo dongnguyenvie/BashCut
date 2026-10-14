@@ -15,7 +15,7 @@ extension LibraryItemsSection {
             let limit = tileLimit(for: section)
             VStack(alignment: .leading, spacing: 4) {
                 LibraryHomeHeader(
-                    title: Self.title(section.kind), count: section.items.count, collapsed: folded,
+                    title: section.kind.title, count: section.items.count, collapsed: folded,
                     seesAll: section.items.count > limit,
                     toggle: { if folded { collapsed.remove(section.id) } else { collapsed.insert(section.id) } },
                     seeAll: { seeAll(section) })
@@ -118,8 +118,11 @@ extension LibraryItemsSection {
 
     /// The tiles in a row: the fixed columns, or as many adaptive ones as the panel's width holds.
     private var tilesPerRow: Int {
+        let columns = gridColumns
         guard columns.count == 1, case .adaptive(let minimum, _) = columns[0].size else { return columns.count }
-        return max(1, Int((EditorLayout.libraryWidth - 28) / (minimum + 8)))
+        let panel = document.ui.libraryWide
+            ? LibraryPanelMetrics.wideWidth - LibraryPanelMetrics.sidebarWidth : EditorLayout.libraryWidth(document.ui)
+        return max(1, Int((panel - 28) / (minimum + 8)))
     }
 
     private func seeAll(_ section: LibraryHomeSection) {
@@ -139,18 +142,9 @@ extension LibraryItemsSection {
 
     private var listTitle: Text {
         let current = filter.wrappedValue
-        if let collection = current.collection { return Self.title(collection == "recent" ? .recent : .favorites) }
+        if let collection = current.collection { return (collection == "recent" ? LibraryHomeSection.Kind.recent : .favorites).title }
         if let pack = current.pack { return Text(verbatim: pack) }
         return Text(verbatim: current.scope.flatMap(LibraryScope.init(rawValue:)).map(ProjectDocument.scopeTitle) ?? "")
-    }
-
-    static func title(_ kind: LibraryHomeSection.Kind) -> Text {
-        switch kind {
-        case .recent: Text("Recent")
-        case .favorites: Text("Favorites")
-        case .pack(let name): Text(verbatim: name)
-        case .scope(let scope): Text(verbatim: ProjectDocument.scopeTitle(scope))
-        }
     }
 
     /// The matches of the search and filters; a list (Recent, Favorites) keeps its own order.
@@ -174,5 +168,80 @@ extension LibraryItemsSection {
     static func ordered(_ items: [LibraryItem], by references: [String]) -> [LibraryItem] {
         let byReference = Dictionary(items.map { ($0.reference, $0) }, uniquingKeysWith: { first, _ in first })
         return references.compactMap { byReference[$0] }
+    }
+}
+
+extension LibraryHomeSection.Kind {
+    /// The section's header: Recent and Favorites are UI strings; a pack's name is the user's.
+    @MainActor var title: Text {
+        switch self {
+        case .recent: Text("Recent")
+        case .favorites: Text("Favorites")
+        case .pack(let name): Text(verbatim: name)
+        case .scope(let scope): Text(verbatim: ProjectDocument.scopeTitle(scope))
+        }
+    }
+}
+
+// MARK: Tile size, grid or list, and the wide panel (P1-10)
+
+extension LibraryItemsSection {
+    /// The panel's own columns, or (for panels with a tile layout) a grid sized by the footer's slider, or one column.
+    var gridColumns: [GridItem] {
+        guard document.ui.libraryTab.hasTileLayout else { return columns }
+        let layout = document.libraryLayout(panel)
+        return layout.isList ? [GridItem(.flexible())] : [GridItem(.adaptive(minimum: layout.tileMinimum))]
+    }
+
+    /// Text styles, effects, looks and transitions have rows without a picture; in a grid they get a picture tile
+    /// with the name under it. Stickers and clips already draw one, and keep their own tile in either layout.
+    private var usesPictureTiles: Bool {
+        document.ui.libraryTab.hasTileLayout && !document.libraryLayout(panel).isList
+            && [.textPreset, .effectPreset, .look, .transitionPreset].contains(kinds.first)
+    }
+
+    @ViewBuilder func shownTile(_ item: LibraryItem) -> some View {
+        if usesPictureTiles {
+            LibraryPictureTile(document: document, item: item) { usePrimary(item) }
+        } else {
+            tile(item)
+        }
+    }
+
+    /// The tile's click: place the item, or use it on the selected item (a look with nothing selected is an adjustment).
+    private func usePrimary(_ item: LibraryItem) {
+        switch item.kind {
+        case .effectPreset, .transitionPreset: document.applyFromLibrary(item)
+        case .look: if document.selected == nil { document.placeFromLibrary(item) } else { document.applyFromLibrary(item) }
+        default: document.placeFromLibrary(item)
+        }
+    }
+
+    /// The "+" on hover places at the playhead; effects and transitions need a clip, and sounds have their own button.
+    func canPlaceFromTile(_ item: LibraryItem) -> Bool {
+        guard document.fileURL != nil, !badgesInTile else { return false }
+        return [.textPreset, .sticker, .look, .clip].contains(item.kind)
+    }
+
+    /// The wide panel's categories.
+    var sidebar: some View {
+        let sections = LibraryHome.sections(items: items, favorites: favorites, recent: recent)
+        return LibraryCategorySidebar(
+            sections: sections, filter: filter.wrappedValue,
+            select: { section in
+                filter.wrappedValue = LibraryPanelFilter(query: filter.wrappedValue.query)
+                guard let section else { return }
+                switch section.kind {
+                case .recent: filter.wrappedValue.collection = "recent"
+                case .favorites: filter.wrappedValue.collection = "favorites"
+                case .pack(let name): filter.wrappedValue.pack = name
+                case .scope(let scope): filter.wrappedValue.scope = scope.rawValue
+                }
+            },
+            selectMine: {
+                filter.wrappedValue = LibraryPanelFilter(query: filter.wrappedValue.query)
+                filter.wrappedValue.source = LibrarySource.mine.rawValue
+            },
+            mineCount: items.filter { LibrarySource.mine.contains($0.scope) }.count)
     }
 }

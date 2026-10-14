@@ -126,7 +126,7 @@ extension ProjectDocument {
         Task { do { try await placeLibraryItem(item) } catch { message = error.localizedDescription } }
     }
 
-    /// Library items dragged from a plugin view onto the timeline (#408, `libraryItem`): each placed like
+    /// Library items dragged from a plugin view or a library panel onto the timeline (#408, `libraryItem`): each placed like
     /// `library place <reference> --at-frame F` (the same lookup and placement, one undo step each), the next at
     /// the end of the one before. The layer under the pointer is used when it takes the item (an audio item on an
     /// audio layer, a clip on a picture layer); otherwise the placement picks one, as `library place` does.
@@ -136,6 +136,10 @@ extension ProjectDocument {
             for reference in references {
                 do {
                     let item = try libraryCatalog.item(reference)
+                    if item.kind == .effectPreset || item.kind == .transitionPreset {
+                        try await applyDroppedLibraryItem(item, at: at, overTrack: trackID)
+                        continue
+                    }
                     let track = trackID.flatMap { id in project.tracks.first { $0.id == id } }
                     let fits = track.map { item.kind == .audio ? $0.kind == TrackKind.audio
                         : item.kind == .clip && $0.kind == TrackKind.video } ?? false

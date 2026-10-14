@@ -113,7 +113,7 @@ final class ProjectDocument {
         settings = services.settings
         automation = services.automation
         preview = PreviewController(engine: services.engine)
-        ui = EditorUIState(timelineLeading: services.settings.timelineHeaderWidth)
+        ui = EditorUIState(settings: services.settings)
         preview.onMessage = { [weak self] in self?.message = $0 }
         preview.onPlaybackStopped = { [weak self] frame in
             self?.emitPluginEvent(.playbackStopped, ["playhead": .integer(frame)])

@@ -124,6 +124,14 @@ public final class SettingsModel {
     public var timelineHeaderWidth: Double {
         didSet { defaults.set(timelineHeaderWidth, forKey: Keys.timelineHeaderWidth) }
     }
+    /// The library panel's dragged width (P1-10); nil: the default for the screen.
+    public var libraryPanelWidth: Double? {
+        didSet { defaults.set(libraryPanelWidth, forKey: Keys.libraryPanelWidth) }
+    }
+    /// Tile size and grid or list per library panel name.
+    public var libraryPanelLayouts: [String: LibraryPanelLayout] {
+        didSet { defaults.set(try? JSONEncoder().encode(libraryPanelLayouts), forKey: Keys.libraryPanelLayouts) }
+    }
     /// Most recent first, at most `recentHistoryLimit`.
     public private(set) var recentHistory: [RecentProject]
     /// The newest `recentProjectLimit` of the history: the menus and the Welcome screen.
@@ -162,6 +170,8 @@ public final class SettingsModel {
         static let recentProjectPaths = "recentProjectPaths"
         static let recentHistory = "recentProjects"
         static let timelineHeaderWidth = "timelineHeaderWidth"
+        static let libraryPanelWidth = "libraryPanelWidth"
+        static let libraryPanelLayouts = "libraryPanelLayouts"
     }
 
     public init(defaults: UserDefaults = .standard) {
@@ -196,6 +206,9 @@ public final class SettingsModel {
         timelineHeaderWidth = (defaults.object(forKey: Keys.timelineHeaderWidth) as? Double).map {
             min(max($0, EditorUIState.timelineLeadingRange.lowerBound), EditorUIState.timelineLeadingRange.upperBound)
         } ?? EditorUIState.compactTimelineLeading
+        libraryPanelWidth = (defaults.object(forKey: Keys.libraryPanelWidth) as? Double).map(LibraryPanelMetrics.clamp)
+        libraryPanelLayouts = defaults.data(forKey: Keys.libraryPanelLayouts)
+            .flatMap { try? JSONDecoder().decode([String: LibraryPanelLayout].self, from: $0) } ?? [:]
         if let entries = defaults.array(forKey: Keys.recentHistory) as? [[String: Any]] {
             recentHistory = entries.compactMap { entry in
                 (entry["path"] as? String).map {

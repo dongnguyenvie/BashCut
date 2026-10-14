@@ -43,6 +43,12 @@ public final class EditorUIState {
     /// The library panel left of the viewer and the Inspector right of it; hidden to give a small window room (#528).
     public var showLibraryPanel = true
     public var showInspector = true
+    /// The library panel's width in points when dragged (`LibraryPanelMetrics.widthRange`); nil: the default for the screen.
+    public var libraryWidth: Double?
+    /// The wide library panel (760 pt over the viewer, with a category sidebar); Esc leaves it.
+    public var libraryWide = false
+    /// Tile size and grid or list per panel name; `ProjectDocument.setLibraryLayout` remembers them in Settings.
+    public var libraryLayouts: [String: LibraryPanelLayout] = [:]
     public var libraryTab: LibraryTab = .media
     /// The plugin whose rail panel replaces the library panel (plugin API 8), or nil for the library.
     public var pluginPanel: String?
@@ -127,6 +133,14 @@ public final class EditorUIState {
     public var showPluginProposals = false
 
     public init(timelineLeading: Double = compactTimelineLeading) { self.timelineLeading = timelineLeading }
+
+    /// The remembered layout: the timeline header's width and the library panel's width, tile sizes and grid or list.
+    @MainActor
+    public convenience init(settings: SettingsModel) {
+        self.init(timelineLeading: settings.timelineHeaderWidth)
+        libraryWidth = settings.libraryPanelWidth
+        libraryLayouts = settings.libraryPanelLayouts
+    }
 
     public var canZoomIn: Bool { timelineScale < Self.timelineZoomRange.upperBound }
     public var canZoomOut: Bool { timelineScale > Self.timelineZoomRange.lowerBound }
@@ -229,7 +243,7 @@ public struct LibraryPanelFilter: Equatable, Sendable {
     /// "recent" or "favorites": a list shown instead of the home view; nil: the home view.
     public var collection: String?
 
-    public init() {}
+    public init(query: String = "") { self.query = query }
 
     /// Whether the panel lists matches instead of its home view.
     public var isActive: Bool {
@@ -378,6 +392,9 @@ public enum LibraryTab: String, CaseIterable, Identifiable, Sendable {
 
     /// The automation name (`ui.panel`).
     public var panelName: String { rawValue.lowercased() }
+
+    /// Whether the panel has a tile size and a grid or list (P1-10): its items are tiles of one library section.
+    public var hasTileLayout: Bool { [.text, .stickers, .effects, .transitions, .filters].contains(self) }
 
     public init?(panelName: String) {
         guard let tab = Self.allCases.first(where: { $0.panelName == panelName }) else { return nil }
