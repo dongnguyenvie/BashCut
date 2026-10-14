@@ -60,6 +60,7 @@ extension Project {
         try validateOutputSettings()
         try validateReviewSettings()
         try validateBrand()
+        try validateIllustration()
         try validateSelects()
         try validateOutputCaptions()
         try validateMarkers()

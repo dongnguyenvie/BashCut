@@ -145,6 +145,17 @@ import Foundation
         _ method: String, _ params: JSONValue, plugin: InstalledPlugin
     ) async -> Result<JSONValue, PluginCallFailure> {
         if method == "plugins.invoke" { return await invoke(params.object, plugin: plugin) }
+        if method == "cli" {
+            // A command from its command-line words, handled exactly like a direct call of it.
+            do {
+                let command = try PluginCommandSession.commandLine(params.object)
+                return await perform(command.method, .object(command.params), plugin: plugin)
+            } catch let failure as RPCFailure {
+                return .failure(PluginCallFailure(code: failure.code, message: failure.message))
+            } catch {
+                return .failure(PluginCallFailure(code: -32602, message: error.localizedDescription))
+            }
+        }
         if let refusal = PluginCommandSession.ownPluginRefusal(method, params: params.object, caller: plugin.id) {
             return .failure(PluginCallFailure(code: -32601, message: refusal))
         }

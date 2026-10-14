@@ -166,7 +166,7 @@ extension ProjectDocument {
                 throw RPCFailure(-32602, "The view has no component \(node); see plugins view")
             }
             guard component.kind?.isInteractive == true, !component.bool("disabled") else {
-                throw RPCFailure(-32602, "\(node) is not an enabled button, input or list")
+                throw RPCFailure(-32602, "\(node) is not an enabled button, input, list or grid")
             }
             let event = PluginViewEvent(node: node, kind: kind, value: Self.eventValue(arguments["value"]?.string))
             do {

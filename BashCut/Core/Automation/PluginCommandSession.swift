@@ -3,13 +3,14 @@ import Foundation
 
 /// App commands a plugin's view or action requests may call over the session host channel (plugin API 8, #399): the
 /// chat-agent boundary plus running plugin actions, status messages and `capabilities.get` (which plugins provide a
-/// capability, for a provider picker). They run as author `plugin` with one token
+/// capability, for a provider picker) and `jobs.wait` (bounded by its own timeout). `cli` runs one of them from its
+/// command-line words (see `commandLine`). They run as author `plugin` with one token
 /// per plugin, so edits are validated, undoable and attributed like any command. `plugins.invoke` and `plugins.option`
 /// are answered by the caller before they get here, since they need the calling plugin's manifest.
 @MainActor public final class PluginCommandSession {
     public static let allowedMethods: Set<String> = ChatCommandSession.allowedMethods.union([
         "plugins.run", "plugins.invoke", "plugins.show-view", "plugins.option", "plugins.set-overlays",
-        "plugins.overlays", "capabilities.get",
+        "plugins.overlays", "capabilities.get", "jobs.wait",
     ]).subtracting(["plugins.view", "plugins.view-event"])
     /// Host calls a plugin may make only about itself: `params.plugin` must be the caller's id.
     public nonisolated static let ownPluginMethods: Set<String> = [
@@ -25,6 +26,27 @@ import Foundation
         case "plugins.option": return "A plugin can only set its own options"
         case "plugins.set-overlays": return "A plugin can only set its own overlays"
         default: return "A plugin can only show its own views"
+        }
+    }
+
+    /// The command and validated params of a `cli` host call, `{"argv": ["library", "list", "--kind", "clip"]}` (the
+    /// words after `bashcut`), so a plugin's scripts that shell out to `bashcut` can run unchanged through a stand-in
+    /// that forwards its argv. The caller then handles it like a direct call of that method (same allow-list and
+    /// refusals); `--format` is ignored since results are JSON.
+    public nonisolated static func commandLine(
+        _ params: [String: JSONValue]
+    ) throws -> (method: String, params: [String: JSONValue]) {
+        guard case .array(let values)? = params["argv"], !values.isEmpty else {
+            throw RPCFailure(-32602, "cli needs argv, the command-line words after bashcut")
+        }
+        let words = values.compactMap(\.string)
+        guard words.count == values.count else { throw RPCFailure(-32602, "cli argv must be strings") }
+        guard words.first != "cli" else { throw RPCFailure(-32601, "cli cannot run cli") }
+        do {
+            let invocation = try CommandLineParser.parse(words)
+            return (invocation.spec.name, invocation.params)
+        } catch {
+            throw RPCFailure(-32602, error.localizedDescription)
         }
     }
 

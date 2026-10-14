@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 232 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 237 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -746,7 +746,7 @@ Check a plugin that is not in the registry (a folder, its plugin.json, a .zip or
 
 ### `bashcut plugins install [<plugin>] [--bundle <bundle>] [--only <only>] [--version <version>] [--path <path>] [--url <url>] [--ref <ref>] [--sha256 <sha256>] [--scope <scope>] [--link]`
 
-Download a registry plugin (or its update), check its SHA-256 and manifest, and show the install approval in the Plugins sheet. With bundle instead, download every plugin of a bundle this Mac does not have and show one approval for all of them, each with a checkbox. With path or url instead, add a plugin that is not in the registry (Add Plugin…): a folder, its plugin.json or a .zip / .bashcutplugin file on this Mac, or a link, checked like plugins validate. Only the user can approve; the job ends when the approval is shown. While another install waits for approval or runs, a registry plugin or bundle is queued (approval: queued) and its approval opens after that one ends; do not ask again.
+Download a registry plugin (or its update), check its SHA-256 and manifest, and show the install approval in the Plugins sheet. With bundle instead, download every plugin of a bundle this Mac does not have and show one approval for all of them, each with a checkbox. With path or url instead, add a plugin that is not in the registry (Add Plugin…): a folder, its plugin.json or a .zip / .bashcutplugin file on this Mac, or a link, checked like plugins validate. With Trust plugins automatically on (the default) it installs at once (approval: approved); otherwise only the user can approve and the job ends when the approval is shown. While another install waits for approval or runs, a registry plugin or bundle is queued (approval: queued) and its approval opens after that one ends; do not ask again.
 
 - Mode: edit · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_plugins_install`
 - `plugin`: string. Plugin ID from plugins search (or use path)
@@ -785,7 +785,7 @@ Uninstall a plugin from the user or project plugin folder, with its trust and op
 
 ### `bashcut plugins setup <plugin>`
 
-Show the approval to run an installed plugin's dependency install recipes again (Install Dependencies…). Only the user can approve; follow it with jobs status.
+Run an installed plugin's dependency install recipes again (Install Dependencies…): at once with Trust plugins automatically on (approval: approved), otherwise after the user approves; follow it with jobs status.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_plugins_setup`
 - `plugin`: string, required. Plugin ID
@@ -1211,6 +1211,47 @@ Remove a picture's background with a vision.cutout provider (built in: Apple Vis
 - `provider`: string. Provider ID overriding the project preference for one request
 - `requestId`: string. Your stable ID for this request: sending it again returns the same job instead of starting (and paying for) another; the provider receives it too
 - `dryRun`: boolean, default false. Return the request as it would go to the provider (without option values), whether the provider is paid and its estimate if it gives one; nothing runs
+
+### `bashcut image generate [<prompts.json>] [--prompt <prompt>] [--style <style>] [--references <references>] [--seed <seed>] [--no-lock] [--width <width>] [--height <height>] [--provider <provider>] [--request-id <requestId>] [--dry-run]`
+
+Make pictures with an image.generate provider: every scene in one job (the batch form: a JSON file of [{id, prompt}] or of prompt texts), with the style lock (image style: style prompt, reference pictures, seed) sent each time and the project's frame size. Each picture is added to the media pool with generated: true and its prompt, so media place puts it on the timeline. Returns images [{id, media, path, projectPath, width, height}], failed [{id, message}] (only those scenes need another call), contactSheet (one PNG of every picture, labelled by id: look at it instead of each picture), the style used and the provider. A job.
+
+- Mode: edit · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_image_generate`
+- `prompts`: array. Scenes [{id, prompt}] or prompt texts (CLI: path to a JSON file)
+- `prompt`: string. One picture's prompt, instead of prompts
+- `style`: string. Style prompt for this call instead of the style lock's
+- `references`: string. Comma-separated reference pictures (paths or sticker library ids) for this call instead of the style lock's
+- `seed`: integer, ≥ 0. Seed for this call instead of the style lock's
+- `noLock`: boolean, default false. Ignore the style lock for this call
+- `width`: integer, 64…8192. Picture width; the project's by default
+- `height`: integer, 64…8192. Picture height; the project's by default
+- `provider`: string. Provider ID overriding the project preference for one request
+- `requestId`: string. Your stable ID for this request: sending it again returns the same job instead of starting (and paying for) another; the provider receives it too
+- `dryRun`: boolean, default false. Return the request as it would go to the provider (without option values), whether the provider is paid and its estimate if it gives one; nothing runs
+
+### `bashcut image generate-list`
+
+The project's generated pictures (media with generated: true): per picture media, id, prompt, projectPath, provider and placed (timeline items using it); the style lock in use with where it comes from (project or brand); the disclosure label; and whether an image.generate provider is available (with what to install when not).
+
+- Mode: read · Runs: immediately · MCP: `bashcut_image_generate-list`
+
+### `bashcut image style [--style <style>] [--references <references>] [--seed <seed>] [--disclosure <disclosure>] [--clear]`
+
+Read or set the project's style lock for image generate: style prompt, reference pictures (paths or sticker library ids), seed and the disclosure label shown over generated pictures. Given fields replace those fields; clear removes the project's lock (a brand kit's illustration then applies). With no field, returns the lock in use.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_image_style`
+- `style`: string. Style prompt
+- `references`: string. Comma-separated reference pictures; empty clears them
+- `seed`: integer, ≥ 0. Seed, for providers that take one
+- `disclosure`: string. Label over generated pictures, such as the brand's
+- `clear`: boolean, default false. Remove the project's lock
+
+### `bashcut image disclose [--text <text>]`
+
+Put the disclosure label over every generated picture on the timeline that lacks one: one text item (disclosure: true, small, top left) per run of generated pictures, on the titles layer, in one undo step. The label is text, else the style lock's or the brand's disclosure. Returns rev and the added items; move or restyle them like any text.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_image_disclose`
+- `text`: string. Label text for this call
 
 ## color
 
@@ -2324,6 +2365,19 @@ Write library items as a pack folder (pack.json and files) to share or import el
 - `kind`: string, one of audio, text-preset, sticker, effect-preset, transition-preset, look, voice, clip, brand. Item kind
 - `scope`: string, one of built-in, user, project, plugin. Look only in this scope; without it project, user, plugin, then built-in
 - `name`: string. Pack name; the pack filter or the folder name by default
+
+### `bashcut library brand-pose <brand> --pose <pose> [--image <image>] [--generate] [--reference <reference>] [--scope <scope>] [--provider <provider>]`
+
+Add a mascot pose to a brand kit (#551). With image: the photo's subject is cut out with a vision.cutout provider, saved as a sticker and stored as the pose. With generate: every pose name not in the kit yet is made with an image.generate provider from one reference (an existing pose, or reference), cut out and stored, in one job. Returns poses [{pose, sticker}], failed and the kit. A job.
+
+- Mode: edit · Runs: as a background job (`jobs wait` until it ends) · MCP: `bashcut_library_brand-pose`
+- `brand`: string, required. Brand kit library id
+- `pose`: string, required. Pose name (with image), or comma-separated pose names (with generate)
+- `image`: string. Photo or picture to cut the pose from (relative to the project or absolute), or a sticker library id
+- `generate`: boolean, default false. Generate the poses not in the kit yet
+- `reference`: string. With generate: the picture or sticker id of the character; the kit's first pose by default
+- `scope`: string, one of project, user. Library scope the pose stickers go into; the kit's by default
+- `provider`: string. Provider ID overriding the project preference for one request
 
 ## fonts
 

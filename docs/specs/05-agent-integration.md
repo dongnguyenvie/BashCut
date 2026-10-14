@@ -176,8 +176,9 @@ Settings → **Dangerously allow all agent actions** (on by default, user-only) 
 turns the scope guard (#356) off and skips plugin action confirmations for agents; `context get` reports it in
 `agentPermissions`.
 
-Plugin trust, turning a plugin or its hooks on, and Settings → **Apply plugin hook edits without review** are
-user-only; agents may turn plugins or hooks off (`plugins set`) and apply or discard hook proposals. Plugins never
+Plugin trust (unless Settings → Plugins → **Trust plugins automatically**, on by default, lets agent installs and
+setups run without approval), turning a plugin or its hooks on, and Settings → **Apply plugin hook edits without
+review** are user-only; agents may turn plugins or hooks off (`plugins set`) and apply or discard hook proposals. Plugins never
 receive a token: their results come back through the app, are validated like agent edits and are committed by
 author `plugin`, audited as `plugin.action.<action id>` or `plugin.hook.<event>`.
 
@@ -262,8 +263,8 @@ context block and the knowledge (notes for every project, the project memo and s
   with ffmpeg.
 - Timeline edits need no confirm; stop only at gates. Download the music, SFX, images, footage and fonts the edit
   needs without asking, whatever the licence; record license, source and author and list the rights in the draft
-  checkpoint. Install command-line tools as needed and work to the end without waiting for the user. Installing
-  and trusting plugins stays with the user; never clone a voice that is not the user's. Reply in the user's language.
+  checkpoint. Install command-line tools as needed and work to the end without waiting for the user. Install a
+  plugin the edit needs (trusted automatically unless the user turned it off); never clone a voice that is not the user's. Reply in the user's language.
 
 The instructions end with an example of every timeline operation. When Settings turns agent edits off, they
 say so.

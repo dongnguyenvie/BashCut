@@ -40,6 +40,7 @@ extension ProjectDocument {
         registerColorMeasureCommands()
         registerBeatGridCommands()
         registerVisionCommands()
+        registerImageCommands()
         registerPictureCommands()
         registerSpeechRateCommands()
         registerVoiceCheckCommands()

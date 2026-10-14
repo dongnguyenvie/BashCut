@@ -202,6 +202,9 @@ enum PluginText {
         return client
     }
     @ObservationIgnored let trust: PluginTrustStore
+    /// Settings › Plugins › Trust plugins automatically: installs, links and setups run without the approval sheet
+    /// and plugins in the user plugin folder are trusted again after they change. The document passes the setting.
+    @ObservationIgnored let trustsAutomatically: () -> Bool
     /// Values of `secret` options (Keychain; in memory in tests).
     @ObservationIgnored var secrets = PluginSecretStore()
     @ObservationIgnored var service: CapabilityService
@@ -209,8 +212,9 @@ enum PluginText {
     var currentProjectRoot: URL? { projectRoot }
     static let hookLogLimit = 200
 
-    init(trust: PluginTrustStore = .standard) {
+    init(trust: PluginTrustStore = .standard, trustsAutomatically: @escaping () -> Bool = { false }) {
         self.trust = trust
+        self.trustsAutomatically = trustsAutomatically
         service = CapabilityService(trust: trust)
         service.preparesPluginFolders = true
         #if DEBUG
@@ -226,6 +230,7 @@ enum PluginText {
     /// plugin.json or entrypoint changed, are checked in the background; `checkFiles` checks every plugin again.
     func refresh(projectRoot: URL?, checkFiles: Bool = false) {
         self.projectRoot = projectRoot
+        applyTrustSetting()
         let result = service.catalog(projectRoot: projectRoot)
         plugins = result.plugins
         catalogDiagnostics = result.diagnostics
@@ -234,6 +239,19 @@ enum PluginText {
         let unchecked = applyKnownAvailability(checkFiles: checkFiles)
         rebuildActions()
         if !unchecked.isEmpty || !fileCheckQueue.isEmpty { queueFileChecks(unchecked) }
+    }
+
+    /// Points the trust store at the user plugin folder while plugins are trusted automatically.
+    func applyTrustSetting() {
+        trust.automaticTrustRoot = trustsAutomatically() ? service.roots.user : nil
+    }
+
+    /// Installs the plugin or bundle waiting for approval at once while plugins are trusted automatically; otherwise
+    /// the approval sheet asks.
+    func approveAutomatically() {
+        guard trustsAutomatically() else { return }
+        applyTrustSetting()
+        if pendingBundle != nil { installPendingBundle() } else if pendingInstall != nil { installPendingPlugin() }
     }
 
     func rebuildActions() {

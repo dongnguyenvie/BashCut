@@ -212,6 +212,7 @@ extension PluginManagerModel {
         tab = .installed
         guard showAddPlugin else {
             pendingInstall = pending
+            approveAutomatically()
             return
         }
         // One sheet at a time: let Add Plugin close before the approval opens.
@@ -223,6 +224,7 @@ extension PluginManagerModel {
                 return
             }
             pendingInstall = pending
+            approveAutomatically()
         }
     }
 

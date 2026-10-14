@@ -33,6 +33,7 @@ struct DoctorCheck: Identifiable, Sendable {
         checks = Self.localChecks(
             workspace: workspace, projectRoot: projectRoot, toolsDirectory: toolsDirectory,
             pluginCount: plugins.count, pluginDiagnostics: pluginDiagnostics)
+        checks += Self.optionalCapabilities.map { Self.capabilityCheck($0, service: service, projectRoot: projectRoot) }
         let results = await withTaskGroup(of: PluginHealth.self, returning: [PluginHealth].self) { group in
             for plugin in plugins { group.addTask { await service.health(plugin) } }
             var values: [PluginHealth] = []
@@ -51,6 +52,25 @@ struct DoctorCheck: Identifiable, Sendable {
                     state: result.state == .ready ? .pass : .warning))
         }
         running = false
+    }
+
+    /// Capabilities only plugins provide that commands ask for by name (`image generate`, #550).
+    static let optionalCapabilities = ["image.generate"]
+
+    /// Whether a plugin provides `capability`, and what to install when none does.
+    static func capabilityCheck(_ capability: String, service: CapabilityService, projectRoot: URL?) -> DoctorCheck {
+        let report = service.capabilityStatus(capability, projectRoot: projectRoot)
+        let detail: String
+        switch report.reason {
+        case nil: detail = report.providers.filter { $0.state == .ready }.map(\.name).joined(separator: ", ")
+        case .missing?:
+            detail = "No plugin provides \(capability). Open Plugins and install one that lists \(capability) "
+                + "(an image generation plugin that uses your own API key, or a local model), then set its options."
+        default: detail = report.message
+        }
+        return DoctorCheck(
+            id: "capability." + capability, title: "Capability " + capability, detail: detail,
+            state: report.available ? .pass : .warning)
     }
 
     private static func localChecks(

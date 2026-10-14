@@ -17,7 +17,9 @@ struct AgentInstructionsTests {
         // tool rules moved here from the kit's edit-workflow skill (spec 13 §9) every agent reads anyway. 36.5k since
         // clip reframe (P3-J1); UI-parity commands agents do with ops (text line-style, clip backdrop) stay out.
         // 37k since saved voices (#532: voice clone-add, voice use; listing and removing clones stay out).
-        #expect(text.count < 37_000)
+        // 37.5k since generated pictures (#550: image generate, style, disclose, library brand-pose; the list stays
+        // out).
+        #expect(text.count < 37_500)
         for rule in ["-32004", "held: true", "capability_missing", "agentPermissions", "Library first", "audit_missing"] {
             #expect(text.contains(rule), "\(rule)")
         }

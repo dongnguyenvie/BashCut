@@ -191,7 +191,8 @@ extension PluginManagerModel {
             entry, version: version, publisherKeys: registry?.keys(for: entry.publisher) ?? [])
         pendingInstall = pendingRegistryInstall(staged)
         tab = .browse
-        return .pending
+        approveAutomatically()
+        return trustsAutomatically() ? .automatic : .pending
     }
 
     /// Downloads and checks registry archives into the user plugin folder's staging area.
@@ -229,7 +230,7 @@ extension PluginManagerModel {
         try checkNotBusy()
         pendingInstall = PendingPluginInstall(plugin: plugin, repair: true)
         tab = .installed
-        runPreflight()
+        if trustsAutomatically() { approveAutomatically() } else { runPreflight() }
     }
 
     /// Uninstalls a plugin from the user or project plugin folder, with its trust grant and user options, and with

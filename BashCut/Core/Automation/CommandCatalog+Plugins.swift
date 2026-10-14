@@ -96,7 +96,8 @@ extension CommandCatalog {
                 + "the Plugins sheet. With bundle instead, download every plugin of a bundle this Mac does not have and show "
                 + "one approval for all of them, each with a checkbox. With path or url instead, add a plugin that is not "
                 + "in the registry (Add Plugin…): a folder, its plugin.json or a .zip / .bashcutplugin file on this Mac, or "
-                + "a link, checked like plugins validate. Only the user can approve; the job ends when the approval is "
+                + "a link, checked like plugins validate. With Trust plugins automatically on (the default) it installs "
+                + "at once (approval: approved); otherwise only the user can approve and the job ends when the approval is "
                 + "shown. While another install waits for approval or runs, a registry plugin or bundle is queued "
                 + "(approval: queued) and its approval opens after that one ends; do not ask again.",
             parameters: [
@@ -144,8 +145,8 @@ extension CommandCatalog {
             ]),
         CommandSpec(
             "plugins.setup", .edit,
-            "Show the approval to run an installed plugin's dependency install recipes again (Install Dependencies…). "
-                + "Only the user can approve; follow it with jobs status.",
+            "Run an installed plugin's dependency install recipes again (Install Dependencies…): at once with Trust "
+                + "plugins automatically on (approval: approved), otherwise after the user approves; follow it with jobs status.",
             parameters: [pluginID]),
         CommandSpec(
             "plugins.set", .edit,

@@ -39,6 +39,23 @@ extension ProjectSchema {
                     "provider": string("voice.synthesize provider ID"), "voice": string("The provider's voice ID"),
                 ]),
                 "disclosure": string("Disclosure label shown on generated or illustrative content", maxLength: 200),
+                "illustration": illustrationSchema,
+            ])
+    }
+
+    /// The style lock of generated pictures (#550), on the project or in a brand kit.
+    static var illustrationSchema: JSONValue {
+        object(
+            "Style lock of image generate (#550): every call reuses it; the project's wins over the brand's",
+            required: [],
+            properties: [
+                "style": string("Style prompt sent with every picture", maxLength: 4_000),
+                "references": array(
+                    "Reference pictures (a character, a style sample): project-relative or absolute paths, or sticker "
+                        + "library ids", of: string("Path or library id", maxLength: 1_024),
+                    maxItems: IllustrationLock.maximumReferences),
+                "seed": integer("Seed, for providers that take one", minimum: 0),
+                "disclosure": string("Label shown over generated pictures (the brand's disclosure otherwise)", maxLength: 200),
             ])
     }
 
