@@ -1,6 +1,7 @@
 import AVFoundation
 import AppKit
 import BashCutAutomation
+import BashCutDocument
 import SwiftUI
 
 /// Full-screen preview (#530): a borderless window over a whole screen with the program picture alone. It shows the
@@ -180,9 +181,8 @@ private struct FullScreenTransport: View {
                 value: Binding(get: { Double(document.playhead) }, set: { document.preview.seek(Int($0)) }),
                 in: 0...Double(max(1, document.project.duration)))
             Text(
-                String(
-                    format: "%.2f / %.2fs", Double(document.playhead) / document.project.fps.value,
-                    Double(document.project.duration) / document.project.fps.value)
+                Timecode.transportLabel(
+                    position: document.playhead, length: document.project.duration, fps: document.project.fps)
             ).font(.callout.monospacedDigit())
             Toggle(isOn: $model.loop) { Image(systemName: "repeat") }.toggleStyle(.button).help("Loop")
             Button {

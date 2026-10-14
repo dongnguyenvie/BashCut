@@ -1,4 +1,5 @@
 import BashCutAutomation
+import BashCutDocument
 import BashCutProject
 import SwiftUI
 
@@ -22,7 +23,7 @@ struct SourceViewer: View {
                         Text("\(width) × \(height)")
                     }
                     Text(String(format: "%.2f fps", media.fps.value))
-                    Text(String(format: "%.2fs", media.durationSeconds))
+                    Text(Timecode.string(media.frames ?? 0, fps: media.fps))
                     if media.hasAudio == true { Label("Audio", systemImage: "speaker.wave.2") }
                     Spacer()
                 }

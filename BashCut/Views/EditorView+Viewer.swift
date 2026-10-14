@@ -171,6 +171,11 @@ extension EditorView {
             ViewerPlaceholderCard(document: document)
             if document.ui.showSafeArea { ViewerSafeArea(document: document) }
         }
+        // The canvas edge: a vertical picture on the black panel shows where it ends. Stronger with Safe area on.
+        .overlay(
+            Rectangle().strokeBorder(
+                Color.secondary.opacity(document.ui.showSafeArea ? 0.9 : 0.6), lineWidth: 1
+            ).allowsHitTesting(false))
     }
 }
 
