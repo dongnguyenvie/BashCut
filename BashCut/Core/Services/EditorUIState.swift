@@ -4,6 +4,9 @@ import BashCutProject
 import Foundation
 import Observation
 
+/// The tabs of the right column (P1-6); the raw values are what `ui view --right-tab` takes.
+public enum RightColumnTab: String, CaseIterable, Sendable { case inspector, agent }
+
 /// Editor view state that is not part of the project: timeline zoom and scroll requests, toggles, the
 /// open library panel and inspector tab, and which editor sheets are showing. `ui.view`, `ui.panel`,
 /// `ui.open` and `ui.dialog` read and change it; nothing here is saved with the project.
@@ -17,11 +20,19 @@ public final class EditorUIState {
     public static let compactTimelineLeading = 78.0
     public static let wideTimelineLeading = 160.0
     public static let timelineLeadingRange: ClosedRange<Double> = compactTimelineLeading...280
+    /// A window at least this wide (points) gets the wide header until the user picks a width.
+    public static let wideHeaderWindowWidth = 1280.0
+    /// The header width a window of this width starts with: named layers when there is room for them.
+    public static func defaultTimelineLeading(windowWidth: Double) -> Double {
+        windowWidth >= wideHeaderWindowWidth ? wideTimelineLeading : compactTimelineLeading
+    }
     /// The margin kept after the end when fitting.
     public static let fitMargin = 40.0
 
     /// Width of the layer header; `ProjectDocument.setTimelineHeaderWidth` changes it and remembers it in Settings.
     public var timelineLeading = compactTimelineLeading
+    /// Whether the timeline shows its empty layers (`TimelineTrackFolding`) instead of one folded row.
+    public var showEmptyTracks = false
     /// Whether the header is too narrow for layer names (closer to compact than to wide).
     public var timelineHeaderCompact: Bool {
         timelineLeading < (Self.compactTimelineLeading + Self.wideTimelineLeading) / 2
@@ -39,11 +50,72 @@ public final class EditorUIState {
     public var showSafeArea = false
     /// nil fits the frame in the viewer; otherwise the output's scale (see `EditorViewerZoom`).
     public var viewerZoom: Double?
-    public var showAgentDock = true
-    /// The library panel left of the viewer and the Inspector right of it; hidden to give a small window room (#528).
+    /// The Agent tab of the right column is open. Setting it to true selects that tab.
+    public var showAgentDock = true {
+        didSet { if showAgentDock { pick(.agent) } }
+    }
+    /// The library panel left of the viewer and the right column beside it; hidden to give a small window room (#528).
     public var showLibraryPanel = true
-    public var showInspector = true
+    /// The Inspector tab of the right column is open. Setting it to true selects that tab.
+    public var showInspector = true {
+        didSet { if showInspector { rightTab = .inspector } }
+    }
+    /// The tab of the right column (P1-6). Inspector: the column sits beside the viewer and the timeline spans the
+    /// window under it. Agent: the column runs the full height, beside the timeline too.
+    public private(set) var rightTab: RightColumnTab = .inspector
+    /// The agent lives in its own window, so its tab only says so.
+    public var agentPoppedOut = false
+    @ObservationIgnored private var agentPickedAt: Date?
+    /// How long a picked Agent tab survives selecting a timeline item.
+    public static let agentTabHold: TimeInterval = 2
+
+    /// Whether the right column is on screen: the open flag of the tab it shows.
+    public var rightColumnVisible: Bool {
+        rightTab == .inspector ? showInspector : (showAgentDock || agentPoppedOut)
+    }
+
+    /// The column is on screen showing the Inspector tab.
+    public var inspectorShown: Bool { rightColumnVisible && rightTab == .inspector }
+
+    private func pick(_ tab: RightColumnTab, now: Date = Date()) {
+        rightTab = tab
+        if tab == .agent { agentPickedAt = now }
+    }
+
+    /// The user clicked a tab of the column (or an automation did): select it and open it.
+    public func selectRightTab(_ tab: RightColumnTab, now: Date = Date()) {
+        switch tab {
+        case .inspector: showInspector = true
+        case .agent:
+            if agentPoppedOut { pick(.agent, now: now) } else { showAgentDock = true }
+        }
+    }
+
+    /// ⌘J with the agent in the window: hides the column while the Agent tab shows, otherwise shows that tab.
+    public func toggleAgentTab() {
+        if rightTab == .agent, showAgentDock { showAgentDock = false } else { showAgentDock = true }
+    }
+
+    /// The Inspector toggle: hides the column while the Inspector tab shows, otherwise shows that tab.
+    public func toggleInspectorTab() {
+        if rightTab == .inspector, showInspector { showInspector = false } else { showInspector = true }
+    }
+
+    /// A timeline item was selected: the Inspector comes forward, unless the user just picked the Agent tab.
+    public func itemSelected(now: Date = Date()) {
+        guard rightTab == .agent, rightColumnVisible else { return }
+        if let picked = agentPickedAt, now.timeIntervalSince(picked) < Self.agentTabHold { return }
+        showInspector = true
+    }
+
+    /// The agent moved to its own window (or came back). A column showing the Agent tab goes back to the Inspector.
+    public func setAgentPoppedOut(_ out: Bool) {
+        agentPoppedOut = out
+        if out, rightTab == .agent { showInspector = true }
+    }
     public var libraryTab: LibraryTab = .media
+    /// The tool the Tools panel shows (a `ToolID`, or `<plugin>/<view>` for a plugin's tool view), nil for the first.
+    public var selectedTool: String?
     /// The plugin whose rail panel replaces the library panel (plugin API 8), or nil for the library.
     public var pluginPanel: String?
     /// The view each plugin panel shows, by plugin ID.
@@ -362,7 +434,8 @@ public struct EffectApplyRequest: Identifiable {
     }
 }
 
-/// Left-rail library panels; `CommandCatalog.libraryPanels` lists their lowercased names.
+/// Left-rail panels; `CommandCatalog.libraryPanels` lists their lowercased names. The eight asset panels come
+/// first (`assets`, ⌘1…⌘8); `tools` follows the rail's divider (⌘T) and holds Voiceover and the plugin tools.
 public enum LibraryTab: String, CaseIterable, Identifiable, Sendable {
     case media = "Media"
     case audio = "Audio"
@@ -371,18 +444,32 @@ public enum LibraryTab: String, CaseIterable, Identifiable, Sendable {
     case effects = "Effects"
     case transitions = "Transitions"
     case filters = "Filters"
-    case voice = "Voice"
     case brand = "Brand"
+    case tools = "Tools"
 
     public var id: String { rawValue }
+
+    /// The panels of library items, in rail order (⌘1…⌘8).
+    public static var assets: [LibraryTab] { allCases.filter(\.isAsset) }
+
+    public var isAsset: Bool { self != .tools }
 
     /// The automation name (`ui.panel`).
     public var panelName: String { rawValue.lowercased() }
 
+    /// The panel named `panelName`. The built-in tool ids (`captions`, `voice`, `beats`) name the Tools panel; `voice`
+    /// was a panel of its own before Tools (`Self.toolForPanelName` says which tool a name selects).
     public init?(panelName: String) {
+        if Self.toolForPanelName(panelName) != nil {
+            self = .tools
+            return
+        }
         guard let tab = Self.allCases.first(where: { $0.panelName == panelName }) else { return nil }
         self = tab
     }
+
+    /// The tool a panel name selects inside Tools: `voice` (the old Voice panel), `captions` and `beats`; nil otherwise.
+    public static func toolForPanelName(_ name: String) -> String? { ToolID.builtIn.contains(name) ? name : nil }
 
     public var icon: String {
         switch self {
@@ -393,8 +480,8 @@ public enum LibraryTab: String, CaseIterable, Identifiable, Sendable {
         case .effects: return "sparkles"
         case .transitions: return "arrow.left.arrow.right"
         case .filters: return "circle.lefthalf.filled"
-        case .voice: return "mic"
         case .brand: return "paintpalette"
+        case .tools: return "wrench.and.screwdriver"
         }
     }
 }

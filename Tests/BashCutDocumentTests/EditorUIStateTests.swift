@@ -116,11 +116,33 @@ struct EditorUIStateTests {
 
     @Test("Library panels match the `ui.panel` choices")
     func libraryPanels() {
-        #expect(CommandCatalog.libraryPanels == LibraryTab.allCases.map(\.panelName))
+        // `voice` is the old Voice panel; `captions` and `beats` are tools too. Each opens Tools on that tool.
+        #expect(CommandCatalog.libraryPanels == LibraryTab.allCases.map(\.panelName) + ToolID.builtIn)
         // Every Media panel source can be chosen with ui view --media-source, library clips too (P2-H5).
         #expect(UIAction.mediaSources == ["footage", "project", "shared", "selects", "clips"])
-        #expect(LibraryTab(panelName: "voice") == .voice)
+        #expect(LibraryTab(panelName: "voice") == .tools && LibraryTab.toolForPanelName("voice") == ToolID.voice)
+        #expect(LibraryTab(panelName: "tools") == .tools && LibraryTab.toolForPanelName("tools") == nil)
         #expect(LibraryTab(panelName: "Voice") == nil)
+    }
+
+    @Test("Tool targets: each built-in tool lists what it supports, a plugin action's follow its condition")
+    func toolTargets() {
+        #expect(ToolTarget.supported(by: ToolID.captions) == [.selectedClip, .project])
+        #expect(ToolTarget.supported(by: ToolID.beats) == [.selectedClip, .project])
+        #expect(ToolTarget.supported(by: ToolID.voice) == [.project])
+        #expect(ToolTarget.supported(whenCondition: "selection && selection.kind == video", readsTimeline: false) == [.selectedClip])
+        #expect(ToolTarget.supported(whenCondition: "project && !playing", readsTimeline: true) == [.wholeTimeline])
+        #expect(ToolTarget.supported(whenCondition: nil, readsTimeline: false) == [.project])
+        #expect(ToolTarget.supported(whenCondition: "track.kind == audio", readsTimeline: false) == [.project])
+    }
+
+    @Test("The rail has eight asset panels, then Tools")
+    func railPanels() {
+        #expect(LibraryTab.assets.map(\.panelName) == [
+            "media", "audio", "text", "stickers", "effects", "transitions", "filters", "brand",
+        ])
+        #expect(LibraryTab.allCases.last == .tools && !LibraryTab.tools.isAsset)
+        #expect(LibraryTab.assets.allSatisfy { $0.isAsset })
     }
 
     @Test("Named dialogs open their sheet")

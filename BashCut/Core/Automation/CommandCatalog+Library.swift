@@ -1,6 +1,10 @@
 import BashCutProject
 
 extension CommandCatalog {
+    /// The rail's panels, then the built-in tools (`ToolID`): each opens Tools on that tool (`voice` was a panel before).
+    public static let libraryPanels = [
+        "media", "audio", "text", "stickers", "effects", "transitions", "filters", "brand", "tools", "captions", "voice", "beats",
+    ]
     static let libraryKinds = LibraryKind.allCases.map(\.rawValue)
     private static let libraryKind = CommandParameter(
         "kind", .string, "Item kind", choices: libraryKinds, cli: .option("kind"))

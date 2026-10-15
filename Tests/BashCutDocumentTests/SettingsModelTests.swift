@@ -13,6 +13,16 @@ struct SettingsModelTests {
         return defaults
     }
 
+    @Test("The agent kit banner remembers the kit version it showed in full (P1-8)")
+    func kitBannerSeen() throws {
+        let defaults = try defaults()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = SettingsModel(defaults: defaults)
+        #expect(settings.agentKitPromptSeen == nil)
+        settings.agentKitPromptSeen = "1.2.0"
+        #expect(SettingsModel(defaults: defaults).agentKitPromptSeen == "1.2.0")
+    }
+
     @Test("Defaults match earlier builds and every change is stored under the old keys")
     func persistence() throws {
         let defaults = try defaults()
@@ -46,6 +56,17 @@ struct SettingsModelTests {
         #expect(defaults.persistentDomain(forName: suite)?["AppleLanguages"] == nil)
         reloaded.workspace = nil
         #expect(defaults.string(forKey: "agentWorkspace") == nil)
+    }
+
+    @Test("Developer mode is off by default and stored")
+    func developerMode() throws {
+        let defaults = try defaults()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = SettingsModel(defaults: defaults)
+        #expect(!settings.developerMode)
+        settings.developerMode = true
+        #expect(defaults.bool(forKey: "developerMode"))
+        #expect(SettingsModel(defaults: defaults).developerMode)
     }
 
     @Test("Dangerously allow all agent actions is on by default, overrides the agent switches and is stored")
