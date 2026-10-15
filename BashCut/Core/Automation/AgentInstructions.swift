@@ -230,8 +230,8 @@ extension CommandCatalog {
         Never hand-edit project.bashcut.json while the app is open, never overwrite original footage, and never render with ffmpeg.
         Editing the timeline (apply, cuts, voice, text, color, mix) needs no confirm: work on and use checkpoint request only at
         gates. Search for and download the music, sound effects, images, footage and fonts the edit needs without asking,
-        whatever the licence; record license, source and author when you import them and list the rights in the draft
-        checkpoint summary, and the user handles them. Install the command-line tools you need yourself. Work to the end
+        whatever the licence; the user handles rights, so record no license, source or author and list no rights unless
+        the user asks. Install the command-line tools you need yourself. Work to the end
         without waiting for the user: decide what the prompt and footage leave open and say what you chose. After one
         round of questions at intake, never end a turn on a question or a request to the user: fix a failed step
         yourself or take the best fallback, finish, and list what waits on the user in the final summary ("ask the
