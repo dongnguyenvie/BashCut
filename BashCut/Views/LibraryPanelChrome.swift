@@ -108,7 +108,7 @@ struct LibraryCategorySidebar: View {
 }
 
 /// A tile with a picture and the name under it, for panels whose own rows have no picture (P1-10). Transition
-/// presets play their preview on hover and looks show the viewer's frame graded (P2-B3).
+/// presets and effect presets play their preview on hover and looks show the viewer's frame graded (P2-B3).
 struct LibraryPictureTile: View {
     let document: ProjectDocument
     let item: LibraryItem
@@ -128,6 +128,9 @@ struct LibraryPictureTile: View {
             TextPresetTile(item: item)
         } else if item.kind == .transitionPreset, let transition = TransitionPreviewPicture(preset: item, playing: hovering) {
             transition
+        } else if item.kind == .effectPreset, let preview = document.libraryCatalog.previewURL(of: item),
+                  AnimatedPreviewPicture.draws(preview) {
+            AnimatedPreviewPicture(url: preview, symbol: LibraryKind.effectPreset.tileSymbol, playing: hovering)
         } else if let preview = document.libraryCatalog.previewURL(of: item) {
             LibraryImage(url: preview, fallbackSymbol: item.kind?.tileSymbol ?? "photo")
         } else if item.kind == .look {
