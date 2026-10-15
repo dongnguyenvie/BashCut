@@ -346,7 +346,7 @@ tool name and parameters (types, ranges, choices, defaults). It is generated fro
 | `media import --kind` | `video` (default), `audio` |
 | `export start --preset` | `tiktok`, `youtube-1080`, `youtube-4k`, `quick-draft`, `prores` |
 | `ui action open <dialog>` | `new-project`, `export`, `export-report`, `agent-changes`, `review`, `history`, `plugins`, `settings`, `doctor`, `knowledge`, `ask`, `sections`, `external-changes`, `plugin-proposals` |
-| `ui action panel <panel>` | `media`, `audio`, `text`, `stickers`, `effects`, `transitions`, `filters`, `voice` |
+| `ui action panel <panel>` | `media`, `audio`, `text`, `stickers`, `effects`, `transitions`, `filters`, `brand`, `tools`; a tool opens Tools on it: `captions`, `voice`, `beats`, a plugin tool view (`<plugin>/<view>`) or a plugin tool action (its id). `ui view` reports the shown `tool` |
 | `ui view --zoom` | 1–600 pixels per second; `--zoom-anchor` is the frame kept in place (the playhead by default) |
 | `ui view --snap`, `--safe-area`, `--compare`, `--agent-dock` | `on` / `off` (also `true`/`false`, `yes`/`no`, `1`/`0`) |
 | `ui view --right-tab` | `inspector`, `agent` (selects the tab of the right column and opens it; `--agent-dock on` selects the Agent tab) |

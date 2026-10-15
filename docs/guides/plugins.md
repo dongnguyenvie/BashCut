@@ -64,7 +64,7 @@ checked manifest, an entrypoint that already speaks the protocol and smoke tests
 | `id` | Yes | Reverse-domain style: lowercase letters and digits in at least two parts separated by `.` or `-` (`example.voice`) |
 | `name` | Yes | Display name, up to 80 characters; [localized text](#localized-text) |
 | `version` | Yes | Semantic version, such as `1.2.0` or `1.2.0-beta.1` |
-| `apiVersion` | Yes | `1` to `9`; see [API versions](#api-versions) |
+| `apiVersion` | Yes | `1` to `10`; see [API versions](#api-versions) |
 | `minApiVersion` / `maxApiVersion` | No | The host API window the plugin works with; `minApiVersion` defaults to `apiVersion` |
 | `entrypoint` | Yes | Relative path inside the bundle to an executable file; no leading `/` and no `..` |
 | `capabilities` | Yes | List of unique capability IDs (lowercase, segments separated by `.` or `-`); may be empty only when `contributes` is not |
@@ -76,7 +76,7 @@ checked manifest, an entrypoint that already speaks the protocol and smoke tests
 | `requires` | No | Other plugins this one needs (API 8): `[{"id", "version"}]`, at most 16; see [Using other plugins](#using-other-plugins) |
 | `uses` | No | Capability IDs this plugin calls with `plugins.invoke` (API 8), at most 32 |
 | `features` | No | [Host features](#host-features) the plugin cannot work without (API 8), at most 32 |
-| `category` | No | Where Plugins and Settings group it: `agents`, `captions`, `voice`, `audio`, `color`, `effects`, `export` or `utilities`. A registry listing's category wins; without either, BashCut guesses from the capabilities (`agent.*`, `captions.*`, `voice.*`, `audio.*`) and falls back to Utilities. Older BashCut versions ignore it |
+| `category` | No | Where Plugins and Settings group it: `agents`, `captions`, `voice`, `audio`, `color`, `effects`, `export` or `utilities`, or `sample` for an example plugin: BashCut hides a `sample` plugin from the rail, the dock and Inspector tabs, the menus, the panels' Plugins sections and Plugins › Browse unless Settings › General › Developer mode is on (the CLI, MCP and automation still reach it, and Plugins › Installed lists it; it is grouped under Utilities). A registry listing's category wins; without either, BashCut guesses from the capabilities (`agent.*`, `captions.*`, `voice.*`, `audio.*`) and falls back to Utilities. Older BashCut versions ignore it |
 | `author` | No | Who wrote the plugin: `{"name": "Luan Tran", "url": "https://github.com/luantran069"}`. `name` is 1–80 characters on one line; `url` is optional (`null` or left out) and must be an `http` or `https` link. Plugins (Installed and Browse), the install approval sheet (and its `ui dialog` text) and the plugin's panel header show *By <name>*, a link when there is a url; `plugins list` and `plugins search` return it. The registry's `publisher` is who signs and ships the plugin, which may differ. Metadata only, so any `apiVersion`; older BashCut versions ignore it |
 
 BashCut resolves features by capability and provider ID, never by vendor SDK. A plugin is only chosen for a
@@ -97,7 +97,7 @@ and dependency names stay plain strings.
 
 ## API versions
 
-The host serves every plugin API version from `PluginAPI.minimum` (1) to `PluginAPI.current` (9); changes are
+The host serves every plugin API version from `PluginAPI.minimum` (1) to `PluginAPI.current` (10); changes are
 additive, so older manifests keep working. Version 2 adds `options`, `contributes` and the `session` transport.
 Version 3 adds option `choiceLabels` and the `file` option type, the `BASHCUT_PLUGIN_DATA`/`BASHCUT_PLUGIN_CACHE`
 folders and `::progress` lines from install recipes. Version 4 adds the `secret` option type, the session host
@@ -106,7 +106,8 @@ and the manifest's `terminal` object. Version 6 adds `contributes.library` (libr
 `library.generate` capabilities and provider `kinds`. Version 7 adds `contributes.skills` (agent skills). Version 8 adds plugin UI and composition:
 `contributes.container` and `contributes.views` (a panel in the left rail with declarative views), `requires`, `uses`
 with the `plugins.invoke` host call, the host channel for views and session actions, and `features`. Version 9 adds
-the `review.check` capability. From version 8
+the `review.check` capability. Version 10 adds the Tools panel: `views[].kind`, the `tools` action placement and
+`advanced` options. From version 8
 on, the API version goes up at most once per BashCut release; smaller differences between hosts are
 [host features](#host-features). A manifest
 that uses a feature with an older `apiVersion` is
@@ -716,6 +717,7 @@ example the voice a `voice.synthesize` provider should use), as `options`.
 | `choices` | Required for `enum`: 1–100 unique strings |
 | `minimum`, `maximum` | Bounds for `number` and `integer` |
 | `maxLength` | For `string`: 1–100,000 (default limit 10,000) |
+| `advanced` | API 10, action `params` only: `true` puts the parameter under **Advanced** on the tool card instead of with the main fields (default `false`). Ignored by the parameter sheet of other placements, which shows every parameter |
 | `scope` | `user` (default): saved for this Mac in `plugin-trust.json`. `project`: stored in the project under `pluginOptions.<plugin id>` as an undoable edit |
 | `bindsSecrets` | Not on `secret` or `file` options. The plugin's secrets are stored per value of this option, so a key entered for one destination is never sent to another |
 
@@ -761,11 +763,12 @@ code.
 |---|---|
 | `menu.plugins` | The main-menu **Plugins** menu, grouped by plugin |
 | `toolbar` | Buttons in the editor toolbar |
+| `tools` | The **Tools** panel (API 10): the action is listed after Auto captions, Voiceover and Beat detection, and its `params` are drawn as a tool card: the main fields, an **Advanced (n)** group for the `advanced` ones, then **Run on** and Run (the same background job as the menu). **Run on** follows the action: a `when` with `selection` runs on the selected clip, `context: ["timeline"]` on the whole timeline, anything else on the project. `tools` may be combined with other placements; the parameter sheet of the other placements ignores `advanced` |
 | `clip.context` | The timeline clip context menu |
 | `track.context` | The layer header context menu and the clip context menu |
 | `timeline.context` | The timeline gap and empty-area context menu |
 | `media.context` | The Media panel item context menu; the clicked media is the action's `media` |
-| `panel.<panel>` | A **Plugins** section in a library panel: `panel.media`, `panel.audio`, `panel.text`, `panel.stickers`, `panel.effects`, `panel.transitions`, `panel.filters`, `panel.voice` |
+| `panel.<panel>` | A **Plugins** section in a library panel: `panel.media`, `panel.audio`, `panel.text`, `panel.stickers`, `panel.effects`, `panel.transitions`, `panel.filters`, `panel.voice` (in the Voiceover tool), `panel.tools` (at the bottom of the Tools panel) |
 | `inspector.<tab>` | The bottom of an inspector tab: `inspector.video`, `audio`, `text`, `color`, `speed` |
 
 ### When conditions
@@ -959,8 +962,9 @@ says how many skills changed and how many lines are flagged.
 
 ## Plugin panels and views
 
-A plugin with `contributes.container` (API 8) gets an icon in the left rail, under the built-in panels, while it is
-trusted, turned on and its requirements are met. The icon opens the plugin's panel in the library column. BashCut draws
+A plugin with `contributes.container` (API 8) gets an entry in the **More** popover, the last tile of the left rail,
+while it is trusted, turned on and its requirements are met. The entry opens the plugin's panel in the library column
+(its `kind: tool` views are listed in **Tools** instead). BashCut draws
 the panel's frame from the manifest, so every plugin gets the same parts:
 
 - a header with the container title, the plugin name and version, and a button to its settings;
@@ -982,6 +986,7 @@ the panel's frame from the manifest, so every plugin gets the same parts:
 | `container.title` | Optional [localized text](#localized-text), at most 24 characters; the plugin name by default |
 | `views[].id` | A short key, unique; at most 8 views |
 | `views[].title` | Localized text, at most 40 characters |
+| `views[].kind` | `panel` (default) or `tool` (API 10): a `tool` view is listed in the **Tools** panel beside Auto captions, Voiceover and Beat detection, needs no `container` and no rail icon, and must have `location` `panel` (host feature `tools`). Asset libraries (stickers, effects, sounds…) need no view kind: providers reach the asset panels through `kind`s of `library.search` and `library.generate` |
 | `views[].location` | Where the view lives: `panel` (default), `dock`, `sheet` or `inspector` |
 | `views[].icon` | Optional SF Symbol for a dock tab or sheet; the container's icon by default |
 | `views[].when` | Inspector views only: a [when condition](#when-conditions) such as `selection.kind == text` or `media.kind == video`; the view is not asked to render for items it does not match (host feature `inspector.when`) |
@@ -992,12 +997,12 @@ A container alone (no views) is a panel of the plugin's tools and skills. Views 
 
 | `location` | Where | Opens | Good for |
 |---|---|---|---|
-| `panel` | The plugin's panel in the left rail (225 pt wide); a picker switches between several | The rail icon | Browsing, tools next to the timeline |
+| `panel` | The plugin's panel in the left rail (225 pt wide); a picker switches between several | The More popover in the rail | Browsing, tools next to the timeline |
 | `dock` | A tab in the agent dock on the right, next to the agent tabs (330–500 pt wide) | The tab, always there while the plugin is ready | Wider work: libraries, take lists, long forms |
 | `sheet` | A sheet over the editor with a Close button (Esc) | `plugins show-view`, the panel's **Views** list, or the plugin itself | A short task: a form, a confirmation with choices |
 | `inspector` | The Inspector (220 pt wide), under the controls of one selected item, on every tab | Selecting an item; rendered from scratch when the selection or its media changes | Settings of what is selected: a generated graphic's inputs, a take's options |
 
-Only `panel` views need `contributes.container`; a plugin may have dock, sheet or inspector views without a rail
+Only `panel` views of the default kind need `contributes.container` (a `kind: tool` view lives in Tools); a plugin may have dock, sheet or inspector views without a rail
 icon. An inspector view reads the selection from its request's `context` (`selection`, `media` with its `data`) and
 answers an empty `body` for items it has nothing to say about: it then takes no room. Give it a `when` so BashCut
 does not ask it about items it never handles. A new selection renders 120 ms after the selection stops changing
@@ -1335,7 +1340,7 @@ Delivery rules:
 - At most 60 deliveries per plugin per minute; extra events are dropped and logged.
 - An edit a plugin made never triggers that plugin's own hooks.
 - Failures go to the hook log (Plugins › **Hook Activity**, `plugins hooks`) and the debug log, never to the
-  editor's status bar. A plain `message` is shown in the status bar.
+  editor's status bar. A plain `message` is shown in the status bar for 8 seconds, so an action whose effect is visible (opening a sheet) should return none.
 - Edits proposed after the project changed are ignored.
 - Settings › **Run plugin hooks** (on by default) stops all hooks; each plugin also has a **Hooks** switch.
 - Settings › **Apply plugin hook edits without review** (off by default, user-only) applies hook edits at once.
@@ -1494,7 +1499,7 @@ Everything above is available to agents through the CLI and MCP (`bashcut_plugin
 | Command | Mode | UI equivalent |
 |---|---|---|
 | `plugins list` | read | Plugins sheet: availability, transport, actions, hooks, options, library packs, skills, provider kinds, container, views, requires (with state), uses |
-| `plugins list --views` | read | The plugin icons in the left rail and their panels: views, tools, skills, requirements, uses; the host features |
+| `plugins list --views` | read | The plugin panels in the rail's More popover and their views: views, tools, skills, requirements, uses; the host features |
 | `plugins show-view <plugin> --view <id>` | ui | Opening a view where it lives: the rail panel, its dock tab or its sheet |
 | `plugins view <plugin> [--view id] [--open]` | ui | Opening a view; returns its components and input values |
 | `plugins view-event <plugin> --node <id> [--type …] [--value …]` | ui | Clicking, typing or selecting in a plugin view |

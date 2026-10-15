@@ -53,7 +53,9 @@ struct PluginShortcutButtons: View {
 
     var body: some View {
         ZStack {
-            ForEach(document.plugins.actions.filter { $0.shortcut?.keyboardShortcut != nil }) { action in
+            ForEach(document.plugins.actions.filter {
+                $0.shortcut?.keyboardShortcut != nil && !document.plugins.isHidden($0.plugin)
+            }) { action in
                 if let shortcut = action.shortcut?.keyboardShortcut {
                     Button(action.title) { document.triggerPluginAction(action) }
                         .keyboardShortcut(shortcut)

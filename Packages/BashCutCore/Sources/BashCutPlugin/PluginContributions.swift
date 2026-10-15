@@ -60,9 +60,11 @@ public struct PluginOption: Codable, Sendable, Equatable, Identifiable {
     /// The plugin's secrets belong to this option's value (a provider or endpoint): changing it selects
     /// another stored key instead of sending the current one elsewhere.
     public let bindsSecrets: Bool?
+    /// An action parameter the tool card keeps under "Advanced" instead of showing with the main fields (API 10).
+    public let advanced: Bool?
 
     enum CodingKeys: String, CodingKey {
-        case id, title, help, type, choices, minimum, maximum, maxLength, scope, choiceLabels, fileTypes, bindsSecrets
+        case id, title, help, type, choices, minimum, maximum, maxLength, scope, choiceLabels, fileTypes, bindsSecrets, advanced
         case defaultValue = "default"
     }
 
@@ -70,7 +72,8 @@ public struct PluginOption: Codable, Sendable, Equatable, Identifiable {
         id: String, title: LocalizedText, help: LocalizedText? = nil, type: Kind,
         default defaultValue: JSONValue? = nil, choices: [String]? = nil, minimum: Double? = nil,
         maximum: Double? = nil, maxLength: Int? = nil, scope: Scope? = nil,
-        choiceLabels: [String: LocalizedText]? = nil, fileTypes: [String]? = nil, bindsSecrets: Bool? = nil
+        choiceLabels: [String: LocalizedText]? = nil, fileTypes: [String]? = nil, bindsSecrets: Bool? = nil,
+        advanced: Bool? = nil
     ) {
         self.id = id
         self.title = title
@@ -85,7 +88,11 @@ public struct PluginOption: Codable, Sendable, Equatable, Identifiable {
         self.fileTypes = fileTypes
         self.scope = scope
         self.bindsSecrets = bindsSecrets
+        self.advanced = advanced
     }
+
+    /// True for a parameter listed under "Advanced" (default false).
+    public var isAdvanced: Bool { advanced ?? false }
 
     public var effectiveScope: Scope { scope ?? .user }
 
@@ -313,8 +320,14 @@ public struct PluginActionContribution: Codable, Sendable, Equatable, Identifiab
 
     /// Placements the app owns. `panel.<library panel>` and `inspector.<tab>` name a panel or inspector tab.
     public static let placementPattern =
-        "^(menu\\.plugins|toolbar|clip\\.context|track\\.context|media\\.context|timeline\\.context|"
+        "^(menu\\.plugins|toolbar|tools|clip\\.context|track\\.context|media\\.context|timeline\\.context|"
         + "panel\\.[a-z]+|inspector\\.[a-z]+)$"
+
+    /// The placement that lists the action in the Tools panel, its `params` drawn as a tool card (API 10).
+    public static let toolsPlacement = "tools"
+
+    /// True when the action shows in the Tools panel.
+    public var isTool: Bool { placements.contains(Self.toolsPlacement) }
 
     func validate(pluginID: String) throws {
         guard id.hasPrefix(pluginID + "."), PluginIdentifier.isStable(id) else {

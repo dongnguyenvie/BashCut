@@ -7,6 +7,9 @@ import SwiftUI
 /// dock can be hidden to give a small window room.
 enum EditorLayout {
     static let railWidth = 54.0
+    /// A window shorter than this shows the rail's tiles without labels (the label becomes the tooltip), so the rail
+    /// never overflows (P1-3).
+    static let railLabelsMinHeight = 900.0
     static let libraryWidth = 225.0
     /// The right column (Inspector and Agent tabs): wide at 1680 pt or more, narrower below.
     static let rightColumnWideWidth = 340.0
@@ -72,7 +75,7 @@ extension EditorView {
             HStack(spacing: 0) {
                 // Each pane is clipped to its frame: a child wider than its pane is centred and
                 // would otherwise draw over the neighbouring panes (#484).
-                // The rail scrolls when a short window cannot fit every panel and plugin panel.
+                // The rail drops its labels in a short window; it still scrolls if even the icons do not fit.
                 ScrollView(.vertical, showsIndicators: false) { rail }.frame(width: EditorLayout.railWidth).clipped()
                 Divider()
                 if document.ui.showLibraryPanel {

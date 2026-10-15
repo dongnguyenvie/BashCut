@@ -20,11 +20,19 @@ public final class EditorUIState {
     public static let compactTimelineLeading = 78.0
     public static let wideTimelineLeading = 160.0
     public static let timelineLeadingRange: ClosedRange<Double> = compactTimelineLeading...280
+    /// A window at least this wide (points) gets the wide header until the user picks a width.
+    public static let wideHeaderWindowWidth = 1280.0
+    /// The header width a window of this width starts with: named layers when there is room for them.
+    public static func defaultTimelineLeading(windowWidth: Double) -> Double {
+        windowWidth >= wideHeaderWindowWidth ? wideTimelineLeading : compactTimelineLeading
+    }
     /// The margin kept after the end when fitting.
     public static let fitMargin = 40.0
 
     /// Width of the layer header; `ProjectDocument.setTimelineHeaderWidth` changes it and remembers it in Settings.
     public var timelineLeading = compactTimelineLeading
+    /// Whether the timeline shows its empty layers (`TimelineTrackFolding`) instead of one folded row.
+    public var showEmptyTracks = false
     /// Whether the header is too narrow for layer names (closer to compact than to wide).
     public var timelineHeaderCompact: Bool {
         timelineLeading < (Self.compactTimelineLeading + Self.wideTimelineLeading) / 2
@@ -106,6 +114,8 @@ public final class EditorUIState {
         if out, rightTab == .agent { showInspector = true }
     }
     public var libraryTab: LibraryTab = .media
+    /// The tool the Tools panel shows (a `ToolID`, or `<plugin>/<view>` for a plugin's tool view), nil for the first.
+    public var selectedTool: String?
     /// The plugin whose rail panel replaces the library panel (plugin API 8), or nil for the library.
     public var pluginPanel: String?
     /// The view each plugin panel shows, by plugin ID.
@@ -417,7 +427,8 @@ public struct EffectApplyRequest: Identifiable {
     }
 }
 
-/// Left-rail library panels; `CommandCatalog.libraryPanels` lists their lowercased names.
+/// Left-rail panels; `CommandCatalog.libraryPanels` lists their lowercased names. The eight asset panels come
+/// first (`assets`, ⌘1…⌘8); `tools` follows the rail's divider (⌘T) and holds Voiceover and the plugin tools.
 public enum LibraryTab: String, CaseIterable, Identifiable, Sendable {
     case media = "Media"
     case audio = "Audio"
@@ -426,18 +437,32 @@ public enum LibraryTab: String, CaseIterable, Identifiable, Sendable {
     case effects = "Effects"
     case transitions = "Transitions"
     case filters = "Filters"
-    case voice = "Voice"
     case brand = "Brand"
+    case tools = "Tools"
 
     public var id: String { rawValue }
+
+    /// The panels of library items, in rail order (⌘1…⌘8).
+    public static var assets: [LibraryTab] { allCases.filter(\.isAsset) }
+
+    public var isAsset: Bool { self != .tools }
 
     /// The automation name (`ui.panel`).
     public var panelName: String { rawValue.lowercased() }
 
+    /// The panel named `panelName`. The built-in tool ids (`captions`, `voice`, `beats`) name the Tools panel; `voice`
+    /// was a panel of its own before Tools (`Self.toolForPanelName` says which tool a name selects).
     public init?(panelName: String) {
+        if Self.toolForPanelName(panelName) != nil {
+            self = .tools
+            return
+        }
         guard let tab = Self.allCases.first(where: { $0.panelName == panelName }) else { return nil }
         self = tab
     }
+
+    /// The tool a panel name selects inside Tools: `voice` (the old Voice panel), `captions` and `beats`; nil otherwise.
+    public static func toolForPanelName(_ name: String) -> String? { ToolID.builtIn.contains(name) ? name : nil }
 
     public var icon: String {
         switch self {
@@ -448,8 +473,8 @@ public enum LibraryTab: String, CaseIterable, Identifiable, Sendable {
         case .effects: return "sparkles"
         case .transitions: return "arrow.left.arrow.right"
         case .filters: return "circle.lefthalf.filled"
-        case .voice: return "mic"
         case .brand: return "paintpalette"
+        case .tools: return "wrench.and.screwdriver"
         }
     }
 }
