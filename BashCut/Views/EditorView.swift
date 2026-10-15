@@ -106,6 +106,9 @@ struct EditorView: View {
         .sheet(item: $document.privilegedApproval) { prompt in
             PrivilegedApprovalView(prompt: prompt, resolve: document.resolvePrivilegedApproval)
         }
+        .sheet(item: Bindable(document.agents).folderTrustPrompt) { prompt in
+            AgentFolderTrustView(prompt: prompt, resolve: document.agents.resolveFolderTrust)
+        }
         .sheet(item: $document.checkpoint) { request in
             CheckpointView(request: request, resolve: document.resolveCheckpoint)
         }

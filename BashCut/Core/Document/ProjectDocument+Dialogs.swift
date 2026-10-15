@@ -172,6 +172,15 @@ extension ProjectDocument {
                 options: [ModalOption("deny", String(localized: "Deny"))]
             ) { [weak self] _ in self?.resolvePrivilegedApproval(false) })
         }
+        if let prompt = agents.folderTrustPrompt {
+            // Letting an agent work in a folder is the user's answer: `ui respond` refuses it.
+            sheets.append(ModalSheet(
+                name: "agent-folder-trust", title: "Let \(prompt.agent) work in \(prompt.folder.path)?",
+                message: "Only the user can answer whether an agent may read, edit and run files in a folder.",
+                options: [ModalOption("allow", String(localized: "Allow")), ModalOption("not-now", String(localized: "Not now"))],
+                userOnly: true
+            ) { [weak self] _ in self?.agents.resolveFolderTrust(.notNow) })
+        }
         if let request = checkpoint {
             // Answering stays with the user; an agent can only withdraw its request.
             sheets.append(ModalSheet(

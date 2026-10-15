@@ -48,6 +48,12 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
     var kitPrompt: AgentKitPrompt?
     var kitSettingUp = false
     @ObservationIgnored var kitPromptChecked: Date?
+    /// The folder question on show; answering resumes the launch waiting in `folderTrustAnswer`.
+    var folderTrustPrompt: AgentFolderTrustPrompt?
+    @ObservationIgnored var folderTrustAnswer: CheckedContinuation<AgentFolderTrustPrompt.Answer, Never>?
+    /// Folders the user allowed since BashCut started (`<agent>:<folder>`), written again without asking when a
+    /// running CLI saved its config over them.
+    @ObservationIgnored var allowedFolders: Set<String> = []
     @ObservationIgnored private var detachedWindow: NSWindow? {
         didSet { document.ui.setAgentPoppedOut(detachedWindow != nil) }
     }
@@ -131,14 +137,16 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
             }
             return
         }
-        do { try startBuiltIn(provider) } catch { self.error = error.localizedDescription }
+        Task {
+            do { try await startBuiltIn(provider) } catch { self.error = error.localizedDescription }
+        }
     }
 
     @discardableResult
-    func startBuiltIn(_ provider: any AgentProvider) throws -> TerminalSession {
+    func startBuiltIn(_ provider: any AgentProvider) async throws -> TerminalSession {
         loadKnowledge()
         let canEdit = !provider.isAgent || settings.agentsCanEdit
-        return try start(
+        return try await start(
             provider, canEdit: canEdit, prompt: sessionPrompt(canEdit: canEdit), icon: Self.icon(for: provider.id))
     }
 
@@ -149,9 +157,12 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
             + "\n" + document.contextText() + "\n" + knowledge.context
     }
 
-    /// Issues the tab's token, launches `provider` in a new tab and looks for its session to resume next time.
+    /// Issues the tab's token, launches `provider` in a new tab and looks for its session to resume next time. Claude
+    /// Code and Codex first get the user's leave to work in the folder they start in.
     @discardableResult
-    func start(_ provider: any AgentProvider, canEdit: Bool, prompt: String, icon: String) throws -> TerminalSession {
+    func start(
+        _ provider: any AgentProvider, canEdit: Bool, prompt: String, icon: String
+    ) async throws -> TerminalSession {
         let token = canEdit ? document.registry.issueToken(author: provider.author) : ""
         do {
             let launchedAt = Date()
@@ -163,6 +174,7 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
                 resumeID: resumeID(for: provider), kit: document.agentKitLaunch(), pluginSkills: document.agentPluginSkills(),
                 onlyBashCutMCP: document.settings.agentOnlyBashCutMCP,
                 environment: document.currentAgentEnvironment)
+            try await ensureFolderTrust(provider, folder: URL(fileURLWithPath: launch.directory, isDirectory: true))
             let session = TerminalSession(provider: provider, token: token, launch: launch, icon: icon)
             sessions.append(session)
             selectedSession = session.id
@@ -254,7 +266,7 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
         }
         Task {
             do {
-                if AgentProviders.provider(provider) != nil { open(provider) } else {
+                if let builtIn = AgentProviders.provider(provider) { try await startBuiltIn(builtIn) } else {
                     try await openPluginTerminal(provider.rawValue)
                 }
             } catch {
@@ -288,6 +300,7 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
 
     func closeAll() {
         if isDetached { attach() }
+        resolveFolderTrust(.notNow)
         resetProjectState()
         for session in sessions {
             session.close()
