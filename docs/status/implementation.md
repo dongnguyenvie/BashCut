@@ -117,7 +117,8 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
 - Speech and voice: `speech rate`, `narration windows`, measured takes from `voice speak` placed by the agent with
   `voice place` (no pace formula, no automatic pick), `voice speak --replace`, `voice check`, `voice fit`, voices by
   facts (`capabilities get --voices`) with clone consent,
-  `captions group` and `captions align`.
+  `captions group` and `captions align`. Grouped cues keep the `plan apply` marks, so a later apply keeps them
+  while it would generate the same captions and replaces them all otherwise, never stacking two sets (#628).
 - Review profile (#466, #470): editorial limits only from the project's `review` object (validated), neutral info
   without them; zones checked against every output with overrides (#469, `platforms get`); loudness per export
   preset (`output.targets`, P0-K2); no creative constants in fixes (#468).
@@ -191,7 +192,8 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
 ### Audio & voice
 
 - Volume, mute and fades; automatic music ducking under tagged Dialogue and all Voiceover regions, with level,
-  attack and release in integer frames, mixed the same way in preview and export.
+  attack and release in integer frames, mixed the same way in preview and export. `clip volume --db` sets clip
+  gain on clips and their linked sound, one or `--items` in one undo step (#628).
 - The Audio panel resolves `audio.beats`, validates BPM and beat times, maps them through trim and speed to
   timeline frames, and adds undoable beat-grid drawing and snapping.
 - The Voice panel resolves a healthy `voice.synthesize` provider (with an undoable project preference), generates

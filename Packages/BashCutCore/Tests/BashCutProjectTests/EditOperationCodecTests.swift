@@ -107,4 +107,16 @@ struct EditOperationCodecTests {
         #expect(dialogue == "a1" && main == "v1")
         #expect(video["linkedAudio"] == .string("x-audio") && audio["linkedVideo"] == .string("x"))
     }
+
+    @Test("An unknown operation names the nearest one (#628)")
+    func unknownOperationHint() {
+        func message(_ name: String) -> String {
+            do {
+                _ = try EditOperation(json: .object(["op": .string(name), "item": .string("c1")]))
+                return ""
+            } catch { return "\(error)" }
+        }
+        #expect(message("setItemProperties").contains("did you mean setProperties?"))
+        #expect(message("setVolume").contains("Unknown edit operation setVolume") && !message("teleport").contains("did you mean"))
+    }
 }

@@ -80,6 +80,19 @@ extension CommandCatalog {
                 baseRevision,
             ]),
         CommandSpec(
+            "clip.volume", .edit,
+            "Set a clip's gain in dB (Inspector › Volume; op setProperties {volumeDb}). 0 leaves it as recorded, -6 "
+                + "halves it, positive is louder. Linked picture and sound change together. With items, "
+                + "every listed clip changes in one undo step; items without sound (text, images, graphics) are "
+                + "returned as skipped. Volume keyframes (clip keyframe --property volume) still win where they are set.",
+            parameters: [
+                CommandParameter("item", .string, "Item ID; the selected clip by default", cli: .positional),
+                CommandParameter("items", .string, "Several item IDs, comma separated", cli: .option("items")),
+                CommandParameter("db", .number, "Gain in dB, for example -4 or 3", required: true,
+                                 range: Project.volumeDbRange, cli: .option("db")),
+                baseRevision,
+            ]),
+        CommandSpec(
             "clip.speed-curve", .edit,
             "Give a clip a speed ramp (CapCut Curve) like Inspector › Speed › Curve: a preset ("
                 + SpeedCurve.presets.map(\.id).joined(separator: ", ") + ", or none to remove it) or points "

@@ -2,9 +2,9 @@ import Foundation
 
 /// Captions cut from word groups the agent chose (P0-C8, `captions.group`): each group of word indices becomes one
 /// caption from its first word's start to its last word's end, with its words timed on it, replacing the captions
-/// those words fall in as one undoable edit. The optional rule mode groups by limits the caller must all give; core
-/// has no default line length. The result lists each cue's length and reading speed and the gaps and overlaps
-/// between cues as facts.
+/// those words fall in as one undoable edit, keeping their look and `plan.apply` marks. The optional rule mode
+/// groups by limits the caller must all give; core has no default line length. The result lists each cue's length
+/// and reading speed and the gaps and overlaps between cues as facts.
 public enum CaptionGrouping {
     public struct Rule: Sendable, Equatable {
         public var maxChars: Int
@@ -59,7 +59,9 @@ public enum CaptionGrouping {
             let at = words[group[0]].at, last = words[group[group.count - 1]].end
             var item = Item(id: UUID().uuidString, at: at, duration: max(1, last - at))
             item["text"] = .string(group.map { words[$0].text }.joined(separator: " "))
-            for key in ["textPreset", "textStyle", "wordStyle", "captionMedia"] where style?[key] != nil { item[key] = style?[key] }
+            // The plan marks go too, so plan apply still knows the cues as the captions it built (#628).
+            for key in ["textPreset", "textStyle", "wordStyle", "captionMedia", PlanCut.tag, PlanCut.captionsTag]
+            where style?[key] != nil { item[key] = style?[key] }
             item["words"] = .array(group.map { index in
                 let word = words[index]
                 return .object([

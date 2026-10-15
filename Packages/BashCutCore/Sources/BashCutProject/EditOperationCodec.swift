@@ -117,8 +117,10 @@ extension EditOperation {
                 ops: try ops.map { try EditOperation(json: $0, allowInternal: true) })
         case "restore" where allowInternal: self = .restore(Project(fields: try read.object("project")))
         case let name:
+            let known = Self.agentOperations + ["patchItems"]
+            let hint = NearestName.nearest(name, in: known).map { "did you mean \($0)? " } ?? ""
             throw ProjectError.invalid(
-                "Unknown edit operation \(name): use " + (Self.agentOperations + ["patchItems"]).joined(separator: ", ")
+                "Unknown edit operation \(name): \(hint)use " + known.joined(separator: ", ")
                     + " (setProperties {item, patch} changes one item; patchItems {items or select, patch} many)")
         }
     }

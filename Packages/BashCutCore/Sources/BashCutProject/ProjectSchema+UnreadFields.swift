@@ -40,16 +40,7 @@ extension ProjectSchema {
         if let match = itemKeys.sorted().first(where: { $0.lowercased().hasPrefix(lower) || lower.hasPrefix($0.lowercased()) }) {
             return match
         }
-        func distance(_ a: [Character], _ b: [Character]) -> Int {
-            var row = Array(0...b.count)
-            for (i, ca) in a.enumerated() {
-                var next = [i + 1]
-                for (j, cb) in b.enumerated() { next.append(min(row[j + 1] + 1, next[j] + 1, row[j] + (ca == cb ? 0 : 1))) }
-                row = next
-            }
-            return row[b.count]
-        }
-        let scored = itemKeys.map { ($0, distance(Array(lower), Array($0.lowercased()))) }.filter { $0.1 <= 2 }
+        let scored = itemKeys.map { ($0, NearestName.distance(lower, $0)) }.filter { $0.1 <= 2 }
         return scored.min { $0.1 != $1.1 ? $0.1 < $1.1 : $0.0 < $1.0 }?.0
     }
 }

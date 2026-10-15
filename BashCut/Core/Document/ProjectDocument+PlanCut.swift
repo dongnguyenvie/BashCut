@@ -262,8 +262,7 @@ extension ProjectDocument {
             result.merge(lineFacts.fields) { $1 }
             if !facts.titles.isEmpty { result["titles"] = .array(planTitleSizes(facts.titles, on: after)) }
             if spec.captions != nil {
-                let cues = after.tracks.flatMap(\.items).filter { $0.fields[PlanCut.tag] == .string("captions") }
-                result["captions"] = .integer(cues.count)
+                result.merge(Self.captionCounts(before: project, after: after)) { $1 }
                 // Clips picked by quote or words already report a missing transcript.
                 let timed = spec.clips.filter { $0.role == "speech" && $0.quote == nil && $0.words == nil }
                 for media in Set(timed.map(\.media)).sorted()
@@ -330,5 +329,15 @@ extension ProjectDocument {
                     + "takes it makes (or voice check the take)"))
         }
         return (problems, result)
+    }
+
+    /// `captions`: the built cues; `captionsKept` when they are the ones the timeline already held, because the list
+    /// generates the same captions again (hand-grouped cues stay, #628).
+    static func captionCounts(before: Project, after: Project) -> [String: JSONValue] {
+        let cues = after.tracks.flatMap(\.items).filter { $0.fields[PlanCut.tag] == .string("captions") }
+        var fields: [String: JSONValue] = ["captions": .integer(cues.count)]
+        let held = Set(before.tracks.flatMap(\.items).map(\.id))
+        if !cues.isEmpty, cues.allSatisfy({ held.contains($0.id) }) { fields["captionsKept"] = .bool(true) }
+        return fields
     }
 }

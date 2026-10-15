@@ -20,7 +20,8 @@ struct AgentInstructionsTests {
         // 37.5k since generated pictures (#550: image generate, style, disclose, library brand-pose; the list stays
         // out).
         // 38k since library favorite and library list --favorites|--recent (P1-9).
-        #expect(text.count < 38_000)
+        // 38.25k since clip volume (#628: the one-liner for clip gain agents kept hunting for in timeline apply).
+        #expect(text.count < 38_250)
         for rule in ["-32004", "held: true", "capability_missing", "agentPermissions", "Library first", "audit_missing"] {
             #expect(text.contains(rule), "\(rule)")
         }

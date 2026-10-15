@@ -405,7 +405,7 @@ extension CommandCatalog {
             "Re-cut captions from word groups you choose, as one undoable edit: groups is a list of runs of word "
                 + "indices (from transcript words, or with source heard from transcript words --heard), each becoming "
                 + "one caption from its first word's start to its last word's end with its words timed; the captions "
-                + "those words fall in are replaced (their style kept). Rule mode instead (maxChars, maxSeconds and "
+                + "those words fall in are replaced (their style and plan apply marks kept). Rule mode instead (maxChars, maxSeconds and "
                 + "breakGapSeconds, all required; from/to limit it) joins words greedily. Returns rev and facts: cues "
                 + "[{frames, seconds, chars, cps, text}], gaps and overlaps between cues in frames. No default grouping.",
             parameters: [
