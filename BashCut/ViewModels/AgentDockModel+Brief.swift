@@ -90,7 +90,7 @@ extension AgentDockModel {
     }
 
     /// Puts a request in the open agent's input. With none open it opens the first chat agent; with no chat agent it
-    /// opens the New brief sheet with the request, to send once an agent runs.
+    /// opens the New brief sheet with the request, whose Send starts the default agent.
     func insertBrief(_ request: String) {
         if !hasOpenAgent, let first = document.chatAgents.available.first { openChat(first.pluginID) }
         if hasOpenAgent {

@@ -47,8 +47,12 @@ public final class SettingsModel {
     public var codexHomeFolder: URL? {
         didSet { store(codexHomeFolder, Keys.codexHomeFolder) }
     }
-    /// `AgentProviderID` raw value of the agent the dock starts by default.
+    /// `AgentProviderID` raw value of the agent the dock starts by default, or `lastUsedAgent` for the one the user
+    /// last opened or sent a brief to.
     public var defaultProviderRaw: String { didSet { defaults.set(defaultProviderRaw, forKey: Keys.defaultAgent) } }
+    /// The agent the user last opened or sent a brief to; the default while `defaultProviderRaw` is `lastUsedAgent`.
+    public var lastAgentRaw: String? { didSet { defaults.set(lastAgentRaw, forKey: Keys.lastAgent) } }
+    public static let lastUsedAgent = "last"
     public var allowAgentEdits: Bool { didSet { defaults.set(allowAgentEdits, forKey: Keys.allowAgentEdits) } }
     /// Agents outside the app (CLI/MCP from any terminal) edit through the 0600 automation token file.
     public var allowExternalAgents: Bool {
@@ -158,6 +162,7 @@ public final class SettingsModel {
         static let maxReviewRounds = "maxReviewRounds"
         static let projectsFolder = "projectsFolder"
         static let defaultAgent = "defaultAgent"
+        static let lastAgent = "lastAgent"
         static let loadAgentKit = "loadAgentKit"
         static let agentOnlyBashCutMCP = "agentOnlyBashCutMCP"
         static let agentKitFolder = "agentKitFolder"
@@ -193,7 +198,8 @@ public final class SettingsModel {
         self.defaults = defaults
         workspace = defaults.string(forKey: Keys.workspace).map { URL(fileURLWithPath: $0) }
         projectsFolder = defaults.string(forKey: Keys.projectsFolder).map { URL(fileURLWithPath: $0) }
-        defaultProviderRaw = defaults.string(forKey: Keys.defaultAgent) ?? "codex"
+        defaultProviderRaw = defaults.string(forKey: Keys.defaultAgent) ?? Self.lastUsedAgent
+        lastAgentRaw = defaults.string(forKey: Keys.lastAgent)
         loadAgentKit = defaults.object(forKey: Keys.loadAgentKit) as? Bool ?? true
         agentOnlyBashCutMCP = defaults.object(forKey: Keys.agentOnlyBashCutMCP) as? Bool ?? true
         agentKitFolder = defaults.string(forKey: Keys.agentKitFolder).map { URL(fileURLWithPath: $0) }

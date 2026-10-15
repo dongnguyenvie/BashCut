@@ -61,9 +61,12 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
         UserDefaults.standard.removeObject(forKey: "modelConfiguration")
     }
     var current: TerminalSession? { sessions.first { $0.id == selectedSession } }
+    /// The agent chosen in Settings, or the one used last while Settings says "Last used".
     var defaultProvider: AgentProviderID {
-        let id = AgentProviderID(rawValue: settings.defaultProviderRaw)
-        return AgentProviders.provider(id) == nil ? .codex : id
+        let raw = settings.defaultProviderRaw
+        return AgentDefault.resolve(
+            chosen: raw == SettingsModel.lastUsedAgent ? nil : AgentProviderID(rawValue: raw),
+            last: settings.lastAgentRaw.map(AgentProviderID.init(rawValue:)), available: agentChoices.map(\.id))
     }
     var isDetached: Bool { detachedWindow != nil }
     var directory: URL {
@@ -166,6 +169,7 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
             chatPluginID = nil
             error = ""
             if provider.isAgent {
+                settings.lastAgentRaw = provider.id.rawValue
                 if resumeID(for: provider).isEmpty {
                     discoverLaunchedSession(
                         provider: provider, workspace: URL(fileURLWithPath: launch.directory),
@@ -257,9 +261,9 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
                 self.error = error.localizedDescription
                 return
             }
-            guard let target = sessions.last(where: { $0.provider.id == provider }) else { return }
-            do { try await Task.sleep(for: .milliseconds(700)) } catch { return }
-            guard sessions.contains(where: { $0.id == target.id }) else { return }
+            guard let target = sessions.last(where: { $0.provider.id == provider }),
+                await target.waitUntilReady() == .ready, sessions.contains(where: { $0.id == target.id })
+            else { return }
             target.paste(handoff)
         }
     }

@@ -22,7 +22,7 @@ import SwiftTerm
     var scopeLast: JSONValue?
     var question: AgentQuestionPrompt? // agent.ask's card over the terminal, until it is answered
     let launchedAt = Date()
-    let view = LocalProcessTerminalView(frame: .zero)
+    let view = AgentTerminalView(frame: .zero)
     var title: String
     /// SF Symbol for the tab.
     let icon: String
@@ -37,6 +37,43 @@ import SwiftTerm
             environment: launch.environment.map { "\($0.key)=\($0.value)" },
             currentDirectory: launch.directory)
     }
+    var isRunning: Bool { view.process?.running ?? false }
+
+    /// The lines on screen.
+    var screenText: String {
+        let terminal = view.getTerminal()
+        return (0..<terminal.rows).compactMap { terminal.getLine(row: $0)?.translateToString(trimRight: true) }
+            .joined(separator: "\n")
+    }
+
+    enum Readiness { case ready, quit, cancelled }
+
+    /// Waits until the agent takes input: it has printed, then stayed quiet for `quiet`, and shows no menu
+    /// (`AgentScreen.isAsking`, such as trusting the folder). A just-started CLI draws its input box only after
+    /// loading, and a paste before that is lost or answers the menu. `asking` hears when a menu shows or goes, so the
+    /// user can answer it; the wait then lasts up to `askTimeout`. An agent that keeps animating counts as ready
+    /// after `timeout`.
+    func waitUntilReady(
+        quiet: Duration = .milliseconds(800), timeout: Duration = .seconds(20), askTimeout: Duration = .seconds(600),
+        asking: (Bool) -> Void = { _ in }
+    ) async -> Readiness {
+        let clock = ContinuousClock()
+        let start = clock.now
+        var wasAsking = false
+        while isRunning {
+            let settled = view.lastOutput.map { clock.now - $0 >= quiet } ?? false
+            let isAsking = settled && AgentScreen.isAsking(screenText)
+            if isAsking != wasAsking {
+                wasAsking = isAsking
+                asking(isAsking)
+            }
+            if settled, !isAsking { return .ready }
+            if clock.now - start >= (isAsking ? askTimeout : timeout) { return isAsking ? .cancelled : .ready }
+            do { try await Task.sleep(for: .milliseconds(100)) } catch { return .cancelled }
+        }
+        return .quit
+    }
+
     /// Presses Return in the terminal, sending what is in the agent's input.
     func submit() { view.send(source: view, data: [13][...]) }
     /// Presses Escape, which interrupts Claude Code's and Codex's current turn (the run panel's Stop, #534).
@@ -45,5 +82,15 @@ import SwiftTerm
     func close() {
         view.send(source: view, data: [3][...])
         view.terminate()
+    }
+}
+
+/// The terminal, noting when its program last printed (`TerminalSession.waitUntilReady`).
+final class AgentTerminalView: LocalProcessTerminalView {
+    private(set) var lastOutput: ContinuousClock.Instant?
+
+    override func dataReceived(slice: ArraySlice<UInt8>) {
+        lastOutput = .now
+        super.dataReceived(slice: slice)
     }
 }

@@ -53,30 +53,90 @@ extension AgentDockModel {
         return nil
     }
 
-    /// Sends the New brief draft (with the viewer frame when attached), then clears it and closes the sheet.
+    /// Sends the New brief draft (with the viewer frame when attached) to the brief's target, starting the agent first
+    /// when it is not open, then clears it and closes the sheet. On failure the brief stays and the sheet says why.
     func sendAsk() async {
         let request = askModel.draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !request.isEmpty, hasOpenAgent, !askModel.sending else { return }
+        guard !request.isEmpty, !askModel.sending else { return }
         askModel.sending = true
-        defer { askModel.sending = false }
+        askModel.error = ""
+        defer {
+            askModel.sending = false
+            askModel.status = ""
+        }
         do {
+            askModel.status = askModel.attachFrame ? String(localized: "Preparing frame…") : ""
             let image = askModel.attachFrame ? try await document.captureAgentFrame() : nil
-            if !isDetached { document.ui.showAgentDock = true }
-            if let chatPluginID {
-                document.chatAgents.model(for: chatPluginID).send(request, imageURL: image)
-            } else if let session = current {
-                session.paste(AgentRequest.paste(request, image: image))
-                // The agent reads the paste first; an Enter in the same write could land inside it.
-                try? await Task.sleep(for: .milliseconds(200))
-                session.submit()
+            switch briefTarget {
+            case .chat(let pluginID):
+                let agent = document.chatAgents.model(for: pluginID)
+                guard !agent.running else {
+                    askModel.error = String(format: String(localized: "%@ is still answering. Send when it finishes."), agent.title)
+                    return
+                }
+                openChat(pluginID)
+                if !isDetached { document.ui.showAgentDock = true }
+                agent.send(request, imageURL: image)
+            case .session(let id):
+                guard let session = sessions.first(where: { $0.id == id }) else { return }
+                selectedSession = id
+                chatPluginID = nil
+                guard try await deliver(request, image: image, to: session) else { return }
+            case .start(let provider):
+                guard try await deliver(request, image: image, to: startForBrief(provider)) else { return }
             }
             recordRecentBrief(request)
             askModel.draft = ""
             askModel.edited = false
+            askModel.target = nil
             document.ui.showAsk = false
         } catch {
-            document.message = error.localizedDescription
+            askModel.error = error.localizedDescription
         }
+    }
+
+    /// Opens a new tab of `provider` for the brief.
+    private func startForBrief(_ provider: AgentProviderID) async throws -> TerminalSession {
+        let title = agentChoices.first { $0.id == provider }?.title ?? provider.rawValue
+        askModel.status = String(format: String(localized: "Starting %@…"), title)
+        if let builtIn = AgentProviders.provider(provider) { return try startBuiltIn(builtIn) }
+        return try await openPluginTerminal(provider.rawValue)
+    }
+
+    /// Pastes the brief in a terminal once its agent takes input, then presses Return. When the agent shows a menu
+    /// first (trusting the folder), the sheet closes so the user can answer it in the dock, and the brief follows.
+    /// False when it was not sent.
+    private func deliver(_ request: String, image: URL?, to session: TerminalSession) async throws -> Bool {
+        if session.provider.isAgent { settings.lastAgentRaw = session.provider.id.rawValue }
+        if !isDetached { document.ui.showAgentDock = true }
+        askModel.status = String(format: String(localized: "Waiting for %@…"), session.title)
+        let readiness = await session.waitUntilReady { [weak self] asking in
+            guard let self, asking else { return }
+            document.ui.showAsk = false
+            document.message = String(
+                format: String(localized: "Answer %@ in the dock; the brief is sent after that."), session.title)
+        }
+        let failure: String? = switch readiness {
+        case .ready: nil
+        case .quit: String(format: String(localized: "%@ quit before the brief was sent."), session.title)
+        case .cancelled: Task.isCancelled ? "" : String(
+            format: String(localized: "The brief was not sent: %@ still waits for an answer."), session.title)
+        }
+        if let failure {
+            askModel.error = failure
+            if !failure.isEmpty { document.message = failure }
+            return false
+        }
+        session.paste(AgentRequest.paste(request, image: image))
+        // The agent reads the paste first; an Enter in the same write could land inside it.
+        try await Task.sleep(for: .milliseconds(200))
+        session.submit()
+        return true
+    }
+
+    /// Send in the New brief sheet; Cancel stops it while it waits for the agent.
+    func startSendAsk() {
+        askModel.sendTask = Task { await sendAsk() }
     }
 }
 
