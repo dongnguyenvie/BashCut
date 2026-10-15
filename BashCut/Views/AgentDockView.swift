@@ -23,6 +23,7 @@ struct AgentDockView: View {
                     .buttonStyle(.plain).foregroundStyle(.secondary).help("Open the agent in its own window")
                     Spacer()
                 }
+                AgentSetupChip(model: model).padding(.trailing, 4)
                 DockIconButton(systemImage: "books.vertical", help: knowledgeHelp) {
                     if model.knowledge.proposalCount > 0 { model.document.ui.knowledgeSection = "inbox" }
                     model.openKnowledge()
@@ -165,18 +166,23 @@ private struct DockTab: View {
 }
 
 extension AgentDockView {
-    /// Buttons for the project's state (New project, Survey footage, Review…). A terminal has no message box, so
-    /// New brief sits here for it.
+    /// Buttons for the project's state (New project, Survey footage, Review…), and under them, for a terminal or a
+    /// plugin view, the brief bar: a terminal has no message box, so New brief looks like one. Chat tabs keep their
+    /// own composer.
     var quickActions: some View {
-        HStack(spacing: 6) {
-            ForEach(Array(model.quickActions.enumerated()), id: \.element.id) { index, quick in
-                Button(quick.title) { model.perform(quick) }
-                    .buttonStyle(QuickActionStyle(primary: index == 0))
-                    .disabled(!quickEnabled(quick))
+        VStack(spacing: 8) {
+            if !model.quickActions.isEmpty {
+                HStack(spacing: 6) {
+                    ForEach(Array(model.quickActions.enumerated()), id: \.element.id) { index, quick in
+                        Button(quick.title) { model.perform(quick) }
+                            .buttonStyle(QuickActionStyle(primary: index == 0))
+                            .disabled(!quickEnabled(quick))
+                    }
+                    Spacer(minLength: 0)
+                }
             }
-            Spacer(minLength: 0)
             if model.chatPluginID == nil || model.pluginViewKey != nil {
-                DockIconButton(systemImage: "square.and.pencil", help: "New brief… (⌘K)") { model.openBrief() }
+                BriefBar(agent: model.choice(for: model.briefTarget)?.title) { model.openBrief() }
             }
         }
         .padding(.horizontal, 10).padding(.vertical, 8)
@@ -224,6 +230,41 @@ private struct QuickActionStyle: ButtonStyle {
             .background(RoundedRectangle(cornerRadius: 6).fill(fill))
             .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(stroke, lineWidth: 1))
             .opacity(enabled ? 1 : 0.45)
+    }
+}
+
+/// New brief (⌘K) drawn as a message field under a terminal: "Tell Claude Code what to make…".
+private struct BriefBar: View {
+    let agent: String?
+    let action: () -> Void
+    @State private var hovered = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Image(systemName: "square.and.pencil").font(.system(size: 12)).foregroundStyle(.cyan)
+                Text(placeholder).font(.callout).foregroundStyle(.secondary).lineLimit(1)
+                Spacer(minLength: 4)
+                Text("⌘K").font(.caption.monospaced()).foregroundStyle(.secondary)
+                    .padding(.horizontal, 5).padding(.vertical, 1)
+                    .background(RoundedRectangle(cornerRadius: 4).fill(Color.white.opacity(0.08)))
+            }
+            .padding(.horizontal, 10).frame(maxWidth: .infinity, minHeight: 34)
+            .background(RoundedRectangle(cornerRadius: 8).fill(Color.white.opacity(hovered ? 0.09 : 0.055)))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .strokeBorder(hovered ? Color.cyan.opacity(0.6) : Color.white.opacity(0.14), lineWidth: 1))
+            .contentShape(RoundedRectangle(cornerRadius: 8))
+        }
+        .buttonStyle(.plain)
+        .onHover { hovered = $0 }
+        .help("New brief… (⌘K)")
+        .accessibilityLabel(placeholder)
+        .accessibilityHint("Opens New brief")
+    }
+
+    private var placeholder: String {
+        String(format: String(localized: "Tell %@ what to make…"), agent ?? String(localized: "the agent"))
     }
 }
 
