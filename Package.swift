@@ -29,7 +29,9 @@ let package = Package(
                    .package(url: "https://github.com/modelcontextprotocol/swift-sdk.git", exact: "0.12.1")],
     targets: [
         .target(name: "BashCutEngine", dependencies: [.product(name: "BashCutProject", package: "BashCutCore")],
-                path: "BashCut/Core/Engine"),
+                path: "BashCut/Core/Engine",
+                // The Transitions panel's preview stills (scripts/make-transition-samples.py), about 9 KB.
+                resources: [.copy("TransitionSamples")]),
         .target(name: "BashCutStorage", dependencies: [.product(name: "BashCutProject", package: "BashCutCore")],
                 path: "BashCut/Core/Storage"),
         .target(name: "BashCutAutomation", dependencies: [.product(name: "BashCutProject", package: "BashCutCore")],

@@ -107,29 +107,31 @@ struct LibraryCategorySidebar: View {
     }
 }
 
-/// A tile with a picture and the name under it, for panels whose own rows have no picture (P1-10).
+/// A tile with a picture and the name under it, for panels whose own rows have no picture (P1-10). Transition
+/// presets play their preview on hover and looks show the viewer's frame graded (P2-B3).
 struct LibraryPictureTile: View {
     let document: ProjectDocument
     let item: LibraryItem
     let action: () -> Void
+    @Environment(LookPreviews.self) private var lookPreviews: LookPreviews?
 
     var body: some View {
-        Button(action: action) {
-            VStack(spacing: 3) {
-                picture.frame(height: 44).frame(maxWidth: .infinity)
-                LibraryTileCaption(item: item)
-            }
-            .padding(.vertical, 4).frame(maxWidth: .infinity)
+        PictureTile(
+            caption: LibraryView.title(item), help: Text(verbatim: item.name), enabled: enabled, action: action
+        ) { hovering in
+            picture(hovering)
         }
-        .buttonStyle(.bordered).disabled(!enabled)
-        .help(Text(verbatim: item.name))
     }
 
-    @ViewBuilder private var picture: some View {
+    @ViewBuilder private func picture(_ hovering: Bool) -> some View {
         if item.kind == .textPreset {
             TextPresetTile(item: item)
+        } else if item.kind == .transitionPreset, let transition = TransitionPreviewPicture(preset: item, playing: hovering) {
+            transition
         } else if let preview = document.libraryCatalog.previewURL(of: item) {
             LibraryImage(url: preview, fallbackSymbol: item.kind?.tileSymbol ?? "photo")
+        } else if item.kind == .look {
+            LookPreviewPicture(document: document, previews: lookPreviews, item: item)
         } else {
             LibraryTileFallback(symbol: item.kind?.tileSymbol ?? "photo")
         }
