@@ -30,6 +30,26 @@ struct MixMeasureTests {
         return (speech, music, effect)
     }
 
+    @Test("musicBeds: a fixed bed, a held bed and a pumping one (#630)")
+    func musicBeds() throws {
+        var project = project()
+        let voice = project.tracks.firstIndex { $0.role == TrackRole.voiceover }!
+        let music = project.tracks.firstIndex { $0.role == TrackRole.music }!
+        // Lines of 1 s with 0.8 s gaps (24 frames) over 10 s of music.
+        project.tracks[voice].items = (0..<5).map { Item(id: "vo\($0)", media: "m", at: $0 * 54, duration: 30) }
+        project.tracks[music].items = [Item(id: "bed", media: "m", at: 0, duration: 300)]
+        func bed(_ project: Project) throws -> [String: JSONValue] {
+            let json = MixMeasure.json(project, speech: nil, music: nil, effects: nil, words: []).object
+            return try #require(json["musicBeds"]?.array.first).object
+        }
+        #expect(try bed(project)["ducking"] == .bool(true) && bed(project)["pumping"] == .bool(false))
+        #expect(try bed(project)["rises"] == .integer(0) && bed(project)["minGapSeconds"] == .number(2.5))
+        project.tracks[music]["duckMinGapFrames"] = .integer(0)
+        #expect(try bed(project)["shortRises"] == .integer(4) && bed(project)["pumping"] == .bool(true))
+        project.tracks[music]["duckingEnabled"] = .bool(false)
+        #expect(try bed(project) == ["track": .string("a3"), "ducking": .bool(false), "pumping": .bool(false)])
+    }
+
     @Test("Voice, music under speech and in the gaps; speech windows from the stem")
     func stems() throws {
         let (speech, music, effect) = curves()

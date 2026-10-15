@@ -231,7 +231,8 @@ public actor CompositionBuilder {
                 if track.kind == "audio" || (track.role == "main" && item["linkedAudio"] == nil) {
                     if let source = asset.audio {
                         let gain = AudioGainPlanner.points(
-                            for: item, on: track, speech: speechRanges, mixGainDb: project.mixGainDb)
+                            for: item, on: track, speech: speechRanges, mixGainDb: project.mixGainDb,
+                            minGapFrames: MusicDucking.minGapFrames(track, fps: project.fps.value))
                         let lane = try audioLanes.take(for: item, sourceTrack: track.id, gain: gain, composition: composition)
                         let target = lane.track
                         if ramp != nil {

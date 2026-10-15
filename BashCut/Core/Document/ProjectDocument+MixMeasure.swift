@@ -23,8 +23,8 @@ extension ProjectDocument {
 
     /// The project with every sound outside `stem` at −120 dB. Items stay in place, so music still ducks under
     /// speech as it does in the mix.
-    func stemProject(_ stem: Stem) -> Project {
-        var copy = project
+    func stemProject(_ stem: Stem, of project: Project? = nil) -> Project {
+        var copy = project ?? self.project
         copy.revision = 0
         for index in copy.tracks.indices where !stem.keeps(copy.tracks[index]) {
             guard copy.tracks[index].kind == TrackKind.audio || copy.tracks[index].kind == TrackKind.video else { continue }

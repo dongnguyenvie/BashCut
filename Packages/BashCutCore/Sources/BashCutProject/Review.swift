@@ -88,7 +88,7 @@ extension ReviewIssue {
     /// The built-in checks' kinds; an issue ID is its kind, or its kind, a hyphen and an anchor.
     public static let kinds = [
         "gap-end", "gap", "caption-lines", "caption", "font", "glyph", "cut-in-word", "loudness-unmeasured", "loudness",
-        "true-peak", "ducking", "silence", "music-gap", "picture-unmeasured", "picture-unreliable", "shot-short",
+        "true-peak", "music-pumping", "silence", "music-gap", "picture-unmeasured", "picture-unreliable", "shot-short",
         "shot-long", "black", "still", "jump", "safe-bottom", "safe-side", "safe-top", "title-safe", "small-text",
         "text-overlap", "text-face", "platform-none", "output-shape", "output-length", "plan-section", "brief-length",
         "brief-outputs", "must-keep", "overlap", "coverage", "hook", "voice-text-changed", "captions-source-changed",

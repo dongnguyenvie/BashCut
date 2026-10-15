@@ -423,8 +423,10 @@ extension CommandCatalog {
                 + "moment (voiceDuring LUFS, voicePeakDb) with overVoiceDb and peakOverVoiceDb (the effect minus "
                 + "them; a short effect reads low on 400 ms loudness, so read its peak too), voiceP95 within "
                 + "nearSeconds with deltaDb, sharedWith (effects playing at once, measured together), onset and peak "
-                + "offsets in frames to the nearest cut, beat and word edge; and each stem's integrated loudness. No "
-                + "verdicts. A job; no levels are changed.",
+                + "offsets in frames to the nearest cut, beat and word edge; musicBeds per Music layer: ducking false "
+                + "(a fixed bed), or duckDb, minGapSeconds, rises (gaps where it comes back up), shortRises (gaps under "
+                + "2.5 s), movesPerMinute and pumping (over 4 moves a minute); and each stem's integrated loudness. "
+                + "No other verdicts. A job; no levels are changed.",
             parameters: [
                 CommandParameter("nearSeconds", .number, "Seconds around an effect read for the voice (default 1)",
                                  range: 0.1...10, cli: .option("near")),

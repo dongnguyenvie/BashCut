@@ -4318,6 +4318,22 @@
         }
       }
     },
+    "Hold gaps under (frames)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hold gaps under (frames)"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giữ nhạc thấp qua khoảng lặng dưới (khung hình)"
+          }
+        }
+      }
+    },
     "Release (frames)": {
       "localizations": {
         "en": {

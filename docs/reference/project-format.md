@@ -67,7 +67,7 @@ All times are integers. Seconds appear only in the UI, in the agent text form an
 | `item.in` | Source frame, at the media's own fps |
 | `item.at`, `item.dur` | Timeline frames, at `format.fps` |
 | Trim targets, split positions, section markers, beat-grid frames | Absolute timeline frames |
-| `fadeIn`, `fadeOut`, `duckAttackFrames`, `duckReleaseFrames` | Timeline frames |
+| `fadeIn`, `fadeOut`, `duckAttackFrames`, `duckReleaseFrames`, `duckMinGapFrames` | Timeline frames |
 
 - `rev` increases by one on every applied edit. A request that carries a `baseRev` different from the current
   `rev` fails with `staleRevision`.
@@ -242,6 +242,7 @@ Only a Music audio track may carry ducking fields.
 | `duckUnderSpeechDb` | Level under speech; its presence opts the track in | −60 … 0 dB |
 | `duckingEnabled` | Suspends ducking without discarding the level | Boolean |
 | `duckAttackFrames`, `duckReleaseFrames` | Ramp length | 0 … 10 000 frames |
+| `duckMinGapFrames` | Hold: a gap between speech shorter than this keeps the music down; unset is 2.5 s, 0 rises in every gap | 0 … 10 000 frames |
 
 Voiceover items always count as speech. Dialogue items count when they, or their linked video, carry
 `tag.role: "speech"`. Clip gain, fades, ducking and mix gain become one frame-based envelope shared by preview

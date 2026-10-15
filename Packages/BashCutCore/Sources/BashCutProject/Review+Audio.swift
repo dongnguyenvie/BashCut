@@ -50,24 +50,35 @@ extension TimelineReview {
         return issues
     }
 
-    /// A Music layer with ducking switched off under speech or voiceover, as info: ducking is a choice.
+    /// A ducking Music layer that pumps (#630): it rises in gaps between lines shorter than 2.5 s more than 4 times
+    /// (down and up) a minute. The fix holds it down in those gaps; a fixed bed (ducking off) is the other way.
     static func duckingIssues(_ project: Project, audible: [Track]) -> [ReviewIssue] {
-        let speech = speechRegions(project)
-        return audible.filter { $0.role == TrackRole.music && $0["duckingEnabled"] == .bool(false) }.compactMap { track in
-            guard let item = track.items.sorted(by: { $0.at < $1.at }).first(where: { music in
-                speech.contains { music.at < $0.end && music.end > $0.at }
-            }) else { return nil }
+        let fps = project.fps.value
+        let ids = Set(audible.map(\.id))
+        return MusicDucking.beds(project).filter { $0.pumping && ids.contains($0.track) }.compactMap { bed in
+            guard let track = project.tracks.first(where: { $0.id == bed.track }), let first = bed.shortRises.first else {
+                return nil
+            }
+            let hold = Int((MusicDucking.defaultMinGapSeconds * fps).rounded())
             let op: JSONValue = .object([
                 "op": .string("setTrackProperties"), "track": .string(track.id),
-                "patch": .object(["duckingEnabled": .bool(true)]),
+                "patch": .object(["duckMinGapFrames": .integer(hold)]),
             ])
             return ReviewIssue(
-                id: "ducking-" + track.id, title: "Music not ducked under speech",
-                detail: "Ducking is off on \(track.name.isEmpty ? track.id : track.name) while speech plays over it.",
-                frame: item.at, severity: .info,
+                id: "music-pumping-" + track.id, title: "Music pumps between lines",
+                detail: String(
+                    format: "%@ comes back up in %d gaps shorter than %.1f s (%.1f moves a minute); hold it down or "
+                        + "set one fixed level with ducking off.",
+                    track.name.isEmpty ? track.id : track.name, bed.shortRises.count, MusicDucking.defaultMinGapSeconds,
+                    bed.movesPerMinute),
+                frame: first.lowerBound, severity: .warning,
                 fix: ReviewFix(
                     command: "timeline.apply",
-                    arguments: ["label": .string("Duck music under speech"), "ops": .array([op])]))
+                    arguments: ["label": .string("Hold music down between lines"), "ops": .array([op])]),
+                facts: [
+                    "shortRises": .integer(bed.shortRises.count), "movesPerMinute": fact(bed.movesPerMinute),
+                    "duckMinGapFrames": .integer(bed.minGapFrames),
+                ])
         }
     }
 
