@@ -214,6 +214,13 @@ extension ProjectDocument {
         settings.timelineHeaderWidth = width
     }
 
+    /// Until the user picks a header width, a window of 1280 pt or more shows the layer names and a narrower one
+    /// the short IDs. Not remembered, so resizing the window changes it again.
+    func adaptTimelineHeader(windowWidth: Double) {
+        guard !settings.timelineHeaderWidthChosen else { return }
+        ui.timelineLeading = EditorUIState.defaultTimelineLeading(windowWidth: windowWidth)
+    }
+
     /// Scrolls the timeline so `frame` is visible.
     func revealInTimeline(_ frame: Int) { ui.revealInTimeline(frame, duration: project.duration) }
 

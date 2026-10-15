@@ -17,11 +17,19 @@ public final class EditorUIState {
     public static let compactTimelineLeading = 78.0
     public static let wideTimelineLeading = 160.0
     public static let timelineLeadingRange: ClosedRange<Double> = compactTimelineLeading...280
+    /// A window at least this wide (points) gets the wide header until the user picks a width.
+    public static let wideHeaderWindowWidth = 1280.0
+    /// The header width a window of this width starts with: named layers when there is room for them.
+    public static func defaultTimelineLeading(windowWidth: Double) -> Double {
+        windowWidth >= wideHeaderWindowWidth ? wideTimelineLeading : compactTimelineLeading
+    }
     /// The margin kept after the end when fitting.
     public static let fitMargin = 40.0
 
     /// Width of the layer header; `ProjectDocument.setTimelineHeaderWidth` changes it and remembers it in Settings.
     public var timelineLeading = compactTimelineLeading
+    /// Whether the timeline shows its empty layers (`TimelineTrackFolding`) instead of one folded row.
+    public var showEmptyTracks = false
     /// Whether the header is too narrow for layer names (closer to compact than to wide).
     public var timelineHeaderCompact: Bool {
         timelineLeading < (Self.compactTimelineLeading + Self.wideTimelineLeading) / 2
