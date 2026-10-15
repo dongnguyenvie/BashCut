@@ -13,7 +13,8 @@ extension PlanCut {
     }
 
     /// The operations that replace what an earlier apply built with `clips`, `spec.titles` and `spec.music`;
-    /// `planner.project` is the edit as it would be, `kept` the items the apply leaves alone.
+    /// `planner.project` is the edit as it would be, `kept` the items the apply leaves alone. Cut transitions and
+    /// In/Out set by hand on built items come back on the rebuilt ones unless the list sets them (#623).
     /// `textPresets`: the library text presets (templates) titles name by ID, beyond the renderer's own presets;
     /// `transcripts`: the stored transcripts captions are made from, by media ID.
     public static func build(
@@ -21,6 +22,7 @@ extension PlanCut {
         transcripts: [String: SourceTranscript] = [:], takes: [String: LineTake] = [:]
     ) throws -> (planner: LayerPlanner, placements: [Placement], kept: [String]) {
         var planner = LayerPlanner(project)
+        let handSet = HandSet(project)
         try removeBuilt(clips: clips, lines: spec.voiceover, from: project, in: &planner)
         let main = try planner.project.requireTrack(role: TrackRole.main)
         guard main.items.isEmpty else {
@@ -57,17 +59,24 @@ extension PlanCut {
                     track: track.id, patch: ["duckingEnabled": .bool(true), "duckUnderSpeechDb": .number(duck)])])
             }
         }
+        try applyEdges(spec, kept: handSet, in: &planner)
         let others = planner.project.tracks.flatMap(\.items).filter { $0.fields[tag] == nil }.map(\.id)
         return (planner, placements, others)
     }
 
-    /// Deletes the section markers an earlier apply set (markers must stay inside the edit, so they go first), then
-    /// the items it built (a linked partner goes with its item).
+    /// Deletes the transitions on the cuts an earlier apply built, the section markers it set (markers must stay
+    /// inside the edit, so they go first), then the items it built (a linked partner goes with its item).
     static func removeBuilt(clips: [Resolved], lines: [Line] = [], from project: Project, in planner: inout LayerPlanner) throws {
         let built = project.tracks.flatMap(\.items).filter { $0.fields[tag] != nil }
         let sectionIDs = Set(clips.compactMap(\.clip.section)).union(lines.compactMap(\.section))
             .union(plannedSections(project).map(\.id))
             .union(built.compactMap { $0.fields[sectionTag]?.string })
+        // Transitions on built cuts go first and by name: the edit is applied as one group, where a cut rebuilt
+        // with the same item IDs would keep one; what stays comes back from the hand-set ones and the list.
+        let ids = Set(built.map(\.id))
+        for transition in planner.project.transitions where ids.contains(transition.fromItemID) || ids.contains(transition.toItemID) {
+            try planner.add([.deleteTransition(id: transition.id)])
+        }
         for marker in planner.project.sectionMarkers where sectionIDs.contains(marker.id) {
             try planner.add([.deleteSection(id: marker.id)])
         }
