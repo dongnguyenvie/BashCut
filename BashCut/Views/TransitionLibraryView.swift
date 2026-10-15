@@ -1,3 +1,4 @@
+import BashCutDocument
 import BashCutProject
 import SwiftUI
 
@@ -11,17 +12,17 @@ struct TransitionLibraryView: View {
                 .font(.caption).foregroundStyle(.secondary)
             ForEach(TransitionMotion.groups, id: \.name) { group in
                 Text(LocalizedStringKey(group.name)).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())]) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: tileMinimum))], spacing: 8) {
                     ForEach(group.kinds, id: \.self) { kind in
-                        Button {
-                            document.setSelectedTransition(kind: kind)
-                        } label: {
-                            Label(Self.title(kind), systemImage: icon(kind))
-                                .lineLimit(1).minimumScaleFactor(0.75)
-                                .frame(maxWidth: .infinity, minHeight: 34)
-                        }
-                        .buttonStyle(.bordered)
-                        .help(Self.title(kind))
+                        // The same tile as the library's transition presets below (N4), with its moving preview.
+                        PictureTile(
+                            caption: Text(Self.title(kind)), help: Text(Self.title(kind)),
+                            action: { document.setSelectedTransition(kind: kind) },
+                            picture: { hovering in
+                                TransitionPreviewPicture(
+                                    motion: TransitionMotion.resolved(kind: kind, motion: nil),
+                                    easing: TimelineTransition.defaultEasing, symbol: Self.symbol(kind), playing: hovering)
+                            })
                     }
                 }
             }
@@ -43,13 +44,7 @@ struct TransitionLibraryView: View {
             }
             Divider()
             LibraryItemsSection(document: document, kinds: [.transitionPreset], saveKinds: [.transitionPreset]) { item in
-                Button { document.applyFromLibrary(item) } label: {
-                    VStack(alignment: .leading, spacing: 2) {
-                        LibraryView.title(item)
-                        Text(Self.summary(item)).font(.caption2).foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }.disabled(document.selected == nil)
+                TransitionPresetRow(document: document, item: item, summary: Self.summary(item))
             }
         }
     }
@@ -101,7 +96,14 @@ struct TransitionLibraryView: View {
         }
     }
 
-    private func icon(_ kind: String) -> String { Self.icons[kind] ?? "rectangle.split.2x1" }
+    /// The built-in tiles are as wide as the library's tiles at the panel's tile size.
+    private var tileMinimum: Double {
+        let layout = document.libraryLayout()
+        return layout.isList ? LibraryPanelLayout.minimumRange.upperBound : layout.tileMinimum
+    }
+
+    /// The icon a transition's tile shows until its preview is rendered.
+    static func symbol(_ kind: String) -> String { icons[kind] ?? "rectangle.split.2x1" }
 
     private static let icons: [String: String] = [
         "dissolve": "circle.lefthalf.filled",
@@ -142,6 +144,30 @@ struct TransitionLibraryView: View {
         "slide": "rectangle.righthalf.inset.filled.arrow.right",
         "slide-up": "rectangle.bottomhalf.inset.filled",
     ]
+}
+
+/// A transition preset in the list layout: its preview (playing on hover), name and summary.
+private struct TransitionPresetRow: View {
+    let document: ProjectDocument
+    let item: LibraryItem
+    let summary: String
+    @State private var hovering = false
+
+    var body: some View {
+        Button { document.applyFromLibrary(item) } label: {
+            HStack(spacing: 6) {
+                TransitionPreviewPicture(preset: item, playing: hovering)?
+                    .frame(width: 48, height: 27).clipShape(RoundedRectangle(cornerRadius: 3))
+                VStack(alignment: .leading, spacing: 2) {
+                    LibraryView.title(item)
+                    Text(summary).font(.caption2).foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .disabled(document.selected == nil)
+        .onHover { hovering = $0 }
+    }
 }
 
 /// A transition preset's kind, duration, easing and sound (with its offset from the cut and volume) in the library

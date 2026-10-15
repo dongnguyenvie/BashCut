@@ -4,6 +4,8 @@ import SwiftUI
 /// The Filters panel: library looks (filter stacks, #79) in the shared library UI, plus the project's 3D LUTs.
 struct FilterLibraryView: View {
     @Bindable var document: ProjectDocument
+    /// Each look's tile shows the viewer's frame with the look applied (P2-B3).
+    @State private var previews = LookPreviews()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -23,13 +25,17 @@ struct FilterLibraryView: View {
                 document: document, kinds: [.look], saveKinds: [.look], fileKind: .look
             ) { item in
                 Button { use(item) } label: {
-                    VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        LookPreviewPicture(document: document, previews: previews, item: item)
+                            .frame(width: 48, height: 27).clipShape(RoundedRectangle(cornerRadius: 3))
+                        VStack(alignment: .leading, spacing: 2) {
                         LibraryView.title(item)
-                        if let summary = summary(item) {
-                            Text(summary).font(.caption2).foregroundStyle(.secondary)
+                            if let summary = summary(item) {
+                                Text(summary).font(.caption2).foregroundStyle(.secondary)
+                            }
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .disabled(document.fileURL == nil)
             }
@@ -44,7 +50,14 @@ struct FilterLibraryView: View {
             }
             ForEach(document.project.colorLUTs) { lut in
                 HStack {
-                    Button(lut.name) { document.applyColorLUT(lut.id) }
+                    Button { document.applyColorLUT(lut.id) } label: {
+                        HStack(spacing: 6) {
+                            LookPreviewPicture(document: document, previews: previews, lut: lut)
+                                .frame(width: 48, height: 27).clipShape(RoundedRectangle(cornerRadius: 3))
+                            Text(verbatim: lut.name)
+                        }
+                    }
+                    .buttonStyle(.borderless)
                     Spacer()
                     Menu {
                         Button("Delete LUT", role: .destructive) { document.deleteColorLUT(lut) }
@@ -61,6 +74,13 @@ struct FilterLibraryView: View {
                         set: { value in document.setColorLUTStrength(value) }), in: 0...1)
                 Button("Remove LUT") { document.applyColorLUT(nil) }
             }
+        }
+        .environment(previews)
+        // A new frame once the playhead settles (scrubbing cancels the wait), never while playing.
+        .task(id: LookPreviews.trigger(document)) {
+            try? await Task.sleep(for: .milliseconds(350))
+            guard !Task.isCancelled else { return }
+            await previews.refresh(document)
         }
     }
 
