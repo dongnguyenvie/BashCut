@@ -60,6 +60,17 @@ struct PluginCompositionTests {
         #expect(tree.close)
     }
 
+    @Test("Window views (API 11) need apiVersion 11 and no container")
+    func windowLocation() throws {
+        let window = #", "contributes": {"views": [{"id": "browse", "title": "Browse", "location": "window"}]}"#
+        let plugin = try manifest(window, apiVersion: 11)
+        try plugin.validate()
+        #expect(plugin.views.first?.place == .window)
+        #expect(throws: PluginError.self) { try manifest(window, apiVersion: 10).validate() }
+        #expect(PluginAPI.current >= 11)
+        #expect(PluginFeature.all.contains("location.window"))
+    }
+
     @Test("Inspector views may have a when condition; other views may not (#405)")
     func inspectorWhen() throws {
         let view = try manifest(#", "contributes": {"views": [{"id": "graphic", "title": "Graphic", "location": "inspector", "#

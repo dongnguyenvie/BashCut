@@ -207,6 +207,7 @@ extension ProjectDocument {
                 message: "Use plugins view and plugins view-event on \(key) to work in it.", options: [Self.close]
             ) { [weak self] _ in self?.ui.pluginSheet = nil })
         }
+        sheets += pluginWindowSheets()
         if let pending = plugins.pendingAction {
             sheets.append(ModalSheet(
                 name: "plugin-action", title: pending.action.title,
@@ -242,6 +243,31 @@ extension ProjectDocument {
         return sheets
     }
 
+    /// Plugin views in windows (API 11), docked or not: non-modal, so they never block other actions; answer them with
+    /// `ui respond --dialog sheet:plugin-window:<plugin>/<view>`.
+    private func pluginWindowSheets() -> [ModalSheet] {
+        let keys = ui.pluginWindows.sorted() + [ui.dockedPluginView].compactMap { $0 }
+        return keys.compactMap { key in
+            guard let (plugin, view) = pluginViews.resolve(key) else { return nil }
+            let docked = ui.dockedPluginView == key
+            return ModalSheet(
+                name: "plugin-window", title: plugin.manifest.displayName + ": " + view.title.text,
+                message: (docked ? "Docked over the viewer. " : "")
+                    + "Use plugins view and plugins view-event on \(key) to work in it.",
+                options: [docked ? ModalOption("undock", String(localized: "Undock")) : ModalOption("dock", String(localized: "Dock")),
+                          Self.close],
+                window: true, id: "plugin-window:" + key
+            ) { [weak self] option in
+                guard let self else { return }
+                switch option {
+                case "dock": pluginViews.windows.dock(key)
+                case "undock": pluginViews.windows.undock()
+                default: pluginViews.windows.close(key)
+                }
+            }
+        }
+    }
+
     func registerDialogCommands() {
         handle("ui.dialog") { _, _, _ in
             let center = ModalCenter.shared
@@ -254,9 +280,11 @@ extension ProjectDocument {
             let path = arguments.optionalString("path").map { URL(fileURLWithPath: $0) }
             guard option != nil || path != nil else { throw RPCFailure(-32602, "Give an option or a path") }
             let center = ModalCenter.shared
-            guard let answered = center.current else { throw RPCFailure(-32003, "No dialog is open", category: .notAvailableNow) }
+            let dialog = arguments.optionalString("dialog")
+            let target = center.open.last { $0.window && $0.id == dialog } ?? center.current
+            guard let answered = target else { throw RPCFailure(-32003, "No dialog is open", category: .notAvailableNow) }
             do {
-                try center.respond(option: option, path: path, dialog: arguments.optionalString("dialog"))
+                try center.respond(option: option, path: path, dialog: dialog)
             } catch { throw RPCFailure.from(error, fallbackCode: -32602) }
             DebugLog.write("ui", "dialog \(answered.name) answered \(option ?? path?.path ?? "")")
             return .object(["answered": answered.json])

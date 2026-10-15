@@ -64,7 +64,7 @@ checked manifest, an entrypoint that already speaks the protocol and smoke tests
 | `id` | Yes | Reverse-domain style: lowercase letters and digits in at least two parts separated by `.` or `-` (`example.voice`) |
 | `name` | Yes | Display name, up to 80 characters; [localized text](#localized-text) |
 | `version` | Yes | Semantic version, such as `1.2.0` or `1.2.0-beta.1` |
-| `apiVersion` | Yes | `1` to `10`; see [API versions](#api-versions) |
+| `apiVersion` | Yes | `1` to `11`; see [API versions](#api-versions) |
 | `minApiVersion` / `maxApiVersion` | No | The host API window the plugin works with; `minApiVersion` defaults to `apiVersion` |
 | `entrypoint` | Yes | Relative path inside the bundle to an executable file; no leading `/` and no `..` |
 | `capabilities` | Yes | List of unique capability IDs (lowercase, segments separated by `.` or `-`); may be empty only when `contributes` is not |
@@ -97,7 +97,7 @@ and dependency names stay plain strings.
 
 ## API versions
 
-The host serves every plugin API version from `PluginAPI.minimum` (1) to `PluginAPI.current` (10); changes are
+The host serves every plugin API version from `PluginAPI.minimum` (1) to `PluginAPI.current` (11); changes are
 additive, so older manifests keep working. Version 2 adds `options`, `contributes` and the `session` transport.
 Version 3 adds option `choiceLabels` and the `file` option type, the `BASHCUT_PLUGIN_DATA`/`BASHCUT_PLUGIN_CACHE`
 folders and `::progress` lines from install recipes. Version 4 adds the `secret` option type, the session host
@@ -107,7 +107,7 @@ and the manifest's `terminal` object. Version 6 adds `contributes.library` (libr
 `contributes.container` and `contributes.views` (a panel in the left rail with declarative views), `requires`, `uses`
 with the `plugins.invoke` host call, the host channel for views and session actions, and `features`. Version 9 adds
 the `review.check` capability. Version 10 adds the Tools panel: `views[].kind`, the `tools` action placement and
-`advanced` options. From version 8
+`advanced` options. Version 11 adds the `window` view location. From version 8
 on, the API version goes up at most once per BashCut release; smaller differences between hosts are
 [host features](#host-features). A manifest
 that uses a feature with an older `apiVersion` is
@@ -987,7 +987,7 @@ the panel's frame from the manifest, so every plugin gets the same parts:
 | `views[].id` | A short key, unique; at most 8 views |
 | `views[].title` | Localized text, at most 40 characters |
 | `views[].kind` | `panel` (default) or `tool` (API 10): a `tool` view is listed in the **Tools** panel beside Auto captions, Voiceover and Beat detection, needs no `container` and no rail icon, and must have `location` `panel` (host feature `tools`). Asset libraries (stickers, effects, sounds…) need no view kind: providers reach the asset panels through `kind`s of `library.search` and `library.generate` |
-| `views[].location` | Where the view lives: `panel` (default), `dock`, `sheet` or `inspector` |
+| `views[].location` | Where the view lives: `panel` (default), `dock`, `sheet`, `inspector` or `window` (API 11) |
 | `views[].icon` | Optional SF Symbol for a dock tab or sheet; the container's icon by default |
 | `views[].when` | Inspector views only: a [when condition](#when-conditions) such as `selection.kind == text` or `media.kind == video`; the view is not asked to render for items it does not match (host feature `inspector.when`) |
 
@@ -1001,6 +1001,7 @@ A container alone (no views) is a panel of the plugin's tools and skills. Views 
 | `dock` | A tab in the agent dock on the right, next to the agent tabs (330–500 pt wide) | The tab, always there while the plugin is ready | Wider work: libraries, take lists, long forms |
 | `sheet` | A sheet over the editor with a Close button (Esc) | `plugins show-view`, the panel's **Views** list, or the plugin itself | A short task: a form, a confirmation with choices |
 | `inspector` | The Inspector (220 pt wide), under the controls of one selected item, on every tab | Selecting an item; rendered from scratch when the selection or its media changes | Settings of what is selected: a generated graphic's inputs, a take's options |
+| `window` (API 11) | A non-modal window of its own (75% of the editor window, at least 900×600; size and position remembered per view) with **Dock** and **Close** (Esc). **Dock** shows the same view over the viewer instead (**Undock** or Esc) | `plugins show-view`, the panel's **Views** list, or the plugin itself | Browsing next to the timeline: the editor stays usable, so results can be dragged onto it while the window stays open |
 
 Only `panel` views of the default kind need `contributes.container` (a `kind: tool` view lives in Tools); a plugin may have dock, sheet or inspector views without a rail
 icon. An inspector view reads the selection from its request's `context` (`selection`, `media` with its `data`) and
@@ -1010,9 +1011,15 @@ does not ask it about items it never handles. A new selection renders 120 ms aft
 cancelled (the plugin gets `cancel`), so the plugin renders one item at a time. The panel's
 **Plugin** section lists the plugin's dock and sheet views with a button that opens each. A plugin opens its own views
 from a view or action request with the host call `plugins.show-view` (`{"plugin": "<its id>", "view": "<id>"}`); it
-cannot open another plugin's. A view answer with `"close": true` closes its sheet (a finished form).
-`location.panel`, `location.dock`, `location.sheet` and `location.inspector` are [host features](#host-features). A host
-older than `location.inspector` refuses a manifest with an inspector view, so ship one only to apps that list it.
+cannot open another plugin's. A view answer with `"close": true` closes its sheet or window (a finished form).
+A sheet starts fresh each time it opens. A window view does not: closing the window keeps its components, input
+values, `state` and scroll position, and it is forgotten only when the project closes or switches, so a query and its
+results are still there when the user opens it again.
+`location.panel`, `location.dock`, `location.sheet`, `location.inspector` and `location.window` are
+[host features](#host-features). A host older than `location.inspector` refuses a manifest with an inspector view, so
+ship one only to apps that list it. A window view needs `apiVersion` 11; to keep a sheet for older apps, publish the
+window version with `minApiVersion` 11 and keep the previous version (with its sheet) in the registry: an older app
+installs the newest version its API allows.
 
 ### View requests
 
@@ -1028,8 +1035,9 @@ The app asks the plugin for a view's components and sends what the user does. Bo
 - `values` maps every input's `id` to its current value.
 - `context` is the read-only editor snapshot actions get (project, selection, playhead).
 - Event `type` is `click` (button; a grid's load-more button with value `"more"`), `change` (input), `submit` (text
-  field with `submit`, on Return), `select` (list row or grid cell; value = item `id`) or `action` (list row or grid
-  cell button; value = `{"item", "action"}`).
+  field with `submit`, on Return), `select` (list row, grid cell or nav entry; value = item `id`), `action` (list row
+  or grid cell button; value = `{"item", "action"}`) or `drag` (API 11: a `drag: "download"` grid tile dropped on the
+  timeline; value = `{"item"}`; answer with `libraryItem`).
 
 The answer:
 
@@ -1044,7 +1052,8 @@ The answer:
 ```
 
 - `body` (required): the components. `state`: kept and sent back (at most 64 KiB; left out, the last one is kept).
-  `close: true` closes the view's sheet.
+  `close: true` closes the view's sheet or window. `libraryItem` (`scope:id`, the answer to a `drag` event): the
+  library item BashCut places where the tile was dropped.
   `refreshSeconds` (2–3600): render again after that long, only while the view is on screen. `notify`: a status
   message shown once.
 - While working, send `{"type":"event","id","event":{"kind":"render","body":[…],"title"?}}` to redraw before the answer
@@ -1071,13 +1080,15 @@ progress, a timer, a download that finished:
 
 ### Components
 
-Every component is `{"type", "id"?, …}`. Buttons, inputs, lists and grids need an `id` (a short key, unique in the view);
+Every component is `{"type", "id"?, …}`. Buttons, inputs, lists, grids and navs need an `id` (a short key, unique in the view);
 others may have one. Text is shown as given (the plugin localizes it with `locale`).
 
 | Type | Fields |
 |---|---|
 | `section` | `title`?, `collapsed`?, `children` |
 | `row` | `children` side by side, `spacing`? |
+| `split` | API 11: `children` are 2 or 3 columns side by side, `widths`? (one entry per column: points, 120–600, or `"flex"`; all `"flex"` by default), e.g. `[200, "flex", 280]` for a sidebar, a main column and an inspector. Narrower than 900 pt, the fixed columns fold into disclosures (named by the column's `title` or `label`) above and below the flexible ones. When a split is the whole `body` of a window, sheet or dock view, it fills the height and each column scrolls on its own. Host feature `views.split` |
+| `nav` | API 11: `groups: [{"title"?, "items": [{"id", "title", "icon"?, "count"?, "disabled"?}]}]` (at most 20 groups and 500 entries), `value`? (the selected entry's id): a vertical list of entries with an SF Symbol and a count, for picking a category or a source. Sends `select` with the entry's id; the clicked entry shows as selected until the answer sets `value`. Host feature `views.nav` |
 | `divider`, `spacer` | `size`? (spacer) |
 | `text` | `text`, `style`? (`body`, `title`, `heading`, `caption`, `secondary`, `mono`), `markdown`? (inline), `color`? |
 | `badge` | `text`, `color`? (`accent`, `green`, `orange`, `red`, `purple`, `secondary`) |
@@ -1087,7 +1098,7 @@ others may have one. Text is shown as given (the plugin localizes it with `local
 | `imageCompare` | `before`, `after` (local files), `height`?, `beforeLabel`?, `afterLabel`?; drag to compare |
 | `audio` | `path`, `title`?: a play/stop button (one sound plays at a time) |
 | `list` | `items: [{"id", "title", "subtitle"?, "icon"?, "image"?, "badge"?, "audio"?, "file"?, "libraryItem"?, "actions"?: [{"id", "title", "icon"?}]}]` (at most 500, 3 actions per row), `selected`?, `empty`?; a row with `file` or `libraryItem` can be dragged |
-| `grid` | `items: [{"id", "image"?, "title"?, "subtitle"?, "badge"?, "badgeColor"?, "icon"?, "audio"?, "file"?, "libraryItem"?, "actions"?: [{"id", "title", "icon"?}]}]` (at most 500, 3 actions per cell), `selected`? (an item id, or an array of ids for several), `cellWidth`? (64–320, default 120), `aspect`? (image width/height, 0.3–3, default 1), `empty`?, `more`? (title of a load-more button under the grid): tiles that fill the width, the image filled and clipped to `aspect` (the `icon` or a placeholder without one), `badge` top right in `badgeColor` (the `badge` colours), `audio` as a play button bottom left, `title` and `subtitle` on one line each, then the buttons. Sends `select` (cell, value = item `id`), `action` (cell button, value = `{"item", "action"}`) and `click` with value `"more"` (load-more). Host feature `views.grid` |
+| `grid` | `items: [{"id", "image"?, "title"?, "subtitle"?, "badge"?, "badgeColor"?, "icon"?, "audio"?, "file"?, "libraryItem"?, "actions"?: [{"id", "title", "icon"?}]}]` (at most 500, 3 actions per cell), `selected`? (an item id, or an array of ids for several), `cellWidth`? (64–320, default 120), `aspect`? (image width/height, 0.3–3, default 1), `empty`?, `more`? (title of a load-more button under the grid), `drag`? (API 11, `"download"`, also per item): tiles that fill the width, the image filled and clipped to `aspect` (the `icon` or a placeholder without one), `badge` top right in `badgeColor` (the `badge` colours), `audio` as a play button bottom left, `title` and `subtitle` on one line each, then the buttons. Sends `select` (cell, value = item `id`), `action` (cell button, value = `{"item", "action"}`) and `click` with value `"more"` (load-more). Host feature `views.grid`. A tile with `drag: "download"` and no `file` or `libraryItem` (an online result not downloaded yet) can be dragged onto the timeline: on drop the view gets a `drag` event (value `{"item"}`), the plugin downloads the item into the library and answers with `"libraryItem": "<scope>:<id>"`, and BashCut places it where it was dropped (like `library place`) while the view stays open. Host feature `views.drag` |
 | `button` | `title`, `icon`?, `style`? (`primary`, `destructive`, `link`), `confirm`?, `wide`?, `disabled`? |
 | `textField` | `label`?, `placeholder`?, `value`?, `search`? (sends `change` 300 ms after typing stops), `submit`? |
 | `textArea` | `label`?, `value`?, `height`? (40–400) |
@@ -1179,10 +1190,13 @@ never asks the plugin per frame; the plugin sends its whole set again when somet
 ### Commands
 
 `plugins list --views` lists the plugins with panels or views, each view's location and whether it is shown, tools, skills,
-requirements, uses and the host features. `plugins show-view <plugin> --view id` shows a view where it lives (the
-sheet is dialog `plugin-view` in `ui dialog`; `ui respond close` closes it).
+requirements, uses and the host features, plus the open `sheet`, `windows` and the `docked` window view.
+`plugins show-view <plugin> --view id` shows a view where it lives (the sheet is dialog `plugin-view` in `ui dialog`;
+`ui respond close` closes it). A window is dialog `plugin-window` with `"window": true` and the id
+`sheet:plugin-window:<plugin>/<view>`: it is non-modal, so it never blocks `ui action` or other dialogs, and it is
+answered only by id: `ui respond --dialog sheet:plugin-window:<plugin>/<view> dock|undock|close`.
 `plugins view <plugin> [--view id] [--open]` renders a view and returns its components with the input values;
-`--open` also shows it. `plugins view-event <plugin> --node go [--type click|change|submit|select|action]
+`--open` also shows it. `plugins view-event <plugin> --node go [--type click|change|submit|select|action|drag]
 [--value …]` does what a user does and returns the new components, so agents and tests can drive a plugin's UI.
 
 ## Using other plugins
@@ -1500,7 +1514,7 @@ Everything above is available to agents through the CLI and MCP (`bashcut_plugin
 |---|---|---|
 | `plugins list` | read | Plugins sheet: availability, transport, actions, hooks, options, library packs, skills, provider kinds, container, views, requires (with state), uses |
 | `plugins list --views` | read | The plugin panels in the rail's More popover and their views: views, tools, skills, requirements, uses; the host features |
-| `plugins show-view <plugin> --view <id>` | ui | Opening a view where it lives: the rail panel, its dock tab or its sheet |
+| `plugins show-view <plugin> --view <id>` | ui | Opening a view where it lives: the rail panel, its dock tab, its sheet or its window |
 | `plugins view <plugin> [--view id] [--open]` | ui | Opening a view; returns its components and input values |
 | `plugins view-event <plugin> --node <id> [--type …] [--value …]` | ui | Clicking, typing or selecting in a plugin view |
 | `plugins invoke <capability> [--provider P] [--params '{…}']` | edit, job | None: a capability's raw result, for capabilities without a command |

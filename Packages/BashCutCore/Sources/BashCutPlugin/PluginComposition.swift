@@ -76,10 +76,11 @@ public struct PluginContainerContribution: Codable, Sendable, Equatable {
     }
 }
 
-/// Where a plugin view lives: in the plugin's rail panel, as a tab in the agent dock, in a sheet opened on demand, or
-/// in the Inspector under the selected item's controls (rendered again whenever the selection changes; its request
-/// `context` carries the selection and its media, and a view with an empty body shows nothing there).
-public enum PluginViewLocation: String, Codable, Sendable, CaseIterable { case panel, dock, sheet, inspector }
+/// Where a plugin view lives: in the plugin's rail panel, as a tab in the agent dock, in a sheet opened on demand, in
+/// the Inspector under the selected item's controls (rendered again whenever the selection changes; its request
+/// `context` carries the selection and its media, and a view with an empty body shows nothing there), or in a
+/// non-modal window of its own (API 11) that keeps its state when it closes and can dock over the viewer.
+public enum PluginViewLocation: String, Codable, Sendable, CaseIterable { case panel, dock, sheet, inspector, window }
 
 /// What a view is for (API 10). A `panel` view fills the plugin's rail panel (the default); a `tool` view is listed in
 /// the Tools panel next to the built-in tools. Asset libraries need neither: providers reach the asset panels through

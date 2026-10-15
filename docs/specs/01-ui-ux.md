@@ -291,8 +291,10 @@ run outside the editor process. A ready plugin with `contributes.container` (plu
 rail's More popover (the last tile of the left rail); it opens the plugin's panel in the library column: a header with its settings
 button, its declarative views (drawn natively from the components the plugin sends; only while on screen), and its
 Tools, Skills, Requires and Uses ([plugin guide](../guides/plugins.md#plugin-panels-and-views)). Views can also
-live in a tab of the agent dock (`location: dock`) or a sheet (`location: sheet`, opened by the plugin or
-`plugins show-view`).
+live in a tab of the agent dock (`location: dock`), a sheet (`location: sheet`, opened by the plugin or
+`plugins show-view`) or a non-modal window (`location: window`, API 11, D2): 75% of the editor window, at least
+900×600, remembered per view, keeping its state when closed until the project closes; **Dock** shows it over the
+viewer instead (**Undock** or Esc).
 
 - The sheet lists each plugin's name and version, capability IDs, provider choices, dependency health and manifest
   diagnostics.

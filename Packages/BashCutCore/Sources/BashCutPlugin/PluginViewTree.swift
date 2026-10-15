@@ -17,9 +17,18 @@ public struct PluginViewNode: Sendable, Equatable, Identifiable {
         /// A font menu of the project's fonts and the installed ones (what `fonts list` lists): `value` is a PostScript
         /// name, or a family name with `"by": "family"`; sends `change` with it.
         case fontPicker
+        /// Two or three columns side by side (API 11): `children` are the columns, `widths` gives each a width in
+        /// points or `"flex"` (`[200, "flex", 280]`); narrower than `splitCollapseWidth`, the fixed columns fold into
+        /// disclosures above and below the flexible ones. As the only component of a window, sheet or dock view, each
+        /// column scrolls on its own.
+        case split
+        /// A vertical list of groups of entries (API 11), each with an icon and a count: `groups` is
+        /// `[{"title"?, "items": [{"id", "title", "icon"?, "count"?}]}]`, `value` the selected entry; sends `select`
+        /// with the entry id.
+        case nav
 
         /// Components that send events and so need an `id`.
-        public var isInteractive: Bool { isInput || [.button, .list, .grid].contains(self) }
+        public var isInteractive: Bool { isInput || [.button, .list, .grid, .nav].contains(self) }
 
         /// Inputs whose current value goes with every event as `values[id]`.
         public var isInput: Bool {
@@ -86,12 +95,15 @@ public struct PluginViewTree: Sendable, Equatable {
     public let refreshSeconds: Int?
     /// A short status message to show once.
     public let notify: String?
-    /// Closes the view when it is in a sheet (a finished form).
+    /// Closes the view when it is in a sheet or window (a finished form).
     public let close: Bool
+    /// The library item (`scope:id`) the answer to a `drag` event names (API 11): the host places it where the
+    /// dragged grid tile was dropped.
+    public let libraryItem: String?
 
     public init(
         title: String? = nil, body: [PluginViewNode], state: JSONValue? = nil, refreshSeconds: Int? = nil,
-        notify: String? = nil, close: Bool = false
+        notify: String? = nil, close: Bool = false, libraryItem: String? = nil
     ) {
         self.title = title
         self.body = body
@@ -99,7 +111,14 @@ public struct PluginViewTree: Sendable, Equatable {
         self.refreshSeconds = refreshSeconds
         self.notify = notify
         self.close = close
+        self.libraryItem = libraryItem
     }
+
+    /// Below this width (points) a `split`'s fixed columns fold into disclosures.
+    public static let splitCollapseWidth = 900.0
+    /// The width range of a fixed `split` column.
+    public static let splitColumnWidths: ClosedRange<Double> = 120...600
+    public static let maximumNavGroups = 20
 
     public init(parsing result: JSONValue) throws {
         let fields = result.object
@@ -123,6 +142,7 @@ public struct PluginViewTree: Sendable, Equatable {
         refreshSeconds = fields["refreshSeconds"]?.int.map { min(max($0, 2), 3600) }
         notify = fields["notify"]?.string.map { String($0.prefix(300)) }
         close = fields["close"]?.bool ?? false
+        libraryItem = fields["libraryItem"]?.string.flatMap { PluginViewDrag.libraryPayload($0) != nil ? $0 : nil }
     }
 
     private static func node(
@@ -145,7 +165,7 @@ public struct PluginViewTree: Sendable, Equatable {
             throw PluginError.invalid("A \(type) component needs an id")
         }
         let childValues = fields.removeValue(forKey: "children")?.array ?? []
-        try check(&fields, kind: kind, id: declaredID)
+        try check(&fields, kind: kind, id: declaredID, columns: childValues.count)
         let children = try childValues.enumerated().map { index, child in
             try node(child, path: "\(path).\(index)", depth: depth + 1, count: &count, ids: &ids)
         }
@@ -153,7 +173,9 @@ public struct PluginViewTree: Sendable, Equatable {
     }
 
     /// Cuts long texts and checks list and grid items and picker options.
-    private static func check(_ fields: inout [String: JSONValue], kind: PluginViewNode.Kind?, id: String?) throws {
+    private static func check(
+        _ fields: inout [String: JSONValue], kind: PluginViewNode.Kind?, id: String?, columns: Int
+    ) throws {
         for (key, field) in fields {
             if case .string(let text) = field, text.count > maximumTextLength {
                 fields[key] = .string(String(text.prefix(maximumTextLength)))
@@ -168,6 +190,7 @@ public struct PluginViewTree: Sendable, Equatable {
                 throw PluginError.invalid("\(kind == .grid ? "Grid" : "List") \(id ?? "") items need an id")
             }
         }
+        try checkLayout(fields, kind: kind, columns: columns, id: id)
         if kind == .picker, (fields["options"]?.array.count ?? 0) > maximumOptions {
             throw PluginError.invalid("A picker offers at most \(maximumOptions) options")
         }
@@ -178,6 +201,47 @@ public struct PluginViewTree: Sendable, Equatable {
         }
         if kind == .fontPicker, let by = fields["by"]?.string, !["font", "family"].contains(by) {
             throw PluginError.invalid("fontPicker \(id ?? "") by must be font or family")
+        }
+    }
+
+    private static func checkLayout(
+        _ fields: [String: JSONValue], kind: PluginViewNode.Kind?, columns: Int, id: String?
+    ) throws {
+        switch kind {
+        case .split: try checkSplit(fields, columns: columns, id: id)
+        case .nav: try checkNav(fields, id: id)
+        default: break
+        }
+    }
+
+    /// A split has 2 or 3 columns; `widths`, when given, has one entry per column: points or `"flex"`.
+    private static func checkSplit(_ fields: [String: JSONValue], columns: Int, id: String?) throws {
+        guard (2...3).contains(columns) else { throw PluginError.invalid("split \(id ?? "") needs 2 or 3 children (its columns)") }
+        guard let widths = fields["widths"], widths != .null else { return }
+        guard case .array(let entries) = widths, entries.count == columns else {
+            throw PluginError.invalid("split \(id ?? "") widths needs one entry per column")
+        }
+        for entry in entries {
+            if entry.string == "flex" { continue }
+            guard let points = entry.double, splitColumnWidths.contains(points) else {
+                throw PluginError.invalid("split \(id ?? "") widths are \(Int(splitColumnWidths.lowerBound))–"
+                    + "\(Int(splitColumnWidths.upperBound)) points or \"flex\"")
+            }
+        }
+    }
+
+    /// A nav has at most `maximumNavGroups` groups and `maximumListItems` entries, each with an id.
+    private static func checkNav(_ fields: [String: JSONValue], id: String?) throws {
+        let groups = fields["groups"]?.array ?? []
+        guard groups.count <= maximumNavGroups else {
+            throw PluginError.invalid("nav \(id ?? "") has more than \(maximumNavGroups) groups")
+        }
+        let entries = groups.flatMap { $0.object["items"]?.array ?? [] }
+        guard entries.count <= maximumListItems else {
+            throw PluginError.invalid("nav \(id ?? "") shows at most \(maximumListItems) entries")
+        }
+        guard entries.allSatisfy({ !($0.object["id"]?.string?.isEmpty ?? true) }) else {
+            throw PluginError.invalid("nav \(id ?? "") entries need an id")
         }
     }
 
@@ -196,6 +260,9 @@ public struct PluginViewTree: Sendable, Equatable {
 
     public func node(_ id: String) -> PluginViewNode? { nodes.first { $0.id == id } }
 
+    /// The `split` that is the whole body: a window, sheet or dock host lets it fill the height, each column scrolling.
+    public var fillingSplit: PluginViewNode? { body.count == 1 && body[0].kind == .split ? body[0] : nil }
+
     /// Input id → the value the plugin set.
     public var inputValues: [String: JSONValue] {
         Dictionary(nodes.filter { $0.kind?.isInput == true }.map { ($0.id, $0.initialValue) }, uniquingKeysWith: { _, last in last })
@@ -206,6 +273,7 @@ public struct PluginViewTree: Sendable, Equatable {
         var fields: [String: JSONValue] = ["body": .array(body.map(\.json))]
         if let title { fields["title"] = .string(title) }
         if let refreshSeconds { fields["refreshSeconds"] = .integer(refreshSeconds) }
+        if let libraryItem { fields["libraryItem"] = .string(libraryItem) }
         return .object(fields)
     }
 }
@@ -241,10 +309,11 @@ public enum PluginViewColor {
 }
 
 /// Something the user did in a view: `click` (button), `change` (input), `submit` (text field Return), `select` (list
-/// row or grid cell, value = item id) or `action` (list row or grid cell button, value = `{"item", "action"}`); a grid's
-/// load-more button sends `click` with value `"more"`.
+/// row, grid cell or nav entry, value = item id), `action` (list row or grid cell button, value = `{"item", "action"}`)
+/// or `drag` (API 11: a grid tile with `drag: "download"` dropped on the timeline, value = `{"item"}`; the answer's
+/// `libraryItem` is placed where it was dropped); a grid's load-more button sends `click` with value `"more"`.
 public struct PluginViewEvent: Sendable, Equatable {
-    public enum Kind: String, CaseIterable, Sendable { case click, change, submit, select, action }
+    public enum Kind: String, CaseIterable, Sendable { case click, change, submit, select, action, drag }
 
     public let node: String
     public let kind: Kind

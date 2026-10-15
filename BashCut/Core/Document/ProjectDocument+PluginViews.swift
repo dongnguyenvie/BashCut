@@ -36,6 +36,35 @@ extension ProjectDocument {
         return views.first { $0.id == ui.pluginPanelViews[plugin.id] } ?? views.first
     }
 
+    /// Grid tiles with `drag: "download"` dropped on the timeline (API 11): each view gets a `drag` event for its tile,
+    /// downloads it and answers with the library item (`libraryItem`), which is placed where the tile was dropped.
+    func placeDroppedPluginDownloads(_ downloads: [PluginViewDrag.Download], at frame: Int, overTrack trackID: String?) {
+        Task {
+            var references: [String] = []
+            for download in downloads {
+                guard let model = pluginViews.model(key: download.key) else { continue }
+                DebugLog.write("plugin", "drag download \(download.key) \(download.item)")
+                message = String(localized: "Downloading…")
+                do {
+                    let answer = try await model.perform(PluginViewEvent(
+                        node: download.node, kind: .drag, value: .object(["item": .string(download.item)])))
+                    guard let reference = answer.libraryItem else {
+                        message = String(format: String(localized: "%@ did not add the item to the library"),
+                                         model.plugin?.manifest.displayName ?? download.plugin)
+                        continue
+                    }
+                    references.append(reference)
+                } catch {
+                    message = error.localizedDescription
+                }
+            }
+            if !references.isEmpty {
+                if message == String(localized: "Downloading…") { message = "" }
+                placeDroppedLibraryItems(references, at: frame, overTrack: trackID)
+            }
+        }
+    }
+
     /// Capabilities the plugin lists in `uses` that no ready plugin provides.
     func unprovidedCapabilities(_ plugin: InstalledPlugin) -> [String] {
         let provided = Set(plugins.plugins.filter { plugins.isReady($0) }.flatMap { ($0.manifest.providers ?? []).map(\.capability) })
@@ -68,6 +97,7 @@ extension ProjectDocument {
         case .panel: ui.pluginPanel == plugin.id && pluginPanelView(plugin).map { plugin.id + "/" + $0.id } == key
         case .dock: ui.showAgentDock && ui.rightTab == .agent && agents.pluginViewKey == key
         case .sheet: ui.pluginSheet == key
+        case .window: ui.pluginWindows.contains(key) || ui.dockedPluginView == key
         case .inspector: selectedItems.count == 1
         }
     }
@@ -133,11 +163,13 @@ extension ProjectDocument {
         return .string(text)
     }
 
-    /// Plugins with panels or views, the open panel and sheet, and the host's plugin features (`plugins.list --views`).
+    /// Plugins with panels or views, the open panel, sheet and windows, and the host's plugin features (`plugins.list --views`).
     func pluginViewsJSON() -> JSONValue {
         .object([
             "panels": .array(pluginViews.viewPlugins.map(pluginPanelJSON)),
             "sheet": ui.pluginSheet.map(JSONValue.string) ?? .null,
+            "windows": .array(ui.pluginWindows.sorted().map(JSONValue.string)),
+            "docked": ui.dockedPluginView.map(JSONValue.string) ?? .null,
             "open": ui.pluginPanel.map(JSONValue.string) ?? .null,
             "features": .array(PluginFeature.all.map(JSONValue.string)),
             "apiVersion": .integer(PluginAPI.current),
