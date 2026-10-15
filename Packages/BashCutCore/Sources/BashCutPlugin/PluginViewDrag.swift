@@ -40,6 +40,44 @@ public enum PluginViewDrag {
         return reference
     }
 
+    /// A grid tile with `drag: "download"` (API 11): an online result that is not in the library yet. Dropped on the
+    /// timeline, the host sends the view a `drag` event for `item` and places the library item the answer names.
+    public struct Download: Sendable, Equatable, Codable {
+        public let plugin: String
+        public let view: String
+        public let node: String
+        public let item: String
+
+        public init(plugin: String, view: String, node: String, item: String) {
+            self.plugin = plugin
+            self.view = view
+            self.node = node
+            self.item = item
+        }
+
+        /// The view's key, `<plugin>/<view>`.
+        public var key: String { plugin + "/" + view }
+    }
+
+    /// The pasteboard text a download drag carries: this prefix and the tile as JSON.
+    public static let downloadPrefix = "bashcut-plugin-download:"
+
+    public static func downloadPayload(_ download: Download) -> String? {
+        guard !download.item.isEmpty, download.item.count <= 300,
+            let data = try? JSONEncoder().encode(download), let json = String(data: data, encoding: .utf8)
+        else { return nil }
+        return downloadPrefix + json
+    }
+
+    /// The tile a dropped pasteboard text carries, or nil for other text.
+    public static func download(dropped text: String) -> Download? {
+        guard text.hasPrefix(downloadPrefix), text.count <= 2000,
+            let download = try? JSONDecoder().decode(Download.self, from: Data(text.dropFirst(downloadPrefix.count).utf8)),
+            !download.item.isEmpty, !download.plugin.isEmpty, !download.view.isEmpty, !download.node.isEmpty
+        else { return nil }
+        return download
+    }
+
     /// Whether the file's type is video, audio or an image (what the timeline and Media panel import).
     public static func isMedia(_ url: URL) -> Bool {
         guard let type = UTType(filenameExtension: url.pathExtension) else { return false }

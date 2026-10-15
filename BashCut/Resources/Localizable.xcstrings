@@ -1,6 +1,13 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Downloading…": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Downloading…" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đang tải xuống…" } } } },
+    "%@ did not add the item to the library": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%@ did not add the item to the library" } }, "vi": { "stringUnit": { "state": "translated", "value": "%@ chưa thêm mục này vào thư viện" } } } },
+    "More options": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "More options" } }, "vi": { "stringUnit": { "state": "translated", "value": "Tuỳ chọn khác" } } } },
+    "Dock": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Dock" } }, "vi": { "stringUnit": { "state": "translated", "value": "Gắn vào" } } } },
+    "Undock": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Undock" } }, "vi": { "stringUnit": { "state": "translated", "value": "Tách ra" } } } },
+    "Show this view over the viewer": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Show this view over the viewer" } }, "vi": { "stringUnit": { "state": "translated", "value": "Hiện giao diện này đè lên màn xem" } } } },
+    "Show this view in its own window again": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Show this view in its own window again" } }, "vi": { "stringUnit": { "state": "translated", "value": "Hiện lại giao diện này trong cửa sổ riêng" } } } },
     "In and Out": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "In and Out" } }, "vi": { "stringUnit": { "state": "translated", "value": "Vào và ra" } } } },
     "In transition": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "In transition" } }, "vi": { "stringUnit": { "state": "translated", "value": "Hiệu ứng vào" } } } },
     "Out transition": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Out transition" } }, "vi": { "stringUnit": { "state": "translated", "value": "Hiệu ứng ra" } } } },

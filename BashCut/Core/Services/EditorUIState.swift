@@ -106,6 +106,10 @@ public final class EditorUIState {
     public var pluginPanelViews: [String: String] = [:]
     /// The plugin view shown in a sheet (`<plugin>/<view>`, plugin API 8 `location: sheet`).
     public var pluginSheet: String?
+    /// Plugin views open in a window of their own (`<plugin>/<view>`, plugin API 11 `location: window`).
+    public var pluginWindows: Set<String> = []
+    /// The window view docked over the viewer instead of its window; Undock or Esc leaves it.
+    public var dockedPluginView: String?
     /// Plugin overlays on the timeline and viewer (#407), ready to draw; `setPluginOverlays` changes them.
     @ObservationIgnored public private(set) var pluginOverlays = PluginOverlayIndex([:])
     /// Goes up whenever `pluginOverlays` changes (observed, so the timeline compares a number, not the overlays).

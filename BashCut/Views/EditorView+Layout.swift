@@ -100,7 +100,10 @@ extension EditorView {
                     } else {
                         viewer
                     }
-                }.frame(minWidth: EditorLayout.viewerMinWidth, maxWidth: .infinity).clipped()
+                }
+                // A plugin window view docked over the viewer (D2); Undock or Esc leaves it.
+                .overlay { PluginDockedViewHost(document: document) }
+                .frame(minWidth: EditorLayout.viewerMinWidth, maxWidth: .infinity).clipped()
                 if inspectorColumn {
                     Divider()
                     rightColumn
