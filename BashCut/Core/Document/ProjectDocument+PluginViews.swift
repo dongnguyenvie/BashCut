@@ -36,6 +36,35 @@ extension ProjectDocument {
         return views.first { $0.id == ui.pluginPanelViews[plugin.id] } ?? views.first
     }
 
+    /// Grid tiles with `drag: "download"` dropped on the timeline (API 11): each view gets a `drag` event for its tile,
+    /// downloads it and answers with the library item (`libraryItem`), which is placed where the tile was dropped.
+    func placeDroppedPluginDownloads(_ downloads: [PluginViewDrag.Download], at frame: Int, overTrack trackID: String?) {
+        Task {
+            var references: [String] = []
+            for download in downloads {
+                guard let model = pluginViews.model(key: download.key) else { continue }
+                DebugLog.write("plugin", "drag download \(download.key) \(download.item)")
+                message = String(localized: "Downloading…")
+                do {
+                    let answer = try await model.perform(PluginViewEvent(
+                        node: download.node, kind: .drag, value: .object(["item": .string(download.item)])))
+                    guard let reference = answer.libraryItem else {
+                        message = String(format: String(localized: "%@ did not add the item to the library"),
+                                         model.plugin?.manifest.displayName ?? download.plugin)
+                        continue
+                    }
+                    references.append(reference)
+                } catch {
+                    message = error.localizedDescription
+                }
+            }
+            if !references.isEmpty {
+                if message == String(localized: "Downloading…") { message = "" }
+                placeDroppedLibraryItems(references, at: frame, overTrack: trackID)
+            }
+        }
+    }
+
     /// Capabilities the plugin lists in `uses` that no ready plugin provides.
     func unprovidedCapabilities(_ plugin: InstalledPlugin) -> [String] {
         let provided = Set(plugins.plugins.filter { plugins.isReady($0) }.flatMap { ($0.manifest.providers ?? []).map(\.capability) })

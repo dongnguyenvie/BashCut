@@ -10,10 +10,24 @@ struct PluginViewColumn: View {
     var tracksVisibility = true
 
     var body: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 8) {
-                PluginViewRows(model: model)
-            }.padding(12)
+        Group {
+            if let split = model.tree?.fillingSplit {
+                // A view that is one split fills the host, and each column scrolls on its own (API 11).
+                VStack(alignment: .leading, spacing: 0) {
+                    if model.tree?.title != nil || model.error != nil {
+                        VStack(alignment: .leading, spacing: 8) { PluginViewRows(model: model, showsBody: false) }
+                            .padding(.horizontal, 12).padding(.vertical, 8)
+                        Divider()
+                    }
+                    PluginSplitView(node: split, model: model, fills: true)
+                }
+            } else {
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 8) {
+                        PluginViewRows(model: model)
+                    }.padding(12)
+                }
+            }
         }
         .task(id: model.pluginID + "/" + model.viewID) {
             guard tracksVisibility else { return }
@@ -60,6 +74,8 @@ struct PluginSheetView: View {
 /// A plugin view as rows of the panel's lazy column: its title, an error, then its top-level components.
 struct PluginViewRows: View {
     @Bindable var model: PluginViewModel
+    /// False for the header of a view whose split the host draws itself.
+    var showsBody = true
 
     var body: some View {
         if let title = model.tree?.title {
@@ -78,7 +94,7 @@ struct PluginViewRows: View {
                 Button("Try Again") { model.load() }.controlSize(.small)
             }
         }
-        if let tree = model.tree {
+        if showsBody, let tree = model.tree {
             ForEach(tree.body) { node in PluginNodeView(node: node, model: model) }
         }
     }

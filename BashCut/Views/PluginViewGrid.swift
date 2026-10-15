@@ -21,7 +21,9 @@ struct PluginGridView: View {
             }
             LazyVGrid(columns: [GridItem(.adaptive(minimum: width), spacing: 6)], alignment: .leading, spacing: 6) {
                 ForEach(Array(items.enumerated()), id: \.offset) { _, item in
-                    PluginGridCell(item: item.object, aspect: aspect, selected: selected, gridID: node.id, model: model)
+                    PluginGridCell(
+                        item: item.object, aspect: aspect, selected: selected, gridID: node.id, gridDrag: node.string("drag"),
+                        model: model)
                 }
             }
             if let more = node.string("more") {
@@ -49,8 +51,17 @@ private struct PluginGridCell: View {
     let aspect: Double
     let selected: Set<String>
     let gridID: String
+    /// The grid's `drag`; an item's own `drag` wins.
+    let gridDrag: String?
     @Bindable var model: PluginViewModel
     @State private var image: NSImage?
+
+    /// A tile with `drag: "download"` (API 11) that is not in the library yet drags as a download: dropped on the
+    /// timeline, the plugin downloads it and the host places the library item it answers with.
+    private var download: PluginViewDrag.Download? {
+        guard (item["drag"]?.string ?? gridDrag) == "download", let id = item["id"]?.string else { return nil }
+        return PluginViewDrag.Download(plugin: model.pluginID, view: model.viewID, node: gridID, item: id)
+    }
 
     var body: some View {
         let id = item["id"]?.string ?? ""
@@ -77,7 +88,7 @@ private struct PluginGridCell: View {
         }
         .contentShape(Rectangle())
         .onTapGesture { model.send(PluginViewEvent(node: gridID, kind: .select, value: .string(id))) }
-        .pluginFileDrag(item["file"]?.string, library: item["libraryItem"]?.string)
+        .pluginFileDrag(item["file"]?.string, library: item["libraryItem"]?.string, download: download)
     }
 
     private var thumbnail: some View {

@@ -1035,8 +1035,9 @@ The app asks the plugin for a view's components and sends what the user does. Bo
 - `values` maps every input's `id` to its current value.
 - `context` is the read-only editor snapshot actions get (project, selection, playhead).
 - Event `type` is `click` (button; a grid's load-more button with value `"more"`), `change` (input), `submit` (text
-  field with `submit`, on Return), `select` (list row or grid cell; value = item `id`) or `action` (list row or grid
-  cell button; value = `{"item", "action"}`).
+  field with `submit`, on Return), `select` (list row, grid cell or nav entry; value = item `id`), `action` (list row
+  or grid cell button; value = `{"item", "action"}`) or `drag` (API 11: a `drag: "download"` grid tile dropped on the
+  timeline; value = `{"item"}`; answer with `libraryItem`).
 
 The answer:
 
@@ -1051,7 +1052,8 @@ The answer:
 ```
 
 - `body` (required): the components. `state`: kept and sent back (at most 64 KiB; left out, the last one is kept).
-  `close: true` closes the view's sheet or window.
+  `close: true` closes the view's sheet or window. `libraryItem` (`scope:id`, the answer to a `drag` event): the
+  library item BashCut places where the tile was dropped.
   `refreshSeconds` (2–3600): render again after that long, only while the view is on screen. `notify`: a status
   message shown once.
 - While working, send `{"type":"event","id","event":{"kind":"render","body":[…],"title"?}}` to redraw before the answer
@@ -1078,13 +1080,15 @@ progress, a timer, a download that finished:
 
 ### Components
 
-Every component is `{"type", "id"?, …}`. Buttons, inputs, lists and grids need an `id` (a short key, unique in the view);
+Every component is `{"type", "id"?, …}`. Buttons, inputs, lists, grids and navs need an `id` (a short key, unique in the view);
 others may have one. Text is shown as given (the plugin localizes it with `locale`).
 
 | Type | Fields |
 |---|---|
 | `section` | `title`?, `collapsed`?, `children` |
 | `row` | `children` side by side, `spacing`? |
+| `split` | API 11: `children` are 2 or 3 columns side by side, `widths`? (one entry per column: points, 120–600, or `"flex"`; all `"flex"` by default), e.g. `[200, "flex", 280]` for a sidebar, a main column and an inspector. Narrower than 900 pt, the fixed columns fold into disclosures (titled by the column's `title`) above and below the flexible ones. When a split is the whole `body` of a window, sheet or dock view, it fills the height and each column scrolls on its own. Host feature `views.split` |
+| `nav` | API 11: `groups: [{"title"?, "items": [{"id", "title", "icon"?, "count"?, "disabled"?}]}]` (at most 20 groups and 500 entries), `value`? (the selected entry's id): a vertical list of entries with an SF Symbol and a count, for picking a category or a source. Sends `select` with the entry's id; the clicked entry shows as selected until the answer sets `value`. Host feature `views.nav` |
 | `divider`, `spacer` | `size`? (spacer) |
 | `text` | `text`, `style`? (`body`, `title`, `heading`, `caption`, `secondary`, `mono`), `markdown`? (inline), `color`? |
 | `badge` | `text`, `color`? (`accent`, `green`, `orange`, `red`, `purple`, `secondary`) |
@@ -1094,7 +1098,7 @@ others may have one. Text is shown as given (the plugin localizes it with `local
 | `imageCompare` | `before`, `after` (local files), `height`?, `beforeLabel`?, `afterLabel`?; drag to compare |
 | `audio` | `path`, `title`?: a play/stop button (one sound plays at a time) |
 | `list` | `items: [{"id", "title", "subtitle"?, "icon"?, "image"?, "badge"?, "audio"?, "file"?, "libraryItem"?, "actions"?: [{"id", "title", "icon"?}]}]` (at most 500, 3 actions per row), `selected`?, `empty`?; a row with `file` or `libraryItem` can be dragged |
-| `grid` | `items: [{"id", "image"?, "title"?, "subtitle"?, "badge"?, "badgeColor"?, "icon"?, "audio"?, "file"?, "libraryItem"?, "actions"?: [{"id", "title", "icon"?}]}]` (at most 500, 3 actions per cell), `selected`? (an item id, or an array of ids for several), `cellWidth`? (64–320, default 120), `aspect`? (image width/height, 0.3–3, default 1), `empty`?, `more`? (title of a load-more button under the grid): tiles that fill the width, the image filled and clipped to `aspect` (the `icon` or a placeholder without one), `badge` top right in `badgeColor` (the `badge` colours), `audio` as a play button bottom left, `title` and `subtitle` on one line each, then the buttons. Sends `select` (cell, value = item `id`), `action` (cell button, value = `{"item", "action"}`) and `click` with value `"more"` (load-more). Host feature `views.grid` |
+| `grid` | `items: [{"id", "image"?, "title"?, "subtitle"?, "badge"?, "badgeColor"?, "icon"?, "audio"?, "file"?, "libraryItem"?, "actions"?: [{"id", "title", "icon"?}]}]` (at most 500, 3 actions per cell), `selected`? (an item id, or an array of ids for several), `cellWidth`? (64–320, default 120), `aspect`? (image width/height, 0.3–3, default 1), `empty`?, `more`? (title of a load-more button under the grid), `drag`? (API 11, `"download"`, also per item): tiles that fill the width, the image filled and clipped to `aspect` (the `icon` or a placeholder without one), `badge` top right in `badgeColor` (the `badge` colours), `audio` as a play button bottom left, `title` and `subtitle` on one line each, then the buttons. Sends `select` (cell, value = item `id`), `action` (cell button, value = `{"item", "action"}`) and `click` with value `"more"` (load-more). Host feature `views.grid`. A tile with `drag: "download"` and no `file` or `libraryItem` (an online result not downloaded yet) can be dragged onto the timeline: on drop the view gets a `drag` event (value `{"item"}`), the plugin downloads the item into the library and answers with `"libraryItem": "<scope>:<id>"`, and BashCut places it where it was dropped (like `library place`) while the view stays open. Host feature `views.drag` |
 | `button` | `title`, `icon`?, `style`? (`primary`, `destructive`, `link`), `confirm`?, `wide`?, `disabled`? |
 | `textField` | `label`?, `placeholder`?, `value`?, `search`? (sends `change` 300 ms after typing stops), `submit`? |
 | `textArea` | `label`?, `value`?, `height`? (40–400) |
@@ -1192,7 +1196,7 @@ requirements, uses and the host features, plus the open `sheet`, `windows` and t
 `sheet:plugin-window:<plugin>/<view>`: it is non-modal, so it never blocks `ui action` or other dialogs, and it is
 answered only by id: `ui respond --dialog sheet:plugin-window:<plugin>/<view> dock|undock|close`.
 `plugins view <plugin> [--view id] [--open]` renders a view and returns its components with the input values;
-`--open` also shows it. `plugins view-event <plugin> --node go [--type click|change|submit|select|action]
+`--open` also shows it. `plugins view-event <plugin> --node go [--type click|change|submit|select|action|drag]
 [--value …]` does what a user does and returns the new components, so agents and tests can drive a plugin's UI.
 
 ## Using other plugins

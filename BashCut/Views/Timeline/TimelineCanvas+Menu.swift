@@ -161,6 +161,8 @@ extension TimelineCanvas {
         let files: [URL]
         /// Library item references dragged from a plugin view (`libraryItem`), placed like `library place`.
         var library: [String] = []
+        /// Online results dragged from a plugin view (API 11), downloaded by the plugin when dropped.
+        var downloads: [PluginViewDrag.Download] = []
         /// A transition kind dragged from the Transitions panel.
         var transition: String?
         let trackID: String?
@@ -197,6 +199,10 @@ extension TimelineCanvas {
             document.placeDroppedLibraryItems(drop.library, at: drop.frame, overTrack: drop.trackID)
             return true
         }
+        if !drop.downloads.isEmpty {
+            document.placeDroppedPluginDownloads(drop.downloads, at: drop.frame, overTrack: drop.trackID)
+            return true
+        }
         if !drop.files.isEmpty {
             document.importFiles(drop.files, trackID: drop.trackID, at: drop.frame)
             return true
@@ -227,13 +233,16 @@ extension TimelineCanvas {
             return Drop(media: [], files: [], transition: kind, trackID: row?.isLocked == false ? row?.id : nil, frame: frame)
         }
         let library = texts.compactMap { PluginViewDrag.libraryReference(dropped: $0) }
-        if !library.isEmpty {
+        let downloads = texts.compactMap { PluginViewDrag.download(dropped: $0) }
+        if !library.isEmpty || !downloads.isEmpty {
             let point = convert(sender.draggingLocation, from: nil)
             let row = layout.row(at: point.y)?.track
             let frame = snap(
                 min(project.duration, layout.frame(at: point.x)), excluding: nil, toPlayhead: true,
                 modifiers: NSEvent.modifierFlags).frame
-            return Drop(media: [], files: [], library: library, trackID: row?.isLocked == false ? row?.id : nil, frame: frame)
+            return Drop(
+                media: [], files: [], library: library, downloads: downloads, trackID: row?.isLocked == false ? row?.id : nil,
+                frame: frame)
         }
         let ids = texts
             .filter { $0.hasPrefix(Self.mediaPasteboardPrefix) }.map { String($0.dropFirst(Self.mediaPasteboardPrefix.count)) }

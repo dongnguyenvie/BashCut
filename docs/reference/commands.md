@@ -824,7 +824,7 @@ Do what a user does in a plugin view: click a button, change an input, submit a 
 - `plugin`: string, required. Plugin ID
 - `view`: string. View ID from plugins list --views; the plugin's first view by default
 - `node`: string, required. Component id from plugins view
-- `type`: string, one of click, change, submit, select, action, default "click". What happened
+- `type`: string, one of click, change, submit, select, action, drag, default "click". What happened
 - `value`: string. New value (change), row id (select) or {"item","action"} (action); JSON or text
 
 ### `bashcut plugins invoke <capability> [--provider <provider>] [--params <params>]`
