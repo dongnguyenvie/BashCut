@@ -18,7 +18,7 @@ struct PluginPanelView: View {
                 // One lazy column for the whole panel: only the components on screen are built, so a view with
                 // thousands of components costs what its visible part costs.
                 LazyVStack(alignment: .leading, spacing: 8) {
-                    let views = plugin.manifest.views.filter { $0.place == .panel }
+                    let views = plugin.manifest.views.filter { $0.place == .panel && !$0.isTool }
                     if views.count > 1 {
                         Picker("View", selection: Binding(
                             get: { document.pluginPanelView(plugin)?.id ?? "" },

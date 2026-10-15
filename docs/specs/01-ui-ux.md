@@ -60,7 +60,7 @@ The layout follows CapCut desktop, plus an agent dock on the right.
 
 | Region | Content | Notes |
 |---|---|---|
-| **Tab rail** (far left) | Media 🎞, Audio ♪, Text T, Stickers ★, Effects ✦, Transitions ⇄, Filters ◐, Voice 🎙, Brand 🎨 | Same idea as CapCut's left rail |
+| **Tab rail** (far left) | Media 🎞, Audio ♪, Text T, Stickers ★, Effects ✦, Transitions ⇄, Filters ◐, Brand 🎨, then after a divider Tools 🔧 and, when a plugin has a panel, More ⋯ | Same idea as CapCut's left rail. Voiceover lives in Tools, plugin panels in the More popover. In a window shorter than 900 pt the tiles show icons only and the label is the tooltip |
 | **Library** | Content of the selected tab: thumbnail grid, drag to timeline, hover-scrub | Each tab is described in §3 |
 | **Viewer** | Preview in the project frame (9:16 / 16:9), timecode, toggleable TikTok safe area | Same engine as export. Heavy footage plays from automatic proxies; a manual quality picker (Full / ½ / Proxy) is Planned |
 | **Inspector** | Properties of the selected item | Tabs: Video, Audio, Text, Color, Speed. Every number can be scrubbed and typed |
@@ -283,8 +283,8 @@ This tab is the manual counterpart of the `nolan-voice-clone` skill.
 ### 3.8 Plugins sheet 🧩
 
 The Plugins sheet opens from the toolbar and from linked panels. Plugins hold optional, replaceable providers and
-run outside the editor process. A ready plugin with `contributes.container` (plugin API 8) also adds an icon to the
-left rail, under the built-in panels; it opens the plugin's panel in the library column: a header with its settings
+run outside the editor process. A ready plugin with `contributes.container` (plugin API 8) also adds an entry to the
+rail's More popover (the last tile of the left rail); it opens the plugin's panel in the library column: a header with its settings
 button, its declarative views (drawn natively from the components the plugin sends; only while on screen), and its
 Tools, Skills, Requires and Uses ([plugin guide](../guides/plugins.md#plugin-panels-and-views)). Views can also
 live in a tab of the agent dock (`location: dock`) or a sheet (`location: sheet`, opened by the plugin or
@@ -484,4 +484,5 @@ Shortcuts belong to editor actions; `bashcut ui actions` lists every action with
 | ⌘⇧A | Switch tab Claude ↔ Codex | Planned |
 | ⌘E | Export | Implemented |
 | ⌘⇧R | Review | Implemented |
-| ⌘1…⌘8 | Library tabs | Planned |
+| ⌘1…⌘8 | Asset panels (Media … Brand) | Implemented |
+| ⌘T | Tools panel | Implemented |

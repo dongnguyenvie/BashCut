@@ -35,9 +35,8 @@ struct LibraryView: View {
                     case .filters: FilterLibraryView(document: document)
                     case .transitions:
                         TransitionLibraryView(document: document)
-                    case .voice:
-                        VoiceLibraryView(document: document, pluginManager: pluginManager)
                     case .brand: BrandLibraryView(document: document)
+                    case .tools: ToolsPanelView(document: document, pluginManager: pluginManager)
                     }
                     PluginActionStrip(document: document, placement: "panel." + document.ui.libraryTab.panelName)
                 }.padding(10)

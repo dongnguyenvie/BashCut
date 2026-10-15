@@ -7144,7 +7144,9 @@
     "Saved voice %@": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Saved voice %@" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đã lưu giọng %@" } } } },
     "Developer": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Developer" } }, "vi": { "stringUnit": { "state": "translated", "value": "Nhà phát triển" } } } },
     "Developer mode": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Developer mode" } }, "vi": { "stringUnit": { "state": "translated", "value": "Chế độ nhà phát triển" } } } },
-    "Shows the sample plugins in the rail, the menus and Plugins › Browse. For people who write plugins.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Shows the sample plugins in the rail, the menus and Plugins › Browse. For people who write plugins." } }, "vi": { "stringUnit": { "state": "translated", "value": "Hiện các plugin mẫu trên thanh bên, trong menu và Plugins › Duyệt. Dành cho người viết plugin." } } } }
+    "Shows the sample plugins in the rail, the menus and Plugins › Browse. For people who write plugins.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Shows the sample plugins in the rail, the menus and Plugins › Browse. For people who write plugins." } }, "vi": { "stringUnit": { "state": "translated", "value": "Hiện các plugin mẫu trên thanh bên, trong menu và Plugins › Duyệt. Dành cho người viết plugin." } } } },
+    "More: plugin panels": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "More: plugin panels" } }, "vi": { "stringUnit": { "state": "translated", "value": "Thêm: bảng của plugin" } } } },
+    "Plugin panels": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Plugin panels" } }, "vi": { "stringUnit": { "state": "translated", "value": "Bảng plugin" } } } }
   },
   "version": "1.0"
 }

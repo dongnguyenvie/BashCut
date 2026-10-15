@@ -172,13 +172,13 @@ import BashCutPlugin
     private func viewMenu() -> NSMenuItem {
         let menu = NSMenu(title: String(localized: "View"))
         let library = NSMenu(title: String(localized: "Library"))
-        for (index, tab) in LibraryTab.allCases.enumerated() {
+        for tab in LibraryTab.allCases {
             let entry = ActionMenuItem(
                 String(localized: String.LocalizationValue(tab.rawValue)), target: self,
                 checked: { [weak self] in self?.document.ui.libraryTab == tab },
                 handler: { [weak self] in self?.document.showLibraryTab(tab) })
-            if index < 9 {
-                entry.keyEquivalent = String(index + 1)
+            if let key = tab.keyEquivalent {
+                entry.keyEquivalent = key
                 entry.keyEquivalentModifierMask = .command
             }
             entry.image = NSImage(systemSymbolName: tab.icon, accessibilityDescription: nil)

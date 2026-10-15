@@ -768,7 +768,7 @@ code.
 | `track.context` | The layer header context menu and the clip context menu |
 | `timeline.context` | The timeline gap and empty-area context menu |
 | `media.context` | The Media panel item context menu; the clicked media is the action's `media` |
-| `panel.<panel>` | A **Plugins** section in a library panel: `panel.media`, `panel.audio`, `panel.text`, `panel.stickers`, `panel.effects`, `panel.transitions`, `panel.filters`, `panel.voice` |
+| `panel.<panel>` | A **Plugins** section in a library panel: `panel.media`, `panel.audio`, `panel.text`, `panel.stickers`, `panel.effects`, `panel.transitions`, `panel.filters`, `panel.voice` (in the Voiceover tool), `panel.tools` (at the bottom of the Tools panel) |
 | `inspector.<tab>` | The bottom of an inspector tab: `inspector.video`, `audio`, `text`, `color`, `speed` |
 
 ### When conditions
@@ -962,8 +962,9 @@ says how many skills changed and how many lines are flagged.
 
 ## Plugin panels and views
 
-A plugin with `contributes.container` (API 8) gets an icon in the left rail, under the built-in panels, while it is
-trusted, turned on and its requirements are met. The icon opens the plugin's panel in the library column. BashCut draws
+A plugin with `contributes.container` (API 8) gets an entry in the **More** popover, the last tile of the left rail,
+while it is trusted, turned on and its requirements are met. The entry opens the plugin's panel in the library column
+(its `kind: tool` views are listed in **Tools** instead). BashCut draws
 the panel's frame from the manifest, so every plugin gets the same parts:
 
 - a header with the container title, the plugin name and version, and a button to its settings;
@@ -996,12 +997,12 @@ A container alone (no views) is a panel of the plugin's tools and skills. Views 
 
 | `location` | Where | Opens | Good for |
 |---|---|---|---|
-| `panel` | The plugin's panel in the left rail (225 pt wide); a picker switches between several | The rail icon | Browsing, tools next to the timeline |
+| `panel` | The plugin's panel in the left rail (225 pt wide); a picker switches between several | The More popover in the rail | Browsing, tools next to the timeline |
 | `dock` | A tab in the agent dock on the right, next to the agent tabs (330–500 pt wide) | The tab, always there while the plugin is ready | Wider work: libraries, take lists, long forms |
 | `sheet` | A sheet over the editor with a Close button (Esc) | `plugins show-view`, the panel's **Views** list, or the plugin itself | A short task: a form, a confirmation with choices |
 | `inspector` | The Inspector (220 pt wide), under the controls of one selected item, on every tab | Selecting an item; rendered from scratch when the selection or its media changes | Settings of what is selected: a generated graphic's inputs, a take's options |
 
-Only `panel` views need `contributes.container`; a plugin may have dock, sheet or inspector views without a rail
+Only `panel` views of the default kind need `contributes.container` (a `kind: tool` view lives in Tools); a plugin may have dock, sheet or inspector views without a rail
 icon. An inspector view reads the selection from its request's `context` (`selection`, `media` with its `data`) and
 answers an empty `body` for items it has nothing to say about: it then takes no room. Give it a `when` so BashCut
 does not ask it about items it never handles. A new selection renders 120 ms after the selection stops changing
@@ -1498,7 +1499,7 @@ Everything above is available to agents through the CLI and MCP (`bashcut_plugin
 | Command | Mode | UI equivalent |
 |---|---|---|
 | `plugins list` | read | Plugins sheet: availability, transport, actions, hooks, options, library packs, skills, provider kinds, container, views, requires (with state), uses |
-| `plugins list --views` | read | The plugin icons in the left rail and their panels: views, tools, skills, requirements, uses; the host features |
+| `plugins list --views` | read | The plugin panels in the rail's More popover and their views: views, tools, skills, requirements, uses; the host features |
 | `plugins show-view <plugin> --view <id>` | ui | Opening a view where it lives: the rail panel, its dock tab or its sheet |
 | `plugins view <plugin> [--view id] [--open]` | ui | Opening a view; returns its components and input values |
 | `plugins view-event <plugin> --node <id> [--type …] [--value …]` | ui | Clicking, typing or selecting in a plugin view |

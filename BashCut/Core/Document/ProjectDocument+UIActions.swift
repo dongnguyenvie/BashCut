@@ -255,6 +255,7 @@ extension ProjectDocument {
             case "panel":
                 guard let tab = LibraryTab(panelName: target) else { throw RPCFailure(-32602, "Unknown panel \(target)") }
                 document.showLibraryTab(tab)
+                if let tool = LibraryTab.toolForPanelName(target) { document.showTool(tool) }
                 return .bool(true)
             case "source": return try document.showSource(target, in: arguments.optionalInt("in"), out: arguments.optionalInt("out"))
             case "notify":
@@ -383,6 +384,7 @@ extension ProjectDocument {
             "selectedItems": .array(selectedIDs.map(JSONValue.string)),
             "selectedTrack": selectedTrackID.map(JSONValue.string) ?? .null,
             "libraryPanel": .string(ui.libraryTab.panelName), "libraryFilter": libraryFilterJSON(),
+            "tool": ui.libraryTab == .tools ? selectedTool.map { .string($0.id) } ?? .null : .null,
             "mediaSource": .string(ui.mediaSource),
             "inspector": .string(ui.inspectorTab),
             "settingsSection": .string(ui.settingsSection), "settingsSearch": .string(ui.settingsSearch),

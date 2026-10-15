@@ -52,6 +52,8 @@ public final class EditorUIState {
     public var showLibraryPanel = true
     public var showInspector = true
     public var libraryTab: LibraryTab = .media
+    /// The tool the Tools panel shows (a `ToolID`, or `<plugin>/<view>` for a plugin's tool view), nil for the first.
+    public var selectedTool: String?
     /// The plugin whose rail panel replaces the library panel (plugin API 8), or nil for the library.
     public var pluginPanel: String?
     /// The view each plugin panel shows, by plugin ID.
@@ -363,7 +365,8 @@ public struct EffectApplyRequest: Identifiable {
     }
 }
 
-/// Left-rail library panels; `CommandCatalog.libraryPanels` lists their lowercased names.
+/// Left-rail panels; `CommandCatalog.libraryPanels` lists their lowercased names. The eight asset panels come
+/// first (`assets`, ⌘1…⌘8); `tools` follows the rail's divider (⌘T) and holds Voiceover and the plugin tools.
 public enum LibraryTab: String, CaseIterable, Identifiable, Sendable {
     case media = "Media"
     case audio = "Audio"
@@ -372,18 +375,32 @@ public enum LibraryTab: String, CaseIterable, Identifiable, Sendable {
     case effects = "Effects"
     case transitions = "Transitions"
     case filters = "Filters"
-    case voice = "Voice"
     case brand = "Brand"
+    case tools = "Tools"
 
     public var id: String { rawValue }
+
+    /// The panels of library items, in rail order (⌘1…⌘8).
+    public static var assets: [LibraryTab] { allCases.filter(\.isAsset) }
+
+    public var isAsset: Bool { self != .tools }
 
     /// The automation name (`ui.panel`).
     public var panelName: String { rawValue.lowercased() }
 
+    /// The panel named `panelName`. `voice` was a panel of its own before Tools: it is the Tools panel's Voiceover tool
+    /// (`Self.toolForPanelName` says which tool a name selects).
     public init?(panelName: String) {
+        if Self.toolForPanelName(panelName) != nil {
+            self = .tools
+            return
+        }
         guard let tab = Self.allCases.first(where: { $0.panelName == panelName }) else { return nil }
         self = tab
     }
+
+    /// The tool a panel name selects inside Tools: `voice` (the old Voice panel), nil for every other name.
+    public static func toolForPanelName(_ name: String) -> String? { name == "voice" ? ToolID.voice : nil }
 
     public var icon: String {
         switch self {
@@ -394,8 +411,8 @@ public enum LibraryTab: String, CaseIterable, Identifiable, Sendable {
         case .effects: return "sparkles"
         case .transitions: return "arrow.left.arrow.right"
         case .filters: return "circle.lefthalf.filled"
-        case .voice: return "mic"
         case .brand: return "paintpalette"
+        case .tools: return "wrench.and.screwdriver"
         }
     }
 }

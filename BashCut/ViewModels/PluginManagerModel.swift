@@ -269,6 +269,8 @@ enum PluginText {
         applyRequirements()
         diagnostics = catalogDiagnostics
         var taken = Set(UIAction.allCases.flatMap(\.shortcuts))
+        // The View menu's panel keys: ⌘1…⌘8 for the asset panels and ⌘T for Tools.
+        taken.formUnion((1...8).map { UIShortcut(String($0), [.command]) } + [UIShortcut("t", [.command])])
         var list: [ContributedAction] = []
         for plugin in plugins where availability[plugin.id] == .ready {
             for spec in plugin.manifest.actions {

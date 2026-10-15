@@ -9,6 +9,10 @@ import SwiftUI
 // The editor keeps its major panels together so AppKit timeline and SwiftUI sheets share one document.
 struct EditorView: View {
     @Bindable var document: ProjectDocument
+    /// The window's height: below `EditorLayout.railLabelsMinHeight` the rail shows icons only (P1-3).
+    @State var windowHeight = 900.0
+    /// The rail's More popover, which lists the plugin panels.
+    @State var showRailMore = false
     var body: some View {
         VStack(spacing: 0) {
             toolbar
@@ -54,6 +58,7 @@ struct EditorView: View {
                 Spacer()
             }.font(.caption).padding(6)
         }
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { windowHeight = $0 }
         .ignoresSafeArea(.container, edges: .top)
         .background(Color(red: 0.065, green: 0.07, blue: 0.08)).preferredColorScheme(.dark).tint(.cyan)
         .frame(minWidth: minSize.width, minHeight: minSize.height)
@@ -191,33 +196,6 @@ struct EditorView: View {
     }
     private func runDoctor() { Task { await document.runDoctor() } }
     private var minSize: CGSize { EditorLayout.minSize(dock: document.ui.showAgentDock && !document.agents.isDetached) }
-    var rail: some View {
-        VStack(spacing: 4) {
-            ForEach(LibraryTab.allCases) { tab in
-                Button {
-                    // The open panel's tab collapses the panel; any other tab shows it.
-                    if libraryTabSelected(tab), document.ui.showLibraryPanel {
-                        document.run(.toggleLibraryPanel)
-                    } else {
-                        document.showLibraryTab(tab)
-                    }
-                } label: {
-                    VStack(spacing: 3) {
-                        Image(systemName: tab.icon).font(.system(size: 16))
-                        Text(LocalizedStringKey(tab.rawValue)).font(.system(size: 8))
-                    }
-                    .frame(width: 48, height: 42)
-                    .background(libraryTabSelected(tab) ? Color.cyan.opacity(0.12) : .clear)
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
-                    // Plain buttons only hit-test drawn pixels; make the whole tile clickable.
-                    .contentShape(RoundedRectangle(cornerRadius: 6))
-                }.buttonStyle(.plain).foregroundStyle(libraryTabSelected(tab) ? .cyan : .secondary)
-                    .help(LocalizedStringKey(tab.rawValue))
-            }
-            pluginRail
-            Spacer()
-        }.padding(.top, 8)
-    }
     var timelineToolbar: some View { TimelineToolbar(document: document) }
     private var review: some View {
         VStack(alignment: .leading, spacing: 12) {
