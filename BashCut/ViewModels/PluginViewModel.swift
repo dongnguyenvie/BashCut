@@ -42,7 +42,9 @@ import Foundation
 
     /// Ready plugins with a rail container, in catalog order.
     var containers: [InstalledPlugin] {
-        document.plugins.plugins.filter { $0.manifest.container != nil && document.plugins.isReady($0) }
+        document.plugins.plugins.filter {
+            $0.manifest.container != nil && document.plugins.isReady($0) && !document.plugins.isHidden($0)
+        }
     }
 
     /// Ready plugins with a rail container or any view, for `plugins list --views`.
@@ -54,14 +56,14 @@ import Foundation
 
     /// Views of ready plugins that live in the agent dock, as `(key, plugin, view)`.
     var dockViews: [(key: String, plugin: InstalledPlugin, view: PluginViewContribution)] {
-        document.plugins.plugins.filter { document.plugins.isReady($0) }.flatMap { plugin in
+        document.plugins.plugins.filter { document.plugins.isReady($0) && !document.plugins.isHidden($0) }.flatMap { plugin in
             plugin.manifest.views.filter { $0.place == .dock }.map { (plugin.id + "/" + $0.id, plugin, $0) }
         }
     }
 
     /// Views of ready plugins that live in the Inspector, as `(key, plugin, view)`.
     var inspectorViews: [(key: String, plugin: InstalledPlugin, view: PluginViewContribution)] {
-        document.plugins.plugins.filter { document.plugins.isReady($0) }.flatMap { plugin in
+        document.plugins.plugins.filter { document.plugins.isReady($0) && !document.plugins.isHidden($0) }.flatMap { plugin in
             plugin.manifest.views.filter { $0.place == .inspector }.map { (plugin.id + "/" + $0.id, plugin, $0) }
         }
     }

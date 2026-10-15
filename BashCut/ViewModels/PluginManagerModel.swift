@@ -205,6 +205,8 @@ enum PluginText {
     /// Settings › Plugins › Trust plugins automatically: installs, links and setups run without the approval sheet
     /// and plugins in the user plugin folder are trusted again after they change. The document passes the setting.
     @ObservationIgnored let trustsAutomatically: () -> Bool
+    /// Settings › General › Developer mode: sample plugins (`category: sample`) show in the app's own surfaces.
+    @ObservationIgnored let developerMode: () -> Bool
     /// Values of `secret` options (Keychain; in memory in tests).
     @ObservationIgnored var secrets = PluginSecretStore()
     @ObservationIgnored var service: CapabilityService
@@ -212,9 +214,18 @@ enum PluginText {
     var currentProjectRoot: URL? { projectRoot }
     static let hookLogLimit = 200
 
-    init(trust: PluginTrustStore = .standard, trustsAutomatically: @escaping () -> Bool = { false }) {
+    /// The model of a document: it reads Trust plugins automatically and Developer mode from the settings when used.
+    convenience init(settings: @escaping () -> SettingsModel) {
+        self.init(trustsAutomatically: { settings().trustPluginsAutomatically }, developerMode: { settings().developerMode })
+    }
+
+    init(
+        trust: PluginTrustStore = .standard, trustsAutomatically: @escaping () -> Bool = { false },
+        developerMode: @escaping () -> Bool = { false }
+    ) {
         self.trust = trust
         self.trustsAutomatically = trustsAutomatically
+        self.developerMode = developerMode
         service = CapabilityService(trust: trust)
         service.preparesPluginFolders = true
         #if DEBUG
@@ -283,9 +294,15 @@ enum PluginText {
 
     func action(_ id: String) -> ContributedAction? { actions.first { $0.id == id } }
 
+    /// The actions the editor's menus, panels and strips show at `placement`: those of sample plugins only in
+    /// developer mode. `actions` itself, and so the CLI and automation, always has them all.
     func actions(at placement: String) -> [ContributedAction] {
-        actions.filter { $0.spec.placements.contains(placement) }
+        actions.filter { $0.spec.placements.contains(placement) && !isHidden($0.plugin) }
     }
+
+    /// True for a sample plugin while developer mode is off: the editor does not offer it (rail, menus, dock,
+    /// inspector, Browse), but it stays installed and every command still reaches it.
+    func isHidden(_ plugin: InstalledPlugin) -> Bool { plugin.manifest.isSample && !developerMode() }
 
     /// Plugins whose hooks receive `event` now.
     func subscribers(for event: PluginEvent) -> [(InstalledPlugin, PluginHookContribution)] {
