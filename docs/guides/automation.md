@@ -810,6 +810,17 @@ search and filters (`libraryFilter` in the view state; a filter leaves the home 
 filter return to it); the item sheet
 is the `library-item` dialog (`ui respond save|cancel`).
 
+**Panel width, tiles and drag (P1-10).** The library panel is as wide as its right edge was dragged (300–520 pt;
+`ui view --library-width N`; by default 372 pt on a screen of 1680 pt or more and 300 pt below), or wide: 760 pt over the
+viewer with a category sidebar (All, Recent, Favorites, Mine and each pack; `--library-wide true|false`, Esc leaves it).
+The Text, Stickers, Effects, Transitions and Filters panels have a footer with a tile-size slider and a grid or list
+switch, remembered per panel on this Mac (`--library-tile-size 0..1`, `--library-layout grid|list` for the open panel;
+`libraryLayout` {width, wide, mode, tileSize} in the view state). Text styles, effects, looks and transitions show a
+picture with the name under it in the grid; a "+" on hover places an item at the playhead (as `library place`). Every
+tile can be dragged onto the timeline (`bashcut-library:scope:id`, the string plugin view grids use): sounds, stickers,
+text styles, looks and clips are placed where they land; an effect or transition is used on the clip under the
+pointer (as `library apply`), or on the selection.
+
 ## Media proxies
 
 Heavy footage (HEVC, a long side above 1920 px, or above 20 Mbit/s) gets a preview proxy when it is imported:

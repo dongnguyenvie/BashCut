@@ -65,7 +65,7 @@ public final class EditorUIState {
     public private(set) var rightTab: RightColumnTab = .inspector
     /// The agent lives in its own window, so its tab only says so.
     public var agentPoppedOut = false
-    @ObservationIgnored private var agentPickedAt: Date?
+    @ObservationIgnored var agentPickedAt: Date?
     /// How long a picked Agent tab survives selecting a timeline item.
     public static let agentTabHold: TimeInterval = 2
 
@@ -91,28 +91,12 @@ public final class EditorUIState {
         }
     }
 
-    /// ⌘J with the agent in the window: hides the column while the Agent tab shows, otherwise shows that tab.
-    public func toggleAgentTab() {
-        if rightTab == .agent, showAgentDock { showAgentDock = false } else { showAgentDock = true }
-    }
-
-    /// The Inspector toggle: hides the column while the Inspector tab shows, otherwise shows that tab.
-    public func toggleInspectorTab() {
-        if rightTab == .inspector, showInspector { showInspector = false } else { showInspector = true }
-    }
-
-    /// A timeline item was selected: the Inspector comes forward, unless the user just picked the Agent tab.
-    public func itemSelected(now: Date = Date()) {
-        guard rightTab == .agent, rightColumnVisible else { return }
-        if let picked = agentPickedAt, now.timeIntervalSince(picked) < Self.agentTabHold { return }
-        showInspector = true
-    }
-
-    /// The agent moved to its own window (or came back). A column showing the Agent tab goes back to the Inspector.
-    public func setAgentPoppedOut(_ out: Bool) {
-        agentPoppedOut = out
-        if out, rightTab == .agent { showInspector = true }
-    }
+    /// The library panel's width in points when dragged (`LibraryPanelMetrics.widthRange`); nil: the default for the screen.
+    public var libraryWidth: Double?
+    /// The wide library panel (760 pt over the viewer, with a category sidebar); Esc leaves it.
+    public var libraryWide = false
+    /// Tile size and grid or list per panel name; `ProjectDocument.setLibraryLayout` remembers them in Settings.
+    public var libraryLayouts: [String: LibraryPanelLayout] = [:]
     public var libraryTab: LibraryTab = .media
     /// The tool the Tools panel shows (a `ToolID`, or `<plugin>/<view>` for a plugin's tool view), nil for the first.
     public var selectedTool: String?
@@ -199,6 +183,14 @@ public final class EditorUIState {
     public var showPluginProposals = false
 
     public init(timelineLeading: Double = compactTimelineLeading) { self.timelineLeading = timelineLeading }
+
+    /// The remembered layout: the timeline header's width and the library panel's width, tile sizes and grid or list.
+    @MainActor
+    public convenience init(settings: SettingsModel) {
+        self.init(timelineLeading: settings.timelineHeaderWidth)
+        libraryWidth = settings.libraryPanelWidth
+        libraryLayouts = settings.libraryPanelLayouts
+    }
 
     public var canZoomIn: Bool { timelineScale < Self.timelineZoomRange.upperBound }
     public var canZoomOut: Bool { timelineScale > Self.timelineZoomRange.lowerBound }
@@ -301,7 +293,7 @@ public struct LibraryPanelFilter: Equatable, Sendable {
     /// "recent" or "favorites": a list shown instead of the home view; nil: the home view.
     public var collection: String?
 
-    public init() {}
+    public init(query: String = "") { self.query = query }
 
     /// Whether the panel lists matches instead of its home view.
     public var isActive: Bool {
@@ -459,6 +451,9 @@ public enum LibraryTab: String, CaseIterable, Identifiable, Sendable {
 
     /// The panel named `panelName`. The built-in tool ids (`captions`, `voice`, `beats`) name the Tools panel; `voice`
     /// was a panel of its own before Tools (`Self.toolForPanelName` says which tool a name selects).
+    /// Whether the panel has a tile size and a grid or list (P1-10): its items are tiles of one library section.
+    public var hasTileLayout: Bool { [.text, .stickers, .effects, .transitions, .filters].contains(self) }
+
     public init?(panelName: String) {
         if Self.toolForPanelName(panelName) != nil {
             self = .tools

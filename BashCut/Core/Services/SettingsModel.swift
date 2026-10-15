@@ -137,6 +137,14 @@ public final class SettingsModel {
     /// Developer mode (P1-2): shows what is meant for plugin authors, such as the sample plugins in the rail, the
     /// menus and Plugins › Browse. Off by default; the CLI and automation reach those plugins either way.
     public var developerMode: Bool { didSet { defaults.set(developerMode, forKey: Keys.developerMode) } }
+    /// The library panel's dragged width (P1-10); nil: the default for the screen.
+    public var libraryPanelWidth: Double? {
+        didSet { defaults.set(libraryPanelWidth, forKey: Keys.libraryPanelWidth) }
+    }
+    /// Tile size and grid or list per library panel name.
+    public var libraryPanelLayouts: [String: LibraryPanelLayout] {
+        didSet { defaults.set(try? JSONEncoder().encode(libraryPanelLayouts), forKey: Keys.libraryPanelLayouts) }
+    }
     /// Most recent first, at most `recentHistoryLimit`.
     public private(set) var recentHistory: [RecentProject]
     /// The newest `recentProjectLimit` of the history: the menus and the Welcome screen.
@@ -177,6 +185,8 @@ public final class SettingsModel {
         static let recentHistory = "recentProjects"
         static let timelineHeaderWidth = "timelineHeaderWidth"
         static let developerMode = "developerMode"
+        static let libraryPanelWidth = "libraryPanelWidth"
+        static let libraryPanelLayouts = "libraryPanelLayouts"
     }
 
     public init(defaults: UserDefaults = .standard) {
@@ -214,6 +224,9 @@ public final class SettingsModel {
             min(max($0, EditorUIState.timelineLeadingRange.lowerBound), EditorUIState.timelineLeadingRange.upperBound)
         } ?? EditorUIState.compactTimelineLeading
         timelineHeaderWidthChosen = defaults.object(forKey: Keys.timelineHeaderWidth) != nil
+        libraryPanelWidth = (defaults.object(forKey: Keys.libraryPanelWidth) as? Double).map(LibraryPanelMetrics.clamp)
+        libraryPanelLayouts = defaults.data(forKey: Keys.libraryPanelLayouts)
+            .flatMap { try? JSONDecoder().decode([String: LibraryPanelLayout].self, from: $0) } ?? [:]
         if let entries = defaults.array(forKey: Keys.recentHistory) as? [[String: Any]] {
             recentHistory = entries.compactMap { entry in
                 (entry["path"] as? String).map {

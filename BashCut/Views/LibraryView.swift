@@ -14,6 +14,7 @@ struct LibraryView: View {
             HStack {
                 Text(LocalizedStringKey(document.ui.libraryTab.rawValue)).font(.headline)
                 Spacer()
+                LibraryWideButton(document: document)
             }.padding(10)
             Divider()
             ScrollView {
@@ -32,6 +33,10 @@ struct LibraryView: View {
                     }
                     PluginActionStrip(document: document, placement: "panel." + document.ui.libraryTab.panelName)
                 }.padding(10)
+            }
+            if document.ui.libraryTab.hasTileLayout {
+                Divider()
+                LibraryPanelFooter(document: document)
             }
         }.background(Color.white.opacity(0.025))
             .sheet(item: Bindable(document.ui).libraryEditor) { request in

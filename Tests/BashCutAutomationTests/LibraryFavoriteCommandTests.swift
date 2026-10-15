@@ -37,4 +37,19 @@ struct LibraryFavoriteCommandTests {
     func agentsMayFavorite() {
         #expect(ChatCommandSession.allowedMethods.contains("library.favorite"))
     }
+
+    @Test("ui view sets the library panel's width, wide mode, grid or list and tile size")
+    func layoutParses() throws {
+        let view = try CommandLineParser.parse([
+            "ui", "view", "--library-width", "480", "--library-wide", "true", "--library-layout", "list",
+            "--library-tile-size", "0.5",
+        ])
+        #expect(view.params == [
+            "libraryWidth": .number(480), "libraryWide": .bool(true), "libraryLayout": .string("list"),
+            "libraryTileSize": .number(0.5),
+        ])
+        for bad in [["--library-width", "100"], ["--library-width", "900"], ["--library-layout", "tiles"], ["--library-tile-size", "2"]] {
+            #expect(throws: CommandLineParser.Failure.self) { try CommandLineParser.parse(["ui", "view"] + bad) }
+        }
+    }
 }

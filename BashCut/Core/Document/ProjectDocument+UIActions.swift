@@ -354,6 +354,7 @@ extension ProjectDocument {
             plugins.browseCategory = PluginCategory(rawValue: category)
         }
         updateLibraryFilter(arguments)
+        updateLibraryLayout(arguments)
     }
 
     /// The open library panel's search and filters.
@@ -400,6 +401,7 @@ extension ProjectDocument {
             "libraryPanel": .string(ui.libraryTab.panelName), "libraryFilter": libraryFilterJSON(),
             "tool": ui.libraryTab == .tools ? selectedTool.map { .string($0.id) } ?? .null : .null,
             "mediaSource": .string(ui.mediaSource),
+            "libraryLayout": .object(libraryLayoutJSON()),
             "inspector": .string(ui.inspectorTab),
             "settingsSection": .string(ui.settingsSection), "settingsSearch": .string(ui.settingsSearch),
             "knowledgeSection": .string(ui.knowledgeSection),

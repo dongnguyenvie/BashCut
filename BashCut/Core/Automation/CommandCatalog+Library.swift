@@ -64,6 +64,14 @@ extension CommandCatalog {
         CommandParameter("libraryCollection", .string, "List the open library panel shows instead of its home "
                          + "view: recent (this project), favorites (this Mac) or all",
                          choices: ["all"] + UIAction.libraryCollections, cli: .option("library-collection")),
+        CommandParameter("libraryWidth", .number, "Width of the library panel in points", range: 300...520,
+                         cli: .option("library-width")),
+        CommandParameter("libraryWide", .boolean, "The wide library panel (760 pt over the viewer, with a category "
+                         + "sidebar) on or off", cli: .option("library-wide")),
+        CommandParameter("libraryLayout", .string, "Grid or list for the open library panel (remembered per panel)",
+                         choices: ["grid", "list"], cli: .option("library-layout")),
+        CommandParameter("libraryTileSize", .number, "Tile size of the open library panel, 0 (small) to 1 (large)",
+                         range: 0...1, cli: .option("library-tile-size")),
     ]
 
     /// The provider, count and saving options of library search and library generate (#81).

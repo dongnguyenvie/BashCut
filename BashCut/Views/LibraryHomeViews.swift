@@ -1,3 +1,4 @@
+import BashCutPlugin
 import BashCutProject
 import SwiftUI
 
@@ -132,6 +133,10 @@ struct LibraryGridTile<Content: View>: View {
     /// The whole section is one pack and its header says so: no plugin or folder mark.
     var hidesScope = false
     let toggleFavorite: () -> Void
+    /// Place at the playhead, when the item can be placed (the "+" on hover).
+    var place: (() -> Void)?
+    /// Whether the timeline can take the item by drag.
+    var draggable = true
     @ViewBuilder let content: Content
     @State private var hovering = false
 
@@ -152,7 +157,18 @@ struct LibraryGridTile<Content: View>: View {
                     .accessibilityLabel(isFavorite ? "Remove from Favorites" : "Add to Favorites")
                 }
             }
+            .overlay(alignment: .bottomTrailing) {
+                if hovering, let place {
+                    Button(action: place) {
+                        Image(systemName: "plus.circle.fill").font(.system(size: 15))
+                            .foregroundStyle(Color.accentColor, Color.black.opacity(0.5))
+                    }
+                    .buttonStyle(.plain).padding(3)
+                    .help("Place at Playhead").accessibilityLabel("Place at Playhead")
+                }
+            }
             .onHover { hovering = $0 }
+            .modifier(LibraryDragSource(reference: draggable ? item.reference : nil))
     }
 }
 
@@ -182,6 +198,20 @@ struct LibraryHomeHeader: View {
             if seesAll, !collapsed {
                 Button("See all \(count) ›", action: seeAll).buttonStyle(.link).font(.caption)
             }
+        }
+    }
+}
+
+/// The drag source of a library tile: the `bashcut-library:scope:id` string the timeline accepts (as it does from
+/// plugin view grids), so an effect, sticker or sound can be dropped on a layer.
+struct LibraryDragSource: ViewModifier {
+    let reference: String?
+
+    func body(content: Content) -> some View {
+        if let payload = reference.flatMap(PluginViewDrag.libraryPayload) {
+            content.onDrag { NSItemProvider(object: payload as NSString) }
+        } else {
+            content
         }
     }
 }
