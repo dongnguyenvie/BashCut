@@ -208,7 +208,7 @@ public enum UIAction: String, CaseIterable, Sendable {
         case .openChatAgent: "Chat agent"
         case .dismissAgentKitPrompt: "Setup card: Later folds it into the dock's Setup chip until the kit changes"
         case .showAgentSetup: "Setup chip: open the agent setup card again (skills and editing tools)"
-        case .installAgentSkills: "Setup card: install or update the BashCut skills for Claude Code and Codex"
+        case .installAgentSkills: "Setup card: install or update the BashCut skills for the picked agent (Claude Code or Codex)"
         case .installEditingTools: "Setup card: open the Recommended plugins install (the starter bundle)"
         case .restartAgentForKit: "Setup card: restart the agent tabs started before the skills were installed"
         case .skipAppUpdate: "Skip this BashCut version: no reminders until a newer release"

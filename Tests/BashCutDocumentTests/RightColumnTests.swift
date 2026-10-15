@@ -4,19 +4,20 @@ import Testing
 
 @MainActor
 struct RightColumnTests {
-    @Test("The column opens on the Inspector, and the Agent flag selects the Agent tab (P1-6)")
+    @Test("The column opens on the Agent tab, and the Inspector flag selects the Inspector tab (P1-6)")
     func tabs() {
         let ui = EditorUIState()
-        #expect(ui.rightTab == .inspector && ui.rightColumnVisible)
-        ui.showAgentDock = true
         #expect(ui.rightTab == .agent && ui.rightColumnVisible)
         ui.selectRightTab(.inspector)
         #expect(ui.rightTab == .inspector && ui.showInspector)
+        ui.showAgentDock = true
+        #expect(ui.rightTab == .agent && ui.rightColumnVisible)
     }
 
     @Test("Cmd+J hides the column while the Agent tab shows, otherwise shows that tab")
     func toggleAgent() {
         let ui = EditorUIState()
+        ui.selectRightTab(.inspector)
         ui.toggleAgentTab()
         #expect(ui.rightTab == .agent && ui.rightColumnVisible)
         ui.toggleAgentTab()

@@ -98,9 +98,10 @@ public enum AgentKitSetup {
             }
             let id = claudePlugin(for: kit)
             let installed = await run(executable, ["plugin", "install", id, "--scope", "user"], environment)
-            if installed.status != 0 {
-                try await check(run(executable, ["plugin", "update", id], environment))
-            }
+            // Installing a plugin that is there already succeeds without touching it, and its recorded version stays
+            // old, so `status` keeps saying outdated: update it too. Updating a current one is a no-op.
+            let updated = await run(executable, ["plugin", "update", id], environment)
+            if installed.status != 0 { try check(updated) }
             // The kit's plugin was `bashcut` before 0.1.0: drop it so the skills are not listed twice.
             var replaced = false
             if id != legacyClaudePlugin {

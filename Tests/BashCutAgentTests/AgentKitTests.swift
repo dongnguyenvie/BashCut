@@ -166,6 +166,43 @@ struct AgentKitTests {
         #expect(FileManager.default.fileExists(atPath: skills.appendingPathComponent("bashcut-two").path))
     }
 
+    @Test("Updating Claude Code's kit also updates a plugin that is installed already, so it is not left outdated")
+    func claudeUpdateRefreshesInstalledPlugin() async throws {
+        let root = try temporaryFolder()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let kit = try #require(
+            AgentKit(root: makeKit(at: root.appendingPathComponent("kit"), name: "bc", version: "0.2.0"), source: .folder))
+        // Like Claude Code 2.x with the plugin installed: add and install succeed without changing anything, and only
+        // `plugin update` records the kit's version.
+        let bin = root.appendingPathComponent("bin", isDirectory: true)
+        try FileManager.default.createDirectory(at: bin, withIntermediateDirectories: true)
+        let log = root.appendingPathComponent("calls.log")
+        let version = root.appendingPathComponent("version")
+        try Data("0.1.0\n".utf8).write(to: version)
+        let script = """
+            #!/bin/sh
+            echo "$*" >> '\(log.path)'
+            read -r version < '\(version.path)'
+            case "$*" in
+              "plugin list --json") printf '[{"id":"bc@bashcut-agent-kit","version":"%s","scope":"user","enabled":true}]' "$version" ;;
+              "plugin update bc@bashcut-agent-kit") echo 0.2.0 > '\(version.path)' ;;
+              "plugin uninstall bashcut@bashcut-agent-kit") exit 1 ;;
+            esac
+            exit 0
+            """
+        let claude = bin.appendingPathComponent("claude")
+        try Data(script.utf8).write(to: claude)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: claude.path)
+        // Only the fake CLI is on the search path, so the script uses shell built-ins.
+        let environment = AgentKitSetup.Environment(path: bin.path, home: root, variables: [:])
+
+        #expect(await AgentKitSetup.status(.claude, kit: kit, environment: environment).outdated)
+        _ = try await AgentKitSetup.install(.claude, kit: kit, environment: environment)
+        let after = await AgentKitSetup.status(.claude, kit: kit, environment: environment)
+        #expect(after.installed && !after.outdated)
+        #expect(try String(contentsOf: log, encoding: .utf8).contains("plugin update bc@bashcut-agent-kit"))
+    }
+
     @Test("A kit named bc links skills as bc-<skill> and replaces links left by the old bashcut kit")
     func shortNames() throws {
         let root = try temporaryFolder()

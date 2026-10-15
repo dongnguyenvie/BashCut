@@ -89,6 +89,21 @@ public struct AgentSetupChecklist: Sendable, Equatable {
         }
     }
 
+    /// The statuses the card is about: only the agent the user picked (the first of `picked` that is Claude Code or
+    /// Codex and found on this Mac, e.g. the shown tab's agent, then the dock's default), else every CLI found.
+    public static func statuses(
+        _ statuses: [AgentKitSetup.Target: AgentKitSetup.Status], pickedFrom picked: [AgentProviderID]
+    ) -> [AgentKitSetup.Target: AgentKitSetup.Status] {
+        for id in picked {
+            if let target = AgentKitSetup.Target(rawValue: id.rawValue), let status = statuses[target],
+                status.executable != nil
+            {
+                return [target: status]
+            }
+        }
+        return statuses
+    }
+
     /// Later folds the card into the dock's Setup chip until BashCut has a newer kit; the key it saves.
     public static func foldKey(kitVersion: String?) -> String { kitVersion ?? "-" }
 }

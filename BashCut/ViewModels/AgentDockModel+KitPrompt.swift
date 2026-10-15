@@ -35,7 +35,7 @@ extension AgentDockModel {
     /// The setup card's two steps as this Mac has them.
     var setupChecklist: AgentSetupChecklist {
         AgentSetupChecklist(
-            skills: AgentSetupChecklist.skills(kitVersion: kitVersion, statuses: kitStatuses),
+            skills: AgentSetupChecklist.skills(kitVersion: kitVersion, statuses: setupStatuses),
             tools: AgentSetupChecklist.tools(starterPlugins))
     }
 
@@ -61,9 +61,18 @@ extension AgentDockModel {
             }
     }
 
-    /// "Claude Code", "Codex" or "Claude Code and Codex": the agent CLIs found on this Mac.
+    /// What Claude Code and Codex reported, narrowed to the agent the user picked: the shown tab's agent, else the
+    /// dock's default (Settings, or the last used). Both when the pick is neither or its CLI is not on this Mac.
+    var setupStatuses: [AgentKitSetup.Target: AgentKitSetup.Status] {
+        AgentSetupChecklist.statuses(kitStatuses, pickedFrom: [current?.provider.id, defaultProvider].compactMap { $0 })
+    }
+
+    /// The agents the card's step ① sets up; nil when none needs it or they were not checked yet.
+    var kitPrompt: AgentKitPrompt? { AgentKitPrompt(kit: setupKit, statuses: setupStatuses) }
+
+    /// "Claude Code", "Codex" or "Claude Code and Codex": the agents the card sets up.
     var setupAgentNames: String {
-        let found = AgentKitSetup.Target.allCases.filter { kitStatuses[$0]?.executable != nil }
+        let found = AgentKitSetup.Target.allCases.filter { setupStatuses[$0]?.executable != nil }
         let names = (found.isEmpty ? [.claude] : found).map { $0 == .claude ? "Claude Code" : "Codex" }
         return names.count == 2 ? String(format: String(localized: "%@ and %@"), names[0], names[1]) : names.joined()
     }
@@ -101,7 +110,7 @@ extension AgentDockModel {
         let firstLook = kitVersion == nil && settings.agentKitPromptSeen != kit?.version
         kitVersion = kit?.version
         kitStatuses = statuses
-        kitPrompt = AgentKitPrompt(kit: kit, statuses: statuses)
+        setupKit = kit
         // The card opens the first time a kit version is seen with a step left.
         if firstLook, setupPending, let version = kit?.version {
             setupExpanded = true
@@ -146,8 +155,10 @@ extension AgentDockModel {
             document.message = done.joined(separator: "; ")
             if installed { kitRestartSessions = (kitRestartSessions + running).filter { id in sessions.contains { $0.id == id } } }
             setupFinishedHere = true
-            // Still "Installing…" while the CLIs are checked again, so the button does not come back meanwhile.
-            await refreshKitPrompt(force: true)
+            // Still "Installing…" while the CLIs are checked again, so the button does not come back meanwhile. Only
+            // the CLIs: the starter bundle's registry and plugin health have nothing to do with the skills.
+            kitPromptChecked = Date()
+            updateKitPrompt(kit: try? document.installedAgentKit(), statuses: await document.agentSetupStatuses(fresh: true))
             kitSettingUp = false
         }
     }
@@ -194,6 +205,7 @@ extension AgentDockModel {
             "done": .integer(checklist.done), "total": .integer(checklist.total),
             "skills": .string(checklist.skillsName), "tools": .string(checklist.toolsName),
             "kitVersion": kitVersion.map(JSONValue.string) ?? .null,
+            "agents": .string(setupAgentNames),
             "card": .string(
                 !showsSetupCard ? (setupPending ? "chip" : "hidden") : setupExpanded ? "open" : "collapsed"),
             "restartTabs": .array(restartSessions.map { .string($0.title) }),
