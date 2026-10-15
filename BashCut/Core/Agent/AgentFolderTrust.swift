@@ -63,6 +63,29 @@ public struct AgentFolderTrust: Sendable {
         }
     }
 
+    // MARK: - Bypass Permissions mode
+
+    /// Claude Code's user settings, in its config folder (`$CLAUDE_CONFIG_DIR` or `~/.claude`).
+    public var claudeSettings: URL { folders.claude.url.appendingPathComponent("settings.json") }
+
+    /// Whether Claude Code skips its one-time "Bypass Permissions mode" warning, which BashCut's
+    /// `--dangerously-skip-permissions` launch otherwise shows on a config that never accepted it. Claude Code 2.1
+    /// reads `skipDangerousModePermissionPrompt` from the user settings (`--settings` does not count) and still honours
+    /// the older `bypassPermissionsModeAccepted` in `.claude.json`, which it moves to the settings.
+    public var acceptsClaudeBypass: Bool {
+        ((try? Self.readJSON(claudeSettings))?["skipDangerousModePermissionPrompt"] as? Bool) == true
+            || ((try? Self.readJSON(claudeConfig))?["bypassPermissionsModeAccepted"] as? Bool) == true
+    }
+
+    /// Records the user's acceptance as Claude Code's own "Yes, I accept" does, keeping the rest of `settings.json`
+    /// and replacing it in one step.
+    public func acceptClaudeBypass() throws {
+        var settings = try Self.readJSON(claudeSettings) ?? [:]
+        settings["skipDangerousModePermissionPrompt"] = true
+        let data = try JSONSerialization.data(withJSONObject: settings, options: [.prettyPrinted, .withoutEscapingSlashes])
+        try Self.replace(claudeSettings, with: data)
+    }
+
     // MARK: - Folders
 
     /// The folder's repository root, or the folder: what the CLIs key trust by.
