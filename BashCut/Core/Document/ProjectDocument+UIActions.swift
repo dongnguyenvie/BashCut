@@ -43,7 +43,12 @@ extension ProjectDocument {
         case .showAgentChanges, .dismissAgentChange: return agentChange != nil
         case .undoAgentChange: return canUndoAgentChange
         case .openChatAgent: return !chatAgents.available.isEmpty
-        case .dismissAgentKitPrompt: return agents.showsKitPrompt
+        case .dismissAgentKitPrompt: return agents.setupPending && agents.showsSetupCard && !agents.kitSettingUp
+        case .showAgentSetup: return agents.setupPending
+        case .installAgentSkills: return agents.kitPrompt != nil && !agents.kitSettingUp
+        case .installEditingTools:
+            return agents.setupChecklist.tools != .notApplicable && !agents.setupChecklist.toolsDone && !plugins.installBusy
+        case .restartAgentForKit: return !agents.restartSessions.isEmpty
         case .skipAppUpdate, .remindAppUpdateLater: return showsAppUpdateNotice
         case .openExportOutput, .revealExportOutput:
             return exports.report.map { FileManager.default.fileExists(atPath: $0.receipt.url.path) } ?? false
@@ -180,6 +185,12 @@ extension ProjectDocument {
             ui.settingsSection = "agents"
             try openDialog("settings")
         case .dismissAgentKitPrompt: agents.dismissKitPrompt()
+        case .showAgentSetup:
+            if !agents.isDetached { ui.showAgentDock = true }
+            agents.showSetupCard()
+        case .installAgentSkills: agents.setUpKitFromPrompt()
+        case .installEditingTools: agents.installStarterTools()
+        case .restartAgentForKit: agents.restartTabsForKit()
         case .skipAppUpdate:
             settings.appUpdateDismissed = appUpdate.available?.version
             ui.showUpdates = false
@@ -397,6 +408,7 @@ extension ProjectDocument {
             "rightTab": .string(ui.rightTab.rawValue), "rightColumn": .bool(ui.rightColumnVisible),
             "libraryPane": .bool(ui.showLibraryPanel), "inspectorPane": .bool(ui.inspectorShown),
             "chatTab": agents.chatPluginID.map(JSONValue.string) ?? .null,
+            "agentSetup": agents.setupJSON,
             "playing": .bool(preview.isPlaying), "playhead": .integer(playhead),
             "selection": selectedID.map(JSONValue.string) ?? .null,
             "selectedItems": .array(selectedIDs.map(JSONValue.string)),
