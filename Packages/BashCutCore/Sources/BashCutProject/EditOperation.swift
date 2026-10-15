@@ -405,6 +405,9 @@ extension Project {
         right.duration = original.end - frame
         right.sourceIn = try sum(right.sourceIn, sourceOffset(frame - original.at, item: original))
         right.shiftTimedContent(by: original.at - frame)
+        // The entrance stays at the start and the exit at the end.
+        right.fields.removeValue(forKey: "enter")
+        tracks[track].items[index].fields.removeValue(forKey: "exit")
         tracks[track].items[index].duration = frame - original.at
         if let curve = original.speedCurve {
             // Each half keeps its part of the ramp, and its own average speed.

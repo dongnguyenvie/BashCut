@@ -24,8 +24,9 @@ public final class FrameInstruction: NSObject, AVVideoCompositionInstructionProt
         self.fps = fps
         containsTweening = layers.contains {
             switch $0 {
-            case .video(let layer): layer.transition != nil || layer.motion != nil || layer.style != nil
-            case .text(let text): text.motion != nil || text.wordStarts != nil || text.style != nil
+            case .video(let layer):
+                layer.transition != nil || layer.motion != nil || layer.style != nil || layer.appearance != nil
+            case .text(let text): text.motion != nil || text.wordStarts != nil || text.style != nil || text.appearance != nil
             case .adjustment(let adjustment): adjustment.style != nil
             }
         }
@@ -52,6 +53,8 @@ public struct TextLayer: @unchecked Sendable {
     /// Word starts (frames from the item's start) when the item shows its words as they are spoken.
     public let wordStarts: [Int]?
     public let fps: Double
+    /// The item's entrance and exit (`enter`, `exit`), played inside the text box.
+    public let appearance: ItemAppearance?
     /// `TextRenderer.cacheKey(item)`, made once instead of on every frame.
     let cacheKey: String
     private let anchors = AnchorCache()
@@ -59,6 +62,7 @@ public struct TextLayer: @unchecked Sendable {
         self.item = item
         self.motion = motion
         self.fps = fps
+        appearance = ItemAppearance(item: item)
         style = StyleMotion(item: item, fps: fps)
         wordStarts = item.wordStyle == nil ? nil : item.wordTimings.map(\.at)
         cacheKey = TextRenderer.cacheKey(item)
@@ -124,13 +128,16 @@ public struct FrameLayer: @unchecked Sendable {
     public let style: StyleMotion?
     /// The item and media this layer shows, named when its frame cannot be read.
     public let source: LayerSource?
+    /// The item's entrance and exit (`enter`, `exit`), played inside the placed picture.
+    public let appearance: ItemAppearance?
     public init(
         trackID: CMPersistentTrackID, transform: CGAffineTransform,
         properties: [String: JSONValue] = [:], transition: RenderTransition? = nil,
         lut: CubeLUT? = nil, motion: (LayerMotion, ClipPlacement)? = nil, crop: SourceCrop? = nil,
         style: StyleMotion? = nil, animatedCrop: (naturalSize: CGSize, orientation: CGAffineTransform)? = nil,
-        backdrop: ClipBackdrop? = nil, source: LayerSource? = nil
+        backdrop: ClipBackdrop? = nil, source: LayerSource? = nil, appearance: ItemAppearance? = nil
     ) {
+        self.appearance = appearance
         self.style = style
         self.backdrop = backdrop
         self.animatedCrop = animatedCrop
@@ -199,7 +206,8 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
                         frame: frame, reason: "source frame missing", source: video.source), code: 2)
                     return
                 }
-                image = Self.picture(video, source: source, time: request.compositionTime.seconds, bounds: bounds)
+                image = Self.picture(
+                    video, source: source, time: request.compositionTime.seconds, bounds: bounds, fps: instruction.fps)
                     .composited(over: image)
             case .adjustment(let adjustment):
                 let properties = adjustment.style?.fields(adjustment.properties, at: request.compositionTime.seconds)
@@ -223,7 +231,9 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
 
     /// One clip's picture at `time`: cut (crop, keyed or not), placed, over its backdrop, through its transition,
     /// graded and faded.
-    static func picture(_ video: FrameLayer, source: CVPixelBuffer, time: Double, bounds: CGRect) -> CIImage {
+    static func picture(_ video: FrameLayer, source: CVPixelBuffer, time: Double, bounds: CGRect, fps: Double = 30)
+        -> CIImage
+    {
         let motion = video.motion?.0.sample(at: time)
         let transform = video.motion.flatMap { layer in motion?.transform(layer.1) } ?? video.transform
         let decoded = CIImage(cvPixelBuffer: source)
@@ -245,9 +255,17 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
             (sourceImage, transitionOpacity) = applyTransition(
                 to: sourceImage, transition: transition, time: time, bounds: bounds)
         }
+        var appearanceOpacity = 1.0
+        if let side = video.appearance?.side(at: time * fps) {
+            // The picture's own frame: what is placed on the canvas (the whole canvas with a backdrop).
+            let frame = sourceImage.extent.intersection(bounds)
+            if !frame.isEmpty {
+                (sourceImage, appearanceOpacity) = applyMotion(to: sourceImage, bounds: frame) { side.value($0, at: time * fps) }
+            }
+        }
         sourceImage = Self.graded(sourceImage, properties: properties, lut: video.lut)
         let opacity = (motion?.opacity ?? video.properties["opacity"]?.double ?? 1)
-            * transitionOpacity
+            * transitionOpacity * appearanceOpacity
         if opacity != 1 {
             sourceImage = sourceImage.applyingFilter(
                 "CIColorMatrix",
@@ -266,8 +284,16 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
         request.finish(with: NSError(domain: domain, code: code, userInfo: error.userInfo))
     }
 
-    /// A text overlay moved by its keyframes: zoom and rotation around the text's own position, pan and tilt, opacity.
+    /// A text overlay through its entrance or exit inside its own box, then moved by its keyframes: zoom and rotation
+    /// around the text's own position, pan and tilt, opacity.
     static func animated(_ overlay: CIImage, text: TextLayer, size: CGSize, time: Double) -> CIImage {
+        var overlay = overlay
+        let frame = time * text.fps
+        if let side = text.appearance?.side(at: frame), !overlay.extent.isEmpty {
+            let (shown, opacity) = applyMotion(to: overlay, bounds: overlay.extent) { side.value($0, at: frame) }
+            overlay = opacity < 1 ? shown.applyingFilter(
+                "CIColorMatrix", parameters: ["inputAVector": CIVector(x: 0, y: 0, z: 0, w: max(0, opacity))]) : shown
+        }
         guard let motion = text.motion else { return overlay }
         let anchor = text.anchor(size: size)
         let values = motion.sample(at: time)
@@ -306,15 +332,22 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
         return image
     }
 
-    /// The transition's motion at this time (C5: every kind is data): exposure, halftone dots, the RGB split, the
-    /// blurs, colour and kaleidoscope, then zoom, horizontal squeeze and rotation around the frame centre with the pan, the perspective swing
-    /// about the left edge, then the reveals and shapes. Preview and export share it.
+    /// The transition's motion at this time (C5: every kind is data). Preview and export share it.
     private static func applyTransition(
         to input: CIImage, transition: RenderTransition, time: Double, bounds: CGRect
     ) -> (CIImage, Double) {
         let progress = transition.progress(at: time)
         let motion = transition.motion ?? TransitionMotion.resolved(kind: transition.kind, motion: nil)
-        let value = { (property: String) in motion.value(property, incoming: transition.incoming, at: progress) }
+        return applyMotion(to: input, bounds: bounds) { motion.value($0, incoming: transition.incoming, at: progress) }
+    }
+
+    /// Transition motion inside `bounds` (the frame for a cut, the item's own frame for its entrance or exit), with
+    /// `value` giving each property now: exposure, halftone dots, the RGB split, the blurs, colour and kaleidoscope,
+    /// then zoom, horizontal squeeze and rotation around the centre with the pan, the perspective swing about the left
+    /// edge, then the reveals and shapes. Returns the picture and the opacity to give it.
+    static func applyMotion(
+        to input: CIImage, bounds: CGRect, value: (String) -> Double?
+    ) -> (CIImage, Double) {
         // Only what is in the frame moves: a filled picture wider than the frame would otherwise still cover it
         // after a whip of one frame width, and a picture zoomed out would show its cut-off sides.
         var image = input.extent.width.isFinite ? input.cropped(to: bounds) : input

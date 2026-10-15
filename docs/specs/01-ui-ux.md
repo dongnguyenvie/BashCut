@@ -226,7 +226,9 @@ Every effect has a "when to use" note. Special effects also carry *"1–2 times 
 The default is a hard cut. The panel groups the other 39 transitions as Fade, Whip, Wipe, Shape, Crash, Roll, Arc,
 Infinite, Screen, Seamless and Stylized (the technique names of eyecannndy.com/technique/transition, plus its most used
 cut techniques: flash cut, double exposure, colour shift, kaleidoscope); all of them render the
-same in preview and export.
+same in preview and export. Text, stickers, graphics and overlay clips that are not part of a cut use the same kinds as their own
+In and Out (Inspector › Video or Text › In and Out, grouped like the panel, with length and easing), played inside
+the item's frame; clicking a tile with such an item selected, or dragging a tile onto one, sets its In.
 
 Select a clip beside a cut and choose a transition; the panel adjusts its duration in frames. A draggable handle
 on the join is **Planned**.

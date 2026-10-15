@@ -8,7 +8,7 @@ struct TransitionLibraryView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Transitions").font(.headline)
-            Text("Select a video clip beside a cut, then choose a transition.")
+            Text("Select a clip beside a cut, or text, a sticker or an overlay for its In, then choose a transition, or drag a tile onto an item.")
                 .font(.caption).foregroundStyle(.secondary)
             ForEach(TransitionMotion.groups, id: \.name) { group in
                 Text(LocalizedStringKey(group.name)).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
@@ -23,6 +23,7 @@ struct TransitionLibraryView: View {
                                     motion: TransitionMotion.resolved(kind: kind, motion: nil),
                                     easing: TimelineTransition.defaultEasing, symbol: Self.symbol(kind), playing: hovering)
                             })
+                        .onDrag { NSItemProvider(object: TimelineCanvas.transitionPasteboardPrefix + kind as NSString) }
                     }
                 }
             }

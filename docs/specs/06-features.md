@@ -94,6 +94,7 @@ A command in *italics* is planned and does not exist yet. "—" means manual onl
 | # | Feature | Priority | Status | Agent |
 |---|---|---|---|---|
 | F-1 | Transitions: 39 built-in kinds in 11 groups (fade, whip, wipe, shape, crash, roll, arc, infinite, screen, seamless, stylized) as data rows; any kind with its own `motion`; easing incl. cubic-bezier | P1 | Implemented | `timeline apply` (`upsertTransition`) |
+| F-1b | Item In and Out: the transition kinds as the entrance and exit of text, stickers, graphics and overlay clips (`enter`, `exit`), inside the item's own frame, with keyframes and animation presets | P1 | Implemented | `timeline apply` (`setProperties`), `clip transition` |
 | F-2 | Transitions: spin, shutter, wipe | P2 | Implemented | `timeline apply` (`upsertTransition`) |
 | F-3 | Clip effects: zoom punch, shake, flash, glitch, film look | P2 | Planned | *`timeline apply` (`setProperties`)* |
 | F-4 | Overlays: banner, callout, place card, REC frame, progress bar, stickers | P2 | Implemented (emoji stickers only; the rest Planned) | `timeline apply` (`insert`) |

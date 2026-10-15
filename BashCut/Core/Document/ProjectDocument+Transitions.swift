@@ -12,6 +12,15 @@ extension ProjectDocument {
 
     func setSelectedTransition(kind: String) {
         guard let cut = selectedVideoCut() else {
+            // A text, sticker or overlay item takes the kind as its In.
+            if let selectedID, project.tracks.contains(where: {
+                ($0.kind == TrackKind.video || $0.kind == TrackKind.text) && $0.items.contains { $0.id == selectedID }
+            }) {
+                do { try setItemTransition("enter", kind: kind, items: [selectedID]) } catch {
+                    message = error.localizedDescription
+                }
+                return
+            }
             message = String(localized: "Select a video clip beside a cut")
             return
         }

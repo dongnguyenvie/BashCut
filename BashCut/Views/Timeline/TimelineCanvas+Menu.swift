@@ -153,12 +153,16 @@ extension TimelineCanvas {
     // MARK: Dropping media
 
     static let mediaPasteboardPrefix = "bashcut-media:"
+    /// A transition tile (`bashcut-transition:KIND`): set on the cut or as the In of the item it is dropped on.
+    static let transitionPasteboardPrefix = "bashcut-transition:"
 
     private struct Drop {
         let media: [Media]
         let files: [URL]
         /// Library item references dragged from a plugin view (`libraryItem`), placed like `library place`.
         var library: [String] = []
+        /// A transition kind dragged from the Transitions panel.
+        var transition: String?
         let trackID: String?
         let frame: Int
     }
@@ -185,6 +189,10 @@ extension TimelineCanvas {
     override func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {
         defer { draggingExited(sender) }
         guard let drop = drop(for: sender) else { return false }
+        if let kind = drop.transition {
+            document.applyDroppedTransition(kind: kind, at: drop.frame, overTrack: drop.trackID)
+            return true
+        }
         if !drop.library.isEmpty {
             document.placeDroppedLibraryItems(drop.library, at: drop.frame, overTrack: drop.trackID)
             return true
@@ -211,6 +219,13 @@ extension TimelineCanvas {
     private func drop(for sender: any NSDraggingInfo) -> Drop? {
         let pasteboard = sender.draggingPasteboard
         let texts = pasteboard.readObjects(forClasses: [NSString.self]) as? [String] ?? []
+        if let kind = texts.first(where: { $0.hasPrefix(Self.transitionPasteboardPrefix) })
+            .map({ String($0.dropFirst(Self.transitionPasteboardPrefix.count)) }) {
+            let point = convert(sender.draggingLocation, from: nil)
+            let row = layout.row(at: point.y)?.track
+            let frame = min(project.duration, layout.frame(at: point.x))
+            return Drop(media: [], files: [], transition: kind, trackID: row?.isLocked == false ? row?.id : nil, frame: frame)
+        }
         let library = texts.compactMap { PluginViewDrag.libraryReference(dropped: $0) }
         if !library.isEmpty {
             let point = convert(sender.draggingLocation, from: nil)

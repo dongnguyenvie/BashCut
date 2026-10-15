@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 238 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 239 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -1075,6 +1075,19 @@ Fill a fitted picture's bars with a blur of itself or a colour (Inspector › Vi
 - `color`: string. Colour #RRGGBB for kind color (default black)
 - `blur`: number, 0…0.5. Blur radius, share of the short side (default 0.05)
 - `dim`: number, 0…1. Darkening, 0–1 (default 0)
+- `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
+
+### `bashcut clip transition [<item>] [--items <items>] --side <side> --kind <kind> [--frames <frames>] [--easing <easing>] --base-rev <baseRev>`
+
+Give a text, sticker, graphic or overlay item a transition kind as its own entrance or exit (Inspector › In and Out), played inside the item's frame: enter plays the kind's incoming side over its first frames, exit its outgoing side (a wipe or shape runs backwards) over its last; a whip or zoom fades the item on the way. A cut transition at the same edge of a clip wins. Kinds as on upsertTransition; none removes. Stored as the item's enter and exit fields. Returns rev and items.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_clip_transition`
+- `item`: string. Item ID; the selection by default
+- `items`: string. Several item IDs, comma separated
+- `side`: string, required, one of in, out, both. in, out or both
+- `kind`: string, required, one of dissolve, blink, flash, dip-black, double-exposure, whip, whip-right, whip-up, whip-down, wipe, wipe-right, wipe-up, wipe-down, barn-door, shutter, slide, slide-up, iris, diamond, zoom, crash-zoom, crash-out, spin, roll, roll-right, swing, arc, arc-right, infinite-zoom, infinite-out, screen-in, screen-out, blur, seamless-zoom, glitch, halftone, flicker, color-shift, kaleidoscope, none. Transition kind, or none
+- `frames`: integer, 1…100000. Length in frames; the item's own or half a second by default
+- `easing`: string. linear, in, out, inOut or cubic-bezier(x1,y1,x2,y2)
 - `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
 
 ### `bashcut clip reverse [<item>]`

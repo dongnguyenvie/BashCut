@@ -1,6 +1,14 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "In and Out": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "In and Out" } }, "vi": { "stringUnit": { "state": "translated", "value": "Vào và ra" } } } },
+    "In transition": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "In transition" } }, "vi": { "stringUnit": { "state": "translated", "value": "Hiệu ứng vào" } } } },
+    "Out transition": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Out transition" } }, "vi": { "stringUnit": { "state": "translated", "value": "Hiệu ứng ra" } } } },
+    "How the item comes in, inside its own frame": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "How the item comes in, inside its own frame" } }, "vi": { "stringUnit": { "state": "translated", "value": "Cách mục xuất hiện, trong khung của chính nó" } } } },
+    "How the item leaves, inside its own frame": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "How the item leaves, inside its own frame" } }, "vi": { "stringUnit": { "state": "translated", "value": "Cách mục biến mất, trong khung của chính nó" } } } },
+    "The cut's transition plays here instead.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "The cut's transition plays here instead." } }, "vi": { "stringUnit": { "state": "translated", "value": "Chuyển cảnh của điểm cắt được dùng ở đây." } } } },
+    "Drop a transition on a clip, text or sticker": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Drop a transition on a clip, text or sticker" } }, "vi": { "stringUnit": { "state": "translated", "value": "Thả chuyển cảnh lên một clip, chữ hoặc sticker" } } } },
+    "Select a clip beside a cut, or text, a sticker or an overlay for its In, then choose a transition, or drag a tile onto an item.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Select a clip beside a cut, or text, a sticker or an overlay for its In, then choose a transition, or drag a tile onto an item." } }, "vi": { "stringUnit": { "state": "translated", "value": "Chọn một clip cạnh điểm cắt, hoặc chữ, sticker hay lớp phủ để đặt hiệu ứng vào, rồi chọn chuyển cảnh, hoặc kéo một ô lên mục." } } } },
     "Flash": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Flash" } }, "vi": { "stringUnit": { "state": "translated", "value": "Chớp trắng" } } } },
     "Dip black": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Dip black" } }, "vi": { "stringUnit": { "state": "translated", "value": "Tối dần" } } } },
     "Double exposure": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Double exposure" } }, "vi": { "stringUnit": { "state": "translated", "value": "Chồng hình" } } } },
@@ -2082,12 +2090,6 @@
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Remove LUT" } },
         "vi": { "stringUnit": { "state": "translated", "value": "Bỏ LUT" } }
-      }
-    },
-    "Select a video clip beside a cut, then choose a transition.": {
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Select a video clip beside a cut, then choose a transition." } },
-        "vi": { "stringUnit": { "state": "translated", "value": "Chọn clip video cạnh một điểm cắt, rồi chọn chuyển cảnh." } }
       }
     },
     "Select a video clip beside a cut": {
