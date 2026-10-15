@@ -58,6 +58,10 @@ public struct ExportRequest: Sendable {
         format["width"] = .integer(dimensions.0)
         format["height"] = .integer(dimensions.1)
         sized["format"] = .object(format)
+        if source.width > 0, source.height > 0 {
+            sized.scaleFramingOffsets(
+                x: Double(dimensions.0) / Double(source.width), y: Double(dimensions.1) / Double(source.height))
+        }
         self.source = source
         project = sized
         self.root = root

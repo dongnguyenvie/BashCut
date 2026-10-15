@@ -235,8 +235,9 @@ public actor CompositionBuilder {
                             minGapFrames: MusicDucking.minGapFrames(track, fps: project.fps.value))
                         let lane = try audioLanes.take(for: item, sourceTrack: track.id, gain: gain, composition: composition)
                         let target = lane.track
-                        if ramp != nil {
-                            let url = try await rampAudio.render(asset: asset, item: item, mediaFPS: media.fps, fps: project.fps, root: root)
+                        if let timed = ramp != nil ? item : Self.offlineAudioItem(item) {
+                            let url = try await rampAudio.render(
+                                asset: asset, item: timed, mediaFPS: media.fps, fps: project.fps, root: root)
                             let rendered = try await assets.load(url)
                             guard let audio = rendered.audio else { throw ProjectError.invalid("Missing rendered ramp audio") }
                             try target.insertTimeRange(
@@ -314,6 +315,21 @@ public actor CompositionBuilder {
         return CompositionSnapshot(
             composition: composition, videoComposition: video, audioMix: audio, structure: Self.structure(of: composition),
             undecodable: undecodable, renderFailures: failures)
+    }
+
+    /// The fastest constant speed whose sound the composition scales itself. Above it AVFoundation's offline audio
+    /// mixer deadlocks inside `copyNextSampleBuffer` (from about 8× on a 10 s source span), which hung every export
+    /// and mix measurement of a 16× time-lapse; faster sound is rendered offline like a ramp instead.
+    static let maximumScaledAudioSpeed = 4.0
+
+    /// `item` with a flat speed curve at its speed, for the ramp renderer, when its sound is too fast to scale.
+    static func offlineAudioItem(_ item: Item) -> Item? {
+        guard item.speed > maximumScaledAudioSpeed,
+            let curve = try? SpeedCurve([.init(t: 0, speed: item.speed), .init(t: 1, speed: item.speed)])
+        else { return nil }
+        var timed = item
+        timed["speedCurve"] = curve.json
+        return timed
     }
 
     private static func addBlankCanvas(to composition: AVMutableComposition, duration: CMTime, root: URL) async throws {

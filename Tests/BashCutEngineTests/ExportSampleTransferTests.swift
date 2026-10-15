@@ -14,6 +14,13 @@ private final class TransferState: @unchecked Sendable {
     func report(_ value: Double) { lock.withLock { values.append(value) } }
 }
 
+private final class Counter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+    var value: Int { lock.withLock { count } }
+    func add() { lock.withLock { count += 1 } }
+}
+
 private final class TestStream: @unchecked Sendable {
     private let lock = NSLock()
     private let key = DispatchSpecificKey<Bool>()
@@ -24,6 +31,8 @@ private final class TestStream: @unchecked Sendable {
     private var finishes = 0
     private let samples: Int
     var gate: DispatchSemaphore?
+    /// With a gate, only the read at this index waits on it.
+    var blockAt: Int?
     var throwOnRead = false
     var readCount: Int { lock.withLock { reads } }
     var finishCount: Int { lock.withLock { finishes } }
@@ -46,7 +55,7 @@ private final class TestStream: @unchecked Sendable {
         }, ready: { self.lock.withLock { self.ready } }, next: {
             #expect(DispatchQueue.getSpecific(key: self.key) == true)
             let index = self.lock.withLock { self.reads += 1; return self.reads - 1 }
-            self.gate?.wait()
+            if self.blockAt == nil || self.blockAt == index { self.gate?.wait() }
             if self.throwOnRead { throw TransferTestError.read }
             return index < self.samples ? Double(index) : nil
         }, finish: {
@@ -61,7 +70,7 @@ struct ExportSampleTransferTests {
     func backpressure() async throws {
         let video = TestStream(samples: 20, ready: false), audio = TestStream(samples: 50), state = TransferState()
         let transfer = ExportSampleTransfer(lanes: [video.lane, audio.lane], duration: 20,
-                                      progress: { state.report($0) }, failure: { state.failure }, interrupt: {})
+                                      progress: { state.report($0) }, failure: { state.failure }, release: {})
         let task = Task { try await transfer.run() }
         defer { task.cancel() }
         try await wait { audio.finishCount == 1 }
@@ -81,35 +90,38 @@ struct ExportSampleTransferTests {
     func idleFailure() async throws {
         let video = TestStream(samples: 20, ready: false), state = TransferState()
         let transfer = ExportSampleTransfer(lanes: [video.lane], duration: 20,
-                                      progress: { _ in }, failure: { state.failure }, interrupt: {})
+                                      progress: { _ in }, failure: { state.failure }, release: {})
         let task = Task { try await transfer.run() }
         state.fail()
         await #expect(throws: TransferTestError.self) { try await task.value }
         #expect(video.readCount == 0 && video.finishCount == 1)
     }
 
-    @Test("Cancellation interrupts a blocked read and drains it before returning")
+    @Test("Cancellation never releases the reader under a blocked read; the job ends and release waits for the read")
     func blockedCancellation() async throws {
-        let stream = TestStream(samples: 20), gate = DispatchSemaphore(value: 0)
+        let stream = TestStream(samples: 20), gate = DispatchSemaphore(value: 0), released = Counter()
         stream.gate = gate
-        let transfer = ExportSampleTransfer(lanes: [stream.lane], duration: 20,
-                                      progress: { _ in }, failure: { nil }, interrupt: { gate.signal() })
+        let transfer = ExportSampleTransfer(lanes: [stream.lane], duration: 20, progress: { _ in }, failure: { nil },
+                                            release: { released.add() }, abandonAfter: .milliseconds(50))
         let task = Task { try await transfer.run() }
         defer { task.cancel() }
         try await wait { stream.readCount == 1 }
         task.cancel()
         await #expect(throws: CancellationError.self) { try await task.value }
+        #expect(released.value == 0 && stream.finishCount == 0) // The read is still blocked: nothing is torn down.
+        gate.signal()
+        try await wait { released.value == 1 }
         #expect(stream.readCount == 1 && stream.finishCount == 1)
     }
 
-    @Test("A read that returns on its own is never interrupted, so the reader is not cancelled under it")
+    @Test("A read that returns within the grace releases the reader before the job returns")
     func gracefulCancellation() async throws {
-        let stream = TestStream(samples: 20), gate = DispatchSemaphore(value: 0), state = TransferState()
+        let stream = TestStream(samples: 20), gate = DispatchSemaphore(value: 0), released = Counter()
         stream.gate = gate
         // The grace is far above the 50 ms the test waits: under a fully parallel `swift test` the cooperative
         // pool can delay that sleep by seconds, and passing never waits for the grace.
         let transfer = ExportSampleTransfer(lanes: [stream.lane], duration: 20, progress: { _ in }, failure: { nil },
-                                            interrupt: { state.fail(); gate.signal() }, interruptGrace: .seconds(60))
+                                            release: { released.add() }, abandonAfter: .seconds(60))
         let task = Task { try await transfer.run() }
         defer { task.cancel() }
         try await wait { stream.readCount == 1 }
@@ -117,8 +129,21 @@ struct ExportSampleTransferTests {
         try await Task.sleep(for: .milliseconds(50))
         gate.signal() // The in-flight decode finishes normally within the grace period.
         await #expect(throws: CancellationError.self) { try await task.value }
-        #expect(state.failure == nil)
+        #expect(released.value == 1)
         #expect(stream.readCount == 1 && stream.finishCount == 1)
+    }
+
+    @Test("A read that never returns fails the job with where the timeline stopped")
+    func stalledRead() async throws {
+        let stream = TestStream(samples: 20), gate = DispatchSemaphore(value: 0), released = Counter()
+        stream.blockAt = 3
+        stream.gate = gate
+        let transfer = ExportSampleTransfer(lanes: [stream.lane], duration: 20, progress: { _ in }, failure: { nil },
+                                            release: { released.add() }, abandonAfter: .milliseconds(50), stallLimit: 0.3)
+        await #expect(throws: ExportStallError(timelineSeconds: 2, idleSeconds: 0.3)) { try await transfer.run() }
+        #expect(released.value == 0)
+        gate.signal()
+        try await wait { released.value == 1 }
     }
 
     @Test("Read errors interrupt other lanes and preserve the original error")
@@ -126,7 +151,7 @@ struct ExportSampleTransferTests {
         let bad = TestStream(samples: 20), waiting = TestStream(samples: 20, ready: false)
         bad.throwOnRead = true
         let transfer = ExportSampleTransfer(lanes: [bad.lane, waiting.lane], duration: 20,
-                                      progress: { _ in }, failure: { nil }, interrupt: {})
+                                      progress: { _ in }, failure: { nil }, release: {})
         await #expect(throws: TransferTestError.self) { try await transfer.run() }
         #expect(bad.finishCount == 1 && waiting.finishCount == 1)
     }
@@ -135,7 +160,7 @@ struct ExportSampleTransferTests {
     func cancelledBeforeStart() async {
         let stream = TestStream(samples: 20)
         let transfer = ExportSampleTransfer(lanes: [stream.lane], duration: 20,
-                                      progress: { _ in }, failure: { nil }, interrupt: {})
+                                      progress: { _ in }, failure: { nil }, release: {})
         let task = Task {
             withUnsafeCurrentTask { $0?.cancel() }
             try await transfer.run()

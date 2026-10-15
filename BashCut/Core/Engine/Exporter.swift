@@ -32,9 +32,9 @@ public actor Exporter {
         let reader = try AVAssetReader(asset: snapshot.composition)
         let writer = try AVAssetWriter(outputURL: destination.partial, fileType: audioOnly ? .caf : settings?.preset.fileType ?? .mp4)
         writer.shouldOptimizeForNetworkUse = !audioOnly && (settings?.preset.fileType ?? .mp4) == .mp4
-        var completed = false
+        var completed = false, releasedByTransfer = false
         defer {
-            if !completed {
+            if !completed, !releasedByTransfer {
                 reader.cancelReading()
                 writer.cancelWriting()
             }
@@ -68,9 +68,16 @@ public actor Exporter {
         writer.startSession(atSourceTime: .zero)
         progress(0)
         let limiter = settings?.limiterCeilingDb.map { LimiterBox(PeakLimiter(ceilingDb: $0, sampleRate: 48000, channels: 2)) }
-        try await transferSamples(
-            pairs, snapshot: snapshot, reader: reader, writer: writer, limiter: limiter,
-            progress: progress)
+        do {
+            try await transferSamples(
+                pairs, snapshot: snapshot, reader: reader, writer: writer, limiter: limiter,
+                progress: progress)
+        } catch {
+            // A stopped transfer cancels the reader and writer itself once no read is in flight; cancelling them
+            // here under a still-blocked read crashed the app.
+            releasedByTransfer = true
+            throw error
+        }
         writer.endSession(atSourceTime: snapshot.composition.duration)
         await writer.finishWriting()
         guard writer.status == .completed else {
@@ -164,7 +171,10 @@ public actor Exporter {
             if reader.status == .cancelled { return CancellationError() }
             if writer.status != .writing { return writer.error ?? ProjectError.invalid("Writer stopped") }
             return nil
-        }, interrupt: { reader.cancelReading() })
+        }, release: {
+            reader.cancelReading()
+            writer.cancelWriting()
+        })
         try await transfer.run()
     }
 }

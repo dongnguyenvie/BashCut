@@ -2,6 +2,11 @@ import Foundation
 
 /// Pulls each stream on its own serial queue. No blocking media reads run on Swift's cooperative executor.
 /// The control queue owns completion; lane queues own EOF/finish state; the stop flag is lock-protected.
+///
+/// A read is never interrupted: cancelling the reader while a lane waits inside `copyNextSampleBuffer` frees the wait
+/// condition under it and crashes the app (`pthread_mutex_lock` at 0x0 on `export.stream`). A stop that a blocked read
+/// outlives returns at once and leaves the read to finish on its own; `release` cancels the reader and writer only
+/// once every lane has left its read.
 final class ExportSampleTransfer: @unchecked Sendable {
     struct Lane: Sendable {
         let request: @Sendable (DispatchQueue, @escaping @Sendable () -> Void) -> Void
@@ -35,8 +40,12 @@ final class ExportSampleTransfer: @unchecked Sendable {
     private let duration: Double
     private let progress: @Sendable (Double) -> Void
     private let failure: @Sendable () -> (any Error)?
-    private let interrupt: @Sendable () -> Void
-    private let interruptGrace: DispatchTimeInterval
+    private let release: @Sendable () -> Void
+    private let abandonAfter: DispatchTimeInterval
+    private let stallLimit: TimeInterval
+    // Lock-protected: when any lane last appended a sample, and the latest timeline time written.
+    private var lastSample = DispatchTime.now()
+    private var lastTime = 0.0
     // Control-queue state, except lastProgress which belongs to stream zero's queue.
     private var phase = Phase.idle
     private var error: (any Error)?
@@ -46,14 +55,15 @@ final class ExportSampleTransfer: @unchecked Sendable {
     private var monitor: DispatchSourceTimer?
 
     init(lanes: [Lane], duration: Double, progress: @escaping @Sendable (Double) -> Void,
-         failure: @escaping @Sendable () -> (any Error)?, interrupt: @escaping @Sendable () -> Void,
-         interruptGrace: DispatchTimeInterval = .milliseconds(500)) {
+         failure: @escaping @Sendable () -> (any Error)?, release: @escaping @Sendable () -> Void,
+         abandonAfter: DispatchTimeInterval = .seconds(2), stallLimit: TimeInterval = 60) {
         streams = lanes.enumerated().map { Stream($0.element, index: $0.offset) }
         self.duration = duration
         self.progress = progress
         self.failure = failure
-        self.interrupt = interrupt
-        self.interruptGrace = interruptGrace
+        self.release = release
+        self.abandonAfter = abandonAfter
+        self.stallLimit = stallLimit
     }
 
     func run() async throws {
@@ -75,9 +85,13 @@ final class ExportSampleTransfer: @unchecked Sendable {
         // health check handles that terminal case; sample transfer itself is entirely readiness-driven.
         let timer = DispatchSource.makeTimerSource(queue: control)
         timer.schedule(deadline: .now(), repeating: .milliseconds(100))
+        lock.withLock { lastSample = .now() }
         timer.setEventHandler { [weak self] in
-            guard let self, self.phase == .running, let error = self.failure() else { return }
-            self.stop(error)
+            guard let self, self.phase == .running else { return }
+            if let error = self.failure() { self.stop(error); return }
+            let (since, time) = self.lock.withLock { (self.lastSample, self.lastTime) }
+            let idle = Double(DispatchTime.now().uptimeNanoseconds - since.uptimeNanoseconds) / 1e9
+            if idle > self.stallLimit { self.stop(ExportStallError(timelineSeconds: time, idleSeconds: self.stallLimit)) }
         }
         monitor = timer
         timer.resume()
@@ -92,6 +106,10 @@ final class ExportSampleTransfer: @unchecked Sendable {
         do {
             while !shouldStop && stream.lane.ready() {
                 let time = try autoreleasepool { try stream.lane.next() }
+                lock.withLock {
+                    lastSample = .now()
+                    if let time, time.isFinite { lastTime = max(lastTime, time) }
+                }
                 guard let time else {
                     stream.finish()
                     control.async { self.reachedEnd() }
@@ -129,12 +147,11 @@ final class ExportSampleTransfer: @unchecked Sendable {
         monitor?.cancel()
         let wasIdle = phase == .idle
         phase = .stopping
-        guard !wasIdle else { return } // No read is in flight; start() will resume the continuation.
-        // Lanes stop after their current sample. Cancelling the reader while another thread waits inside
-        // copyNextSampleBuffer crashed AVFoundation under load (freed wait condition), so interrupt only a
-        // read that is still blocked after the grace period.
-        let blocked = DispatchWorkItem { [interrupt] in interrupt() }
-        control.asyncAfter(deadline: .now() + interruptGrace, execute: blocked)
+        guard !wasIdle else { release(); return } // No read is in flight; start() will resume the continuation.
+        // Lanes stop after their current sample. A read still blocked after the grace period (a stalled decode)
+        // is abandoned rather than interrupted: the job ends now, and the reader is released when the read returns.
+        let abandon = DispatchWorkItem { [weak self] in self?.complete() }
+        control.asyncAfter(deadline: .now() + abandonAfter, execute: abandon)
         let drained = DispatchGroup()
         for stream in streams {
             drained.enter()
@@ -143,9 +160,10 @@ final class ExportSampleTransfer: @unchecked Sendable {
                 drained.leave()
             }
         }
-        // Writer cancellation/cleanup by the caller cannot race any remaining sample append.
+        // Reader and writer cancellation cannot race any remaining read or sample append.
         drained.notify(queue: control) {
-            blocked.cancel()
+            abandon.cancel()
+            self.release()
             self.complete()
         }
     }
@@ -158,5 +176,16 @@ final class ExportSampleTransfer: @unchecked Sendable {
         let continuation = continuation
         self.continuation = nil
         if let error { continuation?.resume(throwing: error) } else { continuation?.resume() }
+    }
+}
+
+/// No lane wrote a sample for `idleSeconds`: a decode or the compositor stopped answering.
+struct ExportStallError: LocalizedError, Equatable {
+    let timelineSeconds: Double
+    let idleSeconds: Double
+
+    var errorDescription: String? {
+        String(format: "Rendering stopped answering near %.2f s of the timeline: no frame or sound for %.0f s. "
+            + "A clip there may be unreadable at its speed; check it with ui frame, or replace it.", timelineSeconds, idleSeconds)
     }
 }

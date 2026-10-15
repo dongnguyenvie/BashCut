@@ -5,6 +5,8 @@ import Foundation
 
 /// The music bed of `plan.cut` (#630): one fixed level set from the measured voice unless ducking is asked for.
 extension ProjectDocument {
+    static let planMusicMeasureSeconds: TimeInterval = 20
+
     /// What plan check says about the bed before anything is measured.
     static func planMusicSummary(_ music: PlanCut.Music) -> JSONValue {
         if music.ducks {
@@ -48,8 +50,13 @@ extension ProjectDocument {
             }
         }
         do {
-            let voice = try await measureRendered(stemProject(.speech, of: built), provider: nil).integratedLUFS
-            let bed = try await measureRendered(stemProject(.music, of: bedAlone), provider: nil).integratedLUFS
+            // Bounded so `plan.apply` answers inside the socket's 30 s even when a render stalls; it then applies
+            // with the fallback level instead of failing without a word.
+            let (voice, bed) = try await Self.within(Self.planMusicMeasureSeconds) { [self, bedAlone] in
+                let voice = try await measureRendered(stemProject(.speech, of: built), provider: nil).integratedLUFS
+                let bed = try await measureRendered(stemProject(.music, of: bedAlone), provider: nil).integratedLUFS
+                return (voice, bed)
+            }
             report["voiceLUFS"] = .number((voice * 10).rounded() / 10)
             report["musicLUFS"] = .number((bed * 10).rounded() / 10)
             guard voice > MixMeasure.silenceLUFS, bed > MixMeasure.silenceLUFS else {
@@ -60,9 +67,32 @@ extension ProjectDocument {
             report["volumeDb"] = .number(volume)
             report["measured"] = .bool(true)
             return ([.setProperties(item: bedID, patch: ["volumeDb": .number(volume)])], .object(report))
+        } catch is PlanMusicTimeout {
+            report["reason"] = .string(
+                "measuring took over \(Int(Self.planMusicMeasureSeconds)) s; the bed keeps the fallback level, "
+                    + "set music.volumeDb or run audio mix-measure")
+            return ([], .object(report))
         } catch {
             report["reason"] = .string("could not measure (\(error.localizedDescription)); the bed keeps the fallback level")
             return ([], .object(report))
         }
     }
+
+    /// The work's result, or `PlanMusicTimeout` after `seconds`; the work is cancelled.
+    private static func within<T: Sendable>(
+        _ seconds: TimeInterval, _ work: @escaping @Sendable () async throws -> T
+    ) async throws -> T {
+        try await withThrowingTaskGroup(of: T.self) { group in
+            group.addTask { try await work() }
+            group.addTask {
+                try await Task.sleep(for: .seconds(seconds))
+                throw PlanMusicTimeout()
+            }
+            defer { group.cancelAll() }
+            guard let first = try await group.next() else { throw PlanMusicTimeout() }
+            return first
+        }
+    }
 }
+
+private struct PlanMusicTimeout: Error {}

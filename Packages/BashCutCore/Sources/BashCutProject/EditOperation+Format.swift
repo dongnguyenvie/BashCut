@@ -1,8 +1,8 @@
 import Foundation
 
 /// `setFormat`: change the output size (for example portrait 1080×1920 to landscape 1920×1080) in an open project.
-/// Frame timing, media and items stay as they are. Clip framing offsets (`transform` pan and tilt, in output pixels)
-/// scale with the new width and height so each clip keeps the same relative framing; text is already relative.
+/// Frame timing, media and items stay as they are. Clip framing offsets (`transform` pan and tilt and their keyframes,
+/// in output pixels) scale with the new width and height so each clip keeps the same relative framing; text is already relative.
 extension Project {
     public static let formatSizeRange: ClosedRange<Int> = 16...8_192
 
@@ -22,14 +22,32 @@ extension Project {
         // A canvas set by hand or by the first clip is final; later clips never change it.
         self["canvasFromFirstClip"] = nil
         guard oldWidth > 0, oldHeight > 0 else { return }
-        let scaleX = Double(width) / oldWidth, scaleY = Double(height) / oldHeight
+        scaleFramingOffsets(x: Double(width) / oldWidth, y: Double(height) / oldHeight)
+    }
+
+    /// Scales every offset kept in output pixels, `transform` pan and tilt and their keyframes, so each picture keeps
+    /// its place relative to the frame. An export at another size than the canvas (720p quick draft of a 1080p edit)
+    /// applies it too: unscaled, a corner picture-in-picture panned 763 px sat outside a 1280 px frame.
+    public mutating func scaleFramingOffsets(x scaleX: Double, y scaleY: Double) {
+        guard scaleX != 1 || scaleY != 1, scaleX.isFinite, scaleY.isFinite else { return }
         var tracks = self.tracks
         for track in tracks.indices {
             for item in tracks[track].items.indices {
-                guard var transform = tracks[track].items[item]["transform"]?.object else { continue }
-                if let pan = transform["pan"]?.double { transform["pan"] = .number((pan * scaleX).rounded()) }
-                if let tilt = transform["tilt"]?.double { transform["tilt"] = .number((tilt * scaleY).rounded()) }
-                tracks[track].items[item]["transform"] = .object(transform)
+                if var transform = tracks[track].items[item]["transform"]?.object {
+                    if let pan = transform["pan"]?.double { transform["pan"] = .number((pan * scaleX).rounded()) }
+                    if let tilt = transform["tilt"]?.double { transform["tilt"] = .number((tilt * scaleY).rounded()) }
+                    tracks[track].items[item]["transform"] = .object(transform)
+                }
+                guard var keyframes = tracks[track].items[item]["keyframes"]?.object else { continue }
+                for (property, scale) in [("pan", scaleX), ("tilt", scaleY)] {
+                    guard case .array(let keys)? = keyframes[property] else { continue }
+                    keyframes[property] = .array(keys.map { key in
+                        guard case .object(var fields) = key, let value = fields["value"]?.double else { return key }
+                        fields["value"] = .number((value * scale).rounded())
+                        return .object(fields)
+                    })
+                }
+                tracks[track].items[item]["keyframes"] = .object(keyframes)
             }
         }
         self.tracks = tracks

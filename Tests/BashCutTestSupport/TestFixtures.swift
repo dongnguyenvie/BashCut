@@ -43,11 +43,11 @@ public enum TestFixtures {
         return url
     }
 
-    /// Writes a sine tone as a PCM file. Channel 2 (if any) carries the opposite phase, and samples from
-    /// `silentAfter` seconds on are zero.
+    /// Writes a sine tone as a PCM file, or AAC when `aac` (for an `.m4a` URL). Channel 2 (if any) carries the
+    /// opposite phase, and samples from `silentAfter` seconds on are zero.
     public static func writeTone(
         to url: URL, seconds: Double, sampleRate: Double = 48_000, channels: AVAudioChannelCount = 1,
-        tone: Tone = Tone()
+        tone: Tone = Tone(), aac: Bool = false
     ) throws {
         guard let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: channels),
               let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(seconds * sampleRate)),
@@ -61,7 +61,10 @@ public enum TestFixtures {
             data[0][index] = value
             if channels > 1 { data[1][index] = -value }
         }
-        let file = try AVAudioFile(forWriting: url, settings: format.settings)
+        let settings: [String: Any] = aac ? [
+            AVFormatIDKey: kAudioFormatMPEG4AAC, AVSampleRateKey: sampleRate, AVNumberOfChannelsKey: channels,
+        ] : format.settings
+        let file = try AVAudioFile(forWriting: url, settings: settings)
         try file.write(from: buffer)
     }
 

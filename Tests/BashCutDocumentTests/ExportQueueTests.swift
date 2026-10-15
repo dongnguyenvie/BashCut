@@ -169,6 +169,29 @@ struct ExportQueueTests {
         }
     }
 
+    @Test("A 720p draft of a 1080p edit scales picture offsets, so a corner picture-in-picture stays in frame")
+    func draftScalesOffsets() throws {
+        let root = try folder()
+        defer { try? FileManager.default.removeItem(at: root) }
+        var item = Item(id: "pip", at: 0, duration: 30)
+        item["text"] = .string("Góc phải")
+        item["transform"] = .object(["pan": .integer(763), "tilt": .integer(-243), "zoom": .number(0.55)])
+        item["keyframes"] = .object(["pan": .array([.object(["frame": .integer(0), "value": .integer(763)])])])
+        let base = Project(name: "PiP")
+        let edit = try base.applying(.setFormat(width: 1920, height: 1080)).project
+        let source = try edit.applying(.insert(track: edit.requireTrack(role: TrackRole.captions).id, item: item)).project
+        let draft = try ExportRequest(
+            project: source, root: root, workspace: nil, name: "draft", preset: .quickDraft, directory: root,
+            includeSubRip: false, normalizeAudio: false)
+        #expect(draft.project.width == 1280 && draft.project.height == 720)
+        let placed = try #require(draft.project.tracks.flatMap(\.items).first { $0.id == "pip" })
+        #expect(placed["transform"]?.object["pan"]?.double == 509)
+        #expect(placed["transform"]?.object["tilt"]?.double == -162)
+        #expect(placed["keyframes"]?.object["pan"]?.array.first?.object["value"]?.double == 509)
+        // The edit itself keeps its 1080p offsets.
+        #expect(draft.source.tracks.flatMap(\.items).first { $0.id == "pip" }?["transform"]?.object["pan"]?.double == 763)
+    }
+
     @Test("A taken export name gets the next free number, and the error suggests it")
     func availableNames() throws {
         let root = try folder()
