@@ -23,6 +23,7 @@ extension ProjectDocument {
         registerEditCommands()
         registerLayerCommands()
         registerSpeedCommands()
+        registerVolumeCommands()
         registerRampCommands()
         registerMotionCommands()
         registerCaptionWordCommands()

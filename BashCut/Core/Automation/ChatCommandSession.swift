@@ -10,7 +10,7 @@ import Foundation
         "captions.generate", "export.status", "export.start", "export.otio", "plugins.list", "plugins.actions",
         "plugins.hooks", "plugins.options", "jobs.status", "jobs.cancel", "layers.add", "layers.set",
         "adjustment.add", "schema.get",
-        "clip.motion", "clip.keyframe", "clip.reverse", "clip.freeze", "clip.reframe", "text.line-style", "clip.backdrop",
+        "clip.motion", "clip.keyframe", "clip.volume", "clip.reverse", "clip.freeze", "clip.reframe", "text.line-style", "clip.backdrop",
         "clip.transition",
         "beats.detect", "image.generate", "image.generate-list", "image.style", "image.disclose",
         "voice.speak", "voice.lines", "voice.place", "voice.use", "voice.clone-list",

@@ -34,10 +34,8 @@ extension PlanCut {
         let lines = try placeLines(spec.voiceover, takes: takes, in: &planner)
         placements += lines
         let total = max(placements.map(\.end).max() ?? 0, lineEnd(spec.voiceover, placements: lines, fps: planner.project.fps.value))
-        if let captions = spec.captions {
-            try placeCaptions(captions, clips: clips, transcripts: transcripts, textPresets: textPresets, in: &planner)
-            try placeLineCaptions(captions, lines: spec.voiceover, takes: takes, textPresets: textPresets, in: &planner)
-        }
+        let sources = CaptionSources(transcripts: transcripts, takes: takes, textPresets: textPresets)
+        try rebuildCaptions(spec, clips: clips, sources: sources, in: &planner)
         var sections: [String: Placement] = [:]
         let sectioned = clips.map { ($0.clip.id, $0.clip.section) } + spec.voiceover.map { ($0.id, $0.section) }
         for (id, section) in sectioned {
@@ -65,9 +63,10 @@ extension PlanCut {
     }
 
     /// Deletes the transitions on the cuts an earlier apply built, the section markers it set (markers must stay
-    /// inside the edit, so they go first), then the items it built (a linked partner goes with its item).
+    /// inside the edit, so they go first), then the items it built (a linked partner goes with its item). Captions
+    /// stay: `rebuildCaptions` keeps or replaces them once the clips are built.
     static func removeBuilt(clips: [Resolved], lines: [Line] = [], from project: Project, in planner: inout LayerPlanner) throws {
-        let built = project.tracks.flatMap(\.items).filter { $0.fields[tag] != nil }
+        let built = project.tracks.flatMap(\.items).filter { $0.fields[tag] != nil && $0.fields[tag] != .string("captions") }
         let sectionIDs = Set(clips.compactMap(\.clip.section)).union(lines.compactMap(\.section))
             .union(plannedSections(project).map(\.id))
             .union(built.compactMap { $0.fields[sectionTag]?.string })
@@ -227,37 +226,6 @@ extension PlanCut {
         return patch
     }
 
-    /// Captions from the stored transcript of each media whose sound the clips play, through the built clips (as
-    /// `captions generate` would make them), in the captions' preset and style, tagged `captions`.
-    static func placeCaptions(
-        _ captions: Captions, clips: [Resolved], transcripts: [String: SourceTranscript],
-        textPresets: [String: LibraryTextPreset], in planner: inout LayerPlanner
-    ) throws {
-        var heard: [String] = []
-        for resolved in clips where !heard.contains(resolved.clip.media) { heard.append(resolved.clip.media) }
-        for media in heard {
-            guard let transcript = transcripts[media] else { continue }
-            let before = Set(planner.project.tracks.flatMap(\.items).map(\.id))
-            // Only cues inside what the plan built: other clips of the same media keep their captions.
-            let operation = try planner.project.importingCues(
-                transcript.phrases, replace: false, provenance: transcript.provider, media: media,
-                words: transcript.words, wordStyle: captions.wordStyle)
-            try planner.add([operation])
-            let added = planner.project.tracks.flatMap(\.items).filter { !before.contains($0.id) }
-            for item in added {
-                var patch = try look(
-                    for: item, (captions.preset, captions.style, captions.textStyle), textPresets: textPresets,
-                    project: planner.project)
-                patch[tag] = .string("captions")
-                let text = captions.replace.reduce(item.text) { text, pair in
-                    text.replacingOccurrences(of: pair.from, with: pair.to, options: .caseInsensitive)
-                }
-                if text != item.text { patch["text"] = .string(text) }
-                try planner.add([.setProperties(item: item.id, patch: patch)])
-            }
-        }
-    }
-
     /// Sound effects on the SFX layer (spilling onto another where one already plays), each at its anchor plus
     /// offset, for its seconds or the whole file, never past the edit's end.
     static func placeSounds(
@@ -370,54 +338,6 @@ extension PlanCut {
             markers.append(.upsertSection(id: section, label: labels[section] ?? section, atFrame: span.at))
         }
         try planner.add(markers)
-    }
-
-    /// Captions with each line's own text (its `caption` when given), timed by the words heard in its take.
-    static func placeLineCaptions(
-        _ captions: Captions, lines: [Line], takes: [String: LineTake], textPresets: [String: LibraryTextPreset],
-        in planner: inout LayerPlanner
-    ) throws {
-        for line in lines {
-            guard let take = takes[line.id], !take.words.isEmpty,
-                planner.project.tracks.contains(where: { $0.items.contains { $0.fields[tag] == .string(line.id) } })
-            else { continue }
-            let text = line.caption ?? line.text
-            let script = captions.maxChars.map { captionLines(text, maxChars: $0) } ?? text
-            let aligned = TextAlignment.cues(script: script, heard: take.words)
-            guard !aligned.cues.isEmpty else { continue }
-            let before = Set(planner.project.tracks.flatMap(\.items).map(\.id))
-            try planner.add([planner.project.importingCues(
-                aligned.cues, provenance: ["aligned": .string("voice")], media: take.media.id, words: aligned.words,
-                wordStyle: captions.wordStyle)])
-            for item in planner.project.tracks.flatMap(\.items) where !before.contains(item.id) {
-                var patch = try look(
-                    for: item, (captions.preset, captions.style, captions.textStyle), textPresets: textPresets,
-                    project: planner.project)
-                patch[tag] = .string("captions")
-                try planner.add([.setProperties(item: item.id, patch: patch)])
-            }
-        }
-    }
-
-    /// `text` broken into lines of at most `maxChars` characters at word gaps, one cue each; a line breaks early
-    /// after a comma or a full stop once it holds half the limit. A word longer than the limit stays whole.
-    static func captionLines(_ text: String, maxChars: Int) -> String {
-        var lines: [String] = []
-        var current = ""
-        for word in text.split(whereSeparator: \.isWhitespace).map(String.init) {
-            if !current.isEmpty, current.count + 1 + word.count > maxChars {
-                lines.append(current)
-                current = word
-            } else {
-                current = current.isEmpty ? word : current + " " + word
-            }
-            if let last = word.last, ",.;:!?".contains(last), current.count * 2 >= maxChars {
-                lines.append(current)
-                current = ""
-            }
-        }
-        if !current.isEmpty { lines.append(current) }
-        return lines.joined(separator: "\n")
     }
 
     /// The span a graphic asks for, in timeline frames: its anchor's start plus offset, for its seconds, until an
