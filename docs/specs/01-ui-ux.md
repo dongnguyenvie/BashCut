@@ -333,8 +333,8 @@ plugin output directly as timeline JSON. Details are in the [plugins guide](../g
 │                                            │
 ├────────────────────────────────────────────┤
 │ @ c-25 · 0474 · hotpot · 38.1–44.6 s  [✕]  │   context chip (follows the selection)
-│ [Survey] [Write VO] [Suggest FX] [Review]  │   quick actions (prompt templates)
-│ [Lessons]                                  │
+│ [Review] [Export draft] [Grade]            │   quick actions for the project's state
+
 └────────────────────────────────────────────┘
 ```
 
@@ -345,20 +345,34 @@ plugin output directly as timeline JSON. Details are in the [plugins guide](../g
 for this project, the dock offers **Continue** or **New conversation**. A handoff moves the project context from
 one agent to the other.
 
-**Empty state.** Before any agent runs, the tab shows one primary button (**Start** the default agent, or **Continue** when this project has a conversation to pick up), an **Other agents** menu (chat agents such as AI Editor, the other terminal agents, New conversation) and a one-line explainer. The agent skills banner shows in full the first time a kit version is seen, then as one line (\"Agent skills: Set Up · Details…\" and Later) until a newer kit comes out.
+**Empty state.** Before any agent runs, the tab shows one primary button (**Start** the default agent, or **Continue** when this project has a conversation to pick up), an **Other agents** menu (chat agents such as AI Editor, the other terminal agents, New conversation) and a one-line explainer.
 
-**The context chip** follows the timeline or library selection. Click ✕ to send nothing.
+**Setup steps.** What is left to set up (the agent kit for Claude Code and Codex outside BashCut, and the shown chat
+agent's API key) collapses into one "N setup steps for the agent" row under the tabs; it opens to each step with
+its Set Up, Details…, Later or Settings… button.
 
-**Quick actions** paste a prompt template into the terminal; you can edit it before pressing Enter. Templates are
-stored in English; the agent replies in the language you write in.
+**Quick starts.** The empty tab and an empty chat show a line about the project and 2–5 template cards for its
+state, the first one wide, then **All templates (25) →**, which opens New brief (§4.3). A card puts its filled
+request in the agent's input (with no agent open it opens the first chat agent, else New brief). The state comes
+from the project (`BriefFit.state`):
 
-| Button | Template (summary) | Status |
-|---|---|---|
-| Survey | "Run nolan-footage-survey on this project's footage, look at the contact sheets, say plainly if coverage is missing" | Implemented |
-| Write VO | "Extract the spoken lines of Speech clips, draft continuous narration so speech covers ≥ 90 %, with a lead-in before each real line" | Implemented |
-| Review | "Run bashcut review, explain each issue and propose a fix" | Implemented |
-| Suggest FX | "Suggest effects for the selection from memos/effects-reference.md, at most 1–2 special effects" | Planned |
-| Lessons | "Run nolan-self-learn for this session" | Planned |
+| State | When | Cards | Quick actions under the input |
+|---|---|---|---|
+| none | No project, or nothing in it | Explainer, News | New project (Import media… in an empty project), Open… |
+| footage | Media, empty timeline | Daily vlog, Travel, Food, Music montage, Product review | Survey footage, Rough cut, Write VO |
+| talk | One clip with sound ≥ 10 min, at most that clip on the timeline | Clips from a long video, Talking to camera, Cut silences, Captions, Short video | Cut short clips, Remove silences, Captions |
+| timeline | Items on the timeline | Stronger hook, Faster pace, Color grade, Captions, Export & post | Review (opens Review), Export draft (opens Export), Grade |
+| selection | Timeline items selected | Fix the selection, Add B-roll, Color grade, Balance music & voice, Captions | Fix this clip, Replace shot, Review this part |
+
+A quick action runs the editor action it names, or puts its request (a template or a short prompt) in the agent's
+input to review before sending. A terminal tab, which has no message box, gets a **New brief…** button at the end
+of the row. The workspace folder (where agent terminals start) is set from the **+** menu (**Workspace: name…**).
+
+**Composer.** A chat tab's message box has **Templates** (the 25 templates by group, the ones that fit first),
+**Frame** (attach the viewer frame) and **Expand…** (continue the message in New brief). Typing `/` at the start
+opens one menu with the chat commands under **Commands** and the templates under their group headings; the
+template search ignores case and accents ("dich" finds "Dịch phụ đề"). Picking a template puts its request in the
+box with each empty field as `‹field›`, the first one selected so typing replaces it.
 
 The dock also has a **Knowledge** sheet for the
 project memo and project skills (kept in the project folder) and the notes every project reads. See the [automation guide](../guides/automation.md).
@@ -382,28 +396,36 @@ Two guards protect your own edits:
 
 ### 4.3 ⌘K: ask the agent
 
-⌘K, **Ask agent** in the timeline bar or **Ask agent…** in the dock opens the Ask agent sheet:
+⌘K (Agent › New Brief…), **All templates** in the dock, **Expand…** in a chat tab or the **New brief…** button
+under a terminal opens New brief ("Giao việc" in Vietnamese):
 
 ```text
-┌ Ask agent ─────────────────────────────────────────────┐
-│ To Codex · about c-25 · ⌘↩ sends                       │
-│ Templates        ┌──────────────────────────────────┐  │
-│  Vlog            │ I want a vlog about [topic],     │  │
-│  Short video     │ about [length] long, with a      │  │
-│  Product review  │ [fun / chill / cinematic] feel.  │  │
-│  Music montage   └──────────────────────────────────┘  │
-│  Tutorial        Fill in the parts in [brackets].      │
-│  Explainer                                             │
-│  Captions                                              │
-│  Fix a part                                            │
-│ [ ] Attach current frame       [Clear] [Cancel] [Send] │
-└────────────────────────────────────────────────────────┘
+┌ New brief ──────────────────────────────────────────── [Search templates…] ┐
+│ To AI Editor · about Whole project · ⌘↩ sends                              │
+├──────────────────────────┬─────────────────────────────────────────────────┤
+│ RECENT                   │ 🚶 Daily vlog   recipe: vlog-daily              │
+│  🕘 Explainer · orders   │ Topic   [a workday in Saigon            ]       │
+│ SAVED                    │ Length  (30 s) (●60 s) (3 min) (8 min) (other…) │
+│  ☆ My TikTok 30 s        │ Mood    (●chill) (fun) (cinematic) (other…)     │
+│ MAKE A VIDEO          13 │ REQUEST TO SEND · EDITABLE   ↺ Reset to template│
+│  Daily vlog         FITS │ ┌─────────────────────────────────────────────┐ │
+│  Talking to camera (dim) │ │ Make a vlog about a workday in Saigon, …    │ │
+│ FIX THE EDIT           8 │ └─────────────────────────────────────────────┘ │
+│ FINISH                 4 │                                                 │
+├──────────────────────────┴─────────────────────────────────────────────────┤
+│ [ ] Attach current frame          [☆ Save as template] [Cancel] [Send]     │
+└────────────────────────────────────────────────────────────────────────────┘
 ```
 
-A template fills the editor with a request to complete; **Clear** empties it. **Send** (⌘↩) sends the request to
-the shown agent: a terminal tab gets it pasted and Return pressed, a chat tab starts a turn. Only the request and
-the attached frame's path are sent; the agent reads the selection and playhead with `context get`. The draft is
-kept when the sheet is closed. Agents can answer the sheet with `ui respond send|clear|close`.
+The list has **Recent** (the last five briefs sent in this project, kept in `.bashcut/briefs.json`), **Saved** (the
+user's own templates from **Save as template**, for every project on this Mac) and the 25 templates in three groups:
+Make a video (13), Fix the edit (8) and Finish (4). Each template names the agent kit recipe it belongs to; the ones
+that fit the project's state carry **FITS** and come first, the others are dimmed but can be picked. The search
+ignores case and accents. Chips replace the old `[brackets]`; **other…** takes a value of your own. The request
+below is editable: edits by hand stay when chips change, until **Reset to template**. **Send** (⌘↩) sends it to the
+shown agent: a terminal tab gets it pasted and Return pressed, a chat tab starts a turn. Only the request and the
+attached frame's path are sent; the agent reads the selection and playhead with `context get`. The draft is kept
+when the sheet is closed. Agents can answer the sheet with `ui respond send|clear|close` (`ui dialog` name `ask`).
 
 ## 5. Review
 

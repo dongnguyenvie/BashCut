@@ -1826,9 +1826,9 @@ Run an editor action like the user: by ID (timeline.split, timeline.zoom-in, pla
 - `in`: integer, ≥ 0. source: in frame
 - `out`: integer, ≥ 1. source: out frame (exclusive)
 
-### `bashcut ui view [--zoom <zoom>] [--zoom-anchor <zoomAnchor>] [--snap <snap>] [--safe-area <safeArea>] [--viewer-zoom <viewerZoom>] [--compare <compare>] [--agent-dock <agentDock>] [--right-tab <rightTab>] [--reveal <reveal>] [--inspector <inspector>] [--settings-section <settingsSection>] [--settings-search <settingsSearch>] [--knowledge-section <knowledgeSection>] [--plugins-tab <pluginsTab>] [--plugins-category <pluginsCategory>] [--media-source <mediaSource>] [--library-query <libraryQuery>] [--library-pack <libraryPack>] [--library-tag <libraryTag>] [--library-scope <libraryScope>] [--library-source <librarySource>] [--library-collection <libraryCollection>] [--library-width <libraryWidth>] [--library-wide <libraryWide>] [--library-layout <libraryLayout>] [--library-tile-size <libraryTileSize>]`
+### `bashcut ui view [--zoom <zoom>] [--zoom-anchor <zoomAnchor>] [--snap <snap>] [--safe-area <safeArea>] [--viewer-zoom <viewerZoom>] [--compare <compare>] [--agent-dock <agentDock>] [--right-tab <rightTab>] [--reveal <reveal>] [--inspector <inspector>] [--chat-draft <chatDraft>] [--settings-section <settingsSection>] [--settings-search <settingsSearch>] [--knowledge-section <knowledgeSection>] [--plugins-tab <pluginsTab>] [--plugins-category <pluginsCategory>] [--media-source <mediaSource>] [--library-query <libraryQuery>] [--library-pack <libraryPack>] [--library-tag <libraryTag>] [--library-scope <libraryScope>] [--library-source <librarySource>] [--library-collection <libraryCollection>] [--library-width <libraryWidth>] [--library-wide <libraryWide>] [--library-layout <libraryLayout>] [--library-tile-size <libraryTileSize>]`
 
-Read the editor view state, or change it: timeline zoom (pixels per second), viewer zoom, snapping, safe area, color compare, agent dock, right column tab, inspector tab, Settings section and search, Knowledge section, Plugins tab and Browse category, the Media panel's source (footage, project, shared, selects, clips), the open library panel's search and filters, and scroll the timeline to a frame; fullScreen: the preview of viewer.fullscreen is on.
+Read the editor view state, or change it: timeline zoom (pixels per second), viewer zoom, snapping, safe area, color compare, agent dock and chat message, right column tab, inspector tab, Settings section and search, Knowledge section, Plugins tab and Browse category, the Media panel's source (footage, project, shared, selects, clips), the open library panel's search and filters, and scroll the timeline to a frame; fullScreen: the preview of viewer.fullscreen is on.
 
 - Mode: ui · Runs: immediately · MCP: `bashcut_ui_view`
 - `zoom`: integer, 1…600. Timeline zoom in pixels per second
@@ -1841,6 +1841,7 @@ Read the editor view state, or change it: timeline zoom (pixels per second), vie
 - `rightTab`: string, one of inspector, agent. Right column tab to show
 - `reveal`: integer, ≥ 0. Scroll the timeline so this frame is visible
 - `inspector`: string, one of video, audio, text, color, speed. Inspector tab
+- `chatDraft`: string. Text in the shown chat agent's message box, as if typed
 - `settingsSection`: string, one of general, agents, plugins, storage. Settings section (open Settings with ui.action open settings)
 - `settingsSearch`: string. Settings search text: lists matching settings of every section; empty clears it
 - `knowledgeSection`: string, one of inbox, lessons, prefs, facts, notes, skills, history. Knowledge window section (open it with ui.action open knowledge)

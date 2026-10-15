@@ -46,18 +46,20 @@ struct AgentDockView: View {
                     ForEach(model.agentChoices) { choice in
                         Button("Handoff to \(choice.title)") { model.handoff(to: choice.id) }
                     }
+                    Divider()
+                    Button(String(format: String(localized: "Workspace: %@…"), model.directory.lastPathComponent)) {
+                        model.chooseWorkspace()
+                    }
+                    .help("The folder agent terminals start in")
                 } label: {
                     Image(systemName: "plus")
                 }
                 .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
-                .frame(width: 24, height: 22).help("New terminal or handoff")
+                .frame(width: 24, height: 22).help("New terminal, handoff or workspace")
             }.padding(.horizontal, 10).padding(.vertical, 8)
             tabs
             Divider()
-            if model.showsKitPrompt, let prompt = model.kitPrompt {
-                AgentKitBanner(model: model, prompt: prompt)
-                Divider()
-            }
+            AgentSetupStepsView(model: model)
             if let key = model.pluginViewKey, let model = model.document.pluginViews.model(key: key) {
                 PluginViewColumn(model: model)
             } else if let pluginID = model.chatPluginID {
@@ -82,31 +84,7 @@ struct AgentDockView: View {
                 Text(model.error).font(.caption).foregroundStyle(.orange).padding(8).textSelection(.enabled)
             }
             Divider()
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text(model.directory.lastPathComponent).font(.caption).lineLimit(1)
-                    Spacer()
-                    Button("Workspace…", action: model.chooseWorkspace).font(.caption)
-                }
-                Button {
-                    model.document.run(.askAgent)
-                } label: {
-                    Label("Ask agent…", systemImage: "square.and.pencil").font(.caption).lineLimit(1)
-                }
-                .help("Write a request from a template and send it to the agent")
-                .disabled(!model.hasOpenAgent)
-                HStack {
-                    Button("Survey") {
-                        model.fillInput("Survey the project footage and summarize missing coverage.")
-                    }
-                    Button("Write VO") {
-                        model.fillInput("Draft voiceover without overlapping real speech.")
-                    }
-                    Button("Review") {
-                        model.fillInput("Review the timeline for gaps, pacing and repeated framing.")
-                    }
-                }.font(.caption).disabled(!model.hasOpenAgent)
-            }.padding(10)
+            quickActions
         }.background(Color(red: 0.045, green: 0.05, blue: 0.06))
             .task { await model.refreshKitPrompt() }
     }
@@ -186,8 +164,29 @@ private struct DockTab: View {
     }
 }
 
-/// A 22 pt icon button with a hover highlight for the dock header.
 extension AgentDockView {
+    /// Buttons for the project's state (New project, Survey footage, Review…). A terminal has no message box, so
+    /// New brief sits here for it.
+    var quickActions: some View {
+        HStack(spacing: 6) {
+            ForEach(Array(model.quickActions.enumerated()), id: \.element.id) { index, quick in
+                Button(quick.title) { model.perform(quick) }
+                    .buttonStyle(QuickActionStyle(primary: index == 0))
+                    .disabled(!quickEnabled(quick))
+            }
+            Spacer(minLength: 0)
+            if model.chatPluginID == nil || model.pluginViewKey != nil {
+                DockIconButton(systemImage: "square.and.pencil", help: "New brief… (⌘K)") { model.openBrief() }
+            }
+        }
+        .padding(.horizontal, 10).padding(.vertical, 8)
+    }
+
+    private func quickEnabled(_ quick: BriefQuickAction) -> Bool {
+        if case .action(let action) = quick.kind { return model.document.canPerform(action) }
+        return true
+    }
+
     /// Proposals waiting for review (orange count), or a dot when agents changed knowledge since the last visit.
     @ViewBuilder var knowledgeBadge: some View {
         let knowledge = model.knowledge
@@ -209,6 +208,26 @@ extension AgentDockView {
     }
 }
 
+/// A quick action: the main one outlined in cyan.
+private struct QuickActionStyle: ButtonStyle {
+    let primary: Bool
+    @Environment(\.isEnabled) private var enabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        let tint: SwiftUI.Color = primary ? .cyan : Color.primary.opacity(0.85)
+        let fill: SwiftUI.Color = primary ? Color.cyan.opacity(configuration.isPressed ? 0.25 : 0.12)
+            : Color.white.opacity(configuration.isPressed ? 0.12 : 0.05)
+        let stroke: SwiftUI.Color = primary ? Color.cyan.opacity(0.6) : Color.white.opacity(0.1)
+        return configuration.label.font(.caption).lineLimit(1)
+            .padding(.horizontal, 9).frame(height: 24)
+            .foregroundStyle(tint)
+            .background(RoundedRectangle(cornerRadius: 6).fill(fill))
+            .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(stroke, lineWidth: 1))
+            .opacity(enabled ? 1 : 0.45)
+    }
+}
+
+/// A 22 pt icon button with a hover highlight for the dock header.
 private struct DockIconButton: View {
     let systemImage: String
     let help: LocalizedStringKey

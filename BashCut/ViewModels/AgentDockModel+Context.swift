@@ -2,13 +2,6 @@ import BashCutAgent
 import Foundation
 import Observation
 
-/// The Ask agent sheet: a request written from a template, sent to the open agent.
-@MainActor @Observable final class AgentAskModel {
-    var draft = ""
-    var attachFrame = false
-    var sending = false
-}
-
 extension AgentDockModel {
     var hasOpenAgent: Bool { chatPluginID != nil || current != nil }
 
@@ -60,7 +53,7 @@ extension AgentDockModel {
         return nil
     }
 
-    /// Sends the Ask agent draft (with the viewer frame when attached), then clears it and closes the sheet.
+    /// Sends the New brief draft (with the viewer frame when attached), then clears it and closes the sheet.
     func sendAsk() async {
         let request = askModel.draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !request.isEmpty, hasOpenAgent, !askModel.sending else { return }
@@ -77,7 +70,9 @@ extension AgentDockModel {
                 try? await Task.sleep(for: .milliseconds(200))
                 session.submit()
             }
+            recordRecentBrief(request)
             askModel.draft = ""
+            askModel.edited = false
             document.ui.showAsk = false
         } catch {
             document.message = error.localizedDescription

@@ -15,12 +15,12 @@ extension ProjectDocument {
     }
 
     /// Open sheets and popovers, bottom to top.
-    /// The Ask agent sheet: `send` sends the draft to the open agent, `clear` empties it.
+    /// The New brief sheet: `send` sends the draft to the open agent, `clear` empties it.
     private func askSheet() -> ModalSheet? {
         guard ui.showAsk else { return nil }
         let draft = agents.askModel.draft
         return ModalSheet(
-            name: "ask", title: "Ask agent", message: draft.isEmpty ? nil : draft,
+            name: "ask", title: "New brief", message: draft.isEmpty ? nil : draft,
             options: [ModalOption("send", String(localized: "Send")), ModalOption("clear", String(localized: "Clear")), Self.close]
         ) { [weak self] option in
             guard let self else { return }

@@ -122,7 +122,7 @@ import BashCutPlugin
         menu.addItem(.separator())
         menu.addItem(item(.sendToAgent, String(localized: "Send to Agent")))
         menu.addItem(quickEditMenu())
-        menu.addItem(item(.askAgent, String(localized: "Ask Agent About Selection…")))
+        menu.addItem(item(.askAgent, String(localized: "New Brief About Selection…")))
         return wrap(menu)
     }
 
@@ -209,7 +209,7 @@ import BashCutPlugin
 
     private func agentMenu() -> NSMenuItem {
         let menu = NSMenu(title: String(localized: "Agent"))
-        menu.addItem(item(.askAgent, String(localized: "Ask Agent…")))
+        menu.addItem(item(.askAgent, String(localized: "New Brief…")))
         let tabs = NSMenuItem(title: String(localized: "New Tab"), action: nil, keyEquivalent: "")
         tabs.submenu = DynamicMenu(String(localized: "New Tab")) { [weak self] menu in self?.fillAgentTabs(menu) }
         menu.addItem(tabs)

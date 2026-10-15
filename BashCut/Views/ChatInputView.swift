@@ -1,4 +1,5 @@
 import AppKit
+import BashCutAgent
 import SwiftUI
 
 /// Keys the chat input hands to its owner before the text view acts on them.
@@ -6,7 +7,8 @@ enum ChatInputKey { case submit, up, down, tab, escape }
 
 /// The chat-agent message box: Enter sends, Shift+Enter or Option+Enter inserts a new line. While an input method is
 /// composing (Vietnamese Telex, for example) Enter only commits the text, because AppKit then never asks the delegate.
-/// Arrows, Tab and Escape go to `onKey` first, for the slash-command menu; it returns whether it used the key.
+/// Arrows, Tab and Escape go to `onKey` first, for the slash menu; it returns whether it used the key. Text set from
+/// outside (a template) has its first empty field selected.
 struct ChatInputView: NSViewRepresentable {
     @Binding var text: String
     var placeholder: String
@@ -40,7 +42,13 @@ struct ChatInputView: NSViewRepresentable {
         guard let textView = scroll.documentView as? NSTextView, !textView.hasMarkedText(), textView.string != text
         else { return }
         textView.string = text
-        textView.setSelectedRange(NSRange(location: (text as NSString).length, length: 0))
+        // A template's first empty field (`‹topic›`) is selected, so typing replaces it.
+        if let hole = BriefText.firstHole(in: text) {
+            textView.setSelectedRange(NSRange(hole, in: text))
+            textView.window?.makeFirstResponder(textView)
+        } else {
+            textView.setSelectedRange(NSRange(location: (text as NSString).length, length: 0))
+        }
     }
 
     final class Coordinator: NSObject, NSTextViewDelegate {
