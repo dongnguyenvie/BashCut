@@ -447,6 +447,7 @@ voiceover timing; loudness comes from the last normalized export of the revision
 | Quick Draft | 720p, H.264 |
 | ProRes | ProRes 422 HQ, to finish in another app |
 
+- **Status bar.** Under the editor: the selection (`1 selected · name`), the project length and, while jobs run, `▶ n jobs` with a popover of their progress, Open and Cancel; a one-off notice shows in it for 8 s.
 - **Background queue.** Exports run one at a time in the background, with progress in the status bar, so you can
   keep editing. Agent exports need approval in the app first.
 - **Normalize audio** needs an installed `audio.loudness` provider; it runs a two-pass normalization to the target

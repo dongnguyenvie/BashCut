@@ -1340,7 +1340,7 @@ Delivery rules:
 - At most 60 deliveries per plugin per minute; extra events are dropped and logged.
 - An edit a plugin made never triggers that plugin's own hooks.
 - Failures go to the hook log (Plugins › **Hook Activity**, `plugins hooks`) and the debug log, never to the
-  editor's status bar. A plain `message` is shown in the status bar.
+  editor's status bar. A plain `message` is shown in the status bar for 8 seconds, so an action whose effect is visible (opening a sheet) should return none.
 - Edits proposed after the project changed are ignored.
 - Settings › **Run plugin hooks** (on by default) stops all hooks; each plugin also has a **Hooks** switch.
 - Settings › **Apply plugin hook edits without review** (off by default, user-only) applies hook edits at once.
