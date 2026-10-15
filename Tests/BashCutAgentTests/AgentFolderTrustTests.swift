@@ -154,3 +154,52 @@ extension AgentFolderTrustTests {
         #expect(!AgentFolderTrust.parent(projects, covers: try folder(root, "projects/repo/sub")))
     }
 }
+
+extension AgentFolderTrustTests {
+    @Test("Claude: accepting Bypass Permissions mode merges into settings.json and keeps other keys")
+    func claudeBypass() throws {
+        let root = try TestFixtures.temporaryDirectory("trust")
+        let trust = trust(root)
+        #expect(trust.claudeSettings.path == root.appendingPathComponent("claude/settings.json").path)
+        #expect(!trust.acceptsClaudeBypass)
+        try FileManager.default.createDirectory(at: trust.claudeSettings.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data(#"{"model":"opus","skipDangerousModePermissionPrompt":false}"#.utf8).write(to: trust.claudeSettings)
+        try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: trust.claudeSettings.path)
+        #expect(!trust.acceptsClaudeBypass)
+
+        try trust.acceptClaudeBypass()
+        #expect(trust.acceptsClaudeBypass)
+        let settings = try #require(try AgentFolderTrust.readJSON(trust.claudeSettings))
+        #expect(settings["model"] as? String == "opus")
+        #expect(settings["skipDangerousModePermissionPrompt"] as? Bool == true)
+        let permissions = try FileManager.default.attributesOfItem(atPath: trust.claudeSettings.path)[.posixPermissions] as? Int
+        #expect(permissions == 0o644)
+        let names = try FileManager.default.contentsOfDirectory(atPath: trust.claudeSettings.deletingLastPathComponent().path)
+        #expect(names == ["settings.json"])
+    }
+
+    @Test("Claude: the older bypassPermissionsModeAccepted in .claude.json counts; settings.json that is not JSON is left alone")
+    func claudeBypassLegacy() throws {
+        let root = try TestFixtures.temporaryDirectory("trust")
+        let trust = trust(root)
+        try FileManager.default.createDirectory(at: trust.claudeConfig.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data(#"{"bypassPermissionsModeAccepted":true}"#.utf8).write(to: trust.claudeConfig)
+        #expect(trust.acceptsClaudeBypass)
+
+        try Data("{ not json".utf8).write(to: trust.claudeSettings)
+        #expect(throws: (any Error).self) { try trust.acceptClaudeBypass() }
+        #expect(try String(contentsOf: trust.claudeSettings, encoding: .utf8) == "{ not json")
+    }
+
+    @Test("Claude: a fresh config gets settings.json with only the acceptance")
+    func claudeBypassFresh() throws {
+        let root = try TestFixtures.temporaryDirectory("trust")
+        let trust = trust(root)
+        try trust.acceptClaudeBypass()
+        let settings = try #require(try AgentFolderTrust.readJSON(trust.claudeSettings))
+        #expect(settings.count == 1)
+        #expect(trust.acceptsClaudeBypass)
+        let permissions = try FileManager.default.attributesOfItem(atPath: trust.claudeSettings.path)[.posixPermissions] as? Int
+        #expect(permissions == 0o600)
+    }
+}

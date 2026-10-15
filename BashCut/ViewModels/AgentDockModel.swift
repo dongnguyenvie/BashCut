@@ -51,8 +51,8 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
     /// The folder question on show; answering resumes the launch waiting in `folderTrustAnswer`.
     var folderTrustPrompt: AgentFolderTrustPrompt?
     @ObservationIgnored var folderTrustAnswer: CheckedContinuation<AgentFolderTrustPrompt.Answer, Never>?
-    /// Folders the user allowed since BashCut started (`<agent>:<folder>`), written again without asking when a
-    /// running CLI saved its config over them.
+    /// Folders the user allowed since BashCut started (`<agent>:<folder>`, and `claude-bypass:<settings.json>` for
+    /// Bypass Permissions mode), written again without asking when a running CLI saved its config over them.
     @ObservationIgnored var allowedFolders: Set<String> = []
     @ObservationIgnored private var detachedWindow: NSWindow? {
         didSet { document.ui.setAgentPoppedOut(detachedWindow != nil) }

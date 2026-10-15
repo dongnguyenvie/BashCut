@@ -173,10 +173,16 @@ extension ProjectDocument {
             ) { [weak self] _ in self?.resolvePrivilegedApproval(false) })
         }
         if let prompt = agents.folderTrustPrompt {
-            // Letting an agent work in a folder is the user's answer: `ui respond` refuses it.
+            // Letting an agent work in a folder, or without asking, is the user's answer: `ui respond` refuses it.
             sheets.append(ModalSheet(
-                name: "agent-folder-trust", title: "Let \(prompt.agent) work in \(prompt.folder.path)?",
-                message: "Only the user can answer whether an agent may read, edit and run files in a folder.",
+                name: "agent-folder-trust",
+                title: prompt.asksFolder
+                    ? "Let \(prompt.agent) work in \(prompt.folder.path)?"
+                    : "Let \(prompt.agent) run commands without asking (Bypass Permissions mode)?",
+                message: prompt.asksFolder
+                    ? "Only the user can answer whether an agent may read, edit and run files in a folder"
+                        + (prompt.acceptsBypass ? " and run in Bypass Permissions mode." : ".")
+                    : "Only the user can accept running an agent in Bypass Permissions mode.",
                 options: [ModalOption("allow", String(localized: "Allow")), ModalOption("not-now", String(localized: "Not now"))],
                 userOnly: true
             ) { [weak self] _ in self?.agents.resolveFolderTrust(.notNow) })

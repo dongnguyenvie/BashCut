@@ -906,7 +906,10 @@ bashcut ui respond --path /path/to/project
 - `agent-folder-trust` asks before Claude Code or Codex starts in a folder it does not trust yet (from the dock,
   New brief, handoff or `agent open`). Only the user answers it (`userOnly`; `ui respond` refuses); Not now does
   not start the agent. Allow writes the CLI's own trust record (`hasTrustDialogAccepted` in `.claude.json`,
-  `trust_level` in Codex's `config.toml`), so its trust menu does not show.
+  `trust_level` in Codex's `config.toml`), so its trust menu does not show. For Claude Code the same sheet also
+  accepts Bypass Permissions mode once (`skipDangerousModePermissionPrompt` in its `settings.json`), so its
+  "WARNING: Claude Code running in Bypass Permissions mode" menu does not show either; when only that is missing,
+  the sheet asks "Let Claude run commands without asking?".
 
 ## Jobs
 

@@ -3,16 +3,20 @@ import BashCutAgent
 import BashCutAutomation
 import Foundation
 
-/// Claude Code and Codex ask before working in a folder they do not trust; BashCut asks in its own sheet first and
-/// records the answer where the CLI reads it, so the CLI's menu never shows. When the write does not take, the CLI
+/// Claude Code and Codex ask before working in a folder they do not trust, and Claude Code warns once about Bypass
+/// Permissions mode; BashCut asks in its own sheet first and records the answer where the CLI reads it, so the CLI's
+/// menus never show. When the write does not take, the CLI
 /// still asks and the brief waits for it (`AgentScreen.isAsking`).
 extension AgentDockModel {
     enum FolderTrustError: LocalizedError {
         case declined(String)
+        case bypassDeclined(String)
         case busy
         var errorDescription: String? {
             switch self {
             case .declined(let agent): String(format: String(localized: "%@ was not started: the folder was not allowed."), agent)
+            case .bypassDeclined(let agent):
+                String(format: String(localized: "%@ was not started: Bypass Permissions mode was not accepted."), agent)
             case .busy: String(localized: "Answer the folder question in BashCut first.")
             }
         }
@@ -21,29 +25,50 @@ extension AgentDockModel {
     func ensureFolderTrust(_ provider: any AgentProvider, folder: URL) async throws {
         guard AgentFolderTrust.asks(provider.id) else { return }
         let trust = AgentFolderTrust(folders: document.currentAgentConfigFolders)
-        guard !trust.isTrusted(provider.id, folder: folder) else { return }
+        let needsFolder = !trust.isTrusted(provider.id, folder: folder)
+        // BashCut starts Claude Code with --dangerously-skip-permissions, which warns once per config.
+        let needsBypass = provider.id == .claude && !trust.acceptsClaudeBypass
+        guard needsFolder || needsBypass else { return }
         let allowed = provider.id.rawValue + ":" + AgentFolderTrust.key(folder)
-        if !allowedFolders.contains(allowed) {
+        let bypass = "claude-bypass:" + trust.claudeSettings.path
+        let asksFolder = needsFolder && !allowedFolders.contains(allowed)
+        let asksBypass = needsBypass && !allowedFolders.contains(bypass)
+        if asksFolder || asksBypass {
             // One answer for every project: Claude Code also trusts the folders below a trusted one.
             let projects = settings.defaultProjectsFolder
             let prompt = AgentFolderTrustPrompt(
                 agent: provider.title, folder: folder,
-                projectsFolder: provider.id == .claude && AgentFolderTrust.parent(projects, covers: folder) ? projects : nil)
+                projectsFolder: asksFolder && provider.id == .claude && AgentFolderTrust.parent(projects, covers: folder)
+                    ? projects : nil,
+                asksFolder: asksFolder, acceptsBypass: asksBypass)
             let answer = try await askFolderTrust(prompt)
             if answer == .notNow {
-                let declined = FolderTrustError.declined(provider.title)
+                let declined = asksFolder
+                    ? FolderTrustError.declined(provider.title) : FolderTrustError.bypassDeclined(provider.title)
                 document.message = declined.localizedDescription
                 throw declined
             }
             if answer == .allowProjectsFolder, let projects = prompt.projectsFolder {
                 record(trust, provider, folder: projects)
             }
-            allowedFolders.insert(allowed)
+            if asksFolder { allowedFolders.insert(allowed) }
+            if asksBypass { allowedFolders.insert(bypass) }
         }
         // A running CLI may have saved its own copy of the file since; check again right before the launch.
-        if !trust.isTrusted(provider.id, folder: folder) { record(trust, provider, folder: folder) }
-        if !trust.isTrusted(provider.id, folder: folder) {
+        recordAgain(trust, provider, folder: folder, needsFolder: needsFolder, needsBypass: needsBypass)
+    }
+
+    private func recordAgain(
+        _ trust: AgentFolderTrust, _ provider: any AgentProvider, folder: URL, needsFolder: Bool, needsBypass: Bool
+    ) {
+        if needsFolder, !trust.isTrusted(provider.id, folder: folder) { record(trust, provider, folder: folder) }
+        if needsFolder, !trust.isTrusted(provider.id, folder: folder) {
             DebugLog.write("agents", "\(provider.id.rawValue) still does not trust \(folder.path); the CLI will ask")
+        }
+        if needsBypass, !trust.acceptsClaudeBypass {
+            do { try trust.acceptClaudeBypass() } catch {
+                DebugLog.write("agents", "could not accept Claude bypass mode in \(trust.claudeSettings.path): \(error)")
+            }
         }
     }
 
