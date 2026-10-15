@@ -110,7 +110,9 @@ extension PluginManagerModel {
 
     /// Registry plugins matching `query`, `capability` and `category`, with what installing would do.
     func listings(query: String = "", capability: String? = nil, category: PluginCategory? = nil) -> [PluginListing] {
-        (registry?.plugins ?? []).filter { $0.matches(query, capability: capability, category: category) }
+        (registry?.plugins ?? [])
+            .filter { developerMode() || !$0.isSample }
+            .filter { $0.matches(query, capability: capability, category: category) }
             .map(listing).sorted { $0.entry.name.text.localizedCaseInsensitiveCompare($1.entry.name.text) == .orderedAscending }
     }
 

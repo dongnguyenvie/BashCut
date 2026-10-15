@@ -54,7 +54,19 @@ public enum PluginCategory: String, CaseIterable, Sendable, Identifiable, Compar
     }
 }
 
+extension PluginManifest {
+    /// The category id of the example plugins in `samples/`. Not a registry category: BashCut hides these plugins
+    /// from the rail, the menus and Browse unless Settings › General › Developer mode is on.
+    public static let sampleCategory = "sample"
+
+    /// True for a sample plugin (`"category": "sample"`).
+    public var isSample: Bool { category == Self.sampleCategory }
+}
+
 extension PluginRegistryEntry {
+    /// True for a listing in the sample category.
+    public var isSample: Bool { category == PluginManifest.sampleCategory }
+
     /// The listing's category, or a guess from its capabilities when it names none this BashCut knows.
     public var pluginCategory: PluginCategory {
         category.flatMap(PluginCategory.init(rawValue:)) ?? .inferred(capabilities: capabilities ?? [])

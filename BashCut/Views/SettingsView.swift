@@ -175,6 +175,13 @@ struct SettingsView: View {
         } footer: {
             Text("Language changes apply after restarting BashCut.")
         }
+        SettingsSection("Developer") {
+            SettingsRow("Developer mode", keywords: ["plugin", "sample", "author", "example"]) {
+                SettingsSwitch(isOn: $settings.developerMode)
+            }
+        } footer: {
+            Text("Shows the sample plugins in the rail, the menus and Plugins › Browse. For people who write plugins.")
+        }
         SettingsSection("Updates") {
             SettingsRow("Version", keywords: ["update", "BashCut"]) {
                 Text(verbatim: "\(document.appUpdate.version) (\(document.appUpdate.build))").textSelection(.enabled)
