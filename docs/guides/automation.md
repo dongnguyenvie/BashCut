@@ -170,10 +170,25 @@ SwiftTerm terminal. Claude and Codex use your installed CLI and its existing log
   get a broad socket allowlist.
 - **Requests.** The quick actions under the agent (Survey footage, Rough cut, Write VO… depending on the project)
   and the quick-start cards paste a short request into the terminal for you to review before pressing Enter; agents
-  read the selection and playhead themselves with `context get`. **New brief…** (⌘K) opens a sheet with 25 request
-  templates, your recent and saved briefs, and Send, which pastes the request and presses Enter. It can attach the
-  current viewer frame: BashCut renders a bounded PNG into
-  `.bashcut/cache/agent-context`, keeps the ten newest frames and passes the absolute path to the terminal.
+  read the selection and playhead themselves with `context get`. **New brief** (⌘K, or the "Tell Claude Code what
+  to make…" bar under a terminal tab) opens a sheet with 25 request templates, your recent and saved briefs, and
+  Send, which pastes the request and presses Enter. It can attach the current viewer frame: BashCut renders a
+  bounded PNG into `.bashcut/cache/agent-context`, keeps the ten newest frames and passes the absolute path to the
+  terminal.
+  - **Footage.** The **Footage** row shows **Project media · N** and takes files and folders (**Add files or
+    folder…**, or drop them on the sheet). They are sent as a last line, `Footage to import: …`, for the agent to
+    import. Templates made from what was shot ask for footage in orange while there is none.
+  - **To.** The menu next to Send picks the agent: an open agent tab or chat agent, or **Start new** for Claude
+    Code, Codex or a terminal plugin. Without a pick the brief goes to the agent tab or chat on show, else the
+    default agent's tab, else it starts the default agent (**Start & send**); never to a Shell tab. **Settings →
+    Agents → Default agent** is **Last used** by default: the agent you last opened or sent a brief to, else
+    Claude Code.
+  - **Waiting.** A starting or busy agent gets the brief only once it takes input (it printed, stayed quiet for
+    0.8 s and shows no menu). When the CLI shows a menu, the sheet closes so you can answer it in the dock, and the
+    brief follows. Cancel stops a waiting Send; a failure stays in the sheet with the brief.
+- **Folder trust.** Before Claude Code or Codex starts in a folder it does not trust yet, BashCut asks in its own
+  sheet, and for Claude Code also accepts Bypass Permissions mode, so the CLIs' own menus do not show (see
+  [Dialogs and UI actions](#dialogs-and-ui-actions)).
 - **Switching projects.** Tabs stay open when the project changes, also when their own agent creates or opens
   one (before, the switch closed the tab mid-task). Every token, in-app or external, must then read the new
   project (`context get`, `timeline get` or `project get`) before its next edit; until then edits fail with
@@ -210,10 +225,16 @@ the tracked files of a `bashcut-agent-kit` checkout next to the repo, or `$BASHC
 and `agent status` / `agent setup` manage it. The kit is the plugin `bc`, so Claude Code and Codex show its skills
 as `bc:audio-mix`, `bc:edit-workflow`, … (kits before 0.1.0 were the `bashcut` plugin, `bashcut:bashcut-<skill>`).
 
-- **Finding it.** When Claude Code or Codex is installed but lacks the kit (or has an older one), the agent dock
-  shows a banner: **Set Up** (or **Update**) runs `agent setup` for each of them, **Details…** opens Settings →
-  Agents (`ui action show.agent-kit`; also Agent › Agent Skills… and ☰), and **Later** (`ui action
-  agent.kit-later`) hides it until BashCut has a newer kit.
+- **Finding it.** The agent dock shows a setup card, "Set up BashCut for Claude Code · 1 of 2 done", the first
+  time it sees a kit version: ① **BashCut skills**, with **Install skills** or **Update** (what `agent setup` does);
+  an agent tab that was already running gets **Restart … tab**, which starts it again on the same conversation so
+  the CLI loads the new skills. ② **Editing tools** (captions, Vietnamese voice, motion graphics, stock search),
+  with **Install…**, which opens Plugins › Browse with the Recommended bundle, like `/bc:setup` without the agent.
+  Steps that do not apply are left out of the count. **What's this?** opens Settings → Agents (`ui action
+  show.agent-kit`; also Agent › Agent Skills… and ☰), and **Later** (`ui action agent.kit-later`) folds the card
+  into a **Setup 1/2** chip in the dock header until BashCut has a newer kit. The UI actions are
+  `agent.setup-show`, `agent.kit-install`, `agent.tools-install` and `agent.restart-tab`; `ui view` reports the
+  card as `agentSetup`.
 
 - **Kit updates.** Settings → Agents checks the kit's signed releases (`releases.json` on bashcut-agent-kit's
   `main`) and offers **Download & Update** (`agent kit-check`, `agent kit-update`; the update asks for approval).
@@ -909,7 +930,13 @@ bashcut ui respond --path /path/to/project
   `trust_level` in Codex's `config.toml`), so its trust menu does not show. For Claude Code the same sheet also
   accepts Bypass Permissions mode once (`skipDangerousModePermissionPrompt` in its `settings.json`), so its
   "WARNING: Claude Code running in Bypass Permissions mode" menu does not show either; when only that is missing,
-  the sheet asks "Let Claude run commands without asking?".
+  the sheet asks "Let Claude run commands without asking?". For a project in BashCut's projects folder outside a
+  git repository, **Always for every project in "<projects folder>"** is ticked by default, so one Allow covers later
+  projects too.
+- The New brief sheet is the `ask` dialog: `send` sends the request to the sheet's agent (starting it if needed),
+  `clear` empties it and `footage` opens its file panel (answer it with `ui respond --path`).
+- A plugin view in a window is `plugin-window` (`"window": true`). It never blocks `ui action` or other dialogs and
+  is answered by ID: `ui respond --dialog sheet:plugin-window:<plugin>/<view> dock|undock|close`.
 
 ## Jobs
 
